@@ -1,0 +1,39 @@
+/* Estilos personalizados */
+.green-tab {
+  color: #ffffff; /* Color del texto */
+  background-color: #099728; /* Color de fondo */
+  border-color: #0f481c; /* Color del borde */
+}
+
+.green-tab:hover {
+  color: #ffffff; /* Color del texto en hover */
+  background-color: #218838; /* Cambia el color de fondo al pasar el ratón sobre el tab */
+  border-color: #1e7e34; /* Cambia el color del borde al pasar el ratón sobre el tab */
+}
+.bg-blue {
+  background-color: rgb(0, 145, 255);
+}
+
+.bg-green {
+  color: #ffffff; /* Color del texto */
+  background-color: rgb(4, 84, 44);
+  border-color: #021306; /* Color del borde */
+}
+
+ .small-text {
+    font-size: 11px; /* Tamaño de fuente más pequeño */
+  }
+
+  .table td, .table th {
+    padding: 0.25rem; /* Ajuste el relleno vertical */
+  }
+
+  #chart {
+      max-width: 400px;
+      margin: 30px auto;
+      padding: 0;
+  }
+
+  .invisible {
+    display: none;
+}

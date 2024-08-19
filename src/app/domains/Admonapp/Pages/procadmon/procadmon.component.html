@@ -1,0 +1,121 @@
+<!-- Content Wrapper. Contains page content -->
+
+<div class="col-md-12">
+  <div class="card">
+
+   <div class="card-header p-2">
+     <ul class="nav nav-pills">
+
+         <li class="nav-item">
+           <a class="nav-link" [class.active]="selectedTab === 'conf'" data-toggle="tab"
+           (click)="onTabSelected('conf')">
+           <span style="font-size: 16px;">{{'setting' | translate}}</span></a>
+         </li>
+
+         <li class="nav-item">
+           <a class="nav-link" [class.active]="selectedTab === 'user'" data-toggle="tab"
+           (click)="onTabSelected('war')"><span style="font-size: 16px;">{{'user' | translate}}</span></a>
+         </li>
+
+         <li class="nav-item">
+           <a class="nav-link" [class.active]="selectedTab === 'mat'" data-toggle="tab"
+           (click)="onTabSelected('mat')">
+           <span style="font-size: 16px;">{{'materials' | translate}}</span></a>
+         </li>
+
+         <li class="nav-item">
+           <a class="nav-link" [class.active]="selectedTab === 'req'" data-toggle="tab"
+           (click)="onTabSelected('req')">
+           <span style="font-size: 16px;">{{'requisitions' | translate}}</span></a>
+         </li>
+
+         <li class="nav-item">
+           <a class="nav-link" [class.active]="selectedTab === 'ord'" data-toggle="tab"
+           (click)="onTabSelected('ord')"><span style="font-size: 16px;"> {{' ' | translate}} {{'orders' | translate}} {{'purchase' | translate}} </span></a>
+         </li>
+
+         <li class="nav-item">
+           <a class="nav-link" [class.active]="selectedTab === 'ent'" data-toggle="tab"
+           (click)="onTabSelected('ent')">
+           <span style="font-size: 16px;">{{'entrances' | translate}}</span></a>
+         </li>
+
+         <li class="nav-item">
+           <a class="nav-link" [class.active]="selectedTab === 'out'" data-toggle="tab"
+           (click)="onTabSelected('out')">
+           <span style="font-size: 16px;">{{'outings' | translate}}</span></a>
+         </li>
+
+         <li class="nav-item">
+           <a class="nav-link" [class.active]="selectedTab === 'kar'" data-toggle="tab"
+           (click)="onTabSelected('kar')">
+           <span style="font-size: 16px;">{{'kardex' | translate}}</span></a>
+         </li>
+
+         <li class="nav-item">
+           <a class="nav-link" [class.active]="selectedTab === 'gua'" data-toggle="tab"
+           (click)="onTabSelected('gua')">
+           <span style="font-size: 16px;">{{'guard' | translate}}{{' ' | translate}}{{'employees' | translate}}</span></a>
+         </li>
+
+         <li class="nav-item">
+           <a class="nav-link" [class.active]="selectedTab === 'prov'" data-toggle="tab"
+           (click)="onTabSelected('prov')">
+           <span style="font-size: 16px;">{{'providers' | translate}}</span></a>
+         </li>
+
+
+       </ul>
+   </div>
+
+   <div class="tab-pane" [class.active]="selectedTab === 'war'" >
+       @if (selectedTab === 'war') { }
+   </div>
+   <div class="tab-pane" [class.active]="selectedTab === 'mat'">
+       @if (selectedTab === 'mat') {  }
+   </div>
+   <div class="tab-pane" [class.active]="selectedTab === 'kar'" >
+     @if (selectedTab === 'kar') {
+
+     }
+   </div>
+
+   <div class="tab-pane" [class.active]="selectedTab === 'req'" >
+     @if (selectedTab === 'req') {
+
+     }
+   </div>
+
+   <div class="tab-pane" [class.active]="selectedTab === 'ord'" >
+     @if (selectedTab === 'ord') {
+
+     }
+   </div>
+
+   <div class="tab-pane" [class.active]="selectedTab === 'ent'" >
+     @if (selectedTab === 'ent') {
+
+     }
+   </div>
+
+   <div class="tab-pane" [class.active]="selectedTab === 'out'">
+     @if (selectedTab === 'out') {
+
+     }
+   </div>
+
+   <div class="tab-pane" [class.active]="selectedTab === 'prov'" >
+     @if (selectedTab === 'prov') {
+
+     }
+   </div>
+
+   <div class="tab-pane" [class.active]="selectedTab === 'gua'" >
+     @if (selectedTab === 'gua') {
+
+     }
+   </div>
+
+  </div>
+</div>
+

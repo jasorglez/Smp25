@@ -1,0 +1,30 @@
+
+<div class="container-fluid p-0">
+  <h5 class="mb-3">Información de Notas</h5>
+  <div class="d-flex align-items-center" *ngIf="isLoading">
+    <strong>Cargando datos...</strong>
+    <div class="spinner-border ms-auto" role="status" aria-hidden="true"></div>
+  </div>
+  
+  <div class="grid-container" style="height: 300px; overflow-y: auto; width: 100%;" *ngIf="!isLoading">
+    <div class="ag-theme-quartz" style="width: 100%; height: 100%;">
+      <ag-grid-angular
+        [domLayout]="'autoHeight'"
+        [rowData]="gestionarDatos"
+        (selectionChanged)="onSelectionChanged($event)"
+        [rowGroupPanelShow]="rowGroupPanelShow"
+        [pivotPanelShow]="pivotPanelShow"
+        [pagination]="true"
+        (gridReady)="onGridReady($event)"
+        [paginationPageSize]="paginationPageSize"
+        [paginationPageSizeSelector]="paginationPageSizeSelector"
+        [groupDefaultExpanded]="groupDefaultExpanded"
+        [autoGroupColumnDef]="autoGroupColumnDef"
+        [columnDefs]="columnDefs"
+        (cellValueChanged)="onCellValueChanged($event)"
+        [defaultColDef]="defaultColDef"
+        [components]="frameworkComponents">
+      </ag-grid-angular>
+    </div>
+  </div>
+</div>
