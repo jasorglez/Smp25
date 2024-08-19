@@ -1,0 +1,84 @@
+<!-- No Content Wrapper. Contains page content -->
+
+  <div class="col-md-12">
+    <div class="card">
+
+        <div class="card-header p-2">
+          <ul class="nav nav-pills">
+
+              <li class="nav-item">
+                <a class="nav-link" [class.active]="selectedTab === 'conf'" data-toggle="tab"
+                (click)="onTabSelected('conf')">
+                <span style="font-size: 16px;">{{'setting' | translate}}</span></a>
+              </li>
+
+              <li class="nav-item">
+                <a class="nav-link" [class.active]="selectedTab === 'repd'" data-toggle="tab"
+                (click)="onTabSelected('repd')">
+                <span style="font-size: 16px;">{{'reports' | translate}}{{' ' | translate}} {{'daily' | translate}}</span></a>
+              </li>
+
+              <li class="nav-item">
+                <a class="nav-link" [class.active]="selectedTab ==='contract'" data-toggle="tab"
+                (click)="onTabSelected('contract')">
+                <span style="font-size: 16px;">{{'contract' | translate}}</span></a>
+              </li>
+
+              <li class="nav-item">
+                <a class="nav-link" [class.active]="selectedTab === 'oil'" data-toggle="tab"
+                (click)="onTabSelected('oil')">
+                <span style="font-size: 16px;">{{'oil' | translate}}{{' '}}{{'fields' | translate}}</span></a>
+              </li>
+
+              <li class="nav-item">
+                <a class="nav-link" [class.active]="selectedTab === 'proj'" data-toggle="tab"
+                (click)="onTabSelected('proj')"><span style="font-size: 16px;"> {{'projects' | translate}} </span></a>
+              </li>
+
+              <li class="nav-item">
+                <a class="nav-link" [class.active]="selectedTab === 'sec'" data-toggle="tab"
+                (click)="onTabSelected('sec')">
+                <span style="font-size: 16px;">{{'security' | translate }}</span></a>
+              </li>
+
+              <li class="nav-item">
+                <a class="nav-link" [class.active]="selectedTab === 'kar'" data-toggle="tab"
+                (click)="onTabSelected('kar')">
+                <span style="font-size: 16px;">{{'kardex' | translate}}</span></a>
+              </li>
+
+            </ul>
+        </div>
+
+          <div class="tab-pane" [class.active]="selectedTab === 'conf'"*ngIf="selectedTab === 'conf'">
+                <app-setting></app-setting>
+                <p>Configuracion/Settings</p>
+          </div>
+
+          <div class="tab-pane" [class.active]="selectedTab === 'repd'" *ngIf="selectedTab === 'repd'">
+                <app-reportdaily></app-reportdaily>
+                <p>Reportes Diarios</p>
+          </div>
+
+          <div class="tab-pane" [class.active]="selectedTab === 'contract'" *ngIf="selectedTab === 'contract'">
+               <app-contract></app-contract>
+              <p>Contratos/Contracts</p>
+          </div>
+
+          <div class="tab-pane" [class.active]="selectedTab === 'proj'" *ngIf="selectedTab === 'proj'">
+               <app-project></app-project>
+          </div>
+
+          <div class="tab-pane" [class.active]="selectedTab === 'req'" *ngIf="selectedTab === 'req'">
+
+         </div>
+
+          <div class="tab-pane" [class.active]="selectedTab === 'ord'" *ngIf="selectedTab === 'ord'">
+
+          </div>
+
+          <div class="tab-pane" [class.active]="selectedTab === 'ent'" *ngIf="selectedTab === 'ent'">
+
+          </div>
+
+        </div>

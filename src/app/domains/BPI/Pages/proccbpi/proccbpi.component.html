@@ -1,0 +1,54 @@
+<div class="col-md-12">
+  <div class="card">
+    <div class="card-header p-2">
+      <ul class="nav nav-pills">
+        <li class="nav-item">
+          <a class="nav-link" [class.active]="selectedTab === 'conf'" data-toggle="tab"
+             (click)="onTabSelected('conf')">
+            <span style="font-size: 16px;">{{'setting' | translate}}</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" [class.active]="selectedTab === 'bl'" data-toggle="tab"
+             (click)="onTabSelected('bl')">
+            <span style="font-size: 16px;">{{'booklogs' | translate}}</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" [class.active]="selectedTab === 'contract'" data-toggle="tab"
+             (click)="onTabSelected('contract')">
+            <span style="font-size: 16px;">{{'contract' | translate}}</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" [class.active]="selectedTab === 'oil'" data-toggle="tab"
+             (click)="onTabSelected('oil')">
+            <span style="font-size: 16px;">{{'oil' | translate}}{{' '}}{{'fields' | translate}}</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" [class.active]="selectedTab === 'proj'" data-toggle="tab"
+             (click)="onTabSelected('proj')">
+            <span style="font-size: 16px;"> {{'projects' | translate}} </span>
+          </a>
+        </li>
+      </ul>
+    </div>
+    <div class="tab-pane" [class.active]="selectedTab === 'conf'" *ngIf="selectedTab === 'conf'">
+      <app-setup></app-setup>
+      <p>Configuracion/Settings</p>
+    </div>
+    <div class="tab-pane" [class.active]="selectedTab === 'bl'" *ngIf="selectedTab === 'bl'">
+      <app-logbook></app-logbook>
+    </div>
+    <div class="tab-pane" [class.active]="selectedTab === 'contract'" *ngIf="selectedTab === 'contract'">
+      <p>Contratos/Contracts</p>
+    </div>
+    <div class="tab-pane" [class.active]="selectedTab === 'oil'" *ngIf="selectedTab === 'oil'">
+      <!-- Contenido para 'oil' -->
+    </div>
+    <div class="tab-pane" [class.active]="selectedTab === 'proj'" *ngIf="selectedTab === 'proj'">
+      <!-- Contenido para 'proj' -->
+    </div>
+  </div>
+</div>

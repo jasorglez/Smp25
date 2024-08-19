@@ -1,0 +1,41 @@
+<aside class="main-sidebar sidebar-light-primary elevation-4">
+  <!-- Brand Logo -->
+  <a href="../../index3.html" class="brand-link">
+    <img [src]= "trackingService.getpictureComp()"
+       alt="BI Company"
+       style="width: 168px; height: 58px;" />
+
+    <div class="brand-text font-weight-bold"></div>
+    <div
+      class="brand-text font-weight-bold"
+      style="font-size: 6px; color: #119da4; text-align: justify; margin-top: 0"  >
+    </div>
+  </a>
+
+
+<div class="sidebar">
+
+    <!-- Sidebar user (optional) -->
+    <div class="user-panel mt-4 pb-2 mb-2 brand-image">
+
+      
+
+  <ul class="nav flex-column">
+   
+
+    <li class="nav-item">
+      <a class="nav-link" (click)="Bpi()">
+        <i class="fas fa-building"></i> {{ 'BPI' | translate }}
+      </a>
+    </li>
+
+
+
+    <li class="nav-item">
+      <a class="nav-link" (click)="authService.logout()">
+        <i class="fas fa-sign-out-alt"></i> SALIR
+      </a>
+    </li>
+
+  </ul>
+</div>

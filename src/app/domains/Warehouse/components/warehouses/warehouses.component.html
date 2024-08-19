@@ -1,0 +1,111 @@
+<div class="col-12 ">
+  <div class="row">
+    <div class="col-4">
+      <!-- Botones -->
+      <div class="btn-group mr-2" role="group" aria-label="Botones">
+        <button name="isNew" class="btn btn-secondary" type="button" (click)="new()" [disabled]="isNew">
+          <i class="fas fa-plus"></i> {{ 'new' | translate }}
+        </button>
+
+        <button name="isEdit" class="btn btn-primary" type="button" (click)="edit()" [disabled]="isEdit">
+          <i class="fas fa-edit"></i> {{ 'edit' | translate }}
+        </button>
+
+        <button name="isSave" class="btn btn-primary" type="button" (click)="onSave()"  [disabled]="!isSave" >
+          <i class="fas fa-save"></i> {{ 'save' | translate }}
+        </button>
+
+        <button name="isCancel"class="btn btn-secondary" type="button" (click)="cancel()" [disabled]="!isCancel" >
+          <i class="fas fa-times"></i> {{ 'cancel' | translate }}
+        </button>
+
+        <button name="isDelete" class="btn btn-danger" type="button" (click)="Delete()" [disabled]="isDelete">
+          <i class="fas fa-trash-alt"></i> {{ 'delete' | translate }}
+        </button>
+
+        <button name="isPrint" class="btn btn-primary" type="button" >
+          <i class="fas fa-print"></i> {{ 'print' | translate }}
+        </button>
+    </div>
+  </div>
+
+  <div class="row">
+<!-- The AG Grid component -->
+  <ag-grid-angular [domLayout]="'autoHeight'"
+      [columnDefs]="colMaster"
+      [rowSelection]="rowSelection"
+      [rowData]="warehouses"
+      class="ag-theme-quartz"
+      (selectionChanged)="onSelectionChanged($event)"
+      style="width: 100%; height: 100%;"
+      [rowGroupPanelShow]="rowGroupPanelShow"
+      [pivotPanelShow]="pivotPanelShow"
+      [pagination]="true"
+      (gridReady)="onGridReady($event)"
+      [paginationPageSize]="paginationPageSize"
+      [paginationPageSizeSelector]="paginationPageSizeSelector">
+  </ag-grid-angular>
+
+  </div>
+
+  <div class="container">
+    <div class="row">
+      <form [formGroup]="warForm" class="form" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+
+        <div class="form-group">
+             <input type="text" placeholder="{{ 'name' | translate }}"
+                formControlName="name" class="form-control">
+
+             <input type="text" placeholder="{{ 'adress' | translate }}"
+                formControlName="address" class="form-control">
+
+             <input type="text" placeholder="{{ 'cp' | translate }}"
+                formControlName="cp" class="form-control">
+
+             <input type="text" placeholder="{{ 'leader' | translate }}"
+                formControlName="leader" class="form-control">
+        </div>
+
+        <div class="form-group">
+                  <div class="row">
+
+                        <select *ngIf="isNew || isEdit" id="estados" class="form-control custom-select" formControlName="state"
+                          (change)="onEstadoChange($event)">
+                          <option selected disabled value="">{{ 'sta' | translate }}</option>
+                          <option *ngFor="let estado of estados" [value]="estado.cve_agee">{{ estado.nom_agee }}</option>
+                        </select>
+
+                        <select *ngIf="isNew || isEdit" class="form-control custom-select" formControlName="city">
+                          <option selected disabled value="">{{ 'municipalities' | translate }}</option>
+                          <option *ngFor="let municipio of municipios" [value]="municipio.nom_agem">{{ municipio.nom_agem }}</option>
+                        </select>
+
+                        <input *ngIf="!isNew && !isEdit" type="text" placeholder="{{ 'sta' | translate }}"
+                          formControlName="state" class="form-control">
+
+                        <input *ngIf="!isNew && !isEdit" type="text" placeholder="{{ 'municipalities' | translate }}"
+                          formControlName="city" class="form-control">
+
+                          <input type="text" placeholder="{{ 'place' | translate }}"
+                          formControlName="place" class="form-control">
+                          <input type="text" placeholder="{{ 'phone' | translate }}"
+                          formControlName="phone" class="form-control">
+
+                          <label>{{ 'warehouses' | translate }} {{ ' ' | translate }}{{ 'principal' | translate }}</label>
+                          <div class="form-check">
+                            <input class="form-check-input" type="radio" formControlName="belongsTo" value="SI" id="belongsToYes">
+                            <label class="form-check-label" for="belongsToYes">{{ 'Yes' | translate }}</label>
+                          </div>
+                          <div class="form-check">
+                            <input class="form-check-input" type="radio" formControlName="belongsTo" value="NO" id="belongsToNo">
+                            <label class="form-check-label" for="belongsToNo">{{ 'No' | translate }}</label>
+                          </div>
+
+                  </div>
+          </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
