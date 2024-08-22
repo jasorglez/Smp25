@@ -20,4 +20,9 @@ export class ReceivedataService {
     var apiUrl = `${urlAzure}?lb=${dater}&id=${id}`;
     return this.httpClient.get<any[]>(apiUrl);
   }
+
+  receiveUsers(urlApi: string, moduleName: string): Observable<any[]> {
+    var apiUrl = `${urlApi}/${moduleName}.json`;
+    return this.httpClient.get<any[]>(apiUrl);
+  }
 }

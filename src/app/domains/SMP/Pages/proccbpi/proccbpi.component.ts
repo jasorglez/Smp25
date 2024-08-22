@@ -4,11 +4,12 @@ import { TrackingService } from 'app/services/tracking.service';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { SetupComponent } from "../../Components/setup/setup.component";
 import { LogbookComponent } from '../../Components/logbook/logbook.component';
+import { UsersComponent } from "../../Components/users/users.component";
 
 @Component({
   selector: 'app-proccbpi',
   standalone: true,
-  imports: [DomainsModule, SetupComponent, LogbookComponent],
+  imports: [DomainsModule, SetupComponent, LogbookComponent, UsersComponent],
   templateUrl: './proccbpi.component.html',
   styleUrl: './proccbpi.component.scss'
 })
@@ -17,8 +18,8 @@ export class ProccbpiComponent {
   selectedTab :string = '';
 
   constructor() {
-    // Inicializar la pestaña seleccionada como 'bl' (booklogs)
-    this.onTabSelected('bl');
+    // Inicializar la pestaña seleccionada como 'users' (usuarios)
+    this.onTabSelected('users');
   }
 
   //inject new way
@@ -37,10 +38,10 @@ export class ProccbpiComponent {
         );
         this.trackingService.setbandform('REQUIS');
         break;
-      case 'bl':
+      case 'users':
         this.trackingService.addLog(
           this.trackingService.getnameComp(),
-          'Click en la Pestaña Booklogs',
+          'Click en la Pestaña Users',
           'Warehouses',
           this.trackingService.getEmail()
         );
