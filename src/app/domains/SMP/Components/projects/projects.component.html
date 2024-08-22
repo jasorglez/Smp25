@@ -3,31 +3,25 @@
         <div class="card text-center" *ngIf="selectedRowData">
             <div class="row">
                 <div class="col">
-                    <img [src]="selectedRowData.picture" alt="Imagen" class="img-fluid rounded">
+                    <img [src]="selectedRowData.image" alt="Imagen" class="img-fluid rounded">
                 </div>
             </div>
             <div class="row">
                 <div class="col">
-                    <p><strong>Nombre</strong></p>
-                    <p>{{selectedRowData.displayName}}</p>
+                    <p><strong>Nombre de contrato</strong></p>
+                    <p>{{selectedRowData.contract}}</p>
                 </div>
             </div>
             <div class="row">
                 <div class="col">
-                    <p><strong>Correo electrónico</strong></p>
-                    <p>{{selectedRowData.emailu}}</p>
+                    <p><strong>Descripción</strong></p>
+                    <p>{{selectedRowData.description}}</p>
                 </div>
             </div>
             <div class="row">
                 <div class="col">
-                    <p><strong>Organización</strong></p>
-                    <p>{{selectedRowData.organization}}</p>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col">
-                    <p><strong>Posición</strong></p>
-                    <p>{{selectedRowData.position}}</p>
+                    <p><strong>Ubicación</strong></p>
+                    <p>{{selectedRowData.ubication}}</p>
                 </div>
             </div>
         </div>
