@@ -5,7 +5,7 @@ import { environment } from '../../environments/environment';
 import { Iusers } from '../interface/iusers';
 
 import { alerts } from '../helpers/alerts';
-import {  map, concat, catchError, forkJoin, Observable,  throwError } from 'rxjs';
+import { map, concat, catchError, forkJoin, Observable, throwError } from 'rxjs';
 
 import 'firebase/compat/database';
 
@@ -14,50 +14,56 @@ import 'firebase/compat/database';
 })
 export class UsersService {
 
-  constructor(private http:HttpClient ) { }
+  constructor(private http: HttpClient) { }
 
-  getdataUserAut(){
+  getdataUserAut() {
     try {
       return this.http.get(`${environment.urlAzure}api/Users/Aut`);
-    }catch(error)
-    {
+    } catch (error) {
       alerts.basicAlert('error', "Error query Users in Users service", "error");
       return null;
     }
   }
 
-  getdataUserNoAut(){
+  getdataUserNoAut() {
     try {
       return this.http.get(`${environment.urlAzure}api/Users/NoAut`);
-    }catch(error)
-    {
+    } catch (error) {
       alerts.basicAlert('error', "Error query Users in Users service", "error");
       return null;
     }
   }
 
-  postData(data: Iusers, token:any){
+  postData(data: Iusers, token: any) {
     try {
       return this.http.post(`${environment.urlFirebase}users.json?auth=${token}`, data);
-    }catch(error) {
+    } catch (error) {
       alerts.basicAlert("error", `Error save Users${error}`, "error")
-      return null ;
+      return null;
     }
 
-	}
+  }
 
 
-	getDataUsers(){
+  getDataUsers() {
     try {
       return this.http.get(`${environment.urlFirebase}users.json`);
     }
     catch (error) {
       alerts.basicAlert("error", `Error get data call Users${error}`, "error")
-      return null ;
+      return null;
     }
+  }
 
-	}
-
+  updateDataUsers(updates: any) {
+    try {
+      return this.http.put(`${environment.urlFirebase}users.json`, updates);
+    }
+    catch (error) {
+      alerts.basicAlert("error", `Error putting data call Users${error}`, "error")
+      return null;
+    }
+  }
 
   getCompaniesByPermission(email: string): Observable<any> {
     const url = `${environment.urlFirebase}permissions.json?orderBy="email"&equalTo="${email}"&print=pretty`;
@@ -90,45 +96,43 @@ export class UsersService {
         return dataExists;
       }),
       catchError(error => {
-          return throwError('Error en la solicitud');
+        return throwError('Error en la solicitud');
       })
     );
   }
 
 
-  patchData(id:string, data:object, token:any){
-		return this.http.patch(`${environment.urlFirebase}users/${id}.json?auth=${token}`, data);
-	}
+  patchData(id: string, data: object, token: any) {
+    return this.http.patch(`${environment.urlFirebase}users/${id}.json?auth=${token}`, data);
+  }
 
 
   getItem(id: string) {
+    return this.http.get(`${environment.urlFirebase}users/${id}.json`);
+  }
 
-		return this.http.get(`${environment.urlFirebase}users/${id}.json`);
+  getFilterDataperm(orderBy: string, equalTo: string) {
 
-	}
+    const url = `${environment.urlFirebase}permissions.json?orderBy="${orderBy}"&equalTo="${equalTo}"`;
 
-  getFilterDataperm(orderBy:string, equalTo:string){
+    return this.http.get(`${environment.urlFirebase}permissionsxcompanys.json?orderBy="${orderBy}"&equalTo="${equalTo}"`);
+  }
 
-    const url =`${environment.urlFirebase}permissions.json?orderBy="${orderBy}"&equalTo="${equalTo}"`;
-
-		return this.http.get(`${environment.urlFirebase}permissionsxcompanys.json?orderBy="${orderBy}"&equalTo="${equalTo}"`);
-	}
-
-  deleteUsers(id:string, token: any){
-		return this.http.delete(`${environment.urlFirebase}users/${id}.json?auth=${token}`);
-	}
+  deleteUsers(id: string, token: any) {
+    return this.http.delete(`${environment.urlFirebase}users/${id}.json?auth=${token}`);
+  }
 
   getCompaniesPermission(userEmail: string): Observable<any> {
 
     const permissionsUrl = `${environment.urlFirebase}permissionsxcompanys.json`;
     const companyUrl = `${environment.urlFirebase}companys.json`;
 
-     const permissions$ = this.http.get(permissionsUrl);
-     const company$ = this.http.get(companyUrl);
+    const permissions$ = this.http.get(permissionsUrl);
+    const company$ = this.http.get(companyUrl);
 
-     return forkJoin([permissions$, company$]);
+    return forkJoin([permissions$, company$]);
 
-     return concat(permissions$, company$)
+    return concat(permissions$, company$)
 
   }
 
@@ -137,29 +141,29 @@ export class UsersService {
     return this.http.get<any>(`${environment.urlFirebase}users.json?orderBy="emailu"&equalTo="${email}"`).pipe(
       map(datauser => {
 
-       // console.log('dataUser', datauser) ;
+        // console.log('dataUser', datauser) ;
 
-      // Asegúrate de que datauser contenga al menos un objeto
+        // Asegúrate de que datauser contenga al menos un objeto
         const userArray = Object.values(datauser);
-      if (userArray.length > 0) {
-        const user = userArray[0] as any;
-        //console.log('user:', user);
+        if (userArray.length > 0) {
+          const user = userArray[0] as any;
+          //console.log('user:', user);
 
-        // Asegúrate de que todas las propiedades existen en el objeto user
-        const displayName   = user.displayName || '';
-        const picture       = user.picture || '';
-        const email         = user.emailu || '';
-        const applyproject  = user.applyproject || '';
-        const applybranch   = user.applybranch || '';
-        const applyplatform = user.applyplatform || ''; // Corregido de user.applybranch a user.applyplatform
+          // Asegúrate de que todas las propiedades existen en el objeto user
+          const displayName = user.displayName || '';
+          const picture = user.picture || '';
+          const email = user.emailu || '';
+          const applyproject = user.applyproject || '';
+          const applybranch = user.applybranch || '';
+          const applyplatform = user.applyplatform || ''; // Corregido de user.applybranch a user.applyplatform
 
-        return { displayName, picture, applyproject, applybranch, applyplatform, email };
-      } else {
-        // Si no se encontró ningún usuario, devuelve un objeto vacío
-        return { displayName: '', picture: '', applyproject: '', applybranch: '', applyplatform: '', email: '' };
-      }
-    })
-  );
+          return { displayName, picture, applyproject, applybranch, applyplatform, email };
+        } else {
+          // Si no se encontró ningún usuario, devuelve un objeto vacío
+          return { displayName: '', picture: '', applyproject: '', applybranch: '', applyplatform: '', email: '' };
+        }
+      })
+    );
   }
 
 }

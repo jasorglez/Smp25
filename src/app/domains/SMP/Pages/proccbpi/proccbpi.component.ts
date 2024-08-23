@@ -3,14 +3,13 @@ import { TrackingService } from 'app/services/tracking.service';
 
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { SetupComponent } from "../../Components/setup/setup.component";
-import { LogbookComponent } from '../../Components/logbook/logbook.component';
 import { UsersComponent } from "../../Components/users/users.component";
 import { ProjectsComponent } from "../../Components/projects/projects.component";
 
 @Component({
   selector: 'app-proccbpi',
   standalone: true,
-  imports: [DomainsModule, SetupComponent, LogbookComponent, UsersComponent, ProjectsComponent],
+  imports: [DomainsModule, SetupComponent, UsersComponent, ProjectsComponent],
   templateUrl: './proccbpi.component.html',
   styleUrl: './proccbpi.component.scss'
 })
