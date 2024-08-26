@@ -1,8 +1,8 @@
-<div class="row">
+<div class="row p-3">
     <div class="col-lg-2 col-md-3 col-sm-3 col-3">
         <div class="card text-center" *ngIf="selectedRowData">
             <div class="row">
-                <div class="col">
+                <div class="col mb-2">
                     <img [src]="selectedRowData.picture" alt="Imagen de perfil de {{selectedRowData.displayName}}"
                         class="img-fluid rounded">
                 </div>
@@ -33,17 +33,27 @@
             </div>
         </div>
     </div>
-    <div class="col-lg-10 col-md-9 col-sm-9 col-9">
-        <div class="row py-3">
-            <div class="col"><button type="button" class="btn btn-primary me-1" (click)="addRow()">Añadir fila</button>
-                <button type="button" class="btn btn-success ms-1" (click)="saveChanges()">Guardar cambios</button>
+    <div [ngClass]="selectedRowData ? 'col-lg-10 col-md-9 col-sm-9 col-9' : 'col-12'">
+        <div class="row mb-3">
+            <div class="col text-right"><button type="button" class="btn btn-primary me-1" (click)="addRow()"><i
+                        class="bi bi-plus-lg" style="font-size: 1.5rem;"></i></button>
+                <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveChanges()">
+                    <i class="bi bi-floppy" style="font-size: 1.5rem;"></i>
+                    <span
+                        class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+                        *ngIf="notSavedChanges"><span class="visually-hidden">Hay cambios sin guardar</span>
+                    </span>
+                </button>
+                <button type="button" class="btn btn-danger ms-1 me-1" (click)="deleteUser()"><i
+                        class="bi bi-trash" style="font-size: 1.5rem;"></i></button>
             </div>
         </div>
         <div class="row">
             <ag-grid-angular style="width: 100%; height: 500px;" class="ag-theme-quartz" [rowData]="rowData"
                 [columnDefs]="columnDefs" [pagination]="pagination" [paginationPageSize]="paginationPageSize"
-                rowSelection="single" (selectionChanged)="onSelectionChanged($event)"
-                (cellValueChanged)="onCellValueChanged($event)" (gridReady)="onGridReady($event)">
+                [paginationPageSizeSelector]="paginationPageSizeSelector" rowSelection="single"
+                (selectionChanged)="onSelectionChanged($event)" (cellValueChanged)="onCellValueChanged($event)"
+                [components]="components">
             </ag-grid-angular>
         </div>
     </div>
