@@ -9,8 +9,8 @@
           </a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" [class.active]="selectedTab === 'users'" data-toggle="tab"
-             (click)="onTabSelected('users')">
+          <a class="nav-link" [class.active]="selectedTab === 'users-menu'" data-toggle="tab"
+             (click)="onTabSelected('users-menu')">
             <span style="font-size: 16px;">{{'user' | translate}}</span>
           </a>
         </li>
@@ -38,8 +38,8 @@
       <app-setup></app-setup>
       <p>Configuracion/Settings</p>
     </div>
-    <div class="tab-pane" [class.active]="selectedTab === 'users'" *ngIf="selectedTab === 'users'">
-      <app-users></app-users>
+    <div class="tab-pane" [class.active]="selectedTab === 'users-menu'" *ngIf="selectedTab === 'users-menu'">
+      <app-users-menu></app-users-menu>
     </div>
     <div class="tab-pane" [class.active]="selectedTab === 'contract'" *ngIf="selectedTab === 'contract'">
       <p>Contratos/Contracts</p>
