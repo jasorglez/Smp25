@@ -16,6 +16,40 @@ export class UsersService {
 
   constructor(private http: HttpClient) { }
 
+// Aqui comienzan los cambios hechos a SMP
+
+getDataUsers() {
+  try {
+    return this.http.get(`${environment.urlFirebase}users.json`);
+  }
+  catch (error) {
+    alerts.basicAlert("error", `Error get data call Users${error}`, "error")
+    return null;
+  }
+}
+
+updateDataUsers(updates: any) {
+  try {
+    return this.http.put(`${environment.urlFirebase}users.json`, updates);
+  }
+  catch (error) {
+    alerts.basicAlert("error", `Error putting data call Users${error}`, "error")
+    return null;
+  }
+}
+
+getDepartments() {
+  try {
+    return this.http.get(`${environment.urlFirebase}departaments.json`);
+  }
+  catch (error) {
+    alerts.basicAlert("error", `Error get data call Users${error}`, "error")
+    return null;
+  }
+}
+
+// Aqui terminan los cambios a SMP
+
   getdataUserAut() {
     try {
       return this.http.get(`${environment.urlAzure}api/Users/Aut`);
@@ -42,27 +76,6 @@ export class UsersService {
       return null;
     }
 
-  }
-
-
-  getDataUsers() {
-    try {
-      return this.http.get(`${environment.urlFirebase}users.json`);
-    }
-    catch (error) {
-      alerts.basicAlert("error", `Error get data call Users${error}`, "error")
-      return null;
-    }
-  }
-
-  updateDataUsers(updates: any) {
-    try {
-      return this.http.put(`${environment.urlFirebase}users.json`, updates);
-    }
-    catch (error) {
-      alerts.basicAlert("error", `Error putting data call Users${error}`, "error")
-      return null;
-    }
   }
 
   getCompaniesByPermission(email: string): Observable<any> {

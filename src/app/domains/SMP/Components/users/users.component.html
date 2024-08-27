@@ -52,8 +52,7 @@
             <ag-grid-angular style="width: 100%; height: 500px;" class="ag-theme-quartz" [rowData]="rowData"
                 [columnDefs]="columnDefs" [pagination]="pagination" [paginationPageSize]="paginationPageSize"
                 [paginationPageSizeSelector]="paginationPageSizeSelector" rowSelection="single"
-                (selectionChanged)="onSelectionChanged($event)" (cellValueChanged)="onCellValueChanged($event)"
-                [components]="components">
+                (selectionChanged)="onSelectionChanged($event)" (cellValueChanged)="onCellValueChanged($event)">
             </ag-grid-angular>
         </div>
     </div>
