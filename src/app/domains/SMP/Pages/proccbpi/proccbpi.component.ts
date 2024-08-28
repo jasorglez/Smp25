@@ -5,11 +5,12 @@ import { DomainsModule } from 'app/domains/domainsmodule';
 import { SetupComponent } from "../../Components/setup/setup.component";
 import { UsersComponent } from "../../Components/users/users.component";
 import { ProjectsComponent } from "../../Components/projects/projects.component";
+import { UsersMenuComponent } from '../../Components/users/users-menu/users-menu.component';
 
 @Component({
   selector: 'app-proccbpi',
   standalone: true,
-  imports: [DomainsModule, SetupComponent, UsersComponent, ProjectsComponent],
+  imports: [DomainsModule, SetupComponent, UsersComponent, ProjectsComponent, UsersMenuComponent],
   templateUrl: './proccbpi.component.html',
   styleUrl: './proccbpi.component.scss'
 })
@@ -18,8 +19,8 @@ export class ProccbpiComponent {
   selectedTab :string = '';
 
   constructor() {
-    // Inicializar la pestaña seleccionada como 'users' (usuarios)
-    this.onTabSelected('users');
+    // Inicializar la pestaña seleccionada como 'users-menu' (usuarios)
+    this.onTabSelected('users-menu');
   }
 
   //inject new way
@@ -38,14 +39,14 @@ export class ProccbpiComponent {
         );
         this.trackingService.setbandform('REQUIS');
         break;
-      case 'users':
-        this.trackingService.addLog(
-          this.trackingService.getnameComp(),
-          'Click en la Pestaña Users',
-          'Warehouses',
-          this.trackingService.getEmail()
-        );
-        break;
+      case 'users-menu':
+          this.trackingService.addLog(
+            this.trackingService.getnameComp(),
+            'Click en la Pestaña Users',
+            'Warehouses',
+            this.trackingService.getEmail()
+          );
+          break;
       case 'contract':
         this.trackingService.addLog(
           this.trackingService.getnameComp(),

@@ -117,7 +117,7 @@ export class UsersComponent {
         field: 'picture', headerName: 'Imagen de perfil', cellEditor: 'agTextCellEditor',
         cellRenderer: (params: any) => {
           if (params.value) {
-            return `<img src="${params.value}" class="rounded text-center" style="height:100%;">`;
+            return `<img src="${params.value}" class="text-center" style="height:100%;">`;
           } else {
             return '';
           }
