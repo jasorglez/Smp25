@@ -1,26 +1,29 @@
-<div class="container mt-3">
-  <ul class="nav nav-pills">
-    <li class="nav-item">
-      <a class="nav-link" [class.active]="selectedTab === 'users'" data-toggle="tab"
-        (click)="onUsersSelected('users')">Gestión de usuarios</a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link" [class.active]="selectedTab === 'usersxoilfields'" data-toggle="tab"
-        (click)="onUsersSelected('usersxoilfields')">Campos petroleros</a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link" [class.active]="selectedTab === 'usersxprojects'" data-toggle="tab"
-        (click)="onUsersSelected('usersxprojects')">Proyectos</a>
-    </li>
-  </ul>
+<div class="container-fluid mt-3">
+  <div class="col-12">
+    <ul class="nav nav-pills">
+      <li class="nav-item">
+        <a class="nav-link" [class.active]="selectedTab === 'users'" data-toggle="tab"
+          (click)="onUsersSelected('users')">Gestión de usuarios</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" [class.active]="selectedTab === 'usersxoilfields'" data-toggle="tab"
+          (click)="onUsersSelected('usersxoilfields')">Campos petroleros</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" [class.active]="selectedTab === 'usersxprojects'" data-toggle="tab"
+          (click)="onUsersSelected('usersxprojects')">Proyectos</a>
+      </li>
+    </ul>
+  
+    <div class="tab-pane" [class.active]="selectedTab === 'users'" *ngIf="selectedTab === 'users'">
+      <app-users></app-users>
+    </div>
+    <div class="tab-pane" [class.active]="selectedTab === 'usersxprojects'" *ngIf="selectedTab === 'usersxprojects'">
+      <p>Contratos/Contracts</p>
+    </div>
+    <div class="tab-pane" [class.active]="selectedTab === 'usersxoilfields'" *ngIf="selectedTab === 'usersxoilfields'">
+      <p>Oilfields</p>
+    </div>
+  </div>
 
-  <div class="tab-pane" [class.active]="selectedTab === 'users'" *ngIf="selectedTab === 'users'">
-    <app-users></app-users>
-  </div>
-  <div class="tab-pane" [class.active]="selectedTab === 'usersxprojects'" *ngIf="selectedTab === 'usersxprojects'">
-    <p>Contratos/Contracts</p>
-  </div>
-  <div class="tab-pane" [class.active]="selectedTab === 'usersxoilfields'" *ngIf="selectedTab === 'usersxoilfields'">
-    <p>Oilfields</p>
-  </div>
 </div>
