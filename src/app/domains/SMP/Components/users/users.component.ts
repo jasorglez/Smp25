@@ -81,20 +81,26 @@ export class UsersComponent {
         }
       },
       {
-        field: 'emailu', headerName: 'Email', cellEditor: 'agTextCellEditor', editable: true,
-        valueSetter: (params: any) => {
-          const email = params.newValue;
-          const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-          const isValid = re.test(String(email).toLowerCase());
-
-          if (isValid) {
-            params.data.email = email;
+        field: 'emailu',
+        headerName: 'Email',
+        cellEditor: 'agTextCellEditor',
+        editable: true,
+        cellEditorParams: {
+          useFormatter: true,
+        },
+        valueFormatter: (params) => params.value,
+        valueSetter: (params) => {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (emailRegex.test(params.newValue)) {
+            params.data[params.colDef.field] = params.newValue;
             return true;
-          } else {
-            alerts.basicAlert("Editar usuario", "Correo electrónico no válido.", "error");
-            return false;  // Rechaza el valor si no es válido
           }
-        }
+          else {
+            // Mostrar alerta de correo electrónico no válido
+            alerts.basicAlert("Editar usuario", "Correo electrónico no válido.", "error");
+            return false;
+          }
+        },
       },
       {
         headerName: 'Contraseña',
