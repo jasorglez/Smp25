@@ -135,6 +135,7 @@ export class WarehousesComponent {
 
     getWarehouses(): void {
       const company = localStorage.getItem('company');
+      
       const project = localStorage.getItem('project');
     
       // Verificamos que company y project no sean null antes de llamarlo
