@@ -28,7 +28,7 @@ export class AuthService {
     }
   }
 
-  async register(email: string, password: string) {
+  async register(email: string, password: string): Promise<User | null> {
     try {
       const result = await createUserWithEmailAndPassword(this.auth, email, password);
 
@@ -42,11 +42,14 @@ export class AuthService {
         } else {
           console.log('El correo electrónico aún no ha sido verificado.');
         }
+        return result.user;
       } else {
         console.error('El usuario no existe en el resultado.');
+        return null;
       }
     } catch (error) {
       console.error('Error registrando el usuario:', error);
+      throw error; // Propagate the error
     }
   }
 

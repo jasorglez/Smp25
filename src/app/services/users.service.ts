@@ -48,6 +48,10 @@ getDepartments() {
   }
 }
 
+deleteUsers(id: string) {
+  return this.http.delete(`${environment.urlFirebase}users/${id}.json`);
+}
+
 // Aqui terminan los cambios a SMP
 
   getdataUserAut() {
@@ -129,10 +133,6 @@ getDepartments() {
     const url = `${environment.urlFirebase}permissions.json?orderBy="${orderBy}"&equalTo="${equalTo}"`;
 
     return this.http.get(`${environment.urlFirebase}permissionsxcompanys.json?orderBy="${orderBy}"&equalTo="${equalTo}"`);
-  }
-
-  deleteUsers(id: string, token: any) {
-    return this.http.delete(`${environment.urlFirebase}users/${id}.json?auth=${token}`);
   }
 
   getCompaniesPermission(userEmail: string): Observable<any> {
