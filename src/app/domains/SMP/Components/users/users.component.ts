@@ -280,7 +280,7 @@ export class UsersComponent {
     const isValid = this.rowData.every(
       (item) => item.displayName && item.emailu && item.password
     );
-  
+
     if (!isValid) {
       alerts.basicAlert(
         'Añadir usuario',
@@ -289,16 +289,16 @@ export class UsersComponent {
       );
       return;
     }
-  
-    let successfullyAdded = [];
-    let successfullyUpdated = [];
-    let failedToAdd = [];
-  
-    // Procesar nuevos usuarios primero
+
+    // Filtrar las filas nuevas usando nuestro registro de nuevas filas
     const newItems = this.rowData.filter((item) =>
       this.newlyAddedRows.includes(item.id)
     );
-  
+
+    let successfullyAdded = [];
+    let failedToAdd = [];
+
+    // Procesar nuevos usuarios primero
     if (newItems.length > 0) {
       for (const item of newItems) {
         try {
@@ -307,9 +307,11 @@ export class UsersComponent {
         } catch (error) {
           if (error.code === 'auth/email-already-in-use') {
             failedToAdd.push(item);
+            // Remover el item de rowData si el email ya está en uso
             this.rowData = this.rowData.filter(row => row.id !== item.id);
             this.newlyAddedRows = this.newlyAddedRows.filter(id => id !== item.id);
           } else {
+            // Para otros errores, detener el proceso
             alerts.basicAlert(
               'Error de registro',
               'Ocurrió un error al registrar nuevos usuarios. Por favor, intente nuevamente.',
@@ -320,52 +322,41 @@ export class UsersComponent {
         }
       }
     }
-  
-    // Preparar actualizaciones para usuarios existentes
-    const updates = {};
-    this.rowData.forEach(item => {
+
+    // Ahora actualizamos la base de datos con los datos filtrados
+    const updates = this.rowData.reduce((acc, item) => {
       const { id, ...data } = item;
-      if (!this.newlyAddedRows.includes(id)) {
-        updates[id] = data;
-        successfullyUpdated.push(item);
-      }
+      acc[id] = data;
+      return acc;
+    }, {});
+
+    this.usersService.updateDataUsers(updates).subscribe((response) => {
+      this.showResultAlert(successfullyAdded, failedToAdd);
+      this.notSavedChanges = false;
+      this.newlyAddedRows = []; // Limpiar el registro de nuevas filas después de guardar
+      this.obtenerDatos(); // Refrescar los datos
     });
-  
-    // Actualizar la base de datos
-    if (Object.keys(updates).length > 0 || successfullyAdded.length > 0) {
-      this.usersService.updateDataUsers(updates).subscribe((response) => {
-        this.showResultAlert(successfullyAdded, successfullyUpdated, failedToAdd);
-        this.notSavedChanges = false;
-        this.newlyAddedRows = []; // Limpiar el registro de nuevas filas después de guardar
-        this.obtenerDatos(); // Refrescar los datos
-      });
-    } else {
-      this.showResultAlert(successfullyAdded, successfullyUpdated, failedToAdd);
-    }
   }
 
-  showResultAlert(successfullyAdded: any[], successfullyUpdated: any[], failedToAdd: any[]) {
+  showResultAlert(successfullyAdded: any[], failedToAdd: any[]) {
     let message = '';
     if (successfullyAdded.length > 0) {
       message += `${successfullyAdded.length} usuario(s) añadido(s) correctamente. `;
     }
-    if (successfullyUpdated.length > 0) {
-      message += `Datos actualizados correctamente. `;
-    }
     if (failedToAdd.length > 0) {
-      message += `${failedToAdd.length} usuario(s) no pudo(pudieron) ser añadido(s) debido a correos electrónicos duplicados. `;
+      message += `${failedToAdd.length} usuario(s) no pudo(pudieron) ser añadido(s) debido a correos electrónicos duplicados.`;
     }
-    if (successfullyAdded.length === 0 && successfullyUpdated.length === 0 && failedToAdd.length === 0) {
+    if (successfullyAdded.length === 0 && failedToAdd.length === 0) {
       message = 'No se realizaron cambios en los usuarios.';
     }
-  
+
     let alertType: SweetAlertIcon = 'info';
-    if ((successfullyAdded.length > 0 || successfullyUpdated.length > 0) && failedToAdd.length === 0) {
+    if (successfullyAdded.length > 0 && failedToAdd.length === 0) {
       alertType = 'success';
     } else if (failedToAdd.length > 0) {
       alertType = 'warning';
     }
-  
+
     alerts.basicAlert('Actualización de usuarios', message, alertType);
   }
 
@@ -397,45 +388,44 @@ export class UsersComponent {
   }
 
   deleteUser() {
-    //alerts.basicAlert('Eliminar usuario', 'Función no implementada.', 'info');
-    const selectedNodes = this.gridApi.getSelectedNodes();
-    if (selectedNodes.length === 0) {
-      alerts.basicAlert(
-        'Eliminar usuario',
-        'Por favor, seleccione un usuario para eliminar.',
-        'warning'
-      );
-      return;
-    }
+    alerts.basicAlert('Eliminar usuario', 'Función no implementada.', 'info');
+    // const selectedNodes = this.gridApi.getSelectedNodes();
+    // if (selectedNodes.length === 0) {
+    //   alerts.basicAlert(
+    //     'Eliminar usuario',
+    //     'Por favor, seleccione un usuario para eliminar.',
+    //     'warning'
+    //   );
+    //   return;
+    // }
 
-    const selectedData = selectedNodes[0].data;
-    const id = selectedData.id;
-    const email = selectedData.emailu;
-    const password = selectedData.password;
+    // const selectedData = selectedNodes[0].data;
+    // const id = selectedData.id;
+    // const email = selectedData.emailu;
 
-    this.usersService.deleteUsers(id).subscribe(
-      (response) => {
-        this.authService.removeUserByEmail(email, password); // Aquí debería eliminar el usuario del auth, pero no lo hace
-        // Dice que falta una key
-        // Eliminar la fila de la grilla
-        this.gridApi.applyTransaction({ remove: [selectedData] });
+    // this.usersService.deleteUsers(id).subscribe(
+    //   (response) => {
+    //     this.authService.removeUserByEmail(email); // Aquí debería eliminar el usuario del auth, pero no lo hace
+    //     // Dice que falta una key
+    //     // Eliminar la fila de la grilla
+    //     this.gridApi.applyTransaction({ remove: [selectedData] });
 
-        alerts.basicAlert(
-          'Eliminar usuario',
-          'Usuario eliminado satisfactoriamente.',
-          'success'
-        );
-        this.notSavedChanges = false;
-        this.selectedRowData = null;
-      },
-      (error) => {
-        alerts.basicAlert(
-          'Eliminar usuario',
-          'Error al eliminar el usuario.',
-          'error'
-        );
-      }
-    );
+    //     alerts.basicAlert(
+    //       'Eliminar usuario',
+    //       'Usuario eliminado satisfactoriamente.',
+    //       'success'
+    //     );
+    //     this.notSavedChanges = false;
+    //     this.selectedRowData = null;
+    //   },
+    //   (error) => {
+    //     alerts.basicAlert(
+    //       'Eliminar usuario',
+    //       'Error al eliminar el usuario.',
+    //       'error'
+    //     );
+    //   }
+    // );
   }
 
   // Aqui vamos a crear custom cell renders y editors para el select
