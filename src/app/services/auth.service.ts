@@ -3,13 +3,16 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendEmailVerification, User, authState } from '@angular/fire/auth';
 import { TrackingService } from './tracking.service';
-import { first, Observable } from 'rxjs';
+import { first, firstValueFrom, Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
   private firebaseAuthUrl = 'https://identitytoolkit.googleapis.com/v1/accounts';
+  
+  private apiKey = environment.firebase.apiKey;
 
   constructor(
     private trackingService: TrackingService,
@@ -80,13 +83,26 @@ export class AuthService {
     });
   }
 
-  async removeUserByEmail(email: string) {
+  async removeUserByEmail(email: string, password: string) {
     try {
-      const queryParams = `?email=${encodeURIComponent(email)}`;
-      const response = await this.http.post(`${this.firebaseAuthUrl}:delete${queryParams}`, {}).toPromise();
+      // Primero, necesitamos obtener el ID token del usuario
+      const signInResponse = await firstValueFrom(this.http.post<any>(`${this.firebaseAuthUrl}:signInWithPassword?key=${this.apiKey}`, {
+        email: email,
+        password: password, // Necesitarás la contraseña actual del usuario
+        returnSecureToken: true
+      }));
+
+      const idToken = signInResponse.idToken;
+
+      // Ahora podemos eliminar la cuenta usando el ID token
+      await firstValueFrom(this.http.post(`${this.firebaseAuthUrl}:delete?key=${this.apiKey}`, {
+        idToken: idToken
+      }));
+
       console.log('Usuario eliminado exitosamente.');
     } catch (error) {
-      console.log('Error al eliminar el usuario:', error);
+      console.error('Error al eliminar el usuario:', error);
+      throw error; // Re-lanza el error para que pueda ser manejado por el componente
     }
   }
 
