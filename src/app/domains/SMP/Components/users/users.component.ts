@@ -150,7 +150,7 @@ export class UsersComponent {
         field: 'emailu',
         headerName: 'Email',
         cellEditor: 'agTextCellEditor',
-        editable: true,
+        editable: (params) => params.data.isNew,
         cellEditorParams: {
           useFormatter: true,
         },
@@ -326,8 +326,9 @@ export class UsersComponent {
       }
     }
 
+    const sanitizedData = this.rowData.map(({ isNew, ...item }) => item);
     // Ahora actualizamos la base de datos con los datos filtrados
-    const updates = this.rowData.reduce((acc, item) => {
+    const updates = sanitizedData.reduce((acc, item) => {
       const { id, ...data } = item;
       acc[id] = data;
       return acc;
@@ -401,6 +402,7 @@ export class UsersComponent {
       project: 'no',
       platform: 'no',
       picture: './assets/img/profile.png',
+      isNew: true,
     };
 
     this.rowData = [newItem, ...this.rowData];
