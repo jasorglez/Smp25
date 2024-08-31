@@ -130,33 +130,43 @@ export class AuthService {
     try {
       // Inicia sesión con el correo y la contraseña actual
       const idToken = await this.getIdToken(oldEmail, password);
-  
+
       // Actualiza el correo electrónico
-      await firstValueFrom(this.http.post(`${this.firebaseAuthUrl}:update?key=${this.apiKey}`, {
-        idToken: idToken,
-        email: newEmail,
-        returnSecureToken: false
-      }));
-  
-      console.log(`Correo electrónico actualizado de ${oldEmail} a ${newEmail}`);
+      await firstValueFrom(
+        this.http.post(`${this.firebaseAuthUrl}:update?key=${this.apiKey}`, {
+          idToken: idToken,
+          email: newEmail,
+          returnSecureToken: false,
+        })
+      );
+
+      console.log(
+        `Correo electrónico actualizado de ${oldEmail} a ${newEmail}`
+      );
     } catch (error) {
       console.error('Error al actualizar el correo electrónico:', error);
       throw error; // Re-lanza el error para que pueda ser manejado por el componente
     }
   }
 
-  async updatePassword(email: string, oldPassword: string, newPassword: string) {
+  async updatePassword(
+    email: string,
+    oldPassword: string,
+    newPassword: string
+  ) {
     try {
       // Inicia sesión con el correo y la contraseña actual
       const idToken = await this.getIdToken(email, oldPassword);
-  
+
       // Actualiza la contraseña
-      await firstValueFrom(this.http.post(`${this.firebaseAuthUrl}:update?key=${this.apiKey}`, {
-        idToken: idToken,
-        password: newPassword,
-        returnSecureToken: false
-      }));
-  
+      await firstValueFrom(
+        this.http.post(`${this.firebaseAuthUrl}:update?key=${this.apiKey}`, {
+          idToken: idToken,
+          password: newPassword,
+          returnSecureToken: false,
+        })
+      );
+
       console.log(`Contraseña actualizada para el correo ${email}`);
     } catch (error) {
       console.error('Error al actualizar la contraseña:', error);

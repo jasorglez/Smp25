@@ -301,6 +301,7 @@ export class UsersComponent {
     // Procesar nuevos usuarios primero
     if (newItems.length > 0) {
       for (const item of newItems) {
+        // Enviamos los datos a FirebaseAuth y a la base de datos
         try {
           await this.enviarDatos(item.emailu, item.password);
           successfullyAdded.push(item);
@@ -333,14 +334,29 @@ export class UsersComponent {
     }, {});
 
     this.usersService.updateDataUsers(updates).subscribe((response) => {
-      this.showResultAlert(successfullyAdded, failedToAdd);
+      let updatedExistingUsers = false;
+
+      // Verificar si se hicieron cambios en usuarios existentes
+      if (newItems.length === 0 && Object.keys(updates).length > 0) {
+        updatedExistingUsers = true;
+      }
+
+      this.showResultAlert(
+        successfullyAdded,
+        failedToAdd,
+        updatedExistingUsers
+      );
       this.notSavedChanges = false;
       this.newlyAddedRows = []; // Limpiar el registro de nuevas filas después de guardar
       this.obtenerDatos(); // Refrescar los datos
     });
   }
 
-  showResultAlert(successfullyAdded: any[], failedToAdd: any[]) {
+  showResultAlert(
+    successfullyAdded: any[],
+    failedToAdd: any[],
+    updatedExistingUsers: boolean
+  ) {
     let message = '';
     if (successfullyAdded.length > 0) {
       message += `${successfullyAdded.length} usuario(s) añadido(s) correctamente. `;
@@ -348,14 +364,21 @@ export class UsersComponent {
     if (failedToAdd.length > 0) {
       message += `${failedToAdd.length} usuario(s) no pudo(pudieron) ser añadido(s) debido a correos electrónicos duplicados.`;
     }
-    if (successfullyAdded.length === 0 && failedToAdd.length === 0) {
+    if (updatedExistingUsers) {
+      message += 'Cambios en usuarios existentes guardados correctamente.';
+    }
+    if (
+      !updatedExistingUsers &&
+      successfullyAdded.length === 0 &&
+      failedToAdd.length === 0
+    ) {
       message = 'No se realizaron cambios en los usuarios.';
     }
 
     let alertType: SweetAlertIcon = 'info';
     if (successfullyAdded.length > 0 && failedToAdd.length === 0) {
       alertType = 'success';
-    } else if (failedToAdd.length > 0) {
+    } else if (failedToAdd.length > 0 || updatedExistingUsers) {
       alertType = 'warning';
     }
 
@@ -390,37 +413,42 @@ export class UsersComponent {
   }
 
   async deleteUser() {
-    // Por si la cagué, aquí está la clave maestra XD
-    // Mantener comentada todo el tiempo
-    // Descomentar y comentar las líneas que le siguen solo si hay que revertir algo
-    // Para borrar usuarios en Firebase
-    //this.authService.removeUserByEmail('dkantun@gmail.com', 'Dkantun89');
-
-    //Aquí va el código correcto
     try {
       const selectedNodes = this.gridApi.getSelectedNodes();
       if (selectedNodes.length === 0) {
-        alerts.basicAlert('Eliminar usuario', 'Por favor, seleccione un usuario para eliminar.', 'warning');
+        alerts.basicAlert(
+          'Eliminar usuario',
+          'Por favor, seleccione un usuario para eliminar.',
+          'warning'
+        );
         return;
       }
-  
+
       const selectedData = selectedNodes[0].data;
       const id = selectedData.id;
       const email = selectedData.emailu;
-  
+
       // Elimina al usuario de la DB de Firebase
       await this.usersService.deleteUsers(id).toPromise();
       // Elimina al usuario de Firebase Auth
       await this.authService.removeUserByEmail(email, selectedData.password);
-  
+
       // Refrescar los datos después de eliminar
       this.obtenerDatos();
-  
-      alerts.basicAlert('Eliminar usuario', 'Usuario eliminado satisfactoriamente.', 'success');
+
+      alerts.basicAlert(
+        'Eliminar usuario',
+        'Usuario eliminado satisfactoriamente.',
+        'success'
+      );
       this.notSavedChanges = false;
       this.selectedRowData = null;
     } catch (error) {
-      alerts.basicAlert('Eliminar usuario', 'Error al eliminar el usuario.', 'error');
+      alerts.basicAlert(
+        'Eliminar usuario',
+        'Error al eliminar el usuario.',
+        'error'
+      );
     }
   }
 
