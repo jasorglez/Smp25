@@ -308,8 +308,10 @@ export class UsersComponent {
           if (error.code === 'auth/email-already-in-use') {
             failedToAdd.push(item);
             // Remover el item de rowData si el email ya está en uso
-            this.rowData = this.rowData.filter(row => row.id !== item.id);
-            this.newlyAddedRows = this.newlyAddedRows.filter(id => id !== item.id);
+            this.rowData = this.rowData.filter((row) => row.id !== item.id);
+            this.newlyAddedRows = this.newlyAddedRows.filter(
+              (id) => id !== item.id
+            );
           } else {
             // Para otros errores, detener el proceso
             alerts.basicAlert(
@@ -387,45 +389,39 @@ export class UsersComponent {
     return 'new-' + Math.random().toString(36).substr(2, 9);
   }
 
-  deleteUser() {
-    alerts.basicAlert('Eliminar usuario', 'Función no implementada.', 'info');
-    // const selectedNodes = this.gridApi.getSelectedNodes();
-    // if (selectedNodes.length === 0) {
-    //   alerts.basicAlert(
-    //     'Eliminar usuario',
-    //     'Por favor, seleccione un usuario para eliminar.',
-    //     'warning'
-    //   );
-    //   return;
-    // }
+  async deleteUser() {
+    // Por si la cagué, aquí está la clave maestra XD
+    // Mantener comentada todo el tiempo
+    // Descomentar y comentar las líneas que le siguen solo si hay que revertir algo
+    // Para borrar usuarios en Firebase
+    //this.authService.removeUserByEmail('dkantun@gmail.com', 'Dkantun89');
 
-    // const selectedData = selectedNodes[0].data;
-    // const id = selectedData.id;
-    // const email = selectedData.emailu;
-
-    // this.usersService.deleteUsers(id).subscribe(
-    //   (response) => {
-    //     this.authService.removeUserByEmail(email); // Aquí debería eliminar el usuario del auth, pero no lo hace
-    //     // Dice que falta una key
-    //     // Eliminar la fila de la grilla
-    //     this.gridApi.applyTransaction({ remove: [selectedData] });
-
-    //     alerts.basicAlert(
-    //       'Eliminar usuario',
-    //       'Usuario eliminado satisfactoriamente.',
-    //       'success'
-    //     );
-    //     this.notSavedChanges = false;
-    //     this.selectedRowData = null;
-    //   },
-    //   (error) => {
-    //     alerts.basicAlert(
-    //       'Eliminar usuario',
-    //       'Error al eliminar el usuario.',
-    //       'error'
-    //     );
-    //   }
-    // );
+    //Aquí va el código correcto
+    try {
+      const selectedNodes = this.gridApi.getSelectedNodes();
+      if (selectedNodes.length === 0) {
+        alerts.basicAlert('Eliminar usuario', 'Por favor, seleccione un usuario para eliminar.', 'warning');
+        return;
+      }
+  
+      const selectedData = selectedNodes[0].data;
+      const id = selectedData.id;
+      const email = selectedData.emailu;
+  
+      // Elimina al usuario de la DB de Firebase
+      await this.usersService.deleteUsers(id).toPromise();
+      // Elimina al usuario de Firebase Auth
+      await this.authService.removeUserByEmail(email, selectedData.password);
+  
+      // Refrescar los datos después de eliminar
+      this.obtenerDatos();
+  
+      alerts.basicAlert('Eliminar usuario', 'Usuario eliminado satisfactoriamente.', 'success');
+      this.notSavedChanges = false;
+      this.selectedRowData = null;
+    } catch (error) {
+      alerts.basicAlert('Eliminar usuario', 'Error al eliminar el usuario.', 'error');
+    }
   }
 
   // Aqui vamos a crear custom cell renders y editors para el select
@@ -465,5 +461,4 @@ export class UsersComponent {
       throw error; // Re-throw the error to be caught in saveChanges
     }
   }
-
 }

@@ -1,17 +1,26 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { Auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendEmailVerification, User, authState } from '@angular/fire/auth';
+import {
+  Auth,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  sendEmailVerification,
+  User,
+  authState,
+} from '@angular/fire/auth';
 import { TrackingService } from './tracking.service';
 import { first, firstValueFrom, Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class AuthService {
-  private firebaseAuthUrl = 'https://identitytoolkit.googleapis.com/v1/accounts';
-  
+  private firebaseAuthUrl =
+    'https://identitytoolkit.googleapis.com/v1/accounts';
+
   private apiKey = environment.firebase.apiKey;
 
   constructor(
@@ -19,11 +28,15 @@ export class AuthService {
     private router: Router,
     private auth: Auth,
     private http: HttpClient
-  ) { }
+  ) {}
 
   async login(email: string, password: string) {
     try {
-      const result = await signInWithEmailAndPassword(this.auth, email, password);
+      const result = await signInWithEmailAndPassword(
+        this.auth,
+        email,
+        password
+      );
       return result;
     } catch (error) {
       console.log(error);
@@ -33,7 +46,11 @@ export class AuthService {
 
   async register(email: string, password: string): Promise<User | null> {
     try {
-      const result = await createUserWithEmailAndPassword(this.auth, email, password);
+      const result = await createUserWithEmailAndPassword(
+        this.auth,
+        email,
+        password
+      );
 
       if (result.user) {
         // Enviar verificación de correo electrónico
@@ -58,7 +75,12 @@ export class AuthService {
 
   async logout() {
     try {
-      this.trackingService.addLog('', 'Salio del Sistema - Cierre de sesion', 'Menu Side Bar', '');
+      this.trackingService.addLog(
+        '',
+        'Salio del Sistema - Cierre de sesion',
+        'Menu Side Bar',
+        ''
+      );
       localStorage.removeItem('token');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('project');
@@ -66,7 +88,7 @@ export class AuthService {
       localStorage.removeItem('branch');
       localStorage.removeItem('mail');
 
-      this.router.navigateByUrl("/login");
+      this.router.navigateByUrl('/login');
 
       await signOut(this.auth);
     } catch (error) {
@@ -76,7 +98,7 @@ export class AuthService {
 
   getCurrentUser(): Promise<User | null> {
     return new Promise((resolve, reject) => {
-      const unsubscribe = this.auth.onAuthStateChanged(user => {
+      const unsubscribe = this.auth.onAuthStateChanged((user) => {
         unsubscribe();
         resolve(user);
       }, reject);
@@ -86,18 +108,16 @@ export class AuthService {
   async removeUserByEmail(email: string, password: string) {
     try {
       // Primero, necesitamos obtener el ID token del usuario
-      const signInResponse = await firstValueFrom(this.http.post<any>(`${this.firebaseAuthUrl}:signInWithPassword?key=${this.apiKey}`, {
-        email: email,
-        password: password, // Necesitarás la contraseña actual del usuario
-        returnSecureToken: true
-      }));
-
-      const idToken = signInResponse.idToken;
+      // Este es el de Firebase, nada que ver con el microservicio
+      // de SQL
+      const idToken = await this.getIdToken(email, password);
 
       // Ahora podemos eliminar la cuenta usando el ID token
-      await firstValueFrom(this.http.post(`${this.firebaseAuthUrl}:delete?key=${this.apiKey}`, {
-        idToken: idToken
-      }));
+      await firstValueFrom(
+        this.http.post(`${this.firebaseAuthUrl}:delete?key=${this.apiKey}`, {
+          idToken: idToken,
+        })
+      );
 
       console.log('Usuario eliminado exitosamente.');
     } catch (error) {
@@ -106,18 +126,70 @@ export class AuthService {
     }
   }
 
-  private async getIdToken(): Promise<string | null> {
+  async updateEmail(oldEmail: string, password: string, newEmail: string) {
     try {
-      const user = await this.getCurrentUser();
-      if (user) {
-        const idToken = await user.getIdToken();
-        return idToken;
-      } else {
-        throw new Error('No hay usuario actual');
-      }
+      // Inicia sesión con el correo y la contraseña actual
+      const idToken = await this.getIdToken(oldEmail, password);
+  
+      // Actualiza el correo electrónico
+      await firstValueFrom(this.http.post(`${this.firebaseAuthUrl}:update?key=${this.apiKey}`, {
+        idToken: idToken,
+        email: newEmail,
+        returnSecureToken: false
+      }));
+  
+      console.log(`Correo electrónico actualizado de ${oldEmail} a ${newEmail}`);
     } catch (error) {
-      console.error('Error al obtener el token de ID:', error);
-      return null;
+      console.error('Error al actualizar el correo electrónico:', error);
+      throw error; // Re-lanza el error para que pueda ser manejado por el componente
     }
+  }
+
+  async updatePassword(email: string, oldPassword: string, newPassword: string) {
+    try {
+      // Inicia sesión con el correo y la contraseña actual
+      const idToken = await this.getIdToken(email, oldPassword);
+  
+      // Actualiza la contraseña
+      await firstValueFrom(this.http.post(`${this.firebaseAuthUrl}:update?key=${this.apiKey}`, {
+        idToken: idToken,
+        password: newPassword,
+        returnSecureToken: false
+      }));
+  
+      console.log(`Contraseña actualizada para el correo ${email}`);
+    } catch (error) {
+      console.error('Error al actualizar la contraseña:', error);
+      throw error; // Re-lanza el error para que pueda ser manejado por el componente
+    }
+  }
+
+  // private async getIdToken(): Promise<string | null> {
+  //   try {
+  //     const user = await this.getCurrentUser();
+  //     if (user) {
+  //       const idToken = await user.getIdToken();
+  //       return idToken;
+  //     } else {
+  //       throw new Error('No hay usuario actual');
+  //     }
+  //   } catch (error) {
+  //     console.error('Error al obtener el token de ID:', error);
+  //     return null;
+  //   }
+  // }
+
+  private async getIdToken(email: string, password: string) {
+    const signInResponse = await firstValueFrom(
+      this.http.post<any>(
+        `${this.firebaseAuthUrl}:signInWithPassword?key=${this.apiKey}`,
+        {
+          email: email,
+          password: password, // Necesitarás la contraseña actual del usuario
+          returnSecureToken: true,
+        }
+      )
+    );
+    return signInResponse.idToken;
   }
 }
