@@ -266,6 +266,8 @@ export class UsersComponent {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
+      // Aquí envío el correo a la signal
+      this.usersService.emailSignal(this.selectedRowData.emailu);
     } else {
       this.selectedRowData = null;
     }

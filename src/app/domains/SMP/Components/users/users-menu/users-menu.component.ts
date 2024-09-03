@@ -2,11 +2,12 @@ import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { TrackingService } from 'app/services/tracking.service';
 import { UsersComponent } from '../users.component';
+import { UsersxoilfieldsComponent } from '../usersxoilfields/usersxoilfields.component';
 
 @Component({
   selector: 'app-users-menu',
   standalone: true,
-  imports: [CommonModule, UsersComponent],
+  imports: [CommonModule, UsersComponent, UsersxoilfieldsComponent],
   templateUrl: './users-menu.component.html',
   styleUrl: './users-menu.component.scss',
 })

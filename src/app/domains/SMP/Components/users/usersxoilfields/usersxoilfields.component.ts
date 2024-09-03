@@ -1,4 +1,5 @@
-import { Component } from '@angular/core';
+import { Component, computed } from '@angular/core';
+import { UsersService } from 'app/services/users.service';
 
 @Component({
   selector: 'app-usersxoilfields',
@@ -8,5 +9,10 @@ import { Component } from '@angular/core';
   styleUrl: './usersxoilfields.component.scss'
 })
 export class UsersxoilfieldsComponent {
+
+  signalValue = computed(() => this.usersService.emailUser());
+  mensaje: string = this.signalValue() == '' ? 'Seleccione una fila' : this.signalValue();
+
+  constructor(private usersService: UsersService) {}
 
 }

@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 
 import { environment } from '../../environments/environment';
@@ -14,45 +14,52 @@ import 'firebase/compat/database';
 })
 export class UsersService {
 
+  // Usemos signals
+  emailUser = signal<string>('');
+  emailSignal(newValue: string) {
+    this.emailUser.set(newValue);
+  }
+
+  //Constructor
   constructor(private http: HttpClient) { }
 
-// Aqui comienzan los cambios hechos a SMP
+  // Aqui comienzan los cambios hechos a SMP
 
-getDataUsers() {
-  try {
-    return this.http.get(`${environment.urlFirebase}users.json`);
+  getDataUsers() {
+    try {
+      return this.http.get(`${environment.urlFirebase}users.json`);
+    }
+    catch (error) {
+      alerts.basicAlert("error", `Error get data call Users${error}`, "error")
+      return null;
+    }
   }
-  catch (error) {
-    alerts.basicAlert("error", `Error get data call Users${error}`, "error")
-    return null;
-  }
-}
 
-updateDataUsers(updates: any) {
-  try {
-    return this.http.put(`${environment.urlFirebase}users.json`, updates);
+  updateDataUsers(updates: any) {
+    try {
+      return this.http.put(`${environment.urlFirebase}users.json`, updates);
+    }
+    catch (error) {
+      alerts.basicAlert("error", `Error putting data call Users${error}`, "error")
+      return null;
+    }
   }
-  catch (error) {
-    alerts.basicAlert("error", `Error putting data call Users${error}`, "error")
-    return null;
-  }
-}
 
-getDepartments() {
-  try {
-    return this.http.get(`${environment.urlFirebase}departaments.json`);
+  getDepartments() {
+    try {
+      return this.http.get(`${environment.urlFirebase}departaments.json`);
+    }
+    catch (error) {
+      alerts.basicAlert("error", `Error get data call Users${error}`, "error")
+      return null;
+    }
   }
-  catch (error) {
-    alerts.basicAlert("error", `Error get data call Users${error}`, "error")
-    return null;
+
+  deleteUsers(id: string) {
+    return this.http.delete(`${environment.urlFirebase}users/${id}.json`);
   }
-}
 
-deleteUsers(id: string) {
-  return this.http.delete(`${environment.urlFirebase}users/${id}.json`);
-}
-
-// Aqui terminan los cambios a SMP
+  // Aqui terminan los cambios a SMP
 
   getdataUserAut() {
     try {
