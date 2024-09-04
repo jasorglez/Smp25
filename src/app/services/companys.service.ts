@@ -57,6 +57,9 @@ getDataCompanys(clave: string): Observable<Icompany | null> {
   }
 }
 
+deleteUserxCompanys(id: string) {
+  return this.http.delete(`${environment.urlFirebase}permissionsxcompanys/${id}.json`);
+}
 
 
 getEmpresa(id: string): Observable<any> {

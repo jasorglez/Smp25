@@ -15,7 +15,7 @@ import 'firebase/compat/database';
 export class UsersService {
 
   // Usemos signals
-  emailUser = signal<string>('');
+  emailUser = signal<string>(null);
   emailSignal(newValue: string) {
     this.emailUser.set(newValue);
   }
@@ -87,6 +87,16 @@ export class UsersService {
       return null;
     }
 
+  }
+
+  getDataUsersxCompanys(email: string): Observable<any> {
+    try {
+      return this.http.get(`${environment.urlFirebase}permissionsxcompanys.json?orderBy="email"&equalTo="${email}"&print=pretty`);
+    }
+    catch (error) {
+      alerts.basicAlert("error", `Error get data call Users${error}`, "error")
+      return null;
+    }
   }
 
   getCompaniesByPermission(email: string): Observable<any> {

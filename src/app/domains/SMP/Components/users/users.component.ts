@@ -7,48 +7,11 @@ import { alerts } from 'app/helpers/alerts';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from 'app/services/auth.service';
 import { SweetAlertIcon } from 'sweetalert2';
+import { CustomSelectComponent } from '../custom-select/custom-select.component';
 
 @Injectable({
   providedIn: 'root',
 })
-// Componente del editor de celda personalizado
-@Component({
-  selector: 'app-custom-select-editor',
-  standalone: true,
-  imports: [FormsModule, CommonModule],
-  template: `
-    <select
-      class="form-control"
-      [(ngModel)]="value"
-      (ngModelChange)="onChange($event)"
-    >
-      <option *ngFor="let option of options" [ngValue]="option.value">
-        {{ option.display }}
-      </option>
-    </select>
-  `,
-})
-export class CustomSelectEditorComponent {
-  private params: any;
-  public value: any;
-  public options: { display: string; value: any }[] = [];
-
-  agInit(params: any): void {
-    this.params = params;
-    this.value = this.params.value;
-    this.options = Object.entries(this.params.options).map(
-      ([display, value]) => ({ display, value })
-    );
-  }
-
-  getValue(): any {
-    return this.value;
-  }
-
-  onChange(value: any): void {
-    this.value = value;
-  }
-}
 
 // Ahora el componente principal
 @Component({
@@ -58,14 +21,14 @@ export class CustomSelectEditorComponent {
     CommonModule,
     FormsModule,
     AgGridModule,
-    CustomSelectEditorComponent,
+    CustomSelectComponent,
   ],
   templateUrl: './users.component.html',
   styleUrl: './users.component.scss',
 })
 export class UsersComponent {
   components = {
-    customSelectEditor: CustomSelectEditorComponent,
+    customSelectEditor: CustomSelectComponent,
   };
 
   @HostListener('window:beforeunload', ['$event'])
