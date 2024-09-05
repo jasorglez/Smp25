@@ -9,6 +9,7 @@ import { alerts } from 'app/helpers/alerts';
 import { UsersxprojectsService } from 'app/services/usersxprojects.service';
 import { ProjectsService } from 'app/services/projects.service';
 import { OilfieldService } from 'app/services/oilfield.service';
+import { BranchsService } from 'app/services/branchs.service';
 
 @Component({
   selector: 'app-usersxprojects',
@@ -20,12 +21,13 @@ import { OilfieldService } from 'app/services/oilfield.service';
 export class UsersxprojectsComponent {
 
   constructor(private usersService: UsersService, private projectsService: ProjectsService,
-    private usersxprojectsService: UsersxprojectsService, private oilfieldService: OilfieldService) { }
+    private usersxprojectsService: UsersxprojectsService, private oilfieldService: OilfieldService,
+    private branchsService: BranchsService) { }
 
   ngOnInit() {
     this.obtenerDatos();
     this.obtenerProjects();
-    this.obtenerOilfield();
+    this.obtenerBranchs();
   }
 
   signalValue = computed(() => this.usersService.emailUser());
@@ -33,7 +35,7 @@ export class UsersxprojectsComponent {
   notSavedChanges: boolean = false;
   rowData: any;
   projects: { [key: string]: string } = {};
-  oilfields: { [key: string]: string } = {};
+  branchs: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
   id: string;
@@ -48,7 +50,6 @@ export class UsersxprojectsComponent {
       this.rowData = Object.keys(data).map((key) => {
         return { id: key, ...data[key] };
       });
-      console.log(this.rowData);
     });
   }
 
@@ -61,15 +62,15 @@ export class UsersxprojectsComponent {
     });
   }
 
-  obtenerOilfield() {
-    this.oilfieldService.getOilfields().subscribe((data: any) => {
-      this.oilfields = Object.entries(data).reduce((acc, [key, value]: [string, any]) => {
+  obtenerBranchs() {
+    this.branchsService.branchs().subscribe((data: any) => {
+      this.branchs = Object.entries(data).reduce((acc, [key, value]: [string, any]) => {
         acc[key] = value.name;
         return acc;
       }, {} as { [key: string]: string });
-      console.log(this.oilfields);
     });
   }
+
 
   get columnDefs(): ColDef[] {
     return [{
@@ -93,6 +94,23 @@ export class UsersxprojectsComponent {
       ),
       editable: true,
       flex: 2
+    },
+    {
+      field: 'id_branchs',
+      headerName: 'Branch',
+      cellEditor: 'customSelectEditor',
+      cellEditorParams: {
+        options: Object.fromEntries(
+          Object.entries(this.branchs).map(([id, name]) => [name, id])
+        )
+      },
+      cellRenderer: this.customSelectRenderer(
+        Object.fromEntries(
+          Object.entries(this.branchs).map(([id, name]) => [name, id])
+        )
+      ),
+      editable: true,
+      flex: 2
     }
     ]
   }
@@ -111,8 +129,6 @@ export class UsersxprojectsComponent {
   }
 
   onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
-
     // Verificar si el campo modificado es 'id_projects'
     if (event.colDef.field === 'id_projects') {
       const selectedProject = this.projects[event.data.id_projects];
@@ -122,6 +138,17 @@ export class UsersxprojectsComponent {
 
       // Forzar actualización de la celda de 'project'
       this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['projects'], force: true });
+    }
+
+    // Verificar si el campo modificado es 'id_branchs'
+    if (event.colDef.field === 'id_branchs') {
+      const selectedBranch = this.branchs[event.data.id_branchs];
+      if (selectedBranch) {
+        event.data.branchs = selectedBranch;
+      }
+
+      // Forzar actualización de la celda de 'project'
+      this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['branchs'], force: true });
     }
 
     this.notSavedChanges = true;
@@ -139,5 +166,131 @@ export class UsersxprojectsComponent {
       const matchingOption = optionsArray.find(([, optionValue]) => optionValue === value);
       return matchingOption ? matchingOption[0] : value; // Valor por defecto si no se encuentra coincidencia
     };
+  }
+
+  addRow() {
+    const newId = this.generateUniqueId();
+    const newItem = {
+      id: newId,
+      id_branchs: '',
+      id_projects: '',
+      mail: this.correo,
+      projects: ''
+    };
+
+    this.rowData = [newItem, ...this.rowData];
+    // Añadir el ID de la nueva fila a nuestro registro
+    this.newlyAddedRows.push(newId);
+  }
+
+  generateUniqueId() {
+    return 'new-' + Math.random().toString(36).substr(2, 9);
+  }
+
+  saveChanges() {
+    const isValid = this.rowData.every(
+      (item) => item.id_branchs && item.id_projects
+    );
+  
+    if (!isValid) {
+      alerts.basicAlert(
+        'Añadir entrada',
+        'Debe seleccionar un proyecto y un branch antes de guardar.',
+        'error'
+      );
+      return;
+    }
+  
+    // Filtrar las filas nuevas usando nuestro registro de nuevas filas
+    const newItems = this.rowData.filter((item) =>
+      this.newlyAddedRows.includes(item.id)
+    );
+  
+    let successfullyAdded = [];
+  
+    // Procesar nuevos usuarios primero
+    if (newItems.length > 0) {
+      for (const item of newItems) {
+        // Enviamos los datos a la base de datos
+        try {
+          successfullyAdded.push(item);
+        } catch (error) {
+          // Para otros errores, detener el proceso
+          alerts.basicAlert(
+            'Error de registro',
+            'Ocurrió un error al registrar nuevos datos. Por favor, intente nuevamente.',
+            'error'
+          );
+          return;
+        }
+      }
+    }
+  
+    // Filtrar solo las filas que han sido modificadas o son nuevas
+    const updatedRows = this.rowData.filter(row => 
+      this.newlyAddedRows.includes(row.id) || row.__modified
+    );
+
+    // Eliminar la propiedad __modified antes de enviar los datos
+    updatedRows.forEach(row => {
+      delete row.__modified;
+    });
+
+    this.usersxprojectsService.bulkUpdateUsersxProjects(updatedRows).subscribe(
+      (response) => {
+        alerts.basicAlert(
+          'Datos actualizados',
+          'Se han actualizado los datos correctamente.',
+          'success'
+        );
+        this.notSavedChanges = false;
+        this.newlyAddedRows = [];
+        this.obtenerDatos(); // Refrescar los datos
+      },
+      (error) => {
+        alerts.basicAlert(
+          'Error',
+          'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
+          'error'
+        );
+      }
+    );
+  }
+
+  async deleteEntry() {
+    try {
+      const selectedNodes = this.gridApi.getSelectedNodes();
+      if (selectedNodes.length === 0) {
+        alerts.basicAlert(
+          'Eliminar entrada',
+          'Por favor, seleccione una entrada para eliminar.',
+          'warning'
+        );
+        return;
+      }
+
+      const selectedData = selectedNodes[0].data;
+      const id = selectedData.id;
+
+      // Elimina al usuario de la DB de Firebase
+      await this.usersxprojectsService.deleteUserxProject(id).toPromise();
+
+      // Refrescar los datos después de eliminar
+      this.obtenerDatos();
+
+      alerts.basicAlert(
+        'Eliminar entrada',
+        'Entrada eliminada satisfactoriamente.',
+        'success'
+      );
+      this.notSavedChanges = false;
+      this.selectedRowData = null;
+    } catch (error) {
+      alerts.basicAlert(
+        'Eliminar entrada',
+        'Error al eliminar la entrada.',
+        'error'
+      );
+    }
   }
 }

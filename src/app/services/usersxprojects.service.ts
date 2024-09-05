@@ -10,40 +10,37 @@ export class UsersxprojectsService {
 
   constructor(private http: HttpClient) { }
 
-  deleteUserxProjects(id: string) {
+  addUserxProject(id: string, data: any): Observable<any> {
+    return this.http.put(`${environment.urlFirebase}permissionsxprojects/${id}.json`, data);
+  }
+
+  updateUserxProject(id: string, data: any): Observable<any> {
+    return this.http.put(`${environment.urlFirebase}permissionsxprojects/${id}.json`, data);
+  }
+
+  deleteUserxProject(id: string): Observable<any> {
     return this.http.delete(`${environment.urlFirebase}permissionsxprojects/${id}.json`);
   }
 
-  getKeyByEmail(email: string): Observable<string | null> {
-    return this.http.get<any>(`${environment.urlFirebase}permissionsxprojects.json?orderBy="email"&equalTo="${email}"`)
-      .pipe(
-        map(response => {
-          const keys = Object.keys(response);
-          return keys.length > 0 ? keys[0] : null;
-        })
-      );
-  }
+  bulkUpdateUsersxProjects(updates: any[]): Observable<any> {
+    const updateObject = {};
+    updates.forEach(update => {
+      const { id, ...data } = update;
+      updateObject[id] = data;
+    });
 
-  updateDataUserxProjects(updates: any): Observable<any> {
-    const email = updates[Object.keys(updates)[0]].email;
-    
-    return this.getKeyByEmail(email).pipe(
-      switchMap(key => {
-        if (key) {
-          return this.http.patch(`${environment.urlFirebase}permissionsxprojects/${key}.json`, updates[Object.keys(updates)[0]]);
-        } else {
-          return of({ error: 'No se encontró el registro para actualizar' });
-        }
-      })
-    );
+    return this.http.patch(`${environment.urlFirebase}permissionsxprojects.json`, updateObject);
   }
 
   getDataUsersxProjects(mail: string): Observable<any> {
-    try {
-      return this.http.get(`${environment.urlFirebase}permissionsxprojects.json?orderBy="mail"&equalTo="${mail}"&print=pretty`);
-    }
-    catch (error) {
-      return of(error);
-    }
+      return this.http.get(`${environment.urlFirebase}permissionsxprojects.json?orderBy="mail"&equalTo="${mail}"&print=pretty`).pipe(
+        map(response => {
+          if (!response) return [];
+          return Object.entries(response).map(([key, value]) => ({
+            id: key,
+            ...value
+          }));
+        })
+      );
   }
 }

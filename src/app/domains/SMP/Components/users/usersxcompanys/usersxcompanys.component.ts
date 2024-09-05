@@ -116,8 +116,7 @@ export class UsersxcompanysComponent {
   }
 
   onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
-
+    event.data.__modified = true;
     // Verificar si el campo modificado es 'id_company'
     if (event.colDef.field === 'id_company') {
       const selectedCompany = this.companys[event.data.id_company];
@@ -151,61 +150,39 @@ export class UsersxcompanysComponent {
     this.newlyAddedRows.push(newId);
   }
 
-  async saveChanges() {
+  saveChanges() {
     const isValid = this.rowData.every(
       (item) => item.id_company && item.orden
     );
-  
+
     if (!isValid) {
       alerts.basicAlert(
-        'Añadir usuario',
-        'Debe introducir un nombre de usuario, correo electrónico y contraseña.',
+        'Añadir entrada',
+        'Debe introducir una compañía antes de guardar.',
         'error'
       );
       return;
     }
-  
-    // Filtrar las filas nuevas usando nuestro registro de nuevas filas
-    const newItems = this.rowData.filter((item) =>
-      this.newlyAddedRows.includes(item.id)
+
+    // Filtrar solo las filas que han sido modificadas o son nuevas
+    const updatedRows = this.rowData.filter(row => 
+      this.newlyAddedRows.includes(row.id) || row.__modified
     );
-  
-    let successfullyAdded = [];
-  
-    // Procesar nuevos usuarios primero
-    if (newItems.length > 0) {
-      for (const item of newItems) {
-        // Enviamos los datos a la base de datos
-        try {
-          successfullyAdded.push(item);
-        } catch (error) {
-          // Para otros errores, detener el proceso
-          alerts.basicAlert(
-            'Error de registro',
-            'Ocurrió un error al registrar nuevos datos. Por favor, intente nuevamente.',
-            'error'
-          );
-          return;
-        }
-      }
-    }
-  
-    // Ahora actualizamos la base de datos con los datos filtrados
-    const updates = this.rowData.reduce((acc, item) => {
-      const { id, ...data } = item;
-      acc[id] = data;
-      return acc;
-    }, {});
-  
-    this.usersxcompanysService.updateDataUserxCompanys(updates).subscribe(
+
+    // Eliminar la propiedad __modified antes de enviar los datos
+    updatedRows.forEach(row => {
+      delete row.__modified;
+    });
+
+    this.usersxcompanysService.bulkUpdateUsersxCompanys(updatedRows).subscribe(
       (response) => {
         alerts.basicAlert(
-          'Dato registrado',
-          'Se ha registrado el dato correctamente.',
+          'Datos actualizados',
+          'Se han actualizado los datos correctamente.',
           'success'
         );
         this.notSavedChanges = false;
-        this.newlyAddedRows = []; // Limpiar el registro de nuevas filas después de guardar
+        this.newlyAddedRows = [];
         this.obtenerDatos(); // Refrescar los datos
       },
       (error) => {
@@ -238,7 +215,7 @@ export class UsersxcompanysComponent {
       const id = selectedData.id;
 
       // Elimina al usuario de la DB de Firebase
-      await this.usersxcompanysService.deleteUserxCompanys(id).toPromise();
+      await this.usersxcompanysService.deleteUserxCompany(id).toPromise();
 
       // Refrescar los datos después de eliminar
       this.obtenerDatos();

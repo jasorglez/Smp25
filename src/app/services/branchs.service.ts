@@ -8,17 +8,16 @@ import { EMPTY, Observable } from 'rxjs';
 @Injectable({
       providedIn: 'root'
     })
-    export class OilfieldService {
+    export class BranchsService {
 
 private http = inject(HttpClient)
 
-Oilfield(): Observable<any> {
+branchs(): Observable<any> {
   try {
-    const apiUrl = `${environment.urlAzure}api/Oilfield`;
-  //  alert(apiUrl)
+    const apiUrl = `${environment.urlFirebase}branchs.json`;
     return this.http.get(apiUrl);
   } catch(error) {
-    console.error("Error Get Oilfield", error);
+    console.error("Error Get Branchs", error);
     return EMPTY; // Import EMPTY from 'rxjs'
   }
 }
