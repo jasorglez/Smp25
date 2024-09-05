@@ -24,7 +24,16 @@ export class ProjectsService {
   }
 
 
- 
+  getProjects(): Observable<any> {
+    try {
+      const apiUrl = `${environment.urlFirebase}projects.json?print=pretty`;      
+       // alert(apiUrl)
+      return this.http.get(apiUrl);
+    } catch(error) {
+      console.error("Error Get Project", error);
+      return EMPTY; // Import EMPTY from 'rxjs'
+    }
+  }
 
 
 }

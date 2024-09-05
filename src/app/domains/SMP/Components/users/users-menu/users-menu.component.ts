@@ -5,11 +5,12 @@ import { UsersComponent } from '../users.component';
 import { UsersxoilfieldsComponent } from '../usersxoilfields/usersxoilfields.component';
 import { UsersxcompanysComponent } from "../usersxcompanys/usersxcompanys.component";
 import { UsersService } from 'app/services/users.service';
+import { UsersxprojectsComponent } from "../usersxprojects/usersxprojects.component";
 
 @Component({
   selector: 'app-users-menu',
   standalone: true,
-  imports: [CommonModule, UsersComponent, UsersxoilfieldsComponent, UsersxcompanysComponent],
+  imports: [CommonModule, UsersComponent, UsersxoilfieldsComponent, UsersxcompanysComponent, UsersxprojectsComponent],
   templateUrl: './users-menu.component.html',
   styleUrl: './users-menu.component.scss',
 })

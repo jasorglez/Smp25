@@ -4,6 +4,7 @@
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ICellEditorAngularComp } from 'ag-grid-angular';
 
 @Component({
   selector: 'app-custom-select',
@@ -11,7 +12,7 @@ import { FormsModule } from '@angular/forms';
   imports: [FormsModule, CommonModule],
   template: `
     <select
-      class="form-control"
+      class="ag-cell-edit-input ag-select-cell-editor"
       [(ngModel)]="value"
       (ngModelChange)="onChange($event)"
     >
@@ -41,5 +42,7 @@ export class CustomSelectComponent {
 
   onChange(value: any): void {
     this.value = value;
+    this.params.stopEditing(); // Confirm the value when changed
   }
+  
 }
