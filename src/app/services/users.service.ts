@@ -89,16 +89,6 @@ export class UsersService {
 
   }
 
-  getDataUsersxCompanys(email: string): Observable<any> {
-    try {
-      return this.http.get(`${environment.urlFirebase}permissionsxcompanys.json?orderBy="email"&equalTo="${email}"&print=pretty`);
-    }
-    catch (error) {
-      alerts.basicAlert("error", `Error get data call Users${error}`, "error")
-      return null;
-    }
-  }
-
   getCompaniesByPermission(email: string): Observable<any> {
     const url = `${environment.urlFirebase}permissions.json?orderBy="email"&equalTo="${email}"&print=pretty`;
 

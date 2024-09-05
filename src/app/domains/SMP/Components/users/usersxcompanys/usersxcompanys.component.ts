@@ -7,6 +7,7 @@ import { CompanysService } from 'app/services/companys.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
+import { UsersxcompanysService } from 'app/services/usersxcompanys.service';
 
 @Component({
   selector: 'app-usersxcompanys',
@@ -16,6 +17,8 @@ import { alerts } from 'app/helpers/alerts';
   styleUrl: './usersxcompanys.component.scss'
 })
 export class UsersxcompanysComponent {
+
+  constructor(private usersService: UsersService, private companysService: CompanysService, private usersxcompanysService:UsersxcompanysService) { }
 
   ngOnInit() {
     this.obtenerDatos();
@@ -37,7 +40,7 @@ export class UsersxcompanysComponent {
   };
 
   obtenerDatos() {
-    this.usersService.getDataUsersxCompanys(this.correo).subscribe((data: any) => {
+    this.usersxcompanysService.getDataUsersxCompanys(this.correo).subscribe((data: any) => {
       this.rowData = Object.keys(data).map((key) => {
         return { id: key, ...data[key] };
       });
@@ -50,7 +53,6 @@ export class UsersxcompanysComponent {
         acc[key] = value.displayName;
         return acc;
       }, {} as { [key: string]: string });
-      console.log(this.companys);
     });
   }
 
@@ -108,8 +110,6 @@ export class UsersxcompanysComponent {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
-      // Aquí envío el correo a la signal
-      this.usersService.emailSignal(this.selectedRowData.emailu);
     } else {
       this.selectedRowData = null;
     }
@@ -136,9 +136,6 @@ export class UsersxcompanysComponent {
     this.gridApi = params.api;
   }
 
-
-  constructor(private usersService: UsersService, private companysService: CompanysService) { }
-
   addRow() {
     const newId = this.generateUniqueId();
     const newItem = {
@@ -155,7 +152,70 @@ export class UsersxcompanysComponent {
   }
 
   async saveChanges() {
-    // TODO
+    const isValid = this.rowData.every(
+      (item) => item.id_company && item.orden
+    );
+  
+    if (!isValid) {
+      alerts.basicAlert(
+        'Añadir usuario',
+        'Debe introducir un nombre de usuario, correo electrónico y contraseña.',
+        'error'
+      );
+      return;
+    }
+  
+    // Filtrar las filas nuevas usando nuestro registro de nuevas filas
+    const newItems = this.rowData.filter((item) =>
+      this.newlyAddedRows.includes(item.id)
+    );
+  
+    let successfullyAdded = [];
+  
+    // Procesar nuevos usuarios primero
+    if (newItems.length > 0) {
+      for (const item of newItems) {
+        // Enviamos los datos a la base de datos
+        try {
+          successfullyAdded.push(item);
+        } catch (error) {
+          // Para otros errores, detener el proceso
+          alerts.basicAlert(
+            'Error de registro',
+            'Ocurrió un error al registrar nuevos datos. Por favor, intente nuevamente.',
+            'error'
+          );
+          return;
+        }
+      }
+    }
+  
+    // Ahora actualizamos la base de datos con los datos filtrados
+    const updates = this.rowData.reduce((acc, item) => {
+      const { id, ...data } = item;
+      acc[id] = data;
+      return acc;
+    }, {});
+  
+    this.usersxcompanysService.updateDataUserxCompanys(updates).subscribe(
+      (response) => {
+        alerts.basicAlert(
+          'Dato registrado',
+          'Se ha registrado el dato correctamente.',
+          'success'
+        );
+        this.notSavedChanges = false;
+        this.newlyAddedRows = []; // Limpiar el registro de nuevas filas después de guardar
+        this.obtenerDatos(); // Refrescar los datos
+      },
+      (error) => {
+        alerts.basicAlert(
+          'Error',
+          'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
+          'error'
+        );
+      }
+    );
   }
 
   generateUniqueId() {
@@ -178,7 +238,7 @@ export class UsersxcompanysComponent {
       const id = selectedData.id;
 
       // Elimina al usuario de la DB de Firebase
-      await this.companysService.deleteUserxCompanys(id).toPromise();
+      await this.usersxcompanysService.deleteUserxCompanys(id).toPromise();
 
       // Refrescar los datos después de eliminar
       this.obtenerDatos();

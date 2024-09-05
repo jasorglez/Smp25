@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 import { Icompany } from '../interface/icompany';
 
@@ -56,11 +56,6 @@ getDataCompanys(clave: string): Observable<Icompany | null> {
     return this.http.get<any>(`${environment.urlFirebase}companys.json`);
   }
 }
-
-deleteUserxCompanys(id: string) {
-  return this.http.delete(`${environment.urlFirebase}permissionsxcompanys/${id}.json`);
-}
-
 
 getEmpresa(id: string): Observable<any> {
 try {
