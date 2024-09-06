@@ -10,11 +10,12 @@ import { UsersxprojectsService } from 'app/services/usersxprojects.service';
 import { ProjectsService } from 'app/services/projects.service';
 import { OilfieldService } from 'app/services/oilfield.service';
 import { BranchsService } from 'app/services/branchs.service';
+import { UsersProfileComponent } from "../users-profile/users-profile.component";
 
 @Component({
   selector: 'app-usersxprojects',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [CommonModule, FormsModule, AgGridModule, UsersProfileComponent],
   templateUrl: './usersxprojects.component.html',
   styleUrl: './usersxprojects.component.scss'
 })
@@ -30,8 +31,12 @@ export class UsersxprojectsComponent {
     this.obtenerBranchs();
   }
 
-  signalValue = computed(() => this.usersService.emailUser());
-  correo: string = this.signalValue() == '' ? 'Seleccione una fila' : this.signalValue();
+  //Signals con correo
+  profile = computed(()=> this.usersService.profile);
+  correo: any = this.profile().emailUser();
+
+  // signalValue = computed(() => this.usersService.emailUser());
+  // correo: string = this.signalValue() == '' ? 'Seleccione una fila' : this.signalValue();
   notSavedChanges: boolean = false;
   rowData: any;
   projects: { [key: string]: string } = {};

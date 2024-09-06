@@ -8,11 +8,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
 import { UsersxcompanysService } from 'app/services/usersxcompanys.service';
+import { UsersProfileComponent } from "../users-profile/users-profile.component";
 
 @Component({
   selector: 'app-usersxcompanys',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [CommonModule, FormsModule, AgGridModule, UsersProfileComponent],
   templateUrl: './usersxcompanys.component.html',
   styleUrl: './usersxcompanys.component.scss'
 })
@@ -25,8 +26,10 @@ export class UsersxcompanysComponent {
     this.obtenerCompanys();
   }
 
-  signalValue = computed(() => this.usersService.emailUser());
-  correo: string = this.signalValue() == '' ? 'Seleccione una fila' : this.signalValue();
+  // Signals con correo
+  profile = computed(()=> this.usersService.profile);
+  correo: any = this.profile().emailUser();
+
   notSavedChanges: boolean = false;
   rowData: any;
   companys: { [key: string]: string } = {};

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, Injectable } from '@angular/core';
+import { Component, computed, HostListener, Injectable } from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { UsersService } from 'app/services/users.service';
@@ -8,6 +8,7 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from 'app/services/auth.service';
 import { SweetAlertIcon } from 'sweetalert2';
 import { CustomSelectComponent } from '../custom-select/custom-select.component';
+import { UsersProfileComponent } from "./users-profile/users-profile.component";
 
 @Injectable({
   providedIn: 'root',
@@ -22,11 +23,21 @@ import { CustomSelectComponent } from '../custom-select/custom-select.component'
     FormsModule,
     AgGridModule,
     CustomSelectComponent,
+    UsersProfileComponent
   ],
   templateUrl: './users.component.html',
   styleUrl: './users.component.scss',
 })
 export class UsersComponent {
+
+  profile = computed(() => this.usersService.profile);
+
+  enviarSignal() {
+    this.usersService.profileSignal(this.selectedRowData.emailu,
+      this.selectedRowData.picture, this.selectedRowData.displayName,
+      this.selectedRowData.organization, this.selectedRowData.position);
+  }
+
   components = {
     customSelectEditor: CustomSelectComponent,
   };
@@ -42,7 +53,7 @@ export class UsersComponent {
   constructor(
     private usersService: UsersService,
     private authService: AuthService
-  ) {}
+  ) { }
 
   ngOnInit() {
     this.obtenerDatos();
@@ -229,8 +240,8 @@ export class UsersComponent {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
-      // Aquí envío el correo a la signal
-      this.usersService.emailSignal(this.selectedRowData.emailu);
+      // Aquí envío todo a la signal
+      this.enviarSignal();
     } else {
       this.selectedRowData = null;
     }
@@ -238,6 +249,8 @@ export class UsersComponent {
 
   onCellValueChanged(event) {
     console.log('Dato cambiado:', event.data);
+    // Aquí envío todo a la signal
+    this.enviarSignal();
     this.notSavedChanges = true;
   }
 

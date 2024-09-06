@@ -1,8 +1,10 @@
 <div class="row p-3">
-    <div class="col-lg-2 col-md-3 col-sm-3 col-3">
-        PlaceHolder
+    <div class="col-lg-2 col-md-3 col-sm-3 col-3" *ngIf="profile().emailUser()">
+        <div class="card text-center">
+           <app-users-profile></app-users-profile>
+        </div>
     </div>
-    <div class="col-lg-10 col-md-9 col-sm-9 col-9">
+    <div [ngClass]="profile().emailUser() != null ? 'col-lg-10 col-md-9 col-sm-9 col-9' : 'col-12'">
         <div class="row mb-3">
             <div class="col text-right"><button type="button" class="btn btn-primary me-1" (click)="addRow()"><i
                         class="bi bi-plus-lg" style="font-size: 1.5rem;"></i></button>

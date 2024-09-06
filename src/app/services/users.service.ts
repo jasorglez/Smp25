@@ -15,9 +15,21 @@ import 'firebase/compat/database';
 export class UsersService {
 
   // Usemos signals
+  profile = {
+    emailUser: signal<string>(null),
+    profilePicUser: signal<string>(null),
+    nameUser: signal<string>(null),
+    organizationUser: signal<string>(null),
+    positionUser: signal<string>(null)
+  };
   emailUser = signal<string>(null);
-  emailSignal(newValue: string) {
-    this.emailUser.set(newValue);
+  profileSignal(email: string, picture: string, name: string, organization: string, position: string) {
+    this.emailUser.set(email); // Para compatibilidad
+    this.profile.emailUser.set(email);
+    this.profile.profilePicUser.set(picture);
+    this.profile.nameUser.set(name);
+    this.profile.organizationUser.set(organization);
+    this.profile.positionUser.set(position);
   }
 
   //Constructor
