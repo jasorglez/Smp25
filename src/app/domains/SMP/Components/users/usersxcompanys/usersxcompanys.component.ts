@@ -52,10 +52,10 @@ export class UsersxcompanysComponent {
 
   obtenerCompanys() {
     this.companysService.getDataCompanys('').subscribe((data: any) => {
-      const companys = data.reduce((acc, item) => {
-        acc[item.id] = item.name;
+      this.companys = Object.entries(data).reduce((acc, [key, value]: [string, any]) => {
+        acc[key] = value.displayName;
         return acc;
-      }, {} as { [key: number]: string });
+      }, {} as { [key: string]: string });
     });
   }
 
