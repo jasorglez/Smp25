@@ -51,12 +51,11 @@ export class UsersxcompanysComponent {
   }
 
   obtenerCompanys() {
-    this.companysService.getDataCompanysAzure('').subscribe((data: any) => {
-      this.companys = data.reduce((acc, item) => {
+    this.companysService.getDataCompanys('').subscribe((data: any) => {
+      const companys = data.reduce((acc, item) => {
         acc[item.id] = item.name;
         return acc;
       }, {} as { [key: number]: string });
-      console.log(this.companys)
     });
   }
 
@@ -121,7 +120,6 @@ export class UsersxcompanysComponent {
 
   onCellValueChanged(event: any) {
     event.data.__modified = true;
-    console.log('Dato cambiado:', event.data);
     // Verificar si el campo modificado es 'id_company'
     if (event.colDef.field === 'id_company') {
       const selectedCompany = this.companys[event.data.id_company];
