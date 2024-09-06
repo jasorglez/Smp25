@@ -30,6 +30,7 @@ import { UsersProfileComponent } from "./users-profile/users-profile.component";
 })
 export class UsersComponent {
 
+
   profile = computed(() => this.usersService.profile);
 
   enviarSignal() {
@@ -98,6 +99,7 @@ export class UsersComponent {
         headerName: 'Nombre',
         cellEditor: 'agTextCellEditor',
         editable: true,
+        filter: true
       },
       {
         field: 'age',
@@ -144,6 +146,7 @@ export class UsersComponent {
             return false;
           }
         },
+        filter: true
       },
       {
         headerName: 'Contraseña',
@@ -468,5 +471,10 @@ export class UsersComponent {
       }
       throw error; // Re-throw the error to be caught in saveChanges
     }
+  }
+
+  revert() {
+    this.obtenerDatos();
+    this.notSavedChanges = false;
   }
 }

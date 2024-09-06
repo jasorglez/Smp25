@@ -60,10 +60,10 @@ export class UsersxprojectsComponent {
 
   obtenerProjects() {
     this.projectsService.getProjects().subscribe((data: any) => {
-      this.projects = Object.entries(data).reduce((acc, [key, value]: [string, any]) => {
-        acc[key] = value.contract;
+      this.projects = data.reduce((acc, item) => {
+        acc[item.id] = item.name;
         return acc;
-      }, {} as { [key: string]: string });
+      }, {} as { [key: number]: string });
     });
   }
 
@@ -76,6 +76,14 @@ export class UsersxprojectsComponent {
     });
   }
 
+  customSelectRenderer(options: { [key: string]: string }) {
+    return (params: any) => {
+      const value = params.value;
+      const optionsArray = Object.entries(options);
+      const matchingOption = optionsArray.find(([, optionValue]) => optionValue === value);
+      return matchingOption ? matchingOption[0] : value; // Valor por defecto si no se encuentra coincidencia
+    };
+  }
 
   get columnDefs(): ColDef[] {
     return [{
@@ -157,20 +165,11 @@ export class UsersxprojectsComponent {
     }
 
     this.notSavedChanges = true;
+    event.data.__modified = true;
   }
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-  }
-
-
-  customSelectRenderer(options: { [key: string]: string }) {
-    return (params: any) => {
-      const value = params.value;
-      const optionsArray = Object.entries(options);
-      const matchingOption = optionsArray.find(([, optionValue]) => optionValue === value);
-      return matchingOption ? matchingOption[0] : value; // Valor por defecto si no se encuentra coincidencia
-    };
   }
 
   addRow() {
@@ -206,33 +205,8 @@ export class UsersxprojectsComponent {
       return;
     }
   
-    // Filtrar las filas nuevas usando nuestro registro de nuevas filas
-    const newItems = this.rowData.filter((item) =>
-      this.newlyAddedRows.includes(item.id)
-    );
-  
-    let successfullyAdded = [];
-  
-    // Procesar nuevos usuarios primero
-    if (newItems.length > 0) {
-      for (const item of newItems) {
-        // Enviamos los datos a la base de datos
-        try {
-          successfullyAdded.push(item);
-        } catch (error) {
-          // Para otros errores, detener el proceso
-          alerts.basicAlert(
-            'Error de registro',
-            'Ocurrió un error al registrar nuevos datos. Por favor, intente nuevamente.',
-            'error'
-          );
-          return;
-        }
-      }
-    }
-  
-    // Filtrar solo las filas que han sido modificadas o son nuevas
-    const updatedRows = this.rowData.filter(row => 
+     // Filtrar solo las filas que han sido modificadas o son nuevas
+     const updatedRows = this.rowData.filter(row => 
       this.newlyAddedRows.includes(row.id) || row.__modified
     );
 
@@ -297,5 +271,9 @@ export class UsersxprojectsComponent {
         'error'
       );
     }
+  }
+  revert() {
+    this.obtenerDatos();
+    this.notSavedChanges = false;
   }
 }

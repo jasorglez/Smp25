@@ -238,4 +238,9 @@ export class UsersxcompanysComponent {
       );
     }
   }
+
+  revert() {
+    this.obtenerDatos();
+    this.notSavedChanges = false;
+  }
 }

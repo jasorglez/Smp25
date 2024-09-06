@@ -26,8 +26,7 @@ export class ProjectsService {
 
   getProjects(): Observable<any> {
     try {
-      const apiUrl = `${environment.urlFirebase}projects.json?print=pretty`;      
-       // alert(apiUrl)
+      const apiUrl = `${environment.urlAzure}api/Project`;      
       return this.http.get(apiUrl);
     } catch(error) {
       console.error("Error Get Project", error);

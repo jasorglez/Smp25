@@ -15,6 +15,8 @@
                         *ngIf="notSavedChanges"><span class="visually-hidden">Hay cambios sin guardar</span>
                     </span>
                 </button>
+                <button type="button" class="btn btn-warning ms-1 me-1" (click)="revert()"><i class="bi bi-arrow-clockwise"
+                    style="font-size: 1.5rem;"></i></button>
                 <button type="button" class="btn btn-danger ms-1 me-1" (click)="deleteEntry()"><i class="bi bi-trash"
                         style="font-size: 1.5rem;"></i></button>
             </div>
