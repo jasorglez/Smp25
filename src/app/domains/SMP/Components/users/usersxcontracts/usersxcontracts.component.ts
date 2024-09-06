@@ -1,38 +1,37 @@
 import { Component, computed } from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
-import { UsersService } from 'app/services/users.service';
-import { CustomSelectComponent } from '../../custom-select/custom-select.component';
-import { AgGridModule } from 'ag-grid-angular';
-import { CompanysService } from 'app/services/companys.service';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
-import { UsersxcompanysService } from 'app/services/usersxcompanys.service';
-import { UsersProfileComponent } from "../users-profile/users-profile.component";
+import { CompanysService } from 'app/services/companys.service';
+import { UsersService } from 'app/services/users.service';
+import { UsersxcontractsService } from 'app/services/usersxcontracts.service';
+import { CustomSelectComponent } from '../../custom-select/custom-select.component';
 
 @Component({
-  selector: 'app-usersxcompanys',
+  selector: 'app-usersxcontracts',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, UsersProfileComponent],
-  templateUrl: './usersxcompanys.component.html',
-  styleUrl: './usersxcompanys.component.scss'
+  imports: [],
+  templateUrl: './usersxcontracts.component.html',
+  styleUrl: './usersxcontracts.component.scss'
 })
-export class UsersxcompanysComponent {
-
-  constructor(private usersService: UsersService, private companysService: CompanysService, private usersxcompanysService:UsersxcompanysService) { }
+export class UsersxcontractsComponent {
+  
+  constructor(private usersService: UsersService,
+    private usersxcontractsService: UsersxcontractsService,
+    private companysService: CompanysService) { }
 
   ngOnInit() {
     this.obtenerDatos();
-    this.obtenerCompanys();
+    //this.obtenerContracts();
   }
 
-  // Signals con correo
+  //Signals con correo
   profile = computed(()=> this.usersService.profile);
   correo: any = this.profile().emailUser();
 
   notSavedChanges: boolean = false;
   rowData: any;
-  companys: { [key: string]: string } = {};
+  branchs: { [key: string]: string } = {};
+  contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
   id: string;
@@ -43,65 +42,45 @@ export class UsersxcompanysComponent {
   };
 
   obtenerDatos() {
-    this.usersxcompanysService.getDataUsersxCompanys(this.correo).subscribe((data: any) => {
+    this.usersxcontractsService.getDataUsersxContracts(this.correo).subscribe((data: any) => {
       this.rowData = Object.keys(data).map((key) => {
         return { id: key, ...data[key] };
       });
     });
+    console.log(this.rowData);
   }
 
-  obtenerCompanys() {
-    this.companysService.getDataCompanysAzure('').subscribe((data: any) => {
-      this.companys = data.reduce((acc, item) => {
-        acc[item.id] = item.name;
+  obtenerContracts() {
+    this.companysService.getDataCompanys('').subscribe((data: any) => {
+      this.contracts = Object.entries(data).reduce((acc, [key, value]: [string, any]) => {
+        acc[key] = value.displayName;
         return acc;
-      }, {} as { [key: number]: string });
-      console.log(this.companys)
+      }, {} as { [key: string]: string });
     });
-  }
-
-  customSelectRenderer(options: { [key: string]: string }) {
-    return (params: any) => {
-      const value = params.value;
-      const optionsArray = Object.entries(options);
-      const matchingOption = optionsArray.find(([, optionValue]) => optionValue === value);
-      return matchingOption ? matchingOption[0] : value; // Valor por defecto si no se encuentra coincidencia
-    };
   }
 
   get columnDefs(): ColDef[] {
     return [{
-      field: 'email',
+      field: 'mail',
       headerName: 'Correo',
       flex: 1
     },
     {
-      field: 'id_company',
-      headerName: 'Compañía',
+      field: 'id_projects',
+      headerName: 'Proyecto',
       cellEditor: 'customSelectEditor',
       cellEditorParams: {
         options: Object.fromEntries(
-          Object.entries(this.companys).map(([id, displayName]) => [displayName, id])
+          Object.entries(this.contracts).map(([id, contract]) => [contract, id])
         )
       },
       cellRenderer: this.customSelectRenderer(
         Object.fromEntries(
-          Object.entries(this.companys).map(([id, displayName]) => [displayName, id])
+          Object.entries(this.contracts).map(([id, contract]) => [contract, id])
         )
       ),
       editable: true,
       flex: 2
-    },
-    {
-      field: 'orden',
-      headerName: 'Orden',
-      sortable: true,
-      width: 50,
-      cellEditor: 'agNumberCellEditor',
-      cellEditorParams: {
-        min: 1
-      },
-      editable: true
     }
     ]
   }
@@ -120,17 +99,26 @@ export class UsersxcompanysComponent {
   }
 
   onCellValueChanged(event: any) {
-    event.data.__modified = true;
-    console.log('Dato cambiado:', event.data);
-    // Verificar si el campo modificado es 'id_company'
-    if (event.colDef.field === 'id_company') {
-      const selectedCompany = this.companys[event.data.id_company];
-      if (selectedCompany) {
-        event.data.company = selectedCompany;
+    // Verificar si el campo modificado es 'id_projects'
+    if (event.colDef.field === 'id_projects') {
+      const selectedProject = this.contracts[event.data.id_projects];
+      if (selectedProject) {
+        event.data.projects = selectedProject;
       }
 
-      // Forzar actualización de la celda de 'company'
-      this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['company'], force: true });
+      // Forzar actualización de la celda de 'project'
+      this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['projects'], force: true });
+    }
+
+    // Verificar si el campo modificado es 'id_branchs'
+    if (event.colDef.field === 'id_branchs') {
+      const selectedBranch = this.branchs[event.data.id_branchs];
+      if (selectedBranch) {
+        event.data.branchs = selectedBranch;
+      }
+
+      // Forzar actualización de la celda de 'project'
+      this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['branchs'], force: true });
     }
 
     this.notSavedChanges = true;
@@ -140,14 +128,24 @@ export class UsersxcompanysComponent {
     this.gridApi = params.api;
   }
 
+
+  customSelectRenderer(options: { [key: string]: string }) {
+    return (params: any) => {
+      const value = params.value;
+      const optionsArray = Object.entries(options);
+      const matchingOption = optionsArray.find(([, optionValue]) => optionValue === value);
+      return matchingOption ? matchingOption[0] : value; // Valor por defecto si no se encuentra coincidencia
+    };
+  }
+
   addRow() {
     const newId = this.generateUniqueId();
     const newItem = {
       id: newId,
-      company: '',
-      id_company: '',
-      email: this.correo,
-      orden: 1
+      id_branchs: '',
+      id_projects: '',
+      mail: this.correo,
+      projects: ''
     };
 
     this.rowData = [newItem, ...this.rowData];
@@ -155,20 +153,49 @@ export class UsersxcompanysComponent {
     this.newlyAddedRows.push(newId);
   }
 
+  generateUniqueId() {
+    return 'new-' + Math.random().toString(36).substr(2, 9);
+  }
+
   saveChanges() {
     const isValid = this.rowData.every(
-      (item) => item.id_company && item.orden
+      (item) => item.id_branchs && item.id_projects
     );
-
+  
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
-        'Debe introducir una compañía antes de guardar.',
+        'Debe seleccionar un proyecto y un branch antes de guardar.',
         'error'
       );
       return;
     }
-
+  
+    // Filtrar las filas nuevas usando nuestro registro de nuevas filas
+    const newItems = this.rowData.filter((item) =>
+      this.newlyAddedRows.includes(item.id)
+    );
+  
+    let successfullyAdded = [];
+  
+    // Procesar nuevos usuarios primero
+    if (newItems.length > 0) {
+      for (const item of newItems) {
+        // Enviamos los datos a la base de datos
+        try {
+          successfullyAdded.push(item);
+        } catch (error) {
+          // Para otros errores, detener el proceso
+          alerts.basicAlert(
+            'Error de registro',
+            'Ocurrió un error al registrar nuevos datos. Por favor, intente nuevamente.',
+            'error'
+          );
+          return;
+        }
+      }
+    }
+  
     // Filtrar solo las filas que han sido modificadas o son nuevas
     const updatedRows = this.rowData.filter(row => 
       this.newlyAddedRows.includes(row.id) || row.__modified
@@ -179,7 +206,7 @@ export class UsersxcompanysComponent {
       delete row.__modified;
     });
 
-    this.usersxcompanysService.bulkUpdateUsersxCompanys(updatedRows).subscribe(
+    this.usersxcontractsService.bulkUpdateUsersxContracts(updatedRows).subscribe(
       (response) => {
         alerts.basicAlert(
           'Datos actualizados',
@@ -200,10 +227,6 @@ export class UsersxcompanysComponent {
     );
   }
 
-  generateUniqueId() {
-    return 'new-' + Math.random().toString(36).substr(2, 9);
-  }
-
   async deleteEntry() {
     try {
       const selectedNodes = this.gridApi.getSelectedNodes();
@@ -220,7 +243,7 @@ export class UsersxcompanysComponent {
       const id = selectedData.id;
 
       // Elimina al usuario de la DB de Firebase
-      await this.usersxcompanysService.deleteUserxCompany(id).toPromise();
+      await this.usersxcontractsService.deleteUserxContract(id).toPromise();
 
       // Refrescar los datos después de eliminar
       this.obtenerDatos();
@@ -240,4 +263,5 @@ export class UsersxcompanysComponent {
       );
     }
   }
+
 }

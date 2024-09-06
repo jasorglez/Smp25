@@ -57,6 +57,15 @@ getDataCompanys(clave: string): Observable<Icompany | null> {
   }
 }
 
+//Tomar la data de la colección Empresas en Firebase
+getDataCompanysAzure(id: string): Observable<Icompany | null> {
+  if (id !== '') {
+    return this.http.get<any>(`${environment.urlAzure}api/Companys/${id}`);
+  } else {
+    return this.http.get<any>(`${environment.urlAzure}api/Companys/all`);
+  }
+}
+
 getEmpresa(id: string): Observable<any> {
 try {
 return this.http.get(`${environment.urlFirebase}companys/${id}.json`);
