@@ -1,14 +1,12 @@
-import { Component, computed } from '@angular/core';
+import { Component, computed, HostListener } from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { UsersService } from 'app/services/users.service';
-import { CustomSelectComponent } from '../../custom-select/custom-select.component';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
 import { UsersxprojectsService } from 'app/services/usersxprojects.service';
 import { ProjectsService } from 'app/services/projects.service';
-import { OilfieldService } from 'app/services/oilfield.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { UsersProfileComponent } from "../users-profile/users-profile.component";
 
@@ -22,8 +20,16 @@ import { UsersProfileComponent } from "../users-profile/users-profile.component"
 export class UsersxprojectsComponent {
 
   constructor(private usersService: UsersService, private projectsService: ProjectsService,
-    private usersxprojectsService: UsersxprojectsService, private oilfieldService: OilfieldService,
+    private usersxprojectsService: UsersxprojectsService,
     private branchsService: BranchsService) { }
+
+    @HostListener('window:beforeunload', ['$event'])
+    unloadNotification($event: any): void {
+      if (this.notSavedChanges) {
+        $event.returnValue =
+          'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
+      }
+    }
 
   ngOnInit() {
     this.obtenerDatos();
@@ -45,10 +51,6 @@ export class UsersxprojectsComponent {
   selectedRowData: any = null;
   id: string;
   private gridApi: GridApi;
-
-  components = {
-    customSelectEditor: CustomSelectComponent,
-  };
 
   obtenerDatos() {
     this.usersxprojectsService.getDataUsersxProjects(this.correo).subscribe((data: any) => {
@@ -76,15 +78,6 @@ export class UsersxprojectsComponent {
     });
   }
 
-  customSelectRenderer(options: { [key: string]: string }) {
-    return (params: any) => {
-      const value = params.value;
-      const optionsArray = Object.entries(options);
-      const matchingOption = optionsArray.find(([, optionValue]) => optionValue === value);
-      return matchingOption ? matchingOption[0] : value; // Valor por defecto si no se encuentra coincidencia
-    };
-  }
-
   get columnDefs(): ColDef[] {
     return [{
       field: 'mail',
@@ -94,34 +87,24 @@ export class UsersxprojectsComponent {
     {
       field: 'id_projects',
       headerName: 'Proyecto',
-      cellEditor: 'customSelectEditor',
+      cellEditor: 'agRichSelectCellEditor',
       cellEditorParams: {
-        options: Object.fromEntries(
-          Object.entries(this.projects).map(([id, contract]) => [contract, id])
-        )
+        values: Object.keys(this.projects),
+        formatValue: (value) => this.projects[value]
       },
-      cellRenderer: this.customSelectRenderer(
-        Object.fromEntries(
-          Object.entries(this.projects).map(([id, contract]) => [contract, id])
-        )
-      ),
+      valueFormatter: (params) => this.projects[params.value] || '',
       editable: true,
       flex: 2
     },
     {
       field: 'id_branchs',
       headerName: 'Branch',
-      cellEditor: 'customSelectEditor',
+      cellEditor: 'agRichSelectCellEditor',
       cellEditorParams: {
-        options: Object.fromEntries(
-          Object.entries(this.branchs).map(([id, name]) => [name, id])
-        )
+        values: Object.keys(this.branchs),
+        formatValue: (value) => this.branchs[value]
       },
-      cellRenderer: this.customSelectRenderer(
-        Object.fromEntries(
-          Object.entries(this.branchs).map(([id, name]) => [name, id])
-        )
-      ),
+      valueFormatter: (params) => this.branchs[params.value] || '',
       editable: true,
       flex: 2
     }
@@ -151,17 +134,6 @@ export class UsersxprojectsComponent {
 
       // Forzar actualización de la celda de 'project'
       this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['projects'], force: true });
-    }
-
-    // Verificar si el campo modificado es 'id_branchs'
-    if (event.colDef.field === 'id_branchs') {
-      const selectedBranch = this.branchs[event.data.id_branchs];
-      if (selectedBranch) {
-        event.data.branchs = selectedBranch;
-      }
-
-      // Forzar actualización de la celda de 'project'
-      this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['branchs'], force: true });
     }
 
     this.notSavedChanges = true;

@@ -1,7 +1,6 @@
-import { Component, computed } from '@angular/core';
+import { Component, computed, HostListener } from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { UsersService } from 'app/services/users.service';
-import { CustomSelectComponent } from '../../custom-select/custom-select.component';
 import { AgGridModule } from 'ag-grid-angular';
 import { CompanysService } from 'app/services/companys.service';
 import { CommonModule } from '@angular/common';
@@ -26,6 +25,14 @@ export class UsersxcompanysComponent {
     this.obtenerCompanys();
   }
 
+  @HostListener('window:beforeunload', ['$event'])
+  unloadNotification($event: any): void {
+    if (this.notSavedChanges) {
+      $event.returnValue =
+        'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
+    }
+  }
+
   // Signals con correo
   profile = computed(()=> this.usersService.profile);
   correo: any = this.profile().emailUser();
@@ -37,10 +44,6 @@ export class UsersxcompanysComponent {
   selectedRowData: any = null;
   id: string;
   private gridApi: GridApi;
-
-  components = {
-    customSelectEditor: CustomSelectComponent,
-  };
 
   obtenerDatos() {
     this.usersxcompanysService.getDataUsersxCompanys(this.correo).subscribe((data: any) => {
@@ -59,15 +62,6 @@ export class UsersxcompanysComponent {
     });
   }
 
-  customSelectRenderer(options: { [key: string]: string }) {
-    return (params: any) => {
-      const value = params.value;
-      const optionsArray = Object.entries(options);
-      const matchingOption = optionsArray.find(([, optionValue]) => optionValue === value);
-      return matchingOption ? matchingOption[0] : value; // Valor por defecto si no se encuentra coincidencia
-    };
-  }
-
   get columnDefs(): ColDef[] {
     return [{
       field: 'email',
@@ -77,17 +71,12 @@ export class UsersxcompanysComponent {
     {
       field: 'id_company',
       headerName: 'Compañía',
-      cellEditor: 'customSelectEditor',
+      cellEditor: 'agRichSelectCellEditor',
       cellEditorParams: {
-        options: Object.fromEntries(
-          Object.entries(this.companys).map(([id, displayName]) => [displayName, id])
-        )
+        values: Object.keys(this.companys),
+        formatValue: (value) => this.companys[value]
       },
-      cellRenderer: this.customSelectRenderer(
-        Object.fromEntries(
-          Object.entries(this.companys).map(([id, displayName]) => [displayName, id])
-        )
-      ),
+      valueFormatter: (params) => this.companys[params.value] || '',
       editable: true,
       flex: 2
     },

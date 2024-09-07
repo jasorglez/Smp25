@@ -23,7 +23,7 @@
         </div>
         <div class="row">
             <ag-grid-angular style="width: 100%; height: 500px;" class="ag-theme-quartz" [rowData]="rowData"
-                [columnDefs]="columnDefs" [components]="components" (selectionChanged)="onSelectionChanged($event)"
+                [columnDefs]="columnDefs" (selectionChanged)="onSelectionChanged($event)"
                 (cellValueChanged)="onCellValueChanged($event)" (rowSelected)="onSelectedRow($event)"
                 (gridReady)="onGridReady($event)" rowSelection="single">
             </ag-grid-angular>

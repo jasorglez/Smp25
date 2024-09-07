@@ -7,7 +7,6 @@ import { alerts } from 'app/helpers/alerts';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from 'app/services/auth.service';
 import { SweetAlertIcon } from 'sweetalert2';
-import { CustomSelectComponent } from '../custom-select/custom-select.component';
 import { UsersProfileComponent } from "./users-profile/users-profile.component";
 
 @Injectable({
@@ -22,7 +21,6 @@ import { UsersProfileComponent } from "./users-profile/users-profile.component";
     CommonModule,
     FormsModule,
     AgGridModule,
-    CustomSelectComponent,
     UsersProfileComponent
   ],
   templateUrl: './users.component.html',
@@ -38,10 +36,6 @@ export class UsersComponent {
       this.selectedRowData.picture, this.selectedRowData.displayName,
       this.selectedRowData.organization, this.selectedRowData.position);
   }
-
-  components = {
-    customSelectEditor: CustomSelectComponent,
-  };
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
@@ -71,6 +65,10 @@ export class UsersComponent {
   paginationPageSizeSelector = false;
   id: string;
   private gridApi: GridApi;
+  opciones = {
+    "si": "Sí",
+    "no": "No"
+  }
 
   obtenerDatos() {
     this.usersService.getDataUsers().subscribe((data: any) => {
@@ -116,10 +114,10 @@ export class UsersComponent {
         field: 'country',
         headerName: 'País',
         editable: true,
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
           values: ['Mexico', 'USA', 'MEX-USA', 'Colombia', 'Chile', 'Otro'],
-          valueListGap: 10,
+          selectOnPopup: true
         },
       },
       {
@@ -160,10 +158,9 @@ export class UsersComponent {
         field: 'organization',
         headerName: 'Organización',
         editable: true,
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
           values: this.departamentos, // Se usa cuando departamentos ya esté disponible
-          valueListGap: 10,
         },
       },
       {
@@ -181,40 +178,34 @@ export class UsersComponent {
       {
         field: 'platform',
         headerName: 'Plataforma',
-        cellEditor: 'customSelectEditor',
+        cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
-          options: {
-            Sí: 'si',
-            No: 'no',
-          },
+          values: Object.keys(this.opciones),
+          formatValue: (value) => this.opciones[value]
         },
-        cellRenderer: this.customSelectRenderer({ Sí: 'si', No: 'no' }),
+        valueFormatter: (params) => this.opciones[params.value] || '',
         editable: true,
       },
       {
         field: 'project',
         headerName: 'Proyecto',
-        cellEditor: 'customSelectEditor',
+        cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
-          options: {
-            Sí: 'si',
-            No: 'no',
-          },
+          values: Object.keys(this.opciones),
+          formatValue: (value) => this.opciones[value]
         },
-        cellRenderer: this.customSelectRenderer({ Sí: 'si', No: 'no' }),
+        valueFormatter: (params) => this.opciones[params.value] || '',
         editable: true,
       },
       {
         field: 'branch',
         headerName: 'Branch',
-        cellEditor: 'customSelectEditor',
+        cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
-          options: {
-            Sí: 'si',
-            No: 'no',
-          },
+          values: Object.keys(this.opciones),
+          formatValue: (value) => this.opciones[value]
         },
-        cellRenderer: this.customSelectRenderer({ Sí: 'si', No: 'no' }),
+        valueFormatter: (params) => this.opciones[params.value] || '',
         editable: true,
       },
       {
@@ -433,19 +424,6 @@ export class UsersComponent {
         'error'
       );
     }
-  }
-
-  // Aqui vamos a crear custom cell renders y editors para el select
-  customSelectRenderer(options: { [key: string]: any }) {
-    return (params: any) => {
-      const value = params.value;
-      for (const [display, optionValue] of Object.entries(options)) {
-        if (value === optionValue) {
-          return display;
-        }
-      }
-      return value; // Valor por defecto si no se encuentra coincidencia
-    };
   }
 
   // Y aquí llamamos a Firebase
