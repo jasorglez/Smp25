@@ -1,45 +1,51 @@
-import { Component, computed } from '@angular/core';
+import { Component, computed, HostListener } from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
-import { CompanysService } from 'app/services/companys.service';
 import { UsersService } from 'app/services/users.service';
+import { ContractsService } from 'app/services/contracts.service';
 import { UsersxcontractsService } from 'app/services/usersxcontracts.service';
-import { CustomSelectComponent } from '../../custom-select/custom-select.component';
+import { CompanysService } from 'app/services/companys.service';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { AgGridModule } from 'ag-grid-angular';
+import { UsersProfileComponent } from '../users-profile/users-profile.component';
 
 @Component({
   selector: 'app-usersxcontracts',
   standalone: true,
-  imports: [],
+  imports: [CommonModule, FormsModule, AgGridModule, UsersProfileComponent],
   templateUrl: './usersxcontracts.component.html',
   styleUrl: './usersxcontracts.component.scss'
 })
 export class UsersxcontractsComponent {
-  
-  constructor(private usersService: UsersService,
+  constructor(private usersService: UsersService, private contractsService: ContractsService,
     private usersxcontractsService: UsersxcontractsService,
     private companysService: CompanysService) { }
 
+    @HostListener('window:beforeunload', ['$event'])
+    unloadNotification($event: any): void {
+      if (this.notSavedChanges) {
+        $event.returnValue =
+          'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
+      }
+    }
+
   ngOnInit() {
     this.obtenerDatos();
-    //this.obtenerContracts();
+    this.obtenercontracts();
   }
 
   //Signals con correo
   profile = computed(()=> this.usersService.profile);
   correo: any = this.profile().emailUser();
-
   notSavedChanges: boolean = false;
   rowData: any;
-  branchs: { [key: string]: string } = {};
   contracts: { [key: string]: string } = {};
+  companys: any;
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
   id: string;
   private gridApi: GridApi;
-
-  components = {
-    customSelectEditor: CustomSelectComponent,
-  };
 
   obtenerDatos() {
     this.usersxcontractsService.getDataUsersxContracts(this.correo).subscribe((data: any) => {
@@ -47,40 +53,45 @@ export class UsersxcontractsComponent {
         return { id: key, ...data[key] };
       });
     });
-    console.log(this.rowData);
   }
 
-  obtenerContracts() {
-    this.companysService.getDataCompanys('').subscribe((data: any) => {
-      this.contracts = Object.entries(data).reduce((acc, [key, value]: [string, any]) => {
-        acc[key] = value.displayName;
+  obtenercontracts() {
+    this.contractsService.getContracts().subscribe((data: any) => {
+      this.contracts = data.reduce((acc, item) => {
+        acc[item.id] = item.descripSmall;
         return acc;
-      }, {} as { [key: string]: string });
+      }, {} as { [key: number]: string });
     });
   }
 
   get columnDefs(): ColDef[] {
     return [{
-      field: 'mail',
+      field: 'email',
       headerName: 'Correo',
       flex: 1
     },
     {
-      field: 'id_projects',
-      headerName: 'Proyecto',
-      cellEditor: 'customSelectEditor',
+      field: 'id_contract',
+      headerName: 'Contrato',
+      cellEditor: 'agRichSelectCellEditor',
       cellEditorParams: {
-        options: Object.fromEntries(
-          Object.entries(this.contracts).map(([id, contract]) => [contract, id])
-        )
+        values: Object.keys(this.contracts),
+        formatValue: (value) => this.contracts[value]
       },
-      cellRenderer: this.customSelectRenderer(
-        Object.fromEntries(
-          Object.entries(this.contracts).map(([id, contract]) => [contract, id])
-        )
-      ),
+      valueFormatter: (params) => this.contracts[params.value] || '',
       editable: true,
       flex: 2
+    },
+    {
+      field: 'orden',
+      headerName: 'Orden',
+      sortable: true,
+      width: 50,
+      cellEditor: 'agNumberCellEditor',
+      cellEditorParams: {
+        min: 1
+      },
+      editable: true
     }
     ]
   }
@@ -99,53 +110,21 @@ export class UsersxcontractsComponent {
   }
 
   onCellValueChanged(event: any) {
-    // Verificar si el campo modificado es 'id_projects'
-    if (event.colDef.field === 'id_projects') {
-      const selectedProject = this.contracts[event.data.id_projects];
-      if (selectedProject) {
-        event.data.projects = selectedProject;
-      }
-
-      // Forzar actualización de la celda de 'project'
-      this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['projects'], force: true });
-    }
-
-    // Verificar si el campo modificado es 'id_branchs'
-    if (event.colDef.field === 'id_branchs') {
-      const selectedBranch = this.branchs[event.data.id_branchs];
-      if (selectedBranch) {
-        event.data.branchs = selectedBranch;
-      }
-
-      // Forzar actualización de la celda de 'project'
-      this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['branchs'], force: true });
-    }
-
     this.notSavedChanges = true;
+    event.data.__modified = true;
   }
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
   }
 
-
-  customSelectRenderer(options: { [key: string]: string }) {
-    return (params: any) => {
-      const value = params.value;
-      const optionsArray = Object.entries(options);
-      const matchingOption = optionsArray.find(([, optionValue]) => optionValue === value);
-      return matchingOption ? matchingOption[0] : value; // Valor por defecto si no se encuentra coincidencia
-    };
-  }
-
   addRow() {
     const newId = this.generateUniqueId();
     const newItem = {
       id: newId,
-      id_branchs: '',
-      id_projects: '',
-      mail: this.correo,
-      projects: ''
+      id_contract: '',
+      email: this.correo,
+      orden: 1
     };
 
     this.rowData = [newItem, ...this.rowData];
@@ -159,7 +138,7 @@ export class UsersxcontractsComponent {
 
   saveChanges() {
     const isValid = this.rowData.every(
-      (item) => item.id_branchs && item.id_projects
+      (item) => item.orden && item.id_contract
     );
   
     if (!isValid) {
@@ -171,33 +150,8 @@ export class UsersxcontractsComponent {
       return;
     }
   
-    // Filtrar las filas nuevas usando nuestro registro de nuevas filas
-    const newItems = this.rowData.filter((item) =>
-      this.newlyAddedRows.includes(item.id)
-    );
-  
-    let successfullyAdded = [];
-  
-    // Procesar nuevos usuarios primero
-    if (newItems.length > 0) {
-      for (const item of newItems) {
-        // Enviamos los datos a la base de datos
-        try {
-          successfullyAdded.push(item);
-        } catch (error) {
-          // Para otros errores, detener el proceso
-          alerts.basicAlert(
-            'Error de registro',
-            'Ocurrió un error al registrar nuevos datos. Por favor, intente nuevamente.',
-            'error'
-          );
-          return;
-        }
-      }
-    }
-  
-    // Filtrar solo las filas que han sido modificadas o son nuevas
-    const updatedRows = this.rowData.filter(row => 
+     // Filtrar solo las filas que han sido modificadas o son nuevas
+     const updatedRows = this.rowData.filter(row => 
       this.newlyAddedRows.includes(row.id) || row.__modified
     );
 
@@ -262,6 +216,10 @@ export class UsersxcontractsComponent {
         'error'
       );
     }
+  }
+  revert() {
+    this.obtenerDatos();
+    this.notSavedChanges = false;
   }
 
 }

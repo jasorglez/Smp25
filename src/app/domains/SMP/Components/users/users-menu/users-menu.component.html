@@ -5,15 +5,19 @@
         <a class="nav-link" [class.active]="selectedTab === 'users'" data-toggle="tab"
           (click)="onUsersSelected('users')">Selección de usuarios</a>
       </li>
-      <li class="nav-item" *ngIf="usersService.emailUser()">
+      <li class="nav-item" *ngIf="usersService.profile.emailUser()">
         <a class="nav-link" [class.active]="selectedTab === 'usersxcompanys'" data-toggle="tab"
           (click)="onUsersSelected('usersxcompanys')">Compañías</a>
       </li>
-      <li class="nav-item" *ngIf="usersService.emailUser()">
+      <li class="nav-item" *ngIf="usersService.profile.emailUser()">
+        <a class="nav-link" [class.active]="selectedTab === 'usersxcontracts'" data-toggle="tab"
+          (click)="onUsersSelected('usersxcontracts')">Contratos</a>
+      </li>
+      <li class="nav-item" *ngIf="usersService.profile.emailUser()">
         <a class="nav-link" [class.active]="selectedTab === 'usersxoilfields'" data-toggle="tab"
           (click)="onUsersSelected('usersxoilfields')">Campos petroleros</a>
       </li>
-      <li class="nav-item" *ngIf="usersService.emailUser()">
+      <li class="nav-item" *ngIf="usersService.profile.emailUser()">
         <a class="nav-link" [class.active]="selectedTab === 'usersxprojects'" data-toggle="tab"
           (click)="onUsersSelected('usersxprojects')">Proyectos</a>
       </li>
@@ -24,6 +28,9 @@
     </div>
     <div class="tab-pane" [class.active]="selectedTab === 'usersxcompanys'" *ngIf="selectedTab === 'usersxcompanys'">
       <app-usersxcompanys></app-usersxcompanys>
+    </div>
+    <div class="tab-pane" [class.active]="selectedTab === 'usersxcontracts'" *ngIf="selectedTab === 'usersxcontracts'">
+      <app-usersxcontracts></app-usersxcontracts>
     </div>
     <div class="tab-pane" [class.active]="selectedTab === 'usersxprojects'" *ngIf="selectedTab === 'usersxprojects'">
       <app-usersxprojects></app-usersxprojects>

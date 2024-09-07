@@ -44,7 +44,4 @@ export class UsersxoilfieldsService {
       );
   }
 
-  getCompanys() {
-      return this.http.get(`${environment.urlFirebase}companys.json`);
-  }
 }

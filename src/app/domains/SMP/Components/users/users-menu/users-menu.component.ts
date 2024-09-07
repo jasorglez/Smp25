@@ -6,11 +6,12 @@ import { UsersxoilfieldsComponent } from '../usersxoilfields/usersxoilfields.com
 import { UsersxcompanysComponent } from "../usersxcompanys/usersxcompanys.component";
 import { UsersService } from 'app/services/users.service';
 import { UsersxprojectsComponent } from "../usersxprojects/usersxprojects.component";
+import { UsersxcontractsComponent } from "../usersxcontracts/usersxcontracts.component";
 
 @Component({
   selector: 'app-users-menu',
   standalone: true,
-  imports: [CommonModule, UsersComponent, UsersxoilfieldsComponent, UsersxcompanysComponent, UsersxprojectsComponent],
+  imports: [CommonModule, UsersComponent, UsersxoilfieldsComponent, UsersxcompanysComponent, UsersxprojectsComponent, UsersxcontractsComponent],
   templateUrl: './users-menu.component.html',
   styleUrl: './users-menu.component.scss',
 })
@@ -36,11 +37,19 @@ export class UsersMenuComponent {
         case 'usersxcompanys':
           this.trackingService.addLog(
             this.trackingService.getnameComp(),
-            'Click en la Pestaña Users x COmpanys',
+            'Click en la Pestaña Users x Companys',
             'Warehouses',
             this.trackingService.getEmail()
           );
           break;
+          case 'usersxcontracts':
+            this.trackingService.addLog(
+              this.trackingService.getnameComp(),
+              'Click en la Pestaña Users x Contracts',
+              'Warehouses',
+              this.trackingService.getEmail()
+            );
+            break;
       case 'usersxprojects':
         this.trackingService.addLog(
           this.trackingService.getnameComp(),

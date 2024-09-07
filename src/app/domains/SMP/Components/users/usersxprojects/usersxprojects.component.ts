@@ -7,7 +7,6 @@ import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
 import { UsersxprojectsService } from 'app/services/usersxprojects.service';
 import { ProjectsService } from 'app/services/projects.service';
-import { BranchsService } from 'app/services/branchs.service';
 import { UsersProfileComponent } from "../users-profile/users-profile.component";
 
 @Component({
@@ -20,25 +19,23 @@ import { UsersProfileComponent } from "../users-profile/users-profile.component"
 export class UsersxprojectsComponent {
 
   constructor(private usersService: UsersService, private projectsService: ProjectsService,
-    private usersxprojectsService: UsersxprojectsService,
-    private branchsService: BranchsService) { }
+    private usersxprojectsService: UsersxprojectsService) { }
 
-    @HostListener('window:beforeunload', ['$event'])
-    unloadNotification($event: any): void {
-      if (this.notSavedChanges) {
-        $event.returnValue =
-          'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
-      }
+  @HostListener('window:beforeunload', ['$event'])
+  unloadNotification($event: any): void {
+    if (this.notSavedChanges) {
+      $event.returnValue =
+        'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
     }
+  }
 
   ngOnInit() {
     this.obtenerDatos();
     this.obtenerProjects();
-    this.obtenerBranchs();
   }
 
   //Signals con correo
-  profile = computed(()=> this.usersService.profile);
+  profile = computed(() => this.usersService.profile);
   correo: any = this.profile().emailUser();
 
   // signalValue = computed(() => this.usersService.emailUser());
@@ -46,7 +43,6 @@ export class UsersxprojectsComponent {
   notSavedChanges: boolean = false;
   rowData: any;
   projects: { [key: string]: string } = {};
-  branchs: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
   id: string;
@@ -69,15 +65,6 @@ export class UsersxprojectsComponent {
     });
   }
 
-  obtenerBranchs() {
-    this.branchsService.branchs().subscribe((data: any) => {
-      this.branchs = Object.entries(data).reduce((acc, [key, value]: [string, any]) => {
-        acc[key] = value.name;
-        return acc;
-      }, {} as { [key: string]: string });
-    });
-  }
-
   get columnDefs(): ColDef[] {
     return [{
       field: 'mail',
@@ -94,19 +81,7 @@ export class UsersxprojectsComponent {
       },
       valueFormatter: (params) => this.projects[params.value] || '',
       editable: true,
-      flex: 2
-    },
-    {
-      field: 'id_branchs',
-      headerName: 'Branch',
-      cellEditor: 'agRichSelectCellEditor',
-      cellEditorParams: {
-        values: Object.keys(this.branchs),
-        formatValue: (value) => this.branchs[value]
-      },
-      valueFormatter: (params) => this.branchs[params.value] || '',
-      editable: true,
-      flex: 2
+      flex: 3
     }
     ]
   }
@@ -148,7 +123,6 @@ export class UsersxprojectsComponent {
     const newId = this.generateUniqueId();
     const newItem = {
       id: newId,
-      id_branchs: '',
       id_projects: '',
       mail: this.correo,
       projects: ''
@@ -167,7 +141,7 @@ export class UsersxprojectsComponent {
     const isValid = this.rowData.every(
       (item) => item.id_branchs && item.id_projects
     );
-  
+
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
@@ -176,9 +150,9 @@ export class UsersxprojectsComponent {
       );
       return;
     }
-  
-     // Filtrar solo las filas que han sido modificadas o son nuevas
-     const updatedRows = this.rowData.filter(row => 
+
+    // Filtrar solo las filas que han sido modificadas o son nuevas
+    const updatedRows = this.rowData.filter(row =>
       this.newlyAddedRows.includes(row.id) || row.__modified
     );
 

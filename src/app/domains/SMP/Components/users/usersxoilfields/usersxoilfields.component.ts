@@ -1,7 +1,6 @@
 import { Component, computed, HostListener } from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
-import { CompanysService } from 'app/services/companys.service';
 import { OilfieldService } from 'app/services/oilfield.service';
 import { UsersService } from 'app/services/users.service';
 import { UsersxoilfieldsService } from 'app/services/usersxoilfields.service';
@@ -20,11 +19,10 @@ import { UsersProfileComponent } from '../users-profile/users-profile.component'
 export class UsersxoilfieldsComponent {
 
   constructor(private usersService: UsersService, private oilfieldsService: OilfieldService,
-    private usersxoilfieldsService: UsersxoilfieldsService, private companysService: CompanysService) { }
+    private usersxoilfieldsService: UsersxoilfieldsService) { }
 
   ngOnInit() {
     this.obtenerDatos();
-    this.obtenerCompanys();
     this.obtenerOilfields();
   }
 
@@ -43,7 +41,6 @@ export class UsersxoilfieldsComponent {
   notSavedChanges: boolean = false;
   rowData: any;
   oilfields: { [key: string]: string } = {};
-  companys: any;
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
   id: string;
@@ -66,15 +63,6 @@ export class UsersxoilfieldsComponent {
     });
   }
 
-  obtenerCompanys() {
-    this.usersxoilfieldsService.getCompanys().subscribe((data: any) => {
-      this.companys = Object.values(data).map((item: any) => {
-        return item.displayName;
-      });
-    });
-
-  }
-
    get columnDefs(): ColDef[] {
     return [{
       field: 'email',
@@ -91,17 +79,7 @@ export class UsersxoilfieldsComponent {
       },
       valueFormatter: (params) => this.oilfields[params.value] || '',
       editable: true,
-      flex: 2
-    },
-    {
-      field: 'company',
-      headerName: 'Compañía',
-      editable: true,
-      cellEditor: 'agRichSelectCellEditor',
-      cellEditorParams: {
-        values: this.companys, // Se usa cuando departamentos ya esté disponible
-        selectOnPopup: true
-      },
+      flex: 3
     },
     {
       field: 'orden',
@@ -143,7 +121,6 @@ export class UsersxoilfieldsComponent {
     const newId = this.generateUniqueId();
     const newItem = {
       id: newId,
-      company: '',
       id_oil: '',
       email: this.correo,
       orden: 1

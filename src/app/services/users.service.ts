@@ -22,9 +22,8 @@ export class UsersService {
     organizationUser: signal<string>(null),
     positionUser: signal<string>(null)
   };
-  emailUser = signal<string>(null);
+
   profileSignal(email: string, picture: string, name: string, organization: string, position: string) {
-    this.emailUser.set(email); // Para compatibilidad
     this.profile.emailUser.set(email);
     this.profile.profilePicUser.set(picture);
     this.profile.nameUser.set(name);
