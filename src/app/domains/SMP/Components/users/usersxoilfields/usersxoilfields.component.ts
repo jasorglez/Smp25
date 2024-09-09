@@ -137,13 +137,13 @@ export class UsersxoilfieldsComponent {
 
   saveChanges() {
     const isValid = this.rowData.every(
-      (item) => item.company && item.id_oil
+      (item) =>  item.id_oil
     );
 
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
-        'Debe seleccionar un proyecto y un branch antes de guardar.',
+        'Debe seleccionar un proyecto antes de guardar.',
         'error'
       );
       return;
