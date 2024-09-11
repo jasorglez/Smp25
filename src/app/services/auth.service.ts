@@ -87,6 +87,7 @@ export class AuthService {
       localStorage.removeItem('company');
       localStorage.removeItem('branch');
       localStorage.removeItem('mail');
+      localStorage.removeItem('sqlToken');
 
       this.router.navigateByUrl('/login');
 

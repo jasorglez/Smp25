@@ -32,7 +32,7 @@ export class UsersComponent {
   profile = computed(() => this.usersService.profile);
 
   enviarSignal() {
-    this.usersService.profileSignal(this.selectedRowData.emailu,
+    this.usersService.profileSignal(this.selectedRowData.email,
       this.selectedRowData.picture, this.selectedRowData.displayName,
       this.selectedRowData.organization, this.selectedRowData.position);
   }
@@ -71,10 +71,17 @@ export class UsersComponent {
   }
 
   obtenerDatos() {
-    this.usersService.getDataUsers().subscribe((data: any) => {
-      this.rowData = Object.keys(data).map((key) => {
-        return { id: key, ...data[key] };
-      });
+    this.usersService.getDataUsers().subscribe((response: any) => {
+      if (response && response.code === 200 && response.data) {
+        this.rowData = response.data.map((item: any) => {
+          return { id: item.id, ...item };
+        });
+        console.log(this.rowData);
+      } else {
+        console.error('Respuesta inválida del servidor');
+      }
+    }, error => {
+      console.error('Error al obtener los datos:', error);
     });
   }
 
@@ -121,7 +128,7 @@ export class UsersComponent {
         },
       },
       {
-        field: 'emailu',
+        field: 'email',
         headerName: 'Email',
         cellEditor: 'agTextCellEditor',
         editable: (params) => params.data.isNew,

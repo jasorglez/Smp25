@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 
 import { environment } from '../../environments/environment';
 import { Iusers } from '../interface/iusers';
@@ -38,7 +38,9 @@ export class UsersService {
 
   getDataUsers() {
     try {
-      return this.http.get(`${environment.urlFirebase}users.json`);
+      const token = localStorage.getItem('sqlToken');
+      const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
+      return this.http.get(`${environment.urlAzure2}api/User/users`, {headers});
     }
     catch (error) {
       alerts.basicAlert("error", `Error get data call Users${error}`, "error")
