@@ -37,15 +37,9 @@ export class UsersService {
   // Aqui comienzan los cambios hechos a SMP
 
   getDataUsers() {
-    try {
       const token = localStorage.getItem('sqlToken');
       const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
       return this.http.get(`${environment.urlAzure2}api/User/users`, {headers});
-    }
-    catch (error) {
-      alerts.basicAlert("error", `Error get data call Users${error}`, "error")
-      return null;
-    }
   }
 
   updateDataUsers(updates: any) {
