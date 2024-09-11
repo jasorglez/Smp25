@@ -150,6 +150,7 @@ export class ComploginComponent implements OnInit {
         this.userService.findEmail(this.emailcapt).subscribe({
           next: (datauser: any) => {
             if (datauser) {
+              console.log(datauser)
               //alert('se encontro el dato')
                this.trackingService.setnameUser(datauser.displayName);
                this.trackingService.setpictureUser(datauser.picture);

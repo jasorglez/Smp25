@@ -34,6 +34,18 @@ export class UsersService {
   //Constructor
   constructor(private http: HttpClient) { }
 
+  private getAuthToken(): string {
+    return localStorage.getItem('token') || '';
+  }
+
+  private getHeaders(): HttpHeaders {
+    const token = this.getAuthToken();
+    return new HttpHeaders({
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    });
+  }
+
   // Aqui comienzan los cambios hechos a SMP
 
   getDataUsers() {
@@ -165,16 +177,17 @@ export class UsersService {
 
 
   findEmail(email: string): Observable<any> {
-    return this.http.get<any>(`${environment.urlFirebase}users.json?orderBy="emailu"&equalTo="${email}"`).pipe(
+    const headers = this.getHeaders();
+    return this.http.get<any>(`${environment.urlLinux}/User/email/${email}`, {headers}).pipe(
       map(datauser => {
 
-        // console.log('dataUser', datauser) ;
+        console.log('dataUser', datauser) ;
 
         // Asegúrate de que datauser contenga al menos un objeto
-        const userArray = Object.values(datauser);
-        if (userArray.length > 0) {
-          const user = userArray[0] as any;
-          //console.log('user:', user);
+        const userArray = datauser.data;
+        if (userArray) {
+          const user = userArray as any;
+          console.log('user:', user);
 
           // Asegúrate de que todas las propiedades existen en el objeto user
           const displayName = user.displayName || '';
