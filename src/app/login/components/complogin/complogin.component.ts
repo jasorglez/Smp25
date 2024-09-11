@@ -135,8 +135,7 @@ export class ComploginComponent implements OnInit {
 
     const data: Ilogin = {
       email: this.flogin.get('emaillogin')?.value ?? '',
-      password: this.flogin.get('passwordlogin')?.value ?? '',
-      returnSecureToken: true
+      password: this.flogin.get('passwordlogin')?.value ?? ''
     };
 
     //  Ejecutamos el servicio del Login
@@ -144,10 +143,12 @@ export class ComploginComponent implements OnInit {
 
      //console.log(this.emailcapt) ;
 
-    this.loginService.login(data).subscribe(
-      (resp)=>{
-        this.userService.findEmail(this.emailcapt).subscribe(
-          (datauser: any) => {
+    this.auth.login(data).subscribe({
+      next: (resp: any) => {
+        console.log(resp)
+        localStorage.setItem('token', resp.data.token)
+        this.userService.findEmail(this.emailcapt).subscribe({
+          next: (datauser: any) => {
             if (datauser) {
               //alert('se encontro el dato')
                this.trackingService.setnameUser(datauser.displayName);
@@ -159,22 +160,13 @@ export class ComploginComponent implements OnInit {
                this.router.navigate(['/main']) ;
             }
           },
-          (error) => {
+          error: (error) => {
             console.error('Error al obtener los datos del usuario:', error);
             // Manejo del error
           }
-        );
-
-        /*const user = await this.auth.login(this.emailcapt, this.f.controls.passwordlogin.value)
-        if (user.user.emailVerified) {
-             //aqui lo mandamos al home o en caso contratio a la verificacion del email
-        }*/
-        //this.router.navigateByUrl("/");
-
+        });
       },
-
-      (err)=>{
-
+      error: (err) => {
         /*=============================================
         Errores al intentar entrar al sistema
         =============================================*/
@@ -188,7 +180,7 @@ export class ComploginComponent implements OnInit {
         }
 
       }
-    );
+    });
 }
 
 

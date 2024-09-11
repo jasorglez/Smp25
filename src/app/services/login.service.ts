@@ -21,38 +21,12 @@ export class LoginService {
   =============================================*/
 
   login(data: Ilogin) {
-    //Aquí creamos el sqlToken
-    return this.http.post(environment.urlLogin, data).pipe(
-      map((resp: any) => {
-        // Capturamos el idToken y refreshToken
-        localStorage.setItem('token', resp.idToken);
-        localStorage.setItem('refreshToken', resp.refreshToken);
-        this.getSqlToken(data.email, data.password)
-        .then(token => {
-          localStorage.setItem('sqlToken', token);
-        })
-        .catch(error => {
-          console.error('Error al obtener el token:', error);
-        });
-      })
-    );
-  }
-  async getSqlToken(email: string, password: string): Promise<string> {
+    //Aquí creamos el Token
     const dataLogin = {
-      email: email,
-      password: password
+      email: data.email,
+      password: data.password
     };
-    try {
-      const resp: any = await this.http.post(`${environment.urlAzure2}api/Login`, dataLogin).toPromise();
-      if (resp && resp.code === 200 && resp.data && resp.data.token) {
-        const token = resp.data.token;
-        return token;
-      } else {
-        throw new Error('Respuesta inválida del servidor');
-      }
-    } catch (error) {
-      console.error('Error al enviar datos', error);
-      throw new Error('Ocurrió un error al procesar la solicitud');
-    }
+    return this.http.post(environment.urlLinux, dataLogin)
   }
+ 
 }
