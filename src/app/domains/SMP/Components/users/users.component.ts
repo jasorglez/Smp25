@@ -242,7 +242,7 @@ export class UsersComponent {
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
-        'Debe seleccionar un proyecto antes de guardar.',
+        'Debe introducir el nombre del usuario, su correo y su contraseña antes de guardar.',
         'error'
       );
       return;
@@ -250,14 +250,11 @@ export class UsersComponent {
 
     const newRows = this.rowData.filter(row => row.__isNew);
     const modifiedRows = this.rowData.filter(row => row.__modified && !row.__isNew);
-    console.log('New Rows:', newRows);
-    console.log('Modified Rows:', modifiedRows);
 
     const addObservables = newRows.map(row => {
       const cleanedData = this.cleanDataForServer(row);
       return this.usersService.addUser(cleanedData);
     });
-    console.log(addObservables)
 
     const updateObservables = modifiedRows.map(row => {
       const cleanedData = this.cleanDataForServer(row);
@@ -333,7 +330,6 @@ export class UsersComponent {
         console.error(err);
       }
       
-
       // Refrescar los datos después de eliminar
       this.obtenerDatos();
 
