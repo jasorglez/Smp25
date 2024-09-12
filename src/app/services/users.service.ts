@@ -49,35 +49,23 @@ export class UsersService {
   // Aqui comienzan los cambios hechos a SMP
 
   getDataUsers() {
-      const token = localStorage.getItem('token');
-      const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
-      return this.http.get(`${environment.urlLinux}/User/users`, {headers});
+    const headers = this.getHeaders();
+    return this.http.get(`${environment.urlLinux}/User/users`, { headers });
   }
 
-  updateDataUsers(updates: any) {
-    try {
-      return this.http.put(`${environment.urlFirebase}users.json`, updates);
-    }
-    catch (error) {
-      alerts.basicAlert("error", `Error putting data call Users${error}`, "error")
-      return null;
-    }
+  addUser(data: any): Observable<any> {
+    const headers = this.getHeaders();
+    return this.http.post(`${environment.urlLinux}/User`, data, { headers });
   }
 
-  deleteUser(id: number): Observable<any> {
-    const token = localStorage.getItem('token');
-    const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
-    return this.http.delete(`${environment.urlLinux}/User/${id}`, {headers});
+  updateUser(id: string, data: any): Observable<any> {
+    const headers = this.getHeaders();
+    return this.http.put(`${environment.urlLinux}/User/${id}`, data, { headers });
   }
 
-  bulkUpdateUsers(updates: any[]): Observable<any> {
-    const updateObject = {};
-    updates.forEach(update => {
-      const { id, ...data } = update;
-      updateObject[id] = data;
-    });
-
-    return this.http.patch(`${environment.urlFirebase}users.json`, updateObject);
+  deleteUser(id: number, data: any): Observable<any> {
+    const headers = this.getHeaders();
+    return this.http.put(`${environment.urlLinux}/User/${id}`, data, { headers });
   }
 
   getDepartments() {
@@ -89,11 +77,6 @@ export class UsersService {
       return null;
     }
   }
-
-  deleteUsers(id: string) {
-    return this.http.delete(`${environment.urlFirebase}users/${id}.json`);
-  }
-
   // Aqui terminan los cambios a SMP
 
   getdataUserAut() {
@@ -194,10 +177,10 @@ export class UsersService {
 
   findEmail(email: string): Observable<any> {
     const headers = this.getHeaders();
-    return this.http.get<any>(`${environment.urlLinux}/User/email/${email}`, {headers}).pipe(
+    return this.http.get<any>(`${environment.urlLinux}/User/email/${email}`, { headers }).pipe(
       map(datauser => {
 
-        console.log('dataUser', datauser) ;
+        console.log('dataUser', datauser);
 
         // Asegúrate de que datauser contenga al menos un objeto
         const userArray = datauser.data;

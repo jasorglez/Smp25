@@ -8,6 +8,7 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from 'app/services/auth.service';
 import { SweetAlertIcon } from 'sweetalert2';
 import { UsersProfileComponent } from "./users-profile/users-profile.component";
+import { forkJoin } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
@@ -69,6 +70,7 @@ export class UsersComponent {
     "si": "Sí",
     "no": "No"
   }
+  private tempIdCounter: number = 0;
 
   obtenerDatos() {
     this.usersService.getDataUsers().subscribe((response: any) => {
@@ -76,6 +78,7 @@ export class UsersComponent {
         this.rowData = response.data.map((item: any) => {
           return { id: item.id, ...item };
         });
+        this.rowData = this.rowData.filter(row => row.active !== 0);
         console.log(this.rowData);
       } else {
         console.error('Respuesta inválida del servidor');
@@ -99,6 +102,10 @@ export class UsersComponent {
 
   get columnDefs(): ColDef[] {
     return [
+      {
+        field: 'active',
+        hide: true
+      },
       {
         field: 'displayName',
         headerName: 'Nombre',
@@ -131,7 +138,8 @@ export class UsersComponent {
         field: 'email',
         headerName: 'Email',
         cellEditor: 'agTextCellEditor',
-        editable: (params) => params.data.isNew,
+        editable: true,
+        //editable: (params) => params.data.isNew,
         cellEditorParams: {
           useFormatter: true,
         },
@@ -221,6 +229,9 @@ export class UsersComponent {
     // Aquí envío todo a la signal
     this.enviarSignal();
     this.notSavedChanges = true;
+    if (!event.data.__isNew) {
+      event.data.__modified = true;
+    }
   }
 
   async saveChanges() {
@@ -237,18 +248,24 @@ export class UsersComponent {
       return;
     }
 
-    // Filtrar solo las filas que han sido modificadas o son nuevas
-    const updatedRows = this.rowData.filter(row =>
-      this.newlyAddedRows.includes(row.id) || row.__modified
-    );
+    const newRows = this.rowData.filter(row => row.__isNew);
+    const modifiedRows = this.rowData.filter(row => row.__modified && !row.__isNew);
+    console.log('New Rows:', newRows);
+    console.log('Modified Rows:', modifiedRows);
 
-    // Eliminar la propiedad __modified antes de enviar los datos
-    updatedRows.forEach(row => {
-      delete row.__modified;
+    const addObservables = newRows.map(row => {
+      const cleanedData = this.cleanDataForServer(row);
+      return this.usersService.addUser(cleanedData);
+    });
+    console.log(addObservables)
+
+    const updateObservables = modifiedRows.map(row => {
+      const cleanedData = this.cleanDataForServer(row);
+      return this.usersService.updateUser(row.id, cleanedData);
     });
 
-    this.usersService.bulkUpdateUsers(updatedRows).subscribe(
-      (response) => {
+    forkJoin([...addObservables, ...updateObservables]).subscribe(
+      (responses) => {
         alerts.basicAlert(
           'Datos actualizados',
           'Se han actualizado los datos correctamente.',
@@ -259,6 +276,7 @@ export class UsersComponent {
         this.obtenerDatos(); // Refrescar los datos
       },
       (error) => {
+        console.error(error);
         alerts.basicAlert(
           'Error',
           'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
@@ -268,41 +286,10 @@ export class UsersComponent {
     );
   }
 
-  showResultAlert(
-    successfullyAdded: any[],
-    failedToAdd: any[],
-    updatedExistingUsers: boolean
-  ) {
-    let message = '';
-    if (successfullyAdded.length > 0) {
-      message += `${successfullyAdded.length} usuario(s) añadido(s) correctamente. `;
-    }
-    if (failedToAdd.length > 0) {
-      message += `${failedToAdd.length} usuario(s) no pudo(pudieron) ser añadido(s) debido a correos electrónicos duplicados.`;
-    }
-    if (updatedExistingUsers) {
-      message += 'Cambios en usuarios existentes guardados correctamente.';
-    }
-    if (
-      !updatedExistingUsers &&
-      successfullyAdded.length === 0 &&
-      failedToAdd.length === 0
-    ) {
-      message = 'No se realizaron cambios en los usuarios.';
-    }
-
-    let alertType: SweetAlertIcon = 'info';
-    if (successfullyAdded.length > 0 && failedToAdd.length === 0) {
-      alertType = 'success';
-    } else if (failedToAdd.length > 0 || updatedExistingUsers) {
-      alertType = 'warning';
-    }
-
-    alerts.basicAlert('Actualización de usuarios', message, alertType);
-  }
-
   addRow() {
+    const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
+      id: tempId,
       active: 1,
       displayName: '',
       country: '',
@@ -313,11 +300,11 @@ export class UsersComponent {
       phone: '',
       position: '',
       picture: './assets/img/profile.png',
-      isNew: true,
+      __isNew: true
     };
 
     this.rowData = [newItem, ...this.rowData];
-    // Añadir el ID de la nueva fila a nuestro registro
+    this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
   }
 
@@ -335,9 +322,17 @@ export class UsersComponent {
 
       const selectedData = selectedNodes[0].data;
       const id = selectedData.id;
+      selectedData.active = 0;
 
       // Elimina al usuario de la DB
-      await this.usersService.deleteUser(id).toPromise();
+      try{
+        console.log(selectedData);
+        await this.usersService.deleteUser(id, selectedData).toPromise();
+      }
+      catch (err) {
+        console.error(err);
+      }
+      
 
       // Refrescar los datos después de eliminar
       this.obtenerDatos();
@@ -358,33 +353,18 @@ export class UsersComponent {
     }
   }
 
-  // Y aquí llamamos a Firebase
-  async enviarDatos(email: string, password: string): Promise<void> {
-    console.log('Intentando registrar nuevo usuario:', email);
-    try {
-      const user = await this.authService.register(email, password);
-      if (user) {
-        console.log('Nuevo usuario registrado exitosamente:', email);
-      } else {
-        throw new Error('No se pudo registrar el usuario');
-      }
-    } catch (error) {
-      console.error('Error al registrar nuevo usuario:', error);
-      if (error.code === 'auth/email-already-in-use') {
-        console.log('El correo electrónico ya está en uso:', email);
-      } else {
-        alerts.basicAlert(
-          'Error de registro',
-          'No se pudo registrar el nuevo usuario en el sistema de autenticación.',
-          'error'
-        );
-      }
-      throw error; // Re-throw the error to be caught in saveChanges
-    }
-  }
-
   revert() {
     this.obtenerDatos();
     this.notSavedChanges = false;
+  }
+
+  private cleanDataForServer(data: any): any {
+    const cleanedData = { ...data };
+    delete cleanedData.__isNew;
+    delete cleanedData.__modified;
+    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
+      delete cleanedData.id;
+    }
+    return cleanedData;
   }
 }
