@@ -64,6 +64,22 @@ export class UsersService {
     }
   }
 
+  deleteUser(id: number): Observable<any> {
+    const token = localStorage.getItem('token');
+    const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
+    return this.http.delete(`${environment.urlLinux}/User/${id}`, {headers});
+  }
+
+  bulkUpdateUsers(updates: any[]): Observable<any> {
+    const updateObject = {};
+    updates.forEach(update => {
+      const { id, ...data } = update;
+      updateObject[id] = data;
+    });
+
+    return this.http.patch(`${environment.urlFirebase}users.json`, updateObject);
+  }
+
   getDepartments() {
     try {
       return this.http.get(`${environment.urlFirebase}departaments.json`);
