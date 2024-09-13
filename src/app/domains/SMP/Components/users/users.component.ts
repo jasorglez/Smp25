@@ -6,7 +6,6 @@ import { UsersService } from 'app/services/users.service';
 import { alerts } from 'app/helpers/alerts';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from 'app/services/auth.service';
-import { SweetAlertIcon } from 'sweetalert2';
 import { UsersProfileComponent } from "./users-profile/users-profile.component";
 import { forkJoin } from 'rxjs';
 
@@ -33,9 +32,10 @@ export class UsersComponent {
   profile = computed(() => this.usersService.profile);
 
   enviarSignal() {
-    this.usersService.profileSignal(this.selectedRowData.email,
+    const departmentName = this.getDepartmentName(this.selectedRowData.idDepartament);
+    this.usersService.profileSignal(this.selectedRowData.id, this.selectedRowData.email,
       this.selectedRowData.picture, this.selectedRowData.displayName,
-      this.selectedRowData.organization, this.selectedRowData.position);
+    departmentName, this.selectedRowData.position);
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -47,18 +47,17 @@ export class UsersComponent {
   }
 
   constructor(
-    private usersService: UsersService,
-    private authService: AuthService
+    private usersService: UsersService
   ) { }
 
   ngOnInit() {
-    this.obtenerDatos();
     this.obtenerDepartamentos();
+    this.obtenerDatos();
   }
 
   newlyAddedRows: string[] = [];
   entrada: any;
-  departamentos: any[];
+  departamentos: { [key: string]: string } = {};
   rowData: any;
   paginationPageSize = 10; // Tamaño de página
   pagination = true; // Habilitar paginación
@@ -89,11 +88,18 @@ export class UsersComponent {
   }
 
   obtenerDepartamentos() {
-    this.usersService.getDepartments().subscribe((data) => {
-      this.departamentos = Object.values(data).map((item: any) => {
-        return item.name;
-      });
+    this.usersService.getDepartments().subscribe((data: any[]) => {
+      this.departamentos = data.reduce((acc, dep) => {
+        acc[dep.id] = dep.name; // Cambia la estructura para que solo almacene el nombre
+        return acc;
+      }, {});
+      console.log(this.departamentos);
     });
+  }
+
+  // Se modifica el getDepartmentName para que devuelva el nombre del departamento
+  getDepartmentName(idDepartament: string): string {
+    return this.departamentos[idDepartament] || 'Departamento no encontrado';
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -170,13 +176,23 @@ export class UsersComponent {
         editable: true,
       },
       {
-        field: 'organization',
-        headerName: 'Organización',
-        editable: true,
+        field: 'idDepartament',
+        headerName: 'Departamento',
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
-          values: this.departamentos, // Se usa cuando departamentos ya esté disponible
+          values: Object.keys(this.departamentos),
         },
+        valueFormatter: (params) => this.departamentos[params.value] || '',
+        valueSetter: (params) => {
+          const newValue = params.newValue;
+          if (this.departamentos.hasOwnProperty(newValue)) {
+            params.data[params.colDef.field] = newValue;
+            return true;
+          }
+          return false;
+        },
+        valueParser: (params) => params.newValue,
+        editable: true
       },
       {
         field: 'phone',
@@ -293,7 +309,7 @@ export class UsersComponent {
       email: '',
       password: '',
       age: null,
-      organization: '',
+      idDepartament: 1,
       phone: '',
       position: '',
       picture: './assets/img/profile.png',
@@ -322,14 +338,14 @@ export class UsersComponent {
       selectedData.active = 0;
 
       // Elimina al usuario de la DB
-      try{
+      try {
         console.log(selectedData);
         await this.usersService.deleteUser(id, selectedData).toPromise();
       }
       catch (err) {
         console.error(err);
       }
-      
+
       // Refrescar los datos después de eliminar
       this.obtenerDatos();
 

@@ -16,6 +16,7 @@ export class UsersService {
 
   // Usemos signals
   profile = {
+    idUser: signal<number>(null),
     emailUser: signal<string>(null),
     profilePicUser: signal<string>(null),
     nameUser: signal<string>(null),
@@ -23,7 +24,8 @@ export class UsersService {
     positionUser: signal<string>(null)
   };
 
-  profileSignal(email: string, picture: string, name: string, organization: string, position: string) {
+  profileSignal(id: number, email: string, picture: string, name: string, organization: string, position: string) {
+    this.profile.idUser.set(id);
     this.profile.emailUser.set(email);
     this.profile.profilePicUser.set(picture);
     this.profile.nameUser.set(name);
@@ -69,14 +71,10 @@ export class UsersService {
   }
 
   getDepartments() {
-    try {
-      return this.http.get(`${environment.urlFirebase}departaments.json`);
-    }
-    catch (error) {
-      alerts.basicAlert("error", `Error get data call Users${error}`, "error")
-      return null;
-    }
+    const headers = this.getHeaders();
+    return this.http.get(`${environment.urlLinux}/Department`, { headers });
   }
+  
   // Aqui terminan los cambios a SMP
 
   getdataUserAut() {
