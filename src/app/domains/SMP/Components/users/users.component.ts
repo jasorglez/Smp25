@@ -6,8 +6,8 @@ import { UsersService } from 'app/services/users.service';
 import { alerts } from 'app/helpers/alerts';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from 'app/services/auth.service';
+import { SweetAlertIcon } from 'sweetalert2';
 import { UsersProfileComponent } from "./users-profile/users-profile.component";
-import { forkJoin } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
@@ -32,10 +32,9 @@ export class UsersComponent {
   profile = computed(() => this.usersService.profile);
 
   enviarSignal() {
-    const departmentName = this.getDepartmentName(this.selectedRowData.idDepartament);
-    this.usersService.profileSignal(this.selectedRowData.id, this.selectedRowData.email,
+    this.usersService.profileSignal(this.selectedRowData.emailu,
       this.selectedRowData.picture, this.selectedRowData.displayName,
-    departmentName, this.selectedRowData.position);
+      this.selectedRowData.organization, this.selectedRowData.position);
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -47,17 +46,18 @@ export class UsersComponent {
   }
 
   constructor(
-    private usersService: UsersService
+    private usersService: UsersService,
+    private authService: AuthService
   ) { }
 
   ngOnInit() {
-    this.obtenerDepartamentos();
     this.obtenerDatos();
+    this.obtenerDepartamentos();
   }
 
   newlyAddedRows: string[] = [];
   entrada: any;
-  departamentos: { [key: string]: string } = {};
+  departamentos: any[];
   rowData: any;
   paginationPageSize = 10; // Tamaño de página
   pagination = true; // Habilitar paginación
@@ -69,37 +69,21 @@ export class UsersComponent {
     "si": "Sí",
     "no": "No"
   }
-  private tempIdCounter: number = 0;
 
   obtenerDatos() {
-    this.usersService.getDataUsers().subscribe((response: any) => {
-      if (response && response.code === 200 && response.data) {
-        this.rowData = response.data.map((item: any) => {
-          return { id: item.id, ...item };
-        });
-        this.rowData = this.rowData.filter(row => row.active !== 0);
-        console.log(this.rowData);
-      } else {
-        console.error('Respuesta inválida del servidor');
-      }
-    }, error => {
-      console.error('Error al obtener los datos:', error);
+    this.usersService.getDataUsers().subscribe((data: any) => {
+      this.rowData = Object.keys(data).map((key) => {
+        return { id: key, ...data[key] };
+      });
     });
   }
 
   obtenerDepartamentos() {
-    this.usersService.getDepartments().subscribe((data: any[]) => {
-      this.departamentos = data.reduce((acc, dep) => {
-        acc[dep.id] = dep.name; // Cambia la estructura para que solo almacene el nombre
-        return acc;
-      }, {});
-      console.log(this.departamentos);
+    this.usersService.getDepartments().subscribe((data) => {
+      this.departamentos = Object.values(data).map((item: any) => {
+        return item.name;
+      });
     });
-  }
-
-  // Se modifica el getDepartmentName para que devuelva el nombre del departamento
-  getDepartmentName(idDepartament: string): string {
-    return this.departamentos[idDepartament] || 'Departamento no encontrado';
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -108,10 +92,6 @@ export class UsersComponent {
 
   get columnDefs(): ColDef[] {
     return [
-      {
-        field: 'active',
-        hide: true
-      },
       {
         field: 'displayName',
         headerName: 'Nombre',
@@ -141,11 +121,10 @@ export class UsersComponent {
         },
       },
       {
-        field: 'email',
+        field: 'emailu',
         headerName: 'Email',
         cellEditor: 'agTextCellEditor',
-        editable: true,
-        //editable: (params) => params.data.isNew,
+        editable: (params) => params.data.isNew,
         cellEditorParams: {
           useFormatter: true,
         },
@@ -176,23 +155,13 @@ export class UsersComponent {
         editable: true,
       },
       {
-        field: 'idDepartament',
-        headerName: 'Departamento',
+        field: 'organization',
+        headerName: 'Organización',
+        editable: true,
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
-          values: Object.keys(this.departamentos),
+          values: this.departamentos, // Se usa cuando departamentos ya esté disponible
         },
-        valueFormatter: (params) => this.departamentos[params.value] || '',
-        valueSetter: (params) => {
-          const newValue = params.newValue;
-          if (this.departamentos.hasOwnProperty(newValue)) {
-            params.data[params.colDef.field] = newValue;
-            return true;
-          }
-          return false;
-        },
-        valueParser: (params) => params.newValue,
-        editable: true
       },
       {
         field: 'phone',
@@ -204,6 +173,39 @@ export class UsersComponent {
         field: 'position',
         headerName: 'Posición',
         cellEditor: 'agTextCellEditor',
+        editable: true,
+      },
+      {
+        field: 'platform',
+        headerName: 'Plataforma',
+        cellEditor: 'agRichSelectCellEditor',
+        cellEditorParams: {
+          values: Object.keys(this.opciones),
+          formatValue: (value) => this.opciones[value]
+        },
+        valueFormatter: (params) => this.opciones[params.value] || '',
+        editable: true,
+      },
+      {
+        field: 'project',
+        headerName: 'Proyecto',
+        cellEditor: 'agRichSelectCellEditor',
+        cellEditorParams: {
+          values: Object.keys(this.opciones),
+          formatValue: (value) => this.opciones[value]
+        },
+        valueFormatter: (params) => this.opciones[params.value] || '',
+        editable: true,
+      },
+      {
+        field: 'branch',
+        headerName: 'Branch',
+        cellEditor: 'agRichSelectCellEditor',
+        cellEditorParams: {
+          values: Object.keys(this.opciones),
+          formatValue: (value) => this.opciones[value]
+        },
+        valueFormatter: (params) => this.opciones[params.value] || '',
         editable: true,
       },
       {
@@ -232,7 +234,6 @@ export class UsersComponent {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
-      console.log(this.selectedRowData.id);
       // Aquí envío todo a la signal
       this.enviarSignal();
     } else {
@@ -245,80 +246,144 @@ export class UsersComponent {
     // Aquí envío todo a la signal
     this.enviarSignal();
     this.notSavedChanges = true;
-    if (!event.data.__isNew) {
-      event.data.__modified = true;
-    }
   }
 
   async saveChanges() {
     const isValid = this.rowData.every(
-      (item) => item.displayName && item.email && item.password
+      (item) => item.displayName && item.emailu && item.password
     );
 
     if (!isValid) {
       alerts.basicAlert(
-        'Añadir entrada',
-        'Debe introducir el nombre del usuario, su correo y su contraseña antes de guardar.',
+        'Añadir usuario',
+        'Debe introducir un nombre de usuario, correo electrónico y contraseña.',
         'error'
       );
       return;
     }
 
-    const newRows = this.rowData.filter(row => row.__isNew);
-    const modifiedRows = this.rowData.filter(row => row.__modified && !row.__isNew);
-
-    const addObservables = newRows.map(row => {
-      const cleanedData = this.cleanDataForServer(row);
-      return this.usersService.addUser(cleanedData);
-    });
-
-    const updateObservables = modifiedRows.map(row => {
-      const cleanedData = this.cleanDataForServer(row);
-      return this.usersService.updateUser(row.id, cleanedData);
-    });
-
-    forkJoin([...addObservables, ...updateObservables]).subscribe(
-      (responses) => {
-        alerts.basicAlert(
-          'Datos actualizados',
-          'Se han actualizado los datos correctamente.',
-          'success'
-        );
-        this.notSavedChanges = false;
-        this.newlyAddedRows = [];
-        this.obtenerDatos(); // Refrescar los datos
-      },
-      (error) => {
-        console.error(error);
-        alerts.basicAlert(
-          'Error',
-          'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
-          'error'
-        );
-      }
+    // Filtrar las filas nuevas usando nuestro registro de nuevas filas
+    const newItems = this.rowData.filter((item) =>
+      this.newlyAddedRows.includes(item.id)
     );
+
+    let successfullyAdded = [];
+    let failedToAdd = [];
+
+    // Procesar nuevos usuarios primero
+    if (newItems.length > 0) {
+      for (const item of newItems) {
+        // Enviamos los datos a FirebaseAuth y a la base de datos
+        try {
+          await this.enviarDatos(item.emailu, item.password);
+          successfullyAdded.push(item);
+        } catch (error) {
+          if (error.code === 'auth/email-already-in-use') {
+            failedToAdd.push(item);
+            // Remover el item de rowData si el email ya está en uso
+            this.rowData = this.rowData.filter((row) => row.id !== item.id);
+            this.newlyAddedRows = this.newlyAddedRows.filter(
+              (id) => id !== item.id
+            );
+          } else {
+            // Para otros errores, detener el proceso
+            alerts.basicAlert(
+              'Error de registro',
+              'Ocurrió un error al registrar nuevos usuarios. Por favor, intente nuevamente.',
+              'error'
+            );
+            return;
+          }
+        }
+      }
+    }
+
+    const sanitizedData = this.rowData.map(({ isNew, ...item }) => item);
+    // Ahora actualizamos la base de datos con los datos filtrados
+    const updates = sanitizedData.reduce((acc, item) => {
+      const { id, ...data } = item;
+      acc[id] = data;
+      return acc;
+    }, {});
+
+    this.usersService.updateDataUsers(updates).subscribe((response) => {
+      let updatedExistingUsers = false;
+
+      // Verificar si se hicieron cambios en usuarios existentes
+      if (newItems.length === 0 && Object.keys(updates).length > 0) {
+        updatedExistingUsers = true;
+      }
+
+      this.showResultAlert(
+        successfullyAdded,
+        failedToAdd,
+        updatedExistingUsers
+      );
+      this.notSavedChanges = false;
+      this.newlyAddedRows = []; // Limpiar el registro de nuevas filas después de guardar
+      this.obtenerDatos(); // Refrescar los datos
+    });
+  }
+
+  showResultAlert(
+    successfullyAdded: any[],
+    failedToAdd: any[],
+    updatedExistingUsers: boolean
+  ) {
+    let message = '';
+    if (successfullyAdded.length > 0) {
+      message += `${successfullyAdded.length} usuario(s) añadido(s) correctamente. `;
+    }
+    if (failedToAdd.length > 0) {
+      message += `${failedToAdd.length} usuario(s) no pudo(pudieron) ser añadido(s) debido a correos electrónicos duplicados.`;
+    }
+    if (updatedExistingUsers) {
+      message += 'Cambios en usuarios existentes guardados correctamente.';
+    }
+    if (
+      !updatedExistingUsers &&
+      successfullyAdded.length === 0 &&
+      failedToAdd.length === 0
+    ) {
+      message = 'No se realizaron cambios en los usuarios.';
+    }
+
+    let alertType: SweetAlertIcon = 'info';
+    if (successfullyAdded.length > 0 && failedToAdd.length === 0) {
+      alertType = 'success';
+    } else if (failedToAdd.length > 0 || updatedExistingUsers) {
+      alertType = 'warning';
+    }
+
+    alerts.basicAlert('Actualización de usuarios', message, alertType);
   }
 
   addRow() {
-    const tempId = `temp_${this.tempIdCounter++}`;
+    const newId = this.generateUniqueId();
     const newItem = {
-      id: tempId,
-      active: 1,
+      id: newId,
       displayName: '',
       country: '',
-      email: '',
+      emailu: '',
       password: '',
       age: null,
-      idDepartament: 1,
+      organization: '',
       phone: '',
       position: '',
+      branch: 'no',
+      project: 'no',
+      platform: 'no',
       picture: './assets/img/profile.png',
-      __isNew: true
+      isNew: true,
     };
 
     this.rowData = [newItem, ...this.rowData];
-    this.newlyAddedRows.push(tempId);
-    this.notSavedChanges = true;
+    // Añadir el ID de la nueva fila a nuestro registro
+    this.newlyAddedRows.push(newId);
+  }
+
+  generateUniqueId() {
+    return 'new-' + Math.random().toString(36).substr(2, 9);
   }
 
   async deleteUser() {
@@ -326,8 +391,8 @@ export class UsersComponent {
       const selectedNodes = this.gridApi.getSelectedNodes();
       if (selectedNodes.length === 0) {
         alerts.basicAlert(
-          'Eliminar entrada',
-          'Por favor, seleccione una entrada para eliminar.',
+          'Eliminar usuario',
+          'Por favor, seleccione un usuario para eliminar.',
           'warning'
         );
         return;
@@ -335,48 +400,59 @@ export class UsersComponent {
 
       const selectedData = selectedNodes[0].data;
       const id = selectedData.id;
-      selectedData.active = 0;
+      const email = selectedData.emailu;
 
-      // Elimina al usuario de la DB
-      try {
-        console.log(selectedData);
-        await this.usersService.deleteUser(id, selectedData).toPromise();
-      }
-      catch (err) {
-        console.error(err);
-      }
+      // Elimina al usuario de la DB de Firebase
+      await this.usersService.deleteUsers(id).toPromise();
+      // Elimina al usuario de Firebase Auth
+      await this.authService.removeUserByEmail(email, selectedData.password);
 
       // Refrescar los datos después de eliminar
       this.obtenerDatos();
 
       alerts.basicAlert(
-        'Eliminar entrada',
-        'Entrada eliminada satisfactoriamente.',
+        'Eliminar usuario',
+        'Usuario eliminado satisfactoriamente.',
         'success'
       );
       this.notSavedChanges = false;
       this.selectedRowData = null;
     } catch (error) {
       alerts.basicAlert(
-        'Eliminar entrada',
-        'Error al eliminar la entrada.',
+        'Eliminar usuario',
+        'Error al eliminar el usuario.',
         'error'
       );
+    }
+  }
+
+  // Y aquí llamamos a Firebase
+  async enviarDatos(email: string, password: string): Promise<void> {
+    console.log('Intentando registrar nuevo usuario:', email);
+    try {
+      const user = await this.authService.register(email, password);
+      if (user) {
+        console.log('Nuevo usuario registrado exitosamente:', email);
+      } else {
+        throw new Error('No se pudo registrar el usuario');
+      }
+    } catch (error) {
+      console.error('Error al registrar nuevo usuario:', error);
+      if (error.code === 'auth/email-already-in-use') {
+        console.log('El correo electrónico ya está en uso:', email);
+      } else {
+        alerts.basicAlert(
+          'Error de registro',
+          'No se pudo registrar el nuevo usuario en el sistema de autenticación.',
+          'error'
+        );
+      }
+      throw error; // Re-throw the error to be caught in saveChanges
     }
   }
 
   revert() {
     this.obtenerDatos();
     this.notSavedChanges = false;
-  }
-
-  private cleanDataForServer(data: any): any {
-    const cleanedData = { ...data };
-    delete cleanedData.__isNew;
-    delete cleanedData.__modified;
-    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
-      delete cleanedData.id;
-    }
-    return cleanedData;
   }
 }
