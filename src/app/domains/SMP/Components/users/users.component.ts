@@ -1,13 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, HostListener, Injectable } from '@angular/core';
+import { Component, computed, HostListener, inject, Injectable } from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { UsersService } from 'app/services/users.service';
 import { alerts } from 'app/helpers/alerts';
 import { FormsModule } from '@angular/forms';
-import { AuthService } from 'app/services/auth.service';
 import { UsersProfileComponent } from "./users-profile/users-profile.component";
-import { forkJoin } from 'rxjs';
+import { concat, lastValueFrom, toArray } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
@@ -28,7 +27,7 @@ import { forkJoin } from 'rxjs';
 })
 export class UsersComponent {
 
-
+  private usersService = inject(UsersService);
   profile = computed(() => this.usersService.profile);
 
   enviarSignal() {
@@ -45,10 +44,6 @@ export class UsersComponent {
         'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
     }
   }
-
-  constructor(
-    private usersService: UsersService
-  ) { }
 
   ngOnInit() {
     this.obtenerDepartamentos();
@@ -72,18 +67,20 @@ export class UsersComponent {
   private tempIdCounter: number = 0;
 
   obtenerDatos() {
-    this.usersService.getDataUsers().subscribe((response: any) => {
-      if (response && response.code === 200 && response.data) {
-        this.rowData = response.data.map((item: any) => {
-          return { id: item.id, ...item };
-        });
-        this.rowData = this.rowData.filter(row => row.active !== 0);
-        console.log(this.rowData);
-      } else {
-        console.error('Respuesta inválida del servidor');
+    this.usersService.getDataUsers().subscribe({
+      next: (response: any) => {
+        if (response && response.code === 200 && response.data) {
+          this.rowData = response.data.map((item: any) => {
+            return { id: item.id, ...item };
+          });
+          this.rowData = this.rowData.filter(row => row.active !== 0);
+        } else {
+          console.error('Respuesta inválida del servidor');
+        }
+      },
+      error: (error) => {
+        console.error('Error al obtener los datos:', error);
       }
-    }, error => {
-      console.error('Error al obtener los datos:', error);
     });
   }
 
@@ -93,7 +90,6 @@ export class UsersComponent {
         acc[dep.id] = dep.name; // Cambia la estructura para que solo almacene el nombre
         return acc;
       }, {});
-      console.log(this.departamentos);
     });
   }
 
@@ -232,7 +228,6 @@ export class UsersComponent {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
-      console.log(this.selectedRowData.id);
       // Aquí envío todo a la signal
       this.enviarSignal();
     } else {
@@ -277,26 +272,25 @@ export class UsersComponent {
       return this.usersService.updateUser(row.id, cleanedData);
     });
 
-    forkJoin([...addObservables, ...updateObservables]).subscribe(
-      (responses) => {
-        alerts.basicAlert(
-          'Datos actualizados',
-          'Se han actualizado los datos correctamente.',
-          'success'
-        );
-        this.notSavedChanges = false;
-        this.newlyAddedRows = [];
-        this.obtenerDatos(); // Refrescar los datos
-      },
-      (error) => {
-        console.error(error);
-        alerts.basicAlert(
-          'Error',
-          'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
-          'error'
-        );
-      }
-    );
+    // Using concat to combine observables and lastValueFrom for async/await
+    try {
+      const responses = await lastValueFrom(concat(...addObservables, ...updateObservables).pipe(toArray()));
+      alerts.basicAlert(
+        'Datos actualizados',
+        'Se han actualizado los datos correctamente.',
+        'success'
+      );
+      this.notSavedChanges = false;
+      this.newlyAddedRows = [];
+      this.obtenerDatos(); // Refrescar los datos
+    } catch (error) {
+      console.error(error);
+      alerts.basicAlert(
+        'Error',
+        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
+        'error'
+      );
+    }
   }
 
   addRow() {
@@ -339,7 +333,6 @@ export class UsersComponent {
 
       // Elimina al usuario de la DB
       try {
-        console.log(selectedData);
         await this.usersService.deleteUser(id, selectedData).toPromise();
       }
       catch (err) {
