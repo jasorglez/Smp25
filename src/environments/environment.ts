@@ -19,8 +19,8 @@ export const environment = {
   production: false,
 //aqui juego con las base de datos
   urlFirebase   : 'https://beapp-501d1-default-rtdb.firebaseio.com/',
-
   urlAzure    : 'https://bi24.azurewebsites.net/',
+  urlLinux: 'https://bi2.com.mx:5003/api',
   //  urlAzure    : 'https://localhost:7089/',
 
 
@@ -52,5 +52,3 @@ export const environment = {
  * on performance if an error is thrown.
  */
 // import 'zone.js/dist/zone-error';  // Included with Angular CLI.
-
-
