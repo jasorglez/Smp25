@@ -20,7 +20,7 @@ export const environment = {
 //aqui juego con las base de datos
   urlFirebase   : 'https://beapp-501d1-default-rtdb.firebaseio.com/',
   urlAzure    : 'https://bi24.azurewebsites.net/',
-  urlLinux: 'http://198.71.49.16:5003/api',
+  urlLinux: 'https://bi2.com.mx:5003/api',
   //  urlAzure    : 'https://localhost:7089/',
 
 
