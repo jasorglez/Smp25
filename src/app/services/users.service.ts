@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 
 import { environment } from '../../environments/environment';
 import { Iusers } from '../interface/iusers';
@@ -16,6 +16,7 @@ export class UsersService {
 
   // Usemos signals
   profile = {
+    idUser: signal<number>(null),
     emailUser: signal<string>(null),
     profilePicUser: signal<string>(null),
     nameUser: signal<string>(null),
@@ -23,7 +24,8 @@ export class UsersService {
     positionUser: signal<string>(null)
   };
 
-  profileSignal(email: string, picture: string, name: string, organization: string, position: string) {
+  profileSignal(id: number, email: string, picture: string, name: string, organization: string, position: string) {
+    this.profile.idUser.set(id);
     this.profile.emailUser.set(email);
     this.profile.profilePicUser.set(picture);
     this.profile.nameUser.set(name);
@@ -34,42 +36,45 @@ export class UsersService {
   //Constructor
   constructor(private http: HttpClient) { }
 
+  private getAuthToken(): string {
+    return localStorage.getItem('token') || '';
+  }
+
+  private getHeaders(): HttpHeaders {
+    const token = this.getAuthToken();
+    return new HttpHeaders({
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    });
+  }
+
   // Aqui comienzan los cambios hechos a SMP
 
   getDataUsers() {
-    try {
-      return this.http.get(`${environment.urlFirebase}users.json`);
-    }
-    catch (error) {
-      alerts.basicAlert("error", `Error get data call Users${error}`, "error")
-      return null;
-    }
+    const headers = this.getHeaders();
+    return this.http.get(`${environment.urlLinux}/User/users`, { headers });
   }
 
-  updateDataUsers(updates: any) {
-    try {
-      return this.http.put(`${environment.urlFirebase}users.json`, updates);
-    }
-    catch (error) {
-      alerts.basicAlert("error", `Error putting data call Users${error}`, "error")
-      return null;
-    }
+  addUser(data: any): Observable<any> {
+    const headers = this.getHeaders();
+    return this.http.post(`${environment.urlLinux}/User`, data, { headers });
+  }
+
+  updateUser(id: string, data: any): Observable<any> {
+    const headers = this.getHeaders();
+    return this.http.put(`${environment.urlLinux}/User/${id}`, data, { headers });
+  }
+
+  deleteUser(id: number, data: any): Observable<any> {
+    const headers = this.getHeaders();
+    return this.http.put(`${environment.urlLinux}/User/${id}`, data, { headers });
   }
 
   getDepartments() {
-    try {
-      return this.http.get(`${environment.urlFirebase}departaments.json`);
-    }
-    catch (error) {
-      alerts.basicAlert("error", `Error get data call Users${error}`, "error")
-      return null;
-    }
+    const headers = this.getHeaders();
+    return this.http.get(`${environment.urlLinux}/Department`, { headers });
   }
-
-  deleteUsers(id: string) {
-    return this.http.delete(`${environment.urlFirebase}users/${id}.json`);
-  }
-
+  
   // Aqui terminan los cambios a SMP
 
   getdataUserAut() {
@@ -169,16 +174,17 @@ export class UsersService {
 
 
   findEmail(email: string): Observable<any> {
-    return this.http.get<any>(`${environment.urlFirebase}users.json?orderBy="emailu"&equalTo="${email}"`).pipe(
+    const headers = this.getHeaders();
+    return this.http.get<any>(`${environment.urlLinux}/User/email/${email}`, { headers }).pipe(
       map(datauser => {
 
-        // console.log('dataUser', datauser) ;
+        console.log('dataUser', datauser);
 
         // Asegúrate de que datauser contenga al menos un objeto
-        const userArray = Object.values(datauser);
-        if (userArray.length > 0) {
-          const user = userArray[0] as any;
-          //console.log('user:', user);
+        const userArray = datauser.data;
+        if (userArray) {
+          const user = userArray as any;
+          console.log('user:', user);
 
           // Asegúrate de que todas las propiedades existen en el objeto user
           const displayName = user.displayName || '';
