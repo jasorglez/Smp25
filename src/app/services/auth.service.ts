@@ -13,6 +13,7 @@ import {
 import { TrackingService } from './tracking.service';
 import { first, firstValueFrom, Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { Ilogin } from 'app/interface/ilogin';
 
 @Injectable({
   providedIn: 'root',
@@ -30,18 +31,13 @@ export class AuthService {
     private http: HttpClient
   ) {}
 
-  async login(email: string, password: string) {
-    try {
-      const result = await signInWithEmailAndPassword(
-        this.auth,
-        email,
-        password
-      );
-      return result;
-    } catch (error) {
-      console.log(error);
-      return null;
-    }
+  login(data: Ilogin) {
+    //Aquí creamos el Token
+    const dataLogin = {
+      email: data.email,
+      password: data.password
+    };
+    return this.http.post(environment.urlLinux+'/Auth/login', dataLogin)
   }
 
   async register(email: string, password: string): Promise<User | null> {
@@ -87,6 +83,7 @@ export class AuthService {
       localStorage.removeItem('company');
       localStorage.removeItem('branch');
       localStorage.removeItem('mail');
+      localStorage.removeItem('sqlToken');
 
       this.router.navigateByUrl('/login');
 
