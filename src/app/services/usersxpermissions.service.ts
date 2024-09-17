@@ -2,12 +2,11 @@ import { Injectable } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, forkJoin, from } from 'rxjs';
-import { map, mergeMap } from 'rxjs/operators';
 
 @Injectable({
   providedIn: 'root'
 })
-export class UsersxcompanysService {
+export class UsersxpermissionsService {
   constructor(private http: HttpClient) { }
 
   private getAuthToken(): string {
@@ -22,22 +21,22 @@ export class UsersxcompanysService {
     });
   }
 
-  getDataUsersxCompanys () {
+  getDataUsersxPermissions(type: string) {
     const headers = this.getHeaders();
-    return this.http.get(`${environment.urlLinux}/Usersxpermission?type=comp-prov`, { headers });
+    return this.http.get(`${environment.urlLinux}/Usersxpermission?type=${type}`, { headers });
   }
 
-  addUserxCompany(data: any): Observable<any> {
+  addUserxPermission(data: any): Observable<any> {
     const headers = this.getHeaders();
     return this.http.post(`${environment.urlLinux}/Usersxpermission`, data, { headers });
   }
 
-  updateUserxCompany(id: string, data: any): Observable<any> {
+  updateUserxPermission(id: string, data: any): Observable<any> {
     const headers = this.getHeaders();
     return this.http.put(`${environment.urlLinux}/Usersxpermission/${id}`, data, { headers });
   }
 
-  deleteUserxCompany(id: number, data: any): Observable<any> {
+  deleteUserxPermission(id: number, data: any): Observable<any> {
     const headers = this.getHeaders();
     return this.http.put(`${environment.urlLinux}/Usersxpermission/${id}`, data, { headers });
   }

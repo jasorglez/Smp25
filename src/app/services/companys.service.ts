@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 import { Icompany } from '../interface/icompany';
 
@@ -16,6 +16,18 @@ export class CompanysService {
   constructor( private http: HttpClient ) {
     this._idEmpresa = 0 ;
    }
+
+   private getAuthToken(): string {
+    return localStorage.getItem('token') || '';
+  }
+
+  private getHeaders(): HttpHeaders {
+    const token = this.getAuthToken();
+    return new HttpHeaders({
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    });
+  }
 
 
       /*-------------------------------
@@ -57,13 +69,10 @@ getDataCompanys(clave: string): Observable<Icompany | null> {
   }
 }
 
-//Tomar la data de la colección Empresas en Firebase
-getDataCompanysAzure(id: string): Observable<Icompany | null> {
-  if (id !== '') {
-    return this.http.get<any>(`${environment.urlAzure}api/Companys/${id}`);
-  } else {
-    return this.http.get<any>(`${environment.urlAzure}api/Companys/all`);
-  }
+//Tomar la data de la colección Empresas en Azure
+getDataCompanysAzure() {
+  const headers = this.getHeaders();
+    return this.http.get(`${environment.urlLinux3}/Companys`, { headers });
 }
 
 getEmpresa(id: string): Observable<any> {
