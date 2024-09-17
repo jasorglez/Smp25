@@ -63,7 +63,6 @@ export class UsersxprojectsComponent {
         acc[dep.id] = dep.name; // Cambia la estructura para que solo almacene el nombre
         return acc;
       }, {});
-      console.log(this.projects);
     });
   }
 
@@ -79,7 +78,7 @@ export class UsersxprojectsComponent {
         headerName: 'Campo petrolero',
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
-          values: Object.keys(this.projects),
+          values: Object.keys(this.projects).sort((a, b) => this.projects[a].localeCompare(this.projects[b])),
         },
         valueFormatter: (params) => this.projects[params.value] || '',
         valueSetter: (params) => {

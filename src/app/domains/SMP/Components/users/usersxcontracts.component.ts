@@ -2,7 +2,7 @@ import { Component, computed, HostListener, inject } from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { UsersService } from 'app/services/users.service';
 import { AgGridModule } from 'ag-grid-angular';
-import { OilfieldService } from 'app/services/oilfield.service';
+import { ContractsService } from 'app/services/contracts.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
@@ -11,20 +11,20 @@ import { concat, lastValueFrom, toArray } from 'rxjs';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 
 @Component({
-  selector: 'app-usersxoilfields',
+  selector: 'app-usersxcontracts',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, UsersProfileComponent],
   templateUrl: './usersxpermissions.component.html'
 })
-export class UsersxoilfieldsComponent {
+export class UsersxcontractsComponent {
 
   private usersService = inject(UsersService);
-  private oilfieldsService = inject(OilfieldService);
-  private usersxoilfieldsService = inject(UsersxpermissionsService);
+  private contractsService = inject(ContractsService);
+  private usersxcontractsService = inject(UsersxpermissionsService);
 
   ngOnInit() {
     this.obtenerDatos();
-    this.obtenerOilfields();
+    this.obtenerContracts();
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -41,26 +41,26 @@ export class UsersxoilfieldsComponent {
 
   notSavedChanges: boolean = false;
   rowData: any;
-  oilfields: { [key: string]: string } = {};
+  contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
   id: string;
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
-  private permissionType: string = 'oilfield';
+  private permissionType: string = 'contract';
 
   obtenerDatos() {
-    this.usersxoilfieldsService
+    this.usersxcontractsService
       .getDataUsersxPermissions(this.permissionType)
       .subscribe((data: any) => {
         this.rowData = data.filter((row: any) => row.idUser === this.idUser);
       });
   }
 
-  obtenerOilfields() {
-    this.oilfieldsService.getOilfields().subscribe((data: any[]) => {
-      this.oilfields = data.reduce((acc, dep) => {
-        acc[dep.id] = dep.name; // Cambia la estructura para que solo almacene el nombre
+  obtenerContracts() {
+    this.contractsService.getContracts().subscribe((data: any[]) => {
+      this.contracts = data.reduce((acc, dep) => {
+        acc[dep.id] = dep.descripSmall; // Cambia la estructura para que solo almacene el nombre
         return acc;
       }, {});
     });
@@ -75,15 +75,15 @@ export class UsersxoilfieldsComponent {
       },
       {
         field: 'idPermission',
-        headerName: 'Campo petrolero',
+        headerName: 'Contrato',
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
-          values: Object.keys(this.oilfields).sort((a, b) => this.oilfields[a].localeCompare(this.oilfields[b])),
+          values: Object.keys(this.contracts).sort((a, b) => this.contracts[a].localeCompare(this.contracts[b])),
         },
-        valueFormatter: (params) => this.oilfields[params.value] || '',
+        valueFormatter: (params) => this.contracts[params.value] || '',
         valueSetter: (params) => {
           const newValue = params.newValue;
-          if (this.oilfields.hasOwnProperty(newValue)) {
+          if (this.contracts.hasOwnProperty(newValue)) {
             params.data[params.colDef.field] = newValue;
             return true;
           }
@@ -114,7 +114,7 @@ export class UsersxoilfieldsComponent {
     event.data.__modified = true;
     // Verificar si el campo modificado es 'id_company'
     if (event.colDef.field === 'id_company') {
-      const selectedCompany = this.oilfields[event.data.id_company];
+      const selectedCompany = this.contracts[event.data.id_company];
       if (selectedCompany) {
         event.data.company = selectedCompany;
       }
@@ -156,7 +156,7 @@ export class UsersxoilfieldsComponent {
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
-        'Debe seleccionar un campo petrolero antes de guardar.',
+        'Debe seleccionar una compañía antes de guardar.',
         'error'
       );
       return;
@@ -169,12 +169,12 @@ export class UsersxoilfieldsComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.usersxoilfieldsService.addUserxPermission(cleanedData);
+      return this.usersxcontractsService.addUserxPermission(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.usersxoilfieldsService.updateUserxPermission(row.id, cleanedData);
+      return this.usersxcontractsService.updateUserxPermission(row.id, cleanedData);
     });
 
     // Using concat to combine observables and lastValueFrom for async/await
@@ -218,7 +218,7 @@ export class UsersxoilfieldsComponent {
 
       // Elimina la entrada de la DB
       try {
-        await this.usersxoilfieldsService.deleteUserxPermission(id, selectedData).toPromise();
+        await this.usersxcontractsService.deleteUserxPermission(id, selectedData).toPromise();
       } catch (err) {
         console.error(err);
       }

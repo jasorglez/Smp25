@@ -63,7 +63,6 @@ export class UsersxcompanysComponent {
         acc[dep.id] = dep.name; // Cambia la estructura para que solo almacene el nombre
         return acc;
       }, {});
-      console.log(this.companys);
     });
   }
 
@@ -79,7 +78,7 @@ export class UsersxcompanysComponent {
         headerName: 'Compañía',
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
-          values: Object.keys(this.companys),
+          values: Object.keys(this.companys).sort((a, b) => this.companys[a].localeCompare(this.companys[b])),
         },
         valueFormatter: (params) => this.companys[params.value] || '',
         valueSetter: (params) => {

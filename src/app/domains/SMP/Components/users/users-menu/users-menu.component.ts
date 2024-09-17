@@ -6,7 +6,7 @@ import { UsersxoilfieldsComponent } from '../usersxoilfields.component';
 import { UsersxcompanysComponent } from "../usersxcompanys.component";
 import { UsersService } from 'app/services/users.service';
 import { UsersxprojectsComponent } from "../usersxprojects.component";
-import { UsersxcontractsComponent } from "../usersxcontracts/usersxcontracts.component";
+import { UsersxcontractsComponent } from "../usersxcontracts.component";
 
 @Component({
   selector: 'app-users-menu',
