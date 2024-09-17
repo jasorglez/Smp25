@@ -75,7 +75,7 @@ export class UsersxprojectsComponent {
       },
       {
         field: 'idPermission',
-        headerName: 'Campo petrolero',
+        headerName: 'Proyecto',
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
           values: Object.keys(this.projects).sort((a, b) => this.projects[a].localeCompare(this.projects[b])),

@@ -215,6 +215,19 @@ export class UsersComponent {
         },
         editable: true,
       },
+      {
+        field: 'signature',
+        headerName: 'Firma',
+        cellEditor: 'agTextCellEditor',
+        cellRenderer: (params: any) => {
+          if (params.value) {
+            return `<img src="${params.value}" class="text-center" style="height:100%;">`;
+          } else {
+            return '';
+          }
+        },
+        editable: true,
+      }
     ];
   }
 
@@ -307,6 +320,7 @@ export class UsersComponent {
       phone: '',
       position: '',
       picture: './assets/img/profile.png',
+      signature: '',
       __isNew: true
     };
 
