@@ -2,25 +2,28 @@ import { inject, Injectable } from '@angular/core';
 
 import { environment } from '@env/environment';
 
-import { HttpClient } from '@angular/common/http';
-import { EMPTY, Observable } from 'rxjs';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 
 @Injectable({
-      providedIn: 'root'
-    })
-    export class OilfieldService {
+  providedIn: 'root',
+})
+export class OilfieldService {
+  private http = inject(HttpClient);
 
-private http = inject(HttpClient)
-
-Oilfield(): Observable<any> {
-  try {
-    const apiUrl = `${environment.urlAzure}api/Oilfield`;
-  //  alert(apiUrl)
-    return this.http.get(apiUrl);
-  } catch(error) {
-    console.error("Error Get Oilfield", error);
-    return EMPTY; // Import EMPTY from 'rxjs'
+  private getAuthToken(): string {
+    return localStorage.getItem('token') || '';
   }
-}
 
+  private getHeaders(): HttpHeaders {
+    const token = this.getAuthToken();
+    return new HttpHeaders({
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  getOilfields() {
+    const headers = this.getHeaders();
+    return this.http.get(`${environment.urlLinux3}/Oilfield`, { headers });
+  }
 }

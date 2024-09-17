@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { TrackingService } from 'app/services/tracking.service';
 import { UsersComponent } from '../users.component';
-import { UsersxoilfieldsComponent } from '../usersxoilfields/usersxoilfields.component';
+import { UsersxoilfieldsComponent } from '../usersxoilfields.component';
 import { UsersxcompanysComponent } from "../usersxcompanys.component";
 import { UsersService } from 'app/services/users.service';
 import { UsersxprojectsComponent } from "../usersxprojects/usersxprojects.component";
