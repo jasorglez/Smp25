@@ -33,7 +33,7 @@ export class UsersxpermissionsService {
     return this.http.put(`${environment.urlLinux}/Usersxpermission/${id}`, data, { headers: this.getHeaders() });
   }
 
-  deleteUserxPermission(id: number, data: any): Observable<any> {
-    return this.http.put(`${environment.urlLinux}/Usersxpermission/${id}`, data, { headers: this.getHeaders() });
+  deleteUserxPermission(id: number): Observable<any> {
+    return this.http.delete(`${environment.urlLinux}/Usersxpermission/${id}`, { headers: this.getHeaders() });
   }
 }

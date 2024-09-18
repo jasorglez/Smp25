@@ -214,11 +214,9 @@ export class UsersxcompanysComponent {
 
       const selectedData = selectedNodes[0].data;
       const id = selectedData.id;
-      selectedData.active = 0;
-
-      // Elimina la entrada de la DB
+      // Pone active = 0
       try {
-        await this.usersxcompanysService.deleteUserxPermission(id, selectedData).toPromise();
+        await this.usersxcompanysService.deleteUserxPermission(id).toPromise();
       } catch (err) {
         console.error(err);
       }

@@ -2,7 +2,7 @@ import { Component, computed, HostListener, inject } from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { UsersService } from 'app/services/users.service';
 import { AgGridModule } from 'ag-grid-angular';
-import { ProjectsService } from 'app/services/projects.service';
+import { RootService } from 'app/services/root.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
@@ -11,20 +11,20 @@ import { concat, lastValueFrom, toArray } from 'rxjs';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 
 @Component({
-  selector: 'app-usersxprojects',
+  selector: 'app-usersxroot',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, UsersProfileComponent],
   templateUrl: './usersxpermissions.component.html'
 })
-export class UsersxprojectsComponent {
+export class UsersxrootComponent {
 
   private usersService = inject(UsersService);
-  private projectsService = inject(ProjectsService);
-  private usersxprojectsService = inject(UsersxpermissionsService);
+  private rootService = inject(RootService);
+  private usersxrootService = inject(UsersxpermissionsService);
 
   ngOnInit() {
     this.obtenerDatos();
-    this.obtenerProjects();
+    this.obtenerRoot();
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -41,25 +41,25 @@ export class UsersxprojectsComponent {
 
   notSavedChanges: boolean = false;
   rowData: any;
-  projects: { [key: string]: string } = {};
+  root: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
   id: string;
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
-  private permissionType: string = 'project';
+  private permissionType: string = 'root';
 
   obtenerDatos() {
-    this.usersxprojectsService
+    this.usersxrootService
       .getDataUsersxPermissions(this.permissionType)
       .subscribe((data: any) => {
         this.rowData = data.filter((row: any) => row.idUser === this.idUser);
       });
   }
 
-  obtenerProjects() {
-    this.projectsService.getProjects().subscribe((data: any[]) => {
-      this.projects = data.reduce((acc, dep) => {
+  obtenerRoot() {
+    this.rootService.getRoot().subscribe((data: any[]) => {
+      this.root = data.reduce((acc, dep) => {
         acc[dep.id] = dep.name; // Cambia la estructura para que solo almacene el nombre
         return acc;
       }, {});
@@ -75,15 +75,15 @@ export class UsersxprojectsComponent {
       },
       {
         field: 'idPermission',
-        headerName: 'Proyecto',
+        headerName: 'Campo petrolero',
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
-          values: Object.keys(this.projects).sort((a, b) => this.projects[a].localeCompare(this.projects[b])),
+          values: Object.keys(this.root).sort((a, b) => this.root[a].localeCompare(this.root[b])),
         },
-        valueFormatter: (params) => this.projects[params.value] || '',
+        valueFormatter: (params) => this.root[params.value] || '',
         valueSetter: (params) => {
           const newValue = params.newValue;
-          if (this.projects.hasOwnProperty(newValue)) {
+          if (this.root.hasOwnProperty(newValue)) {
             params.data[params.colDef.field] = newValue;
             return true;
           }
@@ -112,6 +112,21 @@ export class UsersxprojectsComponent {
   onCellValueChanged(event: any) {
     console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
+    // Verificar si el campo modificado es 'id_company'
+    if (event.colDef.field === 'id_company') {
+      const selectedCompany = this.root[event.data.id_company];
+      if (selectedCompany) {
+        event.data.company = selectedCompany;
+      }
+
+      // Forzar actualización de la celda de 'company'
+      this.gridApi.refreshCells({
+        rowNodes: [event.node],
+        columns: ['company'],
+        force: true,
+      });
+    }
+
     this.notSavedChanges = true;
   }
 
@@ -141,7 +156,7 @@ export class UsersxprojectsComponent {
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
-        'Debe seleccionar un proyecto antes de guardar.',
+        'Debe seleccionar un campo petrolero antes de guardar.',
         'error'
       );
       return;
@@ -154,12 +169,12 @@ export class UsersxprojectsComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.usersxprojectsService.addUserxPermission(cleanedData);
+      return this.usersxrootService.addUserxPermission(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.usersxprojectsService.updateUserxPermission(row.id, cleanedData);
+      return this.usersxrootService.updateUserxPermission(row.id, cleanedData);
     });
 
     // Using concat to combine observables and lastValueFrom for async/await
@@ -201,7 +216,7 @@ export class UsersxprojectsComponent {
       const id = selectedData.id;
       // Pone active = 0
       try {
-        await this.usersxprojectsService.deleteUserxPermission(id).toPromise();
+        await this.usersxrootService.deleteUserxPermission(id).toPromise();
       } catch (err) {
         console.error(err);
       }

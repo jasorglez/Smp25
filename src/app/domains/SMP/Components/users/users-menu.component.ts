@@ -7,11 +7,12 @@ import { UsersxcompanysComponent } from "./usersxcompanys.component";
 import { UsersService } from 'app/services/users.service';
 import { UsersxprojectsComponent } from "./usersxprojects.component";
 import { UsersxcontractsComponent } from "./usersxcontracts.component";
+import { UsersxrootComponent } from "./usersxroot.component";
 
 @Component({
   selector: 'app-users-menu',
   standalone: true,
-  imports: [CommonModule, UsersComponent, UsersxoilfieldsComponent, UsersxcompanysComponent, UsersxprojectsComponent, UsersxcontractsComponent],
+  imports: [CommonModule, UsersComponent, UsersxoilfieldsComponent, UsersxcompanysComponent, UsersxprojectsComponent, UsersxcontractsComponent, UsersxrootComponent],
   templateUrl: './users-menu.component.html'
 })
 export class UsersMenuComponent {
