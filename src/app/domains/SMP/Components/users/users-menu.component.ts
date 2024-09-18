@@ -1,19 +1,18 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { TrackingService } from 'app/services/tracking.service';
-import { UsersComponent } from '../users.component';
-import { UsersxoilfieldsComponent } from '../usersxoilfields.component';
-import { UsersxcompanysComponent } from "../usersxcompanys.component";
+import { UsersComponent } from './users.component';
+import { UsersxoilfieldsComponent } from './usersxoilfields.component';
+import { UsersxcompanysComponent } from "./usersxcompanys.component";
 import { UsersService } from 'app/services/users.service';
-import { UsersxprojectsComponent } from "../usersxprojects.component";
-import { UsersxcontractsComponent } from "../usersxcontracts.component";
+import { UsersxprojectsComponent } from "./usersxprojects.component";
+import { UsersxcontractsComponent } from "./usersxcontracts.component";
 
 @Component({
   selector: 'app-users-menu',
   standalone: true,
   imports: [CommonModule, UsersComponent, UsersxoilfieldsComponent, UsersxcompanysComponent, UsersxprojectsComponent, UsersxcontractsComponent],
-  templateUrl: './users-menu.component.html',
-  styleUrl: './users-menu.component.scss',
+  templateUrl: './users-menu.component.html'
 })
 export class UsersMenuComponent {
   private trackingService = inject(TrackingService);

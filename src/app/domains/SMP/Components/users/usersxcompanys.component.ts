@@ -6,7 +6,7 @@ import { CompanysService } from 'app/services/companys.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
-import { UsersProfileComponent } from './users-profile/users-profile.component';
+import { UsersProfileComponent } from './users-profile.component';
 import { concat, lastValueFrom, toArray } from 'rxjs';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 

@@ -5,7 +5,7 @@ import { DomainsModule } from 'app/domains/domainsmodule';
 import { SetupComponent } from "../../Components/setup/setup.component";
 import { UsersComponent } from "../../Components/users/users.component";
 import { ProjectsComponent } from "../../Components/projects/projects.component";
-import { UsersMenuComponent } from '../../Components/users/users-menu/users-menu.component';
+import { UsersMenuComponent } from '../../Components/users/users-menu.component';
 
 @Component({
   selector: 'app-proccbpi',

@@ -5,7 +5,7 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { UsersService } from 'app/services/users.service';
 import { alerts } from 'app/helpers/alerts';
 import { FormsModule } from '@angular/forms';
-import { UsersProfileComponent } from "./users-profile/users-profile.component";
+import { UsersProfileComponent } from "./users-profile.component";
 import { concat, lastValueFrom, toArray } from 'rxjs';
 
 @Injectable({
@@ -115,6 +115,45 @@ export class UsersComponent {
         editable: true,
         filter: true
       },
+            {
+        field: 'email',
+        headerName: 'Email',
+        cellEditor: 'agTextCellEditor',
+        editable: (params) => params.data.__isNew,
+        cellEditorParams: {
+          useFormatter: true,
+        },
+        valueFormatter: (params) => params.value,
+        valueSetter: (params) => {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (emailRegex.test(params.newValue)) {
+            // Verificar si el email ya existe
+            const duplicateExists = this.rowData.some((row, index) => 
+              index !== params.node.rowIndex && row.email === params.newValue
+            );
+  
+            if (duplicateExists) {
+              alerts.basicAlert(
+                'Añadir usuario',
+                'Ya existe un usuario con ese correo electrónico.',
+                'error'
+              );
+              return false;
+            }
+  
+            params.data[params.colDef.field] = params.newValue;
+            return true;
+          } else {
+            alerts.basicAlert(
+              'Editar usuario',
+              'Correo electrónico no válido.',
+              'error'
+            );
+            return false;
+          }
+        },
+        filter: true
+      },
       {
         field: 'age',
         headerName: 'Edad',
@@ -132,36 +171,9 @@ export class UsersComponent {
         editable: true,
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
-          values: ['Mexico', 'USA', 'MEX-USA', 'Colombia', 'Chile', 'Otro'],
+          values: ['México', 'USA', 'MEX-USA', 'Colombia', 'Chile', 'Otro'],
           selectOnPopup: true
         },
-      },
-      {
-        field: 'email',
-        headerName: 'Email',
-        cellEditor: 'agTextCellEditor',
-        editable: true,
-        //editable: (params) => params.data.isNew,
-        cellEditorParams: {
-          useFormatter: true,
-        },
-        valueFormatter: (params) => params.value,
-        valueSetter: (params) => {
-          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-          if (emailRegex.test(params.newValue)) {
-            params.data[params.colDef.field] = params.newValue;
-            return true;
-          } else {
-            // Mostrar alerta de correo electrónico no válido
-            alerts.basicAlert(
-              'Editar usuario',
-              'Correo electrónico no válido.',
-              'error'
-            );
-            return false;
-          }
-        },
-        filter: true
       },
       {
         headerName: 'Contraseña',
@@ -171,25 +183,25 @@ export class UsersComponent {
         },
         editable: true,
       },
-      {
-        field: 'idDepartament',
-        headerName: 'Departamento',
-        cellEditor: 'agRichSelectCellEditor',
-        cellEditorParams: {
-          values: Object.keys(this.departamentos),
+        {
+          field: 'idDepartament',
+          headerName: 'Departamento',
+          cellEditor: 'agRichSelectCellEditor',
+          cellEditorParams: {
+            values: Object.keys(this.departamentos),
+          },
+          valueFormatter: (params) => this.departamentos[params.value] || '',
+          valueSetter: (params) => {
+            const newValue = params.newValue;
+            if (this.departamentos.hasOwnProperty(newValue)) {
+              params.data[params.colDef.field] = newValue;
+              return true;
+            }
+            return false;
+          },
+          valueParser: (params) => params.newValue,
+          editable: true,
         },
-        valueFormatter: (params) => this.departamentos[params.value] || '',
-        valueSetter: (params) => {
-          const newValue = params.newValue;
-          if (this.departamentos.hasOwnProperty(newValue)) {
-            params.data[params.colDef.field] = newValue;
-            return true;
-          }
-          return false;
-        },
-        valueParser: (params) => params.newValue,
-        editable: true
-      },
       {
         field: 'phone',
         headerName: 'Teléfono',

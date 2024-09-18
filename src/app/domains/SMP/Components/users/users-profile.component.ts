@@ -5,8 +5,7 @@ import { UsersService } from 'app/services/users.service';
   selector: 'app-users-profile',
   standalone: true,
   imports: [],
-  templateUrl: './users-profile.component.html',
-  styleUrl: './users-profile.component.scss'
+  templateUrl: './users-profile.component.html'
 })
 export class UsersProfileComponent {
 

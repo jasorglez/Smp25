@@ -6,7 +6,7 @@ import { ProjectsService } from 'app/services/projects.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
-import { UsersProfileComponent } from './users-profile/users-profile.component';
+import { UsersProfileComponent } from './users-profile.component';
 import { concat, lastValueFrom, toArray } from 'rxjs';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 
@@ -141,7 +141,7 @@ export class UsersxprojectsComponent {
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
-        'Debe seleccionar un campo petrolero antes de guardar.',
+        'Debe seleccionar un proyecto antes de guardar.',
         'error'
       );
       return;
