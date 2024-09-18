@@ -23,7 +23,6 @@ export class OilfieldService {
   }
 
   getOilfields() {
-    const headers = this.getHeaders();
-    return this.http.get(`${environment.urlLinux3}/Oilfield`, { headers });
+    return this.http.get(`${environment.urlLinux3}/Oilfield`, { headers: this.getHeaders() });
   }
 }

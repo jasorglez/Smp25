@@ -60,10 +60,6 @@ export class UsersComponent {
   paginationPageSizeSelector = false;
   id: string;
   private gridApi: GridApi;
-  opciones = {
-    "si": "Sí",
-    "no": "No"
-  }
   private tempIdCounter: number = 0;
 
   obtenerDatos() {

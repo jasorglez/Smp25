@@ -37,8 +37,7 @@ export class ProjectsService {
 
 
   getProjects() {
-    const headers = this.getHeaders();
-    return this.http.get(`${environment.urlLinux3}/Project`, { headers });
+    return this.http.get(`${environment.urlLinux3}/Project`, { headers: this.getHeaders() });
   }
 
 

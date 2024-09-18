@@ -24,7 +24,6 @@ export class ContractsService {
   }
 
   getContracts() {
-    const headers = this.getHeaders();
-    return this.http.get(`${environment.urlLinux3}/Contract/2cont?idBussines=1`, { headers });
+    return this.http.get(`${environment.urlLinux3}/Contract/2cont?idBussines=1`, { headers: this.getHeaders() });
   }
 }

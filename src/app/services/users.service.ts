@@ -51,28 +51,23 @@ export class UsersService {
   // Aqui comienzan los cambios hechos a SMP
 
   getDataUsers() {
-    const headers = this.getHeaders();
-    return this.http.get(`${environment.urlLinux}/User/users`, { headers });
+    return this.http.get(`${environment.urlLinux}/User/users`, { headers: this.getHeaders() });
   }
 
   addUser(data: any): Observable<any> {
-    const headers = this.getHeaders();
-    return this.http.post(`${environment.urlLinux}/User`, data, { headers });
+    return this.http.post(`${environment.urlLinux}/User`, data, { headers: this.getHeaders() });
   }
 
   updateUser(id: string, data: any): Observable<any> {
-    const headers = this.getHeaders();
-    return this.http.put(`${environment.urlLinux}/User/${id}`, data, { headers });
+    return this.http.put(`${environment.urlLinux}/User/${id}`, data, { headers: this.getHeaders() });
   }
 
   deleteUser(id: number, data: any): Observable<any> {
-    const headers = this.getHeaders();
-    return this.http.put(`${environment.urlLinux}/User/${id}`, data, { headers });
+    return this.http.put(`${environment.urlLinux}/User/${id}`, data, { headers: this.getHeaders() });
   }
 
   getDepartments() {
-    const headers = this.getHeaders();
-    return this.http.get(`${environment.urlLinux}/Department`, { headers });
+    return this.http.get(`${environment.urlLinux}/Department`, { headers: this.getHeaders() });
   }
   
   // Aqui terminan los cambios a SMP

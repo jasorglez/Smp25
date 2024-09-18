@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable, forkJoin, from } from 'rxjs';
+import { Observable } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -22,22 +22,18 @@ export class UsersxpermissionsService {
   }
 
   getDataUsersxPermissions(type: string) {
-    const headers = this.getHeaders();
-    return this.http.get(`${environment.urlLinux}/Usersxpermission?type=${type}`, { headers });
+    return this.http.get(`${environment.urlLinux}/Usersxpermission?type=${type}`, { headers: this.getHeaders() });
   }
 
   addUserxPermission(data: any): Observable<any> {
-    const headers = this.getHeaders();
-    return this.http.post(`${environment.urlLinux}/Usersxpermission`, data, { headers });
+    return this.http.post(`${environment.urlLinux}/Usersxpermission`, data, { headers: this.getHeaders() });
   }
 
   updateUserxPermission(id: string, data: any): Observable<any> {
-    const headers = this.getHeaders();
-    return this.http.put(`${environment.urlLinux}/Usersxpermission/${id}`, data, { headers });
+    return this.http.put(`${environment.urlLinux}/Usersxpermission/${id}`, data, { headers: this.getHeaders() });
   }
 
   deleteUserxPermission(id: number, data: any): Observable<any> {
-    const headers = this.getHeaders();
-    return this.http.put(`${environment.urlLinux}/Usersxpermission/${id}`, data, { headers });
+    return this.http.put(`${environment.urlLinux}/Usersxpermission/${id}`, data, { headers: this.getHeaders() });
   }
 }
