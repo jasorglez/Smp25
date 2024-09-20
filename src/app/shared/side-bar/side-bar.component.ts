@@ -48,6 +48,10 @@ export class SideBarComponent {
     //   alert(this.trackingService.getpictureComp())
   }
 
+  ////////////////////////////////////////
+  // Este es el cambio que se hizo para obtener todo de SQL
+  ////////////////////////////////////////
+
   //empiezan los procedimientos para las llamadas de los combobox
   //obtener los permisos de la cia
   async getpermissionxCompanys() {
@@ -95,6 +99,11 @@ export class SideBarComponent {
         // alert('Format:'+ datacom.formatrep);
       });
   }
+
+
+  ////////////////////////////////////////
+  // Aqui termina el cambio que hizo para obtener todo de SQL
+  ////////////////////////////////////////
 
   onCompanysSelected(event: Event): void {
     const target = event.target as HTMLSelectElement;
