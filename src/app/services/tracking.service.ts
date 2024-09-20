@@ -1,296 +1,345 @@
 import { inject, Injectable } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { BehaviorSubject, map } from 'rxjs';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class TrackingService {
+  private http = inject(HttpClient);
 
+  private currentProject = new BehaviorSubject<string>('');
+  private emailser: string = '';
+  private namecomp: string = '';
+  private picturecomp: string = '';
+  private fri: string = '';
+  private nameuser: string = '';
+  private pictureuser: string = '';
+  private projectser: string = '';
+  private branchser: string = '';
+  private companyser: string = '';
+  private contract: string = '';
+  private nameproject: string = '';
+  private ubicationproject: string = '';
+  private startproject: string = '';
+  private endproject: string = '';
+  public ultimaventana: string = '';
+  public idEmp: number = 0;
+  private fecha: Date = new Date('2024-01-01');
+  private numRes: string = '';
+  private comment: string = '';
+  private idNumSap: number = 0;
+  private cpser: number = 0;
+  private platformser: number = 0;
+  private plataforma: string = '';
+  private platform: number = 0;
+  private numprov: number = 0;
+  private aproject: string = '';
+  private abranch: string = '';
+  private aplatform: string = '';
+  private emailprofile: string = '';
+  private bandform: string = '';
+  private bandformEO: string = '';
+  private idUser: number = 0;
 
-   private http= inject(HttpClient) ;
+  private getAuthToken(): string {
+    return localStorage.getItem('token') || '';
+  }
 
- formatearMoneda(valor: number): string {
+  private getHeaders(): HttpHeaders {
+    const token = this.getAuthToken();
+    return new HttpHeaders({
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  formatearMoneda(valor: number): string {
     const formatter = new Intl.NumberFormat('es-MX', {
       style: 'currency',
-      currency: 'MXN'
+      currency: 'MXN',
     });
     return formatter.format(valor);
   }
 
-
-  private currentProject = new BehaviorSubject<string>('');
-
-  private emailser     : string = '' ;
   setEmail(email: string): void {
     this.emailser = email;
-    localStorage.setItem('mail', this.emailser)
+    localStorage.setItem('mail', this.emailser);
   }
+
   getEmail(): string {
     return this.emailser;
   }
 
+  getIdUser(email: string) {
+    return this.http.get(`${environment.urlLinux}/User/email/${email}`, {
+      headers: this.getHeaders(),
+    });
+  }
+
   // DATOS DE LA COMPANIA
-  private namecomp     : string = '' ;
   setnameComp(namecomp: string): void {
     this.namecomp = namecomp;
   }
-  getnameComp():string {
-    return this.namecomp
+
+  getnameComp(): string {
+    return this.namecomp;
   }
 
-  private picturecomp  : string = '' ;
   setpictureComp(picturecomp: string): void {
     this.picturecomp = picturecomp;
   }
-  getpictureComp():string {
-    return this.picturecomp
- }
 
- // TERMINO DE LA CIA
-
-  private fri          : string = '' ;
-  setformatrepint(fri : string): void {
-    this.fri = fri ;
+  getpictureComp(): string {
+    return this.picturecomp;
   }
-  getformrepint() : string {
-  return this.fri ;
+  // TERMINO DE LA CIA
+
+  setformatrepint(fri: string): void {
+    this.fri = fri;
   }
 
-  private nameuser     : string = '' ;
-  setnameUser(name: string) : void{
-    this.nameuser = name ;
-  }
-  getnameUser() {
-    return this.nameuser ;
+  getformrepint(): string {
+    return this.fri;
   }
 
-  private pictureuser : string = '' ;
-  setpictureUser(picture : string) : void {
-    this.pictureuser = picture
-  }
-  getpictureUser(){
-    return this.pictureuser ;
+  setnameUser(name: string): void {
+    this.nameuser = name;
   }
 
-  private projectser   : string = '' ;
-  setProject(project: string) : void {
-    this.projectser = project ;
-    localStorage.setItem('project', this.projectser) ;
- }
- getProject() {
-   return this.projectser ;
- }
-
- private branchser: string = '';
- setBranch(branch: string): void {
-   this.branchser = branch;
-   localStorage.setItem('branch', this.branchser);
- }
- getBranch(): string {
-   if (!this.branchser) {
-     const storedBranch = localStorage.getItem('branch');
-     this.branchser = storedBranch !== null ? storedBranch : '';
-   }
-   return this.branchser;
- }
-
-
-  private companyser   : string = '' ;
-  setCompany(company : string) : void {
-    this.companyser = company ;
-    localStorage.setItem("company",this.companyser);
-  }
-  getCompany(){
-    return this.companyser ;
+  getnameUser(): string {
+    return this.nameuser;
   }
 
-  private contract         : string = '' ;
+  setpictureUser(picture: string): void {
+    this.pictureuser = picture;
+  }
+
+  getpictureUser(): string {
+    return this.pictureuser;
+  }
+
+  setProject(project: string): void {
+    this.projectser = project;
+    localStorage.setItem('project', this.projectser);
+  }
+
+  getProject(): string {
+    return this.projectser;
+  }
+
+  setBranch(branch: string): void {
+    this.branchser = branch;
+    localStorage.setItem('branch', this.branchser);
+  }
+
+  getBranch(): string {
+    if (!this.branchser) {
+      const storedBranch = localStorage.getItem('branch');
+      this.branchser = storedBranch !== null ? storedBranch : '';
+    }
+    return this.branchser;
+  }
+
+  setCompany(company: string): void {
+    this.companyser = company;
+    localStorage.setItem('company', this.companyser);
+  }
+
+  getCompany(): string {
+    return this.companyser;
+  }
+
   setContract(contract: string): void {
-    this.contract = contract ;
-  }
-  getContract() {
-    return this.contract ;
+    this.contract = contract;
   }
 
-  private nameproject      : string = '' ;
+  getContract(): string {
+    return this.contract;
+  }
+
   setnameProject(name: string): void {
-    this.nameproject= name ;
-   }
-  getnameProject() {
-    return this.nameproject ;
+    this.nameproject = name;
   }
 
-  private ubicationproject : string = '' ;
+  getnameProject(): string {
+    return this.nameproject;
+  }
+
   setubicationProject(ubication: string): void {
-    this.ubicationproject= ubication ;
-   }
-   getubicationProject() {
-    return this.ubicationproject
+    this.ubicationproject = ubication;
   }
 
-  private startproject : string = '' ;
-  setStart(start : string): void {
-    this.startproject = start ;
-   }
-   getStart() {
-    return this.startproject ;
-   }
-
-  private endproject   : string = '' ;
-  setEnd(end : string): void {
-    this.endproject = end ;
-   }
-   getEnd() {
-    return this.endproject ;
-   }
-
-  public ultimaventana : string  = '';
-  setultimaVentana(ultven : string): void {
-    this.ultimaventana = ultven ;
+  getubicationProject(): string {
+    return this.ubicationproject;
   }
-  getultimaVentana() {
+
+  setStart(start: string): void {
+    this.startproject = start;
+  }
+
+  getStart(): string {
+    return this.startproject;
+  }
+
+  setEnd(end: string): void {
+    this.endproject = end;
+  }
+
+  getEnd(): string {
+    return this.endproject;
+  }
+
+  setultimaVentana(ultven: string): void {
+    this.ultimaventana = ultven;
+  }
+
+  getultimaVentana(): string {
     return this.ultimaventana;
   }
 
-  public idEmp : number = 0 ;
-  setidEmp(ne : number) : void {
+  setidEmp(ne: number): void {
     this.idEmp = ne;
   }
-  getidEmp() {
-    return this.idEmp ;
- }
 
-  private fecha: Date = new Date('2024-01-01');
-  setfecha(fec : Date) : void{
+  getidEmp(): number {
+    return this.idEmp;
+  }
+
+  setfecha(fec: Date): void {
     this.fecha = fec;
-   }
-   getFecha() {
-    return this.fecha ;
   }
 
-  private numRes  : string = '';
-  setnumRes (nr : string) : void {
-    this.numRes = nr ;
-  }
-  getnumRes () {
-    return this.numRes  ;
+  getFecha(): Date {
+    return this.fecha;
   }
 
-  private comment : string = '' ;
-  setCommen (co : string) : void {
-    this.comment =  co ;
-  }
-  getCom() {
-    return this.comment ;
+  setnumRes(nr: string): void {
+    this.numRes = nr;
   }
 
-  private idNumSap : number = 0 ;
-  setidnumsap(id: number) : void {
-    this.idNumSap = id ;
-   }
-   getidNumSap() {
-      return this.idNumSap ;
-   }
-
-  private cpser : number = 0 ;
-  setCp(cp: number) : void {
-    this.cpser = cp ;
-   }
-   getCp() {
-      return this.cpser ;
-   }
-
-  private platformser : number = 0 ;
-  setPlatform(pl: number) : void {
-    this.platformser = pl ;
-   }
-   getPlat() {
-      return this.platformser ;
-   }
-
-   private plataforma:string = '' ;
-   setPlataforma(p2: string) : void {
-    this.plataforma = p2 ;
-   }
-   getPlataforma() {
-      return this.plataforma ;
-   }
-
-   private platform : number = 0;
-   setIdPlatform(p2: number) : void {
-    this.platform = p2 ;
-   }
-   getIdPlatform() {
-      return this.platform ;
-   }
-
-  private numprov : number = 0;
-  setnumpro (n: number) {
-      this.numprov = n ;
-  }
-   getnumpro() {
-    return this.numprov ;
-   }
-
-   private aproject : string = '' ;
-  setaproject (ap: string) {
-      this.aproject = ap ;
-  }
-   getaproject() {
-    return this.aproject ;
-   }
-
-   private abranch : string = '' ;
-  setabranch (ab: string) {
-      this.abranch = ab ;
-  }
-   getabranch() {
-    return this.abranch ;
-   }
-
-   private aplatform : string = '' ;
-  setaplatform (apl: string) {
-      this.aplatform = apl ;
-  }
-   getaplat() {
-    return this.aplatform ;
-   }
-
-   private emailprofile : string = '' ;
-  setemailprof (epf: string) {
-      this.emailprofile = epf ;
-  }
-   getemailprof() {
-    return this.emailprofile ;
-   }
-
-   private bandform : string = '' ;
-   setbandform (bandform: string) {
-       this.bandform = bandform ;
-   }
-    getbandform() {
-     return this.bandform ;
-    }
-
-    private bandformEO : string = '' ;
-    setbandformEO (bandformEO: string) {
-        this.bandformEO = bandformEO ;
-    }
-     getbandformEO() {
-      return this.bandformEO ;
-     }
-
-  changeProject(project : string) {
-      this.currentProject.next(project) ;
+  getnumRes(): string {
+    return this.numRes;
   }
 
+  setCommen(co: string): void {
+    this.comment = co;
+  }
+
+  getCom(): string {
+    return this.comment;
+  }
+
+  setidnumsap(id: number): void {
+    this.idNumSap = id;
+  }
+
+  getidNumSap(): number {
+    return this.idNumSap;
+  }
+
+  setCp(cp: number): void {
+    this.cpser = cp;
+  }
+
+  getCp(): number {
+    return this.cpser;
+  }
+
+  setPlatform(pl: number): void {
+    this.platformser = pl;
+  }
+
+  getPlat(): number {
+    return this.platformser;
+  }
+
+  setPlataforma(p2: string): void {
+    this.plataforma = p2;
+  }
+
+  getPlataforma(): string {
+    return this.plataforma;
+  }
+
+  setIdPlatform(p2: number): void {
+    this.platform = p2;
+  }
+
+  getIdPlatform(): number {
+    return this.platform;
+  }
+
+  setnumpro(n: number): void {
+    this.numprov = n;
+  }
+
+  getnumpro(): number {
+    return this.numprov;
+  }
+
+  setaproject(ap: string): void {
+    this.aproject = ap;
+  }
+
+  getaproject(): string {
+    return this.aproject;
+  }
+
+  setabranch(ab: string): void {
+    this.abranch = ab;
+  }
+
+  getabranch(): string {
+    return this.abranch;
+  }
+
+  setaplatform(apl: string): void {
+    this.aplatform = apl;
+  }
+
+  getaplat(): string {
+    return this.aplatform;
+  }
+
+  setemailprof(epf: string): void {
+    this.emailprofile = epf;
+  }
+
+  getemailprof(): string {
+    return this.emailprofile;
+  }
+
+  setbandform(bandform: string): void {
+    this.bandform = bandform;
+  }
+
+  getbandform(): string {
+    return this.bandform;
+  }
+
+  setbandformEO(bandformEO: string): void {
+    this.bandformEO = bandformEO;
+  }
+
+  getbandformEO(): string {
+    return this.bandformEO;
+  }
+
+  changeProject(project: string): void {
+    this.currentProject.next(project);
+  }
 
   /*=============================================
-	Guardar información de la
-	=============================================*/
-  async addLog(company: string, description: string, origin: string, user: string) {
+  Guardar información de la
+  =============================================*/
+  async addLog(
+    company: string,
+    description: string,
+    origin: string,
+    user: string
+  ) {
     // Obtener la fecha actual
     const datetime = new Date();
 
@@ -305,10 +354,12 @@ export class TrackingService {
       idn: 0,
     };
 
-    //console.log("Tracking", data)
-
     try {
-      const response: any = await this.http.get(`${environment.urlFirebase}tracking.json?orderBy="$key"&limitToLast=1`).toPromise();
+      const response: any = await this.http
+        .get(
+          `${environment.urlFirebase}tracking.json?orderBy="$key"&limitToLast=1`
+        )
+        .toPromise();
 
       const lastLogId = Object.keys(response)[0]; // Obtener la clave del último registro
       const lastLog = response[lastLogId] as { idn: number }; // Obtener el último registro completo con la propiedad "id"
@@ -316,27 +367,23 @@ export class TrackingService {
       // Asignar el valor de "id" del último registro al nuevo registro
       data['idn'] = lastLog ? lastLog.idn + 1 : 1;
 
-      //console.log(data) ;
+      const postResponse = await this.http
+        .post(`${environment.urlFirebase}tracking.json`, data)
+        .toPromise();
 
-      const postResponse = await this.http.post(`${environment.urlFirebase}tracking.json`, data).toPromise();
-
-      const postResponseAzu = await this.http.post(`${environment.urlAzure}api/Trackings`, data).toPromise();
-
-      //console.log('Log creado exitosamente:', postResponse);
+      const postResponseAzu = await this.http
+        .post(`${environment.urlAzure}api/Trackings`, data)
+        .toPromise();
     } catch (error) {
-
       console.error('Error al crear el log TRACKINGS:', error);
-
     }
   }
 
-
-	getDataTracking(valoruser :string){
-
-    return this.http.get(`${environment.urlFirebase}tracking.json?orderBy="user"&equalTo="${valoruser}"&orderBy="$idn"&print=pretty&sortOrder="desc"`);
-
-	}
-
+  getDataTracking(valoruser: string) {
+    return this.http.get(
+      `${environment.urlFirebase}tracking.json?orderBy="user"&equalTo="${valoruser}"&orderBy="$idn"&print=pretty&sortOrder="desc"`
+    );
+  }
 
   getTrackingRecordsByUser(user: string) {
     const url = `${environment.urlFirebase}tracking.json?orderBy="user"&equalTo="${user}"`;
@@ -344,20 +391,20 @@ export class TrackingService {
     return this.http.get(url).pipe(
       map((response: any) => {
         // Filtrar los registros por el campo "user"
-        const filteredRecords = Object.values(response).filter((record: any) => record.user === user);
+        const filteredRecords = Object.values(response).filter(
+          (record: any) => record.user === user
+        );
 
         // Ordenar los registros por el campo "idn" en forma ascendente
-        const sortedRecords = filteredRecords.sort((a: any, b: any) => a.idn - b.idn);
+        const sortedRecords = filteredRecords.sort(
+          (a: any, b: any) => a.idn - b.idn
+        );
 
         // Invertir el orden de los registros para que los últimos aparezcan primero
         const reversedRecords = sortedRecords.reverse();
 
         return reversedRecords;
-
       })
     );
   }
-
-
-
 }

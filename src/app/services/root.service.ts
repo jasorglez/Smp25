@@ -25,4 +25,8 @@ export class RootService {
   getRoot() {
     return this.http.get(`${environment.urlLinux3}/Root`, { headers: this.getHeaders() });
   }
+
+  getRootbyId(id:number) {
+    return this.http.get(`${environment.urlLinux3}/Root/${id}`, { headers: this.getHeaders() });
+  }
 }
