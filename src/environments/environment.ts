@@ -21,7 +21,9 @@ export const environment = {
   urlFirebase   : 'https://beapp-501d1-default-rtdb.firebaseio.com/',
   urlAzure    : 'https://bi24.azurewebsites.net/',
   urlLinux: 'https://bi2.com.mx:5003/api',
+  urlLinux4: 'https://bi2.com.mx:5004/api',
   urlLinux3: 'https://bi2.com.mx:5005/api',
+  
   //  urlAzure    : 'https://localhost:7089/',
 
 

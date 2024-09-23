@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 
 import { environment } from '@env/environment';
+import { TrackingService } from './tracking.service';
 
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { EMPTY, Observable } from 'rxjs';
@@ -10,19 +11,14 @@ import { EMPTY, Observable } from 'rxjs';
 })
 export class ProjectsService {
 
-  private http = inject(HttpClient);
+  private http            = inject(HttpClient);
+  private trackingService = inject(TrackingService);
 
   private getAuthToken(): string {
     return localStorage.getItem('token') || '';
   }
 
-  private getHeaders(): HttpHeaders {
-    const token = this.getAuthToken();
-    return new HttpHeaders({
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    });
-  }
+
 
   getProjectxOil(prio: number, idoil: number): Observable<any> {
     try {
@@ -37,7 +33,7 @@ export class ProjectsService {
 
 
   getProjects() {
-    return this.http.get(`${environment.urlLinux3}/Project`, { headers: this.getHeaders() });
+    return this.http.get(`${environment.urlLinux3}/Project`, { headers: this.trackingService.getHeaders() });
   }
 
 

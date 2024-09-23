@@ -1,3 +1,4 @@
+
 import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
@@ -7,10 +8,11 @@ import { DomainsModule } from 'app/domains/domainsmodule';
 import { FollowprojectsService } from '../../../../services/followprojects.service';
 import { TrackingService } from '../../../../services/tracking.service';
 
-import { ColDef, GridApi, GridReadyEvent, SelectionChangedEvent } from 'ag-grid-community';
+import { ColDef, GridApi, GridReadyEvent, SelectionChangedEvent} from 'ag-grid-enterprise'; 
+import { functions } from 'app/helpers/functions';
 
 @Component({
-  selector: 'app-contract',
+  selector: 'app-contracts',
   standalone: true,
   imports: [RouterOutlet, DomainsModule],
   templateUrl: './contracts.component.html',
@@ -24,6 +26,9 @@ export class ContractsComponent {
   isCancel = false;
   isDelete = false;
   isPrint  = false;
+
+  screenSizeSM = false;
+  notSavedChanges: boolean = false;
 
    // Inject of new way for Angular 18
     private trackingService = inject(TrackingService) ;
@@ -42,28 +47,37 @@ export class ContractsComponent {
 
    // Column Definitions: Defines the columns to be displayed.
   colMaster: ColDef[] = [
-    { field: 'numberContract', headerName: 'Contrato', filter: true, width: 60 },
+    { field: 'numberContract', headerName: 'Contrato', filter: true, width: 30 },
     { field: 'description', headerName: 'Descripcion', width: 285 },
     { field: 'descripSmall', headerName: 'Corta', width: 100 },
     { field: 'resident', headerName: 'Residente', width: 100, filter: true },
     { field: 'supervisor', headerName: 'Supervisor', width: 100, filter: true  },
     { field: 'amountMx', headerName: 'Monto MX', width: 100, 
       valueFormatter: (params) => this.trackingService.formatearMoneda(params.value), filter: true  },
-    { field: 'amountDll', headerName: 'Monto DLL', width: 100, 
+    { field: 'amountDll', headerName: 'Monto DLL2', width: 100, 
       valueFormatter: (params) => this.trackingService.formatearMoneda(params.value), filter: true  }
   ];
   
-
+ 
   ngOnInit(): void {
     //Called after the constructor, initializing input properties, and the first call to ngOnChanges.
     this.getContracts() ;
+    
+    /* Definir tamano de Pantallas
+	  if (functions.screenSize(768,1024)){
+        this.screenSizeSM = true
+        alert('Pantalla de Tableta') ;
+    }else {
+        this.screenSizeSM = false
+        alert('No es una Tableta') ;
+    }*/
   }
 
   getContracts() {
     this.followprojectsService.getContract(1).subscribe(
       (resp: any) => {
         this.contract = this.mapContract(resp);
-        //console.log(this.contract)
+        console.log(this.contract)
       },
       (error) => {
         console.error('Error fetching warehouses', error);
@@ -112,7 +126,7 @@ export class ContractsComponent {
       flex: 1,
     };
 
-  New(): void {
+  addRow(): void {
 
   }
 
@@ -120,7 +134,7 @@ export class ContractsComponent {
 
   }
 
-  Save()
+  saveChanges()
   {
 
   }
@@ -129,7 +143,7 @@ export class ContractsComponent {
 
   }
 
-  Delete() {
+  deleteUser() {
 
   }
 

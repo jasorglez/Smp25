@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import {
   HttpClient,
   HttpErrorResponse,
@@ -6,6 +6,8 @@ import {
 } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 import { Icompany } from '../interface/icompany';
+
+import { TrackingService } from './tracking.service';
 
 import { catchError, map } from 'rxjs/operators';
 import { EMPTY, Observable, of } from 'rxjs';
@@ -16,6 +18,8 @@ import { EMPTY, Observable, of } from 'rxjs';
 export class CompanysService {
   private _idEmpresa: number;
 
+  private trackingService = inject(TrackingService);
+
   constructor(private http: HttpClient) {
     this._idEmpresa = 0;
   }
@@ -24,13 +28,7 @@ export class CompanysService {
     return localStorage.getItem('token') || '';
   }
 
-  private getHeaders(): HttpHeaders {
-    const token = this.getAuthToken();
-    return new HttpHeaders({
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    });
-  }
+ 
 
   /*-------------------------------
  * aqui obtengo el email del login y lo fijo
@@ -91,8 +89,7 @@ export class CompanysService {
 
   //Tomar la data de la colección Empresas en Azure
   getDataCompanysAzure() {
-    return this.http.get(`${environment.urlLinux3}/Companys`, {
-      headers: this.getHeaders()
+    return this.http.get(`${environment.urlLinux3}/Companys`, { headers: this.trackingService.getHeaders()
     });
   }
 

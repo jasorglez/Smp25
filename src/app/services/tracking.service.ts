@@ -47,13 +47,6 @@ export class TrackingService {
     return localStorage.getItem('token') || '';
   }
 
-  private getHeaders(): HttpHeaders {
-    const token = this.getAuthToken();
-    return new HttpHeaders({
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    });
-  }
 
   formatearMoneda(valor: number): string {
     const formatter = new Intl.NumberFormat('es-MX', {
@@ -334,12 +327,7 @@ export class TrackingService {
   /*=============================================
   Guardar información de la
   =============================================*/
-  async addLog(
-    company: string,
-    description: string,
-    origin: string,
-    user: string
-  ) {
+  async addLog(company: string, description: string, origin: string,  user: string  ) {
     // Obtener la fecha actual
     const datetime = new Date();
 
@@ -407,4 +395,14 @@ export class TrackingService {
       })
     );
   }
+
+  public getHeaders(): HttpHeaders {
+    const token = this.getAuthToken();
+    return new HttpHeaders({
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+
 }

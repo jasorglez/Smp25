@@ -1,8 +1,9 @@
-import { Injectable, signal } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 
 import { environment } from '../../environments/environment';
 import { Iusers } from '../interface/iusers';
+import { TrackingService } from './tracking.service';
 
 import { alerts } from '../helpers/alerts';
 import { map, concat, catchError, forkJoin, Observable, throwError } from 'rxjs';
@@ -24,6 +25,8 @@ export class UsersService {
     positionUser: signal<string>(null)
   };
 
+  private trackingService = inject(TrackingService);
+  
   profileSignal(id: number, email: string, picture: string, name: string, organization: string, position: string) {
     this.profile.idUser.set(id);
     this.profile.emailUser.set(email);
@@ -40,34 +43,27 @@ export class UsersService {
     return localStorage.getItem('token') || '';
   }
 
-  private getHeaders(): HttpHeaders {
-    const token = this.getAuthToken();
-    return new HttpHeaders({
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    });
-  }
 
   // Aqui comienzan los cambios hechos a SMP
 
   getDataUsers() {
-    return this.http.get(`${environment.urlLinux}/User/users`, { headers: this.getHeaders() });
+    return this.http.get(`${environment.urlLinux}/User/users`, { headers: this.trackingService.getHeaders() });
   }
 
   addUser(data: any): Observable<any> {
-    return this.http.post(`${environment.urlLinux}/User`, data, { headers: this.getHeaders() });
+    return this.http.post(`${environment.urlLinux}/User`, data, { headers: this.trackingService.getHeaders() });
   }
 
   updateUser(id: string, data: any): Observable<any> {
-    return this.http.put(`${environment.urlLinux}/User/${id}`, data, { headers: this.getHeaders() });
+    return this.http.put(`${environment.urlLinux}/User/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
   deleteUser(id: number, data: any): Observable<any> {
-    return this.http.put(`${environment.urlLinux}/User/${id}`, data, { headers: this.getHeaders() });
+    return this.http.put(`${environment.urlLinux}/User/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
   getDepartments() {
-    return this.http.get(`${environment.urlLinux}/Department`, { headers: this.getHeaders() });
+    return this.http.get(`${environment.urlLinux}/Department`, { headers: this.trackingService.getHeaders() });
   }
   
   // Aqui terminan los cambios a SMP
@@ -169,7 +165,7 @@ export class UsersService {
 
 
   findEmail(email: string): Observable<any> {
-    const headers = this.getHeaders();
+    const headers = this.trackingService.getHeaders();
     return this.http.get<any>(`${environment.urlLinux}/User/email/${email}`, { headers }).pipe(
       map(datauser => {
 

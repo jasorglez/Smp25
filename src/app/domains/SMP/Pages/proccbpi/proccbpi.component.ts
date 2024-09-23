@@ -6,11 +6,13 @@ import { SetupComponent } from "../../Components/setup/setup.component";
 import { UsersComponent } from "../../Components/users/users.component";
 import { ProjectsComponent } from "../../Components/projects/projects.component";
 import { UsersMenuComponent } from '../../Components/users/users-menu.component';
+import { ContractsComponent } from "../../Components/contracts/contracts.component";
+
 
 @Component({
   selector: 'app-proccbpi',
   standalone: true,
-  imports: [DomainsModule, SetupComponent, UsersComponent, ProjectsComponent, UsersMenuComponent],
+  imports: [DomainsModule, SetupComponent, UsersComponent, ProjectsComponent, UsersMenuComponent, ContractsComponent],
   templateUrl: './proccbpi.component.html',
   styleUrl: './proccbpi.component.scss'
 })
