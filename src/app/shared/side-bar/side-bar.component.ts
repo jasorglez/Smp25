@@ -44,7 +44,7 @@ export class SideBarComponent {
 
   async ngOnInit() {
     await this.getpermissionxCompanys();
-    this.getPermissionxCprocess();
+    //this.getPermissionxCprocess();
     //   alert(this.trackingService.getpictureComp())
   }
 
@@ -105,107 +105,14 @@ export class SideBarComponent {
   // Aqui termina el cambio que hizo para obtener todo de SQL
   ////////////////////////////////////////
 
-  onCompanysSelected(event: Event): void {
-    const target = event.target as HTMLSelectElement;
-    this.trackingService.setCompany(target.value);
-    this.selectedCompany = target.value;
-    //alert('Picture:'+ this.selectedCompany);
-    this.getpermissionxBranchs();
-  }
-
-  // los Branchs o Sucursales
-  getpermissionxBranchs() {
-    //  alert('BRANCH: '+this.trackingService.getabranch()) ;
-    if (this.trackingService.getabranch() === 'Si') {
-      //alert(localStorage.getItem('company'));
-      //alert(localStorage.getItem('mail'));
-      this.companysService
-        .getpermissionsxBranch(
-          localStorage.getItem('company')!,
-          localStorage.getItem('mail')!
-        )
-        .subscribe((databranch) => {
-          this.branchData = Object.values(databranch);
-          if (this.branchData.length > 0) {
-            // console.log("dataBranch", this.branchData) ;
-            this.selectedBranchId = this.branchData[0].id_branchs;
-            this.trackingService.setBranch(this.selectedBranchId);
-            this.getpermissionxProjects();
-          } else {
-            alerts.basicAlert(
-              'Error',
-              'The user has not Branchs asssigns',
-              'error'
-            );
-          }
-        });
-    }
-  }
-
-  onBranchsSelected(event: Event): void {
-    const target = event.target as HTMLSelectElement;
-    this.selectedBranchId = target.value;
-    this.getpermissionxProjects();
-  }
-
-  // Datos de Projectos
-  getpermissionxProjects(): void {
-    if (this.trackingService.getaproject() === 'Si') {
-      this.companysService
-        .getpermissionsxProject(
-          localStorage.getItem('branch')!,
-          localStorage.getItem('mail')!
-        )
-        .subscribe((data) => {
-          // console.log("projectData", this.projectData)
-          this.projectData = Object.values(data);
-          if (this.projectData.length > 0) {
-            this.selectedProjectId = this.projectData[0].id_projects;
-            this.trackingService.setProject(this.selectedProjectId);
-            //this.getHeadersProjects() ;
-          } else {
-            alerts.basicAlert(
-              'Error',
-              'No existen Proyectos para este usuario.',
-              'error'
-            );
-          }
-        });
-    }
-  }
-
+ 
+    
   async onProjectSelected(event: Event) {
     const target = event.target as HTMLSelectElement;
     this.selectedProjectId = target.value;
     this.trackingService.setProject(this.selectedProjectId);
   }
-
-  async getPermissionxCprocess() {
-    //alert(this.trackingService.getaplat())
-    if (this.trackingService.getaplat() === 'Si') {
-      this.companysService
-        .getpermissionsxCprocess(
-          localStorage.getItem('branch')!,
-          localStorage.getItem('mail')!
-        )
-        .subscribe((data) => {
-          this.centerprocessData = Object.values(data);
-          //  console.log("cProcessData", this.centerprocessData)
-          if (this.centerprocessData.length > 0) {
-            this.selectedCProcessId = this.centerprocessData[0].id;
-            this.trackingService.setCp(this.selectedCProcessId);
-            this.getPermissionxPlataform(this.selectedCProcessId);
-          } else {
-            // alert(this.trackingService.getaplat())
-            alerts.basicAlert(
-              'Error',
-              'No existen Centro de Procesos para este usuario.',
-              'error'
-            );
-          }
-        });
-    }
-  }
+  
 
   async onCpSelected(event: Event) {
     const target = event.target as HTMLSelectElement;
