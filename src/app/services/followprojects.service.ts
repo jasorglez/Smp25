@@ -11,17 +11,19 @@ import { Icontract } from '../interface/icontract';
 })
 export class FollowprojectsService {
 
-  constructor() { }
-
   private trackingService = inject(TrackingService);
   private http = inject(HttpClient) ;
 
   getContract(contract: number) : Observable<Icontract>{
-     const apiUrl = (`${environment.urlLinux3}/Contract?idBussines=${contract}`);
+     const apiUrl = (`${environment.urlLinux4}/Contract?idBussines=${contract}`);
     // alert(apiUrl)
      const options = { headers: this.trackingService.getHeaders() };
   
   return this.http.get<Icontract>(apiUrl, options);
+  }
+
+  addContract(data: any): Observable<any> {
+    return this.http.post(`${environment.urlLinux4}/Contract`, data, { headers: this.trackingService.getHeaders() });
   }
 
 

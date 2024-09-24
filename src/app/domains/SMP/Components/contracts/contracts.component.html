@@ -1,43 +1,77 @@
-<div class="col-12 ">
-      <!-- This are the botons of CRUD -->
-        <div class="row">
-            <div class="col-4">
-              <!-- Botones -->
-    
-              <div class="row mb-3">
-                <div class="col text-right"><button type="button" class="btn btn-primary me-1" (click)="addRow()"><i
-                            class="bi bi-plus-lg" style="font-size: 1.5rem;"></i></button>
-                    <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveChanges()">
-                        <i class="bi bi-floppy" style="font-size: 1.5rem;"></i>
-                        <span
-                            class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-                            *ngIf="notSavedChanges"><span class="visually-hidden">Hay cambios sin guardar</span>
-                        </span>
-                    </button>
-                    <button type="button" class="btn btn-danger ms-1 me-1" (click)="deleteUser()"><i class="bi bi-trash"
-                            style="font-size: 1.5rem;"></i></button>
-                </div>
-            </div>
-        </div>
-    
-      <div class="row">
-    <!-- The AG Grid component -->
-        <ag-grid-angular      
-           [columnDefs]="colMaster"
-           [defaultColDef]="defaultColDef"
-           [rowSelection]="rowSelection"
-           [rowData]="contract"
-           (selectionChanged)="onSelectionChanged($event)"
-           class="ag-theme-quartz"
-           style="width: 100%; height: 500%;"
-           [rowGroupPanelShow]="rowGroupPanelShow"
-           [pivotPanelShow]="pivotPanelShow"
-           [pagination]="true"
-           (gridReady)="onGridReady($event)"
-           [paginationPageSize]="paginationPageSize"
-           [paginationPageSizeSelector]="paginationPageSizeSelector"
-           [statusBar]="statusBar" >
-        </ag-grid-angular>
-    
+<div class="row p-3">
+  <div class="col-12">
+    <!-- En este row van los botones de CRUD -->
+    <div class="row mb-3">
+      <div class="col text-right"><button type="button" class="btn btn-primary me-1" (click)="addRow()"><i
+            class="bi bi-plus-lg" style="font-size: 1.5rem;"></i></button>
+        <button type="button" class="btn btn-danger ms-1 me-1" (click)="deleteContract()"><i class="bi bi-trash"
+            style="font-size: 1.5rem;"></i></button>
       </div>
-    
+    </div>
+    <!-- En este row va el ag-grid -->
+    <div class="row">
+      <!-- The AG Grid component -->
+      <ag-grid-angular [columnDefs]="colMaster" [defaultColDef]="defaultColDef" [rowSelection]="rowSelection"
+        [rowData]="contract" (selectionChanged)="onSelectionChanged($event)" class="ag-theme-quartz"
+        [rowGroupPanelShow]="rowGroupPanelShow" [pivotPanelShow]="pivotPanelShow" [pagination]="true"
+        (gridReady)="onGridReady($event)" [paginationPageSize]="paginationPageSize"
+        [paginationPageSizeSelector]="paginationPageSizeSelector" [statusBar]="statusBar">
+      </ag-grid-angular>
+
+    </div>
+  </div>
+</div>
+
+<ng-template #content let-modal>
+  <div class="modal-header">
+    <h3 class="modal-title">Añadir contrato</h3>
+    <button type="button" class="btn-close" aria-label="Close" (click)="modal.dismiss('Cross click')"></button>
+  </div>
+  <div class="modal-body">
+    <form [formGroup]="addContract" (ngSubmit)="onSubmit()">
+      <div class="mb-2">
+        <input type="text" formControlName="numberContract" id="numberContract" class="form-control"
+          placeholder="Número de contrato">
+      </div>
+      <div class="mb-2">
+        <select formControlName="speciality" id="speciality" class="form-select">
+          <option selected disabled>Seleccione una especialidad</option>
+          <option value="Ductos Marinos">Ductos Marinos</option>
+          <option value="Ductos Terrestre">Ductos Terrestre</option>
+          <option value="Instalaciones">Instalaciones</option>
+          <option value="Obras Marinas">Obras Marinas</option>
+          <option value="Obras Terrestres">Obras Terrestres</option>
+          <option value="Patios">Patios</option>
+          <option value="Terrestres">Terrestres</option>
+        </select>
+      </div>
+      <div class="mb-2">
+        <textarea formControlName="description" id="description" class="form-control" placeholder="Descripción larga del contrato"
+          rows="3"></textarea>
+      </div>
+      <div class="mb-2">
+        <input type="text" formControlName="descripSmall" id="descripSmall" class="form-control"
+          placeholder="Descripción corta del contrato">
+      </div>
+      <div class="mb-2">
+        <input type="text" formControlName="resident" id="resident" class="form-control" placeholder="Residente">
+      </div>
+      <div class="mb-2">
+        <input type="text" formControlName="supervisor" id="supervisor" class="form-control"
+          placeholder="Supervisor">
+      </div>
+      <div class="mb-2">
+        <input type="number" formControlName="amountMx" id="amountMx" class="form-control"
+          placeholder="Monto en pesos mexicanos">
+      </div>
+      <div class="mb-2">
+        <input type="number" formControlName="amountDll" id="amountDll" class="form-control"
+          placeholder="Monto en dólares">
+      </div>
+    </form>
+  </div>
+  <div class="modal-footer">
+    <button type="submit" class="btn btn-primary" (click)="onSubmit()">Guardar</button>
+    <button type="button" class="btn btn-secondary" (click)="modal.close('Close click')">Cancelar</button>
+  </div>
+</ng-template>
