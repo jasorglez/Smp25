@@ -9,9 +9,35 @@ import { FollowprojectsService } from '../../../../services/followprojects.servi
 import { TrackingService } from '../../../../services/tracking.service';
 
 import { ColDef, GridApi, GridReadyEvent, SelectionChangedEvent } from 'ag-grid-enterprise';
-import { FormControl, FormGroup, Validators } from '@angular/forms';
+import { AbstractControl, FormControl, FormGroup, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, EMPTY } from 'rxjs';
+import { CompanysService } from 'app/services/companys.service';
+
+// Esta funcion valida que dateStar sea siempre menor a dateEnd
+export function dateRangeValidator(): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null => {
+    const dateStar = control.get('dateStar')?.value;
+    const dateEnd = control.get('dateEnd')?.value;
+
+    if (dateStar && dateEnd && dateStar > dateEnd) {
+      return { dateRangeInvalid: true };
+    }
+
+    return null;
+  };
+}
+
+// Workaorund que corrige la opción por default
+export function noDefaultValueValidator(): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null => {
+    const value = control.value;
+    if (value === 'Seleccione una especialidad' || value === 'Seleccione un proveedor') {
+      return { noDefaultValue: true };
+    }
+    return null;
+  };
+}
 
 @Component({
   selector: 'app-contracts',
@@ -21,6 +47,13 @@ import { catchError, EMPTY } from 'rxjs';
   styleUrl: './contracts.component.scss'
 })
 export class ContractsComponent {
+
+  constructor() {
+    this.addContract.patchValue({
+      speciality: 'Seleccione una especialidad',
+      idProvider: 'Seleccione un proveedor'
+    });
+  }
 
   @ViewChild('content') content!: TemplateRef<any>;
 
@@ -32,11 +65,17 @@ export class ContractsComponent {
     supervisor: new FormControl('', Validators.required),
     amountMx: new FormControl('', Validators.required),
     amountDll: new FormControl('', Validators.required),
-    speciality: new FormControl('', Validators.required),
-    navProviders: new FormControl(null)
-  });
+    speciality: new FormControl('', [Validators.required, noDefaultValueValidator()]),
+    idProvider: new FormControl('', [Validators.required, noDefaultValueValidator()]),
+    dateStar: new FormControl('', Validators.required),
+    dateEnd: new FormControl('', Validators.required),
+    term: new FormControl(),
+    idBussines: new FormControl(1),
+    consecutive: new FormControl(0),
+  }, { validators: dateRangeValidator() });
 
   formData: any;
+  providers: any;
 
   isNew = false;
   isEdit = false;
@@ -51,7 +90,8 @@ export class ContractsComponent {
   // Inject of new way for Angular 18
   private trackingService = inject(TrackingService);
   private followprojectsService = inject(FollowprojectsService);
-  private modalService = inject(NgbModal)
+  private modalService = inject(NgbModal);
+  private companysService = inject(CompanysService);
 
   // Define Tables
   public contract: Icontract[] = [];
@@ -80,7 +120,6 @@ export class ContractsComponent {
       valueFormatter: (params) => this.trackingService.formatearMoneda(params.value), filter: true
     }
   ];
-
 
   ngOnInit(): void {
     //Called after the constructor, initializing input properties, and the first call to ngOnChanges.
@@ -140,8 +179,20 @@ export class ContractsComponent {
     flex: 1,
   };
 
-  addRow() {
-    this.modalService.open(this.content);
+  async addRow() {
+
+    await this.companysService.Companys().subscribe({
+      next: (resp) => {
+        this.providers = resp;
+        console.log(resp);
+      },
+      error: (error) => {
+        console.error('Error fetching providers', error);
+      },
+      complete: () => {
+        this.modalService.open(this.content);
+      }
+    });
   }
 
   editContract(): void {
@@ -154,25 +205,42 @@ export class ContractsComponent {
 
   onSubmit() {
     if (this.addContract.valid) {
+      this.calculateTerm();
       this.formData = this.addContract.value;
       console.log('Form data:', this.formData);
       this.followprojectsService.addContract(this.formData)
         .pipe(
           catchError((error) => {
-            alerts.basicAlert('Añadir contrato', 'Hubo un error al intentar guardar la información.', 'error')
+            alerts.basicAlert('Añadir contrato', 'Hubo un error al intentar guardar la información.', 'error');
             console.error(error);
             return EMPTY;
           })
         )
         .subscribe(
           () => {
-            alerts.basicAlert('Añadir contrato', 'Contrato añadido exitosamente.', 'success')
+            alerts.basicAlert('Añadir contrato', 'Contrato añadido exitosamente.', 'success');
             this.getContracts();
           }
         );
     }
     else
-      alerts.basicAlert('Añadir contrato', 'Debe completar todos los campos para poder añadir un contrato.', 'error')
+      alerts.basicAlert('Añadir contrato', 'Debe completar todos los campos para poder añadir un contrato.', 'error');
+  }
+
+  calculateTerm() {
+    this.addContract.get('term')?.setValue(
+      this.getTermInDays(
+        this.addContract.get('dateStar')?.value,
+        this.addContract.get('dateEnd')?.value
+      )
+    );
+  }
+
+  getTermInDays(dateStar: string, dateEnd: string): number {
+    const start = new Date(dateStar);
+    const end = new Date(dateEnd);
+    const diffInDays = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    return diffInDays;
   }
 
 }
