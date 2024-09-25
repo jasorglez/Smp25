@@ -9,12 +9,13 @@ import { UsersMenuComponent } from '../../Components/users/users-menu.component'
 import { ContractsComponent } from "../../Components/contracts/contracts.component";
 import { OilfieldsComponent } from "../../Components/oilfields/oilfields.component";
 import { ProvidersComponent } from "../../Components/providers/providers.component";
+import { RootComponent } from "../../Components/root/root.component";
 
 
 @Component({
   selector: 'app-proccbpi',
   standalone: true,
-  imports: [DomainsModule, SetupComponent, UsersComponent, ProjectsComponent, UsersMenuComponent, ContractsComponent, OilfieldsComponent, ProvidersComponent],
+  imports: [DomainsModule, SetupComponent, UsersComponent, ProjectsComponent, UsersMenuComponent, ContractsComponent, OilfieldsComponent, ProvidersComponent, RootComponent],
   templateUrl: './proccbpi.component.html',
   styleUrl: './proccbpi.component.scss'
 })

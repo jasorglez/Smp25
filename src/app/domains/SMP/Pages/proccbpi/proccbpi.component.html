@@ -38,6 +38,12 @@
             <span style="font-size: 16px;"> {{'projects' | translate}} </span>
           </a>
         </li>
+        <li class="nav-item">
+          <a class="nav-link" [class.active]="selectedTab === 'root'" data-toggle="tab"
+             (click)="onTabSelected('root')">
+            <span style="font-size: 16px;"> {{'root' | translate}} </span>
+          </a>
+        </li>
       </ul>
     </div>
     <div class="tab-pane" [class.active]="selectedTab === 'conf'" *ngIf="selectedTab === 'conf'">
@@ -58,6 +64,9 @@
     </div>
     <div class="tab-pane" [class.active]="selectedTab === 'proj'" *ngIf="selectedTab === 'proj'">
       <app-projects></app-projects>
+    </div>
+    <div class="tab-pane" [class.active]="selectedTab === 'root'" *ngIf="selectedTab === 'root'">
+      <app-root></app-root>
     </div>
   </div>
 </div>
