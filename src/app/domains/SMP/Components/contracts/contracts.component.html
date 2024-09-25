@@ -34,6 +34,18 @@
           placeholder="Número de contrato">
       </div>
       <div class="mb-2">
+        <select formControlName="state" id="state" class="form-select">
+          <option selected disabled>Seleccione un estado</option>
+          <option value="Ejecución">Ejecución</option>
+          <option value="Cierre Administrativo">Cierre Administrativo</option>
+          <option value="En proceso de Rescisión">En proceso de Rescisión</option>
+          <option value="Extinguido">Extinguido</option>
+          <option value="Finiquitado">Finiquitado</option>
+          <option value="Juicios">Juicios</option>
+          <option value="Suspendido">Suspendido</option>
+        </select>
+      </div>
+      <div class="mb-2">
         <select formControlName="speciality" id="speciality" class="form-select">
           <option selected disabled>Seleccione una especialidad</option>
           <option value="Ductos Marinos">Ductos Marinos</option>
@@ -55,7 +67,7 @@
       </div>
       <div class="mb-2">
         <textarea formControlName="description" id="description" class="form-control" placeholder="Descripción larga del contrato"
-          rows="3"></textarea>
+          rows="2"></textarea>
       </div>
       <div class="mb-2">
         <input type="text" formControlName="descripSmall" id="descripSmall" class="form-control"

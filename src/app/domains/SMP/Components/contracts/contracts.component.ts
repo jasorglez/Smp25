@@ -32,7 +32,7 @@ export function dateRangeValidator(): ValidatorFn {
 export function noDefaultValueValidator(): ValidatorFn {
   return (control: AbstractControl): ValidationErrors | null => {
     const value = control.value;
-    if (value === 'Seleccione una especialidad' || value === 'Seleccione un proveedor') {
+    if (value === 'Seleccione una especialidad' || value === 'Seleccione un proveedor' || value === 'Seleccione un estado') {
       return { noDefaultValue: true };
     }
     return null;
@@ -51,7 +51,8 @@ export class ContractsComponent {
   constructor() {
     this.addContract.patchValue({
       speciality: 'Seleccione una especialidad',
-      idProvider: 'Seleccione un proveedor'
+      idProvider: 'Seleccione un proveedor',
+      state: 'Seleccione un estado'
     });
   }
 
@@ -69,6 +70,7 @@ export class ContractsComponent {
     idProvider: new FormControl('', [Validators.required, noDefaultValueValidator()]),
     dateStar: new FormControl('', Validators.required),
     dateEnd: new FormControl('', Validators.required),
+    state: new FormControl('', Validators.required),
     term: new FormControl(),
     idBussines: new FormControl(1),
     consecutive: new FormControl(0),
@@ -110,6 +112,7 @@ export class ContractsComponent {
     { field: 'description', headerName: 'Descripcion', width: 285 },
     { field: 'descripSmall', headerName: 'Corta', width: 100 },
     { field: 'resident', headerName: 'Residente', width: 100, filter: true },
+    { field: 'name', headerName: 'Compañía', width: 100, filter: true},
     { field: 'supervisor', headerName: 'Supervisor', width: 100, filter: true },
     {
       field: 'amountMx', headerName: 'Monto MX', width: 100,
@@ -147,7 +150,8 @@ export class ContractsComponent {
       amountMx: w.amountMx,
       amountDll: w.amountDll,
       resident: w.resident,
-      supervisor: w.supervisor
+      supervisor: w.supervisor,
+      name: w.name
     } as Icontract));
   }
 

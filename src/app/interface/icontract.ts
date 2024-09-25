@@ -13,4 +13,5 @@ export interface Icontract {
   amountDll     : number;
   resident      : string | null;
   supervisor    : string | null;
+  name          : string | null;
 }

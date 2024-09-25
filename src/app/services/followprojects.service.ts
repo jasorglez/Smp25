@@ -26,5 +26,9 @@ export class FollowprojectsService {
     return this.http.post(`${environment.urlLinux4}/Contract`, data, { headers: this.trackingService.getHeaders() });
   }
 
+  deleteContract(id: number): Observable<any> {
+    return this.http.delete(`${environment.urlLinux4}/Contract/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
 
 }
