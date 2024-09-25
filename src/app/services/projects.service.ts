@@ -22,9 +22,9 @@ export class ProjectsService {
 
   getProjectxOil(prio: number, idoil: number): Observable<any> {
     try {
-      const apiUrl = `${environment.urlAzure}api/Project/oil?priority=${prio}&oil=${idoil}`;      
+      const apiUrl = `${environment.urlLinux3}/Project/oil?priority=${prio}&oil=${idoil}`;      
        // alert(apiUrl)
-      return this.http.get(apiUrl);
+      return this.http.get(apiUrl, { headers: this.trackingService.getHeaders() });
     } catch(error) {
       console.error("Error Get Project", error);
       return EMPTY; // Import EMPTY from 'rxjs'
@@ -36,6 +36,17 @@ export class ProjectsService {
     return this.http.get(`${environment.urlLinux3}/Project`, { headers: this.trackingService.getHeaders() });
   }
 
+  addProject(data: any) {
+    return EMPTY;
+  }
+
+  updateProject(id: number, data: any) {
+    return EMPTY;
+  }
+
+  deleteProject(id:number) {
+    return EMPTY;
+  }
 
 }
 

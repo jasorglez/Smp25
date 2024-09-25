@@ -20,14 +20,13 @@
         (gridReady)="onGridReady($event)" [paginationPageSize]="paginationPageSize"
         [paginationPageSizeSelector]="paginationPageSizeSelector" [statusBar]="statusBar">
       </ag-grid-angular>
-
     </div>
   </div>
 </div>
 
 <ng-template #content let-modal>
   <div class="modal-header">
-    <h3 class="modal-title">Añadir contrato</h3>
+    <h3 class="modal-title">{{ isEditing ? 'Editar' : 'Añadir' }} contrato</h3>
     <button type="button" class="btn-close" aria-label="Close" (click)="modal.dismiss('Cross click')"></button>
   </div>
   <div class="modal-body">
@@ -39,7 +38,7 @@
               placeholder="Número de contrato">
           </div>
           <div class="mb-2">
-            <select formControlName="state" id="state" class="form-select">
+            <select formControlName="stateContract" id="stateContract" class="form-select">
               <option selected disabled>Seleccione un estado</option>
               <option value="Ejecución">Ejecución</option>
               <option value="Cierre Administrativo">Cierre Administrativo</option>

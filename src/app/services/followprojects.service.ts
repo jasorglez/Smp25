@@ -33,6 +33,4 @@ export class FollowprojectsService {
   deleteContract(id: number): Observable<any> {
     return this.http.delete(`${environment.urlLinux4}/Contract/${id}`, { headers: this.trackingService.getHeaders() });
   }
-
-
 }

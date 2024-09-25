@@ -1,53 +1,110 @@
-import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, HostListener, inject } from '@angular/core';
+import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { alerts } from 'app/helpers/alerts';
 import { AgGridModule } from 'ag-grid-angular';
-import { ColDef, GridReadyEvent } from 'ag-grid-enterprise';
-import { ReceivedataService } from 'app/services/receivedata.service';
-import { tap, catchError, of, finalize } from 'rxjs';
+import { ContractsService } from 'app/services/contracts.service';
+import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { ProjectsService } from 'app/services/projects.service';
 
 @Component({
   selector: 'app-projects',
   standalone: true,
-  imports: [CommonModule, AgGridModule],
-  templateUrl: './projects.component.html',
-  styleUrl: './projects.component.scss'
+  imports: [CommonModule, FormsModule, AgGridModule],
+  templateUrl: '../oil-provider-root-project.html'
 })
 export class ProjectsComponent {
 
-  constructor(private getData:ReceivedataService) {}
+  private projectsService = inject(ProjectsService);
+  private contractsService = inject(ContractsService);
 
   ngOnInit() {
     this.obtenerDatos();
+    this.obtenerContracts();
   }
 
-  entrada: any;
+  @HostListener('window:beforeunload', ['$event'])
+  unloadNotification($event: any): void {
+    if (this.notSavedChanges) {
+      $event.returnValue =
+        'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
+    }
+  }
+
+  notSavedChanges: boolean = false;
   rowData: any;
-  paginationPageSize = 10; // Tamaño de página
-  pagination = true; // Habilitar paginación
+  contracts: { [key: string]: string } = {};
+  newlyAddedRows: string[] = [];
+  selectedRowData: any = null;
+  id: string;
+  private gridApi: GridApi;
+  private tempIdCounter: number = 0;
 
   obtenerDatos() {
-    this.getData.receiveUsers('https://beapp-501d1-default-rtdb.firebaseio.com/', 'projects').pipe(
-      tap((data: any[]) => {
-        this.entrada = data;
-        this.rowData = Object.values(this.entrada);
-      }),
-      catchError(error => {
-        console.error('Error occurred:', error);
-        return of(null);
-      }),
-      finalize(() => {
-
-      })
-    ).subscribe();
+    this.projectsService
+      .getProjects()
+      .subscribe((data: any) => {
+        this.rowData = data;
+        console.log(data)
+      });
   }
 
-  columnDefs:ColDef[] = [
-    { field: 'contract', headerName: 'Nombre del contrato' },
-    { field: 'description', headerName: 'Descripción' },
-    { field: 'ubication', headerName: 'Ubicación' }
-  ];
-  
-  selectedRowData: any = null;
+  obtenerContracts() {
+
+  }
+
+  get columnDefs(): ColDef[] {
+    return [
+      {
+        field: 'name',
+        headerName: 'Nombre',
+        editable: true,
+        flex: 2
+      },
+      {
+        field: 'nameShort',
+        headerName: 'Nombre Corto',
+        editable: true,
+        flex: 1
+      },
+      {
+        field: 'rfc',
+        headerName: 'RFC',
+        editable: true,
+        flex: 1
+      },
+      {
+        field: 'address',
+        headerName: 'Dirección',
+        editable: true,
+        flex: 1
+      },
+      {
+        field: 'phone',
+        headerName: 'Teléfono',
+        editable: true,
+        flex: 1
+      },
+      {
+        field: 'picture',
+        headerName: 'Foto',
+        cellEditor: 'agTextCellEditor',
+        cellRenderer: (params: any) => {
+          if (params.value) {
+            return `<img src="${params.value}" class="text-center" style="height:100%;">`;
+          } else {
+            return '';
+          }
+        },
+        editable: true,
+      },
+    ];
+  }
+
+  onSelectedRow(event: any) {
+    this.id = event.data.id;
+  }
 
   onSelectionChanged(event: any) {
     const selectedNodes = event.api.getSelectedNodes();
@@ -58,8 +115,142 @@ export class ProjectsComponent {
     }
   }
 
-  onGridReady(params: GridReadyEvent) {
-    params.api.sizeColumnsToFit();
+  onCellValueChanged(event: any) {
+    console.log('Dato cambiado:', event.data);
+    event.data.__modified = true;
+    this.notSavedChanges = true;
   }
 
+  onGridReady(params: GridReadyEvent) {
+    this.gridApi = params.api;
+  }
+
+  addRow() {
+    const tempId = `temp_${this.tempIdCounter++}`;
+    const newItem = {
+      id: tempId,
+      name: '',
+      nameShort: '',
+      address: '',
+      stateId: null,
+      phone: '',
+      consortium: 'NO',
+      picture: 'SIN FOTO',
+      active: 1,
+      __isNew: true,
+    };
+
+    this.rowData = [newItem, ...this.rowData];
+    this.newlyAddedRows.push(tempId);
+    this.notSavedChanges = true;
+  }
+
+  async saveChanges() {
+    const isValid = this.rowData.every((item) => item.name && item.nameShort && item.rfc);
+    if (!isValid) {
+      alerts.basicAlert(
+        'Añadir entrada',
+        'Debe llenar todos los campos antes de guardar.',
+        'error'
+      );
+      return;
+    }
+
+    const newRows = this.rowData.filter((row) => row.__isNew);
+    const modifiedRows = this.rowData.filter(
+      (row) => row.__modified && !row.__isNew
+    );
+
+    const addObservables = newRows.map((row) => {
+      const cleanedData = this.cleanDataForServer(row);
+      return this.projectsService.addProject(cleanedData);
+    });
+
+    const updateObservables = modifiedRows.map((row) => {
+      const cleanedData = this.cleanDataForServer(row);
+      return this.projectsService.updateProject(row.id, cleanedData);
+    });
+
+    // Using concat to combine observables and lastValueFrom for async/await
+    try {
+      const responses = await lastValueFrom(
+        concat(...addObservables, ...updateObservables).pipe(toArray())
+      );
+      alerts.basicAlert(
+        'Datos actualizados',
+        'Se han actualizado los datos correctamente.',
+        'success'
+      );
+      this.notSavedChanges = false;
+      this.newlyAddedRows = [];
+      this.obtenerDatos(); // Refrescar los datos
+    } catch (error) {
+      console.error(error);
+      alerts.basicAlert(
+        'Error',
+        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
+        'error'
+      );
+    }
+  }
+
+  async deleteEntry() {
+    const selectedNodes = this.gridApi.getSelectedNodes();
+    if (selectedNodes.length === 0) {
+      alerts.basicAlert(
+        'Eliminar entrada',
+        'Por favor, seleccione una entrada para eliminar.',
+        'error'
+      );
+      return;
+    }
+
+    const selectedData = selectedNodes[0].data;
+    const id = selectedData.id;
+    selectedData.active = 0;
+    this.projectsService.deleteProject(id).pipe(
+      catchError((error) => {
+        alerts.basicAlert(
+          'Eliminar entrada',
+          'Error al eliminar la entrada.',
+          'error'
+        );
+        console.error(error);
+        return EMPTY;
+      })
+    )
+      .subscribe(
+        () => {
+          alerts.basicAlert(
+            'Eliminar entrada',
+            'Entrada eliminada satisfactoriamente.',
+            'success'
+          );
+          this.obtenerDatos();
+
+          alerts.basicAlert(
+            'Eliminar entrada',
+            'Entrada eliminada satisfactoriamente.',
+            'success'
+          );
+          this.notSavedChanges = false;
+          this.selectedRowData = null;
+        }
+      );
+  }
+
+  revert() {
+    this.obtenerDatos();
+    this.notSavedChanges = false;
+  }
+
+  private cleanDataForServer(data: any): any {
+    const cleanedData = { ...data };
+    delete cleanedData.__isNew;
+    delete cleanedData.__modified;
+    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
+      delete cleanedData.id;
+    }
+    return cleanedData;
+  }
 }

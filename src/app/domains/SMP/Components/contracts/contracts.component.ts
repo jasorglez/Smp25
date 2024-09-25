@@ -47,41 +47,18 @@ export function noDefaultValueValidator(): ValidatorFn {
   styleUrl: './contracts.component.scss'
 })
 export class ContractsComponent {
-
   constructor() {
-    this.addContract.patchValue({
-      speciality: 'Seleccione una especialidad',
-      idProvider: 'Seleccione un proveedor',
-      state: 'Seleccione un estado'
-    });
+    this.initForm();
   }
 
   @ViewChild('content') content!: TemplateRef<any>;
 
-  addContract = new FormGroup({
-    numberContract: new FormControl('', Validators.required),
-    description: new FormControl('', Validators.required),
-    descripSmall: new FormControl('', Validators.required),
-    resident: new FormControl('', Validators.required),
-    supervisor: new FormControl('', Validators.required),
-    amountMx: new FormControl('', Validators.required),
-    amountDll: new FormControl('', Validators.required),
-    speciality: new FormControl('', [Validators.required, noDefaultValueValidator()]),
-    idProvider: new FormControl('', [Validators.required, noDefaultValueValidator()]),
-    dateStar: new FormControl('', Validators.required),
-    dateEnd: new FormControl('', Validators.required),
-    state: new FormControl('', Validators.required),
-    term: new FormControl(),
-    idBussines: new FormControl(1),
-    consecutive: new FormControl(0),
-  }, { validators: dateRangeValidator() });
+  addContract: FormGroup;
 
   formData: any;
   providers: any;
-  selectedRowData: any = null;
-  id: null;
+  selectedRowData: Icontract | null = null;
 
-  isNew = false;
   isEditing = false;
   isSave = false;
   isCancel = false;
@@ -97,7 +74,6 @@ export class ContractsComponent {
   private modalService = inject(NgbModal);
   private companysService = inject(CompanysService);
 
-  // Define Tables
   public contract: Icontract[] = [];
   private gridApi!: GridApi<Icontract>;
 
@@ -131,13 +107,34 @@ export class ContractsComponent {
     this.getContracts();
   }
 
+  initForm() {
+    this.addContract = new FormGroup({
+      id: new FormControl(0),
+      numberContract: new FormControl('', Validators.required),
+      description: new FormControl('', Validators.required),
+      descripSmall: new FormControl('', Validators.required),
+      resident: new FormControl('', Validators.required),
+      supervisor: new FormControl('', Validators.required),
+      amountMx: new FormControl('', Validators.required),
+      amountDll: new FormControl('', Validators.required),
+      speciality: new FormControl('Seleccione una especialidad', [Validators.required, noDefaultValueValidator()]),
+      idProvider: new FormControl('Seleccione un proveedor', [Validators.required, noDefaultValueValidator()]),
+      dateStar: new FormControl('', Validators.required),
+      dateEnd: new FormControl('', Validators.required),
+      stateContract: new FormControl('Seleccione un estado', [Validators.required, noDefaultValueValidator()]),
+      term: new FormControl(),
+      idBussines: new FormControl(1),
+      consecutive: new FormControl(0),
+    }, { validators: dateRangeValidator() });
+  }
+
   getContracts() {
     this.followprojectsService.getContract(1).subscribe(
       (resp: any) => {
         this.contract = this.mapContract(resp);
       },
       (error) => {
-        console.error('Error fetching warehouses', error);
+        console.error('Error fetching contracts', error);
       }
     );
   }
@@ -152,25 +149,29 @@ export class ContractsComponent {
       amountDll: w.amountDll,
       resident: w.resident,
       supervisor: w.supervisor,
-      name: w.name
+      name: w.name,
+      speciality: w.speciality,
+      idProvider: w.idProvider,
+      dateStar: w.dateStar,
+      dateEnd: w.dateEnd,
+      stateContract: w.stateContract,
+      term: w.term,
+      idBussines: w.idBussines,
+      consecutive: w.consecutive
     } as Icontract));
   }
 
   onSelectionChanged(event: any) {
-    const selectedNodes = event.api.getSelectedNodes();
+    const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length > 0) {
-      this.id = selectedNodes[0].data.id;
-      //this.selectedRowData = selectedNodes[0].data;
+      this.selectedRowData = selectedNodes[0].data;
     } else {
-      this.id = null;
+      this.selectedRowData = null;
     }
   }
 
   onGridReady(params: GridReadyEvent): void {
     this.gridApi = params.api;
-    if (this.contract && this.contract.length > 0) {
-      // this.gridApi.setRowData(this.contract);
-    }
   }
 
   statusBar = {
@@ -187,25 +188,13 @@ export class ContractsComponent {
   };
 
   addRow() {
-    this.companysService.Companys().subscribe({
-      next: (resp) => {
-        this.providers = resp;
-      },
-      error: (error) => {
-        console.error('Error fetching providers', error);
-      },
-      complete: () => {
-        const modalOptions: NgbModalOptions = {
-          size: 'xl'
-        };
-        this.modalService.open(this.content, modalOptions);
-      }
-    });
+    this.isEditing = false;
+    this.initForm();
+    this.openModal();
   }
 
   editRow(): void {
-    const selectedNodes = this.gridApi.getSelectedNodes();
-    if (selectedNodes.length === 0) {
+    if (!this.selectedRowData) {
       alerts.basicAlert(
         'Editar contrato',
         'Por favor, seleccione un contrato para editar.',
@@ -214,124 +203,133 @@ export class ContractsComponent {
       return;
     }
 
-    const selectedData = selectedNodes[0].data;
-    this.id = selectedData.id;
     this.isEditing = true;
-
-    // Fetch the full contract data using the id
-    this.followprojectsService.getContractById(this.id).subscribe(
-      (contract) => {
-        this.addContract.patchValue({
-          numberContract: contract.numberContract,
-          description: contract.description,
-          descripSmall: contract.descripSmall,
-          resident: contract.resident,
-          supervisor: contract.supervisor,
-          amountMx: contract.amountMx,
-          amountDll: contract.amountDll,
-          speciality: contract.speciality,
-          idProvider: contract.idProvider,
-          dateStar: contract.dateStar,
-          dateEnd: contract.dateEnd,
-          state: contract.state,
-          term: contract.term,
-          idBussines: contract.idBussines,
-          consecutive: contract.consecutive
-        });
-
-        this.companysService.Companys().subscribe({
-          next: (resp) => {
-            this.providers = resp;
-            const modalOptions: NgbModalOptions = {
-              size: 'xl'
-            };
-            this.modalService.open(this.content, modalOptions);
-          },
-          error: (error) => {
-            console.error('Error fetching providers', error);
-          }
-        });
-      },
-      (error) => {
-        console.error('Error fetching contract details', error);
-        alerts.basicAlert(
-          'Editar contrato',
-          'Error al obtener los detalles del contrato.',
-          'error'
-        );
-      }
-    );
+    this.populateForm(this.selectedRowData);
+    this.openModal();
   }
 
-  async deleteContract() {
-    const selectedNodes = this.gridApi.getSelectedNodes();
-    if (selectedNodes.length === 0) {
+  populateForm(data: Icontract) {
+    this.addContract.patchValue({
+      id: data.id,
+      numberContract: data.numberContract,
+      description: data.description,
+      descripSmall: data.descripSmall,
+      resident: data.resident,
+      supervisor: data.supervisor,
+      amountMx: data.amountMx,
+      amountDll: data.amountDll,
+      speciality: data.speciality,
+      idProvider: data.idProvider,
+      dateStar: this.formatDateForInput(data.dateStar),
+      dateEnd: this.formatDateForInput(data.dateEnd),
+      stateContract: data.stateContract,
+      term: data.term,
+      idBussines: data.idBussines,
+      consecutive: data.consecutive
+    });
+  }
+
+  formatDateForInput(dateString: string | null): string {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toISOString().split('T')[0];
+  }
+
+  openModal() {
+    this.companysService.Companys().subscribe({
+      next: (resp) => {
+        this.providers = resp;
+        const modalOptions: NgbModalOptions = {
+          size: 'xl'
+        };
+        this.modalService.open(this.content, modalOptions);
+      },
+      error: (error) => {
+        console.error('Error fetching providers', error);
+      }
+    });
+  }
+
+  deleteContract() {
+    if (!this.selectedRowData) {
       alerts.basicAlert(
-        'Eliminar entrada',
-        'Por favor, seleccione una entrada para eliminar.',
+        'Eliminar contrato',
+        'Por favor, seleccione un contrato para eliminar.',
         'warning'
       );
       return;
     }
-    const selectedData = selectedNodes[0].data;
-    const id = selectedData.id;
 
-    // Pone active = 0
-    this.followprojectsService.deleteContract(id).pipe(
+    this.followprojectsService.deleteContract(this.selectedRowData.id).pipe(
       catchError((error) => {
         alerts.basicAlert(
-          'Eliminar entrada',
-          'Error al eliminar la entrada.',
+          'Eliminar contrato',
+          'Error al eliminar el contrato.',
           'error'
         );
         console.error(error);
         return EMPTY;
       })
-    )
-      .subscribe(
-        () => {
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.getContracts();
-          this.selectedRowData = null;
-        }
-      )
+    ).subscribe(() => {
+      alerts.basicAlert(
+        'Eliminar contrato',
+        'Contrato eliminado satisfactoriamente.',
+        'success'
+      );
+      this.getContracts();
+      this.selectedRowData = null;
+    });
   }
 
   onSubmit() {
     if (this.addContract.valid) {
       this.calculateTerm();
-      this.formData = this.addContract.value;
+      this.formData = this.prepareFormData();
 
-      const operation = this.isEditing ?
-        this.followprojectsService.updateContract(this.id, this.formData) :
-        this.followprojectsService.addContract(this.formData);
-
-      operation.pipe(
-        catchError((error) => {
+      if (this.isEditing && this.selectedRowData) {
+        console.log('Updating contract with data:', this.formData);
+        this.followprojectsService.updateContract(this.selectedRowData.id, this.formData).pipe(
+          catchError((error) => {
+            alerts.basicAlert(
+              'Actualizar contrato',
+              'Hubo un error al intentar actualizar la información.',
+              'error'
+            );
+            console.error('Error updating contract:', error);
+            return EMPTY;
+          })
+        ).subscribe(() => {
           alerts.basicAlert(
-            this.isEditing ? 'Actualizar contrato' : 'Añadir contrato',
-            'Hubo un error al intentar guardar la información.',
-            'error'
-          );
-          console.error(error);
-          return EMPTY;
-        })
-      ).subscribe(
-        () => {
-          alerts.basicAlert(
-            this.isEditing ? 'Actualizar contrato' : 'Añadir contrato',
-            this.isEditing ? 'Contrato actualizado exitosamente.' : 'Contrato añadido exitosamente.',
+            'Actualizar contrato',
+            'Contrato actualizado exitosamente.',
             'success'
           );
           this.getContracts();
           this.modalService.dismissAll();
           this.resetForm();
-        }
-      );
+        });
+      } else {
+        this.followprojectsService.addContract(this.formData).pipe(
+          catchError((error) => {
+            alerts.basicAlert(
+              'Añadir contrato',
+              'Hubo un error al intentar guardar la información.',
+              'error'
+            );
+            console.error('Error adding contract:', error);
+            return EMPTY;
+          })
+        ).subscribe(() => {
+          alerts.basicAlert(
+            'Añadir contrato',
+            'Contrato añadido exitosamente.',
+            'success'
+          );
+          this.getContracts();
+          this.modalService.dismissAll();
+          this.resetForm();
+        });
+      }
     } else {
       alerts.basicAlert(
         this.isEditing ? 'Actualizar contrato' : 'Añadir contrato',
@@ -341,30 +339,41 @@ export class ContractsComponent {
     }
   }
 
+  prepareFormData(): any {
+    const formValue = this.addContract.value;
+    return {
+      ...formValue,
+      dateStar: this.formatDateForBackend(formValue.dateStar),
+      dateEnd: this.formatDateForBackend(formValue.dateEnd),
+      stateContract: formValue.stateContract
+    };
+  }
+
+  
+  formatDateForBackend(dateString: string): string {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toISOString().split('T')[0];
+  }
+
   calculateTerm() {
-    this.addContract.get('term')?.setValue(
-      this.getTermInDays(
-        this.addContract.get('dateStar')?.value,
-        this.addContract.get('dateEnd')?.value
-      )
-    );
+    const dateStar = this.addContract.get('dateStar')?.value;
+    const dateEnd = this.addContract.get('dateEnd')?.value;
+    if (dateStar && dateEnd) {
+      this.addContract.get('term')?.setValue(this.getTermInDays(dateStar, dateEnd));
+    }
   }
 
   getTermInDays(dateStar: string, dateEnd: string): number {
     const start = new Date(dateStar);
     const end = new Date(dateEnd);
-    const diffInDays = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-    return diffInDays;
+    return Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
   }
 
   resetForm() {
-    this.addContract.reset({
-      speciality: 'Seleccione una especialidad',
-      idProvider: 'Seleccione un proveedor',
-      state: 'Seleccione un estado'
-    });
+    this.initForm();
     this.isEditing = false;
-    this.id = null;
+    this.selectedRowData = null;
   }
 
 }
