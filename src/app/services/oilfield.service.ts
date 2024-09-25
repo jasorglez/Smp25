@@ -21,6 +21,18 @@ export class OilfieldService {
 
 
   getOilfields() {
-    return this.http.get(`${environment.urlLinux3}/Oilfield`, { headers: this.trackingService.getHeaders() });
+    return this.http.get(`${environment.urlLinux4}/Oilfield`, { headers: this.trackingService.getHeaders() });
+  }
+
+  addOilfield(data: any) {
+    return this.http.post(`${environment.urlLinux4}/Oilfield`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateOilfield(id: number, data: any) {
+    return this.http.put(`${environment.urlLinux4}/Oilfield/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteOilfield(id:number) {
+    return this.http.delete(`${environment.urlLinux4}/Oilfield/${id}`, { headers: this.trackingService.getHeaders() });
   }
 }

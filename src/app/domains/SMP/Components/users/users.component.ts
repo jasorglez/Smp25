@@ -380,46 +380,6 @@ export class UsersComponent {
           this.selectedRowData = null;
         }
       )
-    // try {
-    //   const selectedNodes = this.gridApi.getSelectedNodes();
-    //   if (selectedNodes.length === 0) {
-    //     alerts.basicAlert(
-    //       'Eliminar entrada',
-    //       'Por favor, seleccione una entrada para eliminar.',
-    //       'warning'
-    //     );
-    //     return;
-    //   }
-
-    //   const selectedData = selectedNodes[0].data;
-    //   const id = selectedData.id;
-    //   selectedData.active = 0;
-
-    //   // Elimina al usuario de la DB
-    //   try {
-    //     await this.usersService.deleteUser(id, selectedData).toPromise();
-    //   }
-    //   catch (err) {
-    //     console.error(err);
-    //   }
-
-    //   // Refrescar los datos después de eliminar
-    //   this.obtenerDatos();
-
-    //   alerts.basicAlert(
-    //     'Eliminar entrada',
-    //     'Entrada eliminada satisfactoriamente.',
-    //     'success'
-    //   );
-    //   this.notSavedChanges = false;
-    //   this.selectedRowData = null;
-    // } catch (error) {
-    //   alerts.basicAlert(
-    //     'Eliminar entrada',
-    //     'Error al eliminar la entrada.',
-    //     'error'
-    //   );
-    // }
   }
 
   revert() {

@@ -1,26 +1,24 @@
-import { Component, computed, HostListener, inject } from '@angular/core';
+import { Component, HostListener, inject } from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
-import { UsersService } from 'app/services/users.service';
+import { alerts } from 'app/helpers/alerts';
 import { AgGridModule } from 'ag-grid-angular';
 import { ContractsService } from 'app/services/contracts.service';
+import { OilfieldService } from 'app/services/oilfield.service';
+import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { alerts } from 'app/helpers/alerts';
-import { UsersProfileComponent } from './users-profile.component';
-import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
-import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 
 @Component({
-  selector: 'app-usersxcontracts',
+  selector: 'app-oilfields',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, UsersProfileComponent],
-  templateUrl: './usersxpermissions.component.html'
+  imports: [CommonModule, FormsModule, AgGridModule],
+  templateUrl: './oilfields.component.html',
+  styleUrl: './oilfields.component.scss'
 })
-export class UsersxcontractsComponent {
+export class OilfieldsComponent {
 
-  private usersService = inject(UsersService);
+  private oilfieldsService = inject(OilfieldService);
   private contractsService = inject(ContractsService);
-  private usersxcontractsService = inject(UsersxpermissionsService);
 
   ngOnInit() {
     this.obtenerDatos();
@@ -36,8 +34,6 @@ export class UsersxcontractsComponent {
   }
 
   // Signals con correo
-  profile = computed(() => this.usersService.profile);
-  idUser: any = this.profile().idUser();
 
   notSavedChanges: boolean = false;
   rowData: any;
@@ -47,51 +43,39 @@ export class UsersxcontractsComponent {
   id: string;
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
-  private permissionType: string = 'contract';
 
   obtenerDatos() {
-    this.usersxcontractsService
-      .getDataUsersxPermissions(this.permissionType)
+    this.oilfieldsService
+      .getOilfields()
       .subscribe((data: any) => {
-        this.rowData = data.filter((row: any) => row.idUser === this.idUser);
+        this.rowData = data;
+        console.log(data)
       });
   }
 
   obtenerContracts() {
-    this.contractsService.getContracts().subscribe((data: any[]) => {
-      this.contracts = data.reduce((acc, dep) => {
-        acc[dep.id] = dep.descripSmall; // Cambia la estructura para que solo almacene el nombre
-        return acc;
-      }, {});
-    });
+
   }
 
   get columnDefs(): ColDef[] {
     return [
       {
-        field: 'idUser',
-        headerName: 'ID del Usuario',
-        hide: true,
+        field: 'name',
+        headerName: 'Nombre',
+        editable: true,
+        flex: 1
       },
       {
-        field: 'idPermission',
-        headerName: 'Contrato',
-        cellEditor: 'agRichSelectCellEditor',
-        cellEditorParams: {
-          values: Object.keys(this.contracts).sort((a, b) => this.contracts[a].localeCompare(this.contracts[b])),
-        },
-        valueFormatter: (params) => this.contracts[params.value] || '',
-        valueSetter: (params) => {
-          const newValue = params.newValue;
-          if (this.contracts.hasOwnProperty(newValue)) {
-            params.data[params.colDef.field] = newValue;
-            return true;
-          }
-          return false;
-        },
-        valueParser: (params) => params.newValue,
+        field: 'direccion',
+        headerName: 'Direccion',
         editable: true,
-        flex: 2,
+        flex: 2
+      },
+      {
+        field: 'coordinates',
+        headerName: 'Coordenadas',
+        editable: true,
+        flex: 2
       },
     ];
   }
@@ -112,21 +96,6 @@ export class UsersxcontractsComponent {
   onCellValueChanged(event: any) {
     console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
-    // Verificar si el campo modificado es 'id_company'
-    if (event.colDef.field === 'id_company') {
-      const selectedCompany = this.contracts[event.data.id_company];
-      if (selectedCompany) {
-        event.data.company = selectedCompany;
-      }
-
-      // Forzar actualización de la celda de 'company'
-      this.gridApi.refreshCells({
-        rowNodes: [event.node],
-        columns: ['company'],
-        force: true,
-      });
-    }
-
     this.notSavedChanges = true;
   }
 
@@ -138,9 +107,10 @@ export class UsersxcontractsComponent {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idUser: this.idUser,
-      idPermission: 0,
-      type: this.permissionType,
+      contractId: 1,
+      name: '',
+      direccion: '',
+      coordinates: '',
       active: 1,
       __isNew: true,
     };
@@ -151,12 +121,11 @@ export class UsersxcontractsComponent {
   }
 
   async saveChanges() {
-    const isValid = this.rowData.every((item) => item.idPermission);
-
+    const isValid = this.rowData.every((item) => item.name && item.direccion);
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
-        'Debe seleccionar una compañía antes de guardar.',
+        'Debe llenar todos los campos antes de guardar.',
         'error'
       );
       return;
@@ -169,12 +138,12 @@ export class UsersxcontractsComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.usersxcontractsService.addUserxPermission(cleanedData);
+      return this.oilfieldsService.addOilfield(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.usersxcontractsService.updateUserxPermission(row.id, cleanedData);
+      return this.oilfieldsService.updateOilfield(row.id, cleanedData);
     });
 
     // Using concat to combine observables and lastValueFrom for async/await
@@ -214,7 +183,7 @@ export class UsersxcontractsComponent {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
     selectedData.active = 0;
-    this.usersxcontractsService.deleteUserxPermission(id).pipe(
+    this.oilfieldsService.deleteOilfield(id).pipe(
       catchError((error) => {
         alerts.basicAlert(
           'Eliminar entrada',

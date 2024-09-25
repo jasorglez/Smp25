@@ -4,11 +4,8 @@ export interface Icontract {
   description   : string;
   descripSmall  : string;
   idCompany     : number;
-  idState       : number ;
-  year          : number ;
   datestar      : Date | null;
-  dateendcont   : Date | null;
-  pronostic     : Date | null;
+  dateend      : Date | null;
   amountMx      : number;
   amountDll     : number;
   resident      : string | null;

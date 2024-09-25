@@ -7,7 +7,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
 import { UsersProfileComponent } from './users-profile.component';
-import { concat, lastValueFrom, toArray } from 'rxjs';
+import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 
 @Component({
@@ -186,43 +186,48 @@ export class UsersxprojectsComponent {
   }
 
   async deleteEntry() {
-    try {
-      const selectedNodes = this.gridApi.getSelectedNodes();
-      if (selectedNodes.length === 0) {
-        alerts.basicAlert(
-          'Eliminar entrada',
-          'Por favor, seleccione una entrada para eliminar.',
-          'warning'
-        );
-        return;
-      }
-
-      const selectedData = selectedNodes[0].data;
-      const id = selectedData.id;
-      // Pone active = 0
-      try {
-        await this.usersxprojectsService.deleteUserxPermission(id).toPromise();
-      } catch (err) {
-        console.error(err);
-      }
-
-      // Refrescar los datos después de eliminar
-      this.obtenerDatos();
-
+    const selectedNodes = this.gridApi.getSelectedNodes();
+    if (selectedNodes.length === 0) {
       alerts.basicAlert(
         'Eliminar entrada',
-        'Entrada eliminada satisfactoriamente.',
-        'success'
-      );
-      this.notSavedChanges = false;
-      this.selectedRowData = null;
-    } catch (error) {
-      alerts.basicAlert(
-        'Eliminar entrada',
-        'Error al eliminar la entrada.',
+        'Por favor, seleccione una entrada para eliminar.',
         'error'
       );
+      return;
     }
+
+    const selectedData = selectedNodes[0].data;
+    const id = selectedData.id;
+    selectedData.active = 0;
+    this.usersxprojectsService.deleteUserxPermission(id).pipe(
+      catchError((error) => {
+        alerts.basicAlert(
+          'Eliminar entrada',
+          'Error al eliminar la entrada.',
+          'error'
+        );
+        console.error(error);
+        return EMPTY;
+      })
+    )
+      .subscribe(
+        () => {
+          alerts.basicAlert(
+            'Eliminar entrada',
+            'Entrada eliminada satisfactoriamente.',
+            'success'
+          );
+          this.obtenerDatos();
+
+          alerts.basicAlert(
+            'Eliminar entrada',
+            'Entrada eliminada satisfactoriamente.',
+            'success'
+          );
+          this.notSavedChanges = false;
+          this.selectedRowData = null;
+        }
+      );
   }
 
   revert() {
