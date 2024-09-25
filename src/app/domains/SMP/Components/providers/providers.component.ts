@@ -3,20 +3,20 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule } from 'ag-grid-angular';
 import { ContractsService } from 'app/services/contracts.service';
-import { OilfieldService } from 'app/services/oilfield.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ProvidersService } from 'app/services/providers.service';
 
 @Component({
-  selector: 'app-oilfields',
+  selector: 'app-providers',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule],
   templateUrl: '../oil-provider-root-project.html'
 })
-export class OilfieldsComponent {
+export class ProvidersComponent {
 
-  private oilfieldsService = inject(OilfieldService);
+  private providersService = inject(ProvidersService);
   private contractsService = inject(ContractsService);
 
   ngOnInit() {
@@ -42,8 +42,8 @@ export class OilfieldsComponent {
   private tempIdCounter: number = 0;
 
   obtenerDatos() {
-    this.oilfieldsService
-      .getOilfields()
+    this.providersService
+      .getProviders()
       .subscribe((data: any) => {
         this.rowData = data;
         console.log(data)
@@ -60,19 +60,44 @@ export class OilfieldsComponent {
         field: 'name',
         headerName: 'Nombre',
         editable: true,
+        flex: 2
+      },
+      {
+        field: 'nameShort',
+        headerName: 'Nombre Corto',
+        editable: true,
         flex: 1
       },
       {
-        field: 'direccion',
-        headerName: 'Direccion',
+        field: 'rfc',
+        headerName: 'RFC',
         editable: true,
-        flex: 2
+        flex: 1
       },
       {
-        field: 'coordinates',
-        headerName: 'Coordenadas',
+        field: 'address',
+        headerName: 'Dirección',
         editable: true,
-        flex: 2
+        flex: 1
+      },
+      {
+        field: 'phone',
+        headerName: 'Teléfono',
+        editable: true,
+        flex: 1
+      },
+      {
+        field: 'picture',
+        headerName: 'Foto',
+        cellEditor: 'agTextCellEditor',
+        cellRenderer: (params: any) => {
+          if (params.value) {
+            return `<img src="${params.value}" class="text-center" style="height:100%;">`;
+          } else {
+            return '';
+          }
+        },
+        editable: true,
       },
     ];
   }
@@ -104,10 +129,13 @@ export class OilfieldsComponent {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      contractId: 1,
       name: '',
-      direccion: '',
-      coordinates: '',
+      nameShort: '',
+      address: '',
+      stateId: null,
+      phone: '',
+      consortium: 'NO',
+      picture: 'SIN FOTO',
       active: 1,
       __isNew: true,
     };
@@ -118,7 +146,7 @@ export class OilfieldsComponent {
   }
 
   async saveChanges() {
-    const isValid = this.rowData.every((item) => item.name && item.direccion);
+    const isValid = this.rowData.every((item) => item.name && item.nameShort && item.rfc);
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
@@ -135,12 +163,12 @@ export class OilfieldsComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.oilfieldsService.addOilfield(cleanedData);
+      return this.providersService.addProvider(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.oilfieldsService.updateOilfield(row.id, cleanedData);
+      return this.providersService.updateProvider(row.id, cleanedData);
     });
 
     // Using concat to combine observables and lastValueFrom for async/await
@@ -180,7 +208,7 @@ export class OilfieldsComponent {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
     selectedData.active = 0;
-    this.oilfieldsService.deleteOilfield(id).pipe(
+    this.providersService.deleteProvider(id).pipe(
       catchError((error) => {
         alerts.basicAlert(
           'Eliminar entrada',

@@ -15,6 +15,12 @@
           </a>
         </li>
         <li class="nav-item">
+          <a class="nav-link" [class.active]="selectedTab === 'providers'" data-toggle="tab"
+             (click)="onTabSelected('providers')">
+            <span style="font-size: 16px;">{{'providers' | translate}}</span>
+          </a>
+        </li>
+        <li class="nav-item">
           <a class="nav-link" [class.active]="selectedTab === 'contract'" data-toggle="tab"
              (click)="onTabSelected('contract')">
             <span style="font-size: 16px;">{{'contract' | translate}}</span>
@@ -40,6 +46,9 @@
     </div>
     <div class="tab-pane" [class.active]="selectedTab === 'users-menu'" *ngIf="selectedTab === 'users-menu'">
       <app-users-menu></app-users-menu>
+    </div>
+    <div class="tab-pane" [class.active]="selectedTab === 'providers'" *ngIf="selectedTab === 'providers'">
+      <app-providers></app-providers>
     </div>
     <div class="tab-pane" [class.active]="selectedTab === 'contract'" *ngIf="selectedTab === 'contract'">
       <app-contracts></app-contracts>
