@@ -2,9 +2,12 @@
   <div class="col-12">
     <!-- En este row van los botones de CRUD -->
     <div class="row mb-3">
-      <div class="col text-right"><button type="button" class="btn btn-primary me-1" (click)="addRow()"><i
+      <div class="col text-right">
+        <button type="button" class="btn btn-primary me-1" (click)="addRow()"><i
             class="bi bi-plus-lg" style="font-size: 1.5rem;"></i></button>
-        <button type="button" class="btn btn-danger ms-1 me-1" (click)="deleteContract()"><i class="bi bi-trash"
+        <button type="button" class="btn btn-warning ms-1 me-1" (click)="editRow()"><i class="bi bi-pencil-square"
+            style="font-size: 1.5rem;"></i></button>
+        <button type="button" class="btn btn-danger ms-1" (click)="deleteContract()"><i class="bi bi-trash"
             style="font-size: 1.5rem;"></i></button>
       </div>
     </div>
@@ -66,8 +69,8 @@
         </select>
       </div>
       <div class="mb-2">
-        <textarea formControlName="description" id="description" class="form-control" placeholder="Descripción larga del contrato"
-          rows="2"></textarea>
+        <textarea formControlName="description" id="description" class="form-control"
+          placeholder="Descripción larga del contrato" rows="2"></textarea>
       </div>
       <div class="mb-2">
         <input type="text" formControlName="descripSmall" id="descripSmall" class="form-control"
@@ -77,8 +80,7 @@
         <input type="text" formControlName="resident" id="resident" class="form-control" placeholder="Residente">
       </div>
       <div class="mb-2">
-        <input type="text" formControlName="supervisor" id="supervisor" class="form-control"
-          placeholder="Supervisor">
+        <input type="text" formControlName="supervisor" id="supervisor" class="form-control" placeholder="Supervisor">
       </div>
       <div class="mb-2">
         <input type="number" formControlName="amountMx" id="amountMx" class="form-control"
@@ -91,10 +93,14 @@
       <div class="row mb-2">
         <div class="col">
           <label for="dateStar" class="form-label">Inicio</label>
-          <input type="date" formControlName="dateStar" id="dateStar" class="form-control" placeholder="Fecha de inicio de contrato"></div>
+          <input type="date" formControlName="dateStar" id="dateStar" class="form-control"
+            placeholder="Fecha de inicio de contrato">
+        </div>
         <div class="col">
           <label for="dateEnd" class="form-label">Fin</label>
-          <input type="date" formControlName="dateEnd" id="dateEnd" class="form-control" placeholder="Fecha de fin de contrato"></div>
+          <input type="date" formControlName="dateEnd" id="dateEnd" class="form-control"
+            placeholder="Fecha de fin de contrato">
+        </div>
       </div>
     </form>
   </div>

@@ -78,6 +78,8 @@ export class ContractsComponent {
 
   formData: any;
   providers: any;
+  selectedRowData: any = null;
+  id: null;
 
   isNew = false;
   isEdit = false;
@@ -112,7 +114,7 @@ export class ContractsComponent {
     { field: 'description', headerName: 'Descripcion', width: 285 },
     { field: 'descripSmall', headerName: 'Corta', width: 100 },
     { field: 'resident', headerName: 'Residente', width: 100, filter: true },
-    { field: 'name', headerName: 'Compañía', width: 100, filter: true},
+    { field: 'name', headerName: 'Compañía', width: 100, filter: true },
     { field: 'supervisor', headerName: 'Supervisor', width: 100, filter: true },
     {
       field: 'amountMx', headerName: 'Monto MX', width: 100,
@@ -133,7 +135,6 @@ export class ContractsComponent {
     this.followprojectsService.getContract(1).subscribe(
       (resp: any) => {
         this.contract = this.mapContract(resp);
-        console.log(resp)
       },
       (error) => {
         console.error('Error fetching warehouses', error);
@@ -143,7 +144,7 @@ export class ContractsComponent {
 
   mapContract(data: any[]): Icontract[] {
     return data.map(w => ({
-      id: w.id,
+      id: w.idContrato,
       numberContract: w.numberContract,
       description: w.description,
       descripSmall: w.descripSmall,
@@ -155,11 +156,13 @@ export class ContractsComponent {
     } as Icontract));
   }
 
-  onSelectionChanged(event: SelectionChangedEvent): void {
-    const selectedRows = this.gridApi.getSelectedRows();
-    if (selectedRows.length > 0) {
-      //this.selectId = selectedRows[0].id;
-      //this.fillForm(selectedRows[0]);
+  onSelectionChanged(event: any) {
+    const selectedNodes = event.api.getSelectedNodes();
+    if (selectedNodes.length > 0) {
+      this.id = selectedNodes[0].data.id;
+      //this.selectedRowData = selectedNodes[0].data;
+    } else {
+      this.id = null;
     }
   }
 
@@ -183,12 +186,10 @@ export class ContractsComponent {
     flex: 1,
   };
 
-  async addRow() {
-
-    await this.companysService.Companys().subscribe({
+  addRow() {
+    this.companysService.Companys().subscribe({
       next: (resp) => {
         this.providers = resp;
-        console.log(resp);
       },
       error: (error) => {
         console.error('Error fetching providers', error);
@@ -199,19 +200,52 @@ export class ContractsComponent {
     });
   }
 
-  editContract(): void {
+  editRow(): void {
 
   }
 
-  deleteContract(): void {
+  async deleteContract() {
+    const selectedNodes = this.gridApi.getSelectedNodes();
+    if (selectedNodes.length === 0) {
+      alerts.basicAlert(
+        'Eliminar entrada',
+        'Por favor, seleccione una entrada para eliminar.',
+        'warning'
+      );
+      return;
+    }
+    const selectedData = selectedNodes[0].data;
+    const id = selectedData.id;
 
+    // Pone active = 0
+    await this.followprojectsService.deleteContract(id).pipe(
+      catchError((error) => {
+        alerts.basicAlert(
+          'Eliminar entrada',
+          'Error al eliminar la entrada.',
+          'error'
+        );
+        console.error(error);
+        return EMPTY;
+      })
+    )
+      .subscribe(
+        () => {
+          alerts.basicAlert(
+            'Eliminar entrada',
+            'Entrada eliminada satisfactoriamente.',
+            'success'
+          );
+          this.getContracts();
+          this.selectedRowData = null;
+        }
+      )
   }
 
   onSubmit() {
     if (this.addContract.valid) {
       this.calculateTerm();
       this.formData = this.addContract.value;
-      console.log('Form data:', this.formData);
       this.followprojectsService.addContract(this.formData)
         .pipe(
           catchError((error) => {
