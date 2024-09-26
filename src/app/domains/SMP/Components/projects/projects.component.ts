@@ -34,10 +34,9 @@ export function dateRangeValidator(): ValidatorFn {
 export function noDefaultValueValidator(): ValidatorFn {
   return (control: AbstractControl): ValidationErrors | null => {
     const value = control.value;
-    if (value === 'Seleccione un tipo de construcción' || 
-      value === 'Seleccione un estado' || 
-      value === 'Seleccione un contrato' || 
-      value === 'Seleccione un campo petrolero' || 
+    if (value === 'Seleccione un tipo de construcción' ||
+      value === 'Seleccione un contrato' ||
+      value === 'Seleccione un campo petrolero' ||
       value === 'Seleccione una clasificación') {
       return { noDefaultValue: true };
     }
@@ -108,15 +107,16 @@ export class ProjectsComponent {
   initForm() {
     this.addProject = new FormGroup({
       id: new FormControl(),
-      idConsecutivo: new FormControl('', Validators.required),
+      idConsecutivo: new FormControl(null, Validators.required),
       description: new FormControl('', Validators.required),
       name: new FormControl('', Validators.required),
       number: new FormControl('S/N'),
+      priority: new FormControl(0, Validators.required),
       programStart: new FormControl('', Validators.required),
       programEnd: new FormControl('', Validators.required),
       realPronosticLPO: new FormControl('', Validators.required),
       realPronosticTTT: new FormControl('', Validators.required),
-      state: new FormControl('Seleccione un estado', [Validators.required, noDefaultValueValidator()]),
+      state: new FormControl('Ejecucion', [Validators.required]),
       typeConstruction: new FormControl('Seleccione un tipo de construcción', [Validators.required, noDefaultValueValidator()]),
       classification: new FormControl('Seleccione una clasificación', [Validators.required, noDefaultValueValidator()]),
       active: new FormControl(1),
@@ -280,7 +280,7 @@ export class ProjectsComponent {
       next: (result) => {
         this.contracts = result.contracts;
         this.oilfields = result.oilfields;
-        
+
         const modalOptions: NgbModalOptions = {
           size: 'xl'
         };
@@ -388,14 +388,18 @@ export class ProjectsComponent {
       programEnd: this.formatDateForBackend(formValue.programEnd),
       realPronosticLPO: this.formatDateForBackend(formValue.realPronosticLPO),
       realPronosticTTT: this.formatDateForBackend(formValue.realPronosticTTT),
-      state: formValue.state
+      state: formValue.state,
+      // Convertir idContrato e idOilfield a números si no son las opciones por defecto
+      idContrato: formValue.idContrato !== 'Seleccione un contrato' ? Number(formValue.idContrato) : null,
+      idOilfield: formValue.idOilfield !== 'Seleccione un campo petrolero' ? Number(formValue.idOilfield) : null,
+      priority: Number(formValue.priority)
     };
-  
+
     // Si no estamos editando (es una entrada nueva), eliminamos el campo id
     if (!this.isEditing) {
       delete preparedData.id;
     }
-  
+
     return preparedData;
   }
 

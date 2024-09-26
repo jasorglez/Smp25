@@ -34,7 +34,7 @@
         <div class="row">
           <div class="col-6">
             <div class="mb-2">
-              <input type="text" formControlName="idConsecutivo" id="idConsecutivo" class="form-control"
+              <input type="number" formControlName="idConsecutivo" id="idConsecutivo" class="form-control"
                 placeholder="ID PEMEX">
             </div>
             <div class="mb-2">
@@ -57,6 +57,13 @@
                     placeholder="Fecha de fin de proyecto">
                 </div>
               </div>
+              <div class="mb-2">
+                <select formControlName="priority" id="priority" class="form-select">
+                  <option value="0" selected>Prioritario</option>
+                  <option value="1">Prioridad media</option>
+                  <option value="2">Prioridad baja</option>
+                </select>
+              </div>
             </div>
             <div class="col-6">
               <div class="row mb-2">
@@ -73,13 +80,10 @@
               </div>
             <div class="mb-2">
               <select formControlName="state" id="state" class="form-select">
-                <option selected disabled>Seleccione un estado</option>
-                <option value="Ejecucion">Ejecución</option>
-                <option value="Cierre Administrativo">Cierre Administrativo</option>
-                <option value="En proceso de Rescisión">En proceso de Rescisión</option>
-                <option value="Extinguido">Extinguido</option>
-                <option value="Finiquitado">Finiquitado</option>
-                <option value="Juicios">Juicios</option>
+                <option value="Ejecucion" selected>Ejecución</option>
+                <option value="Cancelado">Cancelado</option>
+                <option value="Concluido">Concluido</option>
+                <option value="TTT">Todo Trabajo Terminado</option>
                 <option value="Suspendido">Suspendido</option>
               </select>
             </div>

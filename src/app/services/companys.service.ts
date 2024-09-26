@@ -40,7 +40,7 @@ export class CompanysService {
   
   //Tomar la data de la colección Empresas en Azure
   getDataCompanysAzure() {
-    return this.http.get(`${environment.urlLinux3}/Providers`, { headers: this.trackingService.getHeaders() });
+    return this.http.get(`${environment.urlLinux3}/Providers/id`, { headers: this.trackingService.getHeaders() });
   }
     
 
