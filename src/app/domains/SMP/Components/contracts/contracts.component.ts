@@ -183,8 +183,13 @@ export class ContractsComponent {
     ]
   };
 
-  defaultColDef = {
-    flex: 1,
+  public defaultColDef : ColDef = {
+    sortable           : true,
+    filter             : true,
+    resizable          : true,
+    lockPosition       : false,
+    enableRowGroup     : true, // Enable row grouping for all columns
+    flex: 1
   };
 
   addRow() {

@@ -60,7 +60,7 @@ export class UsersxcontractsComponent {
   obtenerContracts(contract: number) {
     this.contractsService.getContracts(contract).subscribe((data: any[]) => {
       this.contracts = data.reduce((acc, dep) => {
-        acc[dep.id] = dep.descripSmall; // Cambia la estructura para que solo almacene el nombre
+        acc[dep.id] = dep.numberContract + ' - ' + dep.descripSmall; // Cambia la estructura para que solo almacene el nombre
         return acc;
       }, {});
     });

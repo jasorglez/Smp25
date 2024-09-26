@@ -90,13 +90,15 @@ export class ProjectsComponent {
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
+  public groupDefaultExpanded = 0;
 
   // Column Definitions: Defines the columns to be displayed.
   colMaster: ColDef[] = [
-    { field: 'idConsecutivo', headerName: 'ID PEMEX' },
-    { field: 'description', headerName: 'Descripcion' },
-    { field: 'name', headerName: 'Nombre', width: 100, filter: true },
-    { field: 'classification', headerName: 'Clasificación', width: 100, filter: true }
+    { field: 'number', headerName: 'OT', flex: 1 },
+    { field: 'idConsecutivo', headerName: 'ID PEMEX', flex: 1 },
+    { field: 'description', headerName: 'Descripcion', flex: 4 },
+    { field: 'name', headerName: 'Nombre', width: 100, filter: true, flex: 2 },
+    { field: 'classification', headerName: 'Clasificación', width: 100, filter: true, flex: 2 }
   ];
 
   ngOnInit(): void {
@@ -200,8 +202,13 @@ export class ProjectsComponent {
     ]
   };
 
-  defaultColDef = {
-    flex: 1,
+  public defaultColDef : ColDef = {
+    sortable           : true,
+    filter             : true,
+    resizable          : true,
+    lockPosition       : false,
+    enableRowGroup     : true, // Enable row grouping for all columns
+    flex               : 1
   };
 
   addRow() {

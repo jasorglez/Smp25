@@ -60,7 +60,7 @@ export class UsersxprojectsComponent {
   obtenerProjects() {
     this.projectsService.getProjects().subscribe((data: any[]) => {
       this.projects = data.reduce((acc, dep) => {
-        acc[dep.id] = dep.name; // Cambia la estructura para que solo almacene el nombre
+        acc[dep.id] = dep.idConsecutivo + ' - ' + dep.name; // Cambia la estructura para que solo almacene el nombre
         return acc;
       }, {});
     });

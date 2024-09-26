@@ -7,7 +7,7 @@
       </li>
       <li class="nav-item" *ngIf="usersService.profile.emailUser()">
         <a class="nav-link" [class.active]="selectedTab === 'usersxcompanys'" data-toggle="tab"
-          (click)="onUsersSelected('usersxcompanys')">Compañías</a>
+          (click)="onUsersSelected('usersxcompanys')">Proveedores</a>
       </li>
       <li class="nav-item" *ngIf="usersService.profile.emailUser()">
         <a class="nav-link" [class.active]="selectedTab === 'usersxcontracts'" data-toggle="tab"

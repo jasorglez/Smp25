@@ -1,133 +1,136 @@
 <div class="row p-3">
-    <div class="col-12">
-      <!-- En este row van los botones de CRUD -->
-      <div class="row mb-3">
-        <div class="col text-right">
-          <button type="button" class="btn btn-primary me-1" (click)="addRow()"><i
-              class="bi bi-plus-lg" style="font-size: 1.5rem;"></i></button>
-          <button type="button" class="btn btn-warning ms-1 me-1" (click)="editRow()"><i class="bi bi-pencil-square"
-              style="font-size: 1.5rem;"></i></button>
-          <button type="button" class="btn btn-danger ms-1" (click)="deleteProject()"><i class="bi bi-trash"
-              style="font-size: 1.5rem;"></i></button>
-        </div>
+  <div class="col-12">
+    <!-- En este row van los botones de CRUD -->
+    <div class="row mb-3">
+      <div class="col text-right">
+        <button type="button" class="btn btn-primary me-1" (click)="addRow()"><i class="bi bi-plus-lg"
+            style="font-size: 1.5rem;"></i></button>
+        <button type="button" class="btn btn-warning ms-1 me-1" (click)="editRow()"><i class="bi bi-pencil-square"
+            style="font-size: 1.5rem;"></i></button>
+        <button type="button" class="btn btn-danger ms-1" (click)="deleteProject()"><i class="bi bi-trash"
+            style="font-size: 1.5rem;"></i></button>
       </div>
-      <!-- En este row va el ag-grid -->
-      <div class="row">
-        <!-- The AG Grid component -->
-        <ag-grid-angular [columnDefs]="colMaster" [defaultColDef]="defaultColDef" [rowSelection]="rowSelection"
-          [rowData]="project" (selectionChanged)="onSelectionChanged($event)" class="ag-theme-quartz"
-          [rowGroupPanelShow]="rowGroupPanelShow" [pivotPanelShow]="pivotPanelShow" [pagination]="true"
-          (gridReady)="onGridReady($event)" [paginationPageSize]="paginationPageSize"
-          [paginationPageSizeSelector]="paginationPageSizeSelector" [statusBar]="statusBar">
-        </ag-grid-angular>
-      </div>
+    </div>
+    <!-- En este row va el ag-grid -->
+    <div class="row">
+      <!-- The AG Grid component -->
+      <ag-grid-angular [columnDefs]="colMaster" [defaultColDef]="defaultColDef" [rowSelection]="rowSelection"
+        [rowData]="project" (selectionChanged)="onSelectionChanged($event)" class="ag-theme-quartz"
+        [rowGroupPanelShow]="rowGroupPanelShow" [pivotPanelShow]="pivotPanelShow"
+        [groupDefaultExpanded]="groupDefaultExpanded" [pagination]="true" (gridReady)="onGridReady($event)"
+        [paginationPageSize]="paginationPageSize" [paginationPageSizeSelector]="paginationPageSizeSelector"
+        [statusBar]="statusBar">
+      </ag-grid-angular>
     </div>
   </div>
-  
-  <ng-template #content let-modal>
-    <div class="modal-header">
-      <h3 class="modal-title">{{ isEditing ? 'Editar' : 'Añadir' }} proyecto</h3>
-      <button type="button" class="btn-close" aria-label="Close" (click)="modal.dismiss('Cross click')"></button>
-    </div>
-    <div class="modal-body">
-      <form [formGroup]="addProject" (ngSubmit)="onSubmit()">
-        <div class="row">
-          <div class="col-6">
-            <div class="mb-2">
-              <input type="number" formControlName="idConsecutivo" id="idConsecutivo" class="form-control"
-                placeholder="ID PEMEX">
+</div>
+
+<ng-template #content let-modal>
+  <div class="modal-header">
+    <h3 class="modal-title">{{ isEditing ? 'Editar' : 'Añadir' }} proyecto</h3>
+    <button type="button" class="btn-close" aria-label="Close" (click)="modal.dismiss('Cross click')"></button>
+  </div>
+  <div class="modal-body">
+    <form [formGroup]="addProject" (ngSubmit)="onSubmit()">
+      <div class="row">
+        <div class="col-6">
+          <div class="mb-2">
+            <input type="number" formControlName="idConsecutivo" id="idConsecutivo" class="form-control"
+              placeholder="ID PEMEX">
+          </div>
+          <div class="mb-2">
+            <input type="text" formControlName="number" id="number" class="form-control" placeholder="Orden de trabajo">
+          </div>
+          <div class="mb-2">
+            <input type="text" formControlName="name" id="name" class="form-control" placeholder="Nombre del proyecto">
+          </div>
+          <div class="mb-2">
+            <textarea formControlName="description" id="description" class="form-control"
+              placeholder="Descripción del proyecto" rows="4"></textarea>
+          </div>
+          <div class="mb-2">
+            <select formControlName="priority" id="priority" class="form-select">
+              <option value="0" selected>Prioritario</option>
+              <option value="1">Prioridad media</option>
+              <option value="2">Prioridad baja</option>
+            </select>
+          </div>
+          <div class="row mb-2">
+            <div class="col">
+              <label for="programStart" class="form-label">Inicio programado</label>
+              <input type="date" formControlName="programStart" id="programStart" class="form-control"
+                placeholder="Fecha de inicio de proyecto">
             </div>
-            <div class="mb-2">
-                <input type="text" formControlName="name" id="name" class="form-control"
-                  placeholder="Nombre del proyecto">
-              </div>
-              <div class="mb-2">
-                <textarea formControlName="description" id="description" class="form-control"
-                  placeholder="Descripción del proyecto" rows="4"></textarea>
-              </div>
-              <div class="row mb-2">
-                <div class="col">
-                  <label for="programStart" class="form-label">Inicio programado</label>
-                  <input type="date" formControlName="programStart" id="programStart" class="form-control"
-                    placeholder="Fecha de inicio de proyecto">
-                </div>
-                <div class="col">
-                  <label for="programEnd" class="form-label">Fin programado</label>
-                  <input type="date" formControlName="programEnd" id="programEnd" class="form-control"
-                    placeholder="Fecha de fin de proyecto">
-                </div>
-              </div>
-              <div class="mb-2">
-                <select formControlName="priority" id="priority" class="form-select">
-                  <option value="0" selected>Prioritario</option>
-                  <option value="1">Prioridad media</option>
-                  <option value="2">Prioridad baja</option>
-                </select>
-              </div>
+            <div class="col">
+              <label for="programEnd" class="form-label">Fin programado</label>
+              <input type="date" formControlName="programEnd" id="programEnd" class="form-control"
+                placeholder="Fecha de fin de proyecto">
             </div>
-            <div class="col-6">
-              <div class="row mb-2">
-                <div class="col">
-                  <label for="realPronosticLPO" class="form-label">Pronóstico LPO</label>
-                  <input type="date" formControlName="realPronosticLPO" id="realPronosticLPO" class="form-control"
-                    placeholder="Fecha de inicio de proyecto">
-                </div>
-                <div class="col">
-                  <label for="realPronosticTTT" class="form-label">Pronóstico TTT</label>
-                  <input type="date" formControlName="realPronosticTTT" id="realPronosticTTT" class="form-control"
-                    placeholder="Fecha de fin de proyecto">
-                </div>
-              </div>
-            <div class="mb-2">
-              <select formControlName="state" id="state" class="form-select">
-                <option value="Ejecucion" selected>Ejecución</option>
-                <option value="Cancelado">Cancelado</option>
-                <option value="Concluido">Concluido</option>
-                <option value="TTT">Todo Trabajo Terminado</option>
-                <option value="Suspendido">Suspendido</option>
-              </select>
-            </div>
-            <div class="mb-2">
-              <select formControlName="typeConstruction" id="typeConstruction" class="form-select">
-                <option selected disabled>Seleccione un tipo de construcción</option>
-                <option value="Ducto Marino">Ducto Marino</option>
-                <option value="Ducto Terrestre">Ducto Terrestre</option>
-                <option value="Plataforma">Plataforma</option>
-                <option value="Cables Submarinos">Cables Submarinos</option>
-                <option value="Amarre de Pozo">Amarre de Pozo</option>
-                <option value="Pera">Pera</option>
-                <option value="OEM">OEM</option>
-              </select>
-            </div>
-            <div class="mb-2">
-              <select formControlName="classification" id="classification" class="form-select">
-                <option selected disabled>Seleccione una clasificación</option>
-                <option value="Marina">Marina</option>
-                <option value="Terrestre">Terrestre</option>
-              </select>
-            </div>
-            <div class="mb-2">
-                <select formControlName="idContrato" id="idContrato" class="form-select">
-                  <option selected disabled>Seleccione un contrato</option>
-                  <option *ngFor="let contract of contracts" [value]="contract.idContrato">
-                    {{ contract.description }}
-                  </option>
-                </select>
-              </div>
-              <div class="mb-2">
-                <select formControlName="idOilfield" id="idOilfield" class="form-select">
-                  <option selected disabled>Seleccione un campo petrolero</option>
-                  <option *ngFor="let oilfield of oilfields" [value]="oilfield.id">
-                    {{ oilfield.name }}
-                  </option>
-                </select>
-              </div>
           </div>
         </div>
-      </form>
-    </div>
-    <div class="modal-footer">
-      <button type="submit" class="btn btn-primary" (click)="onSubmit()">Guardar</button>
-      <button type="button" class="btn btn-secondary" (click)="modal.close('Close click')">Cancelar</button>
-    </div>
-  </ng-template>
+        <div class="col-6">
+          <div class="row mb-2">
+            <div class="col">
+              <label for="realPronosticLPO" class="form-label">Pronóstico LPO</label>
+              <input type="date" formControlName="realPronosticLPO" id="realPronosticLPO" class="form-control"
+                placeholder="Fecha de inicio de proyecto">
+            </div>
+            <div class="col">
+              <label for="realPronosticTTT" class="form-label">Pronóstico TTT</label>
+              <input type="date" formControlName="realPronosticTTT" id="realPronosticTTT" class="form-control"
+                placeholder="Fecha de fin de proyecto">
+            </div>
+          </div>
+          <div class="mb-2">
+            <select formControlName="state" id="state" class="form-select">
+              <option value="Ejecucion" selected>Ejecución</option>
+              <option value="Cancelado">Cancelado</option>
+              <option value="Concluido">Concluido</option>
+              <option value="TTT">Todo Trabajo Terminado</option>
+              <option value="Suspendido">Suspendido</option>
+            </select>
+          </div>
+          <div class="mb-2">
+            <select formControlName="typeConstruction" id="typeConstruction" class="form-select">
+              <option selected disabled>Seleccione un tipo de construcción</option>
+              <option value="Ducto Marino">Ducto Marino</option>
+              <option value="Ducto Terrestre">Ducto Terrestre</option>
+              <option value="Plataforma">Plataforma</option>
+              <option value="Cables Submarinos">Cables Submarinos</option>
+              <option value="Amarre de Pozo">Amarre de Pozo</option>
+              <option value="Pera">Pera</option>
+              <option value="OEM">OEM</option>
+            </select>
+          </div>
+          <div class="mb-2">
+            <select formControlName="classification" id="classification" class="form-select">
+              <option selected disabled>Seleccione una clasificación</option>
+              <option value="Marina">Marina</option>
+              <option value="Terrestre">Terrestre</option>
+            </select>
+          </div>
+          <div class="mb-2">
+            <select formControlName="idContrato" id="idContrato" class="form-select">
+              <option selected disabled>Seleccione un contrato</option>
+              <option *ngFor="let contract of contracts" [value]="contract.idContrato">
+                {{ contract.numberContract }} - {{ contract.description }}
+              </option>
+            </select>
+          </div>
+          <div class="mb-2">
+            <select formControlName="idOilfield" id="idOilfield" class="form-select">
+              <option selected disabled>Seleccione un campo petrolero</option>
+              <option *ngFor="let oilfield of oilfields" [value]="oilfield.id">
+                {{ oilfield.name }}
+              </option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+  <div class="modal-footer">
+    <button type="submit" class="btn btn-primary" (click)="onSubmit()">Guardar</button>
+    <button type="button" class="btn btn-secondary" (click)="modal.close('Close click')">Cancelar</button>
+  </div>
+</ng-template>
