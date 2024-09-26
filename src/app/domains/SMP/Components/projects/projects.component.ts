@@ -140,7 +140,6 @@ export class ProjectsComponent {
     this.projectsService.getProjects().subscribe(
       (resp: any) => {
         this.project = this.mapProject(resp);
-        console.log(this.project)
       },
       (error) => {
         console.error('Error fetching contracts', error);
@@ -350,6 +349,7 @@ export class ProjectsComponent {
           this.resetForm();
         });
       } else {
+        console.log('Adding contract with data:', this.formData);
         this.projectsService.addProject(this.formData).pipe(
           catchError((error) => {
             alerts.basicAlert(
@@ -382,7 +382,7 @@ export class ProjectsComponent {
 
   prepareFormData(): any {
     const formValue = this.addProject.value;
-    return {
+    const preparedData = {
       ...formValue,
       programStart: this.formatDateForBackend(formValue.programStart),
       programEnd: this.formatDateForBackend(formValue.programEnd),
@@ -390,6 +390,13 @@ export class ProjectsComponent {
       realPronosticTTT: this.formatDateForBackend(formValue.realPronosticTTT),
       state: formValue.state
     };
+  
+    // Si no estamos editando (es una entrada nueva), eliminamos el campo id
+    if (!this.isEditing) {
+      delete preparedData.id;
+    }
+  
+    return preparedData;
   }
 
 
