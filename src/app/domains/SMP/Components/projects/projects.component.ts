@@ -289,7 +289,8 @@ export class ProjectsComponent {
         this.oilfields = result.oilfields;
 
         const modalOptions: NgbModalOptions = {
-          size: 'xl'
+          size: 'xl',
+          centered: true
         };
         this.modalService.open(this.content, modalOptions);
       },

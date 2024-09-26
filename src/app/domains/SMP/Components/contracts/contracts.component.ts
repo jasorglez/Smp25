@@ -245,7 +245,8 @@ export class ContractsComponent {
       next: (resp) => {
         this.providers = resp;
         const modalOptions: NgbModalOptions = {
-          size: 'xl'
+          size: 'xl',
+          centered: true
         };
         this.modalService.open(this.content, modalOptions);
       },
