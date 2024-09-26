@@ -85,8 +85,7 @@ export class UsersService {
       return null;
     }
   }
- 
-  
+   
 
   findEmail(email: string): Observable<any> {
     const headers = this.trackingService.getHeaders();
@@ -102,14 +101,15 @@ export class UsersService {
           console.log('user:', user);
 
           // Asegúrate de que todas las propiedades existen en el objeto user
-          const displayName = user.displayName || '';
-          const picture = user.picture || '';
-          const email = user.emailu || '';
-          const applyproject = user.applyproject || '';
-          const applybranch = user.applybranch || '';
-          const applyplatform = user.applyplatform || ''; // Corregido de user.applybranch a user.applyplatform
+           const displayName = user.displayName || '';
+           const picture = user.picture || '';
+           const email = user.emailu || '';
+           const applyproject = user.applyproject || '';
+           const applybranch = user.applybranch || '';
+           const applyplatform = user.applyplatform || ''; // Corregido de user.applybranch a user.applyplatform
+           const id           = user.id   ;
 
-          return { displayName, picture, applyproject, applybranch, applyplatform, email };
+          return { displayName, picture, applyproject, applybranch, applyplatform, email, id };
         } else {
           // Si no se encontró ningún usuario, devuelve un objeto vacío
           return { displayName: '', picture: '', applyproject: '', applybranch: '', applyplatform: '', email: '' };

@@ -151,13 +151,14 @@ export class ComploginComponent implements OnInit {
           next: (datauser: any) => {
             if (datauser) {
               console.log(datauser)
-              //alert('se encontro el dato')
+              // Defincion de variables globales
                this.trackingService.setnameUser(datauser.displayName);
                this.trackingService.setpictureUser(datauser.picture);
                this.trackingService.setabranch(datauser.applybranch) ;
                this.trackingService.setaplatform(datauser.applyplatform) ;
-               this.trackingService.setaproject(datauser.  applyproject) ;
-
+               this.trackingService.setaproject(datauser.applyproject) ;
+               this.trackingService.setId(datauser.id) ;
+               
                this.router.navigate(['/main']) ;
             }
           },

@@ -22,6 +22,7 @@ export class FollowprojectsService {
     return this.http.get<Icontract>(`${environment.urlLinux4}/Contract/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
+  //cambios de David
   addContract(data: any): Observable<any> {
     return this.http.post(`${environment.urlLinux4}/Contract`, data, { headers: this.trackingService.getHeaders() });
   }

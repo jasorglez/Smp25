@@ -9,39 +9,47 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 export class TrackingService {
   private http = inject(HttpClient);
 
-  private currentProject = new BehaviorSubject<string>('');
-  private emailser: string = '';
-  private namecomp: string = '';
-  private picturecomp: string = '';
-  private fri: string = '';
-  private nameuser: string = '';
-  private pictureuser: string = '';
-  private projectser: string = '';
-  private branchser: string = '';
-  private companyser: string = '';
-  private contract: string = '';
-  private nameproject: string = '';
+  private currentProject  = new BehaviorSubject<string>('');
+  private emailser        : string = '';
+  private namecomp        : string = '';
+  private picturecomp     : string = '';
+  private fri             : string = '';
+  private nameuser        : string = '';
+  private pictureuser     : string = '';
+  private projectser      : string = '';
+  private branchser       : string = '';
+  private companyser      : string = '';
+  private contract        : string = '';
+  private nameproject     : string = '';
   private ubicationproject: string = '';
-  private startproject: string = '';
-  private endproject: string = '';
-  public ultimaventana: string = '';
-  public idEmp: number = 0;
-  private fecha: Date = new Date('2024-01-01');
-  private numRes: string = '';
-  private comment: string = '';
-  private idNumSap: number = 0;
-  private cpser: number = 0;
-  private platformser: number = 0;
-  private plataforma: string = '';
-  private platform: number = 0;
-  private numprov: number = 0;
-  private aproject: string = '';
-  private abranch: string = '';
-  private aplatform: string = '';
-  private emailprofile: string = '';
-  private bandform: string = '';
-  private bandformEO: string = '';
-  private idUser: number = 0;
+  private startproject    : string = '';
+  private endproject      : string = '';
+  public ultimaventana    : string = '';
+  public idEmp            : number = 0;
+  private fecha           : Date = new Date('2024-01-01');
+  private numRes          : string = '';
+  private comment         : string = '';
+  private idNumSap        : number = 0;
+  private cpser           : number = 0;
+  private platformser     : number = 0;
+  private plataforma      : string = '';
+  private platform        : number = 0;
+  private numprov         : number = 0;
+  private aproject        : string = '';
+  private abranch         : string = '';
+  private aplatform       : string = '';
+  private emailprofile    : string = '';
+  private bandform        : string = '';
+  private bandformEO      : string = '';
+  private idUser          : number = 0;
+
+  setId(idUser: number): void {
+    this.idUser = idUser;
+  }
+
+  getId(): number {
+    return this.idUser ;
+  }
 
   private getAuthToken(): string {
     return localStorage.getItem('token') || '';

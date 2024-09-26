@@ -22,9 +22,9 @@ export class UsersxcontractsComponent {
   private contractsService = inject(ContractsService);
   private usersxcontractsService = inject(UsersxpermissionsService);
 
-  ngOnInit() {
+  ngOnInit() {        
     this.obtenerDatos();
-    this.obtenerContracts();
+    this.obtenerContracts(parseInt(localStorage.getItem('company')));
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -57,8 +57,8 @@ export class UsersxcontractsComponent {
       });
   }
 
-  obtenerContracts() {
-    this.contractsService.getContracts().subscribe((data: any[]) => {
+  obtenerContracts(contract: number) {
+    this.contractsService.getContracts(contract).subscribe((data: any[]) => {
       this.contracts = data.reduce((acc, dep) => {
         acc[dep.id] = dep.descripSmall; // Cambia la estructura para que solo almacene el nombre
         return acc;

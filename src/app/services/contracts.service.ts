@@ -18,8 +18,8 @@ export class ContractsService {
     return localStorage.getItem('token') || '';
   }
 
-  getContracts() {
-    return this.http.get(`${environment.urlLinux3}/Contract/2cont?idBussines=1`, { headers: this.trackingService.getHeaders() });
+  getContracts(contract: number) {
+    return this.http.get(`${environment.urlLinux4}/Contract/2cont?idBussines=${contract}`, { headers: this.trackingService.getHeaders() });
   }
 
 }
