@@ -109,7 +109,7 @@ export class ContractsComponent {
 
   initForm() {
     this.addContract = new FormGroup({
-      id: new FormControl(0),
+      id: new FormControl(),
       numberContract: new FormControl('', Validators.required),
       description: new FormControl('', Validators.required),
       descripSmall: new FormControl('', Validators.required),

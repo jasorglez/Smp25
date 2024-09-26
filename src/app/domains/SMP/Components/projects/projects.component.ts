@@ -1,113 +1,186 @@
-import { Component, HostListener, inject } from '@angular/core';
+
+import { Component, inject, TemplateRef, ViewChild } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
+import { NgbModal, NgbModalOptions } from '@ng-bootstrap/ng-bootstrap';
+import { DomainsModule } from 'app/domains/domainsmodule';
+import { FollowprojectsService } from '../../../../services/followprojects.service';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { AbstractControl, FormControl, FormGroup, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
-import { AgGridModule } from 'ag-grid-angular';
-import { ContractsService } from 'app/services/contracts.service';
-import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { catchError, EMPTY, forkJoin } from 'rxjs';
+import { Iproject } from 'app/interface/iproject';
 import { ProjectsService } from 'app/services/projects.service';
+import { OilfieldService } from 'app/services/oilfield.service';
+
+// Esta funcion valida que programStart sea siempre menor a programEnd
+export function dateRangeValidator(): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null => {
+    const programStart = control.get('programStart')?.value;
+    const programEnd = control.get('programEnd')?.value;
+    const realPronosticLPO = control.get('realPronosticLPO')?.value;
+    const realPronosticTTT = control.get('realPronosticTTT')?.value;
+    if (programStart && programEnd
+      && programStart > programEnd
+      && realPronosticLPO && realPronosticTTT
+      && realPronosticLPO > realPronosticTTT) {
+      return { dateRangeInvalid: true };
+    }
+
+    return null;
+  };
+}
+
+// Workaorund que corrige la opción por default
+export function noDefaultValueValidator(): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null => {
+    const value = control.value;
+    if (value === 'Seleccione un tipo de construcción' || 
+      value === 'Seleccione un estado' || 
+      value === 'Seleccione un contrato' || 
+      value === 'Seleccione un campo petrolero' || 
+      value === 'Seleccione una clasificación') {
+      return { noDefaultValue: true };
+    }
+    return null;
+  };
+}
 
 @Component({
   selector: 'app-projects',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
-  templateUrl: '../oil-provider-root-project.html'
+  imports: [RouterOutlet, DomainsModule],
+  templateUrl: './projects.component.html',
+  styleUrl: './projects.component.scss'
 })
 export class ProjectsComponent {
-
-  private projectsService = inject(ProjectsService);
-  private contractsService = inject(ContractsService);
-
-  ngOnInit() {
-    this.obtenerDatos();
-    this.obtenerContracts();
+  constructor() {
+    this.initForm();
   }
 
-  @HostListener('window:beforeunload', ['$event'])
-  unloadNotification($event: any): void {
-    if (this.notSavedChanges) {
-      $event.returnValue =
-        'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
-    }
-  }
+  @ViewChild('content') content!: TemplateRef<any>;
 
+  addProject: FormGroup;
+
+  formData: any;
+  providers: any;
+  contracts: any;
+  oilfields: any;
+  selectedRowData: Iproject | null = null;
+
+  isEditing = false;
+  isSave = false;
+  isCancel = false;
+  isDelete = false;
+  isPrint = false;
+
+  screenSizeSM = false;
   notSavedChanges: boolean = false;
-  rowData: any;
-  contracts: { [key: string]: string } = {};
-  newlyAddedRows: string[] = [];
-  selectedRowData: any = null;
-  id: string;
-  private gridApi: GridApi;
-  private tempIdCounter: number = 0;
 
-  obtenerDatos() {
-    this.projectsService
-      .getProjects()
-      .subscribe((data: any) => {
-        this.rowData = data;
-        console.log(data)
-      });
+  // Inject of new way for Angular 18
+  private modalService = inject(NgbModal);
+  private projectsService = inject(ProjectsService);
+  private followprojectsService = inject(FollowprojectsService);
+  private oilfieldsService = inject(OilfieldService);
+
+  public project: Iproject[] = [];
+  private gridApi!: GridApi<Iproject>;
+
+  // Define data of Grid
+  public rowSelection: 'single' | 'multiple' = 'single';
+  public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
+  public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
+  public paginationPageSize = 15;
+  public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
+
+  // Column Definitions: Defines the columns to be displayed.
+  colMaster: ColDef[] = [
+    { field: 'idConsecutivo', headerName: 'ID PEMEX' },
+    { field: 'description', headerName: 'Descripcion' },
+    { field: 'name', headerName: 'Nombre', width: 100, filter: true },
+    { field: 'classification', headerName: 'Clasificación', width: 100, filter: true }
+  ];
+
+  ngOnInit(): void {
+    //Called after the constructor, initializing input properties, and the first call to ngOnChanges.
+    this.getProjects();
   }
 
-  obtenerContracts() {
-
+  initForm() {
+    this.addProject = new FormGroup({
+      id: new FormControl(),
+      idConsecutivo: new FormControl('', Validators.required),
+      description: new FormControl('', Validators.required),
+      name: new FormControl('', Validators.required),
+      number: new FormControl('S/N'),
+      programStart: new FormControl('', Validators.required),
+      programEnd: new FormControl('', Validators.required),
+      realPronosticLPO: new FormControl('', Validators.required),
+      realPronosticTTT: new FormControl('', Validators.required),
+      state: new FormControl('Seleccione un estado', [Validators.required, noDefaultValueValidator()]),
+      typeConstruction: new FormControl('Seleccione un tipo de construcción', [Validators.required, noDefaultValueValidator()]),
+      classification: new FormControl('Seleccione una clasificación', [Validators.required, noDefaultValueValidator()]),
+      active: new FormControl(1),
+      idActive: new FormControl(1),
+      comment: new FormControl(''),
+      request: new FormControl(''),
+      supplyPipe: new FormControl('NO'),
+      dateDelivery: new FormControl(null),
+      receivedEngineering: new FormControl('NO'),
+      government: new FormControl('NO'),
+      lineRight: new FormControl('NO'),
+      budgetManagement: new FormControl('NO'),
+      idContrato: new FormControl('Seleccione un contrato', [Validators.required, noDefaultValueValidator()]),
+      idOilfield: new FormControl('Seleccione un campo petrolero', [Validators.required, noDefaultValueValidator()]),
+      year: new FormControl('2024'),
+      diameter: new FormControl('0'),
+    }, { validators: dateRangeValidator() });
   }
 
-  get columnDefs(): ColDef[] {
-    return [
-      {
-        field: 'name',
-        headerName: 'Nombre',
-        editable: true,
-        flex: 2
+  getProjects() {
+    this.projectsService.getProjects().subscribe(
+      (resp: any) => {
+        this.project = this.mapProject(resp);
+        console.log(this.project)
       },
-      {
-        field: 'nameShort',
-        headerName: 'Nombre Corto',
-        editable: true,
-        flex: 1
-      },
-      {
-        field: 'rfc',
-        headerName: 'RFC',
-        editable: true,
-        flex: 1
-      },
-      {
-        field: 'address',
-        headerName: 'Dirección',
-        editable: true,
-        flex: 1
-      },
-      {
-        field: 'phone',
-        headerName: 'Teléfono',
-        editable: true,
-        flex: 1
-      },
-      {
-        field: 'picture',
-        headerName: 'Foto',
-        cellEditor: 'agTextCellEditor',
-        cellRenderer: (params: any) => {
-          if (params.value) {
-            return `<img src="${params.value}" class="text-center" style="height:100%;">`;
-          } else {
-            return '';
-          }
-        },
-        editable: true,
-      },
-    ];
+      (error) => {
+        console.error('Error fetching contracts', error);
+      }
+    );
   }
 
-  onSelectedRow(event: any) {
-    this.id = event.data.id;
+  mapProject(data: any[]): Iproject[] {
+    return data.map(w => ({
+      id: w.id,
+      idConsecutivo: w.idConsecutivo,
+      number: w.number,
+      name: w.name,
+      priority: w.priority,
+      description: w.description,
+      programStart: w.programStart,
+      programEnd: w.programEnd,
+      realPronosticLPO: w.realPronosticLPO,
+      realPronosticTTT: w.realPronosticTTT,
+      idContrato: w.idContrato,
+      idOilfield: w.idOilfield,
+      company: w.company,
+      year: w.year,
+      diameter: w.diameter,
+      active: w.active,
+      length: w.length,
+      budgetManagement: w.budgetManagement,
+      lineRight: w.lineRight,
+      receivedEngineering: w.receivedEngineering,
+      government: w.government,
+      classification: w.classification,
+      typeConstruction: w.typeConstruction,
+      state: w.state,
+      request: w.request,
+      idActive: w.idActive
+    } as Iproject));
   }
 
   onSelectionChanged(event: any) {
-    const selectedNodes = event.api.getSelectedNodes();
+    const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
     } else {
@@ -115,142 +188,221 @@ export class ProjectsComponent {
     }
   }
 
-  onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
-    event.data.__modified = true;
-    this.notSavedChanges = true;
-  }
-
-  onGridReady(params: GridReadyEvent) {
+  onGridReady(params: GridReadyEvent): void {
     this.gridApi = params.api;
   }
 
+  statusBar = {
+    statusPanels: [
+      {
+        statusPanel: 'agTotalAndFilteredRowCountComponent',
+        align: 'left',
+      }
+    ]
+  };
+
+  defaultColDef = {
+    flex: 1,
+  };
+
   addRow() {
-    const tempId = `temp_${this.tempIdCounter++}`;
-    const newItem = {
-      id: tempId,
-      name: '',
-      nameShort: '',
-      address: '',
-      stateId: null,
-      phone: '',
-      consortium: 'NO',
-      picture: 'SIN FOTO',
-      active: 1,
-      __isNew: true,
-    };
-
-    this.rowData = [newItem, ...this.rowData];
-    this.newlyAddedRows.push(tempId);
-    this.notSavedChanges = true;
+    this.isEditing = false;
+    this.initForm();
+    this.openModal();
   }
 
-  async saveChanges() {
-    const isValid = this.rowData.every((item) => item.name && item.nameShort && item.rfc);
-    if (!isValid) {
+  editRow(): void {
+    if (!this.selectedRowData) {
       alerts.basicAlert(
-        'Añadir entrada',
-        'Debe llenar todos los campos antes de guardar.',
-        'error'
+        'Editar contrato',
+        'Por favor, seleccione un proyecto para editar.',
+        'warning'
       );
       return;
     }
 
-    const newRows = this.rowData.filter((row) => row.__isNew);
-    const modifiedRows = this.rowData.filter(
-      (row) => row.__modified && !row.__isNew
-    );
-
-    const addObservables = newRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      return this.projectsService.addProject(cleanedData);
-    });
-
-    const updateObservables = modifiedRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      return this.projectsService.updateProject(row.id, cleanedData);
-    });
-
-    // Using concat to combine observables and lastValueFrom for async/await
-    try {
-      const responses = await lastValueFrom(
-        concat(...addObservables, ...updateObservables).pipe(toArray())
-      );
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
-      this.notSavedChanges = false;
-      this.newlyAddedRows = [];
-      this.obtenerDatos(); // Refrescar los datos
-    } catch (error) {
-      console.error(error);
-      alerts.basicAlert(
-        'Error',
-        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
-        'error'
-      );
-    }
+    this.isEditing = true;
+    this.populateForm(this.selectedRowData);
+    this.openModal();
   }
 
-  async deleteEntry() {
-    const selectedNodes = this.gridApi.getSelectedNodes();
-    if (selectedNodes.length === 0) {
+  populateForm(data: Iproject) {
+    this.addProject.patchValue({
+      id: data.id,
+      idConsecutivo: data.idConsecutivo,
+      number: data.number,
+      name: data.name,
+      priority: data.priority,
+      description: data.description,
+      programStart: this.formatDateForInput(data.programStart),
+      programEnd: this.formatDateForInput(data.programEnd),
+      realPronosticLPO: this.formatDateForInput(data.realPronosticLPO),
+      realPronosticTTT: this.formatDateForInput(data.realPronosticTTT),
+      idContrato: data.idContrato,
+      idOilfield: data.idOilfield,
+      company: data.company,
+      year: data.year,
+      diameter: data.diameter,
+      active: data.active,
+      length: data.length,
+      budgetManagement: data.budgetManagement,
+      lineRight: data.lineRight,
+      receivedEngineering: data.receivedEngineering,
+      government: data.government,
+      classification: data.classification,
+      typeConstruction: data.typeConstruction,
+      state: data.state,
+      request: data.request,
+      idActive: data.idActive
+    });
+  }
+
+  formatDateForInput(dateString: string | null): string {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toISOString().split('T')[0];
+  }
+
+  openModal() {
+    forkJoin({
+      contracts: this.followprojectsService.getContract(1),
+      oilfields: this.oilfieldsService.getOilfields()
+    }).pipe(
+      catchError(error => {
+        console.error('Error fetching data:', error);
+        alerts.basicAlert(
+          'Error',
+          'Hubo un problema al cargar los datos. Por favor, inténtelo de nuevo.',
+          'error'
+        );
+        return [];
+      })
+    ).subscribe({
+      next: (result) => {
+        this.contracts = result.contracts;
+        this.oilfields = result.oilfields;
+        
+        const modalOptions: NgbModalOptions = {
+          size: 'xl'
+        };
+        this.modalService.open(this.content, modalOptions);
+      },
+      error: (error) => {
+        console.error('Error in subscription:', error);
+      }
+    });
+  }
+
+  deleteProject() {
+    if (!this.selectedRowData) {
       alerts.basicAlert(
-        'Eliminar entrada',
-        'Por favor, seleccione una entrada para eliminar.',
-        'error'
+        'Eliminar contrato',
+        'Por favor, seleccione un proyecto para eliminar.',
+        'warning'
       );
       return;
     }
 
-    const selectedData = selectedNodes[0].data;
-    const id = selectedData.id;
-    selectedData.active = 0;
-    this.projectsService.deleteProject(id).pipe(
+    this.projectsService.deleteProject(this.selectedRowData.id).pipe(
       catchError((error) => {
         alerts.basicAlert(
-          'Eliminar entrada',
-          'Error al eliminar la entrada.',
+          'Eliminar contrato',
+          'Error al eliminar el contrato.',
           'error'
         );
         console.error(error);
         return EMPTY;
       })
-    )
-      .subscribe(
-        () => {
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.obtenerDatos();
-
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.notSavedChanges = false;
-          this.selectedRowData = null;
-        }
+    ).subscribe(() => {
+      alerts.basicAlert(
+        'Eliminar contrato',
+        'Contrato eliminado satisfactoriamente.',
+        'success'
       );
+      this.getProjects();
+      this.selectedRowData = null;
+    });
   }
 
-  revert() {
-    this.obtenerDatos();
-    this.notSavedChanges = false;
-  }
-
-  private cleanDataForServer(data: any): any {
-    const cleanedData = { ...data };
-    delete cleanedData.__isNew;
-    delete cleanedData.__modified;
-    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
-      delete cleanedData.id;
+  onSubmit() {
+    if (this.addProject.valid) {
+      this.formData = this.prepareFormData();
+      if (this.isEditing && this.selectedRowData) {
+        console.log('Updating contract with data:', this.selectedRowData);
+        this.projectsService.updateProject(this.selectedRowData.id, this.formData).pipe(
+          catchError((error) => {
+            alerts.basicAlert(
+              'Actualizar contrato',
+              'Hubo un error al intentar actualizar la información.',
+              'error'
+            );
+            console.error('Error updating contract:', error);
+            return EMPTY;
+          })
+        ).subscribe(() => {
+          alerts.basicAlert(
+            'Actualizar proyecto',
+            'Proyecto actualizado exitosamente.',
+            'success'
+          );
+          this.getProjects();
+          this.modalService.dismissAll();
+          this.resetForm();
+        });
+      } else {
+        this.projectsService.addProject(this.formData).pipe(
+          catchError((error) => {
+            alerts.basicAlert(
+              'Añadir proyecto',
+              'Hubo un error al intentar guardar la información.',
+              'error'
+            );
+            console.error('Error adding contract:', error);
+            return EMPTY;
+          })
+        ).subscribe(() => {
+          alerts.basicAlert(
+            'Añadir proyecto',
+            'Proyecto añadido exitosamente.',
+            'success'
+          );
+          this.getProjects();
+          this.modalService.dismissAll();
+          this.resetForm();
+        });
+      }
+    } else {
+      alerts.basicAlert(
+        this.isEditing ? 'Actualizar proyecto' : 'Añadir proyecto',
+        'Debe completar todos los campos correctamente.',
+        'error'
+      );
     }
-    return cleanedData;
   }
+
+  prepareFormData(): any {
+    const formValue = this.addProject.value;
+    return {
+      ...formValue,
+      programStart: this.formatDateForBackend(formValue.programStart),
+      programEnd: this.formatDateForBackend(formValue.programEnd),
+      realPronosticLPO: this.formatDateForBackend(formValue.realPronosticLPO),
+      realPronosticTTT: this.formatDateForBackend(formValue.realPronosticTTT),
+      state: formValue.state
+    };
+  }
+
+
+  formatDateForBackend(dateString: string): string {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toISOString().split('T')[0];
+  }
+
+  resetForm() {
+    this.initForm();
+    this.isEditing = false;
+    this.selectedRowData = null;
+  }
+
 }

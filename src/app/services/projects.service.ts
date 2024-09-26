@@ -33,19 +33,19 @@ export class ProjectsService {
 
 
   getProjects() {
-    return this.http.get(`${environment.urlLinux3}/Project`, { headers: this.trackingService.getHeaders() });
+    return this.http.get(`${environment.urlLinux4}/Project`, { headers: this.trackingService.getHeaders() });
   }
 
   addProject(data: any) {
-    return EMPTY;
+    return this.http.post(`${environment.urlLinux4}/Project`, data, { headers: this.trackingService.getHeaders() });
   }
 
   updateProject(id: number, data: any) {
-    return EMPTY;
+    return this.http.put(`${environment.urlLinux4}/Project/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
-  deleteProject(id:number) {
-    return EMPTY;
+  deleteProject(id: number) {
+    return this.http.delete(`${environment.urlLinux4}/Project/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
 }

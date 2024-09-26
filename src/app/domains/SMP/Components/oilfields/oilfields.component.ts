@@ -12,7 +12,7 @@ import { FormsModule } from '@angular/forms';
   selector: 'app-oilfields',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule],
-  templateUrl: '../oil-provider-root-project.html'
+  templateUrl: '../oil-provider-project.html'
 })
 export class OilfieldsComponent {
 

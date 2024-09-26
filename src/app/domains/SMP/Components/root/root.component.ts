@@ -12,7 +12,7 @@ import { RootService } from 'app/services/root.service';
   selector: 'app-root',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule],
-  templateUrl: '../oil-provider-root-project.html'
+  templateUrl: './root.component.html'
 })
 export class RootComponent {
 
@@ -70,11 +70,16 @@ export class RootComponent {
         flex: 1
       },
       {
+        field: 'formatRep',
+        headerName: 'Formato de reporte',
+        editable: true,
+        flex: 1
+      },
+      {
         field: 'email',
         headerName: 'Email',
         cellEditor: 'agTextCellEditor',
-        editable: true,
-        // editable: (params) => params.data.__isNew,
+        editable: (params) => params.data.__isNew,
         cellEditorParams: {
           useFormatter: true,
         },
@@ -273,51 +278,6 @@ export class RootComponent {
         'error'
       );
     }
-  }
-
-  async deleteEntry() {
-    const selectedNodes = this.gridApi.getSelectedNodes();
-    if (selectedNodes.length === 0) {
-      alerts.basicAlert(
-        'Eliminar entrada',
-        'Por favor, seleccione una entrada para eliminar.',
-        'error'
-      );
-      return;
-    }
-
-    const selectedData = selectedNodes[0].data;
-    const id = selectedData.id;
-    selectedData.active = 0;
-    this.rootService.deleteRoot(id).pipe(
-      catchError((error) => {
-        alerts.basicAlert(
-          'Eliminar entrada',
-          'Error al eliminar la entrada.',
-          'error'
-        );
-        console.error(error);
-        return EMPTY;
-      })
-    )
-      .subscribe(
-        () => {
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.obtenerDatos();
-
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.notSavedChanges = false;
-          this.selectedRowData = null;
-        }
-      );
   }
 
   revert() {

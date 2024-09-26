@@ -12,7 +12,7 @@ import { ProvidersService } from 'app/services/providers.service';
   selector: 'app-providers',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule],
-  templateUrl: '../oil-provider-root-project.html'
+  templateUrl: '../oil-provider-project.html'
 })
 export class ProvidersComponent {
 
