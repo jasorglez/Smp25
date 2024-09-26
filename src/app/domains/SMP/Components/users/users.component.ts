@@ -3,10 +3,13 @@ import { Component, computed, HostListener, inject, Injectable } from '@angular/
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { UsersService } from 'app/services/users.service';
+import { StoragesService } from 'app/services/storages.service';
 import { alerts } from 'app/helpers/alerts';
 import { FormsModule } from '@angular/forms';
 import { UsersProfileComponent } from "./users-profile.component";
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { ICellRendererParams } from 'ag-grid-enterprise';
+import { MatDialogModule } from '@angular/material/dialog';
 
 @Injectable({
   providedIn: 'root',
@@ -20,7 +23,8 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
     CommonModule,
     FormsModule,
     AgGridModule,
-    UsersProfileComponent
+    UsersProfileComponent,
+    MatDialogModule
   ],
   templateUrl: './users.component.html',
   styleUrl: './users.component.scss',
@@ -28,6 +32,7 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 export class UsersComponent {
 
   private usersService = inject(UsersService);
+  private storagesService = inject(StoragesService);
   profile = computed(() => this.usersService.profile);
 
   enviarSignal() {
@@ -213,15 +218,11 @@ export class UsersComponent {
       {
         field: 'picture',
         headerName: 'Imagen de perfil',
-        cellEditor: 'agTextCellEditor',
-        cellRenderer: (params: any) => {
-          if (params.value) {
-            return `<img src="${params.value}" class="text-center" style="height:100%;">`;
-          } else {
-            return '';
-          }
+        cellRenderer: this.imageCellRenderer.bind(this),
+        cellRendererParams: {
+          clicked: this.onImageCellClicked.bind(this)
         },
-        editable: true,
+        editable: false,
       },
       {
         field: 'signature',
@@ -395,5 +396,48 @@ export class UsersComponent {
       delete cleanedData.id;
     }
     return cleanedData;
+  }
+
+  // Guardar imagen
+  imageCellRenderer(params: ICellRendererParams) {
+    const img = document.createElement('img');
+    img.src = params.value || './assets/img/profile.png';
+    img.style.height = '100%';
+    img.style.cursor = 'pointer';
+    img.addEventListener('dblclick', () => {
+      if (params.colDef.cellRendererParams && params.colDef.cellRendererParams.clicked) {
+        params.colDef.cellRendererParams.clicked(params);
+      }
+    });
+    return img;
+  }
+
+  onImageCellClicked(params: ICellRendererParams) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/jpeg';
+    input.onchange = (event: any) => this.uploadImage(event, params);
+    input.click();
+  }
+
+  uploadImage(event: any, params: ICellRendererParams) {
+    const file = event.target.files[0];
+    if (!file || file.type !== 'image/jpeg') {
+      alerts.basicAlert('Subir imagen', 'Solo se permiten imágenes en JPG, por favor seleccione otra imagen.', 'error');
+      return;
+    }
+
+    const path = `images/${this.storagesService.generateRandom()}${file.name}`;
+
+    this.storagesService.uploadFile(file, path)
+      .then(url => {
+        params.node.setDataValue('picture', url);
+        this.notSavedChanges = true;
+        alerts.basicAlert('Subir imagen', 'Imagen subida exitosamente.', 'success');
+      })
+      .catch(error => {
+        console.error("Error uploading file", error);
+        alerts.basicAlert('Subir imagen', 'Error al subir la imagen. Por favor, intente nuevamente.', 'error');
+      });
   }
 }
