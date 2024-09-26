@@ -1,4 +1,4 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { HttpClient } from '@angular/common/http';
 import { TrackingService } from './tracking.service';
@@ -10,15 +10,17 @@ import { Observable } from 'rxjs';
 })
 
 export class UsersxpermissionsService {
+
+  idCompany = signal<number>(null);
+    private companyCheckedSignal = signal(false);
+
+  companyChecked() {
+    return this.companyCheckedSignal;
+  }
+
   constructor(private http: HttpClient) { }
 
   private trackingService = inject(TrackingService);
-
-  private getAuthToken(): string {
-    return localStorage.getItem('token') || '';
-  }
-
- 
 
   getDataUsersxPermissions(type: string) {
     return this.http.get(`${environment.urlLinux}/Usersxpermission?type=${type}`, { headers: this.trackingService.getHeaders() });
@@ -34,5 +36,9 @@ export class UsersxpermissionsService {
 
   deleteUserxPermission(id: number): Observable<any> {
     return this.http.delete(`${environment.urlLinux}/Usersxpermission/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  companySignal(id: number) {
+    this.idCompany.set(id);
   }
 }

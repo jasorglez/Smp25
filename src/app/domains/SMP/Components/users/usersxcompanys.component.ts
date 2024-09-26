@@ -104,13 +104,14 @@ export class UsersxcompanysComponent {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
+      this.enviarCompanyId();
     } else {
       this.selectedRowData = null;
     }
   }
 
   onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
+    this.enviarCompanyId();
     event.data.__modified = true;
     // Verificar si el campo modificado es 'id_company'
     if (event.colDef.field === 'id_company') {
@@ -258,5 +259,9 @@ export class UsersxcompanysComponent {
       delete cleanedData.id;
     }
     return cleanedData;
+  }
+
+  enviarCompanyId() {
+    this.usersxcompanysService.companySignal(this.selectedRowData.idPermission);
   }
 }

@@ -18,7 +18,11 @@ export class ContractsService {
   }
 
   getContracts(contract: number) {
-    return this.http.get(`${environment.urlLinux3}/Contract/2cont?idBussines=${contract}`, { headers: this.trackingService.getHeaders() });
+    return this.http.get(`${environment.urlLinux4}/Contract?idBussines=${contract}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getContractsByProvider(id: number) {
+    return this.http.get(`${environment.urlLinux4}/Contract/provider?provider=${id}`, { headers: this.trackingService.getHeaders() });
   }
 
 }
