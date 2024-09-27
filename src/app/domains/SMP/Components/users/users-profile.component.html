@@ -34,3 +34,9 @@
         <p>{{usersxpermissionsService.nameCompany()}}</p>
     </div>
 </div>
+<div class="row" *ngIf="usersxpermissionsService.nameContract() != null">
+    <div class="col">
+        <p><strong>Contrato seleccionado</strong></p>
+        <p>{{usersxpermissionsService.nameContract()}}</p>
+    </div>
+</div>

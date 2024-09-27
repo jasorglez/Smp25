@@ -35,9 +35,9 @@ export class UsersxcontractsComponent {
     }
   }
 
-  // Signals con correo
   profile = computed(() => this.usersService.profile);
   idCompany = this.usersxcontractsService.idCompany();
+  idContract = this.usersxcontractsService.idContract();
   idUser: any = this.profile().idUser();
   companyChecked = computed(() => this.usersxcontractsService.companyChecked());
 
@@ -149,12 +149,14 @@ export class UsersxcontractsComponent {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
+      this.enviarContractId();
     } else {
       this.selectedRowData = null;
     }
   }
 
   onCellValueChanged(event: any) {
+    this.enviarContractId();
     event.data.__modified = true;
     // Verificar si el campo modificado es 'id_company'
     if (event.colDef.field === 'id_company') {
@@ -314,6 +316,15 @@ export class UsersxcontractsComponent {
   filteredData() {
     this.obtenerDatos();
     this.obtenerContracts(parseInt(localStorage.getItem('company')));
+  }
+
+  enviarContractId() {
+    const contractName = this.getContractName(this.selectedRowData.idPermission);
+    this.usersxcontractsService.contractSignal(this.selectedRowData.idPermission, contractName);
+  }
+
+  getContractName(id: number) {
+    return this.contracts[id] || 'Contrato no encontrado';
   }
 }
 

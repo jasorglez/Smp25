@@ -13,11 +13,18 @@ export class UsersxpermissionsService {
 
   idCompany = signal<number>(null);
   nameCompany = signal<string>(null);
+  idContract = signal<number>(null);
+  nameContract = signal<string>(null);
 
   private companyCheckedSignal = signal(false);
+  private contractCheckedSignal = signal(false);
 
   companyChecked() {
     return this.companyCheckedSignal;
+  }
+
+  contractChecked() {
+    return this.contractCheckedSignal;
   }
 
   constructor(private http: HttpClient) { }
@@ -43,5 +50,10 @@ export class UsersxpermissionsService {
   companySignal(id: number, name: string) {
     this.idCompany.set(id);
     this.nameCompany.set(name);
+  }
+
+  contractSignal(id: number, name: string) {
+    this.idContract.set(id);
+    this.nameContract.set(name);
   }
 }

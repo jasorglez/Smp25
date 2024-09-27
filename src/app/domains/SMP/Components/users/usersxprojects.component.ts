@@ -7,24 +7,23 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
 import { UsersProfileComponent } from './users-profile.component';
-import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { catchError, concat, EMPTY, forkJoin, lastValueFrom, map, toArray } from 'rxjs';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 
 @Component({
   selector: 'app-usersxprojects',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, UsersProfileComponent],
-  templateUrl: './usersxpermissions.component.html'
+  templateUrl: './usersxprojects.component.html'
 })
 export class UsersxprojectsComponent {
 
   private usersService = inject(UsersService);
   private projectsService = inject(ProjectsService);
-  private usersxprojectsService = inject(UsersxpermissionsService);
+  usersxprojectsService = inject(UsersxpermissionsService);
 
   ngOnInit() {
-    this.obtenerDatos();
-    this.obtenerProjects();
+    this.filteredData();
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -38,6 +37,9 @@ export class UsersxprojectsComponent {
   // Signals con correo
   profile = computed(() => this.usersService.profile);
   idUser: any = this.profile().idUser();
+  idContract = this.usersxprojectsService.idContract();
+  contractChecked = computed(() => this.usersxprojectsService.contractChecked());
+
 
   notSavedChanges: boolean = false;
   rowData: any;
@@ -50,20 +52,59 @@ export class UsersxprojectsComponent {
   private permissionType: string = 'project';
 
   obtenerDatos() {
-    this.usersxprojectsService
-      .getDataUsersxPermissions(this.permissionType)
-      .subscribe((data: any) => {
-        this.rowData = data.filter((row: any) => row.idUser === this.idUser);
-      });
+    forkJoin({
+      usersxprojects: this.usersxprojectsService.getDataUsersxPermissions(this.permissionType),
+      projects: this.projectsService.getProjects()
+    }).pipe(
+      map(({ usersxprojects, projects }) => {
+        // Convertimos a array si no lo es
+        const usersxprojectsArray = Array.isArray(usersxprojects) ? usersxprojects : Object.values(usersxprojects);
+        const projectsArray = Array.isArray(projects) ? projects : Object.values(projects);
+        return usersxprojectsArray.filter(uxp =>
+          projectsArray.some(p => p.id === uxp.idPermission)
+        ).map(uxp => {
+          const matchingProject = projectsArray.find(p => p.id === uxp.idPermission);
+          return {
+            ...uxp,
+            idContract: matchingProject ? matchingProject.idContrato : null
+          };
+        });
+      })
+    ).subscribe(
+      data => {
+        this.rowData = [];
+        if (this.contractChecked()() == true) {
+          this.rowData = data.filter((row: any) => row.idUser === this.idUser && row.idContract === this.idContract);
+          this.rowData = this.rowData.map(({ idContract, ...rest }) => rest);
+        }
+        else {
+          this.rowData = data.filter((row: any) => row.idUser === this.idUser);
+          this.rowData = this.rowData.map(({ idContract, ...rest }) => rest);
+        }
+      },
+      error => {
+        console.error('Error:', error);
+      }
+    );
   }
 
-  obtenerProjects() {
-    this.projectsService.getProjects().subscribe((data: any[]) => {
-      this.projects = data.reduce((acc, dep) => {
-        acc[dep.id] = dep.idConsecutivo + ' - ' + dep.name; // Cambia la estructura para que solo almacene el nombre
-        return acc;
-      }, {});
-    });
+  obtenerProjects(contract: number) {
+    if(this.contractChecked()() == true) {
+      this.projectsService.getProjectsByContract(contract).subscribe((data: any[]) => {
+        this.projects = data.reduce((acc, dep) => {
+          acc[dep.id] = dep.idConsecutivo + ' - ' + dep.name; // Cambia la estructura para que solo almacene el nombre
+          return acc;
+        }, {});
+      });
+    }
+    else {
+      this.projectsService.getProjects().subscribe((data: any[]) => {
+        this.projects = data.reduce((acc, dep) => {
+          acc[dep.id] = dep.idConsecutivo + ' - ' + dep.name; // Cambia la estructura para que solo almacene el nombre
+          return acc;
+        }, {});
+      });
+    }
   }
 
   get columnDefs(): ColDef[] {
@@ -110,7 +151,6 @@ export class UsersxprojectsComponent {
   }
 
   onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
   }
@@ -174,7 +214,7 @@ export class UsersxprojectsComponent {
       );
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
-      this.obtenerDatos(); // Refrescar los datos
+      this.filteredData(); // Refrescar los datos
     } catch (error) {
       console.error(error);
       alerts.basicAlert(
@@ -217,7 +257,7 @@ export class UsersxprojectsComponent {
             'Entrada eliminada satisfactoriamente.',
             'success'
           );
-          this.obtenerDatos();
+          this.filteredData();
 
           alerts.basicAlert(
             'Eliminar entrada',
@@ -231,7 +271,7 @@ export class UsersxprojectsComponent {
   }
 
   revert() {
-    this.obtenerDatos();
+    this.filteredData();
     this.notSavedChanges = false;
   }
 
@@ -243,5 +283,15 @@ export class UsersxprojectsComponent {
       delete cleanedData.id;
     }
     return cleanedData;
+  }
+
+  onCheckboxChange(event: any) {
+    this.usersxprojectsService.contractChecked().set(event.target.checked);
+    this.filteredData();
+  }
+
+  filteredData() {
+    this.obtenerDatos();
+    this.obtenerProjects(this.usersxprojectsService.idContract());
   }
 }

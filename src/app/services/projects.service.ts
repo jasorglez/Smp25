@@ -36,6 +36,10 @@ export class ProjectsService {
     return this.http.get(`${environment.urlLinux4}/Project`, { headers: this.trackingService.getHeaders() });
   }
 
+  getProjectsByContract(idContract: number) {
+    return this.http.get(`${environment.urlLinux4}/Project/contract?contrato=${idContract}`, { headers: this.trackingService.getHeaders() });
+  }
+
   addProject(data: any) {
     return this.http.post(`${environment.urlLinux4}/Project`, data, { headers: this.trackingService.getHeaders() });
   }
