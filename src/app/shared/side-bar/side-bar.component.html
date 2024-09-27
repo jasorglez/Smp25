@@ -18,19 +18,40 @@
     <!-- Sidebar user (optional) -->
     <div class="user-panel mt-4 pb-2 mb-2 brand-image">
 
+
+      <!-- Comienzo el llamado de los Select -->
+
+      <select
+        id="company" (change)="onCompanysSelected($event)"  class="form-control select-side"
+                     title= "{{ 'select' | translate  }} {{ 'company' | translate  }}" >
+        <!--   <option selected disabled value="">   {{ 'company'| translate }}     </option> -->
+
+        <option *ngFor="let item of companyData" [value]="item.id_company">
+          {{ item.company }}
+        </option>
+      </select>
       
 
   <ul class="nav flex-column">
    
-
     <li class="nav-item">
-      <a class="nav-link" (click)="Bpi()">
-        <i class="fas fa-building"></i> {{ 'SMP' | translate }}
+      <a class="nav-link" (click)="Dashboard()">
+        <i class="fas fa-home"></i> {{ 'DASHBOARD' | translate }}
       </a>
     </li>
 
+    <li class="nav-item">
+      <a class="nav-link" (click)="Indicadores()">
+        <i class="fas fa-user"></i> {{ 'INDICADORES' | translate }}
+      </a>
+    </li>
 
-
+    <li class="nav-item">
+      <a class="nav-link" (click)="PepTablero()">
+        <i class="fas fa-building"></i> {{ 'SETUP' | translate }}
+      </a>
+    </li>
+ 
     <li class="nav-item">
       <a class="nav-link" (click)="authService.logout()">
         <i class="fas fa-sign-out-alt"></i> SALIR

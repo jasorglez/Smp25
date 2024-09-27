@@ -54,9 +54,22 @@ export class SideBarComponent {
 
   //empiezan los procedimientos para las llamadas de los combobox
   //obtener los permisos de la cia
+ 
+  onCompanysSelected(event: Event): void {
+
+    const target = event.target as HTMLSelectElement;
+
+    this.trackingService.setCompany(target.value) ;
+
+    this.selectedCompany = target.value;
+   // alert('Picture:'+ this.selectedCompany);
+
+    //this.getpermissionxBranchs();
+    this.getpermissionxCompanys();
+  }
+ 
   async getpermissionxCompanys() {
-    this.trackingService
-      .getIdUser(localStorage.getItem('mail')!)
+    this.trackingService.getIdUser(localStorage.getItem('mail')!)
       .subscribe((data) => {
         this.usersData = Object.values(data);
         if (this.usersData.length > 0) {
@@ -106,8 +119,7 @@ export class SideBarComponent {
   // Aqui termina el cambio que hizo para obtener todo de SQL
   ////////////////////////////////////////
 
- 
-    
+     
   async onProjectSelected(event: Event) {
     const target = event.target as HTMLSelectElement;
     this.selectedProjectId = target.value;
@@ -154,7 +166,7 @@ export class SideBarComponent {
   }
 
   // Menus de las llamadas del HTML
-  dashboardproc() {
+  Dashboard() {
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Eleccion del menu Dashboard',
@@ -162,6 +174,16 @@ export class SideBarComponent {
       ''
     );
     this.router.navigate(['/procesdas']);
+  }
+
+  Admon() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Eleccion del menu Admon',
+      'Menu Side Bar',
+      ''
+    );
+    this.router.navigate(['/admon']);
   }
 
   Bpi() {
@@ -172,6 +194,16 @@ export class SideBarComponent {
       ''
     );
     this.router.navigate(['/bpi']);
+  }
+
+  Indicadores() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Eleccion del menu indicadopres',
+      'Menu Indicadores Bar',
+      ''
+    );
+    this.router.navigate(['/indicgrals']);
   }
 
   PepOper() {
@@ -203,4 +235,5 @@ export class SideBarComponent {
     );
     this.router.navigate(['/proceswar']);
   }
+
 }

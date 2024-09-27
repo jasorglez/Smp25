@@ -55,15 +55,6 @@ export class TrackingService {
     return localStorage.getItem('token') || '';
   }
 
-
-  formatearMoneda(valor: number): string {
-    const formatter = new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: 'MXN',
-    });
-    return formatter.format(valor);
-  }
-
   setEmail(email: string): void {
     this.emailser = email;
     localStorage.setItem('mail', this.emailser);
@@ -71,12 +62,6 @@ export class TrackingService {
 
   getEmail(): string {
     return this.emailser;
-  }
-
-  getIdUser(email: string) {
-    return this.http.get(`${environment.urlLinux}/User/email/${email}`, {
-      headers: this.getHeaders(),
-    });
   }
 
   // DATOS DE LA COMPANIA
@@ -404,6 +389,22 @@ export class TrackingService {
     );
   }
 
+  getIdUser(email: string) {
+    return this.http.get(`${environment.urlLinux}/User/email/${email}`, {
+      headers: this.getHeaders(),
+    });
+  }
+
+
+  formatearMoneda(valor: number): string {
+    const formatter = new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN',
+    });
+    return formatter.format(valor);
+  }
+
+
   public getHeaders(): HttpHeaders {
     const token = this.getAuthToken();
     return new HttpHeaders({
@@ -411,6 +412,7 @@ export class TrackingService {
       Authorization: `Bearer ${token}`,
     });
   }
+
 
 
 }
