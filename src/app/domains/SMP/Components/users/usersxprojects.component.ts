@@ -20,7 +20,7 @@ export class UsersxprojectsComponent {
 
   private usersService = inject(UsersService);
   private projectsService = inject(ProjectsService);
-  usersxprojectsService = inject(UsersxpermissionsService);
+  private usersxprojectsService = inject(UsersxpermissionsService);
 
   ngOnInit() {
     this.filteredData();

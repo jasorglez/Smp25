@@ -20,7 +20,7 @@ export class UsersxcontractsComponent {
 
   private usersService = inject(UsersService);
   private contractsService = inject(ContractsService);
-  public usersxcontractsService = inject(UsersxpermissionsService);
+  private usersxcontractsService = inject(UsersxpermissionsService);
 
 
   ngOnInit() {
@@ -36,7 +36,7 @@ export class UsersxcontractsComponent {
   }
 
   profile = computed(() => this.usersService.profile);
-  idCompany = this.usersxcontractsService.idCompany();
+  idCompany: any = this.usersxcontractsService.idCompany();
   idContract = this.usersxcontractsService.idContract();
   idUser: any = this.profile().idUser();
   companyChecked = computed(() => this.usersxcontractsService.companyChecked());

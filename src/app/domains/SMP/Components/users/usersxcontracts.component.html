@@ -10,10 +10,10 @@
         : 'col-12'
     ">
         <div class="row mb-3">
-            <div class="col text-left" *ngIf="usersxcontractsService.idCompany() != null">
+            <div class="col text-left" *ngIf="idCompany != null">
                 <div class="form-check">
                     <input type="checkbox" name="companyChecked" id="companyChecked" class="form-check-input"
-                        [checked]="usersxcontractsService.companyChecked()()" (change)="onCheckboxChange($event)">
+                        [checked]="companyChecked()()" (change)="onCheckboxChange($event)">
                     <label for="companyChecked" class="form-check-label">Filtrar por contratista</label>
                 </div>
             </div>
