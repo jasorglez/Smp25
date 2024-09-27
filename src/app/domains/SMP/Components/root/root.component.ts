@@ -7,6 +7,7 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RootService } from 'app/services/root.service';
+import { ImageHandlerService } from 'app/services/image-handler.service';
 
 @Component({
   selector: 'app-root',
@@ -19,6 +20,7 @@ export class RootComponent {
   
   private rootService = inject(RootService);
   private contractsService = inject(ContractsService);
+  private imageHandlerService = inject(ImageHandlerService);
 
   ngOnInit() {
     this.obtenerDatos();
@@ -54,6 +56,12 @@ export class RootComponent {
   obtenerContracts() {
 
   }
+
+  public defaultColDef : ColDef = {
+    sortable           : true,
+    resizable          : true,
+    flex               : 1
+  };
 
   get columnDefs(): ColDef[] {
     return [
@@ -142,43 +150,34 @@ export class RootComponent {
         field: 'picture',
         headerName: 'Foto Root',
         cellEditor: 'agTextCellEditor',
-        cellRenderer: (params: any) => {
-          if (params.value) {
-            return `<img src="${params.value}" class="text-center" style="height:100%;">`;
-          } else {
-            return '';
-          }
+        cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
+        cellRendererParams: {
+          clicked: this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService),
+          field: 'picture'
         },
-        flex: 1,
-        editable: true,
+        editable: false,
       },
       {
         field: 'picture2',
         headerName: 'Header',
         cellEditor: 'agTextCellEditor',
-        cellRenderer: (params: any) => {
-          if (params.value) {
-            return `<img src="${params.value}" class="text-center" style="height:100%;">`;
-          } else {
-            return '';
-          }
+        cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
+        cellRendererParams: {
+          clicked: this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService),
+          field: 'picture2'
         },
-        flex: 1,
-        editable: true,
+        editable: false,
       },
       {
         field: 'picture3',
         headerName: 'Footer',
         cellEditor: 'agTextCellEditor',
-        cellRenderer: (params: any) => {
-          if (params.value) {
-            return `<img src="${params.value}" class="text-center" style="height:100%;">`;
-          } else {
-            return '';
-          }
+        cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
+        cellRendererParams: {
+          clicked: this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService),
+          field: 'picture3'
         },
-        flex: 1,
-        editable: true,
+        editable: false,
       },
     ];
   }
@@ -253,7 +252,7 @@ export class RootComponent {
     });
 
     const updateObservables = modifiedRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);      console.log('Datos enviados a addRoot:', cleanedData); 
+      const cleanedData = this.cleanDataForServer(row);
       return this.rootService.updateRoot(row.id, cleanedData);
     });
 

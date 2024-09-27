@@ -7,6 +7,7 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProvidersService } from 'app/services/providers.service';
+import { ImageHandlerService } from 'app/services/image-handler.service';
 
 @Component({
   selector: 'app-providers',
@@ -18,6 +19,7 @@ export class ProvidersComponent {
 
   private providersService = inject(ProvidersService);
   private contractsService = inject(ContractsService);
+  private imageHandlerService = inject(ImageHandlerService);
 
   ngOnInit() {
     this.obtenerDatos();
@@ -90,14 +92,12 @@ export class ProvidersComponent {
         field: 'picture',
         headerName: 'Foto',
         cellEditor: 'agTextCellEditor',
-        cellRenderer: (params: any) => {
-          if (params.value) {
-            return `<img src="${params.value}" class="text-center" style="height:100%;">`;
-          } else {
-            return '';
-          }
+        cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
+        cellRendererParams: {
+          clicked: this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService),
+          field: 'picture'
         },
-        editable: true,
+        editable: false,
       },
     ];
   }
