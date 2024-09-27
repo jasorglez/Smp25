@@ -1,4 +1,5 @@
-import { Component } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
+import { AuthService } from 'app/services/auth.service';
 
 @Component({
   selector: 'app-footer',
@@ -8,5 +9,8 @@ import { Component } from '@angular/core';
   styleUrl: './footer.component.scss'
 })
 export class FooterComponent {
+
+  private authService = inject(AuthService);
+  companyName = computed(()=> this.authService.companyName());
 
 }

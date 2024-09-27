@@ -78,12 +78,10 @@ export class UsersxcontractsComponent {
         if (this.companyChecked()() == true) {
           this.rowData = data.filter((row: any) => row.idUser === this.idUser && row.idProvider === this.idCompany);
           this.rowData = this.rowData.map(({ idProvider, ...rest }) => rest);
-          console.log(this.rowData)
         }
         else {
           this.rowData = data.filter((row: any) => row.idUser === this.idUser);
           this.rowData = this.rowData.map(({ idProvider, ...rest }) => rest);
-          console.log(this.rowData)
         }
       },
       error => {
