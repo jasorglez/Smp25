@@ -10,6 +10,7 @@ import { UsersProfileComponent } from "./users-profile.component";
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { MatDialogModule } from '@angular/material/dialog';
+import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 
 @Injectable({
   providedIn: 'root',
@@ -33,6 +34,7 @@ export class UsersComponent {
 
   private usersService = inject(UsersService);
   private storagesService = inject(StoragesService);
+  private usersxcompanysService = inject(UsersxpermissionsService);
   profile = computed(() => this.usersService.profile);
 
   enviarSignal() {
@@ -40,6 +42,7 @@ export class UsersComponent {
     this.usersService.profileSignal(this.selectedRowData.id, this.selectedRowData.email,
       this.selectedRowData.picture, this.selectedRowData.displayName,
       departmentName, this.selectedRowData.position);
+      this.usersxcompanysService.nameCompany.set(null);
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -220,22 +223,23 @@ export class UsersComponent {
         headerName: 'Imagen de perfil',
         cellRenderer: this.imageCellRenderer.bind(this),
         cellRendererParams: {
-          clicked: this.onImageCellClicked.bind(this)
+          clicked: this.onImageCellClicked.bind(this),
+          field: 'picture'
         },
         editable: false,
+        width: 100
       },
       {
         field: 'signature',
         headerName: 'Firma',
         cellEditor: 'agTextCellEditor',
-        cellRenderer: (params: any) => {
-          if (params.value) {
-            return `<img src="${params.value}" class="text-center" style="height:100%;">`;
-          } else {
-            return '';
-          }
+        cellRenderer: this.imageCellRenderer.bind(this),
+        cellRendererParams: {
+          clicked: this.onImageCellClicked.bind(this),
+          field: 'signature'
         },
-        editable: true,
+        editable: false,
+        width: 100
       }
     ];
   }
@@ -427,11 +431,12 @@ export class UsersComponent {
       return;
     }
 
+    const field = params.colDef.cellRendererParams?.field as string;
     const path = `images/${this.storagesService.generateRandom()}${file.name}`;
 
     this.storagesService.uploadFile(file, path)
       .then(url => {
-        params.node.setDataValue('picture', url);
+        params.node.setDataValue(field, url);
         this.notSavedChanges = true;
         alerts.basicAlert('Subir imagen', 'Imagen subida exitosamente.', 'success');
       })
