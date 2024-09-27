@@ -32,7 +32,7 @@ export function dateRangeValidator(): ValidatorFn {
 export function noDefaultValueValidator(): ValidatorFn {
   return (control: AbstractControl): ValidationErrors | null => {
     const value = control.value;
-    if (value === 'Seleccione una especialidad' || value === 'Seleccione un proveedor' || value === 'Seleccione un estado') {
+    if (value === 'Seleccione una especialidad' || value === 'Seleccione un contratista' || value === 'Seleccione un estado') {
       return { noDefaultValue: true };
     }
     return null;
@@ -118,7 +118,7 @@ export class ContractsComponent {
       amountMx: new FormControl('', Validators.required),
       amountDll: new FormControl('', Validators.required),
       speciality: new FormControl('Seleccione una especialidad', [Validators.required, noDefaultValueValidator()]),
-      idProvider: new FormControl('Seleccione un proveedor', [Validators.required, noDefaultValueValidator()]),
+      idProvider: new FormControl('Seleccione un contratista', [Validators.required, noDefaultValueValidator()]),
       dateStar: new FormControl('', Validators.required),
       dateEnd: new FormControl('', Validators.required),
       stateContract: new FormControl('Seleccione un estado', [Validators.required, noDefaultValueValidator()]),
