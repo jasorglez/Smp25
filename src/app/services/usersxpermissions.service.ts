@@ -12,7 +12,9 @@ import { Observable } from 'rxjs';
 export class UsersxpermissionsService {
 
   idCompany = signal<number>(null);
-    private companyCheckedSignal = signal(false);
+  nameCompany = signal<string>(null);
+
+  private companyCheckedSignal = signal(false);
 
   companyChecked() {
     return this.companyCheckedSignal;
@@ -38,7 +40,8 @@ export class UsersxpermissionsService {
     return this.http.delete(`${environment.urlLinux}/Usersxpermission/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
-  companySignal(id: number) {
+  companySignal(id: number, name: string) {
     this.idCompany.set(id);
+    this.nameCompany.set(name);
   }
 }

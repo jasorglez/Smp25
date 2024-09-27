@@ -28,3 +28,9 @@
         <p>{{profile().positionUser()}}</p>
     </div>
 </div>
+<div class="row" *ngIf="usersxpermissionsService.nameCompany() != null">
+    <div class="col">
+        <p><strong>Proveedor seleccionado</strong></p>
+        <p>{{usersxpermissionsService.nameCompany()}}</p>
+    </div>
+</div>

@@ -211,7 +211,6 @@ export class UsersxcompanysComponent {
       );
       return;
     }
-
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
     selectedData.active = 0;
@@ -233,6 +232,8 @@ export class UsersxcompanysComponent {
             'Entrada eliminada satisfactoriamente.',
             'success'
           );
+          this.usersxcompanysService.idCompany.set(null);
+          this.usersxcompanysService.nameCompany.set(null);
           this.obtenerDatos();
 
           alerts.basicAlert(
@@ -262,6 +263,11 @@ export class UsersxcompanysComponent {
   }
 
   enviarCompanyId() {
-    this.usersxcompanysService.companySignal(this.selectedRowData.idPermission);
+    const companyName = this.getCompanyName(this.selectedRowData.idPermission);
+     this.usersxcompanysService.companySignal(this.selectedRowData.idPermission, companyName);
+  }
+
+  getCompanyName(id: number): string {
+    return this.companys[id] || 'Departamento no encontrado';
   }
 }
