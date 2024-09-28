@@ -14,11 +14,6 @@ export class OilfieldService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
-  private getAuthToken(): string {
-    return localStorage.getItem('token') || '';
-  }
-
-
 
   getOilfields() {
     return this.http.get(`${environment.urlLinux4}/Oilfield`, { headers: this.trackingService.getHeaders() });
