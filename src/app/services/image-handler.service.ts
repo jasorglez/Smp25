@@ -12,30 +12,42 @@ export class ImageHandlerService {
 
   // Guardar imagen
   imageCellRenderer(params: ICellRendererParams) {
+    const cellContainer = document.createElement('div');
+    cellContainer.style.width = '100%';
+    cellContainer.style.height = '100%';
+    cellContainer.style.display = 'flex';
+    cellContainer.style.alignItems = 'center';
+    cellContainer.style.justifyContent = 'center';
+    cellContainer.style.cursor = 'pointer';
+
     const img = document.createElement('img');
-    img.src = params.value || './assets/img/profile.png';
-    img.style.height = '100%';
-    img.style.cursor = 'pointer';
-    img.addEventListener('dblclick', () => {
+    img.src = params.value || './assets/img/default.png';
+    img.style.maxWidth = '100%';
+    img.style.maxHeight = '100%';
+    img.style.objectFit = 'contain';
+
+    cellContainer.addEventListener('dblclick', () => {
       if (params.colDef.cellRendererParams && params.colDef.cellRendererParams.clicked) {
         params.colDef.cellRendererParams.clicked(params);
       }
     });
-    return img;
+
+    cellContainer.appendChild(img);
+    return cellContainer;
   }
 
   onImageCellClicked(params: ICellRendererParams) {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'image/jpeg';
+    input.accept = 'image/jpeg, image/png'; // Actualizado para que solo acepte jpg y png
     input.onchange = (event: any) => this.uploadImage(event, params);
     input.click();
   }
 
   uploadImage(event: any, params: ICellRendererParams) {
     const file = event.target.files[0];
-    if (!file || file.type !== 'image/jpeg') {
-      alerts.basicAlert('Subir imagen', 'Solo se permiten imágenes en JPG, por favor seleccione otra imagen.', 'error');
+    if (!file || (file.type !== 'image/jpeg' && file.type !== 'image/png')) {
+      alerts.basicAlert('Subir imagen', 'Solo se permiten imágenes en JPG o PNG, por favor seleccione otra imagen.', 'error');
       return;
     }
 

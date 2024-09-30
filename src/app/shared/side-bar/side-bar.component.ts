@@ -61,7 +61,7 @@ export class SideBarComponent {
 
     this.selectedCompany = target.value;
    // alert('Picture:'+ this.selectedCompany);
-
+    console.log(this.selectedCompany);
     this.getpermissionxRoots();
   }
  
@@ -91,6 +91,7 @@ export class SideBarComponent {
     const target = event.target as HTMLSelectElement;
     this.selectedContractId = target.value;
     this.trackingService.setContract(this.selectedContractId);
+    console.log(this.selectedContractId);
   }
 
    async getpermissionxContracts(idRoot : number) {
