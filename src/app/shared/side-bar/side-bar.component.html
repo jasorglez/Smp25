@@ -19,15 +19,36 @@
     <div class="user-panel mt-4 pb-2 mb-2 brand-image">
 
 
-      <!-- Comienzo el llamado de los Select -->
-
+      <!-- llamado de los Select Root-->
       <select
-        id="company" (change)="onCompanysSelected($event)"  class="form-control select-side"
+        id="company" (change)="onRootsSelected($event)"  class="form-control select-side"
                      title= "{{ 'select' | translate  }} {{ 'company' | translate  }}" >
-        <!--   <option selected disabled value="">   {{ 'company'| translate }}     </option> -->
+           <option selected disabled value="">   {{ 'company'| translate }}     </option> 
 
-        <option *ngFor="let item of companyData" [value]="item.id_company">
-          {{ item.company }}
+        <option *ngFor="let item of companyData" [value]="item.id">
+          {{ item.name }}
+        </option>
+      </select>
+
+      <!-- llamado de los Select Contracts-->
+      <select
+        id="company" (change)="onContractsSelected($event)"  class="form-control select-side"
+                     title= "{{ 'select' | translate  }} {{ 'contract' | translate  }}" >
+           <option selected disabled value="">   {{ 'contract'| translate }}     </option> 
+
+        <option *ngFor="let item of contractData" [value]="item.id">
+          {{ item.numberContract }}
+        </option>
+      </select>
+
+      <!-- llamado de los Select projects-->
+      <select
+        id="company" (change)="onProjectSelected($event)"  class="form-control select-side"
+                     title= "{{ 'select' | translate  }} {{ 'projects' | translate  }}" >
+           <option selected disabled value="">   {{ 'projects'| translate }}     </option> 
+
+        <option *ngFor="let pj of projectData" [value]="pj.id">
+          {{ pj.name }}
         </option>
       </select>
       

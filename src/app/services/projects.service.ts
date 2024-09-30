@@ -33,23 +33,23 @@ export class ProjectsService {
 
 
   getProjects() {
-    return this.http.get(`${environment.urlLinux4}/Project`, { headers: this.trackingService.getHeaders() });
+    return this.http.get(`${environment.urlSmp}/Project`, { headers: this.trackingService.getHeaders() });
   }
 
   getProjectsByContract(idContract: number) {
-    return this.http.get(`${environment.urlLinux4}/Project/contract?contrato=${idContract}`, { headers: this.trackingService.getHeaders() });
+    return this.http.get(`${environment.urlSmp}/Project/contract?contrato=${idContract}`, { headers: this.trackingService.getHeaders() });
   }
 
   addProject(data: any) {
-    return this.http.post(`${environment.urlLinux4}/Project`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.post(`${environment.urlSmp}/Project`, data, { headers: this.trackingService.getHeaders() });
   }
 
   updateProject(id: number, data: any) {
-    return this.http.put(`${environment.urlLinux4}/Project/${id}`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.put(`${environment.urlSmp}/Project/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
   deleteProject(id: number) {
-    return this.http.delete(`${environment.urlLinux4}/Project/${id}`, { headers: this.trackingService.getHeaders() });
+    return this.http.delete(`${environment.urlSmp}/Project/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
 }

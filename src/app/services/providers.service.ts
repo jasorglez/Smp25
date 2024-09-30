@@ -16,18 +16,18 @@ export class ProvidersService {
 
 
   getProviders() {
-    return this.http.get(`${environment.urlLinux4}/Providers`, { headers: this.trackingService.getHeaders() });
+    return this.http.get(`${environment.urlSmp}/Providers`, { headers: this.trackingService.getHeaders() });
   }
 
   addProvider(data: any) {
-    return this.http.post(`${environment.urlLinux4}/Providers`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.post(`${environment.urlSmp}/Providers`, data, { headers: this.trackingService.getHeaders() });
   }
 
   updateProvider(id: number, data: any) {
-    return this.http.put(`${environment.urlLinux4}/Providers/${id}`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.put(`${environment.urlSmp}/Providers/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
   deleteProvider(id:number) {
-    return this.http.delete(`${environment.urlLinux4}/Providers/${id}`, { headers: this.trackingService.getHeaders() });
+    return this.http.delete(`${environment.urlSmp}/Providers/${id}`, { headers: this.trackingService.getHeaders() });
   }
 }

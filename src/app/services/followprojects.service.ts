@@ -15,23 +15,23 @@ export class FollowprojectsService {
   private http = inject(HttpClient);
 
   getContract(contract: number): Observable<Icontract> {
-    return this.http.get<Icontract>(`${environment.urlLinux4}/Contract?idBussines=${contract}`, { headers: this.trackingService.getHeaders() });
+    return this.http.get<Icontract>(`${environment.urlSmp}/Contract?idBussines=${contract}`, { headers: this.trackingService.getHeaders() });
   }
 
   getContractById(id: number): Observable<any> {
-    return this.http.get<Icontract>(`${environment.urlLinux4}/Contract/${id}`, { headers: this.trackingService.getHeaders() });
+    return this.http.get<Icontract>(`${environment.urlSmp}/Contract/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
   //cambios de David
   addContract(data: any): Observable<any> {
-    return this.http.post(`${environment.urlLinux4}/Contract`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.post(`${environment.urlSmp}/Contract`, data, { headers: this.trackingService.getHeaders() });
   }
 
   updateContract(id: number, data: any): Observable<any> {
-    return this.http.put(`${environment.urlLinux4}/Contract/${id}`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.put(`${environment.urlSmp}/Contract/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
   deleteContract(id: number): Observable<any> {
-    return this.http.delete(`${environment.urlLinux4}/Contract/${id}`, { headers: this.trackingService.getHeaders() });
+    return this.http.delete(`${environment.urlSmp}/Contract/${id}`, { headers: this.trackingService.getHeaders() });
   }
 }

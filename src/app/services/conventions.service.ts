@@ -13,18 +13,18 @@ export class ConventionsService {
 
 
   getConventions() {
-    return this.http.get(`${environment.urlLinux4}/Convention`, { headers: this.trackingService.getHeaders() });
+    return this.http.get(`${environment.urlSmp}/Convention`, { headers: this.trackingService.getHeaders() });
   }
 
   addConvention(data: any) {
-    return this.http.post(`${environment.urlLinux4}/Convention`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.post(`${environment.urlSmp}/Convention`, data, { headers: this.trackingService.getHeaders() });
   }
 
   updateConvention(id: number, data: any) {
-    return this.http.put(`${environment.urlLinux4}/Convention/${id}`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.put(`${environment.urlSmp}/Convention/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
   deleteConvention(id:number) {
-    return this.http.delete(`${environment.urlLinux4}/Convention/${id}`, { headers: this.trackingService.getHeaders() });
+    return this.http.delete(`${environment.urlSmp}/Convention/${id}`, { headers: this.trackingService.getHeaders() });
   }
 }

@@ -1,15 +1,17 @@
 import { Component } from '@angular/core';
+import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { TraductorService } from '../../services/traductor.service';
 import { TrackingService } from '../../services/tracking.service';
-import { Router } from '@angular/router';
-
 import { CompanysService } from '../../services/companys.service';
+import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
+import { ContractsService } from 'app/services/contracts.service';
+import { ProjectsService } from 'app/services/projects.service';
+
+import { RootService } from 'app/services/root.service';
 
 import { SharedModule } from '../shared.module';
 import { alerts } from 'app/helpers/alerts';
-import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
-import { RootService } from 'app/services/root.service';
 
 @Component({
   selector: 'app-side-bar',
@@ -19,43 +21,39 @@ import { RootService } from 'app/services/root.service';
   styleUrl: './side-bar.component.scss',
 })
 export class SideBarComponent {
-  selectedCompany: string = '';
-  companyData: any;
-  branchData: any[] = [];
-  projectData: any[] = [];
-  centerprocessData: any[] = [];
-  platformData: any[] = [];
+  selectedCompany   : string = '';
+  companyData       : any;
+  contractData      : any ;
+  branchData        : any[] = [];
+  projectData       : any[] = [];
+  centerprocessData : any[] = [];
+  platformData      : any[] = [];
 
-  selectedProjectId: string = '';
-  selectedBranchId: string = '';
+  selectedContractId: string = '';
+  selectedProjectId : string = '';
+  selectedBranchId  : string = '';
   selectedCProcessId: number = 0;
   selectedPlatformId: number = 0;
   usersData: any[];
 
   constructor(
     public translateService: TraductorService,
-    public trackingService: TrackingService,
-    public companysService: CompanysService,
-    public authService: AuthService,
-    public rootService: RootService,
+    public trackingService : TrackingService,
+    public companysService : CompanysService,
+    public authService     : AuthService,
+    public rootService     : RootService,
+    public contractService : ContractsService,
+    public projectService  : ProjectsService,
     private router: Router,
     private permissionsService: UsersxpermissionsService
   ) {}
 
   async ngOnInit() {
-    await this.getpermissionxCompanys();
-    //this.getPermissionxCprocess();
-    //   alert(this.trackingService.getpictureComp())
+    await this.getpermissionxRoots();
   }
 
-  ////////////////////////////////////////
-  // Este es el cambio que se hizo para obtener todo de SQL
-  ////////////////////////////////////////
-
-  //empiezan los procedimientos para las llamadas de los combobox
-  //obtener los permisos de la cia
- 
-  onCompanysSelected(event: Event): void {
+   
+  onRootsSelected(event: Event): void {
 
     const target = event.target as HTMLSelectElement;
 
@@ -64,42 +62,84 @@ export class SideBarComponent {
     this.selectedCompany = target.value;
    // alert('Picture:'+ this.selectedCompany);
 
-    //this.getpermissionxBranchs();
-    this.getpermissionxCompanys();
+    this.getpermissionxRoots();
   }
  
-  async getpermissionxCompanys() {
-    this.trackingService.getIdUser(localStorage.getItem('mail')!)
-      .subscribe((data) => {
-        this.usersData = Object.values(data);
-        if (this.usersData.length > 0) {
-          // Aquí obtengo el idUser para buscarlo en la tabla de userxCompanys
-          const idUser = this.usersData[3]?.id;
+  async getpermissionxRoots() {
           // Aquí consulto la tabla donde está el idUser correspondiente a company
-          this.permissionsService
-            .getDataUsersxPermissions('root')
+          this.rootService.get2Root()
             .subscribe((data) => {
-              const userWithId = Object.values(data).find(
-                (item) => item.idUser === idUser
-              );
-              if (userWithId) {
-                this.companyData = userWithId;
+              const rootId = Object.values(data)
+              if (rootId) {
+                this.companyData = rootId;
                 // Ya tengo el id de la compañía root
-                this.selectedCompany = this.companyData.idPermission;
+                this.selectedCompany = this.companyData[0].id;
 
                 // Ahora consulto la información de root
                 this.trackingService.setCompany(this.selectedCompany);
                 this.getHeadersCompanys(this.selectedCompany);
-                //this.getpermissionxBranchs();
+                this.getpermissionxContracts(parseInt(this.selectedCompany));
               } else {
                 console.log(
-                  `No se encontró ningún usuario con idUser ${idUser}`
+                  `No se encontró ningún usuario con idUser ${rootId}`
                 );
               }
-            });
-        }
-      });
+            });     
+   }
+
+   async onContractsSelected(event: Event) {
+    const target = event.target as HTMLSelectElement;
+    this.selectedContractId = target.value;
+    this.trackingService.setContract(this.selectedContractId);
   }
+
+   async getpermissionxContracts(idRoot : number) {
+    // Aquí consulto la tabla donde está el idUser correspondiente a company
+    this.contractService.getContractsBy2fields(idRoot)
+      .subscribe((data) => {
+        const contractId = Object.values(data)
+        if (contractId) {
+          this.contractData = contractId;
+          // Ya tengo el id de la compañía root
+          this.selectedContractId = this.contractData[0].id;
+
+          // Ahora consulto la información de root
+          this.trackingService.setContract(this.selectedContractId);
+          this.getpermissionxProjects(parseInt(this.selectedContractId));
+        } else {
+          console.log(
+            `No se encontró ningún Contract con idRoot ${contractId}`
+          );
+        }
+      });     
+  }
+
+  async onProjectSelected(event: Event) {
+    const target = event.target as HTMLSelectElement;
+    this.selectedProjectId = target.value;
+    this.trackingService.setProject(this.selectedProjectId);
+  }
+  
+   async getpermissionxProjects(idContract : number) {
+    // Aquí consulto la tabla donde está el idUser correspondiente a company
+    this.projectService.getProjectsByContract(idContract)
+      .subscribe((data) => {
+        const projectId = Object.values(data)
+        if (projectId) {
+          this.projectData = projectId;
+          // Ya tengo el id de la compañía root
+          this.selectedProjectId = this.projectData[0].id;
+
+          // Ahora consulto la información de root
+          this.trackingService.setCompany(this.selectedProjectId);                    
+        } else {
+          console.log(
+            `No se encontró ningún Project con idProject ${this.selectedProjectId}`
+          );
+        }
+      });     
+  }
+
 
   getHeadersCompanys(companyId) {
     this.rootService
@@ -113,19 +153,6 @@ export class SideBarComponent {
         // alert('Format:'+ datacom.formatrep);
       });
   }
-
-
-  ////////////////////////////////////////
-  // Aqui termina el cambio que hizo para obtener todo de SQL
-  ////////////////////////////////////////
-
-     
-  async onProjectSelected(event: Event) {
-    const target = event.target as HTMLSelectElement;
-    this.selectedProjectId = target.value;
-    this.trackingService.setProject(this.selectedProjectId);
-  }
-  
 
   async onCpSelected(event: Event) {
     const target = event.target as HTMLSelectElement;
