@@ -28,7 +28,27 @@ export class ConventionsService {
     return this.http.put(`${environment.urlSmp}/Convention/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
-  deleteConvention(id:number) {
+  deleteConvention(id: number) {
     return this.http.delete(`${environment.urlSmp}/Convention/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getImages(idConvention: number) {
+    return this.http.get(`${environment.urlSmp}/Attach?idTabla=${idConvention}&typeDocto=IMG`,
+      { headers: this.trackingService.getHeaders() });
+  }
+
+  getDocuments(idConvention: number) {
+    return this.http.get(`${environment.urlSmp}/Attach?idTabla=${idConvention}&typeDocto=PDF`,
+      { headers: this.trackingService.getHeaders() });
+  }
+
+  uploadImage(idTabla: number, docto: string) {
+    return this.http.post(`${environment.urlSmp}/Attach`,
+      { idTabla: idTabla, docto: docto, typeDocto: 'IMG', type: 'CONVENIO', active: 1 },
+      { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteAttachment(idAttach: number) {
+    return this.http.delete(`${environment.urlSmp}/Attach/${idAttach}`, { headers: this.trackingService.getHeaders() });
   }
 }

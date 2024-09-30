@@ -1,15 +1,17 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, ElementRef, HostListener, inject, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { AgGridModule } from 'ag-grid-angular';
 import { GridApi, ColDef, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { ConventionsService } from 'app/services/conventions.service';
-import { lastValueFrom, concat, toArray, catchError, EMPTY, throwError, of } from 'rxjs';
+import { lastValueFrom, concat, toArray, catchError, EMPTY, throwError, of, finalize, tap } from 'rxjs';
 import { ContractsService } from 'app/services/contracts.service';
 import { SignalsService } from 'app/services/signals.service';
 import { HttpErrorResponse } from '@angular/common/http';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { AttachHandlerService } from 'app/services/attach-handler.service';
 
 @Component({
   selector: 'app-conventions',
@@ -20,9 +22,13 @@ import { HttpErrorResponse } from '@angular/common/http';
 })
 export class ConventionsComponent {
 
+
   private conventionsService = inject(ConventionsService);
   private contractsService = inject(ContractsService);
   private signalsService = inject(SignalsService);
+  private modalService= inject(NgbModal);
+  private attachHandler = inject(AttachHandlerService);
+
   constructor() {
     effect(() => {
       // Este efecto se ejecutará cada vez que selectedContract cambie
@@ -32,9 +38,11 @@ export class ConventionsComponent {
 
   ngOnInit() {
     this.getContracts();
+    console.log(this.id);
   }
 
-  @HostListener('window:beforeunload', ['$event'])
+  @ViewChild('carousel', { static: false }) carousel: ElementRef | undefined;
+  @HostListener('window:beforeunload', ['$event'])  
   unloadNotification($event: any): void {
     if (this.notSavedChanges) {
       $event.returnValue =
@@ -47,10 +55,14 @@ export class ConventionsComponent {
   contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
-  id: string;
+  id: number = null;
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
   selectedContract = this.signalsService.getContractSelectedBySidebar();
+  currentIndexCarousel: number;
+  images: any[] = [];
+  entradaCarousel: any[];
+  numItemsCarousel: number = 0;
 
   obtenerDatos() {
     if (this.selectedContract() == null) {
@@ -184,6 +196,7 @@ export class ConventionsComponent {
 
   onSelectedRow(event: any) {
     this.id = event.data.id;
+    this.getDataCarousel();
   }
 
   onSelectionChanged(event: any) {
@@ -348,4 +361,115 @@ export class ConventionsComponent {
     return cleanedData;
   }
 
+  // Definimos el carrusel de imagenes
+
+  getDataCarousel() {
+    this.conventionsService
+      .getImages(this.id)
+      .pipe(
+        tap((data: any[]) => {
+          this.entradaCarousel = data;
+          this.numItemsCarousel = this.entradaCarousel.length;
+        }),
+        catchError((error: any) => {
+          console.error('Error occurred:', error);
+          return of(null);
+        }),
+        finalize(() => {
+          this.bucleDatosCarousel();
+        })
+      )
+      .subscribe();
+  }
+
+  async bucleDatosCarousel() {
+    // Vaciamos los datos
+    this.images = [];
+
+    for (let i = 0; i < this.numItemsCarousel; i++) {
+      let temporal = [];
+      temporal = [
+        {
+          src: this.entradaCarousel[i]?.docto,
+          idPhoto: this.entradaCarousel[i]?.id,
+          alt: 'Imagen'
+        },
+      ];
+      // Empujamos los datos almacenados en temporal a gestionarDatos
+      this.images.push(...temporal);
+    }
+  }
+
+  openCarouselModal(content: any, index: number): void {
+    this.currentIndexCarousel = index;
+    this.modalService.open(content, { size: 'md', centered: true }).result.then(
+      () => {
+        // Modal closed
+      },
+      () => {
+        // Modal dismissed
+      }
+    );
+  }
+
+  closeCarouselModal(modal) {
+    modal.close();
+  }
+
+  addPhoto() {
+    const url = this.attachHandler.upload().then(url => {
+      console.log('Imagen subida correctamente a Firebase. URL:', url);
+      return this.conventionsService.uploadImage(this.id, url).toPromise();
+    })
+    .then(response => {
+      console.log('Imagen registrada en el servidor:', response);
+      // Aquí puedes manejar la respuesta del servidor
+    })
+    .catch(error => {
+      console.error('Error en el proceso de subida de imagen:', error);
+      // Aquí puedes manejar el error, tal vez mostrando un mensaje al usuario
+    });
+}
+
+  deletePhoto(id: number, modal: any) {
+    alerts
+      .confirmAlert(
+        'Eliminar imagen',
+        '¿Está seguro de querer borrar esta imagen? Esta acción es irreversible.',
+        'warning',
+        'Borrar'
+      )
+      .then((result) => {
+        if (result.isConfirmed) {
+          this.closeCarouselModal(modal);
+          this.conventionsService
+            .deleteAttachment(id)
+            .pipe(
+              tap((data: any[]) => {
+                console.log(data);
+              }),
+              catchError((error: any) => {
+                console.error('Error occurred:', error);
+                return of(null);
+              }),
+              finalize(() => {
+                alerts.basicAlert(
+                  'Eliminar imagen',
+                  'Imagen borrada satisfactoriamente.',
+                  'success'
+                );
+                this.getDataCarousel();
+              })
+            )
+            .subscribe();
+        } else {
+          console.log('hola');
+          alerts.basicAlert(
+            'Eliminar imagen',
+            'La imagen no ha sido borrada.',
+            'success'
+          );
+        }
+      });
+  }
 }
