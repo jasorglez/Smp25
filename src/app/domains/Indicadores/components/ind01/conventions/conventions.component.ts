@@ -1,14 +1,15 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { AgGridModule } from 'ag-grid-angular';
 import { GridApi, ColDef, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
-import { Icontract } from 'app/interface/icontract';
 import { ConventionsService } from 'app/services/conventions.service';
-import { lastValueFrom, concat, toArray, catchError, EMPTY, throwError } from 'rxjs';
+import { lastValueFrom, concat, toArray, catchError, EMPTY, throwError, of } from 'rxjs';
 import { ContractsService } from 'app/services/contracts.service';
+import { SignalsService } from 'app/services/signals.service';
+import { HttpErrorResponse } from '@angular/common/http';
 
 @Component({
   selector: 'app-conventions',
@@ -21,9 +22,15 @@ export class ConventionsComponent {
 
   private conventionsService = inject(ConventionsService);
   private contractsService = inject(ContractsService);
+  private signalsService = inject(SignalsService);
+  constructor() {
+    effect(() => {
+      // Este efecto se ejecutará cada vez que selectedContract cambie
+      this.obtenerDatos();
+    });
+  }
 
   ngOnInit() {
-    this.obtenerDatos();
     this.getContracts();
   }
 
@@ -43,13 +50,32 @@ export class ConventionsComponent {
   id: string;
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
+  selectedContract = this.signalsService.getContractSelectedBySidebar();
 
   obtenerDatos() {
-    this.conventionsService
-      .getConventions()
-      .subscribe((data: any) => {
+    if (this.selectedContract() == null) {
+      this.conventionsService.getConventions().subscribe((data: any) => {
         this.rowData = data;
       });
+    } else {
+      this.conventionsService
+        .getConventionsByContract(this.selectedContract())
+        .pipe(
+          catchError((error: HttpErrorResponse) => {
+            if (error.status === 404) {
+              // Manejar el error 404 silenciosamente
+              console.log('No se encontraron datos para el contrato seleccionado');
+              this.rowData = []; // O asigna un valor por defecto
+              return of([]); // Devuelve un observable vacío
+            }
+            // Para otros errores, permite que se propaguen
+            throw error;
+          })
+        )
+        .subscribe((data: any) => {
+          this.rowData = data;
+        });
+    }
   }
 
   getContracts() {

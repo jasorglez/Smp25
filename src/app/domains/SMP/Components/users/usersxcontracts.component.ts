@@ -1,6 +1,5 @@
 import { Component, computed, HostListener, inject } from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
-import { UsersService } from 'app/services/users.service';
 import { AgGridModule } from 'ag-grid-angular';
 import { ContractsService } from 'app/services/contracts.service';
 import { CommonModule } from '@angular/common';
@@ -9,6 +8,7 @@ import { alerts } from 'app/helpers/alerts';
 import { UsersProfileComponent } from './users-profile.component';
 import { catchError, concat, EMPTY, forkJoin, lastValueFrom, map, toArray } from 'rxjs';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
+import { SignalsService } from 'app/services/signals.service';
 
 @Component({
   selector: 'app-usersxcontracts',
@@ -18,7 +18,7 @@ import { UsersxpermissionsService } from 'app/services/usersxpermissions.service
 })
 export class UsersxcontractsComponent {
 
-  private usersService = inject(UsersService);
+  private signalsService = inject(SignalsService);
   private contractsService = inject(ContractsService);
   private usersxcontractsService = inject(UsersxpermissionsService);
 
@@ -35,7 +35,7 @@ export class UsersxcontractsComponent {
     }
   }
 
-  profile = computed(() => this.usersService.profile);
+  profile = computed(() => this.signalsService.profile);
   idCompany: any = this.usersxcontractsService.idCompany();
   idContract = this.usersxcontractsService.idContract();
   idUser: any = this.profile().idUser();
@@ -55,7 +55,8 @@ export class UsersxcontractsComponent {
   obtenerDatos() {
     forkJoin({
       usersxcontracts: this.usersxcontractsService.getDataUsersxPermissions(this.permissionType),
-      contracts: this.contractsService.getContracts(parseInt(localStorage.getItem('company')))
+      contracts: this.contractsService.getContracts(1)
+      //contracts: this.contractsService.getContracts(parseInt(localStorage.getItem('company')))
     }).pipe(
       map(({ usersxcontracts, contracts }) => {
         // Convertimos a array si no lo es
@@ -313,7 +314,8 @@ export class UsersxcontractsComponent {
   // Este metodo obtiene los datos filtrados o no
   filteredData() {
     this.obtenerDatos();
-    this.obtenerContracts(parseInt(localStorage.getItem('company')));
+    this.obtenerContracts(1);
+    //this.obtenerContracts(parseInt(localStorage.getItem('company')));
   }
 
   enviarContractId() {

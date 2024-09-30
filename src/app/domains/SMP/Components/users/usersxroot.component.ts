@@ -1,6 +1,5 @@
 import { Component, computed, HostListener, inject } from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
-import { UsersService } from 'app/services/users.service';
 import { AgGridModule } from 'ag-grid-angular';
 import { RootService } from 'app/services/root.service';
 import { CommonModule } from '@angular/common';
@@ -9,6 +8,7 @@ import { alerts } from 'app/helpers/alerts';
 import { UsersProfileComponent } from './users-profile.component';
 import { concat, lastValueFrom, toArray } from 'rxjs';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
+import { SignalsService } from 'app/services/signals.service';
 
 @Component({
   selector: 'app-usersxroot',
@@ -18,7 +18,7 @@ import { UsersxpermissionsService } from 'app/services/usersxpermissions.service
 })
 export class UsersxrootComponent {
 
-  private usersService = inject(UsersService);
+  private signalsService = inject(SignalsService);
   private rootService = inject(RootService);
   private usersxrootService = inject(UsersxpermissionsService);
 
@@ -36,7 +36,7 @@ export class UsersxrootComponent {
   }
 
   // Signals con correo
-  profile = computed(() => this.usersService.profile);
+  profile = computed(() => this.signalsService.profile);
   idUser: any = this.profile().idUser();
 
   notSavedChanges: boolean = false;

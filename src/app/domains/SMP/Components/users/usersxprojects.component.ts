@@ -1,6 +1,5 @@
 import { Component, computed, HostListener, inject } from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
-import { UsersService } from 'app/services/users.service';
 import { AgGridModule } from 'ag-grid-angular';
 import { ProjectsService } from 'app/services/projects.service';
 import { CommonModule } from '@angular/common';
@@ -9,6 +8,7 @@ import { alerts } from 'app/helpers/alerts';
 import { UsersProfileComponent } from './users-profile.component';
 import { catchError, concat, EMPTY, forkJoin, lastValueFrom, map, toArray } from 'rxjs';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
+import { SignalsService } from 'app/services/signals.service';
 
 @Component({
   selector: 'app-usersxprojects',
@@ -18,7 +18,7 @@ import { UsersxpermissionsService } from 'app/services/usersxpermissions.service
 })
 export class UsersxprojectsComponent {
 
-  private usersService = inject(UsersService);
+  private signalsService = inject(SignalsService);
   private projectsService = inject(ProjectsService);
   private usersxprojectsService = inject(UsersxpermissionsService);
 
@@ -35,7 +35,7 @@ export class UsersxprojectsComponent {
   }
 
   // Signals con correo
-  profile = computed(() => this.usersService.profile);
+  profile = computed(() => this.signalsService.profile);
   idUser: any = this.profile().idUser();
   idContract = this.usersxprojectsService.idContract();
   contractChecked = computed(() => this.usersxprojectsService.contractChecked());

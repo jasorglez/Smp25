@@ -16,6 +16,10 @@ export class ConventionsService {
     return this.http.get(`${environment.urlSmp}/Convention`, { headers: this.trackingService.getHeaders() });
   }
 
+  getConventionsByContract(idContract: number) {
+    return this.http.get(`${environment.urlSmp}/Convention/idContract?id=${idContract}`, { headers: this.trackingService.getHeaders() });
+  }
+
   addConvention(data: any) {
     return this.http.post(`${environment.urlSmp}/Convention`, data, { headers: this.trackingService.getHeaders() });
   }

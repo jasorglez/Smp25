@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
-import { UsersService } from 'app/services/users.service';
+import { SignalsService } from 'app/services/signals.service';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 
 @Component({
@@ -11,9 +11,9 @@ import { UsersxpermissionsService } from 'app/services/usersxpermissions.service
 })
 export class UsersProfileComponent {
 
-  private usersService = inject(UsersService);
+  private signalsService = inject(SignalsService);
   usersxpermissionsService = inject(UsersxpermissionsService);
   
-  profile = computed(()=> this.usersService.profile);
+  profile = computed(()=> this.signalsService.profile);
 
 }

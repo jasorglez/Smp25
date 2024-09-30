@@ -7,7 +7,7 @@ import { CompanysService } from '../../services/companys.service';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { ContractsService } from 'app/services/contracts.service';
 import { ProjectsService } from 'app/services/projects.service';
-
+import { SignalsService } from 'app/services/signals.service';
 import { RootService } from 'app/services/root.service';
 
 import { SharedModule } from '../shared.module';
@@ -45,7 +45,8 @@ export class SideBarComponent {
     public contractService : ContractsService,
     public projectService  : ProjectsService,
     private router: Router,
-    private permissionsService: UsersxpermissionsService
+    private permissionsService: UsersxpermissionsService,
+    private signalsService  : SignalsService
   ) {}
 
   async ngOnInit() {
@@ -91,7 +92,7 @@ export class SideBarComponent {
     const target = event.target as HTMLSelectElement;
     this.selectedContractId = target.value;
     this.trackingService.setContract(this.selectedContractId);
-    console.log(this.selectedContractId);
+    this.signalsService.setContractSelectedBySidebar(Number(this.selectedContractId));
   }
 
    async getpermissionxContracts(idRoot : number) {

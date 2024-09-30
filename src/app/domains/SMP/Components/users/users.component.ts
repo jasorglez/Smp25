@@ -10,6 +10,7 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { MatDialogModule } from '@angular/material/dialog';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
+import { SignalsService } from 'app/services/signals.service';
 
 @Injectable({
   providedIn: 'root',
@@ -34,11 +35,12 @@ export class UsersComponent {
   private usersService = inject(UsersService);
   private imageHandlerService = inject(ImageHandlerService);
   private usersxcompanysService = inject(UsersxpermissionsService);
-  profile = computed(() => this.usersService.profile);
+  private signalsService = inject(SignalsService);
+  profile = computed(() => this.signalsService.profile);
 
   enviarSignal() {
     const departmentName = this.getDepartmentName(this.selectedRowData.idDepartament);
-    this.usersService.profileSignal(this.selectedRowData.id, this.selectedRowData.email,
+    this.signalsService.profileSignal(this.selectedRowData.id, this.selectedRowData.email,
       this.selectedRowData.picture, this.selectedRowData.displayName,
       departmentName, this.selectedRowData.position);
       this.usersxcompanysService.nameCompany.set(null);

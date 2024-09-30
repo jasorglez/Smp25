@@ -13,10 +13,6 @@ export class ContractsService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
-  private getAuthToken(): string {
-    return localStorage.getItem('token') || '';
-  }
-
   getContracts(contract: number) {
     return this.http.get(`${environment.urlSmp}/Contract?idBussines=${contract}`, { headers: this.trackingService.getHeaders() });
   }
