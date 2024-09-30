@@ -6,7 +6,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { GridApi, ColDef, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { ConventionsService } from 'app/services/conventions.service';
-import { lastValueFrom, concat, toArray, catchError, EMPTY, throwError, of, finalize, tap } from 'rxjs';
+import { lastValueFrom, concat, toArray, catchError, EMPTY, throwError, of, finalize, tap, firstValueFrom } from 'rxjs';
 import { ContractsService } from 'app/services/contracts.service';
 import { SignalsService } from 'app/services/signals.service';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -26,7 +26,7 @@ export class ConventionsComponent {
   private conventionsService = inject(ConventionsService);
   private contractsService = inject(ContractsService);
   private signalsService = inject(SignalsService);
-  private modalService= inject(NgbModal);
+  private modalService = inject(NgbModal);
   private attachHandler = inject(AttachHandlerService);
 
   constructor() {
@@ -42,7 +42,7 @@ export class ConventionsComponent {
   }
 
   @ViewChild('carousel', { static: false }) carousel: ElementRef | undefined;
-  @HostListener('window:beforeunload', ['$event'])  
+  @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
     if (this.notSavedChanges) {
       $event.returnValue =
@@ -91,12 +91,12 @@ export class ConventionsComponent {
   }
 
   getContracts() {
-      this.contractsService.getContracts(1).subscribe((data: any[]) => {
-        this.contracts = data.reduce((acc, dep) => {
-          acc[dep.idContrato] = dep.numberContract + ' - ' + dep.descripSmall; // Cambia la estructura para que solo almacene el nombre
-          return acc;
-        }, {});
-      });
+    this.contractsService.getContracts(1).subscribe((data: any[]) => {
+      this.contracts = data.reduce((acc, dep) => {
+        acc[dep.idContrato] = dep.numberContract + ' - ' + dep.descripSmall; // Cambia la estructura para que solo almacene el nombre
+        return acc;
+      }, {});
+    });
   }
 
   get columnDefs(): ColDef[] {
@@ -195,14 +195,15 @@ export class ConventionsComponent {
   }
 
   onSelectedRow(event: any) {
-    this.id = event.data.id;
-    this.getDataCarousel();
+    //this.id = event.data.id;
   }
 
   onSelectionChanged(event: any) {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
+      this.id = this.selectedRowData.id;
+      this.getDataCarousel();
     } else {
       this.selectedRowData = null;
     }
@@ -364,6 +365,8 @@ export class ConventionsComponent {
   // Definimos el carrusel de imagenes
 
   getDataCarousel() {
+    this.entradaCarousel = [];
+    this.numItemsCarousel = 0;
     this.conventionsService
       .getImages(this.id)
       .pipe(
@@ -372,8 +375,10 @@ export class ConventionsComponent {
           this.numItemsCarousel = this.entradaCarousel.length;
         }),
         catchError((error: any) => {
-          console.error('Error occurred:', error);
-          return of(null);
+          console.log('No se encontraron datos para el contrato seleccionado.');
+          this.entradaCarousel = []; // O asigna un valor por defecto
+          this.numItemsCarousel = 0;
+          return of([]); // Devuelve un observable vacío
         }),
         finalize(() => {
           this.bucleDatosCarousel();
@@ -416,20 +421,26 @@ export class ConventionsComponent {
     modal.close();
   }
 
-  addPhoto() {
-    const url = this.attachHandler.upload().then(url => {
-      console.log('Imagen subida correctamente a Firebase. URL:', url);
-      return this.conventionsService.uploadImage(this.id, url).toPromise();
-    })
-    .then(response => {
-      console.log('Imagen registrada en el servidor:', response);
-      // Aquí puedes manejar la respuesta del servidor
-    })
-    .catch(error => {
-      console.error('Error en el proceso de subida de imagen:', error);
-      // Aquí puedes manejar el error, tal vez mostrando un mensaje al usuario
-    });
-}
+  async addPhoto() {
+    try {
+      const url = await this.attachHandler.upload();
+      await firstValueFrom(this.conventionsService.uploadImage(this.id, url));
+      alerts.basicAlert(
+        'Subir imagen',
+        'La imagen ha sido subida con éxito.',
+        'success'
+      );
+      this.getDataCarousel();
+    }
+    catch (error) {
+      console.error(error);
+      alerts.basicAlert(
+        'Subir imagen',
+        'La imagen no se ha podido subir.',
+        'error'
+      );
+    }
+  }
 
   deletePhoto(id: number, modal: any) {
     alerts
