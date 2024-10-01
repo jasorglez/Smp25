@@ -22,12 +22,13 @@ import { AttachHandlerService } from 'app/services/attach-handler.service';
 })
 export class ConventionsComponent {
 
-
   private conventionsService = inject(ConventionsService);
   private contractsService = inject(ContractsService);
   private signalsService = inject(SignalsService);
   private modalService = inject(NgbModal);
-  private attachHandler = inject(AttachHandlerService);
+  public attachHandlerService = inject(AttachHandlerService);
+  numItemsDocuments: number;
+  documents: any[];
 
   constructor() {
     effect(() => {
@@ -204,6 +205,7 @@ export class ConventionsComponent {
       this.selectedRowData = selectedNodes[0].data;
       this.id = this.selectedRowData.id;
       this.getDataCarousel();
+      this.getDataDocument();
     } else {
       this.selectedRowData = null;
     }
@@ -423,7 +425,7 @@ export class ConventionsComponent {
 
   async addPhoto() {
     try {
-      const url = await this.attachHandler.upload();
+      const url = await this.attachHandlerService.uploadImg();
       await firstValueFrom(this.conventionsService.uploadImage(this.id, url));
       alerts.basicAlert(
         'Subir imagen',
@@ -483,4 +485,90 @@ export class ConventionsComponent {
         }
       });
   }
+  async addDocument() {
+    try {
+      const url = await this.attachHandlerService.uploadPdf();
+      await firstValueFrom(this.conventionsService.uploadDocument(this.id, url));
+      alerts.basicAlert(
+        'Subir imagen',
+        'La imagen ha sido subida con éxito.',
+        'success'
+      );
+      this.getDataDocument();
+    }
+    catch (error) {
+      console.error(error);
+      alerts.basicAlert(
+        'Subir imagen',
+        'La imagen no se ha podido subir.',
+        'error'
+      );
+    }
+  }
+
+  deleteDocument(id: number) {
+    alerts
+      .confirmAlert(
+        'Eliminar documento',
+        '¿Está seguro de querer borrar este documento? Esta acción es irreversible.',
+        'warning',
+        'Borrar'
+      )
+      .then((result) => {
+        if (result.isConfirmed) {
+          this.conventionsService
+            .deleteAttachment(id)
+            .pipe(
+              tap((data: any[]) => {
+                console.log(data);
+              }),
+              catchError((error: any) => {
+                console.error('Error occurred:', error);
+                return of(null);
+              }),
+              finalize(() => {
+                alerts.basicAlert(
+                  'Eliminar documento',
+                  'Documento borrado satisfactoriamente.',
+                  'success'
+                );
+                this.getDataDocument();
+              })
+            )
+            .subscribe();
+        } else {
+          console.log('hola');
+          alerts.basicAlert(
+            'Eliminar imagen',
+            'La imagen no ha sido borrada.',
+            'success'
+          );
+        }
+      });
+  }
+  
+  getDataDocument() {
+    this.documents = [];
+    this.numItemsDocuments = 0;
+    this.conventionsService
+      .getDocuments(this.id)
+      .pipe(
+        tap((data: any[]) => {
+          this.documents = data;
+          this.numItemsDocuments = this.entradaCarousel.length;
+          console.log(this.documents);
+        }),
+        catchError((error: any) => {
+          console.log('No se encontraron datos para el contrato seleccionado.');
+          this.documents = []; // O asigna un valor por defecto
+          this.numItemsDocuments = 0;
+          return of([]); // Devuelve un observable vacío
+        }),
+        finalize(() => {
+          console.log('Listo');
+        })
+      )
+      .subscribe();
+  }
+
 }

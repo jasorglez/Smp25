@@ -44,7 +44,13 @@ export class ConventionsService {
 
   uploadImage(idTabla: number, docto: string) {
     return this.http.post(`${environment.urlSmp}/Attach`,
-      { idTabla: idTabla, docto: docto, typeDocto: 'IMG', type: 'CONVENIO', active: 1 },
+      { idTabla: idTabla, docto: docto, typeDocto: 'IMG', type: 'CONVENIOS', active: 1 },
+      { headers: this.trackingService.getHeaders() });
+  }
+
+  uploadDocument(idTabla: number, docto: string) {
+    return this.http.post(`${environment.urlSmp}/Attach`,
+      { idTabla: idTabla, docto: docto, typeDocto: 'PDF', type: 'CONVENIOS', active: 1 },
       { headers: this.trackingService.getHeaders() });
   }
 
