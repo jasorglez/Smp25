@@ -37,8 +37,8 @@ export class UsersxprojectsComponent {
   // Signals con correo
   profile = computed(() => this.signalsService.profile);
   idUser: any = this.profile().idUser();
-  idContract = this.usersxprojectsService.idContract();
-  contractChecked = computed(() => this.usersxprojectsService.contractChecked());
+  idContract = this.signalsService.idContract();
+  contractChecked = computed(() => this.signalsService.contractChecked());
 
 
   notSavedChanges: boolean = false;
@@ -286,12 +286,12 @@ export class UsersxprojectsComponent {
   }
 
   onCheckboxChange(event: any) {
-    this.usersxprojectsService.contractChecked().set(event.target.checked);
+    this.signalsService.contractChecked().set(event.target.checked);
     this.filteredData();
   }
 
   filteredData() {
     this.obtenerDatos();
-    this.obtenerProjects(this.usersxprojectsService.idContract());
+    this.obtenerProjects(this.signalsService.idContract());
   }
 }

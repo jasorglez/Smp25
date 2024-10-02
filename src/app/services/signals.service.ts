@@ -1,18 +1,20 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 
 @Injectable({
   providedIn: 'root'
 })
 export class SignalsService {
 
-  // Voy a empezar a definir las signals en un mismo servicio,
-  // de esta forma no estarán dispersados por todos lados.
+  /*
+  Voy a empezar a definir las signals en un mismo servicio,
+  de esta forma no estarán dispersados por todos lados.
+  */
 
   /* Aquí se definen las signals para el sidebar */
 
   contractSelectedBySidebar = signal<number | null>(null);
 
-  setContractSelectedBySidebar(id:number) {
+  setContractSelectedBySidebar(id: number) {
     this.contractSelectedBySidebar.set(id);
   }
 
@@ -22,7 +24,7 @@ export class SignalsService {
 
   /* Aquí se definen las signals para el setup de Users */
 
-   profile = {
+  profile = {
     idUser: signal<number>(null),
     emailUser: signal<string>(null),
     profilePicUser: signal<string>(null),
@@ -30,7 +32,7 @@ export class SignalsService {
     organizationUser: signal<string>(null),
     positionUser: signal<string>(null)
   };
-  
+
   profileSignal(id: number, email: string, picture: string, name: string, organization: string, position: string) {
     this.profile.idUser.set(id);
     this.profile.emailUser.set(email);
@@ -38,5 +40,59 @@ export class SignalsService {
     this.profile.nameUser.set(name);
     this.profile.organizationUser.set(organization);
     this.profile.positionUser.set(position);
+  }
+
+  /* Signals de Users X Permissions */
+
+  idCompany = signal<number>(null);
+  nameCompany = signal<string>(null);
+  idContract = signal<number>(null);
+  nameContract = signal<string>(null);
+
+  private companyCheckedSignal = signal(false);
+  private contractCheckedSignal = signal(false);
+
+  companyChecked() {
+    return this.companyCheckedSignal;
+  }
+
+  contractChecked() {
+    return this.contractCheckedSignal;
+  }
+
+  companySignal(id: number, name: string) {
+    this.idCompany.set(id);
+    this.nameCompany.set(name);
+  }
+
+  contractSignal(id: number, name: string) {
+    this.idContract.set(id);
+    this.nameContract.set(name);
+  }
+
+  /* Signal para la sidebar */
+
+  companyName = signal<string>(null);
+
+  setCompanyName(name: string) {
+    this.companyName.set(name);
+  }
+
+  /* Borramos todas las signals, tratar de poner esto a lo último.
+  Si van a crear nuevas signals, recuerden introducir una señal
+  null en deleteSignals() para que todas las signals se borren
+  al momento de hacer logout */
+
+  deleteSignals() {
+    this.contractSelectedBySidebar = signal(null);
+    this.idCompany = signal(null);
+    this.nameCompany = signal(null);
+    this.idContract = signal(null);
+    this.nameContract = signal(null);
+    this.companyName = signal(null);
+    this.companyCheckedSignal = signal(false);
+    this.contractCheckedSignal = signal(false);
+    // Reinicia this.profile
+    this.profileSignal(null, null, null, null, null, null);
   }
 }

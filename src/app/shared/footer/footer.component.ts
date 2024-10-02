@@ -1,5 +1,5 @@
 import { Component, computed, inject } from '@angular/core';
-import { AuthService } from 'app/services/auth.service';
+import { SignalsService } from 'app/services/signals.service';
 
 @Component({
   selector: 'app-footer',
@@ -10,7 +10,7 @@ import { AuthService } from 'app/services/auth.service';
 })
 export class FooterComponent {
 
-  private authService = inject(AuthService);
-  companyName = computed(()=> this.authService.companyName());
+  private signalsService = inject(SignalsService);
+  companyName = computed(()=> this.signalsService.companyName());
 
 }

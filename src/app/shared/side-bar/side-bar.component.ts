@@ -149,7 +149,7 @@ export class SideBarComponent {
       .subscribe((datacom: any) => {
         // Utilizar los datos obtenidos
         this.trackingService.setnameComp(datacom.name);
-        this.authService.setCompanyName(datacom.name); // Envio la signal a auth.service
+        this.signalsService.setCompanyName(datacom.name); // Envio la signal a auth.service
         this.trackingService.setpictureComp(datacom.picture);
         //this.trackingService.setformatrepint(datacom.formatrep);
         // alert('Format:'+ datacom.formatrep);

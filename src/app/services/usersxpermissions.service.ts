@@ -1,4 +1,4 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { HttpClient } from '@angular/common/http';
 import { TrackingService } from './tracking.service';
@@ -10,22 +10,6 @@ import { Observable } from 'rxjs';
 })
 
 export class UsersxpermissionsService {
-
-  idCompany = signal<number>(null);
-  nameCompany = signal<string>(null);
-  idContract = signal<number>(null);
-  nameContract = signal<string>(null);
-
-  private companyCheckedSignal = signal(false);
-  private contractCheckedSignal = signal(false);
-
-  companyChecked() {
-    return this.companyCheckedSignal;
-  }
-
-  contractChecked() {
-    return this.contractCheckedSignal;
-  }
 
   constructor(private http: HttpClient) { }
 
@@ -47,13 +31,5 @@ export class UsersxpermissionsService {
     return this.http.delete(`${environment.urlLinux}/Usersxpermission/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
-  companySignal(id: number, name: string) {
-    this.idCompany.set(id);
-    this.nameCompany.set(name);
-  }
 
-  contractSignal(id: number, name: string) {
-    this.idContract.set(id);
-    this.nameContract.set(name);
-  }
 }

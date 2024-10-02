@@ -68,11 +68,11 @@
             <div class="col-10 d-flex align-items-center border-top border-right">
               {{attachHandlerService.getBaseFilenameFromUrl(document.docto)}}
             </div>
-            <div class="col-1 border-top">
+            <div class="col-1 border-top text-center">
               <a href="{{document.docto}}" class="btn btn-primary" target="_blank"><i
                 class="bi bi-file-earmark-pdf"></i></a>
             </div>
-            <div class="col-1 border-top">
+            <div class="col-1 border-top text-center">
               <button type="button" class="btn btn-danger" (click)="deleteDocument(document.id)"><i
                 class="bi bi-trash"></i></button>
             </div>
@@ -97,7 +97,7 @@
             [attr.aria-roledescription]="'diapositiva ' + (i + 1) + ' de ' + images.length" [attr.aria-label]="img.alt">
             <img [src]="img.src" class="d-block w-100" [alt]="img.alt" />
             <div class="carousel-caption d-none d-md-block">
-              <p>{{ img.description }}</p>
+              <p>{{ img.alt }}</p>
             </div>
             <div class="text-center mt-3">
               <button class="btn btn-danger me-2" (click)="deletePhoto(img.idPhoto, modal)">Borrar</button>

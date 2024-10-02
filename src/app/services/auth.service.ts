@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import {
@@ -11,7 +11,7 @@ import {
   authState,
 } from '@angular/fire/auth';
 import { TrackingService } from './tracking.service';
-import { first, firstValueFrom, Observable } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Ilogin } from 'app/interface/ilogin';
 
@@ -23,13 +23,10 @@ export class AuthService {
     'https://identitytoolkit.googleapis.com/v1/accounts';
 
   private apiKey = environment.firebase.apiKey;
-
-  constructor(
-    private trackingService: TrackingService,
-    private router: Router,
-    private auth: Auth,
-    private http: HttpClient
-  ) {}
+  private trackingService = inject(TrackingService);
+  private router = inject(Router);
+  private auth = inject(Auth);
+  private http = inject(HttpClient);
 
   login(data: Ilogin) {
     //Aquí creamos el Token
@@ -175,12 +172,5 @@ export class AuthService {
       )
     );
     return signInResponse.idToken;
-  }
-
-  // Signals
-  companyName = signal<string>(null);
-
-  setCompanyName(name: string) {
-    this.companyName.set(name);
   }
 }

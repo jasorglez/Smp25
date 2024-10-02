@@ -14,6 +14,9 @@ export class UsersProfileComponent {
   private signalsService = inject(SignalsService);
   usersxpermissionsService = inject(UsersxpermissionsService);
   
-  profile = computed(()=> this.signalsService.profile);
+  profile = this.signalsService.profile;
+
+  nameCompany = this.signalsService.nameCompany();
+  nameContract = this.signalsService.nameContract();
 
 }

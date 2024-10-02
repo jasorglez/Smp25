@@ -43,7 +43,7 @@ export class UsersComponent {
     this.signalsService.profileSignal(this.selectedRowData.id, this.selectedRowData.email,
       this.selectedRowData.picture, this.selectedRowData.displayName,
       departmentName, this.selectedRowData.position);
-      this.usersxcompanysService.nameCompany.set(null);
+      this.signalsService.nameCompany.set(null);
   }
 
   @HostListener('window:beforeunload', ['$event'])

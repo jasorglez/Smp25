@@ -1,12 +1,11 @@
-import { inject, Injectable, signal } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { inject, Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 
 import { environment } from '../../environments/environment';
-import { Iusers } from '../interface/iusers';
 import { TrackingService } from './tracking.service';
 
 import { alerts } from '../helpers/alerts';
-import { map, concat, catchError, forkJoin, Observable, throwError } from 'rxjs';
+import { map, Observable } from 'rxjs';
 
 import 'firebase/compat/database';
 
@@ -15,34 +14,8 @@ import 'firebase/compat/database';
 })
 export class UsersService {
 
-  // Usemos signals
-  profile = {
-    idUser: signal<number>(null),
-    emailUser: signal<string>(null),
-    profilePicUser: signal<string>(null),
-    nameUser: signal<string>(null),
-    organizationUser: signal<string>(null),
-    positionUser: signal<string>(null)
-  };
-
   private trackingService = inject(TrackingService);
-  
-  profileSignal(id: number, email: string, picture: string, name: string, organization: string, position: string) {
-    this.profile.idUser.set(id);
-    this.profile.emailUser.set(email);
-    this.profile.profilePicUser.set(picture);
-    this.profile.nameUser.set(name);
-    this.profile.organizationUser.set(organization);
-    this.profile.positionUser.set(position);
-  }
-
-  //Constructor
-  constructor(private http: HttpClient) { }
-
-  private getAuthToken(): string {
-    return localStorage.getItem('token') || '';
-  }
-
+  private http = inject(HttpClient);
 
   // Aqui comienzan los cambios hechos a SMP
 

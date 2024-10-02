@@ -232,8 +232,8 @@ export class UsersxcompanysComponent {
             'Entrada eliminada satisfactoriamente.',
             'success'
           );
-          this.usersxcompanysService.idCompany.set(null);
-          this.usersxcompanysService.nameCompany.set(null);
+          this.signalsService.idCompany.set(null);
+          this.signalsService.nameCompany.set(null);
           this.obtenerDatos();
 
           alerts.basicAlert(
@@ -264,7 +264,7 @@ export class UsersxcompanysComponent {
 
   enviarCompanyId() {
     const companyName = this.getCompanyName(this.selectedRowData.idPermission);
-     this.usersxcompanysService.companySignal(this.selectedRowData.idPermission, companyName);
+     this.signalsService.companySignal(this.selectedRowData.idPermission, companyName);
   }
 
   getCompanyName(id: number): string {

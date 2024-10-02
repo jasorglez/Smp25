@@ -36,10 +36,10 @@ export class UsersxcontractsComponent {
   }
 
   profile = computed(() => this.signalsService.profile);
-  idCompany: any = this.usersxcontractsService.idCompany();
-  idContract = this.usersxcontractsService.idContract();
+  idCompany: any = this.signalsService.idCompany();
+  idContract = this.signalsService.idContract();
   idUser: any = this.profile().idUser();
-  companyChecked = computed(() => this.usersxcontractsService.companyChecked());
+  companyChecked = computed(() => this.signalsService.companyChecked());
 
   notSavedChanges: boolean = false;
   rowData: any;
@@ -307,7 +307,7 @@ export class UsersxcontractsComponent {
 
   // Obtiene los datos cada vez que se activa o no el checkbox
   onCheckboxChange(event: any) {
-    this.usersxcontractsService.companyChecked().set(event.target.checked);
+    this.signalsService.companyChecked().set(event.target.checked);
     this.filteredData();
   }
 
@@ -320,7 +320,7 @@ export class UsersxcontractsComponent {
 
   enviarContractId() {
     const contractName = this.getContractName(this.selectedRowData.idPermission);
-    this.usersxcontractsService.contractSignal(this.selectedRowData.idPermission, contractName);
+    this.signalsService.contractSignal(this.selectedRowData.idPermission, contractName);
   }
 
   getContractName(id: number) {
