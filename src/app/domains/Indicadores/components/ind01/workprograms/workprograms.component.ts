@@ -1,7 +1,9 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, inject, OnInit } from '@angular/core';
+import { alerts } from 'app/helpers/alerts';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { gantt } from 'dhtmlx-gantt';
+import { Observable, forkJoin } from 'rxjs';
 
 @Component({
   selector: 'app-workprograms',
@@ -14,23 +16,32 @@ export class WorkprogramsComponent implements OnInit {
   private workprogramsService = inject(WorkprogramsService);
 
   datosGantt: { data: any; links: any; };
+  deletedTasks: Set<number> = new Set();
 
   ngOnInit() {
+    this.configGantt();
+    gantt.init('gantt_here');
+    this.configureTaskEvents();
+    this.loadDataFromAPI();
+  }
+
+  configGantt() {
     gantt.config.date_format = "%Y-%m-%d %H:%i";
     gantt.config.work_time = false;
     gantt.config.order_branch = true;
     gantt.config.order_branch_free = true;
+    
 
     gantt['form_blocks']['color_picker'] = {
-      render: function(sns) {
+      render: function (sns) {
         return '<div class="gantt_cal_ltext" style="height:30px;">' +
-               '<input type="color" id="task_color" style="width:100%;">' +
-               '</div>';
+          '<input type="color" id="task_color" style="width:100%;">' +
+          '</div>';
       },
-      set_value: function(node, value, task, section) {
-        node.querySelector('#task_color').value = value || '#FFFFFF';
+      set_value: function (node, value, task, section) {
+        node.querySelector('#task_color').value = value || '#ffffff';
       },
-      get_value: function(node, task, section) {
+      get_value: function (node, task, section) {
         return node.querySelector('#task_color').value;
       }
     };
@@ -45,7 +56,7 @@ export class WorkprogramsComponent implements OnInit {
           return Math.round(task.progress * 100) + "%";
         }
       },
-      {
+      /* {
         name: "responsable", label: "Responsable", align: "center", width: 80, template: (task) => {
           const responsables = { 1: "Juan", 2: "María", 3: "Carlos" };
           return responsables[task['responsable']] || "";
@@ -56,7 +67,7 @@ export class WorkprogramsComponent implements OnInit {
           const prioridades = { 1: "Baja", 2: "Media", 3: "Alta" };
           return prioridades[task['priority']] || "";
         }
-      },
+      }, */
     ];
 
     // Definir los campos personalizados
@@ -70,7 +81,7 @@ export class WorkprogramsComponent implements OnInit {
     gantt.config.lightbox.sections = [
       { name: "description", height: 70, map_to: "text", type: "textarea", focus: true },
       { name: "time", type: "time", map_to: "auto" },
-      {
+      /* {
         name: "responsable", height: 22, map_to: "responsable", type: "select", options: [
           { key: 1, label: "Juan" },
           { key: 2, label: "María" },
@@ -83,13 +94,9 @@ export class WorkprogramsComponent implements OnInit {
           { key: 2, label: "Media" },
           { key: 3, label: "Alta" }
         ]
-      },
+      }, */
       { name: "color", height: 30, map_to: "color", type: "color_picker" }
     ];
-
-    gantt.init('gantt_here');
-
-    this.loadDataFromAPI(); 
   }
 
   mostrarDatos() {
@@ -103,8 +110,35 @@ export class WorkprogramsComponent implements OnInit {
     console.log(this.datosGantt);
   }
 
+  transformTaskForSave(task: any): any {
+    return {
+      id: task.idEntry, // Será undefined para tareas nuevas
+      idTask: task.id,
+      text: task.text,
+      idContract: 0,
+      idProject: 1,
+      startDate: task.start_date.toISOString(),
+      endDate: task.end_date.toISOString(),
+      progress: task.progress,
+      parent: task.parent,
+      color: task.color,
+      // Ahora los campos personalizados
+      criticRoute: task.criticRoute,
+      activity: task.activity,
+      typeActivity: task.typeActivity,
+      especification: task.especification,
+      distribution: task.distribution,
+      costMX: task.costMX,
+      costDLL: task.costDLL,
+      quantity: task.quantity,
+      predecesor: task.predecesor,
+      active: task.active
+    };
+  }
+
+
   loadDataFromAPI() {
-    this.workprogramsService.getWorkprograms(1, 'Project').subscribe(
+    this.workprogramsService.getWorkPrograms(1, 'Project').subscribe(
       (response: any) => {
         const transformedData = this.transformData(response);
         gantt.parse(transformedData);
@@ -126,7 +160,8 @@ export class WorkprogramsComponent implements OnInit {
       end_date: new Date(item.endDate),
       progress: item.progress,
       parent: item.parent,
-      // Campos secundarios
+      color: item.color,
+      // Ahora los campos personalizados
       criticRoute: item.criticRoute,
       activity: item.activity,
       typeActivity: item.typeActivity,
@@ -140,6 +175,78 @@ export class WorkprogramsComponent implements OnInit {
     }));
 
     return { data: transformedData };
+  }
+
+  save() {
+    const tasks = gantt.getTaskByTime();
+    const requests: Observable<any>[] = [];
+
+    tasks.forEach(task => {
+      if (!this.deletedTasks.has(task['idEntry'])) {
+        const transformedTask = this.transformTaskForSave(task);
+
+        if (task['idEntry'] === undefined) {
+          // Nueva tarea
+          requests.push(this.workprogramsService.addWorkProgram(transformedTask));
+
+        } else {
+          // Tarea existente
+          requests.push(this.workprogramsService.updateWorkProgram(task['idEntry'], transformedTask));
+        }
+        console.log(transformedTask);
+      }
+    });
+
+    // Agregar solicitudes DELETE para tareas eliminadas
+    this.deletedTasks.forEach(idEntry => {
+      requests.push(this.workprogramsService.deleteWorkProgram(idEntry));
+    });
+
+    forkJoin(requests).subscribe(
+      results => {
+        alerts.basicAlert('Editar', 'Todas las operaciones completadas con éxito', 'success');
+        console.log('Todas las operaciones completadas con éxito', results);
+        // Actualizar idEntry para nuevas tareas
+        let newTaskIndex = 0;
+        tasks.forEach(task => {
+          if (task['idEntry'] === undefined && !this.deletedTasks.has(task['idEntry'])) {
+            task['idEntry'] = results[newTaskIndex].id;
+            newTaskIndex++;
+          }
+        });
+        // Limpiar la lista de tareas eliminadas
+        this.deletedTasks.clear();
+        // Refrescar el gantt
+        gantt.render();
+      },
+      error => {
+        alerts.basicAlert('Error', 'Error al guardar los cambios.', 'error');
+        console.error('Error al guardar los cambios:', error);
+      }
+    );
+  }
+
+
+  configureTaskEvents() {
+    gantt.attachEvent("onBeforeTaskDelete", (id, task) => {
+      this.markTaskAndChildrenForDeletion(task);
+      return true; // Permitir la eliminación
+    });
+  }
+
+  markTaskAndChildrenForDeletion(task: any) {
+    if (task.idEntry) {
+      this.deletedTasks.add(task.idEntry);
+    }
+
+    // Obtener todas las tareas hijas
+    const children = gantt.getChildren(task.id);
+
+    // Recursivamente marcar para eliminación todas las tareas hijas
+    children.forEach(childId => {
+      const childTask = gantt.getTask(childId);
+      this.markTaskAndChildrenForDeletion(childTask);
+    });
   }
 
 }
