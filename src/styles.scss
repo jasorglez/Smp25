@@ -20,6 +20,9 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
  --ag-row-hover-color: rgba(0, 38, 255, 0.1);
 }
 
+// DHTMLX Gantt CSS
+@import "dhtmlx-gantt/codebase/dhtmlxgantt.css";
+
 body {
   font-family: 'Poppins', sans-serif;
   background-color: #f4f6f9;
