@@ -92,6 +92,7 @@ export class SideBarComponent {
     const target = event.target as HTMLSelectElement;
     this.selectedContractId = target.value;
     this.trackingService.setContract(this.selectedContractId);
+    console.log('Contrato seleccionado:', this.selectedContractId);
     this.signalsService.setContractSelectedBySidebar(Number(this.selectedContractId));
   }
 

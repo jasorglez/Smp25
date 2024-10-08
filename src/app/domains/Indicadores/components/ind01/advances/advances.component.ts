@@ -1,7 +1,8 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, effect } from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef } from 'ag-grid-community';
 import { ContractsService } from 'app/services/contracts.service';
+import { SignalsService } from 'app/services/signals.service';
 import {
   ApexAxisChartSeries,
   ApexChart,
@@ -9,6 +10,7 @@ import {
   ApexTitleSubtitle,
   NgApexchartsModule
 } from "ng-apexcharts";
+import { Subscription } from 'rxjs';
 
 export type ChartOptions = {
   series: ApexAxisChartSeries;
@@ -35,9 +37,11 @@ interface VentasMensuales {
 export class AdvancesComponent implements OnInit {
 
   private _contractsService = inject(ContractsService);
+  private _signalsService = inject(SignalsService); 
   public contracts: any[] = [];
+  public contractSelectedBySidebar = this._signalsService.getContractSelectedBySidebar();
   // Datos comunes para la tabla y la gráfica
-  datosMensuales: VentasMensuales[] = [
+  datosMensuales: VentasMensuales[] = [   
     { mes: "Ene", ventas: 10000 },
     { mes: "Feb", ventas: 15000 },
     { mes: "Mar", ventas: 13000 },
@@ -59,8 +63,12 @@ export class AdvancesComponent implements OnInit {
 
   // Configuración de ApexCharts
   public chartOptions: Partial<ChartOptions>;
-
+  private subscription: Subscription;
   constructor() {
+    effect(() => {
+      const nuevoValor = this._signalsService.getContractSelectedBySidebar();
+      console.log('El valor ha cambiado:', nuevoValor());
+    });
     this.chartOptions = {
       series: [
         {
@@ -82,6 +90,7 @@ export class AdvancesComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    
     this._contractsService.getContractsBy2fields(1).subscribe((contracts: any) => {
       console.log(contracts);
       this.contracts = contracts;
