@@ -34,7 +34,7 @@ export class AuthService {
       email: data.email,
       password: data.password
     };
-    return this.http.post(environment.urlLinux+'/Auth/login', dataLogin)
+    return this.http.post(environment.urlSecurity+'/Auth/login', dataLogin)
   }
 
   async register(email: string, password: string): Promise<User | null> {

@@ -3,8 +3,8 @@ import { inject, Injectable } from '@angular/core';
 import { environment } from '@env/environment';
 import { TrackingService } from './tracking.service';
 
-import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { EMPTY, Observable } from 'rxjs';
+import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http';
+import { catchError, EMPTY, map, Observable, throwError } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -31,14 +31,41 @@ export class ProjectsService {
     }
   }
 
-
   getProjects() {
     return this.http.get(`${environment.urlSmp}/Project`, { headers: this.trackingService.getHeaders() });
   }
 
-  getProjectsByContract(idContract: number) {
-    return this.http.get(`${environment.urlSmp}/Project/contract?contrato=${idContract}`, { headers: this.trackingService.getHeaders() });
+  getProjectsByContract(idContract: number, idUser: number): Observable<any[]> {
+    const url = `${environment.urlSmp}/SmpandSecurity/project`;
+    const params = new HttpParams()
+      .set('idUser', idUser.toString())
+      .set('idContract', idContract.toString());
+
+    console.log('Requesting URL:', url, 'with params:', params.toString());
+
+    return this.http.get<any>(url, {
+      params: params,
+      headers: this.trackingService.getHeaders()
+    }).pipe(
+      map(response => {
+        if (response && response.project) {
+          return response.project;
+        }
+        return [];
+      }),
+      catchError(this.handleError)
+    );
   }
+
+  private handleError(error: HttpErrorResponse) {
+    if (error.status === 404) {
+      alert('No projects found');
+      return [];
+    }
+    console.error('An error occurred:', error);
+    return throwError(() => new Error('Something bad happened; please try again later.'));
+  }
+
 
   addProject(data: any) {
     return this.http.post(`${environment.urlSmp}/Project`, data, { headers: this.trackingService.getHeaders() });

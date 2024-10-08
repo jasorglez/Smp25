@@ -90,7 +90,7 @@ export class UsersxprojectsComponent {
 
   obtenerProjects(contract: number) {
     if(this.contractChecked()() == true) {
-      this.projectsService.getProjectsByContract(contract).subscribe((data: any[]) => {
+      this.projectsService.getProjectsByContract(contract, this.signalsService.idUser()).subscribe((data: any[]) => {
         this.projects = data.reduce((acc, dep) => {
           acc[dep.id] = dep.idConsecutivo + ' - ' + dep.name; // Cambia la estructura para que solo almacene el nombre
           return acc;
