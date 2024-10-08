@@ -22,7 +22,7 @@ export const environment = {
   urlAzure      : 'https://bi24.azurewebsites.net/',
   urlLinux      : 'https://bi2.com.mx:5003/api',
   urlSmp        : 'https://bi2.com.mx:5004/api',
-  urlLinux3     : 'https://bi2.com.mx:5005/api',
+  urlBpi        : 'https://bi2.com.mx:5005/api',
   
   //  urlAzure    : 'https://localhost:7089/',
 

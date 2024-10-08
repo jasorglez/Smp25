@@ -40,7 +40,7 @@ export class CompanysService {
   
   //Tomar la data de la colección Empresas en Azure
   getDataCompanysAzure() {
-    return this.http.get(`${environment.urlLinux3}/Providers/id`, { headers: this.trackingService.getHeaders() });
+    return this.http.get(`${environment.urlSmp}/Providers/id`, { headers: this.trackingService.getHeaders() });
   }
     
 
@@ -69,7 +69,7 @@ export class CompanysService {
 
   Companys(): Observable<any> {
     try {
-      const apiUrl = `${environment.urlLinux3}/Providers/id`;
+      const apiUrl = `${environment.urlSmp}/Providers/id`;
       //  alert(apiUrl)
       return this.http.get(apiUrl, { headers: this.trackingService.getHeaders() });
     } catch (error) {
@@ -80,7 +80,7 @@ export class CompanysService {
 
   getProjectxCompany(prio: number, idcomp: number): Observable<any> {
     try {
-      const apiUrl = `${environment.urlLinux3}/Project/company?priority=${prio}&comp=${idcomp}`;
+      const apiUrl = `${environment.urlBpi}/Project/company?priority=${prio}&comp=${idcomp}`;
       //  alert(apiUrl)
       return this.http.get(apiUrl, { headers: this.trackingService.getHeaders() });
     } catch (error) {

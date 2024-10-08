@@ -22,7 +22,7 @@ export class ProjectsService {
 
   getProjectxOil(prio: number, idoil: number): Observable<any> {
     try {
-      const apiUrl = `${environment.urlLinux3}/Project/oil?priority=${prio}&oil=${idoil}`;      
+      const apiUrl = `${environment.urlSmp}/Project/oil?priority=${prio}&oil=${idoil}`;      
        // alert(apiUrl)
       return this.http.get(apiUrl, { headers: this.trackingService.getHeaders() });
     } catch(error) {
