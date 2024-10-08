@@ -1,13 +1,18 @@
 import { Component, inject, OnInit } from '@angular/core';
+import { RouterModule } from '@angular/router';
 import { alerts } from 'app/helpers/alerts';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { gantt } from 'dhtmlx-gantt';
 import { Observable, catchError, forkJoin, map, of } from 'rxjs';
+import { AuxiliarsComponent } from './auxiliars/auxiliars.component';
+import { MaterialsComponent } from './materials/materials.component';
+import { PersonalComponent } from './personal/personal.component';
+import { EquipmentComponent } from './equipment/equipment.component';
 
 @Component({
   selector: 'app-workprograms',
   standalone: true,
-  imports: [],
+  imports: [RouterModule, AuxiliarsComponent, EquipmentComponent, MaterialsComponent, PersonalComponent],
   templateUrl: './workprograms.component.html',
   styleUrl: './workprograms.component.scss'
 })
