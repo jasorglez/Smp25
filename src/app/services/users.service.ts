@@ -20,23 +20,23 @@ export class UsersService {
   // Aqui comienzan los cambios hechos a SMP
 
   getDataUsers() {
-    return this.http.get(`${environment.urlLinux}/User/users`, { headers: this.trackingService.getHeaders() });
+    return this.http.get(`${environment.urlSecurity}/User/users`, { headers: this.trackingService.getHeaders() });
   }
 
   addUser(data: any): Observable<any> {
-    return this.http.post(`${environment.urlLinux}/User`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.post(`${environment.urlSecurity}/User`, data, { headers: this.trackingService.getHeaders() });
   }
 
   updateUser(id: string, data: any): Observable<any> {
-    return this.http.put(`${environment.urlLinux}/User/${id}`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.put(`${environment.urlSecurity}/User/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
   deleteUser(id: number, data: any): Observable<any> {
-    return this.http.put(`${environment.urlLinux}/User/${id}`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.put(`${environment.urlSecurity}/User/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
   getDepartments() {
-    return this.http.get(`${environment.urlLinux}/Department`, { headers: this.trackingService.getHeaders() });
+    return this.http.get(`${environment.urlSecurity}/Department`, { headers: this.trackingService.getHeaders() });
   }
   
   // Aqui terminan los cambios a SMP
@@ -62,10 +62,10 @@ export class UsersService {
 
   findEmail(email: string): Observable<any> {
     const headers = this.trackingService.getHeaders();
-    return this.http.get<any>(`${environment.urlLinux}/User/email/${email}`, { headers }).pipe(
+    return this.http.get<any>(`${environment.urlSecurity}/User/email/${email}`, { headers }).pipe(
       map(datauser => {
 
-        console.log('dataUser', datauser);
+       // console.log('dataUser', datauser);
 
         // Asegúrate de que datauser contenga al menos un objeto
         const userArray = datauser.data;

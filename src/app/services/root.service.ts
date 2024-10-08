@@ -32,9 +32,10 @@ export class RootService {
     return this.http.delete(`${environment.urlSmp}/Root/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
-  get2Root() {
-    return this.http.get(`${environment.urlSmp}/Root/2fields`, { headers: this.trackingService.getHeaders() });
+  get2Root(idUser : number) {
+    return this.http.get(`${environment.urlSmp}/SmpandSecurity/root?idUser=${idUser}`, { headers: this.trackingService.getHeaders() });    
   }
+
 
 
 }

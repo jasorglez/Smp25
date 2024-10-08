@@ -20,7 +20,7 @@ export const environment = {
 //aqui juego con las base de datos
   urlFirebase   : 'https://beapp-501d1-default-rtdb.firebaseio.com/',
   urlAzure      : 'https://bi24.azurewebsites.net/',
-  urlLinux      : 'https://bi2.com.mx:5003/api',
+  urlSecurity   : 'https://bi2.com.mx:5003/api',
   urlSmp        : 'https://bi2.com.mx:5004/api',
   urlBpi        : 'https://bi2.com.mx:5005/api',
   

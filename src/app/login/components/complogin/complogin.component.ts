@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, computed, inject, signal,  OnInit } from '@angular/core';
 import { Validators, FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
@@ -16,6 +16,7 @@ import { TranslateModule } from '@ngx-translate/core';
 
 import { AuthService } from '../../../services/auth.service';
 import { UsersService } from '../../../services/users.service';
+import { SignalsService } from 'app/services/signals.service';
 
 @Component({
   selector: 'app-complogin',
@@ -32,66 +33,40 @@ import { UsersService } from '../../../services/users.service';
 })
 export class ComploginComponent implements OnInit {
 
+  //idUser      = computed(()=>  this.signalsService.idUser()) ;
+
   hide = true;
   emailcapt   : string = '';
   displayName : string = '' ;
   picture     : string = '' ;
 
   images      : string[] = [
-    '../../../assets/img/1.png',
     '../../../assets/img/2.jpg',
     '../../../assets/img/3.jpg',
     '../../../assets/img/4.jpg',
     '../../../assets/img/5.jpg',
-    '../../../assets/img/6.png',
     '../../../assets/img/7.jpg',
     '../../../assets/img/8.jpg',
-    '../../../assets/img/9.jpg',
     '../../../assets/img/10.jpg',
-    '../../../assets/img/11.jpg',
-    '../../../assets/img/12.png',
-    '../../../assets/img/13.png',
-    '../../../assets/img/14.jpg',
-    '../../../assets/img/15.png',
-    '../../../assets/img/16.jpg',
-    '../../../assets/img/17.png',
+    '../../../assets/img/11.jpg',        
+    '../../../assets/img/14.jpg',    
+    '../../../assets/img/16.jpg',    
     '../../../assets/img/18.jpg',
     '../../../assets/img/19.jpg',
     '../../../assets/img/20.jpg',
-    '../../../assets/img/21.png',
-    '../../../assets/img/22.jpg',
-    '../../../assets/img/23.jpg',
-    '../../../assets/img/24.jpg',
-    '../../../assets/img/25.jpg',
-    '../../../assets/img/26.png',
     '../../../assets/img/27.png',
-    '../../../assets/img/28.png',
-    '../../../assets/img/29.png',
-    '../../../assets/img/30.png',
-    '../../../assets/img/31.png',
-    '../../../assets/img/32.png',
-    '../../../assets/img/33.png',
-    '../../../assets/img/34.png',
-    '../../../assets/img/35.png',
-    '../../../assets/img/36.png',
-    '../../../assets/img/37.png',
-    '../../../assets/img/38.png',
-    '../../../assets/img/39.png',
-    '../../../assets/img/40.png',
-    '../../../assets/img/41.png',
-    '../../../assets/img/42.png',
-    '../../../assets/img/43.png',
-    '../../../assets/img/44.png',
-    '../../../assets/img/45.png',
-    '../../../assets/img/46.png',
-    '../../../assets/img/47.png',
-    '../../../assets/img/48.png',
-    '../../../assets/img/49.png',
     '../../../assets/img/51.png',
-    '../../../assets/img/52.png',
-    '../../../assets/img/53.png'
   ];
 
+  private loginService    = inject(LoginService) ;
+  private companysService = inject(CompanysService);
+  private trackingService = inject(TrackingService);
+  private userService     = inject(UsersService);
+  private auth            = inject(AuthService);
+  private formBuilder     = inject(FormBuilder);
+  private router          = inject(Router);
+  private signalsService = inject(SignalsService);
+  
   randomImage : string = '' ;
 
 	public flogin = this.formBuilder.group({
@@ -103,13 +78,7 @@ export class ComploginComponent implements OnInit {
 
   valorcapturado = '' ;
 
-  constructor( private loginService: LoginService,
-              private companysService : CompanysService,
-              private trackingService : TrackingService,
-              private userService: UsersService,
-              private auth: AuthService,
-              private formBuilder: FormBuilder,
-              private router: Router) { }
+  constructor( ) { }
 
   ngOnInit(): void {
     this.randomImage = this.images[Math.floor(Math.random() * this.images.length)];
@@ -150,15 +119,15 @@ export class ComploginComponent implements OnInit {
         this.userService.findEmail(this.emailcapt).subscribe({
           next: (datauser: any) => {
             if (datauser) {
-              console.log(datauser)
+              //console.log(datauser)
               // Defincion de variables globales
                this.trackingService.setnameUser(datauser.displayName);
                this.trackingService.setpictureUser(datauser.picture);
                this.trackingService.setabranch(datauser.applybranch) ;
                this.trackingService.setaplatform(datauser.applyplatform) ;
                this.trackingService.setaproject(datauser.applyproject) ;
-               this.trackingService.setId(datauser.id) ;
-               
+               this.trackingService.setId(datauser.id) ;               
+               this.signalsService.setidUser(datauser.id);
                this.router.navigate(['/main']) ;
             }
           },
@@ -186,10 +155,7 @@ export class ComploginComponent implements OnInit {
 }
 
 
-/*=============================================
-Validamos formulario
-=============================================*/
-
+//Validamos formulario
 invalidField(field:string){
 
 return functions.invalidField(field, this.flogin, this.formSubmitted);

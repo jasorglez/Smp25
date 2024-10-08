@@ -390,7 +390,7 @@ export class TrackingService {
   }
 
   getIdUser(email: string) {
-    return this.http.get(`${environment.urlLinux}/User/email/${email}`, {
+    return this.http.get(`${environment.urlSecurity}/User/email/${email}`, {
       headers: this.getHeaders(),
     });
   }

@@ -11,6 +11,7 @@ import { SignalsService } from 'app/services/signals.service';
 export class FooterComponent {
 
   private signalsService = inject(SignalsService);
-  companyName = computed(()=> this.signalsService.companyName());
 
+  companyName = computed(()=> this.signalsService.companyName());
+ 
 }
