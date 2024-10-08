@@ -1,4 +1,3 @@
-import { HttpClient } from '@angular/common/http';
 import { Component, inject, OnInit } from '@angular/core';
 import { alerts } from 'app/helpers/alerts';
 import { WorkprogramsService } from 'app/services/workprograms.service';
@@ -18,6 +17,10 @@ export class WorkprogramsComponent implements OnInit {
   datosGantt: { data: any; links: any; };
   deletedTasks: Set<number> = new Set();
 
+  idProject: number = 1;
+  idContract: number = 0;
+  typeWorkProgram: string = 'Project';
+
   ngOnInit() {
     this.configGantt();
     gantt.init('gantt_here');
@@ -30,7 +33,6 @@ export class WorkprogramsComponent implements OnInit {
     gantt.config.work_time = false;
     gantt.config.order_branch = true;
     gantt.config.order_branch_free = true;
-    
 
     gantt['form_blocks']['color_picker'] = {
       render: function (sns) {
@@ -46,6 +48,34 @@ export class WorkprogramsComponent implements OnInit {
       }
     };
 
+    gantt['form_blocks']['currency_input'] = {
+      render: function (sns) {
+        return '<div class="gantt_cal_ltext" style="height:30px;">' +
+          '<input type="number" id="currency_input" style="width:100%;" step="0.01" min="0">' +
+          '</div>';
+      },
+      set_value: function (node, value, task, section) {
+        node.querySelector('#currency_input').value = value || 0;
+      },
+      get_value: function (node, task, section) {
+        return parseFloat(node.querySelector('#currency_input').value) || 0;
+      }
+    };
+
+    gantt['form_blocks']['number_input'] = {
+      render: function (sns) {
+        return '<div class="gantt_cal_ltext" style="height:30px;">' +
+          '<input type="number" id="number_input" style="width:100%;">' +
+          '</div>';
+      },
+      set_value: function (node, value, task, section) {
+        node.querySelector('#number_input').value = value || 0;
+      },
+      get_value: function (node, task, section) {
+        return parseFloat(node.querySelector('#number_input').value) || 0;
+      }
+    };
+
     gantt.config.columns = [
       { name: "add", label: "", width: 44 },
       { name: "text", label: "Nombre de la tarea", tree: true, width: 200 },
@@ -55,19 +85,7 @@ export class WorkprogramsComponent implements OnInit {
         name: "progress", label: "Progreso", align: "center", width: 80, template: (task) => {
           return Math.round(task.progress * 100) + "%";
         }
-      },
-      /* {
-        name: "responsable", label: "Responsable", align: "center", width: 80, template: (task) => {
-          const responsables = { 1: "Juan", 2: "María", 3: "Carlos" };
-          return responsables[task['responsable']] || "";
-        }
-      },
-      {
-        name: "priority", hide: true, label: "Prioridad", align: "center", width: 80, template: (task) => {
-          const prioridades = { 1: "Baja", 2: "Media", 3: "Alta" };
-          return prioridades[task['priority']] || "";
-        }
-      }, */
+      }
     ];
 
     // Definir los campos personalizados
@@ -77,28 +95,28 @@ export class WorkprogramsComponent implements OnInit {
     gantt.locale.labels['section_responsable'] = "Responsable";
     gantt.locale.labels['section_priority'] = "Prioridad";
     gantt.locale.labels['section_color'] = "Color";
+    gantt.locale.labels['section_costMX'] = "Costo MXN $";
+    gantt.locale.labels['section_costDLL'] = "Costo DLL $";
+    gantt.locale.labels['section_quantity'] = "Cantidad";
+    gantt.locale.labels['section_criticRoute'] = "Ruta Crítica";
 
     gantt.config.lightbox.sections = [
       { name: "description", height: 70, map_to: "text", type: "textarea", focus: true },
       { name: "time", type: "time", map_to: "auto" },
-      /* {
-        name: "responsable", height: 22, map_to: "responsable", type: "select", options: [
-          { key: 1, label: "Juan" },
-          { key: 2, label: "María" },
-          { key: 3, label: "Carlos" }
-        ]
-      },
+      { name: "color", height: 30, map_to: "color", type: "color_picker" },
+      { name: "costMX", height: 30, map_to: "costMX", type: "currency_input" },
+      { name: "costDLL", height: 30, map_to: "costDLL", type: "currency_input" },
+      { name: "quantity", height: 30, map_to: "quantity", type: "number_input" },
       {
-        name: "priority", height: 22, map_to: "priority", type: "select", options: [
-          { key: 1, label: "Baja" },
-          { key: 2, label: "Media" },
-          { key: 3, label: "Alta" }
+        name: "criticRoute", height: 30, map_to: "criticRoute", type: "select", options: [
+          { key: "Si", label: "Sí" },
+          { key: "No", label: "No" }
         ]
-      }, */
-      { name: "color", height: 30, map_to: "color", type: "color_picker" }
+      }
     ];
   }
 
+  // Funcion para mostrar los datos del gantt
   mostrarDatos() {
     const tareas = gantt.serialize().data;
     const enlaces = gantt.serialize().links;
@@ -110,13 +128,14 @@ export class WorkprogramsComponent implements OnInit {
     console.log(this.datosGantt);
   }
 
+  // Funcion para transformar los datos del gantt a los que entiende la API
   transformTaskForSave(task: any): any {
     return {
       id: task.idEntry, // Será undefined para tareas nuevas
       idTask: task.id,
       text: task.text,
-      idContract: 0,
-      idProject: 1,
+      idContract: this.idContract,
+      idProject: this.idProject,
       startDate: task.start_date.toISOString(),
       endDate: task.end_date.toISOString(),
       progress: task.progress,
@@ -124,21 +143,22 @@ export class WorkprogramsComponent implements OnInit {
       color: task.color,
       // Ahora los campos personalizados
       criticRoute: task.criticRoute,
-      activity: task.activity,
-      typeActivity: task.typeActivity,
+      activity: "string",
+      typeActivity: "Activity",
       especification: task.especification,
       distribution: task.distribution,
       costMX: task.costMX,
       costDLL: task.costDLL,
       quantity: task.quantity,
       predecesor: task.predecesor,
-      active: task.active
+      active: 1
     };
   }
 
-
+  // Funcion para cargar los datos de la API
   loadDataFromAPI() {
-    this.workprogramsService.getWorkPrograms(1, 'Project').subscribe(
+    const id = this.typeWorkProgram === 'Project' ? this.idProject : this.idContract;
+    this.workprogramsService.getWorkPrograms(id, this.typeWorkProgram).subscribe(
       (response: any) => {
         const transformedData = this.transformData(response);
         gantt.parse(transformedData);
@@ -150,6 +170,7 @@ export class WorkprogramsComponent implements OnInit {
     );
   }
 
+  // Funcion para transformar los datos de la API a los que entiende el gantt
   transformData(apiData: any[]): { data: any[] } {
     const transformedData = apiData.map(item => ({
       // Campos primordiales
@@ -177,6 +198,7 @@ export class WorkprogramsComponent implements OnInit {
     return { data: transformedData };
   }
 
+  // Funcion para guardar los cambios en la API
   save() {
     const tasks = gantt.getTaskByTime();
     const requests: Observable<any>[] = [];
@@ -202,8 +224,8 @@ export class WorkprogramsComponent implements OnInit {
       requests.push(this.workprogramsService.deleteWorkProgram(idEntry));
     });
 
-    forkJoin(requests).subscribe(
-      results => {
+    forkJoin(requests).subscribe({
+      next: (results) => {
         alerts.basicAlert('Editar', 'Todas las operaciones completadas con éxito', 'success');
         console.log('Todas las operaciones completadas con éxito', results);
         // Actualizar idEntry para nuevas tareas
@@ -216,17 +238,19 @@ export class WorkprogramsComponent implements OnInit {
         });
         // Limpiar la lista de tareas eliminadas
         this.deletedTasks.clear();
+        this.loadDataFromAPI();
         // Refrescar el gantt
         gantt.render();
       },
-      error => {
+      error: (error) => {
         alerts.basicAlert('Error', 'Error al guardar los cambios.', 'error');
         console.error('Error al guardar los cambios:', error);
       }
+    }
     );
   }
 
-
+  // Funcion para configurar los eventos de las tareas
   configureTaskEvents() {
     gantt.attachEvent("onBeforeTaskDelete", (id, task) => {
       this.markTaskAndChildrenForDeletion(task);
@@ -234,6 +258,7 @@ export class WorkprogramsComponent implements OnInit {
     });
   }
 
+  // Funcion para marcar las tareas y sus hijos para eliminacion
   markTaskAndChildrenForDeletion(task: any) {
     if (task.idEntry) {
       this.deletedTasks.add(task.idEntry);

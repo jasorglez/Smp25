@@ -1,3 +1,14 @@
-<div id="gantt_here" style="width: 100%; height: 500px;"></div>
-<button type="button" (click)="mostrarDatos()" class="btn btn-primary">Mostrar datos en consola</button>
-<button type="button" (click)="save()" class="btn btn-success">Guardar cambios</button>
+    <div class="row mb-3">
+        <div class="col text-right">
+            <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="save()">
+                <i class="bi bi-floppy" style="font-size: 1.5rem;"></i>
+            </button>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-12">
+            <div id="gantt_here" style="width: 100%; height: 65vh;"></div>
+        </div>
+    </div>
+
+<!-- <button type="button" (click)="mostrarDatos()" class="btn btn-primary">Mostrar datos en consola</button> -->
