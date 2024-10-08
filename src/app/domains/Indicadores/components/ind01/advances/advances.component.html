@@ -1,1 +1,43 @@
-<p>advances works!</p>
+    <div class="card">
+        <div class="card-body">
+            <div class="container-fluid">
+                <div class="row position-relative">
+                    <div class="col-6 col-40">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Tabla de Ventas Mensuales</h5>
+                            </div>
+                            <div class="card-body">
+                                <ag-grid-angular
+                                    style="width: 100%; height: 300px;"
+                                    class="ag-theme-alpine"
+                                    [rowData]="rowData"
+                                    [columnDefs]="columnDefs">
+                                </ag-grid-angular>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Divisor vertical -->
+                    <div class="vertical-divider"></div>
+                    
+                    <div class="col-6 col-45">
+                        <!-- Card para la gráfica ApexCharts -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Gráfica de Ventas Mensuales</h5>
+                            </div>
+                            <div class="card-body">
+                                <apx-chart
+                                    [series]="chartOptions.series"
+                                    [chart]="chartOptions.chart"
+                                    [xaxis]="chartOptions.xaxis"
+                                    [title]="chartOptions.title">
+                                </apx-chart>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
