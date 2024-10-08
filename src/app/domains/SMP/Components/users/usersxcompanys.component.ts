@@ -1,7 +1,6 @@
 import { Component, computed, HostListener, inject } from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
-import { CompanysService } from 'app/services/companys.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
@@ -9,6 +8,7 @@ import { UsersProfileComponent } from './users-profile.component';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { SignalsService } from 'app/services/signals.service';
+import { ProvidersService } from 'app/services/providers.service';
 
 @Component({
   selector: 'app-usersxcompanys',
@@ -18,7 +18,7 @@ import { SignalsService } from 'app/services/signals.service';
 })
 export class UsersxcompanysComponent {
 
-  private companysService = inject(CompanysService);
+  private providersService = inject(ProvidersService);
   private usersxcompanysService = inject(UsersxpermissionsService);
   private signalsService = inject(SignalsService);
 
@@ -58,7 +58,7 @@ export class UsersxcompanysComponent {
   }
 
   obtenerCompanys() {
-    this.companysService.getDataCompanysAzure().subscribe((data: any[]) => {
+    this.providersService.getProviders().subscribe((data: any[]) => {
       this.companys = data.reduce((acc, dep) => {
         acc[dep.id] = dep.name; // Cambia la estructura para que solo almacene el nombre
         return acc;

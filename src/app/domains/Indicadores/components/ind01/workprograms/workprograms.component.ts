@@ -2,7 +2,7 @@ import { Component, inject, OnInit } from '@angular/core';
 import { alerts } from 'app/helpers/alerts';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { gantt } from 'dhtmlx-gantt';
-import { Observable, forkJoin } from 'rxjs';
+import { Observable, catchError, forkJoin, map, of } from 'rxjs';
 
 @Component({
   selector: 'app-workprograms',
@@ -33,6 +33,7 @@ export class WorkprogramsComponent implements OnInit {
     gantt.config.work_time = false;
     gantt.config.order_branch = true;
     gantt.config.order_branch_free = true;
+    gantt.i18n.setLocale("es");
 
     gantt['form_blocks']['color_picker'] = {
       render: function (sns) {
@@ -100,6 +101,10 @@ export class WorkprogramsComponent implements OnInit {
     gantt.locale.labels['section_quantity'] = "Cantidad";
     gantt.locale.labels['section_criticRoute'] = "Ruta Crítica";
 
+    gantt.plugins({
+      export_api: true
+    });
+
     gantt.config.lightbox.sections = [
       { name: "description", height: 70, map_to: "text", type: "textarea", focus: true },
       { name: "time", type: "time", map_to: "auto" },
@@ -118,12 +123,12 @@ export class WorkprogramsComponent implements OnInit {
 
   // Funcion para mostrar los datos del gantt
   mostrarDatos() {
-    const tareas = gantt.serialize().data;
-    const enlaces = gantt.serialize().links;
+    const data = gantt.serialize().data;
+    const links = gantt.serialize().links;
 
     this.datosGantt = {
-      data: tareas,
-      links: enlaces
+      data: data,
+      links: links
     }
     console.log(this.datosGantt);
   }
@@ -158,16 +163,18 @@ export class WorkprogramsComponent implements OnInit {
   // Funcion para cargar los datos de la API
   loadDataFromAPI() {
     const id = this.typeWorkProgram === 'Project' ? this.idProject : this.idContract;
-    this.workprogramsService.getWorkPrograms(id, this.typeWorkProgram).subscribe(
-      (response: any) => {
+    this.workprogramsService.getWorkPrograms(id, this.typeWorkProgram).pipe(
+      map(response => {
         const transformedData = this.transformData(response);
         gantt.parse(transformedData);
         console.log(transformedData);
-      },
-      error => {
+        return transformedData;
+      }),
+      catchError(error => {
         console.error('Error al cargar los datos:', error);
-      }
-    );
+        return of({ data: [] });
+      })
+    ).subscribe();
   }
 
   // Funcion para transformar los datos de la API a los que entiende el gantt
@@ -274,4 +281,11 @@ export class WorkprogramsComponent implements OnInit {
     });
   }
 
+  // Funcion para exportar a PDF
+  exportToPDF() {
+    gantt.exportToPDF({
+      name: "workprogram.pdf",
+      locale: "es"
+    });
+  }
 }
