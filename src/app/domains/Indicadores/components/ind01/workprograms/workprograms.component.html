@@ -1,9 +1,14 @@
 <div class="row mb-3">
     <div class="col text-right">
-        <button type="button" class="btn btn-primary me-1 position-relative" (click)="exportToPDF()"><i
+        <button type="button" class="btn btn-primary me-1 position-relative" (click)="exportToXLS()"><i
+                class="bi bi-filetype-xlsx" style="font-size: 1.5rem;"></i></button>
+        <button type="button" class="btn btn-primary me-1 ms-1 position-relative" (click)="exportToPDF()"><i
                 class="bi bi-file-earmark-pdf" style="font-size: 1.5rem;"></i></button>
         <button type="button" class="btn btn-success ms-1 position-relative" (click)="save()">
-            <i class="bi bi-floppy" style="font-size: 1.5rem;"></i>
+            <i class="bi bi-floppy" style="font-size: 1.5rem;"> <span
+                    class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+                    *ngIf="notSavedChanges"><span class="visually-hidden">Hay cambios sin guardar</span>
+                </span></i>
         </button>
     </div>
 </div>

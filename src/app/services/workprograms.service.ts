@@ -28,4 +28,8 @@ export class WorkprogramsService {
   deleteWorkProgram(id: number): Observable<any> {
     return this.http.delete(`${environment.urlSmp}/Workprogram/${id}`, { headers: this.trackingService.getHeaders() });
   }
+
+  getMeasures(): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog?type=Measure`, { headers: this.trackingService.getHeaders() });
+  }
 }

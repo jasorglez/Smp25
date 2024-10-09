@@ -1,5 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
-import { RouterModule } from '@angular/router';
+import { Component, HostListener, inject, OnInit } from '@angular/core';
 import { alerts } from 'app/helpers/alerts';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { gantt } from 'dhtmlx-gantt';
@@ -8,15 +7,26 @@ import { AuxiliarsComponent } from './auxiliars/auxiliars.component';
 import { MaterialsComponent } from './materials/materials.component';
 import { PersonalComponent } from './personal/personal.component';
 import { EquipmentComponent } from './equipment/equipment.component';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-workprograms',
   standalone: true,
-  imports: [RouterModule, AuxiliarsComponent, EquipmentComponent, MaterialsComponent, PersonalComponent],
+  imports: [CommonModule, AuxiliarsComponent, EquipmentComponent, MaterialsComponent, PersonalComponent],
   templateUrl: './workprograms.component.html',
   styleUrl: './workprograms.component.scss'
 })
 export class WorkprogramsComponent implements OnInit {
+
+  // Para mostrar el indicador de cambios no guardados
+  @HostListener('window:beforeunload', ['$event'])
+  unloadNotification($event: any): void {
+    if (this.notSavedChanges) {
+      $event.returnValue =
+        'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
+    }
+  }
+  
   private workprogramsService = inject(WorkprogramsService);
 
   datosGantt: { data: any; links: any; };
@@ -25,12 +35,17 @@ export class WorkprogramsComponent implements OnInit {
   idProject: number = 1;
   idContract: number = 0;
   typeWorkProgram: string = 'Project';
+  measures: any;
+  notSavedChanges: boolean = false;
 
   ngOnInit() {
-    this.configGantt();
-    gantt.init('gantt_here');
-    this.configureTaskEvents();
-    this.loadDataFromAPI();
+    this.getMeasures().then(() => {
+      this.configGantt();
+      gantt.init('gantt_here');
+      this.configureTaskEvents();
+      this.getMeasures();
+      this.loadDataFromAPI();
+    }); 
   }
 
   configGantt() {
@@ -40,6 +55,14 @@ export class WorkprogramsComponent implements OnInit {
     gantt.config.order_branch_free = true;
     gantt.config.open_tree_initially = true;
     gantt.i18n.setLocale("es");
+
+    // Aquí monitoreamos que hubo cambios en el Gantt
+    gantt.attachEvent("onAfterTaskAdd", () => this.notSavedChanges = true);
+    gantt.attachEvent("onAfterTaskUpdate", () => this.notSavedChanges = true);
+    gantt.attachEvent("onAfterTaskDelete", () => this.notSavedChanges = true);
+    gantt.attachEvent("onAfterLinkAdd", () => this.notSavedChanges = true);
+    gantt.attachEvent("onAfterLinkUpdate", () => this.notSavedChanges = true);
+    gantt.attachEvent("onAfterLinkDelete", () => this.notSavedChanges = true);
 
     gantt.attachEvent("onAfterTaskUpdate", (id, task) => {
       this.updateParentTaskDates(task.parent);
@@ -114,6 +137,9 @@ export class WorkprogramsComponent implements OnInit {
     gantt.locale.labels['section_costDLL'] = "Costo DLL $";
     gantt.locale.labels['section_quantity'] = "Cantidad";
     gantt.locale.labels['section_criticRoute'] = "Ruta Crítica";
+    gantt.locale.labels['section_measure'] = 'Unidad de medida';
+    gantt.locale.labels['section_activity'] = 'Actividad';
+    gantt.locale.labels['section_phase'] = 'Fase';
 
     gantt.plugins({
       export_api: true
@@ -121,17 +147,20 @@ export class WorkprogramsComponent implements OnInit {
 
     gantt.config.lightbox.sections = [
       { name: "description", height: 70, map_to: "text", type: "textarea", focus: true },
+      { name: "activity", map_to: "activity", type: "textarea", height: 30 },
       { name: "time", type: "time", map_to: "auto" },
-      { name: "color", height: 30, map_to: "color", type: "color_picker" },
-      { name: "costMX", height: 30, map_to: "costMX", type: "currency_input" },
-      { name: "costDLL", height: 30, map_to: "costDLL", type: "currency_input" },
-      { name: "quantity", height: 30, map_to: "quantity", type: "number_input" },
+      { name: "color", map_to: "color", type: "color_picker" },
+      { name: "costMX", map_to: "costMX", type: "currency_input" },
+      { name: "costDLL", map_to: "costDLL", type: "currency_input" },
+      { name: "measure", map_to: "measure", type: "select", options: this.measures },
+      { name: "quantity", map_to: "quantity", type: "number_input" },
       {
-        name: "criticRoute", height: 30, map_to: "criticRoute", type: "select", options: [
+        name: "criticRoute", map_to: "criticRoute", type: "select", options: [
           { key: "Si", label: "Sí" },
           { key: "No", label: "No" }
         ]
-      }
+      },
+      {name: "phase", height: 30, map_to: "phase", type: "textarea" }
     ];
   }
 
@@ -160,6 +189,7 @@ export class WorkprogramsComponent implements OnInit {
       progress: task.progress,
       parent: task.parent,
       color: task.color,
+      measure: task.measure,
       // Ahora los campos personalizados
       criticRoute: task.criticRoute,
       activity: "string",
@@ -170,6 +200,7 @@ export class WorkprogramsComponent implements OnInit {
       costDLL: task.costDLL,
       quantity: task.quantity,
       predecesor: task.predecesor,
+      phase: task.phase,
       active: 1
     };
   }
@@ -213,6 +244,8 @@ export class WorkprogramsComponent implements OnInit {
       costDLL: item.costDLL,
       quantity: item.quantity,
       predecesor: item.predecesor,
+      measure: item.measure,
+      phase: item.phase,
       active: item.active
     }));
 
@@ -262,6 +295,7 @@ export class WorkprogramsComponent implements OnInit {
         this.loadDataFromAPI();
         // Refrescar el gantt
         gantt.render();
+        this.notSavedChanges = false;
       },
       error: (error) => {
         alerts.basicAlert('Error', 'Error al guardar los cambios.', 'error');
@@ -307,6 +341,14 @@ export class WorkprogramsComponent implements OnInit {
     });
   }
 
+    // Funcion para exportar a Excel
+    exportToXLS() {
+      gantt.exportToExcel({
+        name: "workprogram.xlsx",
+        locale: "es"
+      });
+    }
+
   updateParentTaskDates(parentId: string | number) {
     if (parentId != gantt.config.root_id) {
       const children = gantt.getChildren(parentId);
@@ -332,6 +374,19 @@ export class WorkprogramsComponent implements OnInit {
         // Recursively update higher-level parents
         this.updateParentTaskDates(parentTask.parent);
       }
+    }
+  }
+
+  async getMeasures() {
+    try {
+      const measures = await this.workprogramsService.getMeasures().toPromise();
+      this.measures = measures.map(measure => ({
+        key: measure.description.toString(),
+        label: measure.description.toString()
+      }));
+      console.log(this.measures);
+    } catch (error) {
+      console.error('Error al obtener las medidas:', error);
     }
   }
 }
