@@ -31,8 +31,8 @@ export class ProjectsService {
     }
   }
 
-  getProjects() {
-    return this.http.get(`${environment.urlSmp}/Project`, { headers: this.trackingService.getHeaders() });
+  getProjects():Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlSmp}/Project`, { headers: this.trackingService.getHeaders() });
   }
 
   getProjectsByContract(idContract: number, idUser: number): Observable<any[]> {

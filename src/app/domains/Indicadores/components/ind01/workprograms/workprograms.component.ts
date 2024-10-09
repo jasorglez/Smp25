@@ -1,18 +1,36 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, HostListener, inject, OnInit } from '@angular/core';
 import { alerts } from 'app/helpers/alerts';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { gantt } from 'dhtmlx-gantt';
-import { Observable, forkJoin } from 'rxjs';
+import { Observable, catchError, forkJoin, map, of } from 'rxjs';
+import { AuxiliarsComponent } from './auxiliars/auxiliars.component';
+import { MaterialsComponent } from './materials/materials.component';
+import { PersonalComponent } from './personal/personal.component';
+import { EquipmentComponent } from './equipment/equipment.component';
+import { CommonModule } from '@angular/common';
+import { CatalogsService } from 'app/services/catalogs.service';
 
 @Component({
   selector: 'app-workprograms',
   standalone: true,
-  imports: [],
+  imports: [CommonModule, AuxiliarsComponent, EquipmentComponent, MaterialsComponent, PersonalComponent],
   templateUrl: './workprograms.component.html',
   styleUrl: './workprograms.component.scss'
 })
 export class WorkprogramsComponent implements OnInit {
+  phases: { key: any; label: any; }[];
+
+  // Para mostrar el indicador de cambios no guardados
+  @HostListener('window:beforeunload', ['$event'])
+  unloadNotification($event: any): void {
+    if (this.notSavedChanges) {
+      $event.returnValue =
+        'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
+    }
+  }
+  
   private workprogramsService = inject(WorkprogramsService);
+  private catalogsService = inject(CatalogsService);
 
   datosGantt: { data: any; links: any; };
   deletedTasks: Set<number> = new Set();
@@ -20,12 +38,21 @@ export class WorkprogramsComponent implements OnInit {
   idProject: number = 1;
   idContract: number = 0;
   typeWorkProgram: string = 'Project';
+  measures: any;
+  notSavedChanges: boolean = false;
 
-  ngOnInit() {
-    this.configGantt();
-    gantt.init('gantt_here');
-    this.configureTaskEvents();
-    this.loadDataFromAPI();
+  async ngOnInit() {
+    try {
+      await this.getMeasures();
+      await this.getPhases();
+      this.configGantt();
+      gantt.init('gantt_here');
+      this.configureTaskEvents();
+      await this.loadDataFromAPI();
+    } catch (error) {
+      console.error('Error initializing workprograms component:', error);
+      // Handle the error appropriately, e.g., show an error message to the user
+    }
   }
 
   configGantt() {
@@ -33,6 +60,24 @@ export class WorkprogramsComponent implements OnInit {
     gantt.config.work_time = false;
     gantt.config.order_branch = true;
     gantt.config.order_branch_free = true;
+    gantt.config.open_tree_initially = true;
+    gantt.i18n.setLocale("es");
+
+    // Aquí monitoreamos que hubo cambios en el Gantt
+    gantt.attachEvent("onAfterTaskAdd", () => this.notSavedChanges = true);
+    gantt.attachEvent("onAfterTaskUpdate", () => this.notSavedChanges = true);
+    gantt.attachEvent("onAfterTaskDelete", () => this.notSavedChanges = true);
+    gantt.attachEvent("onAfterLinkAdd", () => this.notSavedChanges = true);
+    gantt.attachEvent("onAfterLinkUpdate", () => this.notSavedChanges = true);
+    gantt.attachEvent("onAfterLinkDelete", () => this.notSavedChanges = true);
+
+    gantt.attachEvent("onAfterTaskUpdate", (id, task) => {
+      this.updateParentTaskDates(task.parent);
+    });
+
+    gantt.attachEvent("onAfterTaskAdd", (id, task) => {
+      this.updateParentTaskDates(task.parent);
+    });
 
     gantt['form_blocks']['color_picker'] = {
       render: function (sns) {
@@ -78,7 +123,8 @@ export class WorkprogramsComponent implements OnInit {
 
     gantt.config.columns = [
       { name: "add", label: "", width: 44 },
-      { name: "text", label: "Nombre de la tarea", tree: true, width: 200 },
+      {name: "activity", label: "Actividad", width: 60},
+      { name: "text", label: "Nombre de la tarea", tree: true, width: 160 },
       { name: "start_date", label: "Fecha de inicio", align: "center", width: 80 },
       { name: "end_date", label: "Fecha de fin", align: "center", width: 80 },
       {
@@ -99,31 +145,41 @@ export class WorkprogramsComponent implements OnInit {
     gantt.locale.labels['section_costDLL'] = "Costo DLL $";
     gantt.locale.labels['section_quantity'] = "Cantidad";
     gantt.locale.labels['section_criticRoute'] = "Ruta Crítica";
+    gantt.locale.labels['section_measure'] = 'Unidad de medida';
+    gantt.locale.labels['section_activity'] = 'Actividad';
+    gantt.locale.labels['section_phase'] = 'Fase';
+
+    gantt.plugins({
+      export_api: true
+    });
 
     gantt.config.lightbox.sections = [
       { name: "description", height: 70, map_to: "text", type: "textarea", focus: true },
+      { name: "activity", map_to: "activity", type: "textarea", height: 30 },
       { name: "time", type: "time", map_to: "auto" },
-      { name: "color", height: 30, map_to: "color", type: "color_picker" },
-      { name: "costMX", height: 30, map_to: "costMX", type: "currency_input" },
-      { name: "costDLL", height: 30, map_to: "costDLL", type: "currency_input" },
-      { name: "quantity", height: 30, map_to: "quantity", type: "number_input" },
+      { name: "color", map_to: "color", type: "color_picker" },
+      { name: "costMX", map_to: "costMX", type: "currency_input" },
+      { name: "costDLL", map_to: "costDLL", type: "currency_input" },
+      { name: "measure", map_to: "measure", type: "select", options: this.measures },
+      { name: "quantity", map_to: "quantity", type: "number_input" },
       {
-        name: "criticRoute", height: 30, map_to: "criticRoute", type: "select", options: [
+        name: "criticRoute", map_to: "criticRoute", type: "select", options: [
           { key: "Si", label: "Sí" },
           { key: "No", label: "No" }
         ]
-      }
+      },
+      {name: "phase", height: 30, map_to: "phase", type: "select", options: this.phases }
     ];
   }
 
   // Funcion para mostrar los datos del gantt
   mostrarDatos() {
-    const tareas = gantt.serialize().data;
-    const enlaces = gantt.serialize().links;
+    const data = gantt.serialize().data;
+    const links = gantt.serialize().links;
 
     this.datosGantt = {
-      data: tareas,
-      links: enlaces
+      data: data,
+      links: links
     }
     console.log(this.datosGantt);
   }
@@ -141,9 +197,10 @@ export class WorkprogramsComponent implements OnInit {
       progress: task.progress,
       parent: task.parent,
       color: task.color,
+      measure: task.measure,
       // Ahora los campos personalizados
       criticRoute: task.criticRoute,
-      activity: "string",
+      activity: task.activity,
       typeActivity: "Activity",
       especification: task.especification,
       distribution: task.distribution,
@@ -151,6 +208,7 @@ export class WorkprogramsComponent implements OnInit {
       costDLL: task.costDLL,
       quantity: task.quantity,
       predecesor: task.predecesor,
+      phase: task.phase,
       active: 1
     };
   }
@@ -158,16 +216,18 @@ export class WorkprogramsComponent implements OnInit {
   // Funcion para cargar los datos de la API
   loadDataFromAPI() {
     const id = this.typeWorkProgram === 'Project' ? this.idProject : this.idContract;
-    this.workprogramsService.getWorkPrograms(id, this.typeWorkProgram).subscribe(
-      (response: any) => {
+    this.workprogramsService.getWorkPrograms(id, this.typeWorkProgram).pipe(
+      map(response => {
         const transformedData = this.transformData(response);
         gantt.parse(transformedData);
         console.log(transformedData);
-      },
-      error => {
+        return transformedData;
+      }),
+      catchError(error => {
         console.error('Error al cargar los datos:', error);
-      }
-    );
+        return of({ data: [] });
+      })
+    ).subscribe();
   }
 
   // Funcion para transformar los datos de la API a los que entiende el gantt
@@ -192,6 +252,8 @@ export class WorkprogramsComponent implements OnInit {
       costDLL: item.costDLL,
       quantity: item.quantity,
       predecesor: item.predecesor,
+      measure: item.measure,
+      phase: item.phase,
       active: item.active
     }));
 
@@ -241,6 +303,7 @@ export class WorkprogramsComponent implements OnInit {
         this.loadDataFromAPI();
         // Refrescar el gantt
         gantt.render();
+        this.notSavedChanges = false;
       },
       error: (error) => {
         alerts.basicAlert('Error', 'Error al guardar los cambios.', 'error');
@@ -255,6 +318,10 @@ export class WorkprogramsComponent implements OnInit {
     gantt.attachEvent("onBeforeTaskDelete", (id, task) => {
       this.markTaskAndChildrenForDeletion(task);
       return true; // Permitir la eliminación
+    });
+
+    gantt.attachEvent("onAfterTaskDelete", (id, task) => {
+      this.updateParentTaskDates(task.parent);
     });
   }
 
@@ -274,4 +341,73 @@ export class WorkprogramsComponent implements OnInit {
     });
   }
 
+  // Funcion para exportar a PDF
+  exportToPDF() {
+    gantt.exportToPDF({
+      name: "workprogram.pdf",
+      locale: "es"
+    });
+  }
+
+    // Funcion para exportar a Excel
+    exportToXLS() {
+      gantt.exportToExcel({
+        name: "workprogram.xlsx",
+        locale: "es"
+      });
+    }
+
+  updateParentTaskDates(parentId: string | number) {
+    if (parentId != gantt.config.root_id) {
+      const children = gantt.getChildren(parentId);
+      if (children.length > 0) {
+        let minStartDate = new Date(8640000000000000); // Max date
+        let maxEndDate = new Date(-8640000000000000); // Min date
+
+        children.forEach(childId => {
+          const childTask = gantt.getTask(childId);
+          if (childTask.start_date < minStartDate) {
+            minStartDate = new Date(childTask.start_date);
+          }
+          if (childTask.end_date > maxEndDate) {
+            maxEndDate = new Date(childTask.end_date);
+          }
+        });
+
+        const parentTask = gantt.getTask(parentId);
+        parentTask.start_date = minStartDate;
+        parentTask.end_date = maxEndDate;
+        gantt.updateTask(parentId);
+
+        // Recursively update higher-level parents
+        this.updateParentTaskDates(parentTask.parent);
+      }
+    }
+  }
+
+  async getMeasures() {
+    try {
+      const measures = await this.catalogsService.getMeasures().toPromise();
+      this.measures = measures.map(measure => ({
+        key: measure.description.toString(),
+        label: measure.description.toString()
+      }));
+      console.log(this.measures);
+    } catch (error) {
+      console.error('Error al obtener las medidas:', error);
+    }
+  }
+
+  async getPhases() {
+    try {
+      const phases = await this.catalogsService.getPhases().toPromise();
+      this.phases = phases.map(phase => ({
+        key: phase.description.toString(),
+        label: phase.description.toString()
+      }));
+      console.log(this.measures);
+    } catch (error) {
+      console.error('Error al obtener las medidas:', error);
+    }
+  }
 }

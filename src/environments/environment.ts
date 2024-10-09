@@ -23,6 +23,7 @@ export const environment = {
   urlSecurity   : 'https://bi2.com.mx:5003/api',
   urlSmp        : 'https://bi2.com.mx:5004/api',
   urlBpi        : 'https://bi2.com.mx:5005/api',
+  urlWarehouse  : 'https://bi2.com.mx:5009/api',
   
   //  urlAzure    : 'https://localhost:7089/',
 

@@ -1,14 +1,63 @@
-    <div class="row mb-3">
-        <div class="col text-right">
-            <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="save()">
-                <i class="bi bi-floppy" style="font-size: 1.5rem;"></i>
-            </button>
-        </div>
+<div class="row mb-3">
+    <div class="col text-right">
+        <button type="button" class="btn btn-primary me-1 position-relative" (click)="exportToXLS()"><i
+                class="bi bi-filetype-xlsx" style="font-size: 1.5rem;"></i></button>
+        <button type="button" class="btn btn-primary me-1 ms-1 position-relative" (click)="exportToPDF()"><i
+                class="bi bi-file-earmark-pdf" style="font-size: 1.5rem;"></i></button>
+        <button type="button" class="btn btn-success ms-1 position-relative" (click)="save()">
+            <i class="bi bi-floppy" style="font-size: 1.5rem;"> <span
+                    class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+                    *ngIf="notSavedChanges"><span class="visually-hidden">Hay cambios sin guardar</span>
+                </span></i>
+        </button>
     </div>
-    <div class="row">
-        <div class="col-12">
-            <div id="gantt_here" style="width: 100%; height: 65vh;"></div>
-        </div>
+</div>
+<div class="row">
+    <div class="col-12">
+        <div id="gantt_here" style="width: 100%; height: 65vh;"></div>
     </div>
+</div>
 
-<!-- <button type="button" (click)="mostrarDatos()" class="btn btn-primary">Mostrar datos en consola</button> -->
+<div class="row mt-3">
+    <div class="col-12">
+        <ul class="nav nav-pills" id="myWorkprogram" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="personal-tab" data-bs-toggle="pill"
+                    data-bs-target="#personal-tab-pane" type="button" role="tab" aria-controls="personal-tab-pane"
+                    aria-selected="true">Personal</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="equipment-tab" data-bs-toggle="pill" data-bs-target="#equipment-tab-pane"
+                    type="button" role="tab" aria-controls="equipment-tab-pane" aria-selected="false">Equipo</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="materials-tab" data-bs-toggle="pill" data-bs-target="#materials-tab-pane"
+                    type="button" role="tab" aria-controls="materials-tab-pane"
+                    aria-selected="false">Materiales</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="auxiliaries-tab" data-bs-toggle="pill"
+                    data-bs-target="#auxiliaries-tab-pane" type="button" role="tab" aria-controls="auxiliaries-tab-pane"
+                    aria-selected="false">Auxiliares</button>
+            </li>
+        </ul>
+        <div class="tab-content" id="myWorkprogramContent">
+            <div class="tab-pane fade show active" id="personal-tab-pane" role="tabpanel" aria-labelledby="personal-tab"
+                tabindex="0">
+                <app-personal></app-personal>
+            </div>
+            <div class="tab-pane fade" id="equipment-tab-pane" role="tabpanel" aria-labelledby="equipment-tab"
+                tabindex="0">
+                <app-equipment></app-equipment>
+            </div>
+            <div class="tab-pane fade" id="materials-tab-pane" role="tabpanel" aria-labelledby="materials-tab"
+                tabindex="0">
+                <app-materials></app-materials>
+            </div>
+            <div class="tab-pane fade" id="auxiliaries-tab-pane" role="tabpanel" aria-labelledby="auxiliaries-tab"
+                tabindex="0">
+                <app-auxiliars></app-auxiliars>
+            </div>
+        </div>
+    </div>
+</div>
