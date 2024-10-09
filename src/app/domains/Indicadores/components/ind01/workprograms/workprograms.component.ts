@@ -38,7 +38,16 @@ export class WorkprogramsComponent implements OnInit {
     gantt.config.work_time = false;
     gantt.config.order_branch = true;
     gantt.config.order_branch_free = true;
+    gantt.config.open_tree_initially = true;
     gantt.i18n.setLocale("es");
+
+    gantt.attachEvent("onAfterTaskUpdate", (id, task) => {
+      this.updateParentTaskDates(task.parent);
+    });
+
+    gantt.attachEvent("onAfterTaskAdd", (id, task) => {
+      this.updateParentTaskDates(task.parent);
+    });
 
     gantt['form_blocks']['color_picker'] = {
       render: function (sns) {
@@ -268,6 +277,10 @@ export class WorkprogramsComponent implements OnInit {
       this.markTaskAndChildrenForDeletion(task);
       return true; // Permitir la eliminación
     });
+
+    gantt.attachEvent("onAfterTaskDelete", (id, task) => {
+      this.updateParentTaskDates(task.parent);
+    });
   }
 
   // Funcion para marcar las tareas y sus hijos para eliminacion
@@ -292,5 +305,33 @@ export class WorkprogramsComponent implements OnInit {
       name: "workprogram.pdf",
       locale: "es"
     });
+  }
+
+  updateParentTaskDates(parentId: string | number) {
+    if (parentId != gantt.config.root_id) {
+      const children = gantt.getChildren(parentId);
+      if (children.length > 0) {
+        let minStartDate = new Date(8640000000000000); // Max date
+        let maxEndDate = new Date(-8640000000000000); // Min date
+
+        children.forEach(childId => {
+          const childTask = gantt.getTask(childId);
+          if (childTask.start_date < minStartDate) {
+            minStartDate = new Date(childTask.start_date);
+          }
+          if (childTask.end_date > maxEndDate) {
+            maxEndDate = new Date(childTask.end_date);
+          }
+        });
+
+        const parentTask = gantt.getTask(parentId);
+        parentTask.start_date = minStartDate;
+        parentTask.end_date = maxEndDate;
+        gantt.updateTask(parentId);
+
+        // Recursively update higher-level parents
+        this.updateParentTaskDates(parentTask.parent);
+      }
+    }
   }
 }
