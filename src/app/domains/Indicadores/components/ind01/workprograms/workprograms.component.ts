@@ -8,6 +8,7 @@ import { MaterialsComponent } from './materials/materials.component';
 import { PersonalComponent } from './personal/personal.component';
 import { EquipmentComponent } from './equipment/equipment.component';
 import { CommonModule } from '@angular/common';
+import { CatalogsService } from 'app/services/catalogs.service';
 
 @Component({
   selector: 'app-workprograms',
@@ -17,6 +18,7 @@ import { CommonModule } from '@angular/common';
   styleUrl: './workprograms.component.scss'
 })
 export class WorkprogramsComponent implements OnInit {
+  phases: { key: any; label: any; }[];
 
   // Para mostrar el indicador de cambios no guardados
   @HostListener('window:beforeunload', ['$event'])
@@ -28,6 +30,7 @@ export class WorkprogramsComponent implements OnInit {
   }
   
   private workprogramsService = inject(WorkprogramsService);
+  private catalogsService = inject(CatalogsService);
 
   datosGantt: { data: any; links: any; };
   deletedTasks: Set<number> = new Set();
@@ -38,14 +41,18 @@ export class WorkprogramsComponent implements OnInit {
   measures: any;
   notSavedChanges: boolean = false;
 
-  ngOnInit() {
-    this.getMeasures().then(() => {
+  async ngOnInit() {
+    try {
+      await this.getMeasures();
+      await this.getPhases();
       this.configGantt();
       gantt.init('gantt_here');
       this.configureTaskEvents();
-      this.getMeasures();
-      this.loadDataFromAPI();
-    }); 
+      await this.loadDataFromAPI();
+    } catch (error) {
+      console.error('Error initializing workprograms component:', error);
+      // Handle the error appropriately, e.g., show an error message to the user
+    }
   }
 
   configGantt() {
@@ -116,7 +123,8 @@ export class WorkprogramsComponent implements OnInit {
 
     gantt.config.columns = [
       { name: "add", label: "", width: 44 },
-      { name: "text", label: "Nombre de la tarea", tree: true, width: 200 },
+      {name: "activity", label: "Actividad", width: 60},
+      { name: "text", label: "Nombre de la tarea", tree: true, width: 160 },
       { name: "start_date", label: "Fecha de inicio", align: "center", width: 80 },
       { name: "end_date", label: "Fecha de fin", align: "center", width: 80 },
       {
@@ -160,7 +168,7 @@ export class WorkprogramsComponent implements OnInit {
           { key: "No", label: "No" }
         ]
       },
-      {name: "phase", height: 30, map_to: "phase", type: "textarea" }
+      {name: "phase", height: 30, map_to: "phase", type: "select", options: this.phases }
     ];
   }
 
@@ -192,7 +200,7 @@ export class WorkprogramsComponent implements OnInit {
       measure: task.measure,
       // Ahora los campos personalizados
       criticRoute: task.criticRoute,
-      activity: "string",
+      activity: task.activity,
       typeActivity: "Activity",
       especification: task.especification,
       distribution: task.distribution,
@@ -379,10 +387,23 @@ export class WorkprogramsComponent implements OnInit {
 
   async getMeasures() {
     try {
-      const measures = await this.workprogramsService.getMeasures().toPromise();
+      const measures = await this.catalogsService.getMeasures().toPromise();
       this.measures = measures.map(measure => ({
         key: measure.description.toString(),
         label: measure.description.toString()
+      }));
+      console.log(this.measures);
+    } catch (error) {
+      console.error('Error al obtener las medidas:', error);
+    }
+  }
+
+  async getPhases() {
+    try {
+      const phases = await this.catalogsService.getPhases().toPromise();
+      this.phases = phases.map(phase => ({
+        key: phase.description.toString(),
+        label: phase.description.toString()
       }));
       console.log(this.measures);
     } catch (error) {
