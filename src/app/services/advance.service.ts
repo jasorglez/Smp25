@@ -12,10 +12,10 @@ export class AdvanceService {
   constructor() { }
 
   getAdvancesByContract(contractId: number, type: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}/Advanced/${type}/${contractId}`);
+    return this.http.get(`${this.apiUrl}/Advanced/${contractId}/${type}`);
   }
 
   getAdvancesByProject(projectId: number, type: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}/Advanced/${type}/${projectId}`);
+    return this.http.get(`${this.apiUrl}/Advanced/${projectId}/${type}`);
   }
 }

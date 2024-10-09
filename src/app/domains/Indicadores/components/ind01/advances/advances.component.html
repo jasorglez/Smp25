@@ -5,7 +5,7 @@
                     <div class="col-6 col-40">
                         <div class="card">
                             <div class="card-header">
-                                <h5 class="card-title mb-0">Tabla de Ventas Mensuales</h5>
+                                <h5 class="card-title mb-0">Tabla de Avances</h5>
                             </div>
                             <div class="card-body">
                                 <ag-grid-angular
@@ -25,14 +25,21 @@
                         <!-- Card para la gráfica ApexCharts -->
                         <div class="card">
                             <div class="card-header">
-                                <h5 class="card-title mb-0">Gráfica de Ventas Mensuales</h5>
+                                <h5 class="card-title mb-0">Gráfica de Avances</h5>
                             </div>
                             <div class="card-body">
                                 <apx-chart
-                                    [series]="chartOptions.series"
-                                    [chart]="chartOptions.chart"
-                                    [xaxis]="chartOptions.xaxis"
-                                    [title]="chartOptions.title">
+                                [series]="chartOptions.series"
+                                [chart]="chartOptions.chart"
+                                [xaxis]="chartOptions.xaxis"
+                                [stroke]="chartOptions.stroke"
+                                [colors]="chartOptions.colors"
+                                [dataLabels]="chartOptions.dataLabels"
+                                [legend]="chartOptions.legend"
+                                [markers]="chartOptions.markers"
+                                [grid]="chartOptions.grid"
+                                [yaxis]="chartOptions.yaxis"
+                                [title]="chartOptions.title">
                                 </apx-chart>
                             </div>
                         </div>

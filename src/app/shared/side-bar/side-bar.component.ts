@@ -119,6 +119,8 @@ export class SideBarComponent {
           // Ya tengo el id de la compañía root
           this.selectedContractId = this.contractData[0].id;
 
+          this.signalsService.setContractSelectedBySidebar(Number(this.selectedContractId));
+
           // Ahora consulto la información de root
           this.trackingService.setContract(this.selectedContractId);
          // this.getpermissionxProjects(parseInt(this.selectedContractId));
