@@ -42,13 +42,34 @@ export const routes: Routes = [
                 loadComponent: () => import('./domains/Indicadores/components/ind01/advances/advances.component').then(a => a.AdvancesComponent)
               },
               { 
+                path: 'workprograms',
+                loadComponent: () => import('./domains/Indicadores/components/ind01/workprograms/workprograms.component').then(a => a.WorkprogramsComponent)
+              },
+              { 
+                path: 'issues',
+                loadComponent: () => import('./domains/Indicadores/components/ind01/issues/issues.component').then(a => a.IssuesComponent)
+              },
+              { 
+                path: 'alternatives',
+                loadComponent: () => import('./domains/Indicadores/components/ind01/alternatives/alternatives.component').then(a => a.AlternativesComponent)
+              },
+              { 
+                path: 'controlchanges',
+                loadComponent: () => import('./domains/Indicadores/components/ind01/controlchanges/controlchanges.component').then(a => a.ControlchangesComponent)
+              },
+              { 
+                path: 'riskmatrix',
+                loadComponent: () => import('./domains/Indicadores/components/ind01/riskmatrix/riskmatrix.component').then(a => a.RiskmatrixComponent)
+              },
+              { 
                 path: 'timeinactives', 
                 loadComponent: () => import('./domains/Indicadores/components/ind01/timeinactives/timeinactives.component').then(a => a.TimeinactivesComponent)
               },
               { 
-                path: 'workprograms',
-                loadComponent: () => import('./domains/Indicadores/components/ind01/workprograms/workprograms.component').then(a => a.WorkprogramsComponent)
+                path: 'stakeholders',
+                loadComponent: () => import('./domains/Indicadores/components/ind01/stakeholders/stakeholders.component').then(a => a.StakeholdersComponent)
               }
+              
             ]
           },
           { 
