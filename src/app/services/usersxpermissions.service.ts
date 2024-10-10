@@ -24,11 +24,11 @@ export class UsersxpermissionsService {
   }
 
   updateUserxPermission(id: string, data: any): Observable<any> {
-    return this.http.put(`${environment.urlSecurity}/Usersxpermission/${id}`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.put<any[]>(`${environment.urlSecurity}/Usersxpermission/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
   deleteUserxPermission(id: number): Observable<any> {
-    return this.http.delete(`${environment.urlSecurity}/Usersxpermission/${id}`, { headers: this.trackingService.getHeaders() });
+    return this.http.delete<any[]>(`${environment.urlSecurity}/Usersxpermission/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
 

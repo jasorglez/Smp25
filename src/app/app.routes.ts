@@ -48,6 +48,10 @@ export const routes: Routes = [
               { 
                 path: 'workprograms',
                 loadComponent: () => import('./domains/Indicadores/components/ind01/workprograms/workprograms.component').then(a => a.WorkprogramsComponent)
+              },
+              { 
+                path: 'issues',
+                loadComponent: () => import('./domains/Indicadores/components/ind01/issues/issues.component').then(a => a.IssuesComponent)
               }
             ]
           },
