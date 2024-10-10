@@ -29,5 +29,20 @@ export class IssuesService {
     return this.http.delete<any[]>(`${environment.urlSmp}/Identification/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getAnalysis(id: number): Observable<any[]>  {
+    return this.http.get<any[]>(`${environment.urlSmp}/Analysis?idIdentif=${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  addAnalysis(data: any): Observable<any> {
+    return this.http.post<any[]>(`${environment.urlSmp}/Analysis`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateAnalysis(id: string, data: any): Observable<any> {
+    return this.http.put<any[]>(`${environment.urlSmp}/Analysis/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteAnalysis(id: number): Observable<any> {
+    return this.http.delete<any[]>(`${environment.urlSmp}/Analysis/${id}`, { headers: this.trackingService.getHeaders() });
+  }
 
 }

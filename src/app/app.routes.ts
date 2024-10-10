@@ -64,8 +64,7 @@ export const routes: Routes = [
               { 
                 path: 'timeinactives', 
                 loadComponent: () => import('./domains/Indicadores/components/ind01/timeinactives/timeinactives.component').then(a => a.TimeinactivesComponent)
-              }                         
-              
+              }
             ]
           },
           { 
