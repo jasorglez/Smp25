@@ -66,8 +66,17 @@ export const routes: Routes = [
                 loadComponent: () => import('./domains/Indicadores/components/ind01/timeinactives/timeinactives.component').then(a => a.TimeinactivesComponent)
               },
               { 
+<<<<<<< HEAD
                 path: 'stakeholders',
                 loadComponent: () => import('./domains/Indicadores/components/ind01/stakeholders/stakeholders.component').then(a => a.StakeholdersComponent)
+=======
+                path: 'workprograms',
+                loadComponent: () => import('./domains/Indicadores/components/ind01/workprograms/workprograms.component').then(a => a.WorkprogramsComponent)
+              },
+              { 
+                path: 'issues',
+                loadComponent: () => import('./domains/Indicadores/components/ind01/issues/issues.component').then(a => a.IssuesComponent)
+>>>>>>> 339622b3b39994a188ba5e54b67fa32961fd178d
               }
               
             ]
