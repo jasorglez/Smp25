@@ -45,4 +45,19 @@ export class IssuesService {
     return this.http.delete<any[]>(`${environment.urlSmp}/Analysis/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getContingencyActions(id: number): Observable<any[]>  {
+    return this.http.get<any[]>(`${environment.urlSmp}/Contingencyactions?idAnalysis=${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  addContingencyAction(data: any): Observable<any> {
+    return this.http.post<any[]>(`${environment.urlSmp}/Contingencyactions`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateContingencyAction(id: string, data: any): Observable<any> {
+    return this.http.put<any[]>(`${environment.urlSmp}/Contingencyactions/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteContingencyAction(id: number): Observable<any> {
+    return this.http.delete<any[]>(`${environment.urlSmp}/Contingencyactions/${id}`, { headers: this.trackingService.getHeaders() });
+  }
 }

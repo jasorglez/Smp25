@@ -10,11 +10,11 @@
                 <button class="nav-link" id="analysis-tab" data-bs-toggle="pill" data-bs-target="#analysis-tab-pane"
                     type="button" role="tab" aria-controls="equipment-tab-pane" aria-selected="false">Análisis</button>
             </li>
-            <!--<li class="nav-item" role="presentation">
-                <button class="nav-link" id="materials-tab" data-bs-toggle="pill" data-bs-target="#materials-tab-pane"
-                    type="button" role="tab" aria-controls="materials-tab-pane"
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="contingency-tab" data-bs-toggle="pill"
+                    data-bs-target="#contingency-tab-pane" type="button" role="tab" aria-controls="contingency-tab-pane"
                     aria-selected="false">Planes de contingencia</button>
-            </li>  -->
+            </li>
         </ul>
         <div class="tab-content" id="myIssueContent">
             <div class="tab-pane fade show active" id="identification-tab-pane" role="tabpanel"
@@ -24,6 +24,10 @@
             <div class="tab-pane fade" id="analysis-tab-pane" role="tabpanel" aria-labelledby="analysis-tab"
                 tabindex="1">
                 <app-analysis></app-analysis>
+            </div>
+            <div class="tab-pane fade" id="contingency-tab-pane" role="tabpanel" aria-labelledby="analysis-tab"
+                tabindex="2">
+                <app-contingency-actions></app-contingency-actions>
             </div>
         </div>
     </div>

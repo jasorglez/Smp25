@@ -9,16 +9,17 @@ import { IssuesService } from 'app/services/issues.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 
 @Component({
-  selector: 'app-analysis',
+  selector: 'app-contingency-actions',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule],
-  templateUrl: './analysis.component.html',
-  styleUrl: './analysis.component.scss'
+  templateUrl: './contingency-actions.component.html',
+  styleUrl: './contingency-actions.component.scss'
 })
-export class AnalysisComponent {
+export class ContingencyActionsComponent {
+
   private issuesService = inject(IssuesService);
   private signalsService = inject(SignalsService);
-  idIdentif: number = 1;
+  idAnalysis: number = 1;
 
   ngOnInit() {
     this.obtenerDatos();
@@ -43,7 +44,7 @@ export class AnalysisComponent {
 
   obtenerDatos() {
     this.issuesService
-      .getAnalysis(this.idIdentif)
+      .getContingencyActions(this.idAnalysis)
       .subscribe((data: any) => {
         this.rowData = data;
         console.log(data);
@@ -53,10 +54,16 @@ export class AnalysisComponent {
   get columnDefs(): ColDef[] {
     return [
       {
+        field: 'actions',
+        headerName: 'Acciones',
+        editable: true,
+        flex: 3
+      },
+      {
         field: 'dateStart',
         headerName: 'Fecha de inicio',
         editable: true,
-        flex: 2,
+        flex: 1,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
           if (params.value) {
@@ -67,9 +74,9 @@ export class AnalysisComponent {
       },
       {
         field: 'dateEnd',
-        headerName: 'Fecha de fin',
+        headerName: 'Fecha de inicio',
         editable: true,
-        flex: 2,
+        flex: 1,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
           if (params.value) {
@@ -79,23 +86,75 @@ export class AnalysisComponent {
         }
       },
       {
-        field: 'routeCritica',
-        headerName: 'Ruta Crítica',
+        field: 'period',
+        headerName: 'Periodo',
         editable: true,
         flex: 1,
       },
       {
-        field: 'severity',
-        headerName: 'Severidad',
+        field: 'resources',
+        headerName: 'Recursos',
         editable: true,
         flex: 1,
       },
       {
-        field: 'phase',
-        headerName: 'Fase',
+        field: 'costApprox',
+        headerName: 'Costo aprox.',
+        cellEditor: 'agNumberCellEditor',
         editable: true,
-        flex: 2,
+        flex: 1,
       },
+      {
+        field: 'advancePlanned',
+        headerName: 'Avance planeado',
+        cellEditor: 'agNumberCellEditor',
+        editable: true,
+        flex: 1,
+      },
+      {
+        field: 'advancedReal',
+        headerName: 'Avance real',
+        cellEditor: 'agNumberCellEditor',
+        editable: true,
+        flex: 1,
+      },
+      {
+        field: 'advancedReal',
+        headerName: 'Avance real',
+        cellEditor: 'agNumberCellEditor',
+        editable: true,
+        flex: 1,
+      },
+      {
+        field: 'spi',
+        headerName: 'SPI',
+        cellEditor: 'agNumberCellEditor',
+        editable: true,
+        flex: 1,
+      },
+      {
+        field: 'days',
+        headerName: 'Días',
+        cellEditor: 'agNumberCellEditor',
+        editable: true, 
+        flex: 1,
+      },
+      {
+        field: 'status',
+        headerName: 'Estado',
+        editable: true,
+        cellEditor: 'agRichSelectCellEditor',
+        cellEditorParams: {
+            values: ['Abierto', 'Cerrado'],
+        },
+        flex: 1,
+      },
+      {
+        field: 'observations',
+        headerName: 'Observaciones',
+        editable: true,
+        flex: 3
+      } 
     ];
   }
 
@@ -127,13 +186,19 @@ export class AnalysisComponent {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idIdenfitication: this.idIdentif,
-      idwp: 2,
+      idAnalysis: this.idAnalysis,
+      actions: null,
       dateStart: null,
       dateEnd: null,
-      routeCritica: "No",
-      severity: 1,
-      phase: "Construccion",
+      period: null,
+      resources: null,
+      costApprox: null,
+      advancePlanned: null,
+      advancedReal: null,
+      spi: null,
+      days: null,
+      status: null,
+      observations: null,
       active: 1
     };
 
@@ -161,12 +226,12 @@ export class AnalysisComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.issuesService.addAnalysis(cleanedData);
+      return this.issuesService.addContingencyAction(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.issuesService.updateAnalysis(row.id, cleanedData);
+      return this.issuesService.updateContingencyAction(row.id, cleanedData);
     });
 
     // Using concat to combine observables and lastValueFrom for async/await
@@ -205,7 +270,7 @@ export class AnalysisComponent {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
     selectedData.active = 0;
-    this.issuesService.deleteAnalysis(id).pipe(
+    this.issuesService.deleteContingencyAction(id).pipe(
       catchError((error) => {
         alerts.basicAlert(
           'Eliminar entrada',
@@ -261,5 +326,6 @@ export class AnalysisComponent {
   getCompanyName(id: number): string {
     return this.companys[id] || 'Departamento no encontrado';
   }
+
 
 }
