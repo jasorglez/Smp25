@@ -63,6 +63,10 @@ export class IdentificationComponent {
         field: 'clasification',
         headerName: 'Clasificación',
         editable: true,
+        cellEditor: 'agRichSelectCellEditor',
+        cellEditorParams: {
+            values: ['Administrativo', 'Técnico'],
+        },
         flex: 2,
       },
       {
@@ -94,6 +98,10 @@ export class IdentificationComponent {
         field: 'administrator',
         headerName: 'Administrador',
         editable: true,
+        cellEditor: 'agRichSelectCellEditor',
+        cellEditorParams: {
+            values: ['Pemex', 'Contratista'],
+        },
         flex: 2,
       },
     ];
