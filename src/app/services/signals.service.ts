@@ -99,6 +99,39 @@ export class SignalsService {
      this.idUser.set(id) ;
   }
 
+  /* Signals para Matriz Issues */
+
+  idIdentification = signal<number>(null);
+  nameIdentification = signal<string>(null);
+  idAnalysis       = signal<number>(null);
+  nameAnalysis     = signal<string>(null);
+  idContingencyAction = signal<number>(null);
+  nameContingencyAction = signal<string>(null);
+
+  setIdIdentification(id: number) {
+    this.idIdentification.set(id);
+  }
+
+  setIdAnalysis(id: number) {
+    this.idAnalysis.set(id);
+  }
+
+  setIdContingencyAction(id: number) {
+    this.idContingencyAction.set(id);
+  }
+
+  setIdentificationName(name: string) { 
+    this.nameIdentification.set(name);
+  }
+
+  setAnalysisName(name: string) {
+    this.nameAnalysis.set(name);
+  }
+
+  setContingencyActionName(name: string) {
+    this.nameContingencyAction.set(name);
+  }
+
   /* Borramos todas las signals, tratar de poner esto a lo último.
   Si van a crear nuevas signals, recuerden introducir una señal
   null en deleteSignals() para que todas las signals se borren

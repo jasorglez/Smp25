@@ -1,0 +1,16 @@
+<div class="row">
+    <div class="col">
+        <p><strong>Descripción</strong></p>
+        <p>{{identificationName()}}</p>
+    </div>
+
+    <div class="col" *ngIf="analysisName() != null">
+        <p><strong>Nombre del análisis</strong></p>
+        <p>{{analysisName()}}</p>
+    </div>
+
+    <div class="col" *ngIf="contingencyActionName() != null">
+        <p><strong>Acción de contingencia</strong></p>
+        <p>{{contingencyActionName()}}</p>
+    </div>
+</div>
