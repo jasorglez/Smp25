@@ -28,7 +28,7 @@ export class WorkprogramsComponent implements OnInit {
         'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
     }
   }
-  
+
   private workprogramsService = inject(WorkprogramsService);
   private catalogsService = inject(CatalogsService);
 
@@ -61,6 +61,7 @@ export class WorkprogramsComponent implements OnInit {
     gantt.config.order_branch = true;
     gantt.config.order_branch_free = true;
     gantt.config.open_tree_initially = true;
+    gantt.config.multiselect = true;
     gantt.i18n.setLocale("es");
 
     // Aquí monitoreamos que hubo cambios en el Gantt
@@ -123,7 +124,7 @@ export class WorkprogramsComponent implements OnInit {
 
     gantt.config.columns = [
       { name: "add", label: "", width: 44 },
-      {name: "activity", label: "Actividad", width: 60},
+      { name: "activity", label: "Actividad", width: 60 },
       { name: "text", label: "Nombre de la tarea", tree: true, width: 160 },
       { name: "start_date", label: "Fecha de inicio", align: "center", width: 80 },
       { name: "end_date", label: "Fecha de fin", align: "center", width: 80 },
@@ -150,7 +151,8 @@ export class WorkprogramsComponent implements OnInit {
     gantt.locale.labels['section_phase'] = 'Fase';
 
     gantt.plugins({
-      export_api: true
+      export_api: true,
+      multiselect: true
     });
 
     gantt.config.lightbox.sections = [
@@ -168,7 +170,7 @@ export class WorkprogramsComponent implements OnInit {
           { key: "No", label: "No" }
         ]
       },
-      {name: "phase", height: 30, map_to: "phase", type: "select", options: this.phases }
+      { name: "phase", height: 30, map_to: "phase", type: "select", options: this.phases }
     ];
   }
 
@@ -349,13 +351,13 @@ export class WorkprogramsComponent implements OnInit {
     });
   }
 
-    // Funcion para exportar a Excel
-    exportToXLS() {
-      gantt.exportToExcel({
-        name: "workprogram.xlsx",
-        locale: "es"
-      });
-    }
+  // Funcion para exportar a Excel
+  exportToXLS() {
+    gantt.exportToExcel({
+      name: "workprogram.xlsx",
+      locale: "es"
+    });
+  }
 
   updateParentTaskDates(parentId: string | number) {
     if (parentId != gantt.config.root_id) {
@@ -407,7 +409,69 @@ export class WorkprogramsComponent implements OnInit {
       }));
       console.log(this.measures);
     } catch (error) {
-      console.error('Error al obtener las medidas:', error);
+      console.error('Error al obtener las fases:', error);
     }
+  }
+
+  // New method to indent selected tasks
+  indentSelectedTasks() {
+    const selectedIds = gantt.getSelectedTasks();
+    if (selectedIds.length === 0) {
+      alerts.basicAlert('Aviso', 'No hay tareas seleccionadas para aplicar sangría', 'info');
+      return;
+    }
+
+    selectedIds.forEach(id => {
+      const task = gantt.getTask(id);
+      const prevSibling = gantt.getPrevSibling(id);
+      if (prevSibling) {
+        gantt.moveTask(id, gantt.getChildren(prevSibling).length, prevSibling);
+        this.updateParentTaskDates(prevSibling);
+      }
+    });
+
+    gantt.render();
+  }
+
+  // New method to outdent selected tasks
+  outdentSelectedTasks() {
+    const selectedIds = gantt.getSelectedTasks();
+    if (selectedIds.length === 0) {
+      alerts.basicAlert('Aviso', 'No hay tareas seleccionadas para quitar sangría', 'info');
+      return;
+    }
+
+    selectedIds.forEach(id => {
+      const task = gantt.getTask(id);
+      if (task.parent !== gantt.config.root_id) {
+        const parentTask = gantt.getTask(task.parent);
+        const parentOfParent = parentTask.parent;
+        const index = gantt.getTaskIndex(parentTask.id) + 1;
+        gantt.moveTask(id, index, parentOfParent);
+        this.updateParentTaskDates(parentOfParent);
+      }
+    });
+
+    gantt.render();
+  }
+
+  deleteSelectedTasks() {
+    const selectedIds = gantt.getSelectedTasks();
+    if (selectedIds.length === 0) {
+      alerts.basicAlert('Aviso', 'No hay tareas seleccionadas para eliminar', 'info');
+      return;
+    }
+
+    alerts.confirmAlert('¿Estás seguro?', 'Las tareas seleccionadas serán eliminadas', 'warning', 'Eliminar').then((result) => {
+      if (result.isConfirmed) {
+        selectedIds.forEach(id => {
+          const task = gantt.getTask(id);
+          this.markTaskAndChildrenForDeletion(task);
+          gantt.deleteTask(id);
+        });
+        gantt.render();
+        alerts.basicAlert('Eliminado', 'Las tareas seleccionadas han sido eliminadas', 'success');
+      }
+    });
   }
 }
