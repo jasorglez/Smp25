@@ -126,9 +126,14 @@ export class IdentificationComponent {
     event.data.__modified = true;
     this.notSavedChanges = true;
   }
+
   setSignals() {
     this.signalsService.setIdIdentification(this.selectedRowData.id);
+    this.signalsService.setIdProjectByIdentification(this.selectedRowData.idProject);
     this.signalsService.setIdentificationName(this.selectedRowData.description);
+    this.signalsService.setClassificationIdentification(this.selectedRowData.clasification);
+    this.signalsService.setEventIdentification(this.selectedRowData.event);
+    this.signalsService.setRegisteredDateIdentification(this.selectedRowData.dateRegistry);
     // Borramos las demas signals
     this.signalsService.setIdAnalysis(null);
     this.signalsService.setAnalysisName(null);

@@ -15,6 +15,9 @@ export class IssuesInfoComponent {
 
   identificationId = this.signalsService.idIdentification;
   identificationName = this.signalsService.nameIdentification;
+  identificationClassification = this.signalsService.classificationIdentification;
+  identificationEvent = this.signalsService.eventIdentification;
+  identificationRegisteredDate = this.signalsService.registeredDateIdentification;
   analysisId = this.signalsService.idAnalysis;
   analysisName = this.signalsService.nameAnalysis;
   contingencyActionId = this.signalsService.idContingencyAction;

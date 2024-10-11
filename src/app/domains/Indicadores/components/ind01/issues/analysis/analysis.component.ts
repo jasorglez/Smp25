@@ -8,6 +8,16 @@ import { SignalsService } from 'app/services/signals.service';
 import { IssuesService } from 'app/services/issues.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { IssuesInfoComponent } from '../issues-info/issues-info.component';
+import { WorkprogramsService } from 'app/services/workprograms.service';
+
+interface WorkProgram {
+  id: number;
+  activity: string;
+  text: string;
+  startDate: string;
+  endDate: string;
+  criticRoute: string;
+}
 
 @Component({
   selector: 'app-analysis',
@@ -19,15 +29,21 @@ import { IssuesInfoComponent } from '../issues-info/issues-info.component';
 export class AnalysisComponent {
   private issuesService = inject(IssuesService);
   private signalsService = inject(SignalsService);
+  private workprogramsService = inject(WorkprogramsService);
+
   idIdentification = this.signalsService.idIdentification;
   idIdentif: number;
+  idProject: number;
   nameIdentif: string;
+  workProgramData: WorkProgram[] = [];
 
   constructor() {
     effect(() => {
       this.idIdentif = this.signalsService.idIdentification();
       this.nameIdentif = this.signalsService.nameIdentification();
+      this.idProject = this.signalsService.idProjectByIdentification();
       this.obtenerDatos();
+      this.fetchWorkPrograms();
     });
   }
 
@@ -66,13 +82,65 @@ export class AnalysisComponent {
       );
   }
 
+  fetchWorkPrograms() {
+    this.workprogramsService.getWorkPrograms2Fields(this.idProject).subscribe(
+      (data: WorkProgram[]) => {
+        this.workProgramData = data;
+        this.updateActivityOptions();
+      },
+      (error) => console.error('Error fetching work programs:', error)
+    );
+  }
+
+  updateActivityOptions() {
+    const idwpColDef = this.columnDefs.find(col => col.field === 'idwp');
+    if (idwpColDef && idwpColDef.cellEditorParams) {
+      idwpColDef.cellEditorParams.values = this.workProgramData.map(item => ({
+        value: item.activity,
+        label: `${item.activity} - ${item.text}`
+      }));
+    }
+    if (this.gridApi) {
+      this.gridApi.refreshHeader();
+    }
+  }
+
+
+  onActivityChanged(event: any) {
+    if (event.newValue) {
+      const selectedProgram = this.workProgramData.find(item => item.activity === event.newValue);
+      if (selectedProgram) {
+        event.data.dateStart = selectedProgram.startDate;
+        event.data.dateEnd = selectedProgram.endDate;
+        event.data.routeCritica = selectedProgram.criticRoute;
+        this.gridApi.refreshCells({
+          rowNodes: [event.node],
+          columns: ['dateStart', 'dateEnd', 'routeCritica']
+        });
+        this.onCellValueChanged(event);
+      }
+    }
+  }
 
   get columnDefs(): ColDef[] {
     return [
       {
+        field: 'idwp',
+        headerName: 'Workprogram ID',
+        editable: true,
+        cellEditor: 'agSelectCellEditor', // Changed from 'agRichSelectCellEditor'
+        cellEditorParams: {
+          values: this.workProgramData.map(item => item.activity),
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.workProgramData.find(item => item.activity === params.value);
+          return foundItem ? `${foundItem.activity} - ${foundItem.text}` : params.value;
+        },
+        onCellValueChanged: this.onActivityChanged.bind(this)
+      },
+      {
         field: 'dateStart',
         headerName: 'Fecha de inicio',
-        editable: true,
         flex: 2,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
@@ -85,7 +153,6 @@ export class AnalysisComponent {
       {
         field: 'dateEnd',
         headerName: 'Fecha de fin',
-        editable: true,
         flex: 2,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
@@ -98,7 +165,6 @@ export class AnalysisComponent {
       {
         field: 'routeCritica',
         headerName: 'Ruta Crítica',
-        editable: true,
         flex: 1,
       },
       {

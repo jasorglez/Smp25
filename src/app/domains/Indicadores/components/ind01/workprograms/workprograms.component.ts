@@ -35,7 +35,7 @@ export class WorkprogramsComponent implements OnInit {
   datosGantt: { data: any; links: any; };
   deletedTasks: Set<number> = new Set();
 
-  idProject: number = 1;
+  idProject: number = 669;
   idContract: number = 0;
   typeWorkProgram: string = 'Project';
   measures: any;
