@@ -1,0 +1,31 @@
+<div class="row">
+    <div class="col-12">
+        <p><strong>Descripción</strong></p>
+        <p>{{identificationName()}}</p>
+    </div>
+
+    <div class="col-12">
+        <p><strong>Evento</strong></p>
+        <p>{{identificationEvent()}}</p>
+    </div>
+
+    <div class="col-12">
+        <p><strong>Clasificación</strong></p>
+        <p>{{identificationClassification()}}</p>
+    </div>
+
+    <div class="col-12">
+        <p><strong>Fecha de registro</strong></p>
+        <p>{{identificationRegisteredDate().split('T')[0]}}</p>
+    </div>
+
+    <div class="col-12" *ngIf="analysisName() != null">
+        <p><strong>Nombre del análisis</strong></p>
+        <p>{{analysisName()}}</p>
+    </div>
+
+    <div class="col-12" *ngIf="contingencyActionName() != null">
+        <p><strong>Acción de contingencia</strong></p>
+        <p>{{contingencyActionName()}}</p>
+    </div>
+</div>

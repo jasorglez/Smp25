@@ -69,7 +69,7 @@ export class CompanysService {
 
   Companys(): Observable<any> {
     try {
-      const apiUrl = `${environment.urlSmp}/Providers/id`;
+      const apiUrl = `${environment.urlSmp}/Providers`;
       //  alert(apiUrl)
       return this.http.get(apiUrl, { headers: this.trackingService.getHeaders() });
     } catch (error) {
