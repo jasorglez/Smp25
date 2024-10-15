@@ -20,8 +20,11 @@ import {
   ApexGrid,
   ApexMarkers
 } from "ng-apexcharts";
-import { Subscription } from 'rxjs';
+import { concat, lastValueFrom, Subscription, toArray } from 'rxjs';
 import { ChartComponent } from 'ng-apexcharts';
+import { CommonModule } from '@angular/common';
+import { alerts } from 'app/helpers/alerts';
+import { OilfieldService } from 'app/services/oilfield.service';
 
 export type ChartOptions = {
   series: ApexAxisChartSeries;
@@ -41,8 +44,11 @@ export type ChartOptions = {
 };
 
 interface ContractAdvance {
-  accumalateProgram: number;
-  accumulatePhysical: number;
+  id?: string;
+  __isNew?: boolean;
+  __modified?: boolean;
+  accumalateProgram?: number;
+  accumulatePhysical?: number;
   date: string;
   physicalAdvanced: number;
   programAdvanced: number;
@@ -52,6 +58,7 @@ interface ContractAdvance {
   selector: 'app-advances',
   standalone: true,
   imports: [
+    CommonModule,
     AgGridModule,
     NgApexchartsModule
   ],
@@ -59,10 +66,16 @@ interface ContractAdvance {
   styleUrl: './advances.component.scss'
 })
 export class AdvancesComponent implements OnInit, OnChanges {
+deleteEntry() {
+throw new Error('Method not implemented.');
+}
+
+
 
   private _contractsService = inject(ContractsService);
   private _signalsService = inject(SignalsService);
   private _advancesService = inject(AdvanceService);
+  private _oilfieldsService = inject(OilfieldService);
 
   public contracts: any[] = [];
   public curretnContractSelected: number;
@@ -72,11 +85,11 @@ export class AdvancesComponent implements OnInit, OnChanges {
 
   // Configuración de AG Grid
   columnDefs: ColDef[] = [
-    { field: 'date', headerName: 'Fecha', width: 150 },
-    { field: 'programAdvanced', headerName: 'Programado', width: 150 },
-    { field: 'physicalAdvanced', headerName: 'Fisico', width: 100 },
-    { field: 'accumalateProgram', headerName: 'Acumulado Programado', width: 220 },
-    { field: 'accumulatePhysical', headerName: 'Acumulado Fisico', width: 190 }
+    { field: 'date', headerName: 'Fecha', width: 150, editable: true },
+    { field: 'programAdvanced', headerName: 'Programado', width: 150, editable: true },
+    { field: 'physicalAdvanced', headerName: 'Fisico', width: 100, editable: true },
+    { field: 'accumalateProgram', headerName: 'Acumulado Programado', width: 220, editable: true },
+    { field: 'accumulatePhysical', headerName: 'Acumulado Fisico', width: 190, editable: true }
   ];
 
   rowData: ContractAdvance[] = [];
@@ -84,6 +97,9 @@ export class AdvancesComponent implements OnInit, OnChanges {
   // Configuración de ApexCharts
   public chartOptions: Partial<ChartOptions>;
   @ViewChild('chart') chart: ChartComponent;
+  private tempIdCounter: number = 0;
+  newlyAddedRows: string[] = [];
+  notSavedChanges: boolean;
 
   constructor() {
     this.chartOptions = {
@@ -142,24 +158,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
       const nuevoValor = this._signalsService.getContractSelectedBySidebar();
       console.log('El valor ha cambiado:', nuevoValor());
       this.curretnContractSelected = nuevoValor();
-      this._advancesService.getAdvancesByContract(this.curretnContractSelected, 'Contract').subscribe((advances: ContractAdvance) => {
-        console.log(advances);
-        let acumuladoProgramado = 0;
-        let acumuladoFisico = 0;
-        this.datosMensuales = (advances as unknown as ContractAdvance[]).map(advance => {
-          acumuladoProgramado += advance.programAdvanced;
-          acumuladoFisico += advance.physicalAdvanced;
-          return {
-            date: advance.date.split('T')[0],
-            programAdvanced: advance.programAdvanced,
-            physicalAdvanced: advance.physicalAdvanced,
-            accumalateProgram: acumuladoProgramado,
-            accumulatePhysical: acumuladoFisico
-          };
-        });
-        this.rowData = this.datosMensuales;
-        this.actualizarDatos();
-      });
+      this.obtenerDatos();
     });
 
    
@@ -170,10 +169,130 @@ export class AdvancesComponent implements OnInit, OnChanges {
     
   }
 
+  onCellValueChanged(event: any) {
+    console.log('Dato cambiado:', event.data);
+    event.data.__modified = true;
+    this.notSavedChanges = true;
+  }
+
   ngOnChanges(changes: SimpleChanges) {
     if (changes['advances']) {
       this.actualizarDatos();
     }
+  }
+
+  addRow() {
+    const tempId = `temp_${this.tempIdCounter++}`;
+    const newItem = {
+      id: tempId,
+      type: 'Contract',
+      date: new Date().toISOString().split('T')[0],
+      idContract: this.curretnContractSelected,
+      physicalAdvanced: 0,
+      programAdvanced: 0,
+      accumalateProgram: 0,
+      accumulatePhysical: 0,
+      active: 1,
+      __isNew: true,
+    };
+
+    this.rowData = [newItem, ...this.rowData];
+    this.newlyAddedRows.push(tempId);
+    this.notSavedChanges = true;
+  }
+
+  async saveChanges() {
+    console.log(this.rowData);
+    const isValid = this.rowData.every((item) => 
+      item.date && 
+      typeof item.programAdvanced === 'number' && 
+      typeof item.physicalAdvanced === 'number' &&
+      !isNaN(item.programAdvanced) &&
+      !isNaN(item.physicalAdvanced)
+    );
+    
+    if (!isValid) {
+      alerts.basicAlert(
+        'Añadir entrada',
+        'Debe llenar todos los campos con valores válidos antes de guardar. Asegúrese de que la fecha esté presente y que los avances programados y físicos sean números.',
+        'error'
+      );
+      return;
+    }
+
+    const newRows = this.rowData.filter((row) => row.__isNew);
+    const modifiedRows = this.rowData.filter(
+      (row) => row.__modified && !row.__isNew
+    );
+    console.log(newRows, modifiedRows);
+    const addObservables = newRows.map((row) => {
+      const cleanedData = this.cleanDataForServer(row);
+      console.log(cleanedData);
+      return this._advancesService.addAdvance(cleanedData);  
+    });
+
+    const updateObservables = modifiedRows.map((row) => {
+      const cleanedData = this.cleanDataForServer(row);
+      return this._advancesService.updateAdvance(Number(row.id), cleanedData);
+    });
+
+    // Using concat to combine observables and lastValueFrom for async/await
+    try {
+      const responses = await lastValueFrom(
+        concat(...addObservables, ...updateObservables).pipe(toArray())
+      );
+      alerts.basicAlert(
+        'Datos actualizados',
+        'Se han actualizado los datos correctamente.',
+        'success'
+      );
+      this.notSavedChanges = false;
+      this.newlyAddedRows = [];
+      this.obtenerDatos(); // Refrescar los datos
+    } catch (error) {
+      console.error(error);
+      alerts.basicAlert(
+        'Error',
+        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
+        'error'
+      );
+    }
+  }
+  obtenerDatos() {
+    this._advancesService.getAdvancesByContract(this.curretnContractSelected, 'Contract').subscribe((advances: ContractAdvance) => {
+      console.log(advances);
+      let acumuladoProgramado = 0;
+      let acumuladoFisico = 0;
+      this.datosMensuales = (advances as unknown as ContractAdvance[]).map(advance => {
+        acumuladoProgramado += advance.programAdvanced;
+        acumuladoFisico += advance.physicalAdvanced;
+        return {
+          date: advance.date.split('T')[0],
+          programAdvanced: advance.programAdvanced,
+          physicalAdvanced: advance.physicalAdvanced,
+          accumalateProgram: acumuladoProgramado,
+          accumulatePhysical: acumuladoFisico,
+          id: advance.id
+        };
+      });
+      this.rowData = this.datosMensuales;
+      this.actualizarDatos();
+    });
+  }
+
+  revert() {
+  this.obtenerDatos()
+    this.notSavedChanges = false;
+  }
+
+  private cleanDataForServer(data: any): any {
+    const cleanedData = { ...data };
+    delete cleanedData.__isNew;
+    delete cleanedData.__modified;
+    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
+      delete cleanedData.id;
+    }
+    return cleanedData;
   }
 
   private actualizarDatos() {
@@ -184,7 +303,8 @@ export class AdvancesComponent implements OnInit, OnChanges {
       programAdvanced: advance.programAdvanced, 
       physicalAdvanced: advance.physicalAdvanced,
       accumalateProgram: advance.accumalateProgram,
-      accumulatePhysical: advance.accumulatePhysical
+      accumulatePhysical: advance.accumulatePhysical,
+      id: advance.id
     }));
 
     // Actualizar datos de la gráfica

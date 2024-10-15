@@ -86,7 +86,7 @@ export class SideBarComponent {
             }
           });
         } else {
-          alert(`No se encontró ningún usuario con idUser ${this.signalsService.idUser()}`);
+          console.log(`No se encontró ningún usuario con idUser ${this.signalsService.idUser()}`);
           this.selectedRoot = null;
         }
       },
@@ -151,7 +151,7 @@ export class SideBarComponent {
             this.selectedProjectId = this.projectData[0].id;
             this.trackingService.setProject(this.selectedProjectId);
           } else {
-            alert(`No se encontró ningún Project para el contrato ${idContract}`);
+            console.log(`No se encontró ningún Project para el contrato ${idContract}`);
             this.selectedProjectId = '';
             this.trackingService.setProject('');
           }
