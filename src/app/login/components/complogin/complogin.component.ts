@@ -114,7 +114,7 @@ export class ComploginComponent implements OnInit {
 
     this.auth.login(data).subscribe({
       next: (resp: any) => {
-        console.log(resp)
+       // console.log(resp)
         localStorage.setItem('token', resp.data.token)
         this.userService.findEmail(this.emailcapt).subscribe({
           next: (datauser: any) => {

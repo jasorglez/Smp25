@@ -9,9 +9,11 @@ import { ContractsService } from 'app/services/contracts.service';
 import { ProjectsService } from 'app/services/projects.service';
 import { SignalsService } from 'app/services/signals.service';
 import { RootService } from 'app/services/root.service';
+import { UsersService } from 'app/services/users.service';
 
 import { SharedModule } from '../shared.module';
 import { alerts } from 'app/helpers/alerts';
+
 
 @Component({
   selector: 'app-side-bar',
@@ -45,13 +47,32 @@ export class SideBarComponent {
     public rootService     : RootService,
     public contractService : ContractsService,
     public projectService  : ProjectsService,
+    private userService    : UsersService,
     private router: Router,
     private permissionsService: UsersxpermissionsService,
     private signalsService  : SignalsService
   ) {}
 
   async ngOnInit() {
-    await this.getpermissionxRoots();
+if (this.signalsService.isidUserEmpty()){          
+          this.userService.findEmail(localStorage.getItem('mail')).subscribe({
+            next: (datauser: any) => {
+              if (datauser) {
+                console.log('DataUsers:',datauser)
+                // Defincion de variables globales             
+                 this.trackingService.setId(datauser.id) ;               
+                 this.signalsService.setidUser(datauser.id);  
+                 this.getpermissionxRoots();  
+              }
+            },
+            error: (error) => {
+              console.error('Error al obtener los datos del usuario:', error);
+              // Manejo del error
+            }
+          })
+    }else{
+         await this.getpermissionxRoots();
+    }           
   }
    
   onRootsSelected(event: Event): void {
@@ -69,6 +90,7 @@ export class SideBarComponent {
     this.rootService.get2Root(this.signalsService.idUser()).subscribe({
       next: (data) => {
         const root = Object.values(data);
+        console.log('Root', root)
         if (root && root.length > 0) {
           this.rootData = root;
           // Seleccionar automáticamente el primer elemento
