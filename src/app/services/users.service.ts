@@ -62,6 +62,7 @@ export class UsersService {
 
   findEmail(email: string): Observable<any> {
     const headers = this.trackingService.getHeaders();
+    //  const headers = localStorage.getItem('token') ;
     return this.http.get<any>(`${environment.urlSecurity}/User/email/${email}`, { headers }).pipe(
       map(datauser => {
 
@@ -71,7 +72,7 @@ export class UsersService {
         const userArray = datauser.data;
         if (userArray) {
           const user = userArray as any;
-          console.log('user:', user);
+          console.log('User Findemail:', user);
 
           // Asegúrate de que todas las propiedades existen en el objeto user
            const displayName = user.displayName || '';
@@ -81,6 +82,7 @@ export class UsersService {
            const applybranch = user.applybranch || '';
            const applyplatform = user.applyplatform || ''; // Corregido de user.applybranch a user.applyplatform
            const id           = user.id   ;
+         //  this.signalsService.setidUser(datauser.id);
 
           return { displayName, picture, applyproject, applybranch, applyplatform, email, id };
         } else {

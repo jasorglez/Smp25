@@ -16,8 +16,8 @@ export class ConventionsService {
     return this.http.get(`${environment.urlSmp}/Convention`, { headers: this.trackingService.getHeaders() });
   }
 
-  getConventionsByContract(idContract: number) {
-    return this.http.get(`${environment.urlSmp}/Convention/idContract?id=${idContract}`, { headers: this.trackingService.getHeaders() });
+  getConventionsByContractOrProject(type: string, id: number) {
+    return this.http.get(`${environment.urlSmp}/Convention/${id}/${type}`, { headers: this.trackingService.getHeaders() });
   }
 
   addConvention(data: any) {

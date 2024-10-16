@@ -12,13 +12,13 @@ export class SignalsService {
 
   /* Aquí se definen las signals para el sidebar */
 
-  rootSelectedBySidebar = signal<number | null>(null);
+  private rootSelectedBySidebar = signal<number | null>(null);
 
   setRootSelectedBySidebar(id: number) {
     this.rootSelectedBySidebar.set(id);
   }
 
-  contractSelectedBySidebar = signal<number | null>(null);
+  private contractSelectedBySidebar = signal<number | null>(null);
 
   setContractSelectedBySidebar(id: number) {
     this.contractSelectedBySidebar.set(id);
@@ -30,9 +30,16 @@ export class SignalsService {
     this.projectSelectedBySidebar.set(id);
   }
 
+  getRootSelectedBySidebar() {
+    return this.rootSelectedBySidebar;
+  }
 
   getContractSelectedBySidebar() {
     return this.contractSelectedBySidebar;
+  }
+
+  getProjectSelectedBySidebar() {
+    return this.projectSelectedBySidebar;
   }
 
   /* Aquí se definen las signals para el setup de Users */
@@ -45,6 +52,11 @@ export class SignalsService {
     organizationUser: signal<string>(null),
     positionUser: signal<string>(null)
   };
+
+  isidUserEmpty(): boolean {
+    return this.idUser() === null || this.idUser() === 0;
+  }
+
 
   profileSignal(id: number, email: string, picture: string, name: string, organization: string, position: string) {
     this.profile.idUser.set(id);
@@ -87,12 +99,13 @@ export class SignalsService {
   /* Signal para la sidebar */
 
   companyName = signal<string>(null);
+  private selectedContract = signal<number>(null);
+  idUser = signal<number>(0);
+  private selectedProject = signal<number>(null);
 
   setCompanyName(name: string) {
     this.companyName.set(name);
   }
-
-  idUser = signal<number>(0);
 
   setidUser(id: number) {
     this.idUser.set(id);
@@ -165,6 +178,16 @@ export class SignalsService {
     this.companyName = signal(null);
     this.companyCheckedSignal = signal(false);
     this.contractCheckedSignal = signal(false);
+    this.idIdentification = signal(null);
+    this.idProjectByIdentification = signal(null);
+    this.eventIdentification = signal(null);
+    this.classificationIdentification = signal(null);
+    this.registeredDateIdentification = signal(null);
+    this.nameIdentification = signal(null);
+    this.idAnalysis = signal(null);
+    this.nameAnalysis = signal(null);
+    this.idContingencyAction = signal(null);
+    this.nameContingencyAction = signal(null);
     // Reinicia this.profile
     this.profileSignal(null, null, null, null, null, null);
   }

@@ -2,17 +2,19 @@ import { CommonModule } from '@angular/common';
 import { Component, effect, HostListener, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
-import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { SignalsService } from 'app/services/signals.service';
 import { IssuesService } from 'app/services/issues.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { IssuesInfoComponent } from '../issues-info/issues-info.component';
+import { MultiLineEditorComponent } from '../multi-line-editor.component';
+import { ModalService } from 'app/services/modal.service';
 
 @Component({
   selector: 'app-contingency-actions',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, IssuesInfoComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, IssuesInfoComponent, MultiLineEditorComponent],
   templateUrl: '../identification/identification.component.html',
   styleUrl: './contingency-actions.component.scss'
 })
@@ -20,6 +22,8 @@ export class ContingencyActionsComponent {
 
   private issuesService = inject(IssuesService);
   private signalsService = inject(SignalsService);
+  private modalServiceTable = inject(ModalService);
+
   idIdentification = this.signalsService.idIdentification;
   idAnalysis: number = this.signalsService.idAnalysis();
   nameAnalysis: string;
@@ -31,7 +35,7 @@ export class ContingencyActionsComponent {
     });
   }
   setSignals() {
-     this.signalsService.setContingencyActionName(this.selectedRowData.actions);
+    this.signalsService.setContingencyActionName(this.selectedRowData.actions);
     this.signalsService.setIdContingencyAction(this.selectedRowData.id);
   }
 
@@ -56,6 +60,10 @@ export class ContingencyActionsComponent {
   id: string;
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
+
+  frameworkComponents = {
+    multiLineEditor: MultiLineEditorComponent,
+  };
 
   obtenerDatos() {
     this.issuesService
@@ -82,13 +90,38 @@ export class ContingencyActionsComponent {
         field: 'actions',
         headerName: 'Acciones',
         editable: true,
-        flex: 3
+        width: 300,
+        cellEditor: 'agPopupTextCellEditor',
+        cellEditorParams: {
+          maxLength: 100,
+          cols: 50,
+          rows: 3,
+          onKeyDown: (event: KeyboardEvent) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.stopPropagation();
+            }
+          },
+        },
+        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+          if (!event.node.group) {
+            this.modalServiceTable.showModal({
+              params: event,
+              value: event.value,
+            });
+          }
+        },
+        cellRenderer: (params: ICellRendererParams) => {
+          if (params.node.group) {
+            return params.value;
+          }
+          return params.value;
+        }
       },
       {
         field: 'dateStart',
         headerName: 'Fecha de inicio',
         editable: true,
-        flex: 1,
+        width: 150,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
           if (params.value) {
@@ -101,7 +134,7 @@ export class ContingencyActionsComponent {
         field: 'dateEnd',
         headerName: 'Fecha de inicio',
         editable: true,
-        flex: 1,
+        width: 150,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
           if (params.value) {
@@ -114,55 +147,55 @@ export class ContingencyActionsComponent {
         field: 'period',
         headerName: 'Periodo',
         editable: true,
-        flex: 1,
+        width: 150,
       },
       {
         field: 'resources',
         headerName: 'Recursos',
         editable: true,
-        flex: 1,
+        width: 150,
       },
       {
         field: 'costApprox',
         headerName: 'Costo aprox.',
         cellEditor: 'agNumberCellEditor',
         editable: true,
-        flex: 1,
+        width: 150,
       },
       {
         field: 'advancePlanned',
         headerName: 'Avance planeado',
         cellEditor: 'agNumberCellEditor',
         editable: true,
-        flex: 1,
+        width: 150,
       },
       {
         field: 'advancedReal',
         headerName: 'Avance real',
         cellEditor: 'agNumberCellEditor',
         editable: true,
-        flex: 1,
+        width: 150,
       },
       {
         field: 'advancedReal',
         headerName: 'Avance real',
         cellEditor: 'agNumberCellEditor',
         editable: true,
-        flex: 1,
+        width: 150,
       },
       {
         field: 'spi',
         headerName: 'SPI',
         cellEditor: 'agNumberCellEditor',
         editable: true,
-        flex: 1,
+        width: 150,
       },
       {
         field: 'days',
         headerName: 'Días',
         cellEditor: 'agNumberCellEditor',
-        editable: true, 
-        flex: 1,
+        editable: true,
+        width: 150,
       },
       {
         field: 'status',
@@ -170,16 +203,16 @@ export class ContingencyActionsComponent {
         editable: true,
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
-            values: ['Abierto', 'Cerrado'],
+          values: ['Abierto', 'Cerrado'],
         },
-        flex: 1,
+        width: 150,
       },
       {
         field: 'observations',
         headerName: 'Observaciones',
         editable: true,
-        flex: 3
-      } 
+        width: 150,
+      }
     ];
   }
 
@@ -233,10 +266,9 @@ export class ContingencyActionsComponent {
   }
 
   async saveChanges() {
-
-    const newRows = this.rowData.filter((row) => row.__isNew);
+    const newRows = this.rowData.filter((row) => this.newlyAddedRows.includes(row.id));
     const modifiedRows = this.rowData.filter(
-      (row) => row.__modified && !row.__isNew
+      (row) => row.__modified && !this.newlyAddedRows.includes(row.id)
     );
 
     const addObservables = newRows.map((row) => {
@@ -249,7 +281,6 @@ export class ContingencyActionsComponent {
       return this.issuesService.updateContingencyAction(row.id, cleanedData);
     });
 
-    // Using concat to combine observables and lastValueFrom for async/await
     try {
       const responses = await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
@@ -326,9 +357,10 @@ export class ContingencyActionsComponent {
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
-    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
+    if (cleanedData.id && (typeof cleanedData.id === 'string' && cleanedData.id.startsWith('temp_') || cleanedData.__isNew)) {
       delete cleanedData.id;
     }
+
     return cleanedData;
   }
 
