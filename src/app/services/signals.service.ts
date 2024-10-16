@@ -46,6 +46,11 @@ export class SignalsService {
     positionUser: signal<string>(null)
   };
 
+  isidUserEmpty(): boolean {
+    return this.idUser() === null || this.idUser() === 0;
+  }
+
+
   profileSignal(id: number, email: string, picture: string, name: string, organization: string, position: string) {
     this.profile.idUser.set(id);
     this.profile.emailUser.set(email);

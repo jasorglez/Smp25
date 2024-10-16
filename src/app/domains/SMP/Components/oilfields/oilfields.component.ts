@@ -1,5 +1,6 @@
 import { Component, HostListener, inject } from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { InegiService } from 'app/services/inegi.service';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule } from 'ag-grid-angular';
 import { ContractsService } from 'app/services/contracts.service';
@@ -16,12 +17,25 @@ import { FormsModule } from '@angular/forms';
 })
 export class OilfieldsComponent {
 
+  private estados : any =[] ;
+
   private oilfieldsService = inject(OilfieldService);
+  private inegiService     = inject(InegiService)
   private contractsService = inject(ContractsService);
 
   ngOnInit() {
     this.obtenerDatos();
     this.obtenerContracts();
+
+    this.inegiService.getEstados().subscribe(
+      (data: any) => {
+        this.estados = data.datos;
+        console.log(this.estados) ;
+      },
+      (error) => {
+        console.error('Error fetching states', error);
+      }
+    );
   }
 
   @HostListener('window:beforeunload', ['$event'])
