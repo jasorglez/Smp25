@@ -14,6 +14,7 @@ import { TrackingService } from './tracking.service';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Ilogin } from 'app/interface/ilogin';
+import { SignalsService } from './signals.service';
 
 @Injectable({
   providedIn: 'root',
@@ -27,6 +28,7 @@ export class AuthService {
   private router = inject(Router);
   private auth = inject(Auth);
   private http = inject(HttpClient);
+  private signalsService = inject(SignalsService);
 
   login(data: Ilogin) {
     //Aquí creamos el Token
@@ -81,7 +83,7 @@ export class AuthService {
       localStorage.removeItem('branch');
       localStorage.removeItem('mail');
       localStorage.removeItem('sqlToken');
-
+      this.signalsService.deleteSignals(); // Borramos todas las signals
       this.router.navigateByUrl('/login');
 
       await signOut(this.auth);
