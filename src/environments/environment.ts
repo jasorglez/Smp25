@@ -23,7 +23,7 @@ export const environment = {
   urlSecurity   : 'http://20.221.74.88:5003/api',
   urlSmp        : 'http://20.221.74.88:5004/api',
   urlBpi        : 'http://20.221.74.88:5005/api',
-  urlWarehouse  : 'http://20.221.74.88:5009/api',
+  urlWarehouse  : 'http://20.221.74.88:5007/api',
   
   //  urlAzure    : 'https://localhost:7089/',
 

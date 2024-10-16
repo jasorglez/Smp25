@@ -7,7 +7,6 @@ import { GridApi, ColDef, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { ConventionsService } from 'app/services/conventions.service';
 import { lastValueFrom, concat, toArray, catchError, EMPTY, throwError, of, finalize, tap, firstValueFrom } from 'rxjs';
-import { ContractsService } from 'app/services/contracts.service';
 import { SignalsService } from 'app/services/signals.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
@@ -23,7 +22,6 @@ import { AttachHandlerService } from 'app/services/attach-handler.service';
 export class ConventionsComponent {
 
   private conventionsService = inject(ConventionsService);
-  private contractsService = inject(ContractsService);
   private signalsService = inject(SignalsService);
   private modalService = inject(NgbModal);
   public attachHandlerService = inject(AttachHandlerService);
@@ -32,14 +30,20 @@ export class ConventionsComponent {
 
   constructor() {
     effect(() => {
+      this.selectedContract = this.signalsService.getContractSelectedBySidebar()();
+      this.selectedProject = this.signalsService.getProjectSelectedBySidebar()();
+      if(this.selectedProject != null) {
+        this.idc = this.selectedProject;
+        this.type = 'Project';
+      }
+      else {
+        this.idc = this.selectedContract;
+        this.type = 'Contract';
+      }
+
       // Este efecto se ejecutará cada vez que selectedContract cambie
       this.obtenerDatos();
     });
-  }
-
-  ngOnInit() {
-    this.getContracts();
-    console.log(this.id);
   }
 
   @ViewChild('carousel', { static: false }) carousel: ElementRef | undefined;
@@ -57,47 +61,35 @@ export class ConventionsComponent {
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
   id: number = null;
+  idc: number = null;
+  type: string = null;
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
-  selectedContract = this.signalsService.getContractSelectedBySidebar();
+  selectedContract: number = null;
+  selectedProject: number = null;
   currentIndexCarousel: number;
   images: any[] = [];
   entradaCarousel: any[];
   numItemsCarousel: number = 0;
 
   obtenerDatos() {
-    if (this.selectedContract() == null) {
-      this.conventionsService.getConventions().subscribe((data: any) => {
+    this.conventionsService
+      .getConventionsByContractOrProject(this.type, this.idc)
+      .pipe(
+        catchError((error: HttpErrorResponse) => {
+          if (error.status === 404) {
+            // Manejar el error 404 silenciosamente
+            console.log('No se encontraron datos para el contrato seleccionado');
+            this.rowData = []; // O asigna un valor por defecto
+            return of([]); // Devuelve un observable vacío
+          }
+          // Para otros errores, permite que se propaguen
+          throw error;
+        })
+      )
+      .subscribe((data: any) => {
         this.rowData = data;
       });
-    } else {
-      this.conventionsService
-        .getConventionsByContract(this.selectedContract())
-        .pipe(
-          catchError((error: HttpErrorResponse) => {
-            if (error.status === 404) {
-              // Manejar el error 404 silenciosamente
-              console.log('No se encontraron datos para el contrato seleccionado');
-              this.rowData = []; // O asigna un valor por defecto
-              return of([]); // Devuelve un observable vacío
-            }
-            // Para otros errores, permite que se propaguen
-            throw error;
-          })
-        )
-        .subscribe((data: any) => {
-          this.rowData = data;
-        });
-    }
-  }
-
-  getContracts() {
-    this.contractsService.getContracts(1).subscribe((data: any[]) => {
-      this.contracts = data.reduce((acc, dep) => {
-        acc[dep.idContrato] = dep.numberContract + ' - ' + dep.descripSmall; // Cambia la estructura para que solo almacene el nombre
-        return acc;
-      }, {});
-    });
   }
 
   get columnDefs(): ColDef[] {
@@ -113,26 +105,6 @@ export class ConventionsComponent {
         headerName: 'Descripción',
         editable: true,
         flex: 2
-      },
-      {
-        field: 'idContract',
-        headerName: 'Contrato',
-        cellEditor: 'agRichSelectCellEditor',
-        cellEditorParams: {
-          values: Object.keys(this.contracts).sort((a, b) => this.contracts[a].localeCompare(this.contracts[b])),
-        },
-        valueFormatter: (params) => this.contracts[params.value] || '',
-        valueSetter: (params) => {
-          const newValue = params.newValue;
-          if (this.contracts.hasOwnProperty(newValue)) {
-            params.data[params.colDef.field] = newValue;
-            return true;
-          }
-          return false;
-        },
-        valueParser: (params) => params.newValue,
-        editable: true,
-        flex: 2,
       },
       {
         field: 'start',
@@ -225,12 +197,16 @@ export class ConventionsComponent {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      contractId: 1,
+      id_type: 1,
+      idContract: this.type === 'Contract'? this.selectedContract : 0,
+      idProject: this.type === 'Project'? this.selectedProject : 0,
+      type: this.type,
       name: '',
-      direccion: '',
-      coordinates: '',
+      amountMX: 0,
+      amountDLL: 0,
+      comment: '',
       active: 1,
-      __isNew: true,
+      __isNew: true
     };
 
     this.rowData = [newItem, ...this.rowData];
@@ -240,7 +216,7 @@ export class ConventionsComponent {
 
   async saveChanges() {
     const isValid = this.rowData.every((item) =>
-      item.name && item.description && item.idContract && item.start && item.end);
+      item.name && item.description && item.start && item.end);
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
@@ -546,7 +522,7 @@ export class ConventionsComponent {
         }
       });
   }
-  
+
   getDataDocument() {
     this.documents = [];
     this.numItemsDocuments = 0;

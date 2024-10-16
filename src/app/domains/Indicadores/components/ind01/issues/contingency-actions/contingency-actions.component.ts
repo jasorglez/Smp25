@@ -233,23 +233,21 @@ export class ContingencyActionsComponent {
   }
 
   async saveChanges() {
-
-    const newRows = this.rowData.filter((row) => row.__isNew);
+    const newRows = this.rowData.filter((row) => this.newlyAddedRows.includes(row.id));
     const modifiedRows = this.rowData.filter(
-      (row) => row.__modified && !row.__isNew
+      (row) => row.__modified && !this.newlyAddedRows.includes(row.id)
     );
-
+  
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       return this.issuesService.addContingencyAction(cleanedData);
     });
-
+  
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       return this.issuesService.updateContingencyAction(row.id, cleanedData);
     });
-
-    // Using concat to combine observables and lastValueFrom for async/await
+  
     try {
       const responses = await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
@@ -326,9 +324,10 @@ export class ContingencyActionsComponent {
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
-    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
+    if (cleanedData.id && (typeof cleanedData.id === 'string' && cleanedData.id.startsWith('temp_') || cleanedData.__isNew)) {
       delete cleanedData.id;
     }
+
     return cleanedData;
   }
 

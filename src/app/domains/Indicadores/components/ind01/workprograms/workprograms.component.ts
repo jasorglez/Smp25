@@ -1,4 +1,4 @@
-import { Component, HostListener, inject, OnInit } from '@angular/core';
+import { Component, effect, HostListener, inject, OnInit } from '@angular/core';
 import { alerts } from 'app/helpers/alerts';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { gantt } from 'dhtmlx-gantt';
@@ -9,6 +9,7 @@ import { PersonalComponent } from './personal/personal.component';
 import { EquipmentComponent } from './equipment/equipment.component';
 import { CommonModule } from '@angular/common';
 import { CatalogsService } from 'app/services/catalogs.service';
+import { SignalsService } from 'app/services/signals.service';
 
 @Component({
   selector: 'app-workprograms',
@@ -17,7 +18,7 @@ import { CatalogsService } from 'app/services/catalogs.service';
   templateUrl: './workprograms.component.html',
   styleUrl: './workprograms.component.scss'
 })
-export class WorkprogramsComponent implements OnInit {
+export class WorkprogramsComponent {
   phases: { key: any; label: any; }[];
 
   // Para mostrar el indicador de cambios no guardados
@@ -31,17 +32,31 @@ export class WorkprogramsComponent implements OnInit {
 
   private workprogramsService = inject(WorkprogramsService);
   private catalogsService = inject(CatalogsService);
+  private signalsService = inject(SignalsService);
 
   datosGantt: { data: any; links: any; };
   deletedTasks: Set<number> = new Set();
 
-  idProject: number = 669;
-  idContract: number = 0;
+  idProject: number = null;
+  idContract: number = null;
   typeWorkProgram: string = 'Project';
   measures: any;
   notSavedChanges: boolean = false;
 
-  async ngOnInit() {
+  constructor() {
+    effect(() => {
+      this.idContract = this.signalsService.getContractSelectedBySidebar()();
+      this.idProject = this.signalsService.getProjectSelectedBySidebar()();
+      
+      // Si idProject es null, significa que solo se ha elegido Contract en general sin un Project específico
+      // Pero si idProject tiene un valor, significa que se ha elegido un Project
+      this.idProject == null ? this.typeWorkProgram = 'Contract' : this.typeWorkProgram = 'Project';
+      console.log(`Contrato: ${this.idContract}, Proyecto: ${this.idProject}, Tipo Workprogram: ${this.typeWorkProgram}`);
+      this.initializeWorkprograms();
+    });
+  }
+
+  private async initializeWorkprograms(): Promise<void> {
     try {
       await this.getMeasures();
       await this.getPhases();

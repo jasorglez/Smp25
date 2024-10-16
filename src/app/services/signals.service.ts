@@ -12,13 +12,13 @@ export class SignalsService {
 
   /* Aquí se definen las signals para el sidebar */
 
-  rootSelectedBySidebar = signal<number | null>(null);
+  private rootSelectedBySidebar = signal<number | null>(null);
 
   setRootSelectedBySidebar(id: number) {
     this.rootSelectedBySidebar.set(id);
   }
 
-  contractSelectedBySidebar = signal<number | null>(null);
+  private contractSelectedBySidebar = signal<number | null>(null);
 
   setContractSelectedBySidebar(id: number) {
     this.contractSelectedBySidebar.set(id);
@@ -30,9 +30,16 @@ export class SignalsService {
     this.projectSelectedBySidebar.set(id);
   }
 
+  getRootSelectedBySidebar() {
+    return this.rootSelectedBySidebar;
+  }
 
   getContractSelectedBySidebar() {
     return this.contractSelectedBySidebar;
+  }
+
+  getProjectSelectedBySidebar() {
+    return this.projectSelectedBySidebar;
   }
 
   /* Aquí se definen las signals para el setup de Users */
@@ -92,12 +99,13 @@ export class SignalsService {
   /* Signal para la sidebar */
 
   companyName = signal<string>(null);
+  private selectedContract = signal<number>(null);
+  idUser = signal<number>(0);
+  private selectedProject = signal<number>(null);
 
   setCompanyName(name: string) {
     this.companyName.set(name);
   }
-
-  idUser = signal<number>(0);
 
   setidUser(id: number) {
     this.idUser.set(id);
