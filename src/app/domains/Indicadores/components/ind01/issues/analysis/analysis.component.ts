@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -7,21 +7,44 @@ import { alerts } from 'app/helpers/alerts';
 import { SignalsService } from 'app/services/signals.service';
 import { IssuesService } from 'app/services/issues.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { IssuesInfoComponent } from '../issues-info/issues-info.component';
+import { WorkprogramsService } from 'app/services/workprograms.service';
+
+interface WorkProgram {
+  id: number;
+  activity: string;
+  text: string;
+  startDate: string;
+  endDate: string;
+  criticRoute: string;
+}
 
 @Component({
   selector: 'app-analysis',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
-  templateUrl: './analysis.component.html',
+  imports: [CommonModule, FormsModule, AgGridModule, IssuesInfoComponent],
+  templateUrl: '../identification/identification.component.html',
   styleUrl: './analysis.component.scss'
 })
 export class AnalysisComponent {
   private issuesService = inject(IssuesService);
   private signalsService = inject(SignalsService);
-  idIdentif: number = 1;
+  private workprogramsService = inject(WorkprogramsService);
 
-  ngOnInit() {
-    this.obtenerDatos();
+  idIdentification = this.signalsService.idIdentification;
+  idIdentif: number;
+  idProject: number;
+  nameIdentif: string;
+  workProgramData: WorkProgram[] = [];
+
+  constructor() {
+    effect(() => {
+      this.idIdentif = this.signalsService.idIdentification();
+      this.nameIdentif = this.signalsService.nameIdentification();
+      this.idProject = this.signalsService.idProjectByIdentification();
+      this.obtenerDatos();
+      this.fetchWorkPrograms();
+    });
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -34,7 +57,6 @@ export class AnalysisComponent {
 
   notSavedChanges: boolean = false;
   rowData: any;
-  companys: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
   id: string;
@@ -44,18 +66,81 @@ export class AnalysisComponent {
   obtenerDatos() {
     this.issuesService
       .getAnalysis(this.idIdentif)
-      .subscribe((data: any) => {
-        this.rowData = data;
-        console.log(data);
-      });
+      .subscribe(
+        (data: any) => {
+          this.rowData = data;
+        },
+        (error) => {
+          if (error.status === 404) {
+            console.error('Data not found (404 error).');
+            // Handle the 404 error as needed, e.g., display a message to the user.
+          } else {
+            console.error('An error occurred:', error);
+          }
+          this.rowData = [];
+        }
+      );
+  }
+
+  fetchWorkPrograms() {
+    this.workprogramsService.getWorkPrograms2Fields(this.idProject).subscribe(
+      (data: WorkProgram[]) => {
+        this.workProgramData = data;
+        this.updateActivityOptions();
+      },
+      (error) => console.error('Error fetching work programs:', error)
+    );
+  }
+
+  updateActivityOptions() {
+    const idwpColDef = this.columnDefs.find(col => col.field === 'idwp');
+    if (idwpColDef && idwpColDef.cellEditorParams) {
+      idwpColDef.cellEditorParams.values = this.workProgramData.map(item => ({
+        value: item.activity,
+        label: `${item.activity} - ${item.text}`
+      }));
+    }
+    if (this.gridApi) {
+      this.gridApi.refreshHeader();
+    }
+  }
+
+
+  onActivityChanged(event: any) {
+    if (event.newValue) {
+      const selectedProgram = this.workProgramData.find(item => item.activity === event.newValue);
+      if (selectedProgram) {
+        event.data.dateStart = selectedProgram.startDate;
+        event.data.dateEnd = selectedProgram.endDate;
+        event.data.routeCritica = selectedProgram.criticRoute;
+        this.gridApi.refreshCells({
+          rowNodes: [event.node],
+          columns: ['dateStart', 'dateEnd', 'routeCritica']
+        });
+        this.onCellValueChanged(event);
+      }
+    }
   }
 
   get columnDefs(): ColDef[] {
     return [
       {
+        field: 'idwp',
+        headerName: 'Workprogram ID',
+        editable: true,
+        cellEditor: 'agSelectCellEditor', // Changed from 'agRichSelectCellEditor'
+        cellEditorParams: {
+          values: this.workProgramData.map(item => item.activity),
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.workProgramData.find(item => item.activity === params.value);
+          return foundItem ? `${foundItem.activity} - ${foundItem.text}` : params.value;
+        },
+        onCellValueChanged: this.onActivityChanged.bind(this)
+      },
+      {
         field: 'dateStart',
         headerName: 'Fecha de inicio',
-        editable: true,
         flex: 2,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
@@ -68,7 +153,6 @@ export class AnalysisComponent {
       {
         field: 'dateEnd',
         headerName: 'Fecha de fin',
-        editable: true,
         flex: 2,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
@@ -81,7 +165,6 @@ export class AnalysisComponent {
       {
         field: 'routeCritica',
         headerName: 'Ruta Crítica',
-        editable: true,
         flex: 1,
       },
       {
@@ -107,14 +190,21 @@ export class AnalysisComponent {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
-      this.enviarCompanyId();
+      this.setSignals();
     } else {
       this.selectedRowData = null;
     }
   }
+  setSignals() {
+    this.signalsService.setIdAnalysis(this.selectedRowData.id);
+    this.signalsService.setAnalysisName(this.selectedRowData.event);
+    //Borramos las demas signals
+    this.signalsService.setContingencyActionName(null);
+    this.signalsService.setIdContingencyAction(null);
+  }
 
   onCellValueChanged(event: any) {
-    this.enviarCompanyId();
+    this.setSignals();
     event.data.__modified = true;
     this.notSavedChanges = true;
   }
@@ -143,16 +233,6 @@ export class AnalysisComponent {
   }
 
   async saveChanges() {
-    /*     const isValid = this.rowData.every((item) => item.idPermission);
-    
-        if (!isValid) {
-          alerts.basicAlert(
-            'Añadir entrada',
-            'Debe seleccionar una compañía antes de guardar.',
-            'error'
-          );
-          return;
-        } */
 
     const newRows = this.rowData.filter((row) => row.__isNew);
     const modifiedRows = this.rowData.filter(
@@ -223,8 +303,7 @@ export class AnalysisComponent {
             'Entrada eliminada satisfactoriamente.',
             'success'
           );
-          this.signalsService.idCompany.set(null);
-          this.signalsService.nameCompany.set(null);
+          this.resetSignals();
           this.obtenerDatos();
 
           alerts.basicAlert(
@@ -236,6 +315,10 @@ export class AnalysisComponent {
           this.selectedRowData = null;
         }
       );
+  }
+  resetSignals() {
+    this.signalsService.setAnalysisName(null);
+    this.signalsService.setIdAnalysis(null);
   }
 
   revert() {
@@ -251,15 +334,6 @@ export class AnalysisComponent {
       delete cleanedData.id;
     }
     return cleanedData;
-  }
-
-  enviarCompanyId() {
-    const companyName = this.getCompanyName(this.selectedRowData.idPermission);
-    this.signalsService.companySignal(this.selectedRowData.idPermission, companyName);
-  }
-
-  getCompanyName(id: number): string {
-    return this.companys[id] || 'Departamento no encontrado';
   }
 
 }

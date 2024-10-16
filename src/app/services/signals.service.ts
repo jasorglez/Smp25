@@ -62,11 +62,11 @@ export class SignalsService {
 
   /* Signals de Users X Permissions */
 
-  idCompany    = signal<number>(null);
-  nameCompany  = signal<string>(null);
-  idContract   = signal<number>(null);
+  idCompany = signal<number>(null);
+  nameCompany = signal<string>(null);
+  idContract = signal<number>(null);
   nameContract = signal<string>(null);
-  
+
 
   private companyCheckedSignal = signal(false);
   private contractCheckedSignal = signal(false);
@@ -97,11 +97,63 @@ export class SignalsService {
     this.companyName.set(name);
   }
 
-  idUser       = signal<number>(0) ;
+  idUser = signal<number>(0);
 
-  setidUser(id:number)
-  {
-     this.idUser.set(id) ;
+  setidUser(id: number) {
+    this.idUser.set(id);
+  }
+
+  /* Signals para Matriz Issues */
+
+  idIdentification = signal<number>(null);
+  idProjectByIdentification = signal<number>(null);
+  eventIdentification = signal<string>(null);
+  classificationIdentification = signal<string>(null);
+  registeredDateIdentification = signal<string>(null);
+  nameIdentification = signal<string>(null);
+  idAnalysis = signal<number>(null);
+  nameAnalysis = signal<string>(null);
+  idContingencyAction = signal<number>(null);
+  nameContingencyAction = signal<string>(null);
+
+  setIdIdentification(id: number) {
+    this.idIdentification.set(id);
+  }
+
+  setIdProjectByIdentification(id: number) {
+    this.idProjectByIdentification.set(id);
+  }
+
+  setEventIdentification(event: string) {
+    this.eventIdentification.set(event);
+  }
+
+  setClassificationIdentification(classification: string) {
+    this.classificationIdentification.set(classification);
+  }
+
+  setRegisteredDateIdentification(date: string) {
+    this.registeredDateIdentification.set(date);
+  }
+
+  setIdAnalysis(id: number) {
+    this.idAnalysis.set(id);
+  }
+
+  setIdContingencyAction(id: number) {
+    this.idContingencyAction.set(id);
+  }
+
+  setIdentificationName(name: string) {
+    this.nameIdentification.set(name);
+  }
+
+  setAnalysisName(name: string) {
+    this.nameAnalysis.set(name);
+  }
+
+  setContingencyActionName(name: string) {
+    this.nameContingencyAction.set(name);
   }
 
   /* Borramos todas las signals, tratar de poner esto a lo último.

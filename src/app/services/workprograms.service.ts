@@ -17,6 +17,10 @@ export class WorkprogramsService {
     return this.http.get<any[]>(`${environment.urlSmp}/Workprogram/${id}/${type}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getWorkPrograms2Fields(id: number): Observable<any> {
+    return this.http.get<any>(`${environment.urlSmp}/Workprogram/2fields?idProject=${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
   addWorkProgram(data: any): Observable<any> {
     return this.http.post(`${environment.urlSmp}/Workprogram`, data, { headers: this.trackingService.getHeaders() });
   }

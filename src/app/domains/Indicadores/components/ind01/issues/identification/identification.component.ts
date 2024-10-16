@@ -1,18 +1,18 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, HostListener, inject } from '@angular/core';
+import { Component, HostListener, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
-import { ProvidersService } from 'app/services/providers.service';
 import { SignalsService } from 'app/services/signals.service';
 import { IssuesService } from 'app/services/issues.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { IssuesInfoComponent } from "../issues-info/issues-info.component";
 
 @Component({
   selector: 'app-identification',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [CommonModule, FormsModule, AgGridModule, IssuesInfoComponent],
   templateUrl: './identification.component.html',
   styleUrl: './identification.component.scss'
 })
@@ -21,6 +21,7 @@ export class IdentificationComponent {
   private issuesService = inject(IssuesService);
   private signalsService = inject(SignalsService);
   idProject: number = 669;
+  idIdentification = this.signalsService.idIdentification;
 
   ngOnInit() {
     this.obtenerDatos();
@@ -36,13 +37,11 @@ export class IdentificationComponent {
 
   notSavedChanges: boolean = false;
   rowData: any;
-  companys: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
   id: string;
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
-  private permissionType: string = 'comp-prov';
 
   obtenerDatos() {
     this.issuesService
@@ -51,15 +50,6 @@ export class IdentificationComponent {
         this.rowData = data;
       });
   }
-
-  /*   obtenerCompanys() {
-      this.providersService.getProviders().subscribe((data: any[]) => {
-        this.companys = data.reduce((acc, dep) => {
-          acc[dep.id] = dep.name; // Cambia la estructura para que solo almacene el nombre
-          return acc;
-        }, {});
-      });
-    } */
 
   get columnDefs(): ColDef[] {
     return [
@@ -73,6 +63,10 @@ export class IdentificationComponent {
         field: 'clasification',
         headerName: 'Clasificación',
         editable: true,
+        cellEditor: 'agRichSelectCellEditor',
+        cellEditorParams: {
+            values: ['Administrativo', 'Técnico'],
+        },
         flex: 2,
       },
       {
@@ -104,6 +98,10 @@ export class IdentificationComponent {
         field: 'administrator',
         headerName: 'Administrador',
         editable: true,
+        cellEditor: 'agRichSelectCellEditor',
+        cellEditorParams: {
+            values: ['Pemex', 'Contratista'],
+        },
         flex: 2,
       },
     ];
@@ -117,16 +115,30 @@ export class IdentificationComponent {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
-      this.enviarCompanyId();
+      this.setSignals();
     } else {
       this.selectedRowData = null;
     }
   }
 
   onCellValueChanged(event: any) {
-    this.enviarCompanyId();
+    this.setSignals();
     event.data.__modified = true;
     this.notSavedChanges = true;
+  }
+
+  setSignals() {
+    this.signalsService.setIdIdentification(this.selectedRowData.id);
+    this.signalsService.setIdProjectByIdentification(this.selectedRowData.idProject);
+    this.signalsService.setIdentificationName(this.selectedRowData.description);
+    this.signalsService.setClassificationIdentification(this.selectedRowData.clasification);
+    this.signalsService.setEventIdentification(this.selectedRowData.event);
+    this.signalsService.setRegisteredDateIdentification(this.selectedRowData.dateRegistry);
+    // Borramos las demas signals
+    this.signalsService.setIdAnalysis(null);
+    this.signalsService.setAnalysisName(null);
+    this.signalsService.setContingencyActionName(null);
+    this.signalsService.setIdContingencyAction(null);
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -152,16 +164,6 @@ export class IdentificationComponent {
   }
 
   async saveChanges() {
-    /*     const isValid = this.rowData.every((item) => item.idPermission);
-    
-        if (!isValid) {
-          alerts.basicAlert(
-            'Añadir entrada',
-            'Debe seleccionar una compañía antes de guardar.',
-            'error'
-          );
-          return;
-        } */
 
     const newRows = this.rowData.filter((row) => row.__isNew);
     const modifiedRows = this.rowData.filter(
@@ -232,8 +234,8 @@ export class IdentificationComponent {
             'Entrada eliminada satisfactoriamente.',
             'success'
           );
-          this.signalsService.idCompany.set(null);
-          this.signalsService.nameCompany.set(null);
+          this.signalsService.setIdIdentification(null);
+          this.signalsService.setIdentificationName(null);
           this.obtenerDatos();
 
           alerts.basicAlert(
@@ -260,15 +262,6 @@ export class IdentificationComponent {
       delete cleanedData.id;
     }
     return cleanedData;
-  }
-
-  enviarCompanyId() {
-    const companyName = this.getCompanyName(this.selectedRowData.idPermission);
-    this.signalsService.companySignal(this.selectedRowData.idPermission, companyName);
-  }
-
-  getCompanyName(id: number): string {
-    return this.companys[id] || 'Departamento no encontrado';
   }
 
 }
