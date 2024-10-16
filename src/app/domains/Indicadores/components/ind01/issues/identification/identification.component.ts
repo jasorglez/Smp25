@@ -1,12 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { SignalsService } from 'app/services/signals.service';
 import { IssuesService } from 'app/services/issues.service';
-import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { catchError, concat, EMPTY, lastValueFrom, of, toArray } from 'rxjs';
 import { IssuesInfoComponent } from "../issues-info/issues-info.component";
 
 @Component({
@@ -20,11 +20,20 @@ export class IdentificationComponent {
 
   private issuesService = inject(IssuesService);
   private signalsService = inject(SignalsService);
-  idProject: number = 669;
+  idProject: number = null;
   idIdentification = this.signalsService.idIdentification;
 
-  ngOnInit() {
-    this.obtenerDatos();
+  constructor() {
+    effect(() => {
+      this.idProject = this.signalsService.getProjectSelectedBySidebar()();
+      if (this.idProject == null) {
+        this.rowData = [];
+        alerts.basicAlert('Issues', 'Debe elegir un proyecto primero.', 'error');
+      }
+      else {
+        this.obtenerDatos();
+      }
+    });
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -46,8 +55,19 @@ export class IdentificationComponent {
   obtenerDatos() {
     this.issuesService
       .getIdentifications(this.idProject)
-      .subscribe((data: any) => {
-        this.rowData = data;
+      .pipe(
+        catchError((error) => {
+          console.error('Error al obtener identificaciones:', error);
+          return of([]); // Retorna un Observable que emite un array vacío en caso de error
+        })
+      )
+      .subscribe({
+        next: (data: any) => {
+          this.rowData = data;
+        },
+        error: () => {
+          this.rowData = []; // Asigna un array vacío en caso de error
+        }
       });
   }
 
@@ -65,7 +85,7 @@ export class IdentificationComponent {
         editable: true,
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
-            values: ['Administrativo', 'Técnico'],
+          values: ['Administrativo', 'Técnico'],
         },
         flex: 2,
       },
@@ -100,7 +120,7 @@ export class IdentificationComponent {
         editable: true,
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
-            values: ['Pemex', 'Contratista'],
+          values: ['Pemex', 'Contratista'],
         },
         flex: 2,
       },
@@ -164,23 +184,21 @@ export class IdentificationComponent {
   }
 
   async saveChanges() {
-
-    const newRows = this.rowData.filter((row) => row.__isNew);
+    const newRows = this.rowData.filter((row) => this.newlyAddedRows.includes(row.id));
     const modifiedRows = this.rowData.filter(
-      (row) => row.__modified && !row.__isNew
+      (row) => row.__modified && !this.newlyAddedRows.includes(row.id)
     );
-
+  
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       return this.issuesService.addIdentification(cleanedData);
     });
-
+  
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       return this.issuesService.updateIdentification(row.id, cleanedData);
     });
-
-    // Using concat to combine observables and lastValueFrom for async/await
+  
     try {
       const responses = await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
@@ -258,9 +276,10 @@ export class IdentificationComponent {
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
-    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
+    if (cleanedData.id && (typeof cleanedData.id === 'string' && cleanedData.id.startsWith('temp_') || cleanedData.__isNew)) {
       delete cleanedData.id;
     }
+
     return cleanedData;
   }
 

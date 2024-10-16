@@ -101,6 +101,11 @@ export class SideBarComponent {
     const target = event.target as HTMLSelectElement;
     this.selectedContractId = target.value;
     if (this.selectedContractId) {
+      // Lógica para añadir la signal de solo contract
+      this.signalsService.setContractSelectedBySidebar(Number(this.selectedContractId));
+      // Borro la signal de project para resetear el dato
+      this.signalsService.setProjectSelectedBySidebar(null);
+
       this.trackingService.setContract(this.selectedContractId);
       this.signalsService.setContractSelectedBySidebar(Number(this.selectedContractId));
       //llamo a los permisos de x Project
@@ -134,6 +139,9 @@ export class SideBarComponent {
     const target = event.target as HTMLSelectElement;
     this.selectedProjectId = target.value;
     if (this.selectedProjectId) {
+      // Lógica para añadir la signal de project
+      this.signalsService.setProjectSelectedBySidebar(Number(this.selectedProjectId));
+
         this.trackingService.setProject(this.selectedProjectId);
         this.signalsService.setProjectSelectedBySidebar(Number(this.selectedProjectId)) ;        
     }

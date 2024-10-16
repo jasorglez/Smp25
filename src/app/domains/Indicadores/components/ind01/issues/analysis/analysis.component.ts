@@ -128,7 +128,7 @@ export class AnalysisComponent {
         field: 'idwp',
         headerName: 'Workprogram ID',
         editable: true,
-        cellEditor: 'agSelectCellEditor', // Changed from 'agRichSelectCellEditor'
+        cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.workProgramData.map(item => item.activity),
         },
@@ -136,7 +136,9 @@ export class AnalysisComponent {
           const foundItem = this.workProgramData.find(item => item.activity === params.value);
           return foundItem ? `${foundItem.activity} - ${foundItem.text}` : params.value;
         },
-        onCellValueChanged: this.onActivityChanged.bind(this)
+        onCellValueChanged: this.onActivityChanged.bind(this),
+        // Add this line:
+        valueParser: (params) => params.newValue
       },
       {
         field: 'dateStart',
@@ -217,7 +219,7 @@ export class AnalysisComponent {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idIdenfitication: this.idIdentif,
+      idIdentification: this.idIdentif,
       idwp: 2,
       dateStart: null,
       dateEnd: null,
@@ -232,24 +234,24 @@ export class AnalysisComponent {
     this.notSavedChanges = true;
   }
 
+
   async saveChanges() {
-
-    const newRows = this.rowData.filter((row) => row.__isNew);
+    const newRows = this.rowData.filter((row) => this.newlyAddedRows.includes(row.id));
     const modifiedRows = this.rowData.filter(
-      (row) => row.__modified && !row.__isNew
+      (row) => row.__modified && !this.newlyAddedRows.includes(row.id)
     );
-
+  
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.issuesService.addAnalysis(cleanedData);
+      return console.log(cleanedData);
+      //return this.issuesService.addAnalysis(cleanedData);
     });
-
+  
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       return this.issuesService.updateAnalysis(row.id, cleanedData);
     });
-
-    // Using concat to combine observables and lastValueFrom for async/await
+  
     try {
       const responses = await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
@@ -271,7 +273,7 @@ export class AnalysisComponent {
       );
     }
   }
-
+  
   async deleteEntry() {
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
@@ -330,9 +332,10 @@ export class AnalysisComponent {
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
-    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
+    if (cleanedData.id && (typeof cleanedData.id === 'string' && cleanedData.id.startsWith('temp_') || cleanedData.__isNew)) {
       delete cleanedData.id;
     }
+
     return cleanedData;
   }
 
