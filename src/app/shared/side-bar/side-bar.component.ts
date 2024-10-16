@@ -163,6 +163,7 @@ if (this.signalsService.isidUserEmpty()){
   }
   
   async getpermissionxProjects(idContract: number) {
+    this.projectData = [];  // Siempre vaciamos el array de proyectos
     this.projectService.getProjectsByContract(idContract, this.signalsService.idUser())
       .subscribe({
         next: (data) => {
@@ -172,13 +173,13 @@ if (this.signalsService.isidUserEmpty()){
             this.trackingService.setProject(this.selectedProjectId);
           } else {
             alert(`No se encontró ningún Project para el contrato ${idContract}`);
+            //this.projectData = [];
             this.selectedProjectId = '';
             this.trackingService.setProject('');
           }
         },
         error: (error) => {
-          console.error('Error al obtener proyectos:', error);
-          this.projectData = [];
+          console.error('Error al obtener proyectos:', error);          
           this.selectedProjectId = '';
           this.trackingService.setProject('');
         }
