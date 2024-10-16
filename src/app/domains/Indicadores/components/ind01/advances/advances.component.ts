@@ -25,6 +25,7 @@ import { ChartComponent } from 'ng-apexcharts';
 import { CommonModule } from '@angular/common';
 import { alerts } from 'app/helpers/alerts';
 import { OilfieldService } from 'app/services/oilfield.service';
+import * as XLSX from 'xlsx';
 
 export type ChartOptions = {
   series: ApexAxisChartSeries;
@@ -47,11 +48,12 @@ interface ContractAdvance {
   id?: string;
   __isNew?: boolean;
   __modified?: boolean;
-  accumalateProgram?: number;
+  accumulateProgram?: number;
   accumulatePhysical?: number;
   date: string;
   physicalAdvanced: number;
   programAdvanced: number;
+  idContract: number;
 }
 
 @Component({
@@ -66,6 +68,7 @@ interface ContractAdvance {
   styleUrl: './advances.component.scss'
 })
 export class AdvancesComponent implements OnInit, OnChanges {
+
 deleteEntry() {
 throw new Error('Method not implemented.');
 }
@@ -88,15 +91,15 @@ throw new Error('Method not implemented.');
     { field: 'date', headerName: 'Fecha', width: 150, editable: true },
     { field: 'programAdvanced', headerName: 'Programado', width: 150, editable: true },
     { field: 'physicalAdvanced', headerName: 'Fisico', width: 100, editable: true },
-    { field: 'accumalateProgram', headerName: 'Acumulado Programado', width: 220, editable: true },
+    { field: 'accumulateProgram', headerName: 'Acumulado Programado', width: 220, editable: true },
     { field: 'accumulatePhysical', headerName: 'Acumulado Fisico', width: 190, editable: true }
   ];
 
   rowData: ContractAdvance[] = [];
 
   // Configuración de ApexCharts
-  public chartOptions: Partial<ChartOptions>;
   @ViewChild('chart') chart: ChartComponent;
+  public chartOptions: Partial<ChartOptions>;
   private tempIdCounter: number = 0;
   newlyAddedRows: string[] = [];
   notSavedChanges: boolean;
@@ -106,53 +109,66 @@ throw new Error('Method not implemented.');
       series: [
         {
           name: 'acumulado programado',
-          data: this.datosMensuales.map(d => d.accumalateProgram)
+          data: this.datosMensuales.map(d => d.accumulateProgram)
         },
         {
           name: 'acumulado fisico',
           data: this.datosMensuales.map(d => d.accumulatePhysical)
         }
-      ],  
+      ],
       chart: {
-        height: 300,
-        type: "line"
-      },
-      plotOptions: {
-        bar: {
-          horizontal: false,
-          columnWidth: "55%",
-          borderRadius: 5
+        height: '100%',
+        width: '100%',
+        type: "line",
+        dropShadow: {
+          enabled: true,
+          color: "#000",
+          top: 18,
+          left: 7,
+          blur: 10,
+          opacity: 0.2
+        },
+        toolbar: {
+          show: false
         }
       },
+      colors: ["#77B6EA", "#545454"],
       dataLabels: {
-        enabled: false
+        enabled: true
       },
       stroke: {
-        show: true,
-        width: 2,
-        colors: ["transparent"]
+        curve: "smooth"
       },
       title: {
-        text: "estadisticas"
+        text: "Average High & Low Temperature",
+        align: "left"
       },
-      xaxis: {  
-        categories: this.datosMensuales.map(dato => dato.date)
+      grid: {
+        borderColor: "#e7e7e7",
+        row: {
+          colors: ["#f3f3f3", "transparent"], // takes an array which will be repeated on columns
+          opacity: 0.5
+        }
+      },
+      markers: {
+        size: 1
+      },
+      xaxis: {
+        categories: this.datosMensuales.map(d => d.date)
       },
       yaxis: {
         title: {
-          text: "$ (thousands)"
+          text: "dias"
         }
       },
-      fill: {
-        opacity: 1
-      },
-      tooltip: {
-        y: {
-          formatter: function(val) {
-            return "$ " + val + " thousands";
-          }
-        }
+      legend: {
+        position: "top",
+        horizontalAlign: "right",
+        floating: true,
+        offsetY: -25,
+        offsetX: -5
       }
+      
     };
     effect(() => {
       const nuevoValor = this._signalsService.getContractSelectedBySidebar();
@@ -165,8 +181,11 @@ throw new Error('Method not implemented.');
    
   }
 
-  ngOnInit(): void {
-    
+  ngOnInit(): void { 
+    console.log(this.curretnContractSelected);
+    if (this.curretnContractSelected) {
+      this.obtenerDatos()
+    }
   }
 
   onCellValueChanged(event: any) {
@@ -233,6 +252,7 @@ throw new Error('Method not implemented.');
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      console.log(cleanedData);
       return this._advancesService.updateAdvance(Number(row.id), cleanedData);
     });
 
@@ -270,8 +290,9 @@ throw new Error('Method not implemented.');
           date: advance.date.split('T')[0],
           programAdvanced: advance.programAdvanced,
           physicalAdvanced: advance.physicalAdvanced,
-          accumalateProgram: acumuladoProgramado,
+          accumulateProgram: acumuladoProgramado,
           accumulatePhysical: acumuladoFisico,
+          idContract: advance.idContract,
           id: advance.id
         };
       });
@@ -302,8 +323,9 @@ throw new Error('Method not implemented.');
       date: advance.date.split('T')[0],
       programAdvanced: advance.programAdvanced, 
       physicalAdvanced: advance.physicalAdvanced,
-      accumalateProgram: advance.accumalateProgram,
+      accumulateProgram: advance.accumulateProgram,
       accumulatePhysical: advance.accumulatePhysical,
+      idContract: advance.idContract,
       id: advance.id
     }));
 
@@ -312,7 +334,7 @@ throw new Error('Method not implemented.');
       series: [
         {
           name: 'acumulado programado',
-          data: this.datosMensuales.map(d => d.accumalateProgram)
+          data: this.datosMensuales.map(d => d.accumulateProgram)
         },
         {
           name: 'acumulado fisico',
@@ -320,7 +342,8 @@ throw new Error('Method not implemented.');
         }
       ],
       chart: {
-        height: 350,
+        height: '100%',
+        width: '100%',
         type: "line",
         dropShadow: {
           enabled: true,
@@ -373,8 +396,62 @@ throw new Error('Method not implemented.');
       
     };
 
-    if (this.chart) {
+    console.log(this.chart);
+    if (this.chart && this.chart.updateOptions) {
       this.chart.updateOptions(this.chartOptions);
+    } else {
+      console.warn('La instancia de la gráfica no está disponible para actualizar');
     }
+  }
+
+  importExcel(event: any) {
+    const file = event.target.files[0];
+    const fileReader = new FileReader();
+
+    fileReader.onload = (e: any) => {
+      const arrayBuffer = e.target.result;
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const data = XLSX.utils.sheet_to_json(worksheet, { raw: true });
+
+      console.log(data);
+
+      // Procesar los datos
+      const processedData = data.map((row: any) => ({
+        date: String(row['Fecha']),
+        programAdvanced: Number(row['Programado']),
+        physicalAdvanced: Number(row['Fisico']),
+        idContract: this.curretnContractSelected
+      }));
+
+      console.log(processedData);
+
+      processedData.map(item => {
+        console.log(item);
+        this.rowData.push(item);
+      });
+
+      // // Actualizar rowData con los nuevos datos
+      // this.rowData = [...processedData, ...this.rowData];
+      // this.notSavedChanges = true;
+
+      // // Actualizar la gráfica
+      // this.actualizarDatos();
+
+      alerts.basicAlert(
+        'Importación exitosa',
+        'Los datos del Excel se han importado correctamente.',
+        'success'
+      );
+    };
+
+    fileReader.readAsArrayBuffer(file);
+  }
+
+  private formatDate(dateString: string): string {
+    // Asumiendo que la fecha en el Excel está en formato DD/MM/YYYY
+    const [day, month, year] = dateString.split('/');
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
   }
 }
