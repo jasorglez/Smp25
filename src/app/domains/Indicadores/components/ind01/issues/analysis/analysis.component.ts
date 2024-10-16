@@ -9,6 +9,7 @@ import { IssuesService } from 'app/services/issues.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { IssuesInfoComponent } from '../issues-info/issues-info.component';
 import { WorkprogramsService } from 'app/services/workprograms.service';
+import { MultiLineEditorComponent } from "../multi-line-editor.component";
 
 interface WorkProgram {
   id: number;
@@ -22,7 +23,7 @@ interface WorkProgram {
 @Component({
   selector: 'app-analysis',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, IssuesInfoComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, IssuesInfoComponent, MultiLineEditorComponent],
   templateUrl: '../identification/identification.component.html',
   styleUrl: './analysis.component.scss'
 })
@@ -36,6 +37,7 @@ export class AnalysisComponent {
   idProject: number;
   nameIdentif: string;
   workProgramData: WorkProgram[] = [];
+  frameworkComponents: { [p: string]: any; };
 
   constructor() {
     effect(() => {
@@ -240,18 +242,18 @@ export class AnalysisComponent {
     const modifiedRows = this.rowData.filter(
       (row) => row.__modified && !this.newlyAddedRows.includes(row.id)
     );
-  
+
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       return console.log(cleanedData);
       //return this.issuesService.addAnalysis(cleanedData);
     });
-  
+
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       return this.issuesService.updateAnalysis(row.id, cleanedData);
     });
-  
+
     try {
       const responses = await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
@@ -273,7 +275,7 @@ export class AnalysisComponent {
       );
     }
   }
-  
+
   async deleteEntry() {
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {

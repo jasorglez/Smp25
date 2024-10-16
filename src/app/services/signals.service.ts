@@ -178,6 +178,16 @@ export class SignalsService {
     this.companyName = signal(null);
     this.companyCheckedSignal = signal(false);
     this.contractCheckedSignal = signal(false);
+    this.idIdentification = signal(null);
+    this.idProjectByIdentification = signal(null);
+    this.eventIdentification = signal(null);
+    this.classificationIdentification = signal(null);
+    this.registeredDateIdentification = signal(null);
+    this.nameIdentification = signal(null);
+    this.idAnalysis = signal(null);
+    this.nameAnalysis = signal(null);
+    this.idContingencyAction = signal(null);
+    this.nameContingencyAction = signal(null);
     // Reinicia this.profile
     this.profileSignal(null, null, null, null, null, null);
   }

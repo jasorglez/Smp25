@@ -8,11 +8,12 @@ import { SignalsService } from 'app/services/signals.service';
 import { IssuesService } from 'app/services/issues.service';
 import { catchError, concat, EMPTY, lastValueFrom, of, toArray } from 'rxjs';
 import { IssuesInfoComponent } from "../issues-info/issues-info.component";
+import { MultiLineEditorComponent } from "../multi-line-editor.component";
 
 @Component({
   selector: 'app-identification',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, IssuesInfoComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, IssuesInfoComponent, MultiLineEditorComponent],
   templateUrl: './identification.component.html',
   styleUrl: './identification.component.scss'
 })
@@ -51,6 +52,7 @@ export class IdentificationComponent {
   id: string;
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
+  frameworkComponents: { [p: string]: any; };
 
   obtenerDatos() {
     this.issuesService

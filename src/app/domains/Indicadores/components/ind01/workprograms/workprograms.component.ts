@@ -235,13 +235,19 @@ export class WorkprogramsComponent {
     const id = this.typeWorkProgram === 'Project' ? this.idProject : this.idContract;
     this.workprogramsService.getWorkPrograms(id, this.typeWorkProgram).pipe(
       map(response => {
-        const transformedData = this.transformData(response);
-        gantt.parse(transformedData);
-        console.log(transformedData);
-        return transformedData;
+        if (response && response.length > 0) {
+          const transformedData = this.transformData(response);
+          gantt.clearAll(); // Limpiar todos los datos existentes
+          gantt.parse(transformedData);
+          return transformedData;
+        } else {
+          gantt.clearAll(); // Limpiar todos los datos si no hay respuesta
+          return { data: [] };
+        }
       }),
       catchError(error => {
         console.error('Error al cargar los datos:', error);
+        gantt.clearAll(); // Limpiar todos los datos en caso de error
         return of({ data: [] });
       })
     ).subscribe();
