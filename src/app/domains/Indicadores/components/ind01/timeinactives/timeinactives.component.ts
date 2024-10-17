@@ -17,6 +17,11 @@ interface WorkProgram {
   text: string;
 }
 
+interface Catalog {
+  id: number;
+  description: string;
+}
+
 @Component({
   selector: 'app-timeinactives',
   standalone: true,
@@ -36,6 +41,8 @@ export class TimeinactivesComponent {
       this.idProject = this.signalsService.getProjectSelectedBySidebar()();
       this.obtenerDatos();
       this.fetchWorkPrograms();
+      this.fetchAreas();
+      this.fetchCauses();
     });
   }
 
@@ -52,6 +59,8 @@ export class TimeinactivesComponent {
   companys: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
   workProgramData: WorkProgram[] = [];
+  areaData: Catalog[] = [];
+  causeData: Catalog[] = [];
   selectedRowData: any = null;
   id: string;
   private gridApi: GridApi;
@@ -81,7 +90,7 @@ export class TimeinactivesComponent {
   }
 
   fetchWorkPrograms() {
-    this.workprogramsService.getWorkPrograms(this.idProject, 'Project').subscribe(
+    this.workprogramsService.getWorkPrograms2Fields(this.idProject).subscribe(
       (data: WorkProgram[]) => {
         this.workProgramData = data;
         console.log(this.workProgramData);
@@ -90,17 +99,23 @@ export class TimeinactivesComponent {
     );
   }
 
-  updateActivityOptions() {
-    const idwpColDef = this.columnDefs.find(col => col.field === 'idProgram');
-    if (idwpColDef && idwpColDef.cellEditorParams) {
-      idwpColDef.cellEditorParams.values = this.workProgramData.map(item => ({
-        value: item.id,
-        label: `${item.activity} - ${item.text}`
-      }));
-    }
-    if (this.gridApi) {
-      this.gridApi.refreshHeader();
-    }
+  fetchAreas() {
+    this.timeinactivesService.getArea().subscribe(
+      (data: Catalog[]) => {
+        this.areaData = data;
+        console.log(this)
+      },
+      (error) => console.error('Error fetching areas:', error)
+    );
+  }
+
+  fetchCauses() {
+    this.timeinactivesService.getCause().subscribe(
+      (data: Catalog[]) => {
+        this.causeData = data;
+      },
+      (error) => console.error('Error fetching causes:', error)
+    );
   }
 
   get columnDefs(): ColDef[] {
@@ -116,6 +131,34 @@ export class TimeinactivesComponent {
             return params.value.split('T')[0];
           }
           return '';
+        }
+      },
+      {
+        field: 'idArea',
+        headerName: 'Área',
+        editable: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.areaData.map(item => item.id),
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.areaData.find(item => item.id === params.value);
+          return foundItem ? `${foundItem.description}` : params.value;
+        }
+      },
+      {
+        field: 'idClasification',
+        headerName: 'Clasificación',
+        editable: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.causeData.map(item => item.id),
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.causeData.find(item => item.id === params.value);
+          return foundItem ? `${foundItem.description}` : params.value;
         }
       },
       {
@@ -158,7 +201,7 @@ export class TimeinactivesComponent {
       },
       {
         field: 'total',
-        headerName: 'Total',
+        headerName: 'Total Afectación',
         editable: false,
         width: 150,
       },

@@ -27,4 +27,12 @@ export class TimeinactivesService {
   deleteInactiveTime(id: number): Observable<any> {
     return this.http.delete(`${environment.urlSmp}/Timeinactives/${id}`, { headers: this.trackingService.getHeaders() });
   }
+
+  getArea(): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog?type=AREA`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getCause(): Observable<any[]> {    
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog?type=CAUSE`, { headers: this.trackingService.getHeaders() });
+  }
 }
