@@ -59,7 +59,7 @@ export class ProjectsService {
 
   private handleError(error: HttpErrorResponse) {
     if (error.status === 404) {
-      alert('No projects found');
+      console.log('No projects found');
       return [];
     }
     console.error('An error occurred:', error);

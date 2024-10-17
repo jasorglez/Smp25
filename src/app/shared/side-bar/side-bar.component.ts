@@ -108,7 +108,7 @@ if (this.signalsService.isidUserEmpty()){
             }
           });
         } else {
-          alert(`No se encontró ningún usuario con idUser ${this.signalsService.idUser()}`);
+          console.log(`No se encontró ningún usuario con idUser ${this.signalsService.idUser()}`);
           this.selectedRoot = null;
         }
       },
@@ -146,6 +146,8 @@ if (this.signalsService.isidUserEmpty()){
           // Ya tengo el id de la compañía root
           this.selectedContractId = this.contractData[0].id;
 
+          this.signalsService.setContractSelectedBySidebar(Number(this.selectedContractId));
+
           // Ahora consulto la información de root
           this.trackingService.setContract(this.selectedContractId);
          // this.getpermissionxProjects(parseInt(this.selectedContractId));
@@ -180,7 +182,7 @@ if (this.signalsService.isidUserEmpty()){
             this.selectedProjectId = this.projectData[0].id;
             this.trackingService.setProject(this.selectedProjectId);
           } else {
-            alert(`No se encontró ningún Project para el contrato ${idContract}`);
+            console.log(`No se encontró ningún Project para el contrato ${idContract}`);
             this.selectedProjectId = '';
             this.trackingService.setProject('');
           }
