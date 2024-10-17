@@ -279,6 +279,7 @@ throw new Error('Method not implemented.');
     }
   }
   obtenerDatos() {
+    console.log("entra a obtener datos");
     this._advancesService.getAdvancesByContract(this.curretnContractSelected, 'Contract').subscribe((advances: ContractAdvance) => {
       console.log(advances);
       let acumuladoProgramado = 0;
@@ -318,6 +319,7 @@ throw new Error('Method not implemented.');
 
   private actualizarDatos() {
     // Actualizar datos de la tabla
+    console.log("entra a actualizar datos");
     console.log(this.datosMensuales);
     this.rowData = this.datosMensuales.map(advance => ({
       date: advance.date.split('T')[0],
@@ -365,7 +367,7 @@ throw new Error('Method not implemented.');
         curve: "smooth"
       },
       title: {
-        text: "Average High & Low Temperature",
+        text: "Avance de contrato",
         align: "left"
       },
       grid: {
@@ -383,7 +385,7 @@ throw new Error('Method not implemented.');
       },
       yaxis: {
         title: {
-          text: "Temperature"
+          text: "Medida de avance"
         }
       },
       legend: {
@@ -406,6 +408,20 @@ throw new Error('Method not implemented.');
 
   importExcel(event: any) {
     const file = event.target.files[0];
+    const allowedTypes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel'
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      alerts.basicAlert(
+        'Error de archivo',
+        'Por favor, seleccione un archivo Excel válido (.xlsx o .xls).',
+        'error'
+      );
+      return;
+    }
+
     const fileReader = new FileReader();
 
     fileReader.onload = (e: any) => {
@@ -415,43 +431,50 @@ throw new Error('Method not implemented.');
       const worksheet = workbook.Sheets[firstSheetName];
       const data = XLSX.utils.sheet_to_json(worksheet, { raw: true });
 
-      console.log(data);
+      console.log('Datos importados:', data);
 
       // Procesar los datos
       const processedData = data.map((row: any) => ({
-        date: String(row['Fecha']),
+        date: this.excelDateToJSDate(Number(row['Fecha'])),
         programAdvanced: Number(row['Programado']),
         physicalAdvanced: Number(row['Fisico']),
-        idContract: this.curretnContractSelected
+        idContract: this.curretnContractSelected,
+        active: 1,
       }));
 
-      console.log(processedData);
+      console.log('Datos procesados:', processedData);
 
       processedData.map(item => {
         console.log(item);
-        this.rowData.push(item);
+        this._advancesService.addAdvance(item).subscribe((response) => {
+          console.log(response);
+        });
+      
       });
 
-      // // Actualizar rowData con los nuevos datos
-      // this.rowData = [...processedData, ...this.rowData];
-      // this.notSavedChanges = true;
-
-      // // Actualizar la gráfica
-      // this.actualizarDatos();
+      setTimeout(() => {
+        this.obtenerDatos();
+      }, 1000);
 
       alerts.basicAlert(
         'Importación exitosa',
         'Los datos del Excel se han importado correctamente.',
         'success'
       );
+      
     };
 
     fileReader.readAsArrayBuffer(file);
+    
+    
   }
 
-  private formatDate(dateString: string): string {
-    // Asumiendo que la fecha en el Excel está en formato DD/MM/YYYY
-    const [day, month, year] = dateString.split('/');
-    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  private excelDateToJSDate(excelDate: number): string {
+    // Excel usa el 1 de enero de 1900 como día 1
+    const date = new Date((excelDate - 1) * 24 * 60 * 60 * 1000);
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }
