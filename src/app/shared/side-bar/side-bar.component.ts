@@ -181,7 +181,6 @@ if (this.signalsService.isidUserEmpty()){
             this.trackingService.setProject(this.selectedProjectId);
           } else {
             alert(`No se encontró ningún Project para el contrato ${idContract}`);
-            //this.projectData = [];
             this.selectedProjectId = '';
             this.trackingService.setProject('');
           }
