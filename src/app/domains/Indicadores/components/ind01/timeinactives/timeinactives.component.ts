@@ -205,6 +205,13 @@ export class TimeinactivesComponent {
         field: 'total',
         headerName: 'Total Afectación',
         editable: false,
+        cellDataType: 'number',
+        valueFormatter: (params) => {
+          if (params.value) {
+            return params.value.toFixed(2);
+          }
+          return '';
+        },
         width: 150,
       },
       {
