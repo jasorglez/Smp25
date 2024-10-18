@@ -20,7 +20,7 @@ import {
   ApexGrid,
   ApexMarkers
 } from "ng-apexcharts";
-import { concat, lastValueFrom, Subscription, toArray } from 'rxjs';
+import { concat, lastValueFrom, toArray } from 'rxjs';
 import { ChartComponent } from 'ng-apexcharts';
 import { CommonModule } from '@angular/common';
 import { alerts } from 'app/helpers/alerts';
@@ -120,6 +120,7 @@ throw new Error('Method not implemented.');
         height: '100%',
         width: '100%',
         type: "line",
+        fontFamily: 'inherit',
         dropShadow: {
           enabled: true,
           color: "#000",
@@ -134,7 +135,7 @@ throw new Error('Method not implemented.');
       },
       colors: ["#77B6EA", "#545454"],
       dataLabels: {
-        enabled: true
+        enabled: true,
       },
       stroke: {
         curve: "smooth"
@@ -347,6 +348,7 @@ throw new Error('Method not implemented.');
         height: '100%',
         width: '100%',
         type: "line",
+        fontFamily: 'inherit',
         dropShadow: {
           enabled: true,
           color: "#000",
@@ -361,7 +363,11 @@ throw new Error('Method not implemented.');
       },
       colors: ["#77B6EA", "#545454"],
       dataLabels: {
-        enabled: true
+        enabled: true,
+        formatter: function (value) {
+          const value2 = Number(value).toFixed(2);
+          return value2; // muestra dos decimales
+        }
       },
       stroke: {
         curve: "smooth"
@@ -386,6 +392,11 @@ throw new Error('Method not implemented.');
       yaxis: {
         title: {
           text: "Medida de avance"
+        },
+        labels: {
+          formatter: (value) => {
+            return value.toFixed(2)
+          },
         }
       },
       legend: {

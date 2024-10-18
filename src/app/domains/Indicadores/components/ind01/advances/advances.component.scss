@@ -1,6 +1,4 @@
-.row {
-    height: 100vh;
-}
+
 // .col-40 {
 //     background-color: #99ff99;
 // }
@@ -67,17 +65,21 @@
 
 .chart-container,
 .table-container {
-    height: 400px; // Ajusta este valor según tus necesidades
-    overflow: auto;
+    height: 98%; // Ajusta este valor según tus necesidades
+    overflow: hidden;
 }
 
 .chart-container apx-chart {
     display: block;
-    width: 100%;
-    height: 100%;
+    width: 95%;
+    height: 98%;
 }
 
 .card-title {
     font-size: 1.25rem;
     font-weight: bold;
+}
+
+.apex-charts-title-text {
+    font-family: 'Courier New', Courier, monospace;
 }
