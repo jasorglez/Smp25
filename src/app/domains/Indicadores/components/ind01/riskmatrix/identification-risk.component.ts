@@ -6,21 +6,19 @@ import { GridApi, ColDef, GridReadyEvent, CellDoubleClickedEvent, ICellRendererP
 import { alerts } from 'app/helpers/alerts';
 import { SignalsService } from 'app/services/signals.service';
 import { catchError, of, lastValueFrom, concat, toArray, EMPTY } from 'rxjs';
-import { IssuesInfoComponent } from '../../issues/issues-info/issues-info.component';
 import { RiskmatrixService } from 'app/services/riskmatrix.service';
-import { MultiLineEditorComponent } from "../../../../../../shared/multi-line/multi-line-editor.component";
+import { MultiLineEditorComponent } from "../../../../../shared/multi-line/multi-line-editor.component";
 import { ModalService } from 'app/services/modal.service';
+import { RisksInfoComponent } from "./risks-info.component";
 
 @Component({
   selector: 'app-identification-risk',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, IssuesInfoComponent, MultiLineEditorComponent],
-  templateUrl: './identification-risk.component.html',
-  styleUrl: './identification-risk.component.scss'
+  imports: [CommonModule, FormsModule, AgGridModule, RisksInfoComponent, MultiLineEditorComponent],
+  templateUrl: './identification-risk.component.html'
 })
 export class IdentificationRiskComponent {
 
-  
   private riskMatrixService = inject(RiskmatrixService);
   private signalsService = inject(SignalsService);
   private modalServiceTable = inject(ModalService);
@@ -30,6 +28,7 @@ export class IdentificationRiskComponent {
   constructor() {
     effect(() => {
       this.idProject = this.signalsService.getProjectSelectedBySidebar()();
+      this.idIdentificationRisk = this.signalsService.getIdIdentificationRisk()();
       if (this.idProject == null) {
         this.rowData = [];
         alerts.basicAlert('Issues', 'Debe elegir un proyecto primero.', 'error');
@@ -207,17 +206,14 @@ export class IdentificationRiskComponent {
   }
 
   setSignals() {
-/*     this.signalsService.setIdIdentificationRisk(this.selectedRowData.id);
-    this.signalsService.setIdProjectByIdentification(this.selectedRowData.idProject);
-    this.signalsService.setIdentificationName(this.selectedRowData.description);
-    this.signalsService.setClassificationIdentification(this.selectedRowData.clasification);
-    this.signalsService.setEventIdentification(this.selectedRowData.event);
-    this.signalsService.setRegisteredDateIdentification(this.selectedRowData.dateRegistry);
-    // Borramos las demas signals
-    this.signalsService.setIdAnalysis(null);
-    this.signalsService.setAnalysisName(null);
-    this.signalsService.setContingencyActionName(null);
-    this.signalsService.setIdContingencyAction(null); */
+    this.signalsService.setIdIdentificationRisk(this.selectedRowData.id);
+    this.signalsService.setNameIdentificationRisk(this.selectedRowData.description);
+    this.signalsService.setCauseIdentificationRisk(this.selectedRowData.cause);
+    // // Borramos las demas signals
+    // this.signalsService.setIdAnalysis(null);
+    // this.signalsService.setAnalysisName(null);
+    // this.signalsService.setContingencyActionName(null);
+    // this.signalsService.setIdContingencyAction(null); 
   }
 
   onGridReady(params: GridReadyEvent) {

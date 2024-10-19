@@ -8,7 +8,7 @@ import { SignalsService } from 'app/services/signals.service';
 @Component({
   selector: 'app-issues',
   standalone: true,
-  imports: [CommonModule, IdentificationComponent, AnalysisComponent,ContingencyActionsComponent],
+  imports: [CommonModule, IdentificationComponent, AnalysisComponent, ContingencyActionsComponent],
   templateUrl: './issues.component.html',
   styleUrl: './issues.component.scss'
 })

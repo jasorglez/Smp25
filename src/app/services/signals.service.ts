@@ -60,13 +60,30 @@ export class SignalsService {
   /* Aquí se definen las signals para el RiskMatrix */
 
   private idIdentificationRisk = signal<number>(null);
+  private nameIdentificationRisk = signal<string>(null);
+  private causeIdentificationRisk = signal<string>(null);
 
   setIdIdentificationRisk(id: number) {
-    this.idIdentificationRisk.set(id); 
+    this.idIdentificationRisk.set(id);
   }
 
   getIdIdentificationRisk() {
     return this.idIdentificationRisk;
+  }
+
+  setNameIdentificationRisk(description: any) {
+    this.nameIdentificationRisk.set(description);
+  }
+  setCauseIdentificationRisk(cause: any) {
+    this.causeIdentificationRisk.set(cause);
+  }
+
+  getNameIdentificationRisk() {
+    return this.nameIdentificationRisk();
+  }
+
+  getCauseIdentificationRisk() {
+    return this.causeIdentificationRisk();
   }
 
   profileSignal(id: number, email: string, picture: string, name: string, organization: string, position: string) {
