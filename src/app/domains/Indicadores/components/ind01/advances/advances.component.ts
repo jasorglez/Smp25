@@ -20,7 +20,7 @@ import {
   ApexGrid,
   ApexMarkers
 } from "ng-apexcharts";
-import { concat, lastValueFrom, Subscription, toArray } from 'rxjs';
+import { concat, lastValueFrom, toArray } from 'rxjs';
 import { ChartComponent } from 'ng-apexcharts';
 import { CommonModule } from '@angular/common';
 import { alerts } from 'app/helpers/alerts';
@@ -69,9 +69,9 @@ interface ContractAdvance {
 })
 export class AdvancesComponent implements OnInit, OnChanges {
 
-deleteEntry() {
-throw new Error('Method not implemented.');
-}
+  deleteEntry() {
+    throw new Error('Method not implemented.');
+  }
 
 
 
@@ -91,8 +91,24 @@ throw new Error('Method not implemented.');
     { field: 'date', headerName: 'Fecha', width: 150, editable: true },
     { field: 'programAdvanced', headerName: 'Programado', width: 150, editable: true },
     { field: 'physicalAdvanced', headerName: 'Fisico', width: 100, editable: true },
-    { field: 'accumulateProgram', headerName: 'Acumulado Programado', width: 220, editable: true },
-    { field: 'accumulatePhysical', headerName: 'Acumulado Fisico', width: 190, editable: true }
+    {
+      field: 'accumulateProgram', headerName: 'Acumulado Programado', width: 220, editable: true, cellDataType: 'number',
+      valueFormatter: (params) => {
+        if (params.value) {
+          return params.value.toFixed(2);
+        }
+        return '';
+      }
+    },
+    { field: 'accumulatePhysical', headerName: 'Acumulado Fisico', width: 190, editable: true,
+      cellDataType: 'number',
+        valueFormatter: (params) => {
+          if (params.value) {
+            return params.value.toFixed(2);
+          }
+          return '';
+        }
+     }
   ];
 
   rowData: ContractAdvance[] = [];
@@ -120,6 +136,7 @@ throw new Error('Method not implemented.');
         height: '100%',
         width: '100%',
         type: "line",
+        fontFamily: 'inherit',
         dropShadow: {
           enabled: true,
           color: "#000",
@@ -134,7 +151,7 @@ throw new Error('Method not implemented.');
       },
       colors: ["#77B6EA", "#545454"],
       dataLabels: {
-        enabled: true
+        enabled: true,
       },
       stroke: {
         curve: "smooth"
@@ -168,7 +185,7 @@ throw new Error('Method not implemented.');
         offsetY: -25,
         offsetX: -5
       }
-      
+
     };
     effect(() => {
       const nuevoValor = this._signalsService.getContractSelectedBySidebar();
@@ -177,11 +194,11 @@ throw new Error('Method not implemented.');
       this.obtenerDatos();
     });
 
-   
-   
+
+
   }
 
-  ngOnInit(): void { 
+  ngOnInit(): void {
     console.log(this.curretnContractSelected);
     if (this.curretnContractSelected) {
       this.obtenerDatos()
@@ -222,14 +239,14 @@ throw new Error('Method not implemented.');
 
   async saveChanges() {
     console.log(this.rowData);
-    const isValid = this.rowData.every((item) => 
-      item.date && 
-      typeof item.programAdvanced === 'number' && 
+    const isValid = this.rowData.every((item) =>
+      item.date &&
+      typeof item.programAdvanced === 'number' &&
       typeof item.physicalAdvanced === 'number' &&
       !isNaN(item.programAdvanced) &&
       !isNaN(item.physicalAdvanced)
     );
-    
+
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
@@ -247,7 +264,7 @@ throw new Error('Method not implemented.');
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       console.log(cleanedData);
-      return this._advancesService.addAdvance(cleanedData);  
+      return this._advancesService.addAdvance(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
@@ -303,7 +320,7 @@ throw new Error('Method not implemented.');
   }
 
   revert() {
-  this.obtenerDatos()
+    this.obtenerDatos()
     this.notSavedChanges = false;
   }
 
@@ -323,7 +340,7 @@ throw new Error('Method not implemented.');
     console.log(this.datosMensuales);
     this.rowData = this.datosMensuales.map(advance => ({
       date: advance.date.split('T')[0],
-      programAdvanced: advance.programAdvanced, 
+      programAdvanced: advance.programAdvanced,
       physicalAdvanced: advance.physicalAdvanced,
       accumulateProgram: advance.accumulateProgram,
       accumulatePhysical: advance.accumulatePhysical,
@@ -347,6 +364,7 @@ throw new Error('Method not implemented.');
         height: '100%',
         width: '100%',
         type: "line",
+        fontFamily: 'inherit',
         dropShadow: {
           enabled: true,
           color: "#000",
@@ -361,7 +379,11 @@ throw new Error('Method not implemented.');
       },
       colors: ["#77B6EA", "#545454"],
       dataLabels: {
-        enabled: true
+        enabled: true,
+        formatter: function (value) {
+          const value2 = Number(value).toFixed(2);
+          return value2; // muestra dos decimales
+        }
       },
       stroke: {
         curve: "smooth"
@@ -386,6 +408,11 @@ throw new Error('Method not implemented.');
       yaxis: {
         title: {
           text: "Medida de avance"
+        },
+        labels: {
+          formatter: (value) => {
+            return value.toFixed(2)
+          },
         }
       },
       legend: {
@@ -395,7 +422,7 @@ throw new Error('Method not implemented.');
         offsetY: -25,
         offsetX: -5
       }
-      
+
     };
 
     console.log(this.chart);
@@ -449,7 +476,7 @@ throw new Error('Method not implemented.');
         this._advancesService.addAdvance(item).subscribe((response) => {
           console.log(response);
         });
-      
+
       });
 
       setTimeout(() => {
@@ -461,12 +488,12 @@ throw new Error('Method not implemented.');
         'Los datos del Excel se han importado correctamente.',
         'success'
       );
-      
+
     };
 
     fileReader.readAsArrayBuffer(file);
-    
-    
+
+
   }
 
   private excelDateToJSDate(excelDate: number): string {

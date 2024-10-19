@@ -9,8 +9,7 @@ import { Observable } from 'rxjs';
 })
 export class WorkprogramsService {
 
-  constructor(private http: HttpClient) { }
-
+  private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
   getWorkPrograms(id: number, type: string): Observable<any[]> {

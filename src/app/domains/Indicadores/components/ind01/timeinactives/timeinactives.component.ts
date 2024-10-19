@@ -8,8 +8,9 @@ import { SignalsService } from 'app/services/signals.service';
 import { TimeinactivesService } from 'app/services/timeinactives.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
-import { MultiLineEditorComponent } from '../issues/multi-line-editor.component';
+import { MultiLineEditorComponent } from '../../../../../shared/multi-line/multi-line-editor.component';
 import { ModalService } from 'app/services/modal.service';
+import { TimeEditorComponent } from './time-editor.component';
 
 interface WorkProgram {
   id: number;
@@ -25,7 +26,7 @@ interface Catalog {
 @Component({
   selector: 'app-timeinactives',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, TimeEditorComponent],
   templateUrl: './timeinactives.component.html',
   styleUrl: './timeinactives.component.scss'
 })
@@ -39,10 +40,16 @@ export class TimeinactivesComponent {
   constructor() {
     effect(() => {
       this.idProject = this.signalsService.getProjectSelectedBySidebar()();
-      this.obtenerDatos();
-      this.fetchWorkPrograms();
-      this.fetchAreas();
-      this.fetchCauses();
+      if (this.idProject == null) {
+        this.rowData = [];
+        alerts.basicAlert('Tiempos inactivos', 'Debe elegir un proyecto primero.', 'error');
+      }
+      else {
+        this.obtenerDatos();
+        this.fetchWorkPrograms();
+        this.fetchAreas();
+        this.fetchCauses();
+      }
     });
   }
 
@@ -68,6 +75,7 @@ export class TimeinactivesComponent {
 
   frameworkComponents = {
     multiLineEditor: MultiLineEditorComponent,
+    timeEditor: TimeEditorComponent
   };
 
   obtenerDatos() {
@@ -103,7 +111,7 @@ export class TimeinactivesComponent {
     this.timeinactivesService.getArea().subscribe(
       (data: Catalog[]) => {
         this.areaData = data;
-        console.log(this)
+        console.log(this.areaData)
       },
       (error) => console.error('Error fetching areas:', error)
     );
@@ -166,10 +174,7 @@ export class TimeinactivesComponent {
         headerName: 'Hora de inicio',
         editable: true,
         width: 150,
-        cellEditor: 'agTextCellEditor',
-        cellEditorParams: {
-          maxLength: 8
-        },
+        cellEditor: 'timeEditor',
         valueFormatter: (params) => {
           if (params.value) {
             return this.formatTime(params.value);
@@ -185,10 +190,7 @@ export class TimeinactivesComponent {
         headerName: 'Hora de fin',
         editable: true,
         width: 150,
-        cellEditor: 'agTextCellEditor',
-        cellEditorParams: {
-          maxLength: 8
-        },
+        cellEditor: 'timeEditor',
         valueFormatter: (params) => {
           if (params.value) {
             return this.formatTime(params.value);
@@ -203,6 +205,13 @@ export class TimeinactivesComponent {
         field: 'total',
         headerName: 'Total Afectación',
         editable: false,
+        cellDataType: 'number',
+        valueFormatter: (params) => {
+          if (params.value) {
+            return params.value.toFixed(2);
+          }
+          return '';
+        },
         width: 150,
       },
       {
@@ -280,12 +289,14 @@ export class TimeinactivesComponent {
     const newItem = {
       id: tempId,
       idProject: this.idProject,
+      idArea: null,
+      idClasification: null,
       date: '',
       timeStart: '',
-      timeEnd: '', 
-      idProgram: '',
+      timeEnd: '',
+      idProgram: null,
       cause: '',
-      active: 1
+      active: true
     };
 
     this.rowData = [newItem, ...this.rowData];
@@ -395,17 +406,20 @@ export class TimeinactivesComponent {
   // Para el formato de hora
   private formatTime(time: string): string {
     if (/^\d{2}:\d{2}:\d{2}$/.test(time)) {
-      return time;
+      return time; // Ya está en el formato correcto
     }
     return '';
   }
 
   private parseTime(value: string): string {
-    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/;
+    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
     if (timeRegex.test(value)) {
-      return value;
+      return `${value}:00`; // Añade los segundos si no están presentes
     }
-    return '';
+    if (/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/.test(value)) {
+      return value; // Ya está en el formato correcto
+    }
+    return '00:00:00';
   }
 
 }
