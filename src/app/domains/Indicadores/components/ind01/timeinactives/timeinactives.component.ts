@@ -8,7 +8,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { TimeinactivesService } from 'app/services/timeinactives.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
-import { MultiLineEditorComponent } from '../issues/multi-line-editor.component';
+import { MultiLineEditorComponent } from '../../../../../shared/multi-line/multi-line-editor.component';
 import { ModalService } from 'app/services/modal.service';
 import { TimeEditorComponent } from './time-editor.component';
 

@@ -8,7 +8,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { IssuesService } from 'app/services/issues.service';
 import { catchError, concat, EMPTY, lastValueFrom, of, toArray } from 'rxjs';
 import { IssuesInfoComponent } from "../issues-info/issues-info.component";
-import { MultiLineEditorComponent } from "../multi-line-editor.component";
+import { MultiLineEditorComponent } from "../../../../../../shared/multi-line/multi-line-editor.component";
 
 @Component({
   selector: 'app-identification',

@@ -2,46 +2,42 @@ import { CommonModule } from '@angular/common';
 import { Component, effect, HostListener, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
-import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
+import { GridApi, ColDef, GridReadyEvent, CellDoubleClickedEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { SignalsService } from 'app/services/signals.service';
-import { IssuesService } from 'app/services/issues.service';
-import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
-import { IssuesInfoComponent } from '../issues-info/issues-info.component';
-import { MultiLineEditorComponent } from '../../../../../../shared/multi-line/multi-line-editor.component';
+import { catchError, of, lastValueFrom, concat, toArray, EMPTY } from 'rxjs';
+import { IssuesInfoComponent } from '../../issues/issues-info/issues-info.component';
+import { RiskmatrixService } from 'app/services/riskmatrix.service';
+import { MultiLineEditorComponent } from "../../../../../../shared/multi-line/multi-line-editor.component";
 import { ModalService } from 'app/services/modal.service';
 
 @Component({
-  selector: 'app-contingency-actions',
+  selector: 'app-identification-risk',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, IssuesInfoComponent, MultiLineEditorComponent],
-  templateUrl: '../identification/identification.component.html',
-  styleUrl: './contingency-actions.component.scss'
+  templateUrl: './identification-risk.component.html',
+  styleUrl: './identification-risk.component.scss'
 })
-export class ContingencyActionsComponent {
+export class IdentificationRiskComponent {
 
-  private issuesService = inject(IssuesService);
+  
+  private riskMatrixService = inject(RiskmatrixService);
   private signalsService = inject(SignalsService);
   private modalServiceTable = inject(ModalService);
-
-  idIdentification = this.signalsService.idIdentification;
-  idAnalysis: number = this.signalsService.idAnalysis();
-  nameAnalysis: string;
+  idProject: number = null;
+  idIdentificationRisk = this.signalsService.getIdIdentificationRisk()();
 
   constructor() {
     effect(() => {
-      this.idAnalysis = this.signalsService.idAnalysis();
-      this.obtenerDatos();
+      this.idProject = this.signalsService.getProjectSelectedBySidebar()();
+      if (this.idProject == null) {
+        this.rowData = [];
+        alerts.basicAlert('Issues', 'Debe elegir un proyecto primero.', 'error');
+      }
+      else {
+        this.obtenerDatos();
+      }
     });
-  }
-  setSignals() {
-    this.signalsService.setContingencyActionName(this.selectedRowData.actions);
-    this.signalsService.setIdContingencyAction(this.selectedRowData.id);
-  }
-
-  resetSignals() {
-    this.signalsService.setIdContingencyAction(null);
-    this.signalsService.setContingencyActionName(null);
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -54,43 +50,70 @@ export class ContingencyActionsComponent {
 
   notSavedChanges: boolean = false;
   rowData: any;
-  companys: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
   id: string;
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
-
   frameworkComponents = {
     multiLineEditor: MultiLineEditorComponent,
   };
 
   obtenerDatos() {
-    this.issuesService
-      .getContingencyActions(this.idAnalysis)
-      .subscribe(
-        (data: any) => {
+    this.riskMatrixService
+      .getIdentificationRisks(this.idProject)
+      .pipe(
+        catchError((error) => {
+          console.error('Error al obtener identificaciones:', error);
+          return of([]); // Retorna un Observable que emite un array vacío en caso de error
+        })
+      )
+      .subscribe({
+        next: (data: any) => {
           this.rowData = data;
         },
-        (error) => {
-          if (error.status === 404) {
-            console.error('Data not found (404 error).');
-            // Handle the 404 error as needed, e.g., display a message to the user.
-          } else {
-            console.error('An error occurred:', error);
-          }
-          this.rowData = [];
+        error: () => {
+          this.rowData = []; // Asigna un array vacío en caso de error
         }
-      );
+      });
   }
 
   get columnDefs(): ColDef[] {
     return [
       {
-        field: 'actions',
-        headerName: 'Acciones',
+        field: 'id',
+        headerName: 'Riesgo',
         editable: true,
-        width: 300,
+        flex: 1
+      },
+      {
+        field: 'classification',
+        headerName: 'Clasificación',
+        editable: true,
+        cellEditor: 'agRichSelectCellEditor',
+        cellEditorParams: {
+          values: ['Administrativo', 'Técnico'],
+        },
+        flex: 2,
+      },
+      {
+        field: 'date',
+        headerName: 'Fecha de registro',
+        editable: true,
+        flex: 2,
+        cellDataType: 'dateString',
+        valueFormatter: (params) => {
+          if (params.value) {
+            return params.value.split('T')[0];
+          }
+          return '';
+        }
+      },
+      {
+        field: 'description',
+        headerName: 'Descripción',
+        editable: true,
+        flex: 3,
         cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
@@ -118,101 +141,48 @@ export class ContingencyActionsComponent {
         }
       },
       {
-        field: 'dateStart',
-        headerName: 'Fecha de inicio',
+        field: 'cause',
+        headerName: 'Causa',
         editable: true,
-        width: 150,
-        cellDataType: 'dateString',
-        valueFormatter: (params) => {
-          if (params.value) {
-            return params.value.split('T')[0];
-          }
-          return '';
-        }
-      },
-      {
-        field: 'dateEnd',
-        headerName: 'Fecha de inicio',
-        editable: true,
-        width: 150,
-        cellDataType: 'dateString',
-        valueFormatter: (params) => {
-          if (params.value) {
-            return params.value.split('T')[0];
-          }
-          return '';
-        }
-      },
-      {
-        field: 'period',
-        headerName: 'Periodo',
-        editable: true,
-        width: 150,
-      },
-      {
-        field: 'resources',
-        headerName: 'Recursos',
-        editable: true,
-        width: 150,
-      },
-      {
-        field: 'costApprox',
-        headerName: 'Costo aprox.',
-        cellEditor: 'agNumberCellEditor',
-        editable: true,
-        width: 150,
-      },
-      {
-        field: 'advancePlanned',
-        headerName: 'Avance planeado',
-        cellEditor: 'agNumberCellEditor',
-        editable: true,
-        width: 150,
-      },
-      {
-        field: 'advancedReal',
-        headerName: 'Avance real',
-        cellEditor: 'agNumberCellEditor',
-        editable: true,
-        width: 150,
-      },
-      {
-        field: 'advancedReal',
-        headerName: 'Avance real',
-        cellEditor: 'agNumberCellEditor',
-        editable: true,
-        width: 150,
-      },
-      {
-        field: 'spi',
-        headerName: 'SPI',
-        cellEditor: 'agNumberCellEditor',
-        editable: true,
-        width: 150,
-      },
-      {
-        field: 'days',
-        headerName: 'Días',
-        cellEditor: 'agNumberCellEditor',
-        editable: true,
-        width: 150,
-      },
-      {
-        field: 'status',
-        headerName: 'Estado',
-        editable: true,
-        cellEditor: 'agRichSelectCellEditor',
+        flex: 3,
+        cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
-          values: ['Abierto', 'Cerrado'],
+          maxLength: 100,
+          cols: 50,
+          rows: 3,
+          onKeyDown: (event: KeyboardEvent) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.stopPropagation();
+            }
+          },
         },
-        width: 150,
+        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+          if (!event.node.group) {
+            this.modalServiceTable.showModal({
+              params: event,
+              value: event.value,
+            });
+          }
+        },
+        cellRenderer: (params: ICellRendererParams) => {
+          if (params.node.group) {
+            return params.value;
+          }
+          return params.value;
+        }
       },
       {
-        field: 'observations',
-        headerName: 'Observaciones',
+        field: 'typeRisk',
+        headerName: 'Tipo de riesgo',
         editable: true,
-        width: 150,
-      }
+        flex: 2,
+      },
+      {
+        field: 'ownerRisk',
+        headerName: 'Dueño de riesgo',
+        editable: true,
+        flex: 2,
+      },
     ];
   }
 
@@ -236,6 +206,20 @@ export class ContingencyActionsComponent {
     this.notSavedChanges = true;
   }
 
+  setSignals() {
+/*     this.signalsService.setIdIdentificationRisk(this.selectedRowData.id);
+    this.signalsService.setIdProjectByIdentification(this.selectedRowData.idProject);
+    this.signalsService.setIdentificationName(this.selectedRowData.description);
+    this.signalsService.setClassificationIdentification(this.selectedRowData.clasification);
+    this.signalsService.setEventIdentification(this.selectedRowData.event);
+    this.signalsService.setRegisteredDateIdentification(this.selectedRowData.dateRegistry);
+    // Borramos las demas signals
+    this.signalsService.setIdAnalysis(null);
+    this.signalsService.setAnalysisName(null);
+    this.signalsService.setContingencyActionName(null);
+    this.signalsService.setIdContingencyAction(null); */
+  }
+
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
   }
@@ -244,19 +228,12 @@ export class ContingencyActionsComponent {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idAnalysis: this.idAnalysis,
-      actions: null,
-      dateStart: null,
-      dateEnd: null,
-      period: null,
-      resources: null,
-      costApprox: null,
-      advancePlanned: null,
-      advancedReal: null,
-      spi: null,
-      days: null,
-      status: null,
-      observations: null,
+      idProject: this.idProject,
+      event: "",
+      classification: "",
+      date: "",
+      typeRisk: "",
+      ownerRisk: "",
       active: 1
     };
 
@@ -270,17 +247,18 @@ export class ContingencyActionsComponent {
     const modifiedRows = this.rowData.filter(
       (row) => row.__modified && !this.newlyAddedRows.includes(row.id)
     );
-
+  
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.issuesService.addContingencyAction(cleanedData);
+      return this.riskMatrixService.addIdentificationRisk(cleanedData);
     });
-
+  
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.issuesService.updateContingencyAction(row.id, cleanedData);
+      console.log(cleanedData);
+      return this.riskMatrixService.updateIdentificationRisk(row.id, cleanedData);
     });
-
+  
     try {
       const responses = await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
@@ -316,7 +294,7 @@ export class ContingencyActionsComponent {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
     selectedData.active = 0;
-    this.issuesService.deleteContingencyAction(id).pipe(
+    this.riskMatrixService.deleteIdentificationRisk(id).pipe(
       catchError((error) => {
         alerts.basicAlert(
           'Eliminar entrada',
@@ -334,7 +312,8 @@ export class ContingencyActionsComponent {
             'Entrada eliminada satisfactoriamente.',
             'success'
           );
-          this.resetSignals();
+          this.signalsService.setIdIdentificationRisk(null);
+          this.signalsService.setIdentificationName(null);
           this.obtenerDatos();
 
           alerts.basicAlert(
@@ -363,5 +342,6 @@ export class ContingencyActionsComponent {
 
     return cleanedData;
   }
+
 
 }

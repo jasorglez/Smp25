@@ -57,6 +57,17 @@ export class SignalsService {
     return this.idUser() === null || this.idUser() === 0;
   }
 
+  /* Aquí se definen las signals para el RiskMatrix */
+
+  private idIdentificationRisk = signal<number>(null);
+
+  setIdIdentificationRisk(id: number) {
+    this.idIdentificationRisk.set(id); 
+  }
+
+  getIdIdentificationRisk() {
+    return this.idIdentificationRisk;
+  }
 
   profileSignal(id: number, email: string, picture: string, name: string, organization: string, position: string) {
     this.profile.idUser.set(id);

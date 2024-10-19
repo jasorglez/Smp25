@@ -9,7 +9,7 @@ import { IssuesService } from 'app/services/issues.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { IssuesInfoComponent } from '../issues-info/issues-info.component';
 import { WorkprogramsService } from 'app/services/workprograms.service';
-import { MultiLineEditorComponent } from "../multi-line-editor.component";
+import { MultiLineEditorComponent } from "../../../../../../shared/multi-line/multi-line-editor.component";
 
 interface WorkProgram {
   id: number;
