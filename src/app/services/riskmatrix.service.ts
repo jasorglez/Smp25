@@ -30,4 +30,22 @@ export class RiskmatrixService {
     return this.http.delete(`${environment.urlSmp}/Identificationrisk/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
+  // RIesgos de analisis
+
+  getAnalysisRisks(id: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlSmp}/Analysisrisk?idProject=${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  addAnalysisRisk(data: any): Observable<any> {
+    return this.http.post(`${environment.urlSmp}/Identificationrisk`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateAnalysisRisk(id: number, data: any): Observable<any> {
+    return this.http.put(`${environment.urlSmp}/Identificationrisk/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteAnalysisRisk(id: number): Observable<any> {
+    return this.http.delete(`${environment.urlSmp}/Identificationrisk/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
 }
