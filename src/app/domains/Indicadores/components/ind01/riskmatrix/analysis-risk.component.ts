@@ -10,20 +10,34 @@ import { RiskmatrixService } from 'app/services/riskmatrix.service';
 import { MultiLineEditorComponent } from "../../../../../shared/multi-line/multi-line-editor.component";
 import { ModalService } from 'app/services/modal.service';
 import { RisksInfoComponent } from "./risks-info.component";
+import { WorkprogramsService } from 'app/services/workprograms.service';
+
+interface WorkProgram {
+  id: number;
+  activity: string;
+  text: string;
+  startDate: string;
+  endDate: string;
+  criticRoute: string;
+  phase: string;
+}
 
 @Component({
   selector: 'app-analysis-risk',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, RisksInfoComponent, MultiLineEditorComponent, RisksInfoComponent],
-  templateUrl: './identification-risk.component.html'
+  templateUrl: './analysis-risk.component.html'
 })
 export class AnalysisRiskComponent {
 
   private riskMatrixService = inject(RiskmatrixService);
+  private workprogramsService = inject(WorkprogramsService);
   private signalsService = inject(SignalsService);
   private modalServiceTable = inject(ModalService);
+
   idProject: number = null;
   idIdentificationRisk = this.signalsService.getIdIdentificationRisk()();
+fecha: any;
 
   constructor() {
     effect(() => {
@@ -34,6 +48,7 @@ export class AnalysisRiskComponent {
       }
       else {
         this.obtenerDatos();
+        this.fetchWorkPrograms();
       }
     });
   }
@@ -49,6 +64,7 @@ export class AnalysisRiskComponent {
   notSavedChanges: boolean = false;
   rowData: any;
   newlyAddedRows: string[] = [];
+  workProgramData: WorkProgram[] = [];
   selectedRowData: any = null;
   id: string;
   private gridApi: GridApi;
@@ -69,6 +85,7 @@ export class AnalysisRiskComponent {
       .subscribe({
         next: (data: any) => {
           this.rowData = data;
+          console.log(this.rowData);
         },
         error: () => {
           this.rowData = []; // Asigna un array vacío en caso de error
@@ -76,42 +93,137 @@ export class AnalysisRiskComponent {
       });
   }
 
+  fetchWorkPrograms() {
+    this.workprogramsService.getWorkPrograms2Fields(this.idProject).subscribe(
+      (data: WorkProgram[]) => {
+        this.workProgramData = data;
+        this.updateActivityOptions();
+        console.log(this.idProject);
+      },
+      (error) => console.error('Error fetching work programs:', error)
+    );
+  }
+
+  updateActivityOptions() {
+    const idwpColDef = this.columnDefs.find(col => col.field === 'idProgram');
+    if (idwpColDef && idwpColDef.cellEditorParams) {
+      idwpColDef.cellEditorParams.values = this.workProgramData.map(item => ({
+        value: item.activity,
+        label: `${item.activity} - ${item.text}`
+      }));
+    }
+    if (this.gridApi) {
+      this.gridApi.refreshHeader();
+    }
+  }
+
+  onActivityChanged(event: any) {
+    if (event.newValue) {
+      const selectedProgram = this.workProgramData.find(item => item.activity === event.newValue);
+      if (selectedProgram) {
+        event.data.startDate = selectedProgram.startDate;
+        event.data.endDate = selectedProgram.endDate;
+        event.data.routeCritic = selectedProgram.criticRoute;
+        event.data.idFase = selectedProgram.phase;
+        this.gridApi.refreshCells({
+          rowNodes: [event.node],
+          columns: ['startDate', 'endDate', 'routeCritic']
+        });
+        this.onCellValueChanged(event);
+      }
+    }
+  }
+
   get columnDefs(): ColDef[] {
     return [
       {
         field: 'id',
-        headerName: 'Riesgo',
+        headerName: '# Riesgo',
         editable: true,
-        flex: 1
+        width: 70
       },
       {
-        field: 'classification',
-        headerName: 'Clasificación',
+        field: 'idProgram',
+        headerName: 'Programa de trabajo',
         editable: true,
-        cellEditor: 'agRichSelectCellEditor',
+        cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: ['Administrativo', 'Técnico'],
+          values: this.workProgramData.map(item => item.activity),
         },
-        flex: 2,
-      },
-      {
-        field: 'date',
-        headerName: 'Fecha de registro',
-        editable: true,
-        flex: 2,
-        cellDataType: 'dateString',
         valueFormatter: (params) => {
-          if (params.value) {
-            return params.value.split('T')[0];
-          }
-          return '';
-        }
+          const foundItem = this.workProgramData.find(item => item.activity === params.value);
+          return foundItem ? `${foundItem.activity} - ${foundItem.text}` : params.value;
+        },
+        onCellValueChanged: this.onActivityChanged.bind(this),
+        // Add this line:
+        valueParser: (params) => params.newValue,
+        width: 150
       },
       {
-        field: 'description',
-        headerName: 'Descripción',
+        field: 'startDate',
+        headerName: 'Fecha de inicio',
+        editable: false,
+        width: 100
+      },
+      {
+        field: 'endDate',
+        headerName: 'Fecha de fin',
+        editable: false,
+        width: 100
+      },
+      {
+        field: 'routeCritic',
+        headerName: 'Ruta crítica',
+        editable: false,
+        width: 80
+      },
+      {
+        field: 'probability',
+        headerName: 'Probabilidad',
         editable: true,
-        flex: 3,
+        width: 80
+      },
+      {
+        field: 'scope',
+        headerName: 'Alcance',
+        editable: true,
+        width: 80
+      },
+      {
+        field: 'time',
+        headerName: 'Tiempo',
+        editable: true,
+        width: 80
+      },
+      {
+        field: 'cost',
+        headerName: 'Costo',
+        editable: true,
+        width: 80
+      },
+      {
+        field: 'quality',
+        headerName: 'Caliidad',
+        editable: true,
+        width: 80
+      },
+      {
+        field: 'average',
+        headerName: 'Impacto promedio',
+        editable: false,
+        width: 80
+      },
+      {
+        field: 'calification',
+        headerName: 'Calificación',
+        editable: false,
+        width: 80
+      },
+      {
+        field: 'urgency',
+        headerName: 'Urgencia',
+        editable: false,
+        width: 160,
         cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
@@ -139,47 +251,16 @@ export class AnalysisRiskComponent {
         }
       },
       {
-        field: 'cause',
-        headerName: 'Causa',
-        editable: true,
-        flex: 3,
-        cellEditor: 'agPopupTextCellEditor',
-        cellEditorParams: {
-          maxLength: 100,
-          cols: 50,
-          rows: 3,
-          onKeyDown: (event: KeyboardEvent) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.stopPropagation();
-            }
-          },
-        },
-        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-          if (!event.node.group) {
-            this.modalServiceTable.showModal({
-              params: event,
-              value: event.value,
-            });
-          }
-        },
-        cellRenderer: (params: ICellRendererParams) => {
-          if (params.node.group) {
-            return params.value;
-          }
-          return params.value;
-        }
+        field: 'idFase',
+        headerName: 'Fase',
+        editable: false,
+        width: 100
       },
       {
-        field: 'typeRisk',
-        headerName: 'Tipo de riesgo',
+        field: 'answer',
+        headerName: 'Respuesta',
         editable: true,
-        flex: 2,
-      },
-      {
-        field: 'ownerRisk',
-        headerName: 'Dueño de riesgo',
-        editable: true,
-        flex: 2,
+        width: 150
       },
     ];
   }
@@ -224,12 +305,21 @@ export class AnalysisRiskComponent {
     const newItem = {
       id: tempId,
       idProject: this.idProject,
-      event: "",
-      classification: "",
-      date: "",
-      typeRisk: "",
-      ownerRisk: "",
-      active: 1
+      idProgram: null,
+      startDate: "",
+      endDate: "",
+      routeCritic: "",
+      probability: 0,
+      scope: 0,
+      time: 0,
+      cost: 0,
+      quality: 0,
+      average: null,
+      calification: null,
+      urgency: "",
+      idFase: "",
+      answer: "",
+      active: true
     };
 
     this.rowData = [newItem, ...this.rowData];

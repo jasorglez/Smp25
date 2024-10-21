@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { GridApi, ColDef, GridReadyEvent, CellDoubleClickedEvent, ICellRendererParams } from 'ag-grid-enterprise';
@@ -10,24 +10,28 @@ import { RiskmatrixService } from 'app/services/riskmatrix.service';
 import { MultiLineEditorComponent } from "../../../../../shared/multi-line/multi-line-editor.component";
 import { ModalService } from 'app/services/modal.service';
 import { RisksInfoComponent } from "./risks-info.component";
+import { DatePipe } from '@angular/common';
 
 @Component({
   selector: 'app-identification-risk',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, RisksInfoComponent, MultiLineEditorComponent],
-  templateUrl: './identification-risk.component.html'
+  templateUrl: './identification-risk.component.html',
+  providers: [DatePipe]
 })
-export class IdentificationRiskComponent {
+export class IdentificationRiskComponent implements OnInit {
 
   private riskMatrixService = inject(RiskmatrixService);
   private signalsService = inject(SignalsService);
   private modalServiceTable = inject(ModalService);
   idProject: number = null;
   idIdentificationRisk = this.signalsService.getIdIdentificationRisk()();
+  fecha: string;
 
-  constructor() {
+  constructor(private datePipe: DatePipe) {
     effect(() => {
       this.idProject = this.signalsService.getProjectSelectedBySidebar()();
+      console.log(this.idProject);
       this.idIdentificationRisk = this.signalsService.getIdIdentificationRisk()();
       if (this.idProject == null) {
         this.rowData = [];
@@ -58,12 +62,22 @@ export class IdentificationRiskComponent {
     multiLineEditor: MultiLineEditorComponent,
   };
 
+  ngOnInit(): void {
+    // Formatear la fecha actual al formato yyyy-MM-dd
+    this.fecha = this.datePipe.transform(new Date(), 'yyyy-MM-dd');
+  }
+
+  onFechaChange() {
+    this.obtenerDatos();
+  }
+
   obtenerDatos() {
     this.riskMatrixService
-      .getIdentificationRisks(this.idProject)
+      .getIdentificationRisks(this.idProject, this.fecha)
       .pipe(
         catchError((error) => {
           console.error('Error al obtener identificaciones:', error);
+          this.rowData = []; // Asigna un array vacío en caso de error
           return of([]); // Retorna un Observable que emite un array vacío en caso de error
         })
       )
@@ -82,7 +96,7 @@ export class IdentificationRiskComponent {
       {
         field: 'id',
         headerName: 'Riesgo',
-        editable: true,
+        editable: false,
         flex: 1
       },
       {
@@ -96,22 +110,9 @@ export class IdentificationRiskComponent {
         flex: 2,
       },
       {
-        field: 'date',
-        headerName: 'Fecha de registro',
-        editable: true,
-        flex: 2,
-        cellDataType: 'dateString',
-        valueFormatter: (params) => {
-          if (params.value) {
-            return params.value.split('T')[0];
-          }
-          return '';
-        }
-      },
-      {
         field: 'description',
         headerName: 'Descripción',
-        editable: true,
+        editable: false,
         flex: 3,
         cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
@@ -142,7 +143,7 @@ export class IdentificationRiskComponent {
       {
         field: 'cause',
         headerName: 'Causa',
-        editable: true,
+        editable: false,
         flex: 3,
         cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
@@ -203,12 +204,22 @@ export class IdentificationRiskComponent {
     this.setSignals();
     event.data.__modified = true;
     this.notSavedChanges = true;
+    
+    // Añadir esta comprobación
+    if (this.newlyAddedRows.includes(event.data.id)) {
+      const index = this.rowData.findIndex(row => row.id === event.data.id);
+      if (index !== -1) {
+        this.rowData[index] = { ...this.rowData[index], ...event.data };
+      }
+    }
   }
 
   setSignals() {
-    this.signalsService.setIdIdentificationRisk(this.selectedRowData.id);
-    this.signalsService.setNameIdentificationRisk(this.selectedRowData.description);
-    this.signalsService.setCauseIdentificationRisk(this.selectedRowData.cause);
+    if (this.selectedRowData && !this.newlyAddedRows.includes(this.selectedRowData.id)) {
+      this.signalsService.setIdIdentificationRisk(this.selectedRowData.id);
+      this.signalsService.setNameIdentificationRisk(this.selectedRowData.description);
+      this.signalsService.setCauseIdentificationRisk(this.selectedRowData.cause);
+    }
     // // Borramos las demas signals
     // this.signalsService.setIdAnalysis(null);
     // this.signalsService.setAnalysisName(null);
@@ -225,12 +236,11 @@ export class IdentificationRiskComponent {
     const newItem = {
       id: tempId,
       idProject: this.idProject,
-      event: "",
       classification: "",
-      date: "",
+      date: this.fecha,
       typeRisk: "",
       ownerRisk: "",
-      active: 1
+      active: true
     };
 
     this.rowData = [newItem, ...this.rowData];
@@ -246,6 +256,7 @@ export class IdentificationRiskComponent {
   
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      console.log(cleanedData);
       return this.riskMatrixService.addIdentificationRisk(cleanedData);
     });
   

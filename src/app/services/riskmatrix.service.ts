@@ -14,8 +14,8 @@ export class RiskmatrixService {
 
   // Riesgos de identificación
 
-  getIdentificationRisks(id: number): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.urlSmp}/Identificationrisk/${id}`, { headers: this.trackingService.getHeaders() });
+  getIdentificationRisks(id: number, fecha: string): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlSmp}/Identificationrisk/${id}?date=${fecha}`, { headers: this.trackingService.getHeaders() });
   }
 
   addIdentificationRisk(data: any): Observable<any> {
@@ -33,7 +33,7 @@ export class RiskmatrixService {
   // RIesgos de analisis
 
   getAnalysisRisks(id: number): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.urlSmp}/Analysisrisk?idProject=${id}`, { headers: this.trackingService.getHeaders() });
+    return this.http.get<any[]>(`${environment.urlSmp}/Analysisrisk?idIdent=${id}`, { headers: this.trackingService.getHeaders() });
   }
 
   addAnalysisRisk(data: any): Observable<any> {
