@@ -23,12 +23,13 @@ interface WorkProgram {
 }
 
 @Component({
-  selector: 'app-analysis-risk',
+  selector: 'app-planification-risk',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, RisksInfoComponent, MultiLineEditorComponent, RisksInfoComponent],
   templateUrl: './analysis-risk.component.html'
 })
-export class AnalysisRiskComponent {
+export class PlanificationRiskComponent {
+
 
   private riskMatrixService = inject(RiskmatrixService);
   private workprogramsService = inject(WorkprogramsService);
@@ -429,6 +430,5 @@ fecha: any;
 
     return cleanedData;
   }
-
 
 }

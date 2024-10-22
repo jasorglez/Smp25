@@ -62,6 +62,7 @@ export class SignalsService {
   private idIdentificationRisk = signal<number>(null);
   private nameIdentificationRisk = signal<string>(null);
   private causeIdentificationRisk = signal<string>(null);
+  private idAnalysisRisk = signal<number>(null);
 
   setIdIdentificationRisk(id: number) {
     this.idIdentificationRisk.set(id);
@@ -84,6 +85,14 @@ export class SignalsService {
 
   getCauseIdentificationRisk() {
     return this.causeIdentificationRisk();
+  }
+
+  setIdAnalysisRisk(id: number) {
+    this.idAnalysisRisk.set(id);
+  }
+
+  getIdAnalysisRisk() {
+    return this.idAnalysisRisk;
   }
 
   profileSignal(id: number, email: string, picture: string, name: string, organization: string, position: string) {

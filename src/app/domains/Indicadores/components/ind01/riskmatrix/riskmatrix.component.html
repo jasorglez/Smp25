@@ -10,11 +10,11 @@
                 <button class="nav-link" id="analysis-tab" data-bs-toggle="pill" data-bs-target="#analysis-tab-pane"
                     type="button" role="tab" aria-controls="analysis-tab-pane" aria-selected="false">Análisis</button>
             </li>
-<!--             <li class="nav-item" role="presentation" *ngIf="idAnalysis() != null">
+           <li class="nav-item" role="presentation" *ngIf="idAnalysisRisk() != null">
                 <button class="nav-link" id="planification-tab" data-bs-toggle="pill"
                     data-bs-target="#planification-tab-pane" type="button" role="tab" aria-controls="planification-tab-pane"
                     aria-selected="false">Planificación</button>
-            </li> -->
+            </li>
         </ul>
         <div class="tab-content" id="myIssueContent">
             <div class="tab-pane show active" id="identification-tab-pane" role="tabpanel"
@@ -25,10 +25,10 @@
                 tabindex="1" *ngIf="idIdentificationRisk() != null">
                 <app-analysis-risk></app-analysis-risk>
             </div>
-<!--             <div class="tab-pane" id="planification-tab-pane" role="tabpanel" aria-labelledby="planification-tab"
-                tabindex="2" *ngIf="idAnalysis() != null">
-                <app-contingency-actions></app-contingency-actions>
-            </div> -->
+            <div class="tab-pane" id="planification-tab-pane" role="tabpanel" aria-labelledby="planification-tab"
+                tabindex="2" *ngIf="idAnalysisRisk() != null">
+                <app-planification-risk></app-planification-risk>
+            </div>
         </div>
     </div>
 </div>
