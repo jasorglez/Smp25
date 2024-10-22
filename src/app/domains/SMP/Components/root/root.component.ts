@@ -3,7 +3,7 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule } from 'ag-grid-angular';
 import { ContractsService } from 'app/services/contracts.service';
-import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { concat, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RootService } from 'app/services/root.service';
@@ -49,7 +49,7 @@ export class RootComponent {
       .getRoot()
       .subscribe((data: any) => {
         this.rowData = data;
-        console.log(data)
+     //   console.log(data)
       });
   }
 

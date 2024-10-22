@@ -30,7 +30,7 @@ export class OilfieldsComponent {
     this.inegiService.getEstados().subscribe(
       (data: any) => {
         this.estados = data.datos;
-        console.log(this.estados) ;
+        //console.log(this.estados) ;
       },
       (error) => {
         console.error('Error fetching states', error);
@@ -60,7 +60,7 @@ export class OilfieldsComponent {
       .getOilfields()
       .subscribe((data: any) => {
         this.rowData = data;
-        console.log(data)
+    //    console.log(data)
       });
   }
 

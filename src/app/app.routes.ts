@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { MainPageComponent } from './pages/main-page/main-page.component';
+import { SharedModule } from './shared/shared.module';
 
 export const routes: Routes = [
   { 
@@ -33,18 +34,7 @@ export const routes: Routes = [
             loadComponent: () => import('./domains/Indicadores/pages/procindic01/procindic01.component').then(a => a.Procindic01Component),
             children: [
               { path: '', redirectTo: 'convenios', pathMatch: 'full' },
-              { 
-                path: 'convenios', 
-                loadComponent: () => import('./domains/Indicadores/components/ind01/conventions/conventions.component').then(a => a.ConventionsComponent)
-              },
-              { 
-                path: 'avances', 
-                loadComponent: () => import('./domains/Indicadores/components/ind01/advances/advances.component').then(a => a.AdvancesComponent)
-              },
-              { 
-                path: 'workprograms',
-                loadComponent: () => import('./domains/Indicadores/components/ind01/workprograms/workprograms.component').then(a => a.WorkprogramsComponent)
-              },
+              ...SharedModule.getRoutes(),
               { 
                 path: 'issues',
                 loadComponent: () => import('./domains/Indicadores/components/ind01/issues/issues.component').then(a => a.IssuesComponent)
@@ -64,6 +54,10 @@ export const routes: Routes = [
               { 
                 path: 'timeinactives', 
                 loadComponent: () => import('./domains/Indicadores/components/ind01/timeinactives/timeinactives.component').then(a => a.TimeinactivesComponent)
+              },
+              { 
+                path: 'stakeholders', 
+                loadComponent: () => import('./domains/Indicadores/components/ind01/stakeholders/stakeholders.component').then(a => a.StakeholdersComponent)
               }
             ]
           },
@@ -79,7 +73,34 @@ export const routes: Routes = [
       },
       { 
         path: 'smp', 
-        loadComponent: () => import('./domains/SMP/Pages/proccbpi/proccbpi.component').then(b => b.ProccbpiComponent)
+        loadComponent: () => import('./domains/SMP/Pages/procsmp/proccsmp.component').then(s => s.ProccsmpComponent),
+        children:[
+          { path: '', redirectTo: 'SMP', pathMatch: 'full' }, ...SharedModule.getRoutes(),
+          {            
+            path:'users',            
+            loadComponent: () => import('./domains/SMP/Components/users/users.component').then(u => u.UsersComponent) 
+          },
+          {
+            path:'providers',
+            loadComponent: () => import('./domains/SMP/Components/providers/providers.component').then(p => p.ProvidersComponent) 
+          },
+          {
+            path:'contracts',
+            loadComponent: () => import('./domains/SMP/Components/contracts/contracts.component').then(c => c.ContractsComponent) 
+          }, 
+          {
+            path:'projects',
+            loadComponent: () => import('./domains/SMP/Components/projects/projects.component').then(p => p.ProjectsComponent) 
+          }, 
+          {
+            path:'oilfields',
+            loadComponent: () => import('./domains/SMP/Components/oilfields/oilfields.component').then(o => o.OilfieldsComponent) 
+          }, 
+          {
+            path:'root',
+            loadComponent: () => import('./domains/SMP/Components/root/root.component').then(r => r.RootComponent) 
+          }
+        ]
       }
     ]
   },

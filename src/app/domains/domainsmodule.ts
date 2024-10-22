@@ -12,7 +12,8 @@ LicenseManager.setLicenseKey("Using_this_{AG_Grid}_Enterprise_key_{AG-063297}_in
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    AgGridModule, TranslateModule  ],
+    AgGridModule, TranslateModule,
+     ],
   exports: [
     CommonModule,
     ReactiveFormsModule,

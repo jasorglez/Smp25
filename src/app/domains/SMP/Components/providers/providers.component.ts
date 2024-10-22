@@ -48,7 +48,7 @@ export class ProvidersComponent {
       .getProviders()
       .subscribe((data: any) => {
         this.rowData = data;
-        console.log(data)
+       // console.log(data)
       });
   }
 

@@ -90,7 +90,7 @@ if (this.signalsService.isidUserEmpty()){
     this.rootService.get2Root(this.signalsService.idUser()).subscribe({
       next: (data) => {
         const root = Object.values(data);
-        console.log('Root', root)
+        //console.log('Root', root)
         if (root && root.length > 0) {
           this.rootData = root;
           // Seleccionar automáticamente el primer elemento
