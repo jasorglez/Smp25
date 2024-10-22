@@ -78,7 +78,7 @@ export const routes: Routes = [
           { path: '', redirectTo: 'SMP', pathMatch: 'full' }, ...SharedModule.getRoutes(),
           {            
             path:'users',            
-            loadComponent: () => import('./domains/SMP/Components/users/users.component').then(u => u.UsersComponent) 
+            loadComponent: () => import('./domains/SMP/Components/users/users-menu.component').then(u => u.UsersMenuComponent) 
           },
           {
             path:'providers',
