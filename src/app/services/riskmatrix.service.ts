@@ -37,15 +37,15 @@ export class RiskmatrixService {
   }
 
   addAnalysisRisk(data: any): Observable<any> {
-    return this.http.post(`${environment.urlSmp}/Identificationrisk`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.post(`${environment.urlSmp}/Analysisrisk`, data, { headers: this.trackingService.getHeaders() });
   }
 
   updateAnalysisRisk(id: number, data: any): Observable<any> {
-    return this.http.put(`${environment.urlSmp}/Identificationrisk/${id}`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.put(`${environment.urlSmp}/Analysisrisk/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
   deleteAnalysisRisk(id: number): Observable<any> {
-    return this.http.delete(`${environment.urlSmp}/Identificationrisk/${id}`, { headers: this.trackingService.getHeaders() });
+    return this.http.delete(`${environment.urlSmp}/Analysisrisk/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
 }

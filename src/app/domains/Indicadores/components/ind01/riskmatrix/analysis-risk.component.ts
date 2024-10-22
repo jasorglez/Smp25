@@ -108,7 +108,7 @@ fecha: any;
     const idwpColDef = this.columnDefs.find(col => col.field === 'idProgram');
     if (idwpColDef && idwpColDef.cellEditorParams) {
       idwpColDef.cellEditorParams.values = this.workProgramData.map(item => ({
-        value: item.activity,
+        value: item.id,
         label: `${item.activity} - ${item.text}`
       }));
     }
@@ -119,7 +119,7 @@ fecha: any;
 
   onActivityChanged(event: any) {
     if (event.newValue) {
-      const selectedProgram = this.workProgramData.find(item => item.activity === event.newValue);
+      const selectedProgram = this.workProgramData.find(item => item.id === event.newValue);
       if (selectedProgram) {
         event.data.startDate = selectedProgram.startDate;
         event.data.endDate = selectedProgram.endDate;
@@ -127,7 +127,7 @@ fecha: any;
         event.data.idFase = selectedProgram.phase;
         this.gridApi.refreshCells({
           rowNodes: [event.node],
-          columns: ['startDate', 'endDate', 'routeCritic']
+          columns: ['startDate', 'endDate', 'routeCritic', 'idProgram']
         });
         this.onCellValueChanged(event);
       }
@@ -148,15 +148,17 @@ fecha: any;
         editable: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: this.workProgramData.map(item => item.activity),
+          values: this.workProgramData.map(item => item.id),
         },
         valueFormatter: (params) => {
-          const foundItem = this.workProgramData.find(item => item.activity === params.value);
-          return foundItem ? `${foundItem.activity} - ${foundItem.text}` : params.value;
+          const foundItem = this.workProgramData.find(item => item.id === params.value);
+          return foundItem ? `${foundItem.activity} - ${foundItem.text}` : '';
         },
         onCellValueChanged: this.onActivityChanged.bind(this),
-        // Add this line:
-        valueParser: (params) => params.newValue,
+        cellRenderer: (params) => {
+          const foundItem = this.workProgramData.find(item => item.id === params.value);
+          return foundItem ? `${foundItem.activity} - ${foundItem.text}` : '';
+        },
         width: 150
       },
       {
@@ -286,9 +288,9 @@ fecha: any;
   }
 
   setSignals() {
-    this.signalsService.setIdIdentificationRisk(this.selectedRowData.id);
-    this.signalsService.setNameIdentificationRisk(this.selectedRowData.description);
-    this.signalsService.setCauseIdentificationRisk(this.selectedRowData.cause);
+    // this.signalsService.setIdIdentificationRisk(this.selectedRowData.id);
+    // this.signalsService.setNameIdentificationRisk(this.selectedRowData.description);
+    // this.signalsService.setCauseIdentificationRisk(this.selectedRowData.cause);
     // // Borramos las demas signals
     // this.signalsService.setIdAnalysis(null);
     // this.signalsService.setAnalysisName(null);
@@ -304,6 +306,7 @@ fecha: any;
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
+      idIdentification: this.idIdentificationRisk,
       idProject: this.idProject,
       idProgram: null,
       startDate: "",
@@ -335,6 +338,7 @@ fecha: any;
   
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      console.log(cleanedData);
       return this.riskMatrixService.addAnalysisRisk(cleanedData);
     });
   
