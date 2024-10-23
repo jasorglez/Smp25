@@ -10,35 +10,23 @@ import { RiskmatrixService } from 'app/services/riskmatrix.service';
 import { MultiLineEditorComponent } from "../../../../../shared/multi-line/multi-line-editor.component";
 import { ModalService } from 'app/services/modal.service';
 import { RisksInfoComponent } from "./risks-info.component";
-import { WorkprogramsService } from 'app/services/workprograms.service';
-
-interface WorkProgram {
-  id: number;
-  activity: string;
-  text: string;
-  startDate: string;
-  endDate: string;
-  criticRoute: string;
-  phase: string;
-}
 
 @Component({
   selector: 'app-planification-risk',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, RisksInfoComponent, MultiLineEditorComponent, RisksInfoComponent],
-  templateUrl: './analysis-risk.component.html'
+  templateUrl: './planification-risk.component.html'
 })
 export class PlanificationRiskComponent {
 
 
   private riskMatrixService = inject(RiskmatrixService);
-  private workprogramsService = inject(WorkprogramsService);
   private signalsService = inject(SignalsService);
   private modalServiceTable = inject(ModalService);
 
   idProject: number = null;
-  idIdentificationRisk = this.signalsService.getIdIdentificationRisk()();
-fecha: any;
+  idAnalysisRisk = this.signalsService.getIdAnalysisRisk()();
+  fecha: any;
 
   constructor() {
     effect(() => {
@@ -49,7 +37,6 @@ fecha: any;
       }
       else {
         this.obtenerDatos();
-        this.fetchWorkPrograms();
       }
     });
   }
@@ -65,7 +52,6 @@ fecha: any;
   notSavedChanges: boolean = false;
   rowData: any;
   newlyAddedRows: string[] = [];
-  workProgramData: WorkProgram[] = [];
   selectedRowData: any = null;
   id: string;
   private gridApi: GridApi;
@@ -76,7 +62,7 @@ fecha: any;
 
   obtenerDatos() {
     this.riskMatrixService
-      .getAnalysisRisks(this.idIdentificationRisk)
+      .getPlanificationRisks(this.idAnalysisRisk)
       .pipe(
         catchError((error) => {
           console.error('Error al obtener identificaciones:', error);
@@ -94,101 +80,29 @@ fecha: any;
       });
   }
 
-  fetchWorkPrograms() {
-    this.workprogramsService.getWorkPrograms2Fields(this.idProject).subscribe(
-      (data: WorkProgram[]) => {
-        this.workProgramData = data;
-        this.updateActivityOptions();
-        console.log(this.idProject);
-      },
-      (error) => console.error('Error fetching work programs:', error)
-    );
-  }
-
-  updateActivityOptions() {
-    const idwpColDef = this.columnDefs.find(col => col.field === 'idProgram');
-    if (idwpColDef && idwpColDef.cellEditorParams) {
-      idwpColDef.cellEditorParams.values = this.workProgramData.map(item => ({
-        value: item.id,
-        label: `${item.activity} - ${item.text}`
-      }));
-    }
-    if (this.gridApi) {
-      this.gridApi.refreshHeader();
-    }
-  }
-
-  onActivityChanged(event: any) {
-    if (event.newValue) {
-      const selectedProgram = this.workProgramData.find(item => item.id === event.newValue);
-      if (selectedProgram) {
-        event.data.startDate = selectedProgram.startDate;
-        event.data.endDate = selectedProgram.endDate;
-        event.data.routeCritic = selectedProgram.criticRoute;
-        event.data.idFase = selectedProgram.phase;
-        this.gridApi.refreshCells({
-          rowNodes: [event.node],
-          columns: ['startDate', 'endDate', 'routeCritic', 'idProgram']
-        });
-        this.onCellValueChanged(event);
-      }
-    }
-  }
-
   get columnDefs(): ColDef[] {
     return [
       {
-        field: 'id',
-        headerName: '# Riesgo',
+        field: 'actions',
+        headerName: 'Acciones',
         editable: true,
-        width: 70
-      },
-      {
-        field: 'idProgram',
-        headerName: 'Programa de trabajo',
-        editable: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.workProgramData.map(item => item.id),
-        },
-        valueFormatter: (params) => {
-          const foundItem = this.workProgramData.find(item => item.id === params.value);
-          return foundItem ? `${foundItem.activity} - ${foundItem.text}` : '';
-        },
-        onCellValueChanged: this.onActivityChanged.bind(this),
-        cellRenderer: (params) => {
-          const foundItem = this.workProgramData.find(item => item.id === params.value);
-          return foundItem ? `${foundItem.activity} - ${foundItem.text}` : '';
-        },
-        width: 150
+        width: 160
       },
       {
         field: 'startDate',
         headerName: 'Fecha de inicio',
-        editable: false,
+        editable: true,
         width: 100
       },
       {
         field: 'endDate',
         headerName: 'Fecha de fin',
-        editable: false,
+        editable: true,
         width: 100
       },
       {
-        field: 'routeCritic',
-        headerName: 'Ruta crítica',
-        editable: false,
-        width: 80
-      },
-      {
-        field: 'probability',
-        headerName: 'Probabilidad',
-        editable: true,
-        width: 80
-      },
-      {
-        field: 'scope',
-        headerName: 'Alcance',
+        field: 'resources',
+        headerName: 'Recursos',
         editable: true,
         width: 80
       },
@@ -203,68 +117,7 @@ fecha: any;
         headerName: 'Costo',
         editable: true,
         width: 80
-      },
-      {
-        field: 'quality',
-        headerName: 'Caliidad',
-        editable: true,
-        width: 80
-      },
-      {
-        field: 'average',
-        headerName: 'Impacto promedio',
-        editable: false,
-        width: 80
-      },
-      {
-        field: 'calification',
-        headerName: 'Calificación',
-        editable: false,
-        width: 80
-      },
-      {
-        field: 'urgency',
-        headerName: 'Urgencia',
-        editable: false,
-        width: 160,
-        cellEditor: 'agPopupTextCellEditor',
-        cellEditorParams: {
-          maxLength: 100,
-          cols: 50,
-          rows: 3,
-          onKeyDown: (event: KeyboardEvent) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.stopPropagation();
-            }
-          },
-        },
-        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-          if (!event.node.group) {
-            this.modalServiceTable.showModal({
-              params: event,
-              value: event.value,
-            });
-          }
-        },
-        cellRenderer: (params: ICellRendererParams) => {
-          if (params.node.group) {
-            return params.value;
-          }
-          return params.value;
-        }
-      },
-      {
-        field: 'idFase',
-        headerName: 'Fase',
-        editable: false,
-        width: 100
-      },
-      {
-        field: 'answer',
-        headerName: 'Respuesta',
-        editable: true,
-        width: 150
-      },
+      }
     ];
   }
 
@@ -289,7 +142,7 @@ fecha: any;
   }
 
   setSignals() {
-    this.signalsService.setIdAnalysisRisk(this.selectedRowData.id);
+    //this.signalsService.setIdPlanificationRisk(this.selectedRowData.id);
     // this.signalsService.setNameIdentificationRisk(this.selectedRowData.description);
     // this.signalsService.setCauseIdentificationRisk(this.selectedRowData.cause);
     // // Borramos las demas signals
@@ -307,22 +160,12 @@ fecha: any;
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idIdentification: this.idIdentificationRisk,
-      idProject: this.idProject,
-      idProgram: null,
+      idAnalysis: this.idAnalysisRisk,
+      actions: "",
       startDate: "",
       endDate: "",
-      routeCritic: "",
-      probability: 0,
-      scope: 0,
-      time: 0,
-      cost: 0,
-      quality: 0,
-      average: null,
-      calification: null,
-      urgency: "",
-      idFase: "",
-      answer: "",
+      resources: "",
+      cost: "",
       active: true
     };
 
@@ -336,19 +179,19 @@ fecha: any;
     const modifiedRows = this.rowData.filter(
       (row) => row.__modified && !this.newlyAddedRows.includes(row.id)
     );
-  
+
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       console.log(cleanedData);
-      return this.riskMatrixService.addAnalysisRisk(cleanedData);
+      return this.riskMatrixService.addPlanificationRisk(cleanedData);
     });
-  
+
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       console.log(cleanedData);
-      return this.riskMatrixService.updateAnalysisRisk(row.id, cleanedData);
+      return this.riskMatrixService.updatePlanificationRisk(row.id, cleanedData);
     });
-  
+
     try {
       const responses = await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
@@ -384,7 +227,7 @@ fecha: any;
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
     selectedData.active = 0;
-    this.riskMatrixService.deleteAnalysisRisk(id).pipe(
+    this.riskMatrixService.deletePlanificationRisk(id).pipe(
       catchError((error) => {
         alerts.basicAlert(
           'Eliminar entrada',
