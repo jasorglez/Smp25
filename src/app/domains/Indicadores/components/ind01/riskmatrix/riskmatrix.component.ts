@@ -17,5 +17,6 @@ export class RiskmatrixComponent {
 
   idIdentificationRisk = this.signalsService.getIdIdentificationRisk();
   idAnalysisRisk = this.signalsService.getIdAnalysisRisk();
+  idSelectedWorkProgram = this.signalsService.getSelectedWorkProgram();
 
 }

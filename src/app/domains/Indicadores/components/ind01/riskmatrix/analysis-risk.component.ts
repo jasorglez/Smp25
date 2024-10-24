@@ -165,13 +165,27 @@ fecha: any;
         field: 'startDate',
         headerName: 'Fecha de inicio',
         editable: false,
-        width: 100
+        width: 160,
+        cellDataType: 'dateString',
+        valueFormatter: (params) => {
+          if (params.value) {
+            return params.value.split('T')[0];
+          }
+          return '';
+        }
       },
       {
         field: 'endDate',
         headerName: 'Fecha de fin',
         editable: false,
-        width: 100
+        width: 160,
+        cellDataType: 'dateString',
+        valueFormatter: (params) => {
+          if (params.value) {
+            return params.value.split('T')[0];
+          }
+          return '';
+        }
       },
       {
         field: 'routeCritic',
@@ -289,9 +303,18 @@ fecha: any;
 
   setSignals() {
     this.signalsService.setIdAnalysisRisk(this.selectedRowData.id);
-    // this.signalsService.setNameIdentificationRisk(this.selectedRowData.description);
-    // this.signalsService.setCauseIdentificationRisk(this.selectedRowData.cause);
-    // // Borramos las demas signals
+    
+    // Nueva señal para enviar los datos del programa de trabajo
+    if (this.selectedRowData.idProgram) {
+      const foundItem = this.workProgramData.find(item => item.id === this.selectedRowData.idProgram);
+      if (foundItem) {
+        this.signalsService.setSelectedWorkProgram(`${foundItem.activity} - ${foundItem.text}`);
+      }
+    } else {
+      this.signalsService.setSelectedWorkProgram(null);
+    }
+    
+    // Borramos las demas signals
     // this.signalsService.setIdAnalysis(null);
     // this.signalsService.setAnalysisName(null);
     // this.signalsService.setContingencyActionName(null);

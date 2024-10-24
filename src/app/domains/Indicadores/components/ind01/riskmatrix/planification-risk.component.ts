@@ -26,6 +26,7 @@ export class PlanificationRiskComponent {
 
   idProject: number = null;
   idAnalysisRisk = this.signalsService.getIdAnalysisRisk()();
+  idIdentificationRisk = this.signalsService.getIdIdentificationRisk()();
   fecha: any;
 
   constructor() {
@@ -86,37 +87,70 @@ export class PlanificationRiskComponent {
         field: 'actions',
         headerName: 'Acciones',
         editable: true,
-        width: 160
+        width: 160,
+        cellEditor: 'agPopupTextCellEditor',
+        cellEditorParams: {
+          maxLength: 100,
+          cols: 50,
+          rows: 3,
+          onKeyDown: (event: KeyboardEvent) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.stopPropagation();
+            }
+          },
+        },
+        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+          if (!event.node.group) {
+            this.modalServiceTable.showModal({
+              params: event,
+              value: event.value,
+            });
+          }
+        },
+        cellRenderer: (params: ICellRendererParams) => {
+          if (params.node.group) {
+            return params.value;
+          }
+          return params.value;
+        }
       },
       {
         field: 'startDate',
         headerName: 'Fecha de inicio',
         editable: true,
-        width: 100
+        width: 160,
+        cellDataType: 'dateString',
+        valueFormatter: (params) => {
+          if (params.value) {
+            return params.value.split('T')[0];
+          }
+          return '';
+        }
       },
       {
         field: 'endDate',
         headerName: 'Fecha de fin',
         editable: true,
-        width: 100
+        width: 160,
+        cellDataType: 'dateString',
+        valueFormatter: (params) => {
+          if (params.value) {
+            return params.value.split('T')[0];
+          }
+          return '';
+        }
       },
       {
         field: 'resources',
         headerName: 'Recursos',
         editable: true,
-        width: 80
-      },
-      {
-        field: 'time',
-        headerName: 'Tiempo',
-        editable: true,
-        width: 80
+        width: 160
       },
       {
         field: 'cost',
         headerName: 'Costo',
         editable: true,
-        width: 80
+        width: 160
       }
     ];
   }
@@ -142,7 +176,7 @@ export class PlanificationRiskComponent {
   }
 
   setSignals() {
-    //this.signalsService.setIdPlanificationRisk(this.selectedRowData.id);
+    this.signalsService.setIdPlanificationRisk(this.selectedRowData.id);
     // this.signalsService.setNameIdentificationRisk(this.selectedRowData.description);
     // this.signalsService.setCauseIdentificationRisk(this.selectedRowData.cause);
     // // Borramos las demas signals
@@ -160,7 +194,7 @@ export class PlanificationRiskComponent {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idAnalysis: this.idAnalysisRisk,
+      idAnalisis: this.idAnalysisRisk,
       actions: "",
       startDate: "",
       endDate: "",

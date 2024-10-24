@@ -15,5 +15,6 @@ export class RisksInfoComponent {
   idIdentificationRisk = this.signalsService.getIdIdentificationRisk();
   nameIdentificationRisk = this.signalsService.getNameIdentificationRisk();
   causeIdentificationRisk = this.signalsService.getCauseIdentificationRisk();
+  selectedWorkProgram = this.signalsService.getSelectedWorkProgram();
 
 }

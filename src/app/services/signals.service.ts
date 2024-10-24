@@ -63,6 +63,8 @@ export class SignalsService {
   private nameIdentificationRisk = signal<string>(null);
   private causeIdentificationRisk = signal<string>(null);
   private idAnalysisRisk = signal<number>(null);
+  private idPlanificationRisk = signal<number>(null);
+  private selectedWorkProgram = signal<string>(null);
 
   setIdIdentificationRisk(id: number) {
     this.idIdentificationRisk.set(id);
@@ -93,6 +95,22 @@ export class SignalsService {
 
   getIdAnalysisRisk() {
     return this.idAnalysisRisk;
+  }
+
+  setSelectedWorkProgram(name: string) {    
+    this.selectedWorkProgram.set(name);
+  }
+
+  getSelectedWorkProgram() {
+    return this.selectedWorkProgram;
+  }
+
+  setIdPlanificationRisk(id: number) {    
+    this.idPlanificationRisk.set(id);
+  }
+
+  getIdPlanificationRisk() {
+    return this.idPlanificationRisk;
   }
 
   profileSignal(id: number, email: string, picture: string, name: string, organization: string, position: string) {

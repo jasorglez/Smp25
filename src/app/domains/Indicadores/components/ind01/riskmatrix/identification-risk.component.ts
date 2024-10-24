@@ -95,9 +95,9 @@ export class IdentificationRiskComponent implements OnInit {
     return [
       {
         field: 'id',
-        headerName: 'Riesgo',
+        headerName: '# Riesgo',
         editable: false,
-        flex: 1
+        width: 100
       },
       {
         field: 'classification',

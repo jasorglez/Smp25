@@ -9,6 +9,11 @@
         <p>{{causeIdentificationRisk}}</p>
     </div>
 
+    <div class="col-12" *ngIf="selectedWorkProgram()">
+        <p><strong>Programa de trabajo</strong></p>
+        <p>{{selectedWorkProgram()}}</p>
+    </div>
+
     <!-- <div class="col-12">
         <p><strong>Clasificación</strong></p>
         <p>{{identificationClassification()}}</p>
