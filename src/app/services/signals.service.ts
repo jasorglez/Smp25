@@ -64,6 +64,7 @@ export class SignalsService {
   private causeIdentificationRisk = signal<string>(null);
   private idAnalysisRisk = signal<number>(null);
   private idPlanificationRisk = signal<number>(null);
+  private planificationActionRisk = signal<string>(null);
   private selectedWorkProgram = signal<string>(null);
 
   setIdIdentificationRisk(id: number) {
@@ -111,6 +112,14 @@ export class SignalsService {
 
   getIdPlanificationRisk() {
     return this.idPlanificationRisk;
+  }
+
+  setPlanificationActionRisk(action: string) {
+    this.planificationActionRisk.set(action);
+  }
+
+  getPlanificationActionRisk () {
+    return this.planificationActionRisk;
   }
 
   profileSignal(id: number, email: string, picture: string, name: string, organization: string, position: string) {

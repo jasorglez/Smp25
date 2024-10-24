@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, HostListener, inject, OnInit } from '@angular/core';
+import { Component, effect, HostListener, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { GridApi, ColDef, GridReadyEvent, CellDoubleClickedEvent, ICellRendererParams } from 'ag-grid-enterprise';
@@ -10,31 +10,27 @@ import { RiskmatrixService } from 'app/services/riskmatrix.service';
 import { MultiLineEditorComponent } from "../../../../../shared/multi-line/multi-line-editor.component";
 import { ModalService } from 'app/services/modal.service';
 import { RisksInfoComponent } from "./risks-info.component";
-import { DatePipe } from '@angular/common';
 
 @Component({
-  selector: 'app-identification-risk',
+  selector: 'app-implementation-risk',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, RisksInfoComponent, MultiLineEditorComponent],
-  templateUrl: './identification-risk.component.html',
-  providers: [DatePipe]
+  imports: [CommonModule, FormsModule, AgGridModule, RisksInfoComponent, MultiLineEditorComponent, RisksInfoComponent],
+  templateUrl: './sub-template-risk.component.html'
 })
-export class IdentificationRiskComponent implements OnInit {
-
+export class ImplementationRiskComponent {
   private riskMatrixService = inject(RiskmatrixService);
   private signalsService = inject(SignalsService);
   private modalServiceTable = inject(ModalService);
-  private datePipe = inject(DatePipe);  
+
   idProject: number = null;
+  idAnalysisRisk = this.signalsService.getIdAnalysisRisk()();
   idIdentificationRisk = this.signalsService.getIdIdentificationRisk()();
-  fecha: string;  
-  
+  idPlanificationRisk = this.signalsService.getIdPlanificationRisk()();
+  fecha: any;
 
   constructor() {
     effect(() => {
       this.idProject = this.signalsService.getProjectSelectedBySidebar()();
-      console.log(this.idProject);
-      this.idIdentificationRisk = this.signalsService.getIdIdentificationRisk()();
       if (this.idProject == null) {
         this.rowData = [];
         alerts.basicAlert('Issues', 'Debe elegir un proyecto primero.', 'error');
@@ -64,28 +60,19 @@ export class IdentificationRiskComponent implements OnInit {
     multiLineEditor: MultiLineEditorComponent,
   };
 
-  ngOnInit(): void {
-    // Formatear la fecha actual al formato yyyy-MM-dd
-    this.fecha = this.datePipe.transform(new Date(), 'yyyy-MM-dd');
-  }
-
-  onFechaChange() {
-    this.obtenerDatos();
-  }
-
   obtenerDatos() {
     this.riskMatrixService
-      .getIdentificationRisks(this.idProject, this.fecha)
+      .getImplementationRisks(this.idPlanificationRisk)
       .pipe(
         catchError((error) => {
           console.error('Error al obtener identificaciones:', error);
-          this.rowData = []; // Asigna un array vacío en caso de error
           return of([]); // Retorna un Observable que emite un array vacío en caso de error
         })
       )
       .subscribe({
         next: (data: any) => {
           this.rowData = data;
+          console.log(this.rowData);
         },
         error: () => {
           this.rowData = []; // Asigna un array vacío en caso de error
@@ -97,94 +84,124 @@ export class IdentificationRiskComponent implements OnInit {
     return [
       {
         field: 'id',
-        headerName: '# Riesgo',
+        headerName: '#',
         editable: false,
-        width: 100
+        width: 70
       },
       {
-        field: 'classification',
-        headerName: 'Clasificación',
+        field: 'probability',
+        headerName: 'Probabilidad Residual',
+        cellDataType: 'number',
         editable: true,
-        cellEditor: 'agRichSelectCellEditor',
-        cellEditorParams: {
-          values: ['Administrativo', 'Técnico'],
-        },
-        flex: 2,
+        width: 140
       },
-      {
-        field: 'description',
-        headerName: 'Descripción',
-        editable: false,
-        flex: 3,
-        cellEditor: 'agPopupTextCellEditor',
+    {
+      field: 'reach',
+      headerName: 'Alcance',
+      cellDataType: 'number',
+      editable: true,
+      width: 140
+    },
+    {
+      field: 'time',
+      headerName: 'Tiempo',
+      cellDataType: 'number',
+      editable: true,
+      width: 140
+    },
+    {
+      field: 'cost',
+      headerName: 'Costo',
+      cellDataType: 'number',
+      editable: true,
+      width: 140
+    },
+    {
+      field: 'quality',
+      headerName: 'Calidad',
+      cellDataType: 'number',
+      editable: true,
+      width: 140
+    },
+    {
+      field: 'qualification',
+      headerName: 'Calificación residual',
+      cellDataType: 'number',
+      editable: false,
+      width: 140
+    },
+    {
+      field: 'state',
+      headerName: 'Estado Plan de Respuesta',
+      cellDataType: 'text',
+      editable: true,
+      width: 200
+    },
+    {
+      field: 'reach',
+      headerName: 'Alcance',
+      cellDataType: 'number',
+      editable: true,
+      width: 140
+    },
+    {
+      field: 'advancedReal',
+      headerName: '% Avance Real',
+      cellDataType: 'number',
+      editable: true,
+      width: 140
+    },
+    {
+      field: 'advancedPlanning',
+      headerName: '% Avance Planeado',
+      cellDataType: 'number',
+      editable: true,
+      width: 140
+    },
+    {
+      field: 'spi',
+      headerName: 'SPI',
+      cellDataType: 'number',
+      editable: false,
+      width: 140
+    },
+    {
+      field: 'status',
+      headerName: 'Estado',
+      editable: true,
+      cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
-          maxLength: 100,
-          cols: 50,
-          rows: 3,
-          onKeyDown: (event: KeyboardEvent) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.stopPropagation();
-            }
-          },
+          values: ['ABIERTO', 'CERRADO'],
         },
-        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-          if (!event.node.group) {
-            this.modalServiceTable.showModal({
-              params: event,
-              value: event.value,
-            });
+        width: 140
+    },
+    {
+      field: 'condition',
+      headerName: 'Condición Disparadora',
+      cellDataType: 'text',
+      editable: true,
+      width: 200
+    },
+    {
+      field: 'dateClose',
+      headerName: 'Fecha de cierre',
+      editable: true,
+      width: 200,
+      cellDataType: 'dateString',
+        valueFormatter: (params) => {
+          if (params.value) {
+            return params.value.split('T')[0];
           }
-        },
-        cellRenderer: (params: ICellRendererParams) => {
-          if (params.node.group) {
-            return params.value;
-          }
-          return params.value;
+          return '';
         }
-      },
-      {
-        field: 'cause',
-        headerName: 'Causa',
-        editable: false,
-        flex: 3,
-        cellEditor: 'agPopupTextCellEditor',
-        cellEditorParams: {
-          maxLength: 100,
-          cols: 50,
-          rows: 3,
-          onKeyDown: (event: KeyboardEvent) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.stopPropagation();
-            }
-          },
-        },
-        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-          if (!event.node.group) {
-            this.modalServiceTable.showModal({
-              params: event,
-              value: event.value,
-            });
-          }
-        },
-        cellRenderer: (params: ICellRendererParams) => {
-          if (params.node.group) {
-            return params.value;
-          }
-          return params.value;
-        }
-      },
-      {
-        field: 'typeRisk',
-        headerName: 'Tipo de riesgo',
-        editable: true,
-        flex: 2,
-      },
-      {
-        field: 'ownerRisk',
-        headerName: 'Dueño de riesgo',
-        editable: true,
-        flex: 2,
-      },
+    },
+    {
+      field: 'observation',
+      headerName: 'Observación',
+      cellDataType: 'text',
+      editable: true,
+      width: 200
+    },
     ];
   }
 
@@ -206,22 +223,12 @@ export class IdentificationRiskComponent implements OnInit {
     this.setSignals();
     event.data.__modified = true;
     this.notSavedChanges = true;
-    
-    // Añadir esta comprobación
-    if (this.newlyAddedRows.includes(event.data.id)) {
-      const index = this.rowData.findIndex(row => row.id === event.data.id);
-      if (index !== -1) {
-        this.rowData[index] = { ...this.rowData[index], ...event.data };
-      }
-    }
   }
 
   setSignals() {
-    if (this.selectedRowData && !this.newlyAddedRows.includes(this.selectedRowData.id)) {
-      this.signalsService.setIdIdentificationRisk(this.selectedRowData.id);
-      this.signalsService.setNameIdentificationRisk(this.selectedRowData.description);
-      this.signalsService.setCauseIdentificationRisk(this.selectedRowData.cause);
-    }
+    //this.signalsService.setIdPlanificationRisk(this.selectedRowData.id);
+    // this.signalsService.setNameIdentificationRisk(this.selectedRowData.description);
+    // this.signalsService.setCauseIdentificationRisk(this.selectedRowData.cause);
     // // Borramos las demas signals
     // this.signalsService.setIdAnalysis(null);
     // this.signalsService.setAnalysisName(null);
@@ -237,11 +244,20 @@ export class IdentificationRiskComponent implements OnInit {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idProject: this.idProject,
-      classification: "",
-      date: this.fecha,
-      typeRisk: "",
-      ownerRisk: "",
+      idPlanification: this.idPlanificationRisk,
+      probability: 0,
+      reach: 0,
+      time: 0,
+      cost: 0,
+      quality: 0,
+      qualification: null,
+      state: '',
+      advancedReal: 0,
+      advancedPlanning: 0, 
+      status: '',
+      condition: '',
+      dateClose: '',
+      observation: '',
       active: true
     };
 
@@ -255,19 +271,19 @@ export class IdentificationRiskComponent implements OnInit {
     const modifiedRows = this.rowData.filter(
       (row) => row.__modified && !this.newlyAddedRows.includes(row.id)
     );
-  
+
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       console.log(cleanedData);
-      return this.riskMatrixService.addIdentificationRisk(cleanedData);
+      return this.riskMatrixService.addImplementationRisk(cleanedData);
     });
-  
+
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       console.log(cleanedData);
-      return this.riskMatrixService.updateIdentificationRisk(row.id, cleanedData);
+      return this.riskMatrixService.updateImplementationRisk(row.id, cleanedData);
     });
-  
+
     try {
       const responses = await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
@@ -303,7 +319,7 @@ export class IdentificationRiskComponent implements OnInit {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
     selectedData.active = 0;
-    this.riskMatrixService.deleteIdentificationRisk(id).pipe(
+    this.riskMatrixService.deleteImplementationRisk(id).pipe(
       catchError((error) => {
         alerts.basicAlert(
           'Eliminar entrada',
@@ -321,8 +337,6 @@ export class IdentificationRiskComponent implements OnInit {
             'Entrada eliminada satisfactoriamente.',
             'success'
           );
-          this.signalsService.setIdIdentificationRisk(null);
-          this.signalsService.setIdentificationName(null);
           this.obtenerDatos();
 
           alerts.basicAlert(
@@ -351,6 +365,4 @@ export class IdentificationRiskComponent implements OnInit {
 
     return cleanedData;
   }
-
-
 }

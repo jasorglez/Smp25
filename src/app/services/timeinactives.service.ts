@@ -12,8 +12,8 @@ export class TimeinactivesService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
-  getInactiveTimes(id: number): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.urlSmp}/Timeinactives/byProject/${id}`, { headers: this.trackingService.getHeaders() });
+  getInactiveTimes(idProject: number, fecha: string): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlSmp}/Timeinactives/byProject/${idProject}?date=${fecha}`, { headers: this.trackingService.getHeaders() });
   }
 
   addInactiveTime(data: any): Observable<any> {

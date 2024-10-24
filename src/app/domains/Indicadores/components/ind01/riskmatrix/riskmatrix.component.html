@@ -15,6 +15,11 @@
                     data-bs-target="#planification-tab-pane" type="button" role="tab" aria-controls="planification-tab-pane"
                     aria-selected="false">Planificación</button>
             </li>
+            <li class="nav-item" role="presentation" *ngIf="idPlanificationRisk() != null">
+                <button class="nav-link" id="implementation-tab" data-bs-toggle="pill"
+                    data-bs-target="#implementation-tab-pane" type="button" role="tab" aria-controls="implementation-tab-pane"
+                    aria-selected="false">Implementación</button>
+            </li>
         </ul>
         <div class="tab-content" id="myIssueContent">
             <div class="tab-pane show active" id="identification-tab-pane" role="tabpanel"
@@ -29,6 +34,10 @@
                 tabindex="2" *ngIf="idAnalysisRisk() != null">
                 <app-planification-risk></app-planification-risk>
             </div>
+            <div class="tab-pane" id="implementation-tab-pane" role="tabpanel" aria-labelledby="implementation-tab"
+            tabindex="2" *ngIf="idPlanificationRisk() != null">
+            <app-implementation-risk></app-implementation-risk>
+        </div>
         </div>
     </div>
 </div>

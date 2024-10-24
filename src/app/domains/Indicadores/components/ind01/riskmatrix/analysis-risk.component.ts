@@ -26,7 +26,7 @@ interface WorkProgram {
   selector: 'app-analysis-risk',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, RisksInfoComponent, MultiLineEditorComponent, RisksInfoComponent],
-  templateUrl: './analysis-risk.component.html'
+  templateUrl: './sub-template-risk.component.html'
 })
 export class AnalysisRiskComponent {
 
@@ -191,49 +191,49 @@ fecha: any;
         field: 'routeCritic',
         headerName: 'Ruta crítica',
         editable: false,
-        width: 80
+        width: 130
       },
       {
         field: 'probability',
         headerName: 'Probabilidad',
         editable: true,
-        width: 80
+        width: 130
       },
       {
         field: 'scope',
         headerName: 'Alcance',
         editable: true,
-        width: 80
+        width: 130
       },
       {
         field: 'time',
         headerName: 'Tiempo',
         editable: true,
-        width: 80
+        width: 130
       },
       {
         field: 'cost',
         headerName: 'Costo',
         editable: true,
-        width: 80
+        width: 130
       },
       {
         field: 'quality',
         headerName: 'Caliidad',
         editable: true,
-        width: 80
+        width: 130
       },
       {
         field: 'average',
         headerName: 'Impacto promedio',
         editable: false,
-        width: 80
+        width: 130
       },
       {
         field: 'calification',
         headerName: 'Calificación',
         editable: false,
-        width: 80
+        width: 130
       },
       {
         field: 'urgency',

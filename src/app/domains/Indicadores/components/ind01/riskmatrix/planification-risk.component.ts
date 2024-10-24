@@ -15,7 +15,7 @@ import { RisksInfoComponent } from "./risks-info.component";
   selector: 'app-planification-risk',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, RisksInfoComponent, MultiLineEditorComponent, RisksInfoComponent],
-  templateUrl: './planification-risk.component.html'
+  templateUrl: './sub-template-risk.component.html'
 })
 export class PlanificationRiskComponent {
 
@@ -84,10 +84,16 @@ export class PlanificationRiskComponent {
   get columnDefs(): ColDef[] {
     return [
       {
+        field: 'id',
+        headerName: '#',
+        editable: false,
+        width: 90
+      },
+      {
         field: 'actions',
         headerName: 'Acciones',
         editable: true,
-        width: 160,
+        flex: 1,
         cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
@@ -118,7 +124,7 @@ export class PlanificationRiskComponent {
         field: 'startDate',
         headerName: 'Fecha de inicio',
         editable: true,
-        width: 160,
+        flex: 1,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
           if (params.value) {
@@ -131,7 +137,7 @@ export class PlanificationRiskComponent {
         field: 'endDate',
         headerName: 'Fecha de fin',
         editable: true,
-        width: 160,
+        flex: 1,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
           if (params.value) {
@@ -141,16 +147,23 @@ export class PlanificationRiskComponent {
         }
       },
       {
+        field: 'period',
+        headerName: 'Periodo (Días)',
+        editable: false,
+        flex: 1,
+        cellDataType: 'number'
+      },
+      {
         field: 'resources',
         headerName: 'Recursos',
         editable: true,
-        width: 160
+        flex: 1,
       },
       {
         field: 'cost',
         headerName: 'Costo',
         editable: true,
-        width: 160
+        flex: 1,
       }
     ];
   }
@@ -177,6 +190,7 @@ export class PlanificationRiskComponent {
 
   setSignals() {
     this.signalsService.setIdPlanificationRisk(this.selectedRowData.id);
+    this.signalsService.setPlanificationActionRisk(this.selectedRowData.actions);
     // this.signalsService.setNameIdentificationRisk(this.selectedRowData.description);
     // this.signalsService.setCauseIdentificationRisk(this.selectedRowData.cause);
     // // Borramos las demas signals
@@ -198,6 +212,7 @@ export class PlanificationRiskComponent {
       actions: "",
       startDate: "",
       endDate: "",
+      period: 0,
       resources: "",
       cost: "",
       active: true

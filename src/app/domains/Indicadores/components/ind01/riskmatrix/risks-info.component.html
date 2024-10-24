@@ -14,23 +14,8 @@
         <p>{{selectedWorkProgram()}}</p>
     </div>
 
-    <!-- <div class="col-12">
-        <p><strong>Clasificación</strong></p>
-        <p>{{identificationClassification()}}</p>
+    <div class="col-12" *ngIf="selectedPlanificationAction()">
+        <p><strong>Acciones</strong></p>
+        <p>{{selectedPlanificationAction()}}</p>
     </div>
-
-    <div class="col-12">
-        <p><strong>Fecha de registro</strong></p>
-        <p>{{identificationRegisteredDate().split('T')[0]}}</p>
-    </div>
-
-    <div class="col-12" *ngIf="analysisName() != null">
-        <p><strong>Nombre del análisis</strong></p>
-        <p>{{analysisName()}}</p>
-    </div>
-
-    <div class="col-12" *ngIf="contingencyActionName() != null">
-        <p><strong>Acción de contingencia</strong></p>
-        <p>{{contingencyActionName()}}</p>
-    </div> -->
 </div>

@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import { Component, effect, HostListener, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -7,7 +7,7 @@ import { alerts } from 'app/helpers/alerts';
 import { SignalsService } from 'app/services/signals.service';
 import { TimeinactivesService } from 'app/services/timeinactives.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
-import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { catchError, concat, EMPTY, lastValueFrom, of, toArray } from 'rxjs';
 import { MultiLineEditorComponent } from '../../../../../shared/multi-line/multi-line-editor.component';
 import { ModalService } from 'app/services/modal.service';
 import { TimeEditorComponent } from './time-editor.component';
@@ -28,13 +28,15 @@ interface Catalog {
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, TimeEditorComponent],
   templateUrl: './timeinactives.component.html',
-  styleUrl: './timeinactives.component.scss'
+  styleUrl: './timeinactives.component.scss',
+  providers: [DatePipe]
 })
 export class TimeinactivesComponent {
   private timeinactivesService = inject(TimeinactivesService);
   private workprogramsService = inject(WorkprogramsService);
   private signalsService = inject(SignalsService);
   private modalServiceTable = inject(ModalService);
+  private datePipe = inject(DatePipe);  
   private idProject = this.signalsService.getProjectSelectedBySidebar()();
 
   constructor() {
@@ -51,6 +53,15 @@ export class TimeinactivesComponent {
         this.fetchCauses();
       }
     });
+  }
+
+  ngOnInit(): void {
+    // Formatear la fecha actual al formato yyyy-MM-dd
+    this.fecha = this.datePipe.transform(new Date(), 'yyyy-MM-dd');
+  }
+
+  onFechaChange() {
+    this.obtenerDatos();
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -70,6 +81,7 @@ export class TimeinactivesComponent {
   causeData: Catalog[] = [];
   selectedRowData: any = null;
   id: string;
+  fecha: string;
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
 
@@ -80,21 +92,22 @@ export class TimeinactivesComponent {
 
   obtenerDatos() {
     this.timeinactivesService
-      .getInactiveTimes(Number(this.idProject))
-      .subscribe(
-        (data: any) => {
+      .getInactiveTimes(Number(this.idProject), this.fecha)
+      .pipe(
+        catchError((error) => {
+          console.error('Error al obtener identificaciones:', error);
+          this.rowData = []; // Asigna un array vacío en caso de error
+          return of([]); // Retorna un Observable que emite un array vacío en caso de error
+        })
+      )
+      .subscribe({
+        next: (data: any) => {
           this.rowData = data;
         },
-        (error) => {
-          if (error.status === 404) {
-            console.error('Data not found (404 error).');
-            // Handle the 404 error as needed, e.g., display a message to the user.
-          } else {
-            console.error('An error occurred:', error);
-          }
-          this.rowData = [];
+        error: () => {
+          this.rowData = []; // Asigna un array vacío en caso de error
         }
-      );
+      });
   }
 
   fetchWorkPrograms() {
@@ -128,19 +141,6 @@ export class TimeinactivesComponent {
 
   get columnDefs(): ColDef[] {
     return [
-      {
-        field: 'date',
-        headerName: 'Fecha',
-        editable: true,
-        width: 150,
-        cellDataType: 'dateString',
-        valueFormatter: (params) => {
-          if (params.value) {
-            return params.value.split('T')[0];
-          }
-          return '';
-        }
-      },
       {
         field: 'idArea',
         headerName: 'Área',
@@ -289,9 +289,9 @@ export class TimeinactivesComponent {
     const newItem = {
       id: tempId,
       idProject: this.idProject,
+      date: this.fecha,
       idArea: null,
       idClasification: null,
-      date: '',
       timeStart: '',
       timeEnd: '',
       idProgram: null,

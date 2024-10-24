@@ -2,6 +2,11 @@
 <div class="row p-3">
     <div class="col-12">
         <div class="row mb-3">
+            <div class="col text-left">
+                <label for="fecha" class="form-label">Fecha</label>
+                <input type="date" id="fecha" name="fecha" class="form-control" 
+                       [(ngModel)]="fecha" (ngModelChange)="onFechaChange()">
+            </div>
             <div class="col text-right"><button type="button" class="btn btn-primary me-1" (click)="addRow()"><i
                         class="bi bi-plus-lg" style="font-size: 1.5rem;"></i></button>
                 <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveChanges()">
