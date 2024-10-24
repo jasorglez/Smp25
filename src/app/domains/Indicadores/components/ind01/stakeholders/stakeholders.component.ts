@@ -6,7 +6,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { concat, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { GrallogService } from 'app/services/grallog.service';
+import { SteakholderService } from 'app/services/steakholder.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
 
 @Component({
@@ -19,8 +19,9 @@ import { ImageHandlerService } from 'app/services/image-handler.service';
 export class StakeholdersComponent {
 
   private idProject = 0;
+  private fecha : Date = new Date();
 
-  private logService          = inject(GrallogService);  
+  private steakService          = inject(SteakholderService);  
   private signalsService      = inject(SignalsService) ;
   private imageHandlerService = inject(ImageHandlerService);
 
@@ -38,8 +39,9 @@ export class StakeholdersComponent {
 
   onDateChange(event: Event) {
     const input = event.target as HTMLInputElement;
-    console.log('Fecha seleccionada:', input.value);
+    //console.log('Fecha seleccionada:', input.value);
     // Aquí puedes agregar la lógica para manejar el cambio de fecha
+    this.fecha = new Date(input.value) ; 
   }
 
   notSavedChanges: boolean = false;
@@ -53,7 +55,7 @@ export class StakeholdersComponent {
 
   obtenerDatos() {
     this.idProject = this.signalsService.getProjectSelectedBySidebar()();
-    this.logService.get(this.idProject).subscribe((data: any) => {
+    this.steakService.get(this.idProject, this.fecha).subscribe((data: any) => {
         this.rowData = data;
         console.log(data)
       });
@@ -81,13 +83,18 @@ export class StakeholdersComponent {
         flex: 1
       },
       {
-        field: 'country',
+        field: 'image1',
         headerName: '1',
-        editable: true,
-        flex: 1
+        cellEditor: 'agTextCellEditor',
+        cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
+        cellRendererParams: {
+          clicked: this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService),
+          field: 'picture'
+        },
+        editable: false,
       },
       {
-        field: 'picture',
+        field: 'image2',
         headerName: '2',
         cellEditor: 'agTextCellEditor',
         cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
@@ -98,7 +105,7 @@ export class StakeholdersComponent {
         editable: false,
       },
       {
-        field: 'picture2',
+        field: 'image3',
         headerName: '3',
         cellEditor: 'agTextCellEditor',
         cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
@@ -109,7 +116,7 @@ export class StakeholdersComponent {
         editable: false,
       },
       {
-        field: 'picture3',
+        field: 'image4',
         headerName: '4',
         cellEditor: 'agTextCellEditor',
         cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
@@ -120,7 +127,7 @@ export class StakeholdersComponent {
         editable: false,
       },
       {
-        field: 'picture3',
+        field: 'image5',
         headerName: '5',
         cellEditor: 'agTextCellEditor',
         cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
@@ -199,12 +206,12 @@ export class StakeholdersComponent {
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
 
-      return this.logService.add(cleanedData);
+      return this.steakService.add(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.logService.update(row.id, cleanedData);
+      return this.steakService.update(row.id, cleanedData);
     });
 
     // Using concat to combine observables and lastValueFrom for async/await
