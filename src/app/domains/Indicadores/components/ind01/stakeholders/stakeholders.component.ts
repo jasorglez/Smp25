@@ -98,7 +98,8 @@ export class StakeholdersComponent {
       }
       else {
         this.obtenerDatos();
-        this.fetchProvidersByType();
+        this.fetchProvidersByType('PROVIDER'); // Precargar proveedores
+        this.fetchProvidersByType('COMPANY'); // Precargar compañías
         this.fetchAllProviders();
       }
     });
@@ -107,6 +108,7 @@ export class StakeholdersComponent {
   ngOnInit(): void {
     // Formatear la fecha actual al formato yyyy-MM-dd
     this.fecha = this.datePipe.transform(new Date(), 'yyyy-MM-dd');
+
   }
 
   onFechaChange() {
@@ -134,25 +136,44 @@ export class StakeholdersComponent {
     this.steakService.get(this.idProject, this.fecha).pipe(
       catchError((error) => {
         console.error('Error al obtener identificaciones:', error);
-        this.rowData = []; // Asigna un array vacío en caso de error
-        return of([]); // Retorna un Observable que emite un array vacío en caso de error
+        this.rowData = [];
+        return of([]);
       })
     )
-      .subscribe({
-        next: (data: any) => {
-          this.rowData = data;
-        },
-        error: () => {
-          this.rowData = []; // Asigna un array vacío en caso de error
+    .subscribe({
+      next: (data: any) => {
+        this.rowData = data;
+        // Inicializar currentType para cada fila cuando se cargan los datos
+        if (this.rowData && this.rowData.length > 0) {
+          this.gridApi?.forEachNode(node => {
+            if (node.data.type) {
+              // Actualizar currentType basado en la fila seleccionada o la primera fila
+              this.currentType = node.data.type;
+              // Forzar actualización de la celda idProvider
+              this.gridApi.refreshCells({
+                force: true,
+                columns: ['idProvider'],
+                rowNodes: [node]
+              });
+            }
+          });
         }
-      });
+      },
+      error: () => {
+        this.rowData = [];
+      }
+    });
   }
 
-  fetchProvidersByType(type: string = 'Provider') {
+  fetchProvidersByType(type: string = 'PROVIDER') {
     this.providersService.getProviderByType(type).subscribe(
       (data: Providers[]) => {
-        this.proveedores = data;
-        console.log(this.proveedores);
+        if (type === 'PROVIDER') {
+          this.proveedores = data; // Almacenar en proveedores
+        } else if (type === 'COMPANY') {
+          this.companias = data; // Almacenar en companias
+        }
+        console.log(type === 'PROVIDER' ? this.proveedores : this.companias);
         // Forzar la actualización de la grid
         if (this.gridApi) {
           this.gridApi.setGridOption('columnDefs', this.columnDefs);
@@ -203,14 +224,16 @@ export class StakeholdersComponent {
         flex: 1,
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
-          values: ['Provider', 'Company'],
+          values: ['PROVIDER', 'COMPANY'],
         },
         onCellValueChanged: (params: any) => {
+          // Actualizar currentType para la fila específica
           this.currentType = params.newValue;
-          this.fetchProvidersByType(this.currentType);
+          // Forzar la actualización solo de la celda idProvider en la fila actual
           this.gridApi.refreshCells({
             force: true,
             columns: ['idProvider'],
+            rowNodes: [params.node]
           });
         }
       },
@@ -221,8 +244,10 @@ export class StakeholdersComponent {
         flex: 5,
         cellEditor: CustomSelectEditorComponent,
         cellEditorParams: (params: any) => {
+          // Usar el tipo de la fila actual si está disponible, sino usar currentType
+          const rowType = params.data.type || this.currentType;
           return {
-            values: this.proveedores,
+            values: rowType === 'PROVIDER' ? this.proveedores : this.companias,
             enabled: !!params.data.type
           };
         },
