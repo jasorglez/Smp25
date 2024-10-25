@@ -99,6 +99,10 @@ export const routes: Routes = [
           {
             path:'root',
             loadComponent: () => import('./domains/SMP/Components/root/root.component').then(r => r.RootComponent) 
+          },
+          {
+            path:'estimates',
+            loadComponent: () => import('./domains/SMP/Components/estimates/estimates.component').then(r => r.EstimatesComponent) 
           }
         ]
       }

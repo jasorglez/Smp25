@@ -218,7 +218,7 @@ export class StakeholdersComponent {
         field: 'idProvider',
         headerName: 'Proveedor',
         editable: true,
-        flex: 4,
+        flex: 5,
         cellEditor: CustomSelectEditorComponent,
         cellEditorParams: (params: any) => {
           return {
