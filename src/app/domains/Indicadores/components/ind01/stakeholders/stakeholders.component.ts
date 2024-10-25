@@ -1,32 +1,116 @@
-import { Component, HostListener, inject } from '@angular/core';
-import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { Component, effect, HostListener, inject } from '@angular/core';
+import { ColDef, GridApi, GridReadyEvent, ICellEditorParams } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
-import { AgGridModule } from 'ag-grid-angular';
+import { AgGridModule, ICellRendererAngularComp, ICellEditorAngularComp } from 'ag-grid-angular';
 import { SignalsService } from 'app/services/signals.service';
-import { concat, lastValueFrom, toArray } from 'rxjs';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { catchError, concat, lastValueFrom, of, toArray } from 'rxjs';
+import { CommonModule, DatePipe } from '@angular/common';
+import { FormsModule, FormSubmittedEvent } from '@angular/forms';
 import { SteakholderService } from 'app/services/steakholder.service';
-import { ImageHandlerService } from 'app/services/image-handler.service';
+import { ProvidersService } from 'app/services/providers.service';
+
+@Component({
+  selector: 'app-star-cell',
+  standalone: true,
+  template: `<img [src]="params.value" width="30" height="30" alt="Estrella">`
+})
+export class StarCellRendererComponent implements ICellRendererAngularComp {
+  params: any;
+
+  agInit(params: any): void {
+    this.params = params;
+  }
+
+  refresh(params: any): boolean {
+    this.params = params;
+    return true;
+  }
+}
+
+interface Providers {
+  id: number;
+  name: string;
+}
+
+@Component({
+  selector: 'app-custom-select-editor',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  template: `
+    <select *ngIf="params.enabled" [(ngModel)]="selectedValue" (ngModelChange)="onChange($event)" class="form-select ag-select">
+      <option *ngFor="let option of params.values" [value]="option.id">{{option.name}}</option>
+    </select>
+  `
+})
+export class CustomSelectEditorComponent implements ICellEditorAngularComp {
+  params: ICellEditorParams & { enabled: boolean; values: any[] };
+  selectedValue: any;
+
+  agInit(params: ICellEditorParams & { enabled: boolean; values: any[] }): void {
+    this.params = params;
+    this.selectedValue = this.params.value;
+  }
+
+  getValue(): any {
+    return Number(this.selectedValue); // Convertir a número antes de devolver
+  }
+
+  onChange(newValue: any): void {
+    this.params.api.stopEditing();
+  }
+
+  isPopup?(): boolean {
+    return false;
+  }
+}
 
 @Component({
   selector: 'app-stakeholders',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [CommonModule, FormsModule, AgGridModule, StarCellRendererComponent, CustomSelectEditorComponent],
   templateUrl: './stakeholders.component.html',
-  styleUrl: './stakeholders.component.scss'
+  styleUrls: ['./stakeholders.component.scss'],
+  providers: [DatePipe]
 })
+
 export class StakeholdersComponent {
 
   private idProject = 0;
-  private fecha : Date = new Date();
+  fecha: string;
+  proveedores: Providers[] = [];
+  companias: Providers[] = [];
+  providersAllList: Providers[] = [];
 
-  private steakService          = inject(SteakholderService);  
-  private signalsService      = inject(SignalsService) ;
-  private imageHandlerService = inject(ImageHandlerService);
+  private steakService = inject(SteakholderService);
+  private signalsService = inject(SignalsService);
+  private datePipe = inject(DatePipe);
+  private providersService = inject(ProvidersService);
 
-  ngOnInit() {
-    this.obtenerDatos();    
+  private currentType: string = 'Provider'; // Nuevo: para rastrear el tipo actual
+
+  constructor() {
+    effect(() => {
+      this.idProject = this.signalsService.getProjectSelectedBySidebar()();
+      console.log(this.idProject);
+      if (this.idProject == null) {
+        this.rowData = [];
+        alerts.basicAlert('Issues', 'Debe elegir un proyecto primero.', 'error');
+      }
+      else {
+        this.obtenerDatos();
+        this.fetchProvidersByType();
+        this.fetchAllProviders();
+      }
+    });
+  }
+
+  ngOnInit(): void {
+    // Formatear la fecha actual al formato yyyy-MM-dd
+    this.fecha = this.datePipe.transform(new Date(), 'yyyy-MM-dd');
+  }
+
+  onFechaChange() {
+    this.obtenerDatos();
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -35,13 +119,6 @@ export class StakeholdersComponent {
       $event.returnValue =
         'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
     }
-  }
-
-  onDateChange(event: Event) {
-    const input = event.target as HTMLInputElement;
-    //console.log('Fecha seleccionada:', input.value);
-    // Aquí puedes agregar la lógica para manejar el cambio de fecha
-    this.fecha = new Date(input.value) ; 
   }
 
   notSavedChanges: boolean = false;
@@ -54,89 +131,181 @@ export class StakeholdersComponent {
   private tempIdCounter: number = 0;
 
   obtenerDatos() {
-    this.idProject = this.signalsService.getProjectSelectedBySidebar()();
-    this.steakService.get(this.idProject, this.fecha).subscribe((data: any) => {
-        this.rowData = data;
-        console.log(data)
+    this.steakService.get(this.idProject, this.fecha).pipe(
+      catchError((error) => {
+        console.error('Error al obtener identificaciones:', error);
+        this.rowData = []; // Asigna un array vacío en caso de error
+        return of([]); // Retorna un Observable que emite un array vacío en caso de error
+      })
+    )
+      .subscribe({
+        next: (data: any) => {
+          this.rowData = data;
+        },
+        error: () => {
+          this.rowData = []; // Asigna un array vacío en caso de error
+        }
       });
   }
 
+  fetchProvidersByType(type: string = 'Provider') {
+    this.providersService.getProviderByType(type).subscribe(
+      (data: Providers[]) => {
+        this.proveedores = data;
+        console.log(this.proveedores);
+        // Forzar la actualización de la grid
+        if (this.gridApi) {
+          this.gridApi.setGridOption('columnDefs', this.columnDefs);
+        }
+      },
+      (error) => console.error('Error fetching providers:', error)
+    );
+  }
 
-  public defaultColDef : ColDef = {
-    sortable           : true,
-    resizable          : true,
-    flex               : 1
+  fetchAllProviders() {
+    this.providersService.getProviders().subscribe(
+      (data: Providers[]) => {
+        this.providersAllList = data;
+        console.log(this.proveedores);
+      },
+      (error) => console.error('Error fetching work programs:', error)
+    );
+  }
+
+
+  public defaultColDef: ColDef = {
+    sortable: true,
+    resizable: true,
+    flex: 1
   };
+
+  starOptions = [
+    {
+      value: 'https://firebasestorage.googleapis.com/v0/b/beapp-501d1.appspot.com/o/images%2Festrella%20vacia.png?alt=media&token=eb079ef0-6b2c-436a-b571-69e02be3921c',
+      label: 'Estrella vacía'
+    },
+    {
+      value: 'https://firebasestorage.googleapis.com/v0/b/beapp-501d1.appspot.com/o/images%2Festrella%20mitad.png?alt=media&token=a4429a63-b6bd-4d3e-802d-a7eb7e0645a4',
+      label: 'Estrella mitad'
+    },
+    {
+      value: 'https://firebasestorage.googleapis.com/v0/b/beapp-501d1.appspot.com/o/images%2Festrella%20llena.png?alt=media&token=1af55f2b-e910-44a0-935c-c48e9fcafbe0',
+      label: 'Estrella llena'
+    }
+  ];
 
   get columnDefs(): ColDef[] {
     return [
       {
-        field: 'name',
-        headerName: 'Provider',
+        field: 'type',
+        headerName: 'Tipo',
         editable: true,
-        flex: 2
+        flex: 1,
+        cellEditor: 'agRichSelectCellEditor',
+        cellEditorParams: {
+          values: ['Provider', 'Company'],
+        },
+        onCellValueChanged: (params: any) => {
+          this.currentType = params.newValue;
+          this.fetchProvidersByType(this.currentType);
+          this.gridApi.refreshCells({
+            force: true,
+            columns: ['idProvider'],
+          });
+        }
       },
       {
-        field: 'name',
-        headerName: 'Nombre',
+        field: 'idProvider',
+        headerName: 'Proveedor',
         editable: true,
-        flex: 1
+        flex: 4,
+        cellEditor: CustomSelectEditorComponent,
+        cellEditorParams: (params: any) => {
+          return {
+            values: this.proveedores,
+            enabled: !!params.data.type
+          };
+        },
+        valueFormatter: (params: any) => {
+          const proveedor = this.providersAllList.find(p => p.id === params.value);
+          return proveedor ? proveedor.name : '';
+        },
+        cellRenderer: (params: any) => {
+          if (!params.data.type && !params.value) {
+            return '';
+          }
+          const proveedor = this.providersAllList.find(p => p.id === params.value);
+          return proveedor ? proveedor.name : '';
+        },
+        valueParser: (params: any) => {
+          return Number(params.newValue); // Asegurarse de que se convierte a número
+        }
       },
       {
         field: 'image1',
         headerName: '1',
-        cellEditor: 'agTextCellEditor',
-        cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
-        cellRendererParams: {
-          clicked: this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService),
-          field: 'picture'
+        editable: true,
+        cellEditor: 'agRichSelectCellEditor',
+        cellEditorParams: {
+          values: this.starOptions.map(option => option.value),
+          cellRenderer: StarCellRendererComponent,
+          cellClass: 'custom-select-cell' // Añadimos esta clase personalizada
         },
-        editable: false,
+        cellRenderer: StarCellRendererComponent,
+        width: 80
       },
       {
         field: 'image2',
         headerName: '2',
-        cellEditor: 'agTextCellEditor',
-        cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
-        cellRendererParams: {
-          clicked: this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService),
-          field: 'picture'
+        editable: true,
+        cellEditor: 'agRichSelectCellEditor',
+        cellEditorParams: {
+          values: this.starOptions.map(option => option.value),
+          cellRenderer: StarCellRendererComponent,
+          cellClass: 'custom-select-cell' // Añadimos esta clase personalizada
         },
-        editable: false,
+        cellRenderer: StarCellRendererComponent,
+        width: 80
       },
       {
         field: 'image3',
         headerName: '3',
-        cellEditor: 'agTextCellEditor',
-        cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
-        cellRendererParams: {
-          clicked: this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService),
-          field: 'picture2'
+        editable: true,
+        cellEditor: 'agRichSelectCellEditor',
+        cellEditorParams: {
+          values: this.starOptions.map(option => option.value),
+          cellRenderer: StarCellRendererComponent,
+          cellClass: 'custom-select-cell' // Añadimos esta clase personalizada
         },
-        editable: false,
+        cellRenderer: StarCellRendererComponent,
+        width: 80
       },
       {
         field: 'image4',
         headerName: '4',
-        cellEditor: 'agTextCellEditor',
-        cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
-        cellRendererParams: {
-          clicked: this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService),
-          field: 'picture3'
+        editable: true,
+        cellEditor: 'agRichSelectCellEditor',
+        cellEditorParams: {
+          values: this.starOptions.map(option => option.value),
+          cellRenderer: StarCellRendererComponent,
+          cellClass: 'custom-select-cell' // Añadimos esta clase personalizada
         },
-        editable: false,
+        cellRenderer: StarCellRendererComponent,
+        width: 80
       },
       {
         field: 'image5',
         headerName: '5',
-        cellEditor: 'agTextCellEditor',
-        cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
-        cellRendererParams: {
-          clicked: this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService),
-          field: 'picture3'
+        editable: true,
+        cellEditor: 'agRichSelectCellEditor',
+        cellEditorParams: {
+          values: this.starOptions.map(option => option.value),
+          cellRenderer: StarCellRendererComponent,
+          cellClass: 'custom-select-cell' // Añadimos esta clase personalizada
         },
-        editable: false,
-      },
+        cellRenderer: StarCellRendererComponent,
+        width: 80
+      }
     ];
   }
 
@@ -167,18 +336,15 @@ export class StakeholdersComponent {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      name: '',
-      nameSmall: '',
-      picture: '',
-      picture2: '',
-      picture3: '',
-      phone: '',
-      consortium: 'NO',
-      formatRep: '',
-      city: '',
-      state: '',
-      country: '',
-      active: 1,
+      date: this.fecha,
+      idProject: this.idProject,
+      idProvider: 0,
+      image1: 'https://firebasestorage.googleapis.com/v0/b/beapp-501d1.appspot.com/o/images%2Festrella%20vacia.png?alt=media&token=eb079ef0-6b2c-436a-b571-69e02be3921c',
+      image2: 'https://firebasestorage.googleapis.com/v0/b/beapp-501d1.appspot.com/o/images%2Festrella%20vacia.png?alt=media&token=eb079ef0-6b2c-436a-b571-69e02be3921c',
+      image3: 'https://firebasestorage.googleapis.com/v0/b/beapp-501d1.appspot.com/o/images%2Festrella%20vacia.png?alt=media&token=eb079ef0-6b2c-436a-b571-69e02be3921c',
+      image4: 'https://firebasestorage.googleapis.com/v0/b/beapp-501d1.appspot.com/o/images%2Festrella%20vacia.png?alt=media&token=eb079ef0-6b2c-436a-b571-69e02be3921c',
+      image5: 'https://firebasestorage.googleapis.com/v0/b/beapp-501d1.appspot.com/o/images%2Festrella%20vacia.png?alt=media&token=eb079ef0-6b2c-436a-b571-69e02be3921c',
+      active: true,
       __isNew: true,
     };
 
@@ -188,7 +354,7 @@ export class StakeholdersComponent {
   }
 
   async saveChanges() {
-    const isValid = this.rowData.every((item) => item.name && item.nameSmall);
+    const isValid = this.rowData.every((item) => item.idProvider);
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',

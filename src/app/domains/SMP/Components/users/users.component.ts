@@ -193,7 +193,7 @@ export class UsersComponent {
         headerName: 'Departamento',
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
-          values: Object.keys(this.departamentos),
+          values: [Object.keys(this.departamentos)],
         },
         valueFormatter: (params) => this.departamentos[params.value] || '',
         valueSetter: (params) => {

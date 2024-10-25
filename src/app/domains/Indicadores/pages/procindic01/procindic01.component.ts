@@ -8,7 +8,7 @@ import { IssuesComponent } from '../../components/ind01/issues/issues.component'
 @Component({
   selector: 'app-procindic01',
   standalone: true,
-  imports: [RouterModule,DomainsModule,ConventionsComponent, AdvancesComponent, IssuesComponent],
+  imports: [RouterModule, DomainsModule, ConventionsComponent, AdvancesComponent, IssuesComponent],
   templateUrl: './procindic01.component.html',
   styleUrl: './procindic01.component.scss'
 })

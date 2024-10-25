@@ -30,4 +30,8 @@ export class ProvidersService {
   deleteProvider(id:number) {
     return this.http.delete(`${environment.urlSmp}/Providers/${id}`, { headers: this.trackingService.getHeaders() });
   }
+
+  getProviderByType(type: string) {
+    return this.http.get(`${environment.urlSmp}/Providers/3fields?type=${type}`, { headers: this.trackingService.getHeaders() });
+  }
 }
