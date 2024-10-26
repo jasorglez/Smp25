@@ -45,7 +45,7 @@ export const routes: Routes = [
               },
               { 
                 path: 'controlchanges',
-                loadComponent: () => import('./domains/Indicadores/components/ind01/controlchanges/controlchanges.component').then(a => a.ControlchangesComponent)
+                loadComponent: () => import('./domains/Indicadores/components/ind01/controlchanges/controlchanges.component').then(a => a.ControlChangesComponent)
               },
               { 
                 path: 'riskmatrix',

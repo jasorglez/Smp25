@@ -5,7 +5,7 @@ import { AgGridModule, ICellRendererAngularComp, ICellEditorAngularComp } from '
 import { SignalsService } from 'app/services/signals.service';
 import { catchError, concat, lastValueFrom, of, toArray } from 'rxjs';
 import { CommonModule, DatePipe } from '@angular/common';
-import { FormsModule, FormSubmittedEvent } from '@angular/forms';
+import { FormsModule } from '@angular/forms';
 import { SteakholderService } from 'app/services/steakholder.service';
 import { ProvidersService } from 'app/services/providers.service';
 
