@@ -3,39 +3,28 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { InegiService } from 'app/services/inegi.service';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule } from 'ag-grid-angular';
-import { ContractsService } from 'app/services/contracts.service';
 import { OilfieldService } from 'app/services/oilfield.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { States } from 'app/interface/states';
 
 @Component({
   selector: 'app-oilfields',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule],
-  templateUrl: '../oil-provider-project.html'
+  templateUrl: './oilfields.component.html'
 })
 export class OilfieldsComponent {
 
-  private estados : any =[] ;
+  private estados: string[] = [];
 
   private oilfieldsService = inject(OilfieldService);
-  private inegiService     = inject(InegiService)
-  private contractsService = inject(ContractsService);
+  private inegiService     = inject(InegiService);
 
   ngOnInit() {
     this.obtenerDatos();
-    this.obtenerContracts();
-
-    this.inegiService.getEstados().subscribe(
-      (data: any) => {
-        this.estados = data.datos;
-        //console.log(this.estados) ;
-      },
-      (error) => {
-        console.error('Error fetching states', error);
-      }
-    );
+    this.obtenerStates();
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -51,21 +40,41 @@ export class OilfieldsComponent {
   contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
+  public rowSelection: 'single' | 'multiple' = 'single';
+  public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
+  public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
   id: string;
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
+
+  public defaultColDef : ColDef = {
+    sortable           : true,
+    filter             : true,
+    resizable          : true,
+    lockPosition       : false,
+    enableRowGroup     : true, // Enable row grouping for all columns
+    flex: 1
+  };
+
 
   obtenerDatos() {
     this.oilfieldsService
       .getOilfields()
       .subscribe((data: any) => {
         this.rowData = data;
-    //    console.log(data)
       });
   }
 
-  obtenerContracts() {
-
+  obtenerStates() {
+    this.inegiService.getEstados().subscribe({
+      next: (data: { datos: States[] }) => {
+        this.estados = data.datos.map(estado => estado.nom_agee);
+        this.estados.unshift('Sin estado');
+      },
+      error: (error) => {
+        console.error('Error fetching states', error);
+      }
+    });
   }
 
   get columnDefs(): ColDef[] {
@@ -88,6 +97,24 @@ export class OilfieldsComponent {
         editable: true,
         flex: 2
       },
+      {
+        field: 'place',
+        headerName: 'Lugar',
+        editable: true,
+        flex: 1
+      },
+      {
+        field: 'nameState',
+        headerName: 'Estado',
+        pivot: true,
+        enablePivot: true,
+        editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.estados
+        },
+        flex: 2
+      }
     ];
   }
 

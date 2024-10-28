@@ -8,7 +8,7 @@ import { DomainsModule } from 'app/domains/domainsmodule';
 import { FollowprojectsService } from '../../../../services/followprojects.service';
 import { TrackingService } from '../../../../services/tracking.service';
 
-import { ColDef, GridApi, GridReadyEvent, SelectionChangedEvent } from 'ag-grid-enterprise';
+import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AbstractControl, FormControl, FormGroup, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, EMPTY } from 'rxjs';
