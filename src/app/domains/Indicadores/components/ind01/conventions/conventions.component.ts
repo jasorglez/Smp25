@@ -3,7 +3,7 @@ import { Component, effect, ElementRef, HostListener, inject, ViewChild } from '
 import { FormsModule } from '@angular/forms';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { AgGridModule } from 'ag-grid-angular';
-import { GridApi, ColDef, GridReadyEvent } from 'ag-grid-enterprise';
+import { GridApi, ColDef, GridReadyEvent, CellDoubleClickedEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { ConventionsService } from 'app/services/conventions.service';
 import { lastValueFrom, concat, toArray, catchError, EMPTY, throwError, of, finalize, tap, firstValueFrom } from 'rxjs';
@@ -11,11 +11,13 @@ import { SignalsService } from 'app/services/signals.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { AttachHandlerService } from 'app/services/attach-handler.service';
+import { MultiLineEditorComponent } from "../../../../../shared/multi-line/multi-line-editor.component";
+import { ModalService } from 'app/services/modal.service';
 
 @Component({
   selector: 'app-conventions',
   standalone: true,
-  imports: [DomainsModule, CommonModule, FormsModule, AgGridModule],
+  imports: [DomainsModule, CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
   templateUrl: './conventions.component.html',
   styleUrl: './conventions.component.scss'
 })
@@ -25,6 +27,7 @@ export class ConventionsComponent {
   private signalsService = inject(SignalsService);
   private modalService = inject(NgbModal);
   public attachHandlerService = inject(AttachHandlerService);
+  private modalServiceTable = inject(ModalService);
   numItemsDocuments: number;
   documents: any[];
 
@@ -103,8 +106,33 @@ export class ConventionsComponent {
       {
         field: 'description',
         headerName: 'Descripción',
-        editable: true,
-        flex: 2
+        editable: false,
+        flex: 2,
+        cellEditor: 'agPopupTextCellEditor',
+        cellEditorParams: {
+          maxLength: 100,
+          cols: 50,
+          rows: 3,
+          onKeyDown: (event: KeyboardEvent) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.stopPropagation();
+            }
+          },
+        },
+        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+          if (!event.node.group) {
+            this.modalServiceTable.showModal({
+              params: event,
+              value: event.value,
+            });
+          }
+        },
+        cellRenderer: (params: ICellRendererParams) => {
+          if (params.node.group) {
+            return params.value;
+          }
+          return params.value;
+        }
       },
       {
         field: 'start',
@@ -161,8 +189,33 @@ export class ConventionsComponent {
       {
         field: 'comment',
         headerName: 'Comentario',
-        editable: true,
-        flex: 2
+        editable: false,
+        flex: 2,
+        cellEditor: 'agPopupTextCellEditor',
+        cellEditorParams: {
+          maxLength: 100,
+          cols: 50,
+          rows: 3,
+          onKeyDown: (event: KeyboardEvent) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.stopPropagation();
+            }
+          },
+        },
+        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+          if (!event.node.group) {
+            this.modalServiceTable.showModal({
+              params: event,
+              value: event.value,
+            });
+          }
+        },
+        cellRenderer: (params: ICellRendererParams) => {
+          if (params.node.group) {
+            return params.value;
+          }
+          return params.value;
+        }
       },
     ];
   }

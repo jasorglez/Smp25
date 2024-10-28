@@ -1,5 +1,5 @@
 import { Component, effect, HostListener, inject } from '@angular/core';
-import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
 import { catchError, concat, lastValueFrom, of, toArray } from 'rxjs';
@@ -7,6 +7,8 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SignalsService } from 'app/services/signals.service';
 import { ControlChangesService } from 'app/services/control-changes.service';
+import { MultiLineEditorComponent } from "../../../../../shared/multi-line/multi-line-editor.component";
+import { ModalService } from 'app/services/modal.service';
 
 @Component({
   selector: 'app-check-cell',
@@ -30,7 +32,7 @@ export class CheckCellRendererComponent implements ICellRendererAngularComp {
 @Component({
   selector: 'app-controlchanges',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
   templateUrl: './controlchanges.component.html',
   styleUrl: './controlchanges.component.scss',
   providers: [DatePipe]
@@ -43,6 +45,7 @@ export class ControlChangesComponent {
   private signalsService = inject(SignalsService);
   private datePipe = inject(DatePipe);
   private controlChangesService = inject(ControlChangesService);
+  private modalServiceTable = inject(ModalService);
 
   constructor() {
     effect(() => {
@@ -125,8 +128,33 @@ export class ControlChangesComponent {
       {
         field: 'concept',
         headerName: 'Concepto',
-        editable: true,
-        width: 200
+        editable: false,
+        width: 200,
+        cellEditor: 'agPopupTextCellEditor',
+        cellEditorParams: {
+          maxLength: 100,
+          cols: 50,
+          rows: 3,
+          onKeyDown: (event: KeyboardEvent) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.stopPropagation();
+            }
+          },
+        },
+        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+          if (!event.node.group) {
+            this.modalServiceTable.showModal({
+              params: event,
+              value: event.value,
+            });
+          }
+        },
+        cellRenderer: (params: ICellRendererParams) => {
+          if (params.node.group) {
+            return params.value;
+          }
+          return params.value;
+        }
       },
       {
         field: 'scope',
@@ -224,8 +252,33 @@ export class ControlChangesComponent {
       {
         field: 'observation',
         headerName: 'Observaciones',
-        editable: true,
-        width: 200
+        editable: false,
+        width: 200,
+        cellEditor: 'agPopupTextCellEditor',
+        cellEditorParams: {
+          maxLength: 100,
+          cols: 50,
+          rows: 3,
+          onKeyDown: (event: KeyboardEvent) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.stopPropagation();
+            }
+          },
+        },
+        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+          if (!event.node.group) {
+            this.modalServiceTable.showModal({
+              params: event,
+              value: event.value,
+            });
+          }
+        },
+        cellRenderer: (params: ICellRendererParams) => {
+          if (params.node.group) {
+            return params.value;
+          }
+          return params.value;
+        }
       },
       {
         field: 'authorizeUser',
