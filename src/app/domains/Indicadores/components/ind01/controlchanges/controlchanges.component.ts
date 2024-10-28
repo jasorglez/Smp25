@@ -7,12 +7,11 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SignalsService } from 'app/services/signals.service';
 import { ControlChangesService } from 'app/services/control-changes.service';
-import { StarCellRendererComponent } from '../stakeholders/stakeholders.component';
 
 @Component({
   selector: 'app-check-cell',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, AgGridModule],
   template: `<img [src]="params.value" width="30" height="30" alt="Elija calificación">`
 })
 export class CheckCellRendererComponent implements ICellRendererAngularComp {
@@ -44,8 +43,6 @@ export class ControlChangesComponent {
   private signalsService = inject(SignalsService);
   private datePipe = inject(DatePipe);
   private controlChangesService = inject(ControlChangesService);
-
-  private currentType: string = 'Provider'; // Nuevo: para rastrear el tipo actual
 
   constructor() {
     effect(() => {
@@ -109,8 +106,7 @@ export class ControlChangesComponent {
 
   public defaultColDef: ColDef = {
     sortable: true,
-    resizable: true,
-    flex: 1
+    resizable: true
   };
 
   starOptions = [
@@ -143,7 +139,7 @@ export class ControlChangesComponent {
           cellClass: 'custom-select-cell' // Añadimos esta clase personalizada
         },
         cellRenderer: CheckCellRendererComponent,
-        width: 80
+        width: 120
       },
       {
         field: 'time',
@@ -156,7 +152,7 @@ export class ControlChangesComponent {
           cellClass: 'custom-select-cell' // Añadimos esta clase personalizada
         },
         cellRenderer: CheckCellRendererComponent,
-        width: 80
+        width: 120
       },
       {
         field: 'cost',
@@ -168,8 +164,8 @@ export class ControlChangesComponent {
           cellRenderer: CheckCellRendererComponent,
           cellClass: 'custom-select-cell' // Añadimos esta clase personalizada
         },
-        cellRenderer: StarCellRendererComponent,
-        width: 80
+        cellRenderer: CheckCellRendererComponent,
+        width: 120
       },
       {
         field: 'coordinate',

@@ -330,6 +330,12 @@ export class StakeholdersComponent {
         },
         cellRenderer: StarCellRendererComponent,
         width: 80
+      },
+      {
+        field: 'authorizeUser',
+        headerName: 'Autoriza',
+        editable: false,
+        flex: 2
       }
     ];
   }
@@ -369,6 +375,7 @@ export class StakeholdersComponent {
       image3: 'https://firebasestorage.googleapis.com/v0/b/beapp-501d1.appspot.com/o/images%2Festrella%20vacia.png?alt=media&token=eb079ef0-6b2c-436a-b571-69e02be3921c',
       image4: 'https://firebasestorage.googleapis.com/v0/b/beapp-501d1.appspot.com/o/images%2Festrella%20vacia.png?alt=media&token=eb079ef0-6b2c-436a-b571-69e02be3921c',
       image5: 'https://firebasestorage.googleapis.com/v0/b/beapp-501d1.appspot.com/o/images%2Festrella%20vacia.png?alt=media&token=eb079ef0-6b2c-436a-b571-69e02be3921c',
+      authorizeUser: localStorage.getItem('mail'),
       active: true,
       __isNew: true,
     };
