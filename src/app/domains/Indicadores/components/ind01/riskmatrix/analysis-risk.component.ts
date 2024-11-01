@@ -197,43 +197,92 @@ fecha: any;
         field: 'probability',
         headerName: 'Probabilidad',
         editable: true,
-        width: 130
+        width: 130,
+        cellEditor: 'agNumberCellEditor',
+        cellEditorParams: {
+          min: 1,
+          max: 5,
+          precision: 0,
+          step: 1
+        }
       },
       {
         field: 'scope',
         headerName: 'Alcance',
         editable: true,
-        width: 130
+        width: 130,
+        cellEditor: 'agNumberCellEditor',
+        cellEditorParams: {
+          min: 1,
+          max: 5,
+          precision: 0,
+          step: 1
+        }
       },
       {
         field: 'time',
         headerName: 'Tiempo',
         editable: true,
-        width: 130
+        width: 130,
+        cellEditor: 'agNumberCellEditor',
+        cellEditorParams: {
+          min: 1,
+          max: 5,
+          precision: 0,
+          step: 1
+        }
       },
       {
         field: 'cost',
         headerName: 'Costo',
         editable: true,
-        width: 130
+        width: 130,
+        cellEditor: 'agNumberCellEditor',
+        cellEditorParams: {
+          min: 1,
+          max: 5,
+          precision: 0,
+          step: 1
+        }
       },
       {
         field: 'quality',
         headerName: 'Caliidad',
         editable: true,
-        width: 130
+        width: 130,
+        cellEditor: 'agNumberCellEditor',
+        cellEditorParams: {
+          min: 1,
+          max: 5,
+          precision: 0,
+          step: 1
+        }
       },
       {
         field: 'average',
         headerName: 'Impacto promedio',
         editable: false,
-        width: 130
+        width: 130,
+        cellEditor: 'agNumberCellEditor',
+        cellEditorParams: {
+          min: 1,
+          max: 5,
+          precision: 0,
+          step: 1
+        }
       },
       {
         field: 'calification',
         headerName: 'Calificación',
         editable: false,
-        width: 130
+        width: 130,
+        cellEditor: 'agNumberCellEditor',
+        cellEditorParams: {
+          min: 1,
+          max: 5,
+          precision: 0,
+          step: 1
+        }
       },
       {
         field: 'urgency',
