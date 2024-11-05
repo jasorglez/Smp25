@@ -122,6 +122,8 @@ export class SignalsService {
     return this.planificationActionRisk;
   }
 
+  /* Signals para el perfil de usuario */
+
   profileSignal(id: number, email: string, picture: string, name: string, organization: string, position: string) {
     this.profile.idUser.set(id);
     this.profile.emailUser.set(email);
@@ -252,6 +254,14 @@ export class SignalsService {
     this.nameAnalysis = signal(null);
     this.idContingencyAction = signal(null);
     this.nameContingencyAction = signal(null);
+    this.idIdentificationRisk = signal(null);
+    this.nameIdentificationRisk = signal(null);
+    this.causeIdentificationRisk = signal(null);
+    this.idAnalysisRisk = signal(null);
+    this.idPlanificationRisk = signal(null);
+    this.planificationActionRisk = signal(null);
+    this.selectedWorkProgram = signal(null);
+
     // Reinicia this.profile
     this.profileSignal(null, null, null, null, null, null);
   }

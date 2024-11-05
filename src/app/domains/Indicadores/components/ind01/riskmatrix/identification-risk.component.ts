@@ -37,7 +37,7 @@ export class IdentificationRiskComponent implements OnInit {
       this.idIdentificationRisk = this.signalsService.getIdIdentificationRisk()();
       if (this.idProject == null) {
         this.rowData = [];
-        alerts.basicAlert('Issues', 'Debe elegir un proyecto primero.', 'error');
+        alerts.basicAlert('Matriz Riesgos', 'Debe elegir un proyecto primero.', 'error');
       }
       else {
         this.obtenerDatos();

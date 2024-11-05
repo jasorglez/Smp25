@@ -94,7 +94,7 @@ export class StakeholdersComponent {
       console.log(this.idProject);
       if (this.idProject == null) {
         this.rowData = [];
-        alerts.basicAlert('Issues', 'Debe elegir un proyecto primero.', 'error');
+        alerts.basicAlert('Stakeholders', 'Debe elegir un proyecto primero.', 'error');
       }
       else {
         this.obtenerDatos();
