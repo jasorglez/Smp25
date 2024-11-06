@@ -255,7 +255,7 @@ if (this.signalsService.isidUserEmpty()){
       'Menu Side Bar',
       ''
     );
-    this.router.navigate(['/procesdas']);
+    this.router.navigate(['/dashboard']);
   }
 
   Admon() {

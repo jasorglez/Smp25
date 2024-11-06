@@ -17,7 +17,7 @@ export const routes: Routes = [
         loadComponent: () => import('./domains/Warehouse/pages/procwareh/procwareh.component').then(w => w.ProcwarehComponent)
       },
       { 
-        path: 'procesdas', 
+        path: 'dashboard', 
         loadComponent: () => import('./domains/Dashboards/pages/procdash/procdash.component').then(d => d.ProcdashComponent)
       },
       { 
