@@ -14,10 +14,8 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
 export class ProcdashComponent {
 
   async ngOnInit() {
-    await this.getContractData();
-    this.graphByClassification();
-    await this.getStateMap();
-    this.graphMap();
+    await this.getContractDataAndGraphByClassification();
+    await this.getStateMapAndGraph();
   }
 
   private dashboardService = inject(DashboardService);
@@ -27,9 +25,9 @@ export class ProcdashComponent {
   dataByClassification: any[] = [];
   chartByClassification: any;
   chartMap: any;
-  estadosColoreados: any;
+  estadosColoreados: any[] = [];
 
-  async getContractData(): Promise<void> {
+  async getContractDataAndGraphByClassification(): Promise<void> {
     const data = await this.dashboardService.getContractsByClassification().toPromise();
     this.categorybyClassification = Array.from(new Set(data.map(item => item.speciality)));
 
@@ -43,17 +41,7 @@ export class ProcdashComponent {
           return acc;
         }, [] as number[])
       }));
-  }
 
-  async getStateMap(): Promise<void> {
-    const data = await this.dashboardService.getOilfieldsByState().toPromise();
-    this.estadosColoreados = data.map(({ nameState, totalContratos }) => ({
-      name: nameState,
-      value: totalContratos
-    }));
-  }
-
-  graphByClassification() {
     const chartDivByClassification = document.getElementById('echarts-container-by-classification');
     this.chartByClassification = echarts.init(chartDivByClassification as HTMLElement);
 
@@ -105,15 +93,21 @@ export class ProcdashComponent {
     };
 
     this.chartByClassification.setOption(optionByClassification);
+
   }
 
-  graphMap() {
+  async getStateMapAndGraph(): Promise<void> {
+    const data = await this.dashboardService.getOilfieldsByState().toPromise();
+    this.estadosColoreados = data.map(({ nameState, totalContratos }) => ({
+      name: nameState,
+      value: totalContratos
+    }));
+
     const chartDivMap = document.getElementById('echarts-container-map');
     this.chartMap = echarts.init(chartDivMap as HTMLElement);
-    
+
     this.http.get('./assets/files/mexicoHigh.json').subscribe(geoJson => {
       echarts.registerMap('mexico', geoJson as any);
-     
 
       const totalValue = this.estadosColoreados.reduce((sum, estado) => sum + estado.value, 0);
 
@@ -155,8 +149,7 @@ export class ProcdashComponent {
       };
 
       this.chartMap.setOption(optionMap);
-      console.log(this.estadosColoreados)
+      console.log(this.estadosColoreados);
     });
-
   }
 }

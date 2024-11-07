@@ -299,14 +299,14 @@ if (this.signalsService.isidUserEmpty()){
     this.router.navigate(['/allcontract']);
   }
 
-  PepTablero() {
+  SmpSetup() {
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
-      'Eleccion del menu Pep Tablero',
+      'Eleccion del menu Smp Setup',
       'Menu Side Bar',
       ''
     );
-    this.router.navigate(['/procespep']);
+    this.router.navigate(['/smp']);
   }
 
   warehouseproc() {
