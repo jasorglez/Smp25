@@ -8,6 +8,7 @@ import { alerts } from '../helpers/alerts';
 import { map, Observable } from 'rxjs';
 
 import 'firebase/compat/database';
+import { SignalsService } from './signals.service';
 
 @Injectable({
   providedIn: 'root'
@@ -16,6 +17,7 @@ export class UsersService {
 
   private trackingService = inject(TrackingService);
   private http = inject(HttpClient);
+  private signalsService = inject(SignalsService);
 
   // Aqui comienzan los cambios hechos a SMP
 
@@ -83,6 +85,7 @@ export class UsersService {
            const applyplatform = user.applyplatform || ''; // Corregido de user.applybranch a user.applyplatform
            const id           = user.id   ;
          //  this.signalsService.setidUser(datauser.id);
+         this.signalsService.setDisplayName(displayName);
 
           return { displayName, picture, applyproject, applybranch, applyplatform, email, id };
         } else {

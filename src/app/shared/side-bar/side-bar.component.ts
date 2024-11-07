@@ -62,7 +62,7 @@ if (this.signalsService.isidUserEmpty()){
                 // Defincion de variables globales             
                  this.trackingService.setId(datauser.id) ;               
                  this.signalsService.setidUser(datauser.id); 
-                 this.signalsService.setDisplayName(datauser.displayName); 
+                 //this.signalsService.setDisplayName(datauser.displayName); 
                  this.getpermissionxRoots();  
               }
             },

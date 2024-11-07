@@ -30,38 +30,27 @@ export class ProcdashComponent {
   estadosColoreados: any;
 
   async getContractData(): Promise<void> {
-    return new Promise((resolve) => {
-      this.dashboardService.getContractsByClassification().subscribe(data => {
-        this.categorybyClassification = Array.from(new Set(data.map(item => item.speciality)));
+    const data = await this.dashboardService.getContractsByClassification().toPromise();
+    this.categorybyClassification = Array.from(new Set(data.map(item => item.speciality)));
 
-        this.dataByClassification = [];
-        const stateContracts = Array.from(new Set(data.map(item => item.stateContract)));
-
-        stateContracts.forEach(stateContract => {
-          const values = data
-            .filter(item => item.stateContract === stateContract)
-            .map(item => item.count);
-
-          this.dataByClassification.push({
-            name: stateContract,
-            values: values
-          });
-        });
-        resolve();
-      });
-    });
+    this.dataByClassification = Array.from(new Set(data.map(item => item.stateContract)))
+      .map(stateContract => ({
+        name: stateContract,
+        values: data.reduce((acc, item) => {
+          if (item.stateContract === stateContract) {
+            acc.push(item.count);
+          }
+          return acc;
+        }, [] as number[])
+      }));
   }
 
   async getStateMap(): Promise<void> {
-    return new Promise((resolve) => {
-      this.dashboardService.getOilfieldsByState().subscribe(data => {
-        this.estadosColoreados = data.map(item => ({
-          name: item.nameState,
-          value: item.totalContratos
-        }));
-        resolve();
-      });
-    });
+    const data = await this.dashboardService.getOilfieldsByState().toPromise();
+    this.estadosColoreados = data.map(({ nameState, totalContratos }) => ({
+      name: nameState,
+      value: totalContratos
+    }));
   }
 
   graphByClassification() {
