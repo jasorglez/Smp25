@@ -16,4 +16,8 @@ export class DashboardService {
   getContractsByClassification() {
     return this.http.get<any[]>(`${environment.urlSmp}/Contract/state?idBussines=1`, { headers: this.trackingService.getHeaders() });
   }
+
+  getOilfieldsByState() {
+    return this.http.get<any[]>(`${environment.urlSmp}/Contract/Countxstate`, { headers: this.trackingService.getHeaders() });
+  }
 }

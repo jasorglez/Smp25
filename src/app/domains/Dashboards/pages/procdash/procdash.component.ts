@@ -1,12 +1,13 @@
 import { Component, inject } from '@angular/core';
 import * as echarts from 'echarts';
 import { DashboardService } from 'app/services/dashboard.service';
+import { HttpClient, HttpClientModule } from '@angular/common/http';
 
 
 @Component({
   selector: 'app-procdash',
   standalone: true,
-  imports: [],
+  imports: [HttpClientModule],
   templateUrl: './procdash.component.html',
   styleUrl: './procdash.component.scss'
 })
@@ -15,19 +16,23 @@ export class ProcdashComponent {
   async ngOnInit() {
     await this.getContractData();
     this.graphByClassification();
+    await this.getStateMap();
+    this.graphMap();
   }
 
   private dashboardService = inject(DashboardService);
+  private http = inject(HttpClient);
 
   categorybyClassification: string[] = [];
   dataByClassification: any[] = [];
+  chartByClassification: any;
+  chartMap: any;
+  estadosColoreados: any;
 
   async getContractData(): Promise<void> {
     return new Promise((resolve) => {
       this.dashboardService.getContractsByClassification().subscribe(data => {
         this.categorybyClassification = Array.from(new Set(data.map(item => item.speciality)));
-
-        console.log(this.categorybyClassification);
 
         this.dataByClassification = [];
         const stateContracts = Array.from(new Set(data.map(item => item.stateContract)));
@@ -41,21 +46,29 @@ export class ProcdashComponent {
             name: stateContract,
             values: values
           });
-
-          console.log(this.dataByClassification);
         });
         resolve();
       });
     });
   }
 
-  chartByClassification: any;
+  async getStateMap(): Promise<void> {
+    return new Promise((resolve) => {
+      this.dashboardService.getOilfieldsByState().subscribe(data => {
+        this.estadosColoreados = data.map(item => ({
+          name: item.nameState,
+          value: item.totalContratos
+        }));
+        resolve();
+      });
+    });
+  }
 
   graphByClassification() {
-    const chartDiv = document.getElementById('echarts-container-by-classification');
-    this.chartByClassification = echarts.init(chartDiv as HTMLElement);
+    const chartDivByClassification = document.getElementById('echarts-container-by-classification');
+    this.chartByClassification = echarts.init(chartDivByClassification as HTMLElement);
 
-    const option = {
+    const optionByClassification = {
       responsive: true,
       title: {
         text: 'Contratos por especialidad'
@@ -102,6 +115,59 @@ export class ProcdashComponent {
       ]
     };
 
-    this.chartByClassification.setOption(option);
+    this.chartByClassification.setOption(optionByClassification);
+  }
+
+  graphMap() {
+    const chartDivMap = document.getElementById('echarts-container-map');
+    this.chartMap = echarts.init(chartDivMap as HTMLElement);
+    
+    this.http.get('./assets/files/mexicoHigh.json').subscribe(geoJson => {
+      echarts.registerMap('mexico', geoJson as any);
+     
+
+      const totalValue = this.estadosColoreados.reduce((sum, estado) => sum + estado.value, 0);
+
+      const optionMap = {
+        responsive: true,
+        title: {
+          text: 'Contratos por estado'
+        },
+        tooltip: {
+          trigger: 'item',
+          formatter: (params: { name: string; }) => {
+            const estado = this.estadosColoreados.find(e => e.name === params.name);
+            if (estado) {
+              const percentage = ((estado.value / totalValue) * 100).toFixed(2);
+              return `<p><strong>${estado.name}</strong></p><p>Contratos: ${estado.value} <small>(${percentage}%)</small></p>`;
+            }
+            return '';
+          }
+        },
+        series: [{
+          type: 'map',
+          map: 'mexico',
+          roam: true,
+          selectedMode: false,
+          itemStyle: {
+            areaColor: '#eee',
+            borderColor: '#000'
+          },
+          emphasis: {
+            disabled: true
+          },
+          data: this.estadosColoreados.map(estado => ({
+            name: estado.name,
+            itemStyle: {
+              areaColor: '#d6a00b'
+            }
+          }))
+        }]
+      };
+
+      this.chartMap.setOption(optionMap);
+      console.log(this.estadosColoreados)
+    });
+
   }
 }
