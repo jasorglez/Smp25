@@ -12,6 +12,7 @@ export class FooterComponent {
 
   private signalsService = inject(SignalsService);
 
-  companyName = computed(()=> this.signalsService.companyName());
+  companyName = computed(()=> this.signalsService.getCompanyName());
+  displayName = computed(()=> this.signalsService.getDisplayName());
  
 }

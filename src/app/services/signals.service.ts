@@ -164,17 +164,30 @@ export class SignalsService {
 
   /* Signal para la sidebar */
 
-  companyName = signal<string>(null);
+  private companyName = signal<string>(null);
   private selectedContract = signal<number>(null);
   idUser = signal<number>(0);
+  private displayName = signal<string>(null);
   private selectedProject = signal<number>(null);
 
   setCompanyName(name: string) {
     this.companyName.set(name);
   }
 
+  getCompanyName() {
+    return this.companyName;
+  }
+
   setidUser(id: number) {
     this.idUser.set(id);
+  }
+
+  setDisplayName(name: string) {
+    this.displayName.set(name);
+  }
+
+  getDisplayName() {
+    return this.displayName;
   }
 
   /* Signals para Matriz Issues */

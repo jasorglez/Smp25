@@ -61,7 +61,8 @@ if (this.signalsService.isidUserEmpty()){
                 console.log('DataUsers:',datauser)
                 // Defincion de variables globales             
                  this.trackingService.setId(datauser.id) ;               
-                 this.signalsService.setidUser(datauser.id);  
+                 this.signalsService.setidUser(datauser.id); 
+                 this.signalsService.setDisplayName(datauser.displayName); 
                  this.getpermissionxRoots();  
               }
             },
