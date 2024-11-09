@@ -20,4 +20,12 @@ export class DashboardService {
   getOilfieldsByState() {
     return this.http.get<any[]>(`${environment.urlSmp}/Contract/Countxstate`, { headers: this.trackingService.getHeaders() });
   }
+
+  getTotalContracts() {
+    return this.http.get<any[]>(`${environment.urlSmp}/Contract/totales?idBussines=1`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getContractsBySpeciality() {
+    return this.http.get<any[]>(`${environment.urlSmp}/Contract/totalesxspeciality?idBussines=1`, { headers: this.trackingService.getHeaders() });
+  }
 }
