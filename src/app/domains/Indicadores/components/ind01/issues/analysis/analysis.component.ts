@@ -245,8 +245,8 @@ export class AnalysisComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return console.log(cleanedData);
-      //return this.issuesService.addAnalysis(cleanedData);
+      //return console.log(cleanedData);
+      return this.issuesService.addAnalysis(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {

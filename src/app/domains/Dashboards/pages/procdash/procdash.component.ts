@@ -3,12 +3,13 @@ import { lastValueFrom } from 'rxjs';
 import * as echarts from 'echarts';
 import { DashboardService } from 'app/services/dashboard.service';
 import { HttpClient } from '@angular/common/http';
+import { ContractsBySpecialityMxnComponent } from "../../components/contracts-by-speciality/contracts-by-speciality.component";
 
 
 @Component({
   selector: 'app-procdash',
   standalone: true,
-  imports: [],
+  imports: [ContractsBySpecialityMxnComponent],
   templateUrl: './procdash.component.html',
   styleUrl: './procdash.component.scss'
 })
@@ -18,7 +19,6 @@ export class ProcdashComponent {
     await this.getContractDataAndGraphByClassification();
     await this.getStateMapAndGraph();
     await this.getTotalContractsAndGraph();
-    await this.getContractsBySpecialityAndGraph();
   }
 
   private dashboardService = inject(DashboardService);
@@ -154,14 +154,16 @@ export class ProcdashComponent {
     const total = Object.entries(data[0]).map(([key, value]) => ({
       name: key,
       value: value
-    })).filter(item => !item.name.endsWith('DLL')) // Filtrar los que terminan con 'DLL'
+    })).filter(item => item.name !== 'estDLL' && item.name !== 'remainingDLL') // Filtrar los que terminan con 'DLL'
       .map(item => {
         // Renombrar los datos restantes
         if (item.name === 'estMx') return { name: 'Estimado', value: item.value };
-        if (item.name === 'totalContratoMX') return { name: 'Total', value: item.value };
+        if (item.name === 'totalContratoMX') return { name: 'Total MXN', value: item.value };
+        if (item.name === 'totalContratoDLL') return { name: 'Total USD', value: item.value };
         if (item.name === 'remainingMX') return { name: 'Restante', value: item.value };
         return item; // Retornar el item sin cambios si no coincide
       });
+      console.log(total);
 
     const chartDivTotal = document.getElementById('echarts-container-total');
     const chartTotal = echarts.init(chartDivTotal as HTMLElement);
@@ -178,7 +180,7 @@ export class ProcdashComponent {
             left: 'center',
             top: '8%', // Ajusta la posición según sea necesario
             style: {
-              text: `Total: MXN $${Number(total.find(item => item.name === 'Total')?.value).toLocaleString('es-MX')}`, // Usar el valor total con comas
+              text: `Total MXN: $${Number(total.find(item => item.name === 'Total MXN')?.value).toLocaleString('es-MX')}\n\nTotal USD: $${Number(total.find(item => item.name === 'Total USD')?.value).toLocaleString('en-US')}`, // Usar el valor total con comas
               font: 'bold 16px sans-serif',
               fill: '#333' // Color del texto
             }
@@ -198,9 +200,10 @@ export class ProcdashComponent {
       },
       series: [
         {
+          top: '8%',
           name: 'Importe total de contratos',
           type: 'pie',
-          radius: ['40%', '70%'],
+          radius: ['35%', '60%'],
           avoidLabelOverlap: false,
           label: {
             show: false,
@@ -216,93 +219,11 @@ export class ProcdashComponent {
           labelLine: {
             show: false
           },
-          data: total.filter(item => item.name !== 'Total') // Asegúrate de que "Total" no esté en los datos
+          data: total.filter(item => item.name !== 'Total MXN' && item.name !== 'Total USD') // Asegúrate de que "Total" no esté en los datos
         }
       ]
     };
 
     chartTotal.setOption(optionTotal);
-  }
-
-  async getContractsBySpecialityAndGraph(): Promise<void> {
-    const data = await lastValueFrom(this.dashboardService.getContractsBySpeciality());
-    const transformedData = this.transformData(data);
-
-    const categoryByClassification = Array.from(new Set(data.map(item => item.speciality)));
-
-    const chartDivBySpeciality = document.getElementById('echarts-container-by-speciality');
-    const chartBySpeciality = echarts.init(chartDivBySpeciality as HTMLElement);
-
-    const optionBySpeciality = {
-      responsive: true,
-      title: {
-        text: 'Montos por clasificación'
-      },
-      tooltip: {
-        trigger: 'axis',
-        valueFormatter: value => 'MXN $' + value.toLocaleString('es-MX'),
-        axisPointer: {
-          // Use axis to trigger tooltip
-          type: 'line' // 'shadow' as default; can also be 'line' or 'shadow'
-        },
-        
-      },
-      legend: {
-        top: 'bottom',
-        left: 'center',
-        padding: 0
-      },
-      grid: {
-        left: '3%',
-        right: '3%',
-        bottom: '13%',
-        containLabel: true
-      },
-      yAxis: {
-        type: 'value'
-      },
-      xAxis: {
-        type: 'category',
-        data: categoryByClassification
-      },
-      series: [
-        // Ciclo para agregar series de 0 a 2
-        ...Array.from({ length: 3 }, (_, index) => ({
-          name: transformedData[index]?.name || '', // Asegúrate de que exista un dato
-          type: 'bar',
-          stack: 'total',
-          label: {
-            show: true,
-            formatter: (params: { value: number }) => (params.value / 1000000).toFixed(2) + 'M' // Formatear el valor
-          },
-          emphasis: {
-            focus: 'series'
-          },
-          data: transformedData[index]?.value || [] // Asegúrate de que exista un dato
-        })),
-      ]
-    };
-
-    chartBySpeciality.setOption(optionBySpeciality);
-  }
-
-  transformData(data: any[]): any[] {
-    // Mapa para traducir los nombres
-    const nameMap: { [key: string]: string } = {
-      'estMx': 'Estimados',
-      'totalContratoMX': 'Total',
-      'remainingMX': 'Restante'
-    };
-
-    // Obtenemos las keys que terminan en Mx o MX
-    const mxKeys = Object.keys(data[0]).filter(key =>
-      key.toLowerCase().endsWith('mx')
-    );
-
-    // Transformamos los datos
-    return mxKeys.map(key => ({
-      name: nameMap[key], // Usamos el nombre traducido
-      value: data.map(item => item[key])
-    }));
   }
 }
