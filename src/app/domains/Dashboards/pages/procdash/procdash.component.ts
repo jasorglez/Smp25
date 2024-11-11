@@ -26,6 +26,7 @@ export class ProcdashComponent {
     await this.getContractDataAndGraphByClassification();
     await this.getStateMapAndGraph();
     await this.getTotalContractsAndGraph();
+    await this.getInactiveTimesAndGraph();
   }
 
   private dashboardService = inject(DashboardService);
@@ -232,5 +233,76 @@ export class ProcdashComponent {
     };
 
     chartTotal.setOption(optionTotal);
+  }
+
+  async getInactiveTimesAndGraph(): Promise<void> {
+    const data = await lastValueFrom(this.dashboardService.getTotalInactivesByCause());
+    const inactiveTimes = data.map(({ cause, totalcause }) => ({
+      name: cause,
+      value: totalcause
+    }));
+    
+    // Calcular el total de horas
+    const totalHours = inactiveTimes.reduce((sum, item) => sum + item.value, 0);
+    
+    const chartDivInactive = document.getElementById('echarts-container-inactive');
+    const chartInactive = echarts.init(chartDivInactive as HTMLElement);
+
+    const optionInactive = { 
+      responsive: true,
+      title: {
+        text: 'Tiempos inactivos'
+      },
+      tooltip: {
+        trigger: 'item',
+        formatter: (params: { name: string; value: number; }) => {
+          const item = inactiveTimes.find(t => t.name === params.name) as { name: string; value: number };
+          return item ? `<strong>${item.name}</strong>: ${item.value} horas` : '';
+        }
+      },
+      legend: {
+        top: 'bottom',
+        left: 'center'
+      },
+      series: [
+        {
+          name: 'Tiempos inactivos',
+          type: 'pie',
+          radius: ['35%', '60%'],
+          avoidLabelOverlap: false,
+          label: {
+            show: false,
+            position: 'center'
+          },
+          emphasis: {
+            label: {
+              show: false,
+              fontSize: 40,
+              fontWeight: 'bold'
+            }
+          },
+          labelLine: {
+            show: false
+          },
+          data: inactiveTimes
+        }
+      ],
+      graphic: {
+        elements: [
+          {
+            type: 'text',
+            left: 'center',
+            top: 'center',
+            style: {
+              text: `${totalHours} horas`, // Mostrar el total de horas
+              font: 'bold 20px sans-serif',
+              fill: '#333' // Color del texto
+            }
+          }
+        ]
+      }
+    };
+
+    chartInactive.setOption(optionInactive);
   }
 }

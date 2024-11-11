@@ -28,4 +28,8 @@ export class DashboardService {
   getContractsBySpeciality() {
     return this.http.get<any[]>(`${environment.urlSmp}/Contract/totalesxspeciality?idBussines=1`, { headers: this.trackingService.getHeaders() });
   }
+
+  getTotalInactivesByCause() {
+    return this.http.get<any[]>(`${environment.urlSmp}/Timeinactives/totalxcause`, { headers: this.trackingService.getHeaders() });
+  }
 }
