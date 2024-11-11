@@ -171,11 +171,25 @@ export class ProcdashComponent {
       title: {
         text: 'Importe total de contratos'
       },
+      graphic: {
+        elements: [
+          {
+            type: 'text',
+            left: 'center',
+            top: '8%', // Ajusta la posición según sea necesario
+            style: {
+              text: `Total: MXN $${Number(total.find(item => item.name === 'Total')?.value).toLocaleString('es-MX')}`, // Usar el valor total con comas
+              font: 'bold 16px sans-serif',
+              fill: '#333' // Color del texto
+            }
+          }
+        ]
+      },
       tooltip: {
         trigger: 'item',
         formatter: (params: { name: string; value: number; }) => {
-          const item = total.find(t => t.name === params.name) as { name: string; value: number }; // Explicitly type the item
-          return item ? `<strong>${item.name}</strong>: MXN $${item.value.toFixed(2)}` : '';
+          const item = total.find(t => t.name === params.name) as { name: string; value: number };
+          return item ? `<strong>${item.name}</strong>: MXN $${Number(item.value).toLocaleString('es-MX')}` : ''; // Usar el valor con comas
         }
       },
       legend: {
@@ -184,7 +198,7 @@ export class ProcdashComponent {
       },
       series: [
         {
-          name: 'Access From',
+          name: 'Importe total de contratos',
           type: 'pie',
           radius: ['40%', '70%'],
           avoidLabelOverlap: false,
@@ -202,7 +216,7 @@ export class ProcdashComponent {
           labelLine: {
             show: false
           },
-          data: total
+          data: total.filter(item => item.name !== 'Total') // Asegúrate de que "Total" no esté en los datos
         }
       ]
     };
@@ -226,10 +240,12 @@ export class ProcdashComponent {
       },
       tooltip: {
         trigger: 'axis',
+        valueFormatter: value => 'MXN $' + value.toLocaleString('es-MX'),
         axisPointer: {
           // Use axis to trigger tooltip
-          type: 'shadow' // 'shadow' as default; can also be 'line' or 'shadow'
-        }
+          type: 'line' // 'shadow' as default; can also be 'line' or 'shadow'
+        },
+        
       },
       legend: {
         top: 'bottom',
@@ -249,10 +265,10 @@ export class ProcdashComponent {
         type: 'category',
         data: categoryByClassification
       },
-            series: [
+      series: [
         // Ciclo para agregar series de 0 a 2
         ...Array.from({ length: 3 }, (_, index) => ({
-          name:transformedData[index]?.name || '', // Asegúrate de que exista un dato
+          name: transformedData[index]?.name || '', // Asegúrate de que exista un dato
           type: 'bar',
           stack: 'total',
           label: {
@@ -277,12 +293,12 @@ export class ProcdashComponent {
       'totalContratoMX': 'Total',
       'remainingMX': 'Restante'
     };
-  
+
     // Obtenemos las keys que terminan en Mx o MX
-    const mxKeys = Object.keys(data[0]).filter(key => 
+    const mxKeys = Object.keys(data[0]).filter(key =>
       key.toLowerCase().endsWith('mx')
     );
-  
+
     // Transformamos los datos
     return mxKeys.map(key => ({
       name: nameMap[key], // Usamos el nombre traducido
