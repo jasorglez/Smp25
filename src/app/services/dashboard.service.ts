@@ -32,4 +32,8 @@ export class DashboardService {
   getTotalInactivesByCause() {
     return this.http.get<any[]>(`${environment.urlSmp}/Timeinactives/totalxcause`, { headers: this.trackingService.getHeaders() });
   }
+
+  getTotalSeverity() {
+    return this.http.get<any[]>(`${environment.urlSmp}/Analysis/totalxseverity`, { headers: this.trackingService.getHeaders() });
+  }
 }

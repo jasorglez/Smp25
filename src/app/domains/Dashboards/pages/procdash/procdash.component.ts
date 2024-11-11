@@ -27,6 +27,7 @@ export class ProcdashComponent {
     await this.getStateMapAndGraph();
     await this.getTotalContractsAndGraph();
     await this.getInactiveTimesAndGraph();
+    await this.getContractsBySeverityAndGraph();
   }
 
   private dashboardService = inject(DashboardService);
@@ -171,7 +172,7 @@ export class ProcdashComponent {
         if (item.name === 'remainingMX') return { name: 'Restante', value: item.value };
         return item; // Retornar el item sin cambios si no coincide
       });
-      console.log(total);
+    console.log(total);
 
     const chartDivTotal = document.getElementById('echarts-container-total');
     const chartTotal = echarts.init(chartDivTotal as HTMLElement);
@@ -241,14 +242,14 @@ export class ProcdashComponent {
       name: cause,
       value: totalcause
     }));
-    
+
     // Calcular el total de horas
     const totalHours = inactiveTimes.reduce((sum, item) => sum + item.value, 0);
-    
+
     const chartDivInactive = document.getElementById('echarts-container-inactive');
     const chartInactive = echarts.init(chartDivInactive as HTMLElement);
 
-    const optionInactive = { 
+    const optionInactive = {
       responsive: true,
       title: {
         text: 'Tiempos inactivos'
@@ -304,5 +305,87 @@ export class ProcdashComponent {
     };
 
     chartInactive.setOption(optionInactive);
+  }
+
+  async getContractsBySeverityAndGraph(): Promise<void> {
+    const data = await lastValueFrom(this.dashboardService.getTotalSeverity());
+    const severity = data.map(({ severityLevel, totalseverity, severity }) => ({
+      name: severityLevel,
+      value: totalseverity,
+      severityCode: severity
+    }));
+
+    // Calcular el total de severidades
+    const totalSeverityValue = severity.reduce((sum, item) => sum + item.value, 0);
+
+    const chartDivSeverity = document.getElementById('echarts-container-by-severity');
+    const chartSeverity = echarts.init(chartDivSeverity as HTMLElement);
+
+    const optionSeverity = {
+      responsive: true,
+      title: {
+        text: 'Impacto y Severidad'
+      },
+      tooltip: {
+        trigger: 'item',
+        formatter: (params: { name: string; value: number; }) => {
+          const item = severity.find(t => t.name === params.name) as { name: string; value: number };
+          if (item) {
+            const percentage = ((item.value / totalSeverityValue) * 100).toFixed(2);
+            return `<strong>${item.name}</strong>: ${item.value} (${percentage}%)`;
+          }
+          return '';
+        }
+      },
+      legend: {
+        top: 'bottom',
+        left: 'center'
+      },
+
+      series: [
+        {
+          name: 'Impacto y Severidad',
+          type: 'pie',
+          radius: ['35%', '60%'],
+          center: ['50%', '50%'],
+          roseType: 'area',
+          itemStyle: {
+            borderRadius: 8
+          },
+          avoidLabelOverlap: false,
+          label: {
+            show: false,
+            position: 'center'
+          },
+          emphasis: {
+            label: {
+              show: false,
+              fontSize: 40,
+              fontWeight: 'bold'
+            }
+          },
+          labelLine: {
+            show: false
+          },
+          data: severity
+        }
+      ],
+      graphic: {
+        elements: [
+          {
+            type: 'text',
+            left: 'center',
+            top: '8%',
+            style: {
+              text: `Total de riesgos e incidentes: ${totalSeverityValue}`, // Mostrar el total de horas
+              font: 'bold 12px sans-serif',
+              fill: '#333' // Color del texto
+            }
+          }
+        ]
+      }
+    };
+
+    optionSeverity && chartSeverity.setOption(optionSeverity);
   }
 }
