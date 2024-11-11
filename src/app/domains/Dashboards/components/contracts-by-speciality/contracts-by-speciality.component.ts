@@ -1,66 +1,73 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, AfterViewInit } from '@angular/core';
 import { DashboardService } from 'app/services/dashboard.service';
 import * as echarts from 'echarts';
 import { lastValueFrom } from 'rxjs';
 
 @Component({
-  selector: 'app-contracts-by-speciality-mxn',
+  selector: 'app-contracts-by-speciality',
   standalone: true,
   imports: [],
-  template: `<div id="echarts-container-by-speciality" style="width: 100%; height: 40vh;"></div>`
+  template: `
+      <ul class="nav nav-tabs" id="myTab" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" data-bs-toggle="tab" (click)="changeCurrency('mxn')">MXN</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-toggle="tab" (click)="changeCurrency('usd')">DLL</button>
+      </li>
+    </ul>
+    <div id="echarts-container-by-speciality" style="width: 100%; height: 35vh;"></div>
+  `
 })
-export class ContractsBySpecialityMxnComponent {
+export class ContractsBySpecialityComponent implements AfterViewInit {
   private dashboardService = inject(DashboardService);
-  
-  async ngOnInit() {
-  await this.getContractsBySpecialityAndGraph();
-}
+  private chartBySpeciality: any;
+  public currency: 'mxn' | 'usd' = 'mxn'; // Propiedad para controlar la moneda
+
+  async ngAfterViewInit() {
+    await this.getContractsBySpecialityAndGraph();
+  }
+
+  async changeCurrency(currency: 'mxn' | 'usd') {
+    this.currency = currency; // Cambiar la moneda
+    await this.getContractsBySpecialityAndGraph(); // Volver a cargar los datos
+  }
 
   async getContractsBySpecialityAndGraph(): Promise<void> {
     const data = await lastValueFrom(this.dashboardService.getContractsBySpeciality());
     const transformedData = this.transformData(data);
 
     const categoryByClassification = Array.from(new Set(data.map(item => item.speciality)));
-
     const chartDivBySpeciality = document.getElementById('echarts-container-by-speciality');
-    const chartBySpeciality = echarts.init(chartDivBySpeciality as HTMLElement);
 
+    if (this.chartBySpeciality) {
+      this.chartBySpeciality.dispose();
+    }
+
+    this.chartBySpeciality = echarts.init(chartDivBySpeciality as HTMLElement);
     const optionBySpeciality = {
-      responsive: true,
       title: {
-        text: 'Montos por clasificación'
+        text: `Montos por clasificación (${this.currency === 'mxn' ? 'MXN' : 'DLL'})`
       },
       tooltip: {
         trigger: 'axis',
-        valueFormatter: value => 'MXN $' + value.toLocaleString('es-MX'),
-        axisPointer: {
-          // Use axis to trigger tooltip
-          type: 'line' // 'shadow' as default; can also be 'line' or 'shadow'
-        },
-        
-      },
-      legend: {
-        top: 'bottom',
-        left: 'center',
-        padding: 0
-      },
-      grid: {
-        left: '3%',
-        right: '3%',
-        bottom: '13%',
-        containLabel: true
-      },
-      yAxis: {
-        type: 'value'
+        valueFormatter: value => `${this.currency === 'mxn' ? 'MXN $' : 'DLL $'}${value.toLocaleString(this.currency === 'mxn' ? 'es-MX' : 'en-US')}`,
       },
       xAxis: {
         type: 'category',
         data: categoryByClassification
       },
+      yAxis: {
+        type: 'value',
+        axisLabel: {
+          formatter: (value: number) => (value / 1000000).toFixed(2) + 'M', // Formatear el valor en millones
+          align: 'right', // Alinear el texto a la derecha
+          padding: [0, -20, 0, 0] // Añadir padding a la derecha
+        }
+      },
       series: [
-        // Ciclo para agregar series de 0 a 2
         ...Array.from({ length: 3 }, (_, index) => ({
-          name: transformedData[index]?.name || '', // Asegúrate de que exista un dato
+          name: transformedData[index]?.name || '',
           type: 'bar',
           stack: 'total',
           label: {
@@ -70,30 +77,35 @@ export class ContractsBySpecialityMxnComponent {
           emphasis: {
             focus: 'series'
           },
-          data: transformedData[index]?.value || [] // Asegúrate de que exista un dato
+          data: transformedData[index]?.value || []
         })),
-      ]
+      ],
+      legend: {
+        top: 'bottom',
+        left: 'center',
+        padding: 0
+      },
     };
 
-    chartBySpeciality.setOption(optionBySpeciality);
+    this.chartBySpeciality.setOption(optionBySpeciality);
   }
 
   transformData(data: any[]): any[] {
-    // Mapa para traducir los nombres
     const nameMap: { [key: string]: string } = {
       'estMx': 'Estimados',
       'totalContratoMX': 'Total',
-      'remainingMX': 'Restante'
+      'remainingMX': 'Restante',
+      'estDLL': 'Estimados',
+      'totalContratoDLL': 'Total',
+      'remainingDLL': 'Restante'
     };
 
-    // Obtenemos las keys que terminan en Mx o MX
-    const mxKeys = Object.keys(data[0]).filter(key =>
-      key.toLowerCase().endsWith('mx')
+    const keys = Object.keys(data[0]).filter(key => 
+      key.toLowerCase().endsWith(this.currency === 'mxn' ? 'mx' : 'dll')
     );
 
-    // Transformamos los datos
-    return mxKeys.map(key => ({
-      name: nameMap[key], // Usamos el nombre traducido
+    return keys.map(key => ({
+      name: nameMap[key],
       value: data.map(item => item[key])
     }));
   }

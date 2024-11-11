@@ -113,7 +113,7 @@ export class IdentificationRiskComponent implements OnInit {
       },
       {
         field: 'description',
-        headerName: 'Descripción',
+        headerName: 'Descripción de Riesgo',
         editable: false,
         flex: 3,
         cellEditor: 'agPopupTextCellEditor',
@@ -144,7 +144,7 @@ export class IdentificationRiskComponent implements OnInit {
       },
       {
         field: 'cause',
-        headerName: 'Causa',
+        headerName: 'Causas Potenciales',
         editable: false,
         flex: 3,
         cellEditor: 'agPopupTextCellEditor',
@@ -177,12 +177,20 @@ export class IdentificationRiskComponent implements OnInit {
         field: 'typeRisk',
         headerName: 'Tipo de riesgo',
         editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+            values: ['Positivo', 'Negativo'],
+        },
         flex: 2,
       },
       {
         field: 'ownerRisk',
         headerName: 'Dueño de riesgo',
         editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+            values: ['Pemex', 'Contratista', 'Naturaleza'],
+        },
         flex: 2,
       },
     ];

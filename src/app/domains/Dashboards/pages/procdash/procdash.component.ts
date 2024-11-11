@@ -3,17 +3,24 @@ import { lastValueFrom } from 'rxjs';
 import * as echarts from 'echarts';
 import { DashboardService } from 'app/services/dashboard.service';
 import { HttpClient } from '@angular/common/http';
-import { ContractsBySpecialityMxnComponent } from "../../components/contracts-by-speciality/contracts-by-speciality.component";
+import { ContractsBySpecialityComponent } from "../../components/contracts-by-speciality/contracts-by-speciality.component";
+import { CommonModule } from '@angular/common';
 
 
 @Component({
   selector: 'app-procdash',
   standalone: true,
-  imports: [ContractsBySpecialityMxnComponent],
+  imports: [ContractsBySpecialityComponent, CommonModule],
   templateUrl: './procdash.component.html',
   styleUrl: './procdash.component.scss'
 })
 export class ProcdashComponent {
+  activeTab: string = 'mxn'; // Pestaña activa por defecto
+
+  // Método para cambiar la pestaña activa
+  changeTab(tab: string) {
+    this.activeTab = tab;
+  }
 
   async ngOnInit() {
     await this.getContractDataAndGraphByClassification();
@@ -159,7 +166,7 @@ export class ProcdashComponent {
         // Renombrar los datos restantes
         if (item.name === 'estMx') return { name: 'Estimado', value: item.value };
         if (item.name === 'totalContratoMX') return { name: 'Total MXN', value: item.value };
-        if (item.name === 'totalContratoDLL') return { name: 'Total USD', value: item.value };
+        if (item.name === 'totalContratoDLL') return { name: 'Total DLL', value: item.value };
         if (item.name === 'remainingMX') return { name: 'Restante', value: item.value };
         return item; // Retornar el item sin cambios si no coincide
       });
@@ -180,7 +187,7 @@ export class ProcdashComponent {
             left: 'center',
             top: '8%', // Ajusta la posición según sea necesario
             style: {
-              text: `Total MXN: $${Number(total.find(item => item.name === 'Total MXN')?.value).toLocaleString('es-MX')}\n\nTotal USD: $${Number(total.find(item => item.name === 'Total USD')?.value).toLocaleString('en-US')}`, // Usar el valor total con comas
+              text: `Total MXN: $${Number(total.find(item => item.name === 'Total MXN')?.value).toLocaleString('es-MX')}\n\nTotal DLL: $${Number(total.find(item => item.name === 'Total DLL')?.value).toLocaleString('en-US')}`, // Usar el valor total con comas
               font: 'bold 16px sans-serif',
               fill: '#333' // Color del texto
             }
@@ -219,7 +226,7 @@ export class ProcdashComponent {
           labelLine: {
             show: false
           },
-          data: total.filter(item => item.name !== 'Total MXN' && item.name !== 'Total USD') // Asegúrate de que "Total" no esté en los datos
+          data: total.filter(item => item.name !== 'Total MXN' && item.name !== 'Total DLL') // Asegúrate de que "Total" no esté en los datos
         }
       ]
     };
