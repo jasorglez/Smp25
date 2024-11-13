@@ -71,6 +71,7 @@ export const routes: Routes = [
           }
         ]
       },
+      
       { 
         path: 'smp', 
         loadComponent: () => import('./domains/SMP/Pages/procsmp/proccsmp.component').then(s => s.ProccsmpComponent),
@@ -105,7 +106,29 @@ export const routes: Routes = [
             loadComponent: () => import('./domains/SMP/Components/estimates/estimates.component').then(r => r.EstimatesComponent) 
           }
         ]
+      },
+
+      { 
+        path: 'proceswar', 
+        loadComponent: () => import('./domains/Warehouse/pages/procwareh/procwareh.component').then(s => s.ProcwarehComponent),
+        children:[
+          { path: '', redirectTo: 'Warehouse', pathMatch: 'full' }, ...SharedModule.getRoutes(),
+          {            
+            path:'warehousees',            
+            loadComponent: () => import('./domains/Warehouse/components/warehouses/warehouses.component').then(w => w.WarehousesComponent) 
+          },
+          {
+            path:'materials',
+            loadComponent: () => import('./domains/Warehouse/components/materials/materials.component').then(m => m.MaterialsComponent) 
+          },
+          {
+            path:'requisitions',
+            loadComponent: () => import('./domains/Warehouse/components/requisitions/requisitions.component').then(r => r.RequisitionsComponent) 
+          }
+                    
+        ]
       }
+
     ]
   },
   { path: '**', redirectTo: '' }

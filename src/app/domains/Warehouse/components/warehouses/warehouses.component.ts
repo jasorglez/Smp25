@@ -33,6 +33,8 @@ export class WarehousesComponent {
   isDelete = false;
   isPrint = false;
 
+  notSavedChanges: boolean = false;
+
   private gridApi!: GridApi<Iwarehouses>;
   public warehouses: Iwarehouses[] = [];
 
@@ -196,6 +198,23 @@ export class WarehousesComponent {
     this.updateButtonStates();
     this.warForm.reset();
   }
+
+  addRow() {
+
+  }
+
+  saveChanges(){
+
+  }
+
+  revert(){
+
+  }
+
+  deleteEntry(){
+
+  }
+
 
   edit(): void {
     this.isEdit = true;

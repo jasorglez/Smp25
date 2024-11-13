@@ -1,86 +1,56 @@
 <aside class="main-sidebar sidebar-light-primary elevation-4">
   <!-- Brand Logo -->
   <a href="../../index3.html" class="brand-link">
-    <img [src]= "trackingService.getpictureComp()"
-       alt="BI Company"
-       style="width: 168px; height: 58px;" />
-
-    <div class="brand-text font-weight-bold"></div>
-    <div
-      class="brand-text font-weight-bold"
-      style="font-size: 6px;  text-align: justify; margin-top: 0"  >
-    </div>
+    <img [src]="trackingService.getpictureComp()" alt="BI Company" style="width: 168px; height: 58px;" />
   </a>
 
-
-<div class="sidebar">
-
-    <!-- Sidebar user (optional) -->
+  <div class="sidebar">
     <div class="user-panel mt-4 pb-2 mb-2 brand-image">
-
-
-      <!-- llamado de los Select Root-->
-      <select
-      id="root"
-      (change)="onRootsSelected($event)" class="form-control select-side"
-      title="{{ 'select' | translate }} {{ 'company' | translate }}"
-      [value]="selectedRoot || ''"   >
+      <!-- Select Root -->
+      <select id="root" (change)="onRootsSelected($event)" class="form-control select-side" [value]="selectedRoot || ''">
         <option value="" disabled>{{ 'company' | translate }}</option>
-      <option *ngFor="let item of rootData" [value]="item.id">
-        {{ item.name }}
-      </option>
-    </select>
-
-      <!-- llamado de los Select Contracts-->
-      <select
-        id="contract" (change)="onContractsSelected($event)"  class="form-control select-side"
-                     title= "{{ 'select' | translate  }} {{ 'contract' | translate  }}" 
-                     [value]="selectedContractId || ''"   >
-           <option selected disabled value="">   {{ 'contract'| translate }}     </option> 
-
-        <option *ngFor="let item of contractData" [value]="item.id">
-          {{ item.name }}
-        </option>
+        <option *ngFor="let item of rootData" [value]="item.id">{{ item.name }}</option>
       </select>
 
-      <!-- llamado de los Select projects-->
-      <select
-        id="project" (change)="onProjectSelected($event)"  class="form-control select-side"
-                     title= "{{ 'select' | translate  }} {{ 'projects' | translate  }}" 
-                     [value]="selectedProjectId || ''"   >
-           <option selected disabled value="">   {{ 'projects'| translate }}     </option> 
-
-        <option *ngFor="let pj of projectData" [value]="pj.id">
-          {{ pj.name }}
-        </option>
+      <!-- Select Contracts -->
+      <select id="contract" (change)="onContractsSelected($event)" class="form-control select-side" [value]="selectedContractId || ''">
+        <option selected disabled value="">{{ 'contract' | translate }}</option>
+        <option *ngFor="let item of contractData" [value]="item.id">{{ item.name }}</option>
       </select>
-      
 
-  <ul class="nav flex-column">
-   
-    <li class="nav-item">
-      <a class="nav-link" (click)="Dashboard()">
-        <i class="fas fa-home"></i> {{ 'DASHBOARD' | translate }}
-      </a>
-    </li>
+      <!-- Select Projects -->
+      <select id="project" (change)="onProjectSelected($event)" class="form-control select-side" [value]="selectedProjectId || ''">
+        <option selected disabled value="">{{ 'projects' | translate }}</option>
+        <option *ngFor="let pj of projectData" [value]="pj.id">{{ pj.name }}</option>
+      </select>
+    </div>
 
-    <li class="nav-item">
-      <a class="nav-link" (click)="Indicadores()">
-        <i class="fas fa-user"></i> {{ 'INDICADORES' | translate }}
-      </a>
-    </li>
-
-    <li class="nav-item">
-      <a class="nav-link" (click)="SmpSetup()">
-        <i class="fas fa-building"></i> {{ 'SETUP' | translate }}
-      </a>
-    </li>
- 
-    <li class="nav-item">
-      <a class="nav-link" (click)="authService.logout()">
-        <i class="fas fa-sign-out-alt"></i> SALIR
-      </a>
-    </li>
-
-  </ul>
-</div>
+    <ul class="nav flex-column">
+      <li class="nav-item">
+        <a class="nav-link" (click)="Dashboard()">
+          <i class="fas fa-home"></i> {{ 'DASHBOARD' | translate }}
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" (click)="Indicadores()">
+          <i class="fas fa-chart-line"></i> {{ 'INDICADORES' | translate }}
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" (click)="warehouseproc()">
+          <i class="fas fa-warehouse"></i> {{ 'ALMACENES' | translate }}
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" (click)="SmpSetup()">
+          <i class="fas fa-cogs"></i> {{ 'SETUP' | translate }}
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" (click)="authService.logout()">
+          <i class="fas fa-sign-out-alt"></i> SALIR
+        </a>
+      </li>
+    </ul>
+  </div>
+</aside>
