@@ -1,57 +1,33 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { environment } from '@env/environment';
 
 import { HttpClient } from '@angular/common/http';
-import { EMPTY, Observable } from 'rxjs';
+import { Observable } from 'rxjs';
+import { TrackingService } from './tracking.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class WarehousesService {
 
-  constructor(private http : HttpClient) { }
+  private http = inject(HttpClient);
+  private trackingService = inject(TrackingService);
 
-  getWarehouses(company: string, project: string): Observable<any> {
-    try {
-      const apiUrl = `${environment.urlAzure}api/Warehouse/${company}/${project}`;
-      return this.http.get(apiUrl);
-    } catch(error) {
-      console.error("Error Get Warehouses", error);
-      return EMPTY; // Import EMPTY from 'rxjs'
-    }
-  }
-  Delete(id: number, token: string | null): Observable<any> {
-    try {
-      const apiUrl = `${environment.urlAzure}api/Warehouse/${id}`;
-      return this.http.delete(apiUrl);
-    } catch(error) {
-      console.error("Error Delete Warehouses", error);
-      return EMPTY; // Import EMPTY from 'rxjs'
-    }
+  getWarehouses() {
+    return this.http.get(`${environment.urlWarehouse}/Warehouse?idBranch=1`, { headers: this.trackingService.getHeaders() });
   }
 
-Post(data: any, token:any) {
-  try {
-   // console.log(data);
-    const apiUrl = `${environment.urlAzure}api/Warehouse`;
-    //console.log(apiUrl);
-    return this.http.post(apiUrl, data)
-  }catch(error){
-    alert("Error Post Warehouses") ;
-  return null ;
+  addWarehouse(data: any): Observable<any> {
+    return this.http.post(`${environment.urlWarehouse}/Warehouse`, data, { headers: this.trackingService.getHeaders() });
   }
-}
 
-Patch(id: number, data: any, token:any) {
-  //console.log(data);
-  try {
-    const apiUrl = `${environment.urlAzure}api/Warehouse/${id}`;
-    //console.log(apiUrl);
-    return this.http.put(apiUrl, data)
-  }catch(error){
-    alert("Error PUT Warehouses") ;
-  return null ;
+  updateWarehouse(id: string, data: any): Observable<any> {
+    return this.http.put<any[]>(`${environment.urlWarehouse}/Warehouse/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
-}
+
+  deleteWarehouse(id: number): Observable<any> {
+    return this.http.delete<any[]>(`${environment.urlWarehouse}/Warehouse/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
 
 }
