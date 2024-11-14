@@ -1,20 +1,27 @@
 import { Component, HostListener, inject } from '@angular/core';
 
-import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { alerts } from '../../../../helpers/alerts';
 import { States } from 'app/interface/states';
-import { Iwarehouses } from '../../../../interface/iwarehouses';
 import { InegiService } from '../../../../services/inegi.service';
 import { WarehousesService } from 'app/services/warehouses.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
+import { BranchsService } from 'app/services/branchs.service';
+import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
+import { ModalService } from 'app/services/modal.service';
+
+interface Branch {
+  id: number;
+  name: string;
+}
 
 @Component({
   selector: 'app-warehouses',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
   templateUrl: './warehouses.component.html',
   styleUrl: './warehouses.component.scss'
 })
@@ -22,6 +29,7 @@ export class WarehousesComponent {
 
   ngOnInit() {
     this.obtenerDatos();
+    this.obtenerBranches();
     this.obtenerStates();
   }
 
@@ -39,11 +47,11 @@ export class WarehousesComponent {
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
   private estados: string[] = [];
+  branches: any;
   id: string;
   private tempIdCounter: number = 0;
 
   private gridApi: GridApi;
-  public warehouses: Iwarehouses[] = [];
 
   currentIndex = 0;
 
@@ -52,16 +60,57 @@ export class WarehousesComponent {
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
+  frameworkComponents = {
+    multiLineEditor: MultiLineEditorComponent
+  };
 
   // Inject of new way for Angular 18
   private warehouseService = inject(WarehousesService);
   private inegiService = inject(InegiService);
+  private branchesService = inject(BranchsService);
+  private modalServiceTable = inject(ModalService);
 
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
     return [
       { field: 'name', headerName: 'Nombre', editable: true, filter: true, width: 200 },
-      { field: 'address', headerName: 'Direccion', editable: true, width: 285, filter: true },
+      { field: 'address', headerName: 'Direccion', editable: false, width: 285, filter: true,
+        cellEditor: 'agPopupTextCellEditor',
+        cellEditorParams: {
+          maxLength: 100,
+          cols: 50,
+          rows: 3,
+          onKeyDown: (event: KeyboardEvent) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.stopPropagation();
+            }
+          },
+        },
+        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+          if (!event.node.group) {
+            this.modalServiceTable.showModal({
+              params: event,
+              value: event.value,
+            });
+          }
+        },
+        cellRenderer: (params: ICellRendererParams) => {
+          if (params.node.group) {
+            return params.value;
+          }
+          return params.value;
+        }
+       },
+      {
+        field: 'idBranch', headerName: 'Sucursales', editable: true, width: 235, cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.branches ? this.branches.map(item => item.id) : [],
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.branches ? this.branches.find(item => item.id === params.value) : null;
+          return foundItem ? `${foundItem.name}` : params.value;
+        }
+      },
       {
         field: 'state', headerName: 'Estado', editable: true, width: 235, cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
@@ -94,6 +143,16 @@ export class WarehousesComponent {
         console.error('Error fetching states', error);
       }
     });
+  }
+
+  obtenerBranches() {
+    this.branchesService.getBranches().subscribe(
+      (data: Branch[]) => {
+        this.branches = data;
+        console.log(this.branches);
+      },
+      (error) => console.error('Error fetching branches:', error)
+    );
   }
 
   onSelectedRow(event: any) {
