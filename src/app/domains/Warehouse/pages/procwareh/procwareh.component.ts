@@ -2,11 +2,12 @@ import { Component, inject } from '@angular/core';
 import { TranslateModule } from '@ngx-translate/core';
 import { TrackingService } from '../../../../services/tracking.service';
 import { WarehousesComponent } from "../../components/warehouses/warehouses.component";
+import { MaterialsComponent } from '../../components/materials/materials.component';
 
 @Component({
   selector: 'app-procwareh',
   standalone: true,
-  imports: [TranslateModule, WarehousesComponent],
+  imports: [TranslateModule, WarehousesComponent, MaterialsComponent],
   templateUrl: './procwareh.component.html',
   styleUrl: './procwareh.component.scss'
 })

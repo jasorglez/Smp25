@@ -20,4 +20,12 @@ export class CatalogsService {
   getPhases(): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog?type=Fase`, { headers: this.trackingService.getHeaders() });
   }
+
+  getFamilies(): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog?type=Family`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getLocations(): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog?type=Ubication`, { headers: this.trackingService.getHeaders() });
+  }
 }

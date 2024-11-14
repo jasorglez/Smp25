@@ -184,6 +184,7 @@ export class WarehousesComponent {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
+      idBranch: 1,
       name: '',
       address: '',
       state: '',
