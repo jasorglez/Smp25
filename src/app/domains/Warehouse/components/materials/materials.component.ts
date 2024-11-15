@@ -2,8 +2,6 @@ import { Component, HostListener, inject } from '@angular/core';
 
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { alerts } from '../../../../helpers/alerts';
-import { States } from 'app/interface/states';
-import { InegiService } from '../../../../services/inegi.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -12,6 +10,7 @@ import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-edito
 import { ModalService } from 'app/services/modal.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { CatalogsService } from 'app/services/catalogs.service';
+import { ImageHandlerService } from 'app/services/image-handler.service';
 
 interface Catalog {
   id: number;
@@ -32,7 +31,6 @@ export class MaterialsComponent {
     this.obtenerMedidas();
     this.obtenerFamilias();
     this.obtenerUbicaciones();
-    this.obtenerStates();
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -52,8 +50,13 @@ export class MaterialsComponent {
   medidas: any;
   familias: any;
   ubicaciones: any;
-  id: string;
+  id: string = null;
   private tempIdCounter: number = 0;
+  material = {
+    picture: null as string,
+    description: null as string,
+    measure: null as string
+  }
 
   private gridApi: GridApi;
 
@@ -63,16 +66,16 @@ export class MaterialsComponent {
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
   public paginationPageSize = 15;
-  public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
+  public paginationPageSizeSelector: number[] | boolean  =  [15, 50, 100];
   frameworkComponents = {
     multiLineEditor: MultiLineEditorComponent
   };
 
   // Inject of new way for Angular 18
   private materialsService = inject(MaterialsService);
-  private inegiService = inject(InegiService);
   private catalogsService = inject(CatalogsService);
   private modalServiceTable = inject(ModalService);
+  private imageHandlerService = inject(ImageHandlerService);
 
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
@@ -150,31 +153,47 @@ export class MaterialsComponent {
           return foundItem ? `${foundItem.description}` : params.value;
         }
       },
-      { field: 'aplicaResg', headerName: 'Aplica Resguardo', editable: true, width: 100 },
-      { field: 'picture', headerName: 'Imagen', editable: true, filter: true, width: 150 },
-      { field: 'costoMN', headerName: 'Costo MXN', editable: true, filter: true, width: 150 },
-      { field: 'costoDLL', headerName: 'Costo DLL', editable: true, filter: true, width: 150 },
-      { field: 'ventaMN', headerName: 'Costo MXN', editable: true, filter: true, width: 150 },
-      { field: 'ventaDLL', headerName: 'Costo DLL', editable: true, filter: true, width: 150 },
-      { field: 'stockMin', headerName: 'Stock Mínimo', editable: true, filter: true, width: 150 },
-      { field: 'stockMax', headerName: 'Stock Máximo', editable: true, filter: true, width: 150 },
+      { field: 'aplicaResg', headerName: 'Resguardar', editable: true, width: 100 },
+      {
+        field: 'picture', headerName: 'Imagen', editable: false, filter: true, width: 150,
+        cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
+        cellRendererParams: {
+          clicked: this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService),
+          field: 'picture'
+        },
+      },
+      {
+        field: 'costoMN', headerName: 'Costo MXN', editable: true, filter: true, width: 150,
+        valueFormatter: (params) => {
+          return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
+        }
+      },
+      {
+        field: 'costoDLL', headerName: 'Costo DLL', editable: true, filter: true, width: 150,
+        valueFormatter: (params) => {
+          return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(params.value);
+        }
+      },
+      {
+        field: 'ventaMN', headerName: 'Costo MXN', editable: true, filter: true, width: 150,
+        valueFormatter: (params) => {
+          return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
+        }
+      },
+      {
+        field: 'ventaDLL', headerName: 'Costo DLL', editable: true, filter: true, width: 150,
+        valueFormatter: (params) => {
+          return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(params.value);
+        }
+      },
+      { field: 'stockMin', headerName: 'Stock Mínimo', editable: true, filter: true, width: 150, cellDataType: 'number', cellEditorParams: { min: 0 } },
+      { field: 'stockMax', headerName: 'Stock Máximo', editable: true, filter: true, width: 150, cellDataType: 'number', cellEditorParams: { min: 0 } },
     ]
   };
 
   obtenerDatos() {
     this.materialsService.getMaterials().subscribe((data: any) => {
       this.rowData = data;
-    });
-  }
-
-  obtenerStates() {
-    this.inegiService.getEstados().subscribe({
-      next: (data: { datos: States[] }) => {
-        this.estados = data.datos.map(estado => estado.nom_agee);
-      },
-      error: (error) => {
-        console.error('Error fetching states', error);
-      }
     });
   }
 
@@ -207,15 +226,17 @@ export class MaterialsComponent {
   }
 
   onSelectedRow(event: any) {
-    console.log(event)
     this.id = event.data.id;
   }
 
   onSelectionChanged(event: any) {
-    console.log(event)
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
+      this.material.description = this.selectedRowData.description;
+      const foundMeasure = this.medidas.find(item => item.id === this.selectedRowData.idMedida);
+      this.material.measure = foundMeasure ? foundMeasure.description : '';
+      this.material.picture = this.selectedRowData.picture;
     } else {
       this.selectedRowData = null;
     }
@@ -225,6 +246,10 @@ export class MaterialsComponent {
     console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
+
+    if (event.data.idMedida) {
+      event.data.idMedida = Number(event.data.idMedida);
+    }
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -235,14 +260,22 @@ export class MaterialsComponent {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      name: '',
-      address: '',
-      state: '',
-      city: '',
-      place: '',
-      phone: '',
+      insumo: '',
+      articulo: '',
+      description: '',
+      date: '',
+      idMedida: null,
+      idFamilia: null,
+      idUbication: null,
+      aplicaResg: false,
+      picture: '',
+      costoMN: 0,
+      costoDLL: 0,
+      ventaMN: 0,
+      ventaDLL: 0,
+      stockMin: 0,
+      stockMax: 0,
       active: true,
-      leader: '',
       __isNew: true,
     };
 
@@ -252,7 +285,7 @@ export class MaterialsComponent {
   }
 
   async saveChanges() {
-    const isValid = this.rowData.every((item) => item.name && item.address);
+    const isValid = this.rowData.every((item) => item.insumo && item.description);
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
