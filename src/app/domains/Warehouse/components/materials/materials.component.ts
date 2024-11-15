@@ -155,7 +155,7 @@ export class MaterialsComponent {
       },
       { field: 'aplicaResg', headerName: 'Resguardar', editable: true, width: 100 },
       {
-        field: 'picture', headerName: 'Imagen', editable: false, filter: true, width: 150,
+        field: 'picture', headerName: 'Imagen', editable: false, width: 150,
         cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
         cellRendererParams: {
           clicked: this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService),
@@ -163,31 +163,31 @@ export class MaterialsComponent {
         },
       },
       {
-        field: 'costoMN', headerName: 'Costo MXN', editable: true, filter: true, width: 150,
+        field: 'costoMN', headerName: 'Costo MXN', editable: true, width: 150,
         valueFormatter: (params) => {
           return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
         }
       },
       {
-        field: 'costoDLL', headerName: 'Costo DLL', editable: true, filter: true, width: 150,
+        field: 'costoDLL', headerName: 'Costo DLL', editable: true, width: 150,
         valueFormatter: (params) => {
           return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(params.value);
         }
       },
       {
-        field: 'ventaMN', headerName: 'Costo MXN', editable: true, filter: true, width: 150,
+        field: 'ventaMN', headerName: 'Costo MXN', editable: true, width: 150,
         valueFormatter: (params) => {
           return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
         }
       },
       {
-        field: 'ventaDLL', headerName: 'Costo DLL', editable: true, filter: true, width: 150,
+        field: 'ventaDLL', headerName: 'Costo DLL', editable: true, width: 150,
         valueFormatter: (params) => {
           return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(params.value);
         }
       },
-      { field: 'stockMin', headerName: 'Stock Mínimo', editable: true, filter: true, width: 150, cellDataType: 'number', cellEditorParams: { min: 0 } },
-      { field: 'stockMax', headerName: 'Stock Máximo', editable: true, filter: true, width: 150, cellDataType: 'number', cellEditorParams: { min: 0 } },
+      { field: 'stockMin', headerName: 'Stock Mínimo', editable: true, width: 150, cellDataType: 'number', cellEditorParams: { min: 0 } },
+      { field: 'stockMax', headerName: 'Stock Máximo', editable: true, width: 150, cellDataType: 'number', cellEditorParams: { min: 0 } },
     ]
   };
 
@@ -260,10 +260,11 @@ export class MaterialsComponent {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
+      idCompany: 1,
       insumo: '',
       articulo: '',
       description: '',
-      date: '',
+      date: new Date().toISOString(),
       idMedida: null,
       idFamilia: null,
       idUbication: null,
