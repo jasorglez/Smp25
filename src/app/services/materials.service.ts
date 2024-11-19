@@ -27,4 +27,8 @@ export class MaterialsService {
   deleteMaterial(id: number): Observable<any> {
     return this.http.delete<any[]>(`${environment.urlWarehouse}/Material/${id}`, { headers: this.trackingService.getHeaders() });
   }
+
+  getMaterials2Fields() {
+    return this.http.get(`${environment.urlWarehouse}/Material/2fields?idCompany=1`, { headers: this.trackingService.getHeaders() });
+  }
 }

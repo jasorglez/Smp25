@@ -27,4 +27,20 @@ export class RequisitionsService {
   deleteOcAndReq(id: number): Observable<any> {
     return this.http.delete<any[]>(`${environment.urlWarehouse}/Ocandreq/${id}`, { headers: this.trackingService.getHeaders() });
   }
+
+  getReqItems(idRequisition: number): Observable<any> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Detailsreqoc/${idRequisition}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  addReqItem(data: any): Observable<any> {
+    return this.http.post(`${environment.urlWarehouse}/Detailsreqoc`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateReqItem(id: string, data: any): Observable<any> {
+    return this.http.put<any[]>(`${environment.urlWarehouse}/Detailsreqoc/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteReqItem(id: number): Observable<any> {
+    return this.http.delete<any[]>(`${environment.urlWarehouse}/Detailsreqoc/${id}`, { headers: this.trackingService.getHeaders() });
+  }
 }

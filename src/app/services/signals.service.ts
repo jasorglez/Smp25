@@ -98,7 +98,7 @@ export class SignalsService {
     return this.idAnalysisRisk;
   }
 
-  setSelectedWorkProgram(name: string) {    
+  setSelectedWorkProgram(name: string) {
     this.selectedWorkProgram.set(name);
   }
 
@@ -106,7 +106,7 @@ export class SignalsService {
     return this.selectedWorkProgram;
   }
 
-  setIdPlanificationRisk(id: number) {    
+  setIdPlanificationRisk(id: number) {
     this.idPlanificationRisk.set(id);
   }
 
@@ -118,7 +118,7 @@ export class SignalsService {
     this.planificationActionRisk.set(action);
   }
 
-  getPlanificationActionRisk () {
+  getPlanificationActionRisk() {
     return this.planificationActionRisk;
   }
 
@@ -241,6 +241,18 @@ export class SignalsService {
 
   setContingencyActionName(name: string) {
     this.nameContingencyAction.set(name);
+  }
+
+  /* Signals para requisiciones */
+
+  idRequisition = signal<number>(null);
+
+  setIdRequisition(id: number) {
+    this.idRequisition.set(id);
+  }
+
+  getIdRequisition() {
+    return this.idRequisition;
   }
 
   /* Borramos todas las signals, tratar de poner esto a lo último.
