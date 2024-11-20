@@ -1,5 +1,5 @@
 import { Component, effect, HostListener, inject } from '@angular/core';
-import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
@@ -7,9 +7,9 @@ import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { RequisitionsService } from 'app/services/requisitions.service';
-import { ProvidersService } from 'app/services/providers.service';
 import { SignalsService } from 'app/services/signals.service';
 import { MaterialsService } from 'app/services/materials.service';
+import { ModalService } from 'app/services/modal.service';
 
 interface Catalog {
   id: number;
@@ -79,7 +79,7 @@ export class RequisitionsDetailsComponent {
 
   // Inject of new way for Angular 18
   private requisitionsService = inject(RequisitionsService);
-  private providersService = inject(ProvidersService);
+  private modalServiceTable = inject(ModalService);
   private materialsService = inject(MaterialsService);
   private signalsService = inject(SignalsService);
 
@@ -97,7 +97,44 @@ export class RequisitionsDetailsComponent {
         }
       },
       { field: 'quantity', headerName: 'Cantidad', editable: true, filter: true, flex: 1 },
-      { field: 'comment', headerName: 'Comentarios', editable: true, filter: true, flex: 2 },
+      {
+        field: 'dateuse',
+        headerName: 'Fecha de uso',
+        editable: true,
+        flex: 2,
+        cellDataType: 'dateString',
+        valueFormatter: (params) => {
+          if (params.value) {
+            return params.value.split('T')[0];
+          }
+          return '';
+        }
+      },
+      { field: 'comment', headerName: 'Comentarios', editable: false, filter: true, flex: 2, cellEditor: 'agPopupTextCellEditor',
+        cellEditorParams: {
+          maxLength: 100,
+          cols: 50,
+          rows: 3,
+          onKeyDown: (event: KeyboardEvent) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.stopPropagation();
+            }
+          },
+        },
+        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+          if (!event.node.group) {
+            this.modalServiceTable.showModal({
+              params: event,
+              value: event.value,
+            });
+          }
+        },
+        cellRenderer: (params: ICellRendererParams) => {
+          if (params.node.group) {
+            return params.value;
+          }
+          return params.value;
+        }},
     ]
   };
 
@@ -149,23 +186,14 @@ export class RequisitionsDetailsComponent {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      folio: '',
-      idProject: this.idRequisition,
-      dateCreate: new Date().toISOString(),
-      idProveedor: 0,
-      idDepartament: 0,
-      delivery: '',
-      deliveryTime: '',
-      dateSupply: '',
-      idPayment: 0,
-      idCurrency: 0,
-      conditions: '',
-      IdAuthorize: localStorage.getItem('mail'),
-      priority: '',
-      solicit: this.signalsService.getDisplayName()(),
+      idMovement: this.idRequisition,
+      idSupplie: 0,
+      quantity: 0,
+      price: 0,
+      total: 0,
       type: 'REQUIS',
-      comments: '',
-      typeOc: 'INSUMOS',
+      comment: 'Ninguno.',
+      dateuse: new Date().toISOString(),
       active: true,
       __isNew: true,
     };
@@ -176,7 +204,7 @@ export class RequisitionsDetailsComponent {
   }
 
   async saveChanges() {
-    const isValid = this.rowData.every((item) => item.folio);
+    const isValid = this.rowData.every((item) => item.idSupplie && item.comment && item.dateuse);
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
@@ -193,12 +221,13 @@ export class RequisitionsDetailsComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.requisitionsService.addOcAndReq(cleanedData);
+      return this.requisitionsService.addReqItem(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.requisitionsService.updateOcAndReq(row.id, cleanedData);
+      console.log(cleanedData);
+      return this.requisitionsService.updateReqItem(row.id, cleanedData);
     });
 
     // Using concat to combine observables and lastValueFrom for async/await
@@ -238,7 +267,7 @@ export class RequisitionsDetailsComponent {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
     selectedData.active = 0;
-    this.requisitionsService.deleteOcAndReq(id).pipe(
+    this.requisitionsService.deleteReqItem(id).pipe(
       catchError((error) => {
         alerts.basicAlert(
           'Eliminar entrada',

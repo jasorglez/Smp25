@@ -1,5 +1,5 @@
 import { Component, effect, HostListener, inject } from '@angular/core';
-import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
@@ -12,6 +12,7 @@ import { ProvidersService } from 'app/services/providers.service';
 import { DepartmentsService } from 'app/services/departments.service';
 import { CurrencyService } from 'app/services/currency.service';
 import { SignalsService } from 'app/services/signals.service';
+import { ModalService } from 'app/services/modal.service';
 
 interface Catalog {
   id: number;
@@ -97,6 +98,7 @@ export class RequisitionsMainComponent {
   private departmentsService = inject(DepartmentsService);
   private currencyService = inject(CurrencyService);
   private signalsService = inject(SignalsService);
+  private modalServiceTable = inject(ModalService);
 
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
@@ -173,7 +175,31 @@ export class RequisitionsMainComponent {
       { field: 'conditions', headerName: 'Condición', editable: true, width: 150 },
       { field: 'priority', headerName: 'Prioridad', editable: true, width: 150 },
       { field: 'solicit', headerName: 'Solicita', editable: true, width: 150 },
-      { field: 'comments', headerName: 'Comentario', editable: true, width: 150 },
+      { field: 'comments', headerName: 'Comentario', editable: false, width: 150, cellEditor: 'agPopupTextCellEditor',
+        cellEditorParams: {
+          maxLength: 100,
+          cols: 50,
+          rows: 3,
+          onKeyDown: (event: KeyboardEvent) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.stopPropagation();
+            }
+          },
+        },
+        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+          if (!event.node.group) {
+            this.modalServiceTable.showModal({
+              params: event,
+              value: event.value,
+            });
+          }
+        },
+        cellRenderer: (params: ICellRendererParams) => {
+          if (params.node.group) {
+            return params.value;
+          }
+          return params.value;
+        } },
     ]
   };
 
