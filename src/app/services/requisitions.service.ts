@@ -16,6 +16,10 @@ export class RequisitionsService {
     return this.http.get(`${environment.urlWarehouse}/Ocandreq?idProject=${idProject}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getDetailedReq(id: number) {
+    return this.http.get(`${environment.urlWarehouse}/Ocandreq/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
   addOcAndReq(data: any): Observable<any> {
     return this.http.post(`${environment.urlWarehouse}/Ocandreq`, data, { headers: this.trackingService.getHeaders() });
   }

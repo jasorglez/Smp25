@@ -10,6 +10,7 @@ import { RequisitionsService } from 'app/services/requisitions.service';
 import { SignalsService } from 'app/services/signals.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { ModalService } from 'app/services/modal.service';
+import { ReceiptsService } from 'app/services/receipts.service';
 
 interface Catalog {
   id: number;
@@ -82,6 +83,7 @@ export class RequisitionsDetailsComponent {
   private modalServiceTable = inject(ModalService);
   private materialsService = inject(MaterialsService);
   private signalsService = inject(SignalsService);
+  private receiptsService = inject(ReceiptsService);
 
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
@@ -311,6 +313,10 @@ export class RequisitionsDetailsComponent {
       delete cleanedData.id;
     }
     return cleanedData;
+  }
+
+  createOC(idRequisition: number) {
+    this.receiptsService.generateOC(idRequisition);
   }
 
 }

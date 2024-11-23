@@ -13,6 +13,7 @@ import { DepartmentsService } from 'app/services/departments.service';
 import { CurrencyService } from 'app/services/currency.service';
 import { SignalsService } from 'app/services/signals.service';
 import { ModalService } from 'app/services/modal.service';
+import { ReceiptsService } from 'app/services/receipts.service';
 
 interface Catalog {
   id: number;
@@ -76,6 +77,7 @@ export class RequisitionsMainComponent {
   id: string = null;
   idProject: number = null;
   private tempIdCounter: number = 0;
+  idRequisition: number = null;
 
 
   private gridApi: GridApi;
@@ -99,7 +101,8 @@ export class RequisitionsMainComponent {
   private currencyService = inject(CurrencyService);
   private signalsService = inject(SignalsService);
   private modalServiceTable = inject(ModalService);
-
+  private receiptsService = inject(ReceiptsService);
+  
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
     return [
@@ -254,6 +257,7 @@ export class RequisitionsMainComponent {
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
       this.signalsService.setIdRequisition(this.selectedRowData.id);
+      this.idRequisition = this.selectedRowData.id;
     } else {
       this.selectedRowData = null;
     }
@@ -411,5 +415,11 @@ export class RequisitionsMainComponent {
     }
     return cleanedData;
   }
+
+  
+  createOC(idRequisition: number) {
+    this.receiptsService.generateOC(idRequisition);
+  }
+
 
 }
