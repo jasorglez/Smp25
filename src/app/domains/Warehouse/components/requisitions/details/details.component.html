@@ -1,9 +1,10 @@
 <app-multi-line-editor></app-multi-line-editor>
+
 <div class="col-12">
   <div class="row mb-3">
     <div class="col text-right"><button type="button" class="btn btn-primary me-1" (click)="addRow()"><i
           class="bi bi-plus-lg" style="font-size: 1.5rem;"></i></button>
-      <button type="button" class="btn btn-info ms-1 me-1 position-relative" (click)="createOC(idRequisition)">
+      <button *ngIf="idRequisition != null" type="button" class="btn btn-info ms-1 me-1 position-relative" (click)="createOC(idRequisition)">
         <i class="bi bi-file-earmark-pdf" style="font-size: 1.5rem;"></i></button>
       <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveChanges()">
         <i class="bi bi-floppy" style="font-size: 1.5rem;"></i>
@@ -20,7 +21,7 @@
   </div>
 
 
-
+  {{idRequisition}}
   <div class="row">
 
     <div [ngClass]="'col-12'">

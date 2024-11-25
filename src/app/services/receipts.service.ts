@@ -4,16 +4,33 @@ import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { TDocumentDefinitions } from 'pdfmake/interfaces';
 import { lastValueFrom } from 'rxjs';
 import { RequisitionsService } from './requisitions.service';
+import { RootService } from './root.service';
+import { ProjectsService } from './projects.service';
 
 (pdfMake as any).vfs = pdfFonts.pdfMake.vfs;
+
+interface RootResponse {
+  picture: string;
+  // otras propiedades...
+}
+
+interface ProjectResponse {
+  description: string;
+  // otras propiedades...
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class ReceiptsService {
   private requisitionsService = inject(RequisitionsService);
+  private rootService = inject(RootService);
+  private projectsService = inject(ProjectsService);
   private reqItems: any[] = [];
   private detailedReq: any;
+  private idRoot = Number(localStorage.getItem('company'));
+  private rootLogo: string = null;
+  private projectDescription: string = null;
 
   async generateOC(id: number): Promise<void> {
     try {
@@ -36,6 +53,14 @@ export class ReceiptsService {
 
       const detailedReq = await lastValueFrom(this.requisitionsService.getDetailedReq(idMovement));
       this.detailedReq = detailedReq; // Cambia 'detailedReq' por el nombre correcto de la propiedad
+
+      // Almacenar el logo del cliente
+      const rootLogoResponse = await lastValueFrom(this.rootService.getRootbyId(this.idRoot)) as RootResponse;
+      this.rootLogo = rootLogoResponse.picture;
+
+      const projectId = Number(localStorage.getItem('project'));
+      const projectResponse = await lastValueFrom(this.projectsService.getProjectsById(projectId)) as unknown as ProjectResponse;
+      this.projectDescription = projectResponse.description; // Cambia 'contractDescription' por el nombre correcto de la propiedad
       
     } catch (error) {
       console.error('Error fetching requisition items:', error);
@@ -107,22 +132,26 @@ export class ReceiptsService {
           margin: [0, 10, 0, 0]
         }
       },
-      header: (currentPage) => ({
-        text: 'Orden de Compra',
-        style: 'header'
-      }),
       footer: (currentPage, pageCount) => ({
         text: `Página ${currentPage} de ${pageCount}`,
         style: 'footer'
       }),
       content: [
         {
+          image: 'logo',
+          width: 90
+        },
+        {
+          text: 'Orden de Compra',
+        style: 'header'
+        },
+        {
           text: `Fecha: ${this.convertirFecha(new Date().toISOString())}`,
           alignment: 'right',
           margin: [0, 0, 0, 20]
         },
         {
-          text: 'Obra o proyecto:'
+          text: 'Obra o proyecto: ' + this.projectDescription
         },
         {
           table: {
@@ -156,7 +185,10 @@ export class ReceiptsService {
         },
         {text: 'Comentario: ', alignment: 'left'},
         {text: this.detailedReq.comments, alignment: 'left', margin: [0, 0, 0, 20]}
-      ]
+      ],
+      images: {
+        logo: this.rootLogo
+      }
     };
   }
 }

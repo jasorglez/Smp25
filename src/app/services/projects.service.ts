@@ -35,6 +35,11 @@ export class ProjectsService {
     return this.http.get<any[]>(`${environment.urlSmp}/Project`, { headers: this.trackingService.getHeaders() });
   }
 
+
+  getProjectsById(id: number):Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlSmp}/Project/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
   getProjectsByContract(idContract: number, idUser: number): Observable<any[]> {
     const url = `${environment.urlSmp}/SmpandSecurity/project`;
     const params = new HttpParams()
