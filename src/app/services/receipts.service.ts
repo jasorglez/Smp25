@@ -61,7 +61,7 @@ export class ReceiptsService {
       const projectId = Number(localStorage.getItem('project'));
       const projectResponse = await lastValueFrom(this.projectsService.getProjectsById(projectId)) as unknown as ProjectResponse;
       this.projectDescription = projectResponse.description; // Cambia 'contractDescription' por el nombre correcto de la propiedad
-      
+
     } catch (error) {
       console.error('Error fetching requisition items:', error);
       throw error;
@@ -107,7 +107,7 @@ export class ReceiptsService {
       },
       styles: {
         header: {
-          fontSize: 18,
+          fontSize: 16,
           bold: true,
           alignment: 'center',
           margin: [0, 0, 0, 20]
@@ -142,8 +142,8 @@ export class ReceiptsService {
           width: 90
         },
         {
-          text: 'Orden de Compra',
-        style: 'header'
+          text: 'Requisición',
+          style: 'header'
         },
         {
           text: `Fecha: ${this.convertirFecha(new Date().toISOString())}`,
@@ -156,9 +156,10 @@ export class ReceiptsService {
         {
           table: {
             headerRows: 1,
-            widths: ['*', 'auto', 'auto', 'auto', '*'],
+            widths: ['auto', '*', 'auto', 'auto', 'auto', '*'],
             body: [
               [
+                { text: 'Código', style: 'tableHeader' },
                 { text: 'Material', style: 'tableHeader' },
                 { text: 'Cantidad', style: 'tableHeader' },
                 { text: 'Unidad', style: 'tableHeader' },
@@ -166,6 +167,7 @@ export class ReceiptsService {
                 { text: 'Comentario', style: 'tableHeader' }
               ],
               ...this.reqItems.map(item => [
+                { text: item.code, style: 'tableCell' },
                 { text: item.description, style: 'tableCell' },
                 { text: item.quantity.toString(), style: 'tableCell', alignment: 'right' },
                 { text: item.measure, style: 'tableCell', alignment: 'right' },
@@ -183,8 +185,8 @@ export class ReceiptsService {
             paddingBottom: (i, node) => 8
           }
         },
-        {text: 'Comentario: ', alignment: 'left'},
-        {text: this.detailedReq.comments, alignment: 'left', margin: [0, 0, 0, 20]}
+        { text: 'Comentario: ', alignment: 'left' },
+        { text: this.detailedReq.comments, alignment: 'left', margin: [0, 0, 0, 20] }
       ],
       images: {
         logo: this.rootLogo
