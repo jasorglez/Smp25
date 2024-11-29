@@ -6,7 +6,6 @@ import { lastValueFrom } from 'rxjs';
 import { RequisitionsService } from './requisitions.service';
 import { RootService } from './root.service';
 import { ProjectsService } from './projects.service';
-import { ProvidersService } from './providers.service';
 import { UsersService } from './users.service';
 import { Base64EncodeService } from './base64encode.service';
 
@@ -83,12 +82,10 @@ export class ReceiptsService {
   private async getRequisitionData(id: number): Promise<void> {
     try {
       const data = await lastValueFrom(this.requisitionsService.getReqItems(id));
+      console.log(id);
       this.reqItems = data;
 
-      // Almacenar el idMovement del primer elemento (asumiendo que todos tienen el mismo)
-      const idMovement = data.length > 0 ? data[0].idMovement : null; // Cambia 'idMovement' por el nombre correcto de la propiedad
-
-      const detailedReq = await lastValueFrom(this.requisitionsService.getDetailedReq(idMovement)) as ReqResponse;
+      const detailedReq = await lastValueFrom(this.requisitionsService.getDetailedReq(id)) as ReqResponse;
       this.detailedReq = detailedReq; // Cambia 'detailedReq' por el nombre correcto de la propiedad
       console.log(detailedReq);
 

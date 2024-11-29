@@ -194,7 +194,7 @@ export class RequisitionsMainComponent {
   };
 
   obtenerDatos() {
-    this.requisitionsService.getOcAndReqs(this.idProject).subscribe((data: any) => {
+    this.requisitionsService.getOcAndReqs(this.idProject, "REQUIS").subscribe((data: any) => {
       this.rowData = data;
     });
   }

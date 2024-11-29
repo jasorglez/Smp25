@@ -12,8 +12,8 @@ export class RequisitionsService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
-  getOcAndReqs(idProject: number) {
-    return this.http.get(`${environment.urlWarehouse}/Ocandreq?idProject=${idProject}`, { headers: this.trackingService.getHeaders() });
+  getOcAndReqs(idProject: number, type: string) {
+    return this.http.get(`${environment.urlWarehouse}/Ocandreq?idProject=${idProject}&type=${type}`, { headers: this.trackingService.getHeaders() });
   }
 
   getDetailedReq(id: number) {
