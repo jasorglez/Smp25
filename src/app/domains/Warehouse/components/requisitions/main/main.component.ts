@@ -14,6 +14,7 @@ import { CurrencyService } from 'app/services/currency.service';
 import { SignalsService } from 'app/services/signals.service';
 import { ModalService } from 'app/services/modal.service';
 import { ReceiptsService } from 'app/services/receipts.service';
+import { ReqInfoComponent } from "../req-info/req-info.component";
 
 interface Catalog {
   id: number;
@@ -28,11 +29,20 @@ interface Provider {
 @Component({
   selector: 'app-requisitions-main',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, ReqInfoComponent],
   templateUrl: './main.component.html',
   styleUrl: './main.component.scss'
 })
 export class RequisitionsMainComponent {
+    // Inject of new way for Angular 18
+    private requisitionsService = inject(RequisitionsService);
+    private providersService = inject(ProvidersService);
+    private catalogsService = inject(CatalogsService);
+    private departmentsService = inject(DepartmentsService);
+    private currencyService = inject(CurrencyService);
+    private signalsService = inject(SignalsService);
+    private modalServiceTable = inject(ModalService);
+    private receiptsService = inject(ReceiptsService);
 
   constructor() {
     effect(() => {
@@ -50,7 +60,6 @@ export class RequisitionsMainComponent {
 
   ngOnInit() {
     this.obtenerDatos();
-    this.obtenerProveedores();
     this.obtenerDepartamentos();
     this.obtenerUbicaciones();
     this.obtenerMonedas();
@@ -69,7 +78,6 @@ export class RequisitionsMainComponent {
   contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
-  proveedores: any;
   familias: any;
   departamentos: any;
   ubicaciones: any;
@@ -78,7 +86,6 @@ export class RequisitionsMainComponent {
   idProject: number = null;
   private tempIdCounter: number = 0;
   idRequisition: number = null;
-
 
   private gridApi: GridApi;
 
@@ -92,16 +99,6 @@ export class RequisitionsMainComponent {
   frameworkComponents = {
     multiLineEditor: MultiLineEditorComponent
   };
-
-  // Inject of new way for Angular 18
-  private requisitionsService = inject(RequisitionsService);
-  private providersService = inject(ProvidersService);
-  private catalogsService = inject(CatalogsService);
-  private departmentsService = inject(DepartmentsService);
-  private currencyService = inject(CurrencyService);
-  private signalsService = inject(SignalsService);
-  private modalServiceTable = inject(ModalService);
-  private receiptsService = inject(ReceiptsService);
   
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
@@ -131,16 +128,6 @@ export class RequisitionsMainComponent {
             return params.value.split('T')[0];
           }
           return '';
-        }
-      },
-      {
-        field: 'idProveedor', headerName: 'Proveedor', editable: true, width: 150, cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.proveedores ? this.proveedores.map(item => item.id) : [],
-        },
-        valueFormatter: (params) => {
-          const foundItem = this.proveedores ? this.proveedores.find(item => item.id === params.value) : null;
-          return foundItem ? `${foundItem.name}` : params.value;
         }
       },
       {
@@ -212,15 +199,6 @@ export class RequisitionsMainComponent {
     });
   }
 
-  obtenerProveedores() {
-    this.providersService.getProviderByType('Provider').subscribe(
-      (data: Provider[]) => {
-        this.proveedores = data;
-      },
-      (error) => console.error('Error fetching providers:', error)
-    );
-  }
-
   obtenerDepartamentos() {
     this.departmentsService.getDepartments().subscribe(
       (data: Provider[]) => {
@@ -257,7 +235,8 @@ export class RequisitionsMainComponent {
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
       this.signalsService.setIdRequisition(this.selectedRowData.id);
-      this.idRequisition = this.selectedRowData.id;
+      this.signalsService.setRequisitionName(this.selectedRowData.folio);
+      this.idRequisition = this.signalsService.getIdRequisition()();
     } else {
       this.selectedRowData = null;
     }

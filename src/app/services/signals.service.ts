@@ -246,6 +246,7 @@ export class SignalsService {
   /* Signals para requisiciones */
 
   idRequisition = signal<number>(null);
+  nameRequisition = signal<string>(null);
 
   setIdRequisition(id: number) {
     this.idRequisition.set(id);
@@ -253,6 +254,14 @@ export class SignalsService {
 
   getIdRequisition() {
     return this.idRequisition;
+  }
+
+  setRequisitionName(name: string) {
+    this.nameRequisition.set(name);
+  }
+
+  getRequisitionName() {
+    return this.nameRequisition;
   }
 
   /* Borramos todas las signals, tratar de poner esto a lo último.

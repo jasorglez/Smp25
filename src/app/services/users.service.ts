@@ -79,18 +79,19 @@ export class UsersService {
           // Asegúrate de que todas las propiedades existen en el objeto user
            const displayName = user.displayName || '';
            const picture = user.picture || '';
-           const email = user.emailu || '';
+           const email = user.email || '';
            const applyproject = user.applyproject || '';
            const applybranch = user.applybranch || '';
            const applyplatform = user.applyplatform || ''; // Corregido de user.applybranch a user.applyplatform
            const id           = user.id   ;
+           const signature = user.signature || '';
          //  this.signalsService.setidUser(datauser.id);
          this.signalsService.setDisplayName(displayName);
 
-          return { displayName, picture, applyproject, applybranch, applyplatform, email, id };
+          return { displayName, picture, applyproject, applybranch, applyplatform, email, id, signature };
         } else {
           // Si no se encontró ningún usuario, devuelve un objeto vacío
-          return { displayName: '', picture: '', applyproject: '', applybranch: '', applyplatform: '', email: '' };
+          return { displayName: '', picture: '', applyproject: '', applybranch: '', applyplatform: '', email: '', signature: '' };
         }
       })
     );

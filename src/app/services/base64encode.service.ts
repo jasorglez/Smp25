@@ -1,14 +1,10 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
-export class Base64encodeService {
-
-//  private corsUrl = 'https://cors-anywhere.herokuapp.com/'; // Eliminar en producción, habilitar CORS en Azure
-//para probarlo
+export class Base64EncodeService {
 
   constructor(private http: HttpClient) {}
 

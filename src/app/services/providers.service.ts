@@ -19,6 +19,10 @@ export class ProvidersService {
     return this.http.get(`${environment.urlSmp}/Providers`, { headers: this.trackingService.getHeaders() });
   }
 
+  getProviderById(id: number) {
+    return this.http.get(`${environment.urlSmp}/Providers/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
   addProvider(data: any) {
     return this.http.post(`${environment.urlSmp}/Providers`, data, { headers: this.trackingService.getHeaders() });
   }
