@@ -14,5 +14,7 @@ export class ReqInfoComponent {
 
   idRequisition = this.signalsService.getIdRequisition();
   requisitionName = this.signalsService.getRequisitionName();
+  requisitionSolicitant = this.signalsService.getRequisitionSolicitant();
+  requisitionDate = this.signalsService.getRequisitionDate();
 
 }

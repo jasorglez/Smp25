@@ -245,8 +245,10 @@ export class SignalsService {
 
   /* Signals para requisiciones */
 
-  idRequisition = signal<number>(null);
-  nameRequisition = signal<string>(null);
+  private idRequisition = signal<number>(null);
+  private nameRequisition = signal<string>(null);
+  private requisitionSolicitant = signal<string>(null);
+  private requisitionDate = signal<string>(null);
 
   setIdRequisition(id: number) {
     this.idRequisition.set(id);
@@ -262,6 +264,22 @@ export class SignalsService {
 
   getRequisitionName() {
     return this.nameRequisition;
+  }
+
+  setRequisitionSolicitant(solicitant: string) {
+    this.requisitionSolicitant.set(solicitant);
+  }
+
+  getRequisitionSolicitant() {
+    return this.requisitionSolicitant;
+  }
+
+  setRequisitionDate(date: string) {
+    this.requisitionDate.set(date);
+  }
+
+  getRequisitionDate() {
+    return this.requisitionDate;
   }
 
   /* Borramos todas las signals, tratar de poner esto a lo último.
@@ -295,6 +313,12 @@ export class SignalsService {
     this.idPlanificationRisk = signal(null);
     this.planificationActionRisk = signal(null);
     this.selectedWorkProgram = signal(null);
+    this.idRequisition = signal(null);
+    this.nameRequisition = signal(null);
+    this.requisitionSolicitant = signal(null);    
+    this.requisitionDate = signal(null);
+    this.selectedContract = signal(null);
+    this.selectedProject = signal(null);
 
     // Reinicia this.profile
     this.profileSignal(null, null, null, null, null, null);

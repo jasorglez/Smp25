@@ -236,6 +236,8 @@ export class RequisitionsMainComponent {
       this.selectedRowData = selectedNodes[0].data;
       this.signalsService.setIdRequisition(this.selectedRowData.id);
       this.signalsService.setRequisitionName(this.selectedRowData.folio);
+      this.signalsService.setRequisitionSolicitant(this.selectedRowData.solicit);
+      this.signalsService.setRequisitionDate(this.selectedRowData.dateCreate);
       this.idRequisition = this.signalsService.getIdRequisition()();
     } else {
       this.selectedRowData = null;
