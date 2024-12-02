@@ -398,8 +398,8 @@ export class RequisitionsMainComponent {
   }
 
   
-  createOC(idRequisition: number) {
-    this.receiptsService.generateOC(idRequisition);
+  createOC(idRequisition: number, action: string)  {
+    this.receiptsService.generateOC(idRequisition, action);
   }
 
 

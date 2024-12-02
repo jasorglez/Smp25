@@ -78,7 +78,7 @@
       @if (selectedTab === 'req') { <app-requisitions></app-requisitions> }
     </div>
     <div class="tab-pane" [class.active]="selectedTab === 'ord'">
-      @if (selectedTab === 'ord') { }
+      @if (selectedTab === 'ord') { <app-purchaseorder></app-purchaseorder> }
     </div>
     <div class="tab-pane" [class.active]="selectedTab === 'ent'">
       @if (selectedTab === 'ent') { }

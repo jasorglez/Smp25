@@ -60,7 +60,7 @@ export class ReceiptsService {
   private rootService = inject(RootService);
   private projectsService = inject(ProjectsService);
   private usersService = inject(UsersService);
-  private base64EncodeService = inject (Base64EncodeService);
+  private base64EncodeService = inject(Base64EncodeService);
 
   private reqItems: any[] = [];
   private detailedReq: any;
@@ -69,11 +69,18 @@ export class ReceiptsService {
   private projectDescription: string = null;
   private rootResponse: any;
 
-  async generateOC(id: number): Promise<void> {
+  async generateOC(id: number, action: string): Promise<void> {
     try {
       await this.getRequisitionData(id);
       const docDefinition = await this.generateDocDefinition();
-      pdfMake.createPdf(docDefinition).open();
+      switch (action) {
+        case 'print':
+          pdfMake.createPdf(docDefinition).print();
+          break;
+        case 'open':
+          pdfMake.createPdf(docDefinition).open();
+          break;
+      }
     } catch (error) {
       console.error('Error generating OC:', error);
     }

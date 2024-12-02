@@ -1,1 +1,17 @@
-<p>purchaseorder works!</p>
+<nav>
+    <div class="nav nav-tabs" id="nav-tab" role="tablist">
+      <button class="nav-link active" id="nav-requisitions-tab" data-bs-toggle="tab" data-bs-target="#requisitions-main" type="button" role="tab" aria-controls="requisitions-main" aria-selected="true">Requisiciones</button>
+      <button *ngIf="idRequisition() != null" class="nav-link" id="nav-details-tab" data-bs-toggle="tab" data-bs-target="#requisitions-details" type="button" role="tab" aria-controls="requisitions-details" aria-selected="false">Detalles</button>
+    </div>
+  </nav>
+  
+  <div class="tab-content" id="nav-tabContent">
+    <div class="tab-pane fade show active" id="requisitions-main" role="tabpanel" aria-labelledby="nav-requisitions-tab">
+      <app-oc-main></app-oc-main>
+    </div>
+    <div class="tab-pane fade" id="requisitions-details" role="tabpanel" aria-labelledby="nav-details-tab">
+      <app-oc-details></app-oc-details>
+    </div>
+  </div>
+  
+  
