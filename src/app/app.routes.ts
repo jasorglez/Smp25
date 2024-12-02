@@ -127,6 +127,82 @@ export const routes: Routes = [
           }
                     
         ]
+      },
+
+      { 
+        path: 'procmodadmon', 
+        loadComponent: () => import('./domains/ModAdmon/pages/procmodadmon/procmodadmon.component').then(a => a.ProcmodadmonComponent),
+        children:[
+          { path: '', redirectTo: 'ModAdmon', pathMatch: 'full' }, ...SharedModule.getRoutes(),
+           {            
+              path:'setupadm',            
+              loadComponent: () => import('./domains/ModAdmon/components/setup/setup.component').then(s => s.SetupComponent), 
+            },
+            {
+              path:'income',
+              loadComponent: () => import('./domains/ModAdmon/components/income/income.component').then(i => i.IncomeComponent) 
+            },
+            {
+              path:'expend',
+              loadComponent: () => import('./domains/ModAdmon/components/expenditure/expenditure.component').then(e => e.ExpenditureComponent) 
+            },              
+            {
+              path:'page01',            
+              loadComponent: () => import('./domains/ModAdmon/pages/pages01/page01.component').then(p => p.Page01Component), 
+              children: [
+              { path: '', redirectTo: 'convenios', pathMatch: 'full' },
+              ...SharedModule.getRoutes(),
+          
+                  { 
+                    path:'banks',
+                    loadComponent: () => import('./domains/ModAdmon/components/banks/banks.component').then(b => b.BanksComponent) 
+                  }                  
+            ]
+          },                             
+        ]
+      },
+
+      { 
+        path: 'procmodmaintenance', 
+        loadComponent: () => import('./domains/ModMaintenance/pages/procmodmaintenance/procmodmaintenance.component').then(m => m.ProcmodmaintenanceComponent),
+        children:[
+          { path: '', redirectTo: 'ModMaintenance', pathMatch: 'full' }, ...SharedModule.getRoutes(),
+          {            
+            path:'setup',            
+            loadComponent: () => import('./domains/ModMaintenance/components/setup/setup.component').then(s => s.SetupComponent) 
+          },
+          {
+            path:'equipments',            
+            loadComponent: () => import('./domains/ModMaintenance/components/equipments/equipments.component').then(e => e.EquipmentsComponent) 
+          },
+          {
+            path:'personal',
+            loadComponent: () => import('./domains/ModMaintenance/components/personal/personal.component').then(p => p.PersonalComponent) 
+          }
+                    
+        ]
+      },
+
+      
+      { 
+        path: 'procreshuman', 
+        loadComponent: () => import('./domains/ModReshumans/pages/procreshuman/procreshuman.component').then(h => h.ProcreshumanComponent),
+        children:[
+          { path: '', redirectTo: 'ModReshumans', pathMatch: 'full' }, ...SharedModule.getRoutes(),
+          {            
+            path:'setup',            
+            loadComponent: () => import('./domains/ModReshumans/components/setup/setup.component').then(s => s.SetupComponent) 
+          },          
+          {
+            path:'personal',
+            loadComponent: () => import('./domains/ModReshumans/components/personal/personal.component').then(p => p.PersonalComponent) 
+          },
+          {
+            path:'equipments',            
+            loadComponent: () => import('./domains/ModReshumans/components/reservations/reservations.component').then(r => r.ReservationsComponent) 
+          },
+                    
+        ]
       }
 
     ]

@@ -1,0 +1,27 @@
+<div class="col-md-12">
+      <div class="card">
+         <div class="card-header p-2">
+            <ul class="nav nav-pills">
+   
+               <li class="nav-item">
+                  <a class="nav-link green-tab" routerLink="conventions" routerLinkActive="active"><i
+                        class="bi bi-list-ul"></i> {{'setting' | translate}}</a>
+               </li>
+   
+               <li class="nav-item ">
+                  <a class="nav-link green-tab" routerLink="incomes" routerLinkActive="active"><i
+                        class="bi bi-r-chart-fill"></i> {{'personal' | translate}}</a>
+               </li>
+   
+               <li class="nav-item">
+                  <a class="nav-link green-tab" routerLink="workprograms" routerLinkActive="active"><i
+                        class="bi bi-bar-chart-steps"></i> {{ 'reservation' | translate}}</a>
+               </li>     
+                 
+            </ul>
+   
+            <router-outlet></router-outlet>
+         </div>
+   
+      </div>
+   </div>

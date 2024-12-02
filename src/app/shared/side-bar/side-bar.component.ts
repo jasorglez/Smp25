@@ -259,14 +259,34 @@ if (this.signalsService.isidUserEmpty()){
     this.router.navigate(['/dashboard']);
   }
 
-  Admon() {
+  Admonproc() {
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Eleccion del menu Admon',
       'Menu Side Bar',
       ''
     );
-    this.router.navigate(['/admon']);
+    this.router.navigate(['procmodadmon']);
+  }
+
+  maintenanceproc() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Eleccion del menu Mantenimiento',
+      'Menu Side Bar',
+      ''
+    );
+    this.router.navigate(['procmodmaintenance']);
+  }
+
+  resourcesmenproc() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Eleccion del menu Recursos Humanos',
+      'Menu Side Bar',
+      ''
+    );
+    this.router.navigate(['procreshuman']);
   }
 
   Bpi() {

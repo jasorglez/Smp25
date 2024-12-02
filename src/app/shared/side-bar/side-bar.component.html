@@ -24,33 +24,56 @@
         <option *ngFor="let pj of projectData" [value]="pj.id">{{ pj.name }}</option>
       </select>
     </div>
-
-    <ul class="nav flex-column">
+    
+     <ul class="nav flex-column">
       <li class="nav-item">
         <a class="nav-link" (click)="Dashboard()">
-          <i class="fas fa-home"></i> {{ 'DASHBOARD' | translate }}
+          <span class="material-icons">dashboard</span> {{ 'DASHBOARD' | translate }}
         </a>
       </li>
+
       <li class="nav-item">
         <a class="nav-link" (click)="Indicadores()">
-          <i class="fas fa-chart-line"></i> {{ 'INDICADORES' | translate }}
+          <span class="material-icons">bar_chart</span> {{ 'indicators' | translate }}
         </a>
       </li>
+
+      <li class="nav-item">
+        <a class="nav-link" (click)="Admonproc()">
+          <span class="material-icons">menu_book</span> {{ 'admins' | translate }}
+        </a>
+      </li>
+
       <li class="nav-item">
         <a class="nav-link" (click)="warehouseproc()">
-          <i class="fas fa-warehouse"></i> {{ 'ALMACENES' | translate }}
+          <span class="material-icons">warehouses</span> {{ 'warehouses' | translate }}
         </a>
       </li>
+
+      <li class="nav-item">
+        <a class="nav-link" (click)="maintenanceproc()">
+          <span class="material-icons">engineering</span> {{ 'maintenance' | translate }}
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a class="nav-link" (click)="resourcesmenproc()">
+          <span class="material-icons">diversity_3</span> {{ 'resourcesmen' | translate }}
+        </a>
+      </li>
+
       <li class="nav-item">
         <a class="nav-link" (click)="SmpSetup()">
           <i class="fas fa-cogs"></i> {{ 'SETUP' | translate }}
         </a>
       </li>
+
       <li class="nav-item">
         <a class="nav-link" (click)="authService.logout()">
           <i class="fas fa-sign-out-alt"></i> SALIR
         </a>
       </li>
+
     </ul>
   </div>
 </aside>

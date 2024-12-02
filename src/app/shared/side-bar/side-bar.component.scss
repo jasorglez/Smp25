@@ -52,3 +52,22 @@
       border-color: #87CEFA;      /* Borde azul claro en foco */
   }
   
+  .nav-link i {
+    color: #4CAF50; /* Cambia el color */
+    font-size: 20px; /* Ajusta el tamaño */
+    transition: transform 0.2s ease, color 0.2s ease;
+  }
+  
+  .nav-link i:hover {
+    color: #3E8E41; /* Color al pasar el mouse */
+    transform: scale(1.2); /* Efecto de zoom */
+  }
+
+  .nav-link i {
+    color: #007BFF; /* Azul principal */
+  }
+  .nav-link i:hover {
+    color: #0056b3; /* Azul oscuro al pasar el mouse */
+  }
+  
+  
