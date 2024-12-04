@@ -8,6 +8,7 @@ import { RootService } from './root.service';
 import { ProjectsService } from './projects.service';
 import { UsersService } from './users.service';
 import { Base64EncodeService } from './base64encode.service';
+import { ProvidersService } from './providers.service';
 
 (pdfMake as any).vfs = pdfFonts.pdfMake.vfs;
 
@@ -20,6 +21,7 @@ interface RootResponse {
   phone: string;
   rfc: string;
   address: string;
+  idReq: number;
   // otras propiedades...
 }
 
@@ -40,9 +42,12 @@ interface ReqResponse {
   comments: string;
   folio: string;
   idProject: number;
+  idReq: number;
   idProveedor: number;
   solicit: string;
   dateCreate: string;
+  idProvider: number;
+  type: string;
 }
 
 interface AuthorizerResponse {
@@ -61,6 +66,7 @@ export class ReceiptsService {
   private projectsService = inject(ProjectsService);
   private usersService = inject(UsersService);
   private base64EncodeService = inject(Base64EncodeService);
+  private providerService = inject(ProvidersService);
 
   private reqItems: any[] = [];
   private detailedReq: any;
@@ -68,6 +74,8 @@ export class ReceiptsService {
   private authorizer: any;
   private projectDescription: string = null;
   private rootResponse: any;
+  private providerResponse: any;
+  private requisitionName: string;
 
   async generateOC(id: number, action: string): Promise<void> {
     try {
@@ -89,28 +97,33 @@ export class ReceiptsService {
   private async getRequisitionData(id: number): Promise<void> {
     try {
       const data = await lastValueFrom(this.requisitionsService.getReqItems(id));
-      console.log(id);
       this.reqItems = data;
 
       const detailedReq = await lastValueFrom(this.requisitionsService.getDetailedReq(id)) as ReqResponse;
       this.detailedReq = detailedReq; // Cambia 'detailedReq' por el nombre correcto de la propiedad
-      console.log(detailedReq);
 
       // Ahora el proyecto
       const projectId = Number(localStorage.getItem('project'));
       const projectResponse = await lastValueFrom(this.projectsService.getProjectsById(projectId)) as unknown as ProjectResponse;
       this.projectDescription = projectResponse.description; // Cambia 'contractDescription' por el nombre correcto de la propiedad
 
-
       // Ahora consigo el dato del root
       const rootResponse = await lastValueFrom(this.rootService.getRootbyId(this.idRoot)) as RootResponse;
+
+      // Si es una orden de compra, consigo el dato del proveedor
+      if (detailedReq.type == "OC") {
+        const providerResponse = await lastValueFrom(this.providerService.getProviderById(this.detailedReq.idProvider)) as RootResponse;
+        this.providerResponse = providerResponse;
+        const requisitionName = await lastValueFrom(this.requisitionsService.getDetailedReq(this.detailedReq.idReq)) as ReqResponse;
+        this.requisitionName = requisitionName.folio; // Cambia 'requisitionName' por el nombre correcto de la propiedad
+      }
       this.rootResponse = rootResponse;
-      console.log(this.rootResponse.picture);
 
       // Consigo el dato de quien autoriza
       const authorizer = await lastValueFrom(this.usersService.findEmail(localStorage.getItem('mail'))) as AuthorizerResponse;
-      this.authorizer = authorizer
-      console.log(this.authorizer.signature);
+      this.authorizer = authorizer;
+
+      console.log(this.detailedReq);
 
     } catch (error) {
       console.error('Error fetching requisition items:', error);
@@ -179,7 +192,7 @@ export class ReceiptsService {
           width: 90
         },
         {
-          text: 'Requisición',
+          text: this.detailedReq.type == "REQUIS" ? 'Requisición' : 'Orden de compra',
           style: 'header'
         },
         {
@@ -210,7 +223,11 @@ export class ReceiptsService {
                     { text: this.formatTime(this.detailedReq.dateCreate), alignment: 'left' }
                   ],
                   [
-                    { text: 'Requis. No.:', alignment: 'right' },
+                    { text: this.detailedReq.type == "REQUIS" ? 'Req. No.' : '', alignment: 'right' },
+                    { text: this.detailedReq.type == "REQUIS" ? this.requisitionName: '', alignment: 'left' }
+                  ],
+                  [
+                    { text: this.detailedReq.type == "REQUIS" ? 'Requis. No.:' : 'OC No.:', alignment: 'right' },
                     { text: this.detailedReq.folio, alignment: 'left' }
                   ]
                 ]
