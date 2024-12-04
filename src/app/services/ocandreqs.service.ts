@@ -7,7 +7,7 @@ import { TrackingService } from './tracking.service';
 @Injectable({
   providedIn: 'root'
 })
-export class RequisitionsService {
+export class OcAndReqsService {
 
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);

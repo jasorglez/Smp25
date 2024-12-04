@@ -282,6 +282,16 @@ export class SignalsService {
     return this.requisitionDate;
   }
 
+  // Voy a borrar la signal de la requisición u OC para que se resetee de forma manual
+  // al cambiar de OC o requisición
+
+  deleteRequisitionData() {
+    this.idRequisition.set(null);
+    this.nameRequisition.set(null);
+    this.requisitionSolicitant.set(null);
+    this.requisitionDate.set(null);
+  }
+
   /* Borramos todas las signals, tratar de poner esto a lo último.
   Si van a crear nuevas signals, recuerden introducir una señal
   null en deleteSignals() para que todas las signals se borren

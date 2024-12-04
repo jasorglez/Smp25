@@ -7,7 +7,7 @@ import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { CatalogsService } from 'app/services/catalogs.service';
-import { RequisitionsService } from 'app/services/requisitions.service';
+import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { ProvidersService } from 'app/services/providers.service';
 import { DepartmentsService } from 'app/services/departments.service';
 import { CurrencyService } from 'app/services/currency.service';
@@ -35,7 +35,7 @@ interface Provider {
 })
 export class RequisitionsMainComponent {
     // Inject of new way for Angular 18
-    private requisitionsService = inject(RequisitionsService);
+    private requisitionsService = inject(OcAndReqsService);
     private providersService = inject(ProvidersService);
     private catalogsService = inject(CatalogsService);
     private departmentsService = inject(DepartmentsService);
@@ -273,7 +273,7 @@ export class RequisitionsMainComponent {
       idPayment: 0,
       idCurrency: 0,
       conditions: '',
-      IdAuthorize: localStorage.getItem('mail'),
+      IdAuthorize: 0,
       priority: '',
       solicit: this.signalsService.getDisplayName()(),
       type: 'REQUIS',

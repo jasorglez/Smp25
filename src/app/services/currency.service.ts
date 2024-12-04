@@ -15,4 +15,8 @@ export class CurrencyService {
   getCurrencies() {
     return this.http.get(`${environment.urlWarehouse}/Catalog?type=Currency`, { headers: this.trackingService.getHeaders() });
   }
+
+  getPaymentTypes() {
+    return this.http.get(`${environment.urlWarehouse}/Catalog?type=Pay`, { headers: this.trackingService.getHeaders() });
+  }
 }

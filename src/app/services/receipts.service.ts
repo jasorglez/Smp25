@@ -3,7 +3,7 @@ import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { TDocumentDefinitions } from 'pdfmake/interfaces';
 import { lastValueFrom } from 'rxjs';
-import { RequisitionsService } from './requisitions.service';
+import { OcAndReqsService } from './ocandreqs.service';
 import { RootService } from './root.service';
 import { ProjectsService } from './projects.service';
 import { UsersService } from './users.service';
@@ -56,7 +56,7 @@ interface AuthorizerResponse {
   providedIn: 'root'
 })
 export class ReceiptsService {
-  private requisitionsService = inject(RequisitionsService);
+  private requisitionsService = inject(OcAndReqsService);
   private rootService = inject(RootService);
   private projectsService = inject(ProjectsService);
   private usersService = inject(UsersService);

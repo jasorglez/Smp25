@@ -16,6 +16,10 @@ export class RequisitionsComponent {
 
   private signalsService = inject(SignalsService);
 
+  ngOnInit() {
+    this.signalsService.deleteRequisitionData();
+  }
+
   idRequisition = this.signalsService.getIdRequisition();
 
 

@@ -6,7 +6,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
-import { RequisitionsService } from 'app/services/requisitions.service';
+import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { SignalsService } from 'app/services/signals.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { ModalService } from 'app/services/modal.service';
@@ -80,7 +80,7 @@ export class RequisitionsDetailsComponent {
   };
 
   // Inject of new way for Angular 18
-  private requisitionsService = inject(RequisitionsService);
+  private requisitionsService = inject(OcAndReqsService);
   private modalServiceTable = inject(ModalService);
   private materialsService = inject(MaterialsService);
   private signalsService = inject(SignalsService);
