@@ -13,8 +13,8 @@ export class WarehousesService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
-  getWarehouses() {
-    return this.http.get(`${environment.urlWarehouse}/Warehouse?idBranch=1`, { headers: this.trackingService.getHeaders() });
+  getWarehouses(idRoot : number ) {
+    return this.http.get(`${environment.urlWarehouse}/Warehouse?idBussines=${idRoot}`, { headers: this.trackingService.getHeaders() });
   }
 
   addWarehouse(data: any): Observable<any> {
@@ -22,11 +22,11 @@ export class WarehousesService {
   }
 
   updateWarehouse(id: string, data: any): Observable<any> {
-    return this.http.put<any[]>(`${environment.urlWarehouse}/Warehouse/${id}`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.put<any[]>(`${environment.urlWarehouse}/Warehouse${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
   deleteWarehouse(id: number): Observable<any> {
-    return this.http.delete<any[]>(`${environment.urlWarehouse}/Warehouse/${id}`, { headers: this.trackingService.getHeaders() });
+    return this.http.delete<any[]>(`${environment.urlWarehouse}/Warehouse${id}`, { headers: this.trackingService.getHeaders() });
   }
 
 

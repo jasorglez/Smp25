@@ -27,6 +27,8 @@ interface Branch {
 })
 export class WarehousesComponent {
 
+   selectedRoot      : string = '';
+
   ngOnInit() {
     this.obtenerDatos();
     this.obtenerBranches();
@@ -129,7 +131,7 @@ export class WarehousesComponent {
   };
 
   obtenerDatos() {
-    this.warehouseService.getWarehouses().subscribe((data: any) => {
+    this.warehouseService.getWarehouses(parseInt(localStorage.getItem('company'))).subscribe((data: any) => {
       this.rowData = data;
     });
   }
@@ -146,7 +148,7 @@ export class WarehousesComponent {
   }
 
   obtenerBranches() {
-    this.branchesService.getBranches().subscribe(
+   this.branchesService.getBranches2fields(parseInt(localStorage.getItem('company'))).subscribe(
       (data: Branch[]) => {
         this.branches = data;
         console.log(this.branches);

@@ -7,19 +7,29 @@
   <div class="sidebar">
     <div class="user-panel mt-4 pb-2 mb-2 brand-image">
       <!-- Select Root -->
-      <select id="root" (change)="onRootsSelected($event)" class="form-control select-side" [value]="selectedRoot || ''">
+      <select id="root" (change)="onRootsSelected($event)" class="form-control select-side" [value]="selectedRoot || ''"
+                        title= "{{ 'select' | translate  }} {{ 'company' | translate  }}">  >
         <option value="" disabled>{{ 'company' | translate }}</option>
         <option *ngFor="let item of rootData" [value]="item.id">{{ item.name }}</option>
       </select>
 
+         <!-- Select Branchs -->
+         <select id="branchs" (change)="onContractsSelected($event)" class="form-control select-side" [value]="selectedBranchId || ''"
+                              title= "{{ 'select' | translate  }} {{ 'branchs' | translate  }}">          
+          <option selected disabled value="">{{ 'branchs' | translate }}</option>
+          <option *ngFor="let item of branchData" [value]="item.id">{{ item.name }}</option>
+        </select>
+
       <!-- Select Contracts -->
-      <select id="contract" (change)="onContractsSelected($event)" class="form-control select-side" [value]="selectedContractId || ''">
+      <select id="contract" (change)="onContractsSelected($event)" class="form-control select-side" [value]="selectedContractId || ''"
+                            title= "{{ 'select' | translate  }} {{ 'contract' | translate  }}">  >
         <option selected disabled value="">{{ 'contract' | translate }}</option>
         <option *ngFor="let item of contractData" [value]="item.id">{{ item.name }}</option>
       </select>
 
       <!-- Select Projects -->
-      <select id="project" (change)="onProjectSelected($event)" class="form-control select-side" [value]="selectedProjectId || ''">
+      <select id="project" (change)="onProjectSelected($event)" class="form-control select-side" [value]="selectedProjectId || ''"
+                           title= "{{ 'select' | translate  }} {{ 'projects' | translate  }}">  >
         <option selected disabled value="">{{ 'projects' | translate }}</option>
         <option *ngFor="let pj of projectData" [value]="pj.id">{{ pj.name }}</option>
       </select>

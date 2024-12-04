@@ -6,6 +6,7 @@ import { TrackingService } from '../../services/tracking.service';
 import { CompanysService } from '../../services/companys.service';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { ContractsService } from 'app/services/contracts.service';
+import { BranchsService } from 'app/services/branchs.service';
 import { ProjectsService } from 'app/services/projects.service';
 import { SignalsService } from 'app/services/signals.service';
 import { RootService } from 'app/services/root.service';
@@ -24,6 +25,7 @@ import { alerts } from 'app/helpers/alerts';
 })
 export class SideBarComponent {
   selectedRoot      : string = '';
+
   rootData          : any;
   contractData      : any ;
   branchData        : any[] = [];
@@ -45,6 +47,7 @@ export class SideBarComponent {
     public companysService : CompanysService,
     public authService     : AuthService,
     public rootService     : RootService,
+    private branchService  : BranchsService,
     public contractService : ContractsService,
     public projectService  : ProjectsService,
     private userService    : UsersService,
@@ -100,7 +103,7 @@ if (this.signalsService.isidUserEmpty()){
           this.getHeadersCompanys(this.selectedRoot);
           // Llamar a getpermissionxContracts con el primer elemento
           this.getpermissionxContracts(parseInt(this.selectedRoot));
-          
+          this.getpermissionxBranchs(parseInt(this.selectedRoot)); 
           // Forzar la actualización del select
           setTimeout(() => {
             const selectElement = document.getElementById('root') as HTMLSelectElement;
@@ -119,6 +122,31 @@ if (this.signalsService.isidUserEmpty()){
       }
     });
    }
+
+   async getpermissionxBranchs(idRoot : number) {
+    // Aquí consulto la tabla donde está el idUser correspondiente a company
+    this.branchService.getBranches2fields(parseInt(localStorage.getItem('company')))
+      .subscribe((data) => {
+        const branch = Object.values(data)
+        console.log('Branch', branch)
+        if (branch) {
+          this.branchData = branch;
+          // Ya tengo el id de la compañía root
+          this.selectedBranchId = this.branchData[0].id;
+
+          this.signalsService.setContractSelectedBySidebar(Number(this.selectedBranchId));
+
+          // Ahora consulto la información de root
+          this.trackingService.setContract(this.selectedBranchId);
+         
+        } else {
+          console.log(
+            `No se encontró ningún branch con idRoot ${this.selectedBranchId}`
+          );
+        }
+      });     
+   }
+
 
    async onContractsSelected(event: Event) {
     const target = event.target as HTMLSelectElement;
@@ -158,7 +186,8 @@ if (this.signalsService.isidUserEmpty()){
           );
         }
       });     
-  }
+   }
+
 
   async onProjectSelected(event: Event) {
     const target = event.target as HTMLSelectElement;

@@ -352,12 +352,14 @@ export class TrackingService {
         .post(`${environment.urlFirebase}tracking.json`, data)
         .toPromise();
 
-      const postResponseAzu = await this.http
+      /*const postResponseAzu = await this.http
         .post(`${environment.urlAzure}api/Trackings`, data)
-        .toPromise();
+        .toPromise();*/
+
     } catch (error) {
       console.error('Error al crear el log TRACKINGS:', error);
     }
+
   }
 
   getDataTracking(valoruser: string) {
