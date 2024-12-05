@@ -27,7 +27,7 @@ interface RootResponse extends BaseEntity {
   idReq: number;
 }
 
-interface ProviderResponse extends BaseEntity {}
+interface ProviderResponse extends BaseEntity { }
 
 interface ProjectResponse {
   description: string;
@@ -122,7 +122,7 @@ export class ReceiptsService {
         const providerResponse = await lastValueFrom(this.providerService.getProviderById(this.detailedReq.idProvider)) as RootResponse;
         this.providerResponse = providerResponse;
         const requisitionName = await lastValueFrom(this.requisitionsService.getDetailedReq(this.detailedReq.idReq)) as ReqResponse;
-        this.requisitionName = requisitionName.folio; // Cambia 'requisitionName' por el nombre correcto de la propiedad
+        this.requisitionName =  requisitionName ? requisitionName.folio : 'N/A';
       }
       this.rootResponse = rootResponse;
 
@@ -252,7 +252,7 @@ export class ReceiptsService {
                   ],
                   [
                     { text: this.detailedReq.type == "OC" ? 'OC. No.:' : 'Requis. No.:', alignment: 'right' },
-                    { text: this.detailedReq.folio, alignment: 'left' }
+                    { text: this.detailedReq.folio != null ? this.detailedReq.folio : 'N/D', alignment: 'left' }
                   ]
                 ]
               },
@@ -442,7 +442,7 @@ export class ReceiptsService {
         signatureSolicitant: signatureSolicitant,
         logo: logoBase64,
         signature: signature
-      }: {
+      } : {
         logo: logoBase64,
         signature: signature
       }
