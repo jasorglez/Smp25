@@ -18,7 +18,6 @@ export class BranchsService {
     return this.http.get(`${environment.urlSmp}/Branchs?idCompany=${idroot}`, { headers: this.trackingService.getHeaders() });
   }
 
-
   getBranches2fields(idroot : number): Observable<any> {
     return this.http.get(`${environment.urlSmp}/Branchs/2fields?idCompany=${idroot}`, { headers: this.trackingService.getHeaders() });
   }

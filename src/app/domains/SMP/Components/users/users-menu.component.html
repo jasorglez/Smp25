@@ -25,6 +25,14 @@
         <a class="nav-link" [class.active]="selectedTab === 'usersxroot'" data-toggle="tab"
           (click)="onUsersSelected('usersxroot')">Root</a>
       </li>
+      <li class="nav-item" *ngIf="profile().emailUser()">
+        <a class="nav-link" [class.active]="selectedTab === 'usersxwarehouses'" data-toggle="tab"
+          (click)="onUsersSelected('usersxwarehouses')">Almacenes</a>
+      </li>
+      <li class="nav-item" *ngIf="profile().emailUser()">
+        <a class="nav-link" [class.active]="selectedTab === 'usersxbranches'" data-toggle="tab"
+          (click)="onUsersSelected('usersxbranches')">Sucursales</a>
+      </li>
     </ul>
   
     <div class="tab-pane" [class.active]="selectedTab === 'users'" *ngIf="selectedTab === 'users'">
@@ -44,6 +52,12 @@
     </div>
     <div class="tab-pane" [class.active]="selectedTab === 'usersxroot'" *ngIf="selectedTab === 'usersxroot'">
       <app-usersxroot></app-usersxroot>
+    </div>
+    <div class="tab-pane" [class.active]="selectedTab === 'usersxwarehouses'" *ngIf="selectedTab === 'usersxwarehouses'">
+      <app-usersxwarehouses></app-usersxwarehouses>
+    </div>
+    <div class="tab-pane" [class.active]="selectedTab === 'usersxbranches'" *ngIf="selectedTab === 'usersxbranches'">
+      <app-usersxbranches></app-usersxbranches>
     </div>
   </div>
 
