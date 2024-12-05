@@ -204,7 +204,7 @@ export class DetailsComponent {
       quantity: 0,
       price: 0,
       total: 0,
-      type: 'REQUIS',
+      type: 'OC',
       comment: 'Ninguno.',
       dateuse: new Date().toISOString(),
       active: true,

@@ -179,20 +179,20 @@ export class ReceiptsService {
 
     return {
       pageSize: 'LETTER',
-      pageMargins: [40, 60, 40, 60],
+      pageMargins: [40, 40, 40, 40],
       defaultStyle: {
         fontSize: 9,
         lineHeight: 1.2
       },
       styles: {
         header: {
-          fontSize: 16,
+          fontSize: 14,
           bold: true,
           alignment: 'center',
           margin: [0, 0, 0, 20]
         },
         subheader: {
-          fontSize: 14,
+          fontSize: 12,
           bold: true,
           margin: [0, 10, 0, 5]
         },
@@ -218,7 +218,7 @@ export class ReceiptsService {
       content: [
         {
           image: 'logo',
-          width: 90
+          width: 80
         },
         {
           text: this.detailedReq.type == "REQUIS" ? 'Requisición' : 'Orden de compra',
@@ -235,7 +235,7 @@ export class ReceiptsService {
                 { text: `\n\n` }
               ],
               alignment: 'left',
-              margin: [0, 0, 0, 20]
+              margin: [0, 0, 0, 10]
             },
             {
               width: 'auto',
@@ -256,40 +256,72 @@ export class ReceiptsService {
                   ]
                 ]
               },
-              layout: 'noBorders', // Sin bordes para una apariencia más limpia
-              margin: [0, 0, 0, 20]
+              layout: {
+                hLineWidth: (i, node) => 0,
+                vLineWidth: (i, node) => 0,
+                hLineColor: (i, node) => '#aaa',
+                vLineColor: (i, node) => '#aaa',
+                paddingTop: (i, node) => 0,
+                paddingBottom: (i, node) => 0
+              },
+              margin: [0, 0, 0, 10]
             }
           ]
         },
+
+        this.detailedReq.type == "OC" ? 
         {
-          columns: [
-            {
-              width: 'auto',
-              text: [
-                { text: this.detailedReq.type == "OC" ? 'FACTURAR A\n' : '', bold: true },
-                { text: `${this.rootResponse.name}\n` },
-                { text: `${this.rootResponse.address}\n` },
-                { text: `${this.rootResponse.rfc}\n` },
-                { text: `${this.rootResponse.city}, ${this.rootResponse.state}, ${this.rootResponse.country}\n` },
-                { text: `${this.rootResponse.phone}` }
-              ],
-              alignment: 'left',
-              margin: [0, 0, 0, 20]
-            },
-            {
-              width: 'auto',
-              text: [
-                { text: this.detailedReq.type == "OC" ? 'PROVEEDOR\n' : '', bold: true },
-                { text: this.detailedReq.type == "OC" ? `${this.providerResponse.name}\n` : '' },
-                { text: this.detailedReq.type == "OC" ? `${this.providerResponse.address}\n` : '' },
-                { text: this.detailedReq.type == "OC" ? `${this.providerResponse.rfc}\n` : '' },
-                { text: this.detailedReq.type == "OC" ? `${this.providerResponse.city}, ${this.providerResponse.state}, ${this.providerResponse.country}\n` : '' },
-                { text: this.detailedReq.type == "OC" ? `${this.providerResponse.phone}` : '' }
-              ],
-              alignment: 'left',
-              margin: [0, 0, 0, 20]
-            },
-          ]
+          table: {
+            widths: ['*', '*'],
+            body: [
+              [
+                {
+                  stack: [
+                    { text: this.detailedReq.type == "OC" ? 'FACTURAR A' : '', bold: true },
+                    { text: `${this.rootResponse.name}` },
+                    { text: `${this.rootResponse.address}` },
+                    { text: `${this.rootResponse.rfc}` },
+                    { text: `${this.rootResponse.city}, ${this.rootResponse.state}, ${this.rootResponse.country}` },
+                    { text: `${this.rootResponse.phone}` }
+                  ],
+                  margin: [0, 0, 10, 0]
+                },
+                {
+                  stack: [
+                    { text: this.detailedReq.type == "OC" ? 'PROVEEDOR' : '', bold: true },
+                    { text: this.detailedReq.type == "OC" ? `${this.providerResponse.name}` : '' },
+                    { text: this.detailedReq.type == "OC" ? `${this.providerResponse.address}` : '' },
+                    { text: this.detailedReq.type == "OC" ? `${this.providerResponse.rfc}` : '' },
+                    { text: this.detailedReq.type == "OC" ? `${this.providerResponse.city}, ${this.providerResponse.state}, ${this.providerResponse.country}` : '' },
+                    { text: this.detailedReq.type == "OC" ? `${this.providerResponse.phone}` : '' }
+                  ],
+                  margin: [10, 0, 0, 0]
+                }
+              ]
+            ]
+          },
+          layout: 'noBorders',
+          margin: [0, 0, 0, 10]
+        } : 
+        {
+          table: {
+            widths: ['*'],
+            body: [
+              [
+                {
+                  stack: [
+                    { text: `${this.rootResponse.name}` },
+                    { text: `${this.rootResponse.address}` },
+                    { text: `${this.rootResponse.rfc}` },
+                    { text: `${this.rootResponse.city}, ${this.rootResponse.state}, ${this.rootResponse.country}` },
+                    { text: `${this.rootResponse.phone}` }
+                  ]
+                }
+              ]
+            ]
+          },
+          layout: 'noBorders',
+          margin: [0, 0, 0, 10]
         },
         {
           table: {
@@ -311,8 +343,8 @@ export class ReceiptsService {
                 { text: item.quantity.toString(), style: 'tableCell', alignment: 'right' },
                 { text: item.measure, style: 'tableCell', alignment: 'right' },
                 { text: item.description, style: 'tableCell' },
-                { text: '$' + item.price.toFixed(2).toString(), style: 'tableCell' },
-                { text: '$' + item.total.toFixed(2).toString(), style: 'tableCell' }
+                { text: '$' + item.price.toFixed(2).toString(), style: 'tableCell', alignment: 'right' },
+                { text: '$' + item.total.toFixed(2).toString(), style: 'tableCell', alignment: 'right' }
               ])
             ] : [
               [
@@ -338,8 +370,8 @@ export class ReceiptsService {
             vLineWidth: (i, node) => 0.5,
             hLineColor: (i, node) => '#aaa',
             vLineColor: (i, node) => '#aaa',
-            paddingTop: (i, node) => 8,
-            paddingBottom: (i, node) => 8
+            paddingTop: (i, node) => 2,
+            paddingBottom: (i, node) => 2
           }
         },
         this.detailedReq.type == "OC" ?
@@ -375,8 +407,8 @@ export class ReceiptsService {
                       { text: '$' + this.detailedReq.ivaRetention.toFixed(2).toString(), alignment: 'right' }
                     ],
                     [
-                      { text: 'Total:', alignment: 'right' },
-                      { text: '$' + ((this.calculateTotal() - this.detailedReq.discount) * 1.16 - this.detailedReq.ivaRetention).toFixed(2).toString(), alignment: 'right' }
+                      { text: 'Total:', alignment: 'right', bold: true },
+                      { text: '$' + ((this.calculateTotal() - this.detailedReq.discount) * 1.16 - this.detailedReq.ivaRetention).toFixed(2).toString(), alignment: 'right', bold: true }
                     ],
                   ],
 
@@ -386,17 +418,17 @@ export class ReceiptsService {
                   vLineWidth: (i, node) => 0.5,
                   hLineColor: (i, node) => '#aaa',
                   vLineColor: (i, node) => '#aaa',
-                  paddingTop: (i, node) => 4,
-                  paddingBottom: (i, node) => 4
+                  paddingTop: (i, node) => 2,
+                  paddingBottom: (i, node) => 2
                 },
-                margin: [0, 20, 0, 20]
+                margin: [0, 10, 0, 0]
               }
             ]
           } : {
             text: ''
           },
-        { text: 'Observaciones: ', alignment: 'left', margin: [0, 20, 0, 0] },
-        { text: this.detailedReq.comments, alignment: 'left', margin: [0, 0, 0, 20] },
+        { text: 'Observaciones: ', alignment: 'left', margin: [0, 10, 0, 0] },
+        { text: this.detailedReq.comments, alignment: 'left', margin: [0, 0, 0, 10] },
         {
           table: {
             widths: ['*', '*'],
@@ -409,18 +441,18 @@ export class ReceiptsService {
                 this.detailedReq.type == 'OC' ?
                   {
                     image: 'signatureSolicitant',
-                    fit: ['*', 90],
+                    fit: ['*', 70],
                     alignment: 'center'
                   } :
                   {
                     text: '',
-                    fit: ['*', 90],
+                    fit: ['*', 70],
                     alignment: 'center',
                     border: [false, false]
                   },
                 {
                   image: 'signature',
-                  fit: ['*', 90],
+                  fit: ['*', 70],
                   alignment: 'center'
                 },
               ],
@@ -435,7 +467,7 @@ export class ReceiptsService {
             ]
           },
           layout: 'noBorders', // Sin bordes para una apariencia más limpia
-          margin: [0, 0, 0, 20]
+          margin: [0, 0, 0, 10]
         },
       ],
       images: this.detailedReq.type == "OC" ? {
