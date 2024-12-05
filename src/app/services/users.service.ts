@@ -25,6 +25,10 @@ export class UsersService {
     return this.http.get(`${environment.urlSecurity}/User/users`, { headers: this.trackingService.getHeaders() });
   }
 
+  getUserById(id: number) {
+    return this.http.get(`${environment.urlSecurity}/User/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+  
   addUser(data: any): Observable<any> {
     return this.http.post(`${environment.urlSecurity}/User`, data, { headers: this.trackingService.getHeaders() });
   }

@@ -12,30 +12,26 @@ import { ProvidersService } from './providers.service';
 
 (pdfMake as any).vfs = pdfFonts.pdfMake.vfs;
 
-interface RootResponse {
+interface BaseEntity {
   name: string;
   picture: string;
+  rfc: string;
+  address: string;
+  phone: string;
   city: string;
   state: string;
   country: string;
-  phone: string;
-  rfc: string;
-  address: string;
-  idReq: number;
-  // otras propiedades...
 }
+
+interface RootResponse extends BaseEntity {
+  idReq: number;
+}
+
+interface ProviderResponse extends BaseEntity {}
 
 interface ProjectResponse {
   description: string;
   // otras propiedades...
-}
-
-interface ProviderResponse {
-  picture: string;
-  name: string;
-  rfc: string;
-  address: string;
-  phone: string;
 }
 
 interface ReqResponse {
@@ -43,10 +39,11 @@ interface ReqResponse {
   folio: string;
   idProject: number;
   idReq: number;
-  idProveedor: number;
   solicit: string;
   dateCreate: string;
   idProvider: number;
+  idSolicit: number;
+  idAuthorize: number;
   type: string;
 }
 
@@ -55,6 +52,15 @@ interface AuthorizerResponse {
   email: string;
   picture: string;
   signature: string;
+}
+
+interface UserResponse {
+  data: {
+    id: number;
+    signature: string;
+    displayName: string;
+    // Otros campos que necesites
+  };
 }
 
 @Injectable({
@@ -72,6 +78,7 @@ export class ReceiptsService {
   private detailedReq: any;
   private idRoot = Number(localStorage.getItem('company'));
   private authorizer: any;
+  private solicitant: any;
   private projectDescription: string = null;
   private rootResponse: any;
   private providerResponse: any;
@@ -120,8 +127,22 @@ export class ReceiptsService {
       this.rootResponse = rootResponse;
 
       // Consigo el dato de quien autoriza
-      const authorizer = await lastValueFrom(this.usersService.findEmail(localStorage.getItem('mail'))) as AuthorizerResponse;
-      this.authorizer = authorizer;
+      if (detailedReq.type == "OC") {
+        const authorizer = await lastValueFrom(this.usersService.getUserById(this.detailedReq.idAuthorize)) as UserResponse;
+        this.authorizer = authorizer.data;
+        console.log(this.authorizer);
+      }
+      else {
+        const authorizer = await lastValueFrom(this.usersService.findEmail(localStorage.getItem('mail'))) as AuthorizerResponse;
+        this.authorizer = authorizer;
+      }
+
+      // Ahora consigo el nombre de quien solicita, pero solo si es OC
+      if (detailedReq.type == "OC") {
+        const user = await lastValueFrom(this.usersService.getUserById(this.detailedReq.idSolicit)) as UserResponse;
+        this.solicitant = user.data;
+        console.log(this.solicitant);
+      }
 
       console.log(this.detailedReq);
 
@@ -133,6 +154,10 @@ export class ReceiptsService {
   private formatTime(dateString: string): string {
     const date = new Date(dateString);
     return date.toLocaleDateString('es-ES');
+  }
+
+  private calculateTotal(): number {
+    return this.reqItems.reduce((sum, item) => sum + item.total, 0);
   }
 
   private async generateDocDefinition(): Promise<TDocumentDefinitions> {
@@ -147,6 +172,10 @@ export class ReceiptsService {
 
     const logoBase64 = await this.base64EncodeService.convertImageToBase64(this.rootResponse.picture);
     const signature = await this.base64EncodeService.convertImageToBase64(this.authorizer.signature);
+    var signatureSolicitant: any;
+    if (this.detailedReq.type == "OC") {
+      signatureSolicitant = await this.base64EncodeService.convertImageToBase64(this.solicitant.signature);
+    }
 
     return {
       pageSize: 'LETTER',
@@ -203,12 +232,7 @@ export class ReceiptsService {
               text: [
                 { text: 'Obra o proyecto:\n' },
                 { text: `${this.projectDescription}`, bold: true },
-                { text: `\n\n` },
-                { text: `${this.rootResponse.name}\n` },
-                { text: `${this.rootResponse.address}\n` },
-                { text: `${this.rootResponse.rfc}\n` },
-                { text: `${this.rootResponse.city}, ${this.rootResponse.state}, ${this.rootResponse.country}\n` },
-                { text: `${this.rootResponse.phone}` }
+                { text: `\n\n` }
               ],
               alignment: 'left',
               margin: [0, 0, 0, 20]
@@ -223,11 +247,11 @@ export class ReceiptsService {
                     { text: this.formatTime(this.detailedReq.dateCreate), alignment: 'left' }
                   ],
                   [
-                    { text: this.detailedReq.type == "REQUIS" ? 'Req. No.' : '', alignment: 'right' },
-                    { text: this.detailedReq.type == "REQUIS" ? this.requisitionName: '', alignment: 'left' }
+                    { text: this.detailedReq.type == "OC" ? 'Req. No.' : '', alignment: 'right' },
+                    { text: this.detailedReq.type == "OC" ? this.requisitionName : '', alignment: 'left' }
                   ],
                   [
-                    { text: this.detailedReq.type == "REQUIS" ? 'Requis. No.:' : 'OC No.:', alignment: 'right' },
+                    { text: this.detailedReq.type == "OC" ? 'OC. No.:' : 'Requis. No.:', alignment: 'right' },
                     { text: this.detailedReq.folio, alignment: 'left' }
                   ]
                 ]
@@ -238,10 +262,59 @@ export class ReceiptsService {
           ]
         },
         {
+          columns: [
+            {
+              width: 'auto',
+              text: [
+                { text: this.detailedReq.type == "OC" ? 'FACTURAR A\n' : '', bold: true },
+                { text: `${this.rootResponse.name}\n` },
+                { text: `${this.rootResponse.address}\n` },
+                { text: `${this.rootResponse.rfc}\n` },
+                { text: `${this.rootResponse.city}, ${this.rootResponse.state}, ${this.rootResponse.country}\n` },
+                { text: `${this.rootResponse.phone}` }
+              ],
+              alignment: 'left',
+              margin: [0, 0, 0, 20]
+            },
+            {
+              width: 'auto',
+              text: [
+                { text: this.detailedReq.type == "OC" ? 'PROVEEDOR\n' : '', bold: true },
+                { text: this.detailedReq.type == "OC" ? `${this.providerResponse.name}\n` : '' },
+                { text: this.detailedReq.type == "OC" ? `${this.providerResponse.address}\n` : '' },
+                { text: this.detailedReq.type == "OC" ? `${this.providerResponse.rfc}\n` : '' },
+                { text: this.detailedReq.type == "OC" ? `${this.providerResponse.city}, ${this.providerResponse.state}, ${this.providerResponse.country}\n` : '' },
+                { text: this.detailedReq.type == "OC" ? `${this.providerResponse.phone}` : '' }
+              ],
+              alignment: 'left',
+              margin: [0, 0, 0, 20]
+            },
+          ]
+        },
+        {
           table: {
             headerRows: 1,
-            widths: ['auto', 'auto', '*', 'auto', 'auto', 'auto'],
-            body: [
+            widths: this.detailedReq.type == "OC" ? ['auto', 'auto', '*', 'auto', 'auto', 'auto', 'auto'] : ['auto', 'auto', '*', 'auto', 'auto', 'auto'],
+            body: this.detailedReq.type == "OC" ? [
+              [
+                { text: 'Pda', style: 'tableHeader' },
+                { text: 'Código', style: 'tableHeader' },
+                { text: 'Cantidad', style: 'tableHeader' },
+                { text: 'Unidad', style: 'tableHeader' },
+                { text: 'Descripción del producto', style: 'tableHeader' },
+                { text: 'Precio', style: 'tableHeader' },
+                { text: 'Importe', style: 'tableHeader' }
+              ],
+              ...this.reqItems.map((item, index) => [
+                { text: (index + 1).toString(), style: 'tableCell' },
+                { text: item.code, style: 'tableCell' },
+                { text: item.quantity.toString(), style: 'tableCell', alignment: 'right' },
+                { text: item.measure, style: 'tableCell', alignment: 'right' },
+                { text: item.description, style: 'tableCell' },
+                { text: '$' + item.price.toFixed(2).toString(), style: 'tableCell' },
+                { text: '$' + item.total.toFixed(2).toString(), style: 'tableCell' }
+              ])
+            ] : [
               [
                 { text: 'Pda', style: 'tableHeader' },
                 { text: 'Código', style: 'tableHeader' },
@@ -269,6 +342,59 @@ export class ReceiptsService {
             paddingBottom: (i, node) => 8
           }
         },
+        this.detailedReq.type == "OC" ?
+          {
+            columns: [
+              {
+                width: '*',
+                text: ''
+              },
+              {
+                width: 'auto',
+                table: {
+                  widths: ['*', '*'],
+                  body: [
+                    [
+                      { text: 'Suma:', alignment: 'right' },
+                      { text: '$' + this.calculateTotal().toFixed(2).toString(), alignment: 'right' }
+                    ],
+                    [
+                      { text: 'Descuento:', alignment: 'right' },
+                      { text: '$' + this.detailedReq.discount.toFixed(2).toString(), alignment: 'right' }
+                    ],
+                    [
+                      { text: 'Subtotal:', alignment: 'right' },
+                      { text: '$' + (this.calculateTotal() - this.detailedReq.discount).toFixed(2).toString(), alignment: 'right' }
+                    ],
+                    [
+                      { text: 'IVA 16%:', alignment: 'right' },
+                      { text: '$' + ((this.calculateTotal() - this.detailedReq.discount) * 0.16).toFixed(2).toString(), alignment: 'right' }
+                    ],
+                    [
+                      { text: 'Retención IVA:', alignment: 'right' },
+                      { text: '$' + this.detailedReq.ivaRetention.toFixed(2).toString(), alignment: 'right' }
+                    ],
+                    [
+                      { text: 'Total:', alignment: 'right' },
+                      { text: '$' + ((this.calculateTotal() - this.detailedReq.discount) * 1.16 - this.detailedReq.ivaRetention).toFixed(2).toString(), alignment: 'right' }
+                    ],
+                  ],
+
+                },
+                layout: {
+                  hLineWidth: (i, node) => 0.5,
+                  vLineWidth: (i, node) => 0.5,
+                  hLineColor: (i, node) => '#aaa',
+                  vLineColor: (i, node) => '#aaa',
+                  paddingTop: (i, node) => 4,
+                  paddingBottom: (i, node) => 4
+                },
+                margin: [0, 20, 0, 20]
+              }
+            ]
+          } : {
+            text: ''
+          },
         { text: 'Observaciones: ', alignment: 'left', margin: [0, 20, 0, 0] },
         { text: this.detailedReq.comments, alignment: 'left', margin: [0, 0, 0, 20] },
         {
@@ -280,33 +406,43 @@ export class ReceiptsService {
                 { text: 'Autoriza:', alignment: 'center' }
               ],
               [
-                {
-                  text: '',
-                  fit: ['*', 90],
-                  alignment: 'center',
-                  border: [false, false]
-                },
+                this.detailedReq.type == 'OC' ?
+                  {
+                    image: 'signatureSolicitant',
+                    fit: ['*', 90],
+                    alignment: 'center'
+                  } :
+                  {
+                    text: '',
+                    fit: ['*', 90],
+                    alignment: 'center',
+                    border: [false, false]
+                  },
                 {
                   image: 'signature',
                   fit: ['*', 90],
                   alignment: 'center'
-                }
+                },
               ],
               [
                 { text: '_________________________________________', border: [false, true, false, false], margin: [0, 0, 0, 0], alignment: 'center' },
                 { text: '_________________________________________', border: [false, true, false, false], margin: [0, 0, 0, 0], alignment: 'center' }
               ],
               [
-                { text: this.detailedReq.solicit, alignment: 'center' },
+                { text: this.detailedReq.type == "OC" ? this.solicitant.displayName : this.detailedReq.solicit, alignment: 'center' },
                 { text: this.authorizer.displayName, alignment: 'center' }
               ]
             ]
           },
           layout: 'noBorders', // Sin bordes para una apariencia más limpia
           margin: [0, 0, 0, 20]
-        }
+        },
       ],
-      images: {
+      images: this.detailedReq.type == "OC" ? {
+        signatureSolicitant: signatureSolicitant,
+        logo: logoBase64,
+        signature: signature
+      }: {
         logo: logoBase64,
         signature: signature
       }
