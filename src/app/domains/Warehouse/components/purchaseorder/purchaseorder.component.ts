@@ -481,6 +481,7 @@ export class PurchaseOrderComponent {
     if (selectedNodes.length > 0) {
       // Crear una copia profunda del dato seleccionado
       this.masterSelectedRowData = { ...selectedNodes[0].data };
+      this.detailsNotSavedChanges = false;
       
       // Solo actualizar las señales si no es una fila nueva
       if (!this.newlyAddedMasterRows.includes(this.masterSelectedRowData.id)) {
