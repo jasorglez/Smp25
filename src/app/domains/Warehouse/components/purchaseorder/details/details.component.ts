@@ -11,7 +11,6 @@ import { SignalsService } from 'app/services/signals.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { ModalService } from 'app/services/modal.service';
 import { ReceiptsService } from 'app/services/receipts.service';
-import { ReqInfoComponent } from "../../requisitions/req-info/req-info.component";
 
 interface Catalog {
   id: number;
@@ -21,7 +20,7 @@ interface Catalog {
 @Component({
   selector: 'app-oc-details',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, ReqInfoComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
   templateUrl: './details.component.html',
   styleUrl: './details.component.scss'
 })

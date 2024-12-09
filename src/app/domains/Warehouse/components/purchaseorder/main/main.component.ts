@@ -14,7 +14,6 @@ import { CurrencyService } from 'app/services/currency.service';
 import { SignalsService } from 'app/services/signals.service';
 import { ModalService } from 'app/services/modal.service';
 import { ReceiptsService } from 'app/services/receipts.service';
-import { ReqInfoComponent } from "../../requisitions/req-info/req-info.component";
 import { UsersService } from 'app/services/users.service';
 
 interface Catalog {
@@ -30,7 +29,7 @@ interface Provider {
 @Component({
   selector: 'app-oc-main',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, ReqInfoComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
   templateUrl: './main.component.html',
   styleUrl: './main.component.scss'
 })

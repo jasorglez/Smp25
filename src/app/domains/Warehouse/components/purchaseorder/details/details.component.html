@@ -20,12 +20,9 @@
   </div>
 
   <div class="row">
-    <div *ngIf="idRequisition != null" class="col-2">
-      <app-req-info></app-req-info>
-    </div>
-    <div [ngClass]="idRequisition?  'col-10' : 'col-12'">
+    <div class="col-12">
       <!-- The AG Grid component -->
-      <ag-grid-angular style="width: 100%; height: 500px;" class="ag-theme-quartz" [rowData]="rowData"
+      <ag-grid-angular style="width: 100%; height: 32vh;" class="ag-theme-quartz" [rowData]="rowData"
         [columnDefs]="colMaster" (selectionChanged)="onSelectionChanged($event)"
         (cellValueChanged)="onCellValueChanged($event)" (rowSelected)="onSelectedRow($event)"
         (gridReady)="onGridReady($event)" rowSelection="single" [pivotPanelShow]="pivotPanelShow"

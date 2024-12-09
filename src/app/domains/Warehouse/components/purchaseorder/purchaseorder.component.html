@@ -1,17 +1,76 @@
-<nav>
-    <div class="nav nav-tabs" id="nav-tab" role="tablist">
-      <button class="nav-link active" id="nav-oc-tab" data-bs-toggle="tab" data-bs-target="#oc-main" type="button" role="tab" aria-controls="oc-main" aria-selected="true">Requisiciones</button>
-      <button *ngIf="idRequisition() != null" class="nav-link" id="nav-details-tab" data-bs-toggle="tab" data-bs-target="#oc-details" type="button" role="tab" aria-controls="oc-details" aria-selected="false">Detalles</button>
-    </div>
-  </nav>
-  
-  <div class="tab-content" id="nav-tabContent">
-    <div class="tab-pane fade show active" id="oc-main" role="tabpanel" aria-labelledby="nav-oc-tab">
-      <app-oc-main></app-oc-main>
-    </div>
-    <div class="tab-pane fade" id="oc-details" role="tabpanel" aria-labelledby="nav-details-tab">
-      <app-oc-details></app-oc-details>
+<h3>Listado de órdenes de compra</h3>
+<app-multi-line-editor></app-multi-line-editor>
+<div class="col-12">
+  <!-- Botones y grid principal -->
+  <div class="row mb-3">
+    <div class="col text-right">
+      <button type="button" class="btn btn-primary me-1" (click)="addMasterRow()">
+        <i class="bi bi-plus-lg"></i>
+      </button>
+      <button *ngIf="idRequisition != null" type="button" class="btn btn-info ms-1 me-1 position-relative"
+        (click)="createOC(idRequisition, 'open')">
+        <i class="bi bi-file-earmark-pdf"></i></button>
+      <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveMasterChanges()">
+        <i class="bi bi-floppy"></i>
+        <span
+          class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+          *ngIf="masterNotSavedChanges">
+          <span class="visually-hidden">Hay cambios sin guardar</span>
+        </span>
+      </button>
+      <button type="button" class="btn btn-warning ms-1 me-1" (click)="revertMasterData()">
+        <i class="bi bi-arrow-clockwise"></i>
+      </button>
+      <button type="button" class="btn btn-danger ms-1 me-1" (click)="deleteMasterEntry()">
+        <i class="bi bi-trash"></i>
+      </button>
     </div>
   </div>
-  
-  
+
+  <div class="row">
+    <div class="col-12">
+      <ag-grid-angular style="width: 100%; height: 32vh;" class="ag-theme-quartz" [rowData]="masterRowData"
+        [columnDefs]="colMaster" (selectionChanged)="onMasterSelectionChanged($event)"
+        (cellValueChanged)="onMasterCellValueChanged($event)" (rowSelected)="onMasterRowSelected($event)"
+        (gridReady)="onMasterGridReady($event)" [rowSelection]="rowSelection" [pivotPanelShow]="pivotPanelShow"
+        [rowGroupPanelShow]="rowGroupPanelShow" [paginationPageSize]="paginationPageSize"
+        [paginationPageSizeSelector]="paginationPageSizeSelector" [pagination]="true">
+      </ag-grid-angular>
+    </div>
+  </div>
+</div>
+
+<!-- Detalles de la orden de compra -->
+<div *ngIf="idRequisition != null">
+  <h3>Detalles de la orden de compra {{nameRequisition()}}</h3>
+  <div class="col-12">
+    <!-- Repetir estructura similar para la grid de detalles -->
+    <div class="row mb-3">
+      <div class="col text-right"><button type="button" class="btn btn-primary me-1" (click)="addDetailsRow()"><i
+            class="bi bi-plus-lg"></i></button>
+        <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveDetailsChanges()">
+          <i class="bi bi-floppy"></i>
+          <span
+            class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+            *ngIf="detailsNotSavedChanges"><span class="visually-hidden">Hay cambios sin guardar</span>
+          </span>
+        </button>
+        <button type="button" class="btn btn-warning ms-1 me-1" (click)="revertDetailsData()"><i
+            class="bi bi-arrow-clockwise"></i></button>
+        <button type="button" class="btn btn-danger ms-1 me-1" (click)="deleteDetailsEntry()"><i
+            class="bi bi-trash"></i></button>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-12">
+        <ag-grid-angular style="width: 100%; height: 32vh;" class="ag-theme-quartz" [rowData]="detailsRowData"
+          [columnDefs]="colDetails" (selectionChanged)="onDetailsSelectionChanged($event)"
+          (cellValueChanged)="onDetailsCellValueChanged($event)" (rowSelected)="onDetailsRowSelected($event)"
+          (gridReady)="onDetailsGridReady($event)" [rowSelection]="rowSelection" [pivotPanelShow]="pivotPanelShow"
+          [rowGroupPanelShow]="rowGroupPanelShow" [paginationPageSize]="paginationPageSize"
+          [paginationPageSizeSelector]="paginationPageSizeSelector" [pagination]="true">
+        </ag-grid-angular>
+      </div>
+    </div>
+  </div>
+</div>

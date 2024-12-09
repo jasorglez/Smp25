@@ -1,0 +1,5 @@
+// Ajusta el tamaño de fuente general de ag-grid
+::ng-deep .ag-theme-quartz {
+    --ag-font-size: 13px !important;  // Valor predeterminado es 13px
+    --ag-header-font-size: 13px !important;  // Para los encabezados
+  }
