@@ -81,7 +81,7 @@
       @if (selectedTab === 'ord') { <app-purchaseorder></app-purchaseorder> }
     </div>
     <div class="tab-pane" [class.active]="selectedTab === 'ent'">
-      @if (selectedTab === 'ent') { }
+      @if (selectedTab === 'ent') { <app-inandout></app-inandout> }
     </div>
     <div class="tab-pane" [class.active]="selectedTab === 'out'">
       @if (selectedTab === 'out') { }

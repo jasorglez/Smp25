@@ -6,16 +6,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
-import { CatalogsService } from 'app/services/catalogs.service';
-import { OcAndReqsService } from 'app/services/ocandreqs.service';
-import { ProvidersService } from 'app/services/providers.service';
-import { DepartmentsService } from 'app/services/departments.service';
-import { CurrencyService } from 'app/services/currency.service';
 import { SignalsService } from 'app/services/signals.service';
 import { ModalService } from 'app/services/modal.service';
 import { ReceiptsService } from 'app/services/receipts.service';
-import { UsersService } from 'app/services/users.service';
 import { MaterialsService } from 'app/services/materials.service';
+import { InandoutService } from 'app/services/inandout.service';
+import { OcAndReqsService } from 'app/services/ocandreqs.service';
 
 interface Catalog {
   id: number;
@@ -28,25 +24,21 @@ interface Provider {
 }
 
 @Component({
-  selector: 'app-purchaseorder',
+  selector: 'app-inandout',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
-  templateUrl: './purchaseorder.component.html',
-  styleUrl: './purchaseorder.component.scss'
+  templateUrl: './inandout.component.html',
+  styleUrl: './inandout.component.scss'
 })
-export class PurchaseOrderComponent {
+export class InAndOutComponent {
 
   // Inject of new way for Angular 18
-  private requisitionsService = inject(OcAndReqsService);
-  private providersService = inject(ProvidersService);
-  private catalogsService = inject(CatalogsService);
-  private departmentsService = inject(DepartmentsService);
-  private currencyService = inject(CurrencyService);
+  private inAndOutsService = inject(InandoutService);
   private signalsService = inject(SignalsService);
   private modalServiceTable = inject(ModalService);
   private receiptsService = inject(ReceiptsService);
-  private usersService = inject(UsersService);
   private materialsService = inject(MaterialsService);
+  private ocService = inject(OcAndReqsService)
 
   // Variables compartidas
   masterNotSavedChanges: boolean = false;
@@ -54,9 +46,8 @@ export class PurchaseOrderComponent {
   id: string = null;
   idProject: number = null;
   private tempIdCounter: number = 0;
-  idRequisition: number = null;
-  private masterGridApi: GridApi;
-  private detailsGridApi: GridApi;
+  IdInAndOut: number = null;
+  private gridApi: GridApi;
 
   // Variables Master
   masterRowData: any[] = [];
@@ -90,7 +81,7 @@ export class PurchaseOrderComponent {
   constructor() {
     effect(() => {
       this.idProject = this.signalsService.getProjectSelectedBySidebar()();
-      this.idRequisition = this.signalsService.getIdRequisition()();
+      this.IdInAndOut = this.signalsService.getIdInAndOut()();
 
       if (this.idProject == null) {
         this.masterRowData = [];
@@ -100,7 +91,7 @@ export class PurchaseOrderComponent {
         this.obtenerRequisiciones();
       }
 
-      if (this.idRequisition != null) {
+      if (this.IdInAndOut != null) {
         this.obtenerDetalles();
       }
     })
@@ -109,13 +100,7 @@ export class PurchaseOrderComponent {
   ngOnInit() {
     this.signalsService.deleteRequisitionData();
     this.obtenerDatos();
-    this.obtenerDepartamentos();
-    this.obtenerUbicaciones();
-    this.obtenerMonedas();
-    this.obtenerUsuarios();
     this.obtenerRequisiciones();
-    this.obtenerProveedores();
-    this.obtenerTipoPago();
     this.obtenerProductos();
   }
 
@@ -127,15 +112,15 @@ export class PurchaseOrderComponent {
     }
   }
 
-  nameRequisition = this.signalsService.getRequisitionName();
+  nameInAndOut = this.signalsService.getInAndOutName();
 
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
     return [
-      { field: 'folio', headerName: 'orden de compra', editable: true, filter: true, width: 150 },
+      { field: 'folio', headerName: 'Número Documento', editable: true, filter: true, width: 150 },
       {
-        field: 'dateCreate',
-        headerName: 'Fecha Solicitud',
+        field: 'date',
+        headerName: 'Fecha Entrada',
         editable: true,
         width: 150,
         cellDataType: 'dateString',
@@ -147,8 +132,8 @@ export class PurchaseOrderComponent {
         }
       },
       {
-        field: 'dateSupply',
-        headerName: 'Fecha envío',
+        field: 'deliveryDate',
+        headerName: 'Fecha Entrega',
         editable: true,
         width: 150,
         cellDataType: 'dateString',
@@ -160,7 +145,7 @@ export class PurchaseOrderComponent {
         }
       },
       {
-        field: 'idReq', headerName: 'Requisición', editable: true, filter: true, width: 150, cellEditor: 'agSelectCellEditor',
+        field: 'idOc', headerName: 'Orden de compra', editable: true, filter: true, width: 150, cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.requisiciones ? this.requisiciones.map(item => item.id) : [],
         },
@@ -169,43 +154,10 @@ export class PurchaseOrderComponent {
           return foundItem ? `${foundItem.folio}` : params.value;
         }
       },
+      { field: 'numBill', headerName: 'Número de factura', editable: true, filter: true, width: 150 },
+      { field: 'deliverName', headerName: 'Entrega', editable: true, filter: true, width: 150 },
       {
-        field: 'idProvider', headerName: 'Proveedor', editable: true, filter: true, width: 150, cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.proveedores ? this.proveedores.map(item => item.id) : [],
-        },
-        valueFormatter: (params) => {
-          const foundItem = this.proveedores ? this.proveedores.find(item => item.id === params.value) : null;
-          return foundItem ? `${foundItem.name}` : params.value;
-        }
-      },
-      { field: 'delivery', headerName: 'Entrega', editable: true, filter: true, width: 150 },
-      { field: 'deliveryTime', headerName: 'Tiempo de entrega', editable: true, filter: true, width: 150 },
-      {
-        field: 'idCurrency', headerName: 'Moneda', editable: true, width: 150, cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.monedas ? this.monedas.map(item => item.id) : [],
-        },
-        valueFormatter: (params) => {
-          const foundItem = this.monedas ? this.monedas.find(item => item.id === params.value) : null;
-          return foundItem ? `${foundItem.description}` : params.value;
-        }
-      },
-      {
-        field: 'idPayment', headerName: 'Forma de pago', editable: true, width: 150, cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.tipoPago ? this.tipoPago.map(item => item.id) : [],
-        },
-        valueFormatter: (params) => {
-          const foundItem = this.tipoPago ? this.tipoPago.find(item => item.id === params.value) : null;
-          return foundItem ? `${foundItem.description}` : params.value;
-        }
-      },
-      { field: 'discount', headerName: 'Descuento', editable: true, width: 150 },
-      { field: 'ivaRetention', headerName: 'Retención IVA', editable: true, width: 150 },
-      { field: 'conditions', headerName: 'Condición', editable: true, width: 150 },
-      {
-        field: 'comments', headerName: 'Comentario', editable: false, width: 150, cellEditor: 'agPopupTextCellEditor',
+        field: 'comment', headerName: 'Comentario', editable: false, width: 150, cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
           cols: 50,
@@ -230,108 +182,7 @@ export class PurchaseOrderComponent {
           }
           return params.value;
         }
-      },
-      {
-        field: 'address', headerName: 'Dirección', editable: false, width: 150, cellEditor: 'agPopupTextCellEditor',
-        cellEditorParams: {
-          maxLength: 100,
-          cols: 50,
-          rows: 3,
-          onKeyDown: (event: KeyboardEvent) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.stopPropagation();
-            }
-          },
-        },
-        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-          if (!event.node.group) {
-            this.modalServiceTable.showModal({
-              params: event,
-              value: event.value,
-            });
-          }
-        },
-        cellRenderer: (params: ICellRendererParams) => {
-          if (params.node.group) {
-            return params.value;
-          }
-          return params.value;
-        }
-      },
-      {
-        field: 'city', headerName: 'Ciudad', editable: false, width: 150, cellEditor: 'agPopupTextCellEditor',
-        cellEditorParams: {
-          maxLength: 100,
-          cols: 50,
-          rows: 3,
-          onKeyDown: (event: KeyboardEvent) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.stopPropagation();
-            }
-          },
-        },
-        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-          if (!event.node.group) {
-            this.modalServiceTable.showModal({
-              params: event,
-              value: event.value,
-            });
-          }
-        },
-        cellRenderer: (params: ICellRendererParams) => {
-          if (params.node.group) {
-            return params.value;
-          }
-          return params.value;
-        }
-      },
-      {
-        field: 'phone', headerName: 'Teléfono', editable: false, width: 150, cellEditor: 'agPopupTextCellEditor',
-        cellEditorParams: {
-          maxLength: 100,
-          cols: 50,
-          rows: 3,
-          onKeyDown: (event: KeyboardEvent) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.stopPropagation();
-            }
-          },
-        },
-        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-          if (!event.node.group) {
-            this.modalServiceTable.showModal({
-              params: event,
-              value: event.value,
-            });
-          }
-        },
-        cellRenderer: (params: ICellRendererParams) => {
-          if (params.node.group) {
-            return params.value;
-          }
-          return params.value;
-        }
-      },
-      {
-        field: 'idSolicit', headerName: 'Solicita', editable: true, width: 150, cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.usuarios ? this.usuarios.map(item => item.id) : [],
-        },
-        valueFormatter: (params) => {
-          const foundItem = this.usuarios ? this.usuarios.find(item => item.id === params.value) : null;
-          return foundItem ? `${foundItem.displayName}` : params.value;
-        }
-      },
-      {
-        field: 'idAuthorize', headerName: 'Autoriza', editable: true, width: 150, cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.usuarios ? this.usuarios.map(item => item.id) : [],
-        },
-        valueFormatter: (params) => {
-          const foundItem = this.usuarios ? this.usuarios.find(item => item.id === params.value) : null;
-          return foundItem ? `${foundItem.displayName}` : params.value;
-        }
-      },
+      }
     ]
   };
 
@@ -339,7 +190,7 @@ export class PurchaseOrderComponent {
   get colDetails(): ColDef[] {
     return [
       {
-        field: 'idSupplie', headerName: 'Producto', editable: true, flex: 3, cellEditor: 'agSelectCellEditor',
+        field: 'idProduct', headerName: 'Producto', editable: true, flex: 3, cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.productos ? this.productos.map(item => item.id) : [],
         },
@@ -349,65 +200,78 @@ export class PurchaseOrderComponent {
         }
       },
       {
-        field: 'quantity', headerName: 'Cantidad', editable: true, filter: true, flex: 1, cellDataType: 'number',
-        cellEditorParams: {
-          min: 0
-        },
-        onCellValueChanged: (event: any) => this.updateTotal(event.data)
-      },
-      {
-        field: 'price', headerName: 'Precio', editable: true, filter: true, flex: 1, cellDataType: 'number',
-        cellEditorParams: {
-          min: 0
-        },
-        valueFormatter: (params) => {
-          return params.value ? `$${params.value.toFixed(2)}` : '';
-        },
-        onCellValueChanged: (event: any) => this.updateTotal(event.data)
-      },
-      {
-        field: 'total', headerName: 'Total', editable: false, filter: true, flex: 1, cellDataType: 'number',
+        field: 'quantity', 
+        headerName: 'Cantidad', 
+        editable: true, 
+        filter: true, 
+        flex: 1, 
+        cellDataType: 'number',
         cellEditorParams: {
           min: 0
         },
         valueFormatter: (params) => {
-          return params.value ? `$${params.value.toFixed(2)}` : '';
+          return params.value !== null && params.value !== undefined ? `${params.value.toFixed(2)}` : '0.00';
+        },
+        valueSetter: (params) => {
+          const newValue = Number(params.newValue);
+          const total = params.data.total || 0;
+          
+          if (newValue > total) {
+            alerts.basicAlert(
+              'Error',
+              'La cantidad recibida no puede ser mayor que el total',
+              'error'
+            );
+            return false;
+          }
+          
+          params.data.quantity = newValue;
+          this.updatePending(params.data);
+          return true;
         }
       },
       {
-        field: 'comment', headerName: 'Comentarios', editable: false, filter: true, flex: 2, cellEditor: 'agPopupTextCellEditor',
+        field: 'pending', headerName: 'Pendiente', editable: false, filter: true, flex: 1, cellDataType: 'number',
         cellEditorParams: {
-          maxLength: 100,
-          cols: 50,
-          rows: 3,
-          onKeyDown: (event: KeyboardEvent) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.stopPropagation();
-            }
-          },
+          min: 0
         },
-        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-          if (!event.node.group) {
-            this.modalServiceTable.showModal({
-              params: event,
-              value: event.value,
-            });
-          }
-        },
-        cellRenderer: (params: ICellRendererParams) => {
-          if (params.node.group) {
-            return params.value;
-          }
-          return params.value;
+        valueFormatter: (params) => {
+          return params.value !== null && params.value !== undefined ? `${params.value.toFixed(2)}` : '0.00';
         }
       },
+      {
+        field: 'total',
+        headerName: 'Total',
+        editable: true,
+        filter: true,
+        flex: 1,
+        cellDataType: 'number',
+        cellEditorParams: {
+          min: 0
+        },
+        valueFormatter: (params) => {
+          return params.value !== null && params.value !== undefined ? `${params.value.toFixed(2)}` : '0.00';
+        },
+        valueSetter: (params) => {
+          const newTotal = Number(params.newValue);
+          const quantity = params.data.quantity || 0;
+          
+          if (quantity > newTotal) {
+            params.data.quantity = newTotal;
+          }
+          
+          params.data.total = newTotal;
+          this.updatePending(params.data);
+          return true;
+        }
+      }
     ]
   };
 
   // ==================== MASTER METHODS ====================
 
   obtenerDatos() {
-    this.requisitionsService.getOcAndReqs(this.idProject, "OC").subscribe((data: any) => {
+    this.inAndOutsService.getInAndOuts(this.idProject, "IN").subscribe((data: any) => {
       this.masterRowData = data;
     },
       (error) => console.error('Error fetching data:', error)
@@ -415,65 +279,11 @@ export class PurchaseOrderComponent {
   }
 
   obtenerRequisiciones() {
-    this.requisitionsService.getOcAndReqs(this.idProject, "REQUIS").subscribe((data: any) => {
+    this.ocService.getOcAndReqs(this.idProject, "OC").subscribe((data: any) => {
       this.requisiciones = data;
       console.log(this.requisiciones);
     },
       (error) => console.error('Error fetching requisitions:', error)
-    );
-  }
-
-  obtenerProveedores() {
-    this.providersService.getProviders().subscribe((data: any) => {
-      this.proveedores = data;
-      console.log(this.proveedores);
-    },
-      (error) => console.error('Error fetching requisitions:', error)
-    );
-  }
-
-  obtenerUsuarios() {
-    this.usersService.getDataUsers().subscribe(
-      (response: any) => {
-        this.usuarios = response.data;
-      },
-      (error) => console.error('Error fetching users:', error)
-    );
-  }
-
-  obtenerDepartamentos() {
-    this.departmentsService.getDepartments().subscribe(
-      (data: Provider[]) => {
-        this.departamentos = data;
-      },
-      (error) => console.error('Error fetching departments:', error)
-    );
-  }
-
-  obtenerUbicaciones() {
-    this.catalogsService.getLocations().subscribe(
-      (data: Catalog[]) => {
-        this.ubicaciones = data;
-      },
-      (error) => console.error('Error fetching locations:', error)
-    );
-  }
-
-  obtenerMonedas() {
-    this.currencyService.getCurrencies().subscribe(
-      (data: Catalog[]) => {
-        this.monedas = data;
-      },
-      (error) => console.error('Error fetching currencies:', error)
-    );
-  }
-
-  obtenerTipoPago() {
-    this.currencyService.getPaymentTypes().subscribe(
-      (data: Catalog[]) => {
-        this.tipoPago = data;
-      },
-      (error) => console.error('Error fetching payment types:', error)
     );
   }
 
@@ -486,11 +296,9 @@ export class PurchaseOrderComponent {
       
       // Solo actualizar las señales si no es una fila nueva
       if (!this.newlyAddedMasterRows.includes(this.masterSelectedRowData.id)) {
-        this.signalsService.setIdRequisition(this.masterSelectedRowData.id);
-        this.signalsService.setRequisitionName(this.masterSelectedRowData.folio);
-        this.signalsService.setRequisitionSolicitant(this.masterSelectedRowData.solicit);
-        this.signalsService.setRequisitionDate(this.masterSelectedRowData.dateCreate);
-        this.idRequisition = this.signalsService.getIdRequisition()();
+        this.signalsService.setIdInAndOut(this.masterSelectedRowData.id);
+        this.signalsService.setInAndOutName(this.masterSelectedRowData.folio);
+        this.IdInAndOut = this.signalsService.getIdInAndOut()();
       }
     } else {
       this.masterSelectedRowData = null;
@@ -514,7 +322,7 @@ export class PurchaseOrderComponent {
     );
 
     // Actualizar la fila en la cuadrícula
-    const rowNode = this.masterGridApi.getRowNode(updatedData.id);
+    const rowNode = this.gridApi.getRowNode(updatedData.id);
     if (rowNode) {
       rowNode.setData(updatedData);
       // Mantener la selección si es necesario
@@ -525,7 +333,7 @@ export class PurchaseOrderComponent {
   }
 
   onMasterGridReady(params: GridReadyEvent) {
-    this.masterGridApi = params.api;
+    this.gridApi = params.api;
   }
 
   onMasterRowSelected(event: any) {
@@ -538,28 +346,13 @@ export class PurchaseOrderComponent {
       id: tempId,
       folio: '',
       idProject: this.idProject,
-      dateCreate: new Date().toISOString(),
-      idProvider: 0,
-      idDepartament: 0,
-      delivery: '',
-      deliveryTime: '',
-      dateSupply: '',
-      idPayment: 0,
-      idCurrency: 0,
-      conditions: '',
-      IdAuthorize: 0,
-      priority: '',
-      solicit: this.signalsService.getDisplayName()(),
-      type: 'OC',
-      comments: '',
-      typeOc: 'INSUMOS',
-      idSolicit: 0,
-      idRequisition: 0,
-      address: '',
-      city: '',
-      phone: '',
-      ivaRetention: 0,
-      discount: 0,
+      date: new Date().toISOString(),
+      deliveryDate: new Date().toISOString(),
+      idOc: 0,
+      numBill: '',
+      deliverName: '',
+      comment: '',
+      type: 'IN',
       active: true,
       __isNew: true,
     };
@@ -570,11 +363,11 @@ export class PurchaseOrderComponent {
     this.masterNotSavedChanges = true;
 
     // Forzar la actualización de la cuadrícula y seleccionar la nueva fila
-    this.masterGridApi.setGridOption("rowData", this.masterRowData);
+    this.gridApi.setGridOption("rowData", this.masterRowData);
     
     // Asegurarnos de que la fila nueva esté seleccionada
     requestAnimationFrame(() => {
-      const rowNode = this.masterGridApi.getRowNode(tempId);
+      const rowNode = this.gridApi.getRowNode(tempId);
       if (rowNode) {
         rowNode.setSelected(true);
         this.masterSelectedRowData = newItem;
@@ -600,12 +393,12 @@ export class PurchaseOrderComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.requisitionsService.addOcAndReq(cleanedData);
+      return this.inAndOutsService.addInAndOut(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.requisitionsService.updateOcAndReq(row.id, cleanedData);
+      return this.inAndOutsService.updateInAndOut(row.id, cleanedData);
     });
 
     // Using concat to combine observables and lastValueFrom for async/await
@@ -632,7 +425,7 @@ export class PurchaseOrderComponent {
   }
 
   deleteMasterEntry() {
-    const selectedNodes = this.masterGridApi.getSelectedNodes();
+    const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert(
         'Eliminar entrada',
@@ -645,7 +438,7 @@ export class PurchaseOrderComponent {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
     selectedData.active = 0;
-    this.requisitionsService.deleteOcAndReq(id).pipe(
+    this.inAndOutsService.deleteInAndOut(id).pipe(
       catchError((error) => {
         alerts.basicAlert(
           'Eliminar entrada',
@@ -681,8 +474,8 @@ export class PurchaseOrderComponent {
     this.masterNotSavedChanges = false;
   }
 
-  createOC(idRequisition: number, action: string) {
-    this.receiptsService.generateOC(idRequisition, action);
+  createOC(IdInAndOut: number, action: string) {
+    this.receiptsService.generateOC(IdInAndOut, action);
   }
 
  
@@ -690,7 +483,7 @@ export class PurchaseOrderComponent {
   // ==================== DETAILS METHODS ====================
 
   obtenerDetalles() {
-    this.requisitionsService.getReqItems(this.idRequisition).subscribe((data: any) => {
+    this.inAndOutsService.getInAndOutItems(this.IdInAndOut).subscribe((data: any) => {
       this.detailsRowData = data;
     });
   }
@@ -704,11 +497,11 @@ export class PurchaseOrderComponent {
     );
   }
 
-  updateTotal(data: any) {
-    if (data.quantity && data.price) {
-      data.total = data.quantity * data.price;
+  updatePending(data: any) {
+    if (data.quantity && data.total) {
+      data.pending = data.total - data.quantity;
     } else {
-      data.total = 0;
+      data.pending = 0;
     }
   }
 
@@ -716,14 +509,11 @@ export class PurchaseOrderComponent {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idMovement: this.idRequisition,
-      idSupplie: 0,
+      idInandout: this.IdInAndOut,
+      idProduct: 0,
       quantity: 0,
-      price: 0,
+      pending: 0,
       total: 0,
-      type: 'OC',
-      comment: 'Ninguno.',
-      dateuse: new Date().toISOString(),
       active: true,
       __isNew: true,
     };
@@ -734,7 +524,7 @@ export class PurchaseOrderComponent {
   }
 
   async saveDetailsChanges() {
-    const isValid = this.detailsRowData.every((item) => item.idSupplie && item.comment && item.dateuse);
+    const isValid = this.detailsRowData.every((item) => item.idProduct && item.quantity && item.total);
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
@@ -751,13 +541,14 @@ export class PurchaseOrderComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.requisitionsService.addReqItem(cleanedData);
+      console.log(cleanedData);
+      return this.inAndOutsService.addInAndOutItem(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       console.log(cleanedData);
-      return this.requisitionsService.updateReqItem(row.id, cleanedData);
+      return this.inAndOutsService.updateInAndOutItem(row.id, cleanedData);
     });
 
     // Using concat to combine observables and lastValueFrom for async/await
@@ -784,7 +575,7 @@ export class PurchaseOrderComponent {
   }
 
   async deleteDetailsEntry() {
-    const selectedNodes = this.detailsGridApi.getSelectedNodes();
+    const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert(
         'Eliminar entrada',
@@ -797,7 +588,7 @@ export class PurchaseOrderComponent {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
     selectedData.active = 0;
-    this.requisitionsService.deleteReqItem(id).pipe(
+    this.inAndOutsService.deleteInAndOutItem(id).pipe(
       catchError((error) => {
         alerts.basicAlert(
           'Eliminar entrada',
@@ -854,7 +645,7 @@ export class PurchaseOrderComponent {
   }
 
   onDetailsGridReady(params: GridReadyEvent) {
-    this.detailsGridApi = params.api;
+    this.gridApi = params.api;
   }
 
   onDetailsRowSelected(event: any) {

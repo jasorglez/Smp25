@@ -5,11 +5,12 @@ import { WarehousesComponent } from "../../components/warehouses/warehouses.comp
 import { MaterialsComponent } from '../../components/materials/materials.component';
 import { RequisitionsComponent } from "../../components/requisitions/requisitions.component";
 import { PurchaseOrderComponent } from "../../components/purchaseorder/purchaseorder.component";
+import { InAndOutComponent } from '../../components/inandout/inandout.component';
 
 @Component({
   selector: 'app-procwareh',
   standalone: true,
-  imports: [TranslateModule, WarehousesComponent, MaterialsComponent, RequisitionsComponent, PurchaseOrderComponent],
+  imports: [TranslateModule, WarehousesComponent, MaterialsComponent, RequisitionsComponent, PurchaseOrderComponent, InAndOutComponent],
   templateUrl: './procwareh.component.html',
   styleUrl: './procwareh.component.scss'
 })

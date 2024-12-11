@@ -292,6 +292,26 @@ export class SignalsService {
     this.requisitionDate.set(null);
   }
 
+  /* Para entradas y salidas */
+  private idInAndOut = signal<number>(null);
+  private nameInAndOut = signal<string>(null);
+
+  setIdInAndOut(id: number) {
+    this.idInAndOut.set(id);
+  }
+
+  getIdInAndOut() {
+    return this.idInAndOut;
+  }
+
+  setInAndOutName(name: string) {
+    this.nameInAndOut.set(name);
+  }
+
+  getInAndOutName() {
+    return this.nameInAndOut;
+  }
+
   /* Borramos todas las signals, tratar de poner esto a lo último.
   Si van a crear nuevas signals, recuerden introducir una señal
   null en deleteSignals() para que todas las signals se borren
@@ -325,7 +345,7 @@ export class SignalsService {
     this.selectedWorkProgram = signal(null);
     this.idRequisition = signal(null);
     this.nameRequisition = signal(null);
-    this.requisitionSolicitant = signal(null);    
+    this.requisitionSolicitant = signal(null);
     this.requisitionDate = signal(null);
     this.selectedContract = signal(null);
     this.selectedProject = signal(null);
