@@ -1,7 +1,7 @@
 import { Component, effect, HostListener, inject } from '@angular/core';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
-import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { catchError, concat, EMPTY, lastValueFrom, toArray, forkJoin } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -12,15 +12,13 @@ import { ReceiptsService } from 'app/services/receipts.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { InandoutService } from 'app/services/inandout.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
+import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
+import { WarehousesService } from 'app/services/warehouses.service';
+import { CatalogsService } from 'app/services/catalogs.service';
 
 interface Catalog {
   id: number;
   description: string;
-}
-
-interface Provider {
-  id: number;
-  name: string;
 }
 
 @Component({
@@ -38,36 +36,36 @@ export class InAndOutComponent {
   private modalServiceTable = inject(ModalService);
   private receiptsService = inject(ReceiptsService);
   private materialsService = inject(MaterialsService);
-  private ocService = inject(OcAndReqsService)
+  private ocService = inject(OcAndReqsService);
+  private usersxpermissionsService = inject(UsersxpermissionsService);
+  private warehousesService = inject(WarehousesService);
+  private catalogsService = inject(CatalogsService);
 
   // Variables compartidas
   masterNotSavedChanges: boolean = false;
   detailsNotSavedChanges: boolean = false;
   id: string = null;
   idProject: number = null;
+  idWarehouse: number = null;
   private tempIdCounter: number = 0;
   IdInAndOut: number = null;
-  private gridApi: GridApi;
+  private masterGridApi: GridApi;
+  private detailsGridApi: GridApi;
 
   // Variables Master
   masterRowData: any[] = [];
   masterSelectedRowData: any = null;
   newlyAddedMasterRows: string[] = [];
-  
+
   // Catálogos Master
   requisiciones: any[] = [];
-  proveedores: any[] = [];
-  departamentos: any[] = [];
-  ubicaciones: any[] = [];
-  monedas: any[] = [];
-  usuarios: any[] = [];
-  tipoPago: any[] = [];
+  tipoEntrada: any
 
   // Variables Details
   detailsRowData: any[] = [];
   detailsSelectedRowData: any = null;
   newlyAddedDetailRows: string[] = [];
-  
+
   // Catálogos Details
   productos: any[] = [];
 
@@ -78,10 +76,23 @@ export class InAndOutComponent {
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
 
+  // Agregar esta variable para almacenar los almacenes con permisos
+  warehousesWithPermissions: any[] = [];
+
   constructor() {
     effect(() => {
       this.idProject = this.signalsService.getProjectSelectedBySidebar()();
       this.IdInAndOut = this.signalsService.getIdInAndOut()();
+      
+      // Solo llamar a obtenerAlmacenesPorUsuario si idWarehouse es null
+      if (!this.idWarehouse) {
+        this.obtenerAlmacenesPorUsuario().then(() => {
+          // Si hay almacenes con permisos, seleccionar el primero
+          if (this.warehousesWithPermissions.length > 0) {
+            this.idWarehouse = this.warehousesWithPermissions[0].id;
+          }
+        });
+      }
 
       if (this.idProject == null) {
         this.masterRowData = [];
@@ -102,6 +113,8 @@ export class InAndOutComponent {
     this.obtenerDatos();
     this.obtenerRequisiciones();
     this.obtenerProductos();
+    this.obtenerAlmacenesPorUsuario();
+    this.obtenerTiposEntrada();
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -117,12 +130,12 @@ export class InAndOutComponent {
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
     return [
-      { field: 'folio', headerName: 'Número Documento', editable: true, filter: true, width: 150 },
+      { field: 'folio', headerName: 'Número Documento', editable: true, filter: true, flex: 1 },
       {
         field: 'date',
         headerName: 'Fecha Entrada',
         editable: true,
-        width: 150,
+        flex: 1,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
           if (params.value) {
@@ -145,7 +158,7 @@ export class InAndOutComponent {
         }
       },
       {
-        field: 'idOc', headerName: 'Orden de compra', editable: true, filter: true, width: 150, cellEditor: 'agSelectCellEditor',
+        field: 'idOc', headerName: 'Orden de compra', editable: true, filter: true, flex: 1, cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.requisiciones ? this.requisiciones.map(item => item.id) : [],
         },
@@ -154,10 +167,20 @@ export class InAndOutComponent {
           return foundItem ? `${foundItem.folio}` : params.value;
         }
       },
-      { field: 'numBill', headerName: 'Número de factura', editable: true, filter: true, width: 150 },
-      { field: 'deliverName', headerName: 'Entrega', editable: true, filter: true, width: 150 },
       {
-        field: 'comment', headerName: 'Comentario', editable: false, width: 150, cellEditor: 'agPopupTextCellEditor',
+        field: 'idType', headerName: 'Tipo de entrada', editable: true, filter: true, flex: 1, cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.tipoEntrada ? this.tipoEntrada.map(item => item.id) : [],
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.tipoEntrada ? this.tipoEntrada.find(item => item.id === params.value) : null;
+          return foundItem ? `${foundItem.description}` : params.value;
+        }
+      },
+      { field: 'numBill', headerName: 'Número de factura', editable: true, filter: true, flex: 1 },
+      { field: 'deliverName', headerName: 'Entrega', editable: true, filter: true, flex: 1 },
+      {
+        field: 'comment', headerName: 'Comentario', editable: false, flex: 2, cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
           cols: 50,
@@ -200,11 +223,11 @@ export class InAndOutComponent {
         }
       },
       {
-        field: 'quantity', 
-        headerName: 'Cantidad', 
-        editable: true, 
-        filter: true, 
-        flex: 1, 
+        field: 'quantity',
+        headerName: 'Cantidad',
+        editable: true,
+        filter: true,
+        flex: 1,
         cellDataType: 'number',
         cellEditorParams: {
           min: 0
@@ -215,7 +238,7 @@ export class InAndOutComponent {
         valueSetter: (params) => {
           const newValue = Number(params.newValue);
           const total = params.data.total || 0;
-          
+
           if (newValue > total) {
             alerts.basicAlert(
               'Error',
@@ -224,7 +247,7 @@ export class InAndOutComponent {
             );
             return false;
           }
-          
+
           params.data.quantity = newValue;
           this.updatePending(params.data);
           return true;
@@ -255,11 +278,11 @@ export class InAndOutComponent {
         valueSetter: (params) => {
           const newTotal = Number(params.newValue);
           const quantity = params.data.quantity || 0;
-          
+
           if (quantity > newTotal) {
             params.data.quantity = newTotal;
           }
-          
+
           params.data.total = newTotal;
           this.updatePending(params.data);
           return true;
@@ -271,7 +294,7 @@ export class InAndOutComponent {
   // ==================== MASTER METHODS ====================
 
   obtenerDatos() {
-    this.inAndOutsService.getInAndOuts(this.idProject, "IN").subscribe((data: any) => {
+    this.inAndOutsService.getInAndOuts(this.idProject, this.idWarehouse, "IN").subscribe((data: any) => {
       this.masterRowData = data;
     },
       (error) => console.error('Error fetching data:', error)
@@ -287,14 +310,51 @@ export class InAndOutComponent {
     );
   }
 
+  obtenerTiposEntrada() {
+    this.catalogsService.getDataTypes().subscribe((data: any) => {
+      this.tipoEntrada = data;
+      console.log(this.tipoEntrada);
+    },
+      (error) => console.error('Error fetching data:', error)
+    );
+  }
+
+  onWarehouseChange(event: any) {
+    this.idWarehouse = Number(event.target.value);
+    this.obtenerDatos(); // Recargar los datos con el nuevo almacén seleccionado
+  }
+
+  async obtenerAlmacenesPorUsuario() {
+    try {
+      const [permissions, warehouses] = await lastValueFrom(
+        forkJoin([
+          this.usersxpermissionsService.getUserxPermissionByEmail("warehouse", localStorage.getItem('mail')),
+          this.warehousesService.getSimpleWarehouses(Number(localStorage.getItem('company')))
+        ])
+      );
+
+      this.warehousesWithPermissions = warehouses.filter(warehouse =>
+        permissions.some(permission => permission.idPermission === warehouse.id)
+      );
+      return this.warehousesWithPermissions;
+    }
+    catch (error) {
+      console.error(error);
+      return [];
+    }
+  }
+
   onMasterSelectionChanged(event: any) {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
-      // Crear una copia profunda del dato seleccionado
       this.masterSelectedRowData = { ...selectedNodes[0].data };
       this.detailsNotSavedChanges = false;
-      
-      // Solo actualizar las señales si no es una fila nueva
+
+      // Mantener el idWarehouse actual si existe
+      if (selectedNodes[0].data.idWarehouse) {
+        this.idWarehouse = selectedNodes[0].data.idWarehouse;
+      }
+
       if (!this.newlyAddedMasterRows.includes(this.masterSelectedRowData.id)) {
         this.signalsService.setIdInAndOut(this.masterSelectedRowData.id);
         this.signalsService.setInAndOutName(this.masterSelectedRowData.folio);
@@ -307,22 +367,22 @@ export class InAndOutComponent {
 
   onMasterCellValueChanged(event: any) {
     const updatedData = { ...event.data };
-    
+
     // Preservar el estado temporal y la selección
     if (this.newlyAddedMasterRows.includes(updatedData.id)) {
       updatedData.__isNew = true;
     }
-    
+
     updatedData.__modified = true;
     this.masterNotSavedChanges = true;
 
     // Actualizar el array de datos
-    this.masterRowData = this.masterRowData.map(row => 
+    this.masterRowData = this.masterRowData.map(row =>
       row.id === updatedData.id ? updatedData : row
     );
 
     // Actualizar la fila en la cuadrícula
-    const rowNode = this.gridApi.getRowNode(updatedData.id);
+    const rowNode = this.masterGridApi.getRowNode(updatedData.id);
     if (rowNode) {
       rowNode.setData(updatedData);
       // Mantener la selección si es necesario
@@ -333,7 +393,7 @@ export class InAndOutComponent {
   }
 
   onMasterGridReady(params: GridReadyEvent) {
-    this.gridApi = params.api;
+    this.masterGridApi = params.api;
   }
 
   onMasterRowSelected(event: any) {
@@ -346,6 +406,8 @@ export class InAndOutComponent {
       id: tempId,
       folio: '',
       idProject: this.idProject,
+      idWarehouse: this.idWarehouse,
+      idType: 0,
       date: new Date().toISOString(),
       deliveryDate: new Date().toISOString(),
       idOc: 0,
@@ -363,11 +425,11 @@ export class InAndOutComponent {
     this.masterNotSavedChanges = true;
 
     // Forzar la actualización de la cuadrícula y seleccionar la nueva fila
-    this.gridApi.setGridOption("rowData", this.masterRowData);
-    
+    this.masterGridApi.setGridOption("rowData", this.masterRowData);
+
     // Asegurarnos de que la fila nueva esté seleccionada
     requestAnimationFrame(() => {
-      const rowNode = this.gridApi.getRowNode(tempId);
+      const rowNode = this.masterGridApi.getRowNode(tempId);
       if (rowNode) {
         rowNode.setSelected(true);
         this.masterSelectedRowData = newItem;
@@ -425,7 +487,7 @@ export class InAndOutComponent {
   }
 
   deleteMasterEntry() {
-    const selectedNodes = this.gridApi.getSelectedNodes();
+    const selectedNodes = this.masterGridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert(
         'Eliminar entrada',
@@ -478,7 +540,7 @@ export class InAndOutComponent {
     this.receiptsService.generateOC(IdInAndOut, action);
   }
 
- 
+
 
   // ==================== DETAILS METHODS ====================
 
@@ -575,7 +637,7 @@ export class InAndOutComponent {
   }
 
   async deleteDetailsEntry() {
-    const selectedNodes = this.gridApi.getSelectedNodes();
+    const selectedNodes = this.detailsGridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert(
         'Eliminar entrada',
@@ -645,7 +707,7 @@ export class InAndOutComponent {
   }
 
   onDetailsGridReady(params: GridReadyEvent) {
-    this.gridApi = params.api;
+    this.detailsGridApi = params.api;
   }
 
   onDetailsRowSelected(event: any) {
