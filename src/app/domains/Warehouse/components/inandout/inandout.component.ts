@@ -15,6 +15,7 @@ import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { WarehousesService } from 'app/services/warehouses.service';
 import { CatalogsService } from 'app/services/catalogs.service';
+import { SearchableSelectComponent } from 'app/shared/searchable-select/searchable-select.component';
 
 interface Catalog {
   id: number;
@@ -24,7 +25,7 @@ interface Catalog {
 @Component({
   selector: 'app-inandout',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, SearchableSelectComponent],
   templateUrl: './inandout.component.html',
   styleUrl: './inandout.component.scss'
 })
@@ -83,7 +84,7 @@ export class InAndOutComponent {
     effect(() => {
       this.idProject = this.signalsService.getProjectSelectedBySidebar()();
       this.IdInAndOut = this.signalsService.getIdInAndOut()();
-      
+
       // Solo llamar a obtenerAlmacenesPorUsuario si idWarehouse es null
       if (!this.idWarehouse) {
         this.obtenerAlmacenesPorUsuario().then(() => {
@@ -128,6 +129,10 @@ export class InAndOutComponent {
   nameInAndOut = this.signalsService.getInAndOutName();
 
   // Column Definitions: Defines the columns to be displayed.
+  components = {
+    'searchableSelectComponent': SearchableSelectComponent
+  };
+
   get colMaster(): ColDef[] {
     return [
       { field: 'folio', headerName: 'Número Documento', editable: true, filter: true, flex: 1 },
@@ -213,9 +218,13 @@ export class InAndOutComponent {
   get colDetails(): ColDef[] {
     return [
       {
-        field: 'idProduct', headerName: 'Producto', editable: true, flex: 3, cellEditor: 'agSelectCellEditor',
+        field: 'idProduct',
+        headerName: 'Producto',
+        editable: true,
+        flex: 3,
+        cellEditor: 'searchableSelectComponent',
         cellEditorParams: {
-          values: this.productos ? this.productos.map(item => item.id) : [],
+          options: this.productos
         },
         valueFormatter: (params) => {
           const foundItem = this.productos ? this.productos.find(item => item.id === params.value) : null;

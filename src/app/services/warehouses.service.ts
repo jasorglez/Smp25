@@ -22,11 +22,11 @@ export class WarehousesService {
   }
 
   updateWarehouse(id: string, data: any): Observable<any> {
-    return this.http.put<any[]>(`${environment.urlWarehouse}/Warehouse${id}`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.put<any[]>(`${environment.urlWarehouse}/Warehouse/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
   deleteWarehouse(id: number): Observable<any> {
-    return this.http.delete<any[]>(`${environment.urlWarehouse}/Warehouse${id}`, { headers: this.trackingService.getHeaders() });
+    return this.http.delete<any[]>(`${environment.urlWarehouse}/Warehouse/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
   getSimpleWarehouses(idRoot: number): Observable<any> {
