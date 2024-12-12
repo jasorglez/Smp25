@@ -24,73 +24,73 @@ import { alerts } from 'app/helpers/alerts';
   styleUrl: './side-bar.component.scss',
 })
 export class SideBarComponent {
-  selectedRoot      : string = '';
+  selectedRoot: string = '';
 
-  rootData          : any;
-  contractData      : any ;
-  branchData        : any[] = [];
-  projectData       : any[] = [];
-  centerprocessData : any[] = [];
-  platformData      : any[] = [];
-  idUser            : number = 0 ;
+  rootData: any;
+  contractData: any;
+  branchData: any[] = [];
+  projectData: any[] = [];
+  centerprocessData: any[] = [];
+  platformData: any[] = [];
+  idUser: number = 0;
 
   selectedContractId: string = '';
-  selectedProjectId : string = '';
-  selectedBranchId  : string = '';
+  selectedProjectId: string = '';
+  selectedBranchId: string = '';
   selectedCProcessId: number = 0;
   selectedPlatformId: number = 0;
   usersData: any[];
 
   constructor(
     public translateService: TraductorService,
-    public trackingService : TrackingService,
-    public companysService : CompanysService,
-    public authService     : AuthService,
-    public rootService     : RootService,
-    private branchService  : BranchsService,
-    public contractService : ContractsService,
-    public projectService  : ProjectsService,
-    private userService    : UsersService,
+    public trackingService: TrackingService,
+    public companysService: CompanysService,
+    public authService: AuthService,
+    public rootService: RootService,
+    private branchService: BranchsService,
+    public contractService: ContractsService,
+    public projectService: ProjectsService,
+    private userService: UsersService,
     private router: Router,
     private permissionsService: UsersxpermissionsService,
-    private signalsService  : SignalsService
-  ) {}
+    private signalsService: SignalsService
+  ) { }
 
   async ngOnInit() {
-if (this.signalsService.isidUserEmpty()){          
-          this.userService.findEmail(localStorage.getItem('mail')).subscribe({
-            next: (datauser: any) => {
-              if (datauser) {
-                console.log('DataUsers:',datauser)
-                // Defincion de variables globales             
-                 this.trackingService.setId(datauser.id) ;               
-                 this.signalsService.setidUser(datauser.id); 
-                 //this.signalsService.setDisplayName(datauser.displayName); 
-                 this.getpermissionxRoots();  
-              }
-            },
-            error: (error) => {
-              console.error('Error al obtener los datos del usuario:', error);
-              // Manejo del error
-            }
-          })
-    }else{
-         await this.getpermissionxRoots();
-    }           
+    if (this.signalsService.isidUserEmpty()) {
+      this.userService.findEmail(localStorage.getItem('mail')).subscribe({
+        next: (datauser: any) => {
+          if (datauser) {
+            console.log('DataUsers:', datauser)
+            // Defincion de variables globales             
+            this.trackingService.setId(datauser.id);
+            this.signalsService.setidUser(datauser.id);
+            //this.signalsService.setDisplayName(datauser.displayName); 
+            this.getpermissionxRoots();
+          }
+        },
+        error: (error) => {
+          console.error('Error al obtener los datos del usuario:', error);
+          // Manejo del error
+        }
+      })
+    } else {
+      await this.getpermissionxRoots();
+    }
   }
-   
+
   onRootsSelected(event: Event): void {
 
-     const target = event.target as HTMLSelectElement;     
-     this.selectedRoot = target.value;
+    const target = event.target as HTMLSelectElement;
+    this.selectedRoot = target.value;
     if (this.selectedRoot) {
-        this.trackingService.setCompany(target.value) ;
-        this.signalsService.setRootSelectedBySidebar(Number(this.selectedRoot));
-        this.getpermissionxContracts(parseInt(this.selectedRoot));
-    }        
+      this.trackingService.setCompany(target.value);
+      this.signalsService.setRootSelectedBySidebar(Number(this.selectedRoot));
+      this.getpermissionxContracts(parseInt(this.selectedRoot));
+    }
   }
- 
-  async getpermissionxRoots() {    
+
+  async getpermissionxRoots() {
     this.rootService.get2Root(this.signalsService.idUser()).subscribe({
       next: (data) => {
         const root = Object.values(data);
@@ -103,7 +103,7 @@ if (this.signalsService.isidUserEmpty()){
           this.getHeadersCompanys(this.selectedRoot);
           // Llamar a getpermissionxContracts con el primer elemento
           this.getpermissionxContracts(parseInt(this.selectedRoot));
-          this.getpermissionxBranchs(parseInt(this.selectedRoot)); 
+          this.getpermissionxBranchs(parseInt(this.selectedRoot));
           // Forzar la actualización del select
           setTimeout(() => {
             const selectElement = document.getElementById('root') as HTMLSelectElement;
@@ -121,10 +121,9 @@ if (this.signalsService.isidUserEmpty()){
         this.selectedRoot = null;
       }
     });
-   }
+  }
 
-   async getpermissionxBranchs(idRoot : number) {
-    // Aquí consulto la tabla donde está el idUser correspondiente a company
+  async getpermissionxBranchs(idRoot: number) {
     this.branchService.getBranches2fields(parseInt(localStorage.getItem('company')))
       .subscribe((data) => {
         const branch = Object.values(data)
@@ -133,22 +132,30 @@ if (this.signalsService.isidUserEmpty()){
           this.branchData = branch;
           // Ya tengo el id de la compañía root
           this.selectedBranchId = this.branchData[0].id;
-
-          this.signalsService.setContractSelectedBySidebar(Number(this.selectedBranchId));
-
-          // Ahora consulto la información de root
+          console.log(this.selectedBranchId);
+          
+          // Agregamos estas líneas para simular la selección automática
+          this.signalsService.setBranchSelectedBySidebar(Number(this.selectedBranchId));
           this.trackingService.setContract(this.selectedBranchId);
-         
+
+          // Forzamos la actualización del select
+          setTimeout(() => {
+            const selectElement = document.getElementById('branchs') as HTMLSelectElement;
+            if (selectElement) {
+              selectElement.value = this.selectedBranchId;
+              // Disparamos el evento change manualmente
+              selectElement.dispatchEvent(new Event('change'));
+            }
+          });
+
         } else {
-          console.log(
-            `No se encontró ningún branch con idRoot ${this.selectedBranchId}`
-          );
+          console.log(`No se encontró ningún branch con idRoot ${this.selectedBranchId}`);
         }
-      });     
-   }
+      });
+  }
 
 
-   async onContractsSelected(event: Event) {
+  async onContractsSelected(event: Event) {
     const target = event.target as HTMLSelectElement;
     this.selectedContractId = target.value;
     if (this.selectedContractId) {
@@ -156,16 +163,26 @@ if (this.signalsService.isidUserEmpty()){
       this.signalsService.setContractSelectedBySidebar(Number(this.selectedContractId));
       // Borro la signal de project para resetear el dato
       this.signalsService.setProjectSelectedBySidebar(null);
-
       this.trackingService.setContract(this.selectedContractId);
       this.signalsService.setContractSelectedBySidebar(Number(this.selectedContractId));
       //llamo a los permisos de x Project
       await this.getpermissionxProjects(Number(this.selectedContractId))
     }
-    
+
   }
 
-   async getpermissionxContracts(idRoot : number) {
+async onBranchSelected(event: Event)  {
+  const target = event.target as HTMLSelectElement;
+  this.selectedBranchId = target.value;
+  if (this.selectedBranchId) {
+    // Lógica para añadir la signal de branch
+    this.signalsService.setBranchSelectedBySidebar(Number(this.selectedBranchId));
+    console.log(this.selectedBranchId);
+    // Borro la signal de project para resetear el dato
+  }
+}
+
+  async getpermissionxContracts(idRoot: number) {
     // Aquí consulto la tabla donde está el idUser correspondiente a company
     this.contractService.getContractsBy2fields(this.signalsService.idUser(), parseInt(this.selectedRoot))
       .subscribe((data) => {
@@ -179,14 +196,14 @@ if (this.signalsService.isidUserEmpty()){
 
           // Ahora consulto la información de root
           this.trackingService.setContract(this.selectedContractId);
-         // this.getpermissionxProjects(parseInt(this.selectedContractId));
+          // this.getpermissionxProjects(parseInt(this.selectedContractId));
         } else {
           console.log(
             `No se encontró ningún Contract con idRoot ${this.selectedContractId}`
           );
         }
-      });     
-   }
+      });
+  }
 
 
   async onProjectSelected(event: Event) {
@@ -196,12 +213,12 @@ if (this.signalsService.isidUserEmpty()){
       // Lógica para añadir la signal de project
       this.signalsService.setProjectSelectedBySidebar(Number(this.selectedProjectId));
 
-        this.trackingService.setProject(this.selectedProjectId);
-        this.signalsService.setProjectSelectedBySidebar(Number(this.selectedProjectId)) ;        
+      this.trackingService.setProject(this.selectedProjectId);
+      this.signalsService.setProjectSelectedBySidebar(Number(this.selectedProjectId));
     }
-    
+
   }
-  
+
   async getpermissionxProjects(idContract: number) {
     this.projectData = [];  // Siempre vaciamos el array de proyectos
     this.projectService.getProjectsByContract(idContract, this.signalsService.idUser())
@@ -218,7 +235,7 @@ if (this.signalsService.isidUserEmpty()){
           }
         },
         error: (error) => {
-          console.error('Error al obtener proyectos:', error);          
+          console.error('Error al obtener proyectos:', error);
           this.selectedProjectId = '';
           this.trackingService.setProject('');
         }

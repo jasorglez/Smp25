@@ -24,10 +24,16 @@ export class SignalsService {
     this.contractSelectedBySidebar.set(id);
   }
 
-  projectSelectedBySidebar = signal<number | null>(null);
+  private projectSelectedBySidebar = signal<number | null>(null);
 
   setProjectSelectedBySidebar(id: number) {
     this.projectSelectedBySidebar.set(id);
+  }
+
+  private branchSelectedBySidebar = signal<number | null>(null);
+
+  setBranchSelectedBySidebar(id: number) {
+    this.branchSelectedBySidebar.set(id);
   }
 
   getRootSelectedBySidebar() {
@@ -40,6 +46,10 @@ export class SignalsService {
 
   getProjectSelectedBySidebar() {
     return this.projectSelectedBySidebar;
+  }
+
+  getBranchSelectedBySidebar() {
+    return this.branchSelectedBySidebar;
   }
 
   /* Aquí se definen las signals para el setup de Users */
@@ -318,6 +328,9 @@ export class SignalsService {
   al momento de hacer logout */
 
   deleteSignals() {
+    this.rootSelectedBySidebar = signal(null);
+    this.branchSelectedBySidebar = signal(null);
+    this.projectSelectedBySidebar = signal(null);
     this.contractSelectedBySidebar = signal(null);
     this.idCompany = signal(null);
     this.nameCompany = signal(null);

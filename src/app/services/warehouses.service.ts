@@ -33,6 +33,8 @@ export class WarehousesService {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Warehouse/2fields?idBussines=${idRoot}`, { headers: this.trackingService.getHeaders() });
   }
 
-
+  getSimpleWarehousesByBranch(idBranch: number): Observable<any> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Warehouse/2branches?idBranch=${idBranch}`, { headers: this.trackingService.getHeaders() });
+  }
 
 }

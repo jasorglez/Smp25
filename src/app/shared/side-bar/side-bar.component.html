@@ -14,7 +14,7 @@
       </select>
 
          <!-- Select Branchs -->
-         <select id="branchs" (change)="onContractsSelected($event)" class="form-control select-side" [value]="selectedBranchId || ''"
+         <select id="branchs" (change)="onBranchSelected($event)" class="form-control select-side" [value]="selectedBranchId || ''"
                               title= "{{ 'select' | translate  }} {{ 'branchs' | translate  }}">          
           <option selected disabled value="">{{ 'branchs' | translate }}</option>
           <option *ngFor="let item of branchData" [value]="item.id">{{ item.name }}</option>

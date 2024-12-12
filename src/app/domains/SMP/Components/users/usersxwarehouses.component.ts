@@ -1,11 +1,11 @@
-import { Component, computed, HostListener, inject } from '@angular/core';
+import { Component, computed, HostListener, inject, effect } from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
 import { UsersProfileComponent } from './users-profile.component';
-import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { catchError, concat, EMPTY, lastValueFrom, toArray, forkJoin } from 'rxjs';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { SignalsService } from 'app/services/signals.service';
 import { WarehousesService } from 'app/services/warehouses.service';
@@ -23,8 +23,7 @@ export class UsersxwarehousesComponent {
   private usersxwarehousesService = inject(UsersxpermissionsService);
 
   ngOnInit() {
-    this.obtenerDatos();
-    this.obtenerOilfields();
+    this.cargarDatos();
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -49,20 +48,40 @@ export class UsersxwarehousesComponent {
   private tempIdCounter: number = 0;
   private permissionType: string = 'warehouse';
 
-  obtenerDatos() {
-    this.usersxwarehousesService
-      .getDataUsersxPermissions(this.permissionType)
-      .subscribe((data: any) => {
-        this.rowData = data.filter((row: any) => row.idUser === this.idUser);
-      });
+  constructor() {
+    effect(() => {
+      this.signalsService.getBranchSelectedBySidebar();
+      this.cargarDatos();
+    });
   }
 
-  obtenerOilfields() {
-    this.warehousesService.getWarehouses(1).subscribe((data: any[]) => {
-      this.warehouses = data.reduce((acc, dep) => {
-        acc[dep.id] = dep.name; // Cambia la estructura para que solo almacene el nombre
-        return acc;
-      }, {});
+  cargarDatos() {
+    forkJoin({
+      permisos: this.usersxwarehousesService.getDataUsersxPermissions(this.permissionType),
+      almacenes: this.warehousesService.getSimpleWarehousesByBranch(this.signalsService.getBranchSelectedBySidebar()())
+    }).subscribe({
+      next: ({ permisos, almacenes }) => {
+        // Guardar almacenes en el formato requerido
+        this.warehouses = almacenes.reduce((acc, dep) => {
+          acc[dep.id] = dep.name;
+          return acc;
+        }, {});
+
+        // Filtrar permisos por usuario y sucursal
+        const idBranchActual = this.signalsService.getBranchSelectedBySidebar()();
+        this.rowData = Object.values(permisos).filter((row: any) => 
+          row.idUser === this.idUser && 
+          almacenes.some(almacen => almacen.id === row.idPermission && almacen.idBranch === idBranchActual)
+        );
+      },
+      error: (error) => {
+        console.error('Error al cargar los datos:', error);
+        alerts.basicAlert(
+          'Error',
+          'Ocurrió un error al cargar los datos',
+          'error'
+        );
+      }
     });
   }
 
@@ -189,7 +208,7 @@ export class UsersxwarehousesComponent {
       );
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
-      this.obtenerDatos(); // Refrescar los datos
+      this.cargarDatos(); // Refrescar los datos
     } catch (error) {
       console.error(error);
       alerts.basicAlert(
@@ -232,7 +251,7 @@ export class UsersxwarehousesComponent {
             'Entrada eliminada satisfactoriamente.',
             'success'
           );
-          this.obtenerDatos();
+          this.cargarDatos();
 
           alerts.basicAlert(
             'Eliminar entrada',
@@ -246,7 +265,7 @@ export class UsersxwarehousesComponent {
   }
 
   revert() {
-    this.obtenerDatos();
+    this.cargarDatos();
     this.notSavedChanges = false;
   }
 
