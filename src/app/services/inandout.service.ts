@@ -17,7 +17,7 @@ export class InandoutService {
     return this.http.get(`${environment.urlWarehouse}/Inandout?idProject=${idProject}&idWarehouse=${idWarehouse}&type=${type}`, { headers: this.trackingService.getHeaders() });
   }
 
-  getDetailedInOut(id: number) {
+  getDetailedInOut(id: number): Observable<any> {
     return this.http.get(`${environment.urlWarehouse}/Inandout/${id}`, { headers: this.trackingService.getHeaders() });
   }
 

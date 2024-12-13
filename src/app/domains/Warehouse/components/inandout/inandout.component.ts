@@ -545,8 +545,8 @@ export class InAndOutComponent {
     this.masterNotSavedChanges = false;
   }
 
-  createOC(IdInAndOut: number, action: string) {
-    this.receiptsService.generateOC(IdInAndOut, action);
+  createInOutReceipt(IdInAndOut: number, action: string) {
+    this.receiptsService.generateInOut(IdInAndOut, action);
   }
 
 

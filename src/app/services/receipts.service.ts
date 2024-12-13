@@ -9,6 +9,7 @@ import { ProjectsService } from './projects.service';
 import { UsersService } from './users.service';
 import { Base64EncodeService } from './base64encode.service';
 import { ProvidersService } from './providers.service';
+import { InandoutService } from './inandout.service';
 
 (pdfMake as any).vfs = pdfFonts.pdfMake.vfs;
 
@@ -73,8 +74,10 @@ export class ReceiptsService {
   private usersService = inject(UsersService);
   private base64EncodeService = inject(Base64EncodeService);
   private providerService = inject(ProvidersService);
+  private inAndOutService = inject(InandoutService);
 
   private reqItems: any[] = [];
+  private inOutItems: any[] = [];
   private detailedReq: any;
   private idRoot = Number(localStorage.getItem('company'));
   private authorizer: any;
@@ -101,8 +104,36 @@ export class ReceiptsService {
     }
   }
 
+  async generateInOut(id: number, action: string): Promise<void> {
+    try {
+      await this.getInOrOutData(id);
+      /* const docDefinition = await this.generateInOutDocDefinition();
+      switch (action) {
+        case 'print':
+          pdfMake.createPdf(docDefinition).print();
+          break;
+        case 'open':
+          pdfMake.createPdf(docDefinition).open();
+          break;
+      } */
+    } catch (error) {
+      console.error('Error generating in/out:', error);
+    }
+  }
+
+  private async getInOrOutData(id: number): Promise<void> {
+    try {
+      const data = await lastValueFrom(this.inAndOutService.getDetailedInOut(id));
+      this.inOutItems = data;
+    } catch (error) {
+      console.error('Error fetching in/out items:', error);
+      throw error;
+    }
+  }
+
   private async getRequisitionData(id: number): Promise<void> {
     try {
+      
       const data = await lastValueFrom(this.requisitionsService.getReqItems(id));
       this.reqItems = data;
 
