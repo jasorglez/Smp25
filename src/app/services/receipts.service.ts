@@ -30,6 +30,16 @@ interface RootResponse extends BaseEntity {
 
 interface ProviderResponse extends BaseEntity { }
 
+interface InAndOutResponse {
+  id: number;
+  folio: string;
+  idOc: number;
+  deliverName: string;
+  deliveryDate: string;
+  comment: string;
+  numBill: string;
+}
+
 interface ProjectResponse {
   description: string;
   // otras propiedades...
@@ -77,18 +87,22 @@ export class ReceiptsService {
   private inAndOutService = inject(InandoutService);
 
   private reqItems: any[] = [];
-  private inOutItems: any[] = [];
+  private inOutItems: any;
   private detailedReq: any;
   private idRoot = Number(localStorage.getItem('company'));
+  private isInOut: boolean = false; // Si es una orden de compra o una in/out
   private authorizer: any;
   private solicitant: any;
   private projectDescription: string = null;
   private rootResponse: any;
   private providerResponse: any;
   private requisitionName: string;
+  private idInOut: number;
+  private idOc: number;
 
   async generateOC(id: number, action: string): Promise<void> {
     try {
+      this.isInOut = false;
       await this.getRequisitionData(id);
       const docDefinition = await this.generateDocDefinition();
       switch (action) {
@@ -106,8 +120,11 @@ export class ReceiptsService {
 
   async generateInOut(id: number, action: string): Promise<void> {
     try {
-      await this.getInOrOutData(id);
-      /* const docDefinition = await this.generateInOutDocDefinition();
+      this.isInOut = true;
+      this.idInOut = id;
+      await this.getInOrOutData(this.idInOut);
+      await this.getRequisitionData(this.idOc);
+      const docDefinition = await this.generateDocDefinition();
       switch (action) {
         case 'print':
           pdfMake.createPdf(docDefinition).print();
@@ -115,7 +132,7 @@ export class ReceiptsService {
         case 'open':
           pdfMake.createPdf(docDefinition).open();
           break;
-      } */
+      }
     } catch (error) {
       console.error('Error generating in/out:', error);
     }
@@ -123,8 +140,10 @@ export class ReceiptsService {
 
   private async getInOrOutData(id: number): Promise<void> {
     try {
-      const data = await lastValueFrom(this.inAndOutService.getDetailedInOut(id));
+      const data = await lastValueFrom(this.inAndOutService.getDetailedInOut(id)) as InAndOutResponse;
       this.inOutItems = data;
+      this.idOc = data.idOc;
+      console.log(this.idOc)
     } catch (error) {
       console.error('Error fetching in/out items:', error);
       throw error;
@@ -133,10 +152,18 @@ export class ReceiptsService {
 
   private async getRequisitionData(id: number): Promise<void> {
     try {
-      
-      const data = await lastValueFrom(this.requisitionsService.getReqItems(id));
-      this.reqItems = data;
 
+      var data;
+      if (this.isInOut == true) {
+        data = await lastValueFrom(this.inAndOutService.getInAndOutItems(this.idInOut));
+        console.log(data);
+      }
+      else {
+        data = await lastValueFrom(this.requisitionsService.getReqItems(id));
+      }
+
+      this.reqItems = data;
+      console.log(this.reqItems);
       const detailedReq = await lastValueFrom(this.requisitionsService.getDetailedReq(id)) as ReqResponse;
       this.detailedReq = detailedReq; // Cambia 'detailedReq' por el nombre correcto de la propiedad
 
@@ -153,27 +180,30 @@ export class ReceiptsService {
         const providerResponse = await lastValueFrom(this.providerService.getProviderById(this.detailedReq.idProvider)) as RootResponse;
         this.providerResponse = providerResponse;
         const requisitionName = await lastValueFrom(this.requisitionsService.getDetailedReq(this.detailedReq.idReq)) as ReqResponse;
-        this.requisitionName =  requisitionName ? requisitionName.folio : 'N/A';
+        this.requisitionName = requisitionName ? requisitionName.folio : 'N/A';
       }
       this.rootResponse = rootResponse;
 
-      // Consigo el dato de quien autoriza
-      if (detailedReq.type == "OC") {
-        const authorizer = await lastValueFrom(this.usersService.getUserById(this.detailedReq.idAuthorize)) as UserResponse;
-        this.authorizer = authorizer.data;
-        console.log(this.authorizer);
-      }
-      else {
-        const authorizer = await lastValueFrom(this.usersService.findEmail(localStorage.getItem('mail'))) as AuthorizerResponse;
-        this.authorizer = authorizer;
+      if (this.isInOut == false) {
+        // Consigo el dato de quien autoriza
+        if (detailedReq.type == "OC") {
+          const authorizer = await lastValueFrom(this.usersService.getUserById(this.detailedReq.idAuthorize)) as UserResponse;
+          this.authorizer = authorizer.data;
+          console.log(this.authorizer);
+        }
+        else {
+          const authorizer = await lastValueFrom(this.usersService.findEmail(localStorage.getItem('mail'))) as AuthorizerResponse;
+          this.authorizer = authorizer;
+        }
+
+        // Ahora consigo el nombre de quien solicita, pero solo si es OC
+        if (detailedReq.type == "OC") {
+          const user = await lastValueFrom(this.usersService.getUserById(this.detailedReq.idSolicit)) as UserResponse;
+          this.solicitant = user.data;
+          console.log(this.solicitant);
+        }
       }
 
-      // Ahora consigo el nombre de quien solicita, pero solo si es OC
-      if (detailedReq.type == "OC") {
-        const user = await lastValueFrom(this.usersService.getUserById(this.detailedReq.idSolicit)) as UserResponse;
-        this.solicitant = user.data;
-        console.log(this.solicitant);
-      }
 
       console.log(this.detailedReq);
 
@@ -202,10 +232,13 @@ export class ReceiptsService {
     };
 
     const logoBase64 = await this.base64EncodeService.convertImageToBase64(this.rootResponse.picture);
-    const signature = await this.base64EncodeService.convertImageToBase64(this.authorizer.signature);
+    var signature: any;
     var signatureSolicitant: any;
-    if (this.detailedReq.type == "OC") {
-      signatureSolicitant = await this.base64EncodeService.convertImageToBase64(this.solicitant.signature);
+    if (this.isInOut == false) {
+      signature = await this.base64EncodeService.convertImageToBase64(this.authorizer.signature);
+      if (this.detailedReq.type == "OC") {
+        signatureSolicitant = await this.base64EncodeService.convertImageToBase64(this.solicitant.signature);
+      }
     }
 
     return {
@@ -300,64 +333,69 @@ export class ReceiptsService {
           ]
         },
 
-        this.detailedReq.type == "OC" ? 
-        {
-          table: {
-            widths: ['*', '*'],
-            body: [
-              [
-                {
-                  stack: [
-                    { text: this.detailedReq.type == "OC" ? 'FACTURAR A' : '', bold: true },
-                    { text: `${this.rootResponse.name}` },
-                    { text: `${this.rootResponse.address}` },
-                    { text: `${this.rootResponse.rfc}` },
-                    { text: `${this.rootResponse.city}, ${this.rootResponse.state}, ${this.rootResponse.country}` },
-                    { text: `${this.rootResponse.phone}` }
-                  ],
-                  margin: [0, 0, 10, 0]
-                },
-                {
-                  stack: [
-                    { text: this.detailedReq.type == "OC" ? 'PROVEEDOR' : '', bold: true },
-                    { text: this.detailedReq.type == "OC" ? `${this.providerResponse.name}` : '' },
-                    { text: this.detailedReq.type == "OC" ? `${this.providerResponse.address}` : '' },
-                    { text: this.detailedReq.type == "OC" ? `${this.providerResponse.rfc}` : '' },
-                    { text: this.detailedReq.type == "OC" ? `${this.providerResponse.city}, ${this.providerResponse.state}, ${this.providerResponse.country}` : '' },
-                    { text: this.detailedReq.type == "OC" ? `${this.providerResponse.phone}` : '' }
-                  ],
-                  margin: [10, 0, 0, 0]
-                }
+        this.detailedReq.type == "OC" ?
+          {
+            table: {
+              widths: ['*', '*'],
+              body: [
+                [
+                  {
+                    stack: [
+                      { text: this.detailedReq.type == "OC" ? 'FACTURAR A' : '', bold: true },
+                      { text: `${this.rootResponse.name}` },
+                      { text: `${this.rootResponse.address}` },
+                      { text: `${this.rootResponse.rfc}` },
+                      { text: `${this.rootResponse.city}, ${this.rootResponse.state}, ${this.rootResponse.country}` },
+                      { text: `${this.rootResponse.phone}` }
+                    ],
+                    margin: [0, 0, 10, 0]
+                  },
+                  {
+                    stack: [
+                      { text: this.detailedReq.type == "OC" ? 'PROVEEDOR' : '', bold: true },
+                      { text: this.detailedReq.type == "OC" ? `${this.providerResponse.name}` : '' },
+                      { text: this.detailedReq.type == "OC" ? `${this.providerResponse.address}` : '' },
+                      { text: this.detailedReq.type == "OC" ? `${this.providerResponse.rfc}` : '' },
+                      { text: this.detailedReq.type == "OC" ? `${this.providerResponse.city}, ${this.providerResponse.state}, ${this.providerResponse.country}` : '' },
+                      { text: this.detailedReq.type == "OC" ? `${this.providerResponse.phone}` : '' }
+                    ],
+                    margin: [10, 0, 0, 0]
+                  }
+                ]
               ]
-            ]
-          },
-          layout: 'noBorders',
-          margin: [0, 0, 0, 10]
-        } : 
-        {
-          table: {
-            widths: ['*'],
-            body: [
-              [
-                {
-                  stack: [
-                    { text: `${this.rootResponse.name}` },
-                    { text: `${this.rootResponse.address}` },
-                    { text: `${this.rootResponse.rfc}` },
-                    { text: `${this.rootResponse.city}, ${this.rootResponse.state}, ${this.rootResponse.country}` },
-                    { text: `${this.rootResponse.phone}` }
-                  ]
-                }
+            },
+            layout: 'noBorders',
+            margin: [0, 0, 0, 10]
+          } :
+          {
+            table: {
+              widths: ['*'],
+              body: [
+                [
+                  {
+                    stack: [
+                      { text: `${this.rootResponse.name}` },
+                      { text: `${this.rootResponse.address}` },
+                      { text: `${this.rootResponse.rfc}` },
+                      { text: `${this.rootResponse.city}, ${this.rootResponse.state}, ${this.rootResponse.country}` },
+                      { text: `${this.rootResponse.phone}` }
+                    ]
+                  }
+                ]
               ]
-            ]
+            },
+            layout: 'noBorders',
+            margin: [0, 0, 0, 10]
           },
-          layout: 'noBorders',
-          margin: [0, 0, 0, 10]
-        },
         {
           table: {
             headerRows: 1,
-            widths: this.detailedReq.type == "OC" ? ['auto', 'auto', '*', 'auto', 'auto', 'auto', 'auto'] : ['auto', 'auto', '*', 'auto', 'auto', 'auto'],
+            widths: this.detailedReq.type == "OC" ? 
+              (this.isInOut ? 
+                ['auto', 'auto', 'auto', 'auto', '*'] : 
+                ['auto', 'auto', '*', 'auto', 'auto', 'auto', 'auto']
+              ) : 
+              ['auto', 'auto', '*', 'auto', 'auto', 'auto'],
             body: this.detailedReq.type == "OC" ? [
               [
                 { text: 'Pda', style: 'tableHeader' },
@@ -365,8 +403,10 @@ export class ReceiptsService {
                 { text: 'Cantidad', style: 'tableHeader' },
                 { text: 'Unidad', style: 'tableHeader' },
                 { text: 'Descripción del producto', style: 'tableHeader' },
-                { text: 'Precio', style: 'tableHeader' },
-                { text: 'Importe', style: 'tableHeader' }
+                ...(this.isInOut ? [] : [
+                  { text: 'Precio', style: 'tableHeader' },
+                  { text: 'Importe', style: 'tableHeader' }
+                ])
               ],
               ...this.reqItems.map((item, index) => [
                 { text: (index + 1).toString(), style: 'tableCell' },
@@ -374,8 +414,10 @@ export class ReceiptsService {
                 { text: item.quantity.toString(), style: 'tableCell', alignment: 'right' },
                 { text: item.measure, style: 'tableCell', alignment: 'right' },
                 { text: item.description, style: 'tableCell' },
-                { text: '$' + item.price.toFixed(2).toString(), style: 'tableCell', alignment: 'right' },
-                { text: '$' + item.total.toFixed(2).toString(), style: 'tableCell', alignment: 'right' }
+                ...(this.isInOut ? [] : [
+                  { text: '$' + item.price.toFixed(2).toString(), style: 'tableCell', alignment: 'right' },
+                  { text: '$' + item.total.toFixed(2).toString(), style: 'tableCell', alignment: 'right' }
+                ])
               ])
             ] : [
               [
@@ -460,7 +502,9 @@ export class ReceiptsService {
           },
         { text: 'Observaciones: ', alignment: 'left', margin: [0, 10, 0, 0] },
         { text: this.detailedReq.comments, alignment: 'left', margin: [0, 0, 0, 10] },
-        {
+        this.isInOut ? {
+          text: ''
+        } : {
           table: {
             widths: ['*', '*'],
             body: [
@@ -497,11 +541,13 @@ export class ReceiptsService {
               ]
             ]
           },
-          layout: 'noBorders', // Sin bordes para una apariencia más limpia
+          layout: 'noBorders',
           margin: [0, 0, 0, 10]
         },
       ],
-      images: this.detailedReq.type == "OC" ? {
+      images: this.isInOut ? {
+        logo: logoBase64
+      } : this.detailedReq.type == "OC" ? {
         signatureSolicitant: signatureSolicitant,
         logo: logoBase64,
         signature: signature
