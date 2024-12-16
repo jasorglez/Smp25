@@ -101,7 +101,7 @@ export class ReceiptsService {
   private idOc: number;
 
   async generateOC(id: number, action: string): Promise<void> {
-    try {
+    try { 
       this.isInOut = false;
       await this.getRequisitionData(id);
       const docDefinition = await this.generateDocDefinition();
@@ -447,7 +447,7 @@ export class ReceiptsService {
             paddingBottom: (i, node) => 2
           }
         },
-        this.detailedReq.type == "OC" ?
+        this.detailedReq.type == "OC" && !this.isInOut ?
           {
             columns: [
               {
@@ -501,7 +501,7 @@ export class ReceiptsService {
             text: ''
           },
         { text: 'Observaciones: ', alignment: 'left', margin: [0, 10, 0, 0] },
-        { text: this.detailedReq.comments, alignment: 'left', margin: [0, 0, 0, 10] },
+        { text: this.isInOut ? this.inOutItems.comment : this.detailedReq.comments, alignment: 'left', margin: [0, 0, 0, 10] },
         this.isInOut ? {
           text: ''
         } : {
