@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, Input } from '@angular/core';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, concat, EMPTY, lastValueFrom, toArray, forkJoin } from 'rxjs';
@@ -79,6 +79,8 @@ export class InAndOutComponent {
 
   // Agregar esta variable para almacenar los almacenes con permisos
   warehousesWithPermissions: any[] = [];
+
+  @Input() type: 'IN' | 'OUT' = 'IN'; // Valor por defecto 'IN'
 
   constructor() {
     effect(() => {
@@ -233,7 +235,7 @@ export class InAndOutComponent {
       },
       {
         field: 'quantity',
-        headerName: 'Cantidad',
+        headerName: this.type === 'IN' ? 'Cantidad entrante' : 'Cantidad a entregar',
         editable: true,
         filter: true,
         flex: 1,
@@ -263,7 +265,12 @@ export class InAndOutComponent {
         }
       },
       {
-        field: 'pending', headerName: 'Pendiente', editable: false, filter: true, flex: 1, cellDataType: 'number',
+        field: 'pending',
+        headerName: this.type == 'IN' ? 'Pendiente': 'Restante',
+        editable: false,
+        filter: true,
+        flex: 1,
+        cellDataType: 'number',
         cellEditorParams: {
           min: 0
         },
@@ -273,7 +280,7 @@ export class InAndOutComponent {
       },
       {
         field: 'total',
-        headerName: 'Total',
+        headerName: this.type == 'IN' ? 'Total solicitado' : 'Total inicial',
         editable: true,
         filter: true,
         flex: 1,
@@ -303,7 +310,7 @@ export class InAndOutComponent {
   // ==================== MASTER METHODS ====================
 
   obtenerDatos() {
-    this.inAndOutsService.getInAndOuts(this.idProject, this.idWarehouse, "IN").subscribe((data: any) => {
+    this.inAndOutsService.getInAndOuts(this.idProject, this.idWarehouse, this.type).subscribe((data: any) => {
       this.masterRowData = data;
     },
       (error) => console.error('Error fetching data:', error)
@@ -423,7 +430,7 @@ export class InAndOutComponent {
       numBill: '',
       deliverName: '',
       comment: '',
-      type: 'IN',
+      type: this.type,
       active: true,
       __isNew: true,
     };
@@ -733,6 +740,10 @@ export class InAndOutComponent {
       delete cleanedData.id;
     }
     return cleanedData;
+  }
+
+  get componentTitle(): string {
+    return this.type === 'IN' ? 'Entradas' : 'Salidas';
   }
 
 }

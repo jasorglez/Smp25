@@ -1,64 +1,64 @@
 <div class="col-md-12">
-  <div class="card">
-    <div class="card-header p-2">
-      <ul class="nav nav-pills">
+  <div class="card my-4">
+    <div class="card-header p-3">
+      <ul class="nav nav-pills justify-content-left">
         <li class="nav-item">
-          <a class="nav-link" [class.active]="selectedTab === 'conf'" data-toggle="tab" (click)="onTabSelected('conf')">
-            <i class="fas fa-cog"></i> <span style="font-size: 16px;">{{'setting' | translate}}</span>
+          <a class="nav-link green-tab d-flex align-items-center" [class.active]="selectedTab === 'conf'" data-toggle="tab" (click)="onTabSelected('conf')">
+            <mat-icon>settings</mat-icon> {{'setting' | translate}}   
           </a>
         </li>
 
         <li class="nav-item">
-          <a class="nav-link" [class.active]="selectedTab === 'war'" data-toggle="tab" (click)="onTabSelected('war')">
-            <i class="fas fa-warehouse"></i> <span style="font-size: 16px;">{{'warehouses' | translate}}</span>
+          <a class="nav-link green-tab d-flex align-items-center" [class.active]="selectedTab === 'war'" data-toggle="tab" (click)="onTabSelected('war')">
+            <mat-icon>warehouse</mat-icon> {{'warehouses' | translate}}
           </a>
         </li>
 
         <li class="nav-item">
-          <a class="nav-link" [class.active]="selectedTab === 'mat'" data-toggle="tab" (click)="onTabSelected('mat')">
-            <i class="fas fa-box"></i> <span style="font-size: 16px;">{{'materials' | translate}}</span>
+          <a class="nav-link green-tab d-flex align-items-center" [class.active]="selectedTab === 'mat'" data-toggle="tab" (click)="onTabSelected('mat')">
+            <mat-icon>inventory_2</mat-icon> {{'materials' | translate}}
           </a>
         </li>
 
         <li class="nav-item">
-          <a class="nav-link" [class.active]="selectedTab === 'req'" data-toggle="tab" (click)="onTabSelected('req')">
-            <i class="fas fa-file-alt"></i> <span style="font-size: 16px;">{{'requisitions' | translate}}</span>
+          <a class="nav-link green-tab d-flex align-items-center" [class.active]="selectedTab === 'req'" data-toggle="tab" (click)="onTabSelected('req')">
+            <mat-icon>list</mat-icon>{{'requisitions' | translate}}
           </a>
         </li>
 
         <li class="nav-item">
-          <a class="nav-link" [class.active]="selectedTab === 'ord'" data-toggle="tab" (click)="onTabSelected('ord')">
-            <i class="fas fa-shopping-cart"></i> <span style="font-size: 16px;">{{'orders' | translate}} {{'purchase' | translate}}</span>
+          <a class="nav-link green-tab d-flex align-items-center" [class.active]="selectedTab === 'ord'" data-toggle="tab" (click)="onTabSelected('ord')">
+            <mat-icon>shopping_cart</mat-icon> {{'orders' | translate}} {{'purchase' | translate}}
           </a>
         </li>
 
         <li class="nav-item">
-          <a class="nav-link" [class.active]="selectedTab === 'ent'" data-toggle="tab" (click)="onTabSelected('ent')">
-            <i class="fas fa-door-open"></i> <span style="font-size: 16px;">{{'entrances' | translate}}</span>
+          <a class="nav-link green-tab d-flex align-items-center" [class.active]="selectedTab === 'ent'" data-toggle="tab" (click)="onTabSelected('ent')">
+            <mat-icon>south_west</mat-icon> {{'entrances' | translate}}
           </a>
         </li>
 
         <li class="nav-item">
-          <a class="nav-link" [class.active]="selectedTab === 'out'" data-toggle="tab" (click)="onTabSelected('out')">
-            <i class="fas fa-door-closed"></i> <span style="font-size: 16px;">{{'outings' | translate}}</span>
+          <a class="nav-link green-tab d-flex align-items-center" [class.active]="selectedTab === 'out'" data-toggle="tab" (click)="onTabSelected('out')">
+            <mat-icon>north_east</mat-icon>{{'outings' | translate}}
           </a>
         </li>
 
         <li class="nav-item">
-          <a class="nav-link" [class.active]="selectedTab === 'kar'" data-toggle="tab" (click)="onTabSelected('kar')">
-            <i class="fas fa-book"></i> <span style="font-size: 16px;">{{'kardex' | translate}}</span>
+          <a class="nav-link green-tab d-flex align-items-center" [class.active]="selectedTab === 'kar'" data-toggle="tab" (click)="onTabSelected('kar')">
+            <mat-icon>inventory</mat-icon>{{'kardex' | translate}}
           </a>
         </li>
 
         <li class="nav-item">
-          <a class="nav-link" [class.active]="selectedTab === 'gua'" data-toggle="tab" (click)="onTabSelected('gua')">
-            <i class="fas fa-user-shield"></i> <span style="font-size: 16px;">{{'guard' | translate}} {{'employees' | translate}}</span>
+          <a class="nav-link green-tab d-flex align-items-center" [class.active]="selectedTab === 'gua'" data-toggle="tab" (click)="onTabSelected('gua')">
+            <mat-icon>admin_panel_settings</mat-icon> {{'guard' | translate}} {{'employees' | translate}}
           </a>
         </li>
 
         <li class="nav-item">
-          <a class="nav-link" [class.active]="selectedTab === 'prov'" data-toggle="tab" (click)="onTabSelected('prov')">
-            <i class="fas fa-truck"></i> <span style="font-size: 16px;">{{'providers' | translate}}</span>
+          <a class="nav-link  green-tab d-flex align-items-center" [class.active]="selectedTab === 'prov'" data-toggle="tab" (click)="onTabSelected('prov')">
+            <mat-icon>local_shipping</mat-icon>{{'providers' | translate}}
           </a>
         </li>
       </ul>
@@ -81,10 +81,10 @@
       @if (selectedTab === 'ord') { <app-purchaseorder></app-purchaseorder> }
     </div>
     <div class="tab-pane" [class.active]="selectedTab === 'ent'">
-      @if (selectedTab === 'ent') { <app-inandout></app-inandout> }
+      @if (selectedTab === 'ent') { <app-inandout type="IN"></app-inandout> }
     </div>
     <div class="tab-pane" [class.active]="selectedTab === 'out'">
-      @if (selectedTab === 'out') { }
+      @if (selectedTab === 'out') { <app-inandout type="OUT"></app-inandout> }
     </div>
     <div class="tab-pane" [class.active]="selectedTab === 'prov'">
       @if (selectedTab === 'prov') { }
