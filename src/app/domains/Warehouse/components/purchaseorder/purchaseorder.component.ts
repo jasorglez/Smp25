@@ -94,7 +94,7 @@ export class PurchaseOrderComponent {
 
       if (this.idProject == null) {
         this.masterRowData = [];
-        alerts.basicAlert('Requisiciones', 'Debe elegir un proyecto primero.', 'error');
+        alerts.basicAlert('Orden de compra', 'Debe elegir un proyecto primero.', 'error');
       } else {
         this.obtenerDatos();
         this.obtenerRequisiciones();
