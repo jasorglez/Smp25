@@ -132,7 +132,7 @@ export class PurchaseOrderComponent {
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
     return [
-      { field: 'folio', headerName: 'orden de compra', editable: true, filter: true, width: 150 },
+      { field: 'folio', headerName: 'Orden de compra', editable: true, filter: true, width: 150 },
       {
         field: 'dateCreate',
         headerName: 'Fecha Solicitud',
