@@ -322,6 +322,11 @@ export class SignalsService {
     return this.nameInAndOut;
   }
 
+  deleteInAndOutData() {
+    this.idInAndOut.set(null);
+    this.nameInAndOut.set(null);
+  }
+
   /* Borramos todas las signals, tratar de poner esto a lo último.
   Si van a crear nuevas signals, recuerden introducir una señal
   null en deleteSignals() para que todas las signals se borren

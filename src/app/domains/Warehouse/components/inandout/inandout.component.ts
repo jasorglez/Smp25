@@ -1,7 +1,20 @@
 import { Component, effect, HostListener, inject, Input } from '@angular/core';
-import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
+import {
+  CellDoubleClickedEvent,
+  ColDef,
+  GridApi,
+  GridReadyEvent,
+  ICellRendererParams,
+} from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
-import { catchError, concat, EMPTY, lastValueFrom, toArray, forkJoin } from 'rxjs';
+import {
+  catchError,
+  concat,
+  EMPTY,
+  lastValueFrom,
+  toArray,
+  forkJoin,
+} from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -25,12 +38,17 @@ interface Catalog {
 @Component({
   selector: 'app-inandout',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, SearchableSelectComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    AgGridModule,
+    MultiLineEditorComponent,
+    SearchableSelectComponent,
+  ],
   templateUrl: './inandout.component.html',
-  styleUrl: './inandout.component.scss'
+  styleUrl: './inandout.component.scss',
 })
 export class InAndOutComponent {
-
   // Inject of new way for Angular 18
   private inAndOutsService = inject(InandoutService);
   private signalsService = inject(SignalsService);
@@ -60,7 +78,7 @@ export class InAndOutComponent {
 
   // Catálogos Master
   requisiciones: any[] = [];
-  tipoEntrada: any
+  tipoEntrada: any;
 
   // Variables Details
   detailsRowData: any[] = [];
@@ -99,7 +117,11 @@ export class InAndOutComponent {
 
       if (this.idProject == null) {
         this.masterRowData = [];
-        alerts.basicAlert(this.type == 'IN' ? 'Entradas': 'Salidas', 'Debe elegir un proyecto primero.', 'error');
+        alerts.basicAlert(
+          this.type == 'IN' ? 'Entradas' : 'Salidas',
+          'Debe elegir un proyecto primero.',
+          'error'
+        );
       } else {
         this.obtenerDatos();
         this.obtenerRequisiciones();
@@ -108,11 +130,11 @@ export class InAndOutComponent {
       if (this.IdInAndOut != null) {
         this.obtenerDetalles();
       }
-    })
+    });
   }
 
   ngOnInit() {
-    this.signalsService.deleteRequisitionData();
+    this.signalsService.deleteInAndOutData();
     this.obtenerDatos();
     this.obtenerRequisiciones();
     this.obtenerProductos();
@@ -132,12 +154,18 @@ export class InAndOutComponent {
 
   // Column Definitions: Defines the columns to be displayed.
   components = {
-    'searchableSelectComponent': SearchableSelectComponent
+    searchableSelectComponent: SearchableSelectComponent,
   };
 
   get colMaster(): ColDef[] {
     return [
-      { field: 'folio', headerName: 'Número Documento', editable: true, filter: true, flex: 1 },
+      {
+        field: 'folio',
+        headerName: 'Número Documento',
+        editable: true,
+        filter: true,
+        flex: 1,
+      },
       {
         field: 'date',
         headerName: 'Fecha Entrada',
@@ -149,7 +177,7 @@ export class InAndOutComponent {
             return params.value.split('T')[0];
           }
           return '';
-        }
+        },
       },
       {
         field: 'deliveryDate',
@@ -162,32 +190,66 @@ export class InAndOutComponent {
             return params.value.split('T')[0];
           }
           return '';
-        }
+        },
       },
       {
-        field: 'idOc', headerName: 'Orden de compra', editable: true, filter: true, flex: 1, cellEditor: 'agSelectCellEditor',
+        field: 'idOc',
+        headerName: this.type == 'IN' ? 'Orden de compra' : 'Requisición',
+        editable: true,
+        filter: true,
+        flex: 1,
+        cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: this.requisiciones ? this.requisiciones.map(item => item.id) : [],
+          values: this.requisiciones
+            ? this.requisiciones.map((item) => item.id)
+            : [],
         },
         valueFormatter: (params) => {
-          const foundItem = this.requisiciones ? this.requisiciones.find(item => item.id === params.value) : null;
+          const foundItem = this.requisiciones
+            ? this.requisiciones.find((item) => item.id === params.value)
+            : null;
           return foundItem ? `${foundItem.folio}` : params.value;
-        }
+        },
       },
       {
-        field: 'idType', headerName: 'Tipo de entrada', editable: true, filter: true, flex: 1, cellEditor: 'agSelectCellEditor',
+        field: 'idType',
+        headerName: 'Tipo de entrada',
+        editable: true,
+        filter: true,
+        flex: 1,
+        cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: this.tipoEntrada ? this.tipoEntrada.map(item => item.id) : [],
+          values: this.tipoEntrada
+            ? this.tipoEntrada.map((item) => item.id)
+            : [],
         },
         valueFormatter: (params) => {
-          const foundItem = this.tipoEntrada ? this.tipoEntrada.find(item => item.id === params.value) : null;
+          const foundItem = this.tipoEntrada
+            ? this.tipoEntrada.find((item) => item.id === params.value)
+            : null;
           return foundItem ? `${foundItem.description}` : params.value;
-        }
+        },
       },
-      { field: 'numBill', headerName: 'Número de factura', editable: true, filter: true, flex: 1 },
-      { field: 'deliverName', headerName: 'Entrega', editable: true, filter: true, flex: 1 },
       {
-        field: 'comment', headerName: 'Comentario', editable: false, flex: 2, cellEditor: 'agPopupTextCellEditor',
+        field: 'numBill',
+        headerName: 'Número de factura',
+        editable: true,
+        filter: true,
+        flex: 1,
+      },
+      {
+        field: 'deliverName',
+        headerName: 'Entrega',
+        editable: true,
+        filter: true,
+        flex: 1,
+      },
+      {
+        field: 'comment',
+        headerName: 'Comentario',
+        editable: false,
+        flex: 2,
+        cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
           cols: 50,
@@ -211,10 +273,10 @@ export class InAndOutComponent {
             return params.value;
           }
           return params.value;
-        }
-      }
-    ]
-  };
+        },
+      },
+    ];
+  }
 
   // Column Definitions: Defines the columns to be displayed.
   get colDetails(): ColDef[] {
@@ -226,25 +288,30 @@ export class InAndOutComponent {
         flex: 3,
         cellEditor: 'searchableSelectComponent',
         cellEditorParams: {
-          options: this.productos
+          options: this.productos,
         },
         valueFormatter: (params) => {
-          const foundItem = this.productos ? this.productos.find(item => item.id === params.value) : null;
+          const foundItem = this.productos
+            ? this.productos.find((item) => item.id === params.value)
+            : null;
           return foundItem ? `${foundItem.description}` : params.value;
-        }
+        },
       },
       {
         field: 'quantity',
-        headerName: this.type === 'IN' ? 'Cantidad entrante' : 'Cantidad a entregar',
+        headerName:
+          this.type === 'IN' ? 'Cantidad entrante' : 'Cantidad a entregar',
         editable: true,
         filter: true,
         flex: 1,
         cellDataType: 'number',
         cellEditorParams: {
-          min: 0
+          min: 0,
         },
         valueFormatter: (params) => {
-          return params.value !== null && params.value !== undefined ? `${params.value.toFixed(2)}` : '0.00';
+          return params.value !== null && params.value !== undefined
+            ? `${params.value.toFixed(2)}`
+            : '0.00';
         },
         valueSetter: (params) => {
           const newValue = Number(params.newValue);
@@ -262,21 +329,23 @@ export class InAndOutComponent {
           params.data.quantity = newValue;
           this.updatePending(params.data);
           return true;
-        }
+        },
       },
       {
         field: 'pending',
-        headerName: this.type == 'IN' ? 'Pendiente': 'Restante',
+        headerName: this.type == 'IN' ? 'Pendiente' : 'Restante',
         editable: false,
         filter: true,
         flex: 1,
         cellDataType: 'number',
         cellEditorParams: {
-          min: 0
+          min: 0,
         },
         valueFormatter: (params) => {
-          return params.value !== null && params.value !== undefined ? `${params.value.toFixed(2)}` : '0.00';
-        }
+          return params.value !== null && params.value !== undefined
+            ? `${params.value.toFixed(2)}`
+            : '0.00';
+        },
       },
       {
         field: 'total',
@@ -286,10 +355,12 @@ export class InAndOutComponent {
         flex: 1,
         cellDataType: 'number',
         cellEditorParams: {
-          min: 0
+          min: 0,
         },
         valueFormatter: (params) => {
-          return params.value !== null && params.value !== undefined ? `${params.value.toFixed(2)}` : '0.00';
+          return params.value !== null && params.value !== undefined
+            ? `${params.value.toFixed(2)}`
+            : '0.00';
         },
         valueSetter: (params) => {
           const newTotal = Number(params.newValue);
@@ -302,35 +373,42 @@ export class InAndOutComponent {
           params.data.total = newTotal;
           this.updatePending(params.data);
           return true;
-        }
-      }
-    ]
-  };
+        },
+      },
+    ];
+  }
 
   // ==================== MASTER METHODS ====================
 
   obtenerDatos() {
-    this.inAndOutsService.getInAndOuts(this.idProject, this.idWarehouse, this.type).subscribe((data: any) => {
-      this.masterRowData = data;
-    },
-      (error) => console.error('Error fetching data:', error)
-    );
+    this.inAndOutsService
+      .getInAndOuts(this.idProject, this.idWarehouse, this.type)
+      .subscribe(
+        (data: any) => {
+          this.masterRowData = data;
+        },
+        (error) => console.error('Error fetching data:', error)
+      );
   }
 
   obtenerRequisiciones() {
-    this.ocService.getOcAndReqs(this.idProject, "OC").subscribe((data: any) => {
-      this.requisiciones = data;
-      console.log(this.requisiciones);
-    },
-      (error) => console.error('Error fetching requisitions:', error)
-    );
+    this.ocService
+      .getOcAndReqs(this.idProject, this.type == 'IN' ? 'OC' : 'REQUIS')
+      .subscribe(
+        (data: any) => {
+          this.requisiciones = data;
+          console.log(this.requisiciones);
+        },
+        (error) => console.error('Error fetching requisitions:', error)
+      );
   }
 
   obtenerTiposEntrada() {
-    this.catalogsService.getDataTypes().subscribe((data: any) => {
-      this.tipoEntrada = data;
-      console.log(this.tipoEntrada);
-    },
+    this.catalogsService.getDataTypes().subscribe(
+      (data: any) => {
+        this.tipoEntrada = data;
+        console.log(this.tipoEntrada);
+      },
       (error) => console.error('Error fetching data:', error)
     );
   }
@@ -344,17 +422,23 @@ export class InAndOutComponent {
     try {
       const [permissions, warehouses] = await lastValueFrom(
         forkJoin([
-          this.usersxpermissionsService.getUserxPermissionByEmail("warehouse", localStorage.getItem('mail')),
-          this.warehousesService.getSimpleWarehouses(Number(localStorage.getItem('company')))
+          this.usersxpermissionsService.getUserxPermissionByEmail(
+            'warehouse',
+            localStorage.getItem('mail')
+          ),
+          this.warehousesService.getSimpleWarehouses(
+            Number(localStorage.getItem('company'))
+          ),
         ])
       );
 
-      this.warehousesWithPermissions = warehouses.filter(warehouse =>
-        permissions.some(permission => permission.idPermission === warehouse.id)
+      this.warehousesWithPermissions = warehouses.filter((warehouse) =>
+        permissions.some(
+          (permission) => permission.idPermission === warehouse.id
+        )
       );
       return this.warehousesWithPermissions;
-    }
-    catch (error) {
+    } catch (error) {
       console.error(error);
       return [];
     }
@@ -393,7 +477,7 @@ export class InAndOutComponent {
     this.masterNotSavedChanges = true;
 
     // Actualizar el array de datos
-    this.masterRowData = this.masterRowData.map(row =>
+    this.masterRowData = this.masterRowData.map((row) =>
       row.id === updatedData.id ? updatedData : row
     );
 
@@ -402,7 +486,10 @@ export class InAndOutComponent {
     if (rowNode) {
       rowNode.setData(updatedData);
       // Mantener la selección si es necesario
-      if (this.masterSelectedRowData && this.masterSelectedRowData.id === updatedData.id) {
+      if (
+        this.masterSelectedRowData &&
+        this.masterSelectedRowData.id === updatedData.id
+      ) {
         rowNode.setSelected(true);
       }
     }
@@ -441,7 +528,7 @@ export class InAndOutComponent {
     this.masterNotSavedChanges = true;
 
     // Forzar la actualización de la cuadrícula y seleccionar la nueva fila
-    this.masterGridApi.setGridOption("rowData", this.masterRowData);
+    this.masterGridApi.setGridOption('rowData', this.masterRowData);
 
     // Asegurarnos de que la fila nueva esté seleccionada
     requestAnimationFrame(() => {
@@ -516,35 +603,35 @@ export class InAndOutComponent {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
     selectedData.active = 0;
-    this.inAndOutsService.deleteInAndOut(id).pipe(
-      catchError((error) => {
+    this.inAndOutsService
+      .deleteInAndOut(id)
+      .pipe(
+        catchError((error) => {
+          alerts.basicAlert(
+            'Eliminar entrada',
+            'Error al eliminar la entrada.',
+            'error'
+          );
+          console.error(error);
+          return EMPTY;
+        })
+      )
+      .subscribe(() => {
         alerts.basicAlert(
           'Eliminar entrada',
-          'Error al eliminar la entrada.',
-          'error'
+          'Entrada eliminada satisfactoriamente.',
+          'success'
         );
-        console.error(error);
-        return EMPTY;
-      })
-    )
-      .subscribe(
-        () => {
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.obtenerDatos();
+        this.obtenerDatos();
 
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.masterNotSavedChanges = false;
-          this.masterSelectedRowData = null;
-        }
-      );
+        alerts.basicAlert(
+          'Eliminar entrada',
+          'Entrada eliminada satisfactoriamente.',
+          'success'
+        );
+        this.masterNotSavedChanges = false;
+        this.masterSelectedRowData = null;
+      });
   }
 
   revertMasterData() {
@@ -556,14 +643,14 @@ export class InAndOutComponent {
     this.receiptsService.generateInOut(IdInAndOut, action);
   }
 
-
-
   // ==================== DETAILS METHODS ====================
 
   obtenerDetalles() {
-    this.inAndOutsService.getInAndOutItems(this.IdInAndOut).subscribe((data: any) => {
-      this.detailsRowData = data;
-    });
+    this.inAndOutsService
+      .getInAndOutItems(this.IdInAndOut)
+      .subscribe((data: any) => {
+        this.detailsRowData = data;
+      });
   }
 
   obtenerProductos() {
@@ -602,7 +689,9 @@ export class InAndOutComponent {
   }
 
   async saveDetailsChanges() {
-    const isValid = this.detailsRowData.every((item) => item.idProduct && item.quantity && item.total);
+    const isValid = this.detailsRowData.every(
+      (item) => item.idProduct && item.quantity && item.total
+    );
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
@@ -666,35 +755,35 @@ export class InAndOutComponent {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
     selectedData.active = 0;
-    this.inAndOutsService.deleteInAndOutItem(id).pipe(
-      catchError((error) => {
+    this.inAndOutsService
+      .deleteInAndOutItem(id)
+      .pipe(
+        catchError((error) => {
+          alerts.basicAlert(
+            'Eliminar entrada',
+            'Error al eliminar la entrada.',
+            'error'
+          );
+          console.error(error);
+          return EMPTY;
+        })
+      )
+      .subscribe(() => {
         alerts.basicAlert(
           'Eliminar entrada',
-          'Error al eliminar la entrada.',
-          'error'
+          'Entrada eliminada satisfactoriamente.',
+          'success'
         );
-        console.error(error);
-        return EMPTY;
-      })
-    )
-      .subscribe(
-        () => {
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.obtenerDetalles();
+        this.obtenerDetalles();
 
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.detailsNotSavedChanges = false;
-          this.detailsSelectedRowData = null;
-        }
-      );
+        alerts.basicAlert(
+          'Eliminar entrada',
+          'Entrada eliminada satisfactoriamente.',
+          'success'
+        );
+        this.detailsNotSavedChanges = false;
+        this.detailsSelectedRowData = null;
+      });
   }
 
   revertDetailsData() {
@@ -745,5 +834,4 @@ export class InAndOutComponent {
   get componentTitle(): string {
     return this.type === 'IN' ? 'Entradas' : 'Salidas';
   }
-
 }
