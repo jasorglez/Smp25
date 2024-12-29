@@ -15,7 +15,7 @@ import { ImageHandlerService } from 'app/services/image-handler.service';
 @Component({
   selector: 'app-banks',
   standalone: true,
-  imports: [RouterModule, DomainsModule, AgGridModule],
+  imports: [RouterModule, DomainsModule, AgGridModule, MultiLineEditorComponent],
   templateUrl: './banks.component.html',
   styleUrl: './banks.component.scss'
 })
@@ -38,7 +38,7 @@ export class BanksComponent {
   contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
-  private estados: string[] = [];
+  
   branches: any;
   id: string;
   private tempIdCounter: number = 0;
@@ -92,14 +92,11 @@ get colMaster(): ColDef[] {
         return params.value;
       }
      },
-    
-     { field: 'numbranch', headerName: 'Numero Sucursal', editable: true, width: 285 }, 
-    
-    { field: 'contact', headerName: 'Contacto', editable: true, width: 285 },
-    
-    { field: 'phone', headerName: 'Telefono', editable: true, width: 105, cellEditorParams: {
-        maxLength: 10
-      }
+             
+    { field: 'contact', headerName: 'Contacto', editable: true, width: 255 },
+        
+    { field: 'phone', headerName: 'Telefono', editable: true, width: 169, cellEditorParams: {
+        maxLength: 15  }
     },
 
     {
@@ -111,10 +108,12 @@ get colMaster(): ColDef[] {
         field: 'picture'
       },
       editable: false,
-      width: 100
+      width: 130
     },
 
-    { field: 'conde', headerName: 'Codigo', editable: true, width: 285 },
+    { field: 'numBranch', headerName: 'Numero Sucursal', editable: true, width: 140 }, 
+
+    { field: 'code', headerName: 'Codigo', editable: true, width: 105 },
     
   ]
 };
@@ -154,15 +153,15 @@ get colMaster(): ColDef[] {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idBranch: 1,
-      name: '',
-      address: '',
-      state: '',
-      city: '',
-      place: '',
-      phone: '',
-      active: true,
-      leader: '',
+      idBranch  : 1,
+      name      : '',
+      branch    : '',
+      numBranch : '',
+      contact   : '',      
+      phone     : '',
+      picture   : '',
+      code      : '',
+      active: true,      
       __isNew: true,
     };
     this.rowData = [newItem, ...this.rowData];
@@ -171,7 +170,7 @@ get colMaster(): ColDef[] {
   }
 
   async saveChanges() {
-    const isValid = this.rowData.every((item) => item.name && item.address);
+    const isValid = this.rowData.every((item) => item.name && item.branch);
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',

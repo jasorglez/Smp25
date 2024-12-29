@@ -14,9 +14,15 @@ export class AdministrationService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
+  // Bancos
   getBanks() {
     return this.http.get(`${environment.urlAdministration}/Bank`, { headers: this.trackingService.getHeaders() });
   }
+
+  get2fieldsBanks() {
+    return this.http.get(`${environment.urlAdministration}/Bank/2fields`, { headers: this.trackingService.getHeaders() });
+  }
+
 
   addBanks(data: any): Observable<any> {
     return this.http.post(`${environment.urlAdministration}/Bank`, data, { headers: this.trackingService.getHeaders() });
@@ -29,5 +35,31 @@ export class AdministrationService {
   deleteBanks(id: number): Observable<any> {
     return this.http.delete<any[]>(`${environment.urlAdministration}/Bank/${id}`, { headers: this.trackingService.getHeaders() });
   }
+
+
+  // Cuentas Bancos
+  getAccountBanks( idRoot : number) {
+    return this.http.get(`${environment.urlAdministration}/AccountBanks/Bussines/${idRoot}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  addAccountBanks(data: any): Observable<any> {
+    return this.http.post(`${environment.urlAdministration}/AccountBanks`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateAccountBanks(id: string, data: any): Observable<any> {
+    return this.http.put<any[]>(`${environment.urlAdministration}/AccountBanks/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteAccountBanks(id: number): Observable<any> {
+    return this.http.delete<any[]>(`${environment.urlAdministration}/AccountBanks/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  // Income and Expense x Accounts
+  getBalance( idAccount : number) {
+    return this.http.get(`${environment.urlAdministration}/Incomeandexpense/Bussines/balance?id=${idAccount}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  
+
 
 }

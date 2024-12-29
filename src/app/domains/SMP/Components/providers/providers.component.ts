@@ -83,6 +83,24 @@ export class ProvidersComponent {
         flex: 1
       },
       {
+        field: 'city',
+        headerName: 'Ciudad',
+        editable: true,
+        flex: 1
+      },
+      {
+        field: 'state',
+        headerName: 'Estado',
+        editable: true,
+        flex: 1
+      },   
+      {
+        field: 'country',
+        headerName: 'Pais',
+        editable: true,
+        flex: 1
+      },
+      {
         field: 'phone',
         headerName: 'Teléfono',
         editable: true,
@@ -135,7 +153,10 @@ export class ProvidersComponent {
       stateId: null,
       phone: '',
       consortium: 'NO',
-      picture: 'SIN FOTO',
+      picture   : 'SIN FOTO',
+      city      : '',
+      staste    : '',
+      country   : 'MEXICO',
       active: 1,
       __isNew: true,
     };

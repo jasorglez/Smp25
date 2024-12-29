@@ -156,6 +156,10 @@ export const routes: Routes = [
                   { 
                     path:'banks',
                     loadComponent: () => import('./domains/ModAdmon/components/banks/banks.component').then(b => b.BanksComponent) 
+                  } ,    
+                  { 
+                    path:'accountbanks',
+                    loadComponent: () => import('./domains/ModAdmon/components/accountbanks/accountbanks.component').then(a => a.AccountbanksComponent) 
                   }                  
             ]
           },                             
