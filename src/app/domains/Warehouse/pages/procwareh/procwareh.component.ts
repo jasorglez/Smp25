@@ -4,12 +4,14 @@ import { TrackingService } from '../../../../services/tracking.service';
 import { WarehousesComponent } from "../../components/warehouses/warehouses.component";
 import { MaterialsComponent } from '../../components/materials/materials.component';
 import { RequisitionsComponent } from "../../components/requisitions/requisitions.component";
-import { PurchaseorderComponent } from "../../components/purchaseorder/purchaseorder.component";
+import { PurchaseOrderComponent } from "../../components/purchaseorder/purchaseorder.component";
+import { InAndOutComponent } from '../../components/inandout/inandout.component';
+import { SharedModule } from 'app/shared/shared.module';
 
 @Component({
   selector: 'app-procwareh',
   standalone: true,
-  imports: [TranslateModule, WarehousesComponent, MaterialsComponent, RequisitionsComponent, PurchaseorderComponent],
+  imports: [TranslateModule, SharedModule, WarehousesComponent, MaterialsComponent, RequisitionsComponent, PurchaseOrderComponent, InAndOutComponent],
   templateUrl: './procwareh.component.html',
   styleUrl: './procwareh.component.scss'
 })

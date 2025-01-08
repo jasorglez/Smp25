@@ -22,4 +22,12 @@ export class BranchsService {
     return this.http.get(`${environment.urlSmp}/Branchs/2fields?idCompany=${idroot}`, { headers: this.trackingService.getHeaders() });
   }
 
+  addBranch(branch: any) {
+    return this.http.post(`${environment.urlSmp}/Branchs`, branch, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateBranch(id: number, branch: any) {
+    return this.http.put(`${environment.urlSmp}/Branchs/${id}`, branch, { headers: this.trackingService.getHeaders() });
+  }
+
 }

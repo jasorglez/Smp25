@@ -11,7 +11,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ModalService } from 'app/services/modal.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { ImageHandlerService } from 'app/services/image-handler.service';
-import { HttpErrorResponse } from '@angular/common/http';
+
 
 interface Bank {
   id: number;

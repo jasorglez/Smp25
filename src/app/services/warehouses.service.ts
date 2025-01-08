@@ -13,7 +13,7 @@ export class WarehousesService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
-  getWarehouses(idRoot : number ) {
+  getWarehouses(idRoot: number) {
     return this.http.get(`${environment.urlWarehouse}/Warehouse?idBussines=${idRoot}`, { headers: this.trackingService.getHeaders() });
   }
 
@@ -29,5 +29,12 @@ export class WarehousesService {
     return this.http.delete<any[]>(`${environment.urlWarehouse}/Warehouse/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getSimpleWarehouses(idRoot: number): Observable<any> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Warehouse/2fields?idBussines=${idRoot}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getSimpleWarehousesByBranch(idBranch: number): Observable<any> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Warehouse/2branches?idBranch=${idBranch}`, { headers: this.trackingService.getHeaders() });
+  }
 
 }

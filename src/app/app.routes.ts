@@ -194,7 +194,7 @@ export const routes: Routes = [
         children:[
           { path: '', redirectTo: 'ModReshumans', pathMatch: 'full' }, ...SharedModule.getRoutes(),
           {            
-            path:'setup',            
+            path:'setup-rh',            
             loadComponent: () => import('./domains/ModReshumans/components/setup/setup.component').then(s => s.SetupComponent) 
           },          
           {

@@ -24,10 +24,16 @@ export class SignalsService {
     this.contractSelectedBySidebar.set(id);
   }
 
-  projectSelectedBySidebar = signal<number | null>(null);
+  private projectSelectedBySidebar = signal<number | null>(null);
 
   setProjectSelectedBySidebar(id: number) {
     this.projectSelectedBySidebar.set(id);
+  }
+
+  private branchSelectedBySidebar = signal<number | null>(null);
+
+  setBranchSelectedBySidebar(id: number) {
+    this.branchSelectedBySidebar.set(id);
   }
 
   getRootSelectedBySidebar() {
@@ -40,6 +46,10 @@ export class SignalsService {
 
   getProjectSelectedBySidebar() {
     return this.projectSelectedBySidebar;
+  }
+
+  getBranchSelectedBySidebar() {
+    return this.branchSelectedBySidebar;
   }
 
   /* Aquí se definen las signals para el setup de Users */
@@ -292,12 +302,40 @@ export class SignalsService {
     this.requisitionDate.set(null);
   }
 
+  /* Para entradas y salidas */
+  private idInAndOut = signal<number>(null);
+  private nameInAndOut = signal<string>(null);
+
+  setIdInAndOut(id: number) {
+    this.idInAndOut.set(id);
+  }
+
+  getIdInAndOut() {
+    return this.idInAndOut;
+  }
+
+  setInAndOutName(name: string) {
+    this.nameInAndOut.set(name);
+  }
+
+  getInAndOutName() {
+    return this.nameInAndOut;
+  }
+
+  deleteInAndOutData() {
+    this.idInAndOut.set(null);
+    this.nameInAndOut.set(null);
+  }
+
   /* Borramos todas las signals, tratar de poner esto a lo último.
   Si van a crear nuevas signals, recuerden introducir una señal
   null en deleteSignals() para que todas las signals se borren
   al momento de hacer logout */
 
   deleteSignals() {
+    this.rootSelectedBySidebar = signal(null);
+    this.branchSelectedBySidebar = signal(null);
+    this.projectSelectedBySidebar = signal(null);
     this.contractSelectedBySidebar = signal(null);
     this.idCompany = signal(null);
     this.nameCompany = signal(null);
@@ -325,7 +363,7 @@ export class SignalsService {
     this.selectedWorkProgram = signal(null);
     this.idRequisition = signal(null);
     this.nameRequisition = signal(null);
-    this.requisitionSolicitant = signal(null);    
+    this.requisitionSolicitant = signal(null);
     this.requisitionDate = signal(null);
     this.selectedContract = signal(null);
     this.selectedProject = signal(null);
