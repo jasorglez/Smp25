@@ -9,6 +9,12 @@
         </li>
 
         <li class="nav-item">
+          <a class="nav-link green-tab d-flex align-items-center" [class.active]="selectedTab === 'employees'" data-toggle="tab" (click)="onTabSelected('employees')">
+            <mat-icon>badge</mat-icon> {{'employees' | translate}}
+          </a>
+        </li>
+
+        <li class="nav-item">
           <a class="nav-link green-tab d-flex align-items-center" [class.active]="selectedTab === 'war'" data-toggle="tab" (click)="onTabSelected('war')">
             <mat-icon>warehouse</mat-icon> {{'warehouses' | translate}}
           </a>
@@ -67,6 +73,9 @@
     <!-- Content for Tabs -->
     <div class="tab-pane" [class.active]="selectedTab === 'war'">
       @if (selectedTab === 'war') { <app-warehouses></app-warehouses> }
+    </div>
+    <div class="tab-pane" [class.active]="selectedTab==='employees'">
+      @if (selectedTab === 'employees') { <app-employees></app-employees> }
     </div>
     <div class="tab-pane" [class.active]="selectedTab === 'mat'">
       @if (selectedTab === 'mat') {<app-materials></app-materials> }
