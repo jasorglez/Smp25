@@ -7,12 +7,11 @@ import { RequisitionsComponent } from "../../components/requisitions/requisition
 import { PurchaseOrderComponent } from "../../components/purchaseorder/purchaseorder.component";
 import { InAndOutComponent } from '../../components/inandout/inandout.component';
 import { SharedModule } from 'app/shared/shared.module';
-import { EmployeesComponent } from '../../components/employees/employees.component';
 
 @Component({
   selector: 'app-procwareh',
   standalone: true,
-  imports: [TranslateModule, SharedModule, WarehousesComponent, MaterialsComponent, RequisitionsComponent, PurchaseOrderComponent, InAndOutComponent, EmployeesComponent],
+  imports: [TranslateModule, SharedModule, WarehousesComponent, MaterialsComponent, RequisitionsComponent, PurchaseOrderComponent, InAndOutComponent],
   templateUrl: './procwareh.component.html',
   styleUrl: './procwareh.component.scss'
 })

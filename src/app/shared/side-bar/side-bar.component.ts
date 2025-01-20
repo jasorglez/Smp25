@@ -99,6 +99,7 @@ export class SideBarComponent {
           this.rootData = root;
           // Seleccionar automáticamente el primer elemento
           this.selectedRoot = this.rootData[0].id;
+          this.signalsService.setRootSelectedBySidebar(Number(this.selectedRoot));
           this.trackingService.setCompany(this.selectedRoot);
           this.getHeadersCompanys(this.selectedRoot);
           // Llamar a getpermissionxContracts con el primer elemento
