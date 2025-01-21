@@ -200,6 +200,10 @@ export const routes: Routes = [
           {            
             path:'setup-rh',            
             loadComponent: () => import('./domains/ModReshumans/components/setup/setup.component').then(s => s.SetupComponent) 
+          },
+          {            
+            path:'employees',            
+            loadComponent: () => import('./domains/ModReshumans/components/employees/employees.component').then(s => s.EmployeesComponent) 
           },          
           {
             path:'personal',

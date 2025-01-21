@@ -96,7 +96,7 @@ export class EmployeesComponent {
 
       if (this.idProject == null) {
         this.masterRowData = [];
-        alerts.basicAlert('Orden de compra', 'Debe elegir un proyecto primero.', 'error');
+        alerts.basicAlert('Empleados', 'Debe elegir una sucursal primero.', 'error');
       } else {
         this.obtenerDatos();
         this.obtenerRequisiciones();

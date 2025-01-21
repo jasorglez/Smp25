@@ -9,6 +9,8 @@ import { BranchsService } from 'app/services/branchs.service';
 import { alerts } from 'app/helpers/alerts';
 import { ModalService } from 'app/services/modal.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { InegiService } from 'app/services/inegi.service';
+import { States } from 'app/interface/states';
 
 @Component({
   selector: 'app-branches',
@@ -22,6 +24,7 @@ export class BranchesComponent {
   private signalsService = inject(SignalsService);
   private branchesService = inject(BranchsService);
   private modalServiceTable = inject(ModalService);
+  private inegiService = inject(InegiService);
 
   //Variables master
   masterRowData: any[] = [];
@@ -32,6 +35,7 @@ export class BranchesComponent {
   id: number = null;
   private masterGridApi: GridApi;
   private tempIdCounter: number = 0;
+  private estados: any;
 
   // Configuración Grid
   public rowSelection: 'single' | 'multiple' = 'single';
@@ -57,6 +61,7 @@ export class BranchesComponent {
 
   ngOnInit() {
     this.obtenerDatos();
+    this.obtenerStates();
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -77,11 +82,36 @@ export class BranchesComponent {
     );
   }
 
+  obtenerStates() {
+    this.inegiService.getEstados().subscribe({
+      next: (data: { datos: States[] }) => {
+        this.estados = data.datos.map((estado, index) => ({
+          ...estado,
+          id: index + 1
+        }));
+        console.log(this.estados);
+      },
+      error: (error) => {
+        console.error('Error fetching states', error);
+      }
+    });
+  }
+
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
     return [
       { field: 'name', headerName: 'Nombre', editable: true, filter: true, flex: 1 },
       { field: 'description', headerName: 'Descripción', editable: true, filter: true, flex: 2 },
+      {
+        field: 'idEstado', headerName: 'Estado', editable: true, filter: true, flex: 1, cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.estados ? this.estados.map(item => item.id) : [],
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.estados ? this.estados.find(item => item.id === params.value) : null;
+          return foundItem ? `${foundItem.nom_agee}` : params.value;
+        }
+      },
       {
         field: 'address', headerName: 'Dirección', editable: true, filter: true, flex: 2, cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
@@ -163,6 +193,7 @@ export class BranchesComponent {
     const newItem = {
       id: tempId,
       idCompany: this.idRoot,
+      idEstado: null,
       name: '',
       description: '',
       address: '',
@@ -244,15 +275,15 @@ export class BranchesComponent {
     this.masterNotSavedChanges = false;
   }
 
-    // ==================== UTILITY METHODS ====================
+  // ==================== UTILITY METHODS ====================
 
-    private cleanDataForServer(data: any): any {
-      const cleanedData = { ...data };
-      delete cleanedData.__isNew;
-      delete cleanedData.__modified;
-      if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
-        delete cleanedData.id;
-      }
-      return cleanedData;
+  private cleanDataForServer(data: any): any {
+    const cleanedData = { ...data };
+    delete cleanedData.__isNew;
+    delete cleanedData.__modified;
+    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
+      delete cleanedData.id;
     }
+    return cleanedData;
+  }
 }
