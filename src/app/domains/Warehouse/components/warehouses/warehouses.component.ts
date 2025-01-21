@@ -27,7 +27,7 @@ interface Branch {
 })
 export class WarehousesComponent {
 
-   selectedRoot      : string = '';
+  selectedRoot: string = '';
 
   ngOnInit() {
     this.obtenerDatos();
@@ -76,7 +76,8 @@ export class WarehousesComponent {
   get colMaster(): ColDef[] {
     return [
       { field: 'name', headerName: 'Nombre', editable: true, filter: true, width: 200 },
-      { field: 'address', headerName: 'Direccion', editable: false, width: 285, filter: true,
+      {
+        field: 'address', headerName: 'Direccion', editable: false, width: 285, filter: true,
         cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
@@ -102,7 +103,7 @@ export class WarehousesComponent {
           }
           return params.value;
         }
-       },
+      },
       {
         field: 'idBranch', headerName: 'Sucursales', editable: true, width: 235, cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
@@ -120,6 +121,7 @@ export class WarehousesComponent {
         }
       },
       { field: 'city', headerName: 'Ciudad', editable: true, width: 200 },
+      { field: 'codePostal', headerName: 'Codigo Postal', editable: true, width: 150 },
       { field: 'place', headerName: 'Lugar', editable: true, width: 185 },
       {
         field: 'phone', headerName: 'Telefono', editable: true, width: 105, cellEditorParams: {
@@ -148,7 +150,7 @@ export class WarehousesComponent {
   }
 
   obtenerBranches() {
-   this.branchesService.getBranches2fields(parseInt(localStorage.getItem('company'))).subscribe(
+    this.branchesService.getBranches2fields(parseInt(localStorage.getItem('company'))).subscribe(
       (data: Branch[]) => {
         this.branches = data;
         console.log(this.branches);
@@ -186,16 +188,16 @@ export class WarehousesComponent {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idBussines : 0, 
-      idBranch   : 0,
-      name       : '',
-      address    : '',
-      state      : '',
-      city       : '',
-      codePostal : '',
-      place      : '',
-      phone      : '',
-      active     : true,
+      idBussines: 0,
+      idBranch: 0,
+      name: '',
+      address: '',
+      state: '',
+      city: '',
+      codePostal: '',
+      place: '',
+      phone: '',
+      active: true,
       leader: '',
       __isNew: true,
     };

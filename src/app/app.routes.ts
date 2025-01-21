@@ -101,6 +101,10 @@ export const routes: Routes = [
             path:'root',
             loadComponent: () => import('./domains/SMP/Components/root/root.component').then(r => r.RootComponent) 
           },
+          {            
+            path:'branches',            
+            loadComponent: () => import('./domains/SMP/Components/branches/branches.component').then(u => u.BranchesComponent) 
+          },
           {
             path:'estimates',
             loadComponent: () => import('./domains/SMP/Components/estimates/estimates.component').then(r => r.EstimatesComponent) 
@@ -200,6 +204,10 @@ export const routes: Routes = [
           {            
             path:'setup-rh',            
             loadComponent: () => import('./domains/ModReshumans/components/setup/setup.component').then(s => s.SetupComponent) 
+          },
+          {            
+            path:'employees',            
+            loadComponent: () => import('./domains/ModReshumans/components/employees/employees.component').then(s => s.EmployeesComponent) 
           },          
           {
             path:'personal',

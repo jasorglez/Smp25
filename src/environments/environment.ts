@@ -30,8 +30,8 @@ export const environment = {
  urlSecurity       : 'https://bi2.com.mx/api',
  urlSmp            : 'https://bi2.com.mx/smp/api',
  urlBpi            : 'https://bi2.com.mx/bpi/api',
- urlWarehouse      : 'https://bi2.com.mx/warehouse/api',
- urlAdministration : 'https://bi2.com.mx/tracking/api',
+ urlWarehouse      : 'https://bi2.com.mx/warehouse/api', //
+ urlAdministration : 'https://bi2.com.mx/tracking/api', // 5006
   
   //  urlAzure    : 'https://localhost:7089/',
 
