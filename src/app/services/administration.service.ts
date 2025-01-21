@@ -19,6 +19,11 @@ export class AdministrationService {
     return this.http.get(`${environment.urlAdministration}/Bank`, { headers: this.trackingService.getHeaders() });
   }
 
+  getcustomer(id: number) {
+    return this.http.get(`${environment.urlAdministration}/Customer/branch/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+
   get2fieldsBanks() {
     return this.http.get(`${environment.urlAdministration}/Bank/2fields`, { headers: this.trackingService.getHeaders() });
   }

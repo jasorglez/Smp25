@@ -147,6 +147,10 @@ export const routes: Routes = [
               loadComponent: () => import('./domains/ModAdmon/components/expenditure/expenditure.component').then(e => e.ExpenditureComponent) 
             },              
             {
+              path:'customer',
+              loadComponent: () => import('./domains/ModAdmon/components/customers/customers.component').then(e => e.CustomersComponent) 
+            },
+            {
               path:'page01',            
               loadComponent: () => import('./domains/ModAdmon/pages/pages01/page01.component').then(p => p.Page01Component), 
               children: [
