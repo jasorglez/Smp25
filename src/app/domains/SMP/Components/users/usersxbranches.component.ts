@@ -1,11 +1,11 @@
-import { Component, computed, HostListener, inject } from '@angular/core';
+import { Component, computed, effect, HostListener, inject } from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
 import { UsersProfileComponent } from './users-profile.component';
-import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { catchError, concat, EMPTY, lastValueFrom, toArray, forkJoin } from 'rxjs';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { SignalsService } from 'app/services/signals.service';
 import { BranchsService } from 'app/services/branchs.service';
@@ -22,9 +22,22 @@ export class UsersxbranchesComponent {
   private branchesService = inject(BranchsService);
   private usersxbranchesService = inject(UsersxpermissionsService);
 
+  constructor() {
+    effect(() => {
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+
+      if (this.idRoot == null) {
+        this.rowData = [];
+        this.warehouses = {};
+        alerts.basicAlert('Sucursales', 'Debe elegir una empresa primero para poder ver sus sucursales.', 'error');
+      } else {
+        this.obtenerDatos();
+      }
+    });
+  }
+
   ngOnInit() {
     this.obtenerDatos();
-    this.obtenerOilfields();
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -45,24 +58,30 @@ export class UsersxbranchesComponent {
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
   id: string;
+  idRoot: number = null;
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
   private permissionType: string = 'branch';
 
   obtenerDatos() {
-    this.usersxbranchesService
-      .getDataUsersxPermissions(this.permissionType)
-      .subscribe((data: any) => {
-        this.rowData = data.filter((row: any) => row.idUser === this.idUser);
-      });
-  }
-
-  obtenerOilfields() {
-    this.branchesService.getBranches(1).subscribe((data: any[]) => {
-      this.warehouses = data.reduce((acc, dep) => {
-        acc[dep.id] = dep.name; // Cambia la estructura para que solo almacene el nombre
+    forkJoin({
+      users: this.usersxbranchesService.getDataUsersxPermissions(this.permissionType),
+      branches: this.branchesService.getBranches(this.idRoot)
+    }).subscribe(({ users, branches }) => {
+      // Filtrar sucursales por idCompany
+      const filteredBranches = branches.filter(branch => branch.idCompany === this.idRoot);
+      
+      // Crear el diccionario de sucursales filtradas
+      this.warehouses = filteredBranches.reduce((acc, branch) => {
+        acc[branch.id] = branch.name;
         return acc;
       }, {});
+
+      // Filtrar usuarios por idUser y que coincidan con las sucursales filtradas
+      this.rowData = Array.isArray(users) ? users.filter((row: any) => 
+          row.idUser === this.idUser && 
+          Object.keys(this.warehouses).includes(row.idPermission.toString())
+        ) : [];
     });
   }
 

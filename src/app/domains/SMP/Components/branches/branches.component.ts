@@ -113,7 +113,7 @@ export class BranchesComponent {
         }
       },
       {
-        field: 'address', headerName: 'Dirección', editable: true, filter: true, flex: 2, cellEditor: 'agPopupTextCellEditor',
+        field: 'address', headerName: 'Dirección', editable: false, filter: true, flex: 2, cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
           cols: 50,
