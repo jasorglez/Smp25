@@ -1,5 +1,5 @@
 <app-multi-line-editor></app-multi-line-editor>
-<div class="col-12 ">
+<div class="col-12">
   <div class="row mb-3">
     <div class="col text-right"><button type="button" class="btn btn-primary me-1" (click)="addRow()"><i
           class="bi bi-plus-lg" style="font-size: 1.5rem;"></i></button>
@@ -19,7 +19,7 @@
 
   <div class="row">
     <!-- The AG Grid component -->
-    <ag-grid-angular style="width: 100%; height: 500px;" class="ag-theme-quartz" [rowData]="rowData"
+    <ag-grid-angular style="width: 100%; height: 32vh;" class="ag-theme-quartz" [rowData]="rowData"
       [columnDefs]="colMaster" (selectionChanged)="onSelectionChanged($event)"
       (cellValueChanged)="onCellValueChanged($event)" (rowSelected)="onSelectedRow($event)"
       (gridReady)="onGridReady($event)" rowSelection="single" [pivotPanelShow]="pivotPanelShow"
@@ -28,9 +28,25 @@
 
   </div>
 
-  <div class="container">
-    <div class="row">
 
+  <div class="row">
+    <div class="container-fluid">
+
+      <ul class="nav nav-pills">
+        <li class="nav-item" *ngIf="idClient()">
+          <a class="nav-link" [class.active]="selectedTab === 'customers-payments'"
+            (click)="selectedTab = 'customers-payments'" data-toggle="tab">Abonos</a>
+        </li>
+        <li class="nav-item" *ngIf="idClient()">
+          <a class="nav-link" [class.active]="selectedTab === 'customers-sales'"
+            (click)="selectedTab = 'customers-sales'" data-toggle="tab">Ventas</a>
+        </li>
+      </ul>
+
+      <div class="tab-pane" [class.active]="selectedTab === 'customers-payments'"
+        *ngIf="selectedTab === 'customers-payments' && idClient()">
+        <app-customers-payments></app-customers-payments>
+      </div>
 
     </div>
   </div>

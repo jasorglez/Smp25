@@ -327,6 +327,34 @@ export class SignalsService {
     this.nameInAndOut.set(null);
   }
 
+  /* Para clientes */
+  private idClient = signal<number>(null);
+  private nameClient = signal<string>(null);
+
+  setIdClient(id: number) {
+    this.idClient.set(id);
+  }
+
+  getIdClient() {
+    return this.idClient;
+  }
+
+  deleteClientData() {
+    this.idClient.set(null);
+  }
+
+  setNameClient(name: string) {
+    this.nameClient.set(name);
+  }
+
+  getNameClient() {
+    return this.nameClient;
+  }
+
+  deleteClientName() {
+    this.nameClient.set(null);
+  }
+
   /* Borramos todas las signals, tratar de poner esto a lo último.
   Si van a crear nuevas signals, recuerden introducir una señal
   null en deleteSignals() para que todas las signals se borren

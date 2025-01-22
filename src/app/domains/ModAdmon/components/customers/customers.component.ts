@@ -1,7 +1,6 @@
 import { Component, HostListener, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
-
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { alerts } from '../../../../helpers/alerts';
 import { AdministrationService } from 'app/services/administration.service';
@@ -9,13 +8,14 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { AgGridModule } from 'ag-grid-angular';
 import { ModalService } from 'app/services/modal.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
-import { ImageHandlerService } from 'app/services/image-handler.service';
+import { SignalsService } from 'app/services/signals.service';
+import { CustomersPaymentsComponent } from './customers-payments.component';
 
 
 @Component({
   selector: 'app-customers',
   standalone: true,
-  imports: [RouterModule, DomainsModule, AgGridModule, MultiLineEditorComponent],
+  imports: [RouterModule, DomainsModule, AgGridModule, MultiLineEditorComponent, CustomersPaymentsComponent],
   templateUrl: './customers.component.html',
   styleUrl: './customers.component.scss'
 })
@@ -43,6 +43,7 @@ export class CustomersComponent {
     branches: any;
     id: string;
     private tempIdCounter: number = 0;
+    selectedTab: string = 'customers-payments';
   
     private gridApi: GridApi;
   
@@ -59,8 +60,12 @@ export class CustomersComponent {
   
     // Inject of new way for Angular 18
     private administrationService = inject(AdministrationService);  
-    private modalServiceTable = inject(ModalService);  
-    private imageHandlerService = inject(ImageHandlerService);
+    private modalServiceTable = inject(ModalService);
+    private signalsService = inject(SignalsService);
+
+    // Interceptar signals
+    idClient = this.signalsService.getIdClient();
+    nameClient = this.signalsService.getNameClient()();
   
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
@@ -99,17 +104,17 @@ export class CustomersComponent {
           maxLength: 15  }
       },
   
-
-  
       { field: 'rfc', headerName: 'RFC', editable: true, width: 140 }, 
   
       { field: 'city', headerName: 'Ciudad', editable: true, width: 105 },
+
+      {field: 'email', headerName: 'Correo', editable: true, width: 200 }
       
     ]
   };
   
     obtenerDatos() {
-      this.administrationService.getcustomer(2).subscribe((data: any) => {
+      this.administrationService.getCustomers(2).subscribe((data: any) => {
         this.rowData = data;
       });
     }
@@ -124,6 +129,8 @@ export class CustomersComponent {
       const selectedNodes = event.api.getSelectedNodes();
       if (selectedNodes.length > 0) {
         this.selectedRowData = selectedNodes[0].data;
+        this.signalsService.setIdClient(this.selectedRowData.id);
+        this.signalsService.setNameClient(this.selectedRowData.nameContact);
       } else {
         this.selectedRowData = null;
       }
@@ -144,13 +151,15 @@ export class CustomersComponent {
       const newItem = {
         id: tempId,
         idBranch  : 1,
-        name      : '',
-        branch    : '',
-        numBranch : '',
-        contact   : '',      
-        phone     : '',
-        picture   : '',
-        code      : '',
+        nameContact: '',
+        company: '',
+        phone: '',
+        rfc: '',
+        city: '',
+        mobile: '',
+        email: '',
+        address: '',
+        vigente: true,
         active: true,      
         __isNew: true,
       };
@@ -160,7 +169,7 @@ export class CustomersComponent {
     }
   
     async saveChanges() {
-      const isValid = this.rowData.every((item) => item.name && item.branch);
+      const isValid = this.rowData.every((item) => item.nameContact && item.company && item.phone && item.rfc && item.city);
       if (!isValid) {
         alerts.basicAlert(
           'Añadir entrada',
@@ -177,12 +186,12 @@ export class CustomersComponent {
   
       const addObservables = newRows.map((row) => {
         const cleanedData = this.cleanDataForServer(row);
-        return this.administrationService.addBanks(cleanedData);
+        return this.administrationService.addCustomer(cleanedData);
       });
   
       const updateObservables = modifiedRows.map((row) => {
         const cleanedData = this.cleanDataForServer(row);
-        return this.administrationService.updateBanks(row.id, cleanedData);
+        return this.administrationService.updateCustomer(row.id, cleanedData);
       });
   
       // Using concat to combine observables and lastValueFrom for async/await
@@ -222,7 +231,7 @@ export class CustomersComponent {
       const selectedData = selectedNodes[0].data;
       const id = selectedData.id;
       selectedData.active = 0;
-      this.administrationService.deleteBanks(id).pipe(
+      this.administrationService.deleteCustomer(id).pipe(
         catchError((error) => {
           alerts.basicAlert(
             'Eliminar entrada',
