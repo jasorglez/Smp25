@@ -1,4 +1,4 @@
-import { Component, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
@@ -21,57 +21,69 @@ import { CustomersPaymentsComponent } from './customers-payments.component';
 })
 export class CustomersComponent {
 
-  
-    ngOnInit() {
-      this.obtenerDatos();
-    }
-  
-    @HostListener('window:beforeunload', ['$event'])
-    unloadNotification($event: any): void {
-      if (this.notSavedChanges) {
-        $event.returnValue =
-          'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
-      }
-    }
-  
-    notSavedChanges: boolean = false;
-    rowData: any;
-    contracts: { [key: string]: string } = {};
-    newlyAddedRows: string[] = [];
-    selectedRowData: any = null;
-    
-    branches: any;
-    id: string;
-    private tempIdCounter: number = 0;
-    selectedTab: string = 'customers-payments';
-  
-    private gridApi: GridApi;
-  
-    currentIndex = 0;
-  
-    public rowSelection: 'single' | 'multiple' = 'single';
-    public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
-    public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
-    public paginationPageSize = 15;
-    public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
-    frameworkComponents = {
-      multiLineEditor: MultiLineEditorComponent
-    };
-  
-    // Inject of new way for Angular 18
-    private administrationService = inject(AdministrationService);  
-    private modalServiceTable = inject(ModalService);
-    private signalsService = inject(SignalsService);
 
-    // Interceptar signals
-    idClient = this.signalsService.getIdClient();
-    nameClient = this.signalsService.getNameClient()();
-  
+  ngOnInit() {
+    this.obtenerDatos();
+    this.signalsService.deleteClientData();
+  }
+
+  constructor() {
+    effect(() => {
+      this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      this.obtenerDatos();
+      this.signalsService.deleteClientData();
+    }
+    );
+  }
+
+  @HostListener('window:beforeunload', ['$event'])
+  unloadNotification($event: any): void {
+    if (this.notSavedChanges) {
+      $event.returnValue =
+        'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
+    }
+  }
+
+  notSavedChanges: boolean = false;
+  rowData: any;
+  contracts: { [key: string]: string } = {};
+  newlyAddedRows: string[] = [];
+  selectedRowData: any = null;
+
+  branches: any;
+  id: string;
+  private tempIdCounter: number = 0;
+  selectedTab: string = 'customers-payments';
+  idBranch: number = null;
+
+  private gridApi: GridApi;
+
+  currentIndex = 0;
+
+  public rowSelection: 'single' | 'multiple' = 'single';
+  public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
+  public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
+  public paginationPageSize = 15;
+  public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
+  frameworkComponents = {
+    multiLineEditor: MultiLineEditorComponent
+  };
+
+  // Inject of new way for Angular 18
+  private administrationService = inject(AdministrationService);
+  private modalServiceTable = inject(ModalService);
+  private signalsService = inject(SignalsService);
+
+  // Interceptar signals
+  idClient = this.signalsService.getIdClient();
+  nameClient = this.signalsService.getNameClient()();
+
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
     return [
       { field: 'nameContact', headerName: 'Nombre', editable: true, filter: true, width: 200 },
-      { field: 'company', headerName: 'Compania', editable: false, width: 285, filter: true,
+      {
+        field: 'company', headerName: 'Compania', editable: false, width: 285, filter: true,
         cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
@@ -97,188 +109,190 @@ export class CustomersComponent {
           }
           return params.value;
         }
-       },
-               
-          
-      { field: 'phone', headerName: 'Telefono', editable: true, width: 169, cellEditorParams: {
-          maxLength: 15  }
       },
-  
-      { field: 'rfc', headerName: 'RFC', editable: true, width: 140 }, 
-  
+
+
+      {
+        field: 'phone', headerName: 'Telefono', editable: true, width: 169, cellEditorParams: {
+          maxLength: 15
+        }
+      },
+
+      { field: 'rfc', headerName: 'RFC', editable: true, width: 140 },
+
       { field: 'city', headerName: 'Ciudad', editable: true, width: 105 },
 
-      {field: 'email', headerName: 'Correo', editable: true, width: 200 }
-      
+      { field: 'email', headerName: 'Correo', editable: true, width: 200 }
+
     ]
   };
-  
-    obtenerDatos() {
-      this.administrationService.getCustomers(2).subscribe((data: any) => {
-        this.rowData = data;
-      });
+
+  obtenerDatos() {
+    this.administrationService.getCustomers(this.idBranch).subscribe((data: any) => {
+      this.rowData = data;
+    });
+  }
+
+  onSelectedRow(event: any) {
+    console.log(event)
+    this.id = event.data.id;
+  }
+
+  onSelectionChanged(event: any) {
+    console.log(event)
+    const selectedNodes = event.api.getSelectedNodes();
+    if (selectedNodes.length > 0) {
+      this.selectedRowData = selectedNodes[0].data;
+      this.signalsService.setIdClient(this.selectedRowData.id);
+      this.signalsService.setNameClient(this.selectedRowData.nameContact);
+    } else {
+      this.selectedRowData = null;
     }
-  
-    onSelectedRow(event: any) {
-      console.log(event)
-      this.id = event.data.id;
-    }
-  
-    onSelectionChanged(event: any) {
-      console.log(event)
-      const selectedNodes = event.api.getSelectedNodes();
-      if (selectedNodes.length > 0) {
-        this.selectedRowData = selectedNodes[0].data;
-        this.signalsService.setIdClient(this.selectedRowData.id);
-        this.signalsService.setNameClient(this.selectedRowData.nameContact);
-      } else {
-        this.selectedRowData = null;
-      }
-    }
-  
-    onCellValueChanged(event: any) {
-      console.log('Dato cambiado:', event.data);
-      event.data.__modified = true;
-      this.notSavedChanges = true;
-    }
-  
-    onGridReady(params: GridReadyEvent) {
-      this.gridApi = params.api;
-    }
-  
-    addRow() {
-      const tempId = `temp_${this.tempIdCounter++}`;
-      const newItem = {
-        id: tempId,
-        idBranch  : 1,
-        nameContact: '',
-        company: '',
-        phone: '',
-        rfc: '',
-        city: '',
-        mobile: '',
-        email: '',
-        address: '',
-        vigente: true,
-        active: true,      
-        __isNew: true,
-      };
-      this.rowData = [newItem, ...this.rowData];
-      this.newlyAddedRows.push(tempId);
-      this.notSavedChanges = true;
-    }
-  
-    async saveChanges() {
-      const isValid = this.rowData.every((item) => item.nameContact && item.company && item.phone && item.rfc && item.city);
-      if (!isValid) {
-        alerts.basicAlert(
-          'Añadir entrada',
-          'Debe llenar todos los campos antes de guardar.',
-          'error'
-        );
-        return;
-      }
-  
-      const newRows = this.rowData.filter((row) => row.__isNew);
-      const modifiedRows = this.rowData.filter(
-        (row) => row.__modified && !row.__isNew
+  }
+
+  onCellValueChanged(event: any) {
+    console.log('Dato cambiado:', event.data);
+    event.data.__modified = true;
+    this.notSavedChanges = true;
+  }
+
+  onGridReady(params: GridReadyEvent) {
+    this.gridApi = params.api;
+  }
+
+  addRow() {
+    const tempId = `temp_${this.tempIdCounter++}`;
+    const newItem = {
+      id: tempId,
+      idBranch: 1,
+      nameContact: '',
+      company: '',
+      phone: '',
+      rfc: '',
+      city: '',
+      mobile: '',
+      email: '',
+      address: '',
+      vigente: true,
+      active: true,
+      __isNew: true,
+    };
+    this.rowData = [newItem, ...this.rowData];
+    this.newlyAddedRows.push(tempId);
+    this.notSavedChanges = true;
+  }
+
+  async saveChanges() {
+    const isValid = this.rowData.every((item) => item.nameContact && item.company && item.phone && item.rfc && item.city);
+    if (!isValid) {
+      alerts.basicAlert(
+        'Añadir entrada',
+        'Debe llenar todos los campos antes de guardar.',
+        'error'
       );
-  
-      const addObservables = newRows.map((row) => {
-        const cleanedData = this.cleanDataForServer(row);
-        return this.administrationService.addCustomer(cleanedData);
-      });
-  
-      const updateObservables = modifiedRows.map((row) => {
-        const cleanedData = this.cleanDataForServer(row);
-        return this.administrationService.updateCustomer(row.id, cleanedData);
-      });
-  
-      // Using concat to combine observables and lastValueFrom for async/await
-      try {
-        const responses = await lastValueFrom(
-          concat(...addObservables, ...updateObservables).pipe(toArray())
-        );
-        alerts.basicAlert(
-          'Datos actualizados',
-          'Se han actualizado los datos correctamente.',
-          'success'
-        );
-        this.notSavedChanges = false;
-        this.newlyAddedRows = [];
-        this.obtenerDatos(); // Refrescar los datos
-      } catch (error) {
-        console.error(error);
-        alerts.basicAlert(
-          'Error',
-          'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
-          'error'
-        );
-      }
+      return;
     }
-  
-    async deleteEntry() {
-      const selectedNodes = this.gridApi.getSelectedNodes();
-      if (selectedNodes.length === 0) {
+
+    const newRows = this.rowData.filter((row) => row.__isNew);
+    const modifiedRows = this.rowData.filter(
+      (row) => row.__modified && !row.__isNew
+    );
+
+    const addObservables = newRows.map((row) => {
+      const cleanedData = this.cleanDataForServer(row);
+      return this.administrationService.addCustomer(cleanedData);
+    });
+
+    const updateObservables = modifiedRows.map((row) => {
+      const cleanedData = this.cleanDataForServer(row);
+      return this.administrationService.updateCustomer(row.id, cleanedData);
+    });
+
+    // Using concat to combine observables and lastValueFrom for async/await
+    try {
+      const responses = await lastValueFrom(
+        concat(...addObservables, ...updateObservables).pipe(toArray())
+      );
+      alerts.basicAlert(
+        'Datos actualizados',
+        'Se han actualizado los datos correctamente.',
+        'success'
+      );
+      this.notSavedChanges = false;
+      this.newlyAddedRows = [];
+      this.obtenerDatos(); // Refrescar los datos
+    } catch (error) {
+      console.error(error);
+      alerts.basicAlert(
+        'Error',
+        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
+        'error'
+      );
+    }
+  }
+
+  async deleteEntry() {
+    const selectedNodes = this.gridApi.getSelectedNodes();
+    if (selectedNodes.length === 0) {
+      alerts.basicAlert(
+        'Eliminar entrada',
+        'Por favor, seleccione una entrada para eliminar.',
+        'error'
+      );
+      return;
+    }
+
+    const selectedData = selectedNodes[0].data;
+    const id = selectedData.id;
+    selectedData.active = 0;
+    this.administrationService.deleteCustomer(id).pipe(
+      catchError((error) => {
         alerts.basicAlert(
           'Eliminar entrada',
-          'Por favor, seleccione una entrada para eliminar.',
+          'Error al eliminar la entrada.',
           'error'
         );
-        return;
-      }
-  
-      const selectedData = selectedNodes[0].data;
-      const id = selectedData.id;
-      selectedData.active = 0;
-      this.administrationService.deleteCustomer(id).pipe(
-        catchError((error) => {
+        console.error(error);
+        return EMPTY;
+      })
+    )
+      .subscribe(
+        () => {
           alerts.basicAlert(
             'Eliminar entrada',
-            'Error al eliminar la entrada.',
-            'error'
+            'Entrada eliminada satisfactoriamente.',
+            'success'
           );
-          console.error(error);
-          return EMPTY;
-        })
-      )
-        .subscribe(
-          () => {
-            alerts.basicAlert(
-              'Eliminar entrada',
-              'Entrada eliminada satisfactoriamente.',
-              'success'
-            );
-            this.obtenerDatos();
-  
-            alerts.basicAlert(
-              'Eliminar entrada',
-              'Entrada eliminada satisfactoriamente.',
-              'success'
-            );
-            this.notSavedChanges = false;
-            this.selectedRowData = null;
-          }
-        );
-    }
-  
-    revert() {
-      this.obtenerDatos();
-      this.notSavedChanges = false;
-    }
-  
-    private cleanDataForServer(data: any): any {
-      const cleanedData = { ...data };
-      delete cleanedData.__isNew;
-      delete cleanedData.__modified;
-      if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
-        delete cleanedData.id;
-      }
-      return cleanedData;
-    }
-  
+          this.obtenerDatos();
+
+          alerts.basicAlert(
+            'Eliminar entrada',
+            'Entrada eliminada satisfactoriamente.',
+            'success'
+          );
+          this.notSavedChanges = false;
+          this.selectedRowData = null;
+        }
+      );
   }
-  
+
+  revert() {
+    this.obtenerDatos();
+    this.notSavedChanges = false;
+  }
+
+  private cleanDataForServer(data: any): any {
+    const cleanedData = { ...data };
+    delete cleanedData.__isNew;
+    delete cleanedData.__modified;
+    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
+      delete cleanedData.id;
+    }
+    return cleanedData;
+  }
+
+}
+
 
 
 

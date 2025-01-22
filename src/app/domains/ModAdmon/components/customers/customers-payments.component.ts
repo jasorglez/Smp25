@@ -1,11 +1,10 @@
 import { Component, effect, HostListener, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
-import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
+import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from '../../../../helpers/alerts';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { AgGridModule } from 'ag-grid-angular';
-import { ModalService } from 'app/services/modal.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { SignalsService } from 'app/services/signals.service';
 import { CustomersService } from 'app/services/customers.service';
@@ -61,13 +60,9 @@ export class CustomersPaymentsComponent {
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
-  frameworkComponents = {
-    multiLineEditor: MultiLineEditorComponent
-  };
 
   // Inject of new way for Angular 18
   private customersService = inject(CustomersService);
-  private modalServiceTable = inject(ModalService);
   private signalsService = inject(SignalsService);
 
   // Interceptar signals
@@ -78,11 +73,33 @@ export class CustomersPaymentsComponent {
   get colMaster(): ColDef[] {
     return [
       { field: 'numberNote', headerName: 'Número de nota', editable: true, filter: true, width: 200 },
-      { field: 'date', headerName: 'Fecha', editable: true, filter: true, width: 200 },
-      { field: 'dateP', headerName: 'Fecha de pago', editable: true, filter: true, width: 200 },
+      { field: 'date', headerName: 'Fecha', editable: true, filter: true, width: 200, 
+        cellDataType: 'dateString',
+        valueFormatter: (params) => {
+          if (params.value) {
+            return params.value.split('T')[0];
+          }
+          return '';
+        } },
+      { field: 'dateP', headerName: 'Fecha de pago', editable: true, filter: true, width: 200, 
+        cellDataType: 'dateString',
+        valueFormatter: (params) => {
+          if (params.value) {
+            return params.value.split('T')[0];
+          }
+          return '';
+        } },
       { field: 'quantity', headerName: 'Cantidad', editable: true, filter: true, width: 200 },
-      { field: 'total', headerName: 'Total', editable: true, filter: true, width: 200 }
-      
+      {
+        field: 'total', headerName: 'Total', editable: true, filter: true, width: 200, cellDataType: 'number',
+        cellEditorParams: {
+          min: 0
+        },
+        valueFormatter: (params) => {
+          return params.value ? `$${params.value.toFixed(2)}` : '';
+        }
+      }
+
 
     ]
   };

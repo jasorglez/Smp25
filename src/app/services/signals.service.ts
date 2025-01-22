@@ -341,6 +341,7 @@ export class SignalsService {
 
   deleteClientData() {
     this.idClient.set(null);
+    this.nameClient.set(null);
   }
 
   setNameClient(name: string) {
@@ -395,6 +396,8 @@ export class SignalsService {
     this.requisitionDate = signal(null);
     this.selectedContract = signal(null);
     this.selectedProject = signal(null);
+    this.idClient = signal(null);
+    this.nameClient = signal(null);
 
     // Reinicia this.profile
     this.profileSignal(null, null, null, null, null, null);

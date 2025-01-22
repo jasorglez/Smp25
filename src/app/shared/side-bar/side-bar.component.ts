@@ -80,13 +80,13 @@ export class SideBarComponent {
   }
 
   onRootsSelected(event: Event): void {
-
     const target = event.target as HTMLSelectElement;
     this.selectedRoot = target.value;
     if (this.selectedRoot) {
       this.trackingService.setCompany(target.value);
       this.signalsService.setRootSelectedBySidebar(Number(this.selectedRoot));
       this.getpermissionxContracts(parseInt(this.selectedRoot));
+      this.getpermissionxBranchs(parseInt(this.selectedRoot));
     }
   }
 
