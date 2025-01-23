@@ -110,20 +110,47 @@ export class CustomersComponent {
           return params.value;
         }
       },
-
-
       {
         field: 'phone', headerName: 'Telefono', editable: true, width: 169, cellEditorParams: {
           maxLength: 15
         }
       },
-
       { field: 'rfc', headerName: 'RFC', editable: true, width: 140 },
-
       { field: 'city', headerName: 'Ciudad', editable: true, width: 105 },
-
-      { field: 'email', headerName: 'Correo', editable: true, width: 200 }
-
+      {
+        field: 'email', headerName: 'Correo', width: 200, cellEditor: 'agTextCellEditor',
+        editable: (params) => params.data.__isNew,
+        cellEditorParams: {
+          useFormatter: true,
+        },
+        valueFormatter: (params) => params.value,
+        valueSetter: (params) => {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (emailRegex.test(params.newValue)) {
+            // Verificar si el email ya existe
+            const duplicateExists = this.rowData.some((row, index) =>
+              index !== params.node.rowIndex && row.email === params.newValue
+            );
+            if (duplicateExists) {
+              alerts.basicAlert(
+                'Añadir usuario',
+                'Ya existe un usuario con ese correo electrónico.',
+                'error'
+              );
+              return false;
+            }
+            params.data[params.colDef.field] = params.newValue;
+            return true;
+          } else {
+            alerts.basicAlert(
+              'Editar usuario',
+              'Correo electrónico no válido.',
+              'error'
+            );
+            return false;
+          }
+        }
+      }
     ]
   };
 

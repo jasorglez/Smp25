@@ -33,7 +33,6 @@ export class PosComponent {
   idClient: number = null;
   idBranch: number = null;
   idCompany: number = null;
-  notSavedChanges: boolean = false;
   idVenta: number = null;
   lector: boolean = false;
   credit: boolean = false;
@@ -55,6 +54,9 @@ export class PosComponent {
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
+
+  // Agregar variable para almacenar el total
+  private _totalGeneral: number = 0;
 
   constructor() {
     effect(() => {
@@ -138,7 +140,6 @@ export class PosComponent {
     this.rowData = this.rowData.filter(row => row.id !== this.selectedRowData.id);
     this.gridApi.setGridOption('rowData', this.rowData);
     this.selectedRowData = null;
-    this.notSavedChanges = true;
   }
 
   printReceipt() {
@@ -150,19 +151,46 @@ export class PosComponent {
       amount: this.totalGeneral,
       active: true
     }
-    console.log(data)
-    alerts.basicAlert('Info','Aún no se implementa la impresión de recibos.','warning');
-/*     this.posService.addSaleXCustomerItem(data).subscribe(
-      {
-        next: (response) => {
-          const saleId = response.id;
-          console.log('ID de venta:', saleId);
-        },
-        error: (error) => {
-          console.error('Error al crear la venta', error);
-        }
+    
+    this.posService.addSaleXCustomerItem(data).subscribe({
+      next: (response) => {
+        const saleId = response.id;
+        console.log('ID de venta:', saleId);
+        
+        // Actualizar el idSale en todas las filas y eliminar el id temporal
+        this.rowData = this.rowData.map(row => {
+          const { id, ...rowWithoutId } = row;
+          return {
+            ...rowWithoutId,
+            idSale: saleId
+          };
+        });
+        
+        // Crear un array de promesas para enviar cada fila
+        const savePromises = this.rowData.map(row => 
+          this.posService.addSaleXConceptItem(row).toPromise()
+        );
+        
+        // Esperar a que todas las filas se guarden
+        Promise.all(savePromises)
+          .then(() => {
+            // Mostrar mensaje de éxito
+            alerts.basicAlert('Éxito', 'La compra se ha realizado correctamente. El ID de nota es el ' + saleId + '.', 'success');            
+            // Limpiar el grid
+            this.rowData = [];
+            this.gridApi.setGridOption('rowData', this.rowData);
+            this._totalGeneral = 0;
+          })
+          .catch(error => {
+            console.error('Error al guardar los conceptos:', error);
+            alerts.basicAlert('Error', 'Hubo un error al guardar los conceptos.', 'error');
+          });
+      },
+      error: (error) => {
+        console.error('Error al crear la venta', error);
+        alerts.basicAlert('Error', 'Hubo un error al crear la venta.', 'error');
       }
-    ) */
+    });
   }
 
   onClientChange(event: any) {
@@ -177,6 +205,17 @@ export class PosComponent {
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
     this.gridApi.addEventListener('selectionChanged', () => this.onSelectionChanged());
+    // Agregar el evento para actualizar el total cuando cambie una celda
+    this.gridApi.addEventListener('cellValueChanged', () => this.calculateTotal());
+  }
+
+  // Método para calcular el total
+  private calculateTotal() {
+    this._totalGeneral = this.rowData.reduce((sum, row) => {
+      const quantity = Number(row.quantity) || 0;
+      const pu = Number(row.pu) || 0;
+      return sum + (quantity * pu);
+    }, 0);
   }
 
   // Definición de columnas para el grid
@@ -190,7 +229,7 @@ export class PosComponent {
       },
       {
         field: 'idSale',
-        headerName: 'idCustomer',
+        headerName: 'idSale',
         hide: true
       },
       {
@@ -268,13 +307,9 @@ export class PosComponent {
     ];
   }
 
-  // Propiedad computada para obtener el total
+  // Modificar el getter para usar el valor almacenado
   get totalGeneral(): number {
-    return this.rowData.reduce((sum, row) => {
-      const quantity = Number(row.quantity) || 0;
-      const pu = Number(row.pu) || 0;
-      return sum + (quantity * pu);
-    }, 0);
+    return this._totalGeneral;
   }
 
   // Método para formatear el total en moneda
