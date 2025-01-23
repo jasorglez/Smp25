@@ -14,6 +14,7 @@ import { UsersService } from 'app/services/users.service';
 
 import { SharedModule } from '../shared.module';
 import { alerts } from 'app/helpers/alerts';
+import { EMPTY } from 'rxjs';
 
 
 @Component({
@@ -230,13 +231,13 @@ async onBranchSelected(event: Event)  {
             this.selectedProjectId = this.projectData[0].id;
             this.trackingService.setProject(this.selectedProjectId);
           } else {
-            console.log(`No se encontró ningún Project para el contrato ${idContract}`);
+            //console.log(`No se encontró ningún Project para el contrato ${idContract}`);
             this.selectedProjectId = '';
             this.trackingService.setProject('');
           }
         },
         error: (error) => {
-          console.error('Error al obtener proyectos:', error);
+          //console.error('Error al obtener proyectos:', error);
           this.selectedProjectId = '';
           this.trackingService.setProject('');
         }
@@ -274,11 +275,7 @@ async onBranchSelected(event: Event)  {
           this.trackingService.setPlatform(this.selectedPlatformId);
           this.trackingService.setPlataforma(this.platformData[0].description);
         } else {
-          alerts.basicAlert(
-            'Error',
-            'No existen Plataformas para este usuario.',
-            'error'
-          );
+          EMPTY;
         }
       });
     }
@@ -334,6 +331,16 @@ async onBranchSelected(event: Event)  {
       ''
     );
     this.router.navigate(['procreshuman']);
+  }
+
+  salesproc() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Eleccion del menu Ventas',
+      'Menu Side Bar',
+      ''
+    );
+    this.router.navigate(['procsales']);
   }
 
   Bpi() {

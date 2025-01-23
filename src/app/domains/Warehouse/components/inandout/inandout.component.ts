@@ -70,6 +70,7 @@ export class InAndOutComponent {
   IdInAndOut: number = null;
   private masterGridApi: GridApi;
   private detailsGridApi: GridApi;
+  idRoot: number = null;
 
   // Variables Master
   masterRowData: any[] = [];
@@ -102,6 +103,7 @@ export class InAndOutComponent {
 
   constructor() {
     effect(() => {
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idProject = this.signalsService.getProjectSelectedBySidebar()();
       this.IdInAndOut = this.signalsService.getIdInAndOut()();
 
@@ -654,7 +656,7 @@ export class InAndOutComponent {
   }
 
   obtenerProductos() {
-    this.materialsService.getMaterials2Fields().subscribe(
+    this.materialsService.getMaterials2Fields(this.idRoot).subscribe(
       (data: Catalog[]) => {
         this.productos = data;
       },

@@ -20,20 +20,21 @@
           <option *ngFor="let item of branchData" [value]="item.id">{{ item.name }}</option>
         </select>
 
-      <!-- Select Contracts -->
+<!--       Select Contracts
       <select id="contract" (change)="onContractsSelected($event)" class="form-control select-side" [value]="selectedContractId || ''"
                             title= "{{ 'select' | translate  }} {{ 'contract' | translate  }}">  >
         <option selected disabled value="">{{ 'contract' | translate }}</option>
         <option *ngFor="let item of contractData" [value]="item.id">{{ item.name }}</option>
       </select>
 
-      <!-- Select Projects -->
+      Select Projects
       <select id="project" (change)="onProjectSelected($event)" class="form-control select-side" [value]="selectedProjectId || ''"
                            title= "{{ 'select' | translate  }} {{ 'projects' | translate  }}">  >
         <option selected disabled value="">{{ 'projects' | translate }}</option>
         <option *ngFor="let pj of projectData" [value]="pj.id">{{ pj.name }}</option>
       </select>
-    </div>
+      -->
+    </div> 
     
      <ul class="nav flex-column">
       <li class="nav-item">
@@ -69,6 +70,12 @@
       <li class="nav-item">
         <a class="nav-link d-flex align-items-center" (click)="resourcesmenproc()">
           <mat-icon>diversity_3</mat-icon> {{ 'resourcesmen' | translate }}
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a class="nav-link d-flex align-items-center" (click)="salesproc()">
+          <mat-icon>point_of_sale</mat-icon> {{ 'Sales' | translate }}
         </a>
       </li>
 

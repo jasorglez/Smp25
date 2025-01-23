@@ -183,7 +183,7 @@ export class CustomersComponent {
   }
 
   async saveChanges() {
-    const isValid = this.rowData.every((item) => item.nameContact && item.company && item.phone && item.rfc && item.city);
+    const isValid = this.rowData.every((item) => item.nameContact || item.company);
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',

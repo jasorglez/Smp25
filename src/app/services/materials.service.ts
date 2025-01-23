@@ -12,8 +12,8 @@ export class MaterialsService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
-  getMaterials() {
-    return this.http.get(`${environment.urlWarehouse}/Material/1`, { headers: this.trackingService.getHeaders() });
+  getMaterials(id: number) {
+    return this.http.get(`${environment.urlWarehouse}/Material/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
   addMaterial(data: any): Observable<any> {
@@ -28,7 +28,7 @@ export class MaterialsService {
     return this.http.delete<any[]>(`${environment.urlWarehouse}/Material/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
-  getMaterials2Fields() {
-    return this.http.get(`${environment.urlWarehouse}/Material/2fields?idCompany=1`, { headers: this.trackingService.getHeaders() });
+  getMaterials2Fields(id: number) {
+    return this.http.get(`${environment.urlWarehouse}/Material/2fields?idCompany=${id}`, { headers: this.trackingService.getHeaders() });
   }
 }

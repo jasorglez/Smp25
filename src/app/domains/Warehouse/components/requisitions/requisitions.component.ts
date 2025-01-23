@@ -58,6 +58,7 @@ export class RequisitionsComponent {
   idRequisition: number = null;
   private masterGridApi: GridApi;
   private detailsGridApi: GridApi;
+  idRoot: number = null;
 
   // Variables Master
   masterRowData: any[] = [];
@@ -90,6 +91,7 @@ export class RequisitionsComponent {
 
   constructor() {
     effect(() => {
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idProject = this.signalsService.getProjectSelectedBySidebar()();
       this.idRequisition = this.signalsService.getIdRequisition()();
 
@@ -552,7 +554,7 @@ export class RequisitionsComponent {
   }
 
   obtenerProductos() {
-    this.materialsService.getMaterials2Fields().subscribe(
+    this.materialsService.getMaterials2Fields(this.idRoot).subscribe(
       (data: Catalog[]) => {
         this.productos = data;
       },

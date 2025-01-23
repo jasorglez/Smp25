@@ -1,4 +1,4 @@
-import { Component, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject } from '@angular/core';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { alerts } from '../../../../helpers/alerts';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
@@ -10,6 +10,7 @@ import { ModalService } from 'app/services/modal.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
+import { SignalsService } from 'app/services/signals.service';
 
 interface Catalog {
   id: number;
@@ -32,6 +33,17 @@ export class MaterialsComponent {
     this.obtenerUbicaciones();
   }
 
+  constructor() {
+    effect(() => {
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+      this.obtenerDatos();
+      this.obtenerMedidas();
+      this.obtenerFamilias();
+      this.obtenerUbicaciones();
+    }
+    )
+  }
+
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
     if (this.notSavedChanges) {
@@ -50,6 +62,7 @@ export class MaterialsComponent {
   familias: any;
   ubicaciones: any;
   id: string = null;
+  idRoot: number = null;
   private tempIdCounter: number = 0;
   material = {
     picture: null as string,
@@ -75,6 +88,7 @@ export class MaterialsComponent {
   private catalogsService = inject(CatalogsService);
   private modalServiceTable = inject(ModalService);
   private imageHandlerService = inject(ImageHandlerService);
+  private signalsService = inject(SignalsService);
 
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
@@ -191,7 +205,7 @@ export class MaterialsComponent {
   };
 
   obtenerDatos() {
-    this.materialsService.getMaterials().subscribe((data: any) => {
+    this.materialsService.getMaterials(this.idRoot).subscribe((data: any) => {
       this.rowData = data;
     });
   }
