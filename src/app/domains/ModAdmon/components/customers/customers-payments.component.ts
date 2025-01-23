@@ -14,7 +14,7 @@ import { CustomersService } from 'app/services/customers.service';
   selector: 'app-customers-payments',
   standalone: true,
   imports: [RouterModule, DomainsModule, AgGridModule, MultiLineEditorComponent],
-  templateUrl: './customers-child.component.html',
+  templateUrl: './customers-payments.component.html',
   styleUrl: './customers.component.scss'
 })
 export class CustomersPaymentsComponent {

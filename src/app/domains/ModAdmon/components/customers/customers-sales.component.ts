@@ -15,7 +15,7 @@ import { PosService } from 'app/services/pos.service';
   selector: 'app-customers-sales',
   standalone: true,
   imports: [RouterModule, DomainsModule, AgGridModule, MultiLineEditorComponent],
-  templateUrl: './customers-child.component.html',
+  templateUrl: './customers-sales.component.html',
   styleUrl: './customers.component.scss'
 })
 export class CustomersSalesComponent {
