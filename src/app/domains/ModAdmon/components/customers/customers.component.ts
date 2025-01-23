@@ -62,8 +62,8 @@ export class CustomersComponent {
   currentIndex = 0;
 
   public rowSelection: 'single' | 'multiple' = 'single';
-  public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
-  public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
+  public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'never';
+  public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'never';
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
   frameworkComponents = {
