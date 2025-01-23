@@ -116,7 +116,7 @@ export class PosComponent {
       active: true
     }
 
-    this.rowData = [newItem, ...this.rowData];
+    this.rowData = [...this.rowData, newItem];
     this.newlyAddedRows.push(tempId);
     this.gridApi.setGridOption('rowData', this.rowData);
 
