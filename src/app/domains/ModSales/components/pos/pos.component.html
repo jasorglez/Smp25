@@ -27,21 +27,21 @@
                 </div>
             </div>
         </div>
-
-        <!-- Botones y grid principal -->
-        <div class="col text-right">
-            <button type="button" class="btn btn-primary me-1" (click)="addRow()">
-                <i class="bi bi-plus-lg"></i>
-            </button>
-            <button type="button" class="btn btn-danger ms-1 me-1" (click)="deleteRow()">
-                <i class="bi bi-trash"></i>
-            </button>
-        </div>
     </div>
 
     <div class="row">
-        <div class="col-12">
-            <ag-grid-angular style="width: 100%; height: 55vh;" class="ag-theme-quartz" [rowData]="rowData"
+        <div class="col-auto">
+            <div class="d-flex flex-column">
+                <button type="button" class="btn btn-primary mb-2" (click)="addRow()">
+                    <i class="bi bi-plus-lg"></i>
+                </button>
+                <button type="button" class="btn btn-danger" (click)="deleteRow()">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </div>
+        <div class="col">
+            <ag-grid-angular style="width: 100%; height: 55vh;" class="ag-theme-quartz small-text-ag-grid" [rowData]="rowData"
                 [columnDefs]="colMaster" (gridReady)="onGridReady($event)" [rowSelection]="rowSelection"
                 [pivotPanelShow]="pivotPanelShow" [rowGroupPanelShow]="rowGroupPanelShow"
                 [paginationPageSize]="paginationPageSize" [paginationPageSizeSelector]="paginationPageSizeSelector"
