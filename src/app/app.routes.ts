@@ -198,10 +198,10 @@ export const routes: Routes = [
         path: 'procsales',
         loadComponent: () => import('./domains/ModSales/pages/procsales/procsales.component').then(s => s.ProcsalesComponent),
         children: [
-          { path: '', redirectTo: 'ModSales', pathMatch: 'full' }, ...SharedModule.getRoutes(),
+          { path: '', redirectTo: 'pos', pathMatch: 'full' }, ...SharedModule.getRoutes(),
           {
             path: 'setup-sales',
-            loadComponent: () => import('./domains/ModSales/components/setup/setup.component').then(s => s.SetupComponent)
+            loadComponent: () => import('./domains/ModSales/components/setup/setup.component').then(s => s.PosSetupComponent)
           },
           {
             path: 'pos',
