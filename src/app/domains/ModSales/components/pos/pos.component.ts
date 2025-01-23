@@ -113,8 +113,8 @@ export class PosComponent {
       pu: null,
       total: null,
       unit: true,
-      boxNumber: null,
-      unitNumber: null,
+      boxNumber: 0,
+      unitNumber: 0,
       active: true
     }
 

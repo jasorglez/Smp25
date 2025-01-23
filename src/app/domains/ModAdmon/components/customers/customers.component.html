@@ -47,7 +47,10 @@
         *ngIf="selectedTab === 'customers-payments' && idClient()">
         <app-customers-payments></app-customers-payments>
       </div>
-
+      <div class="tab-pane" [class.active]="selectedTab === 'customers-sales'"
+        *ngIf="selectedTab === 'customers-sales' && idClient()">
+        <app-customers-sales></app-customers-sales>
+      </div>
     </div>
   </div>
 </div>

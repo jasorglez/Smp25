@@ -34,4 +34,8 @@ export class PosService {
     );
   }
 
+  getSalesXCustomer(id: number): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/Salesxcustomer/byCustomer/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
 }

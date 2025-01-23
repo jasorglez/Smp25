@@ -21,7 +21,7 @@
     [columnDefs]="colMaster" (selectionChanged)="onSelectionChanged($event)"
     (cellValueChanged)="onCellValueChanged($event)" (rowSelected)="onSelectedRow($event)"
     (gridReady)="onGridReady($event)" rowSelection="single" [pivotPanelShow]="pivotPanelShow"
-    [rowSelection]="rowSelection" [rowGroupPanelShow]="rowGroupPanelShow">
+    [rowSelection]="rowSelection" [pagination]="true" [rowGroupPanelShow]="rowGroupPanelShow">
   </ag-grid-angular>
 
 </div>

@@ -1,38 +1,35 @@
 import { Component, effect, HostListener, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
-import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
+import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from '../../../../helpers/alerts';
-import { AdministrationService } from 'app/services/administration.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { AgGridModule } from 'ag-grid-angular';
-import { ModalService } from 'app/services/modal.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { SignalsService } from 'app/services/signals.service';
-import { CustomersPaymentsComponent } from './customers-payments.component';
-import { CustomersSalesComponent } from './customers-sales.component';
+import { CustomersService } from 'app/services/customers.service';
+import { PosService } from 'app/services/pos.service';
 
 
 @Component({
-  selector: 'app-customers',
+  selector: 'app-customers-sales',
   standalone: true,
-  imports: [RouterModule, DomainsModule, AgGridModule, MultiLineEditorComponent, CustomersPaymentsComponent, CustomersSalesComponent],
-  templateUrl: './customers.component.html',
+  imports: [RouterModule, DomainsModule, AgGridModule, MultiLineEditorComponent],
+  templateUrl: './customers-child.component.html',
   styleUrl: './customers.component.scss'
 })
-export class CustomersComponent {
+export class CustomersSalesComponent {
 
 
   ngOnInit() {
     this.obtenerDatos();
-    this.signalsService.deleteClientData();
   }
 
   constructor() {
     effect(() => {
-      this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      this.idClient = this.signalsService.getIdClient()();
+      this.nameClient = this.signalsService.getNameClient()();
       this.obtenerDatos();
-      this.signalsService.deleteClientData();
     }
     );
   }
@@ -54,8 +51,6 @@ export class CustomersComponent {
   branches: any;
   id: string;
   private tempIdCounter: number = 0;
-  selectedTab: string = 'customers-payments';
-  idBranch: number = null;
 
   private gridApi: GridApi;
 
@@ -66,97 +61,41 @@ export class CustomersComponent {
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
-  frameworkComponents = {
-    multiLineEditor: MultiLineEditorComponent
-  };
 
   // Inject of new way for Angular 18
-  private administrationService = inject(AdministrationService);
-  private modalServiceTable = inject(ModalService);
+  private customersService = inject(CustomersService);
   private signalsService = inject(SignalsService);
+  private posService = inject(PosService);
 
   // Interceptar signals
-  idClient = this.signalsService.getIdClient();
+  idClient = this.signalsService.getIdClient()();
   nameClient = this.signalsService.getNameClient()();
 
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
     return [
-      { field: 'nameContact', headerName: 'Nombre', editable: true, filter: true, width: 200 },
-      {
-        field: 'company', headerName: 'Compania', editable: false, width: 285, filter: true,
-        cellEditor: 'agPopupTextCellEditor',
-        cellEditorParams: {
-          maxLength: 100,
-          cols: 50,
-          rows: 3,
-          onKeyDown: (event: KeyboardEvent) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.stopPropagation();
-            }
-          },
-        },
-        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-          if (!event.node.group) {
-            this.modalServiceTable.showModal({
-              params: event,
-              value: event.value,
-            });
+      { field: 'id', headerName: 'Número de nota', filter: true, width: 200 },
+      { field: 'date', headerName: 'Fecha', filter: true, width: 200, 
+        cellDataType: 'dateString',
+        valueFormatter: (params) => {
+          if (params.value) {
+            return params.value.split('T')[0];
           }
-        },
-        cellRenderer: (params: ICellRendererParams) => {
-          if (params.node.group) {
-            return params.value;
-          }
-          return params.value;
-        }
-      },
-      {
-        field: 'phone', headerName: 'Telefono', editable: true, width: 169, cellEditorParams: {
-          maxLength: 15
-        }
-      },
-      { field: 'rfc', headerName: 'RFC', editable: true, width: 140 },
-      { field: 'city', headerName: 'Ciudad', editable: true, width: 105 },
-      {
-        field: 'email', headerName: 'Correo', width: 200, cellEditor: 'agTextCellEditor',
-        editable: (params) => params.data.__isNew,
-        cellEditorParams: {
-          useFormatter: true,
-        },
-        valueFormatter: (params) => params.value,
-        valueSetter: (params) => {
-          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-          if (emailRegex.test(params.newValue)) {
-            // Verificar si el email ya existe
-            const duplicateExists = this.rowData.some((row, index) =>
-              index !== params.node.rowIndex && row.email === params.newValue
-            );
-            if (duplicateExists) {
-              alerts.basicAlert(
-                'Añadir usuario',
-                'Ya existe un usuario con ese correo electrónico.',
-                'error'
-              );
-              return false;
-            }
-            params.data[params.colDef.field] = params.newValue;
-            return true;
-          } else {
-            alerts.basicAlert(
-              'Editar usuario',
-              'Correo electrónico no válido.',
-              'error'
-            );
-            return false;
-          }
-        }
-      }
+          return '';
+        } },
+      { field: 'lector', headerName: '¿Lector?', filter: true, width: 200 },
+      { field: 'credit', headerName: '¿Crédito?', filter: true, width: 200 },
+      { field: 'amount', headerName: 'Total', filter: true, width: 200, valueFormatter: (params) => {
+        return new Intl.NumberFormat('es-MX', {
+          style: 'currency',
+          currency: 'MXN'
+        }).format(params.value || 0);
+      } },
     ]
   };
 
   obtenerDatos() {
-    this.administrationService.getCustomers(this.idBranch).subscribe((data: any) => {
+    this.posService.getSalesXCustomer(this.idClient).subscribe((data: any) => {
       this.rowData = data;
     });
   }
@@ -171,8 +110,6 @@ export class CustomersComponent {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
-      this.signalsService.setIdClient(this.selectedRowData.id);
-      this.signalsService.setNameClient(this.selectedRowData.nameContact);
     } else {
       this.selectedRowData = null;
     }
@@ -192,16 +129,12 @@ export class CustomersComponent {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idBranch: 1,
-      nameContact: '',
-      company: '',
-      phone: '',
-      rfc: '',
-      city: '',
-      mobile: '',
-      email: '',
-      address: '',
-      vigente: true,
+      idCustomer: this.idClient,
+      numberNote: '',
+      date: new Date().toISOString().split('T')[0],
+      dateP: null,
+      quantity: 0,
+      total: 0,
       active: true,
       __isNew: true,
     };
@@ -211,7 +144,7 @@ export class CustomersComponent {
   }
 
   async saveChanges() {
-    const isValid = this.rowData.every((item) => item.nameContact || item.company);
+    const isValid = this.rowData.every((item) => item.numberNote && item.date && item.dateP && item.quantity && item.total);
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
@@ -228,12 +161,12 @@ export class CustomersComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.administrationService.addCustomer(cleanedData);
+      return this.customersService.addClientCredit(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.administrationService.updateCustomer(row.id, cleanedData);
+      return this.customersService.updateClientCredit(row.id, cleanedData);
     });
 
     // Using concat to combine observables and lastValueFrom for async/await
@@ -273,7 +206,7 @@ export class CustomersComponent {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
     selectedData.active = 0;
-    this.administrationService.deleteCustomer(id).pipe(
+    this.customersService.deleteClientCredit(id).pipe(
       catchError((error) => {
         alerts.basicAlert(
           'Eliminar entrada',
