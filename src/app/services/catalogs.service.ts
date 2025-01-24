@@ -32,4 +32,10 @@ export class CatalogsService {
   getDataTypes(): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog?type=Input`, { headers: this.trackingService.getHeaders() });
   }
+
+  getDocumentTypes(): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog?type=TypeDocument`, { headers: this.trackingService.getHeaders() });
+  }
+
+
 }

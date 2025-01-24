@@ -1,1 +1,104 @@
-<p>setup works!</p>
+<div class="container py-3">
+    <form class="bg-light p-3 rounded shadow-sm">
+        <!-- Sección Customer -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label for="idCustomer" class="form-label fw-semibold mb-1">Seleccionar cliente</label>
+                    <ng-select [(ngModel)]="idCustomer" 
+                             [items]="customers" 
+                             id="idCustomer" 
+                             placeholder="Buscar cliente..."
+                             bindLabel="name_company" 
+                             bindValue="id" 
+                             [searchable]="true" 
+                             (change)="onCustomerChange($event)"
+                             [ngModelOptions]="{standalone: true}">
+                    </ng-select>
+                </div>
+            </div>
+        </div>
+
+        <hr class="my-3">
+
+        <!-- Configuración de documento -->
+        <div class="row mb-3" [class.opacity-50]="!idCustomer">
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label for="documentType" class="form-label fw-semibold mb-1">Tipo de documento</label>
+                    <ng-select [(ngModel)]="options.idDocumentType"
+                             [items]="documentType" 
+                             id="idDocumentType" 
+                             [disabled]="!idCustomer"
+                             placeholder="Seleccionar tipo..."
+                             bindLabel="description" 
+                             bindValue="id" 
+                             [searchable]="true"
+                             [ngModelOptions]="{standalone: true}">
+                    </ng-select>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label for="prefix" class="form-label fw-semibold mb-1">Prefijo Ticket</label>
+                    <input type="text" 
+                           class="form-control" 
+                           name="prefix" 
+                           id="prefix"
+                           [disabled]="!idCustomer" 
+                           [(ngModel)]="options.prefix">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label for="consecutive" class="form-label fw-semibold mb-1">Consecutivo</label>
+                    <input type="number" 
+                           class="form-control" 
+                           name="consecutive" 
+                           id="consecutive"
+                           [disabled]="!idCustomer" 
+                           [(ngModel)]="options.consecutive">
+                </div>
+            </div>
+        </div>
+
+        <!-- Opciones adicionales -->
+        <div class="row mb-3" [class.opacity-50]="!idCustomer">
+            <div class="col-12">
+                <div class="d-flex gap-4">
+                    <div class="form-check form-switch">
+                        <input type="checkbox" 
+                               class="form-check-input" 
+                               name="printScreen" 
+                               id="printScreen"
+                               [disabled]="!idCustomer" 
+                               [(ngModel)]="options.printScreen">
+                        <label class="form-check-label ms-2" for="printScreen">Imprimir recibo</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input type="checkbox" 
+                               class="form-check-input" 
+                               name="salesExistence" 
+                               id="salesExistence"
+                               [disabled]="!idCustomer" 
+                               [(ngModel)]="options.salesExistence">
+                        <label class="form-check-label ms-2" for="salesExistence">Existencia en ventas</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botones -->
+        <div class="d-flex gap-2 mt-4">
+            <button class="btn btn-primary px-3" 
+                    [disabled]="!idCustomer"
+                    (click)="saveOptions()">
+                <i class="fas fa-save me-2"></i>Guardar opciones
+            </button>
+            <button class="btn btn-secondary px-3" (click)="cancel()">
+                <i class="fas fa-times me-2"></i>Cancelar
+            </button>
+        </div>
+    </form>
+
+</div>
