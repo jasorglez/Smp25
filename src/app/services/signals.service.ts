@@ -31,9 +31,18 @@ export class SignalsService {
   }
 
   private branchSelectedBySidebar = signal<number | null>(null);
+  private branchNameSelectedBySidebar = signal<string>(null);
 
   setBranchSelectedBySidebar(id: number) {
     this.branchSelectedBySidebar.set(id);
+  }
+
+  setBranchNameSelectedBySidebar(name: string) {
+    this.branchNameSelectedBySidebar.set(name);
+  }  
+
+  getBranchNameSelectedBySidebar() {
+    return this.branchNameSelectedBySidebar;
   }
 
   getRootSelectedBySidebar() {
@@ -364,6 +373,7 @@ export class SignalsService {
   deleteSignals() {
     this.rootSelectedBySidebar = signal(null);
     this.branchSelectedBySidebar = signal(null);
+    this.branchNameSelectedBySidebar = signal(null);
     this.projectSelectedBySidebar = signal(null);
     this.contractSelectedBySidebar = signal(null);
     this.idCompany = signal(null);

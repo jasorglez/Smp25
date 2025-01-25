@@ -140,6 +140,7 @@ export class SideBarComponent {
           
           // Agregamos estas líneas para simular la selección automática
           this.signalsService.setBranchSelectedBySidebar(Number(this.selectedBranchId));
+          this.signalsService.setBranchNameSelectedBySidebar(this.branchData[0].name);
           this.trackingService.setContract(this.selectedBranchId);
 
           // Forzamos la actualización del select

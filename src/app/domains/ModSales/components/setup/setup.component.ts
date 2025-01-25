@@ -27,6 +27,7 @@ export class PosSetupComponent {
   // Variables de identificación
   idCustomer: number = null;
   idBranch: number = null;
+  nameBranch: string = null;
   isNew: boolean = false;
 
   // Arrays para almacenar datos
@@ -41,6 +42,7 @@ export class PosSetupComponent {
 
   constructor() {
     effect(() => {
+      this.nameBranch = this.signalsService.getBranchNameSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.idCustomer = null; // Resetear el customere seleccionado
       this.getCustomers();
