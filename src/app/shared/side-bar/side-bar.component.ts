@@ -126,13 +126,15 @@ export class SideBarComponent {
   }
 
   async getpermissionxBranchs(idRoot: number) {
-    this.branchService.getBranches2fields(parseInt(localStorage.getItem('company')))
+    this.branchService.getBranchesByUserAndCompany(this.signalsService.idUser(), parseInt(localStorage.getItem('company')))
       .subscribe((data) => {
-        const branch = Object.values(data)
-        console.log('Branch', branch)
-        if (branch) {
-          this.branchData = branch;
-          // Ya tengo el id de la compañía root
+        console.log(data);
+        // Modificación para almacenar id y name en branchData
+        this.branchData = data.project.map((branch: any) => ({
+          id: branch.id,
+          name: branch.name
+        }));
+        if (this.branchData.length > 0) {
           this.selectedBranchId = this.branchData[0].id;
           console.log(this.selectedBranchId);
           
@@ -149,10 +151,12 @@ export class SideBarComponent {
               selectElement.dispatchEvent(new Event('change'));
             }
           });
-
         } else {
           console.log(`No se encontró ningún branch con idRoot ${this.selectedBranchId}`);
         }
+      }, (error) => {
+        console.error('Error al obtener branches:', error);
+        this.branchData = []; // Asignar un array vacío en caso de error
       });
   }
 
