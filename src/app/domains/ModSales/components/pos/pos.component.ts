@@ -9,6 +9,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { SearchableSelectComponent } from 'app/shared/searchable-select/searchable-select.component';
 import { alerts } from 'app/helpers/alerts';
+import { catchError, debounceTime, distinctUntilChanged, Observable, of, Subject, switchMap } from 'rxjs';
 
 @Component({
   selector: 'app-pos',
@@ -22,6 +23,11 @@ export class PosComponent {
   private posService = inject(PosService);
   private signalsService = inject(SignalsService);
   private materialsService = inject(MaterialsService);
+
+  // products
+  productInput$ = new Subject<string>();
+  products$: Observable<any[]>;
+  selectedProduct: any;
 
   // Componentes disponibles para el grid
   components = {
@@ -70,11 +76,86 @@ export class PosComponent {
       this.idCompany = this.signalsService.getRootSelectedBySidebar()();
       this.getProducts();
     });
+
+    // Actualizar la lógica de products$ para manejar entradas vacías
+    this.products$ = this.productInput$.pipe(
+      debounceTime(200),
+      distinctUntilChanged(),
+      switchMap(term => {
+        console.log('Buscando materiales con término:', term);
+        return this.materialsService.getMaterialsByNameOrBarcode(this.idCompany, term).pipe(
+          catchError(error => {
+            console.error('Error fetching materials:', error);
+            // Return an empty array instead of throwing an error
+            return of([]);
+          })
+        );
+      })
+    );
   }
 
   ngOnInit() {
     this.getCustomers();
     this.getProducts();
+    if (this.clients.length > 0) {
+      this.idClient = this.clients[0].id;
+    }
+  }
+
+  onProductSelect(product: any) {
+    //this.selectedProduct = product;
+    if (!product) return;
+
+  if (this.idClient == null) {
+    alerts.basicAlert('Error', 'Seleccione un cliente antes de agregar un producto.', 'error');
+    return;
+  }
+
+  // Find existing row with the same product
+  const existingRowIndex = this.rowData.findIndex(row => row.idProduct === product.id);
+
+  if (existingRowIndex !== -1) {
+    // Increment quantity of existing row
+    const updatedRowData = [...this.rowData];
+    updatedRowData[existingRowIndex] = {
+      ...updatedRowData[existingRowIndex],
+      quantity: (updatedRowData[existingRowIndex].quantity || 0) + 1,
+      total: product.price * ((updatedRowData[existingRowIndex].quantity || 0) + 1)
+    };
+
+    this.rowData = updatedRowData;
+    this.gridApi.setGridOption('rowData', this.rowData);
+  } else {
+    // Add new row if product not found
+    const tempId = `temp_${this.tempIdCounter++}`;
+    const newItem = {
+      id: tempId,
+      idSale: null,
+      idProduct: product.id,
+      quantity: 1,
+      pu: product.price || 0,
+      total: product.price || 0,
+      unit: true,
+      boxNumber: 0,
+      unitNumber: 0,
+      active: true
+    };
+
+    this.rowData = [...this.rowData, newItem];
+    this.newlyAddedRows.push(tempId);
+    this.gridApi.setGridOption('rowData', this.rowData);
+
+    requestAnimationFrame(() => {
+      const rowNode = this.gridApi.getRowNode(tempId);
+      if (rowNode) {
+        rowNode.setSelected(true);
+        this.selectedRowData = newItem;
+      }
+    });
+  }
+
+  // Recalculate total
+  this.calculateTotal();
   }
 
   // Método para obtener clientes de la sucursal seleccionada
@@ -170,7 +251,7 @@ export class PosComponent {
           next: (response) => {
             const saleId = response.id;
             console.log('ID de venta:', saleId);
-            
+
             // Actualizar el idSale en todas las filas y eliminar el id temporal
             this.rowData = this.rowData.map(row => {
               const { id, ...rowWithoutId } = row;
@@ -179,18 +260,18 @@ export class PosComponent {
                 idSale: saleId
               };
             });
-            
+
             // Crear un array de promesas para enviar cada fila
-            const savePromises = this.rowData.map(row => 
+            const savePromises = this.rowData.map(row =>
               this.posService.addSaleXConceptItem(row).toPromise()
             );
-            
+
             // Esperar a que todas las filas se guarden
             Promise.all(savePromises)
               .then(() => {
                 // Mostrar mensaje de éxito
-                alerts.basicAlert('Éxito', 'La compra se ha realizado correctamente. El ID de nota es el ' + numberNote + '.', 'success');            
-                
+                alerts.basicAlert('Éxito', 'La compra se ha realizado correctamente. El ID de nota es el ' + numberNote + '.', 'success');
+
                 // Actualizar el consecutive en el setupResponse
                 const updatedSetup = { ...setupResponse[0], consecutive: newConsecutive };
                 this.posService.updatePosSetup(this.idBranch, this.idClient, updatedSetup).subscribe({
@@ -352,4 +433,16 @@ export class PosComponent {
       currency: 'MXN'
     }).format(value);
   }
+
+  onSearchChange(event: any) {
+    const searchTerm = event.target.value.trim(); // Extraer el valor y eliminar espacios en blanco
+
+    // Emitir cadena vacía si no hay término de búsqueda
+    if (searchTerm === '') {
+      this.productInput$.next('');
+    } else {
+      this.productInput$.next(searchTerm);
+    }
+  }
 }
+

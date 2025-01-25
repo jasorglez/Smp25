@@ -31,4 +31,8 @@ export class MaterialsService {
   getMaterials2Fields(id: number) {
     return this.http.get(`${environment.urlWarehouse}/Material/2fields?idCompany=${id}`, { headers: this.trackingService.getHeaders() });
   }
+
+  getMaterialsByNameOrBarcode(idCompany: number, nameOrBarcode: string): Observable<any> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Material/byNameOrBarCode?idCompany=${idCompany}&nameOrBarCode=${nameOrBarcode}`, { headers: this.trackingService.getHeaders() });
+  }
 }
