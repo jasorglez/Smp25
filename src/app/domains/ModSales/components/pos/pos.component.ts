@@ -142,52 +142,86 @@ export class PosComponent {
   }
 
   printReceipt() {
-    const data = {
-      idCustomer: this.idClient,
-      date: new Date().toISOString(),
-      lector: this.lector,
-      credit: this.credit,
-      amount: this.totalGeneral,
-      active: true
-    }
-    
-    this.posService.addSaleXCustomerItem(data).subscribe({
-      next: (response) => {
-        const saleId = response.id;
-        console.log('ID de venta:', saleId);
-        
-        // Actualizar el idSale en todas las filas y eliminar el id temporal
-        this.rowData = this.rowData.map(row => {
-          const { id, ...rowWithoutId } = row;
-          return {
-            ...rowWithoutId,
-            idSale: saleId
-          };
+    // Consumir el servicio getPosSetup
+    this.posService.getPosSetup(this.idBranch, this.idClient).subscribe({
+      next: (setupResponse) => {
+        console.log(this.idBranch, this.idClient);
+        console.log(setupResponse);
+        if (setupResponse.length === 0) {
+          alerts.basicAlert('Error', 'No se encontraron datos de configuración para el POS.', 'error');
+          return;
+        }
+
+        const { prefix, consecutive } = setupResponse[0]; // Asumiendo que el primer elemento tiene los valores
+        const newConsecutive = consecutive + 1; // Aumentar consecutive
+        const numberNote = `${prefix}-${newConsecutive}`; // Concatenar prefix y consecutive
+
+        const data = {
+          idCustomer: this.idClient,
+          numberNote: numberNote, // Usar el nuevo numberNote
+          date: new Date().toISOString(),
+          lector: this.lector,
+          credit: this.credit,
+          amount: this.totalGeneral,
+          active: true
+        };
+
+        this.posService.addSaleXCustomerItem(data).subscribe({
+          next: (response) => {
+            const saleId = response.id;
+            console.log('ID de venta:', saleId);
+            
+            // Actualizar el idSale en todas las filas y eliminar el id temporal
+            this.rowData = this.rowData.map(row => {
+              const { id, ...rowWithoutId } = row;
+              return {
+                ...rowWithoutId,
+                idSale: saleId
+              };
+            });
+            
+            // Crear un array de promesas para enviar cada fila
+            const savePromises = this.rowData.map(row => 
+              this.posService.addSaleXConceptItem(row).toPromise()
+            );
+            
+            // Esperar a que todas las filas se guarden
+            Promise.all(savePromises)
+              .then(() => {
+                // Mostrar mensaje de éxito
+                alerts.basicAlert('Éxito', 'La compra se ha realizado correctamente. El ID de nota es el ' + numberNote + '.', 'success');            
+                
+                // Actualizar el consecutive en el setupResponse
+                const updatedSetup = { ...setupResponse[0], consecutive: newConsecutive };
+                this.posService.updatePosSetup(this.idBranch, this.idClient, updatedSetup).subscribe({
+                  next: () => {
+                    console.log('Consecutive actualizado correctamente.');
+                  },
+                  error: (error) => {
+                    console.error('Error al actualizar el consecutive:', error);
+                    alerts.basicAlert('Error', 'Hubo un error al actualizar el consecutive.', 'error');
+                  }
+                });
+
+                // Limpiar el grid
+                this.rowData = [];
+                this.gridApi.setGridOption('rowData', this.rowData);
+                this._totalGeneral = 0;
+              })
+              .catch(error => {
+                console.error('Error al guardar los conceptos:', error);
+                alerts.basicAlert('Error', 'Hubo un error al guardar los conceptos.', 'error');
+              });
+          },
+          error: (error) => {
+            console.error('Error al crear la venta', error);
+            alerts.basicAlert('Error', 'Hubo un error al crear la venta.', 'error');
+          }
         });
-        
-        // Crear un array de promesas para enviar cada fila
-        const savePromises = this.rowData.map(row => 
-          this.posService.addSaleXConceptItem(row).toPromise()
-        );
-        
-        // Esperar a que todas las filas se guarden
-        Promise.all(savePromises)
-          .then(() => {
-            // Mostrar mensaje de éxito
-            alerts.basicAlert('Éxito', 'La compra se ha realizado correctamente. El ID de nota es el ' + saleId + '.', 'success');            
-            // Limpiar el grid
-            this.rowData = [];
-            this.gridApi.setGridOption('rowData', this.rowData);
-            this._totalGeneral = 0;
-          })
-          .catch(error => {
-            console.error('Error al guardar los conceptos:', error);
-            alerts.basicAlert('Error', 'Hubo un error al guardar los conceptos.', 'error');
-          });
       },
       error: (error) => {
-        console.error('Error al crear la venta', error);
-        alerts.basicAlert('Error', 'Hubo un error al crear la venta.', 'error');
+        console.error('Error al obtener la configuración del POS', error);
+        alerts.basicAlert('Error', 'Hubo un error al obtener la configuración del POS.', 'error');
       }
     });
   }

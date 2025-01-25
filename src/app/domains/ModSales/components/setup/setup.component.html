@@ -95,7 +95,9 @@
                     (click)="saveOptions()">
                 <i class="fas fa-save me-2"></i>Guardar opciones
             </button>
-            <button class="btn btn-secondary px-3" (click)="cancel()">
+            <button class="btn btn-secondary px-3"
+                    (click)="cancel()"
+                    [disabled]="!idCustomer">
                 <i class="fas fa-times me-2"></i>Cancelar
             </button>
         </div>
