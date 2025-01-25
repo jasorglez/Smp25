@@ -184,6 +184,7 @@ async onBranchSelected(event: Event)  {
   if (this.selectedBranchId) {
     // Lógica para añadir la signal de branch
     this.signalsService.setBranchSelectedBySidebar(Number(this.selectedBranchId));
+    this.signalsService.setBranchNameSelectedBySidebar(this.branchData.find(branch => branch.id === Number(this.selectedBranchId)).name);
     console.log(this.selectedBranchId);
     // Borro la signal de project para resetear el dato
   }
