@@ -4,10 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { alerts } from 'app/helpers/alerts';
 import { CatalogsService } from 'app/services/catalogs.service';
-import { MaterialsService } from 'app/services/materials.service';
 import { PosService } from 'app/services/pos.service';
 import { SignalsService } from 'app/services/signals.service';
-import { dataTool } from 'echarts';
 import { Router } from '@angular/router';
 
 @Component({
@@ -59,6 +57,10 @@ export class PosSetupComponent {
     this.posService.getClients(this.idBranch).subscribe(
       (data: any) => {
         this.customers = data;
+        if (this.customers.length > 0) {
+          this.idCustomer = this.customers[0].id; // Seleccionar el primer cliente
+          this.getOptions(); // Cargar la configuración del primer cliente
+        }
         console.log(data);
       },
       (error) => console.error('Error fetching customers:', error)
