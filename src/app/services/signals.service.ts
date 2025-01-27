@@ -1,10 +1,9 @@
 import { Injectable, signal } from '@angular/core';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class SignalsService {
-
   /*
   Voy a empezar a definir las signals en un mismo servicio,
   de esta forma no estarán dispersados por todos lados.
@@ -39,7 +38,7 @@ export class SignalsService {
 
   setBranchNameSelectedBySidebar(name: string) {
     this.branchNameSelectedBySidebar.set(name);
-  }  
+  }
 
   getBranchNameSelectedBySidebar() {
     return this.branchNameSelectedBySidebar;
@@ -69,7 +68,7 @@ export class SignalsService {
     profilePicUser: signal<string>(null),
     nameUser: signal<string>(null),
     organizationUser: signal<string>(null),
-    positionUser: signal<string>(null)
+    positionUser: signal<string>(null),
   };
 
   isidUserEmpty(): boolean {
@@ -143,7 +142,14 @@ export class SignalsService {
 
   /* Signals para el perfil de usuario */
 
-  profileSignal(id: number, email: string, picture: string, name: string, organization: string, position: string) {
+  profileSignal(
+    id: number,
+    email: string,
+    picture: string,
+    name: string,
+    organization: string,
+    position: string
+  ) {
     this.profile.idUser.set(id);
     this.profile.emailUser.set(email);
     this.profile.profilePicUser.set(picture);
@@ -158,7 +164,6 @@ export class SignalsService {
   nameCompany = signal<string>(null);
   idContract = signal<number>(null);
   nameContract = signal<string>(null);
-
 
   private companyCheckedSignal = signal(false);
   private contractCheckedSignal = signal(false);
@@ -365,6 +370,18 @@ export class SignalsService {
     this.nameClient.set(null);
   }
 
+  /* Para el punto de venta */
+
+  private idCustomerFromPOS = signal<number>(null);
+
+  setIdCustomerFromPOS(id: number) {
+    this.idCustomerFromPOS.set(id);
+  }
+
+  getIdCustomerFromPOS() {
+    return this.idCustomerFromPOS;
+  }
+
   /* Borramos todas las signals, tratar de poner esto a lo último.
   Si van a crear nuevas signals, recuerden introducir una señal
   null en deleteSignals() para que todas las signals se borren
@@ -408,6 +425,7 @@ export class SignalsService {
     this.selectedProject = signal(null);
     this.idClient = signal(null);
     this.nameClient = signal(null);
+    this.idCustomerFromPOS = signal(null);
 
     // Reinicia this.profile
     this.profileSignal(null, null, null, null, null, null);

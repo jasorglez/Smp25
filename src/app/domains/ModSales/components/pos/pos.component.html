@@ -6,7 +6,7 @@
                     <label for="clientSelect" class="form-label">Seleccionar Cliente</label>
                     <ng-select [items]="clients" bindLabel="name_company" bindValue="id"
                         placeholder="Buscar cliente..." (change)="onClientChange($event)" [searchable]="true"
-                        id="clientSelect">
+                        id="clientSelect" [(ngModel)]="idCustomer">
                     </ng-select>
                     <ng-select [items]="products$ | async" bindLabel="name" bindValue="barcode"
                         placeholder="Buscar producto" (change)="onProductSelect($event)" [typeahead]="productInput$"

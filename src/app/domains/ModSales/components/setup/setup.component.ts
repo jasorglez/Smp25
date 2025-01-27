@@ -36,21 +36,29 @@ export class PosSetupComponent {
   options: any = {};          // Lista de opciones de configuración
 
   ngOnInit() {
+    this.idCustomer = this.signalsService.getIdCustomerFromPOS()();
     this.getCustomers();
     this.getDocumentType();
+    
+    if (this.idCustomer === null) {
+      this.getCustomers();
+    }
   }
 
   constructor() {
     effect(() => {
       this.nameBranch = this.signalsService.getBranchNameSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-      this.idCustomer = null; // Resetear el customere seleccionado
+      this.idCustomer = this.signalsService.getIdCustomerFromPOS()();
+      console.log(this.idCustomer);
       this.getCustomers();
+      this.getDocumentType();
     });
   }
 
   onCustomerChange(event: any) {
     this.idCustomer = event.id;
+    this.signalsService.setIdCustomerFromPOS(this.idCustomer);
     this.getOptions();
   }
 
@@ -59,10 +67,12 @@ export class PosSetupComponent {
     this.posService.getClients(this.idBranch).subscribe(
       (data: any) => {
         this.customers = data;
-        if (this.customers.length > 0) {
+        // Seleccionar el primer cliente si idCustomer es null
+        if (this.idCustomer === null && this.customers.length > 0) {
           this.idCustomer = this.customers[0].id; // Seleccionar el primer cliente
-          this.getOptions(); // Cargar la configuración del primer cliente
+          this.signalsService.setIdCustomerFromPOS(this.idCustomer); // Enviar a la signal
         }
+        this.getOptions(); // Cargar la configuración del cliente seleccionado
         console.log(data);
       },
       (error) => console.error('Error fetching customers:', error)

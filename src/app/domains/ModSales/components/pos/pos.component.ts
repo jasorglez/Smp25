@@ -35,7 +35,7 @@ export class PosComponent {
   };
 
   // Variables de identificación
-  idClient: number = null;
+  idCustomer: number = null;
   idBranch: number = null;
   idCompany: number = null;
   idVenta: number = null;
@@ -66,9 +66,7 @@ export class PosComponent {
   constructor() {
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-      if (this.idBranch == null) {
-        alerts.basicAlert('Error', 'Seleccione una sucursal para continuar.', 'error');
-      }
+      this.idCustomer = this.signalsService.getIdCustomerFromPOS()();
       this.getCustomers();
     });
 
@@ -97,16 +95,13 @@ export class PosComponent {
   ngOnInit() {
     this.getCustomers();
     this.getProducts();
-    if (this.clients.length > 0) {
-      this.idClient = this.clients[0].id;
-    }
   }
 
   onProductSelect(product: any) {
     //this.selectedProduct = product;
     if (!product) return;
 
-  if (this.idClient == null) {
+  if (this.idCustomer == null) {
     alerts.basicAlert('Error', 'Seleccione un cliente antes de agregar un producto.', 'error');
     return;
   }
@@ -163,6 +158,12 @@ export class PosComponent {
     this.posService.getClients(this.idBranch).subscribe(
       (data: any) => {
         this.clients = data;
+        // Seleccionar el primer cliente si idCustomer es null
+        if (this.idCustomer === null && this.clients.length > 0) {
+          this.idCustomer = this.clients[0].id; // Seleccionar el primer cliente
+          this.signalsService.setIdCustomerFromPOS(this.idCustomer); // Enviar a la signal
+        }
+        console.log(data);
       },
       (error) => console.error('Error fetching clients:', error)
     );
@@ -179,7 +180,7 @@ export class PosComponent {
   }
 
   addRow() {
-    if (this.idClient == null) {
+    if (this.idCustomer == null) {
       alerts.basicAlert('Error', 'No se puede agregar una fila sin seleccionar un cliente.', 'error');
       return;
     }
@@ -224,9 +225,9 @@ export class PosComponent {
 
   printReceipt() {
     // Consumir el servicio getPosSetup
-    this.posService.getPosSetup(this.idBranch, this.idClient).subscribe({
+    this.posService.getPosSetup(this.idBranch, this.idCustomer).subscribe({
       next: (setupResponse) => {
-        console.log(this.idBranch, this.idClient);
+        console.log(this.idBranch, this.idCustomer);
         console.log(setupResponse);
         if (setupResponse.length === 0) {
           alerts.basicAlert('Error', 'No se encontraron datos de configuración para el POS.', 'error');
@@ -238,7 +239,7 @@ export class PosComponent {
         const numberNote = `${prefix}-${newConsecutive}`; // Concatenar prefix y consecutive
 
         const data = {
-          idCustomer: this.idClient,
+          idCustomer: this.idCustomer,
           numberNote: numberNote, // Usar el nuevo numberNote
           date: new Date().toISOString(),
           lector: this.lector,
@@ -274,7 +275,7 @@ export class PosComponent {
 
                 // Actualizar el consecutive en el setupResponse
                 const updatedSetup = { ...setupResponse[0], consecutive: newConsecutive };
-                this.posService.updatePosSetup(this.idBranch, this.idClient, updatedSetup).subscribe({
+                this.posService.updatePosSetup(this.idBranch, this.idCustomer, updatedSetup).subscribe({
                   next: () => {
                     console.log('Consecutive actualizado correctamente.');
                   },
@@ -308,7 +309,8 @@ export class PosComponent {
   }
 
   onClientChange(event: any) {
-    this.idClient = event.id;
+    this.idCustomer = event.id;
+    this.signalsService.setIdCustomerFromPOS(this.idCustomer);
   }
 
   onSelectionChanged() {
