@@ -11,10 +11,23 @@ import {
   authState,
 } from '@angular/fire/auth';
 import { TrackingService } from './tracking.service';
-import { firstValueFrom } from 'rxjs';
+import { BehaviorSubject, firstValueFrom, map, Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Ilogin } from 'app/interface/ilogin';
 import { SignalsService } from './signals.service';
+
+interface UserPermissions {
+  id: number;
+  idUser: number;
+  indicators: boolean;
+  administration: boolean;
+  warehouses: boolean;
+  maintenance: boolean;
+  hr: boolean;
+  sales: boolean;
+  setup: boolean;
+  active: boolean;
+}
 
 @Injectable({
   providedIn: 'root',
@@ -175,4 +188,34 @@ export class AuthService {
     );
     return signInResponse.idToken;
   }
+
+  // Master Permissions
+
+  private permissions$ = new BehaviorSubject<UserPermissions | null>(null);
+
+  loadUserPermissions(idUser: number): Observable<UserPermissions> {
+    return this.http.get<UserPermissions[]>(environment.urlSecurity + '/MasterPermissions/' + idUser, 
+      { headers: this.trackingService.getHeaders() }
+    ).pipe(
+      map(permissions => permissions[0]),
+      map(permissions => {
+        this.permissions$.next(permissions);
+        return permissions;
+      })
+    );
+  }
+
+  hasPermission(permission: keyof UserPermissions): boolean {
+    const permissions = this.permissions$.value;
+    return permissions ? permissions[permission] === true : false;
+  }
+
+  getUserId(email: string): Observable<number> {
+    return this.http.get<number>(`${environment.urlSecurity}/User/email/${email}`, 
+      { headers: this.trackingService.getHeaders() }
+    ).pipe(
+      map(data => data['data'].id)
+    );
+  }
+  
 }

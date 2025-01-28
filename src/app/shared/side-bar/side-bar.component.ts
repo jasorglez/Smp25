@@ -11,9 +11,7 @@ import { ProjectsService } from 'app/services/projects.service';
 import { SignalsService } from 'app/services/signals.service';
 import { RootService } from 'app/services/root.service';
 import { UsersService } from 'app/services/users.service';
-
 import { SharedModule } from '../shared.module';
-import { alerts } from 'app/helpers/alerts';
 import { EMPTY } from 'rxjs';
 
 
@@ -78,6 +76,15 @@ export class SideBarComponent {
     } else {
       await this.getpermissionxRoots();
     }
+
+    this.loadPermissions();
+    
+    // Monitorear cambios en localStorage
+    window.addEventListener('storage', (event) => {
+      if (event.key === 'mail') {
+        this.loadPermissions();
+      }
+    });
   }
 
   onRootsSelected(event: Event): void {
@@ -397,6 +404,18 @@ async onBranchSelected(event: Event)  {
       ''
     );
     this.router.navigate(['/proceswar']);
+  }
+
+  private loadPermissions() {
+    const email = localStorage.getItem('mail');
+    if (email) {
+      this.authService
+        .getUserId(email.toString())
+        .subscribe((userId) => {
+          console.log(userId);
+          this.authService.loadUserPermissions(userId).subscribe();
+        });
+    }
   }
 
 }

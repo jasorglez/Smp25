@@ -43,43 +43,43 @@
         </a>
       </li>
 
-      <li class="nav-item">
+      <li class="nav-item" *ngIf="authService.hasPermission('indicators')">
         <a class="nav-link d-flex align-items-center" (click)="Indicadores()">
           <mat-icon>bar_chart</mat-icon> {{ 'indicators' | translate }}
         </a>
       </li>
 
-      <li class="nav-item">
+      <li class="nav-item" *ngIf="authService.hasPermission('administration')">
         <a class="nav-link d-flex align-items-center" (click)="Admonproc()">
           <mat-icon>menu_book</mat-icon> {{ 'admins' | translate }}
         </a>
       </li>
 
-      <li class="nav-item">
+      <li class="nav-item" *ngIf="authService.hasPermission('warehouses')">
         <a class="nav-link d-flex align-items-center" (click)="warehouseproc()">
           <mat-icon>warehouse</mat-icon> {{ 'warehouses' | translate }}
         </a>
       </li>
 
-      <li class="nav-item">
+      <li class="nav-item" *ngIf="authService.hasPermission('maintenance')">
         <a class="nav-link d-flex align-items-center" (click)="maintenanceproc()">
           <mat-icon>engineering</mat-icon> {{ 'maintenance' | translate }}
         </a>
       </li>
 
-      <li class="nav-item">
+      <li class="nav-item" *ngIf="authService.hasPermission('hr')">
         <a class="nav-link d-flex align-items-center" (click)="resourcesmenproc()">
           <mat-icon>diversity_3</mat-icon> {{ 'resourcesmen' | translate }}
         </a>
       </li>
 
-      <li class="nav-item">
+      <li class="nav-item" *ngIf="authService.hasPermission('sales')">
         <a class="nav-link d-flex align-items-center" (click)="salesproc()">
           <mat-icon>point_of_sale</mat-icon> {{ 'Sales' | translate }}
         </a>
       </li>
 
-      <li class="nav-item">
+      <li class="nav-item" *ngIf="authService.hasPermission('setup')">
         <a class="nav-link d-flex align-items-center" (click)="SmpSetup()">
           <mat-icon>settings</mat-icon> {{ 'Setup' | translate }}
         </a>

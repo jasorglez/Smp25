@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { MainPageComponent } from './pages/main-page/main-page.component';
 import { SharedModule } from './shared/shared.module';
+import { PermissionGuard } from './guards/master-permissions.guard';
 
 export const routes: Routes = [
   {
@@ -14,7 +15,24 @@ export const routes: Routes = [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       {
         path: 'proceswar',
-        loadComponent: () => import('./domains/Warehouse/pages/procwareh/procwareh.component').then(w => w.ProcwarehComponent)
+        loadComponent: () => import('./domains/Warehouse/pages/procwareh/procwareh.component').then(w => w.ProcwarehComponent),
+        canActivate: [PermissionGuard],
+        data: { permission: 'warehouses' },
+        children: [
+          { path: '', redirectTo: 'Warehouse', pathMatch: 'full' }, ...SharedModule.getRoutes(),
+          {
+            path: 'warehousees',
+            loadComponent: () => import('./domains/Warehouse/components/warehouses/warehouses.component').then(w => w.WarehousesComponent)
+          },
+          {
+            path: 'materials',
+            loadComponent: () => import('./domains/Warehouse/components/materials/materials.component').then(m => m.MaterialsComponent)
+          },
+          {
+            path: 'requisitions',
+            loadComponent: () => import('./domains/Warehouse/components/requisitions/requisitions.component').then(r => r.RequisitionsComponent)
+          }
+        ]
       },
       {
         path: 'dashboard',
@@ -22,11 +40,15 @@ export const routes: Routes = [
       },
       {
         path: 'admon',
-        loadComponent: () => import('./domains/Admonapp/Pages/procadmon/procadmon.component').then(a => a.ProcadmonComponent)
+        loadComponent: () => import('./domains/Admonapp/Pages/procadmon/procadmon.component').then(a => a.ProcadmonComponent),
+        canActivate: [PermissionGuard],
+        data: { permission: 'administration' }
       },
       {
         path: 'indicgrals',
         loadComponent: () => import('./domains/Indicadores/pages/procindicgrals/procindicgrals.component').then(a => a.ProcindicgralsComponent),
+        canActivate: [PermissionGuard],
+        data: { permission: 'indicators' },
         children: [
           { path: '', redirectTo: 'indicad01', pathMatch: 'full' },
           {
@@ -75,6 +97,8 @@ export const routes: Routes = [
       {
         path: 'smp',
         loadComponent: () => import('./domains/SMP/Pages/procsmp/proccsmp.component').then(s => s.ProccsmpComponent),
+        canActivate: [PermissionGuard],
+        data: { permission: 'setup' },
         children: [
           { path: '', redirectTo: 'SMP', pathMatch: 'full' }, ...SharedModule.getRoutes(),
           {
@@ -113,29 +137,10 @@ export const routes: Routes = [
       },
 
       {
-        path: 'proceswar',
-        loadComponent: () => import('./domains/Warehouse/pages/procwareh/procwareh.component').then(s => s.ProcwarehComponent),
-        children: [
-          { path: '', redirectTo: 'Warehouse', pathMatch: 'full' }, ...SharedModule.getRoutes(),
-          {
-            path: 'warehousees',
-            loadComponent: () => import('./domains/Warehouse/components/warehouses/warehouses.component').then(w => w.WarehousesComponent)
-          },
-          {
-            path: 'materials',
-            loadComponent: () => import('./domains/Warehouse/components/materials/materials.component').then(m => m.MaterialsComponent)
-          },
-          {
-            path: 'requisitions',
-            loadComponent: () => import('./domains/Warehouse/components/requisitions/requisitions.component').then(r => r.RequisitionsComponent)
-          }
-
-        ]
-      },
-
-      {
         path: 'procmodadmon',
         loadComponent: () => import('./domains/ModAdmon/pages/procmodadmon/procmodadmon.component').then(a => a.ProcmodadmonComponent),
+        canActivate: [PermissionGuard],
+        data: { permission: 'administration' },
         children: [
           { path: '', redirectTo: 'ModAdmon', pathMatch: 'full' }, ...SharedModule.getRoutes(),
           {
@@ -177,6 +182,8 @@ export const routes: Routes = [
       {
         path: 'procmodmaintenance',
         loadComponent: () => import('./domains/ModMaintenance/pages/procmodmaintenance/procmodmaintenance.component').then(m => m.ProcmodmaintenanceComponent),
+        canActivate: [PermissionGuard],
+        data: { permission: 'maintenance' },
         children: [
           { path: '', redirectTo: 'ModMaintenance', pathMatch: 'full' }, ...SharedModule.getRoutes(),
           {
@@ -197,6 +204,8 @@ export const routes: Routes = [
       {
         path: 'procsales',
         loadComponent: () => import('./domains/ModSales/pages/procsales/procsales.component').then(s => s.ProcsalesComponent),
+        canActivate: [PermissionGuard],
+        data: { permission: 'sales' },
         children: [
           { path: '', redirectTo: 'pos', pathMatch: 'full' }, ...SharedModule.getRoutes(),
           {
@@ -212,6 +221,8 @@ export const routes: Routes = [
       {
         path: 'procreshuman',
         loadComponent: () => import('./domains/ModReshumans/pages/procreshuman/procreshuman.component').then(h => h.ProcreshumanComponent),
+        canActivate: [PermissionGuard],
+        data: { permission: 'hr' },
         children: [
           { path: '', redirectTo: 'ModReshumans', pathMatch: 'full' }, ...SharedModule.getRoutes(),
           {
@@ -232,6 +243,10 @@ export const routes: Routes = [
           },
 
         ]
+      },
+      {
+        path: 'unauthorized',
+        loadComponent: () => import('./shared/unauthorized/unauthorized.component').then(u => u.UnauthorizedComponent)
       }
 
     ]
