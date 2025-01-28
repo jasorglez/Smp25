@@ -6,6 +6,10 @@
           (click)="onUsersSelected('users')">Selección de usuarios</a>
       </li>
       <li class="nav-item" *ngIf="profile().emailUser()">
+        <a class="nav-link" [class.active]="selectedTab === 'usersxmasterpermissions'" data-toggle="tab"
+          (click)="onUsersSelected('usersxmasterpermissions')">Permisos maestros</a>
+      </li>
+      <li class="nav-item" *ngIf="profile().emailUser()">
         <a class="nav-link" [class.active]="selectedTab === 'usersxcompanys'" data-toggle="tab"
           (click)="onUsersSelected('usersxcompanys')">Contratistas</a>
       </li>
@@ -58,6 +62,9 @@
     </div>
     <div class="tab-pane" [class.active]="selectedTab === 'usersxbranches'" *ngIf="selectedTab === 'usersxbranches'">
       <app-usersxbranches></app-usersxbranches>
+    </div>
+    <div class="tab-pane" [class.active]="selectedTab === 'usersxmasterpermissions'" *ngIf="selectedTab === 'usersxmasterpermissions'">
+      <app-usersxmasterpermissions></app-usersxmasterpermissions>
     </div>
   </div>
 

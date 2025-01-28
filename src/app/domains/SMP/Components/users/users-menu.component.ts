@@ -10,11 +10,12 @@ import { UsersxrootComponent } from "./usersxroot.component";
 import { SignalsService } from 'app/services/signals.service';
 import { UsersxwarehousesComponent } from "./usersxwarehouses.component";
 import { UsersxbranchesComponent } from './usersxbranches.component';
+import { UsersxMasterPermissionsComponent } from "./usersxmasterpermissions.component";
 
 @Component({
   selector: 'app-users-menu',
   standalone: true,
-  imports: [CommonModule, UsersComponent, UsersxoilfieldsComponent, UsersxcompanysComponent, UsersxprojectsComponent, UsersxcontractsComponent, UsersxrootComponent, UsersxwarehousesComponent, UsersxbranchesComponent],
+  imports: [CommonModule, UsersComponent, UsersxoilfieldsComponent, UsersxcompanysComponent, UsersxprojectsComponent, UsersxcontractsComponent, UsersxrootComponent, UsersxwarehousesComponent, UsersxbranchesComponent, UsersxMasterPermissionsComponent],
   templateUrl: './users-menu.component.html'
 })
 export class UsersMenuComponent {
