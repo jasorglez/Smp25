@@ -133,8 +133,16 @@ export class WarehousesComponent {
   };
 
   obtenerDatos() {
-    this.warehouseService.getWarehouses(parseInt(localStorage.getItem('company'))).subscribe((data: any) => {
-      this.rowData = data;
+    this.warehouseService.getWarehouses(parseInt(localStorage.getItem('company'))).subscribe({
+      next: (data: any) => {
+        this.rowData = data;
+      },
+      error: (error) => {
+        if (error.status === 404) {
+          this.rowData = [];
+        }
+        console.error('Error fetching warehouses', error);
+      }
     });
   }
 
