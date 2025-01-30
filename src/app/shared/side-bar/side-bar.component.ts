@@ -61,10 +61,10 @@ export class SideBarComponent {
         next: (datauser: any) => {
           if (datauser) {
             console.log('DataUsers:', datauser)
-            // Defincion de variables globales             
+            // Defincion de variables globales
             this.trackingService.setId(datauser.id);
             this.signalsService.setidUser(datauser.id);
-            //this.signalsService.setDisplayName(datauser.displayName); 
+            //this.signalsService.setDisplayName(datauser.displayName);
             this.getpermissionxRoots();
           }
         },
@@ -78,7 +78,7 @@ export class SideBarComponent {
     }
 
     this.loadPermissions();
-    
+
     // Monitorear cambios en localStorage
     window.addEventListener('storage', (event) => {
       if (event.key === 'mail') {
@@ -144,7 +144,7 @@ export class SideBarComponent {
         if (this.branchData.length > 0) {
           this.selectedBranchId = this.branchData[0].id;
           console.log(this.selectedBranchId);
-          
+
           // Agregamos estas líneas para simular la selección automática
           this.signalsService.setBranchSelectedBySidebar(Number(this.selectedBranchId));
           this.signalsService.setBranchNameSelectedBySidebar(this.branchData[0].name);
@@ -407,23 +407,7 @@ async onBranchSelected(event: Event)  {
   }
 
   private loadPermissions() {
-    const email = localStorage.getItem('mail');
-    if (email) {
-      this.authService
-        .getUserId(email.toString())
-        .subscribe((userId) => {
-          console.log(userId);
-          this.authService.fetchUserPermissions(userId).subscribe(
-            (data: any) => {
-              console.log(data);
-              this.authService.setUserPermissions(data.permissions);
-            },
-            (error) => {
-              console.error('Error fetching user permissions:', error);
-            }
-          );
-        });
-    }
+    return EMPTY;
   }
 
 }

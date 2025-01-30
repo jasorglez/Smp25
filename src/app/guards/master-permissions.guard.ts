@@ -6,45 +6,59 @@ import {
   Router,
 } from '@angular/router';
 import { AuthService } from '../services/auth.service';
+import { Observable } from 'rxjs';
+import { map, switchMap } from 'rxjs/operators';
 
 @Injectable({
   providedIn: 'root',
 })
 export class MasterPermissionsGuard implements CanActivate {
 
-  private permissionService =  inject(AuthService);
+  private permissionService = inject(AuthService);
   private router = inject(Router);
 
-  async canActivate(
+  canActivate(
     route: ActivatedRouteSnapshot,
     state: RouterStateSnapshot
-  ): Promise<boolean> {
-    // Obtiene el permiso requerido desde la ruta
+  ): Observable<boolean> {
     const requiredPermissions = route.data['permissions'];
     if (!requiredPermissions) {
-      return true;
+      return new Observable<boolean>((observer) => {
+        observer.next(true);
+        observer.complete();
+      });
     }
 
-    // Verifica si el usuario tiene el permiso maestro
-    const hasMasterPermission = this.permissionService.hasMasterPermission(
-      requiredPermissions.master
+    const email = localStorage.getItem('mail');
+    if (!email) {
+      this.router.navigate(['/login']);
+      return new Observable<boolean>((observer) => {
+        observer.next(false);
+        observer.complete();
+      });
+    }
+
+    return this.permissionService.getUserId(email).pipe(
+      switchMap((userId) => this.permissionService.fetchUserPermissions(userId)),
+      map((permissions) => {
+        this.permissionService.setUserPermissions(permissions.permissions);
+        const hasMasterPermission = this.permissionService.hasMasterPermission(
+          requiredPermissions.master
+        );
+        const hasDetailedPermission = requiredPermissions.detailed
+          ? this.permissionService.hasDetailedPermission(
+            requiredPermissions.master,
+            requiredPermissions.detailed
+          )
+          : true;
+
+        if (hasMasterPermission && hasDetailedPermission) {
+          return true;
+        } else {
+          this.router.navigate(['/unauthorized']);
+          return false;
+        }
+      })
     );
-
-    // Verifica si el usuario tiene el permiso detallado (si se especifica)
-    const hasDetailedPermission = requiredPermissions.detailed
-      ? this.permissionService.hasDetailedPermission(
-          requiredPermissions.master,
-          requiredPermissions.detailed
-        )
-      : true;
-
-    // Permite el acceso si tiene ambos permisos
-    if (hasMasterPermission && hasDetailedPermission) {
-      return true;
-    }
-
-    // Redirige a una página de "no autorizado" si no tiene permiso
-    this.router.navigate(['/unauthorized']);
-    return false;
   }
 }
