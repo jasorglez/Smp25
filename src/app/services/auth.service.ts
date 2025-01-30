@@ -49,7 +49,7 @@ export class AuthService {
       email: data.email,
       password: data.password
     };
-    return this.http.post(environment.urlSecurity+'/Auth/login', dataLogin)
+    return this.http.post(environment.urlSecurity + '/Auth/login', dataLogin)
   }
 
   async register(email: string, password: string): Promise<User | null> {
@@ -189,33 +189,40 @@ export class AuthService {
     return signInResponse.idToken;
   }
 
-  // Master Permissions
+    // Master Permissions 2
 
-  private permissions$ = new BehaviorSubject<UserPermissions | null>(null);
-
-  loadUserPermissions(idUser: number): Observable<UserPermissions> {
-    return this.http.get<UserPermissions[]>(environment.urlSecurity + '/MasterPermissions/' + idUser, 
-      { headers: this.trackingService.getHeaders() }
-    ).pipe(
-      map(permissions => permissions[0]),
-      map(permissions => {
-        this.permissions$.next(permissions);
-        return permissions;
-      })
-    );
-  }
-
-  hasPermission(permission: keyof UserPermissions): boolean {
-    const permissions = this.permissions$.value;
-    return permissions ? permissions[permission] === true : false;
-  }
+  private userPermissions: any;
 
   getUserId(email: string): Observable<number> {
-    return this.http.get<number>(`${environment.urlSecurity}/User/email/${email}`, 
+    return this.http.get<number>(`${environment.urlSecurity}/User/email/${email}`,
       { headers: this.trackingService.getHeaders() }
     ).pipe(
       map(data => data['data'].id)
     );
   }
-  
+
+  fetchUserPermissions(userId: number): Observable<any> {
+    return this.http.get(`${environment.urlSecurity}/UserSystemPermissions/guard/${userId}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  // Almacena los permisos en el servicio
+  setUserPermissions(permissions: any): void {
+    this.userPermissions = permissions;
+  }
+
+  // Obtiene los permisos almacenados
+  getUserPermissions(): any {
+    return this.userPermissions;
+  }
+
+  // Verifica si el usuario tiene un permiso maestro
+  hasMasterPermission(masterPermissionKey: string): boolean {
+    return this.userPermissions?.[masterPermissionKey]?.active === true;
+  }
+
+  // Verifica si el usuario tiene un permiso detallado
+  hasDetailedPermission(masterPermissionKey: string, detailedPermissionKey: string): boolean {
+    return this.userPermissions?.[masterPermissionKey]?.children?.[detailedPermissionKey] === true;
+  }
+
 }

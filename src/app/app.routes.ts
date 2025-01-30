@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 import { MainPageComponent } from './pages/main-page/main-page.component';
 import { SharedModule } from './shared/shared.module';
-import { PermissionGuard } from './guards/master-permissions.guard';
+import { MasterPermissionsGuard } from './guards/master-permissions.guard';
 
 export const routes: Routes = [
   {
@@ -16,8 +16,8 @@ export const routes: Routes = [
       {
         path: 'proceswar',
         loadComponent: () => import('./domains/Warehouse/pages/procwareh/procwareh.component').then(w => w.ProcwarehComponent),
-        canActivate: [PermissionGuard],
-        data: { permission: 'warehouses' },
+        canActivate: [MasterPermissionsGuard],
+        data: { permissions: { master: 'warehouses' } },
         children: [
           { path: '', redirectTo: 'Warehouse', pathMatch: 'full' }, ...SharedModule.getRoutes(),
           {
@@ -41,14 +41,14 @@ export const routes: Routes = [
       {
         path: 'admon',
         loadComponent: () => import('./domains/Admonapp/Pages/procadmon/procadmon.component').then(a => a.ProcadmonComponent),
-        canActivate: [PermissionGuard],
-        data: { permission: 'administration' }
+        canActivate: [MasterPermissionsGuard],
+        data: { permissions: { master: 'administration' } }
       },
       {
         path: 'indicgrals',
         loadComponent: () => import('./domains/Indicadores/pages/procindicgrals/procindicgrals.component').then(a => a.ProcindicgralsComponent),
-        canActivate: [PermissionGuard],
-        data: { permission: 'indicators' },
+        canActivate: [MasterPermissionsGuard],
+        data: { permissions: { master: 'indicators' } },
         children: [
           { path: '', redirectTo: 'indicad01', pathMatch: 'full' },
           {
@@ -97,8 +97,8 @@ export const routes: Routes = [
       {
         path: 'smp',
         loadComponent: () => import('./domains/SMP/Pages/procsmp/proccsmp.component').then(s => s.ProccsmpComponent),
-        canActivate: [PermissionGuard],
-        data: { permission: 'setup' },
+        canActivate: [MasterPermissionsGuard],
+        data: { permissions: { master: 'setup' } },
         children: [
           { path: '', redirectTo: 'SMP', pathMatch: 'full' }, ...SharedModule.getRoutes(),
           {
@@ -139,8 +139,8 @@ export const routes: Routes = [
       {
         path: 'procmodadmon',
         loadComponent: () => import('./domains/ModAdmon/pages/procmodadmon/procmodadmon.component').then(a => a.ProcmodadmonComponent),
-        canActivate: [PermissionGuard],
-        data: { permission: 'administration' },
+        canActivate: [MasterPermissionsGuard],
+        data: { permissions: { master: 'administration' } },
         children: [
           { path: '', redirectTo: 'ModAdmon', pathMatch: 'full' }, ...SharedModule.getRoutes(),
           {
@@ -182,8 +182,8 @@ export const routes: Routes = [
       {
         path: 'procmodmaintenance',
         loadComponent: () => import('./domains/ModMaintenance/pages/procmodmaintenance/procmodmaintenance.component').then(m => m.ProcmodmaintenanceComponent),
-        canActivate: [PermissionGuard],
-        data: { permission: 'maintenance' },
+        canActivate: [MasterPermissionsGuard],
+        data: { permissions: { master: 'maintenance' } },
         children: [
           { path: '', redirectTo: 'ModMaintenance', pathMatch: 'full' }, ...SharedModule.getRoutes(),
           {
@@ -204,25 +204,29 @@ export const routes: Routes = [
       {
         path: 'procsales',
         loadComponent: () => import('./domains/ModSales/pages/procsales/procsales.component').then(s => s.ProcsalesComponent),
-        canActivate: [PermissionGuard],
-        data: { permission: 'sales' },
+        canActivate: [MasterPermissionsGuard],
+        data: { permissions: { master: 'sales' } },
         children: [
           { path: '', redirectTo: 'pos', pathMatch: 'full' }, ...SharedModule.getRoutes(),
           {
             path: 'setup-sales',
-            loadComponent: () => import('./domains/ModSales/components/setup/setup.component').then(s => s.PosSetupComponent)
+            loadComponent: () => import('./domains/ModSales/components/setup/setup.component').then(s => s.PosSetupComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'sales', detailed: 'setup' } }
           },
           {
             path: 'pos',
-            loadComponent: () => import('./domains/ModSales/components/pos/pos.component').then(s => s.PosComponent)
+            loadComponent: () => import('./domains/ModSales/components/pos/pos.component').then(s => s.PosComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'sales', detailed: 'pos' } }
           }
         ]
       },
       {
         path: 'procreshuman',
         loadComponent: () => import('./domains/ModReshumans/pages/procreshuman/procreshuman.component').then(h => h.ProcreshumanComponent),
-        canActivate: [PermissionGuard],
-        data: { permission: 'hr' },
+        canActivate: [MasterPermissionsGuard],
+        data: { permissions: { master: 'hr' } },
         children: [
           { path: '', redirectTo: 'ModReshumans', pathMatch: 'full' }, ...SharedModule.getRoutes(),
           {

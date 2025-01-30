@@ -413,7 +413,15 @@ async onBranchSelected(event: Event)  {
         .getUserId(email.toString())
         .subscribe((userId) => {
           console.log(userId);
-          this.authService.loadUserPermissions(userId).subscribe();
+          this.authService.fetchUserPermissions(userId).subscribe(
+            (data: any) => {
+              console.log(data);
+              this.authService.setUserPermissions(data.permissions);
+            },
+            (error) => {
+              console.error('Error fetching user permissions:', error);
+            }
+          );
         });
     }
   }
