@@ -1,17 +1,19 @@
-<h2>Gestión de Permisos</h2>
+<div class="row p-3">
+  <div class="col-lg-2 col-md-3 col-sm-3 col-3" *ngIf="profile().emailUser()">
+    <div class="card text-center">
+      <app-users-profile></app-users-profile>
+    </div>
+  </div>
 
-<div *ngFor="let master of masterPermissions" class="master-permission">
-  <h3>{{ master.permissionName }}</h3>
-  <ul>
-    <li *ngFor="let detail of master.detailedPermissions" class="detail-permission">
-      <label>
-        <input
-          type="checkbox"
-          [checked]="isPermissionChecked(detail.id)"
-          (change)="togglePermission(detail.id)"
-        />
-        {{ detail.permissionName }}
-      </label>
-    </li>
-  </ul>
-</div>
+  <div [ngClass]="profile().emailUser() != null ? 'col-lg-10 col-md-9 col-sm-9 col-9 card' : 'col-12 card'">
+    <div class="row card-body">
+      <div class="col-4" *ngFor="let master of masterPermissions">
+        <h3>{{ master.permissionName }}</h3>
+        <div *ngFor="let detail of master.detailedPermissions" class="form-check form-switch">
+          <input type="checkbox" class="form-check-input" role="switch" id="{{ detail.id }}"
+            [checked]="isPermissionChecked(detail.id)" (change)="togglePermission(detail.id)" />
+          <label class="form-check-label" for="{{ detail.id }}">{{ detail.permissionName }}</label>
+        </div>
+      </div>
+    </div>
+  </div>
