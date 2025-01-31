@@ -14,7 +14,9 @@ import { tap } from 'rxjs/operators';
   imports: [CommonModule, FormsModule, AgGridModule, UsersProfileComponent],
   templateUrl: './usersxmasterpermissions2.component.html',
   styles: [
-    ``
+    `.small-text {
+      font-size: 12px;
+    }`
   ]
 })
 

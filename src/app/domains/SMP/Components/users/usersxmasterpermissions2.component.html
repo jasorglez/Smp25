@@ -7,12 +7,12 @@
 
   <div [ngClass]="profile().emailUser() != null ? 'col-lg-10 col-md-9 col-sm-9 col-9 card' : 'col-12 card'">
     <div class="row card-body">
-      <div class="col-4" *ngFor="let master of masterPermissions">
-        <h3>{{ master.permissionName }}</h3>
+      <div class="col-2" *ngFor="let master of masterPermissions">
+        <h4>{{ master.permissionName }}</h4>
         <div *ngFor="let detail of master.detailedPermissions" class="form-check form-switch">
           <input type="checkbox" class="form-check-input" role="switch" id="{{ detail.id }}"
             [checked]="isPermissionChecked(detail.id)" (change)="togglePermission(detail.id)" />
-          <label class="form-check-label" for="{{ detail.id }}">{{ detail.permissionName }}</label>
+          <label class="form-check-label small-text" for="{{ detail.id }}">{{ detail.permissionName }}</label>
         </div>
       </div>
     </div>

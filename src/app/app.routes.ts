@@ -228,11 +228,71 @@ export const routes: Routes = [
             data: { permissions: { master: 'sales', detailed: 'setup' } }
           },
           {
+            path: 'cash-register',
+            loadComponent: () => import('./domains/ModSales/components/cash-register/cash-register.component').then(s => s.CashRegisterComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'sales', detailed: 'cash-register' } }
+          },          
+          {
             path: 'pos',
             loadComponent: () => import('./domains/ModSales/components/pos/pos.component').then(s => s.PosComponent),
             canActivate: [MasterPermissionsGuard],
             data: { permissions: { master: 'sales', detailed: 'pos' } }
-          }
+          },
+          {
+            path: 'cash-closing',
+            loadComponent: () => import('./domains/ModSales/components/cash-closing/cash-closing.component').then(s => s.CashClosingComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'sales', detailed: 'cash-closing' } }
+          },
+          {
+            path: 'returns',
+            loadComponent: () => import('./domains/ModSales/components/returns/returns.component').then(s => s.ReturnsComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'sales', detailed: 'returns' } }
+          },
+          {
+            path: 'entrances',
+            loadComponent: () => import('./domains/ModSales/components/entrances2/entrances2.component').then(s => s.Entrances2Component),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'sales', detailed: 'entrances' } }
+          },
+          {
+            path: 'inventory',
+            loadComponent: () => import('./domains/ModSales/components/inventory2/inventory2.component').then(s => s.Inventory2Component),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'sales', detailed: 'inventory' } }
+          },
+          {
+            path: 'products',
+            loadComponent: () => import('./domains/ModSales/components/products/products.component').then(s => s.ProductsComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'sales', detailed: 'products' } }
+          },
+          {
+            path: 'reports',
+            loadComponent: () => import('./domains/ModSales/components/sales-reports/sales-reports.component').then(s => s.SalesReportsComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'sales', detailed: 'reports' } }
+          },
+          {
+            path: 'cash-withdrawal',
+            loadComponent: () => import('./domains/ModSales/components/cash-withdrawal/cash-withdrawal.component').then(s => s.CashWithdrawalComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'sales', detailed: 'cash-withdrawal' } }
+          },
+          {
+            path: 'out-pos',
+            loadComponent: () => import('./domains/ModSales/components/out-pos/out-pos.component').then(s => s.OutPosComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'sales', detailed: 'out-pos' } }
+          },
+          {
+            path: 'stores',
+            loadComponent: () => import('./domains/ModSales/components/stores/stores.component').then(s => s.StoresComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'sales', detailed: 'stores' } }
+          },
         ]
       },
       {
