@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject, Input } from '@angular/core';
+import { Component, effect, HostListener, inject, Input, OnInit } from '@angular/core';
 import {
   CellDoubleClickedEvent,
   ColDef,
@@ -29,6 +29,7 @@ import { UsersxpermissionsService } from 'app/services/usersxpermissions.service
 import { WarehousesService } from 'app/services/warehouses.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { SearchableSelectComponent } from 'app/shared/searchable-select/searchable-select.component';
+import { ActivatedRoute } from '@angular/router';
 
 interface Catalog {
   id: number;
@@ -48,7 +49,7 @@ interface Catalog {
   templateUrl: './inandout.component.html',
   styleUrl: './inandout.component.scss',
 })
-export class InAndOutComponent {
+export class InAndOutComponent implements OnInit {
   // Inject of new way for Angular 18
   private inAndOutsService = inject(InandoutService);
   private signalsService = inject(SignalsService);
@@ -59,6 +60,7 @@ export class InAndOutComponent {
   private usersxpermissionsService = inject(UsersxpermissionsService);
   private warehousesService = inject(WarehousesService);
   private catalogsService = inject(CatalogsService);
+  private route: ActivatedRoute;
 
   // Variables compartidas
   masterNotSavedChanges: boolean = false;
@@ -99,9 +101,10 @@ export class InAndOutComponent {
   // Agregar esta variable para almacenar los almacenes con permisos
   warehousesWithPermissions: any[] = [];
 
-  @Input() type: 'IN' | 'OUT' = 'IN'; // Valor por defecto 'IN'
+  @Input() type: 'IN' | 'OUT'; // Asegúrate de que esta propiedad esté definida
 
-  constructor() {
+  constructor(route: ActivatedRoute) {
+    this.route = route;
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idProject = this.signalsService.getProjectSelectedBySidebar()();
@@ -142,6 +145,12 @@ export class InAndOutComponent {
     this.obtenerProductos();
     this.obtenerAlmacenesPorUsuario();
     this.obtenerTiposEntrada();
+
+    // Obtener el parámetro 'type' de la ruta
+    this.route.params.subscribe(params => {
+      this.type = params['type']; // Asigna el valor a la propiedad type
+      // Aquí puedes agregar lógica adicional si es necesario
+    });
   }
 
   @HostListener('window:beforeunload', ['$event'])

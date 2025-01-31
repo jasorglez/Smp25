@@ -36,7 +36,7 @@ interface Catalog {
 }
 
 @Component({
-  selector: 'app-entrances',
+  selector: 'app-outings',
   standalone: true,
   imports: [
     CommonModule,
@@ -45,10 +45,10 @@ interface Catalog {
     MultiLineEditorComponent,
     SearchableSelectComponent,
   ],
-  templateUrl: './entrances.component.html',
-  styleUrl: './entrances.component.scss',
+  templateUrl: './outings.component.html',
+  styleUrl: './outings.component.scss',
 })
-export class EntrancesComponent implements OnInit {
+export class OutingsComponent implements OnInit {
   // Inject services
   private inAndOutsService = inject(InandoutService);
   private signalsService = inject(SignalsService);
@@ -99,7 +99,7 @@ export class EntrancesComponent implements OnInit {
   // Warehouses with permissions
   warehousesWithPermissions: any[] = [];
 
-  readonly type = 'IN';
+  readonly type = 'OUT';
 
   constructor() {
     effect(() => {
@@ -107,8 +107,10 @@ export class EntrancesComponent implements OnInit {
       this.idProject = this.signalsService.getProjectSelectedBySidebar()();
       this.IdInAndOut = this.signalsService.getIdInAndOut()();
 
+      // Solo llamar a obtenerAlmacenesPorUsuario si idWarehouse es null
       if (!this.idWarehouse) {
         this.obtenerAlmacenesPorUsuario().then(() => {
+          // Si hay almacenes con permisos, seleccionar el primero
           if (this.warehousesWithPermissions.length > 0) {
             this.idWarehouse = this.warehousesWithPermissions[0].id;
           }
@@ -117,8 +119,7 @@ export class EntrancesComponent implements OnInit {
 
       if (this.idProject == null) {
         this.masterRowData = [];
-        alerts.basicAlert(
-          'Entradas',
+        alerts.basicAlert('Salidas',
           'Debe elegir un proyecto primero.',
           'error'
         );
@@ -152,12 +153,11 @@ export class EntrancesComponent implements OnInit {
 
   nameInAndOut = this.signalsService.getInAndOutName();
 
-  // Components configuration
+  // Column Definitions: Defines the columns to be displayed.
   components = {
     searchableSelectComponent: SearchableSelectComponent,
   };
 
-  // Column definitions
   get colMaster(): ColDef[] {
     return [
       {
@@ -195,7 +195,7 @@ export class EntrancesComponent implements OnInit {
       },
       {
         field: 'idOc',
-        headerName: 'Orden de compra',
+        headerName: 'Requisición',
         editable: true,
         filter: true,
         flex: 1,
@@ -279,6 +279,7 @@ export class EntrancesComponent implements OnInit {
     ];
   }
 
+  // Column Definitions: Defines the columns to be displayed.
   get colDetails(): ColDef[] {
     return [
       {
@@ -299,7 +300,8 @@ export class EntrancesComponent implements OnInit {
       },
       {
         field: 'quantity',
-        headerName: 'Cantidad entrante',
+        headerName:
+          'Cantidad a entregar',
         editable: true,
         filter: true,
         flex: 1,
@@ -332,7 +334,7 @@ export class EntrancesComponent implements OnInit {
       },
       {
         field: 'pending',
-        headerName: 'Pendiente',
+        headerName: 'Restante',
         editable: false,
         filter: true,
         flex: 1,
@@ -348,7 +350,7 @@ export class EntrancesComponent implements OnInit {
       },
       {
         field: 'total',
-        headerName: 'Total solicitado',
+        headerName: 'Total inicial',
         editable: true,
         filter: true,
         flex: 1,
@@ -377,7 +379,8 @@ export class EntrancesComponent implements OnInit {
     ];
   }
 
-  // Master methods
+  // ==================== MASTER METHODS ====================
+
   obtenerDatos() {
     this.inAndOutsService
       .getInAndOuts(this.idProject, this.idWarehouse, this.type)
@@ -390,18 +393,22 @@ export class EntrancesComponent implements OnInit {
   }
 
   obtenerRequisiciones() {
-    this.ocService.getOcAndReqs(this.idProject, 'OC').subscribe(
-      (data: any) => {
-        this.requisiciones = data;
-      },
-      (error) => console.error('Error fetching requisitions:', error)
-    );
+    this.ocService
+      .getOcAndReqs(this.idProject, 'REQUIS')
+      .subscribe(
+        (data: any) => {
+          this.requisiciones = data;
+          console.log(this.requisiciones);
+        },
+        (error) => console.error('Error fetching requisitions:', error)
+      );
   }
 
   obtenerTiposEntrada() {
     this.catalogsService.getDataTypes().subscribe(
       (data: any) => {
         this.tipoEntrada = data;
+        console.log(this.tipoEntrada);
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -812,8 +819,9 @@ export class EntrancesComponent implements OnInit {
   onDetailsRowSelected(event: any) {
     this.id = event.data.id;
   }
-  
-  // Utility methods
+
+  // ==================== UTILITY METHODS ====================
+
   private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
@@ -825,6 +833,6 @@ export class EntrancesComponent implements OnInit {
   }
 
   get componentTitle(): string {
-    return 'Entradas';
+    return 'Salidas';
   }
 }

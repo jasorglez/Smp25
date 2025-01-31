@@ -29,6 +29,18 @@ export const routes: Routes = [
             loadComponent: () => import('./domains/Warehouse/components/materials/materials.component').then(m => m.MaterialsComponent)
           },
           {
+            path: 'purchaseorder',
+            loadComponent: () => import('./domains/Warehouse/components/purchaseorder/purchaseorder.component').then(p => p.PurchaseOrderComponent)
+          },
+          {
+            path: 'entrances',
+            loadComponent: () => import('./domains/Warehouse/components/entrances/entrances.component').then(i => i.EntrancesComponent)
+          },
+          {
+            path: 'outings',
+            loadComponent: () => import('./domains/Warehouse/components/outings/outings.component').then(i => i.OutingsComponent)
+          },
+          {
             path: 'requisitions',
             loadComponent: () => import('./domains/Warehouse/components/requisitions/requisitions.component').then(r => r.RequisitionsComponent)
           }
@@ -207,7 +219,8 @@ export const routes: Routes = [
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'sales' } },
         children: [
-          { path: '', redirectTo: 'pos', pathMatch: 'full' }, ...SharedModule.getRoutes(),
+          { path: '',
+            redirectTo: 'ModSales', pathMatch: 'full' }, ...SharedModule.getRoutes(),
           {
             path: 'setup-sales',
             loadComponent: () => import('./domains/ModSales/components/setup/setup.component').then(s => s.PosSetupComponent),

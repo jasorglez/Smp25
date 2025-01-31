@@ -1,96 +1,52 @@
 <div class="col-md-12">
-  <div class="card my-4">
-    <div class="card-header p-3">
-      <ul class="nav nav-pills justify-content-left">
+  <div class="card">
+    <div class="card-header p-2">
+      <ul class="nav nav-pills">
         <li class="nav-item">
-          <a class="nav-link green-tab d-flex align-items-center" [class.active]="selectedTab === 'conf'" data-toggle="tab" (click)="onTabSelected('conf')">
-            <mat-icon>settings</mat-icon> {{'setting' | translate}}   
+          <a class="nav-link green-tab" routerLink="setup" routerLinkActive="active"><i
+            class="bi bi-gear-fill"></i> {{'setting' | translate}}</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link green-tab" routerLink="warehousees" routerLinkActive="active"><i
+            class="bi bi-houses"></i> {{'warehouses' | translate}}</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link green-tab" routerLink="materials" routerLinkActive="active"><i class="bi bi-archive-fill"></i>
+            {{'materials' | translate}}</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link green-tab" routerLink="requisitions" routerLinkActive="active"><i
+            class="bi bi-list-task"></i> {{'requisitions' | translate}}</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link green-tab" routerLink="purchaseorder" routerLinkActive="active"><i
+            class="bi bi-cart-fill"></i> {{'orders' | translate}} {{'purchase' | translate}}</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link green-tab" routerLink="entrances" routerLinkActive="active">
+            <i class="bi bi-arrow-down-left"></i> {{'entrances' | translate}}
           </a>
         </li>
-
         <li class="nav-item">
-          <a class="nav-link green-tab d-flex align-items-center" [class.active]="selectedTab === 'war'" data-toggle="tab" (click)="onTabSelected('war')">
-            <mat-icon>warehouse</mat-icon> {{'warehouses' | translate}}
+          <a class="nav-link green-tab" routerLink="outings" routerLinkActive="active">
+            <i class="bi bi-arrow-up-right"></i> {{'outings' | translate}}
           </a>
         </li>
-
         <li class="nav-item">
-          <a class="nav-link green-tab d-flex align-items-center" [class.active]="selectedTab === 'mat'" data-toggle="tab" (click)="onTabSelected('mat')">
-            <mat-icon>inventory_2</mat-icon> {{'materials' | translate}}
-          </a>
+          <a class="nav-link green-tab" routerLink="kardex" routerLinkActive="active"><i
+            class="bi bi-pc-display-horizontal"></i> {{'kardex' | translate}} </a>
         </li>
-
         <li class="nav-item">
-          <a class="nav-link green-tab d-flex align-items-center" [class.active]="selectedTab === 'req'" data-toggle="tab" (click)="onTabSelected('req')">
-            <mat-icon>list</mat-icon>{{'requisitions' | translate}}
-          </a>
+          <a class="nav-link green-tab" routerLink="guard" routerLinkActive="active"><i
+            class="bi bi-graph-up"></i> {{'guard' | translate}} </a>
         </li>
-
         <li class="nav-item">
-          <a class="nav-link green-tab d-flex align-items-center" [class.active]="selectedTab === 'ord'" data-toggle="tab" (click)="onTabSelected('ord')">
-            <mat-icon>shopping_cart</mat-icon> {{'orders' | translate}} {{'purchase' | translate}}
-          </a>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link green-tab d-flex align-items-center" [class.active]="selectedTab === 'ent'" data-toggle="tab" (click)="onTabSelected('ent')">
-            <mat-icon>south_west</mat-icon> {{'entrances' | translate}}
-          </a>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link green-tab d-flex align-items-center" [class.active]="selectedTab === 'out'" data-toggle="tab" (click)="onTabSelected('out')">
-            <mat-icon>north_east</mat-icon>{{'outings' | translate}}
-          </a>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link green-tab d-flex align-items-center" [class.active]="selectedTab === 'kar'" data-toggle="tab" (click)="onTabSelected('kar')">
-            <mat-icon>inventory</mat-icon>{{'kardex' | translate}}
-          </a>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link green-tab d-flex align-items-center" [class.active]="selectedTab === 'gua'" data-toggle="tab" (click)="onTabSelected('gua')">
-            <mat-icon>admin_panel_settings</mat-icon> {{'guard' | translate}} {{'employees' | translate}}
-          </a>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link  green-tab d-flex align-items-center" [class.active]="selectedTab === 'prov'" data-toggle="tab" (click)="onTabSelected('prov')">
-            <mat-icon>local_shipping</mat-icon>{{'providers' | translate}}
-          </a>
+          <a class="nav-link green-tab" routerLink="war-providers" routerLinkActive="active"><i
+            class="bi bi-wallet2"></i> {{'providers' | translate}} </a>
         </li>
       </ul>
-    </div>
 
-    <!-- Content for Tabs -->
-    <div class="tab-pane" [class.active]="selectedTab === 'war'">
-      @if (selectedTab === 'war') { <app-warehouses></app-warehouses> }
-    </div>
-    <div class="tab-pane" [class.active]="selectedTab === 'mat'">
-      @if (selectedTab === 'mat') {<app-materials></app-materials> }
-    </div>
-    <div class="tab-pane" [class.active]="selectedTab === 'kar'">
-      @if (selectedTab === 'kar') { }
-    </div>
-    <div class="tab-pane" [class.active]="selectedTab === 'req'">
-      @if (selectedTab === 'req') { <app-requisitions></app-requisitions> }
-    </div>
-    <div class="tab-pane" [class.active]="selectedTab === 'ord'">
-      @if (selectedTab === 'ord') { <app-purchaseorder></app-purchaseorder> }
-    </div>
-    <div class="tab-pane" [class.active]="selectedTab === 'ent'">
-      @if (selectedTab === 'ent') { <app-inandout type="IN"></app-inandout> }
-    </div>
-    <div class="tab-pane" [class.active]="selectedTab === 'out'">
-      @if (selectedTab === 'out') { <app-inandout type="OUT"></app-inandout> }
-    </div>
-    <div class="tab-pane" [class.active]="selectedTab === 'prov'">
-      @if (selectedTab === 'prov') { }
-    </div>
-    <div class="tab-pane" [class.active]="selectedTab === 'gua'">
-      @if (selectedTab === 'gua') { }
+      <router-outlet></router-outlet>
     </div>
   </div>
 </div>

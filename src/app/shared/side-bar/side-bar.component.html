@@ -15,7 +15,7 @@
 
          <!-- Select Branchs -->
          <select id="branchs" (change)="onBranchSelected($event)" class="form-control select-side" [value]="selectedBranchId || ''"
-                              title= "{{ 'select' | translate  }} {{ 'branchs' | translate  }}">          
+                              title= "{{ 'select' | translate  }} {{ 'branchs' | translate  }}">
           <option selected disabled value="">{{ 'branchs' | translate }}</option>
           <option *ngFor="let item of branchData" [value]="item.id">{{ item.name }}</option>
         </select>
@@ -34,52 +34,52 @@
         <option *ngFor="let pj of projectData" [value]="pj.id">{{ pj.name }}</option>
       </select>
       -->
-    </div> 
-    
-     <ul class="nav flex-column">
+    </div>
+
+    <ul class="nav flex-column">
       <li class="nav-item">
         <a class="nav-link d-flex align-items-center" (click)="Dashboard()">
           <mat-icon>dashboard</mat-icon> {{ 'Dashboard' | translate }}
         </a>
       </li>
 
-      <li class="nav-item">
+      <li class="nav-item" *ngIf="authService.hasMasterPermission('indicators')">
         <a class="nav-link d-flex align-items-center" (click)="Indicadores()">
           <mat-icon>bar_chart</mat-icon> {{ 'indicators' | translate }}
         </a>
       </li>
 
-      <li class="nav-item">
+      <li class="nav-item" *ngIf="authService.hasMasterPermission('administration')">
         <a class="nav-link d-flex align-items-center" (click)="Admonproc()">
           <mat-icon>menu_book</mat-icon> {{ 'admins' | translate }}
         </a>
       </li>
 
-      <li class="nav-item">
+      <li class="nav-item" *ngIf="authService.hasMasterPermission('warehouses')">
         <a class="nav-link d-flex align-items-center" (click)="warehouseproc()">
           <mat-icon>warehouse</mat-icon> {{ 'warehouses' | translate }}
         </a>
       </li>
 
-      <li class="nav-item">
+      <li class="nav-item" *ngIf="authService.hasMasterPermission('maintenance')">
         <a class="nav-link d-flex align-items-center" (click)="maintenanceproc()">
           <mat-icon>engineering</mat-icon> {{ 'maintenance' | translate }}
         </a>
       </li>
 
-      <li class="nav-item">
+      <li class="nav-item" *ngIf="authService.hasMasterPermission('hr')">
         <a class="nav-link d-flex align-items-center" (click)="resourcesmenproc()">
           <mat-icon>diversity_3</mat-icon> {{ 'resourcesmen' | translate }}
         </a>
       </li>
 
-      <li class="nav-item">
+      <li class="nav-item" *ngIf="authService.hasMasterPermission('sales')">
         <a class="nav-link d-flex align-items-center" (click)="salesproc()">
           <mat-icon>point_of_sale</mat-icon> {{ 'Sales' | translate }}
         </a>
       </li>
 
-      <li class="nav-item">
+      <li class="nav-item" *ngIf="authService.hasMasterPermission('setup')">
         <a class="nav-link d-flex align-items-center" (click)="SmpSetup()">
           <mat-icon>settings</mat-icon> {{ 'Setup' | translate }}
         </a>
@@ -90,7 +90,6 @@
           <mat-icon>logout</mat-icon> Salir
         </a>
       </li>
-
     </ul>
   </div>
 </aside>
