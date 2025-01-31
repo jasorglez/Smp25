@@ -13,7 +13,7 @@ import { RouterModule } from '@angular/router';
 @Component({
   selector: 'app-procwareh',
   standalone: true,
-  imports: [TranslateModule, RouterModule, DomainsModule, SharedModule, WarehousesComponent, MaterialsComponent, RequisitionsComponent, PurchaseOrderComponent, InAndOutComponent],
+  imports: [TranslateModule, RouterModule, DomainsModule, SharedModule],
   templateUrl: './procwareh.component.html',
   styleUrl: './procwareh.component.scss'
 })
