@@ -58,7 +58,7 @@ export class UsersxwarehousesComponent {
   cargarDatos() {
     forkJoin({
       permisos: this.usersxwarehousesService.getDataUsersxPermissions(this.permissionType),
-      almacenes: this.warehousesService.getSimpleWarehousesByBranch(this.signalsService.getBranchSelectedBySidebar()())
+      almacenes: this.warehousesService.getSimpleWarehouses(this.signalsService.getBranchSelectedBySidebar()())
     }).subscribe({
       next: ({ permisos, almacenes }) => {
         // Guardar almacenes en el formato requerido

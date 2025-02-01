@@ -1,4 +1,4 @@
-import { Component, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject } from '@angular/core';
 
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { alerts } from '../../../../helpers/alerts';
@@ -12,6 +12,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { BranchsService } from 'app/services/branchs.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { ModalService } from 'app/services/modal.service';
+import { SignalsService } from 'app/services/signals.service';
 
 interface Branch {
   id: number;
@@ -31,8 +32,14 @@ export class WarehousesComponent {
 
   ngOnInit() {
     this.obtenerDatos();
-    this.obtenerBranches();
     this.obtenerStates();
+  }
+
+  constructor() {
+    effect(() => {
+      this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      this.obtenerDatos();
+    });
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -51,6 +58,7 @@ export class WarehousesComponent {
   private estados: string[] = [];
   branches: any;
   id: string;
+  idBranch: number;
   private tempIdCounter: number = 0;
 
   private gridApi: GridApi;
@@ -71,6 +79,7 @@ export class WarehousesComponent {
   private inegiService = inject(InegiService);
   private branchesService = inject(BranchsService);
   private modalServiceTable = inject(ModalService);
+  private signalsService = inject(SignalsService);
 
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
@@ -105,16 +114,6 @@ export class WarehousesComponent {
         }
       },
       {
-        field: 'idBranch', headerName: 'Sucursales', editable: true, width: 235, cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.branches ? this.branches.map(item => item.id) : [],
-        },
-        valueFormatter: (params) => {
-          const foundItem = this.branches ? this.branches.find(item => item.id === params.value) : null;
-          return foundItem ? `${foundItem.name}` : params.value;
-        }
-      },
-      {
         field: 'state', headerName: 'Estado', editable: true, width: 235, cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.estados
@@ -133,7 +132,7 @@ export class WarehousesComponent {
   };
 
   obtenerDatos() {
-    this.warehouseService.getWarehouses(parseInt(localStorage.getItem('company'))).subscribe({
+    this.warehouseService.getWarehouses(this.idBranch).subscribe({
       next: (data: any) => {
         this.rowData = data;
       },
@@ -155,16 +154,6 @@ export class WarehousesComponent {
         console.error('Error fetching states', error);
       }
     });
-  }
-
-  obtenerBranches() {
-    this.branchesService.getBranches2fields(parseInt(localStorage.getItem('company'))).subscribe(
-      (data: Branch[]) => {
-        this.branches = data;
-        console.log(this.branches);
-      },
-      (error) => console.error('Error fetching branches:', error)
-    );
   }
 
   onSelectedRow(event: any) {
@@ -196,8 +185,7 @@ export class WarehousesComponent {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idBussines: 0,
-      idBranch: 0,
+      idBranch: this.idBranch,
       name: '',
       address: '',
       state: '',
