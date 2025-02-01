@@ -8,28 +8,28 @@ import { UsersProfileComponent } from './users-profile.component';
 import { catchError, concat, EMPTY, lastValueFrom, toArray, forkJoin } from 'rxjs';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { SignalsService } from 'app/services/signals.service';
-import { BranchsService } from 'app/services/branchs.service';
+import { StoresService } from 'app/services/stores.service';
 
 @Component({
-  selector: 'app-usersxbranches',
+  selector: 'app-usersxstores',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, UsersProfileComponent],
   templateUrl: './usersxpermissions.component.html'
 })
-export class UsersxbranchesComponent {
+export class UsersXStoresComponent {
 
   private signalsService = inject(SignalsService);
-  private branchesService = inject(BranchsService);
-  private usersxbranchesService = inject(UsersxpermissionsService);
+  private storesService = inject(StoresService);
+  private usersxstoresService = inject(UsersxpermissionsService);
 
   constructor() {
     effect(() => {
-      this.idRoot = this.signalsService.getCompanyFromPermissions()();
+      this.idBranch = this.signalsService.getBranchFromPermissions()();
 
-      if (!this.idRoot) {
+      if (!this.idBranch) {
         this.rowData = [];
         this.warehouses = {};
-        alerts.basicAlert('Sucursales', 'Debe elegir una empresa primero para poder ver sus sucursales.', 'error');
+        alerts.basicAlert('Tiendas', 'Debe elegir una sucursal primero para poder ver sus tiendas.', 'error');
       } else {
         this.obtenerDatos();
       }
@@ -38,7 +38,7 @@ export class UsersxbranchesComponent {
 
   ngOnInit() {
     this.obtenerDatos();
-    this.idRoot = this.signalsService.getCompanyFromPermissions()();
+    this.idBranch = this.signalsService.getBranchFromPermissions()();
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -59,22 +59,22 @@ export class UsersxbranchesComponent {
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
   id: string;
-  idRoot: number;
+  idBranch: number;
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
-  private permissionType: string = 'branch';
+  private permissionType: string = 'store';
 
   obtenerDatos() {
     forkJoin({
-      users: this.usersxbranchesService.getDataUsersxPermissions(this.permissionType),
-      branches: this.branchesService.getBranches(this.idRoot)
-    }).subscribe(({ users, branches }) => {
+      users: this.usersxstoresService.getDataUsersxPermissions(this.permissionType),
+      stores: this.storesService.getStoreList(this.idBranch)
+    }).subscribe(({ users, stores }) => {
       // Filtrar sucursales por idCompany
-      const filteredBranches = branches.filter(branch => branch.idCompany === this.idRoot);
+      const filteredBranches = stores.filter(branch => branch.idBranch === this.idBranch);
       
       // Crear el diccionario de sucursales filtradas
       this.warehouses = filteredBranches.reduce((acc, branch) => {
-        acc[branch.id] = branch.name;
+        acc[branch.id] = branch.description;
         return acc;
       }, {});
 
@@ -95,7 +95,7 @@ export class UsersxbranchesComponent {
       },
       {
         field: 'idPermission',
-        headerName: 'Sucursal',
+        headerName: 'Tienda',
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
           values: Object.keys(this.warehouses).sort((a, b) => this.warehouses[a].localeCompare(this.warehouses[b])),
@@ -124,7 +124,6 @@ export class UsersxbranchesComponent {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
-      this.signalsService.setBranchFromPermissions(this.selectedRowData.idPermission);
     } else {
       this.selectedRowData = null;
     }
@@ -190,12 +189,12 @@ export class UsersxbranchesComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.usersxbranchesService.addUserxPermission(cleanedData);
+      return this.usersxstoresService.addUserxPermission(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.usersxbranchesService.updateUserxPermission(row.id, cleanedData);
+      return this.usersxstoresService.updateUserxPermission(row.id, cleanedData);
     });
 
     // Using concat to combine observables and lastValueFrom for async/await
@@ -235,7 +234,7 @@ export class UsersxbranchesComponent {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
     selectedData.active = 0;
-    this.usersxbranchesService.deleteUserxPermission(id).pipe(
+    this.usersxstoresService.deleteUserxPermission(id).pipe(
       catchError((error) => {
         alerts.basicAlert(
           'Eliminar entrada',

@@ -11,6 +11,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { UsersxwarehousesComponent } from "./usersxwarehouses.component";
 import { UsersxbranchesComponent } from './usersxbranches.component';
 import { UsersxMasterPermissions2Component } from "./usersxmasterpermissions2.component";
+import { UsersXStoresComponent } from "./usersxstores.component";
 
 @Component({
   selector: 'app-users-menu',
@@ -18,7 +19,7 @@ import { UsersxMasterPermissions2Component } from "./usersxmasterpermissions2.co
   imports: [CommonModule, UsersComponent, UsersxoilfieldsComponent,
     UsersxcompanysComponent, UsersxprojectsComponent, UsersxcontractsComponent,
     UsersxrootComponent, UsersxwarehousesComponent, UsersxbranchesComponent,
-    UsersxMasterPermissions2Component],
+    UsersxMasterPermissions2Component, UsersXStoresComponent],
   templateUrl: './users-menu.component.html'
 })
 export class UsersMenuComponent {

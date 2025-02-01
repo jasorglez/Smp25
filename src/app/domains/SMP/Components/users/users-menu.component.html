@@ -37,6 +37,10 @@
         <a class="nav-link" [class.active]="selectedTab === 'usersxbranches'" data-toggle="tab"
           (click)="onUsersSelected('usersxbranches')">Sucursales</a>
       </li>
+      <li class="nav-item" *ngIf="profile().emailUser()">
+        <a class="nav-link" [class.active]="selectedTab === 'usersxstores'" data-toggle="tab"
+          (click)="onUsersSelected('usersxstores')">Tiendas</a>
+      </li>
     </ul>
   
     <div class="tab-pane" [class.active]="selectedTab === 'users'" *ngIf="selectedTab === 'users'">
@@ -65,6 +69,9 @@
     </div>
     <div class="tab-pane" [class.active]="selectedTab === 'usersxmasterpermissions'" *ngIf="selectedTab === 'usersxmasterpermissions'">
       <app-usersxmasterpermissions2></app-usersxmasterpermissions2>
+    </div>
+    <div class="tab-pane" [class.active]="selectedTab === 'usersxstores'" *ngIf="selectedTab === 'usersxstores'">
+      <app-usersxstores></app-usersxstores>
     </div>
   </div>
 

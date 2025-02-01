@@ -44,7 +44,7 @@ export class UsersxrootComponent {
   root: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
-  id: string;
+  id: number;
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
   private permissionType: string = 'root';
@@ -104,6 +104,8 @@ export class UsersxrootComponent {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
+      this.signalsService.setCompanyFromPermissions(this.selectedRowData.idPermission);
+      console.log('Signal enviada - Company ID:', this.selectedRowData.idPermission);
     } else {
       this.selectedRowData = null;
     }
