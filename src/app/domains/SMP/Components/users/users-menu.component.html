@@ -41,6 +41,10 @@
         <a class="nav-link" [class.active]="selectedTab === 'usersxstores'" data-toggle="tab"
           (click)="onUsersSelected('usersxstores')">Tiendas</a>
       </li>
+      <li class="nav-item" *ngIf="profile().emailUser()">
+        <a class="nav-link" [class.active]="selectedTab === 'usersxcashregisters'" data-toggle="tab"
+          (click)="onUsersSelected('usersxcashregisters')">Cajas</a>
+      </li>
     </ul>
   
     <div class="tab-pane" [class.active]="selectedTab === 'users'" *ngIf="selectedTab === 'users'">
@@ -72,6 +76,9 @@
     </div>
     <div class="tab-pane" [class.active]="selectedTab === 'usersxstores'" *ngIf="selectedTab === 'usersxstores'">
       <app-usersxstores></app-usersxstores>
+    </div>
+    <div class="tab-pane" [class.active]="selectedTab === 'usersxcashregisters'" *ngIf="selectedTab === 'usersxcashregisters'">
+      <app-usersxcashregisters></app-usersxcashregisters>
     </div>
   </div>
 

@@ -9,27 +9,28 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray, forkJoin } from 'rxj
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { SignalsService } from 'app/services/signals.service';
 import { StoresService } from 'app/services/stores.service';
+import { CashRegistersService } from 'app/services/cash-registers.service';
 
 @Component({
-  selector: 'app-usersxstores',
+  selector: 'app-usersxcashregisters',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, UsersProfileComponent],
   templateUrl: './usersxpermissions.component.html'
 })
-export class UsersXStoresComponent {
+export class UsersXCashRegistersComponent {
 
   private signalsService = inject(SignalsService);
-  private storesService = inject(StoresService);
-  private usersxstoresService = inject(UsersxpermissionsService);
+  private cashRegistersService = inject(CashRegistersService);
+  private usersxcashregistersService = inject(UsersxpermissionsService);
 
   constructor() {
     effect(() => {
-      this.idBranch = this.signalsService.getBranchFromPermissions()();
+      this.idStore = this.signalsService.getStoreFromPermissions()();
 
-      if (!this.idBranch) {
+      if (!this.idStore) {
         this.rowData = [];
         this.warehouses = {};
-        alerts.basicAlert('Tiendas', 'Debe elegir una sucursal primero para poder ver sus tiendas.', 'error');
+        alerts.basicAlert('Cajas registradoras', 'Debe elegir una tienda primero para poder ver sus cajas.', 'error');
       } else {
         this.obtenerDatos();
       }
@@ -38,7 +39,7 @@ export class UsersXStoresComponent {
 
   ngOnInit() {
     this.obtenerDatos();
-    this.idBranch = this.signalsService.getBranchFromPermissions()();
+    this.idStore = this.signalsService.getStoreFromPermissions()();
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -59,21 +60,23 @@ export class UsersXStoresComponent {
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
   id: string;
-  idBranch: number;
+  idStore: number;
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
-  private permissionType: string = 'store';
+  private permissionType: string = 'cash-register';
 
   obtenerDatos() {
     forkJoin({
-      users: this.usersxstoresService.getDataUsersxPermissions(this.permissionType),
-      stores: this.storesService.getStoreList(this.idBranch)
-    }).subscribe(({ users, stores }) => {
+      users: this.usersxcashregistersService.getDataUsersxPermissions(this.permissionType),
+      cashregister: this.cashRegistersService.getCashRegisterList(this.idStore)
+    }).subscribe(({ users, cashregister }) => {
+      console.log('Datos enviados a cashregister:', this.idStore);
+      
       // Filtrar sucursales por idCompany
-      const filteredBranches = stores.filter(branch => branch.idBranch === this.idBranch);
+      const filteredCashRegisters = cashregister.filter(branch => branch.idStore === this.idStore);
       
       // Crear el diccionario de sucursales filtradas
-      this.warehouses = filteredBranches.reduce((acc, branch) => {
+      this.warehouses = filteredCashRegisters.reduce((acc, branch) => {
         acc[branch.id] = branch.description;
         return acc;
       }, {});
@@ -95,7 +98,7 @@ export class UsersXStoresComponent {
       },
       {
         field: 'idPermission',
-        headerName: 'Tienda',
+        headerName: 'Caja Registradora',
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
           values: Object.keys(this.warehouses).sort((a, b) => this.warehouses[a].localeCompare(this.warehouses[b])),
@@ -124,7 +127,6 @@ export class UsersXStoresComponent {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
-      this.signalsService.setStoreFromPermissions(this.selectedRowData.idPermission);
     } else {
       this.selectedRowData = null;
     }
@@ -190,12 +192,12 @@ export class UsersXStoresComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.usersxstoresService.addUserxPermission(cleanedData);
+      return this.usersxcashregistersService.addUserxPermission(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.usersxstoresService.updateUserxPermission(row.id, cleanedData);
+      return this.usersxcashregistersService.updateUserxPermission(row.id, cleanedData);
     });
 
     // Using concat to combine observables and lastValueFrom for async/await
@@ -235,7 +237,7 @@ export class UsersXStoresComponent {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
     selectedData.active = 0;
-    this.usersxstoresService.deleteUserxPermission(id).pipe(
+    this.usersxcashregistersService.deleteUserxPermission(id).pipe(
       catchError((error) => {
         alerts.basicAlert(
           'Eliminar entrada',

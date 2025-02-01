@@ -166,6 +166,7 @@ export class SignalsService {
   nameContract = signal<string>(null);
   idRoot = signal<number>(null);
   idBranch = signal<number>(null);
+  idStore = signal<number>(null);
 
   private companyCheckedSignal = signal(false);
   private contractCheckedSignal = signal(false);
@@ -202,6 +203,14 @@ export class SignalsService {
 
   getBranchFromPermissions() {
     return this.idBranch;
+  }
+
+  setStoreFromPermissions(id: number) {
+    this.idStore.set(id);
+  }
+
+  getStoreFromPermissions() {
+    return this.idStore;
   }
 
   /* Signal para la sidebar */

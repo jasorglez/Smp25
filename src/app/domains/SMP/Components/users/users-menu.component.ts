@@ -12,6 +12,7 @@ import { UsersxwarehousesComponent } from "./usersxwarehouses.component";
 import { UsersxbranchesComponent } from './usersxbranches.component';
 import { UsersxMasterPermissions2Component } from "./usersxmasterpermissions2.component";
 import { UsersXStoresComponent } from "./usersxstores.component";
+import { UsersXCashRegistersComponent } from "./usersxcashregisters.component";
 
 @Component({
   selector: 'app-users-menu',
@@ -19,7 +20,7 @@ import { UsersXStoresComponent } from "./usersxstores.component";
   imports: [CommonModule, UsersComponent, UsersxoilfieldsComponent,
     UsersxcompanysComponent, UsersxprojectsComponent, UsersxcontractsComponent,
     UsersxrootComponent, UsersxwarehousesComponent, UsersxbranchesComponent,
-    UsersxMasterPermissions2Component, UsersXStoresComponent],
+    UsersxMasterPermissions2Component, UsersXStoresComponent, UsersXCashRegistersComponent],
   templateUrl: './users-menu.component.html'
 })
 export class UsersMenuComponent {
