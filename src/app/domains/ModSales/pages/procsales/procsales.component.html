@@ -3,10 +3,14 @@
       <div class="card-header p-2">
          <ul class="nav nav-pills">
 
-           <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'setup')">
-             <a class="nav-link green-tab" routerLink="setup-sales" routerLinkActive="active"><i
-               class="bi bi-list-ul"></i> {{'setting' | translate}}</a>
-           </li>
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'setup')">
+               <a class="nav-link green-tab" routerLink="setup-sales" routerLinkActive="active"><i
+                     class="bi bi-list-ul"></i> {{'setting' | translate}}</a>
+            </li>
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'stores')">
+               <a class="nav-link green-tab" routerLink="stores" routerLinkActive="active"><i class="bi bi-shop"></i>
+                  {{'stores' | translate}} </a>
+            </li>
             <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'cash-register')">
                <a class="nav-link green-tab" routerLink="cash-register" routerLinkActive="active"><i
                      class="bi bi-pc-display-horizontal"></i> {{'cash_register' | translate}}</a>
@@ -47,10 +51,6 @@
             <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'out-pos')">
                <a class="nav-link green-tab" routerLink="out-pos" routerLinkActive="active"><i
                      class="bi bi-journal-check"></i> {{'out_pos' | translate}} </a>
-            </li>
-            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'stores')">
-               <a class="nav-link green-tab" routerLink="stores" routerLinkActive="active"><i
-                     class="bi bi-shop"></i> {{'stores' | translate}} </a>
             </li>
          </ul>
 
