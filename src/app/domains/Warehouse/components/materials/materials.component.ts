@@ -15,6 +15,7 @@ import { SignalsService } from 'app/services/signals.service';
 interface Catalog {
   id: number;
   description: string;
+  parentId: number;
 }
 
 @Component({
@@ -30,6 +31,7 @@ export class MaterialsComponent {
     this.obtenerDatos();
     this.obtenerMedidas();
     this.obtenerFamilias();
+    this.obtenerSubfamilias();
     this.obtenerUbicaciones();
   }
 
@@ -39,6 +41,7 @@ export class MaterialsComponent {
       this.obtenerDatos();
       this.obtenerMedidas();
       this.obtenerFamilias();
+      this.obtenerSubfamilias();
       this.obtenerUbicaciones();
     }
     )
@@ -59,7 +62,9 @@ export class MaterialsComponent {
   selectedRowData: any = null;
   private estados: string[] = [];
   medidas: any;
+  parentId: number = 200;
   familias: any;
+  subfamilias2: any;
   ubicaciones: any;
   id: string = null;
   idRoot: number = null;
@@ -157,6 +162,33 @@ export class MaterialsComponent {
         }
       },
       {
+        field: 'idSubfamilia', 
+        headerName: 'Subamilia', 
+        editable: true, 
+        width: 150, 
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: (params) => {
+          // Obtener el idFamilia de la fila actual
+          const idFamilia = params.data.idFamilia;
+          
+          // Filtrar subfamilias por parentId (idFamilia) usando subfamilias2
+          const subfamiliasFiltradas = this.subfamilias2.filter(item => item.parentId === idFamilia);
+          
+          return {
+            values: subfamiliasFiltradas.map(item => item.id),
+            valueFormatter: (id) => {
+              const foundItem = subfamiliasFiltradas.find(item => item.id === id);
+              return foundItem ? foundItem.description : id;
+            }
+          };
+        },
+        valueFormatter: (params) => {
+          // Mostrar la descripción de la subfamilia usando subfamilias2
+          const foundItem = this.subfamilias2 ? this.subfamilias2.find(item => item.id === params.value) : null;
+          return foundItem ? `${foundItem.description}` : params.value;
+        }
+      },
+      {
         field: 'idUbication', headerName: 'Ubicación', editable: true, width: 150, cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.ubicaciones ? this.ubicaciones.map(item => item.id) : [],
@@ -228,6 +260,16 @@ export class MaterialsComponent {
     );
   }
 
+  obtenerSubfamilias() {
+    this.catalogsService.getSubfamilies().subscribe(
+      (data: Catalog[]) => {
+        this.subfamilias2 = data;
+        console.log('Subfamilias (todas):', this.subfamilias2);
+      },
+      (error) => console.error('Error fetching subfamilies:', error)
+    );
+  }
+
   obtenerUbicaciones() {
     this.catalogsService.getLocations().subscribe(
       (data: Catalog[]) => {
@@ -280,6 +322,7 @@ export class MaterialsComponent {
       date: new Date().toISOString(),
       idMedida: null,
       idFamilia: null,
+      idSubfamilia: null,
       idUbication: null,
       aplicaResg: false,
       picture: '',
