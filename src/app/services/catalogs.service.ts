@@ -26,7 +26,7 @@ export class CatalogsService {
   }
 
   getFamilyById(id: number): Observable<any> {
-    return this.http.get<any>(`${environment.urlWarehouse}/Catalog/family?idCompany=${id}`, { headers: this.trackingService.getHeaders() });
+    return this.http.get<any>(`${environment.urlWarehouse}/Catalog/getCatalogs?idCompany=${id}&type=Family`, { headers: this.trackingService.getHeaders() });
   }
 
   getSubfamilies(): Observable<any[]> {

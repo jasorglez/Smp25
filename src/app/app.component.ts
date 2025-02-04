@@ -24,10 +24,8 @@ export class AppComponent {
       this.authService
         .getUserId(email.toString())
         .subscribe((userId) => {
-          console.log(userId);
           this.authService.fetchUserPermissions(userId).subscribe(
             (data: any) => {
-              console.log(data);
               this.authService.setUserPermissions(data.permissions);
             },
             (error) => {

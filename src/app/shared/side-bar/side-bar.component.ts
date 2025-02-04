@@ -60,7 +60,6 @@ export class SideBarComponent {
       this.userService.findEmail(localStorage.getItem('mail')).subscribe({
         next: (datauser: any) => {
           if (datauser) {
-            console.log('DataUsers:', datauser)
             // Defincion de variables globales
             this.trackingService.setId(datauser.id);
             this.signalsService.setidUser(datauser.id);
@@ -313,7 +312,6 @@ async onBranchSelected(event: Event)  {
       'Menu Side Bar',
       ''
     );
-    this.router.navigate(['/dashboard']);
   }
 
   Admonproc() {
@@ -323,7 +321,6 @@ async onBranchSelected(event: Event)  {
       'Menu Side Bar',
       ''
     );
-    this.router.navigate(['procmodadmon']);
   }
 
   maintenanceproc() {
@@ -333,7 +330,6 @@ async onBranchSelected(event: Event)  {
       'Menu Side Bar',
       ''
     );
-    this.router.navigate(['procmodmaintenance']);
   }
 
   resourcesmenproc() {
@@ -343,7 +339,6 @@ async onBranchSelected(event: Event)  {
       'Menu Side Bar',
       ''
     );
-    this.router.navigate(['procreshuman']);
   }
 
   salesproc() {
@@ -353,7 +348,6 @@ async onBranchSelected(event: Event)  {
       'Menu Side Bar',
       ''
     );
-    this.router.navigate(['procsales']);
   }
 
   Bpi() {
@@ -363,7 +357,6 @@ async onBranchSelected(event: Event)  {
       'Menu Side Bar',
       ''
     );
-    this.router.navigate(['/bpi']);
   }
 
   Indicadores() {
@@ -373,7 +366,6 @@ async onBranchSelected(event: Event)  {
       'Menu Indicadores Bar',
       ''
     );
-    this.router.navigate(['/indicgrals']);
   }
 
   PepOper() {
@@ -383,7 +375,6 @@ async onBranchSelected(event: Event)  {
       'Menu Side Bar',
       ''
     );
-    this.router.navigate(['/allcontract']);
   }
 
   SmpSetup() {
@@ -393,7 +384,6 @@ async onBranchSelected(event: Event)  {
       'Menu Side Bar',
       ''
     );
-    this.router.navigate(['/smp']);
   }
 
   warehouseproc() {
@@ -403,7 +393,6 @@ async onBranchSelected(event: Event)  {
       'Menu Side Bar',
       ''
     );
-    this.router.navigate(['/proceswar']);
   }
 
   private loadPermissions() {

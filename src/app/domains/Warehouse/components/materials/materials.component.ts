@@ -12,33 +12,18 @@ import { CatalogsService } from 'app/services/catalogs.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { SignalsService } from 'app/services/signals.service';
 import { Router } from '@angular/router';
-import { EditFamiliesComponent } from 'app/domains/Warehouse/components/edit-families/edit-families.component';
-
-interface Catalog {
-  id: number;
-  description: string;
-  parentId: number;
-}
+import { Icatalog } from 'app/interface/icatalog';
 
 declare const bootstrap: any; // Añadir declaración para Bootstrap
 
 @Component({
   selector: 'app-materials',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, EditFamiliesComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
   templateUrl: './materials.component.html',
   styleUrl: './materials.component.scss'
 })
 export class MaterialsComponent {
-  editCategories() {
-    // Eliminar el código del servicio de modal
-    // y en su lugar usar el modal de Bootstrap directamente
-    const modal = document.getElementById('editFamiliesModal');
-    if (modal) {
-      const bootstrapModal = new bootstrap.Modal(modal);
-      bootstrapModal.show();
-    }
-  }
 
   ngOnInit() {
     this.obtenerDatos();
@@ -286,7 +271,7 @@ export class MaterialsComponent {
 
   obtenerMedidas() {
     this.catalogsService.getMeasures().subscribe(
-      (data: Catalog[]) => {
+      (data: Icatalog[]) => {
         this.medidas = data;
       },
       (error) => console.error('Error fetching measures:', error)
@@ -295,7 +280,7 @@ export class MaterialsComponent {
 
   obtenerFamilias() {
     this.catalogsService.getFamilyById(this.idRoot).subscribe(
-      (data: Catalog[]) => {
+      (data: Icatalog[]) => {
         this.familias = data;
       },
       (error) => console.error('Error fetching families:', error)
@@ -304,9 +289,8 @@ export class MaterialsComponent {
 
   obtenerSubfamilias() {
     this.catalogsService.getSubfamilies().subscribe(
-      (data: Catalog[]) => {
+      (data: Icatalog[]) => {
         this.subfamilias2 = data;
-        console.log('Subfamilias (todas):', this.subfamilias2);
       },
       (error) => console.error('Error fetching subfamilies:', error)
     );
@@ -314,9 +298,8 @@ export class MaterialsComponent {
 
   obtenerUbicaciones() {
     this.catalogsService.getLocations().subscribe(
-      (data: Catalog[]) => {
+      (data: Icatalog[]) => {
         this.ubicaciones = data;
-        console.log(this.ubicaciones);
       },
       (error) => console.error('Error fetching locations:', error)
     );
@@ -330,6 +313,7 @@ export class MaterialsComponent {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
+      this.selectedFamily = this.selectedRowData.idFamilia;
       this.material.description = this.selectedRowData.description;
       const foundMeasure = this.medidas.find(item => item.id === this.selectedRowData.idMedida);
       this.material.measure = foundMeasure ? foundMeasure.description : '';
@@ -340,7 +324,6 @@ export class MaterialsComponent {
   }
 
   onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
 
@@ -524,13 +507,19 @@ export class MaterialsComponent {
       }).subscribe(
         (response) => {
           alerts.basicAlert('Éxito', 'Familia añadida correctamente', 'success');
-          this.obtenerFamilias(); // Refrescar el listado de familias
+          this.obtenerFamilias();
+          
+          if (response.catalog.type === 'FAMILY' && this.selectedRowData) {
+            this.selectedRowData.idFamilia = response.id;
+            this.notSavedChanges = true;
+          }
+
           const modal = document.getElementById('addFamilyModal');
           if (modal) {
             const bootstrapModal = bootstrap.Modal.getInstance(modal);
             bootstrapModal.hide();
           }
-          this.newFamilyName = ''; // Limpiar el input
+          this.newFamilyName = '';
         },
         (error) => {
           alerts.basicAlert('Error', 'No se pudo añadir la familia', 'error');
@@ -550,13 +539,19 @@ export class MaterialsComponent {
       }).subscribe(
         (response) => {
           alerts.basicAlert('Éxito', 'Subfamilia añadida correctamente', 'success');
-          this.obtenerSubfamilias(); // Refrescar el listado de subfamilias
+          this.obtenerSubfamilias();
+          
+          if (response.catalog.type === 'SUBFAMILY' && this.selectedRowData) {
+            this.selectedRowData.idSubfamilia = response.id;
+            this.notSavedChanges = true;
+          }
+
           const modal = document.getElementById('addSubFamilyModal');
           if (modal) {
             const bootstrapModal = bootstrap.Modal.getInstance(modal);
             bootstrapModal.hide();
           }
-          this.newSubFamilyName = ''; // Limpiar el input
+          this.newSubFamilyName = '';
         },
         (error) => {
           alerts.basicAlert('Error', 'No se pudo añadir la familia', 'error');

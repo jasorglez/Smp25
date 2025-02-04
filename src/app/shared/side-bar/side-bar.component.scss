@@ -69,5 +69,15 @@
   .nav-link i:hover {
     color: #0056b3; /* Azul oscuro al pasar el mouse */
   }
+
+  .active-link {
+    background-color: #007bff; /* Color de fondo */
+    color: white !important; /* Color de texto */
+    border-radius: 4px; /* Bordes redondeados */
+    
+    mat-icon {
+        color: white !important; /* Color del icono */
+    }
+}
   
   

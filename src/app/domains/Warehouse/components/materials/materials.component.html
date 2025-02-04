@@ -19,9 +19,6 @@
       <div class="row">
 
         <nav class="col-auto d-flex flex-column align-items-start">
-          <button type="button" class="btn btn-info mb-2" (click)="editCategories()">
-            <i class="bi bi-bookmarks" style="font-size: 1.5rem;"></i>
-          </button>
           <button type="button" class="btn btn-primary me-1 mb-2" (click)="addRow()">
             <i class="bi bi-plus-lg" style="font-size: 1.5rem;"></i>
           </button>
@@ -55,25 +52,6 @@
     </main>
   </div>
 </section>
-
-<!-- Modal de Bootstrap para editar familias -->
-<div class="modal fade" id="editFamiliesModal" tabindex="-1" aria-labelledby="editFamiliesModalLabel"
-  aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 class="modal-title" id="editFamiliesModalLabel">Editar Familias</h3>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" (click)="refresh()"></button>
-      </div>
-      <div class="modal-body">
-        <app-edit-families></app-edit-families>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" (click)="refresh()">Cerrar</button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <div class="modal fade" id="addFamilyModal" tabindex="-1" aria-labelledby="addFamilyModalLabel" aria-hidden="true">
   <div class="modal-dialog">
