@@ -11,6 +11,8 @@ import { MaterialsService } from 'app/services/materials.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { SignalsService } from 'app/services/signals.service';
+import { Router } from '@angular/router';
+import { EditFamiliesComponent } from 'app/domains/Warehouse/components/edit-families/edit-families.component';
 
 interface Catalog {
   id: number;
@@ -18,14 +20,25 @@ interface Catalog {
   parentId: number;
 }
 
+declare const bootstrap: any; // Añadir declaración para Bootstrap
+
 @Component({
   selector: 'app-materials',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, EditFamiliesComponent],
   templateUrl: './materials.component.html',
   styleUrl: './materials.component.scss'
 })
 export class MaterialsComponent {
+  editCategories() {
+    // Eliminar el código del servicio de modal
+    // y en su lugar usar el modal de Bootstrap directamente
+    const modal = document.getElementById('editFamiliesModal');
+    if (modal) {
+      const bootstrapModal = new bootstrap.Modal(modal);
+      bootstrapModal.show();
+    }
+  }
 
   ngOnInit() {
     this.obtenerDatos();
@@ -35,7 +48,7 @@ export class MaterialsComponent {
     this.obtenerUbicaciones();
   }
 
-  constructor() {
+  constructor(private router: Router) {
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.obtenerDatos();
@@ -252,7 +265,7 @@ export class MaterialsComponent {
   }
 
   obtenerFamilias() {
-    this.catalogsService.getFamilies().subscribe(
+    this.catalogsService.getFamilyById(this.idRoot).subscribe(
       (data: Catalog[]) => {
         this.familias = data;
       },
@@ -448,5 +461,10 @@ export class MaterialsComponent {
       delete cleanedData.id;
     }
     return cleanedData;
+  }
+
+  refresh() {
+    this.obtenerFamilias();
+    this.obtenerSubfamilias();
   }
 }

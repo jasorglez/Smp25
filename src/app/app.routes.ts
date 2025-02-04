@@ -26,7 +26,7 @@ export const routes: Routes = [
           },
           {
             path: 'materials',
-            loadComponent: () => import('./domains/Warehouse/components/materials/materials.component').then(m => m.MaterialsComponent)
+            loadComponent: () => import('./domains/Warehouse/components/materials/materials.component').then(m => m.MaterialsComponent),
           },
           {
             path: 'purchaseorder',
@@ -43,6 +43,10 @@ export const routes: Routes = [
           {
             path: 'requisitions',
             loadComponent: () => import('./domains/Warehouse/components/requisitions/requisitions.component').then(r => r.RequisitionsComponent)
+          },
+          {
+            path: 'edit-families',
+            loadComponent: () => import('./domains/Warehouse/components/edit-families/edit-families.component').then(r => r.EditFamiliesComponent)
           }
         ]
       },

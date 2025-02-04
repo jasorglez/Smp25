@@ -25,8 +25,16 @@ export class CatalogsService {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog?type=Family`, { headers: this.trackingService.getHeaders() });
   }
 
+  getFamilyById(id: number): Observable<any> {
+    return this.http.get<any>(`${environment.urlWarehouse}/Catalog/family?idCompany=${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
   getSubfamilies(): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog?type=Subfamily`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getSubfamiliesByParentId(family: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/subfamily?parentId=${family}`, { headers: this.trackingService.getHeaders() });
   }
 
   getLocations(): Observable<any[]> {
@@ -41,5 +49,16 @@ export class CatalogsService {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog?type=TypeDocument`, { headers: this.trackingService.getHeaders() });
   }
 
+  deleteCatalog(id: number): Observable<any> {
+    return this.http.delete<any>(`${environment.urlWarehouse}/Catalog/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  addCatalog(catalog: any): Observable<any> {
+    return this.http.post<any>(`${environment.urlWarehouse}/Catalog`, catalog, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateCatalog(catalog: any): Observable<any> {
+    return this.http.put<any>(`${environment.urlWarehouse}/Catalog/${catalog.id}`, catalog, { headers: this.trackingService.getHeaders() });  
+  }
 
 }
