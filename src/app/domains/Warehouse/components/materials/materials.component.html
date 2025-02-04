@@ -3,7 +3,8 @@
   <div class="row">
     <aside class="col-2" *ngIf="id">
       <figure class="col mb-2">
-        <img [src]="material.picture" alt="Imagen de {{material.description}}" class="img-fluid rounded" style="width:100%;">
+        <img [src]="material.picture" alt="Imagen de {{material.description}}" class="img-fluid rounded"
+          style="width:100%;">
       </figure>
 
       <div class="row">
@@ -26,7 +27,8 @@
           </button>
           <button type="button" class="btn btn-success position-relative mb-2" (click)="saveChanges()">
             <i class="bi bi-floppy" style="font-size: 1.5rem;"></i>
-            <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+            <span
+              class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
               *ngIf="notSavedChanges">
               <span class="visually-hidden">Hay cambios sin guardar</span>
             </span>
@@ -55,11 +57,12 @@
 </section>
 
 <!-- Modal de Bootstrap para editar familias -->
-<div class="modal fade" id="editFamiliesModal" tabindex="-1" aria-labelledby="editFamiliesModalLabel" aria-hidden="true">
+<div class="modal fade" id="editFamiliesModal" tabindex="-1" aria-labelledby="editFamiliesModalLabel"
+  aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h2 class="modal-title" id="editFamiliesModalLabel">Editar Familias</h2>
+        <h3 class="modal-title" id="editFamiliesModalLabel">Editar Familias</h3>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" (click)="refresh()"></button>
       </div>
       <div class="modal-body">
@@ -67,6 +70,64 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" (click)="refresh()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="addFamilyModal" tabindex="-1" aria-labelledby="addFamilyModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h3 class="modal-title" id="addFamilyModalLabel">Añadir Familia</h3>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form (ngSubmit)="onSubmitFamily()">
+          <div class="mb-3">
+            <label for="familyName" class="form-label fw-bold">Nombre de la Familia</label>
+            <input type="text" class="form-control mb-4" id="familyName" [(ngModel)]="newFamilyName" name="familyName" 
+              placeholder="Ingrese el nombre de la familia" required>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary" [disabled]="!newFamilyName">Añadir Familia</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="addSubFamilyModal" tabindex="-1" aria-labelledby="addSubFamilyModalLabel" 
+  aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="addSubFamilyModalLabel">Añadir Subfamilia</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form (ngSubmit)="onSubmitSubFamily()">
+          <div class="mb-3">
+            <label for="familySelect" class="form-label fw-bold">Familia principal</label>
+            <select class="form-select mb-4" id="familySelect" [(ngModel)]="selectedFamily" name="familySelect" required>
+              <option value="" disabled selected>Seleccione una familia...</option>
+              <option *ngFor="let item of familias" [value]="item.id">{{item.description}}</option>
+            </select>
+            
+            <label for="subFamilyName" class="form-label fw-bold">Nombre de la subfamilia</label>
+            <input type="text" class="form-control mb-4" id="subFamilyName" [(ngModel)]="newSubFamilyName" 
+              name="subFamilyName" placeholder="Ingrese el nombre de la subfamilia" required
+              [disabled]="!selectedFamily">
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary" [disabled]="!selectedFamily || !newSubFamilyName">
+              Añadir Subfamilia
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>

@@ -1,5 +1,5 @@
 import { Component, effect, HostListener, inject } from '@angular/core';
-import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
+import { CellDoubleClickedEvent, ColDef, GetMainMenuItemsParams, GridApi, GridReadyEvent, ICellRendererParams, MenuItemDef } from 'ag-grid-enterprise';
 import { alerts } from '../../../../helpers/alerts';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
@@ -69,6 +69,9 @@ export class MaterialsComponent {
   }
 
   notSavedChanges: boolean = false;
+  newFamilyName: string = '';
+  newSubFamilyName: string = '';
+  selectedFamily: number = null;
   rowData: any;
   contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
@@ -96,7 +99,7 @@ export class MaterialsComponent {
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
   public paginationPageSize = 15;
-  public paginationPageSizeSelector: number[] | boolean  =  [15, 50, 100];
+  public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
   frameworkComponents = {
     multiLineEditor: MultiLineEditorComponent
   };
@@ -172,21 +175,47 @@ export class MaterialsComponent {
         valueFormatter: (params) => {
           const foundItem = this.familias ? this.familias.find(item => item.id === params.value) : null;
           return foundItem ? `${foundItem.description}` : params.value;
+        },
+        mainMenuItems: (params: GetMainMenuItemsParams) => {
+          const familyMenuItems: (MenuItemDef | string)[] = [
+            {
+              name: "Añadir familia",
+              action: () => {
+                this.openAddFamilyModal();
+              },
+            },
+            'separator',
+            ...params.defaultItems.slice(0)
+          ];
+          return familyMenuItems;
         }
       },
       {
-        field: 'idSubfamilia', 
-        headerName: 'Subamilia', 
-        editable: true, 
-        width: 150, 
+        field: 'idSubfamilia',
+        headerName: 'Subfamilia',
+        editable: true,
+        width: 150,
         cellEditor: 'agSelectCellEditor',
+        mainMenuItems: (params: GetMainMenuItemsParams) => {
+          const subFamilyMenuItems: (MenuItemDef | string)[] = [
+            {
+              name: "Añadir subfamilia",
+              action: () => {
+                this.openAddSubFamilyModal();
+              },
+            },
+            'separator',
+            ...params.defaultItems.slice(0)
+          ];
+          return subFamilyMenuItems;
+        },
         cellEditorParams: (params) => {
           // Obtener el idFamilia de la fila actual
           const idFamilia = params.data.idFamilia;
-          
+
           // Filtrar subfamilias por parentId (idFamilia) usando subfamilias2
           const subfamiliasFiltradas = this.subfamilias2.filter(item => item.parentId === idFamilia);
-          
+
           return {
             values: subfamiliasFiltradas.map(item => item.id),
             valueFormatter: (id) => {
@@ -466,5 +495,74 @@ export class MaterialsComponent {
   refresh() {
     this.obtenerFamilias();
     this.obtenerSubfamilias();
+  }
+
+  // Métodos para abrir el modal de Añadir Familia
+  openAddFamilyModal() {
+    const modal = document.getElementById('addFamilyModal');
+    if (modal) {
+      const bootstrapModal = new bootstrap.Modal(modal);
+      bootstrapModal.show();
+    }
+  }
+
+  openAddSubFamilyModal() {
+    const modal = document.getElementById('addSubFamilyModal');
+    if (modal) {
+      const bootstrapModal = new bootstrap.Modal(modal);
+      bootstrapModal.show();
+    }
+  }
+
+  onSubmitFamily() {
+    if (this.newFamilyName) {
+      this.catalogsService.addCatalog({
+        id: 0,
+        idCompany: this.idRoot,
+        description: this.newFamilyName,
+        type: 'FAMILY'
+      }).subscribe(
+        (response) => {
+          alerts.basicAlert('Éxito', 'Familia añadida correctamente', 'success');
+          this.obtenerFamilias(); // Refrescar el listado de familias
+          const modal = document.getElementById('addFamilyModal');
+          if (modal) {
+            const bootstrapModal = bootstrap.Modal.getInstance(modal);
+            bootstrapModal.hide();
+          }
+          this.newFamilyName = ''; // Limpiar el input
+        },
+        (error) => {
+          alerts.basicAlert('Error', 'No se pudo añadir la familia', 'error');
+          console.error(error);
+        }
+      );
+    }
+  }
+
+  onSubmitSubFamily() {
+    if (this.newSubFamilyName && this.selectedFamily) {
+      this.catalogsService.addCatalog({
+        id: 0,
+        description: this.newSubFamilyName,
+        parentId: this.selectedFamily,
+        type: 'SUBFAMILY'
+      }).subscribe(
+        (response) => {
+          alerts.basicAlert('Éxito', 'Subfamilia añadida correctamente', 'success');
+          this.obtenerSubfamilias(); // Refrescar el listado de subfamilias
+          const modal = document.getElementById('addSubFamilyModal');
+          if (modal) {
+            const bootstrapModal = bootstrap.Modal.getInstance(modal);
+            bootstrapModal.hide();
+          }
+          this.newSubFamilyName = ''; // Limpiar el input
+        },
+        (error) => {
+          alerts.basicAlert('Error', 'No se pudo añadir la familia', 'error');
+          console.error(error);
+        }
+      );
+    }
   }
 }
