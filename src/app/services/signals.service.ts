@@ -296,7 +296,8 @@ export class SignalsService {
 
   /* Signals para requisiciones */
 
-  private idRequisition = signal<number>(null);
+  private idRequisition   = signal<number>(null);
+  private idEmployee      = signal<number>(null);
   private nameRequisition = signal<string>(null);
   private requisitionSolicitant = signal<string>(null);
   private requisitionDate = signal<string>(null);
@@ -308,6 +309,15 @@ export class SignalsService {
   getIdRequisition() {
     return this.idRequisition;
   }
+
+  setIdEmployee(id: number) {
+    this.idEmployee.set(id);
+  }
+
+  getIdEmployee() {
+    return this.idEmployee;
+  }
+
 
   setRequisitionName(name: string) {
     this.nameRequisition.set(name);

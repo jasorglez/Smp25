@@ -7,15 +7,15 @@ import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { CatalogsService } from 'app/services/catalogs.service';
-import { OcAndReqsService } from 'app/services/ocandreqs.service';
-import { ProvidersService } from 'app/services/providers.service';
+import { EmployeesService } from 'app/services/employees.service';
+
+import { UsersService } from 'app/services/users.service';
 import { DepartmentsService } from 'app/services/departments.service';
-import { CurrencyService } from 'app/services/currency.service';
+
 import { SignalsService } from 'app/services/signals.service';
 import { ModalService } from 'app/services/modal.service';
 import { ReceiptsService } from 'app/services/receipts.service';
-import { UsersService } from 'app/services/users.service';
-import { MaterialsService } from 'app/services/materials.service';
+
 import { ImageHandlerService } from 'app/services/image-handler.service';
 
 interface Catalog {
@@ -39,27 +39,29 @@ interface Provider {
 export class EmployeesComponent {
   // Inject of new way for Angular 18
   private imageHandlerService = inject(ImageHandlerService);
-  private requisitionsService = inject(OcAndReqsService);
-  private providersService = inject(ProvidersService);
+
+  private employeeService = inject(EmployeesService);
   private catalogsService = inject(CatalogsService);
   private departmentsService = inject(DepartmentsService);
-  private currencyService = inject(CurrencyService);
+  private usersService = inject(UsersService);
+
   private signalsService = inject(SignalsService);
   private modalServiceTable = inject(ModalService);
   private receiptsService = inject(ReceiptsService);
-  private usersService = inject(UsersService);
-  private materialsService = inject(MaterialsService);
-
+  
   // Variables compartidas
   masterNotSavedChanges: boolean = false;
   detailsNotSavedChanges: boolean = false;
   id: string = null;
+  
   idProject: number = null;
-  private tempIdCounter: number = 0;
-  idRequisition: number = null;
-  private masterGridApi: GridApi;
+  idBranch : number = null;
+
+  private tempIdCounter : number = 0;
+  idEmployee            : number = null;
+  private masterGridApi : GridApi;
   private detailsGridApi: GridApi;
-  idRoot: number = null;
+  idRoot                : number = null;
 
   // Variables Master
   masterRowData: any[] = [];
@@ -67,14 +69,11 @@ export class EmployeesComponent {
   newlyAddedMasterRows: string[] = [];
 
   // Catálogos Master
-  requisiciones: any[] = [];
-  proveedores: any[] = [];
-  departamentos: any[] = [];
-  ubicaciones: any[] = [];
-  monedas: any[] = [];
-  usuarios: any[] = [];
-  tipoPago: any[] = [];
-
+  empleados     : any[] = [];
+  departamentos : any[] = [];
+  estados       : any[] = [];
+  usuarios      : any[] = [];
+ 
   // Variables Details
   detailsRowData: any[] = [];
   detailsSelectedRowData: any = null;
@@ -92,20 +91,20 @@ export class EmployeesComponent {
 
   constructor() {
     effect(() => {
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      this.idProject = this.signalsService.getProjectSelectedBySidebar()();
-      this.idRequisition = this.signalsService.getIdRequisition()();
+      this.idRoot        = this.signalsService.getRootSelectedBySidebar()();
+      this.idBranch      = this.signalsService.getBranchSelectedBySidebar()();
+      this.idEmployee    = this.signalsService.getIdEmployee()();
 
-      if (this.idProject == null) {
+      if (this.idBranch == null) {
         this.masterRowData = [];
         alerts.basicAlert('Empleados', 'Debe elegir una sucursal primero.', 'error');
       } else {
         this.obtenerDatos();
-        this.obtenerRequisiciones();
+  //      this.obtenerEmployees();
       }
 
-      if (this.idRequisition != null) {
-        this.obtenerDetalles();
+      if (this.idEmployee != null) {
+       // this.obtenerDetalles();
       }
     })
   }
@@ -113,14 +112,7 @@ export class EmployeesComponent {
   ngOnInit() {
     this.signalsService.deleteRequisitionData();
     this.obtenerDatos();
-    this.obtenerDepartamentos();
-    this.obtenerUbicaciones();
-    this.obtenerMonedas();
-    this.obtenerUsuarios();
-    this.obtenerRequisiciones();
-    this.obtenerProveedores();
-    this.obtenerTipoPago();
-    this.obtenerProductos();
+    this.obtenerDepartamentos();    
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -136,9 +128,10 @@ export class EmployeesComponent {
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
     return [
-      { field: 'employeeCode', headerName: 'Código de empleado', editable: true, filter: true, width: 150 },
+      { field: 'employeeCode', headerName: 'Código', editable: true, filter: true, width: 130 },
+      { field: 'name', headerName: 'Nombre', editable: true, filter: true, width: 270 },
       {
-        field: 'address', headerName: 'Dirección', editable: false, width: 200, cellEditor: 'agPopupTextCellEditor',
+        field: 'address', headerName: 'Dirección', editable: false, width: 300, cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
           cols: 50,
@@ -288,31 +281,15 @@ export class EmployeesComponent {
   // ==================== MASTER METHODS ====================
 
   obtenerDatos() {
-    this.requisitionsService.getOcAndReqs(this.idProject, "OC").subscribe((data: any) => {
+    this.employeeService.getEmployees(this.idBranch).subscribe((data: any) => {
       this.masterRowData = data;
     },
       (error) => console.error('Error fetching data:', error)
     );
   }
 
-  obtenerRequisiciones() {
-    this.requisitionsService.getOcAndReqs(this.idProject, "REQUIS").subscribe((data: any) => {
-      this.requisiciones = data;
-      console.log(this.requisiciones);
-    },
-      (error) => console.error('Error fetching requisitions:', error)
-    );
-  }
 
-  obtenerProveedores() {
-    this.providersService.getProviders().subscribe((data: any) => {
-      this.proveedores = data;
-      console.log(this.proveedores);
-    },
-      (error) => console.error('Error fetching requisitions:', error)
-    );
-  }
-
+  
   obtenerUsuarios() {
     this.usersService.getDataUsers().subscribe(
       (response: any) => {
@@ -331,32 +308,6 @@ export class EmployeesComponent {
     );
   }
 
-  obtenerUbicaciones() {
-    this.catalogsService.getLocations().subscribe(
-      (data: Catalog[]) => {
-        this.ubicaciones = data;
-      },
-      (error) => console.error('Error fetching locations:', error)
-    );
-  }
-
-  obtenerMonedas() {
-    this.currencyService.getCurrencies().subscribe(
-      (data: Catalog[]) => {
-        this.monedas = data;
-      },
-      (error) => console.error('Error fetching currencies:', error)
-    );
-  }
-
-  obtenerTipoPago() {
-    this.currencyService.getPaymentTypes().subscribe(
-      (data: Catalog[]) => {
-        this.tipoPago = data;
-      },
-      (error) => console.error('Error fetching payment types:', error)
-    );
-  }
 
   onMasterSelectionChanged(event: any) {
     const selectedNodes = event.api.getSelectedNodes();
@@ -367,11 +318,11 @@ export class EmployeesComponent {
 
       // Solo actualizar las señales si no es una fila nueva
       if (!this.newlyAddedMasterRows.includes(this.masterSelectedRowData.id)) {
-        this.signalsService.setIdRequisition(this.masterSelectedRowData.id);
+        this.signalsService.setIdEmployee(this.masterSelectedRowData.id);
         this.signalsService.setRequisitionName(this.masterSelectedRowData.folio);
         this.signalsService.setRequisitionSolicitant(this.masterSelectedRowData.solicit);
         this.signalsService.setRequisitionDate(this.masterSelectedRowData.dateCreate);
-        this.idRequisition = this.signalsService.getIdRequisition()();
+        this.idEmployee = this.signalsService.getIdEmployee()();
       }
     } else {
       this.masterSelectedRowData = null;
@@ -474,12 +425,12 @@ export class EmployeesComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.requisitionsService.addOcAndReq(cleanedData);
+      return this.employeeService.addEmployee(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.requisitionsService.updateOcAndReq(row.id, cleanedData);
+      return this.employeeService.updateEmployee(row.id, cleanedData);
     });
 
     // Using concat to combine observables and lastValueFrom for async/await
@@ -519,7 +470,7 @@ export class EmployeesComponent {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
     selectedData.active = 0;
-    this.requisitionsService.deleteOcAndReq(id).pipe(
+    this.employeeService.deleteEmployee(id).pipe(
       catchError((error) => {
         alerts.basicAlert(
           'Eliminar entrada',
@@ -555,28 +506,14 @@ export class EmployeesComponent {
     this.masterNotSavedChanges = false;
   }
 
-  createOC(idRequisition: number, action: string) {
-    this.receiptsService.generateOC(idRequisition, action);
+  createEmployee(idEmployee: number, action: string) {
+    this.receiptsService.generateOC(idEmployee, action);
   }
 
 
 
   // ==================== DETAILS METHODS ====================
 
-  obtenerDetalles() {
-    this.requisitionsService.getReqItems(this.idRequisition).subscribe((data: any) => {
-      this.detailsRowData = data;
-    });
-  }
-
-  obtenerProductos() {
-    this.materialsService.getMaterials2Fields(this.idRoot).subscribe(
-      (data: Catalog[]) => {
-        this.productos = data;
-      },
-      (error) => console.error('Error fetching materials:', error)
-    );
-  }
 
   updateTotal(data: any) {
     if (data.quantity && data.price) {
@@ -590,7 +527,7 @@ export class EmployeesComponent {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idMovement: this.idRequisition,
+      idMovement: this.idEmployee,
       idSupplie: 0,
       quantity: 0,
       price: 0,
@@ -607,103 +544,9 @@ export class EmployeesComponent {
     this.detailsNotSavedChanges = true;
   }
 
-  async saveDetailsChanges() {
-    const isValid = this.detailsRowData.every((item) => item.idSupplie && item.comment && item.dateuse);
-    if (!isValid) {
-      alerts.basicAlert(
-        'Añadir entrada',
-        'Debe llenar todos los campos antes de guardar.',
-        'error'
-      );
-      return;
-    }
-
-    const newRows = this.detailsRowData.filter((row) => row.__isNew);
-    const modifiedRows = this.detailsRowData.filter(
-      (row) => row.__modified && !row.__isNew
-    );
-
-    const addObservables = newRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      return this.requisitionsService.addReqItem(cleanedData);
-    });
-
-    const updateObservables = modifiedRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData);
-      return this.requisitionsService.updateReqItem(row.id, cleanedData);
-    });
-
-    // Using concat to combine observables and lastValueFrom for async/await
-    try {
-      const responses = await lastValueFrom(
-        concat(...addObservables, ...updateObservables).pipe(toArray())
-      );
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
-      this.detailsNotSavedChanges = false;
-      this.newlyAddedDetailRows = [];
-      this.obtenerDetalles(); // Refrescar los datos
-    } catch (error) {
-      console.error(error);
-      alerts.basicAlert(
-        'Error',
-        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
-        'error'
-      );
-    }
-  }
-
-  async deleteDetailsEntry() {
-    const selectedNodes = this.detailsGridApi.getSelectedNodes();
-    if (selectedNodes.length === 0) {
-      alerts.basicAlert(
-        'Eliminar entrada',
-        'Por favor, seleccione una entrada para eliminar.',
-        'error'
-      );
-      return;
-    }
-
-    const selectedData = selectedNodes[0].data;
-    const id = selectedData.id;
-    selectedData.active = 0;
-    this.requisitionsService.deleteReqItem(id).pipe(
-      catchError((error) => {
-        alerts.basicAlert(
-          'Eliminar entrada',
-          'Error al eliminar la entrada.',
-          'error'
-        );
-        console.error(error);
-        return EMPTY;
-      })
-    )
-      .subscribe(
-        () => {
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.obtenerDetalles();
-
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.detailsNotSavedChanges = false;
-          this.detailsSelectedRowData = null;
-        }
-      );
-  }
-
+  
   revertDetailsData() {
-    this.obtenerDetalles();
+   // this.obtenerDetalles();
     this.detailsNotSavedChanges = false;
   }
 

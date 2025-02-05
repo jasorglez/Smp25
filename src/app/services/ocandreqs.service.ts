@@ -47,4 +47,6 @@ export class OcAndReqsService {
   deleteReqItem(id: number): Observable<any> {
     return this.http.delete<any[]>(`${environment.urlWarehouse}/Detailsreqoc/${id}`, { headers: this.trackingService.getHeaders() });
   }
+
+  
 }
