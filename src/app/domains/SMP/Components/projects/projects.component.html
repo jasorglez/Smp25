@@ -15,7 +15,7 @@
     <div class="row">
       <!-- The AG Grid component -->
       <ag-grid-angular [columnDefs]="colMaster" [defaultColDef]="defaultColDef" [rowSelection]="rowSelection"
-        [rowData]="project" (selectionChanged)="onSelectionChanged($event)" class="ag-theme-quartz"
+        [rowData]="project" (selectionChanged)="onSelectionChanged($event)" class="ag-theme-quartz small-text-ag-grid"
         [rowGroupPanelShow]="rowGroupPanelShow" [pivotPanelShow]="pivotPanelShow"
         [groupDefaultExpanded]="groupDefaultExpanded" [pagination]="true" (gridReady)="onGridReady($event)"
         [paginationPageSize]="paginationPageSize" [paginationPageSizeSelector]="paginationPageSizeSelector"

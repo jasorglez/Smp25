@@ -1,75 +1,76 @@
 <app-multi-line-editor></app-multi-line-editor>
 <div class="col-12">
   <!-- Botones y grid principal -->
-  <div class="row ">
-      <!-- Columna de botones -->
-      <div class="col-auto">
-        <div class="d-flex flex-column gap-2">
-          <button type="button" class="btn btn-primary me-1" (click)="addMasterRow()">
-            <i class="bi bi-plus-lg"></i>
-          </button>
-          <button *ngIf="idEmployee != null" type="button" class="btn btn-info ms-1 me-1 position-relative"
-            (click)="createEmployee(idEmployee, 'open')">
-            <i class="bi bi-file-earmark-pdf"></i></button>
-          <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveMasterChanges()">
-            <i class="bi bi-floppy"></i>
-            <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-              *ngIf="masterNotSavedChanges">
-              <span class="visually-hidden">Hay cambios sin guardar</span>
-            </span>
-          </button>
-          <button type="button" class="btn btn-warning ms-1 me-1" (click)="revertMasterData()">
-            <i class="bi bi-arrow-clockwise"></i>
-          </button>
-          <button type="button" class="btn btn-danger ms-1 me-1" (click)="deleteMasterEntry()">
-            <i class="bi bi-trash"></i>
-          </button>
+  <div class="row mt-3">
+    <!-- Columna de botones -->
+    <div class="col-auto">
+      <div class="d-flex flex-column gap-2">
+        <button type="button" class="btn btn-primary ms-1 me-1" (click)="addMasterRow()">
+          <i class="bi bi-plus-lg"></i>
+        </button>
+        <button *ngIf="idEmployee != null" type="button" class="btn btn-info ms-1 me-1 position-relative"
+          (click)="createEmployee(idEmployee, 'open')">
+          <i class="bi bi-file-earmark-pdf"></i></button>
+        <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveMasterChanges()">
+          <i class="bi bi-floppy"></i>
+          <span
+            class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+            *ngIf="masterNotSavedChanges">
+            <span class="visually-hidden">Hay cambios sin guardar</span>
+          </span>
+        </button>
+        <button type="button" class="btn btn-warning ms-1 me-1" (click)="revertMasterData()">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+        <button type="button" class="btn btn-danger ms-1 me-1" (click)="deleteMasterEntry()">
+          <i class="bi bi-trash"></i>
+        </button>
       </div>
-  </div>
+    </div>
 
     <div class="col">
-      <ag-grid-angular style="width: 100%; height: 32vh;" class="ag-theme-quartz" [rowData]="masterRowData"
+      <ag-grid-angular style="width: 100%; height: 32vh;" class="ag-theme-quartz small-text-ag-grid" [rowData]="masterRowData"
         [columnDefs]="colMaster" (selectionChanged)="onMasterSelectionChanged($event)"
         (cellValueChanged)="onMasterCellValueChanged($event)" (rowSelected)="onMasterRowSelected($event)"
         (gridReady)="onMasterGridReady($event)" [rowSelection]="rowSelection" [pivotPanelShow]="pivotPanelShow"
         [rowGroupPanelShow]="rowGroupPanelShow" [paginationPageSize]="paginationPageSize"
         [paginationPageSizeSelector]="paginationPageSizeSelector" [pagination]="true">
       </ag-grid-angular>
-    </div>  
-</div>
-
-<!-- Detalles de la orden de compra -->
-<div *ngIf="idEmployee != null">
-
-  <div class="col-12 py-3">
-    <!-- Repetir estructura similar para la grid de detalles -->
-    <div class="row mb-3">
-  
-      <div class="col text-right"><button type="button" class="btn btn-primary me-1" (click)="addDetailsRow()"><i
-            class="bi bi-plus-lg"></i></button>
-        <button type="button" class="btn btn-success ms-1 me-1 position-relative" >
-          <i class="bi bi-floppy"></i>
-          <span
-            class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-            *ngIf="detailsNotSavedChanges"><span class="visually-hidden">Hay cambios sin guardar</span>
-          </span>
-        </button>
-        <button type="button" class="btn btn-warning ms-1 me-1" (click)="revertDetailsData()"><i
-            class="bi bi-arrow-clockwise"></i></button>
-        <button type="button" class="btn btn-danger ms-1 me-1" ><i
-            class="bi bi-trash"></i></button>
-      </div>
     </div>
-    <div class="row">
-      <div class="col-12">
-        <ag-grid-angular style="width: 100%; height: 32vh;" class="ag-theme-quartz" [rowData]="detailsRowData"
-          [columnDefs]="colDetails" (selectionChanged)="onDetailsSelectionChanged($event)"
-          (cellValueChanged)="onDetailsCellValueChanged($event)" (rowSelected)="onDetailsRowSelected($event)"
-          (gridReady)="onDetailsGridReady($event)" [rowSelection]="rowSelection" [pivotPanelShow]="pivotPanelShow"
-          [rowGroupPanelShow]="rowGroupPanelShow" [paginationPageSize]="paginationPageSize"
-          [paginationPageSizeSelector]="paginationPageSizeSelector" [pagination]="true">
-        </ag-grid-angular>
+  </div>
+
+  <!-- Detalles de la orden de compra -->
+  <div *ngIf="idEmployee != null">
+
+    <div class="col-12 py-3">
+      <!-- Repetir estructura similar para la grid de detalles -->
+      <div class="row mb-3">
+
+        <div class="col text-right">
+          <button type="button" class="btn btn-primary ms-1 me-1" (click)="addDetailsRow()"><i
+              class="bi bi-plus-lg"></i></button>
+          <button type="button" class="btn btn-success ms-1 me-1">
+            <i class="bi bi-floppy"></i>
+            <span
+              class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+              *ngIf="detailsNotSavedChanges"><span class="visually-hidden">Hay cambios sin guardar</span>
+            </span>
+          </button>
+          <button type="button" class="btn btn-warning ms-1 me-1" (click)="revertDetailsData()"><i
+              class="bi bi-arrow-clockwise"></i></button>
+          <button type="button" class="btn btn-danger ms-1 me-1"><i class="bi bi-trash"></i></button>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-12">
+          <ag-grid-angular style="width: 100%; height: 32vh;" class="ag-theme-quartz small-text-ag-grid"
+            [rowData]="detailsRowData" [columnDefs]="colDetails" (selectionChanged)="onDetailsSelectionChanged($event)"
+            (cellValueChanged)="onDetailsCellValueChanged($event)" (rowSelected)="onDetailsRowSelected($event)"
+            (gridReady)="onDetailsGridReady($event)" [rowSelection]="rowSelection" [pivotPanelShow]="pivotPanelShow"
+            [rowGroupPanelShow]="rowGroupPanelShow" [paginationPageSize]="paginationPageSize"
+            [paginationPageSizeSelector]="paginationPageSizeSelector" [pagination]="true">
+          </ag-grid-angular>
+        </div>
       </div>
     </div>
   </div>
-</div>
