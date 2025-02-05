@@ -110,3 +110,27 @@
     </div>
   </div>
 </div>
+
+<div class="modal fade" id="addLocationModal" tabindex="-1" aria-labelledby="addLocationModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h3 class="modal-title" id="addLocationModalLabel">Añadir Ubicación</h3>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form (ngSubmit)="onSubmitLocation()">
+          <div class="mb-3">
+            <label for="locationName" class="form-label fw-bold">Nombre de la Ubicación</label>
+            <input type="text" class="form-control mb-4" id="locationName" [(ngModel)]="newLocationName" name="locationName" 
+              placeholder="Ingrese el nombre de la ubicación" required>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary" [disabled]="!newLocationName">Añadir Ubicación</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

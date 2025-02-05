@@ -55,6 +55,7 @@ export class MaterialsComponent {
 
   notSavedChanges: boolean = false;
   newFamilyName: string = '';
+  newLocationName: string = '';
   newSubFamilyName: string = '';
   selectedFamily: number = null;
   rowData: any;
@@ -223,6 +224,19 @@ export class MaterialsComponent {
         valueFormatter: (params) => {
           const foundItem = this.ubicaciones ? this.ubicaciones.find(item => item.id === params.value) : null;
           return foundItem ? `${foundItem.description}` : params.value;
+        },
+        mainMenuItems: (params: GetMainMenuItemsParams) => {
+          const locationMenuItems: (MenuItemDef | string)[] = [
+            {
+              name: "Añadir ubicación",
+              action: () => {
+                this.openAddLocationModal();
+              },
+            },
+            'separator',
+            ...params.defaultItems.slice(0)
+          ];
+          return locationMenuItems;
         }
       },
       { field: 'aplicaResg', headerName: 'Resguardar', editable: true, width: 100 },
@@ -497,6 +511,14 @@ export class MaterialsComponent {
     }
   }
 
+  openAddLocationModal() {
+    const modal = document.getElementById('addLocationModal');
+    if (modal) {
+      const bootstrapModal = new bootstrap.Modal(modal);
+      bootstrapModal.show();
+    }
+  }
+
   onSubmitFamily() {
     if (this.newFamilyName) {
       this.catalogsService.addCatalog({
@@ -556,6 +578,44 @@ export class MaterialsComponent {
         (error) => {
           alerts.basicAlert('Error', 'No se pudo añadir la familia', 'error');
           console.error(error);
+        }
+      );
+    }
+  }
+
+  onSubmitLocation() {
+    console.log('Intentando enviar ubicación:', {
+      name: this.newLocationName,
+      idRoot: this.idRoot
+    });
+    
+    if (this.newLocationName) {
+      this.catalogsService.addCatalog({
+        id: 0,
+        idCompany: this.idRoot,
+        description: this.newLocationName,
+        type: 'UBICATION'
+      }).subscribe(
+        (response) => {
+          console.log('Respuesta del servidor:', response);
+          alerts.basicAlert('Éxito', 'Ubicación añadida correctamente', 'success');
+          this.obtenerUbicaciones();
+          
+          if (this.selectedRowData) {
+            this.selectedRowData.idUbication = response.id;
+            this.notSavedChanges = true;
+          }
+
+          const modal = document.getElementById('addLocationModal');
+          if (modal) {
+            const bootstrapModal = bootstrap.Modal.getInstance(modal);
+            bootstrapModal.hide();
+          }
+          this.newLocationName = '';
+        },
+        (error) => {
+          console.error('Error al añadir ubicación:', error);
+          alerts.basicAlert('Error', 'No se pudo añadir la ubicación', 'error');
         }
       );
     }

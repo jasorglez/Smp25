@@ -4,5 +4,5 @@ export interface Icatalog {
   parentId: number
   description: string;
   type: string;
-  active: boolean
+  active: number;
 }

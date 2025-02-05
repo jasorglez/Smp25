@@ -45,8 +45,8 @@ export const routes: Routes = [
             loadComponent: () => import('./domains/Warehouse/components/requisitions/requisitions.component').then(r => r.RequisitionsComponent)
           },
           {
-            path: 'edit-families',
-            loadComponent: () => import('./domains/Warehouse/components/edit-families/edit-families.component').then(r => r.EditFamiliesComponent)
+            path: 'catalogs',
+            loadComponent: () => import('./domains/Warehouse/components/catalogs/catalogs.component').then(r => r.EditFamiliesComponent)
           }
         ]
       },
