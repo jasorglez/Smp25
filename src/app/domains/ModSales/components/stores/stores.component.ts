@@ -121,7 +121,6 @@ export class StoresComponent {
     });
   }
 
-
     async deleteEntry() {
       const selectedNodes = this.gridApi.getSelectedNodes();
       if (selectedNodes.length === 0) {
