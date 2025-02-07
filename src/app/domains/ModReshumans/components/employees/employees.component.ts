@@ -10,15 +10,15 @@ import { EmployeesService } from 'app/services/employees.service';
 import { InegiService } from 'app/services/inegi.service';
 import { SignalsService } from 'app/services/signals.service';
 import { ModalService } from 'app/services/modal.service';
-import { ReceiptsService } from 'app/services/receipts.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { States } from 'app/interface/states';
+import { EmployeesxLoansComponent } from "./loans/loans.component";
 
 @Component({
   selector: 'app-employees',
   standalone: true,
-  imports: [AutocompleteEditorComponent, CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
+  imports: [AutocompleteEditorComponent, CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, EmployeesxLoansComponent],
   templateUrl: './employees.component.html',
   styleUrl: './employees.component.scss'
 })
@@ -30,40 +30,42 @@ export class EmployeesComponent {
 
   private signalsService = inject(SignalsService);
   private modalServiceTable = inject(ModalService);
-  private receiptsService = inject(ReceiptsService);
   private inegiService = inject(InegiService);
 
-  // Variables compartidas
-  masterNotSavedChanges: boolean = false;
-  id: string = null;
-  idProject: number = null;
-  idBranch: number = null;
-  private tempIdCounter: number = 0;
-  idEmployee: number = null;
-  private masterGridApi: GridApi;
-
-  // Variables Master
-  masterRowData: any[] = [];
-  masterSelectedRowData: any = null;
-  newlyAddedMasterRows: string[] = [];
-
-  // Catálogos Master
-  empleados: any[] = [];
-  departamentos: any[] = [];
+  id: number;
+  idBranch: number;
+  idEmployee: number;
+  rowData: any[] = [];
   private estados: string[] = [];
-  usuarios: any[] = [];
+  newlyAddedRows: string[] = []; // IDs de filas recién añadidas
+  notSavedChanges: boolean = false;
 
-  // Configuración Grid
+  // Variables de control del grid
+  selectedRowData: any = null;  // Fila seleccionada actualmente
+  tempIdCounter: number = 0;    // Contador para IDs temporales
+  private gridApi: GridApi;     // API del grid
+  public defaultColDef : ColDef = {
+    sortable           : true,
+    filter             : true,
+    resizable          : true,
+    lockPosition       : false,
+    enableRowGroup     : true, // Enable row grouping for all columns
+    flex: 1
+  };
   public rowSelection: 'single' | 'multiple' = 'single';
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
-  public paginationPageSize = 15;
-  public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
+  frameworkComponents = {
+    multiLineEditor: MultiLineEditorComponent
+  };
 
-  // Añadir nuevas propiedades
-  notSavedChanges: boolean = false;
-  newlyAddedRows: string[] = [];
-  private gridApi: GridApi;
+  @HostListener('window:beforeunload', ['$event'])
+  unloadNotification($event: any): void {
+    if (this.notSavedChanges) {
+      $event.returnValue =
+        'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
+    }
+  }
 
   components = {
     multiLineEditor: MultiLineEditorComponent,
@@ -73,10 +75,8 @@ export class EmployeesComponent {
   constructor() {
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-      this.idEmployee = this.signalsService.getIdEmployee()();
-
       if (this.idBranch == null) {
-        this.masterRowData = [];
+        this.rowData = [];
         alerts.basicAlert('Empleados', 'Debe elegir una sucursal primero.', 'error');
       } else {
         this.obtenerDatos();
@@ -85,20 +85,10 @@ export class EmployeesComponent {
   }
 
   ngOnInit() {
-    this.signalsService.deleteRequisitionData();
     this.obtenerDatos();
     this.getStates();
   }
 
-  @HostListener('window:beforeunload', ['$event'])
-  unloadNotification($event: any): void {
-    if (this.masterNotSavedChanges) {
-      $event.returnValue =
-        'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
-    }
-  }
-
-  nameRequisition = this.signalsService.getRequisitionName();
 
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
@@ -106,7 +96,7 @@ export class EmployeesComponent {
       {
         field: 'employeeCode', headerName: 'Código', editable: true, filter: true, width: 130,
         valueSetter: (params) => {
-          const duplicateExists = this.masterRowData.some((row, index) =>
+          const duplicateExists = this.rowData.some((row, index) =>
             index !== params.node.rowIndex && row.employeeCode === params.newValue
           );
 
@@ -127,13 +117,13 @@ export class EmployeesComponent {
         field: 'name', headerName: 'Nombre', editable: true, filter: true, width: 270,
         cellEditor: 'autocompleteEditor',
         cellEditorParams: {
-          filterList: this.masterRowData.map(e => e.name),
+          filterList: this.rowData.map(e => e.name),
           filterKey: 'name',
           placeholder: 'Buscar empleado...',
           minLength: 1
         },
         valueSetter: (params) => {
-          const duplicateExists = this.masterRowData.some((row, index) =>
+          const duplicateExists = this.rowData.some((row, index) =>
             index !== params.node.rowIndex && row.name === params.newValue
           );
 
@@ -199,7 +189,7 @@ export class EmployeesComponent {
         valueSetter: (params) => {
           const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
           if (emailRegex.test(params.newValue)) {
-            const duplicateExists = this.masterRowData.some((row, index) =>
+            const duplicateExists = this.rowData.some((row, index) =>
               index !== params.node.rowIndex && row.email === params.newValue
             );
 
@@ -242,7 +232,7 @@ export class EmployeesComponent {
 
   obtenerDatos() {
     this.employeeService.getEmployees(this.idBranch).subscribe((data: any) => {
-      this.masterRowData = data;
+      this.rowData = data;
     },
       (error) => console.error('Error fetching data:', error)
     );
@@ -262,22 +252,25 @@ export class EmployeesComponent {
 
 
   onMasterSelectionChanged(event: any) {
+    console.log(event)
     const selectedNodes = event.api.getSelectedNodes();
-    this.masterSelectedRowData = selectedNodes.length > 0 ? selectedNodes[0].data : null;
-
-    if (this.masterSelectedRowData && !this.newlyAddedMasterRows.includes(this.masterSelectedRowData.id)) {
-      this.signalsService.setIdEmployee(this.masterSelectedRowData.id);
+    if (selectedNodes.length > 0) {
+      this.selectedRowData = selectedNodes[0].data;
+      this.idEmployee = this.selectedRowData.id;
+      this.signalsService.setIdEmployee(this.idEmployee);
+    } else {
+      this.selectedRowData = null;
     }
   }
 
   onMasterCellValueChanged(event: any) {
+    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
-    this.masterNotSavedChanges = true;
     this.notSavedChanges = true;
   }
 
   onMasterGridReady(params: GridReadyEvent) {
-    this.masterGridApi = params.api;
+    this.gridApi = params.api;
   }
 
   onMasterRowSelected(event: any) {
@@ -305,13 +298,14 @@ export class EmployeesComponent {
     };
 
     // Actualizar el estado
-    this.masterRowData = [newItem, ...this.masterRowData];
-    this.newlyAddedMasterRows.push(tempId);
-    this.masterNotSavedChanges = true;
+    this.rowData = [newItem, ...this.rowData];
+    this.newlyAddedRows.push(tempId);
+    this.notSavedChanges = true;
+    this.gridApi.setGridOption("rowData", this.rowData);
   }
 
   async saveMasterChanges() {
-    const isValid = this.masterRowData.every((item) => item.name);
+    const isValid = this.rowData.every((item) => item.name);
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
@@ -321,8 +315,8 @@ export class EmployeesComponent {
       return;
     }
 
-    const newRows = this.masterRowData.filter((row) => row.__isNew);
-    const modifiedRows = this.masterRowData.filter(
+    const newRows = this.rowData.filter((row) => row.__isNew);
+    const modifiedRows = this.rowData.filter(
       (row) => row.__modified && !row.__isNew
     );
 
@@ -346,8 +340,8 @@ export class EmployeesComponent {
         'Se han actualizado los datos correctamente.',
         'success'
       );
-      this.masterNotSavedChanges = false;
-      this.newlyAddedMasterRows = [];
+      this.notSavedChanges = false;
+      this.newlyAddedRows = [];
       this.obtenerDatos(); // Refrescar los datos
     } catch (error) {
       console.error(error);
@@ -360,7 +354,7 @@ export class EmployeesComponent {
   }
 
   deleteMasterEntry() {
-    const selectedNodes = this.masterGridApi.getSelectedNodes();
+    const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert(
         'Eliminar entrada',
@@ -398,15 +392,15 @@ export class EmployeesComponent {
             'Entrada eliminada satisfactoriamente.',
             'success'
           );
-          this.masterNotSavedChanges = false;
-          this.masterSelectedRowData = null;
+          this.notSavedChanges = false;
+          this.selectedRowData = null;
         }
       );
   }
 
   revertMasterData() {
     this.obtenerDatos();
-    this.masterNotSavedChanges = false;
+    this.notSavedChanges = false;
   }
 
   // ==================== UTILITY METHODS ====================
