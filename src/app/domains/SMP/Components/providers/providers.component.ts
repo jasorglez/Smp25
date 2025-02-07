@@ -2,12 +2,12 @@ import { Component, HostListener, inject } from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule } from 'ag-grid-angular';
-import { ContractsService } from 'app/services/contracts.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProvidersService } from 'app/services/providers.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
+import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 
 @Component({
   selector: 'app-providers',
@@ -18,12 +18,10 @@ import { ImageHandlerService } from 'app/services/image-handler.service';
 export class ProvidersComponent {
 
   private providersService = inject(ProvidersService);
-  private contractsService = inject(ContractsService);
   private imageHandlerService = inject(ImageHandlerService);
 
   ngOnInit() {
     this.obtenerDatos();
-    this.obtenerContracts();
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -35,7 +33,7 @@ export class ProvidersComponent {
   }
 
   notSavedChanges: boolean = false;
-  rowData: any;
+  rowData: any[] = [];
   contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
@@ -52,8 +50,8 @@ export class ProvidersComponent {
       });
   }
 
-  obtenerContracts() {
-
+  components = {
+    autocompleteEditor: AutocompleteEditorComponent
   }
 
   get columnDefs(): ColDef[] {
@@ -62,19 +60,91 @@ export class ProvidersComponent {
         field: 'name',
         headerName: 'Nombre',
         editable: true,
-        flex: 2
+        flex: 2,
+        cellEditor: 'autocompleteEditor',
+        cellEditorParams: {
+          filterList: this.rowData.map(e => e.name),
+          filterKey: 'name',
+          placeholder: 'Nombre...',
+          minLength: 1
+        },
+        valueSetter: (params) => {
+          const duplicateExists = this.rowData.some((row, index) =>
+            index !== params.node.rowIndex && row.name === params.newValue
+          );
+
+          if (duplicateExists) {
+            alerts.basicAlert(
+              'Código duplicado',
+              'Ya existe una empresa con ese nombre.',
+              'error'
+            );
+            return false;
+          }
+
+          params.data[params.colDef.field] = params.newValue;
+          return true;
+        }
       },
       {
         field: 'nameShort',
         headerName: 'Nombre Corto',
         editable: true,
-        flex: 1
+        flex: 1,
+        cellEditor: 'autocompleteEditor',
+        cellEditorParams: {
+          filterList: this.rowData.map(e => e.nameShort),
+          filterKey: 'nameShort',
+          placeholder: 'Nombre corto...',
+          minLength: 1
+        },
+        valueSetter: (params) => {
+          const duplicateExists = this.rowData.some((row, index) =>
+            index !== params.node.rowIndex && row.nameShort === params.newValue
+          );
+
+          if (duplicateExists) {
+            alerts.basicAlert(
+              'Código duplicado',
+              'Ya existe una empresa con ese nombre.',
+              'error'
+            );
+            return false;
+          }
+
+          params.data[params.colDef.field] = params.newValue;
+          return true;
+        }
       },
       {
         field: 'rfc',
         headerName: 'RFC',
         editable: true,
-        flex: 1
+        flex: 1,
+        cellEditor: 'autocompleteEditor',
+        cellEditorParams: {
+          filterList: this.rowData.map(e => e.rfc),
+          filterKey: 'rfc',
+          placeholder: 'RFC...',
+          minLength: 1
+        },
+        valueSetter: (params) => {
+          const duplicateExists = this.rowData.some((row, index) =>
+            index !== params.node.rowIndex && row.rfc === params.newValue
+          );
+
+          if (duplicateExists) {
+            alerts.basicAlert(
+              'Código duplicado',
+              'Ya existe una empresa con ese RFC.',
+              'error'
+            );
+            return false;
+          }
+
+          params.data[params.colDef.field] = params.newValue;
+          return true;
+        }
       },
       {
         field: 'address',

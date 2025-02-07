@@ -55,9 +55,7 @@ export class EmployeesComponent {
   public rowSelection: 'single' | 'multiple' = 'single';
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
-  frameworkComponents = {
-    multiLineEditor: MultiLineEditorComponent
-  };
+
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
@@ -95,6 +93,13 @@ export class EmployeesComponent {
     return [
       {
         field: 'employeeCode', headerName: 'Código', editable: true, filter: true, width: 130,
+        cellEditor: 'autocompleteEditor',
+        cellEditorParams: {
+          filterList: this.rowData.map(e => e.employeeCode),
+          filterKey: 'employeeCode',
+          placeholder: 'Código de empleado',
+          minLength: 1
+        },
         valueSetter: (params) => {
           const duplicateExists = this.rowData.some((row, index) =>
             index !== params.node.rowIndex && row.employeeCode === params.newValue
@@ -224,7 +229,8 @@ export class EmployeesComponent {
         },
         editable: false,
         width: 100
-      }
+      },
+      {field: 'vigente', headerName: 'Vigente', editable: true, filter: true, width: 100}
     ]
   };
 
@@ -282,7 +288,7 @@ export class EmployeesComponent {
     const newItem = {
       id: tempId,
       idBranch: this.idBranch,
-      codeEmployee: '',
+      employeeCode: '',
       name: '',
       address: '',
       cp: '',
@@ -293,6 +299,7 @@ export class EmployeesComponent {
       phone: '',
       email: '',
       picture: '',
+      vigente: true,
       active: true,
       __isNew: true,
     };

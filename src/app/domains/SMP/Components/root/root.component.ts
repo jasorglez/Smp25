@@ -8,6 +8,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RootService } from 'app/services/root.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
+import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 
 @Component({
   selector: 'app-root',
@@ -19,12 +20,10 @@ export class RootComponent {
 
   
   private rootService = inject(RootService);
-  private contractsService = inject(ContractsService);
   private imageHandlerService = inject(ImageHandlerService);
 
   ngOnInit() {
     this.obtenerDatos();
-    this.obtenerContracts();
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -36,7 +35,7 @@ export class RootComponent {
   }
 
   notSavedChanges: boolean = false;
-  rowData: any;
+  rowData: any[] = [];
   contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
@@ -53,8 +52,8 @@ export class RootComponent {
       });
   }
 
-  obtenerContracts() {
-
+  components = {
+    autocompleteEditor: AutocompleteEditorComponent
   }
 
   public defaultColDef : ColDef = {
@@ -69,13 +68,61 @@ export class RootComponent {
         field: 'name',
         headerName: 'Nombre',
         editable: true,
-        flex: 2
+        flex: 2,
+        cellEditor: 'autocompleteEditor',
+        cellEditorParams: {
+          filterList: this.rowData.map(e => e.name),
+          filterKey: 'name',
+          placeholder: 'Nombre...',
+          minLength: 1
+        },
+        valueSetter: (params) => {
+          const duplicateExists = this.rowData.some((row, index) =>
+            index !== params.node.rowIndex && row.name === params.newValue
+          );
+
+          if (duplicateExists) {
+            alerts.basicAlert(
+              'Código duplicado',
+              'Ya existe una empresa con ese nombre.',
+              'error'
+            );
+            return false;
+          }
+
+          params.data[params.colDef.field] = params.newValue;
+          return true;
+        }
       },
       {
         field: 'nameSmall',
         headerName: 'Nombre Corto',
         editable: true,
-        flex: 1
+        flex: 1,
+        cellEditor: 'autocompleteEditor',
+        cellEditorParams: {
+          filterList: this.rowData.map(e => e.nameSmall),
+          filterKey: 'nameSmall',
+          placeholder: 'Nombre...',
+          minLength: 1
+        },
+        valueSetter: (params) => {
+          const duplicateExists = this.rowData.some((row, index) =>
+            index !== params.node.rowIndex && row.nameSmall === params.newValue
+          );
+
+          if (duplicateExists) {
+            alerts.basicAlert(
+              'Código duplicado',
+              'Ya existe una empresa con ese nombre',
+              'error'
+            );
+            return false;
+          }
+
+          params.data[params.colDef.field] = params.newValue;
+          return true;
+        }
       },
       {
         field: 'formatRep',

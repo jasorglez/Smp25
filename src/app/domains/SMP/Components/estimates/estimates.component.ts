@@ -7,6 +7,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { EstimatesService } from 'app/services/estimates.service';
 import { SignalsService } from 'app/services/signals.service';
+import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 
 @Component({
   selector: 'app-estimates',
@@ -28,6 +29,10 @@ export class EstimatesComponent {
 
   ngOnInit() {
     this.obtenerDatos();
+  }
+
+  components = {
+    autocompleteEditor: AutocompleteEditorComponent
   }
 
   @HostListener('window:beforeunload', ['$event'])

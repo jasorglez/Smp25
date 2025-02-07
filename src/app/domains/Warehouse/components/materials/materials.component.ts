@@ -13,13 +13,14 @@ import { ImageHandlerService } from 'app/services/image-handler.service';
 import { SignalsService } from 'app/services/signals.service';
 import { Router } from '@angular/router';
 import { Icatalog } from 'app/interface/icatalog';
+import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 
 declare const bootstrap: any; // Añadir declaración para Bootstrap
 
 @Component({
   selector: 'app-materials',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
+  imports: [AutocompleteEditorComponent, CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
   templateUrl: './materials.component.html',
   styleUrl: './materials.component.scss'
 })
@@ -58,7 +59,7 @@ export class MaterialsComponent {
   newLocationName: string = '';
   newSubFamilyName: string = '';
   selectedFamily: number = null;
-  rowData: any;
+  rowData: any[] = [];
   contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
@@ -86,8 +87,10 @@ export class MaterialsComponent {
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
-  frameworkComponents = {
-    multiLineEditor: MultiLineEditorComponent
+
+  components = {
+    multiLineEditor: MultiLineEditorComponent,
+    autocompleteEditor: AutocompleteEditorComponent
   };
 
   // Inject of new way for Angular 18
@@ -100,7 +103,33 @@ export class MaterialsComponent {
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
     return [
-      { field: 'insumo', headerName: 'Número Material', editable: true, filter: true, width: 150 },
+      {
+        field: 'insumo', headerName: 'Número Material', editable: true, filter: true, width: 150,
+        cellEditor: 'autocompleteEditor',
+        cellEditorParams: {
+          filterList: this.rowData.map(e => e.insumo),
+          filterKey: 'insumo',
+          placeholder: 'Número Material',
+          minLength: 1
+        },
+        valueSetter: (params) => {
+          const duplicateExists = this.rowData.some((row, index) =>
+            index !== params.node.rowIndex && row.insumo === params.newValue
+          );
+
+          if (duplicateExists) {
+            alerts.basicAlert(
+              'Código duplicado',
+              'Ya existe el código de insumo.',
+              'error'
+            );
+            return false;
+          }
+
+          params.data[params.colDef.field] = params.newValue;
+          return true;
+        }
+      },
       { field: 'articulo', headerName: 'Artículo', editable: true, filter: true, width: 150 },
       {
         field: 'description', headerName: 'Descripción', editable: false, width: 285, filter: true,
@@ -280,7 +309,9 @@ export class MaterialsComponent {
   obtenerDatos() {
     this.materialsService.getMaterials(this.idRoot).subscribe((data: any) => {
       this.rowData = data;
-    });
+    },
+      (error) => console.error('Error fetching data:', error)
+    );
   }
 
   obtenerMedidas() {
@@ -530,7 +561,7 @@ export class MaterialsComponent {
         (response) => {
           alerts.basicAlert('Éxito', 'Familia añadida correctamente', 'success');
           this.obtenerFamilias();
-          
+
           if (response.catalog.type === 'FAMILY' && this.selectedRowData) {
             this.selectedRowData.idFamilia = response.id;
             this.notSavedChanges = true;
@@ -562,7 +593,7 @@ export class MaterialsComponent {
         (response) => {
           alerts.basicAlert('Éxito', 'Subfamilia añadida correctamente', 'success');
           this.obtenerSubfamilias();
-          
+
           if (response.catalog.type === 'SUBFAMILY' && this.selectedRowData) {
             this.selectedRowData.idSubfamilia = response.id;
             this.notSavedChanges = true;
@@ -588,7 +619,7 @@ export class MaterialsComponent {
       name: this.newLocationName,
       idRoot: this.idRoot
     });
-    
+
     if (this.newLocationName) {
       this.catalogsService.addCatalog({
         id: 0,
@@ -600,7 +631,7 @@ export class MaterialsComponent {
           console.log('Respuesta del servidor:', response);
           alerts.basicAlert('Éxito', 'Ubicación añadida correctamente', 'success');
           this.obtenerUbicaciones();
-          
+
           if (this.selectedRowData) {
             this.selectedRowData.idUbication = response.id;
             this.notSavedChanges = true;

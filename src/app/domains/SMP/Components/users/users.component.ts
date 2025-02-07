@@ -11,6 +11,8 @@ import { MatDialogModule } from '@angular/material/dialog';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { SignalsService } from 'app/services/signals.service';
+import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
+import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 
 @Injectable({
   providedIn: 'root',
@@ -59,10 +61,15 @@ export class UsersComponent {
     this.obtenerDatos();
   }
 
+  components = {
+    multiLineEditor: MultiLineEditorComponent,
+    autocompleteEditor: AutocompleteEditorComponent
+  }
+
   newlyAddedRows: string[] = [];
   entrada: any;
   departamentos: { [key: string]: string } = {};
-  rowData: any;
+  rowData: any[] = [];
   paginationPageSize = 10; // Tamaño de página
   pagination = true; // Habilitar paginación
   notSavedChanges: boolean = false;
@@ -116,9 +123,32 @@ export class UsersComponent {
       {
         field: 'displayName',
         headerName: 'Nombre',
-        cellEditor: 'agTextCellEditor',
         editable: true,
-        filter: true
+        filter: true,
+        cellEditor: 'autocompleteEditor',
+        cellEditorParams: {
+          filterList: this.rowData.map(e => e.displayName),
+          filterKey: 'displayName',
+          placeholder: 'Nombre',
+          minLength: 1
+        },
+        valueSetter: (params) => {
+          const duplicateExists = this.rowData.some((row, index) =>
+            index !== params.node.rowIndex && row.displayName === params.newValue
+          );
+
+          if (duplicateExists) {
+            alerts.basicAlert(
+              'Nombre duplicado',
+              'Ya existe un usuario con ese nombre.',
+              'error'
+            );
+            return false;
+          }
+
+          params.data[params.colDef.field] = params.newValue;
+          return true;
+        }
       },
       {
         field: 'email',
