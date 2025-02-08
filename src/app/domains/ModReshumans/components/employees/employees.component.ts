@@ -20,7 +20,6 @@ import { ImageHandlerService } from 'app/services/image-handler.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { States } from 'app/interface/states';
 import { EmployeesxLoansComponent } from './loans/loans.component';
-import { NeighborhoodsComponent } from 'app/shared/neighborhoods/neighborhoods.component';
 
 @Component({
   selector: 'app-employees',
@@ -82,7 +81,6 @@ export class EmployeesComponent {
   components = {
     multiLineEditor: MultiLineEditorComponent,
     autocompleteEditor: AutocompleteEditorComponent,
-    neighborhoodEditor: NeighborhoodsComponent
   };
 
   constructor() {
@@ -236,11 +234,14 @@ export class EmployeesComponent {
         editable: true,
         filter: true,
         width: 150,
-        cellEditor: 'neighborhoodEditor',
-        cellEditorParams: {
-          context: {
-            componentParent: this
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: (params) => {
+          if (this.infoCp && this.infoCp.length > 0) {
+            return {
+              values: this.infoCp[0].asentamientos
+            };
           }
+          return { values: [] };
         }
       },
       {
@@ -351,7 +352,15 @@ export class EmployeesComponent {
       console.log(this.infoCp);
       return data;
     } catch (error) {
-      console.error('Error fetching data:', error);
+      if (error.status === 404) {
+        alerts.basicAlert(
+          'Código Postal',
+          'El código postal no existe o no se encontró información.',
+          'error'
+        );
+      } else {
+        console.error('Error fetching data:', error);
+      }
       return null;
     }
   }
@@ -375,14 +384,15 @@ export class EmployeesComponent {
   
     // Si el campo cambiado es el código postal
     if (event.colDef.field === 'cp') {
+      // Limpiar el neighborhood cuando cambia el CP
+      event.data.neighborhood = '';
+      
       this.getZipCodeData(event.newValue).then((data: any) => {
         if (data && data.length > 0) {
           const cpData = data[0];
           event.data.state = cpData.estado;
           event.data.city = cpData.ciudad;
-          // No establecemos el neighborhood automáticamente
-          // para permitir la selección manual
-  
+          
           // Actualizar el grid
           this.gridApi.applyTransaction({ update: [event.data] });
         }
