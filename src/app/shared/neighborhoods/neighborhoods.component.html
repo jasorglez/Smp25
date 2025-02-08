@@ -1,0 +1,37 @@
+<div class="neighborhood-editor">
+  <div *ngIf="neighborhoods?.length; else textInput">
+    <select
+      #select
+      [(ngModel)]="value"
+      (ngModelChange)="onChange($event)"
+      class="ag-cell-edit-input"
+      (keydown)="onKeyDown($event)"
+    >
+      <option value="">-- Seleccionar o escribir --</option>
+      <option *ngFor="let neighborhood of neighborhoods" [value]="neighborhood">
+        {{neighborhood}}
+      </option>
+    </select>
+    <input
+      #manualInput
+      type="text"
+      [(ngModel)]="value"
+      (ngModelChange)="onChange($event)"
+      class="ag-cell-edit-input"
+      [placeholder]="'Escribir colonia...'"
+      (keydown)="onKeyDown($event)"
+      style="margin-top: 2px;"
+    />
+  </div>
+  <ng-template #textInput>
+    <input
+      #input
+      type="text"
+      [(ngModel)]="value"
+      (ngModelChange)="onChange($event)"
+      class="ag-cell-edit-input"
+      [placeholder]="'Escribir colonia...'"
+      (keydown)="onKeyDown($event)"
+    />
+  </ng-template>
+</div>

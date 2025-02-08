@@ -1,5 +1,11 @@
 import { Component, effect, HostListener, inject } from '@angular/core';
-import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
+import {
+  CellDoubleClickedEvent,
+  ColDef,
+  GridApi,
+  GridReadyEvent,
+  ICellRendererParams,
+} from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
@@ -13,14 +19,21 @@ import { ModalService } from 'app/services/modal.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { States } from 'app/interface/states';
-import { EmployeesxLoansComponent } from "./loans/loans.component";
+import { EmployeesxLoansComponent } from './loans/loans.component';
+import { NeighborhoodsComponent } from 'app/shared/neighborhoods/neighborhoods.component';
 
 @Component({
   selector: 'app-employees',
   standalone: true,
-  imports: [AutocompleteEditorComponent, CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, EmployeesxLoansComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    AgGridModule,
+    MultiLineEditorComponent,
+    EmployeesxLoansComponent,
+  ],
   templateUrl: './employees.component.html',
-  styleUrl: './employees.component.scss'
+  styleUrl: './employees.component.scss',
 })
 export class EmployeesComponent {
   // Inject of new way for Angular 18
@@ -36,26 +49,27 @@ export class EmployeesComponent {
   idBranch: number;
   idEmployee: number;
   rowData: any[] = [];
+  cp: string;
+  infoCp: any;
   private estados: string[] = [];
   newlyAddedRows: string[] = []; // IDs de filas recién añadidas
   notSavedChanges: boolean = false;
 
   // Variables de control del grid
-  selectedRowData: any = null;  // Fila seleccionada actualmente
-  tempIdCounter: number = 0;    // Contador para IDs temporales
-  private gridApi: GridApi;     // API del grid
-  public defaultColDef : ColDef = {
-    sortable           : true,
-    filter             : true,
-    resizable          : true,
-    lockPosition       : false,
-    enableRowGroup     : true, // Enable row grouping for all columns
-    flex: 1
+  selectedRowData: any = null; // Fila seleccionada actualmente
+  tempIdCounter: number = 0; // Contador para IDs temporales
+  private gridApi: GridApi; // API del grid
+  public defaultColDef: ColDef = {
+    sortable: true,
+    filter: true,
+    resizable: true,
+    lockPosition: false,
+    enableRowGroup: true, // Enable row grouping for all columns
+    flex: 1,
   };
   public rowSelection: 'single' | 'multiple' = 'single';
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
-
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
@@ -68,6 +82,7 @@ export class EmployeesComponent {
   components = {
     multiLineEditor: MultiLineEditorComponent,
     autocompleteEditor: AutocompleteEditorComponent,
+    neighborhoodEditor: NeighborhoodsComponent
   };
 
   constructor() {
@@ -75,11 +90,15 @@ export class EmployeesComponent {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       if (this.idBranch == null) {
         this.rowData = [];
-        alerts.basicAlert('Empleados', 'Debe elegir una sucursal primero.', 'error');
+        alerts.basicAlert(
+          'Empleados',
+          'Debe elegir una sucursal primero.',
+          'error'
+        );
       } else {
         this.obtenerDatos();
       }
-    })
+    });
   }
 
   ngOnInit() {
@@ -87,22 +106,27 @@ export class EmployeesComponent {
     this.getStates();
   }
 
-
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
     return [
       {
-        field: 'employeeCode', headerName: 'Código', editable: true, filter: true, width: 130,
+        field: 'employeeCode',
+        headerName: 'Código',
+        editable: true,
+        filter: true,
+        width: 130,
         cellEditor: 'autocompleteEditor',
         cellEditorParams: {
-          filterList: this.rowData.map(e => e.employeeCode),
+          filterList: this.rowData.map((e) => e.employeeCode),
           filterKey: 'employeeCode',
           placeholder: 'Código de empleado',
-          minLength: 1
+          minLength: 1,
         },
         valueSetter: (params) => {
-          const duplicateExists = this.rowData.some((row, index) =>
-            index !== params.node.rowIndex && row.employeeCode === params.newValue
+          const duplicateExists = this.rowData.some(
+            (row, index) =>
+              index !== params.node.rowIndex &&
+              row.employeeCode === params.newValue
           );
 
           if (duplicateExists) {
@@ -116,20 +140,25 @@ export class EmployeesComponent {
 
           params.data[params.colDef.field] = params.newValue;
           return true;
-        }
+        },
       },
       {
-        field: 'name', headerName: 'Nombre', editable: true, filter: true, width: 270,
+        field: 'name',
+        headerName: 'Nombre',
+        editable: true,
+        filter: true,
+        width: 270,
         cellEditor: 'autocompleteEditor',
         cellEditorParams: {
-          filterList: this.rowData.map(e => e.name),
+          filterList: this.rowData.map((e) => e.name),
           filterKey: 'name',
           placeholder: 'Buscar empleado...',
-          minLength: 1
+          minLength: 1,
         },
         valueSetter: (params) => {
-          const duplicateExists = this.rowData.some((row, index) =>
-            index !== params.node.rowIndex && row.name === params.newValue
+          const duplicateExists = this.rowData.some(
+            (row, index) =>
+              index !== params.node.rowIndex && row.name === params.newValue
           );
 
           if (duplicateExists) {
@@ -143,10 +172,14 @@ export class EmployeesComponent {
 
           params.data[params.colDef.field] = params.newValue;
           return true;
-        }
+        },
       },
       {
-        field: 'address', headerName: 'Dirección', editable: false, width: 300, cellEditor: 'agPopupTextCellEditor',
+        field: 'address',
+        headerName: 'Dirección',
+        editable: false,
+        width: 300,
+        cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
           cols: 50,
@@ -170,22 +203,64 @@ export class EmployeesComponent {
             return params.value;
           }
           return params.value;
-        }
+        },
       },
-      { field: 'cp', headerName: 'Código postal', editable: true, filter: true, width: 150 },
       {
-        field: 'state', headerName: 'Estado', filter: true, width: 150, editable: true,
+        field: 'cp',
+        headerName: 'Código postal',
+        editable: true,
+        filter: true,
+        width: 150,
+      },
+      {
+        field: 'state',
+        headerName: 'Estado',
+        filter: true,
+        width: 150,
+        editable: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: this.estados
+          values: this.estados,
+        },
+      },
+      {
+        field: 'city',
+        headerName: 'Ciudad',
+        editable: true,
+        filter: true,
+        width: 150,
+      },
+      {
+        field: 'neighborhood',
+        headerName: 'Colonia',
+        editable: true,
+        filter: true,
+        width: 150,
+        cellEditor: 'neighborhoodEditor',
+        cellEditorParams: {
+          context: {
+            componentParent: this
+          }
         }
       },
-      { field: 'city', headerName: 'Ciudad', editable: true, filter: true, width: 150 },
-      { field: 'neighborhood', headerName: 'Colonia', editable: true, filter: true, width: 150 },
-      { field: 'phone', headerName: 'Teléfono', editable: true, filter: true, width: 150 },
-      { field: 'rfc', headerName: 'RFC', editable: true, filter: true, width: 150 },
       {
-        field: 'email', headerName: 'Correo electrónico', cellEditor: 'agTextCellEditor',
+        field: 'phone',
+        headerName: 'Teléfono',
+        editable: true,
+        filter: true,
+        width: 150,
+      },
+      {
+        field: 'rfc',
+        headerName: 'RFC',
+        editable: true,
+        filter: true,
+        width: 150,
+      },
+      {
+        field: 'email',
+        headerName: 'Correo electrónico',
+        cellEditor: 'agTextCellEditor',
         editable: true,
         cellEditorParams: {
           useFormatter: true,
@@ -194,8 +269,9 @@ export class EmployeesComponent {
         valueSetter: (params) => {
           const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
           if (emailRegex.test(params.newValue)) {
-            const duplicateExists = this.rowData.some((row, index) =>
-              index !== params.node.rowIndex && row.email === params.newValue
+            const duplicateExists = this.rowData.some(
+              (row, index) =>
+                index !== params.node.rowIndex && row.email === params.newValue
             );
 
             if (duplicateExists) {
@@ -218,28 +294,40 @@ export class EmployeesComponent {
             return false;
           }
         },
-        filter: true
+        filter: true,
       },
       {
-        field: 'picture', headerName: 'Fotografía',
-        cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
+        field: 'picture',
+        headerName: 'Fotografía',
+        cellRenderer: this.imageHandlerService.imageCellRenderer.bind(
+          this.imageHandlerService
+        ),
         cellRendererParams: {
-          clicked: this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService),
-          field: 'picture'
+          clicked: this.imageHandlerService.onImageCellClicked.bind(
+            this.imageHandlerService
+          ),
+          field: 'picture',
         },
         editable: false,
-        width: 100
+        width: 100,
       },
-      {field: 'vigente', headerName: 'Vigente', editable: true, filter: true, width: 100}
-    ]
-  };
+      {
+        field: 'vigente',
+        headerName: 'Vigente',
+        editable: true,
+        filter: true,
+        width: 100,
+      },
+    ];
+  }
 
   // ==================== MASTER METHODS ====================
 
   obtenerDatos() {
-    this.employeeService.getEmployees(this.idBranch).subscribe((data: any) => {
-      this.rowData = data;
-    },
+    this.employeeService.getEmployees(this.idBranch).subscribe(
+      (data: any) => {
+        this.rowData = data;
+      },
       (error) => console.error('Error fetching data:', error)
     );
   }
@@ -247,18 +335,29 @@ export class EmployeesComponent {
   getStates() {
     this.inegiService.getEstados().subscribe({
       next: (data: { datos: States[] }) => {
-        this.estados = data.datos.map(estado => estado.nom_agee);
+        this.estados = data.datos.map((estado) => estado.nom_agee);
         this.estados.unshift('Sin estado');
       },
       error: (error) => {
         console.error('Error fetching states', error);
-      }
+      },
     });
   }
 
+  async getZipCodeData(cp: string): Promise<any> {
+    try {
+      const data = await lastValueFrom(this.inegiService.getZipCodeData(cp));
+      this.infoCp = data;
+      console.log(this.infoCp);
+      return data;
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      return null;
+    }
+  }
 
   onMasterSelectionChanged(event: any) {
-    console.log(event)
+    console.log(event);
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
@@ -273,6 +372,22 @@ export class EmployeesComponent {
     console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
+  
+    // Si el campo cambiado es el código postal
+    if (event.colDef.field === 'cp') {
+      this.getZipCodeData(event.newValue).then((data: any) => {
+        if (data && data.length > 0) {
+          const cpData = data[0];
+          event.data.state = cpData.estado;
+          event.data.city = cpData.ciudad;
+          // No establecemos el neighborhood automáticamente
+          // para permitir la selección manual
+  
+          // Actualizar el grid
+          this.gridApi.applyTransaction({ update: [event.data] });
+        }
+      });
+    }
   }
 
   onMasterGridReady(params: GridReadyEvent) {
@@ -308,7 +423,7 @@ export class EmployeesComponent {
     this.rowData = [newItem, ...this.rowData];
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
-    this.gridApi.setGridOption("rowData", this.rowData);
+    this.gridApi.setGridOption('rowData', this.rowData);
   }
 
   async saveMasterChanges() {
@@ -374,35 +489,35 @@ export class EmployeesComponent {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
     selectedData.active = 0;
-    this.employeeService.deleteEmployee(id).pipe(
-      catchError((error) => {
+    this.employeeService
+      .deleteEmployee(id)
+      .pipe(
+        catchError((error) => {
+          alerts.basicAlert(
+            'Eliminar entrada',
+            'Error al eliminar la entrada.',
+            'error'
+          );
+          console.error(error);
+          return EMPTY;
+        })
+      )
+      .subscribe(() => {
         alerts.basicAlert(
           'Eliminar entrada',
-          'Error al eliminar la entrada.',
-          'error'
+          'Entrada eliminada satisfactoriamente.',
+          'success'
         );
-        console.error(error);
-        return EMPTY;
-      })
-    )
-      .subscribe(
-        () => {
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.obtenerDatos();
+        this.obtenerDatos();
 
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.notSavedChanges = false;
-          this.selectedRowData = null;
-        }
-      );
+        alerts.basicAlert(
+          'Eliminar entrada',
+          'Entrada eliminada satisfactoriamente.',
+          'success'
+        );
+        this.notSavedChanges = false;
+        this.selectedRowData = null;
+      });
   }
 
   revertMasterData() {
