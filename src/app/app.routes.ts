@@ -109,7 +109,40 @@ export const routes: Routes = [
           }
         ]
       },
+      {
 
+        path: 'projects',
+        loadComponent: () => import('./domains/ModProjects/pages/procprojects/procprojects.component').then(s => s.ProcprojectsComponent),
+        canActivate: [MasterPermissionsGuard],
+        data: { permissions: { master: 'projects' } },
+        children: [
+          { path: '', redirectTo: 'ModProjects', pathMatch: 'full' }, ...SharedModule.getRoutes(),
+          {
+            path: 'users',
+            loadComponent: () => import('./domains/ModProjects/components/users/users-menu.component').then(u => u.UsersMenuComponent)
+          },
+          {
+            path: 'providers',
+            loadComponent: () => import('./domains/ModProjects/components/providers/providers.component').then(p => p.ProvidersComponent)
+          },
+          {
+            path: 'contracts',
+            loadComponent: () => import('./domains/ModProjects/components/contracts/contracts.component').then(c => c.ContractsComponent)
+          },
+          {
+            path: 'projects',
+            loadComponent: () => import('./domains/ModProjects/components/projects/projects.component').then(p => p.ProjectsComponent)
+          },
+          {
+            path: 'oilfields',
+            loadComponent: () => import('./domains/ModProjects/components/oilfields/oilfields.component').then(o => o.OilfieldsComponent)
+          },
+          {
+            path: 'estimates',
+            loadComponent: () => import('./domains/ModProjects/components/estimates/estimates.component').then(r => r.EstimatesComponent)
+          }
+        ]
+      },
       {
         path: 'smp',
         loadComponent: () => import('./domains/SMP/Pages/procsmp/proccsmp.component').then(s => s.ProccsmpComponent),
@@ -117,26 +150,7 @@ export const routes: Routes = [
         data: { permissions: { master: 'setup' } },
         children: [
           { path: '', redirectTo: 'SMP', pathMatch: 'full' }, ...SharedModule.getRoutes(),
-          {
-            path: 'users',
-            loadComponent: () => import('./domains/SMP/Components/users/users-menu.component').then(u => u.UsersMenuComponent)
-          },
-          {
-            path: 'providers',
-            loadComponent: () => import('./domains/SMP/Components/providers/providers.component').then(p => p.ProvidersComponent)
-          },
-          {
-            path: 'contracts',
-            loadComponent: () => import('./domains/SMP/Components/contracts/contracts.component').then(c => c.ContractsComponent)
-          },
-          {
-            path: 'projects',
-            loadComponent: () => import('./domains/SMP/Components/projects/projects.component').then(p => p.ProjectsComponent)
-          },
-          {
-            path: 'oilfields',
-            loadComponent: () => import('./domains/SMP/Components/oilfields/oilfields.component').then(o => o.OilfieldsComponent)
-          },
+          
           {
             path: 'root',
             loadComponent: () => import('./domains/SMP/Components/root/root.component').then(r => r.RootComponent)
@@ -145,10 +159,7 @@ export const routes: Routes = [
             path: 'branches',
             loadComponent: () => import('./domains/SMP/Components/branches/branches.component').then(u => u.BranchesComponent)
           },
-          {
-            path: 'estimates',
-            loadComponent: () => import('./domains/SMP/Components/estimates/estimates.component').then(r => r.EstimatesComponent)
-          }
+          
         ]
       },
 

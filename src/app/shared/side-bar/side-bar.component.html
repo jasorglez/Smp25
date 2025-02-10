@@ -93,6 +93,13 @@
         </a>
       </li>
 
+      <li class="nav-item" *ngIf="authService.hasMasterPermission('projects')">
+        <a class="nav-link d-flex align-items-center" [routerLink]="['/projects']" routerLinkActive="active-link"
+          (click)="SmpSetup()">
+          <mat-icon>grading</mat-icon> {{ 'projects' | translate }}
+        </a>
+      </li>
+
       <li class="nav-item">
         <a class="nav-link d-flex align-items-center" [routerLink]="['/login']" routerLinkActive="active-link"
           (click)="authService.logout()">
