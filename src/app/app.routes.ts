@@ -118,10 +118,6 @@ export const routes: Routes = [
         children: [
           { path: '', redirectTo: 'ModProjects', pathMatch: 'full' }, ...SharedModule.getRoutes(),
           {
-            path: 'users',
-            loadComponent: () => import('./domains/ModProjects/components/users/users-menu.component').then(u => u.UsersMenuComponent)
-          },
-          {
             path: 'providers',
             loadComponent: () => import('./domains/ModProjects/components/providers/providers.component').then(p => p.ProvidersComponent)
           },
@@ -150,7 +146,10 @@ export const routes: Routes = [
         data: { permissions: { master: 'setup' } },
         children: [
           { path: '', redirectTo: 'SMP', pathMatch: 'full' }, ...SharedModule.getRoutes(),
-          
+          {
+            path: 'users',
+            loadComponent: () => import('./domains/SMP/Components/users/users-menu.component').then(u => u.UsersMenuComponent)
+          },
           {
             path: 'root',
             loadComponent: () => import('./domains/SMP/Components/root/root.component').then(r => r.RootComponent)
