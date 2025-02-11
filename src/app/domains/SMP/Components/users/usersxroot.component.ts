@@ -75,7 +75,7 @@ export class UsersxrootComponent {
       },
       {
         field: 'idPermission',
-        headerName: 'Root',
+        headerName: 'Empresa',
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
           values: Object.keys(this.root).sort((a, b) => this.root[a].localeCompare(this.root[b])),

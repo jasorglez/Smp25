@@ -192,7 +192,7 @@ export class CustomersComponent {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idBranch: 1,
+      idBranch: this.idBranch,
       nameContact: '',
       company: '',
       phone: '',
