@@ -170,8 +170,8 @@ export const routes: Routes = [
         children: [
           { path: '', redirectTo: 'ModAdmon', pathMatch: 'full' }, ...SharedModule.getRoutes(),
           {
-            path: 'setupadm',
-            loadComponent: () => import('./domains/ModAdmon/components/setup/setup.component').then(s => s.SetupComponent),
+            path: 'setup',
+            loadComponent: () => import('./domains/ModAdmon/components/setup/setup.component').then(s => s.SetupAdmonComponent),
           },
           {
             path: 'income',

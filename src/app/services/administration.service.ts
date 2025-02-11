@@ -77,7 +77,19 @@ export class AdministrationService {
     return this.http.get(`${environment.urlAdministration}/Incomeandexpense/Bussines/balance?id=${idAccount}`, { headers: this.trackingService.getHeaders() });
   }
 
+
+  // Setup Puestos
+
+  getSetupManagementInfo(idRoot: number): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/SetupManagement/${idRoot}`, { headers: this.trackingService.getHeaders() });
+  }
   
+  addSetupManagementInfo(data: any): Observable<any> {
+    return this.http.post(`${environment.urlAdministration}/SetupManagement`, data, { headers: this.trackingService.getHeaders() });
+  }
 
-
+  updateSetupManagementInfo(idRoot: number, data: any): Observable<any> {
+    return this.http.put<any[]>(`${environment.urlAdministration}/SetupManagement/${idRoot}`, data, { headers: this.trackingService.getHeaders() });
+  }
+  
 }

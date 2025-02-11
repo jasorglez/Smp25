@@ -94,6 +94,7 @@ export class SideBarComponent {
       this.signalsService.setRootSelectedBySidebar(Number(this.selectedRoot));
       this.getpermissionxContracts(parseInt(this.selectedRoot));
       this.getpermissionxBranchs(parseInt(this.selectedRoot));
+      this.getHeadersCompanys(this.selectedRoot);
     }
   }
 
