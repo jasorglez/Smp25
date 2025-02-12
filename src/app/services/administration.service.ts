@@ -91,5 +91,22 @@ export class AdministrationService {
   updateSetupManagementInfo(idRoot: number, data: any): Observable<any> {
     return this.http.put<any[]>(`${environment.urlAdministration}/SetupManagement/${idRoot}`, data, { headers: this.trackingService.getHeaders() });
   }
-  
+
+  // Setup Facturacion
+
+  getBillingManagementInfo(idRoot: number): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/BillingManagement/${idRoot}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  addBillingManagementInfo(data: any): Observable<any> {
+    return this.http.post(`${environment.urlAdministration}/BillingManagement`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateBillingManagementInfo(idRoot: number, data: any): Observable<any> {
+    return this.http.put<any[]>(`${environment.urlAdministration}/BillingManagement/${idRoot}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  getFiscalRegimes(): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/FiscalRegime`, { headers: this.trackingService.getHeaders() });
+  }
 }

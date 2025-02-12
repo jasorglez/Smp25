@@ -105,7 +105,6 @@ export class UsersxrootComponent {
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
       this.signalsService.setCompanyFromPermissions(this.selectedRowData.idPermission);
-      console.log('Signal enviada - Company ID:', this.selectedRowData.idPermission);
     } else {
       this.selectedRowData = null;
     }

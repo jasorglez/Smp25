@@ -20,6 +20,7 @@ export class PositionsComponent {
 
   idRoot: number = null;
   setupData: any = {};
+  fiscalRegimes: any = [];
   newData: boolean;
 
   ngOnInit() {

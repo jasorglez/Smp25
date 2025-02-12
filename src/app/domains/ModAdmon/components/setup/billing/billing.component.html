@@ -1,0 +1,101 @@
+<div class="container-fluid mt-4 mb-4">
+    <div class="row">
+      <div class="col-8">
+        <h3 class="mb-4">Configuración de Facturación</h3>
+        <div class="row g-3">
+          <div class="col-md-6 col-lg-6">
+            <label for="fiscalYear" class="form-label">Año Fiscal <span class="text-danger">*</span></label>
+            <input type="number" class="form-control" id="fiscalYear" placeholder="Año Fiscal" [(ngModel)]="billingData.fiscalYear">
+          </div>
+          <div class="col-md-6 col-lg-6">
+            <label for="fiscalRegime" class="form-label">Régimen Fiscal <span class="text-danger">*</span></label>
+            <select class="form-select" id="fiscalRegime" [(ngModel)]="billingData.fiscalRegime">
+              <option *ngFor="let regime of fiscalRegimes" [value]="regime.id">{{regime.id}} - {{ regime.description }}</option>
+            </select>
+          </div>
+
+          <div class="col-12 mt-3">
+            <h5>Facturas emitidas</h5>
+            <div class="row g-3">
+              <div class="col-md-6 col-lg-6">
+                <label for="prefix" class="form-label">Prefijo <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="prefix" placeholder="Prefijo" [(ngModel)]="billingData.prefix">
+              </div>
+              <div class="col-md-6 col-lg-6">
+                <label for="consecutive" class="form-label">Consecutivo <span class="text-danger">*</span></label>
+                <input type="number" class="form-control" id="consecutive" placeholder="Consecutivo" [(ngModel)]="billingData.consecutive">
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 mt-3">
+            <h5>Tasa Impuesto a Aplicar %</h5>
+            <div class="row g-3">
+              <div class="col-md-4 col-lg-4">
+                <label for="iIva" class="form-label">IVA <span class="text-danger">*</span></label>
+                <input type="number" class="form-control" id="iIva" placeholder="IVA Interno" [(ngModel)]="billingData.iIva">
+              </div>
+              <div class="col-md-4 col-lg-4">
+                <label for="iIeps" class="form-label">IEPS <span class="text-danger">*</span></label>
+                <input type="number" class="form-control" id="iIeps" placeholder="IEPS Interno" [(ngModel)]="billingData.iIeps">
+              </div>
+              <div class="col-md-4 col-lg-4">
+                <label for="iI3" class="form-label">I3 <span class="text-danger">*</span></label>
+                <input type="number" class="form-control" id="iI3" placeholder="I3 Interno" [(ngModel)]="billingData.iI3">
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 mt-3">
+            <h5>Tasa Retención a Aplicar %</h5>
+            <div class="row g-3">
+              <div class="col-md-6 col-lg-6">
+                <label for="rIva" class="form-label">IVA Retenido <span class="text-danger">*</span></label>
+                <input type="number" class="form-control" id="rIva" placeholder="IVA Retenido" [(ngModel)]="billingData.rIva">
+              </div>
+              <div class="col-md-6 col-lg-6">
+                <label for="rIeps" class="form-label">IEPS Retenido <span class="text-danger">*</span></label>
+                <input type="number" class="form-control" id="rIeps" placeholder="IEPS Retenido" [(ngModel)]="billingData.rIeps">
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 mt-3">
+            <h5>Datos generales del certificado</h5>
+            <div class="row g-3">
+              <div class="col-md-4 col-lg-4">
+                <label for="pathCer" class="form-label">Ruta del Certificado .cer <span class="text-danger">*</span></label>
+                <input type="file" class="form-control" id="pathCer" accept=".cer" (change)="onCerFileSelected($event)">
+              </div>
+              <div class="col-md-4 col-lg-4">
+                <label for="pathKey" class="form-label">Ruta de la Llave .key <span class="text-danger">*</span></label>
+                <input type="file" class="form-control" id="pathKey" accept=".key" (change)="onKeyFileSelected($event)">
+              </div>
+              <div class="col-md-4 col-lg-4">
+                <label for="efirmaPass" class="form-label">Contraseña eFirma <span class="text-danger">*</span></label>
+                <input type="password" class="form-control" id="efirmaPass" placeholder="Contraseña eFirma" [(ngModel)]="billingData.efirmaPass">
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 mt-3">
+            <h5>Vigencia del certificado</h5>
+            <div class="row g-3">
+              <div class="col-md-6 col-lg-6">
+                <label for="dateStart" class="form-label">Desde <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" id="dateStart" [(ngModel)]="billingData.dateStart">
+              </div>
+              <div class="col-md-6 col-lg-6">
+                <label for="dateEnd" class="form-label">Hasta <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" id="dateEnd" [(ngModel)]="billingData.dateEnd">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mt-4 text-end">
+          <button type="button" class="btn btn-primary me-2" (click)="saveChanges()"><i class="fas fa-save me-2"></i>Guardar</button>
+          <button type="button" class="btn btn-secondary" (click)="revertChanges()"><i class="fas fa-times me-2"></i>Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>

@@ -237,11 +237,15 @@ export class EmployeesComponent {
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: (params) => {
           if (this.infoCp && this.infoCp.length > 0) {
+            const asentamientos = this.infoCp[0].asentamientos;
             return {
-              values: this.infoCp[0].asentamientos
+              values: asentamientos
             };
           }
           return { values: [] };
+        },
+        valueFormatter: (params) => {
+          return params.value || 'Seleccionar asentamiento';
         }
       },
       {
@@ -391,7 +395,7 @@ export class EmployeesComponent {
         if (data && data.length > 0) {
           const cpData = data[0];
           event.data.state = cpData.estado;
-          event.data.city = cpData.ciudad;
+          event.data.city = cpData.ciudad || 'N/A'; // Usar 'N/A' si no hay ciudad
           
           // Actualizar el grid
           this.gridApi.applyTransaction({ update: [event.data] });
