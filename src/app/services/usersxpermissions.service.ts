@@ -15,7 +15,7 @@ export class UsersxpermissionsService {
 
   private trackingService = inject(TrackingService);
 
-  getDataUsersxPermissions(type: string) {
+  getDataUsersxPermissions(type: string): Observable<any> {
     return this.http.get(`${environment.urlSecurity}/Usersxpermission?type=${type}`, { headers: this.trackingService.getHeaders() });
   }
 

@@ -14,10 +14,14 @@ export class AdministrationService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
- // Clientes
+  // Clientes
 
   getCustomers(id: number) {
     return this.http.get(`${environment.urlAdministration}/Customer/branch/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getCustomersByCompany(id: number) {
+    return this.http.get(`${environment.urlAdministration}/Customer/company/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
   addCustomer(data: any): Observable<any> {
@@ -33,7 +37,7 @@ export class AdministrationService {
   }
 
   // Bancos
-  
+
   getBanks() {
     return this.http.get(`${environment.urlAdministration}/Bank`, { headers: this.trackingService.getHeaders() });
   }
@@ -56,7 +60,7 @@ export class AdministrationService {
 
 
   // Cuentas Bancos
-  getAccountBanks( idRoot : number) {
+  getAccountBanks(idRoot: number): Observable<any> {
     return this.http.get(`${environment.urlAdministration}/AccountBanks/Bussines/${idRoot}`, { headers: this.trackingService.getHeaders() });
   }
 
@@ -73,7 +77,7 @@ export class AdministrationService {
   }
 
   // Income and Expense x Accounts
-  getBalance( idAccount : number) {
+  getBalance(idAccount: number) {
     return this.http.get(`${environment.urlAdministration}/Incomeandexpense/Bussines/balance?id=${idAccount}`, { headers: this.trackingService.getHeaders() });
   }
 
@@ -83,7 +87,7 @@ export class AdministrationService {
   getSetupManagementInfo(idRoot: number): Observable<any> {
     return this.http.get(`${environment.urlAdministration}/SetupManagement/${idRoot}`, { headers: this.trackingService.getHeaders() });
   }
-  
+
   addSetupManagementInfo(data: any): Observable<any> {
     return this.http.post(`${environment.urlAdministration}/SetupManagement`, data, { headers: this.trackingService.getHeaders() });
   }
