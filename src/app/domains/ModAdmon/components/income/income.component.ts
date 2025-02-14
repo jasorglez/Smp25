@@ -87,9 +87,7 @@ export class IncomeComponent {
   {
     this.administrationService.getBillingManagementInfo(this.idRoot).subscribe(
       (data: any) => {
-        console.log('Información de gestión de facturación:', data);
         this.prefixAndConsecutive = Array.isArray(data) ? data : [data];
-        console.log(this.prefixAndConsecutive);
       },
       (error) => {
         console.error('Error al obtener la información de gestión de facturación:', error);
@@ -114,7 +112,6 @@ export class IncomeComponent {
   };
 
   async getIncomes() {
-    console.log('Obteniendo ingresos para cuenta:', this.idAccount);
     this.incomesAndExpensesService.getIncomesAndExpenses(this.idRoot).subscribe({
         next: (incomes) => {
             // Filtrado y manejo de caso sin datos
@@ -137,7 +134,7 @@ export class IncomeComponent {
         this.customers = data;
       },
       error => {
-        console.log(error);
+        console.error(error);
       }
     )
   }
@@ -303,13 +300,11 @@ export class IncomeComponent {
   };
 
   onSelectedRow(event: any) {
-    console.log(event)
     this.id = event.data.id;
     this.signalsService.setIdIncomeAndExpense(this.id);
   }
 
   onSelectionChanged(event: any) {
-    console.log(event)
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedIncomes = selectedNodes[0].data;
@@ -320,7 +315,6 @@ export class IncomeComponent {
   }
 
   onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
     
     // Actualizar campos de modificación solo para filas existentes
     if (!event.data.__isNew) {
@@ -415,8 +409,6 @@ export class IncomeComponent {
         consecutive: currentConsecutive 
     };
 
-    console.log('Datos a actualizar:', updatedBillingInfo);
-
     const updateConsecutiveObs = this.administrationService.updateBillingManagementInfo(
         this.idRoot,
         updatedBillingInfo // Enviar objeto directamente
@@ -424,7 +416,6 @@ export class IncomeComponent {
         tap(response => {
             // Actualizar el array local con el nuevo objeto
             this.prefixAndConsecutive = [updatedBillingInfo];
-            console.log('Consecutivo actualizado:', this.prefixAndConsecutive);
         })
     );
 
@@ -515,7 +506,6 @@ export class IncomeComponent {
     this.administrationService.getAccountBanks(this.idRoot).subscribe(
       (data: any) => {
         this.bankAccounts = data;
-        console.log(data);
       },
       error => {
         console.error(error);

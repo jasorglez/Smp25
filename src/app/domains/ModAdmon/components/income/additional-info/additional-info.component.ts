@@ -3,14 +3,13 @@ import { MultiLineEditorComponent } from "../../../../../shared/multi-line/multi
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdministrationService } from 'app/services/administration.service';
-import { ModalService } from 'app/services/modal.service';
 import { SignalsService } from 'app/services/signals.service';
-import { UsersService } from 'app/services/users.service';
-import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { lastValueFrom, concat, toArray } from 'rxjs';
+import { CatalogsService } from 'app/services/catalogs.service';
+import { Icatalog } from 'app/interface/icatalog';
 
 @Component({
   selector: 'app-additional-info',
@@ -21,11 +20,9 @@ import { lastValueFrom, concat, toArray } from 'rxjs';
 })
 export class AdditionalInfoComponent {
 
-  private modalServiceTable = inject(ModalService);
   private administrationService = inject(AdministrationService);
-  private usersxpermissionsService = inject(UsersxpermissionsService);
-  private usersService = inject(UsersService);
   private signalsService = inject(SignalsService);
+  private catalogsService = inject(CatalogsService);
 
   ngOnInit() {
     this.idInAndExp = this.signalsService.getIdIncomeAndExpense()();
@@ -37,6 +34,8 @@ export class AdditionalInfoComponent {
       this.idInAndExp = this.signalsService.getIdIncomeAndExpense()();
       this.notSavedChanges = false;
       this.getAdditionalInfo();
+      this.getPaymentTypes();
+      this.getCurrencies();
     });
   }
 
@@ -45,6 +44,8 @@ export class AdditionalInfoComponent {
   newData: boolean;
   notSavedChanges: boolean;
   private gridApi: GridApi;
+  paymentTypesList: Icatalog[] = [];
+  currencies: Icatalog[] = [];
 
   gridOptions = {
     headerHeight: 30,
@@ -60,20 +61,49 @@ export class AdditionalInfoComponent {
 
   async getAdditionalInfo() {
     this.administrationService.getAdditionalInfo(this.idInAndExp).subscribe
-    (
+      (
+        (data) => {
+          this.rowData = data;
+          this.newData = false;
+        },
+        (error) => {
+          if (error.status === 404) {
+            this.rowData = [];
+            this.newData = true;
+            this.addRow();
+          }
+          console.error(error);
+        }
+      )
+  }
+
+  async getPaymentTypes() {
+    this.catalogsService.getCatalogsByType("pay").subscribe(
       (data) => {
-        this.rowData = data;
-        this.newData = false;
+        this.paymentTypesList = data;
+        console.log(this.paymentTypesList);
       },
       (error) => {
         if (error.status === 404) {
-          this.rowData = [];
-          this.newData = true;
-          this.addRow();
+          this.paymentTypesList = [];
         }
         console.error(error);
       }
     )
+  }
+
+  async getCurrencies() {
+    this.catalogsService.getCatalogsByType("currency").subscribe(
+      (data) => {
+        this.currencies = data;
+        console.log(data);
+      },
+      (error) => {
+        if (error.status === 404) {
+          this.currencies = [];
+        }
+        console.error(error);
+      })
   }
 
   addRow() {
@@ -90,7 +120,7 @@ export class AdditionalInfoComponent {
       active: true,
       __isNew: true,
     };
-    this.rowData = [newRow,...this.rowData];
+    this.rowData = [newRow, ...this.rowData];
     this.newData = true;
     this.notSavedChanges = true;
   }
@@ -101,7 +131,7 @@ export class AdditionalInfoComponent {
 
   onCellValueChanged(event: any) {
     console.log('Dato cambiado:', event.data);
-        
+
     event.data.__modified = true;
     this.notSavedChanges = true;
   }
@@ -172,11 +202,31 @@ export class AdditionalInfoComponent {
   get colMaster(): ColDef[] {
     return [
       { field: 'orderNumber', headerName: 'Número de orden', sortable: true, filter: true, editable: true, flex: 1 },
-      { field: 'idTypepay', headerName: 'Tipo de pago', sortable: true, filter: true, editable: true, flex: 1 },
+      {
+        field: 'idTypepay', headerName: 'Tipo de pago', sortable: true, filter: true, editable: true, flex: 1, cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.paymentTypesList.map(user => user.id)
+        },
+        valueFormatter: (params) => {
+          const foundPaymentType = this.paymentTypesList
+            ? this.paymentTypesList.find((user) => user.id === params.value)
+            : null;
+          return foundPaymentType ? `${foundPaymentType.description}` : params.value;
+        },
+      },
       { field: 'quote', headerName: 'Cotización', sortable: true, filter: true, editable: true, flex: 1 },
       { field: 'idConditionspay', headerName: 'Condiciones de pago', sortable: true, filter: true, editable: true, flex: 1 },
       { field: 'purchaseOrder', headerName: 'Orden de compra', sortable: true, filter: true, editable: true, flex: 1 },
-      { field: 'idTypemoney', headerName: 'Tipo de moneda', sortable: true, filter: true, editable: true, flex: 1 },
+      { field: 'idTypemoney', headerName: 'Tipo de moneda', sortable: true, filter: true, editable: true, flex: 1, cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.currencies.map(user => user.id)
+        },
+        valueFormatter: (params) => {
+          const currencyList = this.currencies
+            ? this.currencies.find((user) => user.id === params.value)
+            : null;
+          return currencyList ? `${currencyList.description}` : params.value;
+        }, },
       { field: 'numberEntry', headerName: 'Número de entrada', sortable: true, filter: true, editable: true, flex: 1 },
       { field: 'folioFiscal', headerName: 'Folio fiscal', sortable: true, filter: true, editable: true, flex: 1 },
     ];
