@@ -296,8 +296,8 @@ export class SignalsService {
 
   /* Signals para requisiciones */
 
-  private idRequisition   = signal<number>(null);
-  private idEmployee      = signal<number>(null);
+  private idRequisition = signal<number>(null);
+  private idEmployee = signal<number>(null);
   private nameRequisition = signal<string>(null);
   private requisitionSolicitant = signal<string>(null);
   private requisitionDate = signal<string>(null);
@@ -419,6 +419,17 @@ export class SignalsService {
     return this.idCustomerFromPOS;
   }
 
+  /* Para el income and expenses */
+
+  private idIncomeAndExpense = signal<number>(null);
+
+  setIdIncomeAndExpense(id: number) {
+    this.idIncomeAndExpense.set(id);
+  }
+  getIdIncomeAndExpense() {
+    return this.idIncomeAndExpense;
+  }
+
   /* Borramos todas las signals, tratar de poner esto a lo último.
   Si van a crear nuevas signals, recuerden introducir una señal
   null en deleteSignals() para que todas las signals se borren
@@ -463,6 +474,7 @@ export class SignalsService {
     this.idClient = signal(null);
     this.nameClient = signal(null);
     this.idCustomerFromPOS = signal(null);
+    this.idIncomeAndExpense = signal(null);
 
     // Reinicia this.profile
     this.profileSignal(null, null, null, null, null, null);

@@ -7,18 +7,19 @@ import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-edito
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { alerts } from 'app/helpers/alerts';
-import { lastValueFrom, concat, toArray, catchError, EMPTY, forkJoin } from 'rxjs';
+import { lastValueFrom, concat, toArray, catchError, EMPTY, forkJoin, tap, throwError } from 'rxjs';
 import { AdministrationService } from 'app/services/administration.service';
 import { SearchableSelectComponent } from 'app/shared/searchable-select/searchable-select.component';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { UsersService } from 'app/services/users.service';
 import { SignalsService } from 'app/services/signals.service';
 import { NgSelectComponent } from '@ng-select/ng-select';
+import { AdditionalInfoComponent } from "./additional-info/additional-info.component";
 
 @Component({
   selector: 'app-income',
   standalone: true,
-  imports: [NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule, FormsModule],
+  imports: [NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule, FormsModule, AdditionalInfoComponent],
   templateUrl: './income.component.html',
   styleUrl: './income.component.scss'
 })
@@ -33,6 +34,7 @@ export class IncomeComponent {
 
   async ngOnInit() {
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+    await this.getBillingManagementInfo();
     await this.getBankAccounts();
     await this.getIncomes();
     await this.getCustomers();
@@ -45,6 +47,7 @@ export class IncomeComponent {
     effect(async () => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idAccount = null;
+      await this.getBillingManagementInfo();
       await this.getBankAccounts();
       await this.getIncomes();
       await this.getCustomers();
@@ -63,6 +66,7 @@ export class IncomeComponent {
   currentUser: string;
   idRoot: number;
   bankAccounts: any[] = [];
+  prefixAndConsecutive: any[] = [];
 
   private _idAccount: number; // Variable de respaldo para el setter
 
@@ -70,12 +74,27 @@ export class IncomeComponent {
   set idAccount(value: number) {
     if (this._idAccount !== value) {
       this._idAccount = value;
+      this.signalsService.setIdIncomeAndExpense(null);
       this.getIncomes(); // Ejecutar getIncomes cuando cambia el valor
     }
   }
 
   get idAccount(): number {
     return this._idAccount;
+  }
+
+  async getBillingManagementInfo() 
+  {
+    this.administrationService.getBillingManagementInfo(this.idRoot).subscribe(
+      (data: any) => {
+        console.log('Información de gestión de facturación:', data);
+        this.prefixAndConsecutive = Array.isArray(data) ? data : [data];
+        console.log(this.prefixAndConsecutive);
+      },
+      (error) => {
+        console.error('Error al obtener la información de gestión de facturación:', error);
+      }
+    );
   }
 
   private gridApi: GridApi;
@@ -98,14 +117,11 @@ export class IncomeComponent {
     console.log('Obteniendo ingresos para cuenta:', this.idAccount);
     this.incomesAndExpensesService.getIncomesAndExpenses(this.idRoot).subscribe({
         next: (incomes) => {
-            console.log('Respuesta completa del servicio:', incomes);
             // Filtrado y manejo de caso sin datos
             const filtered = incomes?.filter(income => {
-                console.log(`Registro: Tipo=${income.type}, Cuenta=${income.idAccount}`);
                 return income.type === "DEPOSITO" && income.idAccount === this.idAccount
             }) || [];
             this.incomes = filtered;
-            console.log('Datos filtrados:', this.incomes);
         },
         error: (err) => {
             // Manejo de errores HTTP
@@ -225,7 +241,6 @@ export class IncomeComponent {
         field: 'dateStamped', headerName: 'Fecha de entrega', editable: true, cellDataType: 'date', width: 169,
         valueFormatter: (params) => this.formatDate(params.value)
       },
-      { field: 'description', headerName: 'Descripción', editable: true, width: 140 },
 
       {
         field: 'paymentMonth', headerName: 'Mes Cobro', editable: true, width: 140,
@@ -290,6 +305,7 @@ export class IncomeComponent {
   onSelectedRow(event: any) {
     console.log(event)
     this.id = event.data.id;
+    this.signalsService.setIdIncomeAndExpense(this.id);
   }
 
   onSelectionChanged(event: any) {
@@ -297,6 +313,7 @@ export class IncomeComponent {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedIncomes = selectedNodes[0].data;
+      this.signalsService.setIdIncomeAndExpense(this.selectedIncomes.id);
     } else {
       this.selectedIncomes = null;
     }
@@ -323,7 +340,8 @@ export class IncomeComponent {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      numberDocument: "AAA",
+      idAccount: this._idAccount,
+      numberDocument: "",
       idBusinnes: this.idRoot,
       date: new Date().toISOString(),
       idCustomer: 0,
@@ -351,49 +369,85 @@ export class IncomeComponent {
   async saveChanges() {
     const isValid = this.incomes.every((item) => item.description);
     if (!isValid) {
-      alerts.basicAlert(
-        'Añadir entrada',
-        'Debe llenar todos los campos antes de guardar.',
-        'error'
-      );
-      return;
+        alerts.basicAlert(
+            'Añadir entrada',
+            'Debe llenar todos los campos antes de guardar.',
+            'error'
+        );
+        return;
+    }
+
+    // Validar que el array tenga elementos
+    if (!this.prefixAndConsecutive?.[0]) {
+        alerts.basicAlert(
+            'Error de configuración',
+            'La configuración de prefijo/consecutivo no está cargada correctamente',
+            'error'
+        );
+        return;
     }
 
     const newRows = this.incomes.filter((row) => row.__isNew);
     const modifiedRows = this.incomes.filter(
-      (row) => row.__modified && !row.__isNew
+        (row) => row.__modified && !row.__isNew
     );
 
+    // Generar números de documento para nuevas filas
+    let currentConsecutive = this.prefixAndConsecutive[0].consecutive;
+    newRows.forEach(row => {
+        currentConsecutive++;
+        row.numberDocument = `${this.prefixAndConsecutive[0].prefix}-${currentConsecutive.toString().padStart(4, '0')}`;
+    });
+
     const addObservables = newRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      return this.incomesAndExpensesService.addIncomesAndExpenses(cleanedData);
+        const cleanedData = this.cleanDataForServer(row);
+        return this.incomesAndExpensesService.addIncomesAndExpenses(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      return this.incomesAndExpensesService.updateIncomesAndExpenses(row.id, cleanedData);
+        const cleanedData = this.cleanDataForServer(row);
+        return this.incomesAndExpensesService.updateIncomesAndExpenses(row.id, cleanedData);
     });
 
-    // Using concat to combine observables and lastValueFrom for async/await
+    // Crear objeto sin array
+    const updatedBillingInfo = { 
+        ...this.prefixAndConsecutive[0], 
+        consecutive: currentConsecutive 
+    };
+
+    console.log('Datos a actualizar:', updatedBillingInfo);
+
+    const updateConsecutiveObs = this.administrationService.updateBillingManagementInfo(
+        this.idRoot,
+        updatedBillingInfo // Enviar objeto directamente
+    ).pipe(
+        tap(response => {
+            // Actualizar el array local con el nuevo objeto
+            this.prefixAndConsecutive = [updatedBillingInfo];
+            console.log('Consecutivo actualizado:', this.prefixAndConsecutive);
+        })
+    );
+
     try {
-      const responses = await lastValueFrom(
-        concat(...addObservables, ...updateObservables).pipe(toArray())
-      );
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
-      this.notSavedChanges = false;
-      this.newlyAddedRows = [];
-      this.getIncomes(); // Refrescar los datos
+        const responses = await lastValueFrom(
+            concat(...addObservables, ...updateObservables, updateConsecutiveObs).pipe(toArray())
+        );
+        
+        alerts.basicAlert(
+            'Datos actualizados',
+            'Se han actualizado los datos correctamente.',
+            'success'
+        );
+        this.notSavedChanges = false;
+        this.newlyAddedRows = [];
+        await this.getIncomes(); // Refrescar los datos
     } catch (error) {
-      console.error(error);
-      alerts.basicAlert(
-        'Error',
-        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
-        'error'
-      );
+        console.error(error);
+        alerts.basicAlert(
+            'Error',
+            'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
+            'error'
+        );
     }
   }
 

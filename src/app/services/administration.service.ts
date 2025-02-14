@@ -113,4 +113,18 @@ export class AdministrationService {
   getFiscalRegimes(): Observable<any> {
     return this.http.get(`${environment.urlAdministration}/FiscalRegime`, { headers: this.trackingService.getHeaders() });
   }
+
+  getAdditionalInfo(id: number): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/InformationAditional/idInExp/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  addAdditionalInfo(data: any): Observable<any> {
+    return this.http.post(`${environment.urlAdministration}/InformationAditional`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateAdditionalInfo(id: number, data: any): Observable<any> {
+    return this.http.put<any[]>(`${environment.urlAdministration}/InformationAditional/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+
 }
