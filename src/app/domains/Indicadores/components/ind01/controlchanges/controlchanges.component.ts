@@ -112,6 +112,11 @@ export class ControlChangesComponent {
     resizable: true
   };
 
+  gridOptions = {
+    headerHeight: 30,
+    rowHeight: 30
+  }
+
   starOptions = [
     {
       value: 'https://firebasestorage.googleapis.com/v0/b/beapp-501d1.appspot.com/o/images%2fx.png?alt=media&token=97734738-8a60-4e23-afc1-5af74e70d2cd',

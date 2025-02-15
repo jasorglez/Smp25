@@ -93,6 +93,11 @@ export class ProjectsComponent {
   public groupDefaultExpanded = 0;
 
   // Column Definitions: Defines the columns to be displayed.
+  gridOptions = {
+    headerHeight: 30,
+    rowHeight: 30
+  }
+  
   colMaster: ColDef[] = [
     { field: 'number', headerName: 'OT', flex: 1 },
     { field: 'idConsecutivo', headerName: 'ID PEMEX', flex: 1 },

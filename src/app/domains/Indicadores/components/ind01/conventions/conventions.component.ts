@@ -95,6 +95,11 @@ export class ConventionsComponent {
       });
   }
 
+  gridOptions = {
+    headerHeight: 30,
+    rowHeight: 30
+  }
+  
   get columnDefs(): ColDef[] {
     return [
       {

@@ -158,6 +158,11 @@ export class OutingsComponent implements OnInit {
     searchableSelectComponent: SearchableSelectComponent,
   };
 
+  gridOptions = {
+    headerHeight: 30,
+    rowHeight: 30
+  }
+
   get colMaster(): ColDef[] {
     return [
       {

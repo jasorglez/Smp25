@@ -110,6 +110,11 @@ export class UsersxcontractsComponent {
     }
   }
 
+  gridOptions = {
+    headerHeight: 30,
+    rowHeight: 30
+  }
+
   get columnDefs(): ColDef[] {
     return [
       {

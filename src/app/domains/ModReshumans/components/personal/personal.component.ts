@@ -63,6 +63,11 @@ export class PersonalComponent {
     private administrationService = inject(AdministrationService);  
 
   // Column Definitions: Defines the columns to be displayed.
+  gridOptions = {
+    headerHeight: 30,
+    rowHeight: 30
+  }
+  
   get colMaster(): ColDef[] {
     return [
       { field: 'idBanco', headerName: 'Banco', editable: true, width: 150, cellEditor: 'agSelectCellEditor',

@@ -158,6 +158,12 @@ export class EntrancesComponent implements OnInit {
   };
 
   // Column definitions
+
+  gridOptions = {
+    headerHeight: 30,
+    rowHeight: 30
+  }
+  
   get colMaster(): ColDef[] {
     return [
       {
@@ -812,7 +818,7 @@ export class EntrancesComponent implements OnInit {
   onDetailsRowSelected(event: any) {
     this.id = event.data.id;
   }
-  
+
   // Utility methods
   private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };

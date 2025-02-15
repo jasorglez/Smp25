@@ -87,6 +87,11 @@ export class RequisitionsDetailsComponent {
   private receiptsService = inject(ReceiptsService);
 
   // Column Definitions: Defines the columns to be displayed.
+  gridOptions = {
+    headerHeight: 30,
+    rowHeight: 30
+  }
+
   get colMaster(): ColDef[] {
     return [
       {
@@ -149,7 +154,7 @@ export class RequisitionsDetailsComponent {
   }
 
   obtenerProductos() {
-    this.materialsService.getMaterials2Fields().subscribe(
+    this.materialsService.getMaterials2Fields(1).subscribe(
       (data: Catalog[]) => {
         this.productos = data;
         console.log(this.productos);

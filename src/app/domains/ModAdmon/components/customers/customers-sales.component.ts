@@ -72,6 +72,12 @@ export class CustomersSalesComponent {
   nameClient = this.signalsService.getNameClient()();
 
   // Column Definitions: Defines the columns to be displayed.
+
+  gridOptions = {
+    headerHeight: 30,
+    rowHeight: 30
+  }
+  
   get colMaster(): ColDef[] {
     return [
       { field: 'id', headerName: 'Número de nota', filter: true, width: 200 },

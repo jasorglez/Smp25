@@ -75,6 +75,11 @@ export class AccountbanksComponent {
   private modalServiceTable = inject(ModalService);  
   private imageHandlerService = inject(ImageHandlerService);
 
+  gridOptions = {
+    headerHeight: 30,
+    rowHeight: 30
+  }
+
 // Column Definitions: Defines the columns to be displayed.
 get colMaster(): ColDef[] {
   return [

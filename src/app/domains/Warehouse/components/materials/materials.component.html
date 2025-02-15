@@ -43,7 +43,7 @@
           [columnDefs]="colMaster" (selectionChanged)="onSelectionChanged($event)"
           (cellValueChanged)="onCellValueChanged($event)" (rowSelected)="onSelectedRow($event)"
           (gridReady)="onGridReady($event)" [rowSelection]="rowSelection" [pivotPanelShow]="pivotPanelShow"
-          [rowGroupPanelShow]="rowGroupPanelShow" [paginationPageSize]="15"
+          [rowGroupPanelShow]="rowGroupPanelShow" [paginationPageSize]="15" [gridOptions]="gridOptions"
           [pagination]="true" [components]="components">
         </ag-grid-angular>
         </section>

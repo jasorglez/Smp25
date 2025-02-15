@@ -17,7 +17,7 @@
       <ag-grid-angular [columnDefs]="colMaster" [defaultColDef]="defaultColDef" [rowSelection]="rowSelection"
         [rowData]="contract" (selectionChanged)="onSelectionChanged($event)" class="ag-theme-quartz small-text-ag-grid"
         [rowGroupPanelShow]="rowGroupPanelShow" [pivotPanelShow]="pivotPanelShow" [pagination]="true"
-        (gridReady)="onGridReady($event)" [paginationPageSize]="paginationPageSize"
+        (gridReady)="onGridReady($event)" [paginationPageSize]="paginationPageSize" [gridOptions]="gridOptions"
         [paginationPageSizeSelector]="paginationPageSizeSelector" [statusBar]="statusBar">
       </ag-grid-angular>
     </div>

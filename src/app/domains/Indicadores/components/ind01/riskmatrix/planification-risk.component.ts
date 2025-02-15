@@ -61,6 +61,11 @@ export class PlanificationRiskComponent {
     multiLineEditor: MultiLineEditorComponent,
   };
 
+  gridOptions = {
+    headerHeight: 30,
+    rowHeight: 30
+  }
+
   obtenerDatos() {
     this.riskMatrixService
       .getPlanificationRisks(this.idAnalysisRisk)

@@ -80,6 +80,11 @@ export class ImplementationRiskComponent {
       });
   }
 
+  gridOptions = {
+    headerHeight: 30,
+    rowHeight: 30
+  }
+
   get columnDefs(): ColDef[] {
     return [
       {

@@ -62,6 +62,12 @@ export class BanksComponent {
   private imageHandlerService = inject(ImageHandlerService);
 
 // Column Definitions: Defines the columns to be displayed.
+
+gridOptions = {
+  headerHeight: 30,
+  rowHeight: 30
+}
+
 get colMaster(): ColDef[] {
   return [
     { field: 'name', headerName: 'Nombre', editable: true, filter: true, width: 200 },

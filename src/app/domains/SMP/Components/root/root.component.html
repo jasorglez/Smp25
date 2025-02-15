@@ -23,7 +23,8 @@
                         (cellValueChanged)="onCellValueChanged($event)" 
                         (rowSelected)="onSelectedRow($event)"
                         (gridReady)="onGridReady($event)"
-                        rowSelection="single" [components]="components">
+                        rowSelection="single" [components]="components"
+                        [gridOptions]="gridOptions">
                 </ag-grid-angular>
             </div>
         </div>

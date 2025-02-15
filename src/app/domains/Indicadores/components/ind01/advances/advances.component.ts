@@ -87,6 +87,11 @@ export class AdvancesComponent implements OnInit, OnChanges {
   datosMensuales: ContractAdvance[] = [];
 
   // Configuración de AG Grid
+  gridOptions = {
+    headerHeight: 30,
+    rowHeight: 30
+  }
+  
   columnDefs: ColDef[] = [
     { field: 'date', headerName: 'Fecha', width: 150, editable: true },
     { field: 'programAdvanced', headerName: 'Programado', width: 150, editable: true },

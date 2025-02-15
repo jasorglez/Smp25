@@ -85,6 +85,12 @@ export class ContractsComponent {
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
 
   // Column Definitions: Defines the columns to be displayed.
+
+  gridOptions = {
+    headerHeight: 30,
+    rowHeight: 30
+  }
+  
   colMaster: ColDef[] = [
     { field: 'numberContract', headerName: 'Contrato', filter: true, width: 30 },
     { field: 'description', headerName: 'Descripcion', width: 285 },

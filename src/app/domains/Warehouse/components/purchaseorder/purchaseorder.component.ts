@@ -132,6 +132,11 @@ export class PurchaseOrderComponent {
   nameRequisition = this.signalsService.getRequisitionName();
 
   // Column Definitions: Defines the columns to be displayed.
+  gridOptions = {
+    headerHeight: 30,
+    rowHeight: 30
+  }
+  
   get colMaster(): ColDef[] {
     return [
       { field: 'folio', headerName: 'Orden de compra', editable: true, filter: true, width: 150 },

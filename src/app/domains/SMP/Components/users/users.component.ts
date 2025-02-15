@@ -114,6 +114,11 @@ export class UsersComponent {
     this.gridApi = params.api;
   }
 
+  gridOptions = {
+    headerHeight: 30,
+    rowHeight: 30
+  }
+
   get columnDefs(): ColDef[] {
     return [
       {

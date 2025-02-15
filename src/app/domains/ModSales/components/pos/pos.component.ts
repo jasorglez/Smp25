@@ -335,6 +335,11 @@ export class PosComponent {
   }
 
   // Definición de columnas para el grid
+  gridOptions = {
+    headerHeight: 30,
+    rowHeight: 30
+  }
+  
   get colMaster(): ColDef[] {
     return [
       // ID oculto

@@ -54,6 +54,11 @@ export class ProvidersComponent {
     autocompleteEditor: AutocompleteEditorComponent
   }
 
+  gridOptions = {
+    headerHeight: 30,
+    rowHeight: 30
+  }
+
   get columnDefs(): ColDef[] {
     return [
       {

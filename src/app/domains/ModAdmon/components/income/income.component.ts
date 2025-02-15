@@ -372,6 +372,7 @@ export class IncomeComponent {
       idCustomer: 0,
       idExpend: 0,
       uuid: "NA",
+      paymentMonth: '',
       dateStamped: null,
       description: "",
       type: "DEPOSITO",
