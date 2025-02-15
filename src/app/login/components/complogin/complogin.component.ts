@@ -12,7 +12,7 @@ import { LoginService } from '../../../services/login.service';
 import { TrackingService } from '../../../services/tracking.service';
 import { CompanysService } from '../../../services/companys.service';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 import { AuthService } from '../../../services/auth.service';
 import { UsersService } from '../../../services/users.service';
@@ -33,6 +33,14 @@ import { SignalsService } from 'app/services/signals.service';
 })
 export class ComploginComponent implements OnInit {
 
+    translationsLoaded = false;
+
+  constructor(private translate: TranslateService) {
+    this.translate.onLangChange.subscribe(() => {
+      this.translationsLoaded = true;
+    });
+  }
+
   //idUser      = computed(()=>  this.signalsService.idUser()) ;
 
   hide = true;
@@ -41,21 +49,7 @@ export class ComploginComponent implements OnInit {
   picture     : string = '' ;
 
   images      : string[] = [
-    '../../../assets/img/2.jpg',
-    '../../../assets/img/3.jpg',
-    '../../../assets/img/4.jpg',
-    '../../../assets/img/5.jpg',
-    '../../../assets/img/7.jpg',
-    '../../../assets/img/8.jpg',
-    '../../../assets/img/10.jpg',
-    '../../../assets/img/11.jpg',
-    '../../../assets/img/14.jpg',
-    '../../../assets/img/16.jpg',
-    '../../../assets/img/18.jpg',
-    '../../../assets/img/19.jpg',
-    '../../../assets/img/20.jpg',
-    '../../../assets/img/27.png',
-    '../../../assets/img/51.png',
+    '../../../assets/img/building-4803602_1920.webp'
   ];
 
   private loginService    = inject(LoginService) ;
@@ -78,7 +72,6 @@ export class ComploginComponent implements OnInit {
 
   valorcapturado = '' ;
 
-  constructor( ) { }
 
   ngOnInit(): void {
     this.randomImage = this.images[Math.floor(Math.random() * this.images.length)];

@@ -4,7 +4,7 @@ import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.ser
 import { ModalService } from 'app/services/modal.service';
 import { AgGridModule } from 'ag-grid-angular';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, NgSelectOption } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { alerts } from 'app/helpers/alerts';
 import { lastValueFrom, concat, toArray, catchError, EMPTY, forkJoin, tap } from 'rxjs';
@@ -13,14 +13,14 @@ import { SearchableSelectComponent } from 'app/shared/searchable-select/searchab
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { UsersService } from 'app/services/users.service';
 import { SignalsService } from 'app/services/signals.service';
-import { NgSelectComponent } from '@ng-select/ng-select';
+import { NgSelectComponent, NgSelectModule } from '@ng-select/ng-select';
 import { AdditionalInfoComponent } from "./additional-info/additional-info.component";
 import { ConceptsComponent } from "./concepts/concepts.component";
 
 @Component({
   selector: 'app-income',
   standalone: true,
-  imports: [NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule, FormsModule, AdditionalInfoComponent, ConceptsComponent],
+  imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule, FormsModule, AdditionalInfoComponent, ConceptsComponent],
   templateUrl: './income.component.html',
   styleUrl: './income.component.scss'
 })

@@ -2,9 +2,15 @@
 <div class="col-12 ">
     <div class="row mt-3 mb-3">
         <div class="col">
-            <ng-select [items]="bankAccounts" bindLabel="nameAccount" bindValue="id" [(ngModel)]="idAccount"
+            <ng-select [items]="bankAccounts" bindValue="id" [(ngModel)]="idAccount"
                 [disabled]="!bankAccounts?.length"
                 placeholder="{{ bankAccounts?.length ? 'Seleccione cuenta bancaria' : 'No hay cuentas disponibles' }}">
+                <ng-template ng-label-tmp let-item="item">
+                    {{ item?.nameAccount }} - {{ item?.bankName }}
+                </ng-template>
+                <ng-template ng-option-tmp let-item="item">
+                    {{ item.nameAccount }} - {{ item.bankName }}
+                </ng-template>
             </ng-select>
         </div>
     </div>
