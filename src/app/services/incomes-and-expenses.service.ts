@@ -16,6 +16,10 @@ export class IncomesAndExpensesService {
     return this.http.get<any>(environment.urlAdministration + '/Incomeandexpense/Bussines/' + idRoot, { headers: this.tracking.getHeaders() });
   }
 
+  getIncomeAndExpenseById(id: number): Observable<any> {
+    return this.http.get(environment.urlAdministration + '/Incomeandexpense/' + id, { headers: this.tracking.getHeaders() });
+    }
+
   addIncomesAndExpenses(incomesAndExpenses: any): Observable<any> {
     return this.http.post<any>(environment.urlAdministration + '/Incomeandexpense/', incomesAndExpenses, { headers: this.tracking.getHeaders() });
   }
@@ -27,4 +31,21 @@ export class IncomesAndExpensesService {
   deleteIncomesAndExpenses(id: number): Observable<any> {
     return this.http.delete<any>(environment.urlAdministration + '/Incomeandexpense/' + id, { headers: this.tracking.getHeaders() });
     }
+
+    getConceptsFromIncomesAndExpenses(idIncorexp: number): Observable<any> {
+      return this.http.get<any>(environment.urlAdministration + '/ConceptsxIncorExp/incorexp/' + idIncorexp, { headers: this.tracking.getHeaders() });
+    }
+
+    addConceptFromIncomesAndExpenses(data: any): Observable<any> {
+      return this.http.post<any>(environment.urlAdministration + '/ConceptsxIncorExp/', data, { headers: this.tracking.getHeaders() });
+    }
+
+    updateConceptFromIncomesAndExpenses(id: number, data: any): Observable<any> {
+      return this.http.put<any>(environment.urlAdministration + '/ConceptsxIncorExp/' + id, data, { headers: this.tracking.getHeaders() });
+    }
+
+    deleteConceptFromIncomesAndExpenses(id: number): Observable<any> {
+      return this.http.delete<any>(environment.urlAdministration + '/ConceptsxIncorExp/' + id, { headers: this.tracking.getHeaders() });
+    }
+
 }

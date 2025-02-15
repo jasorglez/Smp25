@@ -52,6 +52,9 @@
                 <li class="nav-item">
                   <a class="nav-link active" data-bs-toggle="tab" href="#additional-info">Información adicional</a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#concepts">Conceptos</a>
+                </li>
               </ul>
 
         </div>
@@ -61,5 +64,9 @@
                   <app-additional-info></app-additional-info>
                 </div>
               </div>
-
+              <div class="tab-content" *ngIf="selectedIncomes">
+                <div id="concepts" class="tab-pane fade show">
+                    <app-concepts></app-concepts>
+                </div>
+              </div>
 </div>

@@ -422,12 +422,28 @@ export class SignalsService {
   /* Para el income and expenses */
 
   private idIncomeAndExpense = signal<number>(null);
+  private updateIncAndExp = signal<boolean>(false);
 
   setIdIncomeAndExpense(id: number) {
     this.idIncomeAndExpense.set(id);
   }
   getIdIncomeAndExpense() {
     return this.idIncomeAndExpense;
+  }
+
+  // Método para obtener el signal
+  getupdateIncAndExp() {
+    return this.updateIncAndExp;
+  }
+
+  // Método para actualizar el signal
+  triggerUpdateIncAndExp() {
+    this.updateIncAndExp.set(true);
+  }
+
+  // Método para resetear el signal
+  resetSignalIncAndExp() {
+    this.updateIncAndExp.set(false);
   }
 
   /* Borramos todas las signals, tratar de poner esto a lo último.
