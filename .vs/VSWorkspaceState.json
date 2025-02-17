@@ -1,0 +1,18 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\src",
+    "\\src\\app",
+    "\\src\\app\\domains",
+    "\\src\\app\\domains\\Dashboards",
+    "\\src\\app\\domains\\Dashboards\\pages",
+    "\\src\\app\\domains\\Dashboards\\pages\\procdash",
+    "\\src\\app\\domains\\Warehouse",
+    "\\src\\app\\domains\\Warehouse\\components",
+    "\\src\\app\\domains\\Warehouse\\pages",
+    "\\src\\app\\helpers",
+    "\\src\\environments"
+  ],
+  "SelectedNode": "\\src\\environments\\environment.ts",
+  "PreviewInSolutionExplorer": false
+}

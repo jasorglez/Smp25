@@ -61,7 +61,7 @@ export class EmployeesComponent {
   private gridApi: GridApi; // API del grid
   public defaultColDef: ColDef = {
     sortable: true,
-    filter: true,
+    filter: false,
     resizable: true,
     lockPosition: false,
     enableRowGroup: true, // Enable row grouping for all columns
@@ -107,8 +107,8 @@ export class EmployeesComponent {
 
   // Column Definitions: Defines the columns to be displayed.
   gridOptions = {
-    headerHeight: 30,
-    rowHeight: 30
+    headerHeight: 25,
+    rowHeight: 20
   }
   
   get colMaster(): ColDef[] {
@@ -150,7 +150,7 @@ export class EmployeesComponent {
         field: 'name',
         headerName: 'Nombre',
         editable: true,
-        filter: true,
+        filter: false,
         width: 270,
         cellEditor: 'autocompleteEditor',
         cellEditorParams: {
