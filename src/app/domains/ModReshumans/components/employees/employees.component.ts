@@ -57,6 +57,7 @@ export class EmployeesComponent {
   // Variables de control del grid
   selectedRowData: any = null; // Fila seleccionada actualmente
   tempIdCounter: number = 0; // Contador para IDs temporales
+  private digits: number = 4; // Nueva variable para configuración de dígitos
   private gridApi: GridApi; // API del grid
   public defaultColDef: ColDef = {
     sortable: true,
@@ -307,6 +308,28 @@ export class EmployeesComponent {
         filter: true,
       },
       {
+        field: 'clockPassword', 
+        headerName: 'Contraseña Reloj',
+        width: 100, 
+        editable: false,
+        cellRenderer: (params: ICellRendererParams) => {
+          // Mostrar valor real para nuevas filas, ocultar para existentes
+          if (params.data.id.toString().startsWith('temp_')) {
+            return params.value;
+          }
+          return '••••'; // Mostrar puntos para contraseñas existentes
+        },
+        onCellDoubleClicked: (params: CellDoubleClickedEvent) => {
+          if (!params.data.id.toString().startsWith('temp_')) {
+            alerts.basicAlert(
+              'Contraseña Reloj',
+              `La contraseña es: ${params.data.clockPassword}`,
+              'info'
+            );
+          }
+        }
+      },
+      {
         field: 'picture',
         headerName: 'Fotografía',
         cellRenderer: this.imageHandlerService.imageCellRenderer.bind(
@@ -436,6 +459,7 @@ export class EmployeesComponent {
       vigente: true,
       active: true,
       __isNew: true,
+      clockPassword: this.generateUniqueClockPassword()
     };
 
     // Actualizar el estado
@@ -554,5 +578,23 @@ export class EmployeesComponent {
       delete cleanedData.id;
     }
     return cleanedData;
+  }
+
+  private generateUniqueClockPassword(): string {
+    let isUnique = false;
+    let password = '';
+    
+    while (!isUnique) {
+      // Generar código con la cantidad de dígitos configurados
+      const min = Math.pow(10, this.digits - 1);
+      const max = Math.pow(10, this.digits) - 1;
+      password = Math.floor(min + Math.random() * (max - min + 1))
+                 .toString()
+                 .padStart(this.digits, '0'); // Asegurar leading zeros
+      
+      // Verificar unicidad
+      isUnique = !this.rowData.some(row => row.clockPassword === password);
+    }
+    return password;
   }
 }

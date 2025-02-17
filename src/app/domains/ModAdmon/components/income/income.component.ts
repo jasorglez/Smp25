@@ -422,7 +422,7 @@ export class IncomeComponent {
     let currentConsecutive = this.prefixAndConsecutive[0].consecutive;
     newRows.forEach(row => {
       currentConsecutive++;
-      row.numberDocument = `${this.prefixAndConsecutive[0].prefix}-${currentConsecutive.toString().padStart(4, '0')}`;
+      row.numberDocument = `${this.prefixAndConsecutive[0].prefix}${currentConsecutive.toString().padStart(4, '0')}`;
     });
 
     const addObservables = newRows.map((row) => {
