@@ -1,6 +1,6 @@
 import { Component, inject, OnInit, effect, OnChanges, SimpleChanges, ViewChild } from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
-import { ColDef } from 'ag-grid-community';
+import { ColDef, Grid, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { AdvanceService } from 'app/services/advance.service';
 import { ContractsService } from 'app/services/contracts.service';
 import { SignalsService } from 'app/services/signals.service';
@@ -83,13 +83,40 @@ export class AdvancesComponent implements OnInit, OnChanges {
   public contracts: any[] = [];
   public curretnContractSelected: number;
   public contractSelectedBySidebar = this._signalsService.getContractSelectedBySidebar();
+  private gridApi: GridApi;
   // Datos comunes para la tabla y la gráfica
   datosMensuales: ContractAdvance[] = [];
 
-  // Configuración de AG Grid
-  gridOptions = {
+  // Column Definitions: Defines the columns to be displayed.
+  public gridOptions: any = {
     headerHeight: 30,
-    rowHeight: 30
+    rowHeight: 30,
+    rowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onRowClicked: (event) => {
+      // Seleccionar la fila al hacer clic en cualquier celda
+      event.node.setSelected(true);
+    },
+
+    onRowSelected: (event) => {
+      // Deseleccionar otras filas cuando se selecciona una nueva
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    },
+  };
+
+  onGridReady(params: GridReadyEvent) {
+    this.gridApi = params.api;
   }
   
   columnDefs: ColDef[] = [
@@ -198,9 +225,6 @@ export class AdvancesComponent implements OnInit, OnChanges {
       this.curretnContractSelected = nuevoValor();
       this.obtenerDatos();
     });
-
-
-
   }
 
   ngOnInit(): void {

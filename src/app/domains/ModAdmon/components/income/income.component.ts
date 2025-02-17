@@ -106,10 +106,32 @@ export class IncomeComponent {
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
 
-  gridOptions = {
-    headerHeight: 30,
-    rowHeight: 30
-  }
+// Column Definitions: Defines the columns to be displayed.
+public gridOptions: any = {
+  headerHeight: 30,
+  rowHeight: 30,
+  rowClass: (params) => {
+    // Verificar si la fila está seleccionada
+    if (params.node.isSelected()) {
+      return 'selected-row';
+    }
+    return '';
+  },
+  onRowClicked: (event) => {
+    // Seleccionar la fila al hacer clic en cualquier celda
+    event.node.setSelected(true);
+  },
+  onRowSelected: (event) => {
+    // Deseleccionar otras filas cuando se selecciona una nueva
+    if (event.node.isSelected()) {
+      this.gridApi.forEachNode((node) => {
+        if (node.id !== event.node.id) {
+          node.setSelected(false);
+        }
+      });
+    }
+  },
+};
 
   public rowSelection: 'single' | 'multiple' = 'single';
   public paginationPageSize = 15;
@@ -207,9 +229,9 @@ export class IncomeComponent {
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
     return [
-      { field: 'numberDocument', headerName: '# Documento', editable: false, filter: true, width: 200 },
+      { field: 'numberDocument', headerName: '# Documento', editable: false, filter: true, width: 130 },
       {
-        field: 'description', headerName: 'Descripción', editable: true, width: 285, filter: true,
+        field: 'description', headerName: 'Descripción', editable: true, width: 315, filter: true,
         cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
@@ -238,7 +260,12 @@ export class IncomeComponent {
       },
 
       {
-        field: 'date', headerName: 'Fecha', editable: false, cellDataType: 'date', width: 169,
+        field: 'dateStamped', headerName: 'Fecha Entrega', editable: true, cellDataType: 'date', width: 130,
+        valueFormatter: (params) => this.formatDate(params.value)
+      },
+
+      {
+        field: 'date', headerName: 'Fecha', editable: false, cellDataType: 'date', width: 100,
         valueFormatter: (params) => this.formatDate(params.value)
       },
       {
@@ -246,7 +273,7 @@ export class IncomeComponent {
         headerName: 'Subtotal',
         type: 'number',
         editable: false,
-        width: 130,
+        width: 120,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
       {
@@ -254,7 +281,7 @@ export class IncomeComponent {
         headerName: 'Impuestos',
         type: 'number',
         editable: false,
-        width: 130,
+        width: 100,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
       {
@@ -262,16 +289,12 @@ export class IncomeComponent {
         headerName: 'Total',
         type: 'number',
         editable: false,
-        width: 130,
+        width: 120,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
+      
       {
-        field: 'dateStamped', headerName: 'Fecha de entrega', editable: true, cellDataType: 'date', width: 169,
-        valueFormatter: (params) => this.formatDate(params.value)
-      },
-
-      {
-        field: 'paymentMonth', headerName: 'Mes Cobro', editable: true, width: 140,
+        field: 'paymentMonth', headerName: 'Mes', editable: true, width: 100,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: [
@@ -298,7 +321,7 @@ export class IncomeComponent {
       },
 
       {
-        field: 'idCustomer', headerName: 'Cliente', editable: true, width: 105,
+        field: 'idCustomer', headerName: 'Cliente', editable: true, width: 215,
         cellEditor: 'searchableSelect',
         cellEditorParams: {
           options: this.customers,

@@ -106,11 +106,32 @@ export class EmployeesComponent {
   }
 
   // Column Definitions: Defines the columns to be displayed.
-  gridOptions = {
+  public gridOptions: any = {
     headerHeight: 25,
-    rowHeight: 20
-  }
-  
+    rowHeight: 20,
+    rowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onRowClicked: (event) => {
+      // Seleccionar la fila al hacer clic en cualquier celda
+      event.node.setSelected(true);
+    },
+    onRowSelected: (event) => {
+      // Deseleccionar otras filas cuando se selecciona una nueva
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    },
+  };
+
   get colMaster(): ColDef[] {
     return [
       {
@@ -308,9 +329,9 @@ export class EmployeesComponent {
         filter: true,
       },
       {
-        field: 'clockPassword', 
+        field: 'clockPassword',
         headerName: 'Contraseña Reloj',
-        width: 100, 
+        width: 100,
         editable: false,
         cellRenderer: (params: ICellRendererParams) => {
           // Mostrar valor real para nuevas filas, ocultar para existentes
@@ -413,18 +434,18 @@ export class EmployeesComponent {
     console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
-  
+
     // Si el campo cambiado es el código postal
     if (event.colDef.field === 'cp') {
       // Limpiar el neighborhood cuando cambia el CP
       event.data.neighborhood = '';
-      
+
       this.getZipCodeData(event.newValue).then((data: any) => {
         if (data && data.length > 0) {
           const cpData = data[0];
           event.data.state = cpData.estado;
           event.data.city = cpData.ciudad || 'N/A'; // Usar 'N/A' si no hay ciudad
-          
+
           // Actualizar el grid
           this.gridApi.applyTransaction({ update: [event.data] });
         }
@@ -463,10 +484,21 @@ export class EmployeesComponent {
     };
 
     // Actualizar el estado
-    this.rowData = [newItem, ...this.rowData];
-    this.newlyAddedRows.push(tempId);
-    this.notSavedChanges = true;
-    this.gridApi.setGridOption('rowData', this.rowData);
+  this.rowData = [newItem, ...this.rowData];
+  this.newlyAddedRows.push(tempId);
+  this.notSavedChanges = true;
+  this.gridApi.setGridOption('rowData', this.rowData);
+
+  // Encontrar el índice de la nueva fila
+  const newRowIndex = this.rowData.findIndex(row => row.id === tempId);
+
+  // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
+  setTimeout(() => {
+    this.gridApi.startEditingCell({
+      rowIndex: newRowIndex,
+      colKey: 'name'
+    });
+  }, 50); // Un pequeño retraso de 50ms
   }
 
   async saveMasterChanges() {
@@ -583,15 +615,15 @@ export class EmployeesComponent {
   private generateUniqueClockPassword(): string {
     let isUnique = false;
     let password = '';
-    
+
     while (!isUnique) {
       // Generar código con la cantidad de dígitos configurados
       const min = Math.pow(10, this.digits - 1);
       const max = Math.pow(10, this.digits) - 1;
       password = Math.floor(min + Math.random() * (max - min + 1))
-                 .toString()
-                 .padStart(this.digits, '0'); // Asegurar leading zeros
-      
+        .toString()
+        .padStart(this.digits, '0'); // Asegurar leading zeros
+
       // Verificar unicidad
       isUnique = !this.rowData.some(row => row.clockPassword === password);
     }

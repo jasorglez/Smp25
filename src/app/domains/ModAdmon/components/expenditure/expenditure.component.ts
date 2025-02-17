@@ -20,7 +20,8 @@ import { ConceptsComponent } from "../income/concepts/concepts.component";
 @Component({
   selector: 'app-expenditure',
   standalone: true,
-  imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule, FormsModule, AdditionalInfoComponent, ConceptsComponent],
+  imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule, 
+            FormsModule, AdditionalInfoComponent, ConceptsComponent],
   templateUrl: '../income/income.component.html',
   styleUrl: '../income/income.component.scss'
 })
@@ -37,7 +38,7 @@ export class ExpenditureComponent {
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
     await this.getBillingManagementInfo();
     await this.getBankAccounts();
-    await this.getIncomes();
+    await this.getExpenditure();
     await this.getCustomers();
     await this.loadAuthorizers();
     await this.getCurrentUser();
@@ -50,7 +51,7 @@ export class ExpenditureComponent {
       this.idAccount = null;
       await this.getBillingManagementInfo();
       await this.getBankAccounts();
-      await this.getIncomes();
+      await this.getExpenditure();
       await this.getCustomers();
       await this.loadAuthorizers();
       await this.getCurrentUser();
@@ -84,7 +85,7 @@ export class ExpenditureComponent {
     if (this._idAccount !== value) {
       this._idAccount = value;
       this.signalsService.setIdIncomeAndExpense(null);
-      this.getIncomes(); // Ejecutar getIncomes cuando cambia el valor
+      this.getExpenditure(); // Ejecutar getIncomes cuando cambia el valor
     }
   }
 
@@ -106,10 +107,32 @@ export class ExpenditureComponent {
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
 
-  gridOptions = {
-    headerHeight: 30,
-    rowHeight: 30
-  }
+// Column Definitions: Defines the columns to be displayed.
+public gridOptions: any = {
+  headerHeight: 30,
+  rowHeight: 30,
+  rowClass: (params) => {
+    // Verificar si la fila está seleccionada
+    if (params.node.isSelected()) {
+      return 'selected-row';
+    }
+    return '';
+  },
+  onRowClicked: (event) => {
+    // Seleccionar la fila al hacer clic en cualquier celda
+    event.node.setSelected(true);
+  },
+  onRowSelected: (event) => {
+    // Deseleccionar otras filas cuando se selecciona una nueva
+    if (event.node.isSelected()) {
+      this.gridApi.forEachNode((node) => {
+        if (node.id !== event.node.id) {
+          node.setSelected(false);
+        }
+      });
+    }
+  },
+};
 
   public rowSelection: 'single' | 'multiple' = 'single';
   public paginationPageSize = 15;
@@ -119,7 +142,7 @@ export class ExpenditureComponent {
     searchableSelect: SearchableSelectComponent
   };
 
-  async getIncomes() {
+  async getExpenditure() {
     this.incomesAndExpensesService.getIncomesAndExpenses(this.idRoot).subscribe({
       next: (incomes) => {
         // Filtrado y manejo de caso sin datos
@@ -463,7 +486,7 @@ export class ExpenditureComponent {
       );
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
-      await this.getIncomes(); // Refrescar los datos
+      await this.getExpenditure(); // Refrescar los datos
     } catch (error) {
       console.error(error);
       alerts.basicAlert(
@@ -506,7 +529,7 @@ export class ExpenditureComponent {
             'Entrada eliminada satisfactoriamente.',
             'success'
           );
-          this.getIncomes();
+          this.getExpenditure();
 
           alerts.basicAlert(
             'Eliminar entrada',
@@ -520,7 +543,7 @@ export class ExpenditureComponent {
   }
 
   revert() {
-    this.getIncomes();
+    this.getExpenditure();
     this.notSavedChanges = false;
   }
 

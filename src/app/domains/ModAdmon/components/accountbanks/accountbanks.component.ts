@@ -75,10 +75,32 @@ export class AccountbanksComponent {
   private modalServiceTable = inject(ModalService);  
   private imageHandlerService = inject(ImageHandlerService);
 
-  gridOptions = {
-    headerHeight: 30,
-    rowHeight: 30
-  }
+// Column Definitions: Defines the columns to be displayed.
+public gridOptions: any = {
+  headerHeight: 30,
+  rowHeight: 30,
+  rowClass: (params) => {
+    // Verificar si la fila está seleccionada
+    if (params.node.isSelected()) {
+      return 'selected-row';
+    }
+    return '';
+  },
+  onRowClicked: (event) => {
+    // Seleccionar la fila al hacer clic en cualquier celda
+    event.node.setSelected(true);
+  },
+  onRowSelected: (event) => {
+    // Deseleccionar otras filas cuando se selecciona una nueva
+    if (event.node.isSelected()) {
+      this.gridApi.forEachNode((node) => {
+        if (node.id !== event.node.id) {
+          node.setSelected(false);
+        }
+      });
+    }
+  },
+};
 
 // Column Definitions: Defines the columns to be displayed.
 get colMaster(): ColDef[] {
@@ -95,9 +117,7 @@ get colMaster(): ColDef[] {
     { field: 'numberAccount', headerName: 'Numero Cuenta', editable: true, filter: true, width: 200 },
 
     { field: 'nameAccount', headerName: 'Nombre Cuenta', editable: true, width: 200, filter: true },
-             
-    { field: 'signAccount', headerName: 'Firma', editable: true, width: 200 },
-
+            
     { field: 'interbancaria', headerName: 'Interbancaria', editable: true, width: 160 },
             
     { field: 'folioCheque', headerName: 'Inicio Cheque', editable: true, width: 129, cellEditorParams: {
@@ -105,7 +125,15 @@ get colMaster(): ColDef[] {
     
     { field: 'folioSinCheque', headerName: 'Termino Cheque', editable: true, width: 140 }, 
 
-    { field: 'eAplicaFiscal', headerName: 'Aplica Fiscal', editable: true, width: 95 },
+    { field: 'gasto', headerName: 'Gastos', editable: true, width: 105,
+      valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+      },
+    { field: 'depositoPagado', headerName: 'Ingresos', editable: true, width: 105,
+      valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+     },
+    { field: 'saldo', headerName: 'Saldo', editable: true, width: 110,
+      valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+     },
     
   ]
 };
