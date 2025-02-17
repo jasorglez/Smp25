@@ -20,7 +20,8 @@ import { ConceptsComponent } from "../income/concepts/concepts.component";
 @Component({
   selector: 'app-expenditure',
   standalone: true,
-  imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule, FormsModule, AdditionalInfoComponent, ConceptsComponent],
+  imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule, 
+            FormsModule, AdditionalInfoComponent, ConceptsComponent],
   templateUrl: '../income/income.component.html',
   styleUrl: '../income/income.component.scss'
 })
@@ -37,7 +38,7 @@ export class ExpenditureComponent {
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
     await this.getBillingManagementInfo();
     await this.getBankAccounts();
-    await this.getIncomes();
+    await this.getExpenditure();
     await this.getCustomers();
     await this.loadAuthorizers();
     await this.getCurrentUser();
@@ -50,7 +51,7 @@ export class ExpenditureComponent {
       this.idAccount = null;
       await this.getBillingManagementInfo();
       await this.getBankAccounts();
-      await this.getIncomes();
+      await this.getExpenditure();
       await this.getCustomers();
       await this.loadAuthorizers();
       await this.getCurrentUser();
@@ -84,7 +85,7 @@ export class ExpenditureComponent {
     if (this._idAccount !== value) {
       this._idAccount = value;
       this.signalsService.setIdIncomeAndExpense(null);
-      this.getIncomes(); // Ejecutar getIncomes cuando cambia el valor
+      this.getExpenditure(); // Ejecutar getIncomes cuando cambia el valor
     }
   }
 
@@ -119,7 +120,7 @@ export class ExpenditureComponent {
     searchableSelect: SearchableSelectComponent
   };
 
-  async getIncomes() {
+  async getExpenditure() {
     this.incomesAndExpensesService.getIncomesAndExpenses(this.idRoot).subscribe({
       next: (incomes) => {
         // Filtrado y manejo de caso sin datos
@@ -463,7 +464,7 @@ export class ExpenditureComponent {
       );
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
-      await this.getIncomes(); // Refrescar los datos
+      await this.getExpenditure(); // Refrescar los datos
     } catch (error) {
       console.error(error);
       alerts.basicAlert(
@@ -506,7 +507,7 @@ export class ExpenditureComponent {
             'Entrada eliminada satisfactoriamente.',
             'success'
           );
-          this.getIncomes();
+          this.getExpenditure();
 
           alerts.basicAlert(
             'Eliminar entrada',
@@ -520,7 +521,7 @@ export class ExpenditureComponent {
   }
 
   revert() {
-    this.getIncomes();
+    this.getExpenditure();
     this.notSavedChanges = false;
   }
 

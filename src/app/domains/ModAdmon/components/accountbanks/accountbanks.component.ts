@@ -95,9 +95,7 @@ get colMaster(): ColDef[] {
     { field: 'numberAccount', headerName: 'Numero Cuenta', editable: true, filter: true, width: 200 },
 
     { field: 'nameAccount', headerName: 'Nombre Cuenta', editable: true, width: 200, filter: true },
-             
-    { field: 'signAccount', headerName: 'Firma', editable: true, width: 200 },
-
+            
     { field: 'interbancaria', headerName: 'Interbancaria', editable: true, width: 160 },
             
     { field: 'folioCheque', headerName: 'Inicio Cheque', editable: true, width: 129, cellEditorParams: {
@@ -105,7 +103,15 @@ get colMaster(): ColDef[] {
     
     { field: 'folioSinCheque', headerName: 'Termino Cheque', editable: true, width: 140 }, 
 
-    { field: 'eAplicaFiscal', headerName: 'Aplica Fiscal', editable: true, width: 95 },
+    { field: 'gasto', headerName: 'Gastos', editable: true, width: 105,
+      valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+      },
+    { field: 'depositoPagado', headerName: 'Ingresos', editable: true, width: 105,
+      valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+     },
+    { field: 'saldo', headerName: 'Saldo', editable: true, width: 110,
+      valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+     },
     
   ]
 };
