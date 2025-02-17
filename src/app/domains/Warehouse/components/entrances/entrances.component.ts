@@ -70,6 +70,7 @@ export class EntrancesComponent implements OnInit {
   IdInAndOut: number = null;
   private masterGridApi: GridApi;
   private detailsGridApi: GridApi;
+  private gridApi: GridApi;
   idRoot: number = null;
 
   // Master variables
@@ -159,10 +160,32 @@ export class EntrancesComponent implements OnInit {
 
   // Column definitions
 
-  gridOptions = {
-    headerHeight: 30,
-    rowHeight: 30
-  }
+// Column Definitions: Defines the columns to be displayed.
+public gridOptions: any = {
+  headerHeight: 30,
+  rowHeight: 30,
+  rowClass: (params) => {
+    // Verificar si la fila está seleccionada
+    if (params.node.isSelected()) {
+      return 'selected-row';
+    }
+    return '';
+  },
+  onRowClicked: (event) => {
+    // Seleccionar la fila al hacer clic en cualquier celda
+    event.node.setSelected(true);
+  },
+  onRowSelected: (event) => {
+    // Deseleccionar otras filas cuando se selecciona una nueva
+    if (event.node.isSelected()) {
+      this.gridApi.forEachNode((node) => {
+        if (node.id !== event.node.id) {
+          node.setSelected(false);
+        }
+      });
+    }
+  },
+};
   
   get colMaster(): ColDef[] {
     return [

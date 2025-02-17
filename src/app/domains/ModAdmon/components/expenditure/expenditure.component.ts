@@ -107,10 +107,32 @@ export class ExpenditureComponent {
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
 
-  gridOptions = {
-    headerHeight: 30,
-    rowHeight: 30
-  }
+// Column Definitions: Defines the columns to be displayed.
+public gridOptions: any = {
+  headerHeight: 30,
+  rowHeight: 30,
+  rowClass: (params) => {
+    // Verificar si la fila está seleccionada
+    if (params.node.isSelected()) {
+      return 'selected-row';
+    }
+    return '';
+  },
+  onRowClicked: (event) => {
+    // Seleccionar la fila al hacer clic en cualquier celda
+    event.node.setSelected(true);
+  },
+  onRowSelected: (event) => {
+    // Deseleccionar otras filas cuando se selecciona una nueva
+    if (event.node.isSelected()) {
+      this.gridApi.forEachNode((node) => {
+        if (node.id !== event.node.id) {
+          node.setSelected(false);
+        }
+      });
+    }
+  },
+};
 
   public rowSelection: 'single' | 'multiple' = 'single';
   public paginationPageSize = 15;
@@ -423,7 +445,7 @@ export class ExpenditureComponent {
     let currentConsecutive = this.prefixAndConsecutive[0].consecutive;
     newRows.forEach(row => {
       currentConsecutive++;
-      row.numberDocument = `${this.prefixAndConsecutive[0].prefix}-${currentConsecutive.toString().padStart(4, '0')}`;
+      row.numberDocument = `${this.prefixAndConsecutive[0].prefix}${currentConsecutive.toString().padStart(4, '0')}`;
     });
 
     const addObservables = newRows.map((row) => {

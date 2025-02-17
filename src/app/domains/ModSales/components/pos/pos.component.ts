@@ -101,56 +101,56 @@ export class PosComponent {
     //this.selectedProduct = product;
     if (!product) return;
 
-  if (this.idCustomer == null) {
-    alerts.basicAlert('Error', 'Seleccione un cliente antes de agregar un producto.', 'error');
-    return;
-  }
+    if (this.idCustomer == null) {
+      alerts.basicAlert('Error', 'Seleccione un cliente antes de agregar un producto.', 'error');
+      return;
+    }
 
-  // Find existing row with the same product
-  const existingRowIndex = this.rowData.findIndex(row => row.idProduct === product.id);
+    // Find existing row with the same product
+    const existingRowIndex = this.rowData.findIndex(row => row.idProduct === product.id);
 
-  if (existingRowIndex !== -1) {
-    // Increment quantity of existing row
-    const updatedRowData = [...this.rowData];
-    updatedRowData[existingRowIndex] = {
-      ...updatedRowData[existingRowIndex],
-      quantity: (updatedRowData[existingRowIndex].quantity || 0) + 1,
-      total: product.price * ((updatedRowData[existingRowIndex].quantity || 0) + 1)
-    };
+    if (existingRowIndex !== -1) {
+      // Increment quantity of existing row
+      const updatedRowData = [...this.rowData];
+      updatedRowData[existingRowIndex] = {
+        ...updatedRowData[existingRowIndex],
+        quantity: (updatedRowData[existingRowIndex].quantity || 0) + 1,
+        total: product.price * ((updatedRowData[existingRowIndex].quantity || 0) + 1)
+      };
 
-    this.rowData = updatedRowData;
-    this.gridApi.setGridOption('rowData', this.rowData);
-  } else {
-    // Add new row if product not found
-    const tempId = `temp_${this.tempIdCounter++}`;
-    const newItem = {
-      id: tempId,
-      idSale: null,
-      idProduct: product.id,
-      quantity: 1,
-      pu: product.price || 0,
-      total: product.price || 0,
-      unit: true,
-      boxNumber: 0,
-      unitNumber: 0,
-      active: true
-    };
+      this.rowData = updatedRowData;
+      this.gridApi.setGridOption('rowData', this.rowData);
+    } else {
+      // Add new row if product not found
+      const tempId = `temp_${this.tempIdCounter++}`;
+      const newItem = {
+        id: tempId,
+        idSale: null,
+        idProduct: product.id,
+        quantity: 1,
+        pu: product.price || 0,
+        total: product.price || 0,
+        unit: true,
+        boxNumber: 0,
+        unitNumber: 0,
+        active: true
+      };
 
-    this.rowData = [...this.rowData, newItem];
-    this.newlyAddedRows.push(tempId);
-    this.gridApi.setGridOption('rowData', this.rowData);
+      this.rowData = [...this.rowData, newItem];
+      this.newlyAddedRows.push(tempId);
+      this.gridApi.setGridOption('rowData', this.rowData);
 
-    requestAnimationFrame(() => {
-      const rowNode = this.gridApi.getRowNode(tempId);
-      if (rowNode) {
-        rowNode.setSelected(true);
-        this.selectedRowData = newItem;
-      }
-    });
-  }
+      requestAnimationFrame(() => {
+        const rowNode = this.gridApi.getRowNode(tempId);
+        if (rowNode) {
+          rowNode.setSelected(true);
+          this.selectedRowData = newItem;
+        }
+      });
+    }
 
-  // Recalculate total
-  this.calculateTotal();
+    // Recalculate total
+    this.calculateTotal();
   }
 
   // Método para obtener clientes de la sucursal seleccionada
@@ -334,12 +334,33 @@ export class PosComponent {
     }, 0);
   }
 
-  // Definición de columnas para el grid
-  gridOptions = {
+  // Column Definitions: Defines the columns to be displayed.
+  public gridOptions: any = {
     headerHeight: 30,
-    rowHeight: 30
-  }
-  
+    rowHeight: 30,
+    rowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onRowClicked: (event) => {
+      // Seleccionar la fila al hacer clic en cualquier celda
+      event.node.setSelected(true);
+    },
+    onRowSelected: (event) => {
+      // Deseleccionar otras filas cuando se selecciona una nueva
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    },
+  };
+
   get colMaster(): ColDef[] {
     return [
       // ID oculto
