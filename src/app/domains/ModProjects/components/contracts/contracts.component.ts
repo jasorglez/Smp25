@@ -85,12 +85,32 @@ export class ContractsComponent {
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
 
   // Column Definitions: Defines the columns to be displayed.
-
-  gridOptions = {
+  public gridOptions: any = {
     headerHeight: 30,
-    rowHeight: 30
-  }
-  
+    rowHeight: 30,
+    rowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onRowClicked: (event) => {
+      // Seleccionar la fila al hacer clic en cualquier celda
+      event.node.setSelected(true);
+    },
+    onRowSelected: (event) => {
+      // Deseleccionar otras filas cuando se selecciona una nueva
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    },
+  };
+
   colMaster: ColDef[] = [
     { field: 'numberContract', headerName: 'Contrato', filter: true, width: 30 },
     { field: 'description', headerName: 'Descripcion', width: 285 },
@@ -189,12 +209,12 @@ export class ContractsComponent {
     ]
   };
 
-  public defaultColDef : ColDef = {
-    sortable           : true,
-    filter             : true,
-    resizable          : true,
-    lockPosition       : false,
-    enableRowGroup     : true, // Enable row grouping for all columns
+  public defaultColDef: ColDef = {
+    sortable: true,
+    filter: true,
+    resizable: true,
+    lockPosition: false,
+    enableRowGroup: true, // Enable row grouping for all columns
     flex: 1
   };
 
@@ -361,7 +381,7 @@ export class ContractsComponent {
     };
   }
 
-  
+
   formatDateForBackend(dateString: string): string {
     if (!dateString) return '';
     const date = new Date(dateString);
