@@ -1,3 +1,4 @@
+import { CommonModule } from '@angular/common';
 import { Component, effect, HostListener, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -35,6 +36,8 @@ export class EmployeesxLoansComponent {
   loanIds: number;
   gridApi: any;
   idEmployee: number;
+  idLoan: number = null;
+  nameLoan: string = null;
   id: number;
   masterNotSavedChanges: boolean = false;
   detailNotSavedChanges: boolean = false;
@@ -49,6 +52,60 @@ export class EmployeesxLoansComponent {
     });
   }
 
+  public maestroGridOptions: any = {
+    headerHeight: 25,
+    rowHeight: 20,
+    suppressEnterWhenEditing: false,
+    rowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onMaestroRowClicked: (event) => {
+      // Seleccionar la fila al hacer clic en cualquier celda
+      event.node.setSelected(true);
+    },
+    onMaestroRowSelected: (event) => {
+      // Deseleccionar otras filas cuando se selecciona una nueva
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    }
+  };
+
+  public detalleGridOptions: any = {
+    headerHeight: 25,
+    rowHeight: 20,
+    suppressEnterWhenEditing: false,
+    rowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onDetalleRowClicked: (event) => {
+      // Seleccionar la fila al hacer clic en cualquier celda
+      event.node.setSelected(true);
+    },
+    onDetalleRowSelected: (event) => {
+      // Deseleccionar otras filas cuando se selecciona una nueva
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    }
+  };
+
   loadData() {
     if (this.idEmployee === null || this.idEmployee === undefined) {
       return;
@@ -59,8 +116,10 @@ export class EmployeesxLoansComponent {
       (maestroRowData: any[]) => {
         if (!maestroRowData || maestroRowData.length === 0) {
           alerts.basicAlert('Aviso', 'No hay datos disponibles', 'info');
+          this.maestroRowData = this.detalleRowData = [];
         } else {
           console.log("Loans data:", maestroRowData);
+          this.maestroRowData = maestroRowData;
         }
       },
       (error) => {
@@ -70,16 +129,82 @@ export class EmployeesxLoansComponent {
     );
   }
 
+  loadDetailedData() {
+    if(this.idLoan === null || this.idLoan === undefined) {
+      return;
+    }
+
+    this.employeesxloansService.getConceptsxLoansCredit(this.idLoan).subscribe(
+      (detalleRowData) => {
+        if (!detalleRowData || detalleRowData.length === 0) {
+          alerts.basicAlert('Aviso', 'No hay datos disponibles', 'info');
+          this.detalleRowData = [];
+        } else {
+          console.log("Loans data:", detalleRowData);
+          this.detalleRowData = detalleRowData;
+          console.log(this.detalleRowData)
+        }
+      },
+      (error) => {
+        console.error("Error loading detailed loan data:", error);
+        alerts.basicAlert('Error', 'Error al cargar los datos', 'error');
+      }
+    )
+  }
+
   maestroColumnDefs: ColDef[] = [
-    { headerName: 'Prestamo', field: 'nombre' },
-    { headerName: 'Fecha', field: 'date' },
-    { headerName: 'Total', field: 'monto' },
+    { headerName: 'Prestamo', field: 'name',
+      flex: 2 },
+    { 
+      headerName: 'Fecha', 
+      field: 'date',
+      valueFormatter: (params) => {
+        if (params.value) {
+          const date = new Date(params.value);
+          return `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
+        }
+        return '';
+      },
+      flex: 1
+    },
+    { 
+      headerName: 'Total', 
+      field: 'monto',
+      valueFormatter: (params) => {
+        if (params.value) {
+          return new Intl.NumberFormat('es-MX', {
+            style: 'currency',
+            currency: 'MXN'
+          }).format(params.value);
+        }
+        return '';
+      },
+      flex: 1
+    },
   ];
 
   detalleColumnDefs: ColDef[] = [
-    { headerName: 'Fecha', field: 'date' },
-    { headerName: 'Abono', field: 'total' },
-    { headerName: 'Comentario', field: 'descripcion' },
+    { headerName: 'Fecha', field: 'date',
+      valueFormatter: (params) => {
+        if (params.value) {
+          const date = new Date(params.value);
+          return `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
+        }
+        return '';
+      },
+      flex: 1
+     },
+    { headerName: 'Abono', field: 'total', valueFormatter: (params) => {
+      if (params.value) {
+        return new Intl.NumberFormat('es-MX', {
+          style: 'currency',
+          currency: 'MXN'
+        }).format(params.value);
+      }
+      return '';
+    },
+    flex: 1 },
+    { headerName: 'Comentario', field: 'descripcion', flex: 2 },
   ];
 
   private maestroGridApi: any;
@@ -91,19 +216,6 @@ export class EmployeesxLoansComponent {
       this.maestroRowData = [...this.maestroRowData, newRow];
     }
   }
-
-  saveChanges() {
-
-  }
-
-  revert(){
-
-  }
-
-  deleteEntry(){
-
-  }
-
 
   onMaestroGridReady(params: GridReadyEvent) {
     this.maestroGridApi = params.api;
@@ -117,22 +229,21 @@ export class EmployeesxLoansComponent {
     const selectedRows = this.maestroGridApi.getSelectedRows();
     if (selectedRows.length > 0) {
       const selectedMaestro = selectedRows[0];
-      this.detalleRowData = this.getDetalleData(selectedMaestro.id);
+      this.idLoan = selectedMaestro.id;
+      this.nameLoan = selectedMaestro.name;
+      this.loadDetailedData();
     } else {
       this.detalleRowData = [];
     }
   }
 
-  getDetalleData(maestroId: number): any[] {
-    return [
-      { detalleId: 1, descripcion: `Detalle 1 para Maestro ${maestroId}` },
-      { detalleId: 2, descripcion: `Detalle 2 para Maestro ${maestroId}` },
-    ];
-  }
 
   saveMasterChanges() {}
 
-  revertMasterData() {}
+  revertMasterData() {
+    this.loadData();
+    this.masterNotSavedChanges = false;
+  }
 
   deleteMasterEntry() {}
 
@@ -140,7 +251,10 @@ export class EmployeesxLoansComponent {
 
   saveDetailChanges() {}
 
-  revertDetailData() {}
+  revertDetailData() {
+    this.loadDetailedData();
+    this.detailNotSavedChanges = false;
+  }
 
   deleteDetailEntry() {}
 
@@ -153,6 +267,6 @@ export class EmployeesxLoansComponent {
   onDetailCellValueChanged($event) {
     console.log('Dato cambiado:', $event.data);
     $event.data.__modified = true;
-    this.detailNotSavedChanges;
+    this.detailNotSavedChanges = true;
   }
 }
