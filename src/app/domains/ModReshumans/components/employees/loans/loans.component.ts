@@ -221,15 +221,17 @@ public gridOptions: any = {
   get colMaster(): ColDef[] {
     return [
       {
-        field: 'date', headerName: 'Fecha abono', editable: true, flex: 1,
+        field: 'date',
+        headerName: 'Fecha abono',
+        editable: true,
+        flex: 1,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
-          if (params.value) {
-            return params.value.split('T')[0];
-          }
-          return '';
+          if (!params.value) return '';
+          return new Date(params.value).toLocaleDateString('es-MX'); // Formato dd/mm/yy automático
         }
       },
+      
       {
         field: 'loan', headerName: 'Préstamo', editable: (params) => params.data.__isNew, flex: 1,
         cellDataType: 'number',
@@ -237,7 +239,7 @@ public gridOptions: any = {
           min: 0
         },
         valueFormatter: (params) => {
-          return params.value ? `$${params.value.toFixed(2)}` : '';
+          return `$${params.value.toFixed(2)}`;
         }
       },
       {
@@ -247,11 +249,11 @@ public gridOptions: any = {
           min: 0
         },
         valueFormatter: (params) => {
-          return params.value ? `$${params.value.toFixed(2)}` : '';
+          return `$${params.value.toFixed(2)}` ;
         }
       },
       {
-        field: 'total', headerName: 'Total', editable: false, flex: 1,
+        field: 'total', headerName: 'Saldo', editable: false, flex: 1,
         cellDataType: 'number',
         cellEditorParams: {
           min: 0
