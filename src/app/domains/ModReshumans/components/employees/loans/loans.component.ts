@@ -18,35 +18,14 @@ import { concat, lastValueFrom, toArray } from 'rxjs';
   styleUrl: './loans.component.scss'
 })
 export class EmployeesxLoansComponent {
-  
+  autoGroupColumnDef: any;
   private employeesxloansService = inject(EmployeesxloansService);
   private signalsService = inject(SignalsService);
   private modalServiceTable = inject(ModalService);
 
-  defaultColDef = {
-    flex: 1,
-    resizable: true,
-    sortable: true,
-    filter: true,
-    editable: true
-  };
+  public groupDefaultExpanded = 0;
+ 
 
-  rowData: any[] = [];
-  maestroRowData: any[] = [];
-  detalleRowData: any[] = [];
-  loanIds: number;
-
-  gridApi: any;
-
-  idEmployee: number;
-
-  id: number;
-
-  masterNotSavedChanges: boolean = false;
-  detailNotSavedChanges: boolean = false;
-  selectedLoanId: any;
-
-  
   ngOnInit() {
     
   }
@@ -118,72 +97,123 @@ export class EmployeesxLoansComponent {
     this.maestroGridApi = params.api;
   }
 
-  // Método cuando el grid detalle está listo
-  onDetalleGridReady(params: GridReadyEvent) {
-    this.detalleGridApi = params.api;
-  }
-
-  // Método cuando se selecciona una fila en el grid maestro
-  onMaestroSelectionChanged(event: SelectionChangedEvent) {
-    const selectedRows = this.maestroGridApi.getSelectedRows();
-    if (selectedRows.length > 0) {
-      const selectedMaestro = selectedRows[0];
-      // Simula la carga de detalles basado en la selección del maestro
-      this.detalleRowData = this.getDetalleData(selectedMaestro.id);
-    } else {
-      this.detalleRowData = [];
+  private cleanDataForServer(data: any): any {
+    const cleanedData = { ...data };
+    delete cleanedData.__isNew;
+    delete cleanedData.__modified;
+    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
+      delete cleanedData.id;
     }
+    return cleanedData;
   }
 
-  // Método para obtener los detalles basados en el ID del maestro
-  getDetalleData(maestroId: number): any[] {
-    // Simula datos de detalle
-    return [
-      { detalleId: 1, descripcion: `Detalle 1 para Maestro ${maestroId}` },
-      { detalleId: 2, descripcion: `Detalle 2 para Maestro ${maestroId}` },
-      // Agrega más detalles según sea necesario
-    ];
-  }
-
-  saveMasterChanges() {
-
-  }
-
-  revertMasterData() {
-
-  } 
-
-  deleteMasterEntry() {
-
-  }
-
-  addDetailRow() {
-
-  } 
-
-  saveDetailChanges() {
-
-  } 
-
-  revertDetailData() {
-
-  } 
+// Column Definitions: Defines the columns to be displayed.
+public gridOptions: any = {
+  headerHeight: 30,
+  rowHeight: 30,
+  rowClass: (params) => {
+    // Verificar si la fila está seleccionada
+    if (params.node.isSelected()) {
+      return 'selected-row';
+    }
+    return '';
+  },
+  onRowClicked: (event) => {
+    // Seleccionar la fila al hacer clic en cualquier celda
+    event.node.setSelected(true);
+  },
+  onRowSelected: (event) => {
+    // Deseleccionar otras filas cuando se selecciona una nueva
+    if (event.node.isSelected()) {
+      this.gridApi.forEachNode((node) => {
+        if (node.id !== event.node.id) {
+          node.setSelected(false);
+        }
+      });
+    }
+  },
+};
   
-  deleteDetailEntry() {
+  get colMaster(): ColDef[] {
+    return [
+      {
+        field: 'date',
+        headerName: 'Fecha abono',
+        editable: true,
+        flex: 1,
+        cellDataType: 'dateString',
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          return new Date(params.value).toLocaleDateString('es-MX'); // Formato dd/mm/yy automático
+        }
+      },
+      {
+        field: 'type',
+        headerName: 'Tipo',
+        editable: true,
+        flex: 1,
+      },
+      
+      {
+        field: 'loan', headerName: 'Préstamo', enableRowGroup: true, editable: (params) => params.data.__isNew, flex: 1,
+        cellDataType: 'number',
+        cellEditorParams: {
+          min: 0
+        },
+        valueFormatter: (params) => {
+          return `$${params.value.toFixed(2)}`;
+        }
+      },
 
-  } 
-
-  // Add this method to the class
-  onMasterCellValueChanged(event: any): void {
-    console.log('Dato cambiado:', event.data);
-    event.data.__modified = true;
-    this.masterNotSavedChanges = true
-  }
-
-  onDetailCellValueChanged($event) {
-    console.log('Dato cambiado:', $event.data);
-    $event.data.__modified = true;
-    this.detailNotSavedChanges
-  } 
+      {
+        field: 'payment', headerName: 'Abono', editable: (params) => params.data.__isNew, flex: 1,
+        cellDataType: 'number',
+        cellEditorParams: {
+          min: 0
+        },
+        valueFormatter: (params) => {
+          return `$${params.value.toFixed(2)}` ;
+        }
+      },
+      {
+        field: 'total', headerName: 'Saldo', editable: false, flex: 1,
+        cellDataType: 'number',
+        cellEditorParams: {
+          min: 0
+        },
+        valueFormatter: (params) => {
+          return params.value ? `$${params.value.toFixed(2)}` : '';
+        }
+      },
+      {
+        field: 'comments', headerName: 'Comentarios', editable: false, flex: 2,
+        cellEditor: 'agPopupTextCellEditor',
+        cellEditorParams: {
+          maxLength: 100,
+          cols: 50,
+          rows: 3,
+          onKeyDown: (event: KeyboardEvent) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.stopPropagation();
+            }
+          },
+        },
+        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+          if (!event.node.group) {
+            this.modalServiceTable.showModal({
+              params: event,
+              value: event.value,
+            });
+          }
+        },
+        cellRenderer: (params: ICellRendererParams) => {
+          if (params.node.group) {
+            return params.value;
+          }
+          return params.value;
+        }
+      }
+    ]
+  };
 
 }

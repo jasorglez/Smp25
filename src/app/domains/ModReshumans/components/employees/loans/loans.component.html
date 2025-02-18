@@ -39,42 +39,23 @@
       </div>
     </div>
 
-    <!-- Botones y Grid Detalle -->
-    <div class="d-flex col-7 gap-2">
-      <div class="d-flex flex-column gap-2">
-        <button type="button" class="btn btn-primary ms-1 me-1" (click)="addDetailRow()" [disabled]="!selectedLoanId">
-          <i class="bi bi-plus-lg"></i>
-        </button>
-        <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveDetailChanges()">
-          <i class="bi bi-floppy"></i>
-          <span
-            class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-            *ngIf="detailNotSavedChanges">
-            <span class="visually-hidden">Hay cambios sin guardar</span>
-          </span>
-        </button>
-        <button type="button" class="btn btn-warning ms-1 me-1" (click)="revertDetailData()">
-          <i class="bi bi-arrow-clockwise"></i>
-        </button>
-        <button type="button" class="btn btn-danger ms-1 me-1" (click)="deleteDetailEntry()">
-          <i class="bi bi-trash"></i>
-        </button>
-      </div>
+    <div class="col">
+      <ag-grid-angular style="width: 100%; height: 40vh;" class="ag-theme-quartz small-text-ag-grid" [rowData]="rowData"
+        [columnDefs]="colMaster"
+        (selectionChanged)="onSelectionChanged($event)"
+        (cellValueChanged)="onCellValueChanged($event)"
+        (rowSelected)="onSelectedRow($event)"
+        (gridReady)="onGridReady($event)"
+        [rowSelection]="rowSelection"
+        [pivotPanelShow]="pivotPanelShow"          
+        [components]="components"
+        [rowGroupPanelShow]="rowGroupPanelShow"
+        [autoGroupColumnDef]="autoGroupColumnDef"   
+        [groupDefaultExpanded]="groupDefaultExpanded"         
+        [gridOptions]="gridOptions">
+      </ag-grid-angular>
 
-      <div class="flex-grow-1">
-        <ag-grid-angular
-          style="width: 100%; height: 75vh;"
-          class="ag-theme-quartz small-text-ag-grid"
-          [rowData]="detalleRowData"
-          [columnDefs]="detalleColumnDefs"
-          [animateRows]="true"
-          [pagination]="true"
-          [defaultColDef]="defaultColDef"
-          (gridReady)="onDetalleGridReady($event)"
-          (cellValueChanged)="onDetailCellValueChanged($event)"
-          rowSelection="single"
-        ></ag-grid-angular>
-      </div>
+
     </div>
   </div>
 </div>

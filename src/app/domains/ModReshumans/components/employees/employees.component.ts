@@ -109,6 +109,7 @@ export class EmployeesComponent {
   public gridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
+    suppressEnterWhenEditing: false,
     rowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -130,6 +131,25 @@ export class EmployeesComponent {
         });
       }
     },
+    onCellKeyDown: (params) => {
+      if (params.event.key === 'Enter') {
+        // Obtener todas las columnas editables
+        const editableColumns = this.colMaster.filter(col => col.editable);
+        const currentColIndex = editableColumns.findIndex(col => col.field === params.column.getColDef().field);
+        
+        if (currentColIndex < editableColumns.length - 1) {
+          // Añadir delay de 50ms antes de mover el foco
+          setTimeout(() => {
+            // Mover a la siguiente columna editable
+            params.api.startEditingCell({
+              rowIndex: params.node.rowIndex,
+              colKey: editableColumns[currentColIndex + 1].field
+            });
+          }, 200); // Retraso para permitir que termine la edición actual
+        }
+        params.event.preventDefault(); // Prevenir comportamiento por defecto
+      }
+    }
   };
 
   get colMaster(): ColDef[] {
@@ -138,6 +158,7 @@ export class EmployeesComponent {
         field: 'employeeCode',
         headerName: 'Código',
         editable: true,
+        suppressMovable: true,
         filter: true,
         width: 130,
         cellEditor: 'autocompleteEditor',
@@ -171,6 +192,7 @@ export class EmployeesComponent {
         field: 'name',
         headerName: 'Nombre',
         editable: true,
+        suppressMovable: true,
         filter: false,
         width: 270,
         cellEditor: 'autocompleteEditor',
@@ -231,11 +253,33 @@ export class EmployeesComponent {
         },
       },
       {
+        field: 'loan',
+        headerName: 'Préstamos',
+        editable: false,
+        filter: false,
+        width: 110,
+      },
+      {
+        field: 'saving',
+        headerName: 'Ahorro',
+        editable: false,
+        filter: false,
+        width: 100,
+      },
+      {
+        field: 'vigente',
+        headerName: 'Vigente',
+        editable: true,
+        suppressMovable: true,
+        filter: true,
+        width: 100,
+      },
+      {
         field: 'cp',
-        headerName: 'Código postal',
+        headerName: 'CP',
         editable: true,
         filter: true,
-        width: 150,
+        width: 100,
       },
       {
         field: 'state',
@@ -363,13 +407,6 @@ export class EmployeesComponent {
           field: 'picture',
         },
         editable: false,
-        width: 100,
-      },
-      {
-        field: 'vigente',
-        headerName: 'Vigente',
-        editable: true,
-        filter: true,
         width: 100,
       },
     ];
