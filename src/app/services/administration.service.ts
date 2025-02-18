@@ -9,8 +9,6 @@ import { TrackingService } from './tracking.service';
 })
 export class AdministrationService {
 
-  constructor() { }
-
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
