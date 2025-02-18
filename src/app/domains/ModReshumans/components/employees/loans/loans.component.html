@@ -24,15 +24,21 @@
 
     <div class="col">
       <ag-grid-angular style="width: 100%; height: 40vh;" class="ag-theme-quartz small-text-ag-grid" [rowData]="rowData"
-        [columnDefs]="colMaster" 
+        [columnDefs]="colMaster"
         (selectionChanged)="onSelectionChanged($event)"
-        (cellValueChanged)="onCellValueChanged($event)" 
+        (cellValueChanged)="onCellValueChanged($event)"
         (rowSelected)="onSelectedRow($event)"
-        (gridReady)="onGridReady($event)" 
-        [rowSelection]="rowSelection" 
-        [components]="components" 
+        (gridReady)="onGridReady($event)"
+        [rowSelection]="rn"
+        [pivotPanelShow]="pivotPanelShow"          
+        [components]="components"
+        [rowGroupPanelShow]="rowGroupPanelShow"
+        [autoGroupColumnDef]="autoGroupColumnDef"   
+        [groupDefaultExpanded]="groupDefaultExpanded"         
         [gridOptions]="gridOptions">
       </ag-grid-angular>
+
+
     </div>
   </div>
 </div>

@@ -18,9 +18,13 @@ import { concat, lastValueFrom, toArray } from 'rxjs';
   styleUrl: './loans.component.scss'
 })
 export class EmployeesxLoansComponent {
+  autoGroupColumnDef: any;
   private employeesxloansService = inject(EmployeesxloansService);
   private signalsService = inject(SignalsService);
   private modalServiceTable = inject(ModalService);
+
+  public groupDefaultExpanded = 0;
+ 
 
   ngOnInit() {
     this.idEmployee = this.signalsService.getIdEmployee()();
@@ -231,9 +235,15 @@ public gridOptions: any = {
           return new Date(params.value).toLocaleDateString('es-MX'); // Formato dd/mm/yy automático
         }
       },
+      {
+        field: 'type',
+        headerName: 'Tipo',
+        editable: true,
+        flex: 1,
+      },
       
       {
-        field: 'loan', headerName: 'Préstamo', editable: (params) => params.data.__isNew, flex: 1,
+        field: 'loan', headerName: 'Préstamo', enableRowGroup: true, editable: (params) => params.data.__isNew, flex: 1,
         cellDataType: 'number',
         cellEditorParams: {
           min: 0
@@ -242,6 +252,7 @@ public gridOptions: any = {
           return `$${params.value.toFixed(2)}`;
         }
       },
+
       {
         field: 'payment', headerName: 'Abono', editable: (params) => params.data.__isNew, flex: 1,
         cellDataType: 'number',
