@@ -16,12 +16,24 @@ export class EmployeesxloansService {
     return this.http.get<any>(`${environment.urlAdministration}/LoansAndCredits/employee/${idEmployee}?Type=${type}`, {headers: this.trackingService.getHeaders()});
   }
 
+  addLoan(data: any): Observable<any> {
+    return this.http.post<any>(`${environment.urlAdministration}/LoansAndCredits`, data, {headers: this.trackingService.getHeaders()});
+  }
+
+  updateLoan(id: number, data: any): Observable<any> {
+    return this.http.put<any>(`${environment.urlAdministration}/LoansAndCredits/${id}`, data, {headers: this.trackingService.getHeaders()});
+  }
+
   getConceptsxLoansCredit(id: number): Observable<any> {
     return this.http.get<any>(`${environment.urlAdministration}/ConceptsxLoansCredits/loanandcredit/${id}`, {headers: this.trackingService.getHeaders()});
   }                                                               
 
   updateLoanCredit(idLoan: number, loan: any): Observable<any> {
     return this.http.put<any>(`${environment.urlAdministration}/LoansAndCredits/${idLoan}`, loan, {headers: this.trackingService.getHeaders()});
+  }
+
+  addConcept(loan: any): Observable<any> {
+    return this.http.post<any>(`${environment.urlAdministration}/ConceptsxLoansCredits`, loan, {headers: this.trackingService.getHeaders()});
   }
 
   updateConcept(id: number, loan: any): Observable<any> {

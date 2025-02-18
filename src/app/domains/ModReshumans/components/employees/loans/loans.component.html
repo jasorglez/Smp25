@@ -25,9 +25,6 @@
                 <button type="button" class="btn btn-warning" (click)="revertMasterData()">
                   <i class="bi bi-arrow-clockwise"></i>
                 </button>
-                <button type="button" class="btn btn-danger" (click)="deleteMasterEntry()">
-                  <i class="bi bi-trash"></i>
-                </button>
               </div>
             </div>
             <!-- Grid Maestro -->
@@ -54,7 +51,7 @@
             <!-- Columna de botones para Detalles -->
             <div class="col-auto">
               <div class="d-flex flex-column gap-1 me-3">
-                <button type="button" class="btn btn-primary" (click)="addDetailRow()">
+                <button type="button" class="btn btn-primary" (click)="addRow('Detailed')">
                   <i class="bi bi-plus-lg"></i>
                 </button>
                 <button type="button" class="btn btn-success position-relative" (click)="saveDetailChanges()">
@@ -66,9 +63,6 @@
                 </button>
                 <button type="button" class="btn btn-warning" (click)="revertDetailData()">
                   <i class="bi bi-arrow-clockwise"></i>
-                </button>
-                <button type="button" class="btn btn-danger" (click)="deleteDetailEntry()">
-                  <i class="bi bi-trash"></i>
                 </button>
               </div>
             </div>
