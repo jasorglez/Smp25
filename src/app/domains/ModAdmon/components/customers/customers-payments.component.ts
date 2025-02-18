@@ -42,6 +42,7 @@ export class CustomersPaymentsComponent {
   }
 
   notSavedChanges: boolean = false;
+
   rowData: any;
   contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];

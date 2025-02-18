@@ -2,295 +2,188 @@ import { CommonModule } from '@angular/common';
 import { Component, effect, HostListener, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
-import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
+import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams, SelectionChangedEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { EmployeesxloansService } from 'app/services/employeesxloans.service';
 import { ModalService } from 'app/services/modal.service';
 import { SignalsService } from 'app/services/signals.service';
-import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
+
 import { concat, lastValueFrom, toArray } from 'rxjs';
 
 @Component({
   selector: 'app-employeesxloans',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
+  imports: [CommonModule, FormsModule, AgGridModule],
   templateUrl: './loans.component.html',
   styleUrl: './loans.component.scss'
 })
 export class EmployeesxLoansComponent {
+  
   private employeesxloansService = inject(EmployeesxloansService);
   private signalsService = inject(SignalsService);
   private modalServiceTable = inject(ModalService);
 
+  defaultColDef = {
+    flex: 1,
+    resizable: true,
+    sortable: true,
+    filter: true,
+    editable: true
+  };
+
+  rowData: any[] = [];
+  maestroRowData: any[] = [];
+  detalleRowData: any[] = [];
+  loanIds: number;
+
+  gridApi: any;
+
+  idEmployee: number;
+
+  id: number;
+
+  masterNotSavedChanges: boolean = false;
+  detailNotSavedChanges: boolean = false;
+  selectedLoanId: any;
+
+  
   ngOnInit() {
-    this.idEmployee = this.signalsService.getIdEmployee()();
-    this.getLoansByEmployee();
+    
   }
 
   constructor() {
-    effect(() => {
-      this.idEmployee = this.signalsService.getIdEmployee()();
-      this.getLoansByEmployee();
-    }
-  );
-  }
-
-  components = {
-    multiLineEditor: MultiLineEditorComponent
-  };
-
-  id: number;
-  idEmployee: number;
-  rowData: any[] = [];
-  newlyAddedRows: string[] = []; // IDs de filas recién añadidas
-  notSavedChanges: boolean = false;
-
-  // Variables de control del grid
-  selectedRowData: any = null;  // Fila seleccionada actualmente
-  tempIdCounter: number = 0;    // Contador para IDs temporales
-  private gridApi: GridApi;     // API del grid
-  public defaultColDef: ColDef = {
-    sortable: true,
-    filter: true,
-    resizable: true,
-    lockPosition: false,
-    enableRowGroup: true, // Enable row grouping for all columns
-    flex: 1
-  };
-  public rowSelection: 'single' | 'multiple' = 'single';
-  public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
-  public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
-
-  @HostListener('window:beforeunload', ['$event'])
-  unloadNotification($event: any): void {
-    if (this.notSavedChanges) {
-      $event.returnValue =
-        'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
-    }
-  }
-
-  getLoansByEmployee() {
-    this.employeesxloansService.getLoansByEmployee(this.idEmployee).subscribe((data: any) => {
-      this.rowData = data;
-    },
-      (error) => console.error('Error fetching data:', error)
+     effect(() => {
+       this.idEmployee = this.signalsService.getIdEmployee()();
+       this.loadData();
+      }
     );
   }
 
-  onSelectionChanged(event: any) {
-    console.log(event)
-    const selectedNodes = event.api.getSelectedNodes();
-    if (selectedNodes.length > 0) {
-      this.selectedRowData = selectedNodes[0].data;
-    } else {
-      this.selectedRowData = null;
+  loadData() {
+    if (this.idEmployee === null || this.idEmployee === undefined) {
+      return; // Or handle the case where the ID is not yet available.
+    }
+    console.log("Loading data for employee ID:", this.idEmployee); // Use console.log for debugging
+
+    this.employeesxloansService.getLoansByEmployee(this.idEmployee, 'PRESTAMO').subscribe(
+      (maestroRowData: any[]) => {
+        if (!maestroRowData || maestroRowData.length === 0) {
+          alerts.basicAlert('Aviso', 'No hay datos disponibles', 'info');
+        } else {
+          // Process the data here
+          console.log("Loans data:", maestroRowData); // Log the data to the console
+        }
+      },
+      (error) => {
+        console.error("Error loading loans data:", error); // Handle errors
+        alerts.basicAlert('Error', 'Error al cargar los datos', 'error'); // Show an error message to the user
+      }
+    );
+  }
+  
+
+  // Datos y columnas para el grid maestro
+  
+  maestroColumnDefs: ColDef[] = [
+    
+    { headerName: 'Prestamo', field: 'nombre' },
+    { headerName: 'Fecha', field: 'date' },
+    { headerName: 'Total', field: 'monto' },
+    // Agrega más columnas según sea necesario
+  ];
+
+  // Datos y columnas para el grid detalle
+
+  detalleColumnDefs: ColDef[] = [    
+    { headerName: 'Fecha', field: 'date' },
+    { headerName: 'Abono', field: 'total' },
+    { headerName: 'Comentario', field: 'descripcion' },
+    // Agrega más columnas según sea necesario
+  ];
+
+  // Referencias a los grids
+  private maestroGridApi: any;
+  private detalleGridApi: any;
+
+  // Método para agregar una fila al grid maestro
+  addRow(type: string) {
+    if (type === 'maestro') {
+      const newRow = { id: this.maestroRowData.length + 1, nombre: `Nombre ${this.maestroRowData.length + 1}` };
+      this.maestroRowData = [...this.maestroRowData, newRow];
     }
   }
 
-  onCellValueChanged(event: any) {
+  // Método cuando el grid maestro está listo
+  onMaestroGridReady(params: GridReadyEvent) {
+    this.maestroGridApi = params.api;
+  }
+
+  // Método cuando el grid detalle está listo
+  onDetalleGridReady(params: GridReadyEvent) {
+    this.detalleGridApi = params.api;
+  }
+
+  // Método cuando se selecciona una fila en el grid maestro
+  onMaestroSelectionChanged(event: SelectionChangedEvent) {
+    const selectedRows = this.maestroGridApi.getSelectedRows();
+    if (selectedRows.length > 0) {
+      const selectedMaestro = selectedRows[0];
+      // Simula la carga de detalles basado en la selección del maestro
+      this.detalleRowData = this.getDetalleData(selectedMaestro.id);
+    } else {
+      this.detalleRowData = [];
+    }
+  }
+
+  // Método para obtener los detalles basados en el ID del maestro
+  getDetalleData(maestroId: number): any[] {
+    // Simula datos de detalle
+    return [
+      { detalleId: 1, descripcion: `Detalle 1 para Maestro ${maestroId}` },
+      { detalleId: 2, descripcion: `Detalle 2 para Maestro ${maestroId}` },
+      // Agrega más detalles según sea necesario
+    ];
+  }
+
+  saveMasterChanges() {
+
+  }
+
+  revertMasterData() {
+
+  } 
+
+  deleteMasterEntry() {
+
+  }
+
+  addDetailRow() {
+
+  } 
+
+  saveDetailChanges() {
+
+  } 
+
+  revertDetailData() {
+
+  } 
+  
+  deleteDetailEntry() {
+
+  } 
+
+  // Add this method to the class
+  onMasterCellValueChanged(event: any): void {
     console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
-    this.notSavedChanges = true;
-
-    // Calcular el total automáticamente
-    if (event.data.loan !== undefined && event.data.payment !== undefined) {
-      event.data.total = event.data.loan - event.data.payment;
-    }
+    this.masterNotSavedChanges = true
   }
 
-  onGridReady(params: GridReadyEvent) {
-    this.gridApi = params.api;
-  }
-
-  onSelectedRow(event: any) {
-    this.id = event.data.id;
-  }
-
-  addRow() {
-    // Verificar si ya hay una fila nueva
-    if (this.rowData.some(row => row.__isNew)) {
-      alerts.basicAlert(
-        'Advertencia',
-        'Ya hay una fila nueva. No se puede añadir otra.',
-        'warning'
-      );
-      return; // Salir del método si ya hay una fila nueva
-    }
-
-    const tempId = `temp_${this.tempIdCounter++}`;
-    const newItem = {
-      id: tempId,
-      idEmployee: this.idEmployee,
-      date: '',
-      loan: this.rowData.length > 0 ? this.rowData[this.rowData.length - 1].total : 0,
-      payment: 0,
-      total: 0,
-      comments: '',
-      active: true,
-      __isNew: true,
-    };
-
-    // Actualizar el estado
-    this.rowData = [newItem, ...this.rowData];
-    this.newlyAddedRows.push(tempId);
-    this.notSavedChanges = true;
-    this.gridApi.setGridOption("rowData", this.rowData);
-  }
-
-  async saveChanges() {
-    const newRows = this.rowData.filter((row) => row.__isNew);
-    const modifiedRows = this.rowData.filter(
-      (row) => row.__modified && !row.__isNew
-    );
-
-    const addObservables = newRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      return this.employeesxloansService.addLoanData(cleanedData);
-    });
-
-    const updateObservables = modifiedRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      return this.employeesxloansService.updateLoanData(row.id, cleanedData);
-    });
-
-    // Using concat to combine observables and lastValueFrom for async/await
-    try {
-      const responses = await lastValueFrom(
-        concat(...addObservables, ...updateObservables).pipe(toArray())
-      );
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
-      this.notSavedChanges = false;
-      this.newlyAddedRows = [];
-      this.getLoansByEmployee(); // Refrescar los datos
-    } catch (error) {
-      console.error(error);
-      alerts.basicAlert(
-        'Error',
-        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
-        'error'
-      );
-    }
-  }
-
-  revert() {
-    this.getLoansByEmployee(); // Refrescar los datos
-    this.notSavedChanges = false;
-  }
-
-  private cleanDataForServer(data: any): any {
-    const cleanedData = { ...data };
-    delete cleanedData.__isNew;
-    delete cleanedData.__modified;
-    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
-      delete cleanedData.id;
-    }
-    return cleanedData;
-  }
-
-// Column Definitions: Defines the columns to be displayed.
-public gridOptions: any = {
-  headerHeight: 30,
-  rowHeight: 30,
-  rowClass: (params) => {
-    // Verificar si la fila está seleccionada
-    if (params.node.isSelected()) {
-      return 'selected-row';
-    }
-    return '';
-  },
-  onRowClicked: (event) => {
-    // Seleccionar la fila al hacer clic en cualquier celda
-    event.node.setSelected(true);
-  },
-  onRowSelected: (event) => {
-    // Deseleccionar otras filas cuando se selecciona una nueva
-    if (event.node.isSelected()) {
-      this.gridApi.forEachNode((node) => {
-        if (node.id !== event.node.id) {
-          node.setSelected(false);
-        }
-      });
-    }
-  },
-};
-  
-  get colMaster(): ColDef[] {
-    return [
-      {
-        field: 'date',
-        headerName: 'Fecha abono',
-        editable: true,
-        flex: 1,
-        cellDataType: 'dateString',
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          return new Date(params.value).toLocaleDateString('es-MX'); // Formato dd/mm/yy automático
-        }
-      },
-      
-      {
-        field: 'loan', headerName: 'Préstamo', editable: (params) => params.data.__isNew, flex: 1,
-        cellDataType: 'number',
-        cellEditorParams: {
-          min: 0
-        },
-        valueFormatter: (params) => {
-          return `$${params.value.toFixed(2)}`;
-        }
-      },
-      {
-        field: 'payment', headerName: 'Abono', editable: (params) => params.data.__isNew, flex: 1,
-        cellDataType: 'number',
-        cellEditorParams: {
-          min: 0
-        },
-        valueFormatter: (params) => {
-          return `$${params.value.toFixed(2)}` ;
-        }
-      },
-      {
-        field: 'total', headerName: 'Saldo', editable: false, flex: 1,
-        cellDataType: 'number',
-        cellEditorParams: {
-          min: 0
-        },
-        valueFormatter: (params) => {
-          return params.value ? `$${params.value.toFixed(2)}` : '';
-        }
-      },
-      {
-        field: 'comments', headerName: 'Comentarios', editable: false, flex: 2,
-        cellEditor: 'agPopupTextCellEditor',
-        cellEditorParams: {
-          maxLength: 100,
-          cols: 50,
-          rows: 3,
-          onKeyDown: (event: KeyboardEvent) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.stopPropagation();
-            }
-          },
-        },
-        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-          if (!event.node.group) {
-            this.modalServiceTable.showModal({
-              params: event,
-              value: event.value,
-            });
-          }
-        },
-        cellRenderer: (params: ICellRendererParams) => {
-          if (params.node.group) {
-            return params.value;
-          }
-          return params.value;
-        }
-      }
-    ]
-  };
+  onDetailCellValueChanged($event) {
+    console.log('Dato cambiado:', $event.data);
+    $event.data.__modified = true;
+    this.detailNotSavedChanges
+  } 
 
 }

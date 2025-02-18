@@ -1,38 +1,80 @@
-<app-multi-line-editor></app-multi-line-editor>
 <div class="col-12">
-  <!-- Botones y grid principal -->
-  <div class="row mt-3">
-    <!-- Columna de botones -->
-    <div class="col-auto">
+  <div class="row">
+    <!-- Botones y Grid Maestro -->
+    <div class="d-flex col-5 gap-2">
       <div class="d-flex flex-column gap-2">
-        <button type="button" class="btn btn-primary ms-1 me-1" (click)="addRow()">
+        <button type="button" class="btn btn-primary ms-1 me-1" (click)="addRow('Master')">
           <i class="bi bi-plus-lg"></i>
         </button>
-        <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveChanges()">
+        <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveMasterChanges()">
           <i class="bi bi-floppy"></i>
           <span
             class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-            *ngIf="notSavedChanges">
+            *ngIf="masterNotSavedChanges">
             <span class="visually-hidden">Hay cambios sin guardar</span>
           </span>
         </button>
-        <button type="button" class="btn btn-warning ms-1 me-1" (click)="revert()">
+        <button type="button" class="btn btn-warning ms-1 me-1" (click)="revertMasterData()">
           <i class="bi bi-arrow-clockwise"></i>
         </button>
+        <button type="button" class="btn btn-danger ms-1 me-1" (click)="deleteMasterEntry()">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+      
+      <div class="flex-grow-1">
+        <ag-grid-angular
+          style="width: 100%; height: 75vh;"
+          class="ag-theme-quartz small-text-ag-grid"
+          [rowData]="maestroRowData"
+          [columnDefs]="maestroColumnDefs"
+          rowSelection="single"
+          [animateRows]="true"
+          [pagination]="true"
+          [defaultColDef]="defaultColDef"
+          (gridReady)="onMaestroGridReady($event)"
+          (selectionChanged)="onMaestroSelectionChanged($event)"
+          (cellValueChanged)="onMasterCellValueChanged($event)"          
+        ></ag-grid-angular>
       </div>
     </div>
 
-    <div class="col">
-      <ag-grid-angular style="width: 100%; height: 40vh;" class="ag-theme-quartz small-text-ag-grid" [rowData]="rowData"
-        [columnDefs]="colMaster" 
-        (selectionChanged)="onSelectionChanged($event)"
-        (cellValueChanged)="onCellValueChanged($event)" 
-        (rowSelected)="onSelectedRow($event)"
-        (gridReady)="onGridReady($event)" 
-        [rowSelection]="rowSelection" 
-        [components]="components" 
-        [gridOptions]="gridOptions">
-      </ag-grid-angular>
+    <!-- Botones y Grid Detalle -->
+    <div class="d-flex col-7 gap-2">
+      <div class="d-flex flex-column gap-2">
+        <button type="button" class="btn btn-primary ms-1 me-1" (click)="addDetailRow()" [disabled]="!selectedLoanId">
+          <i class="bi bi-plus-lg"></i>
+        </button>
+        <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveDetailChanges()">
+          <i class="bi bi-floppy"></i>
+          <span
+            class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+            *ngIf="detailNotSavedChanges">
+            <span class="visually-hidden">Hay cambios sin guardar</span>
+          </span>
+        </button>
+        <button type="button" class="btn btn-warning ms-1 me-1" (click)="revertDetailData()">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+        <button type="button" class="btn btn-danger ms-1 me-1" (click)="deleteDetailEntry()">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+
+      <div class="flex-grow-1">
+        <ag-grid-angular
+          style="width: 100%; height: 75vh;"
+          class="ag-theme-quartz small-text-ag-grid"
+          [rowData]="detalleRowData"
+          [columnDefs]="detalleColumnDefs"
+          [animateRows]="true"
+          [pagination]="true"
+          [defaultColDef]="defaultColDef"
+          (gridReady)="onDetalleGridReady($event)"
+          (cellValueChanged)="onDetailCellValueChanged($event)"
+          rowSelection="single"
+        ></ag-grid-angular>
+      </div>
     </div>
   </div>
 </div>
