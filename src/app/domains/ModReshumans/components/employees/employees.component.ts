@@ -199,8 +199,10 @@ export class EmployeesComponent {
       },
       {
         field: 'name',
-        headerName: 'Nombre',
+        headerName: 'Nombre *',
+        headerClass: 'required-header',
         editable: true,
+        cellStyle: (params) => this.validateRequiredField(params.value),
         suppressMovable: true,
         filter: 'agSetColumnFilter',
         filterParams: {
@@ -216,6 +218,10 @@ export class EmployeesComponent {
           minLength: 1,
         },
         valueSetter: (params) => {
+          if (!params.newValue || params.newValue.trim() === '') {
+            alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
+            return false;
+          }
           const duplicateExists = this.rowData.some(
             (row, index) =>
               index !== params.node.rowIndex && row.name === params.newValue
@@ -272,6 +278,15 @@ export class EmployeesComponent {
         editable: false,
         filter: false,
         width: 110,
+        valueFormatter: (params) => {
+          if (params.value) {
+            return new Intl.NumberFormat('es-MX', {
+              style: 'currency',
+              currency: 'MXN',
+            }).format(params.value);
+          }
+          return '$0.00';
+        }
       },
       {
         field: 'saving',
@@ -279,6 +294,15 @@ export class EmployeesComponent {
         editable: false,
         filter: false,
         width: 100,
+        valueFormatter: (params) => {
+          if (params.value) {
+            return new Intl.NumberFormat('es-MX', {
+              style: 'currency',
+              currency: 'MXN',
+            }).format(params.value);
+          }
+          return '$0.00';
+        }
       },
       {
         field: 'clockPassword',
@@ -722,5 +746,12 @@ export class EmployeesComponent {
         console.error('Error al obtener la información de gestión de facturación:', error);
       }
     );
+  }
+
+  private validateRequiredField(value: any): any {
+    return {
+      backgroundColor: !value ? '#fff3cd' : 'transparent',
+      border: !value ? '2px solid #ff9966' : 'none'
+    };
   }
 }

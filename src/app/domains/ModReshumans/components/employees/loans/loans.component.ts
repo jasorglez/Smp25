@@ -149,7 +149,6 @@ export class EmployeesxLoansComponent {
     this.employeesxloansService.getConceptsxLoansCredit(this.idLoan).subscribe(
       (detalleRowData) => {
         if (!detalleRowData || detalleRowData.length === 0) {
-          alerts.basicAlert('Aviso', 'No hay datos disponibles', 'info');
           this.detalleRowData = [];
         } else {
           console.log('Loans data:', detalleRowData);
@@ -166,7 +165,8 @@ export class EmployeesxLoansComponent {
 
   maestroColumnDefs: ColDef[] = [
     { 
-      headerName: 'Prestamo', 
+      headerName: 'Prestamo *', 
+      headerClass: 'required-header',
       field: 'name', 
       flex: 2,
       editable: (params) => params.data?.__isNew === true
@@ -190,7 +190,8 @@ export class EmployeesxLoansComponent {
       editable: (params) => params.data?.__isNew === true
     },
     {
-      headerName: 'Total',
+      headerName: 'Total *',
+      headerClass: 'required-header',
       field: 'monto',
       valueFormatter: (params) => {
         if (params.value) {
@@ -214,7 +215,7 @@ export class EmployeesxLoansComponent {
             currency: 'MXN',
           }).format(params.value);
         }
-        return '';
+        return '$0.00';
       },
       flex: 1,
       editable: false
@@ -229,7 +230,7 @@ export class EmployeesxLoansComponent {
             currency: 'MXN',
           }).format(params.value);
         }
-        return '';
+        return '$0.00';
       },
       flex: 1,
       editable: false
@@ -256,7 +257,8 @@ export class EmployeesxLoansComponent {
       editable: (params) => params.data?.__isNew === true
     },
     {
-      headerName: 'Abono',
+      headerName: 'Abono *',
+      headerClass: 'required-header',
       field: 'total',
       valueFormatter: (params) => {
         if (params.value) {
@@ -265,7 +267,7 @@ export class EmployeesxLoansComponent {
             currency: 'MXN',
           }).format(params.value);
         }
-        return '';
+        return '$0.00';
       },
       flex: 1,
       editable: (params) => params.data?.__isNew === true
@@ -298,6 +300,7 @@ export class EmployeesxLoansComponent {
         date: localNow.toISOString(), // Usar fecha local en formato ISO
         type: 'PRESTAMO',
         monto: 0,
+        payments: 0,
         __isNew: true,
         active: true
       };

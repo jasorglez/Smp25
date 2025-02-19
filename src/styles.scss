@@ -110,5 +110,15 @@ body {
 }
 
 .ag-row-selected {
-  background-color: #e6f4ea !important; /* Verde suave */
+  background-color: #6baefa !important; /* Verde suave */
 } 
+
+.required-header {
+  &::after {
+    content: '*';
+    color: #dc3545;
+    margin-left: 3px;
+  }
+}
+
+// Mantén los estilos existentes...
