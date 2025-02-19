@@ -56,6 +56,7 @@ export class EmployeesComponent {
   newlyAddedRows: string[] = []; // IDs de filas recién añadidas
   notSavedChanges: boolean = false;
   prefixAndConsecutive: any[] = [];
+  banks: any[] = [];
 
   // Variables de control del grid
   selectedRowData: any = null; // Fila seleccionada actualmente
@@ -100,6 +101,7 @@ export class EmployeesComponent {
       } else {
         this.obtenerDatos();
         this.getHRSetup();
+        this.getBanks();
       }
     });
   }
@@ -108,6 +110,7 @@ export class EmployeesComponent {
     this.obtenerDatos();
     this.getStates();
     this.getHRSetup();
+    this.getBanks();
   }
 
   // Column Definitions: Defines the columns to be displayed.
@@ -326,6 +329,23 @@ export class EmployeesComponent {
           }
         }
       },
+      {field: 'idBank',
+        headerName: 'Banco',
+        editable: true,
+        suppressMovable: true,
+        filter: false,
+        width: 100,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.banks.map(user => user.id)
+        },
+        valueFormatter: (params) => {
+          const foundBank = this.banks
+            ? this.banks.find((user) => user.id === params.value)
+            : null;
+          return foundBank ? `${foundBank.name}` : params.value;
+        },
+      },
       {
         field: 'vigente',
         headerName: 'Vigente',
@@ -491,6 +511,19 @@ export class EmployeesComponent {
       }
       return null;
     }
+  }
+
+  getBanks() {
+    this.administrationService.get2fieldsBanks().subscribe(
+      (data: any) => {
+        this.banks = data;
+        console.log(this.banks);
+      },
+      (error) => {
+        if(error.status == 404)
+          this.banks = [];
+        console.error('Error fetching data:', error)}
+    )
   }
 
   onMasterSelectionChanged(event: any) {

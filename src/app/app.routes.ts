@@ -315,7 +315,7 @@ export const routes: Routes = [
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'hr' } },
         children: [
-          { path: '', redirectTo: 'ModReshumans', pathMatch: 'full' }, ...SharedModule.getRoutes(),
+          { path: '', redirectTo: 'employees', pathMatch: 'full' },
           {
             path: 'setup-rh',
             loadComponent: () => import('./domains/ModReshumans/components/setup/setup.component').then(s => s.SetupComponent)
