@@ -193,7 +193,11 @@ export class EmployeesComponent {
         headerName: 'Nombre',
         editable: true,
         suppressMovable: true,
-        filter: false,
+        filter: 'agSetColumnFilter',
+        filterParams: {
+          // can be 'windows' or 'mac'
+          excelMode: 'windows',
+        },
         width: 270,
         cellEditor: 'autocompleteEditor',
         cellEditorParams: {
@@ -265,6 +269,28 @@ export class EmployeesComponent {
         editable: false,
         filter: false,
         width: 100,
+      },
+      {
+        field: 'clockPassword',
+        headerName: 'Contraseña Reloj',
+        width: 100,
+        editable: false,
+        cellRenderer: (params: ICellRendererParams) => {
+          // Mostrar valor real para nuevas filas, ocultar para existentes
+          if (params.data.id.toString().startsWith('temp_')) {
+            return params.value;
+          }
+          return '••••'; // Mostrar puntos para contraseñas existentes
+        },
+        onCellDoubleClicked: (params: CellDoubleClickedEvent) => {
+          if (!params.data.id.toString().startsWith('temp_')) {
+            alerts.basicAlert(
+              'Contraseña Reloj',
+              `La contraseña es: ${params.data.clockPassword}`,
+              'info'
+            );
+          }
+        }
       },
       {
         field: 'vigente',
@@ -371,28 +397,6 @@ export class EmployeesComponent {
           }
         },
         filter: true,
-      },
-      {
-        field: 'clockPassword',
-        headerName: 'Contraseña Reloj',
-        width: 100,
-        editable: false,
-        cellRenderer: (params: ICellRendererParams) => {
-          // Mostrar valor real para nuevas filas, ocultar para existentes
-          if (params.data.id.toString().startsWith('temp_')) {
-            return params.value;
-          }
-          return '••••'; // Mostrar puntos para contraseñas existentes
-        },
-        onCellDoubleClicked: (params: CellDoubleClickedEvent) => {
-          if (!params.data.id.toString().startsWith('temp_')) {
-            alerts.basicAlert(
-              'Contraseña Reloj',
-              `La contraseña es: ${params.data.clockPassword}`,
-              'info'
-            );
-          }
-        }
       },
       {
         field: 'picture',

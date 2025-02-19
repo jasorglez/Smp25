@@ -365,7 +365,7 @@ export class EmployeesxLoansComponent {
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       return this.employeesxloansService.updateLoan(row.id, cleanedData);
-    }); 
+    });
 
     try {
       const responses = await lastValueFrom(
@@ -387,8 +387,8 @@ export class EmployeesxLoansComponent {
         'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
         'error'
       );
-    } 
-  } 
+    }
+  }
 
   revertMasterData() {
     this.loadData();
