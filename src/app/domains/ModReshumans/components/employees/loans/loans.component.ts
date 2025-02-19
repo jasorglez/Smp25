@@ -176,11 +176,13 @@ export class EmployeesxLoansComponent {
       field: 'date',
       valueFormatter: (params) => {
         if (params.value) {
+          // Convertir a fecha local
           const date = new Date(params.value);
-          return `${('0' + date.getDate()).slice(-2)}-${(
+          const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+          return `${('0' + localDate.getDate()).slice(-2)}-${(
             '0' +
-            (date.getMonth() + 1)
-          ).slice(-2)}-${date.getFullYear()}`;
+            (localDate.getMonth() + 1)
+          ).slice(-2)}-${localDate.getFullYear()}`;
         }
         return '';
       },
@@ -240,11 +242,13 @@ export class EmployeesxLoansComponent {
       field: 'date',
       valueFormatter: (params) => {
         if (params.value) {
+          // Convertir a fecha local
           const date = new Date(params.value);
-          return `${('0' + date.getDate()).slice(-2)}-${(
+          const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+          return `${('0' + localDate.getDate()).slice(-2)}-${(
             '0' +
-            (date.getMonth() + 1)
-          ).slice(-2)}-${date.getFullYear()}`;
+            (localDate.getMonth() + 1)
+          ).slice(-2)}-${localDate.getFullYear()}`;
         }
         return '';
       },
@@ -279,17 +283,19 @@ export class EmployeesxLoansComponent {
 
   addRow(type: string) {
     const tempId = `temp_${this.tempIdCounter++}`;
+    // Usar fecha local
     const now = new Date();
-    const formattedDate = `${('0' + now.getDate()).slice(-2)}-${(
+    const localNow = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+    const formattedDate = `${('0' + localNow.getDate()).slice(-2)}-${(
       '0' +
-      (now.getMonth() + 1)
-    ).slice(-2)}-${now.getFullYear()}`;
+      (localNow.getMonth() + 1)
+    ).slice(-2)}-${localNow.getFullYear()}`;
     if (type === 'Master') {
       const newRow = {
         id: tempId,
         idEmpleado: this.idEmployee,
         name: `PRESTAMO ${formattedDate}`,
-        date: new Date().toISOString(),
+        date: localNow.toISOString(), // Usar fecha local en formato ISO
         type: 'PRESTAMO',
         monto: 0,
         __isNew: true,
@@ -301,7 +307,7 @@ export class EmployeesxLoansComponent {
       const newRow = {
         id: tempId,
         idLoanAndCredit: this.idLoan,
-        date: new Date().toISOString(),
+        date: localNow.toISOString(), // Usar fecha local en formato ISO
         status: 'Pendiente',
         total: 0,
         comments: '',

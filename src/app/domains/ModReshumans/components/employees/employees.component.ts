@@ -7,7 +7,7 @@ import {
   ICellRendererParams,
 } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
-import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { catchError, concat, EMPTY, lastValueFrom, toArray, tap } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -20,6 +20,8 @@ import { ImageHandlerService } from 'app/services/image-handler.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { States } from 'app/interface/states';
 import { EmployeesxLoansComponent } from './loans/loans.component';
+import { AdministrationService } from 'app/services/administration.service';
+import { HRService } from 'app/services/hr.service';
 
 @Component({
   selector: 'app-employees',
@@ -37,12 +39,12 @@ import { EmployeesxLoansComponent } from './loans/loans.component';
 export class EmployeesComponent {
   // Inject of new way for Angular 18
   private imageHandlerService = inject(ImageHandlerService);
-
   private employeeService = inject(EmployeesService);
-
   private signalsService = inject(SignalsService);
   private modalServiceTable = inject(ModalService);
   private inegiService = inject(InegiService);
+  private administrationService = inject(AdministrationService);
+  private hrService = inject(HRService);
 
   id: number;
   idBranch: number;
@@ -53,6 +55,7 @@ export class EmployeesComponent {
   private estados: string[] = [];
   newlyAddedRows: string[] = []; // IDs de filas recién añadidas
   notSavedChanges: boolean = false;
+  prefixAndConsecutive: any[] = [];
 
   // Variables de control del grid
   selectedRowData: any = null; // Fila seleccionada actualmente
@@ -96,6 +99,7 @@ export class EmployeesComponent {
         );
       } else {
         this.obtenerDatos();
+        this.getHRSetup();
       }
     });
   }
@@ -103,6 +107,7 @@ export class EmployeesComponent {
   ngOnInit() {
     this.obtenerDatos();
     this.getStates();
+    this.getHRSetup();
   }
 
   // Column Definitions: Defines the columns to be displayed.
@@ -558,10 +563,27 @@ export class EmployeesComponent {
       return;
     }
 
+       // Validar que el array tenga elementos
+       if (!this.prefixAndConsecutive?.[0]) {
+        alerts.basicAlert(
+          'Error de configuración',
+          'La configuración de prefijo/consecutivo no está cargada correctamente',
+          'error'
+        );
+        return;
+      }
+
     const newRows = this.rowData.filter((row) => row.__isNew);
     const modifiedRows = this.rowData.filter(
       (row) => row.__modified && !row.__isNew
     );
+
+    // Generar códigos de empleado para nuevas filas
+    let currentConsecutive = this.prefixAndConsecutive[0].consecutive;
+    newRows.forEach(row => {
+      currentConsecutive++;
+      row.employeeCode = `${this.prefixAndConsecutive[0].prefix}${currentConsecutive.toString().padStart(4, '0')}`;
+    });
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
@@ -573,10 +595,24 @@ export class EmployeesComponent {
       return this.employeeService.updateEmployee(row.id, cleanedData);
     });
 
-    // Using concat to combine observables and lastValueFrom for async/await
+    // Crear objeto para actualizar el consecutivo
+    const updatedHRSetupInfo = {
+      ...this.prefixAndConsecutive[0],
+      consecutive: currentConsecutive
+    };
+
+    const updateConsecutiveObs = this.hrService.updateHRManagementData(
+      this.idBranch,
+      updatedHRSetupInfo
+    ).pipe(
+      tap(response => {
+        this.prefixAndConsecutive = [updatedHRSetupInfo];
+      })
+    );
+
     try {
       const responses = await lastValueFrom(
-        concat(...addObservables, ...updateObservables).pipe(toArray())
+        concat(...addObservables, ...updateObservables, updateConsecutiveObs).pipe(toArray())
       );
       alerts.basicAlert(
         'Datos actualizados',
@@ -674,5 +710,17 @@ export class EmployeesComponent {
       isUnique = !this.rowData.some(row => row.clockPassword === password);
     }
     return password;
+  }
+
+  async getHRSetup() {
+    this.hrService.getHRManagementData(this.idBranch).subscribe(
+      (data: any) => {
+        this.prefixAndConsecutive = Array.isArray(data) ? data : [data];
+        console.log(this.prefixAndConsecutive);
+      },
+      (error) => {
+        console.error('Error al obtener la información de gestión de facturación:', error);
+      }
+    );
   }
 }
