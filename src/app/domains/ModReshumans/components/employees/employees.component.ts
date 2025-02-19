@@ -159,7 +159,11 @@ export class EmployeesComponent {
         headerName: 'Código',
         editable: true,
         suppressMovable: true,
-        filter: true,
+        filter: 'agSetColumnFilter',
+        filterParams: {
+          // can be 'windows' or 'mac'
+          excelMode: 'windows',
+        },
         width: 130,
         cellEditor: 'autocompleteEditor',
         cellEditorParams: {
@@ -196,7 +200,7 @@ export class EmployeesComponent {
         filter: 'agSetColumnFilter',
         filterParams: {
           // can be 'windows' or 'mac'
-          excelMode: 'windows',
+          excelMode: 'mac',
         },
         width: 270,
         cellEditor: 'autocompleteEditor',
@@ -229,6 +233,7 @@ export class EmployeesComponent {
         field: 'address',
         headerName: 'Dirección',
         editable: false,
+        filter: 'agTextColumnFilter',
         width: 300,
         cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
