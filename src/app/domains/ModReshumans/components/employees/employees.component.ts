@@ -22,6 +22,7 @@ import { States } from 'app/interface/states';
 import { EmployeesxLoansComponent } from './loans/loans.component';
 import { AdministrationService } from 'app/services/administration.service';
 import { HRService } from 'app/services/hr.service';
+import { EmployeesxSavingsComponent } from "./savings/savings.component";
 
 @Component({
   selector: 'app-employees',
@@ -32,7 +33,8 @@ import { HRService } from 'app/services/hr.service';
     AgGridModule,
     MultiLineEditorComponent,
     EmployeesxLoansComponent,
-  ],
+    EmployeesxSavingsComponent
+],
   templateUrl: './employees.component.html',
   styleUrl: './employees.component.scss',
 })
@@ -334,7 +336,7 @@ export class EmployeesComponent {
         editable: true,
         suppressMovable: true,
         filter: false,
-        width: 100,
+        width: 200,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.banks.map(user => user.id)
