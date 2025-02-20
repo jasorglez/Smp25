@@ -22,7 +22,7 @@ import { States } from 'app/interface/states';
 import { EmployeesxLoansComponent } from './loans/loans.component';
 import { AdministrationService } from 'app/services/administration.service';
 import { HRService } from 'app/services/hr.service';
-import { EmployeesxSavingsComponent } from "./savings/savings.component";
+import { EmployeesxSavingsComponent } from './savings/savings.component';
 
 @Component({
   selector: 'app-employees',
@@ -33,8 +33,8 @@ import { EmployeesxSavingsComponent } from "./savings/savings.component";
     AgGridModule,
     MultiLineEditorComponent,
     EmployeesxLoansComponent,
-    EmployeesxSavingsComponent
-],
+    EmployeesxSavingsComponent,
+  ],
   templateUrl: './employees.component.html',
   styleUrl: './employees.component.scss',
 })
@@ -144,22 +144,24 @@ export class EmployeesComponent {
     onCellKeyDown: (params) => {
       if (params.event.key === 'Enter') {
         // Obtener todas las columnas editables
-        const editableColumns = this.colMaster.filter(col => col.editable);
-        const currentColIndex = editableColumns.findIndex(col => col.field === params.column.getColDef().field);
-        
+        const editableColumns = this.colMaster.filter((col) => col.editable);
+        const currentColIndex = editableColumns.findIndex(
+          (col) => col.field === params.column.getColDef().field
+        );
+
         if (currentColIndex < editableColumns.length - 1) {
           // Añadir delay de 50ms antes de mover el foco
           setTimeout(() => {
             // Mover a la siguiente columna editable
             params.api.startEditingCell({
               rowIndex: params.node.rowIndex,
-              colKey: editableColumns[currentColIndex + 1].field
+              colKey: editableColumns[currentColIndex + 1].field,
             });
           }, 200); // Retraso para permitir que termine la edición actual
         }
         params.event.preventDefault(); // Prevenir comportamiento por defecto
       }
-    }
+    },
   };
 
   get colMaster(): ColDef[] {
@@ -224,7 +226,11 @@ export class EmployeesComponent {
         },
         valueSetter: (params) => {
           if (!params.newValue || params.newValue.trim() === '') {
-            alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
+            alerts.basicAlert(
+              'Campo requerido',
+              'El nombre es obligatorio',
+              'error'
+            );
             return false;
           }
           const duplicateExists = this.rowData.some(
@@ -291,7 +297,7 @@ export class EmployeesComponent {
             }).format(params.value);
           }
           return '$0.00';
-        }
+        },
       },
       {
         field: 'saving',
@@ -307,7 +313,7 @@ export class EmployeesComponent {
             }).format(params.value);
           }
           return '$0.00';
-        }
+        },
       },
       {
         field: 'clockPassword',
@@ -329,9 +335,10 @@ export class EmployeesComponent {
               'info'
             );
           }
-        }
+        },
       },
-      {field: 'idBank',
+      {
+        field: 'idBank',
         headerName: 'Banco',
         editable: true,
         suppressMovable: true,
@@ -339,7 +346,7 @@ export class EmployeesComponent {
         width: 200,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: this.banks.map(user => user.id)
+          values: this.banks.map((user) => user.id),
         },
         valueFormatter: (params) => {
           const foundBank = this.banks
@@ -392,14 +399,14 @@ export class EmployeesComponent {
           if (this.infoCp && this.infoCp.length > 0) {
             const asentamientos = this.infoCp[0].asentamientos;
             return {
-              values: asentamientos
+              values: asentamientos,
             };
           }
           return { values: [] };
         },
         valueFormatter: (params) => {
           return params.value || 'Seleccionar asentamiento';
-        }
+        },
       },
       {
         field: 'phone',
@@ -522,10 +529,10 @@ export class EmployeesComponent {
         console.log(this.banks);
       },
       (error) => {
-        if(error.status == 404)
-          this.banks = [];
-        console.error('Error fetching data:', error)}
-    )
+        if (error.status == 404) this.banks = [];
+        console.error('Error fetching data:', error);
+      }
+    );
   }
 
   onMasterSelectionChanged(event: any) {
@@ -590,25 +597,25 @@ export class EmployeesComponent {
       vigente: true,
       active: true,
       __isNew: true,
-      clockPassword: this.generateUniqueClockPassword()
+      clockPassword: this.generateUniqueClockPassword(),
     };
 
     // Actualizar el estado
-  this.rowData = [newItem, ...this.rowData];
-  this.newlyAddedRows.push(tempId);
-  this.notSavedChanges = true;
-  this.gridApi.setGridOption('rowData', this.rowData);
+    this.rowData = [newItem, ...this.rowData];
+    this.newlyAddedRows.push(tempId);
+    this.notSavedChanges = true;
+    this.gridApi.setGridOption('rowData', this.rowData);
 
-  // Encontrar el índice de la nueva fila
-  const newRowIndex = this.rowData.findIndex(row => row.id === tempId);
+    // Encontrar el índice de la nueva fila
+    const newRowIndex = this.rowData.findIndex((row) => row.id === tempId);
 
-  // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
-  setTimeout(() => {
-    this.gridApi.startEditingCell({
-      rowIndex: newRowIndex,
-      colKey: 'name'
-    });
-  }, 50); // Un pequeño retraso de 50ms
+    // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
+    setTimeout(() => {
+      this.gridApi.startEditingCell({
+        rowIndex: newRowIndex,
+        colKey: 'name',
+      });
+    }, 50); // Un pequeño retraso de 50ms
   }
 
   async saveMasterChanges() {
@@ -622,15 +629,15 @@ export class EmployeesComponent {
       return;
     }
 
-       // Validar que el array tenga elementos
-       if (!this.prefixAndConsecutive?.[0]) {
-        alerts.basicAlert(
-          'Error de configuración',
-          'La configuración de prefijo/consecutivo no está cargada correctamente',
-          'error'
-        );
-        return;
-      }
+    // Validar que el array tenga elementos
+    if (!this.prefixAndConsecutive?.[0]) {
+      alerts.basicAlert(
+        'Error de configuración',
+        'La configuración de prefijo/consecutivo no está cargada correctamente',
+        'error'
+      );
+      return;
+    }
 
     const newRows = this.rowData.filter((row) => row.__isNew);
     const modifiedRows = this.rowData.filter(
@@ -639,9 +646,11 @@ export class EmployeesComponent {
 
     // Generar códigos de empleado para nuevas filas
     let currentConsecutive = this.prefixAndConsecutive[0].consecutive;
-    newRows.forEach(row => {
+    newRows.forEach((row) => {
       currentConsecutive++;
-      row.employeeCode = `${this.prefixAndConsecutive[0].prefix}${currentConsecutive.toString().padStart(4, '0')}`;
+      row.employeeCode = `${
+        this.prefixAndConsecutive[0].prefix
+      }${currentConsecutive.toString().padStart(4, '0')}`;
     });
 
     const addObservables = newRows.map((row) => {
@@ -657,21 +666,24 @@ export class EmployeesComponent {
     // Crear objeto para actualizar el consecutivo
     const updatedHRSetupInfo = {
       ...this.prefixAndConsecutive[0],
-      consecutive: currentConsecutive
+      consecutive: currentConsecutive,
     };
 
-    const updateConsecutiveObs = this.hrService.updateHRManagementData(
-      this.idBranch,
-      updatedHRSetupInfo
-    ).pipe(
-      tap(response => {
-        this.prefixAndConsecutive = [updatedHRSetupInfo];
-      })
-    );
+    const updateConsecutiveObs = this.hrService
+      .updateHRManagementData(this.idBranch, updatedHRSetupInfo)
+      .pipe(
+        tap((response) => {
+          this.prefixAndConsecutive = [updatedHRSetupInfo];
+        })
+      );
 
     try {
       const responses = await lastValueFrom(
-        concat(...addObservables, ...updateObservables, updateConsecutiveObs).pipe(toArray())
+        concat(
+          ...addObservables,
+          ...updateObservables,
+          updateConsecutiveObs
+        ).pipe(toArray())
       );
       alerts.basicAlert(
         'Datos actualizados',
@@ -703,36 +715,52 @@ export class EmployeesComponent {
     }
 
     const selectedData = selectedNodes[0].data;
+    
+    // Validar que el préstamo sea 0
+    if (selectedData.loan !== 0) {
+      alerts.basicAlert(
+        'Error al eliminar',
+        'No se puede eliminar el empleado mientras tenga préstamos activos',
+        'error'
+      );
+      return;
+    }
+
     const id = selectedData.id;
     selectedData.active = 0;
-    this.employeeService
-      .deleteEmployee(id)
-      .pipe(
-        catchError((error) => {
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Error al eliminar la entrada.',
-            'error'
-          );
-          console.error(error);
-          return EMPTY;
-        })
+    alerts
+      .confirmAlert(
+        'Eliminar empleado',
+        '¿Está seguro que desea eliminar este empleado?',
+        'warning',
+        'Sí, eliminar'
       )
-      .subscribe(() => {
-        alerts.basicAlert(
-          'Eliminar entrada',
-          'Entrada eliminada satisfactoriamente.',
-          'success'
-        );
-        this.obtenerDatos();
-
-        alerts.basicAlert(
-          'Eliminar entrada',
-          'Entrada eliminada satisfactoriamente.',
-          'success'
-        );
-        this.notSavedChanges = false;
-        this.selectedRowData = null;
+      .then((result) => {
+        if (result.isConfirmed) {
+          this.employeeService
+            .deleteEmployee(id)
+            .pipe(
+              catchError((error) => {
+                alerts.basicAlert(
+                  'Eliminar empleado',
+                  'Error al eliminar el empleado.',
+                  'error'
+                );
+                console.error(error);
+                return EMPTY;
+              })
+            )
+            .subscribe(() => {
+              alerts.basicAlert(
+                'Empleado eliminado',
+                'El empleado se eliminó correctamente',
+                'success'
+              );
+              this.obtenerDatos();
+              this.notSavedChanges = false;
+              this.selectedRowData = null;
+            });
+        }
       });
   }
 
@@ -766,7 +794,7 @@ export class EmployeesComponent {
         .padStart(this.digits, '0'); // Asegurar leading zeros
 
       // Verificar unicidad
-      isUnique = !this.rowData.some(row => row.clockPassword === password);
+      isUnique = !this.rowData.some((row) => row.clockPassword === password);
     }
     return password;
   }
@@ -778,7 +806,10 @@ export class EmployeesComponent {
         console.log(this.prefixAndConsecutive);
       },
       (error) => {
-        console.error('Error al obtener la información de gestión de facturación:', error);
+        console.error(
+          'Error al obtener la información de gestión de facturación:',
+          error
+        );
       }
     );
   }
@@ -786,7 +817,7 @@ export class EmployeesComponent {
   private validateRequiredField(value: any): any {
     return {
       backgroundColor: !value ? '#fff3cd' : 'transparent',
-      border: !value ? '2px solid #ff9966' : 'none'
+      border: !value ? '2px solid #ff9966' : 'none',
     };
   }
 }

@@ -3,18 +3,16 @@ import { Component, effect, HostListener, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import {
-  CellDoubleClickedEvent,
   ColDef,
   GridApi,
   GridReadyEvent,
-  ICellRendererParams,
   SelectionChangedEvent,
 } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { EmployeesxloansService } from 'app/services/employeesxloans.service';
-import { ModalService } from 'app/services/modal.service';
 import { SignalsService } from 'app/services/signals.service';
 import { concat, lastValueFrom, toArray } from 'rxjs';
+import { TimeService } from 'app/services/time.service';
 
 @Component({
   selector: 'app-employeesxloans',
@@ -26,7 +24,7 @@ import { concat, lastValueFrom, toArray } from 'rxjs';
 export class EmployeesxLoansComponent {
   private employeesxloansService = inject(EmployeesxloansService);
   private signalsService = inject(SignalsService);
-  private modalServiceTable = inject(ModalService);
+  private timeService = inject(TimeService);
 
   defaultColDef = {
     flex: 1,
@@ -122,7 +120,6 @@ export class EmployeesxLoansComponent {
     if (this.idEmployee === null || this.idEmployee === undefined) {
       return;
     }
-    console.log('Loading data for employee ID:', this.idEmployee);
 
     this.employeesxloansService
       .getLoansByEmployee(this.idEmployee, 'PRESTAMO')
@@ -131,7 +128,6 @@ export class EmployeesxLoansComponent {
           if (!maestroRowData || maestroRowData.length === 0) {
             this.maestroRowData = this.detalleRowData = [];
           } else {
-            console.log('Loans data:', maestroRowData);
             this.maestroRowData = maestroRowData;
           }
         },
@@ -151,9 +147,7 @@ export class EmployeesxLoansComponent {
         if (!detalleRowData || detalleRowData.length === 0) {
           this.detalleRowData = [];
         } else {
-          console.log('Loans data:', detalleRowData);
           this.detalleRowData = detalleRowData;
-          console.log(this.detalleRowData);
         }
       },
       (error) => {
@@ -174,15 +168,17 @@ export class EmployeesxLoansComponent {
     {
       headerName: 'Fecha',
       field: 'date',
+      valueGetter: (params) => params.data.date ? new Date(params.data.date) : null,
+      cellRenderer: 'agDateCellRenderer',
+      cellEditor: 'agDateCellEditor',
+      cellEditorParams: {
+        min: new Date(2000, 0, 1),
+        max: new Date(2050, 11, 31),
+      },
       valueFormatter: (params) => {
         if (params.value) {
-          // Convertir a fecha local
           const date = new Date(params.value);
-          const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-          return `${('0' + localDate.getDate()).slice(-2)}-${(
-            '0' +
-            (localDate.getMonth() + 1)
-          ).slice(-2)}-${localDate.getFullYear()}`;
+          return `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
         }
         return '';
       },
@@ -241,15 +237,16 @@ export class EmployeesxLoansComponent {
     {
       headerName: 'Fecha',
       field: 'date',
+      valueGetter: (params) => params.data.date ? new Date(params.data.date) : null,
+      cellEditor: 'agDateCellEditor',
+      cellEditorParams: {
+        min: new Date(2000, 0, 1),
+        max: new Date(2050, 11, 31),
+      },
       valueFormatter: (params) => {
         if (params.value) {
-          // Convertir a fecha local
           const date = new Date(params.value);
-          const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-          return `${('0' + localDate.getDate()).slice(-2)}-${(
-            '0' +
-            (localDate.getMonth() + 1)
-          ).slice(-2)}-${localDate.getFullYear()}`;
+          return `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
         }
         return '';
       },
@@ -280,45 +277,49 @@ export class EmployeesxLoansComponent {
     },
   ];
 
-  private maestroGridApi: any;
-  private detalleGridApi: any;
+  private maestroGridApi: GridApi;
+  private detalleGridApi: GridApi;
 
-  addRow(type: string) {
+  private async getTime(): Promise<{dateObj: Date, formatted: string}> {
+    const time = await lastValueFrom(this.timeService.getTime());
+    const date = new Date(time.localTime);
+    return {
+        dateObj: date,
+        formatted: `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`
+    };
+  }
+
+  async addRow(type: string) {
     const tempId = `temp_${this.tempIdCounter++}`;
-    // Usar fecha local
-    const now = new Date();
-    const localNow = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
-    const formattedDate = `${('0' + localNow.getDate()).slice(-2)}-${(
-      '0' +
-      (localNow.getMonth() + 1)
-    ).slice(-2)}-${localNow.getFullYear()}`;
+    const timeData = await this.getTime();
+
     if (type === 'Master') {
-      const newRow = {
-        id: tempId,
-        idEmpleado: this.idEmployee,
-        name: `PRESTAMO ${formattedDate}`,
-        date: localNow.toISOString(), // Usar fecha local en formato ISO
-        type: 'PRESTAMO',
-        monto: 0,
-        payments: 0,
-        __isNew: true,
-        active: true
-      };
-      this.maestroRowData = [...this.maestroRowData, newRow];
-      this.masterNotSavedChanges = true;
+        const newRow = {
+            id: tempId,
+            idEmpleado: this.idEmployee,
+            name: `PRESTAMO ${timeData.formatted}`,
+            date: timeData.dateObj,
+            type: 'PRESTAMO',
+            monto: 0,
+            payments: 0,
+            __isNew: true,
+            active: true
+        };
+        this.maestroRowData = [...this.maestroRowData, newRow];
+        this.masterNotSavedChanges = true;
     } else if (type === 'Detailed') {
-      const newRow = {
-        id: tempId,
-        idLoanAndCredit: this.idLoan,
-        date: localNow.toISOString(), // Usar fecha local en formato ISO
-        status: 'Pendiente',
-        total: 0,
-        comments: '',
-        __isNew: true,
-        active: true
-      };
-      this.detalleRowData = [...this.detalleRowData, newRow];
-      this.detailNotSavedChanges = true;
+        const newRow = {
+            id: tempId,
+            idLoanAndCredit: this.idLoan,
+            date: timeData.dateObj,
+            status: 'Pendiente',
+            total: 0,
+            comments: '',
+            __isNew: true,
+            active: true
+        };
+        this.detalleRowData = [...this.detalleRowData, newRow];
+        this.detailNotSavedChanges = true;
     }
   }
 

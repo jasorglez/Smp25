@@ -327,11 +327,7 @@ export const routes: Routes = [
           {
             path: 'personal',
             loadComponent: () => import('./domains/ModReshumans/components/personal/personal.component').then(p => p.PersonalComponent)
-          },
-          {
-            path: 'equipments',
-            loadComponent: () => import('./domains/ModReshumans/components/reservations/reservations.component').then(r => r.ReservationsComponent)
-          },
+          }
 
         ]
       },
