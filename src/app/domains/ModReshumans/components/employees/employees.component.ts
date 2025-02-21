@@ -468,6 +468,15 @@ export class EmployeesComponent {
           max: 999999,
           precision: 2,
         },
+        valueFormatter: (params) => {
+          if (params.value) {
+            return new Intl.NumberFormat('es-MX', {
+              style: 'currency',
+              currency: 'MXN',
+            }).format(params.value);
+          }
+          return '';
+        },
       },
       {
         field: 'position',
