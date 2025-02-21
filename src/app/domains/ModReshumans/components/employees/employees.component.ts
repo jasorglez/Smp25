@@ -175,6 +175,24 @@ export class EmployeesComponent {
 
   get colMaster(): ColDef[] {
     return [
+
+      {
+        field: 'picture',
+        headerName: 'Fotografía',
+        cellRenderer: this.imageHandlerService.imageCellRenderer.bind(
+          this.imageHandlerService
+        ),
+        cellRendererParams: {
+          clicked: this.imageHandlerService.onImageCellClicked.bind(
+            this.imageHandlerService
+          ),
+          field: 'picture',
+        },
+        editable: false,
+        width: 100,
+      },
+
+
       {
         field: 'employeeCode',
         headerName: 'Código',
@@ -260,6 +278,83 @@ export class EmployeesComponent {
           return true;
         },
       },
+
+      {
+        field: 'loan',
+        headerName: 'Préstamos',
+        editable: false,
+        filter: false,
+        width: 110,
+        valueFormatter: (params) => {
+          if (params.value) {
+            return new Intl.NumberFormat('es-MX', {
+              style: 'currency',
+              currency: 'MXN',
+            }).format(params.value);
+          }
+          return '$0.00';
+        },
+      },
+      {
+        field: 'saving',
+        headerName: 'Ahorro',
+        editable: false,
+        filter: false,
+        width: 100,
+        valueFormatter: (params) => {
+          if (params.value) {
+            return new Intl.NumberFormat('es-MX', {
+              style: 'currency',
+              currency: 'MXN',
+            }).format(params.value);
+          }
+          return '$0.00';
+        },
+      },
+
+      {
+        field: 'clockPassword',
+        headerName: 'Contraseña Reloj',
+        width: 100,
+        editable: false,
+        cellRenderer: (params: ICellRendererParams) => {
+          // Mostrar valor real para nuevas filas, ocultar para existentes
+          if (params.data.id.toString().startsWith('temp_')) {
+            return params.value;
+          }
+          return '••••'; // Mostrar puntos para contraseñas existentes
+        },
+        onCellDoubleClicked: (params: CellDoubleClickedEvent) => {
+          if (!params.data.id.toString().startsWith('temp_')) {
+            alerts.basicAlert(
+              'Contraseña Reloj',
+              `La contraseña es: ${params.data.clockPassword}`,
+              'info'
+            );
+          }
+        },
+      },
+
+      {
+        field: 'idBank',
+        headerName: 'Banco',
+        editable: true,
+        suppressMovable: true,
+        filter: false,
+        width: 200,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.banks.map((user) => user.id),
+        },
+        valueFormatter: (params) => {
+          const foundBank = this.banks
+            ? this.banks.find((user) => user.id === params.value)
+            : null;
+          return foundBank ? `${foundBank.name}` : params.value;
+        },
+      },
+
+
       {
         field: 'address',
         headerName: 'Dirección',
@@ -358,28 +453,7 @@ export class EmployeesComponent {
         filter: true,
         width: 150,
       },
-      {
-        field: 'clockPassword',
-        headerName: 'Contraseña Reloj',
-        width: 100,
-        editable: false,
-        cellRenderer: (params: ICellRendererParams) => {
-          // Mostrar valor real para nuevas filas, ocultar para existentes
-          if (params.data.id.toString().startsWith('temp_')) {
-            return params.value;
-          }
-          return '••••'; // Mostrar puntos para contraseñas existentes
-        },
-        onCellDoubleClicked: (params: CellDoubleClickedEvent) => {
-          if (!params.data.id.toString().startsWith('temp_')) {
-            alerts.basicAlert(
-              'Contraseña Reloj',
-              `La contraseña es: ${params.data.clockPassword}`,
-              'info'
-            );
-          }
-        },
-      },
+      
       {
         field: 'priceXHour',
         headerName: 'Precio por hora',
@@ -434,56 +508,8 @@ export class EmployeesComponent {
           return '';
         },
       },
-      {
-        field: 'loan',
-        headerName: 'Préstamos',
-        editable: false,
-        filter: false,
-        width: 110,
-        valueFormatter: (params) => {
-          if (params.value) {
-            return new Intl.NumberFormat('es-MX', {
-              style: 'currency',
-              currency: 'MXN',
-            }).format(params.value);
-          }
-          return '$0.00';
-        },
-      },
-      {
-        field: 'saving',
-        headerName: 'Ahorro',
-        editable: false,
-        filter: false,
-        width: 100,
-        valueFormatter: (params) => {
-          if (params.value) {
-            return new Intl.NumberFormat('es-MX', {
-              style: 'currency',
-              currency: 'MXN',
-            }).format(params.value);
-          }
-          return '$0.00';
-        },
-      },
-      {
-        field: 'idBank',
-        headerName: 'Banco',
-        editable: true,
-        suppressMovable: true,
-        filter: false,
-        width: 200,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.banks.map((user) => user.id),
-        },
-        valueFormatter: (params) => {
-          const foundBank = this.banks
-            ? this.banks.find((user) => user.id === params.value)
-            : null;
-          return foundBank ? `${foundBank.name}` : params.value;
-        },
-      },
+      
+      
       {
         field: 'vigente',
         headerName: 'Vigente',
@@ -538,21 +564,7 @@ export class EmployeesComponent {
         },
         filter: true,
       },
-      {
-        field: 'picture',
-        headerName: 'Fotografía',
-        cellRenderer: this.imageHandlerService.imageCellRenderer.bind(
-          this.imageHandlerService
-        ),
-        cellRendererParams: {
-          clicked: this.imageHandlerService.onImageCellClicked.bind(
-            this.imageHandlerService
-          ),
-          field: 'picture',
-        },
-        editable: false,
-        width: 100,
-      },
+      
     ];
   }
 
