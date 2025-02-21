@@ -390,6 +390,7 @@ export class EmployeesxLoansComponent {
       this.masterNotSavedChanges = false;
       this.masterNewlyAddedRows = [];
       await this.loadData(); // Refrescar los datos
+      this.signalsService.triggerRefreshEmployees();
     } catch (error) {
       console.error(error);
       alerts.basicAlert(
@@ -445,6 +446,7 @@ export class EmployeesxLoansComponent {
       this.masterNotSavedChanges = false;
       this.masterNewlyAddedRows = [];
       await this.loadData(); // Refrescar los datos
+      this.signalsService.triggerRefreshEmployees();
     } catch (error) {
       console.error(error);
       alerts.basicAlert(

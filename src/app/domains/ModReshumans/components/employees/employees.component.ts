@@ -93,6 +93,13 @@ export class EmployeesComponent {
   };
 
   constructor() {
+    effect(async () => {
+      if(this.signalsService.getRefreshEmployees()() == true) {
+        await this.obtenerDatos(); // Actualizar datos cuando se recibe señal
+        this.signalsService.resetRefreshEmployees(); // Resetear la señal después de actualizar
+      }
+    });
+    
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       if (this.idBranch == null) {
@@ -658,6 +665,7 @@ export class EmployeesComponent {
       name: '',
       address: '',
       cp: '',
+      username: '',
       city: '',
       neighborhood: '',
       rfc: '',

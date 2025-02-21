@@ -319,11 +319,11 @@ export class EmployeesxSavingsComponent {
   }
 
   async saveMasterChanges() {
-    const isValid = this.maestroRowData.every((item) => item.total);
+    const isValid = this.maestroRowData.every((item) => item.monto);
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
-        'Debe ingresar un valor de préstamo.',
+        'Debe ingresar un valor de ahorro.',
         'error'
       );
       return;
@@ -356,7 +356,8 @@ export class EmployeesxSavingsComponent {
       );
       this.masterNotSavedChanges = false;
       this.masterNewlyAddedRows = [];
-      await this.loadData(); // Refrescar los datos
+      await this.loadData();
+      this.signalsService.triggerRefreshEmployees();
     } catch (error) {
       console.error(error);
       alerts.basicAlert(
@@ -411,6 +412,7 @@ export class EmployeesxSavingsComponent {
       this.detailNotSavedChanges = false;
       this.detailedNewlyAddedRows = [];
       await this.loadData();
+      this.signalsService.triggerRefreshEmployees();
     } catch (error) {
       if (error.status === 400 && error.error?.error === 'Insufficient savings for RETIRO.') {
         alerts.basicAlert(
