@@ -408,8 +408,8 @@ export class EmployeesxSavingsComponent {
         'Se han actualizado los datos correctamente.',
         'success'
       );
-      this.masterNotSavedChanges = false;
-      this.masterNewlyAddedRows = [];
+      this.detailNotSavedChanges = false;
+      this.detailedNewlyAddedRows = [];
       await this.loadData();
     } catch (error) {
       if (error.status === 400 && error.error?.error === 'Insufficient savings for RETIRO.') {

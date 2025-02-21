@@ -23,6 +23,7 @@ import { EmployeesxLoansComponent } from './loans/loans.component';
 import { AdministrationService } from 'app/services/administration.service';
 import { HRService } from 'app/services/hr.service';
 import { EmployeesxSavingsComponent } from './savings/savings.component';
+import { TimeService } from 'app/services/time.service';
 
 @Component({
   selector: 'app-employees',
@@ -47,6 +48,7 @@ export class EmployeesComponent {
   private inegiService = inject(InegiService);
   private administrationService = inject(AdministrationService);
   private hrService = inject(HRService);
+  private timeService = inject(TimeService);
 
   id: number;
   idBranch: number;
@@ -423,6 +425,58 @@ export class EmployeesComponent {
         width: 150,
       },
       {
+        field: 'ingressDate',
+        headerName: 'Fecha de ingreso',
+        editable: true,
+        filter: true,
+        width: 150,
+        cellRenderer: 'agDateCellRenderer',
+        cellEditor: 'agDateCellEditor',
+        valueFormatter: (params) => {
+          if (params.value) {
+            const date = new Date(params.value);
+            return `${('0' + date.getDate()).slice(-2)}-${(
+              '0' +
+              (date.getMonth() + 1)
+            ).slice(-2)}-${date.getFullYear()}`;
+          }
+          return '';
+        },
+      },
+      {
+        field: 'baseHours',
+        headerName: 'Horas base',
+        editable: true,
+        filter: true,
+        width: 150,
+        cellEditor: 'agNumberCellEditor',
+        cellEditorParams: {
+          min: 0,
+          max: 96,
+          precision: 0,
+        },
+      },
+      {
+        field: 'priceXHour',
+        headerName: 'Precio por hora',
+        editable: true,
+        filter: true,
+        width: 150,
+        cellEditor: 'agNumberCellEditor',
+        cellEditorParams: {
+          min: 0,
+          max: 999999,
+          precision: 2,
+        },
+      },
+      {
+        field: 'position',
+        headerName: 'Cargo',
+        editable: true,
+        filter: true,
+        width: 150,
+      },
+      {
         field: 'email',
         headerName: 'Correo electrónico',
         cellEditor: 'agTextCellEditor',
@@ -578,7 +632,8 @@ export class EmployeesComponent {
     this.id = event.data.id;
   }
 
-  addMasterRow() {
+  async addMasterRow() {
+    const timeData = await this.getTime();
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
@@ -592,6 +647,10 @@ export class EmployeesComponent {
       rfc: '',
       state: '',
       phone: '',
+      baseHours: 0,
+      priceXHour: 0,
+      ingressDate: timeData.dateObj,
+      position: '',
       email: '',
       picture: '',
       vigente: true,
@@ -715,7 +774,7 @@ export class EmployeesComponent {
     }
 
     const selectedData = selectedNodes[0].data;
-    
+
     // Validar que el préstamo sea 0
     if (selectedData.loan !== 0) {
       alerts.basicAlert(
@@ -818,6 +877,18 @@ export class EmployeesComponent {
     return {
       backgroundColor: !value ? '#fff3cd' : 'transparent',
       border: !value ? '2px solid #ff9966' : 'none',
+    };
+  }
+
+  private async getTime(): Promise<{ dateObj: Date; formatted: string }> {
+    const time = await lastValueFrom(this.timeService.getTime());
+    const date = new Date(time.localTime);
+    return {
+      dateObj: date,
+      formatted: `${('0' + date.getDate()).slice(-2)}-${(
+        '0' +
+        (date.getMonth() + 1)
+      ).slice(-2)}-${date.getFullYear()}`,
     };
   }
 }
