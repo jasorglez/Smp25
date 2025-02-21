@@ -286,86 +286,6 @@ export class EmployeesComponent {
         },
       },
       {
-        field: 'loan',
-        headerName: 'Préstamos',
-        editable: false,
-        filter: false,
-        width: 110,
-        valueFormatter: (params) => {
-          if (params.value) {
-            return new Intl.NumberFormat('es-MX', {
-              style: 'currency',
-              currency: 'MXN',
-            }).format(params.value);
-          }
-          return '$0.00';
-        },
-      },
-      {
-        field: 'saving',
-        headerName: 'Ahorro',
-        editable: false,
-        filter: false,
-        width: 100,
-        valueFormatter: (params) => {
-          if (params.value) {
-            return new Intl.NumberFormat('es-MX', {
-              style: 'currency',
-              currency: 'MXN',
-            }).format(params.value);
-          }
-          return '$0.00';
-        },
-      },
-      {
-        field: 'clockPassword',
-        headerName: 'Contraseña Reloj',
-        width: 100,
-        editable: false,
-        cellRenderer: (params: ICellRendererParams) => {
-          // Mostrar valor real para nuevas filas, ocultar para existentes
-          if (params.data.id.toString().startsWith('temp_')) {
-            return params.value;
-          }
-          return '••••'; // Mostrar puntos para contraseñas existentes
-        },
-        onCellDoubleClicked: (params: CellDoubleClickedEvent) => {
-          if (!params.data.id.toString().startsWith('temp_')) {
-            alerts.basicAlert(
-              'Contraseña Reloj',
-              `La contraseña es: ${params.data.clockPassword}`,
-              'info'
-            );
-          }
-        },
-      },
-      {
-        field: 'idBank',
-        headerName: 'Banco',
-        editable: true,
-        suppressMovable: true,
-        filter: false,
-        width: 200,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.banks.map((user) => user.id),
-        },
-        valueFormatter: (params) => {
-          const foundBank = this.banks
-            ? this.banks.find((user) => user.id === params.value)
-            : null;
-          return foundBank ? `${foundBank.name}` : params.value;
-        },
-      },
-      {
-        field: 'vigente',
-        headerName: 'Vigente',
-        editable: true,
-        suppressMovable: true,
-        filter: true,
-        width: 100,
-      },
-      {
         field: 'cp',
         headerName: 'CP',
         editable: true,
@@ -418,42 +338,39 @@ export class EmployeesComponent {
         width: 150,
       },
       {
-        field: 'rfc',
-        headerName: 'RFC',
+        field: 'position',
+        headerName: 'Cargo',
         editable: true,
         filter: true,
         width: 150,
       },
       {
-        field: 'ingressDate',
-        headerName: 'Fecha de ingreso',
+        field: 'username',
+        headerName: 'Nombre de usuario',
         editable: true,
         filter: true,
         width: 150,
-        cellRenderer: 'agDateCellRenderer',
-        cellEditor: 'agDateCellEditor',
-        valueFormatter: (params) => {
-          if (params.value) {
-            const date = new Date(params.value);
-            return `${('0' + date.getDate()).slice(-2)}-${(
-              '0' +
-              (date.getMonth() + 1)
-            ).slice(-2)}-${date.getFullYear()}`;
+      },
+      {
+        field: 'clockPassword',
+        headerName: 'Contraseña Reloj',
+        width: 100,
+        editable: false,
+        cellRenderer: (params: ICellRendererParams) => {
+          // Mostrar valor real para nuevas filas, ocultar para existentes
+          if (params.data.id.toString().startsWith('temp_')) {
+            return params.value;
           }
-          return '';
+          return '••••'; // Mostrar puntos para contraseñas existentes
         },
-      },
-      {
-        field: 'baseHours',
-        headerName: 'Horas base',
-        editable: true,
-        filter: true,
-        width: 150,
-        cellEditor: 'agNumberCellEditor',
-        cellEditorParams: {
-          min: 0,
-          max: 96,
-          precision: 0,
+        onCellDoubleClicked: (params: CellDoubleClickedEvent) => {
+          if (!params.data.id.toString().startsWith('temp_')) {
+            alerts.basicAlert(
+              'Contraseña Reloj',
+              `La contraseña es: ${params.data.clockPassword}`,
+              'info'
+            );
+          }
         },
       },
       {
@@ -479,8 +396,98 @@ export class EmployeesComponent {
         },
       },
       {
-        field: 'position',
-        headerName: 'Cargo',
+        field: 'baseHours',
+        headerName: 'Horas base',
+        editable: true,
+        filter: true,
+        width: 150,
+        cellEditor: 'agNumberCellEditor',
+        cellEditorParams: {
+          min: 0,
+          max: 96,
+          precision: 0,
+        },
+      },
+      {
+        field: 'ingressDate',
+        headerName: 'Fecha de ingreso',
+        editable: true,
+        filter: true,
+        width: 150,
+        cellRenderer: 'agDateCellRenderer',
+        cellEditor: 'agDateCellEditor',
+        valueFormatter: (params) => {
+          if (params.value) {
+            const date = new Date(params.value);
+            return `${('0' + date.getDate()).slice(-2)}-${(
+              '0' +
+              (date.getMonth() + 1)
+            ).slice(-2)}-${date.getFullYear()}`;
+          }
+          return '';
+        },
+      },
+      {
+        field: 'loan',
+        headerName: 'Préstamos',
+        editable: false,
+        filter: false,
+        width: 110,
+        valueFormatter: (params) => {
+          if (params.value) {
+            return new Intl.NumberFormat('es-MX', {
+              style: 'currency',
+              currency: 'MXN',
+            }).format(params.value);
+          }
+          return '$0.00';
+        },
+      },
+      {
+        field: 'saving',
+        headerName: 'Ahorro',
+        editable: false,
+        filter: false,
+        width: 100,
+        valueFormatter: (params) => {
+          if (params.value) {
+            return new Intl.NumberFormat('es-MX', {
+              style: 'currency',
+              currency: 'MXN',
+            }).format(params.value);
+          }
+          return '$0.00';
+        },
+      },
+      {
+        field: 'idBank',
+        headerName: 'Banco',
+        editable: true,
+        suppressMovable: true,
+        filter: false,
+        width: 200,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.banks.map((user) => user.id),
+        },
+        valueFormatter: (params) => {
+          const foundBank = this.banks
+            ? this.banks.find((user) => user.id === params.value)
+            : null;
+          return foundBank ? `${foundBank.name}` : params.value;
+        },
+      },
+      {
+        field: 'vigente',
+        headerName: 'Vigente',
+        editable: true,
+        suppressMovable: true,
+        filter: true,
+        width: 100,
+      },
+      {
+        field: 'rfc',
+        headerName: 'RFC',
         editable: true,
         filter: true,
         width: 150,
