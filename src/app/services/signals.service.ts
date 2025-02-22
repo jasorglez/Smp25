@@ -491,8 +491,26 @@ export class SignalsService {
     this.nameClient = signal(null);
     this.idCustomerFromPOS = signal(null);
     this.idIncomeAndExpense = signal(null);
+    this.refreshEmployees = signal(false);
 
     // Reinicia this.profile
     this.profileSignal(null, null, null, null, null, null);
   }
+
+  private refreshEmployees = signal<boolean>(false);
+
+    // Método para obtener el signal
+    getRefreshEmployees() {
+      return this.refreshEmployees;
+    }
+  
+    // Método para actualizar el signal
+    triggerRefreshEmployees() {
+      this.refreshEmployees.set(true);
+    }
+  
+    // Método para resetear el signal
+    resetRefreshEmployees() {
+      this.refreshEmployees.set(false);
+    }
 }

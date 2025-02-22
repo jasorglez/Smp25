@@ -1,0 +1,32 @@
+<div class="col-md-12">
+    <div class="card">
+       <div class="card-header p-2">
+          <ul class="nav nav-pills">
+                
+             <li class="nav-item">
+                <a class="nav-link green-tab" routerLink="employees" routerLinkActive="active"><i
+                      class="bi bi-list-ul"></i> {{'employees' | translate}}</a>
+             </li>
+             <li class="nav-item" *ngIf="signalsService.getIdEmployee()() != null">
+                <a class="nav-link green-tab" routerLink="savings" routerLinkActive="active"><i class="bi bi-piggy-bank"></i>
+                    Ahorros</a>
+             </li>
+             <li class="nav-item" *ngIf="signalsService.getIdEmployee()() != null">
+                <a class="nav-link green-tab" routerLink="loans" routerLinkActive="active"><i class="bi bi-cash-coin"></i>
+                    {{'loans' | translate}}</a>
+             </li>
+             <li class="nav-item">
+                <a class="nav-link green-tab" routerLink="history-loans" routerLinkActive="active"><i class="bi bi-clock-history"></i>
+                    Histórico Préstamos</a>
+             </li>
+             <li class="nav-item">
+                <a class="nav-link green-tab" routerLink="history-savings" routerLinkActive="active"><i class="bi bi-clock-history"></i>
+                    Histórico Ahorros</a>
+             </li>
+          </ul>
+ 
+          <router-outlet></router-outlet>
+       </div>
+ 
+    </div>
+ </div>

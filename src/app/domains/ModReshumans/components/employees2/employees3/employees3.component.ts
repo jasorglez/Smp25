@@ -19,14 +19,16 @@ import { ModalService } from 'app/services/modal.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { States } from 'app/interface/states';
-import { EmployeesxLoansComponent } from './loans/loans.component';
+import { EmployeesxLoansComponent } from '../../employees/loans/loans.component';
 import { AdministrationService } from 'app/services/administration.service';
 import { HRService } from 'app/services/hr.service';
-import { EmployeesxSavingsComponent } from './savings/savings.component';
+import { EmployeesxSavingsComponent } from '../../employees/savings/savings.component';
 import { TimeService } from 'app/services/time.service';
+import { RouterModule } from '@angular/router';
+import { DomainsModule } from 'app/domains/domainsmodule';
 
 @Component({
-  selector: 'app-employees',
+  selector: 'app-employees3',
   standalone: true,
   imports: [
     CommonModule,
@@ -35,11 +37,13 @@ import { TimeService } from 'app/services/time.service';
     MultiLineEditorComponent,
     EmployeesxLoansComponent,
     EmployeesxSavingsComponent,
+    RouterModule,
+    DomainsModule
   ],
-  templateUrl: './employees.component.html',
-  styleUrl: './employees.component.scss',
+  templateUrl: './employees3.component.html',
+  styleUrl: './employees3.component.scss',
 })
-export class EmployeesComponent {
+export class Employees3Component {
   // Inject of new way for Angular 18
   private imageHandlerService = inject(ImageHandlerService);
   private employeeService = inject(EmployeesService);
@@ -191,8 +195,7 @@ export class EmployeesComponent {
         editable: false,
         width: 100,
       },
-
-
+      
       {
         field: 'employeeCode',
         headerName: 'Código',
@@ -508,8 +511,8 @@ export class EmployeesComponent {
           return '';
         },
       },
-      
-      
+     
+     
       {
         field: 'vigente',
         headerName: 'Vigente',
@@ -564,7 +567,7 @@ export class EmployeesComponent {
         },
         filter: true,
       },
-      
+     
     ];
   }
 

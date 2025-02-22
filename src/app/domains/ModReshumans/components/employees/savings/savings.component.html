@@ -1,0 +1,83 @@
+<div class="col-12">
+    <div class="row align-items-start">
+  
+      <!-- Grupo Prestamos -->
+      <div class="col-7">
+        <div class="card shadow-sm">
+          <div class="card-header">
+            <h3 class="card-title mb-0">Ahorros</h3>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <!-- Columna de botones para Ahorros -->
+              <div class="col-auto">
+                <div class="d-flex flex-column gap-1 me-3">
+                  <button type="button" class="btn btn-primary" (click)="addRow('Master')">
+                    <i class="bi bi-plus-lg"></i>
+                  </button>
+                  <button type="button" class="btn btn-success position-relative" (click)="saveMasterChanges()">
+                    <i class="bi bi-floppy"></i>
+                    <span class="position-absolute top-0 end-0 translate-middle p-2 bg-danger border border-light rounded-circle"
+                      *ngIf="masterNotSavedChanges">
+                      <span class="visually-hidden">Hay cambios sin guardar</span>
+                    </span>
+                  </button>
+                  <button type="button" class="btn btn-warning" (click)="revertMasterData()">
+                    <i class="bi bi-arrow-clockwise"></i>
+                  </button>
+                </div>
+              </div>
+              <!-- Grid Maestro -->
+              <div class="col">
+                <ag-grid-angular class="ag-theme-quartz small-text-ag-grid master-grid" style="height: 300px;"
+                [rowData]="maestroRowData" [columnDefs]="maestroColumnDefs" [gridOptions]="maestroGridOptions"
+                (selectionChanged)="onMaestroSelectionChanged($event)" (cellValueChanged)="onMasterCellValueChanged($event)"
+                (gridReady)="onMaestroGridReady($event)" [rowSelection]="'single'">
+                </ag-grid-angular>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+  
+      <!-- Grupo Detalles del Ahorro -->
+      <div class="col-5">
+        <div class="card shadow-sm">
+          <div class="card-header">
+            <h3 class="card-title mb-0">Retiros del abono {{nameLoan}}</h3>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <!-- Columna de botones para Detalles -->
+              <div class="col-auto">
+                <div class="d-flex flex-column gap-1 me-3">
+                  <button type="button" class="btn btn-primary" (click)="addRow('Detailed')">
+                    <i class="bi bi-plus-lg"></i>
+                  </button>
+                  <button type="button" class="btn btn-success position-relative" (click)="saveDetailChanges()">
+                    <i class="bi bi-floppy"></i>
+                    <span class="position-absolute top-0 end-0 translate-middle p-2 bg-danger border border-light rounded-circle"
+                      *ngIf="detailNotSavedChanges">
+                      <span class="visually-hidden">Hay cambios sin guardar</span>
+                    </span>
+                  </button>
+                  <button type="button" class="btn btn-warning" (click)="revertDetailData()">
+                    <i class="bi bi-arrow-clockwise"></i>
+                  </button>
+                </div>
+              </div>
+             <!-- Grid Detalle -->
+            <div class="col">
+              <ag-grid-angular class="ag-theme-quartz small-text-ag-grid detail-grid" style="height: 300px;"
+                [rowData]="detalleRowData" [columnDefs]="detalleColumnDefs" [gridOptions]="detalleGridOptions"
+                (gridReady)="onDetalleGridReady($event)" [rowSelection]="'single'" 
+                (cellValueChanged)="onDetailCellValueChanged($event)">
+              </ag-grid-angular>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+  
+    </div>
+  </div>

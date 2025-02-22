@@ -15,13 +15,13 @@ import { concat, lastValueFrom, toArray } from 'rxjs';
 import { TimeService } from 'app/services/time.service';
 
 @Component({
-  selector: 'app-employeesxloans',
+  selector: 'app-employeesxsavings',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule],
-  templateUrl: './loans.component.html',
-  styleUrl: './loans.component.scss',
+  templateUrl: './savings.component.html',
+  styleUrl: './savings.component.scss',
 })
-export class EmployeesxLoansComponent {
+export class EmployeesxSavingsComponent {
   private employeesxloansService = inject(EmployeesxloansService);
   private signalsService = inject(SignalsService);
   private timeService = inject(TimeService);
@@ -122,7 +122,7 @@ export class EmployeesxLoansComponent {
     }
 
     this.employeesxloansService
-      .getLoansByEmployee(this.idEmployee, 'PRESTAMO')
+      .getLoansByEmployee(this.idEmployee, 'AHORRO')
       .subscribe(
         (maestroRowData: any[]) => {
           if (!maestroRowData || maestroRowData.length === 0) {
@@ -182,7 +182,7 @@ export class EmployeesxLoansComponent {
       editable: (params) => params.data?.__isNew === true
     },
     {
-      headerName: 'Préstamo *',
+      headerName: 'Ahorro *',
       headerClass: 'required-header',
       field: 'monto',
       valueFormatter: (params) => {
@@ -198,7 +198,7 @@ export class EmployeesxLoansComponent {
       editable: (params) => params.data?.__isNew === true
     },
     {
-      headerName: 'Pagado',
+      headerName: 'Retirado',
       field: 'payments',
       valueFormatter: (params) => {
         if (params.value) {
@@ -293,9 +293,9 @@ export class EmployeesxLoansComponent {
         const newRow = {
             id: tempId,
             idEmpleado: this.idEmployee,
-            name: `PRESTAMO ${timeData.formatted}`,
+            name: `AHORRO ${timeData.formatted}`,
             date: timeData.dateObj,
-            type: 'PRESTAMO',
+            type: 'AHORRO',
             monto: 0,
             payments: 0,
             __isNew: true,
@@ -439,8 +439,8 @@ export class EmployeesxLoansComponent {
         'Se han actualizado los datos correctamente.',
         'success'
       );
-      this.masterNotSavedChanges = false;
-      this.masterNewlyAddedRows = [];
+      this.detailNotSavedChanges = false;
+      this.detailedNewlyAddedRows = [];
       await this.loadData(); // Refrescar los datos
       this.signalsService.triggerRefreshEmployees();
     } catch (error) {

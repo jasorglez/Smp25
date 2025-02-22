@@ -158,7 +158,7 @@ export const routes: Routes = [
             path: 'branches',
             loadComponent: () => import('./domains/SMP/Components/branches/branches.component').then(u => u.BranchesComponent)
           },
-          
+
         ]
       },
 
@@ -233,8 +233,10 @@ export const routes: Routes = [
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'sales' } },
         children: [
-          { path: '',
-            redirectTo: 'ModSales', pathMatch: 'full' }, ...SharedModule.getRoutes(),
+          {
+            path: '',
+            redirectTo: 'ModSales', pathMatch: 'full'
+          }, ...SharedModule.getRoutes(),
           {
             path: 'setup-sales',
             loadComponent: () => import('./domains/ModSales/components/setup/setup.component').then(s => s.PosSetupComponent),
@@ -246,7 +248,7 @@ export const routes: Routes = [
             loadComponent: () => import('./domains/ModSales/components/cash-register/cash-register.component').then(s => s.CashRegisterComponent),
             canActivate: [MasterPermissionsGuard],
             data: { permissions: { master: 'sales', detailed: 'cash-register' } }
-          },          
+          },
           {
             path: 'pos',
             loadComponent: () => import('./domains/ModSales/components/pos/pos.component').then(s => s.PosComponent),
@@ -315,7 +317,7 @@ export const routes: Routes = [
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'hr' } },
         children: [
-          { path: '', redirectTo: 'ModReshumans', pathMatch: 'full' }, ...SharedModule.getRoutes(),
+          { path: '', redirectTo: 'employees', pathMatch: 'full' },
           {
             path: 'setup-rh',
             loadComponent: () => import('./domains/ModReshumans/components/setup/setup.component').then(s => s.SetupComponent)
@@ -325,14 +327,40 @@ export const routes: Routes = [
             loadComponent: () => import('./domains/ModReshumans/components/employees/employees.component').then(s => s.EmployeesComponent)
           },
           {
-            path: 'personal',
-            loadComponent: () => import('./domains/ModReshumans/components/personal/personal.component').then(p => p.PersonalComponent)
+            path: 'employees2',
+            loadComponent: () => import('./domains/ModReshumans/components/employees2/employees2.component').then(e => e.Employees2Component),
+            children: [
+              { path: '', redirectTo: 'employees', pathMatch: 'full' },
+              {
+                path: 'employees',
+                loadComponent: () => import('./domains/ModReshumans/components/employees2/employees3/employees3.component').then(l => l.Employees3Component)
+              },
+              {
+                path: 'loans',
+                loadComponent: () => import('./domains/ModReshumans/components/employees/loans/loans.component').then(l => l.EmployeesxLoansComponent)
+              },
+              {
+                path: 'savings',
+                loadComponent: () => import('./domains/ModReshumans/components/employees/savings/savings.component').then(s => s.EmployeesxSavingsComponent)
+              },
+              {
+                path: 'history-loans',
+                loadComponent: () => import('./domains/ModReshumans/components/employees2/loans-registry/loans-registry.component').then(s => s.LoansRegistryComponent)
+              },
+              {
+                path: 'history-savings',
+                loadComponent: () => import('./domains/ModReshumans/components/employees2/savings-registry/savings-registry.component').then(s => s.SavingsRegistryComponent)
+              }
+            ]
           },
           {
-            path: 'equipments',
-            loadComponent: () => import('./domains/ModReshumans/components/reservations/reservations.component').then(r => r.ReservationsComponent)
+            path: 'salary',
+            loadComponent: () => import('./domains/ModReshumans/components/salary/salary.component').then(p => p.SalaryComponent)
           },
-
+          {
+            path: 'clock',
+            loadComponent: () => import('./domains/ModReshumans/components/clock/clock.component').then(p => p.ClockComponent)
+          },
         ]
       },
       {
