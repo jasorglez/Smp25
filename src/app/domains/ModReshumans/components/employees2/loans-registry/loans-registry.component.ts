@@ -90,16 +90,19 @@ export class LoansRegistryComponent {
     {
       headerName: 'Nombre',
       field: 'employeeName',
+      filter: 'agTextColumnFilter',
       flex: 2
     },
     {
       headerName: 'Prestamo',
       field: 'name',
+      filter: 'agTextColumnFilter',
       flex: 2
     },
     {
       headerName: 'Fecha',
       field: 'date',
+      filter: 'agTextColumnFilter',
       valueGetter: (params) =>
         params.data.date ? new Date(params.data.date) : null,
       cellRenderer: 'agDateCellRenderer',
@@ -119,6 +122,7 @@ export class LoansRegistryComponent {
     {
       headerName: 'Saldo restante',
       field: 'remain',
+      filter: 'agTextColumnFilter',
       valueFormatter: (params) => {
         if (params.value) {
           return new Intl.NumberFormat('es-MX', {

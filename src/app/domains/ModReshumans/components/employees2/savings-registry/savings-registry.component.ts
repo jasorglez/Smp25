@@ -95,20 +95,24 @@ export class SavingsRegistryComponent {
     {
       headerName: 'Nombre',
       field: 'employeeName',
-      flex: 2
+      flex: 2,
+      filter: 'agTextColumnFilter'
     },
     {
       headerName: 'Movimiento',
       field: 'name',
-      flex: 2
+      flex: 2,
+      filter: 'agTextColumnFilter'
     },
     {headerName: 'Tipo',
       field: 'type',
-      flex: 1
+      flex: 1,
+      filter: 'agTextColumnFilter'
     },
     {
       headerName: 'Fecha',
       field: 'date',
+      filter: 'agTextColumnFilter',
       valueGetter: (params) =>
         params.data.date ? new Date(params.data.date) : null,
       cellRenderer: 'agDateCellRenderer',
@@ -128,6 +132,7 @@ export class SavingsRegistryComponent {
     {
       headerName: 'Monto',
       field: 'remain',
+      filter: 'agTextColumnFilter',
       valueFormatter: (params) => {
         if (params.value) {
           return new Intl.NumberFormat('es-MX', {
