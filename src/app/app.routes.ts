@@ -342,6 +342,14 @@ export const routes: Routes = [
               {
                 path: 'savings',
                 loadComponent: () => import('./domains/ModReshumans/components/employees/savings/savings.component').then(s => s.EmployeesxSavingsComponent)
+              },
+              {
+                path: 'history-loans',
+                loadComponent: () => import('./domains/ModReshumans/components/employees2/loans-registry/loans-registry.component').then(s => s.LoansRegistryComponent)
+              },
+              {
+                path: 'history-savings',
+                loadComponent: () => import('./domains/ModReshumans/components/employees2/savings-registry/savings-registry.component').then(s => s.SavingsRegistryComponent)
               }
             ]
           },

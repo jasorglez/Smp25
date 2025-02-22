@@ -47,5 +47,13 @@ export class EmployeesxloansService {
   deleteLoanData(idLoan: number): Observable<any> {
     return this.http.delete<any>(`${environment.urlAdministration}/EmployeesxLoans/${idLoan}`, {headers: this.trackingService.getHeaders()});
   }
-  
+
+  getLoansRegistry(idBranch: number): Observable<any> {
+    return this.http.get<any>(`${environment.urlAdministration}/LoansAndCredits/loans?idBranch=${idBranch}`, {headers: this.trackingService.getHeaders()});
+  }
+
+  getSavingsRegistry(idBranch: number): Observable<any> {
+    return this.http.get<any>(`${environment.urlAdministration}/LoansAndCredits/savings?idBranch=${idBranch}`, {headers: this.trackingService.getHeaders()});
+  }
+
 }

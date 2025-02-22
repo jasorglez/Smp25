@@ -171,10 +171,6 @@ export class EmployeesxLoansComponent {
       valueGetter: (params) => params.data.date ? new Date(params.data.date) : null,
       cellRenderer: 'agDateCellRenderer',
       cellEditor: 'agDateCellEditor',
-      cellEditorParams: {
-        min: new Date(2000, 0, 1),
-        max: new Date(2050, 11, 31),
-      },
       valueFormatter: (params) => {
         if (params.value) {
           const date = new Date(params.value);
