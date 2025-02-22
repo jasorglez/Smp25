@@ -354,10 +354,13 @@ export const routes: Routes = [
             ]
           },
           {
-            path: 'personal',
-            loadComponent: () => import('./domains/ModReshumans/components/personal/personal.component').then(p => p.PersonalComponent)
-          }
-
+            path: 'salary',
+            loadComponent: () => import('./domains/ModReshumans/components/salary/salary.component').then(p => p.SalaryComponent)
+          },
+          {
+            path: 'clock',
+            loadComponent: () => import('./domains/ModReshumans/components/clock/clock.component').then(p => p.ClockComponent)
+          },
         ]
       },
       {
