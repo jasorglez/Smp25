@@ -52,6 +52,9 @@ export class LoansRegistryComponent {
     headerHeight: 25,
     rowHeight: 20,
     suppressEnterWhenEditing: false,
+    rowClassRules: {
+      "row-green": params => params.data?.remain == 0
+    },
     rowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -91,18 +94,30 @@ export class LoansRegistryComponent {
       headerName: 'Nombre',
       field: 'employeeName',
       filter: 'agTextColumnFilter',
+      floatingFilter: true,
+      floatingFilterComponentParams: {
+        suppressFilterButton: true,
+      },
       flex: 2
     },
     {
       headerName: 'Prestamo',
       field: 'name',
       filter: 'agTextColumnFilter',
+      floatingFilter: true,
+      floatingFilterComponentParams: {
+        suppressFilterButton: true,
+      },
       flex: 2
     },
     {
       headerName: 'Fecha',
       field: 'date',
-      filter: 'agTextColumnFilter',
+      filter: 'agDateColumnFilter',
+      floatingFilter: true,
+      floatingFilterComponentParams: {
+        suppressFilterButton: true,
+      },
       valueGetter: (params) =>
         params.data.date ? new Date(params.data.date) : null,
       cellRenderer: 'agDateCellRenderer',
@@ -118,6 +133,38 @@ export class LoansRegistryComponent {
         return '';
       },
       flex: 1
+    },
+    {
+      headerName: 'Préstamo',
+      field: 'monto',
+      filter: 'agTextColumnFilter',
+      valueFormatter: (params) => {
+        if (params.value) {
+          return new Intl.NumberFormat('es-MX', {
+            style: 'currency',
+            currency: 'MXN',
+          }).format(params.value);
+        }
+        return '$0.00';
+      },
+      flex: 1,
+      editable: false,
+    },
+    {
+      headerName: 'Pagado',
+      field: 'payments',
+      filter: 'agTextColumnFilter',
+      valueFormatter: (params) => {
+        if (params.value) {
+          return new Intl.NumberFormat('es-MX', {
+            style: 'currency',
+            currency: 'MXN',
+          }).format(params.value);
+        }
+        return '$0.00';
+      },
+      flex: 1,
+      editable: false,
     },
     {
       headerName: 'Saldo restante',

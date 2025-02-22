@@ -1,11 +1,8 @@
 :host ::ng-deep {
-  .row-withdrawal {
-    background-color: #ffeeee;
-    --ag-background-color: #ffeeee;
-  }
   
-  .row-deposit {
+  .row-green {
     background-color: #eeffee; // Fondo verde muy suave
     --ag-background-color: #eeffee;
   }
+  
 }

@@ -159,7 +159,7 @@ export class EmployeesxLoansComponent {
 
   maestroColumnDefs: ColDef[] = [
     { 
-      headerName: 'Prestamo *', 
+      headerName: 'ID *', 
       headerClass: 'required-header',
       field: 'name', 
       flex: 2,
@@ -182,7 +182,7 @@ export class EmployeesxLoansComponent {
       editable: (params) => params.data?.__isNew === true
     },
     {
-      headerName: 'Total *',
+      headerName: 'Préstamo *',
       headerClass: 'required-header',
       field: 'monto',
       valueFormatter: (params) => {

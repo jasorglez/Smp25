@@ -53,8 +53,7 @@ export class SavingsRegistryComponent {
     rowHeight: 20,
     suppressEnterWhenEditing: false,
     rowClassRules: {
-      "row-withdrawal": params => params.data?.type === 'RETIRO',
-      "row-deposit": params => params.data?.type === 'AHORRO'
+      "row-green": params => params.data?.remain != 0
     },
     rowClass: (params) => {
       // Verificar si la fila está seleccionada
@@ -104,11 +103,6 @@ export class SavingsRegistryComponent {
       flex: 2,
       filter: 'agTextColumnFilter'
     },
-    {headerName: 'Tipo',
-      field: 'type',
-      flex: 1,
-      filter: 'agTextColumnFilter'
-    },
     {
       headerName: 'Fecha',
       field: 'date',
@@ -130,7 +124,39 @@ export class SavingsRegistryComponent {
       flex: 1
     },
     {
-      headerName: 'Monto',
+      headerName: 'Abono',
+      field: 'monto',
+      filter: 'agTextColumnFilter',
+      valueFormatter: (params) => {
+        if (params.value) {
+          return new Intl.NumberFormat('es-MX', {
+            style: 'currency',
+            currency: 'MXN',
+          }).format(params.value);
+        }
+        return '$0.00';
+      },
+      flex: 1,
+      editable: false,
+    },
+    {
+      headerName: 'Retirado',
+      field: 'payments',
+      filter: 'agTextColumnFilter',
+      valueFormatter: (params) => {
+        if (params.value) {
+          return new Intl.NumberFormat('es-MX', {
+            style: 'currency',
+            currency: 'MXN',
+          }).format(params.value);
+        }
+        return '$0.00';
+      },
+      flex: 1,
+      editable: false,
+    },
+    {
+      headerName: 'Saldo restante',
       field: 'remain',
       filter: 'agTextColumnFilter',
       valueFormatter: (params) => {
@@ -143,7 +169,7 @@ export class SavingsRegistryComponent {
         return '$0.00';
       },
       flex: 1,
-      editable: false
+      editable: false,
     },
   ]
   };

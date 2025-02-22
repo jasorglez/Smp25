@@ -11,8 +11,8 @@ import {
 import { alerts } from 'app/helpers/alerts';
 import { EmployeesxloansService } from 'app/services/employeesxloans.service';
 import { SignalsService } from 'app/services/signals.service';
-import { TimeService } from 'app/services/time.service';
 import { concat, lastValueFrom, toArray } from 'rxjs';
+import { TimeService } from 'app/services/time.service';
 
 @Component({
   selector: 'app-employeesxsavings',
@@ -59,7 +59,6 @@ export class EmployeesxSavingsComponent {
     effect(() => {
       this.idEmployee = this.signalsService.getIdEmployee()();
       this.loadData();
-      this.loadDetailedData();
     });
   }
 
@@ -121,7 +120,6 @@ export class EmployeesxSavingsComponent {
     if (this.idEmployee === null || this.idEmployee === undefined) {
       return;
     }
-    console.log('Loading data for employee ID:', this.idEmployee);
 
     this.employeesxloansService
       .getLoansByEmployee(this.idEmployee, 'AHORRO')
@@ -140,58 +138,51 @@ export class EmployeesxSavingsComponent {
   }
 
   loadDetailedData() {
-    if (this.idEmployee === null || this.idEmployee === undefined) {
+    if (this.idLoan === null || this.idLoan === undefined) {
       return;
     }
-    console.log('Loading DETAILED data for employee ID:', this.idEmployee);
 
-    this.employeesxloansService
-      .getLoansByEmployee(this.idEmployee, 'RETIRO')
-      .subscribe(
-        (detalleRowData) => {
-          if (!detalleRowData || detalleRowData.length === 0) {
-            console.log('No detailed data found');
-            this.detalleRowData = [];
-          } else {
-            console.log('Detailed loans data:', detalleRowData);
-            this.detalleRowData = detalleRowData;
-          }
-        },
-        (error) => {
-          console.error('Error loading detailed loan data:', error);
-          alerts.basicAlert('Error', 'Error al cargar los datos', 'error');
+    this.employeesxloansService.getConceptsxLoansCredit(this.idLoan).subscribe(
+      (detalleRowData) => {
+        if (!detalleRowData || detalleRowData.length === 0) {
+          this.detalleRowData = [];
+        } else {
+          this.detalleRowData = detalleRowData;
         }
-      );
+      },
+      (error) => {
+        console.error('Error loading detailed loan data:', error);
+        alerts.basicAlert('Error', 'Error al cargar los datos', 'error');
+      }
+    );
   }
 
   maestroColumnDefs: ColDef[] = [
-    {
-      headerName: 'Ahorro *',
+    { 
+      headerName: 'ID *', 
       headerClass: 'required-header',
-      field: 'name',
+      field: 'name', 
       flex: 2,
-      editable: (params) => params.data?.__isNew === true,
+      editable: (params) => params.data?.__isNew === true
     },
     {
       headerName: 'Fecha',
       field: 'date',
+      valueGetter: (params) => params.data.date ? new Date(params.data.date) : null,
       cellRenderer: 'agDateCellRenderer',
       cellEditor: 'agDateCellEditor',
       valueFormatter: (params) => {
         if (params.value) {
           const date = new Date(params.value);
-          return `${('0' + date.getDate()).slice(-2)}-${(
-            '0' +
-            (date.getMonth() + 1)
-          ).slice(-2)}-${date.getFullYear()}`;
+          return `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
         }
         return '';
       },
       flex: 1,
-      editable: (params) => params.data?.__isNew === true,
+      editable: (params) => params.data?.__isNew === true
     },
     {
-      headerName: 'Total *',
+      headerName: 'Ahorro *',
       headerClass: 'required-header',
       field: 'monto',
       valueFormatter: (params) => {
@@ -204,40 +195,64 @@ export class EmployeesxSavingsComponent {
         return '';
       },
       flex: 1,
-      editable: (params) => params.data?.__isNew === true,
+      editable: (params) => params.data?.__isNew === true
+    },
+    {
+      headerName: 'Retirado',
+      field: 'payments',
+      valueFormatter: (params) => {
+        if (params.value) {
+          return new Intl.NumberFormat('es-MX', {
+            style: 'currency',
+            currency: 'MXN',
+          }).format(params.value);
+        }
+        return '$0.00';
+      },
+      flex: 1,
+      editable: false
+    },
+    {
+      headerName: 'Restante',
+      field: 'remain',
+      valueFormatter: (params) => {
+        if (params.value) {
+          return new Intl.NumberFormat('es-MX', {
+            style: 'currency',
+            currency: 'MXN',
+          }).format(params.value);
+        }
+        return '$0.00';
+      },
+      flex: 1,
+      editable: false
     },
   ];
 
   detalleColumnDefs: ColDef[] = [
     {
-      headerName: 'Retiro *',
-      headerClass: 'required-header',
-      field: 'name',
-      flex: 2,
-      editable: (params) => params.data?.__isNew === true,
-    },
-    {
       headerName: 'Fecha',
       field: 'date',
-      cellRenderer: 'agDateCellRenderer',
+      valueGetter: (params) => params.data.date ? new Date(params.data.date) : null,
       cellEditor: 'agDateCellEditor',
+      cellEditorParams: {
+        min: new Date(2000, 0, 1),
+        max: new Date(2050, 11, 31),
+      },
       valueFormatter: (params) => {
         if (params.value) {
           const date = new Date(params.value);
-          return `${('0' + date.getDate()).slice(-2)}-${(
-            '0' +
-            (date.getMonth() + 1)
-          ).slice(-2)}-${date.getFullYear()}`;
+          return `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
         }
         return '';
       },
       flex: 1,
-      editable: (params) => params.data?.__isNew === true,
+      editable: (params) => params.data?.__isNew === true
     },
     {
-      headerName: 'Total *',
+      headerName: 'Abono *',
       headerClass: 'required-header',
-      field: 'monto',
+      field: 'total',
       valueFormatter: (params) => {
         if (params.value) {
           return new Intl.NumberFormat('es-MX', {
@@ -245,25 +260,28 @@ export class EmployeesxSavingsComponent {
             currency: 'MXN',
           }).format(params.value);
         }
-        return '';
+        return '$0.00';
       },
       flex: 1,
-      editable: (params) => params.data?.__isNew === true,
+      editable: (params) => params.data?.__isNew === true
+    },
+    { 
+      headerName: 'Comentario', 
+      field: 'descripcion', 
+      flex: 2,
+      editable: (params) => params.data?.__isNew === true
     },
   ];
 
   private maestroGridApi: GridApi;
   private detalleGridApi: GridApi;
 
-  private async getTime(): Promise<{ dateObj: Date; formatted: string }> {
+  private async getTime(): Promise<{dateObj: Date, formatted: string}> {
     const time = await lastValueFrom(this.timeService.getTime());
     const date = new Date(time.localTime);
     return {
-      dateObj: date,
-      formatted: `${('0' + date.getDate()).slice(-2)}-${(
-        '0' +
-        (date.getMonth() + 1)
-      ).slice(-2)}-${date.getFullYear()}`,
+        dateObj: date,
+        formatted: `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`
     };
   }
 
@@ -272,33 +290,32 @@ export class EmployeesxSavingsComponent {
     const timeData = await this.getTime();
 
     if (type === 'Master') {
-      const newRow = {
-        id: tempId,
-        idEmpleado: this.idEmployee,
-        name: `AHORRO ${timeData.formatted}`,
-        date: timeData.dateObj,
-        type: 'AHORRO',
-        monto: 0,
-        payments: 0,
-        __isNew: true,
-        active: true,
-      };
-      this.maestroRowData = [...this.maestroRowData, newRow];
-      this.masterNotSavedChanges = true;
+        const newRow = {
+            id: tempId,
+            idEmpleado: this.idEmployee,
+            name: `AHORRO ${timeData.formatted}`,
+            date: timeData.dateObj,
+            type: 'AHORRO',
+            monto: 0,
+            payments: 0,
+            __isNew: true,
+            active: true
+        };
+        this.maestroRowData = [...this.maestroRowData, newRow];
+        this.masterNotSavedChanges = true;
     } else if (type === 'Detailed') {
-      const newRow = {
-        id: tempId,
-        idEmpleado: this.idEmployee,
-        name: `RETIRO ${timeData.formatted}`,
-        date: timeData.dateObj,
-        type: 'RETIRO',
-        monto: 0,
-        payments: 0,
-        __isNew: true,
-        active: true,
-      };
-      this.detalleRowData = [...this.detalleRowData, newRow];
-      this.detailNotSavedChanges = true;
+        const newRow = {
+            id: tempId,
+            idLoanAndCredit: this.idLoan,
+            date: timeData.dateObj,
+            status: 'Pendiente',
+            total: 0,
+            comments: '',
+            __isNew: true,
+            active: true
+        };
+        this.detalleRowData = [...this.detalleRowData, newRow];
+        this.detailNotSavedChanges = true;
     }
   }
 
@@ -314,7 +331,18 @@ export class EmployeesxSavingsComponent {
     const selectedRows = this.maestroGridApi.getSelectedRows();
     if (selectedRows.length > 0) {
       const selectedMaestro = selectedRows[0];
+      
+      // Verificar si la fila maestra es nueva
+      if (selectedMaestro?.__isNew === true) {
+        this.detalleRowData = [];
+        return;
+      }
+      
       this.idLoan = selectedMaestro.id;
+      this.nameLoan = selectedMaestro.name;
+      this.loadDetailedData();
+    } else {
+      this.detalleRowData = [];
     }
   }
 
@@ -323,11 +351,12 @@ export class EmployeesxSavingsComponent {
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
-        'Debe ingresar un valor de ahorro.',
+        'Debe ingresar un valor de préstamo.',
         'error'
       );
       return;
     }
+
 
     const newRows = this.maestroRowData.filter((row) => row.__isNew);
     const modifiedRows = this.maestroRowData.filter(
@@ -356,7 +385,7 @@ export class EmployeesxSavingsComponent {
       );
       this.masterNotSavedChanges = false;
       this.masterNewlyAddedRows = [];
-      await this.loadData();
+      await this.loadData(); // Refrescar los datos
       this.signalsService.triggerRefreshEmployees();
     } catch (error) {
       console.error(error);
@@ -374,15 +403,16 @@ export class EmployeesxSavingsComponent {
   }
 
   async saveDetailChanges() {
-    const isValid = this.detalleRowData.every((item) => item.monto);
+    const isValid = this.detalleRowData.every((item) => item.total);
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
-        'Debe ingresar un valor de retiro.',
+        'Debe ingresar un valor de abono.',
         'error'
       );
       return;
     }
+
 
     const newRows = this.detalleRowData.filter((row) => row.__isNew);
     const modifiedRows = this.detalleRowData.filter(
@@ -391,12 +421,12 @@ export class EmployeesxSavingsComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.employeesxloansService.addLoan(cleanedData);
+      return this.employeesxloansService.addConcept(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.employeesxloansService.updateLoan(row.id, cleanedData);
+      return this.employeesxloansService.updateConcept(row.id, cleanedData);
     });
 
     try {
@@ -411,23 +441,15 @@ export class EmployeesxSavingsComponent {
       );
       this.detailNotSavedChanges = false;
       this.detailedNewlyAddedRows = [];
-      await this.loadData();
+      await this.loadData(); // Refrescar los datos
       this.signalsService.triggerRefreshEmployees();
     } catch (error) {
-      if (error.status === 400 && error.error?.error === 'Insufficient savings for RETIRO.') {
-        alerts.basicAlert(
-          'Fondos insuficientes',
-          'El empleado no tiene suficientes ahorros para realizar este retiro',
-          'error'
-        );
-      } else {
-        console.error(error);
-        alerts.basicAlert(
-          'Error',
-          'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
-          'error'
-        );
-      }
+      console.error(error);
+      alerts.basicAlert(
+        'Error',
+        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
+        'error'
+      );
     }
   }
 
