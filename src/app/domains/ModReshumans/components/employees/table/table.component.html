@@ -25,7 +25,7 @@
       </div>
     </div>
     <div class="col">
-      <ag-grid-angular style="width: 100%;" [ngStyle]="{'height': idEmployee != null ? '40vh' : '75vh'}" class="ag-theme-quartz small-text-ag-grid" [rowData]="rowData"
+      <ag-grid-angular style="width: 100%;" [ngStyle]="{'height': idEmployee != null ? '40vh' : '80vh'}" class="ag-theme-quartz small-text-ag-grid" [rowData]="rowData"
         [columnDefs]="colMaster" (selectionChanged)="onMasterSelectionChanged($event)" [gridOptions]="gridOptions"
         (cellValueChanged)="onMasterCellValueChanged($event)" (rowSelected)="onMasterRowSelected($event)"
         (gridReady)="onMasterGridReady($event)" [paginationPageSize]="20" [pagination]="false" [components]="components">
