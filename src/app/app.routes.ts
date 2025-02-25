@@ -324,7 +324,22 @@ export const routes: Routes = [
           },
           {
             path: 'employees',
-            loadComponent: () => import('./domains/ModReshumans/components/employees/employees.component').then(s => s.EmployeesComponent)
+            loadComponent: () => import('./domains/ModReshumans/components/employees/employees.component').then(s => s.EmployeesComponent),
+            children: [
+              { path: '', redirectTo: 'employees-table', pathMatch: 'full' },
+              {
+                path: 'employees-table',
+                loadComponent: () => import('./domains/ModReshumans/components/employees/table/table.component').then(l => l.EmployeesTableComponent)
+              },
+              {
+                path: 'history-loans',
+                loadComponent: () => import('./domains/ModReshumans/components/employees2/loans-registry/loans-registry.component').then(s => s.LoansRegistryComponent)
+              },
+              {
+                path: 'history-savings',
+                loadComponent: () => import('./domains/ModReshumans/components/employees2/savings-registry/savings-registry.component').then(s => s.SavingsRegistryComponent)
+              }
+            ]
           },
           {
             path: 'employees2',
