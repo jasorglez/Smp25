@@ -332,43 +332,20 @@ export const routes: Routes = [
             children: [
               { path: '', redirectTo: 'employees-table', pathMatch: 'full' },
               {
+                path: 'clock',
+                loadComponent: () => import('./domains/ModReshumans/components/employees/employees-clock/employees-clock.component').then(p => p.EmployeesClockComponent)
+              },
+              {
                 path: 'employees-table',
                 loadComponent: () => import('./domains/ModReshumans/components/employees/table/table.component').then(l => l.EmployeesTableComponent)
               },
               {
                 path: 'history-loans',
-                loadComponent: () => import('./domains/ModReshumans/components/employees2/loans-registry/loans-registry.component').then(s => s.LoansRegistryComponent)
+                loadComponent: () => import('./domains/ModReshumans/components/employees/loans-registry/loans-registry.component').then(s => s.LoansRegistryComponent)
               },
               {
                 path: 'history-savings',
-                loadComponent: () => import('./domains/ModReshumans/components/employees2/savings-registry/savings-registry.component').then(s => s.SavingsRegistryComponent)
-              }
-            ]
-          },
-          {
-            path: 'employees2',
-            loadComponent: () => import('./domains/ModReshumans/components/employees2/employees2.component').then(e => e.Employees2Component),
-            children: [
-              { path: '', redirectTo: 'employees', pathMatch: 'full' },
-              {
-                path: 'employees',
-                loadComponent: () => import('./domains/ModReshumans/components/employees2/employees3/employees3.component').then(l => l.Employees3Component)
-              },
-              {
-                path: 'loans',
-                loadComponent: () => import('./domains/ModReshumans/components/employees/loans/loans.component').then(l => l.EmployeesxLoansComponent)
-              },
-              {
-                path: 'savings',
-                loadComponent: () => import('./domains/ModReshumans/components/employees/savings/savings.component').then(s => s.EmployeesxSavingsComponent)
-              },
-              {
-                path: 'history-loans',
-                loadComponent: () => import('./domains/ModReshumans/components/employees2/loans-registry/loans-registry.component').then(s => s.LoansRegistryComponent)
-              },
-              {
-                path: 'history-savings',
-                loadComponent: () => import('./domains/ModReshumans/components/employees2/savings-registry/savings-registry.component').then(s => s.SavingsRegistryComponent)
+                loadComponent: () => import('./domains/ModReshumans/components/employees/savings-registry/savings-registry.component').then(s => s.SavingsRegistryComponent)
               }
             ]
           },

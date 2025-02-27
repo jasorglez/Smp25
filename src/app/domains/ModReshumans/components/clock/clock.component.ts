@@ -54,10 +54,9 @@ export class ClockComponent {
     };
     
     this.formattedDate = date.toLocaleDateString('es-MX', options)
-      .replace(/(^\w)/, m => m.toUpperCase())
-      .replace(/,/, '')
-      .replace(/(\s\d+)/, ', $1')
-      .replace(/\b\w+/g, (m) => m === 'de' ? m : m.charAt(0).toUpperCase() + m.slice(1));
+      .replace(/(^\p{Ll})/u, m => m.toUpperCase())
+      .replace(/\bde\b/gi, m => m.toLowerCase())
+      .replace(/,/g, '')
 
     const timeOptions: Intl.DateTimeFormatOptions = {
       hour: '2-digit',
