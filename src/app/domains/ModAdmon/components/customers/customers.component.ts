@@ -11,18 +11,20 @@ import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-edito
 import { SignalsService } from 'app/services/signals.service';
 import { CustomersPaymentsComponent } from './customers-payments.component';
 import { CustomersSalesComponent } from './customers-sales.component';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { RadiusinfluenceComponent } from '../radiusinfluence/radiusinfluence.component';
 
 
 @Component({
   selector: 'app-customers',
   standalone: true,
-  imports: [RouterModule, DomainsModule, AgGridModule, MultiLineEditorComponent, CustomersPaymentsComponent, CustomersSalesComponent],
+  imports: [RouterModule, DomainsModule, AgGridModule, MultiLineEditorComponent, 
+    CustomersPaymentsComponent,
+    CustomersSalesComponent,],
   templateUrl: './customers.component.html',
-  styleUrl: './customers.component.scss'
+  styleUrls: ['./customers.component.scss']
 })
 export class CustomersComponent {
-
-
   ngOnInit() {
     this.obtenerDatos();
     this.signalsService.deleteClientData();
@@ -33,15 +35,13 @@ export class CustomersComponent {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.obtenerDatos();
       this.signalsService.deleteClientData();
-    }
-    );
+    });
   }
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
     if (this.notSavedChanges) {
-      $event.returnValue =
-        'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
+      $event.returnValue = 'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
     }
   }
 
@@ -50,17 +50,13 @@ export class CustomersComponent {
   contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
-
   branches: any;
   id: string;
   private tempIdCounter: number = 0;
   selectedTab: string = 'customers-payments';
   idBranch: number = null;
-
   private gridApi: GridApi;
-
   currentIndex = 0;
-
   public rowSelection: 'single' | 'multiple' = 'single';
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'never';
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'never';
@@ -70,42 +66,37 @@ export class CustomersComponent {
     multiLineEditor: MultiLineEditorComponent
   };
 
-  // Inject of new way for Angular 18
   private administrationService = inject(AdministrationService);
   private modalServiceTable = inject(ModalService);
   private signalsService = inject(SignalsService);
+  private modalService = inject(NgbModal);
 
-  // Interceptar signals
   idClient = this.signalsService.getIdClient();
   nameClient = this.signalsService.getNameClient()();
 
-// Column Definitions: Defines the columns to be displayed.
-public gridOptions: any = {
-  headerHeight: 30,
-  rowHeight: 30,
-  rowClass: (params) => {
-    // Verificar si la fila está seleccionada
-    if (params.node.isSelected()) {
-      return 'selected-row';
-    }
-    return '';
-  },
-  onRowClicked: (event) => {
-    // Seleccionar la fila al hacer clic en cualquier celda
-    event.node.setSelected(true);
-  },
-  onRowSelected: (event) => {
-    // Deseleccionar otras filas cuando se selecciona una nueva
-    if (event.node.isSelected()) {
-      this.gridApi.forEachNode((node) => {
-        if (node.id !== event.node.id) {
-          node.setSelected(false);
-        }
-      });
-    }
-  },
-};
-  
+  public gridOptions: any = {
+    headerHeight: 30,
+    rowHeight: 30,
+    rowClass: (params) => {
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onRowClicked: (event) => {
+      event.node.setSelected(true);
+    },
+    onRowSelected: (event) => {
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    },
+  };
+
   get colMaster(): ColDef[] {
     return [
       { field: 'nameContact', headerName: 'Nombre', editable: true, filter: true, width: 200 },
@@ -154,7 +145,6 @@ public gridOptions: any = {
         valueSetter: (params) => {
           const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
           if (emailRegex.test(params.newValue)) {
-            // Verificar si el email ya existe
             const duplicateExists = this.rowData.some((row, index) =>
               index !== params.node.rowIndex && row.email === params.newValue
             );
@@ -178,8 +168,8 @@ public gridOptions: any = {
           }
         }
       }
-    ]
-  };
+    ];
+  }
 
   obtenerDatos() {
     this.administrationService.getCustomers(this.idBranch).subscribe((data: any) => {
@@ -188,12 +178,10 @@ public gridOptions: any = {
   }
 
   onSelectedRow(event: any) {
-    console.log(event)
     this.id = event.data.id;
   }
 
   onSelectionChanged(event: any) {
-    console.log(event)
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
@@ -205,7 +193,6 @@ public gridOptions: any = {
   }
 
   onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
   }
@@ -262,7 +249,6 @@ public gridOptions: any = {
       return this.administrationService.updateCustomer(row.id, cleanedData);
     });
 
-    // Using concat to combine observables and lastValueFrom for async/await
     try {
       const responses = await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
@@ -274,7 +260,7 @@ public gridOptions: any = {
       );
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
-      this.obtenerDatos(); // Refrescar los datos
+      this.obtenerDatos();
     } catch (error) {
       console.error(error);
       alerts.basicAlert(
@@ -309,25 +295,16 @@ public gridOptions: any = {
         console.error(error);
         return EMPTY;
       })
-    )
-      .subscribe(
-        () => {
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.obtenerDatos();
-
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.notSavedChanges = false;
-          this.selectedRowData = null;
-        }
+    ).subscribe(() => {
+      alerts.basicAlert(
+        'Eliminar entrada',
+        'Entrada eliminada satisfactoriamente.',
+        'success'
       );
+      this.obtenerDatos();
+      this.notSavedChanges = false;
+      this.selectedRowData = null;
+    });
   }
 
   revert() {
@@ -345,9 +322,11 @@ public gridOptions: any = {
     return cleanedData;
   }
 
+
+    openRadiusInfluenceModal(): void {
+      const modalRef = this.modalService.open(RadiusinfluenceComponent, { size: 'lg' });
+    }
+    
 }
-
-
-
 
 

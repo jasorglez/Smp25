@@ -186,6 +186,10 @@ export const routes: Routes = [
             loadComponent: () => import('./domains/ModAdmon/components/customers/customers.component').then(e => e.CustomersComponent)
           },
           {
+            path: 'radiusinfluence',
+            loadComponent: () => import('./domains/ModAdmon/components/radiusinfluence/radiusinfluence.component').then(r => r.RadiusinfluenceComponent)
+          },
+          {
             path: 'page01',
             loadComponent: () => import('./domains/ModAdmon/pages/pages01/page01.component').then(p => p.Page01Component),
             children: [

@@ -982,7 +982,7 @@ export class EmployeesTableComponent {
   }
 
   adjustGridSize() {
-    this.gridHeight = '10vh'; // Adjust as needed
+    this.gridHeight = '20vh'; // Adjust as needed
   }
 
 

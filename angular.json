@@ -64,10 +64,11 @@
                 "src/_redirects"
               ],
             "styles": [
-             "@angular/material/prebuilt-themes/indigo-pink.css",
-              "node_modules/bootstrap/dist/css/bootstrap.min.css",
-              "node_modules/bootstrap-icons/font/bootstrap-icons.min.css",
-              "src/styles.scss"
+                 "node_modules/leaflet/dist/leaflet.css",
+                 "@angular/material/prebuilt-themes/indigo-pink.css",
+                 "node_modules/bootstrap/dist/css/bootstrap.min.css",
+                 "node_modules/bootstrap-icons/font/bootstrap-icons.min.css",
+                 "src/styles.scss"
             ],
             "scripts": [
               "node_modules/@popperjs/core/dist/umd/popper.min.js",
