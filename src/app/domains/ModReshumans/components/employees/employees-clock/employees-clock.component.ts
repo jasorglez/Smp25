@@ -94,6 +94,7 @@ export class EmployeesClockComponent {
           this.isNew = true;
         }
         console.log('Estado horario:', this.isNew ? 'Nuevo' : 'Existente');
+        this.horario.sort((a, b) => this.diasSemana.indexOf(a.day) - this.diasSemana.indexOf(b.day));
       },
       (error) => {
         console.log(error);
@@ -122,6 +123,16 @@ export class EmployeesClockComponent {
 
     if (this.horario.length !== 7) {
       alerts.basicAlert('Días no completos', 'Todos los días deberían ser enviados. Este error no debería ocurrir, por favor contacte al administrador', 'error');
+      return;
+    }
+
+    // Validación de que entry_1 no puede ser mayor que exit_1
+    const diasInvalidos2 = this.horario.filter(dia => 
+      dia.enabled && dia.entry1 && dia.exit1 && dia.entry1.hour > dia.exit1.hour
+    );
+
+    if (diasInvalidos2.length > 0) {
+      alerts.basicAlert('Error', 'Los horarios de entrada no pueden ser mayores que los horarios de salida', 'error');
       return;
     }
 

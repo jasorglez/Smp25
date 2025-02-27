@@ -392,6 +392,7 @@ public gridOptions: any = {
       position: '',
       picture: './assets/img/profile.png',
       signature: '',
+      allowWhatsapp: true,
       __isNew: true
     };
 
