@@ -39,4 +39,8 @@ export class EmployeesService {
     return this.http.put<any[]>(`${environment.urlAdministration}/EmployeesXClock/${idEmployee}/${day}`, data, { headers: this.trackingService.getHeaders() });
   } 
 
+  addEmployeeClock(data: any): Observable<any> {
+    return this.http.post(`${environment.urlAdministration}/EmployeesXClock`, data, { headers: this.trackingService.getHeaders() });
+  } 
+
 }

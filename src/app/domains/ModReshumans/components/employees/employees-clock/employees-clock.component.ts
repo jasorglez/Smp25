@@ -5,6 +5,7 @@ import { NgbTimepickerModule } from '@ng-bootstrap/ng-bootstrap';
 import { NgSelectComponent } from '@ng-select/ng-select';
 import { EmployeesService } from 'app/services/employees.service';
 import { SignalsService } from 'app/services/signals.service';
+import { alerts } from 'app/helpers/alerts';
 
 @Component({
   selector: 'app-employees-clock',
@@ -109,8 +110,18 @@ export class EmployeesClockComponent {
   }
 
   guardarHorario() {
+    // Validación de campos requeridos
+    const diasInvalidos = this.horario.filter(dia => 
+      dia.enabled && (!dia.entry1?.hour || !dia.exit1?.hour)
+    );
+
+    if (diasInvalidos.length > 0) {
+      alerts.basicAlert('Error', 'Los días activados deben tener horarios de entrada y salida 1 completos', 'error');
+      return;
+    }
+
     if (this.horario.length !== 7) {
-      alert('Debe haber exactamente 7 días configurados');
+      alerts.basicAlert('Días no completos', 'Todos los días deberían ser enviados. Este error no debería ocurrir, por favor contacte al administrador', 'error');
       return;
     }
 
@@ -126,9 +137,16 @@ export class EmployeesClockComponent {
     }));
 
     if (this.isNew) {
-      // Lógica para nuevo horario (crear todos los días)
+      // Crear nuevos registros para cada día
       console.log('Creando nuevo horario...');
-      // this.employeesService.addEmployeeClock(this.idEmployee, horarioFormateado).subscribe(...)
+      horarioFormateado.forEach(dia => {
+        this.employeesService.addEmployeeClock(dia)
+          .subscribe({
+            next: (res) => console.log(`Día ${dia.day} creado:`, res),
+            error: (err) => console.error(`Error creando ${dia.day}:`, err)
+          });
+      });
+      this.isNew = false;
     } else {
       // Actualizar días existentes uno por uno
       console.log('Actualizando horario existente...');
@@ -142,7 +160,7 @@ export class EmployeesClockComponent {
     }
     
     // Opcional: Mostrar confirmación al usuario
-    alert(`Horario ${this.isNew ? 'creado' : 'actualizado'} correctamente`);
+    alerts.basicAlert('Horario guardado', `Horario ${this.isNew ? 'creado' : 'actualizado'} correctamente`, 'success');
   }
 
   private formatearHora(hora: any): string | null {
