@@ -31,5 +31,12 @@ export class EmployeesService {
     return this.http.delete<any[]>(`${environment.urlAdministration}/Employee/${id}`, { headers: this.trackingService.getHeaders() });
   }
   
+  getEmployeeClock(idEmployee: number): Observable<any> {
+    return this.http.get<any[]>(`${environment.urlAdministration}/EmployeesXClock/employee/${idEmployee}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateEmployeeClock(idEmployee: number, day: string, data: any): Observable<any> {
+    return this.http.put<any[]>(`${environment.urlAdministration}/EmployeesXClock/${idEmployee}/${day}`, data, { headers: this.trackingService.getHeaders() });
+  } 
 
 }

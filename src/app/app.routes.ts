@@ -328,6 +328,10 @@ export const routes: Routes = [
             children: [
               { path: '', redirectTo: 'employees-table', pathMatch: 'full' },
               {
+                path: 'clock',
+                loadComponent: () => import('./domains/ModReshumans/components/employees/employees-clock/employees-clock.component').then(p => p.EmployeesClockComponent)
+              },
+              {
                 path: 'employees-table',
                 loadComponent: () => import('./domains/ModReshumans/components/employees/table/table.component').then(l => l.EmployeesTableComponent)
               },
