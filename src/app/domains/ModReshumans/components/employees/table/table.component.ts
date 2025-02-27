@@ -1,6 +1,6 @@
 import { Component, effect, HostListener, inject } from '@angular/core';
 import {
-  CellDoubleClickedEvent,
+  CellDoubleClickedEvent, IFilterComp,
   ColDef,
   GridApi,
   GridReadyEvent,
@@ -35,7 +35,7 @@ import { TimeService } from 'app/services/time.service';
     EmployeesxLoansComponent,
     EmployeesxSavingsComponent,],
   templateUrl: './table.component.html',
-  styleUrl: './table.component.scss'
+  styleUrls: ['./table.component.scss']
 })
 export class EmployeesTableComponent {
   // Inject of new way for Angular 18
@@ -77,6 +77,11 @@ export class EmployeesTableComponent {
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
 
+  // Declare the missing properties
+  gridHeight: string = '80vh';
+  showLoansTab: boolean = false;
+  showSavingsTab: boolean = false;
+
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
     if (this.notSavedChanges) {
@@ -97,7 +102,7 @@ export class EmployeesTableComponent {
         this.signalsService.resetRefreshEmployees(); // Resetear la señal después de actualizar
       }
     });
-    
+
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       if (this.idBranch == null) {
@@ -169,11 +174,11 @@ export class EmployeesTableComponent {
         params.event.preventDefault(); // Prevenir comportamiento por defecto
       }
     },
+    onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
   };
 
   get colMaster(): ColDef[] {
     return [
-
       {
         field: 'picture',
         headerName: 'Fotografía',
@@ -189,8 +194,6 @@ export class EmployeesTableComponent {
         editable: false,
         width: 100,
       },
-
-
       {
         field: 'employeeCode',
         headerName: 'Código',
@@ -236,7 +239,8 @@ export class EmployeesTableComponent {
         editable: true,
         cellStyle: (params) => this.validateRequiredField(params.value),
         suppressMovable: true,
-        filter: 'agSetColumnFilter',
+      //  filter: 'agSetColumnFilter',
+        filter: 'agTextColumnFilter',
         filterParams: {
           // can be 'windows' or 'mac'
           excelMode: 'mac',
@@ -276,12 +280,12 @@ export class EmployeesTableComponent {
           return true;
         },
       },
-
       {
         field: 'loan',
         headerName: 'Préstamos',
         editable: false,
-        filter: false,
+        filter: 'agNumberColumnFilter', 
+        suppressMovable: true,
         width: 110,
         valueFormatter: (params) => {
           if (params.value) {
@@ -297,7 +301,8 @@ export class EmployeesTableComponent {
         field: 'saving',
         headerName: 'Ahorro',
         editable: false,
-        filter: false,
+        filter: 'agNumberColumnFilter',
+        suppressMovable: true,
         width: 100,
         valueFormatter: (params) => {
           if (params.value) {
@@ -309,7 +314,6 @@ export class EmployeesTableComponent {
           return '$0.00';
         },
       },
-
       {
         field: 'clockPassword',
         headerName: 'Contraseña Reloj',
@@ -332,7 +336,6 @@ export class EmployeesTableComponent {
           }
         },
       },
-
       {
         field: 'idBank',
         headerName: 'Banco',
@@ -351,8 +354,6 @@ export class EmployeesTableComponent {
           return foundBank ? `${foundBank.name}` : params.value;
         },
       },
-
-
       {
         field: 'address',
         headerName: 'Dirección',
@@ -451,7 +452,6 @@ export class EmployeesTableComponent {
         filter: true,
         width: 150,
       },
-      
       {
         field: 'priceXHour',
         headerName: 'Precio por hora',
@@ -506,8 +506,6 @@ export class EmployeesTableComponent {
           return '';
         },
       },
-      
-      
       {
         field: 'vigente',
         headerName: 'Vigente',
@@ -562,9 +560,10 @@ export class EmployeesTableComponent {
         },
         filter: true,
       },
-      
     ];
   }
+
+
 
   // ==================== MASTER METHODS ====================
 
@@ -925,5 +924,68 @@ export class EmployeesTableComponent {
       ).slice(-2)}-${date.getFullYear()}`,
     };
   }
-  
+
+  resetGridSize() {
+    this.gridHeight = '80vh'; // Reset to default height
+    this.showLoansTab = false;
+    this.showSavingsTab = false;
+    if (this.gridApi) {
+      this.gridApi.setFilterModel(null);
+      this.gridApi.onFilterChanged();
+    }
+  }
+
+  onCellDoubleClicked(event: CellDoubleClickedEvent): void {
+    const colId = event.column.getColId();
+    const rowIndex = event.rowIndex;
+
+    if (colId === 'loan' || colId === 'saving') {
+      const rowNode = this.gridApi.getDisplayedRowAtIndex(rowIndex);
+
+      if (rowNode) {
+        const nameValue = rowNode.data.name;
+
+        // Aplica el filtro basado en el nombre único de la fila
+        const filterModel = {
+          name: {
+            type: 'equals',
+            filter: nameValue,
+          },
+        };
+
+        this.gridApi.setFilterModel(filterModel);
+        this.gridApi.onFilterChanged();
+      }
+    } 
+
+    if (colId === 'loan') {
+      this.activateLoansTab();
+    } 
+    
+
+    if (colId === 'saving') {
+      this.activateSavingsTab();
+    }
+   
+  }
+
+  activateLoansTab() {
+    this.showLoansTab = true;
+    this.showSavingsTab = false;
+    this.adjustGridSize();
+  }
+
+  activateSavingsTab() {
+    this.showLoansTab = false;
+    this.showSavingsTab = true;
+    this.adjustGridSize();
+  }
+
+  adjustGridSize() {
+    this.gridHeight = '10vh'; // Adjust as needed
+  }
+
+
+
+
 }

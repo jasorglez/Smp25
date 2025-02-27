@@ -22,13 +22,27 @@
         <button type="button" class="btn btn-danger ms-1 me-1" (click)="deleteMasterEntry()">
           <i class="bi bi-trash"></i>
         </button>
+        <button type="button" class="btn btn-secondary ms-1 me-1" (click)="resetGridSize()">
+          <i class="bi bi-arrows-fullscreen"></i>
+        </button>
       </div>
     </div>
     <div class="col">
-      <ag-grid-angular style="width: 100%;" [ngStyle]="{'height': idEmployee != null ? '40vh' : '80vh'}" class="ag-theme-quartz small-text-ag-grid" [rowData]="rowData"
-        [columnDefs]="colMaster" (selectionChanged)="onMasterSelectionChanged($event)" [gridOptions]="gridOptions"
-        (cellValueChanged)="onMasterCellValueChanged($event)" (rowSelected)="onMasterRowSelected($event)"
-        (gridReady)="onMasterGridReady($event)" [paginationPageSize]="20" [pagination]="false" [components]="components">
+      <ag-grid-angular
+        style="width: 100%;"
+        [ngStyle]="{'height': gridHeight}"
+        class="ag-theme-quartz small-text-ag-grid"
+        [rowData]="rowData"
+        [columnDefs]="colMaster"
+        (selectionChanged)="onMasterSelectionChanged($event)"
+        [gridOptions]="gridOptions"
+        (cellValueChanged)="onMasterCellValueChanged($event)"
+        (rowSelected)="onMasterRowSelected($event)"
+        (gridReady)="onMasterGridReady($event)"
+        [paginationPageSize]="20"
+        [pagination]="false"
+        (cellDoubleClicked)="onCellDoubleClicked($event)"
+        [components]="components">
       </ag-grid-angular>
     </div>
   </div>
@@ -37,22 +51,20 @@
 <div class="row" *ngIf="idEmployee != null">
   <div class="col-12">
     <ul class="nav nav-tabs" id="myTab" role="tablist">
-      <li class="nav-item" role="presentation">
-        <a class="nav-link active" id="loans-tab" data-bs-toggle="tab" href="#loans" type="button" role="tab"
-          aria-controls="loans" aria-selected="true">Préstamos</a>
-      </li>
-      <li class="nav-item" role="presentation">
-        <a class="nav-link" id="savings-tab" data-bs-toggle="tab" href="#savings" role="tab" aria-controls="savings"
-          aria-selected="false">Ahorros</a>
-      </li>
+     
+ 
     </ul>
+
     <div class="tab-content" id="myTabContent">
-      <div class="tab-pane fade show active" id="loans" role="tabpanel" aria-labelledby="loans-tab">
+      <div class="tab-pane fade show active" id="loans" role="tabpanel" aria-labelledby="loans-tab" *ngIf="showLoansTab">
         <app-employeesxloans></app-employeesxloans>
       </div>
-      <div class="tab-pane fade" id="savings" role="tabpanel" aria-labelledby="savings-tab">
-        <app-employeesxsavings></app-employeesxsavings>
-      </div>
+   
+      <div class="tab-content" id="myTabContent">
+        <div class="tab-pane fade show active" id="loans" role="tabpanel" aria-labelledby="loans-tab" *ngIf="showSavingsTab">
+          <app-employeesxsavings></app-employeesxsavings>
+        </div>
+     
     </div>
   </div>
 </div>
