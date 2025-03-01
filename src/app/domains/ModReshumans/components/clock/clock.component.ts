@@ -101,35 +101,41 @@ export class ClockComponent {
         this.getTimeAgain().subscribe(fecha => {
           console.log(fecha);
           if (type == 'IN') {
-            // Verifica si la fecha es la misma que la última entrada, ya que no se puede ingresar en
-            // el mismo día dos veces consecutivas sin una salida de por medio.
-            if (data[0]?.lastType === 'IN' && 
-                data[0]?.lastCheck.split('T')[0] === fecha.split('T')[0]) {
-              alerts.basicAlert("Error", "Ya ha ingresado al día de hoy", "error");
+            // El empleado no marcó su salida.
+            // Si la fecha de entrada sea distinta a la fecha actual, debe arrojar este error.
+            if (data[0]?.lastType === 'IN' &&
+              data[0]?.lastCheck.split('T')[0] === fecha.split('T')[0]) {
+              alerts.basicAlert("Error", "Ya ha marcado su entrada el día de hoy", "error");
+              return;
+            }
+            // Esta podría ser la lógica para sumar +1 a Salidas Pendientes.
+            // El empleado no marcó su salida.
+            // Se verifica que la fecha de entrada sea distinta a la fecha actual.
+            // Si es así, eso significa que el empleado no marcó su salida ayer.
+            else if (data[0]?.lastType === 'IN' && data[0]?.lastCheck.split('T')[0] !== fecha.split('T')[0]) {
               return;
             }
             const info = { idEmployee: data[0]?.idEmployee, type: 'IN', timeStamp: fecha, active: true };
             console.log(info);
             this.clockService.checkInOut(info).subscribe(
-              (data => {
-                alerts.basicAlert("Éxito", "Entrada marcada exitosamente", "success");
+              (clock => {
+                alerts.basicAlert("Entrada marcada exitosamente", `Hola ${data[0]?.name}`, "success");
               })
             );
           }
-          else if(type == 'OUT')
-          {
+          else if (type == 'OUT') {
             // Verifica si la fecha es la misma que la última salida, ya que no se puede salir en
             // el mismo día dos veces consecutivas sin una entrada de por medio.
-            if (data[0]?.lastType === 'OUT' && 
-                data[0]?.lastCheck.split('T')[0] === fecha.split('T')[0]) {
+            if (data[0]?.lastType === 'OUT' &&
+              data[0]?.lastCheck.split('T')[0] === fecha.split('T')[0]) {
               alerts.basicAlert("Error", "Ya ha marcado su salida el día de hoy", "error");
               return;
             }
             const info = { idEmployee: data[0]?.idEmployee, type: 'OUT', timeStamp: fecha, active: true };
             console.log(info);
             this.clockService.checkInOut(info).subscribe(
-              (data => {
-                alerts.basicAlert("Éxito", "Salida marcada exitosamente", "success");
+              (clock => {
+                alerts.basicAlert("Salida marcada exitosamente", `Adiós ${data[0]?.name}`, "success");
               })
             );
           }
