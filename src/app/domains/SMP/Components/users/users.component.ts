@@ -66,11 +66,12 @@ export class UsersComponent {
     autocompleteEditor: AutocompleteEditorComponent
   }
 
+  gridHeight: string = '80vh';
   newlyAddedRows: string[] = [];
   entrada: any;
   departamentos: { [key: string]: string } = {};
   rowData: any[] = [];
-  paginationPageSize = 10; // Tamaño de página
+  paginationPageSize = 20; // Tamaño de página
   pagination = true; // Habilitar paginación
   notSavedChanges: boolean = false;
   paginationPageSizeSelector = false;

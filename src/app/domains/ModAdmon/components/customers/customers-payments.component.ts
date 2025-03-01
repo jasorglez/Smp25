@@ -43,6 +43,7 @@ export class CustomersPaymentsComponent {
 
   notSavedChanges: boolean = false;
 
+  detalleRowData: any[] = [];
   rowData: any;
   contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
@@ -59,8 +60,7 @@ export class CustomersPaymentsComponent {
   public rowSelection: 'single' | 'multiple' = 'single';
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'never';
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'never';
-  public paginationPageSize = 15;
-  public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
+
 
   // Inject of new way for Angular 18
   private customersService = inject(CustomersService);
@@ -74,8 +74,8 @@ export class CustomersPaymentsComponent {
 
 // Column Definitions: Defines the columns to be displayed.
 public gridOptions: any = {
-  headerHeight: 30,
-  rowHeight: 30,
+  headerHeight: 20,
+  rowHeight: 20,
   rowClass: (params) => {
     // Verificar si la fila está seleccionada
     if (params.node.isSelected()) {
@@ -98,6 +98,10 @@ public gridOptions: any = {
     }
   },
 };
+
+private maestroGridApi: GridApi;
+private detalleGridApi: GridApi;
+detailNotSavedChanges: boolean = false;
   
   get colMaster(): ColDef[] {
     return [
@@ -110,14 +114,7 @@ public gridOptions: any = {
           }
           return '';
         } },
-      { field: 'dateP', headerName: 'Fecha de pago', editable: true, filter: true, width: 200, 
-        cellDataType: 'dateString',
-        valueFormatter: (params) => {
-          if (params.value) {
-            return params.value.split('T')[0];
-          }
-          return '';
-        } },
+   
       { field: 'quantity', headerName: 'Cantidad', editable: true, filter: true, width: 200 },
       {
         field: 'total', headerName: 'Total', editable: true, filter: true, width: 200, cellDataType: 'number',
@@ -132,6 +129,81 @@ public gridOptions: any = {
 
     ]
   };
+  
+  onDetalleGridReady(params: GridReadyEvent) {
+    this.detalleGridApi = params.api;
+  }
+
+  public detalleGridOptions: any = {
+    headerHeight: 25,
+    rowHeight: 20,
+    suppressEnterWhenEditing: false,
+    rowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onDetalleRowClicked: (event) => {
+      // Seleccionar la fila al hacer clic en cualquier celda
+      event.node.setSelected(true);
+    },
+    onDetalleRowSelected: (event) => {
+      // Deseleccionar otras filas cuando se selecciona una nueva
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    },
+  };
+
+  detalleColumnDefs: ColDef[] = [
+    {
+      headerName: 'Fecha',
+      field: 'date',
+      valueGetter: (params) => params.data.date ? new Date(params.data.date) : null,
+      cellEditor: 'agDateCellEditor',
+      cellEditorParams: {
+        min: new Date(2000, 0, 1),
+        max: new Date(2050, 11, 31),
+      },
+      valueFormatter: (params) => {
+        if (params.value) {
+          const date = new Date(params.value);
+          return `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
+        }
+        return '';
+      },
+      flex: 1,
+      editable: (params) => params.data?.__isNew === true
+    },
+    {
+      headerName: 'Abono *',
+      headerClass: 'required-header',
+      field: 'total',
+      valueFormatter: (params) => {
+        if (params.value) {
+          return new Intl.NumberFormat('es-MX', {
+            style: 'currency',
+            currency: 'MXN',
+          }).format(params.value);
+        }
+        return '$0.00';
+      },
+      flex: 1,
+      editable: (params) => params.data?.__isNew === true
+    },
+    { 
+      headerName: 'Comentario', 
+      field: 'descripcion', 
+      flex: 2,
+      editable: (params) => params.data?.__isNew === true
+    },
+  ];
 
   obtenerDatos() {
     this.customersService.getClientCredits(this.idClient).subscribe((data: any) => {
@@ -180,6 +252,7 @@ public gridOptions: any = {
     this.rowData = [newItem, ...this.rowData];
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
+    this.detailNotSavedChanges = true;
   }
 
   async saveChanges() {
@@ -289,6 +362,12 @@ public gridOptions: any = {
       delete cleanedData.id;
     }
     return cleanedData;
+  }
+
+  onDetailCellValueChanged($event) {
+    console.log('Dato cambiado:', $event.data);
+    $event.data.__modified = true;
+    this.detailNotSavedChanges = true;
   }
 
 }

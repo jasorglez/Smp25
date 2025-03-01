@@ -7,6 +7,7 @@ import { CatalogsService } from 'app/services/catalogs.service';
 import { PosService } from 'app/services/pos.service';
 import { SignalsService } from 'app/services/signals.service';
 import { Router } from '@angular/router';
+import { CustomersService } from 'app/services/customers.service';
 
 @Component({
   selector: 'app-pos-setup',
@@ -19,8 +20,9 @@ export class PosSetupComponent {
 
 
   // Inyección de servicios
-  private posService = inject(PosService);
-  private signalsService = inject(SignalsService);
+  private posService      = inject(PosService);
+  private customerService = inject(CustomersService);
+  private signalsService  = inject(SignalsService);
   private catalogsService = inject(CatalogsService);
   private router = inject(Router);
 
@@ -64,7 +66,7 @@ export class PosSetupComponent {
 
   // Método para obtener customeres de la sucursal seleccionada
   getCustomers() {
-    this.posService.getClients(this.idBranch).subscribe(
+    this.customerService.getCustomers(this.idBranch).subscribe(
       (data: any) => {
         this.customers = data;
         // Seleccionar el primer cliente si idCustomer es null

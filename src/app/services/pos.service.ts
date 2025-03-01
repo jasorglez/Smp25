@@ -12,9 +12,6 @@ export class PosService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
-  getClients(id: number) {
-    return this.http.get(`${environment.urlAdministration}/Customer/active?idBranch=${id}`, { headers: this.trackingService.getHeaders() });
-  }
 
   // Este es el endpoint que añade la lista de artículos comprados
   addSaleXConceptItem(data: any): Observable<any> {
