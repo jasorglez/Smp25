@@ -393,6 +393,7 @@ public gridOptions: any = {
       position: '',
       picture: './assets/img/profile.png',
       signature: '',
+      allowWhatsapp: true,
       __isNew: true
     };
 
@@ -414,36 +415,48 @@ public gridOptions: any = {
 
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
-    selectedData.active = 0;
-    this.usersService.deleteUser(id, selectedData).pipe(
-      catchError((error) => {
-        alerts.basicAlert(
-          'Eliminar entrada',
-          'Error al eliminar la entrada.',
-          'error'
-        );
-        console.error(error);
-        return EMPTY;
-      })
-    )
-      .subscribe(
-        () => {
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.obtenerDatos();
 
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.notSavedChanges = false;
-          this.selectedRowData = null;
-        }
-      )
+    // Mostrar mensaje de confirmación
+    alerts.confirmAlert(
+      'Eliminar empleado',
+      '¿Está seguro que desea eliminar este empleado?',
+      'warning',
+      'Sí, eliminar'
+    ).then((value) => {
+      if (value.isConfirmed) {
+        // Eliminar el usuario
+        selectedData.active = 0;
+        this.usersService.deleteUser(id, selectedData).pipe(
+          catchError((error) => {
+            alerts.basicAlert(
+              'Eliminar entrada',
+              'Error al eliminar la entrada.',
+              'error'
+            );
+            console.error(error);
+            return EMPTY;
+          })
+        )
+          .subscribe(
+            () => {
+              alerts.basicAlert(
+                'Eliminar entrada',
+                'Entrada eliminada satisfactoriamente.',
+                'success'
+              );
+              this.obtenerDatos();
+
+              alerts.basicAlert(
+                'Eliminar entrada',
+                'Entrada eliminada satisfactoriamente.',
+                'success'
+              );
+              this.notSavedChanges = false;
+              this.selectedRowData = null;
+            }
+          )
+      }
+    });
   }
 
   revert() {
