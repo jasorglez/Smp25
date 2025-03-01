@@ -13,14 +13,14 @@ import { CustomersPaymentsComponent } from './customers-payments.component';
 import { CustomersSalesComponent } from './customers-sales.component';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { RadiusinfluenceComponent } from '../radiusinfluence/radiusinfluence.component';
-
+import { CustomersService } from 'app/services/customers.service';
+import { PhoneAuthCredential } from 'firebase/auth';
 
 @Component({
   selector: 'app-customers',
   standalone: true,
   imports: [RouterModule, DomainsModule, AgGridModule, MultiLineEditorComponent, 
-    CustomersPaymentsComponent,
-    CustomersSalesComponent,],
+    CustomersPaymentsComponent,],
   templateUrl: './customers.component.html',
   styleUrls: ['./customers.component.scss']
 })
@@ -56,27 +56,38 @@ export class CustomersComponent {
   selectedTab: string = 'customers-payments';
   idBranch: number = null;
   private gridApi: GridApi;
+
+  public defaultColDef: ColDef = {
+    sortable: true,
+    filter: false,
+    resizable: true,
+    lockPosition: false,
+    enableRowGroup: true, // Enable row grouping for all columns
+    flex: 1,
+  };
+
   currentIndex = 0;
+  gridHeight: string = '80vh';
   public rowSelection: 'single' | 'multiple' = 'single';
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'never';
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'never';
-  public paginationPageSize = 15;
-  public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
+
   frameworkComponents = {
     multiLineEditor: MultiLineEditorComponent
   };
 
-  private administrationService = inject(AdministrationService);
-  private modalServiceTable = inject(ModalService);
-  private signalsService = inject(SignalsService);
-  private modalService = inject(NgbModal);
+//  private administrationService = inject(AdministrationService);
+  private customerService    = inject(CustomersService);  
+  private modalServiceTable  = inject(ModalService);
+  private signalsService     = inject(SignalsService);
+  private modalService       = inject(NgbModal);
 
   idClient = this.signalsService.getIdClient();
   nameClient = this.signalsService.getNameClient()();
 
   public gridOptions: any = {
-    headerHeight: 30,
-    rowHeight: 30,
+    headerHeight: 25,
+    rowHeight: 20,
     rowClass: (params) => {
       if (params.node.isSelected()) {
         return 'selected-row';
@@ -99,9 +110,39 @@ export class CustomersComponent {
 
   get colMaster(): ColDef[] {
     return [
-      { field: 'nameContact', headerName: 'Nombre', editable: true, filter: true, width: 200 },
       {
-        field: 'company', headerName: 'Compania', editable: false, width: 285, filter: true,
+        field: 'company', headerName: 'Compania', editable: false, width: 250, filter: true,
+        cellEditor: 'agPopupTextCellEditor',
+        cellEditorParams: {
+          maxLength: 100,
+          cols: 50,
+          rows: 3,
+          onKeyDown: (event: KeyboardEvent) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.stopPropagation();
+            }
+          },
+        },
+        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+          if (!event.node.group) {
+            this.modalServiceTable.showModal({
+              params: event,
+              value: event.value,
+            });
+          }
+        },
+        cellRenderer: (params: ICellRendererParams) => {
+          if (params.node.group) {
+            return params.value;
+          }
+          return params.value;
+        }
+      },
+      { field: 'nameContact', headerName: 'Nombre', editable: true, filter: true, width: 200 },
+      { field: 'totalCredit', headerName: 'Total Credito', editable: false, filter: true, width: 145 },
+      { field: 'cp', headerName: 'CP', editable: true, filter: true, width: 105 },
+      {
+        field: 'address', headerName: 'Direccion', editable: false, width: 250, filter: true,
         cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
@@ -129,12 +170,43 @@ export class CustomersComponent {
         }
       },
       {
-        field: 'phone', headerName: 'Telefono', editable: true, width: 169, cellEditorParams: {
+        field: 'addressfiscal', headerName: 'Direccion Fiscal', editable: false, width: 250, filter: true,
+        cellEditor: 'agPopupTextCellEditor',
+        cellEditorParams: {
+          maxLength: 100,
+          cols: 50,
+          rows: 3,
+          onKeyDown: (event: KeyboardEvent) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.stopPropagation();
+            }
+          },
+        },
+        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+          if (!event.node.group) {
+            this.modalServiceTable.showModal({
+              params: event,
+              value: event.value,
+            });
+          }
+        },
+        cellRenderer: (params: ICellRendererParams) => {
+          if (params.node.group) {
+            return params.value;
+          }
+          return params.value;
+        }
+      },
+      { field: 'state', headerName: 'Estado', editable: true, filter: true, width: 160 },
+      { field: 'city', headerName: 'Ciudad', editable: true, width: 120, filter: true },
+      {
+        field: 'phone', headerName: 'Telefono', editable: true, width: 120, cellEditorParams: {
           maxLength: 15
         }
       },
-      { field: 'rfc', headerName: 'RFC', editable: true, width: 140 },
-      { field: 'city', headerName: 'Ciudad', editable: true, width: 105 },
+      { field: 'rfc', headerName: 'RFC', editable: true, width: 100 },
+      { field: 'latitud', headerName: 'Latitud', editable: true, width: 110, filter: true },
+      { field: 'longitud', headerName: 'Longitud', editable: true, width: 120, filter: true },
       {
         field: 'email', headerName: 'Correo', width: 200, cellEditor: 'agTextCellEditor',
         editable: (params) => params.data.__isNew,
@@ -167,12 +239,13 @@ export class CustomersComponent {
             return false;
           }
         }
-      }
+      },
+      { field: 'vigente', headerName: 'Vigente', editable: true, width: 100, filter: true },
     ];
   }
 
   obtenerDatos() {
-    this.administrationService.getCustomers(this.idBranch).subscribe((data: any) => {
+    this.customerService.getCustomers(this.idBranch).subscribe((data: any) => {
       this.rowData = data;
     });
   }
@@ -206,16 +279,23 @@ export class CustomersComponent {
     const newItem = {
       id: tempId,
       idBranch: this.idBranch,
-      nameContact: '',
-      company: '',
-      phone: '',
-      rfc: '',
-      city: '',
-      mobile: '',
-      email: '',
-      address: '',
-      vigente: true,
-      active: true,
+      nameContact   : '',
+      company       : '',
+      phone         : '',
+      rfc           : '',
+      city          : '',
+      mobile        : '',
+      email         : '',
+      address       : '',
+      addressfiscal : '',
+      state         : '',
+      totalCredit   : 0,
+      radio         : 0,
+      vigente       : true,
+      NumCliente    : 0,
+      latitud       : '',
+      longitud      : '',
+      active        : true,
       __isNew: true,
     };
     this.rowData = [newItem, ...this.rowData];
@@ -241,12 +321,12 @@ export class CustomersComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.administrationService.addCustomer(cleanedData);
+      return this.customerService.addCustomer(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.administrationService.updateCustomer(row.id, cleanedData);
+      return this.customerService.updateCustomer(row.id, cleanedData);
     });
 
     try {
@@ -285,7 +365,7 @@ export class CustomersComponent {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
     selectedData.active = 0;
-    this.administrationService.deleteCustomer(id).pipe(
+    this.customerService.deleteCustomer(id).pipe(
       catchError((error) => {
         alerts.basicAlert(
           'Eliminar entrada',
@@ -326,7 +406,22 @@ export class CustomersComponent {
     openRadiusInfluenceModal(): void {
       const modalRef = this.modalService.open(RadiusinfluenceComponent, { size: 'lg' });
     }
-    
+
+    resetGridSize() {
+      this.gridHeight = '80vh'; // Reset to default height
+      //this.showLoansTab = false;
+      //this.showSavingsTab = false;
+      if (this.gridApi) {
+        this.gridApi.setFilterModel(null);
+        this.gridApi.onFilterChanged();
+      }
+    }
+
+    showCreditsTab() {  
+     
+    }
+
+
 }
 
 

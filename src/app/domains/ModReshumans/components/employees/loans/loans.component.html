@@ -1,17 +1,15 @@
 <div class="col-12">
   <div class="row align-items-start">
 
-    <!-- Grupo Prestamos -->
     <div class="col-7">
       <div class="card shadow-sm">
-         <div class="card-header">
-           <h3 class="card-title mb-0">Prestamos</h3>
-         </div>
+        <div class="card-header">
+          <h3 class="card-title mb-0">Prestamos</h3>
+        </div>
         <div class="card-body">
           <div class="row">
-            <!-- Columna de botones para Prestamos -->
             <div class="col-auto">
-              <div class="d-flex flex-column gap-1 me-3">
+              <div class="d-flex flex-column gap-0 me-0">
                 <button type="button" class="btn btn-primary" (click)="addRow('Master')">
                   <i class="bi bi-plus-lg"></i>
                 </button>
@@ -27,9 +25,8 @@
                 </button>
               </div>
             </div>
-            <!-- Grid Maestro -->
-            <div class="col">
-              <ag-grid-angular class="ag-theme-quartz small-text-ag-grid master-grid" style="height: 300px;"
+            <div class="col p-0">
+              <ag-grid-angular class="ag-theme-quartz small-text-ag-grid master-grid" style="height: 430px;"
                 [rowData]="maestroRowData" [columnDefs]="maestroColumnDefs" [gridOptions]="maestroGridOptions"
                 (selectionChanged)="onMaestroSelectionChanged($event)" (cellValueChanged)="onMasterCellValueChanged($event)"
                 (gridReady)="onMaestroGridReady($event)" [rowSelection]="'single'">
@@ -40,7 +37,6 @@
       </div>
     </div>
 
-    <!-- Grupo Detalles del Prestamo -->
     <div class="col-5">
       <div class="card shadow-sm">
         <div class="card-header">
@@ -48,9 +44,8 @@
         </div>
         <div class="card-body">
           <div class="row">
-            <!-- Columna de botones para Detalles -->
             <div class="col-auto">
-              <div class="d-flex flex-column gap-1 me-3">
+              <div class="d-flex flex-column gap-0 me-0">
                 <button type="button" class="btn btn-primary" (click)="addRow('Detailed')">
                   <i class="bi bi-plus-lg"></i>
                 </button>
@@ -66,19 +61,12 @@
                 </button>
               </div>
             </div>
-            <!-- Grid Detalle -->
-            <div class="col">
-              <ag-grid-angular class="ag-theme-quartz small-text-ag-grid detail-grid" style="height: 300px;"
+            <div class="col p-0">
+              <ag-grid-angular class="ag-theme-quartz small-text-ag-grid detail-grid" style="height: 430px;"
                 [rowData]="detalleRowData" [columnDefs]="detalleColumnDefs" [gridOptions]="detalleGridOptions"
-                (gridReady)="onDetalleGridReady($event)" [rowSelection]="'single'" 
+                (gridReady)="onDetalleGridReady($event)" [rowSelection]="'single'"
                 (cellValueChanged)="onDetailCellValueChanged($event)">
               </ag-grid-angular>
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
   </div>
-</div>
-
+ 

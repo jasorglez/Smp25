@@ -1,6 +1,6 @@
 <app-multi-line-editor></app-multi-line-editor>
 <div class="col-12 mt-3">
-  <div class="row">
+  <div class="row mt-3">
     <!-- Columna de botones -->
     <div class="col-auto">
       <div class="d-flex flex-column gap-2">
@@ -24,6 +24,10 @@
           <i class="bi bi-trash"></i>
         </button>
         
+        <button type="button" class="btn btn-secondary ms-1 me-1" (click)="resetGridSize()">
+          <i class="bi bi-arrows-fullscreen"></i>
+        </button>
+
          <!-- Botón para radio de influencia -->
          <button type="button" class="btn btn-warning btn-sm" (click)="openRadiusInfluenceModal()">
           <i class="bi bi-circle"></i>
@@ -34,36 +38,31 @@
 
     <!-- Columna de la tabla -->
     <div class="col">
-      <ag-grid-angular style="width: 100%; height: 45vh;" class="ag-theme-quartz small-text-ag-grid" [rowData]="rowData"
+      <ag-grid-angular style="width: 100%;"
+      [ngStyle]="{'height': gridHeight}"
+      class="ag-theme-quartz small-text-ag-grid" 
+      [rowData]="rowData"
         [columnDefs]="colMaster" (selectionChanged)="onSelectionChanged($event)" [gridOptions]="gridOptions"
         (cellValueChanged)="onCellValueChanged($event)" (rowSelected)="onSelectedRow($event)"
         (gridReady)="onGridReady($event)" rowSelection="single" [pivotPanelShow]="pivotPanelShow"
-        [rowSelection]="rowSelection" [rowGroupPanelShow]="rowGroupPanelShow" [pagination]="true" [paginationPageSize]="paginationPageSize">
+        [rowSelection]="rowSelection" [rowGroupPanelShow]="rowGroupPanelShow" >
       </ag-grid-angular>
     </div>
   </div>
+</div>
 
   <div class="row">
     <div class="container-fluid">
       <ul class="nav nav-pills">
-        <li class="nav-item" *ngIf="idClient()">
-          <a class="nav-link" [class.active]="selectedTab === 'customers-payments'"
-            (click)="selectedTab = 'customers-payments'" data-toggle="tab">Abonos</a>
-        </li>
-        <li class="nav-item" *ngIf="idClient()">
-          <a class="nav-link" [class.active]="selectedTab === 'customers-sales'"
-            (click)="selectedTab = 'customers-sales'" data-toggle="tab">Ventas</a>
-        </li>
+        
+        
       </ul>
 
       <div class="tab-pane" [class.active]="selectedTab === 'customers-payments'"
-        *ngIf="selectedTab === 'customers-payments' && idClient()">
+      *ngIf="showCreditsTab">
         <app-customers-payments></app-customers-payments>
       </div>
-      <div class="tab-pane" [class.active]="selectedTab === 'customers-sales'"
-        *ngIf="selectedTab === 'customers-sales' && idClient()">
-        <app-customers-sales></app-customers-sales>
-      </div>
+     
     </div>
   </div>
-</div>
+

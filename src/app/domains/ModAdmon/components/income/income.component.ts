@@ -16,6 +16,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { NgSelectComponent, NgSelectModule } from '@ng-select/ng-select';
 import { AdditionalInfoComponent } from "./additional-info/additional-info.component";
 import { ConceptsComponent } from "./concepts/concepts.component";
+import { CustomersService } from 'app/services/customers.service';
 
 @Component({
   selector: 'app-income',
@@ -29,6 +30,7 @@ export class IncomeComponent {
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
   private modalServiceTable = inject(ModalService);
   private administrationService = inject(AdministrationService);
+  private customersService = inject(CustomersService);
   private usersxpermissionsService = inject(UsersxpermissionsService);
   private usersService = inject(UsersService);
   private signalsService = inject(SignalsService);
@@ -159,7 +161,7 @@ public gridOptions: any = {
   }
 
   async getCustomers() {
-    this.administrationService.getCustomersByCompany(this.idRoot).subscribe(
+    this.customersService.getCustomersByCompany(this.idRoot).subscribe(
       (data: any) => {
         this.customers = data;
       },

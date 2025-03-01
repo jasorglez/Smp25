@@ -10,6 +10,7 @@ import { MaterialsService } from 'app/services/materials.service';
 import { SearchableSelectComponent } from 'app/shared/searchable-select/searchable-select.component';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, debounceTime, distinctUntilChanged, Observable, of, Subject, switchMap } from 'rxjs';
+import { CustomersService } from 'app/services/customers.service';
 
 @Component({
   selector: 'app-pos',
@@ -20,9 +21,10 @@ import { catchError, debounceTime, distinctUntilChanged, Observable, of, Subject
 })
 export class PosComponent {
   // Inyección de servicios
-  private posService = inject(PosService);
-  private signalsService = inject(SignalsService);
+  private posService       = inject(PosService);
+  private signalsService   = inject(SignalsService);
   private materialsService = inject(MaterialsService);
+  private customerService  = inject(CustomersService);
 
   // products
   productInput$ = new Subject<string>();
@@ -155,7 +157,7 @@ export class PosComponent {
 
   // Método para obtener clientes de la sucursal seleccionada
   getCustomers() {
-    this.posService.getClients(this.idBranch).subscribe(
+    this.customerService.getCustomers(this.idBranch).subscribe(
       (data: any) => {
         this.clients = data;
         // Seleccionar el primer cliente si idCustomer es null
