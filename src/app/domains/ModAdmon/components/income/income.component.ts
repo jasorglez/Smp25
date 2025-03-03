@@ -7,7 +7,7 @@ import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-edito
 import { FormsModule, NgSelectOption } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { alerts } from 'app/helpers/alerts';
-import { lastValueFrom, concat, toArray, catchError, EMPTY, forkJoin, tap } from 'rxjs';
+import { lastValueFrom, concat, toArray, catchError, EMPTY, forkJoin, tap, map } from 'rxjs';
 import { AdministrationService } from 'app/services/administration.service';
 import { SearchableSelectComponent } from 'app/shared/searchable-select/searchable-select.component';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
@@ -17,6 +17,7 @@ import { NgSelectComponent, NgSelectModule } from '@ng-select/ng-select';
 import { AdditionalInfoComponent } from "./additional-info/additional-info.component";
 import { ConceptsComponent } from "./concepts/concepts.component";
 import { CustomersService } from 'app/services/customers.service';
+import { BranchsService } from 'app/services/branchs.service';
 
 @Component({
   selector: 'app-income',
@@ -26,7 +27,6 @@ import { CustomersService } from 'app/services/customers.service';
   styleUrl: './income.component.scss'
 })
 export class IncomeComponent {
-
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
   private modalServiceTable = inject(ModalService);
   private administrationService = inject(AdministrationService);
@@ -34,28 +34,36 @@ export class IncomeComponent {
   private usersxpermissionsService = inject(UsersxpermissionsService);
   private usersService = inject(UsersService);
   private signalsService = inject(SignalsService);
-
+  private BranchsService = inject(BranchsService)
+ 
   async ngOnInit() {
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
     await this.getBillingManagementInfo();
     await this.getBankAccounts();
     await this.getIncomes();
-    await this.getCustomers();
+    await this.obtenerBranchs(); // Esperar a obtener las sucursales
+    await this.getCustomers();   // Obtener clientes después de sucursales
     await this.loadAuthorizers();
-    await this.getCurrentUser();
-
+    await this.getCurrentUser(); 
   }
+  
+  obtenerBranchs(): Promise<void> {
+    return new Promise((resolve) => {
+      this.BranchsService.getBranches(this.idRoot).pipe(
+        map((data: any[]) => data.map(branch => branch.id))
+      ).subscribe((ids: number[]) => {
+        this.branches = ids;
+        resolve();
+      });
+    });
+  }
+  
 
   constructor() {
     effect(async () => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idAccount = null;
-      await this.getBillingManagementInfo();
-      await this.getBankAccounts();
-      await this.getIncomes();
-      await this.getCustomers();
-      await this.loadAuthorizers();
-      await this.getCurrentUser();
+ 
     });
     effect(() => {
       const shouldUpdate = this.signalsService.getupdateIncAndExp()();
@@ -66,7 +74,7 @@ export class IncomeComponent {
     });
   };
 
-
+  branches: number[] = [];
   incomes: any[] = [];
   customers: any[] = [];
   users: any[] = [];
@@ -160,8 +168,10 @@ public gridOptions: any = {
     });
   }
 
+
+
   async getCustomers() {
-    this.customersService.getCustomersByCompany(this.idRoot).subscribe(
+    this.customersService.getCustomersByCompany(this.branches, 'CUSTOMERS').subscribe(
       (data: any) => {
         this.customers = data;
       },

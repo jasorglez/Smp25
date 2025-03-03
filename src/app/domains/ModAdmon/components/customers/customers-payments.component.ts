@@ -8,12 +8,13 @@ import { AgGridModule } from 'ag-grid-angular';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { SignalsService } from 'app/services/signals.service';
 import { CustomersService } from 'app/services/customers.service';
+import { AccountbanksComponent } from '../accountbanks/accountbanks.component';
 
 
 @Component({
   selector: 'app-customers-payments',
   standalone: true,
-  imports: [RouterModule, DomainsModule, AgGridModule, MultiLineEditorComponent],
+  imports: [RouterModule, DomainsModule, AgGridModule],
   templateUrl: './customers-payments.component.html',
   styleUrl: './customers.component.scss'
 })
@@ -22,6 +23,7 @@ export class CustomersPaymentsComponent {
 
   ngOnInit() {
     this.obtenerDatos();
+
   }
 
   constructor() {
@@ -115,9 +117,16 @@ detailNotSavedChanges: boolean = false;
           return '';
         } },
    
-      { field: 'quantity', headerName: 'Cantidad', editable: true, filter: true, width: 200 },
+      { field: 'total', headerName: 'Total de la Nota', editable: true, 
+        valueFormatter: (params) => {
+          return new Intl.NumberFormat('es-MX', {
+            style: 'currency',
+            currency: 'MXN',
+          }).format(params.value || 0);
+        },
+        width: 200 },
       {
-        field: 'total', headerName: 'Total', editable: true, filter: true, width: 200, cellDataType: 'number',
+        field: 'account', headerName: 'Abono Cuenta', editable: true, filter: true, width: 200, cellDataType: 'number',
         cellEditorParams: {
           min: 0
         },
@@ -178,7 +187,7 @@ detailNotSavedChanges: boolean = false;
         }
         return '';
       },
-      flex: 1,
+      width: 178,
       editable: (params) => params.data?.__isNew === true
     },
     {
@@ -186,21 +195,18 @@ detailNotSavedChanges: boolean = false;
       headerClass: 'required-header',
       field: 'total',
       valueFormatter: (params) => {
-        if (params.value) {
-          return new Intl.NumberFormat('es-MX', {
-            style: 'currency',
-            currency: 'MXN',
-          }).format(params.value);
-        }
-        return '$0.00';
+        return new Intl.NumberFormat('es-MX', {
+          style: 'currency',
+          currency: 'MXN',
+        }).format(params.value || 0);
       },
-      flex: 1,
+      width: 180,
       editable: (params) => params.data?.__isNew === true
     },
     { 
       headerName: 'Comentario', 
       field: 'descripcion', 
-      flex: 2,
+      width: 140,
       editable: (params) => params.data?.__isNew === true
     },
   ];
@@ -243,8 +249,8 @@ detailNotSavedChanges: boolean = false;
       idCustomer: this.idClient,
       numberNote: '',
       date: new Date().toISOString().split('T')[0],
-      dateP: null,
-      quantity: 0,
+      account: 0,
+      type: '',
       total: 0,
       active: true,
       __isNew: true,
@@ -256,7 +262,7 @@ detailNotSavedChanges: boolean = false;
   }
 
   async saveChanges() {
-    const isValid = this.rowData.every((item) => item.numberNote && item.date && item.dateP && item.quantity && item.total);
+    const isValid = this.rowData.every((item) => item.numberNote && item.date && item.account && item.total);
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',

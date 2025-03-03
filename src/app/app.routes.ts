@@ -183,7 +183,13 @@ export const routes: Routes = [
           },
           {
             path: 'customer',
-            loadComponent: () => import('./domains/ModAdmon/components/customers/customers.component').then(e => e.CustomersComponent)
+            loadComponent: () => import('./domains/ModAdmon/components/customers/customers.component').then(e => e.CustomersComponent),
+            data: { type: 'CUSTOMERS' } // Parámetro para clientes
+          },
+          {
+            path: 'providers',
+            loadComponent: () => import('./domains/ModAdmon/components/customers/customers.component').then(e => e.CustomersComponent),
+            data: { type: 'PROVIDERS' } // Parámetro para proveedores
           },
           {
             path: 'radiusinfluence',

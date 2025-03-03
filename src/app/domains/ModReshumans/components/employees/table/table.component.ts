@@ -179,6 +179,12 @@ export class EmployeesTableComponent {
 
   get colMaster(): ColDef[] {
     return [
+      { field: 'id', headerName: 'Id', editable: false, width: 53, hide : false,
+        filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
+        filterParams: {
+              filterOptions: ['equals'], // Opciones de filtro
+     },
+    },
       {
         field: 'picture',
         headerName: 'Fotografía',
@@ -239,8 +245,7 @@ export class EmployeesTableComponent {
         editable: true,
         cellStyle: (params) => this.validateRequiredField(params.value),
         suppressMovable: true,
-      //  filter: 'agSetColumnFilter',
-        filter: 'agTextColumnFilter',
+        filter: 'agSetColumnFilter',
         filterParams: {
           // can be 'windows' or 'mac'
           excelMode: 'mac',
@@ -622,11 +627,11 @@ export class EmployeesTableComponent {
   }
 
   onMasterSelectionChanged(event: any) {
-    console.log(event);
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
       this.idEmployee = this.selectedRowData.id;
+
       this.signalsService.setIdEmployee(this.idEmployee);
     } else {
       this.selectedRowData = null;
@@ -937,37 +942,34 @@ export class EmployeesTableComponent {
 
   onCellDoubleClicked(event: CellDoubleClickedEvent): void {
     const colId = event.column.getColId();
-    const rowIndex = event.rowIndex;
-
+    const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
+    const selectedId = selectedRowData.id; // Obtener el ID del registro
+  
     if (colId === 'loan' || colId === 'saving') {
-      const rowNode = this.gridApi.getDisplayedRowAtIndex(rowIndex);
-
-      if (rowNode) {
-        const nameValue = rowNode.data.name;
-
-        // Aplica el filtro basado en el nombre único de la fila
-        const filterModel = {
-          name: {
-            type: 'equals',
-            filter: nameValue,
-          },
-        };
-
-        this.gridApi.setFilterModel(filterModel);
-        this.gridApi.onFilterChanged();
-      }
-    } 
-
+      // Filtrar el grid para mostrar solo el registro con el ID seleccionado
+      const filterModel = {
+        id: {
+          type: 'equals',
+          filter: selectedId,
+        },
+      };
+  
+      this.gridApi.setFilterModel(filterModel);
+      this.gridApi.onFilterChanged();
+    }
+  
     if (colId === 'loan') {
       this.activateLoansTab();
-    } 
-    
-
+    }
+  
     if (colId === 'saving') {
       this.activateSavingsTab();
     }
-   
+  
+    // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
+     this.selectedRowData = selectedRowData;
   }
+  
 
   activateLoansTab() {
     this.showLoansTab = true;
