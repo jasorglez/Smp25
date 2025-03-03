@@ -15,6 +15,8 @@ export class BranchsService {
   private trackingService = inject(TrackingService);
 
   getBranches(idroot : number): Observable<any> {
+    //  const apiUrl = `${environment.urlSmp}/Branchs?idCompany=${idroot}`;      
+     //alert(apiUrl) 
     return this.http.get(`${environment.urlSmp}/Branchs?idCompany=${idroot}`, { headers: this.trackingService.getHeaders() });
   }
 

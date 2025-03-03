@@ -39,6 +39,8 @@ export class AdministrationService {
 
   // Cuentas Bancos
   getAccountBanks(idRoot: number): Observable<any> {
+    //const apiUrl = `${environment.urlAdministration}/AccountBanks/Bussines/${idRoot}`;      
+   // alert(apiUrl)  
     return this.http.get(`${environment.urlAdministration}/AccountBanks/Bussines/${idRoot}`, { headers: this.trackingService.getHeaders() });
   }
 

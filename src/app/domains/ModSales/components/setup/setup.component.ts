@@ -66,9 +66,10 @@ export class PosSetupComponent {
 
   // Método para obtener customeres de la sucursal seleccionada
   getCustomers() {
-    this.customerService.getCustomers(this.idBranch).subscribe(
+    this.customerService.getCustomers(this.idBranch, 'PROVIDERS').subscribe(
       (data: any) => {
         this.customers = data;
+        console.log('this customers',data);
         // Seleccionar el primer cliente si idCustomer es null
         if (this.idCustomer === null && this.customers.length > 0) {
           this.idCustomer = this.customers[0].id; // Seleccionar el primer cliente

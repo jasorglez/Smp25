@@ -7,7 +7,7 @@ import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-edito
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { alerts } from 'app/helpers/alerts';
-import { lastValueFrom, concat, toArray, catchError, EMPTY, forkJoin, tap } from 'rxjs';
+import { lastValueFrom, concat, toArray, catchError, EMPTY, forkJoin, tap, map } from 'rxjs';
 import { AdministrationService } from 'app/services/administration.service';
 import { SearchableSelectComponent } from 'app/shared/searchable-select/searchable-select.component';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
@@ -17,6 +17,7 @@ import { NgSelectComponent, NgSelectModule } from '@ng-select/ng-select';
 import { AdditionalInfoComponent } from "../income/additional-info/additional-info.component";
 import { ConceptsComponent } from "../income/concepts/concepts.component";
 import { CustomersService } from 'app/services/customers.service';
+import { BranchsService } from 'app/services/branchs.service';
 
 @Component({
   selector: 'app-expenditure',
@@ -35,6 +36,7 @@ export class ExpenditureComponent {
   private usersxpermissionsService  = inject(UsersxpermissionsService);
   private usersService = inject(UsersService);
   private signalsService = inject(SignalsService);
+  private BranchsService = inject(BranchsService)
 
   async ngOnInit() {
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
@@ -67,7 +69,7 @@ export class ExpenditureComponent {
     });
   };
 
-
+  branches: number[] = [];
   incomes: any[] = [];
   customers: any[] = [];
   users: any[] = [];
@@ -93,6 +95,17 @@ export class ExpenditureComponent {
 
   get idAccount(): number {
     return this._idAccount;
+  }
+
+  obtenerBranchs(): Promise<void> {
+    return new Promise((resolve) => {
+      this.BranchsService.getBranches(this.idRoot).pipe(
+        map((data: any[]) => data.map(branch => branch.id))
+      ).subscribe((ids: number[]) => {
+        this.branches = ids;
+        resolve();
+      });
+    });
   }
 
   async getBillingManagementInfo() {
@@ -162,7 +175,7 @@ public gridOptions: any = {
   }
 
   async getCustomers() {
-    this.customerService.getCustomersByCompany(this.idRoot).subscribe(
+    this.customerService.getCustomersByCompany(this.branches, 'CUSTOMERS').subscribe(
       (data: any) => {
         this.customers = data;
       },

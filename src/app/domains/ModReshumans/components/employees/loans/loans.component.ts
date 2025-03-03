@@ -53,10 +53,13 @@ export class EmployeesxLoansComponent {
   masterNewlyAddedRows: string[] = [];
   detailedNewlyAddedRows: string[] = [];
 
-  ngOnInit() {}
+  ngOnInit() {
+
+  }
 
   constructor() {
     effect(() => {
+ 
       this.idEmployee = this.signalsService.getIdEmployee()();
       this.loadData();
     });
@@ -357,7 +360,6 @@ export class EmployeesxLoansComponent {
       return;
     }
 
-
     const newRows = this.maestroRowData.filter((row) => row.__isNew);
     const modifiedRows = this.maestroRowData.filter(
       (row) => row.__modified && !row.__isNew
@@ -386,6 +388,7 @@ export class EmployeesxLoansComponent {
       this.masterNotSavedChanges = false;
       this.masterNewlyAddedRows = [];
       await this.loadData(); // Refrescar los datos
+
       this.signalsService.triggerRefreshEmployees();
     } catch (error) {
       console.error(error);
@@ -396,6 +399,7 @@ export class EmployeesxLoansComponent {
       );
     }
   }
+  // aqui se termina el saveMasterChanges
 
   revertMasterData() {
     this.loadData();

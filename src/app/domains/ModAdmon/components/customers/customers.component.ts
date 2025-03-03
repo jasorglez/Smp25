@@ -1,9 +1,9 @@
 import { Component, effect, HostListener, inject } from '@angular/core';
-import { RouterModule } from '@angular/router';
+import { RouterModule, ActivatedRoute } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { alerts } from '../../../../helpers/alerts';
-import { AdministrationService } from 'app/services/administration.service';
+
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { AgGridModule } from 'ag-grid-angular';
 import { ModalService } from 'app/services/modal.service';
@@ -15,19 +15,33 @@ import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { RadiusinfluenceComponent } from '../radiusinfluence/radiusinfluence.component';
 import { CustomersService } from 'app/services/customers.service';
 import { PhoneAuthCredential } from 'firebase/auth';
+import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 
 @Component({
   selector: 'app-customers',
   standalone: true,
   imports: [RouterModule, DomainsModule, AgGridModule, MultiLineEditorComponent, 
-    CustomersPaymentsComponent,],
+    CustomersPaymentsComponent],
   templateUrl: './customers.component.html',
   styleUrls: ['./customers.component.scss']
 })
 export class CustomersComponent {
+//  private administrationService = inject(AdministrationService);
+private customerService    = inject(CustomersService);  
+private modalServiceTable  = inject(ModalService);
+private signalsService     = inject(SignalsService);
+private modalService       = inject(NgbModal);
+private route              = inject(ActivatedRoute);
+
   ngOnInit() {
     this.obtenerDatos();
     this.signalsService.deleteClientData();
+    this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+    
+    this.route.data.subscribe(data => {
+      this.type = data['type']; // 'CUSTOMERS' o 'PROVIDERS'
+      this.obtenerDatos(); // Llamar a la función para cargar datos
+    });
   }
 
   constructor() {
@@ -45,17 +59,24 @@ export class CustomersComponent {
     }
   }
 
+  type: string = ''; // Para almacenar el tipo (CUSTOMERS o PROVIDERS)
+  gridHeight: string = '80vh';
+  showCreditsTab: boolean = false;
+  private gridApi: GridApi;
   notSavedChanges: boolean = false;
+  selectedRowData: any = null;
+  
   rowData: any;
   contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
-  selectedRowData: any = null;
-  branches: any;
+  
   id: string;
+  idRoot: number;
   private tempIdCounter: number = 0;
   selectedTab: string = 'customers-payments';
   idBranch: number = null;
-  private gridApi: GridApi;
+  idEmployee: number;
+
 
   public defaultColDef: ColDef = {
     sortable: true,
@@ -67,20 +88,17 @@ export class CustomersComponent {
   };
 
   currentIndex = 0;
-  gridHeight: string = '80vh';
+
   public rowSelection: 'single' | 'multiple' = 'single';
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'never';
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'never';
 
-  frameworkComponents = {
-    multiLineEditor: MultiLineEditorComponent
+  components = {
+    multiLineEditor: MultiLineEditorComponent,
+    autocompleteEditor: AutocompleteEditorComponent,
   };
 
-//  private administrationService = inject(AdministrationService);
-  private customerService    = inject(CustomersService);  
-  private modalServiceTable  = inject(ModalService);
-  private signalsService     = inject(SignalsService);
-  private modalService       = inject(NgbModal);
+
 
   idClient = this.signalsService.getIdClient();
   nameClient = this.signalsService.getNameClient()();
@@ -108,10 +126,21 @@ export class CustomersComponent {
     },
   };
 
+  
+  
   get colMaster(): ColDef[] {
     return [
+      { field: 'id', headerName: 'Id', editable: false, width: 53, hide : false,
+        filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
+        filterParams: {
+              filterOptions: ['equals'], // Opciones de filtro
+     },
+    },
       {
-        field: 'company', headerName: 'Compania', editable: false, width: 250, filter: true,
+        field: 'company', headerName: 'Compania', editable: false, 
+        width: 250, 
+        suppressMovable: true,
+        filter: 'agTextColumnFilter',
         cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
@@ -139,7 +168,20 @@ export class CustomersComponent {
         }
       },
       { field: 'nameContact', headerName: 'Nombre', editable: true, filter: true, width: 200 },
-      { field: 'totalCredit', headerName: 'Total Credito', editable: false, filter: true, width: 145 },
+      { field: 'total', headerName: this.type === 'CUSTOMERS' ? 'Total Credito':'Cuentas X Pagar',
+         editable: false, 
+        filter:'agNumberColumnFilter', suppressMovable: true, 
+        width: 160, 
+        valueFormatter: (params) => {
+          if (params.value) {
+            return new Intl.NumberFormat('es-MX', {
+              style: 'currency',
+              currency: 'MXN',
+            }).format(params.value);
+          }
+          return '$0.00';
+        },
+      },
       { field: 'cp', headerName: 'CP', editable: true, filter: true, width: 105 },
       {
         field: 'address', headerName: 'Direccion', editable: false, width: 250, filter: true,
@@ -205,8 +247,12 @@ export class CustomersComponent {
         }
       },
       { field: 'rfc', headerName: 'RFC', editable: true, width: 100 },
+      { field: 'radio', headerName: 'Radio', editable: true, width: 90 }, 
       { field: 'latitud', headerName: 'Latitud', editable: true, width: 110, filter: true },
       { field: 'longitud', headerName: 'Longitud', editable: true, width: 120, filter: true },
+      
+      { field: 'typeCustomer', headerName: this.type === 'CUSTOMERS' ? 'Tipo Cliente' : 'Tipo Proveedor',
+        editable: true, width: 135 },
       {
         field: 'email', headerName: 'Correo', width: 200, cellEditor: 'agTextCellEditor',
         editable: (params) => params.data.__isNew,
@@ -245,7 +291,7 @@ export class CustomersComponent {
   }
 
   obtenerDatos() {
-    this.customerService.getCustomers(this.idBranch).subscribe((data: any) => {
+    this.customerService.getCustomers(this.idBranch,this.type).subscribe((data: any) => {
       this.rowData = data;
     });
   }
@@ -258,8 +304,10 @@ export class CustomersComponent {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
+      this.idClient = this.selectedRowData.id;
+      console.log('ID del empleado seleccionado:', this.idClient);
       this.signalsService.setIdClient(this.selectedRowData.id);
-      this.signalsService.setNameClient(this.selectedRowData.nameContact);
+      this.signalsService.setNameClient(this.selectedRowData.company);
     } else {
       this.selectedRowData = null;
     }
@@ -295,9 +343,11 @@ export class CustomersComponent {
       NumCliente    : 0,
       latitud       : '',
       longitud      : '',
+      type          : this.type,
       active        : true,
       __isNew: true,
     };
+    console.log('Nuevo registro:', newItem);
     this.rowData = [newItem, ...this.rowData];
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
@@ -407,21 +457,43 @@ export class CustomersComponent {
       const modalRef = this.modalService.open(RadiusinfluenceComponent, { size: 'lg' });
     }
 
+    onCellDoubleClicked(event: CellDoubleClickedEvent): void {
+      const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
+      const selectedId = selectedRowData.id; // Obtener el ID del registro
+    
+      // Filtrar el grid para mostrar solo el registro con el ID seleccionado
+      const filterModel = {
+        id: {
+          type: 'equals',
+          filter: selectedId,
+        },
+      };
+    
+      this.gridApi.setFilterModel(filterModel);
+      this.gridApi.onFilterChanged();
+    
+      // Mostrar el componente <app-employeesxloans>
+      this.activateCreditsTab();
+      console.log('Datos ShowCredits:', this.showCreditsTab);
+      this.selectedRowData = selectedRowData; // Guardar los datos seleccionados
+    }
+  
+
+    activateCreditsTab() {
+      this.showCreditsTab = true;
+      setTimeout(() => this.adjustGridSize(), 0);
+    }
+
     resetGridSize() {
       this.gridHeight = '80vh'; // Reset to default height
-      //this.showLoansTab = false;
-      //this.showSavingsTab = false;
-      if (this.gridApi) {
-        this.gridApi.setFilterModel(null);
-        this.gridApi.onFilterChanged();
-      }
+      this.showCreditsTab = false;
+      this.gridApi.setFilterModel(null);
+      this.gridApi.onFilterChanged();
     }
 
-    showCreditsTab() {  
-     
+    adjustGridSize() {
+      this.gridHeight = '20vh'; // Adjust as needed
     }
-
-
 }
 
 

@@ -16,13 +16,18 @@ export class CustomersService {
 
     // Clientes
     
-    getCustomers(id: number) {
-      return this.http.get(`${environment.urlAdministration}/Customer/branch/${id}`, { headers: this.trackingService.getHeaders() });
+    getCustomers(id: number, type : string) {
+      //const apiUrl = `${environment.urlAdministration}/Customer/branch/${id}?type=${type}`;      
+       //alert(apiUrl)  
+      return this.http.get(`${environment.urlAdministration}/Customer/branch/${id}?type=${type}`, { headers: this.trackingService.getHeaders() });                                              
     }
   
-    getCustomersByCompany(id: number) {
-      return this.http.get(`${environment.urlAdministration}/Customer/company/${id}`, { headers: this.trackingService.getHeaders() });
+    getCustomersByCompany(branchIds: number[], type: string) {
+      const ids = branchIds.join(','); // Convertimos los IDs a una cadena separada por comas
+      const apiUrl = `${environment.urlAdministration}/Customer/company?branchIds=${encodeURIComponent(ids)}&type=${type}`;    
+      return this.http.get(apiUrl, { headers: this.trackingService.getHeaders() });
     }
+    
   
     addCustomer(data: any): Observable<any> {
       return this.http.post(`${environment.urlAdministration}/Customer`, data, { headers: this.trackingService.getHeaders() });
