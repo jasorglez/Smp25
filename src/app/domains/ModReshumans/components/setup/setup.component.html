@@ -1,0 +1,76 @@
+<div class="container-fluid mt-4 mb-4 border">
+    <div class="row">
+        <div class="col-8">
+            <h3 class="mb-4">Configuración de Recursos Humanos</h3>
+            <div class="row g-3">
+                <div class="col-12 mt-3">
+                    <h5>Código de empleados</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6 col-lg-6">
+                            <label for="prefix" class="form-label">Prefijo y delimitador</label>
+                            <input type="text" class="form-control" id="prefix" placeholder="Prefijo y delimitador"
+                                [(ngModel)]="hrData.prefix">
+                        </div>
+                        <div class="col-md-6 col-lg-6">
+                            <label for="consecutive" class="form-label">Consecutivo <span
+                                    class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="consecutive" placeholder="Consecutivo"
+                                [(ngModel)]="hrData.consecutive">
+                        </div>
+                    </div>
+                </div>
+
+
+            <div class="col-12 mt-3">
+                <h5>Vigencia</h5>
+                <div class="row g-3">
+                    <div class="col-md-6 col-lg-6">
+                        <label for="consecutive" class="form-label">Periodo de gracia de vigencia de empleado <span
+                                class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="consecutive" placeholder="Consecutivo"
+                            [(ngModel)]="hrData.vigency">
+                    </div>
+                </div>
+            </div>
+        </div>
+            <div class="mt-4 text-end">
+                <button type="button" class="btn btn-primary me-2" (click)="saveChanges()"><i
+                        class="fas fa-save me-2"></i>Guardar</button>
+                <button type="button" class="btn btn-secondary" (click)="revertChanges()"><i
+                        class="fas fa-times me-2"></i>Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid mt-4 mb-4 border">
+    <div class="row">
+        <div class="col-8">
+            <h3 class="mb-4">Nómina Digital</h3>
+            <div class="row g-3">
+                <div class="col-12 mt-3">
+                    <div class="row g-3">
+                        <div class="mb-4">
+                            <label for="fileInput" class="form-label">Selecciona un archivo Excel de nómina:</label>
+                            
+                            <input type="file" class="form-control" id="fileInput" >
+                            <!-- (change)="onFileChange($event)" accept=".xlsx, .xls" 
+                            [disabled]="isLoading"> -->
+                            <div class="form-text">
+                              Formatos aceptados: .xlsx, .xls
+                            </div>
+                        </div>
+                    </div>
+                </div>
+        </div>
+        <!--
+            <div class="mt-4 text-end">
+                <button type="button" class="btn btn-primary me-2" (click)="saveChanges()"><i
+                        class="fas fa-save me-2"></i>Guardar</button>
+                <button type="button" class="btn btn-secondary" (click)="revertChanges()"><i
+                        class="fas fa-times me-2"></i>Cancelar</button>
+            </div>
+            -->
+        </div>
+    </div>
+</div>

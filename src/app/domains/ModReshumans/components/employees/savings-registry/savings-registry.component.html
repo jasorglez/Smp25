@@ -1,0 +1,29 @@
+<div class="col-12">
+    <div class="row align-items-start">
+  
+      <!-- Grupo Prestamos -->
+      <div class="col">
+        <div class="card shadow-sm">
+          <div class="card-header">
+            <h3 class="card-title mb-0">Historial Ahorros</h3>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              
+              <!-- Grid Maestro -->
+              <div class="col">
+                <ag-grid-angular class="ag-theme-quartz small-text-ag-grid master-grid" style="height: 70vh;"
+                  [rowData]="maestroRowData" [columnDefs]="maestroColumnDefs" [gridOptions]="maestroGridOptions"
+                   [rowSelection]="'single'">
+                </ag-grid-angular>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+  
+
+    </div>
+  </div>
+  
+  

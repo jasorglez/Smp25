@@ -1,0 +1,17 @@
+import { Component, inject } from '@angular/core';
+import { RouterModule } from '@angular/router';
+import { DomainsModule } from 'app/domains/domainsmodule';
+import { SignalsService } from 'app/services/signals.service';
+
+@Component({
+  selector: 'app-employees',
+  standalone: true,
+  imports: [RouterModule, DomainsModule],
+  templateUrl: './employees.component.html',
+  styleUrl: './employees.component.scss'
+})
+export class EmployeesComponent {
+
+  signalsService = inject(SignalsService);
+
+}

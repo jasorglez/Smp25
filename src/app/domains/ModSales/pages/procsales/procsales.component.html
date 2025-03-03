@@ -1,0 +1,61 @@
+<div class="col-md-12">
+   <div class="card">
+      <div class="card-header p-2">
+         <ul class="nav nav-pills">
+
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'setup')">
+               <a class="nav-link green-tab" routerLink="setup-sales" routerLinkActive="active"><i
+                     class="bi bi-list-ul"></i> {{'setting' | translate}}</a>
+            </li>
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'stores')">
+               <a class="nav-link green-tab" routerLink="stores" routerLinkActive="active"><i class="bi bi-shop"></i>
+                  {{'stores' | translate}} </a>
+            </li>
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'cash-register')">
+               <a class="nav-link green-tab" routerLink="cash-register" routerLinkActive="active"><i
+                     class="bi bi-pc-display-horizontal"></i> {{'cash_register' | translate}}</a>
+            </li>
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'pos')">
+               <a class="nav-link green-tab" routerLink="pos" routerLinkActive="active"><i class="bi bi-cart"></i>
+                  {{'point_of_sale' | translate}}</a>
+            </li>
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'cash-closing')">
+               <a class="nav-link green-tab" routerLink="cash-closing" routerLinkActive="active"><i
+                     class="bi bi-pc-display-horizontal"></i> {{'cash_closing' | translate}}</a>
+            </li>
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'returns')">
+               <a class="nav-link green-tab" routerLink="returns" routerLinkActive="active"><i
+                     class="bi bi-receipt-cutoff"></i> {{'returns' | translate}} {{'and' | translate}}
+                  {{'ticket_reimpression' | translate}}</a>
+            </li>
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'entrances')">
+               <a class="nav-link green-tab" routerLink="entrances" routerLinkActive="active"><i
+                     class="bi bi-arrow-down-left"></i> {{'entrances' | translate}} </a>
+            </li>
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'inventory')">
+               <a class="nav-link green-tab" routerLink="inventory2" routerLinkActive="active"><i
+                     class="bi bi-list-check"></i> {{'inventory' | translate}} </a>
+            </li>
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'products')">
+               <a class="nav-link green-tab" routerLink="products" routerLinkActive="active"><i
+                     class="bi bi-pc-display-horizontal"></i> {{'products' | translate}} </a>
+            </li>
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'reports')">
+               <a class="nav-link green-tab" routerLink="sales-reports" routerLinkActive="active"><i
+                     class="bi bi-graph-up"></i> {{'sales_reports' | translate}} </a>
+            </li>
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'cash-withdrawal')">
+               <a class="nav-link green-tab" routerLink="cash-withdrawal" routerLinkActive="active"><i
+                     class="bi bi-wallet2"></i> {{'cash_withdrawal' | translate}} </a>
+            </li>
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'out-pos')">
+               <a class="nav-link green-tab" routerLink="out-pos" routerLinkActive="active"><i
+                     class="bi bi-journal-check"></i> {{'out_pos' | translate}} </a>
+            </li>
+         </ul>
+
+         <router-outlet></router-outlet>
+      </div>
+
+   </div>
+</div>

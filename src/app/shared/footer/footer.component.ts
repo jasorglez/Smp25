@@ -1,4 +1,5 @@
-import { Component } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
+import { SignalsService } from 'app/services/signals.service';
 
 @Component({
   selector: 'app-footer',
@@ -9,4 +10,9 @@ import { Component } from '@angular/core';
 })
 export class FooterComponent {
 
+  private signalsService = inject(SignalsService);
+
+  companyName = computed(()=> this.signalsService.getCompanyName());
+  displayName = computed(()=> this.signalsService.getDisplayName());
+ 
 }

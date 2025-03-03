@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { HttpClient } from '@angular/common/http';
+import { TrackingService } from './tracking.service';
 import { Observable } from 'rxjs';
 import { Icontract } from '../interface/icontract';
 
@@ -10,13 +11,27 @@ import { Icontract } from '../interface/icontract';
 })
 export class FollowprojectsService {
 
-  constructor() { }
-  private http = inject(HttpClient) ;
+  private trackingService = inject(TrackingService);
+  private http = inject(HttpClient);
 
-  getContract(company: number) : Observable<Icontract>{
-     const apiUrl = (`${environment.urlAzure}api/Contract?idCompany=${company}`);
-     return this.http.get<any>(apiUrl);
+  getContract(contract: number): Observable<Icontract> {
+    return this.http.get<Icontract>(`${environment.urlSmp}/Contract?idBussines=${contract}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getContractById(id: number): Observable<any> {
+    return this.http.get<Icontract>(`${environment.urlSmp}/Contract/${id}`, { headers: this.trackingService.getHeaders() });
+  }
 
+  //cambios de David
+  addContract(data: any): Observable<any> {
+    return this.http.post(`${environment.urlSmp}/Contract`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateContract(id: number, data: any): Observable<any> {
+    return this.http.put(`${environment.urlSmp}/Contract/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteContract(id: number): Observable<any> {
+    return this.http.delete(`${environment.urlSmp}/Contract/${id}`, { headers: this.trackingService.getHeaders() });
+  }
 }

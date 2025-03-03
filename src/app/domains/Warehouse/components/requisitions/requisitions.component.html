@@ -1,1 +1,81 @@
-<p>requisitions works!</p>
+<app-multi-line-editor></app-multi-line-editor>
+<div class="col-12 py-3">
+  <!-- Botones y grid principal -->
+  <div class="row mb-3">
+    <div class="col text-left">
+      <h2>Listado de órdenes de compra</h2>
+    </div>
+    <div class="col text-right">
+      <button type="button" class="btn btn-primary me-1" (click)="addMasterRow()">
+        <i class="bi bi-plus-lg"></i>
+      </button>
+      <button *ngIf="idRequisition != null" type="button" class="btn btn-info ms-1 me-1 position-relative"
+        (click)="createOC(idRequisition, 'open')">
+        <i class="bi bi-file-earmark-pdf"></i></button>
+      <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveMasterChanges()">
+        <i class="bi bi-floppy"></i>
+        <span
+          class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+          *ngIf="masterNotSavedChanges">
+          <span class="visually-hidden">Hay cambios sin guardar</span>
+        </span>
+      </button>
+      <button type="button" class="btn btn-warning ms-1 me-1" (click)="revertMasterData()">
+        <i class="bi bi-arrow-clockwise"></i>
+      </button>
+      <button type="button" class="btn btn-danger ms-1 me-1" (click)="deleteMasterEntry()">
+        <i class="bi bi-trash"></i>
+      </button>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-12">
+      <ag-grid-angular style="width: 100%; height: 32vh;" class="ag-theme-quartz small-text-ag-grid" [rowData]="masterRowData"
+        [columnDefs]="colMaster" (selectionChanged)="onMasterSelectionChanged($event)"
+        (cellValueChanged)="onMasterCellValueChanged($event)" (rowSelected)="onMasterRowSelected($event)"
+        (gridReady)="onMasterGridReady($event)" [rowSelection]="rowSelection" [pivotPanelShow]="pivotPanelShow"
+        [rowGroupPanelShow]="rowGroupPanelShow" [paginationPageSize]="paginationPageSize"
+        [paginationPageSizeSelector]="paginationPageSizeSelector" [pagination]="true" [gridOptions]="gridOptions">
+      </ag-grid-angular>
+    </div>
+  </div>
+</div>
+
+<!-- Detalles de la orden de compra -->
+<div *ngIf="idRequisition != null">
+
+  <div class="col-12 py-3">
+    <!-- Repetir estructura similar para la grid de detalles -->
+    <div class="row mb-3">
+      <div class="col">
+        <h2>Detalles de la orden de compra {{nameRequisition()}}</h2>
+      </div>
+      <div class="col text-right"><button type="button" class="btn btn-primary me-1" (click)="addDetailsRow()"><i
+            class="bi bi-plus-lg"></i></button>
+        <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveDetailsChanges()">
+          <i class="bi bi-floppy"></i>
+          <span
+            class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+            *ngIf="detailsNotSavedChanges"><span class="visually-hidden">Hay cambios sin guardar</span>
+          </span>
+        </button>
+        <button type="button" class="btn btn-warning ms-1 me-1" (click)="revertDetailsData()"><i
+            class="bi bi-arrow-clockwise"></i></button>
+        <button type="button" class="btn btn-danger ms-1 me-1" (click)="deleteDetailsEntry()"><i
+            class="bi bi-trash"></i></button>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-12">
+        <ag-grid-angular style="width: 100%; height: 32vh;" class="ag-theme-quartz small-text-ag-grid" [rowData]="detailsRowData"
+          [columnDefs]="colDetails" (selectionChanged)="onDetailsSelectionChanged($event)"
+          (cellValueChanged)="onDetailsCellValueChanged($event)" (rowSelected)="onDetailsRowSelected($event)"
+          (gridReady)="onDetailsGridReady($event)" [rowSelection]="rowSelection" [pivotPanelShow]="pivotPanelShow"
+          [rowGroupPanelShow]="rowGroupPanelShow" [paginationPageSize]="paginationPageSize"
+          [paginationPageSizeSelector]="paginationPageSizeSelector" [pagination]="true" [gridOptions]="gridOptions">
+        </ag-grid-angular>
+      </div>
+    </div>
+  </div>
+</div>

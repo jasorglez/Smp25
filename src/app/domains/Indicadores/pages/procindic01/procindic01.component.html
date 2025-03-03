@@ -1,0 +1,50 @@
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+
+            <ul class="nav nav-pills">
+
+                <li class="nav-item">
+                    <a class="nav-link green-tab" routerLink="issues" routerLinkActive="active"><i
+                            class="bi bi-card-checklist"></i> Matriz ISSUES</a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link green-tab" routerLink="alternatives" routerLinkActive="active"><i
+                            class="bi bi-clipboard-check-fill"></i>
+                        Alternativas Solucion</a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link green-tab" routerLink="riskmatrix" routerLinkActive="active"><i
+                            class="bi bi-list-check"></i> Matriz Riesgos</a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link green-tab" routerLink="timeinactives" routerLinkActive="active"><i
+                            class="bi bi-clock-fill"></i> Tiempos
+                        Inactivos</a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link green-tab" routerLink="stakeholders" routerLinkActive="active"><i
+                            class="bi bi-people-fill"></i> Relaciones
+                        Stakeholders</a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link green-tab" routerLink="conventions" routerLinkActive="active"><i
+                            class="bi bi-list-ul"></i> {{'convention' |
+                        translate}}</a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link green-tab" routerLink="controlchanges" routerLinkActive="active"><i
+                            class="bi bi-clipboard-data-fill"></i> {{'controlchanges' | translate}}</a>
+                </li>
+            </ul>
+
+            <router-outlet></router-outlet>
+
+        </div>
+    </div>

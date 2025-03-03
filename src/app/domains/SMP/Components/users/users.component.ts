@@ -5,8 +5,14 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { UsersService } from 'app/services/users.service';
 import { alerts } from 'app/helpers/alerts';
 import { FormsModule } from '@angular/forms';
-import { UsersProfileComponent } from "./users-profile/users-profile.component";
-import { concat, lastValueFrom, toArray } from 'rxjs';
+import { UsersProfileComponent } from "./users-profile.component";
+import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { MatDialogModule } from '@angular/material/dialog';
+import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
+import { ImageHandlerService } from 'app/services/image-handler.service';
+import { SignalsService } from 'app/services/signals.service';
+import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
+import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 
 @Injectable({
   providedIn: 'root',
@@ -20,7 +26,8 @@ import { concat, lastValueFrom, toArray } from 'rxjs';
     CommonModule,
     FormsModule,
     AgGridModule,
-    UsersProfileComponent
+    UsersProfileComponent,
+    MatDialogModule
   ],
   templateUrl: './users.component.html',
   styleUrl: './users.component.scss',
@@ -28,13 +35,17 @@ import { concat, lastValueFrom, toArray } from 'rxjs';
 export class UsersComponent {
 
   private usersService = inject(UsersService);
-  profile = computed(() => this.usersService.profile);
+  private imageHandlerService = inject(ImageHandlerService);
+  private usersxcompanysService = inject(UsersxpermissionsService);
+  private signalsService = inject(SignalsService);
+  profile = computed(() => this.signalsService.profile);
 
   enviarSignal() {
     const departmentName = this.getDepartmentName(this.selectedRowData.idDepartament);
-    this.usersService.profileSignal(this.selectedRowData.id, this.selectedRowData.email,
+    this.signalsService.profileSignal(this.selectedRowData.id, this.selectedRowData.email,
       this.selectedRowData.picture, this.selectedRowData.displayName,
-    departmentName, this.selectedRowData.position);
+      departmentName, this.selectedRowData.position);
+      this.signalsService.nameCompany.set(null);
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -50,20 +61,22 @@ export class UsersComponent {
     this.obtenerDatos();
   }
 
+  components = {
+    multiLineEditor: MultiLineEditorComponent,
+    autocompleteEditor: AutocompleteEditorComponent
+  }
+
+  gridHeight: string = '80vh';
   newlyAddedRows: string[] = [];
   entrada: any;
   departamentos: { [key: string]: string } = {};
-  rowData: any;
-  paginationPageSize = 10; // Tamaño de página
+  rowData: any[] = [];
+  paginationPageSize = 20; // Tamaño de página
   pagination = true; // Habilitar paginación
   notSavedChanges: boolean = false;
   paginationPageSizeSelector = false;
   id: string;
   private gridApi: GridApi;
-  opciones = {
-    "si": "Sí",
-    "no": "No"
-  }
   private tempIdCounter: number = 0;
 
   obtenerDatos() {
@@ -102,6 +115,33 @@ export class UsersComponent {
     this.gridApi = params.api;
   }
 
+// Column Definitions: Defines the columns to be displayed.
+public gridOptions: any = {
+  headerHeight: 30,
+  rowHeight: 30,
+  rowClass: (params) => {
+    // Verificar si la fila está seleccionada
+    if (params.node.isSelected()) {
+      return 'selected-row';
+    }
+    return '';
+  },
+  onRowClicked: (event) => {
+    // Seleccionar la fila al hacer clic en cualquier celda
+    event.node.setSelected(true);
+  },
+  onRowSelected: (event) => {
+    // Deseleccionar otras filas cuando se selecciona una nueva
+    if (event.node.isSelected()) {
+      this.gridApi.forEachNode((node) => {
+        if (node.id !== event.node.id) {
+          node.setSelected(false);
+        }
+      });
+    }
+  },
+};
+
   get columnDefs(): ColDef[] {
     return [
       {
@@ -111,8 +151,70 @@ export class UsersComponent {
       {
         field: 'displayName',
         headerName: 'Nombre',
-        cellEditor: 'agTextCellEditor',
         editable: true,
+        filter: true,
+        cellEditor: 'autocompleteEditor',
+        cellEditorParams: {
+          filterList: this.rowData.map(e => e.displayName),
+          filterKey: 'displayName',
+          placeholder: 'Nombre',
+          minLength: 1
+        },
+        valueSetter: (params) => {
+          const duplicateExists = this.rowData.some((row, index) =>
+            index !== params.node.rowIndex && row.displayName === params.newValue
+          );
+
+          if (duplicateExists) {
+            alerts.basicAlert(
+              'Nombre duplicado',
+              'Ya existe un usuario con ese nombre.',
+              'error'
+            );
+            return false;
+          }
+
+          params.data[params.colDef.field] = params.newValue;
+          return true;
+        }
+      },
+      {
+        field: 'email',
+        headerName: 'Email',
+        cellEditor: 'agTextCellEditor',
+        editable: (params) => params.data.__isNew,
+        cellEditorParams: {
+          useFormatter: true,
+        },
+        valueFormatter: (params) => params.value,
+        valueSetter: (params) => {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (emailRegex.test(params.newValue)) {
+            // Verificar si el email ya existe
+            const duplicateExists = this.rowData.some((row, index) =>
+              index !== params.node.rowIndex && row.email === params.newValue
+            );
+
+            if (duplicateExists) {
+              alerts.basicAlert(
+                'Añadir usuario',
+                'Ya existe un usuario con ese correo electrónico.',
+                'error'
+              );
+              return false;
+            }
+
+            params.data[params.colDef.field] = params.newValue;
+            return true;
+          } else {
+            alerts.basicAlert(
+              'Editar usuario',
+              'Correo electrónico no válido.',
+              'error'
+            );
+            return false;
+          }
+        },
         filter: true
       },
       {
@@ -132,36 +234,9 @@ export class UsersComponent {
         editable: true,
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
-          values: ['Mexico', 'USA', 'MEX-USA', 'Colombia', 'Chile', 'Otro'],
+          values: ['México', 'USA', 'MEX-USA', 'Colombia', 'Chile', 'Otro'],
           selectOnPopup: true
         },
-      },
-      {
-        field: 'email',
-        headerName: 'Email',
-        cellEditor: 'agTextCellEditor',
-        editable: true,
-        //editable: (params) => params.data.isNew,
-        cellEditorParams: {
-          useFormatter: true,
-        },
-        valueFormatter: (params) => params.value,
-        valueSetter: (params) => {
-          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-          if (emailRegex.test(params.newValue)) {
-            params.data[params.colDef.field] = params.newValue;
-            return true;
-          } else {
-            // Mostrar alerta de correo electrónico no válido
-            alerts.basicAlert(
-              'Editar usuario',
-              'Correo electrónico no válido.',
-              'error'
-            );
-            return false;
-          }
-        },
-        filter: true
       },
       {
         headerName: 'Contraseña',
@@ -176,7 +251,7 @@ export class UsersComponent {
         headerName: 'Departamento',
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
-          values: Object.keys(this.departamentos),
+          values: [Object.keys(this.departamentos)],
         },
         valueFormatter: (params) => this.departamentos[params.value] || '',
         valueSetter: (params) => {
@@ -188,7 +263,7 @@ export class UsersComponent {
           return false;
         },
         valueParser: (params) => params.newValue,
-        editable: true
+        editable: true,
       },
       {
         field: 'phone',
@@ -205,16 +280,26 @@ export class UsersComponent {
       {
         field: 'picture',
         headerName: 'Imagen de perfil',
-        cellEditor: 'agTextCellEditor',
-        cellRenderer: (params: any) => {
-          if (params.value) {
-            return `<img src="${params.value}" class="text-center" style="height:100%;">`;
-          } else {
-            return '';
-          }
+        cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
+        cellRendererParams: {
+          clicked: this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService),
+          field: 'picture'
         },
-        editable: true,
+        editable: false,
+        width: 100
       },
+      {
+        field: 'signature',
+        headerName: 'Firma',
+        cellEditor: 'agTextCellEditor',
+        cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
+        cellRendererParams: {
+          clicked: this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService),
+          field: 'signature'
+        },
+        editable: false,
+        width: 100
+      }
     ];
   }
 
@@ -307,6 +392,8 @@ export class UsersComponent {
       phone: '',
       position: '',
       picture: './assets/img/profile.png',
+      signature: '',
+      allowWhatsapp: true,
       __isNew: true
     };
 
@@ -316,46 +403,60 @@ export class UsersComponent {
   }
 
   async deleteUser() {
-    try {
-      const selectedNodes = this.gridApi.getSelectedNodes();
-      if (selectedNodes.length === 0) {
-        alerts.basicAlert(
-          'Eliminar entrada',
-          'Por favor, seleccione una entrada para eliminar.',
-          'warning'
-        );
-        return;
-      }
-
-      const selectedData = selectedNodes[0].data;
-      const id = selectedData.id;
-      selectedData.active = 0;
-
-      // Elimina al usuario de la DB
-      try {
-        await this.usersService.deleteUser(id, selectedData).toPromise();
-      }
-      catch (err) {
-        console.error(err);
-      }
-
-      // Refrescar los datos después de eliminar
-      this.obtenerDatos();
-
+    const selectedNodes = this.gridApi.getSelectedNodes();
+    if (selectedNodes.length === 0) {
       alerts.basicAlert(
         'Eliminar entrada',
-        'Entrada eliminada satisfactoriamente.',
-        'success'
-      );
-      this.notSavedChanges = false;
-      this.selectedRowData = null;
-    } catch (error) {
-      alerts.basicAlert(
-        'Eliminar entrada',
-        'Error al eliminar la entrada.',
+        'Por favor, seleccione una entrada para eliminar.',
         'error'
       );
+      return;
     }
+
+    const selectedData = selectedNodes[0].data;
+    const id = selectedData.id;
+
+    // Mostrar mensaje de confirmación
+    alerts.confirmAlert(
+      'Eliminar empleado',
+      '¿Está seguro que desea eliminar este empleado?',
+      'warning',
+      'Sí, eliminar'
+    ).then((value) => {
+      if (value.isConfirmed) {
+        // Eliminar el usuario
+        selectedData.active = 0;
+        this.usersService.deleteUser(id, selectedData).pipe(
+          catchError((error) => {
+            alerts.basicAlert(
+              'Eliminar entrada',
+              'Error al eliminar la entrada.',
+              'error'
+            );
+            console.error(error);
+            return EMPTY;
+          })
+        )
+          .subscribe(
+            () => {
+              alerts.basicAlert(
+                'Eliminar entrada',
+                'Entrada eliminada satisfactoriamente.',
+                'success'
+              );
+              this.obtenerDatos();
+
+              alerts.basicAlert(
+                'Eliminar entrada',
+                'Entrada eliminada satisfactoriamente.',
+                'success'
+              );
+              this.notSavedChanges = false;
+              this.selectedRowData = null;
+            }
+          )
+      }
+    });
   }
 
   revert() {
@@ -372,4 +473,5 @@ export class UsersComponent {
     }
     return cleanedData;
   }
+
 }
