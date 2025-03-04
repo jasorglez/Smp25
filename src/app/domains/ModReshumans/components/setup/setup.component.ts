@@ -45,8 +45,7 @@ export class SetupComponent {
 
   sendPayrollData() {
 
-    console.log("enviando datos de nómina --> ", this.jsonData);
-
+    console.log("---------- SENDPAYROLLDATA() enviando datos de nómina --> ", this.jsonData);
 
     if (!this.jsonData) {
       alerts.basicAlert("Error", "No hay datos para enviar.", "error");
@@ -57,7 +56,7 @@ export class SetupComponent {
       next: (response) => {
         this.isLoading = true;
         alerts.basicAlert("Actualización", "Los datos fueron guardados exitosamente.", "success");
-        console.log('Respuesta del servidor servicio payroll:', response);
+        console.log('-------------- SENDPAYROLLDATA() Respuesta del servidor servicio payroll:', response);
         this.isLoading = false;
       },
       error: (error) => console.error('Error al enviar los datos:', error)
