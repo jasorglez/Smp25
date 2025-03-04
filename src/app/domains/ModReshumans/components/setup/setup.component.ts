@@ -33,16 +33,17 @@ export class SetupComponent {
   jsonData: any = null;
   fileName: string = '';
   // Variable para controlar cómo se muestra el JSON
-  prettyJson: boolean = true;
+  prettyJson: boolean = false;
   hrData: any = {};
   newData: boolean;
   idBranch: number;
   banks: Bank[] = [];
   selectedBankId: number | null = null;
 
-  ngOnInit() {
+  async ngOnInit() {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
     this.getData();
+    await this.obtenerBanks();
   }
 
   constructor(private payrollService: PayrollService, private administrationService: AdministrationService) {
@@ -68,7 +69,6 @@ export class SetupComponent {
   }
 
   async sendPayrollData() {
-    await this.obtenerBanks(); // Necesitarás convertir tu método a Promise
     console.log("---------- SENDPAYROLLDATA() Bancos: --> ", this.banks);
 
     console.log("---------- SENDPAYROLLDATA() enviando datos de nómina --> ", this.jsonData);
@@ -77,6 +77,21 @@ export class SetupComponent {
       alerts.basicAlert("Error", "No hay datos para enviar.", "error");
       return;
     };
+
+    if (!Array.isArray(this.jsonData)) {
+      this.formatNumericPropertiesToTwoDecimals(this.jsonData);
+    } 
+    // En caso de que jsonData sea un array de objetos
+    else {
+      this.jsonData.forEach(item => {
+        this.formatNumericPropertiesToTwoDecimals(item);
+      });
+    }
+    
+    // Agregar el ID del banco seleccionado
+    this.jsonData.IdBranch = this.selectedBankId;
+    
+    console.log("---------- SENDPAYROLLDATA() Datos formateados --> ", this.jsonData);
 
     if (!this.selectedBankId) {
       alerts.basicAlert("Error", "Por favor seleccione un banco.", "error");
@@ -102,9 +117,48 @@ export class SetupComponent {
         alerts.basicAlert("Actualización", "Los datos fueron guardados exitosamente.", "success");
         console.log('-------------- uploadpayrollDATA() Respuesta del servidor servicio payroll:', response);
         this.isLoading = false;
+        this.resetForm();
       },
-      error: (error) => console.error('Error al enviar los datosssss:', error)
+      error: (error) => console.error('Error al enviar los datos:', error)
     });
+  }
+
+  resetForm() {
+    // Limpiar datos del archivo
+    this.jsonData = null;
+    this.fileName = '';
+    
+    // Limpiar el banco seleccionado
+    this.selectedBankId = null;
+    
+    // Limpiar el input file para que el usuario pueda seleccionar el mismo archivo si lo desea
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
+    }
+    // Refrescar la vista
+    this.getData();
+  }
+
+  formatNumericPropertiesToTwoDecimals(obj: any) {
+    // Lista de propiedades que necesitan formatearse a 2 decimales
+    const propertiesToFormat = [
+      'IMSS', 'IMSSCesantiaVejez', 'IMSSEnfermedad', 'ISPT', 
+      'impuestoArt96', 'neto', 'otrosIngresos', 'pensionAlimenticia',
+      'percepcionesGravadas', 'retencionesINFONAVIT', 'salarioDiario',
+      'salarioDiarioIntegrado', 'subsidioArt114', 'subsidioPEmpleo',
+      'subsidioPEmpleoAcreditado', 'sueldos', 'totalPercepciones'
+    ];
+    
+    // Recorrer todas las propiedades que necesitan formato
+    propertiesToFormat.forEach(prop => {
+      if (obj[prop] != null && typeof obj[prop] === 'number') {
+        // Convertir el valor a un número con 2 decimales
+        obj[prop] = Number(obj[prop].toFixed(2));
+      }
+    });
+    
+    return obj;
   }
 
   getData() {
@@ -177,7 +231,7 @@ export class SetupComponent {
 
     const file: File = files[0];
     this.fileName = file.name;
-    console.log("nombre del archivo --> ", this.fileName);
+    //console.log("nombre del archivo --> ", this.fileName);
     
     // Verificamos que sea un archivo Excel
     if (!this.isExcelFile(file)) {
@@ -211,7 +265,7 @@ export class SetupComponent {
       if (this.jsonData) {
         console.log("la data despues de procesar y sin errores es --> ", this.jsonData);
         console.log("aqui yq podemos enviar el archivo a guardar a BD --> ", this.jsonData.empleados);
-        this.sendPayrollData()
+        //this.sendPayrollData()
       }
     };
 
@@ -219,8 +273,6 @@ export class SetupComponent {
       this.error = 'Error al leer el archivo.';
       this.isLoading = false;
     };
-
-   
 
     // Iniciamos la lectura del archivo
     reader.readAsBinaryString(file);
@@ -326,9 +378,7 @@ export class SetupComponent {
    */
   formatJson(jsonData: any): string {
     if (!jsonData) return '';
-    return this.prettyJson 
-      ? JSON.stringify(jsonData, null, 2) 
-      : JSON.stringify(jsonData);
+    return this.prettyJson ? JSON.stringify(jsonData, null, 2) : JSON.stringify(jsonData);
   }
 
   /**
