@@ -1,0 +1,24 @@
+<div class="custom-file-input">
+    <!-- El input real estará oculto visualmente -->
+    <input
+      type="file"
+      [id]="id"
+      #fileInput
+      class="visually-hidden"
+      (change)="onFileSelected($event)"
+      [accept]="accept"
+      [disabled]="disabled"
+      [attr.multiple]="multiple ? true : null"
+      [attr.required]="required ? true : null"
+    />
+    
+    <!-- El botón personalizado visible para el usuario -->
+    <label [for]="id" class="file-select-btn">
+      {{ buttonText }}
+    </label>
+    
+    <!-- Texto que muestra el archivo seleccionado -->
+    <span class="selected-file-name">
+      {{ fileName || placeholderText }}
+    </span>
+  </div>
