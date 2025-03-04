@@ -1,0 +1,43 @@
+.custom-file-input {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: inherit;
+  }
+  
+  .visually-hidden {
+    position: absolute !important;
+    height: 1px;
+    width: 1px;
+    overflow: hidden;
+    clip: rect(1px, 1px, 1px, 1px);
+    white-space: nowrap;
+  }
+  
+  .file-select-btn {
+    background-color: #0075ff;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s;
+    
+    &:hover {
+      background-color: #0056b3;
+    }
+    
+    &:focus-visible {
+      outline: 2px solid #0075ff;
+      outline-offset: 2px;
+    }
+  }
+  
+  .selected-file-name {
+    color: #555;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 250px;
+  }

@@ -9,6 +9,7 @@ import { DomainsModule } from 'app/domains/domainsmodule';
   templateUrl: './procreshuman.component.html',
   styleUrl: './procreshuman.component.scss'
 })
+
 export class ProcreshumanComponent {
 
 }
