@@ -1,19 +1,23 @@
 import { CommonModule } from '@angular/common';
 import { Component, effect, inject } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, FormGroup } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
 import { HRService } from 'app/services/hr.service';
 import { SignalsService } from 'app/services/signals.service';
 import * as XLSX from 'xlsx';
 import { NominaData } from './models/payroll-data.module';
+import { PayrollService } from 'app/services/payroll.service';
 
 @Component({
   selector: 'app-setup',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [
+    CommonModule, 
+    FormsModule],
   templateUrl: './setup.component.html',
   styleUrl: './setup.component.scss'
 })
+
 export class SetupComponent {
   private signalsService = inject(SignalsService);
   private hrService = inject(HRService);
@@ -21,23 +25,44 @@ export class SetupComponent {
   error: string | null = null;
   jsonData: any = null;
   fileName: string = '';
+  // Variable para controlar cómo se muestra el JSON
+  prettyJson: boolean = true;
+  hrData: any = {};
+  newData: boolean;
+  idBranch: number;
 
   ngOnInit() {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
     this.getData();
   }
 
-  constructor() {
+  constructor(private payrollService: PayrollService) {
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.getData();
-    }
-    );
+    });
   }
 
-  hrData: any = {};
-  newData: boolean;
-  idBranch: number;
+  sendPayrollData() {
+
+    console.log("enviando datos de nómina --> ", this.jsonData);
+
+
+    if (!this.jsonData) {
+      alerts.basicAlert("Error", "No hay datos para enviar.", "error");
+      return;
+    };
+
+    this.payrollService.uploadPayrollData(this.jsonData).subscribe({
+      next: (response) => {
+        this.isLoading = true;
+        alerts.basicAlert("Actualización", "Los datos fueron guardados exitosamente.", "success");
+        console.log('Respuesta del servidor servicio payroll:', response);
+        this.isLoading = false;
+      },
+      error: (error) => console.error('Error al enviar los datos:', error)
+    });
+  }
 
   getData() {
     this.hrService.getHRManagementData(this.idBranch).subscribe({
@@ -53,8 +78,7 @@ export class SetupComponent {
           console.error(err);
         }
       }
-    }
-    );
+    });
   }
 
   saveChanges() {
@@ -78,7 +102,7 @@ export class SetupComponent {
       this.hrService.updateHRManagementData(this.idBranch, this.hrData)
         .subscribe({
           next: () => {
-            alerts.basicAlert("Actualización", "Los datos fueron guardados exitosamente.", "success");
+            alerts.basicAlert("Actualización", "Los datos fueron guardados exitosamente", "success");
             this.getData(); // Refrescar datos
           },
           error: (err) => {
@@ -93,6 +117,7 @@ export class SetupComponent {
   }
 
   onFileChange(event: Event): void {
+    console.log("entrando a onFileChange");
     this.isLoading = true;
     this.error = null;
     this.jsonData = null;
@@ -109,6 +134,7 @@ export class SetupComponent {
 
     const file: File = files[0];
     this.fileName = file.name;
+    console.log("nombre del archivo --> ", this.fileName);
     
     // Verificamos que sea un archivo Excel
     if (!this.isExcelFile(file)) {
@@ -128,6 +154,7 @@ export class SetupComponent {
         
         // Procesamos el Excel de nómina específicamente
         const data = this.processNominaExcel(workbook);
+        console.log("la data despues de procesar el archivo es --> ", data);
         
         // Asignamos los datos a nuestra variable para mostrarlos
         this.jsonData = data;
@@ -137,12 +164,20 @@ export class SetupComponent {
       } finally {
         this.isLoading = false;
       }
+
+      if (this.jsonData) {
+        console.log("la data despues de procesar y sin errores es --> ", this.jsonData);
+        console.log("aqui yq podemos enviar el archivo a guardar a BD --> ", this.jsonData.empleados);
+        this.sendPayrollData()
+      }
     };
 
     reader.onerror = () => {
       this.error = 'Error al leer el archivo.';
       this.isLoading = false;
     };
+
+   
 
     // Iniciamos la lectura del archivo
     reader.readAsBinaryString(file);
@@ -165,9 +200,8 @@ export class SetupComponent {
     const firstSheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[firstSheetName];
 
-    console.log("nombre de la hoja", firstSheetName);
-    console.log("nombre de worsheet", worksheet);
-
+    //console.log("nombre de la hoja", firstSheetName);
+    //console.log("nombre de worsheet", worksheet);
 
     // Creamos el objeto base para la nómina
     const nominaData: NominaData = {
@@ -180,16 +214,14 @@ export class SetupComponent {
     // Obtenemos el rango de celdas
     const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:A1');
 
-    console.log("rango de empleados", range);
-
+    //console.log("rango de empleados", range);
     
     // Procesamos cada fila a partir de la fila 11 (donde comienzan los datos de empleados)
     for (let rowNum = 10; rowNum <= range.e.r; rowNum++) {
       const nombre = this.getCellValue(worksheet, `B${rowNum}`);
       
-      console.log("fila", rowNum);
-
-      console.log("nombre del empleado", nombre);
+      //console.log("fila", rowNum);
+      //console.log("nombre del empleado", nombre);
 
       // Si no hay nombre, asumimos que es una fila vacía
       //if (!nombre || nombre.length < 2) continue;
@@ -220,10 +252,8 @@ export class SetupComponent {
         firma: this.getCellValue(worksheet, `V${rowNum}`)
       };
 
-      console.log("empleado", empleado);
-
-      console.log("nominaData", nominaData.empleados);
-
+      //console.log("empleado", empleado);
+      //console.log("nominaData", nominaData.empleados);
       
       nominaData.empleados.push(empleado);
     }
@@ -246,6 +276,57 @@ export class SetupComponent {
     const value = this.getCellValue(worksheet, cellAddress);
     // Convertimos a número o retornamos 0 si no es un valor numérico
     return typeof value === 'number' ? value : 0;
+  }
+
+  /**
+   * Formatea el JSON para mostrarlo con indentación
+   */
+  formatJson(jsonData: any): string {
+    if (!jsonData) return '';
+    return this.prettyJson 
+      ? JSON.stringify(jsonData, null, 2) 
+      : JSON.stringify(jsonData);
+  }
+
+  /**
+   * Cambia el modo de visualización del JSON
+   */
+  toggleJsonFormat(): void {
+    this.prettyJson = !this.prettyJson;
+  }
+
+  /**
+   * Descarga el JSON como archivo
+   */
+  downloadJson(): void {
+    if (!this.jsonData) return;
+    
+    const jsonString = JSON.stringify(this.jsonData, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = window.URL.createObjectURL(blob);
+    
+    // Creamos un enlace temporal para la descarga
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = this.fileName.replace(/\.(xlsx|xls)$/i, '.json');
+    document.body.appendChild(a);
+    a.click();
+    
+    // Limpiamos
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  }
+
+  /**
+   * Copia el JSON al portapapeles
+   */
+  copyToClipboard(): void {
+    if (!this.jsonData) return;
+    
+    const jsonString = this.formatJson(this.jsonData);
+    navigator.clipboard.writeText(jsonString)
+      .then(() => alert('JSON copiado al portapapeles'))
+      .catch(err => console.error('Error al copiar:', err));
   }
 
 }
