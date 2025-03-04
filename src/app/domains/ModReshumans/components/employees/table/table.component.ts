@@ -482,7 +482,7 @@ export class EmployeesTableComponent {
       {
         field: 'baseHours',
         headerName: 'Horas base',
-        editable: true,
+        editable: false,
         filter: true,
         width: 150,
         cellEditor: 'agNumberCellEditor',

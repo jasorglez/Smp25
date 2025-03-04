@@ -18,12 +18,16 @@ export class EmployeesService {
   getEmployees(idBranch: number) {
     return this.http.get(`${environment.urlAdministration}/Employee/branch/${idBranch}`, { headers: this.trackingService.getHeaders() });
   }
+  
+  getEmployeeById(id: number): Observable<any> {
+    return this.http.get<any[]>(`${environment.urlAdministration}/Employee/${id}`, { headers: this.trackingService.getHeaders() });
+  }
 
   addEmployee(data: any): Observable<any> {
     return this.http.post(`${environment.urlAdministration}/Employee`, data, { headers: this.trackingService.getHeaders() });
   }
 
-  updateEmployee(id: string, data: any): Observable<any> {
+  updateEmployee(id: number, data: any): Observable<any> {
     return this.http.put<any[]>(`${environment.urlAdministration}/Employee/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
