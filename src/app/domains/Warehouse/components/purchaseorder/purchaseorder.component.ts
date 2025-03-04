@@ -101,6 +101,7 @@ export class PurchaseOrderComponent {
       } else {
         this.obtenerDatos();
         this.obtenerRequisiciones();
+        this.obtenerProductos();
       }
 
       if (this.idRequisition != null) {
@@ -133,7 +134,7 @@ export class PurchaseOrderComponent {
   nameRequisition = this.signalsService.getRequisitionName();
 
 // Column Definitions: Defines the columns to be displayed.
-public gridOptions: any = {
+public masterGridOptions: any = {
   headerHeight: 30,
   rowHeight: 30,
   rowClass: (params) => {
@@ -148,9 +149,9 @@ public gridOptions: any = {
     event.node.setSelected(true);
   },
   onRowSelected: (event) => {
-    // Deseleccionar otras filas cuando se selecciona una nueva
-    if (event.node.isSelected()) {
-      this.gridApi.forEachNode((node) => {
+    // Corregir usando el api del evento y verificando existencia
+    if (event.node.isSelected() && event.api) {
+      event.api.forEachNode((node) => {
         if (node.id !== event.node.id) {
           node.setSelected(false);
         }
@@ -728,6 +729,7 @@ public gridOptions: any = {
     this.materialsService.getMaterials2Fields(this.idRoot).subscribe(
       (data: Catalog[]) => {
         this.productos = data;
+        console.log(data);
       },
       (error) => console.error('Error fetching materials:', error)
     );
