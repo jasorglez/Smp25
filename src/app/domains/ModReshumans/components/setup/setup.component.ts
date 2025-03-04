@@ -7,6 +7,13 @@ import { SignalsService } from 'app/services/signals.service';
 import * as XLSX from 'xlsx';
 import { NominaData } from './models/payroll-data.module';
 import { PayrollService } from 'app/services/payroll.service';
+import { AdministrationService } from 'app/services/administration.service';
+
+interface Bank {
+  id: number; 
+  name: string;
+  active: boolean;
+}
 
 @Component({
   selector: 'app-setup',
@@ -30,20 +37,39 @@ export class SetupComponent {
   hrData: any = {};
   newData: boolean;
   idBranch: number;
+  banks: Bank[] = [];
+  selectedBankId: number | null = null;
 
   ngOnInit() {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
     this.getData();
   }
 
-  constructor(private payrollService: PayrollService) {
+  constructor(private payrollService: PayrollService, private administrationService: AdministrationService) {
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      console.log("---------- SETUPCOMPONENT() idBranch --> ", this.idBranch);
       this.getData();
     });
   }
 
-  sendPayrollData() {
+  obtenerBanks(): Promise<any> {
+    return new Promise((resolve) => {
+      this.administrationService.get2fieldsBanks().subscribe((data: any) => { 
+        this.banks = data;
+        resolve(data);
+      });
+    });
+  }
+
+  onBankSelected() {
+    console.log("Banco seleccionado ID:", this.selectedBankId);
+    // Aquí puedes guardar el ID o hacer lo que necesites con él
+  }
+
+  async sendPayrollData() {
+    await this.obtenerBanks(); // Necesitarás convertir tu método a Promise
+    console.log("---------- SENDPAYROLLDATA() Bancos: --> ", this.banks);
 
     console.log("---------- SENDPAYROLLDATA() enviando datos de nómina --> ", this.jsonData);
 
@@ -52,14 +78,32 @@ export class SetupComponent {
       return;
     };
 
+    if (!this.selectedBankId) {
+      alerts.basicAlert("Error", "Por favor seleccione un banco.", "error");
+      return;
+    }
+    
+    // Asegúrate de que los bancos estén cargados
+    if (this.banks.length === 0) {
+      await this.obtenerBanks();
+    }
+    
+    // Añadir el ID del banco a los datos que envías
+    this.jsonData.IdBank = this.selectedBankId;
+
+    this.jsonData.idBranch = this.idBranch;
+    
+    console.log("---------- SENDPAYROLLDATA() Datos a enviar con ID de banco --> ", this.jsonData);
+    console.log("---------- SENDPAYROLLDATA() enviando datos de nómina con idBranch --> ", this.jsonData);  
+
     this.payrollService.uploadPayrollData(this.jsonData).subscribe({
       next: (response) => {
         this.isLoading = true;
         alerts.basicAlert("Actualización", "Los datos fueron guardados exitosamente.", "success");
-        console.log('-------------- SENDPAYROLLDATA() Respuesta del servidor servicio payroll:', response);
+        console.log('-------------- uploadpayrollDATA() Respuesta del servidor servicio payroll:', response);
         this.isLoading = false;
       },
-      error: (error) => console.error('Error al enviar los datos:', error)
+      error: (error) => console.error('Error al enviar los datosssss:', error)
     });
   }
 
