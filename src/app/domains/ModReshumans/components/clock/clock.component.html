@@ -48,17 +48,16 @@
                         </div>
                         <div class="row mb-2">
                             <div class="col-6">Faltas:</div>
-                            <div class="col-6" id="faltas"
-                                [ngClass]="{'text-danger': incidentData.Absences > 0}"
-                                [ngStyle]="{'font-weight': incidentData.Absences > 0 ? 'bold' : 'normal', 'font-size': incidentData.Absences > 0 ? '1.2em' : '1em'}">
+                            <div id="faltas" [ngClass]="incidentData.Absences > 0 ? 'col-6 text-danger': 'col-6'"
+                                style="font-weight: bold; font-size: 1.5em">
+                                {{incidentData.Absences}}
                             </div>
-                            {{incidentData.Absences}}
                         </div>
                         <div class="row mb-2">
                             <div class="col-6">Salidas Pendientes:</div>
-                            <div class="col-6" id="salidasPendientes"
-                                [ngClass]="{'text-danger': incidentData.PendingOuts > 0}"
-                                [ngStyle]="{'font-weight': incidentData.PendingOuts > 0 ? 'bold' : 'normal', 'font-size': incidentData.PendingOuts > 0 ? '1.2em' : '1em'}">
+                            <div id="salidasPendientes"
+                                [ngClass]="incidentData.PendingOuts > 0 ? 'col-6 text-danger': 'col-6'"
+                                style="font-weight: bold; font-size: 1.5em">
                                 {{incidentData.PendingOuts}}
                             </div>
                         </div>

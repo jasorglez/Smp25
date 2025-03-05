@@ -58,7 +58,8 @@ export class ClockComponent {
     }, 1000);
 
     // Sincronizar con servidor cada 10 segundos
-    interval(10000).subscribe(() => this.getTime());
+    // Activar si lo desean
+    // interval(10000).subscribe(() => this.getTime());
   }
 
   getTime() {
@@ -267,7 +268,9 @@ export class ClockComponent {
       this.clockService.checkIncidentsByEmployee(idEmployee, formatLocalDate(startPeriod), formatLocalDate(endPeriod)).subscribe(incidentData => {
         console.log('Datos de incidentes:', incidentData);
         this.incidentData = incidentData;
-        // Aquí puedes manejar los datos de incidentes según sea necesario
+        setTimeout(() => {
+          this.incidentData = { Hours: null, PendingOuts: null, Absences: null };
+        }, 15000); // 15000 milisegundos = 15 segundos
       }); 
     });
   }
