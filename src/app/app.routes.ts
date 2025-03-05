@@ -356,8 +356,8 @@ export const routes: Routes = [
             ]
           },
           {
-            path: 'salary',
-            loadComponent: () => import('./domains/ModReshumans/components/salary/salary.component').then(p => p.SalaryComponent)
+            path: 'payroll',
+            loadComponent: () => import('./domains/ModReshumans/components/payroll/payroll.component').then(p => p.PayrollComponent),
           },
           {
             path: 'clock',
