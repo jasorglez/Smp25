@@ -34,6 +34,7 @@ export class ClockComponent {
   clockPassword: string = '';
   status: string = '';
   currentDayName: string = '';
+  incidentData: any = {Hours: null, PendingOuts: null}
 
   ngOnInit() {
     this.setupTimeUpdates();
@@ -57,7 +58,8 @@ export class ClockComponent {
     }, 1000);
 
     // Sincronizar con servidor cada 10 segundos
-    interval(10000).subscribe(() => this.getTime());
+    // Activar si lo desean
+    // interval(10000).subscribe(() => this.getTime());
   }
 
   getTime() {
@@ -132,7 +134,7 @@ export class ClockComponent {
             // Se verifica que la fecha de entrada sea distinta a la fecha actual.
             // Si es así, eso significa que el empleado no marcó su salida ayer.
             else if (data[0]?.lastType === 'IN' && data[0]?.lastCheck.split('T')[0] !== fecha.split('T')[0]) {
-              return;
+
             }
 
             // Consultar el horario del empleado para el día actual
@@ -145,8 +147,8 @@ export class ClockComponent {
 
               // Convertir fecha y entradas a objetos Date para comparación
               const fechaDate = new Date(fecha);
-              const entry1Date = new Date();
-              const entry2Date = new Date();
+              const entry1Date = new Date(entry1);
+              const entry2Date = new Date(entry2);
 
               if (entry1) {
                 const [hour1, minute1] = entry1.split(':').map(Number);
@@ -168,10 +170,11 @@ export class ClockComponent {
                 if (fechaDate <= entry1Date || fechaDate <= entry2Date) {
                   valid = true;
                 } else if (fechaDate > entry1Date) {
-                  const twoHoursBeforeEntry2 = new Date(entry2Date);
-                  twoHoursBeforeEntry2.setHours(entry2Date.getHours() - 2);
-                  if (fechaDate >= twoHoursBeforeEntry2 && fechaDate <= entry2Date) {
+                  const timeDifference = (entry2Date.getTime() - fechaDate.getTime()) / (1000 * 60 * 60); // Diferencia en horas
+                  if (timeDifference <= 2) {
                     valid = true;
+                  } else {
+                    valid = false;
                   }
                 }
               }
@@ -249,11 +252,25 @@ export class ClockComponent {
         endPeriod.setDate(startPeriod.getDate() + 7); // Sábado siguiente
       }
 
+      // Función para formatear la fecha en YYYY-MM-DD manteniendo la zona horaria local
+      const formatLocalDate = (date: Date): string => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0'); // Meses van de 0 a 11
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+
+      // Mostrar en consola las fechas calculadas
+      console.log('startPeriod:', formatLocalDate(startPeriod));
+      console.log('endPeriod:', formatLocalDate(endPeriod));
+
       // Llamar al servicio para verificar incidentes
-      console.log(startPeriod.toLocaleDateString('es-MX'), endPeriod.toLocaleDateString('es-MX'));
-       this.clockService.checkIncidentsByEmployee(idEmployee, startPeriod.toLocaleDateString('es-MX'), endPeriod.toLocaleDateString('es-MX')).subscribe(incidentData => {
+      this.clockService.checkIncidentsByEmployee(idEmployee, formatLocalDate(startPeriod), formatLocalDate(endPeriod)).subscribe(incidentData => {
         console.log('Datos de incidentes:', incidentData);
-        // Aquí puedes manejar los datos de incidentes según sea necesario
+        this.incidentData = incidentData;
+        setTimeout(() => {
+          this.incidentData = { Hours: null, PendingOuts: null, Absences: null };
+        }, 15000); // 15000 milisegundos = 15 segundos
       }); 
     });
   }

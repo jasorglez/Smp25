@@ -14,7 +14,7 @@ import { CustomersSalesComponent } from './customers-sales.component';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { RadiusinfluenceComponent } from '../radiusinfluence/radiusinfluence.component';
 import { CustomersService } from 'app/services/customers.service';
-import { PhoneAuthCredential } from 'firebase/auth';
+
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 
 @Component({
@@ -40,6 +40,8 @@ private route              = inject(ActivatedRoute);
     
     this.route.data.subscribe(data => {
       this.type = data['type']; // 'CUSTOMERS' o 'PROVIDERS'
+    
+
       this.obtenerDatos(); // Llamar a la función para cargar datos
     });
   }
@@ -60,7 +62,7 @@ private route              = inject(ActivatedRoute);
   }
 
   type: string = ''; // Para almacenar el tipo (CUSTOMERS o PROVIDERS)
-  gridHeight: string = '80vh';
+  gridHeight: string = '75vh';
   showCreditsTab: boolean = false;
   private gridApi: GridApi;
   notSavedChanges: boolean = false;
@@ -167,7 +169,7 @@ private route              = inject(ActivatedRoute);
           return params.value;
         }
       },
-      { field: 'nameContact', headerName: 'Nombre', editable: true, filter: true, width: 200 },
+      { field: 'nameContact', headerName: 'Nombre Contacto', editable: true, filter: true, width: 200 },
       { field: 'total', headerName: this.type === 'CUSTOMERS' ? 'Total Credito':'Cuentas X Pagar',
          editable: false, 
         filter:'agNumberColumnFilter', suppressMovable: true, 
@@ -212,7 +214,7 @@ private route              = inject(ActivatedRoute);
         }
       },
       {
-        field: 'addressfiscal', headerName: 'Direccion Fiscal', editable: false, width: 250, filter: true,
+        field: 'addressfiscal', headerName: 'Direccion Fiscal', editable: false, width: 250, filter: true, hide: true,
         cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
@@ -246,13 +248,13 @@ private route              = inject(ActivatedRoute);
           maxLength: 15
         }
       },
-      { field: 'rfc', headerName: 'RFC', editable: true, width: 100 },
+      { field: 'rfc', headerName: 'RFC', editable: true, hide: true, width: 100 },
+      { field: 'typeCustomer', headerName: this.type === 'CUSTOMERS' ? 'Tipo Cliente' : 'Tipo Proveedor',
+        editable: true, width: 135 },
       { field: 'radio', headerName: 'Radio', editable: true, width: 90 }, 
       { field: 'latitud', headerName: 'Latitud', editable: true, width: 110, filter: true },
       { field: 'longitud', headerName: 'Longitud', editable: true, width: 120, filter: true },
       
-      { field: 'typeCustomer', headerName: this.type === 'CUSTOMERS' ? 'Tipo Cliente' : 'Tipo Proveedor',
-        editable: true, width: 135 },
       {
         field: 'email', headerName: 'Correo', width: 200, cellEditor: 'agTextCellEditor',
         editable: (params) => params.data.__isNew,

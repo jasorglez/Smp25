@@ -29,6 +29,8 @@ export class AdministrationService {
   }
 
   deleteBanks(id: number): Observable<any> {
+    const apiUrl = `${environment.urlAdministration}/Bank/${id}`;      
+    alert(apiUrl)
     return this.http.delete<any[]>(`${environment.urlAdministration}/Bank/${id}`, { headers: this.trackingService.getHeaders() });
   }
 

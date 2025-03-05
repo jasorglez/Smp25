@@ -153,12 +153,12 @@ get colMaster(): ColDef[] {
   }
 
   onSelectedRow(event: any) {
-    console.log(event)
+    console.log('es el evento',event)
     this.id = event.data.id;
   }
 
   onSelectionChanged(event: any) {
-    console.log(event)
+    console.log('Viene del OnSelectionChanged',event)
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
@@ -258,37 +258,42 @@ get colMaster(): ColDef[] {
     }
 
     const selectedData = selectedNodes[0].data;
+
     const id = selectedData.id;
     selectedData.active = 0;
-    this.administrationService.deleteBanks(id).pipe(
-      catchError((error) => {
-        alerts.basicAlert(
-          'Eliminar entrada',
-          'Error al eliminar la entrada.',
-          'error'
-        );
-        console.error(error);
-        return EMPTY;
-      })
-    )
-      .subscribe(
-        () => {
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.obtenerDatos();
-
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.notSavedChanges = false;
-          this.selectedRowData = null;
+    alerts
+      .confirmAlert(
+        'Eliminar empleado',
+        '¿Está seguro que desea eliminar este Banco?',
+        'warning',
+        'Sí, eliminar'
+      )
+      .then((result) => {
+        if (result.isConfirmed) {
+          this.administrationService.deleteBanks(id)
+            .pipe(
+              catchError((error) => {
+                alerts.basicAlert(
+                  'Eliminar empleado',
+                  'Error al eliminar el BANCO.',
+                  'error'
+                );
+                console.error(error);
+                return EMPTY;
+              })
+            )
+            .subscribe(() => {
+              alerts.basicAlert(
+                'Banco eliminado',
+                'El Banco Se eliminó correctamente',
+                'success'
+              );
+              this.obtenerDatos();
+              this.notSavedChanges = false;
+              this.selectedRowData = null;
+            });
         }
-      );
+      });
   }
 
   revert() {

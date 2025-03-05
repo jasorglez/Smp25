@@ -51,8 +51,32 @@ export const routes: Routes = [
         ]
       },
       {
-        path: 'dashboard',
-        loadComponent: () => import('./domains/Dashboards/pages/procdash/procdash.component').then(d => d.ProcdashComponent)
+        path: 'dashboardgrales',
+        loadComponent: () => import('./domains/Dashboards/pages/procdash/procdash.component').then(a => a.ProcdashComponent),
+        children: [
+          { path: '', redirectTo: 'procdash1', pathMatch: 'full' },
+          ...SharedModule.getRoutes(),
+          {
+            path: 'procdash1',
+            loadComponent: () => import('./domains/Dashboards/pages/procdash1/procdash1.component').then(d => d.Procdash1Component),
+            children: [
+              { path: '', redirectTo: 'procdash', pathMatch: 'full' },
+              ...SharedModule.getRoutes(),             
+              {
+                path: 'dashboard',
+                loadComponent: () => import('./domains/Dashboards/components/marines/marines.component').then(m => m.MarinesComponent)
+              }
+            ]
+          },
+          {
+            path: 'procdash2',
+            loadComponent: () => import('./domains/Dashboards/pages/procdash2/procdash2.component').then(a => a.Procdash2Component)
+          },
+          {
+            path: 'procdash3',
+            loadComponent: () => import('./domains/Dashboards/pages/procdash3/procdash3.component').then(a => a.Procdash3Component)
+          }
+        ]
       },
       {
         path: 'admon',
@@ -182,16 +206,6 @@ export const routes: Routes = [
             loadComponent: () => import('./domains/ModAdmon/components/expenditure/expenditure.component').then(e => e.ExpenditureComponent)
           },
           {
-            path: 'customer',
-            loadComponent: () => import('./domains/ModAdmon/components/customers/customers.component').then(e => e.CustomersComponent),
-            data: { type: 'CUSTOMERS' } // Parámetro para clientes
-          },
-          {
-            path: 'providers',
-            loadComponent: () => import('./domains/ModAdmon/components/customers/customers.component').then(e => e.CustomersComponent),
-            data: { type: 'PROVIDERS' } // Parámetro para proveedores
-          },
-          {
             path: 'radiusinfluence',
             loadComponent: () => import('./domains/ModAdmon/components/radiusinfluence/radiusinfluence.component').then(r => r.RadiusinfluenceComponent)
           },
@@ -199,7 +213,7 @@ export const routes: Routes = [
             path: 'page01',
             loadComponent: () => import('./domains/ModAdmon/pages/pages01/page01.component').then(p => p.Page01Component),
             children: [
-              { path: '', redirectTo: 'convenios', pathMatch: 'full' },
+              { path: '', redirectTo: 'banks', pathMatch: 'full' },
               ...SharedModule.getRoutes(),
 
               {
@@ -210,6 +224,45 @@ export const routes: Routes = [
                 path: 'accountbanks',
                 loadComponent: () => import('./domains/ModAdmon/components/accountbanks/accountbanks.component').then(a => a.AccountbanksComponent)
               }
+            ]
+          },
+          {
+            path: 'page02',
+            loadComponent: () => import('./domains/ModAdmon/pages/pages02/pages02.component').then(p => p.Pages02Component),
+            children: [
+              { path: '', redirectTo: 'customer', pathMatch: 'full' },
+              ...SharedModule.getRoutes(),
+
+                {
+                 path: 'customer',
+                 loadComponent: () => import('./domains/ModAdmon/components/customers/customers.component').then(e => e.CustomersComponent),
+                 data: { type: 'CUSTOMERS' } // Parámetro para clientes
+               },
+               {
+                 path: 'historical',
+                 loadComponent: () => import('./domains/ModAdmon/components/historical/historical.component').then(e => e.HistoricalComponent)
+               },
+               {
+                path: 'maps',
+                loadComponent: () => import('./domains/ModAdmon/components/radiusinfluence/radiusinfluence.component').then(r => r.RadiusinfluenceComponent)
+              }
+            ]
+          },
+          {
+            path: 'page03',
+            loadComponent: () => import('./domains/ModAdmon/pages/pages03/pages03.component').then(p => p.Pages03Component),
+            children: [
+              { path: '', redirectTo: 'providers', pathMatch: 'full' },
+              ...SharedModule.getRoutes(),
+               {
+                path: 'providers',
+                loadComponent: () => import('./domains/ModAdmon/components/customers/customers.component').then(e => e.CustomersComponent),
+                data: { type: 'PROVIDERS' } // Parámetro para proveedores
+               },
+               {
+                 path: 'historical',
+                 loadComponent: () => import('./domains/ModAdmon/components/historical/historical.component').then(e => e.HistoricalComponent)
+               }
             ]
           },
         ]

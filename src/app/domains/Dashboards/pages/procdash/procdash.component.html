@@ -1,24 +1,24 @@
+
+
 <div class="container-fluid">
-    <div class="row py-3">
-        <div class="col-4">
-            <div id="echarts-container-by-classification" style="width:100%; height: 40vh;"></div>
-        </div>
-        <div class="col-4">
-            <div id="echarts-container-total" style="width:100%; height: 40vh;"></div>
-        </div>
-        <div class="col-4">
-            <div id="echarts-container-by-severity" style="width:100%; height: 40vh;"></div>
-        </div>
-    </div>
-    <div class="row py-3">
-        <div class="col-4">
-            <div id="echarts-container-map" style="width:100%; height: 40vh;"></div>
-        </div>
-        <div class="col-4">
-            <app-contracts-by-speciality style="width:100%; height: 40vh;"></app-contracts-by-speciality>
-        </div>
-        <div class="col-4">
-            <div id="echarts-container-inactive" style="width:100%; height: 40vh;"></div>
-        </div>
+    <div class="row">
+      <div class="col-12">
+  
+          <ul class="nav nav-pills">
+              <li class="nav-item ">
+                  <a class="nav-link green-tab" routerLink="procdash1" routerLinkActive="active"> DashBoard 1</a>
+              </li>
+              <li class="nav-item ">
+                  <a class="nav-link green-tab" routerLink="procdash2" routerLinkActive="active">DashBoard 2</a>
+              </li>
+              <li class="nav-item">
+                  <a class="nav-link green-tab" routerLink="procdash3" routerLinkActive="active">DashBoard 3</a>
+              </li>
+              <li class="nav-item">
+                  
+          </ul>
+  
+          <router-outlet></router-outlet>
+      </div>
     </div>
 </div>
