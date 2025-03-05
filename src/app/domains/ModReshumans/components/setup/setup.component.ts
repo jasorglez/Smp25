@@ -50,7 +50,7 @@ export class SetupComponent {
     'Domingo'
   ];
 
-  ngOnInit() {
+  async ngOnInit() {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
     this.getData();
     await this.obtenerBanks();
