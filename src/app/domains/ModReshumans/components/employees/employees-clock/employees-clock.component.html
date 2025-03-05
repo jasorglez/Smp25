@@ -1,0 +1,137 @@
+<div class="container mt-4">
+  <div class="d-flex align-items-center gap-2 mb-3">
+    <label for="employees" class="form-label m-0">Seleccione empleado</label>
+    <ng-select
+      class="form-select flex-grow-1"
+      [(ngModel)]="idEmployee"
+      bindLabel="name"
+      bindValue="id"
+      [items]="employees"
+      (ngModelChange)="onEmployeeChange()"
+      id="employees"
+      placeholder="Seleccione un empleado"
+      [clearable]="false"
+    ></ng-select>
+  </div>
+  <form #scheduleForm="ngForm" (ngSubmit)="guardarHorario()">
+    <table class="table table-bordered">
+      <thead class="thead-dark">
+        <tr>
+          <th>Día</th>
+          <th>Entrada 1</th>
+          <th>Salida 1</th>
+          <th>Entrada 2</th>
+          <th>Salida 2</th>
+          <th>Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let dia of horario; let i = index">
+          <td class="align-middle">
+            <div class="form-check">
+              <input
+                type="checkbox"
+                [(ngModel)]="dia.enabled"
+                [name]="'active_' + dia.id"
+                class="form-check-input"
+                [id]="'active_' + dia.id"
+                [disabled]="!idEmployee"
+              />
+              <label for="active_{{ dia.id }}" class="form-check-label">{{
+                dia.day
+              }}</label>
+            </div>
+          </td>
+          <td class="align-middle">
+            <ngb-timepicker
+              [(ngModel)]="dia.entry1"
+              [name]="'entry1_' + dia.id"
+              [disabled]="!dia.enabled"
+              [required]="dia.enabled"
+              [meridian]="true"
+              [seconds]="false"
+              [minuteStep]="1"
+              size="small"
+            ></ngb-timepicker>
+            <div *ngIf="dia.enabled && !dia.entry1?.hour" class="text-danger small">
+              Hora requerida
+            </div>
+          </td>
+          <td class="align-middle">
+            <ngb-timepicker
+              [(ngModel)]="dia.exit1"
+              [name]="'exit1_' + dia.id"
+              [disabled]="!dia.enabled"
+              [required]="dia.enabled"
+              [meridian]="true"
+              [seconds]="false"
+              [minuteStep]="1"
+              size="small"
+            ></ngb-timepicker>
+            <div *ngIf="dia.enabled && !dia.exit1?.hour" class="text-danger small">
+              Hora requerida
+            </div>
+          </td>
+          <td class="align-middle">
+            <ngb-timepicker
+              [(ngModel)]="dia.entry2"
+              [name]="'entry2_' + dia.id"
+              [disabled]="!dia.enabled"
+              [required]="dia.enabled"
+              [meridian]="true"
+              [seconds]="false"
+              [minuteStep]="1"
+              size="small"
+            ></ngb-timepicker>
+          </td>
+          <td class="align-middle">
+            <ngb-timepicker
+              [(ngModel)]="dia.exit2"
+              [name]="'exit2_' + dia.id"
+              [disabled]="!dia.enabled"
+              [required]="dia.enabled"
+              [meridian]="true"
+              [seconds]="false"
+              [minuteStep]="1"
+              size="small"
+            ></ngb-timepicker>
+          </td>
+          <td class="align-middle">
+            <div
+              class="container-fluid"
+            >
+              <div class="row">
+                <button
+                  type="button"
+                  class="btn btn-sm btn-danger mb-1"
+                  (click)="resetDay(i)"
+                  title="Borrar horarios del día"
+                  [disabled]="!idEmployee"
+                >
+                <i class="bi bi-eraser-fill"></i>
+                </button>
+              </div>
+              <div class="row">
+                <button
+                  type="button"
+                  class="btn btn-sm btn-success mt-1"
+                  (click)="applyToAllDays(i)"
+                  title="Aplicar a todos los días"
+                  [disabled]="!idEmployee"
+                >
+                  <i class="fas fa-clone"></i>
+                </button>
+              </div>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="text-end">
+      <span class="me-3">
+        Total horas semanales: <strong>{{ calcularTotalHoras() }}</strong>
+      </span>
+      <button type="submit" class="btn btn-primary" [disabled]="!idEmployee">Guardar Horario</button>
+    </div>
+  </form>
+</div>

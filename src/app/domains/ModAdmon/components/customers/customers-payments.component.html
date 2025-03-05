@@ -1,0 +1,101 @@
+<div class="col-12">
+  <div class="row align-items-start">
+
+    <!-- Sección Créditos -->
+    <div class="col-7">
+      <div class="card shadow-sm">
+        <div class="card-header">
+          <h3 class="card-title mb-0">Créditos</h3>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-auto">
+              <div class="d-flex flex-column gap-2 me-3">
+                <button type="button" class="btn btn-primary" (click)="addRow()">
+                  <i class="bi bi-plus-lg"></i>
+                </button>
+                <button type="button" class="btn btn-success position-relative" (click)="saveChanges()">
+                  <i class="bi bi-floppy"></i>
+                  <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+                    *ngIf="notSavedChanges">
+                    <span class="visually-hidden">Hay cambios sin guardar</span>
+                  </span>
+                </button>
+                <button type="button" class="btn btn-warning" (click)="revert()">
+                  <i class="bi bi-arrow-clockwise"></i>
+                </button>
+                <button type="button" class="btn btn-danger" (click)="deleteEntry()">
+                  <i class="bi bi-trash"></i>
+                </button>
+                <button type="button" class="btn btn btn-secondary">
+                  <i class="bi bi-currency-dollar"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="col p-0">
+              <ag-grid-angular 
+                style="height: 430px; width: 100%;"
+                class="ag-theme-quartz small-text-ag-grid" 
+                [rowData]="rowData"
+                [columnDefs]="colMaster" 
+                (selectionChanged)="onSelectionChanged($event)"
+                (cellValueChanged)="onCellValueChanged($event)" 
+                (rowSelected)="onSelectedRow($event)"
+                (gridReady)="onGridReady($event)" 
+                rowSelection="single" 
+                [pivotPanelShow]="pivotPanelShow"
+                [rowSelection]="rowSelection" 
+                [rowGroupPanelShow]="rowGroupPanelShow"
+                [gridOptions]="gridOptions">
+              </ag-grid-angular>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sección Abonos del Crédito -->
+    <div class="col-5">
+      <div class="card shadow-sm">
+        <div class="card-header">
+          <h3 class="card-title mb-0">Abonos del Crédito</h3>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-auto">
+              <div class="d-flex flex-column gap-2 me-3">
+                <button type="button" class="btn btn-primary">
+                  <i class="bi bi-plus-lg"></i>
+                </button>
+                <button type="button" class="btn btn-success position-relative">
+                  <i class="bi bi-floppy"></i>
+                  <span class="position-absolute top-0 end-0 translate-middle p-2 bg-danger border border-light rounded-circle"
+                    *ngIf="detailNotSavedChanges">
+                    <span class="visually-hidden">Hay cambios sin guardar</span>
+                  </span>
+                </button>
+                <button type="button" class="btn btn-warning">
+                  <i class="bi bi-arrow-clockwise"></i>
+                </button>
+              </div>
+            </div>
+            <div class="col p-0">
+              <ag-grid-angular 
+                class="ag-theme-quartz small-text-ag-grid detail-grid" 
+                style="height: 430px; width: 100%;"
+                [rowData]="detalleRowData" 
+                [columnDefs]="detalleColumnDefs" 
+                [gridOptions]="detalleGridOptions"
+                (gridReady)="onDetalleGridReady($event)" 
+                [rowSelection]="'single'"
+                (cellValueChanged)="onDetailCellValueChanged($event)">
+              </ag-grid-angular>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

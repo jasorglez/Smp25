@@ -1,0 +1,73 @@
+<div class="container mt-3">
+
+    <div class="main-container p-3">
+        <div class="row text-center mb-4">
+            <div class="col">
+                <div class="date-display" *ngIf="formattedDate">
+                    {{ formattedDate }}
+                </div>
+                <div class="time-display" id="reloj" *ngIf="formattedTime">
+                    {{ formattedTime }}
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="form-group mb-3">
+                            <label for="idEmpleado">ID Empleado:</label>
+                            <input type="text" class="form-control" id="idEmpleado" placeholder="ID Empleado"
+                                [(ngModel)]="employeeCode">
+                        </div>
+                        <div class="form-group mb-3">
+                            <label for="password">Contraseña:</label>
+                            <input type="password" class="form-control" id="password" placeholder="Contraseña"
+                                [(ngModel)]="clockPassword">
+                        </div>
+                        <div class="row">
+                            <div class="col-6 text-center">
+                                <button class="btn btn-success btn-lg" (click)="checkInOrOut('IN')">ENTRADA</button>
+                            </div>
+                            <div class="col-6 text-center">
+                                <button class="btn btn-danger btn-lg" (click)="checkInOrOut('OUT')">SALIDA</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card">
+                    <h3 class="info-header">Información Semanal</h3>
+                    <div class="card-body">
+                        <div class="row mb-2">
+                            <div class="col-6">Horas laboradas:</div>
+                            <div class="col-6" id="horasLaboradas">{{incidentData.Hours}}</div>
+                        </div>
+                        <div class="row mb-2">
+                            <div class="col-6">Faltas:</div>
+                            <div id="faltas" [ngClass]="incidentData.Absences > 0 ? 'col-6 text-danger': 'col-6'"
+                                style="font-weight: bold; font-size: 1.5em">
+                                {{incidentData.Absences}}
+                            </div>
+                        </div>
+                        <div class="row mb-2">
+                            <div class="col-6">Salidas Pendientes:</div>
+                            <div id="salidasPendientes"
+                                [ngClass]="incidentData.PendingOuts > 0 ? 'col-6 text-danger': 'col-6'"
+                                style="font-weight: bold; font-size: 1.5em">
+                                {{incidentData.PendingOuts}}
+                            </div>
+                        </div>
+                        <div class="row mb-2">
+                            <div class="col-6">Retardos:</div>
+                            <div class="col-6" id="retardos">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>

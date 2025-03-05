@@ -1,0 +1,19 @@
+.detail-grid {
+  background-color: #eeffee; // Fondo verde muy suave
+  --ag-background-color: #eeffee;
+
+  .ag-root-wrapper {
+    border-radius: 8px;
+    overflow: hidden;
+  }
+}
+
+.master-grid {
+  background-color: #ffeeee;
+  --ag-background-color: #ffeeee;
+
+  .ag-root-wrapper {
+    border-radius: 8px;
+    overflow: hidden;
+  }
+}

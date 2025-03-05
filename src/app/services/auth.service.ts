@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import {
@@ -11,8 +11,23 @@ import {
   authState,
 } from '@angular/fire/auth';
 import { TrackingService } from './tracking.service';
-import { first, firstValueFrom, Observable } from 'rxjs';
+import { BehaviorSubject, firstValueFrom, map, Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { Ilogin } from 'app/interface/ilogin';
+import { SignalsService } from './signals.service';
+
+interface UserPermissions {
+  id: number;
+  idUser: number;
+  indicators: boolean;
+  administration: boolean;
+  warehouses: boolean;
+  maintenance: boolean;
+  hr: boolean;
+  sales: boolean;
+  setup: boolean;
+  active: boolean;
+}
 
 @Injectable({
   providedIn: 'root',
@@ -22,26 +37,19 @@ export class AuthService {
     'https://identitytoolkit.googleapis.com/v1/accounts';
 
   private apiKey = environment.firebase.apiKey;
+  private trackingService = inject(TrackingService);
+  private router = inject(Router);
+  private auth = inject(Auth);
+  private http = inject(HttpClient);
+  private signalsService = inject(SignalsService);
 
-  constructor(
-    private trackingService: TrackingService,
-    private router: Router,
-    private auth: Auth,
-    private http: HttpClient
-  ) {}
-
-  async login(email: string, password: string) {
-    try {
-      const result = await signInWithEmailAndPassword(
-        this.auth,
-        email,
-        password
-      );
-      return result;
-    } catch (error) {
-      console.log(error);
-      return null;
-    }
+  login(data: Ilogin) {
+    //Aquí creamos el Token
+    const dataLogin = {
+      email: data.email,
+      password: data.password
+    };
+    return this.http.post(environment.urlSecurity + '/Auth/login', dataLogin)
   }
 
   async register(email: string, password: string): Promise<User | null> {
@@ -87,7 +95,8 @@ export class AuthService {
       localStorage.removeItem('company');
       localStorage.removeItem('branch');
       localStorage.removeItem('mail');
-
+      localStorage.removeItem('sqlToken');
+      this.signalsService.deleteSignals(); // Borramos todas las signals
       this.router.navigateByUrl('/login');
 
       await signOut(this.auth);
@@ -179,4 +188,41 @@ export class AuthService {
     );
     return signInResponse.idToken;
   }
+
+    // Master Permissions 2
+
+  private userPermissions: any;
+
+  getUserId(email: string): Observable<number> {
+    return this.http.get<number>(`${environment.urlSecurity}/User/email/${email}`,
+      { headers: this.trackingService.getHeaders() }
+    ).pipe(
+      map(data => data['data'].id)
+    );
+  }
+
+  fetchUserPermissions(userId: number): Observable<any> {
+    return this.http.get(`${environment.urlSecurity}/UserSystemPermissions/guard/${userId}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  // Almacena los permisos en el servicio
+  setUserPermissions(permissions: any): void {
+    this.userPermissions = permissions;
+  }
+
+  // Obtiene los permisos almacenados
+  getUserPermissions(): any {
+    return this.userPermissions;
+  }
+
+  // Verifica si el usuario tiene un permiso maestro
+  hasMasterPermission(masterPermissionKey: string): boolean {
+    return this.userPermissions?.[masterPermissionKey]?.active === true;
+  }
+
+  // Verifica si el usuario tiene un permiso detallado
+  hasDetailedPermission(masterPermissionKey: string, detailedPermissionKey: string): boolean {
+    return this.userPermissions?.[masterPermissionKey]?.children?.[detailedPermissionKey] === true;
+  }
+
 }

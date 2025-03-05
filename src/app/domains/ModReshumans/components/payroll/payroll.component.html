@@ -1,0 +1,25 @@
+<div class="container">
+  <h2>Nóminas de Empleados</h2>
+  
+  <div class="mb-3">
+    <button class="btn btn-primary me-2" (click)="exportToExcel()">Exportar a Excel</button>
+    <button class="btn btn-secondary" (click)="refreshData()">Actualizar datos</button>
+  </div>
+  
+  <div *ngIf="isLoading" class="d-flex justify-content-center">
+    <div class="spinner-border" role="status">
+      <span class="visually-hidden">Cargando...</span>
+    </div>
+  </div>
+  
+  <div class="ag-theme-alpine" style="width: 100%; height: 600px;">
+    <ag-grid-angular
+      [rowData]="rowData"
+      [columnDefs]="columnDefs"
+      [defaultColDef]="defaultColDef"
+      [pagination]="true"
+      [paginationPageSize]="10"
+      (gridReady)="onGridReady($event)"
+    ></ag-grid-angular>
+  </div>
+</div>

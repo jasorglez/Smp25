@@ -1,0 +1,42 @@
+<div class="row">
+    <div class="col mb-2">
+        <img [src]="profile.profilePicUser()" alt="Imagen de perfil de {{profile.nameUser()}}"
+            class="img-fluid rounded" style="width:100%;">
+    </div>
+</div>
+<div class="row">
+    <div class="col">
+        <p><strong>Nombre</strong></p>
+        <p>{{profile.nameUser()}}</p>
+    </div>
+</div>
+<div class="row">
+    <div class="col">
+        <p><strong>Correo electrónico</strong></p>
+        <p>{{profile.emailUser()}}</p>
+    </div>
+</div>
+<div class="row">
+    <div class="col">
+        <p><strong>Organización</strong></p>
+        <p>{{profile.organizationUser()}}</p>
+    </div>
+</div>
+<div class="row">
+    <div class="col">
+        <p><strong>Posición</strong></p>
+        <p>{{profile.positionUser()}}</p>
+    </div>
+</div>
+<div class="row" *ngIf="nameCompany != null">
+    <div class="col">
+        <p><strong>Contratista seleccionado</strong></p>
+        <p>{{nameCompany}}</p>
+    </div>
+</div>
+<div class="row" *ngIf="nameContract != null">
+    <div class="col">
+        <p><strong>Contrato seleccionado</strong></p>
+        <p>{{nameContract}}</p>
+    </div>
+</div>

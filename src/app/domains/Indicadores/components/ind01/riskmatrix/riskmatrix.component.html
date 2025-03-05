@@ -1,0 +1,43 @@
+<div class="row mt-3">
+    <div class="col-12">
+        <ul class="nav nav-pills" id="myWorkprogram" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="identification-tab" data-bs-toggle="pill"
+                    data-bs-target="#identification-tab-pane" type="button" role="tab"
+                    aria-controls="identification-tab-pane" aria-selected="true">Identificación</button>
+            </li>
+            <li class="nav-item" role="presentation" *ngIf="idIdentificationRisk() != null">
+                <button class="nav-link" id="analysis-tab" data-bs-toggle="pill" data-bs-target="#analysis-tab-pane"
+                    type="button" role="tab" aria-controls="analysis-tab-pane" aria-selected="false">Análisis</button>
+            </li>
+           <li class="nav-item" role="presentation" *ngIf="idAnalysisRisk() != null">
+                <button class="nav-link" id="planification-tab" data-bs-toggle="pill"
+                    data-bs-target="#planification-tab-pane" type="button" role="tab" aria-controls="planification-tab-pane"
+                    aria-selected="false">Planificación</button>
+            </li>
+            <li class="nav-item" role="presentation" *ngIf="idPlanificationRisk() != null">
+                <button class="nav-link" id="implementation-tab" data-bs-toggle="pill"
+                    data-bs-target="#implementation-tab-pane" type="button" role="tab" aria-controls="implementation-tab-pane"
+                    aria-selected="false">Implementación</button>
+            </li>
+        </ul>
+        <div class="tab-content" id="myIssueContent">
+            <div class="tab-pane show active" id="identification-tab-pane" role="tabpanel"
+                aria-labelledby="identification-tab" tabindex="0">
+                <app-identification-risk></app-identification-risk>
+            </div>
+            <div class="tab-pane" id="analysis-tab-pane" role="tabpanel" aria-labelledby="analysis-tab"
+                tabindex="1" *ngIf="idIdentificationRisk() != null">
+                <app-analysis-risk></app-analysis-risk>
+            </div>
+            <div class="tab-pane" id="planification-tab-pane" role="tabpanel" aria-labelledby="planification-tab"
+                tabindex="2" *ngIf="idAnalysisRisk() != null">
+                <app-planification-risk></app-planification-risk>
+            </div>
+            <div class="tab-pane" id="implementation-tab-pane" role="tabpanel" aria-labelledby="implementation-tab"
+            tabindex="2" *ngIf="idPlanificationRisk() != null">
+            <app-implementation-risk></app-implementation-risk>
+        </div>
+        </div>
+    </div>
+</div>

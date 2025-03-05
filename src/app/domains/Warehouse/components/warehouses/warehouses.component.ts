@@ -1,40 +1,67 @@
-import { Component, inject } from '@angular/core';
+import { Component, effect, HostListener, inject } from '@angular/core';
 
-import { ColDef, GridApi, GridReadyEvent, SelectionChangedEvent } from 'ag-grid-community';
-import { TrackingService } from '../../../../services/tracking.service';
-import { FormBuilder, Validators } from '@angular/forms';
+import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { alerts } from '../../../../helpers/alerts';
-
-import { Iwarehouses } from '../../../../interface/iwarehouses';
+import { States } from 'app/interface/states';
 import { InegiService } from '../../../../services/inegi.service';
 import { WarehousesService } from 'app/services/warehouses.service';
-import { DomainsModule } from 'app/domains/domainsmodule';
+import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { AgGridModule } from 'ag-grid-angular';
+import { BranchsService } from 'app/services/branchs.service';
+import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
+import { ModalService } from 'app/services/modal.service';
+import { SignalsService } from 'app/services/signals.service';
 
-
+interface Branch {
+  id: number;
+  name: string;
+}
 
 @Component({
   selector: 'app-warehouses',
   standalone: true,
-  imports: [DomainsModule],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
   templateUrl: './warehouses.component.html',
   styleUrl: './warehouses.component.scss'
 })
 export class WarehousesComponent {
 
-  estados: any[] = [];
-  municipios: any[] = [];
-  selectedEstadoId: string = '';
-  selectId : number = 0 ;
+  selectedRoot: string = '';
 
-  isNew = false;
-  isEdit = false;
-  isSave = false;
-  isCancel = false;
-  isDelete = false;
-  isPrint = false;
+  ngOnInit() {
+    this.obtenerDatos();
+    this.obtenerStates();
+  }
 
-  private gridApi!: GridApi<Iwarehouses>;
-  public warehouses: Iwarehouses[] = [];
+  constructor() {
+    effect(() => {
+      this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      this.obtenerDatos();
+    });
+  }
+
+  @HostListener('window:beforeunload', ['$event'])
+  unloadNotification($event: any): void {
+    if (this.notSavedChanges) {
+      $event.returnValue =
+        'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
+    }
+  }
+
+  notSavedChanges: boolean = false;
+  rowData: any;
+  contracts: { [key: string]: string } = {};
+  newlyAddedRows: string[] = [];
+  selectedRowData: any = null;
+  private estados: string[] = [];
+  branches: any;
+  id: string;
+  idBranch: number;
+  private tempIdCounter: number = 0;
+
+  private gridApi: GridApi;
 
   currentIndex = 0;
 
@@ -43,233 +70,271 @@ export class WarehousesComponent {
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
-
-  selectedRow: Iwarehouses | null = null;
+  frameworkComponents = {
+    multiLineEditor: MultiLineEditorComponent
+  };
 
   // Inject of new way for Angular 18
-   private trackingService = inject(TrackingService) ;
-   private fb = inject(FormBuilder) ;
-   private warehouseService= inject(WarehousesService);
-   private inegiService= inject(InegiService) ;
+  private warehouseService = inject(WarehousesService);
+  private inegiService = inject(InegiService);
+  private branchesService = inject(BranchsService);
+  private modalServiceTable = inject(ModalService);
+  private signalsService = inject(SignalsService);
 
-  // Column Definitions: Defines the columns to be displayed.
-   colMaster: ColDef[] = [
-     { field: 'name', headerName: 'Nombre', filter: true, width: 200 },
-     { field: 'address', headerName: 'Direccion', width: 285, filter: true },
-     { field: 'state', headerName: 'Estado', width: 235 },
-     { field: 'city', headerName: 'Ciudad', width: 200 },
-     { field: 'place', headerName: 'Lugar', width: 185 },
-     { field: 'phone', headerName: 'Telefono', width: 105 },
-     { field: 'leader', headerName: 'Lider', width: 285 }
-   ];
-
-
-  public warForm = this.fb.group({
-    name:      ['', Validators.required],
-    idCompany : '',
-    idProject : '',
-    address:   ['', Validators.required],
-    cp:        ['', Validators.required],
-    place:     ['', Validators.required],
-    phone:     ['', Validators.required],
-    leader:    ['', Validators.required],
-    state:     ['', Validators.required],
-    city:      ['', Validators.required],
-    stateName: [''],
-    belongsTo: ['', Validators.required]
-  });
-
-  ngOnInit(): void {
-    
-    this.getWarehouses();
-    
-    this.inegiService.getEstados().subscribe(
-      (data: any) => {
-        this.estados = data.datos;
+// Column Definitions: Defines the columns to be displayed.
+public gridOptions: any = {
+  headerHeight: 30,
+  rowHeight: 30,
+  rowClass: (params) => {
+    // Verificar si la fila está seleccionada
+    if (params.node.isSelected()) {
+      return 'selected-row';
+    }
+    return '';
+  },
+  onRowClicked: (event) => {
+    // Seleccionar la fila al hacer clic en cualquier celda
+    event.node.setSelected(true);
+  },
+  onRowSelected: (event) => {
+    // Deseleccionar otras filas cuando se selecciona una nueva
+    if (event.node.isSelected()) {
+      this.gridApi.forEachNode((node) => {
+        if (node.id !== event.node.id) {
+          node.setSelected(false);
+        }
+      });
+    }
+  },
+};
+  
+  get colMaster(): ColDef[] {
+    return [
+      { field: 'name', headerName: 'Nombre', editable: true, filter: true, width: 200 },
+      {
+        field: 'address', headerName: 'Direccion', editable: false, width: 285, filter: true,
+        cellEditor: 'agPopupTextCellEditor',
+        cellEditorParams: {
+          maxLength: 100,
+          cols: 50,
+          rows: 3,
+          onKeyDown: (event: KeyboardEvent) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.stopPropagation();
+            }
+          },
+        },
+        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+          if (!event.node.group) {
+            this.modalServiceTable.showModal({
+              params: event,
+              value: event.value,
+            });
+          }
+        },
+        cellRenderer: (params: ICellRendererParams) => {
+          if (params.node.group) {
+            return params.value;
+          }
+          return params.value;
+        }
       },
-      (error) => {
+      {
+        field: 'state', headerName: 'Estado', editable: true, width: 235, cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.estados
+        }
+      },
+      { field: 'city', headerName: 'Ciudad', editable: true, width: 200 },
+      { field: 'codePostal', headerName: 'Codigo Postal', editable: true, width: 150 },
+      { field: 'place', headerName: 'Lugar', editable: true, width: 185 },
+      {
+        field: 'phone', headerName: 'Telefono', editable: true, width: 105, cellEditorParams: {
+          maxLength: 10
+        }
+      },
+      { field: 'leader', headerName: 'Lider', editable: true, width: 285 }
+    ]
+  };
+
+  obtenerDatos() {
+    this.warehouseService.getWarehouses(this.idBranch).subscribe({
+      next: (data: any) => {
+        this.rowData = data;
+      },
+      error: (error) => {
+        if (error.status === 404) {
+          this.rowData = [];
+        }
+        console.error('Error fetching warehouses', error);
+      }
+    });
+  }
+
+  obtenerStates() {
+    this.inegiService.getEstados().subscribe({
+      next: (data: { datos: States[] }) => {
+        this.estados = data.datos.map(estado => estado.nom_agee);
+      },
+      error: (error) => {
         console.error('Error fetching states', error);
       }
-    );
+    });
   }
 
-  onEstadoChange(event: Event): void {
-    const estadoId = (event.target as HTMLSelectElement).value;
-    const selectedEstado = this.estados.find(estado => estado.cve_agee === estadoId);
-    if (selectedEstado) {
-      this.warForm.patchValue({
-        stateName: selectedEstado.nom_agee
-      });
-    }
-  
-    const stateControl = this.warForm.get('state');
-    if (stateControl) {
-      const estadoId2 = stateControl.value?.toString();
-      if (estadoId2) {
-        this.inegiService.getMunicipios(estadoId2).subscribe(
-          (data: any) => {
-            this.municipios = data.datos;
-          },
-          (error) => {
-            console.error('Error fetching municipalities', error);
-          }
-        );
-      }
+  onSelectedRow(event: any) {
+    console.log(event)
+    this.id = event.data.id;
+  }
+
+  onSelectionChanged(event: any) {
+    console.log(event)
+    const selectedNodes = event.api.getSelectedNodes();
+    if (selectedNodes.length > 0) {
+      this.selectedRowData = selectedNodes[0].data;
+    } else {
+      this.selectedRowData = null;
     }
   }
-  
-  onGridReady(params: GridReadyEvent): void {
+
+  onCellValueChanged(event: any) {
+    console.log('Dato cambiado:', event.data);
+    event.data.__modified = true;
+    this.notSavedChanges = true;
+  }
+
+  onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-    if (this.warehouses && this.warehouses.length > 0) {
-      this.gridApi.setGridOption('rowData',this.warehouses);
-    }
   }
 
-  onSelectionChanged(event: SelectionChangedEvent): void {
-    const selectedRows = this.gridApi.getSelectedRows();
-    if (selectedRows.length > 0) {
-      this.selectId = selectedRows[0].id;
-      this.fillForm(selectedRows[0]);
-    }
+  addRow() {
+    const tempId = `temp_${this.tempIdCounter++}`;
+    const newItem = {
+      id: tempId,
+      idBranch: this.idBranch,
+      name: '',
+      address: '',
+      state: '',
+      city: '',
+      codePostal: '',
+      place: '',
+      phone: '',
+      active: true,
+      leader: '',
+      __isNew: true,
+    };
+
+    this.rowData = [newItem, ...this.rowData];
+    this.newlyAddedRows.push(tempId);
+    this.notSavedChanges = true;
   }
 
-    getWarehouses(): void {
-      const company = localStorage.getItem('company');
-      
-      const project = localStorage.getItem('project');
-    
-      // Verificamos que company y project no sean null antes de llamarlo
-      if (company && project) {
-        this.warehouseService.getWarehouses(company, project).subscribe(
-          (resp: any) => {
-            this.warehouses = this.mapWarehouses(resp);
-            this.updateGrid();
-          },
-          (error) => {
-            console.error('Error fetching warehouses', error);
-          }
-        );
-      } else {
-        console.error('Company or Project is missing in localStorage');
-      }
+  async saveChanges() {
+    const isValid = this.rowData.every((item) => item.name && item.address);
+    if (!isValid) {
+      alerts.basicAlert(
+        'Añadir entrada',
+        'Debe llenar todos los campos antes de guardar.',
+        'error'
+      );
+      return;
     }
 
-
-    
-    mapWarehouses(data: any[]): Iwarehouses[] {
-      return data.map(w => ({
-        id        : w.id,
-        name      : w.name,
-        idCompany : w.idCompany,
-        address   : w.address,
-        city      : w.city,
-        cp        : w.cp,
-        place     : w.place,
-        state     : w.state,
-        phone     : w.phone,
-        leader    : w.leader,
-        principal : w.principal
-      } as Iwarehouses));
-    }
-  
-    updateGrid() {
-      if (this.gridApi && !this.gridApi.isDestroyed()) {
-        this.gridApi.setGridOption('rowData', this.warehouses);
-    
-        if (this.selectId) {
-          const selectedWarehouse = this.warehouses.find(w => w.id === this.selectId);
-          if (selectedWarehouse) {
-            this.fillForm(selectedWarehouse);
-          }
-        }
-      }
-    }
-  
-  
-    fillForm(warehouse: any): void {
-      this.warForm.patchValue(warehouse);
-    }
-
-
-  new(): void {
-    this.isNew = true;
-    this.updateButtonStates();
-    this.warForm.reset();
-  }
-
-  edit(): void {
-    this.isEdit = true;
-    this.updateButtonStates();
-  }
-
-  cancel(): void {
-    this.isNew = false;
-    this.isEdit = false;
-    this.updateButtonStates();
-    if (this.selectId !== null) {
-      const selectedRow = this.warehouses.find(warehouse => warehouse.id === this.selectId);
-      if (selectedRow) {
-        this.fillForm(selectedRow);
-      }
-    }
-  }
-
-  
-  onSave(): void {
-    const formData = this.warForm.value;
-    if (this.isNew) {
-      formData.idCompany = localStorage.getItem('company');
-      formData.idProject = this.trackingService.getProject();
-    }
-
-    const saveOperation = this.isNew
-      ? this.warehouseService.Post(formData, localStorage.getItem('token'))
-      : this.warehouseService.Patch(this.selectId, formData, localStorage.getItem('token'));
-
-    saveOperation?.subscribe(
-      () => {
-        const message = this.isNew ? 'Warehouse created successfully' : 'Warehouse updated successfully';
-        alerts.basicAlert('Success', message, 'success');
-        // this.requestWarehouseUpdate();
-        this.cancel();
-      },
-      (error) => {
-        console.error(`Error ${this.isNew ? 'creating' : 'updating'} warehouse`, error);
-        alerts.basicAlert('Error', `Failed to ${this.isNew ? 'create' : 'update'} warehouse`, 'error');
-      }
+    const newRows = this.rowData.filter((row) => row.__isNew);
+    const modifiedRows = this.rowData.filter(
+      (row) => row.__modified && !row.__isNew
     );
+
+    const addObservables = newRows.map((row) => {
+      const cleanedData = this.cleanDataForServer(row);
+      return this.warehouseService.addWarehouse(cleanedData);
+    });
+
+    const updateObservables = modifiedRows.map((row) => {
+      const cleanedData = this.cleanDataForServer(row);
+      return this.warehouseService.updateWarehouse(row.id, cleanedData);
+    });
+
+    // Using concat to combine observables and lastValueFrom for async/await
+    try {
+      const responses = await lastValueFrom(
+        concat(...addObservables, ...updateObservables).pipe(toArray())
+      );
+      alerts.basicAlert(
+        'Datos actualizados',
+        'Se han actualizado los datos correctamente.',
+        'success'
+      );
+      this.notSavedChanges = false;
+      this.newlyAddedRows = [];
+      this.obtenerDatos(); // Refrescar los datos
+    } catch (error) {
+      console.error(error);
+      alerts.basicAlert(
+        'Error',
+        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
+        'error'
+      );
+    }
   }
 
-  
-  Delete(): void {
-    alerts.confirmAlert('Are you sure?', 'The information Details cannot be recovered!', 'warning', 'Yes, delete it!')
-      .then((result) => {
-        if (result.isConfirmed) {
-          this.warehouseService.Delete(this.selectId, localStorage.getItem('token')).subscribe(
-            () => {
-              alerts.basicAlert('Success', 'The Item has been deleted', 'success');
-              //this.requestWarehouseUpdate();
-            },
-            (error) => {
-              console.error('Error deleting warehouse', error);
-              alerts.basicAlert('Error', 'Failed to delete warehouse', 'error');
-            }
+  async deleteEntry() {
+    const selectedNodes = this.gridApi.getSelectedNodes();
+    if (selectedNodes.length === 0) {
+      alerts.basicAlert(
+        'Eliminar entrada',
+        'Por favor, seleccione una entrada para eliminar.',
+        'error'
+      );
+      return;
+    }
+
+    const selectedData = selectedNodes[0].data;
+    const id = selectedData.id;
+    selectedData.active = 0;
+    this.warehouseService.deleteWarehouse(id).pipe(
+      catchError((error) => {
+        alerts.basicAlert(
+          'Eliminar entrada',
+          'Error al eliminar la entrada.',
+          'error'
+        );
+        console.error(error);
+        return EMPTY;
+      })
+    )
+      .subscribe(
+        () => {
+          alerts.basicAlert(
+            'Eliminar entrada',
+            'Entrada eliminada satisfactoriamente.',
+            'success'
           );
+          this.obtenerDatos();
+
+          alerts.basicAlert(
+            'Eliminar entrada',
+            'Entrada eliminada satisfactoriamente.',
+            'success'
+          );
+          this.notSavedChanges = false;
+          this.selectedRowData = null;
         }
-      });
+      );
   }
 
-
-
-  updateButtonStates(): void {
-    this.isEdit = this.isNew || this.isEdit;
-    this.isCancel = this.isNew || this.isEdit;
-    this.isSave = this.isNew || this.isEdit;
-    this.isDelete = !this.isNew && !this.isEdit;
+  revert() {
+    this.obtenerDatos();
+    this.notSavedChanges = false;
   }
 
-  ngOnDestroy(): void {
-    
+  private cleanDataForServer(data: any): any {
+    const cleanedData = { ...data };
+    delete cleanedData.__isNew;
+    delete cleanedData.__modified;
+    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
+      delete cleanedData.id;
+    }
+    return cleanedData;
   }
-
-  }
+}

@@ -1,0 +1,43 @@
+<div class="col-md-12">
+  <div class="card">
+    <div class="card-header p-2">
+      <ul class="nav nav-pills">
+        <li class="nav-item">
+          <a class="nav-link green-tab d-flex align-items-center" routerLink="setup" routerLinkActive="active">
+            <mat-icon>phonelink_setup</mat-icon> {{ 'setting' | translate }}
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link green-tab d-flex align-items-center" routerLink="page01" routerLinkActive="active">
+            <mat-icon>account_balance</mat-icon> {{ 'bank' | translate }}
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link green-tab d-flex align-items-center" routerLink="income" routerLinkActive="active">
+            <mat-icon>payments</mat-icon> {{ 'income' | translate }}
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link green-tab d-flex align-items-center" routerLink="expend" routerLinkActive="active">
+            <mat-icon>paid</mat-icon> {{ 'expend' | translate }}
+          </a>
+        </li>
+        <li class="nav-item me-2">
+          <a class="nav-link green-tab d-flex align-items-center" routerLink="page02" routerLinkActive="active">
+            <mat-icon>people</mat-icon> {{ 'customer' | translate }}
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link green-tab d-flex align-items-center" routerLink="page03" routerLinkActive="active">
+            <mat-icon>groups</mat-icon> {{ 'providers' | translate }}
+          </a>
+        </li>
+
+
+
+      </ul>
+    </div>
+
+    <router-outlet></router-outlet>
+  </div>
+</div>

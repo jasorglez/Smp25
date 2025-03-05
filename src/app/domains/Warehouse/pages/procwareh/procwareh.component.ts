@@ -2,11 +2,18 @@ import { Component, inject } from '@angular/core';
 import { TranslateModule } from '@ngx-translate/core';
 import { TrackingService } from '../../../../services/tracking.service';
 import { WarehousesComponent } from "../../components/warehouses/warehouses.component";
+import { MaterialsComponent } from '../../components/materials/materials.component';
+import { RequisitionsComponent } from "../../components/requisitions/requisitions.component";
+import { PurchaseOrderComponent } from "../../components/purchaseorder/purchaseorder.component";
+import { InAndOutComponent } from '../../components/inandout/inandout.component';
+import { SharedModule } from 'app/shared/shared.module';
+import { DomainsModule } from 'app/domains/domainsmodule';
+import { RouterModule } from '@angular/router';
 
 @Component({
   selector: 'app-procwareh',
   standalone: true,
-  imports: [TranslateModule, WarehousesComponent],
+  imports: [TranslateModule, RouterModule, DomainsModule, SharedModule],
   templateUrl: './procwareh.component.html',
   styleUrl: './procwareh.component.scss'
 })

@@ -1,14 +1,13 @@
+<div class="hold-transition login-page" [style.backgroundImage]="'url(' + randomImage + ')'" style="position: relative; z-index: 0; background-size: cover; filter: blur(3px); opacity: 0.5;">
+</div>
 
-
-<div class="hold-transition login-page" [style.backgroundImage]="'url(' + randomImage + ')'" style="background-size: cover;">
-
-  <div class="login-box">
-	  <div class="login-logo">
-      <img src="/assets/img/template/bi2.png">
+<div class="login-box" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1;">
+	  <div class="login-logo" style="width: 100%;">
+      <img src="/assets/img/template/bi3.webp" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
 	  </div>
 	  <!-- /.login-logo -->
-	  <div class="card" >
-	    <div class="card-body login-card-body">
+	  <div class="card">
+	    <div class="card-body">
 	      <p class="login-box-msg" > {{ 'titlelogin' | translate}} </p>
 
 	      <form
@@ -70,4 +69,4 @@
 	</div>
 	<!-- /.login-box -->
 
-  </div>
+

@@ -1,76 +1,54 @@
-import { Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 
 import { environment } from '../../environments/environment';
-import { Iusers } from '../interface/iusers';
+import { TrackingService } from './tracking.service';
 
 import { alerts } from '../helpers/alerts';
-import { map, concat, catchError, forkJoin, Observable, throwError } from 'rxjs';
+import { map, Observable } from 'rxjs';
 
 import 'firebase/compat/database';
+import { SignalsService } from './signals.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class UsersService {
 
-  // Usemos signals
-  profile = {
-    emailUser: signal<string>(null),
-    profilePicUser: signal<string>(null),
-    nameUser: signal<string>(null),
-    organizationUser: signal<string>(null),
-    positionUser: signal<string>(null)
-  };
-  emailUser = signal<string>(null);
-  profileSignal(email: string, picture: string, name: string, organization: string, position: string) {
-    this.emailUser.set(email); // Para compatibilidad
-    this.profile.emailUser.set(email);
-    this.profile.profilePicUser.set(picture);
-    this.profile.nameUser.set(name);
-    this.profile.organizationUser.set(organization);
-    this.profile.positionUser.set(position);
-  }
-
-  //Constructor
-  constructor(private http: HttpClient) { }
+  private trackingService = inject(TrackingService);
+  private http = inject(HttpClient);
+  private signalsService = inject(SignalsService);
 
   // Aqui comienzan los cambios hechos a SMP
 
-  getDataUsers() {
-    try {
-      return this.http.get(`${environment.urlFirebase}users.json`);
-    }
-    catch (error) {
-      alerts.basicAlert("error", `Error get data call Users${error}`, "error")
-      return null;
-    }
+  getDataUsers(): Observable<any> {
+    return this.http.get(`${environment.urlSecurity}/User/users`, { headers: this.trackingService.getHeaders() });
   }
 
-  updateDataUsers(updates: any) {
-    try {
-      return this.http.put(`${environment.urlFirebase}users.json`, updates);
+  getUserById(id: number): Observable<any> {
+    return this.http.get(`${environment.urlSecurity}/User/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getUserByEmail(email: string): Observable<any> {
+    return this.http.get(`${environment.urlSecurity}/User/email/${email}`, { headers: this.trackingService.getHeaders() });
     }
-    catch (error) {
-      alerts.basicAlert("error", `Error putting data call Users${error}`, "error")
-      return null;
-    }
+  
+  addUser(data: any): Observable<any> {
+    return this.http.post(`${environment.urlSecurity}/User`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateUser(id: string, data: any): Observable<any> {
+    return this.http.put(`${environment.urlSecurity}/User/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteUser(id: number, data: any): Observable<any> {
+    return this.http.put(`${environment.urlSecurity}/User/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
   getDepartments() {
-    try {
-      return this.http.get(`${environment.urlFirebase}departaments.json`);
-    }
-    catch (error) {
-      alerts.basicAlert("error", `Error get data call Users${error}`, "error")
-      return null;
-    }
+    return this.http.get(`${environment.urlSecurity}/Department`, { headers: this.trackingService.getHeaders() });
   }
-
-  deleteUsers(id: string) {
-    return this.http.delete(`${environment.urlFirebase}users/${id}.json`);
-  }
-
+  
   // Aqui terminan los cambios a SMP
 
   getdataUserAut() {
@@ -90,109 +68,38 @@ export class UsersService {
       return null;
     }
   }
-
-  postData(data: Iusers, token: any) {
-    try {
-      return this.http.post(`${environment.urlFirebase}users.json?auth=${token}`, data);
-    } catch (error) {
-      alerts.basicAlert("error", `Error save Users${error}`, "error")
-      return null;
-    }
-
-  }
-
-  getCompaniesByPermission(email: string): Observable<any> {
-    const url = `${environment.urlFirebase}permissions.json?orderBy="email"&equalTo="${email}"&print=pretty`;
-
-    return this.http.get(url).pipe(
-      map(data => {
-        const permissions = Object.values(data);
-        if (permissions.length === 0) {
-          throw new Error('No se encontraron permisos para el correo electrónico proporcionado.');
-        }
-        const companies = permissions.map(permission => permission.id_company);
-        return [...new Set(companies)];
-      }),
-      catchError(err => {
-        console.log(err);
-        return throwError(err);
-      })
-    );
-  }
-
-
-
-  checkIfDataExists(email: string): Observable<boolean> {
-    const url = `${environment.urlFirebase}users.json?orderBy="emailu"&equalTo="${email}"`;
-
-    return this.http.get<any>(url).pipe(
-      map(response => {
-        // Verificar si hay datos en la respuesta
-        const dataExists = Object.keys(response).length > 0;
-        return dataExists;
-      }),
-      catchError(error => {
-        return throwError('Error en la solicitud');
-      })
-    );
-  }
-
-
-  patchData(id: string, data: object, token: any) {
-    return this.http.patch(`${environment.urlFirebase}users/${id}.json?auth=${token}`, data);
-  }
-
-
-  getItem(id: string) {
-    return this.http.get(`${environment.urlFirebase}users/${id}.json`);
-  }
-
-  getFilterDataperm(orderBy: string, equalTo: string) {
-
-    const url = `${environment.urlFirebase}permissions.json?orderBy="${orderBy}"&equalTo="${equalTo}"`;
-
-    return this.http.get(`${environment.urlFirebase}permissionsxcompanys.json?orderBy="${orderBy}"&equalTo="${equalTo}"`);
-  }
-
-  getCompaniesPermission(userEmail: string): Observable<any> {
-
-    const permissionsUrl = `${environment.urlFirebase}permissionsxcompanys.json`;
-    const companyUrl = `${environment.urlFirebase}companys.json`;
-
-    const permissions$ = this.http.get(permissionsUrl);
-    const company$ = this.http.get(companyUrl);
-
-    return forkJoin([permissions$, company$]);
-
-    return concat(permissions$, company$)
-
-  }
-
+   
 
   findEmail(email: string): Observable<any> {
-    return this.http.get<any>(`${environment.urlFirebase}users.json?orderBy="emailu"&equalTo="${email}"`).pipe(
+    const headers = this.trackingService.getHeaders();
+    //  const headers = localStorage.getItem('token') ;
+    return this.http.get<any>(`${environment.urlSecurity}/User/email/${email}`, { headers }).pipe(
       map(datauser => {
 
-        // console.log('dataUser', datauser) ;
+       // console.log('dataUser', datauser);
 
         // Asegúrate de que datauser contenga al menos un objeto
-        const userArray = Object.values(datauser);
-        if (userArray.length > 0) {
-          const user = userArray[0] as any;
-          //console.log('user:', user);
+        const userArray = datauser.data;
+        if (userArray) {
+          const user = userArray as any;
+          console.log('User Findemail:', user);
 
           // Asegúrate de que todas las propiedades existen en el objeto user
-          const displayName = user.displayName || '';
-          const picture = user.picture || '';
-          const email = user.emailu || '';
-          const applyproject = user.applyproject || '';
-          const applybranch = user.applybranch || '';
-          const applyplatform = user.applyplatform || ''; // Corregido de user.applybranch a user.applyplatform
+           const displayName = user.displayName || '';
+           const picture = user.picture || '';
+           const email = user.email || '';
+           const applyproject = user.applyproject || '';
+           const applybranch = user.applybranch || '';
+           const applyplatform = user.applyplatform || ''; // Corregido de user.applybranch a user.applyplatform
+           const id           = user.id   ;
+           const signature = user.signature || '';
+         //  this.signalsService.setidUser(datauser.id);
+         this.signalsService.setDisplayName(displayName);
 
-          return { displayName, picture, applyproject, applybranch, applyplatform, email };
+          return { displayName, picture, applyproject, applybranch, applyplatform, email, id, signature };
         } else {
           // Si no se encontró ningún usuario, devuelve un objeto vacío
-          return { displayName: '', picture: '', applyproject: '', applybranch: '', applyplatform: '', email: '' };
+          return { displayName: '', picture: '', applyproject: '', applybranch: '', applyplatform: '', email: '', signature: '' };
         }
       })
     );

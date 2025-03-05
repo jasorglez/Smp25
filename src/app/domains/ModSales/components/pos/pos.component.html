@@ -1,0 +1,75 @@
+<div class="col-12 py-3">
+    <div class="row mb-3">
+        <div class="col-md-8 text-left">
+            <div class="row d-flex">
+                <div class="col-md-6">
+                    <label for="clientSelect" class="form-label">Seleccionar Cliente</label>
+                    <ng-select [items]="clients" bindLabel="name_company" bindValue="id"
+                        placeholder="Buscar cliente..." (change)="onClientChange($event)" [searchable]="true"
+                        id="clientSelect" [(ngModel)]="idCustomer">
+                    </ng-select>
+                    <ng-select [items]="products$ | async" bindLabel="name" bindValue="barcode"
+                        placeholder="Buscar producto" (change)="onProductSelect($event)" [typeahead]="productInput$"
+                        (searchChange)="onSearchChange($event)" autofocus>
+                        <ng-template ng-option-tmp let-item="item">
+                            {{ item.barCode }} - {{ item.description }}
+                        </ng-template>
+                    </ng-select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Opciones de venta</label>
+                    <div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" [(ngModel)]="lector" id="lector"
+                                [ngModelOptions]="{standalone: true}">
+                            <label class="form-check-label" for="lector">
+                                ¿Lector?
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" [(ngModel)]="credit" id="credit"
+                                [ngModelOptions]="{standalone: true}">
+                            <label class="form-check-label" for="credit">
+                                ¿Crédito?
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-auto">
+            <div class="d-flex flex-column">
+<!--                 <button type="button" class="btn btn-primary mb-2" (click)="addRow()">
+                    <i class="bi bi-plus-lg"></i>
+                </button> -->
+                <button type="button" class="btn btn-danger" (click)="deleteRow()">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </div>
+        <div class="col">
+            <ag-grid-angular style="width: 100%; height: 55vh;" class="ag-theme-quartz small-text-ag-grid"
+                [rowData]="rowData" [columnDefs]="colMaster" (gridReady)="onGridReady($event)" [gridOptions]="gridOptions"
+                [rowSelection]="rowSelection" [pivotPanelShow]="pivotPanelShow" [rowGroupPanelShow]="rowGroupPanelShow"
+                [paginationPageSize]="paginationPageSize" [paginationPageSizeSelector]="paginationPageSizeSelector"
+                [pagination]="true" [components]="components" (selectionChanged)="onSelectionChanged()">
+            </ag-grid-angular>
+        </div>
+    </div>
+
+    <!-- Añadir después del grid -->
+    <div class="total-section mt-3 d-flex justify-content-end align-items-center">
+        <div class="total-label me-3">
+            <strong>Total General:</strong>
+        </div>
+        <div class="total-amount">
+            {{ formatCurrency(totalGeneral) }}
+        </div>
+        <div class="ms-3">
+            <button type="button" class="btn btn-primary btn-lg" (click)="printReceipt()">Imprimir nota</button>
+        </div>
+    </div>
+</div>

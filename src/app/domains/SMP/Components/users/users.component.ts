@@ -1,14 +1,18 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, HostListener, Injectable } from '@angular/core';
+import { Component, computed, HostListener, inject, Injectable } from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { UsersService } from 'app/services/users.service';
 import { alerts } from 'app/helpers/alerts';
 import { FormsModule } from '@angular/forms';
-import { AuthService } from 'app/services/auth.service';
-import { SweetAlertIcon } from 'sweetalert2';
-import { CustomSelectComponent } from '../custom-select/custom-select.component';
-import { UsersProfileComponent } from "./users-profile/users-profile.component";
+import { UsersProfileComponent } from "./users-profile.component";
+import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { MatDialogModule } from '@angular/material/dialog';
+import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
+import { ImageHandlerService } from 'app/services/image-handler.service';
+import { SignalsService } from 'app/services/signals.service';
+import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
+import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 
 @Injectable({
   providedIn: 'root',
@@ -22,25 +26,27 @@ import { UsersProfileComponent } from "./users-profile/users-profile.component";
     CommonModule,
     FormsModule,
     AgGridModule,
-    CustomSelectComponent,
-    UsersProfileComponent
+    UsersProfileComponent,
+    MatDialogModule
   ],
   templateUrl: './users.component.html',
   styleUrl: './users.component.scss',
 })
 export class UsersComponent {
 
-  profile = computed(() => this.usersService.profile);
+  private usersService = inject(UsersService);
+  private imageHandlerService = inject(ImageHandlerService);
+  private usersxcompanysService = inject(UsersxpermissionsService);
+  private signalsService = inject(SignalsService);
+  profile = computed(() => this.signalsService.profile);
 
   enviarSignal() {
-    this.usersService.profileSignal(this.selectedRowData.emailu,
+    const departmentName = this.getDepartmentName(this.selectedRowData.idDepartament);
+    this.signalsService.profileSignal(this.selectedRowData.id, this.selectedRowData.email,
       this.selectedRowData.picture, this.selectedRowData.displayName,
-      this.selectedRowData.organization, this.selectedRowData.position);
+      departmentName, this.selectedRowData.position);
+      this.signalsService.nameCompany.set(null);
   }
-
-  components = {
-    customSelectEditor: CustomSelectComponent,
-  };
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
@@ -50,54 +56,166 @@ export class UsersComponent {
     }
   }
 
-  constructor(
-    private usersService: UsersService,
-    private authService: AuthService
-  ) { }
-
   ngOnInit() {
-    this.obtenerDatos();
     this.obtenerDepartamentos();
+    this.obtenerDatos();
   }
 
+  components = {
+    multiLineEditor: MultiLineEditorComponent,
+    autocompleteEditor: AutocompleteEditorComponent
+  }
+
+  gridHeight: string = '80vh';
   newlyAddedRows: string[] = [];
   entrada: any;
-  departamentos: any[];
-  rowData: any;
-  paginationPageSize = 10; // Tamaño de página
+  departamentos: { [key: string]: string } = {};
+  rowData: any[] = [];
+  paginationPageSize = 20; // Tamaño de página
   pagination = true; // Habilitar paginación
   notSavedChanges: boolean = false;
   paginationPageSizeSelector = false;
   id: string;
   private gridApi: GridApi;
+  private tempIdCounter: number = 0;
 
   obtenerDatos() {
-    this.usersService.getDataUsers().subscribe((data: any) => {
-      this.rowData = Object.keys(data).map((key) => {
-        return { id: key, ...data[key] };
-      });
+    this.usersService.getDataUsers().subscribe({
+      next: (response: any) => {
+        if (response && response.code === 200 && response.data) {
+          this.rowData = response.data.map((item: any) => {
+            return { id: item.id, ...item };
+          });
+          this.rowData = this.rowData.filter(row => row.active !== 0);
+        } else {
+          console.error('Respuesta inválida del servidor');
+        }
+      },
+      error: (error) => {
+        console.error('Error al obtener los datos:', error);
+      }
     });
   }
 
   obtenerDepartamentos() {
-    this.usersService.getDepartments().subscribe((data) => {
-      this.departamentos = Object.values(data).map((item: any) => {
-        return item.name;
-      });
+    this.usersService.getDepartments().subscribe((data: any[]) => {
+      this.departamentos = data.reduce((acc, dep) => {
+        acc[dep.id] = dep.name; // Cambia la estructura para que solo almacene el nombre
+        return acc;
+      }, {});
     });
+  }
+
+  // Se modifica el getDepartmentName para que devuelva el nombre del departamento
+  getDepartmentName(idDepartament: string): string {
+    return this.departamentos[idDepartament] || 'Departamento no encontrado';
   }
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
   }
 
+// Column Definitions: Defines the columns to be displayed.
+public gridOptions: any = {
+  headerHeight: 30,
+  rowHeight: 30,
+  rowClass: (params) => {
+    // Verificar si la fila está seleccionada
+    if (params.node.isSelected()) {
+      return 'selected-row';
+    }
+    return '';
+  },
+  onRowClicked: (event) => {
+    // Seleccionar la fila al hacer clic en cualquier celda
+    event.node.setSelected(true);
+  },
+  onRowSelected: (event) => {
+    // Deseleccionar otras filas cuando se selecciona una nueva
+    if (event.node.isSelected()) {
+      this.gridApi.forEachNode((node) => {
+        if (node.id !== event.node.id) {
+          node.setSelected(false);
+        }
+      });
+    }
+  },
+};
+
   get columnDefs(): ColDef[] {
     return [
       {
+        field: 'active',
+        hide: true
+      },
+      {
         field: 'displayName',
         headerName: 'Nombre',
-        cellEditor: 'agTextCellEditor',
         editable: true,
+        filter: true,
+        cellEditor: 'autocompleteEditor',
+        cellEditorParams: {
+          filterList: this.rowData.map(e => e.displayName),
+          filterKey: 'displayName',
+          placeholder: 'Nombre',
+          minLength: 1
+        },
+        valueSetter: (params) => {
+          const duplicateExists = this.rowData.some((row, index) =>
+            index !== params.node.rowIndex && row.displayName === params.newValue
+          );
+
+          if (duplicateExists) {
+            alerts.basicAlert(
+              'Nombre duplicado',
+              'Ya existe un usuario con ese nombre.',
+              'error'
+            );
+            return false;
+          }
+
+          params.data[params.colDef.field] = params.newValue;
+          return true;
+        }
+      },
+      {
+        field: 'email',
+        headerName: 'Email',
+        cellEditor: 'agTextCellEditor',
+        editable: (params) => params.data.__isNew,
+        cellEditorParams: {
+          useFormatter: true,
+        },
+        valueFormatter: (params) => params.value,
+        valueSetter: (params) => {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (emailRegex.test(params.newValue)) {
+            // Verificar si el email ya existe
+            const duplicateExists = this.rowData.some((row, index) =>
+              index !== params.node.rowIndex && row.email === params.newValue
+            );
+
+            if (duplicateExists) {
+              alerts.basicAlert(
+                'Añadir usuario',
+                'Ya existe un usuario con ese correo electrónico.',
+                'error'
+              );
+              return false;
+            }
+
+            params.data[params.colDef.field] = params.newValue;
+            return true;
+          } else {
+            alerts.basicAlert(
+              'Editar usuario',
+              'Correo electrónico no válido.',
+              'error'
+            );
+            return false;
+          }
+        },
+        filter: true
       },
       {
         field: 'age',
@@ -114,35 +232,10 @@ export class UsersComponent {
         field: 'country',
         headerName: 'País',
         editable: true,
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
-          values: ['Mexico', 'USA', 'MEX-USA', 'Colombia', 'Chile', 'Otro'],
-          valueListGap: 10,
-        },
-      },
-      {
-        field: 'emailu',
-        headerName: 'Email',
-        cellEditor: 'agTextCellEditor',
-        editable: (params) => params.data.isNew,
-        cellEditorParams: {
-          useFormatter: true,
-        },
-        valueFormatter: (params) => params.value,
-        valueSetter: (params) => {
-          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-          if (emailRegex.test(params.newValue)) {
-            params.data[params.colDef.field] = params.newValue;
-            return true;
-          } else {
-            // Mostrar alerta de correo electrónico no válido
-            alerts.basicAlert(
-              'Editar usuario',
-              'Correo electrónico no válido.',
-              'error'
-            );
-            return false;
-          }
+          values: ['México', 'USA', 'MEX-USA', 'Colombia', 'Chile', 'Otro'],
+          selectOnPopup: true
         },
       },
       {
@@ -154,14 +247,23 @@ export class UsersComponent {
         editable: true,
       },
       {
-        field: 'organization',
-        headerName: 'Organización',
-        editable: true,
-        cellEditor: 'agSelectCellEditor',
+        field: 'idDepartament',
+        headerName: 'Departamento',
+        cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
-          values: this.departamentos, // Se usa cuando departamentos ya esté disponible
-          valueListGap: 10,
+          values: [Object.keys(this.departamentos)],
         },
+        valueFormatter: (params) => this.departamentos[params.value] || '',
+        valueSetter: (params) => {
+          const newValue = params.newValue;
+          if (this.departamentos.hasOwnProperty(newValue)) {
+            params.data[params.colDef.field] = newValue;
+            return true;
+          }
+          return false;
+        },
+        valueParser: (params) => params.newValue,
+        editable: true,
       },
       {
         field: 'phone',
@@ -176,57 +278,28 @@ export class UsersComponent {
         editable: true,
       },
       {
-        field: 'platform',
-        headerName: 'Plataforma',
-        cellEditor: 'customSelectEditor',
-        cellEditorParams: {
-          options: {
-            Sí: 'si',
-            No: 'no',
-          },
-        },
-        cellRenderer: this.customSelectRenderer({ Sí: 'si', No: 'no' }),
-        editable: true,
-      },
-      {
-        field: 'project',
-        headerName: 'Proyecto',
-        cellEditor: 'customSelectEditor',
-        cellEditorParams: {
-          options: {
-            Sí: 'si',
-            No: 'no',
-          },
-        },
-        cellRenderer: this.customSelectRenderer({ Sí: 'si', No: 'no' }),
-        editable: true,
-      },
-      {
-        field: 'branch',
-        headerName: 'Branch',
-        cellEditor: 'customSelectEditor',
-        cellEditorParams: {
-          options: {
-            Sí: 'si',
-            No: 'no',
-          },
-        },
-        cellRenderer: this.customSelectRenderer({ Sí: 'si', No: 'no' }),
-        editable: true,
-      },
-      {
         field: 'picture',
         headerName: 'Imagen de perfil',
-        cellEditor: 'agTextCellEditor',
-        cellRenderer: (params: any) => {
-          if (params.value) {
-            return `<img src="${params.value}" class="text-center" style="height:100%;">`;
-          } else {
-            return '';
-          }
+        cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
+        cellRendererParams: {
+          clicked: this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService),
+          field: 'picture'
         },
-        editable: true,
+        editable: false,
+        width: 100
       },
+      {
+        field: 'signature',
+        headerName: 'Firma',
+        cellEditor: 'agTextCellEditor',
+        cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
+        cellRendererParams: {
+          clicked: this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService),
+          field: 'signature'
+        },
+        editable: false,
+        width: 100
+      }
     ];
   }
 
@@ -252,221 +325,153 @@ export class UsersComponent {
     // Aquí envío todo a la signal
     this.enviarSignal();
     this.notSavedChanges = true;
+    if (!event.data.__isNew) {
+      event.data.__modified = true;
+    }
   }
 
   async saveChanges() {
     const isValid = this.rowData.every(
-      (item) => item.displayName && item.emailu && item.password
+      (item) => item.displayName && item.email && item.password
     );
 
     if (!isValid) {
       alerts.basicAlert(
-        'Añadir usuario',
-        'Debe introducir un nombre de usuario, correo electrónico y contraseña.',
+        'Añadir entrada',
+        'Debe introducir el nombre del usuario, su correo y su contraseña antes de guardar.',
         'error'
       );
       return;
     }
 
-    // Filtrar las filas nuevas usando nuestro registro de nuevas filas
-    const newItems = this.rowData.filter((item) =>
-      this.newlyAddedRows.includes(item.id)
-    );
+    const newRows = this.rowData.filter(row => row.__isNew);
+    const modifiedRows = this.rowData.filter(row => row.__modified && !row.__isNew);
 
-    let successfullyAdded = [];
-    let failedToAdd = [];
-
-    // Procesar nuevos usuarios primero
-    if (newItems.length > 0) {
-      for (const item of newItems) {
-        // Enviamos los datos a FirebaseAuth y a la base de datos
-        try {
-          await this.enviarDatos(item.emailu, item.password);
-          successfullyAdded.push(item);
-        } catch (error) {
-          if (error.code === 'auth/email-already-in-use') {
-            failedToAdd.push(item);
-            // Remover el item de rowData si el email ya está en uso
-            this.rowData = this.rowData.filter((row) => row.id !== item.id);
-            this.newlyAddedRows = this.newlyAddedRows.filter(
-              (id) => id !== item.id
-            );
-          } else {
-            // Para otros errores, detener el proceso
-            alerts.basicAlert(
-              'Error de registro',
-              'Ocurrió un error al registrar nuevos usuarios. Por favor, intente nuevamente.',
-              'error'
-            );
-            return;
-          }
-        }
-      }
-    }
-
-    const sanitizedData = this.rowData.map(({ isNew, ...item }) => item);
-    // Ahora actualizamos la base de datos con los datos filtrados
-    const updates = sanitizedData.reduce((acc, item) => {
-      const { id, ...data } = item;
-      acc[id] = data;
-      return acc;
-    }, {});
-
-    this.usersService.updateDataUsers(updates).subscribe((response) => {
-      let updatedExistingUsers = false;
-
-      // Verificar si se hicieron cambios en usuarios existentes
-      if (newItems.length === 0 && Object.keys(updates).length > 0) {
-        updatedExistingUsers = true;
-      }
-
-      this.showResultAlert(
-        successfullyAdded,
-        failedToAdd,
-        updatedExistingUsers
-      );
-      this.notSavedChanges = false;
-      this.newlyAddedRows = []; // Limpiar el registro de nuevas filas después de guardar
-      this.obtenerDatos(); // Refrescar los datos
+    const addObservables = newRows.map(row => {
+      const cleanedData = this.cleanDataForServer(row);
+      return this.usersService.addUser(cleanedData);
     });
-  }
 
-  showResultAlert(
-    successfullyAdded: any[],
-    failedToAdd: any[],
-    updatedExistingUsers: boolean
-  ) {
-    let message = '';
-    if (successfullyAdded.length > 0) {
-      message += `${successfullyAdded.length} usuario(s) añadido(s) correctamente. `;
-    }
-    if (failedToAdd.length > 0) {
-      message += `${failedToAdd.length} usuario(s) no pudo(pudieron) ser añadido(s) debido a correos electrónicos duplicados.`;
-    }
-    if (updatedExistingUsers) {
-      message += 'Cambios en usuarios existentes guardados correctamente.';
-    }
-    if (
-      !updatedExistingUsers &&
-      successfullyAdded.length === 0 &&
-      failedToAdd.length === 0
-    ) {
-      message = 'No se realizaron cambios en los usuarios.';
-    }
+    const updateObservables = modifiedRows.map(row => {
+      const cleanedData = this.cleanDataForServer(row);
+      return this.usersService.updateUser(row.id, cleanedData);
+    });
 
-    let alertType: SweetAlertIcon = 'info';
-    if (successfullyAdded.length > 0 && failedToAdd.length === 0) {
-      alertType = 'success';
-    } else if (failedToAdd.length > 0 || updatedExistingUsers) {
-      alertType = 'warning';
-    }
-
-    alerts.basicAlert('Actualización de usuarios', message, alertType);
-  }
-
-  addRow() {
-    const newId = this.generateUniqueId();
-    const newItem = {
-      id: newId,
-      displayName: '',
-      country: '',
-      emailu: '',
-      password: '',
-      age: null,
-      organization: '',
-      phone: '',
-      position: '',
-      branch: 'no',
-      project: 'no',
-      platform: 'no',
-      picture: './assets/img/profile.png',
-      isNew: true,
-    };
-
-    this.rowData = [newItem, ...this.rowData];
-    // Añadir el ID de la nueva fila a nuestro registro
-    this.newlyAddedRows.push(newId);
-  }
-
-  generateUniqueId() {
-    return 'new-' + Math.random().toString(36).substr(2, 9);
-  }
-
-  async deleteUser() {
+    // Using concat to combine observables and lastValueFrom for async/await
     try {
-      const selectedNodes = this.gridApi.getSelectedNodes();
-      if (selectedNodes.length === 0) {
-        alerts.basicAlert(
-          'Eliminar usuario',
-          'Por favor, seleccione un usuario para eliminar.',
-          'warning'
-        );
-        return;
-      }
-
-      const selectedData = selectedNodes[0].data;
-      const id = selectedData.id;
-      const email = selectedData.emailu;
-
-      // Elimina al usuario de la DB de Firebase
-      await this.usersService.deleteUsers(id).toPromise();
-      // Elimina al usuario de Firebase Auth
-      await this.authService.removeUserByEmail(email, selectedData.password);
-
-      // Refrescar los datos después de eliminar
-      this.obtenerDatos();
-
+      const responses = await lastValueFrom(concat(...addObservables, ...updateObservables).pipe(toArray()));
       alerts.basicAlert(
-        'Eliminar usuario',
-        'Usuario eliminado satisfactoriamente.',
+        'Datos actualizados',
+        'Se han actualizado los datos correctamente.',
         'success'
       );
       this.notSavedChanges = false;
-      this.selectedRowData = null;
+      this.newlyAddedRows = [];
+      this.obtenerDatos(); // Refrescar los datos
     } catch (error) {
+      console.error(error);
       alerts.basicAlert(
-        'Eliminar usuario',
-        'Error al eliminar el usuario.',
+        'Error',
+        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
         'error'
       );
     }
   }
 
-  // Aqui vamos a crear custom cell renders y editors para el select
-  customSelectRenderer(options: { [key: string]: any }) {
-    return (params: any) => {
-      const value = params.value;
-      for (const [display, optionValue] of Object.entries(options)) {
-        if (value === optionValue) {
-          return display;
-        }
-      }
-      return value; // Valor por defecto si no se encuentra coincidencia
+  addRow() {
+    const tempId = `temp_${this.tempIdCounter++}`;
+    const newItem = {
+      id: tempId,
+      active: 1,
+      displayName: '',
+      country: '',
+      email: '',
+      password: '',
+      age: null,
+      idDepartament: 1,
+      phone: '',
+      position: '',
+      picture: './assets/img/profile.png',
+      signature: '',
+      allowWhatsapp: true,
+      __isNew: true
     };
+
+    this.rowData = [newItem, ...this.rowData];
+    this.newlyAddedRows.push(tempId);
+    this.notSavedChanges = true;
   }
 
-  // Y aquí llamamos a Firebase
-  async enviarDatos(email: string, password: string): Promise<void> {
-    console.log('Intentando registrar nuevo usuario:', email);
-    try {
-      const user = await this.authService.register(email, password);
-      if (user) {
-        console.log('Nuevo usuario registrado exitosamente:', email);
-      } else {
-        throw new Error('No se pudo registrar el usuario');
-      }
-    } catch (error) {
-      console.error('Error al registrar nuevo usuario:', error);
-      if (error.code === 'auth/email-already-in-use') {
-        console.log('El correo electrónico ya está en uso:', email);
-      } else {
-        alerts.basicAlert(
-          'Error de registro',
-          'No se pudo registrar el nuevo usuario en el sistema de autenticación.',
-          'error'
-        );
-      }
-      throw error; // Re-throw the error to be caught in saveChanges
+  async deleteUser() {
+    const selectedNodes = this.gridApi.getSelectedNodes();
+    if (selectedNodes.length === 0) {
+      alerts.basicAlert(
+        'Eliminar entrada',
+        'Por favor, seleccione una entrada para eliminar.',
+        'error'
+      );
+      return;
     }
+
+    const selectedData = selectedNodes[0].data;
+    const id = selectedData.id;
+
+    // Mostrar mensaje de confirmación
+    alerts.confirmAlert(
+      'Eliminar empleado',
+      '¿Está seguro que desea eliminar este empleado?',
+      'warning',
+      'Sí, eliminar'
+    ).then((value) => {
+      if (value.isConfirmed) {
+        // Eliminar el usuario
+        selectedData.active = 0;
+        this.usersService.deleteUser(id, selectedData).pipe(
+          catchError((error) => {
+            alerts.basicAlert(
+              'Eliminar entrada',
+              'Error al eliminar la entrada.',
+              'error'
+            );
+            console.error(error);
+            return EMPTY;
+          })
+        )
+          .subscribe(
+            () => {
+              alerts.basicAlert(
+                'Eliminar entrada',
+                'Entrada eliminada satisfactoriamente.',
+                'success'
+              );
+              this.obtenerDatos();
+
+              alerts.basicAlert(
+                'Eliminar entrada',
+                'Entrada eliminada satisfactoriamente.',
+                'success'
+              );
+              this.notSavedChanges = false;
+              this.selectedRowData = null;
+            }
+          )
+      }
+    });
   }
+
+  revert() {
+    this.obtenerDatos();
+    this.notSavedChanges = false;
+  }
+
+  private cleanDataForServer(data: any): any {
+    const cleanedData = { ...data };
+    delete cleanedData.__isNew;
+    delete cleanedData.__modified;
+    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
+      delete cleanedData.id;
+    }
+    return cleanedData;
+  }
+
 }
