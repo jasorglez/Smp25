@@ -7,6 +7,13 @@ import { SignalsService } from 'app/services/signals.service';
 import * as XLSX from 'xlsx';
 import { NominaData } from './models/payroll-data.module';
 import { PayrollService } from 'app/services/payroll.service';
+import { AdministrationService } from 'app/services/administration.service';
+
+interface Bank {
+  id: number; 
+  name: string;
+  active: boolean;
+}
 
 @Component({
   selector: 'app-setup',
@@ -21,16 +28,17 @@ import { PayrollService } from 'app/services/payroll.service';
 export class SetupComponent {
   private signalsService = inject(SignalsService);
   private hrService = inject(HRService);
-  private payrollService = inject(PayrollService);
   isLoading: boolean = false;
   error: string | null = null;
   jsonData: any = null;
   fileName: string = '';
   // Variable para controlar cómo se muestra el JSON
-  prettyJson: boolean = true;
+  prettyJson: boolean = false;
   hrData: any = {};
   newData: boolean;
   idBranch: number;
+  banks: Bank[] = [];
+  selectedBankId: number | null = null;
 
   diasSemana = [
     'Lunes',
@@ -45,16 +53,33 @@ export class SetupComponent {
   ngOnInit() {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
     this.getData();
+    await this.obtenerBanks();
   }
 
-  constructor() {
+  constructor(private payrollService: PayrollService, private administrationService: AdministrationService) {
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      console.log("---------- SETUPCOMPONENT() idBranch --> ", this.idBranch);
       this.getData();
     });
   }
 
-  sendPayrollData() {
+  obtenerBanks(): Promise<any> {
+    return new Promise((resolve) => {
+      this.administrationService.get2fieldsBanks().subscribe((data: any) => { 
+        this.banks = data;
+        resolve(data);
+      });
+    });
+  }
+
+  onBankSelected() {
+    console.log("Banco seleccionado ID:", this.selectedBankId);
+    // Aquí puedes guardar el ID o hacer lo que necesites con él
+  }
+
+  async sendPayrollData() {
+    console.log("---------- SENDPAYROLLDATA() Bancos: --> ", this.banks);
 
     console.log("---------- SENDPAYROLLDATA() enviando datos de nómina --> ", this.jsonData);
 
@@ -63,15 +88,87 @@ export class SetupComponent {
       return;
     };
 
+    if (!Array.isArray(this.jsonData)) {
+      this.formatNumericPropertiesToTwoDecimals(this.jsonData);
+    } 
+    // En caso de que jsonData sea un array de objetos
+    else {
+      this.jsonData.forEach(item => {
+        this.formatNumericPropertiesToTwoDecimals(item);
+      });
+    }
+    
+    // Agregar el ID del banco seleccionado
+    this.jsonData.IdBranch = this.selectedBankId;
+    
+    console.log("---------- SENDPAYROLLDATA() Datos formateados --> ", this.jsonData);
+
+    if (!this.selectedBankId) {
+      alerts.basicAlert("Error", "Por favor seleccione un banco.", "error");
+      return;
+    }
+    
+    // Asegúrate de que los bancos estén cargados
+    if (this.banks.length === 0) {
+      await this.obtenerBanks();
+    }
+    
+    // Añadir el ID del banco a los datos que envías
+    this.jsonData.IdBank = this.selectedBankId;
+
+    this.jsonData.idBranch = this.idBranch;
+    
+    console.log("---------- SENDPAYROLLDATA() Datos a enviar con ID de banco --> ", this.jsonData);
+    console.log("---------- SENDPAYROLLDATA() enviando datos de nómina con idBranch --> ", this.jsonData);  
+
     this.payrollService.uploadPayrollData(this.jsonData).subscribe({
       next: (response) => {
         this.isLoading = true;
         alerts.basicAlert("Actualización", "Los datos fueron guardados exitosamente.", "success");
-        console.log('-------------- SENDPAYROLLDATA() Respuesta del servidor servicio payroll:', response);
+        console.log('-------------- uploadpayrollDATA() Respuesta del servidor servicio payroll:', response);
         this.isLoading = false;
+        this.resetForm();
       },
       error: (error) => console.error('Error al enviar los datos:', error)
     });
+  }
+
+  resetForm() {
+    // Limpiar datos del archivo
+    this.jsonData = null;
+    this.fileName = '';
+    
+    // Limpiar el banco seleccionado
+    this.selectedBankId = null;
+    
+    // Limpiar el input file para que el usuario pueda seleccionar el mismo archivo si lo desea
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
+    }
+    // Refrescar la vista
+    this.getData();
+  }
+
+  formatNumericPropertiesToTwoDecimals(obj: any) {
+    // Lista de propiedades que necesitan formatearse a 2 decimales
+    const propertiesToFormat = [
+      'IMSS', 'IMSSCesantiaVejez', 'IMSSEnfermedad', 'ISPT', 
+      'impuestoArt96', 'neto', 'otrosIngresos', 'pensionAlimenticia',
+      'percepcionesGravadas', 'retencionesINFONAVIT', 'salarioDiario',
+      'salarioDiarioIntegrado', 'subsidioArt114', 'subsidioPEmpleo',
+      'subsidioPEmpleoAcreditado', 'sueldos', 'totalPercepciones'
+    ];
+    
+    // Recorrer todas las propiedades que necesitan formato
+    propertiesToFormat.forEach(prop => {
+      if (obj[prop] != null && typeof obj[prop] === 'number') {
+        // Convertir el valor a un número con 2 decimales
+        obj[prop] = Number(obj[prop].toFixed(2));
+      }
+    });
+    
+    return obj;
   }
 
   getData() {
@@ -144,7 +241,7 @@ export class SetupComponent {
 
     const file: File = files[0];
     this.fileName = file.name;
-    console.log("nombre del archivo --> ", this.fileName);
+    //console.log("nombre del archivo --> ", this.fileName);
     
     // Verificamos que sea un archivo Excel
     if (!this.isExcelFile(file)) {
@@ -178,7 +275,7 @@ export class SetupComponent {
       if (this.jsonData) {
         console.log("la data despues de procesar y sin errores es --> ", this.jsonData);
         console.log("aqui yq podemos enviar el archivo a guardar a BD --> ", this.jsonData.empleados);
-        this.sendPayrollData()
+        //this.sendPayrollData()
       }
     };
 
@@ -186,8 +283,6 @@ export class SetupComponent {
       this.error = 'Error al leer el archivo.';
       this.isLoading = false;
     };
-
-   
 
     // Iniciamos la lectura del archivo
     reader.readAsBinaryString(file);
@@ -293,9 +388,7 @@ export class SetupComponent {
    */
   formatJson(jsonData: any): string {
     if (!jsonData) return '';
-    return this.prettyJson 
-      ? JSON.stringify(jsonData, null, 2) 
-      : JSON.stringify(jsonData);
+    return this.prettyJson ? JSON.stringify(jsonData, null, 2) : JSON.stringify(jsonData);
   }
 
   /**
