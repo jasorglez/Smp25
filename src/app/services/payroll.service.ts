@@ -39,6 +39,12 @@ export interface EmployeePayroll {
 export class PayrollService {
   private apiUrl = 'http://localhost:5047/api/payroll';
 
+  private apiURL = `${environment.urlAdministration}/payroll`;
+
+  //getEmployees(idBranch: number) {
+  //  return this.http.get(`${environment.urlAdministration}/Employee/branch/${idBranch}`, { headers: this.trackingService.getHeaders() });
+  //}
+
   constructor() { }
 
   private http = inject(HttpClient);
@@ -49,9 +55,13 @@ export class PayrollService {
   }
 
   uploadPayrollData(data: any): Observable<any> {
+    console.log("------------ UPLOADPAYROLLDATA() entrando al servicio payroll, la api original es: ", this.apiUrl);
+    console.log("------------ UPLOADPAYROLLDATA() entrando al servicio payroll, la API CORRECTA es: ", this.apiURL);
     console.log("------------ UPLOADPAYROLLDATA() entrando al servicio payroll, la data es: ", data);
-    var x = this.http.post<any>(this.apiUrl, data);
-    console.log("------------ UPLOADPAYROLLDATA() saliendo del servicio payroll, la respuesta es: ", x);
+    //var x = this.http.post<any>(this.apiUrl, data);
+    //console.log("------------ UPLOADPAYROLLDATA() saliendo del servicio payroll, la respuesta ORIGINAL es: ", x);
+    //var x = this.http.post<any>(this.apiURL, data);
+    //console.log("------------ UPLOADPAYROLLDATA() saliendo del servicio payroll, la respuesta VERDADERA es: ", x);
     return this.http.post<any>(this.apiUrl, data);
   }
 }

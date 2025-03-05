@@ -38,7 +38,7 @@ export class BanksComponent {
   contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
-  
+
   branches: any;
   id: string;
   private tempIdCounter: number = 0;
@@ -57,8 +57,8 @@ export class BanksComponent {
   };
 
   // Inject of new way for Angular 18
-  private administrationService = inject(AdministrationService);  
-  private modalServiceTable = inject(ModalService);  
+  private administrationService = inject(AdministrationService);
+  private modalServiceTable = inject(ModalService);
   private imageHandlerService = inject(ImageHandlerService);
 
 // Column Definitions: Defines the columns to be displayed.
@@ -120,9 +120,9 @@ get colMaster(): ColDef[] {
         return params.value;
       }
      },
-             
+
     { field: 'contact', headerName: 'Contacto', editable: true, width: 255 },
-        
+
     { field: 'phone', headerName: 'Telefono', editable: true, width: 169, cellEditorParams: {
         maxLength: 15  }
     },
@@ -139,10 +139,10 @@ get colMaster(): ColDef[] {
       width: 130
     },
 
-    { field: 'numBranch', headerName: 'Numero Sucursal', editable: true, width: 140 }, 
+    { field: 'numBranch', headerName: 'Numero Sucursal', editable: true, width: 140 },
 
     { field: 'code', headerName: 'Codigo', editable: true, width: 105 },
-    
+
   ]
 };
 
@@ -185,11 +185,11 @@ get colMaster(): ColDef[] {
       name      : '',
       branch    : '',
       numBranch : '',
-      contact   : '',      
+      contact   : '',
       phone     : '',
       picture   : '',
       code      : '',
-      active: true,      
+      active: true,
       __isNew: true,
     };
     this.rowData = [newItem, ...this.rowData];
