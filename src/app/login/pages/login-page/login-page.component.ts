@@ -1,7 +1,5 @@
- import { Component } from '@angular/core';
+import { Component } from '@angular/core';
 import { ComploginComponent } from '../../components/complogin/complogin.component';
-
-
 
 @Component({
   selector: 'app-login-page',
@@ -10,6 +8,5 @@ import { ComploginComponent } from '../../components/complogin/complogin.compone
   templateUrl: './login-page.component.html',
   styleUrl: './login-page.component.scss'
 })
-export class LoginPageComponent {
 
-}
+export class LoginPageComponent {}

@@ -3,6 +3,8 @@ import { Component, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
 import { ClockService } from 'app/services/clock.service';
+import { EmployeesService } from 'app/services/employees.service';
+import { HRService } from 'app/services/hr.service';
 import { SignalsService } from 'app/services/signals.service';
 import { TimeService } from 'app/services/time.service';
 import { interval } from 'rxjs';
@@ -20,6 +22,8 @@ export class ClockComponent {
   private timeService = inject(TimeService);
   private clockService = inject(ClockService);
   private signalsService = inject(SignalsService);
+  private employeesService = inject(EmployeesService);
+  private hrService = inject(HRService);
 
   time: any[] = [];
   idBranch: number;
@@ -29,6 +33,8 @@ export class ClockComponent {
   employeeCode: string = '';
   clockPassword: string = '';
   status: string = '';
+  currentDayName: string = '';
+  incidentData: any = {Hours: null, PendingOuts: null}
 
   ngOnInit() {
     this.setupTimeUpdates();
@@ -52,7 +58,8 @@ export class ClockComponent {
     }, 1000);
 
     // Sincronizar con servidor cada 10 segundos
-    interval(10000).subscribe(() => this.getTime());
+    // Activar si lo desean
+    // interval(10000).subscribe(() => this.getTime());
   }
 
   getTime() {
@@ -69,6 +76,15 @@ export class ClockComponent {
 
   private formatDateTime(isoString: string) {
     const date = new Date(isoString);
+
+    // Obtener solo el día de la semana
+    const dayOptions: Intl.DateTimeFormatOptions = {
+      weekday: 'long'
+    };
+    this.currentDayName = date.toLocaleDateString('es-MX', dayOptions)
+      .replace(/(^\p{Ll})/u, m => m.toUpperCase());
+
+    // El resto del código existente
     const options: Intl.DateTimeFormatOptions = {
       weekday: 'long',
       year: 'numeric',
@@ -79,7 +95,7 @@ export class ClockComponent {
     this.formattedDate = date.toLocaleDateString('es-MX', options)
       .replace(/(^\p{Ll})/u, m => m.toUpperCase())
       .replace(/\bde\b/gi, m => m.toLowerCase())
-      .replace(/,/g, '')
+      .replace(/,/g, '');
 
     const timeOptions: Intl.DateTimeFormatOptions = {
       hour: '2-digit',
@@ -95,11 +111,16 @@ export class ClockComponent {
   }
 
   checkInOrOut(type: string) {
-    this.clockService.getEmployeeInfo(this.idBranch, this.employeeCode, this.clockPassword).subscribe({
+    this.clockService.getEmployeeInfo(this.employeeCode, this.clockPassword).subscribe({
       next: (data) => {
         console.log(data);
         this.getTimeAgain().subscribe(fecha => {
           console.log(fecha);
+          const currentDay = this.currentDayName; // Obtener el día actual almacenado
+
+          // Llamar al método para verificar incidentes
+          this.checkIncidents(data[0]?.idEmployee, currentDay, fecha);
+
           if (type == 'IN') {
             // El empleado no marcó su salida.
             // Si la fecha de entrada sea distinta a la fecha actual, debe arrojar este error.
@@ -113,15 +134,59 @@ export class ClockComponent {
             // Se verifica que la fecha de entrada sea distinta a la fecha actual.
             // Si es así, eso significa que el empleado no marcó su salida ayer.
             else if (data[0]?.lastType === 'IN' && data[0]?.lastCheck.split('T')[0] !== fecha.split('T')[0]) {
-              return;
+
             }
-            const info = { idEmployee: data[0]?.idEmployee, type: 'IN', timeStamp: fecha, active: true };
-            console.log(info);
-            this.clockService.checkInOut(info).subscribe(
-              (clock => {
-                alerts.basicAlert("Entrada marcada exitosamente", `Hola ${data[0]?.name}`, "success");
-              })
-            );
+
+            // Consultar el horario del empleado para el día actual
+            this.employeesService.getEmployeeClockByDay(data[0]?.idEmployee, currentDay).subscribe(clockData => {
+              console.log('Horario del empleado para el día actual:', clockData);
+
+              // Obtener las horas de entrada
+              const entry1 = clockData[0]?.entry1;
+              const entry2 = clockData[0]?.entry2;
+
+              // Convertir fecha y entradas a objetos Date para comparación
+              const fechaDate = new Date(fecha);
+              const entry1Date = new Date(entry1);
+              const entry2Date = new Date(entry2);
+
+              if (entry1) {
+                const [hour1, minute1] = entry1.split(':').map(Number);
+                entry1Date.setHours(hour1, minute1, 0);
+              }
+
+              if (entry2) {
+                const [hour2, minute2] = entry2.split(':').map(Number);
+                entry2Date.setHours(hour2, minute2, 0);
+              }
+
+              let valid = false;
+
+              // Si clockData[0]?.enabled es false, valid es true
+              if (clockData[0]?.enabled === false) {
+                valid = true;
+              } else {
+                // Validar las condiciones
+                if (fechaDate <= entry1Date || fechaDate <= entry2Date) {
+                  valid = true;
+                } else if (fechaDate > entry1Date) {
+                  const timeDifference = (entry2Date.getTime() - fechaDate.getTime()) / (1000 * 60 * 60); // Diferencia en horas
+                  if (timeDifference <= 2) {
+                    valid = true;
+                  } else {
+                    valid = false;
+                  }
+                }
+              }
+
+              const info = { idEmployee: data[0]?.idEmployee, type: 'IN', timeStamp: fecha, valid: valid, active: true };
+              console.log(info);
+              this.clockService.checkInOut(info).subscribe(
+                (clock => {
+                  alerts.basicAlert("Entrada marcada exitosamente", `Hola ${data[0]?.name}`, "success");
+                })
+              );
+            });
           }
           else if (type == 'OUT') {
             // Verifica si la fecha es la misma que la última salida, ya que no se puede salir en
@@ -131,7 +196,14 @@ export class ClockComponent {
               alerts.basicAlert("Error", "Ya ha marcado su salida el día de hoy", "error");
               return;
             }
-            const info = { idEmployee: data[0]?.idEmployee, type: 'OUT', timeStamp: fecha, active: true };
+
+            // Si lastType fue IN y lastValid fue false, setear valid en false
+            let valid = true; // Inicialmente se asume que es válido
+            if (data[0]?.lastType === 'IN' && !data[0]?.lastValid) {
+              valid = false;
+            }
+
+            const info = { idEmployee: data[0]?.idEmployee, type: 'OUT', timeStamp: fecha, valid: valid, active: true };
             console.log(info);
             this.clockService.checkInOut(info).subscribe(
               (clock => {
@@ -151,4 +223,60 @@ export class ClockComponent {
     });
   }
 
+  private checkIncidents(idEmployee: number, currentDay: string, fecha: string) {
+    this.hrService.getHRManagementData(this.idBranch).subscribe(hrData => {
+      const startDay = hrData[0]?.startDay;
+
+      let startPeriod: Date;
+      let endPeriod: Date;
+
+      // Crear un objeto Date a partir de la fecha y eliminar la hora
+      const fechaDate = new Date(fecha);
+      fechaDate.setHours(0, 0, 0, 0); // Establecer horas, minutos, segundos y milisegundos a cero
+
+      // Calcular las fechas de inicio y fin
+      if (startDay === currentDay) {
+        startPeriod = new Date(fechaDate); // Usar la fecha sin hora
+        endPeriod = new Date(fechaDate);
+        endPeriod.setDate(endPeriod.getDate() + 7); // Hoy + 7 días
+      } else {
+        // Obtener el último día correspondiente
+        const today = new Date(fechaDate); // Usar la fecha sin hora
+        const dayOfWeek = today.getDay(); // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
+        const daysToLastStartDay = (dayOfWeek + 7 - this.getDayIndex(startDay)) % 7; // Días hasta el último startDay
+        startPeriod = new Date(today);
+        startPeriod.setDate(today.getDate() - daysToLastStartDay); // Último startDay
+
+        // Calcular el siguiente día correspondiente
+        endPeriod = new Date(startPeriod);
+        endPeriod.setDate(startPeriod.getDate() + 7); // Sábado siguiente
+      }
+
+      // Función para formatear la fecha en YYYY-MM-DD manteniendo la zona horaria local
+      const formatLocalDate = (date: Date): string => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0'); // Meses van de 0 a 11
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+
+      // Mostrar en consola las fechas calculadas
+      console.log('startPeriod:', formatLocalDate(startPeriod));
+      console.log('endPeriod:', formatLocalDate(endPeriod));
+
+      // Llamar al servicio para verificar incidentes
+      this.clockService.checkIncidentsByEmployee(idEmployee, formatLocalDate(startPeriod), formatLocalDate(endPeriod)).subscribe(incidentData => {
+        console.log('Datos de incidentes:', incidentData);
+        this.incidentData = incidentData;
+        setTimeout(() => {
+          this.incidentData = { Hours: null, PendingOuts: null, Absences: null };
+        }, 15000); // 15000 milisegundos = 15 segundos
+      }); 
+    });
+  }
+
+  private getDayIndex(day: string): number {
+    const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    return days.indexOf(day);
+  }
 }

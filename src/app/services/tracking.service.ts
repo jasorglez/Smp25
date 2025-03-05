@@ -397,7 +397,6 @@ export class TrackingService {
     });
   }
 
-
   formatearMoneda(valor: number): string {
     const formatter = new Intl.NumberFormat('es-MX', {
       style: 'currency',
@@ -406,7 +405,6 @@ export class TrackingService {
     return formatter.format(valor);
   }
 
-
   public getHeaders(): HttpHeaders {
     const token = this.getAuthToken();
     return new HttpHeaders({
@@ -414,7 +412,5 @@ export class TrackingService {
       Authorization: `Bearer ${token}`,
     });
   }
-
-
-
+  
 }

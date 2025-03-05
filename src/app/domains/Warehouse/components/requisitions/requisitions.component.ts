@@ -101,6 +101,7 @@ export class RequisitionsComponent {
         alerts.basicAlert('Requisiciones', 'Debe elegir un proyecto primero.', 'error');
       } else {
         this.obtenerDatos();
+        this.obtenerProductos();
       }
 
       if (this.idRequisition != null) {
@@ -147,9 +148,9 @@ public gridOptions: any = {
     event.node.setSelected(true);
   },
   onRowSelected: (event) => {
-    // Deseleccionar otras filas cuando se selecciona una nueva
-    if (event.node.isSelected()) {
-      this.gridApi.forEachNode((node) => {
+    // Corregir usando el api del evento y verificando existencia
+    if (event.node.isSelected() && event.api) {
+      event.api.forEachNode((node) => {
         if (node.id !== event.node.id) {
           node.setSelected(false);
         }
