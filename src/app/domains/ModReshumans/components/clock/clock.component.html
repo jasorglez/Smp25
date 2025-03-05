@@ -18,18 +18,20 @@
                     <div class="card-body">
                         <div class="form-group mb-3">
                             <label for="idEmpleado">ID Empleado:</label>
-                            <input type="text" class="form-control" id="idEmpleado" placeholder="ID Empleado" [(ngModel)]="employeeCode">
+                            <input type="text" class="form-control" id="idEmpleado" placeholder="ID Empleado"
+                                [(ngModel)]="employeeCode">
                         </div>
                         <div class="form-group mb-3">
                             <label for="password">Contraseña:</label>
-                            <input type="password" class="form-control" id="password" placeholder="Contraseña" [(ngModel)]="clockPassword">
-                        </div>  
+                            <input type="password" class="form-control" id="password" placeholder="Contraseña"
+                                [(ngModel)]="clockPassword">
+                        </div>
                         <div class="row">
                             <div class="col-6 text-center">
                                 <button class="btn btn-success btn-lg" (click)="checkInOrOut('IN')">ENTRADA</button>
                             </div>
                             <div class="col-6 text-center">
-                                <button class="btn btn-danger btn-lg"  (click)="checkInOrOut('OUT')">SALIDA</button>
+                                <button class="btn btn-danger btn-lg" (click)="checkInOrOut('OUT')">SALIDA</button>
                             </div>
                         </div>
                     </div>
@@ -42,23 +44,31 @@
                     <div class="card-body">
                         <div class="row mb-2">
                             <div class="col-6">Horas laboradas:</div>
-                            <div class="col-6" id="horasLaboradas"></div>
+                            <div class="col-6" id="horasLaboradas">{{incidentData.Hours}}</div>
                         </div>
                         <div class="row mb-2">
                             <div class="col-6">Faltas:</div>
-                            <div class="col-6" id="faltas"></div>
+                            <div class="col-6" id="faltas"
+                                [ngClass]="{'text-danger': incidentData.Absences > 0}"
+                                [ngStyle]="{'font-weight': incidentData.Absences > 0 ? 'bold' : 'normal', 'font-size': incidentData.Absences > 0 ? '1.2em' : '1em'}">
+                            </div>
+                            {{incidentData.Absences}}
                         </div>
                         <div class="row mb-2">
                             <div class="col-6">Salidas Pendientes:</div>
-                            <div class="col-6" id="salidasPendientes"></div>
+                            <div class="col-6" id="salidasPendientes"
+                                [ngClass]="{'text-danger': incidentData.PendingOuts > 0}"
+                                [ngStyle]="{'font-weight': incidentData.PendingOuts > 0 ? 'bold' : 'normal', 'font-size': incidentData.PendingOuts > 0 ? '1.2em' : '1em'}">
+                                {{incidentData.PendingOuts}}
+                            </div>
                         </div>
                         <div class="row mb-2">
                             <div class="col-6">Retardos:</div>
-                            <div class="col-6" id="retardos"></div>
+                            <div class="col-6" id="retardos">
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
