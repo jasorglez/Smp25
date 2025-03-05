@@ -12,17 +12,13 @@ export class AdministrationService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
-
-
   // Bancos
-
   getBanks() {
     return this.http.get(`${environment.urlAdministration}/Bank`, { headers: this.trackingService.getHeaders() });
   }
   get2fieldsBanks() {
     return this.http.get(`${environment.urlAdministration}/Bank/2fields`, { headers: this.trackingService.getHeaders() });
   }
-
 
   addBanks(data: any): Observable<any> {
     return this.http.post(`${environment.urlAdministration}/Bank`, data, { headers: this.trackingService.getHeaders() });
@@ -41,8 +37,8 @@ export class AdministrationService {
 
   // Cuentas Bancos
   getAccountBanks(idRoot: number): Observable<any> {
-    //const apiUrl = `${environment.urlAdministration}/AccountBanks/Bussines/${idRoot}`;      
-   // alert(apiUrl)  
+    //const apiUrl = `${environment.urlAdministration}/AccountBanks/Bussines/${idRoot}`;
+   // alert(apiUrl)
     return this.http.get(`${environment.urlAdministration}/AccountBanks/Bussines/${idRoot}`, { headers: this.trackingService.getHeaders() });
   }
 
@@ -65,7 +61,6 @@ export class AdministrationService {
 
 
   // Setup Puestos
-
   getSetupManagementInfo(idRoot: number): Observable<any> {
     return this.http.get(`${environment.urlAdministration}/SetupManagement/${idRoot}`, { headers: this.trackingService.getHeaders() });
   }
@@ -79,7 +74,6 @@ export class AdministrationService {
   }
 
   // Setup Facturacion
-
   getBillingManagementInfo(idRoot: number): Observable<any> {
     return this.http.get(`${environment.urlAdministration}/BillingManagement/${idRoot}`, { headers: this.trackingService.getHeaders() });
   }
@@ -108,5 +102,9 @@ export class AdministrationService {
     return this.http.put<any[]>(`${environment.urlAdministration}/InformationAditional/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
+  // Payroll
+  getNormalPayrolls(){
+    return this.http.get(`${environment.urlAdministration}/NormalPayrolls`);
+  }
 
 }

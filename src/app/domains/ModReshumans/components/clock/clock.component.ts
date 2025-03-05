@@ -140,28 +140,28 @@ export class ClockComponent {
             // Consultar el horario del empleado para el día actual
             this.employeesService.getEmployeeClockByDay(data[0]?.idEmployee, currentDay).subscribe(clockData => {
               console.log('Horario del empleado para el día actual:', clockData);
-
+            
               // Obtener las horas de entrada
               const entry1 = clockData[0]?.entry1;
               const entry2 = clockData[0]?.entry2;
-
+            
               // Convertir fecha y entradas a objetos Date para comparación
               const fechaDate = new Date(fecha);
-              const entry1Date = new Date(entry1);
-              const entry2Date = new Date(entry2);
-
+              const entry1Date = new Date();
+              const entry2Date = new Date();
+            
               if (entry1) {
                 const [hour1, minute1] = entry1.split(':').map(Number);
                 entry1Date.setHours(hour1, minute1, 0);
               }
-
+            
               if (entry2) {
                 const [hour2, minute2] = entry2.split(':').map(Number);
                 entry2Date.setHours(hour2, minute2, 0);
               }
-
+            
               let valid = false;
-
+            
               // Si clockData[0]?.enabled es false, valid es true
               if (clockData[0]?.enabled === false) {
                 valid = true;
@@ -170,15 +170,18 @@ export class ClockComponent {
                 if (fechaDate <= entry1Date || fechaDate <= entry2Date) {
                   valid = true;
                 } else if (fechaDate > entry1Date) {
-                  const timeDifference = (entry2Date.getTime() - fechaDate.getTime()) / (1000 * 60 * 60); // Diferencia en horas
-                  if (timeDifference <= 2) {
+                  const twoHoursBeforeEntry2 = new Date(entry2Date);
+                  twoHoursBeforeEntry2.setHours(entry2Date.getHours() - 2);
+            
+                  // Si fechaDate está dentro de las 2 horas antes de entry2Date, valid es true
+                  if (fechaDate >= twoHoursBeforeEntry2 && fechaDate <= entry2Date) {
                     valid = true;
                   } else {
                     valid = false;
                   }
                 }
               }
-
+            
               const info = { idEmployee: data[0]?.idEmployee, type: 'IN', timeStamp: fecha, valid: valid, active: true };
               console.log(info);
               this.clockService.checkInOut(info).subscribe(
