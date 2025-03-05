@@ -12,14 +12,20 @@ export class ClockService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
-  getEmployeeInfo(branchId: number, employeeCode: string, clockPassword: string): Observable<any> {
-    return this.http.get(`${environment.urlAdministration}/Employee/Clock?branchId=${branchId}&employeeCode=${employeeCode}&clockPassword=${clockPassword}`, {
+  getEmployeeInfo(employeeCode: string, clockPassword: string): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/Employee/Clock?employeeCode=${employeeCode}&clockPassword=${clockPassword}`, {
       headers: this.trackingService.getHeaders(),
     });
   }
 
   checkInOut(data: any){
     return this.http.post(`${environment.urlAdministration}/EmployeesxCheckInsOuts`, data, {
+      headers: this.trackingService.getHeaders(),
+    });
+  }
+
+  checkIncidentsByEmployee(idEmployee: number, start: string, end: string): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/EmployeesxCheckInsOuts/employee/${idEmployee}/incidents?start=${start}&end=${end}`, {
       headers: this.trackingService.getHeaders(),
     });
   }

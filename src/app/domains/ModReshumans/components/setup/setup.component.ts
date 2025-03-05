@@ -21,6 +21,7 @@ import { PayrollService } from 'app/services/payroll.service';
 export class SetupComponent {
   private signalsService = inject(SignalsService);
   private hrService = inject(HRService);
+  private payrollService = inject(PayrollService);
   isLoading: boolean = false;
   error: string | null = null;
   jsonData: any = null;
@@ -31,12 +32,22 @@ export class SetupComponent {
   newData: boolean;
   idBranch: number;
 
+  diasSemana = [
+    'Lunes',
+    'Martes',
+    'Miércoles',
+    'Jueves',
+    'Viernes',
+    'Sábado',
+    'Domingo'
+  ];
+
   ngOnInit() {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
     this.getData();
   }
 
-  constructor(private payrollService: PayrollService) {
+  constructor() {
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.getData();
