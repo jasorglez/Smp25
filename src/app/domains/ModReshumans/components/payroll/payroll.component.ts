@@ -38,6 +38,7 @@ export class PayrollComponent implements OnInit {
   obtenerDatos() {
     this.administrationService.getNormalPayrolls().subscribe((data: any) => {
       this.rowData = data;
+      console.log("--------------- esto llega en data: ", data);
     });
   }
 
@@ -185,44 +186,62 @@ public gridOptions: any = {
 
   get colMaster(): ColDef[] {
     return [
-      { field: 'name', headerName: 'Nombre', editable: true, filter: true, width: 200 },
-      { field: 'branch', headerName: 'Sucursal', editable: false, width: 285, filter: true,
-        cellEditor: 'agPopupTextCellEditor',
-        cellEditorParams: {
-          maxLength: 100,
-          cols: 50,
-          rows: 3,
-          onKeyDown: (event: KeyboardEvent) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.stopPropagation();
-            }
-          },
+      { headerName: 'Fecha Inicio',
+        field: 'startDate',
+        filter: 'agDateColumnFilter',
+        floatingFilter: true,
+        floatingFilterComponentParams: {
+          suppressFilterButton: true,
         },
-        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-          if (!event.node.group) {
-            this.modalServiceTable.showModal({
-              params: event,
-              value: event.value,
-            });
+        valueGetter: (params) =>
+          params.data.startDate ? new Date(params.data.startDate) : null,
+        cellRenderer: 'agDateCellRenderer',
+        cellEditor: 'agDateCellEditor',
+        valueFormatter: (params) => {
+          if (params.value) {
+            const date = new Date(params.value);
+            return `${('0' + date.getDate()).slice(-2)}-${(
+              '0' +
+              (date.getMonth() + 1)
+            ).slice(-2)}-${date.getFullYear()}`;
           }
+          return '';
         },
-        cellRenderer: (params: ICellRendererParams) => {
-          if (params.node.group) {
-            return params.value;
+        width: 170
+      },
+      { headerName: 'Fecha Fin',
+        field: 'endDate',
+        filter: 'agDateColumnFilter',
+        floatingFilter: true,
+        floatingFilterComponentParams: {
+          suppressFilterButton: true,
+        },
+        valueGetter: (params) => params.data.endDate ? new Date(params.data.endDate) : null,
+        cellRenderer: 'agDateCellRenderer',
+        cellEditor: 'agDateCellEditor',
+        valueFormatter: (params) => {
+          if (params.value) {
+            const date = new Date(params.value);
+            return `${('0' + date.getDate()).slice(-2)}-${(
+              '0' +
+              (date.getMonth() + 1)
+            ).slice(-2)}-${date.getFullYear()}`;
           }
-          return params.value;
-        }
+          return '';
+        },
+        width: 170
        },
 
-      { field: 'contact', headerName: 'Contacto', editable: true, width: 255 },
+      { field: 'totalBaseWorkingDays', headerName: 'Total Jornadas Base', editable: true, width: 170 },
 
-      { field: 'phone', headerName: 'Telefono', editable: true, width: 169, cellEditorParams: {
+      { field: 'totalBaseExtraDays', headerName: 'Total Jornadas Extra', editable: true, width: 170, cellEditorParams: {
           maxLength: 15  }
       },
 
-      { field: 'numBranch', headerName: 'Numero Sucursal', editable: true, width: 140 },
+      { field: 'totalSubtotal', headerName: 'Total Subtotal', editable: true, width: 140 },
 
-      { field: 'code', headerName: 'Codigo', editable: true, width: 105 },
+      { field: 'totalDescuentos', headerName: 'Total Descuentos', editable: true, width: 160 },
+      { field: 'total', headerName: 'Total', editable: true, width: 100 },
 
     ]
   };
