@@ -20,7 +20,6 @@ import { AccountbanksComponent } from '../accountbanks/accountbanks.component';
 })
 export class CustomersPaymentsComponent {
 
-
   ngOnInit() {
     this.obtenerDatos();
 
@@ -375,6 +374,17 @@ detailNotSavedChanges: boolean = false;
     $event.data.__modified = true;
     this.detailNotSavedChanges = true;
   }
+
+  revertDetail() {
+    throw new Error('Method not implemented.');
+    }
+    saveDetailRow() {
+    throw new Error('Method not implemented.');
+    }
+    addDetailRow() {
+    throw new Error('Method not implemented.');
+    }
+    
 
 }
 
