@@ -47,6 +47,10 @@ export const routes: Routes = [
           {
             path: 'catalogs',
             loadComponent: () => import('./domains/Warehouse/components/catalogs/catalogs.component').then(r => r.EditFamiliesComponent)
+          },
+          {
+            path: 'setupwh',
+            loadComponent: () => import('./domains/Warehouse/components/configwarehouse/configwarehouse.component').then(r => r.ConfigwarehouseComponent)
           }
         ]
       },

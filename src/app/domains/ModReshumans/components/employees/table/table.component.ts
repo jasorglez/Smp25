@@ -24,6 +24,7 @@ import { AdministrationService } from 'app/services/administration.service';
 import { HRService } from 'app/services/hr.service';
 import { EmployeesxSavingsComponent } from '../savings/savings.component';
 import { TimeService } from 'app/services/time.service';
+import { CatalogsService } from 'app/services/catalogs.service';
 
 @Component({
   selector: 'app-employees-table',
@@ -45,6 +46,7 @@ export class EmployeesTableComponent {
   private modalServiceTable = inject(ModalService);
   private inegiService = inject(InegiService);
   private administrationService = inject(AdministrationService);
+  private catalogService = inject(CatalogsService);
   private hrService = inject(HRService);
   private timeService = inject(TimeService);
 
@@ -58,7 +60,9 @@ export class EmployeesTableComponent {
   newlyAddedRows: string[] = []; // IDs de filas recién añadidas
   notSavedChanges: boolean = false;
   prefixAndConsecutive: any[] = [];
-  banks: any[] = [];
+  banks    : any[] = [];
+  depto    : any[] = [];
+  position : any[] = [];
 
   // Variables de control del grid
   selectedRowData: any = null; // Fila seleccionada actualmente
@@ -81,6 +85,7 @@ export class EmployeesTableComponent {
   gridHeight: string = '80vh';
   showLoansTab: boolean = false;
   showSavingsTab: boolean = false;
+  idRoot: number;
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
@@ -105,6 +110,7 @@ export class EmployeesTableComponent {
 
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       if (this.idBranch == null) {
         this.rowData = [];
         alerts.basicAlert(
@@ -116,15 +122,16 @@ export class EmployeesTableComponent {
         this.obtenerDatos();
         this.getHRSetup();
         this.getBanks();
+        this.getHRSetup();   
+        this. getDeptoandPosition();
+           
       }
     });
   }
 
   ngOnInit() {
-    this.obtenerDatos();
-    this.getStates();
-    this.getHRSetup();
-    this.getBanks();
+
+
   }
 
   // Column Definitions: Defines the columns to be displayed.
@@ -342,6 +349,31 @@ export class EmployeesTableComponent {
         },
       },
       {
+        field: 'idDepto',
+        headerName: 'Departamento',
+        editable: true,
+        suppressMovable: true,
+        filter: false,
+        width: 190,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: (params) => {
+          // Ensure depto data is available when creating editor
+          return {
+            values: this.depto ? this.depto.map((item) => item.id) : []
+          };
+        },
+        valueFormatter: (params) => {
+          // Handle potential null values and properly format the displayed value
+          if (!params.value) return '';
+          
+          const foundDepto = this.depto 
+            ? this.depto.find((item) => item.id === params.value)
+            : null;
+          
+          return foundDepto ? foundDepto.description : params.value;
+        },
+      },
+      {
         field: 'idBank',
         headerName: 'Banco',
         editable: true,
@@ -444,11 +476,29 @@ export class EmployeesTableComponent {
         width: 150,
       },
       {
-        field: 'position',
-        headerName: 'Cargo',
+        field: 'idPosition',
+        headerName: 'Position',
         editable: true,
-        filter: true,
-        width: 150,
+        suppressMovable: true,
+        filter: false,
+        width: 190,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: (params) => {
+          // Ensure depto data is available when creating editor
+          return {
+            values: this.position ? this.position.map((item) => item.id) : []
+          };
+        },
+        valueFormatter: (params) => {
+          // Handle potential null values and properly format the displayed value
+          if (!params.value) return '';
+          
+          const foundDepto = this.depto 
+            ? this.position.find((item) => item.id === params.value)
+            : null;
+          
+          return foundDepto ? foundDepto.description : params.value;
+        },
       },
       {
         field: 'username',
@@ -568,8 +618,6 @@ export class EmployeesTableComponent {
     ];
   }
 
-
-
   // ==================== MASTER METHODS ====================
 
   obtenerDatos() {
@@ -592,6 +640,8 @@ export class EmployeesTableComponent {
       },
     });
   }
+
+  // mandarlo a llamar de una funcion tools y  Reusamos codigo, la otra es el estandar para el log.....
 
   async getZipCodeData(cp: string): Promise<any> {
     try {
@@ -617,7 +667,6 @@ export class EmployeesTableComponent {
     this.administrationService.get2fieldsBanks().subscribe(
       (data: any) => {
         this.banks = data;
-        console.log(this.banks);
       },
       (error) => {
         if (error.status == 404) this.banks = [];
@@ -625,6 +674,29 @@ export class EmployeesTableComponent {
       }
     );
   }
+
+  getDeptoandPosition() {
+    this.catalogService.getCatalogs(this.idRoot,'DEPARTAMENT').subscribe(
+      (data: any) => {
+        this.depto = data;      
+      },
+      (error) => {
+        if (error.status == 404) this.depto = [];
+        console.error('Error fetching data:', error);
+      }
+    );
+
+    this.catalogService.getCatalogs(this.idRoot,'POSITION').subscribe(
+      (data: any) => {
+        this.position = data;      
+      },
+      (error) => {
+        if (error.status == 404) this.position = [];
+        console.error('Error fetching data:', error);
+      }
+    );
+  }
+
 
   onMasterSelectionChanged(event: any) {
     const selectedNodes = event.api.getSelectedNodes();
@@ -691,6 +763,7 @@ export class EmployeesTableComponent {
       position: '',
       email: '',
       picture: '',
+      idDepto:0,
       vigente: true,
       active: true,
       __isNew: true,

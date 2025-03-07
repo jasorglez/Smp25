@@ -177,6 +177,10 @@ get colMaster(): ColDef[] {
     this.gridApi = params.api;
   }
 
+
+
+  
+
   addRow() {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
