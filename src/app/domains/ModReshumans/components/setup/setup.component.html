@@ -24,9 +24,9 @@
                     <h5>Vigencia</h5>
                     <div class="row g-3">
                         <div class="col-md-6 col-lg-6">
-                            <label for="consecutive" class="form-label">Periodo de gracia de vigencia de empleado <span
+                            <label for="consecutive" class="form-label">Periodo de gracia de vigencia de empleado (días) <span
                                     class="text-danger">*</span></label>
-                            <input type="number" class="form-control" id="consecutive" placeholder="Consecutivo"
+                            <input type="number" class="form-control" id="consecutive" placeholder="Consecutivo" min="0" step="1"
                                 [(ngModel)]="hrData.vigency">
                         </div>
                     </div>
@@ -45,6 +45,12 @@
                                     {{dia}}
                                 </option>
                             </select>
+                        </div>
+                        <div class="col-md-6 col-lg-6">
+                            <label for="consecutive" class="form-label">Tiempo de tolerancia antes de marcar falta (minutos) <span
+                                    class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="consecutive" placeholder="Tolerancia" min="0" step="1"
+                                [(ngModel)]="hrData.clockTolerance">
                         </div>
                     </div>
                 </div>

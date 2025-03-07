@@ -34,7 +34,7 @@ export class ClockComponent {
   clockPassword: string = '';
   status: string = '';
   currentDayName: string = '';
-  incidentData: any = {Hours: null, PendingOuts: null}
+  incidentData: any = { Hours: null, PendingOuts: null }
 
   ngOnInit() {
     this.setupTimeUpdates();
@@ -119,7 +119,7 @@ export class ClockComponent {
           const currentDay = this.currentDayName; // Obtener el día actual almacenado
 
           // Llamar al método para verificar incidentes
-          this.checkIncidents(data[0]?.idEmployee, currentDay, fecha);
+          this.checkIncidents(data[0]?.idEmployee, data[0]?.idBranch, currentDay, fecha);
 
           if (type == 'IN') {
             // El empleado no marcó su salida.
@@ -140,55 +140,67 @@ export class ClockComponent {
             // Consultar el horario del empleado para el día actual
             this.employeesService.getEmployeeClockByDay(data[0]?.idEmployee, currentDay).subscribe(clockData => {
               console.log('Horario del empleado para el día actual:', clockData);
-            
+
               // Obtener las horas de entrada
               const entry1 = clockData[0]?.entry1;
               const entry2 = clockData[0]?.entry2;
-            
+
               // Convertir fecha y entradas a objetos Date para comparación
               const fechaDate = new Date(fecha);
               const entry1Date = new Date();
               const entry2Date = new Date();
-            
+
               if (entry1) {
                 const [hour1, minute1] = entry1.split(':').map(Number);
                 entry1Date.setHours(hour1, minute1, 0);
               }
-            
+
               if (entry2) {
                 const [hour2, minute2] = entry2.split(':').map(Number);
                 entry2Date.setHours(hour2, minute2, 0);
               }
-            
+
               let valid = false;
-            
+
               // Si clockData[0]?.enabled es false, valid es true
               if (clockData[0]?.enabled === false) {
                 valid = true;
               } else {
-                // Validar las condiciones
-                if (fechaDate <= entry1Date || fechaDate <= entry2Date) {
-                  valid = true;
-                } else if (fechaDate > entry1Date) {
-                  const twoHoursBeforeEntry2 = new Date(entry2Date);
-                  twoHoursBeforeEntry2.setHours(entry2Date.getHours() - 2);
-            
-                  // Si fechaDate está dentro de las 2 horas antes de entry2Date, valid es true
-                  if (fechaDate >= twoHoursBeforeEntry2 && fechaDate <= entry2Date) {
+                console.log('ID Branch en checkInOrOut: ', data[0]?.idBranch);
+                // Obtener la tolerancia de hrData
+                this.hrService.getHRManagementData(data[0]?.idBranch).subscribe(hrData => {
+                  const clockTolerance = hrData[0]?.clockTolerance || 0; // Usar 0 como valor predeterminado si no está definido
+
+                  // Validar las condiciones
+                  const entry1DatePlusTolerance = new Date(entry1Date);
+                  entry1DatePlusTolerance.setMinutes(entry1Date.getMinutes() + clockTolerance); // entry1Date + tolerancia
+
+                  const entry2DatePlusTolerance = new Date(entry2Date);
+                  entry2DatePlusTolerance.setMinutes(entry2Date.getMinutes() + clockTolerance); // entry2Date + tolerancia
+
+                  if (fechaDate <= entry1DatePlusTolerance || fechaDate <= entry2DatePlusTolerance) {
                     valid = true;
-                  } else {
-                    valid = false;
+                  } else if (fechaDate > entry1Date) {
+                    const twoHoursBeforeEntry2 = new Date(entry2Date);
+                    twoHoursBeforeEntry2.setHours(entry2Date.getHours() - 2);
+
+                    // Si fechaDate está dentro de las 2 horas antes de entry2Date, valid es true
+                    if (fechaDate >= twoHoursBeforeEntry2 && fechaDate <= entry2Date) {
+                      valid = true;
+                    } else {
+                      valid = false;
+                    }
                   }
-                }
+
+                  const info = { idEmployee: data[0]?.idEmployee, type: 'IN', timeStamp: fecha, valid: valid, active: true };
+                  console.log(info);
+                  this.clockService.checkInOut(info).subscribe(
+                    (clock => {
+                      alerts.basicAlert("Entrada marcada exitosamente", `Hola ${data[0]?.name}`, "success");
+                    })
+                  );
+                });
               }
-            
-              const info = { idEmployee: data[0]?.idEmployee, type: 'IN', timeStamp: fecha, valid: valid, active: true };
-              console.log(info);
-              this.clockService.checkInOut(info).subscribe(
-                (clock => {
-                  alerts.basicAlert("Entrada marcada exitosamente", `Hola ${data[0]?.name}`, "success");
-                })
-              );
             });
           }
           else if (type == 'OUT') {
@@ -226,8 +238,9 @@ export class ClockComponent {
     });
   }
 
-  private checkIncidents(idEmployee: number, currentDay: string, fecha: string) {
-    this.hrService.getHRManagementData(this.idBranch).subscribe(hrData => {
+  private checkIncidents(idEmployee: number, idBranch: number, currentDay: string, fecha: string) {
+    console.log('ID Branch en checkIncidents: ', idBranch);
+    this.hrService.getHRManagementData(idBranch).subscribe(hrData => {
       const startDay = hrData[0]?.startDay;
 
       let startPeriod: Date;
@@ -271,10 +284,10 @@ export class ClockComponent {
       this.clockService.checkIncidentsByEmployee(idEmployee, formatLocalDate(startPeriod), formatLocalDate(endPeriod)).subscribe(incidentData => {
         console.log('Datos de incidentes:', incidentData);
         this.incidentData = incidentData;
-        setTimeout(() => {
-          this.incidentData = { Hours: null, PendingOuts: null, Absences: null };
-        }, 15000); // 15000 milisegundos = 15 segundos
-      }); 
+        /*         setTimeout(() => {
+                  this.incidentData = { Hours: null, PendingOuts: null, Absences: null };
+                }, 15000); // 15000 milisegundos = 15 segundos */
+      });
     });
   }
 
