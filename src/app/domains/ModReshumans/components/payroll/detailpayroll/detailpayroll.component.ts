@@ -67,6 +67,7 @@ export class DetailpayrollComponent {
       return;
     }
 
+    /*
     this.employeesxloansService
       .getLoansByEmployee(this.idEmployee, 'PRESTAMO')
       .subscribe(
@@ -81,6 +82,7 @@ export class DetailpayrollComponent {
           console.error('Error loading loans data:', error);
         }
       );
+      */
   }
 
 }

@@ -172,7 +172,7 @@ export class PayrollComponent implements OnInit {
   };
 
   onCellDoubleClicked(event: CellDoubleClickedEvent): void {
-    alert("Holaaaaaaaaaaaaa");
+    //alert("Holaaaaaaaaaaaaa");
     const colId = event.column.getColId();
     const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
     const selectedId = selectedRowData.id; // Obtener el ID del registro
