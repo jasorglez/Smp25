@@ -7,7 +7,6 @@ import { EmployeesService } from 'app/services/employees.service';
 import { HRService } from 'app/services/hr.service';
 import { SignalsService } from 'app/services/signals.service';
 import { TimeService } from 'app/services/time.service';
-import { interval } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 @Component({
@@ -34,7 +33,7 @@ export class ClockComponent {
   clockPassword: string = '';
   status: string = '';
   currentDayName: string = '';
-  incidentData: any = {Hours: null, PendingOuts: null}
+  incidentData: any = { Hours: null, PendingOuts: null }
 
   ngOnInit() {
     this.setupTimeUpdates();
@@ -147,8 +146,8 @@ export class ClockComponent {
 
               // Convertir fecha y entradas a objetos Date para comparación
               const fechaDate = new Date(fecha);
-              const entry1Date = new Date(entry1);
-              const entry2Date = new Date(entry2);
+              const entry1Date = new Date();
+              const entry2Date = new Date();
 
               if (entry1) {
                 const [hour1, minute1] = entry1.split(':').map(Number);
@@ -166,26 +165,50 @@ export class ClockComponent {
               if (clockData[0]?.enabled === false) {
                 valid = true;
               } else {
-                // Validar las condiciones
-                if (fechaDate <= entry1Date || fechaDate <= entry2Date) {
-                  valid = true;
-                } else if (fechaDate > entry1Date) {
-                  const timeDifference = (entry2Date.getTime() - fechaDate.getTime()) / (1000 * 60 * 60); // Diferencia en horas
-                  if (timeDifference <= 2) {
+                // Obtener la tolerancia de hrData
+                this.hrService.getHRManagementData(this.idBranch).subscribe(hrData => {
+                  const clockTolerance = hrData[0]?.clockTolerance || 0; // Usar 0 como valor predeterminado si no está definido
+
+                  // Validar las condiciones
+                  const entry1DatePlusTolerance = new Date(entry1Date);
+                  entry1DatePlusTolerance.setMinutes(entry1Date.getMinutes() + clockTolerance); // entry1Date + tolerancia
+
+                  const entry2DatePlusTolerance = new Date(entry2Date);
+                  entry2DatePlusTolerance.setMinutes(entry2Date.getMinutes() + clockTolerance); // entry2Date + tolerancia
+
+                  const twoHoursBeforeEntry2 = new Date(entry2Date);
+                  twoHoursBeforeEntry2.setHours(entry2Date.getHours() - 2);
+
+                  // Mostrar en consola los horarios
+                  console.log('Horario de entrada del empleado:', fechaDate.toLocaleTimeString('es-MX'));
+                  console.log('Horario de tolerancia para entry1:', entry1DatePlusTolerance.toLocaleTimeString('es-MX'));
+                  console.log('Horario de tolerancia para entry2:', entry2DatePlusTolerance.toLocaleTimeString('es-MX'));
+
+                  if (fechaDate <= entry1DatePlusTolerance) {
                     valid = true;
-                  } else {
+                  }
+                  else if (fechaDate <= entry2DatePlusTolerance) {
+                    if (fechaDate >= twoHoursBeforeEntry2) {
+                      valid = true;
+                    }
+                    else {
+                      valid = false;
+                    }
+                  }
+                  else {
                     valid = false;
                   }
-                }
-              }
 
-              const info = { idEmployee: data[0]?.idEmployee, type: 'IN', timeStamp: fecha, valid: valid, active: true };
-              console.log(info);
-              this.clockService.checkInOut(info).subscribe(
-                (clock => {
-                  alerts.basicAlert("Entrada marcada exitosamente", `Hola ${data[0]?.name}`, "success");
-                })
-              );
+
+                  const info = { idEmployee: data[0]?.idEmployee, type: 'IN', timeStamp: fecha, valid: valid, active: true };
+                  console.log(info);
+                  this.clockService.checkInOut(info).subscribe(
+                    (clock => {
+                      alerts.basicAlert("Entrada marcada exitosamente", `Hola ${data[0]?.name}`, "success");
+                    })
+                  );
+                });
+              }
             });
           }
           else if (type == 'OUT') {
@@ -268,10 +291,10 @@ export class ClockComponent {
       this.clockService.checkIncidentsByEmployee(idEmployee, formatLocalDate(startPeriod), formatLocalDate(endPeriod)).subscribe(incidentData => {
         console.log('Datos de incidentes:', incidentData);
         this.incidentData = incidentData;
-        setTimeout(() => {
-          this.incidentData = { Hours: null, PendingOuts: null, Absences: null };
-        }, 15000); // 15000 milisegundos = 15 segundos
-      }); 
+        /*         setTimeout(() => {
+                  this.incidentData = { Hours: null, PendingOuts: null, Absences: null };
+                }, 15000); // 15000 milisegundos = 15 segundos */
+      });
     });
   }
 

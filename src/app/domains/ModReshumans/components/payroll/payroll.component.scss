@@ -1,0 +1,23 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 80vh;
+  transition: all 0.3s ease-in-out;
+}
+
+.grid-maestro {
+  flex: 1;
+  transition: all 0.3s ease-in-out;
+}
+
+.grid-hijo {
+  height: 50%;
+  background: #f8f8f8;
+  padding: 10px;
+  border-top: 2px solid #ccc;
+}
+
+/* Cuando se muestra el grid hijo, el maestro ocupa 50% */
+.container.split .grid-maestro {
+  flex: 0.5;
+}

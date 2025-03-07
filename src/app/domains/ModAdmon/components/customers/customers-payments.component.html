@@ -65,17 +65,17 @@
           <div class="row">
             <div class="col-auto">
               <div class="d-flex flex-column gap-2 me-3">
-                <button type="button" class="btn btn-primary">
+                <button type="button" class="btn btn-primary" (click)="addDetailRow()">
                   <i class="bi bi-plus-lg"></i>
                 </button>
-                <button type="button" class="btn btn-success position-relative">
+                <button type="button" class="btn btn-success position-relative" (click)="saveDetailRow()">
                   <i class="bi bi-floppy"></i>
                   <span class="position-absolute top-0 end-0 translate-middle p-2 bg-danger border border-light rounded-circle"
                     *ngIf="detailNotSavedChanges">
                     <span class="visually-hidden">Hay cambios sin guardar</span>
                   </span>
                 </button>
-                <button type="button" class="btn btn-warning">
+                <button type="button" class="btn btn-warning" (click)="revertDetail()">
                   <i class="bi bi-arrow-clockwise"></i>
                 </button>
               </div>

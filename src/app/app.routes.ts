@@ -386,7 +386,7 @@ export const routes: Routes = [
         children: [
           { path: '', redirectTo: 'employees', pathMatch: 'full' },
           {
-            path: 'setup-rh',
+            path: 'setup',
             loadComponent: () => import('./domains/ModReshumans/components/setup/setup.component').then(s => s.SetupComponent)
           },
           {
