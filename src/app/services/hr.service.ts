@@ -23,6 +23,19 @@ export class HRService {
   updateHRManagementData(idBranch: number, data: any): Observable<any> {
     return this.http.put(`${environment.urlAdministration}/HRManagement/${idBranch}`, data, { headers: this.trackingService.getHeaders() });
   }
+  
+  addHRManagementByRootData(data: any): Observable<any> {
+    return this.http.post(`${environment.urlAdministration}/HRManagementByRoot`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  getHRManagementByRootData(idRoot: number): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/HRManagementByRoot/${idRoot}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateHRManagementByRootData(idRoot: number, data: any): Observable<any> {
+    return this.http.put(`${environment.urlAdministration}/HRManagementByRoot/${idRoot}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
 
 
 }

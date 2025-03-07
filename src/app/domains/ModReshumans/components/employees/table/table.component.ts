@@ -50,6 +50,7 @@ export class EmployeesTableComponent {
 
   id: number;
   idBranch: number;
+  idRoot: number;
   idEmployee: number;
   rowData: any[] = [];
   cp: string;
@@ -104,6 +105,7 @@ export class EmployeesTableComponent {
     });
 
     effect(() => {
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       if (this.idBranch == null) {
         this.rowData = [];
@@ -767,7 +769,7 @@ export class EmployeesTableComponent {
     };
 
     const updateConsecutiveObs = this.hrService
-      .updateHRManagementData(this.idBranch, updatedHRSetupInfo)
+      .updateHRManagementByRootData(this.idRoot, updatedHRSetupInfo)
       .pipe(
         tap((response) => {
           this.prefixAndConsecutive = [updatedHRSetupInfo];
@@ -897,14 +899,14 @@ export class EmployeesTableComponent {
   }
 
   async getHRSetup() {
-    this.hrService.getHRManagementData(this.idBranch).subscribe(
+    this.hrService.getHRManagementByRootData(this.idRoot).subscribe(
       (data: any) => {
         this.prefixAndConsecutive = Array.isArray(data) ? data : [data];
         console.log(this.prefixAndConsecutive);
       },
       (error) => {
         console.error(
-          'Error al obtener la información de gestión de facturación:',
+          'Error al obtener la información de gestión de nómina:',
           error
         );
       }
