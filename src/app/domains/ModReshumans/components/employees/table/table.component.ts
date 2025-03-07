@@ -86,8 +86,7 @@ export class EmployeesTableComponent {
   gridHeight: string = '80vh';
   showLoansTab: boolean = false;
   showSavingsTab: boolean = false;
-  idRoot: number;
-
+  
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
     if (this.notSavedChanges) {
