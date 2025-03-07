@@ -289,7 +289,7 @@ export class EmployeesTableComponent {
         field: 'loan',
         headerName: 'Préstamos',
         editable: false,
-        filter: 'agNumberColumnFilter', 
+        filter: 'agNumberColumnFilter',
         suppressMovable: true,
         width: 110,
         valueFormatter: (params) => {
@@ -944,7 +944,7 @@ export class EmployeesTableComponent {
     const colId = event.column.getColId();
     const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
     const selectedId = selectedRowData.id; // Obtener el ID del registro
-  
+
     if (colId === 'loan' || colId === 'saving') {
       // Filtrar el grid para mostrar solo el registro con el ID seleccionado
       const filterModel = {
@@ -953,23 +953,23 @@ export class EmployeesTableComponent {
           filter: selectedId,
         },
       };
-  
+
       this.gridApi.setFilterModel(filterModel);
       this.gridApi.onFilterChanged();
     }
-  
+
     if (colId === 'loan') {
       this.activateLoansTab();
     }
-  
+
     if (colId === 'saving') {
       this.activateSavingsTab();
     }
-  
+
     // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
      this.selectedRowData = selectedRowData;
   }
-  
+
 
   activateLoansTab() {
     this.showLoansTab = true;
@@ -986,8 +986,4 @@ export class EmployeesTableComponent {
   adjustGridSize() {
     this.gridHeight = '20vh'; // Adjust as needed
   }
-
-
-
-
 }
