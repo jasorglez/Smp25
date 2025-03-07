@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
 import { ClockService } from 'app/services/clock.service';
@@ -8,15 +8,17 @@ import { HRService } from 'app/services/hr.service';
 import { SignalsService } from 'app/services/signals.service';
 import { TimeService } from 'app/services/time.service';
 import { map } from 'rxjs/operators';
+import { DbComponent } from './db/db.component';
 
 @Component({
   selector: 'app-clock',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, DbComponent],
   templateUrl: './clock.component.html',
   styleUrl: './clock.component.scss'
 })
 export class ClockComponent {
+  @ViewChild('clockDb') clockDb!: DbComponent; // Referencia al componente DbComponent
 
   private timeService = inject(TimeService);
   private clockService = inject(ClockService);
@@ -37,6 +39,7 @@ export class ClockComponent {
 
   ngOnInit() {
     this.setupTimeUpdates();
+    this.setupModalListener();
   }
 
   constructor() {
@@ -59,6 +62,17 @@ export class ClockComponent {
     // Sincronizar con servidor cada 10 segundos
     // Activar si lo desean
     // interval(10000).subscribe(() => this.getTime());
+  }
+
+  private setupModalListener() {
+    const modal = document.getElementById('clockDbModal');
+    if (modal) {
+      modal.addEventListener('shown.bs.modal', () => {
+        if (this.clockDb) {
+          this.clockDb.getData(); // Refrescar los datos al abrir el modal
+        }
+      });
+    }
   }
 
   getTime() {
@@ -179,26 +193,8 @@ export class ClockComponent {
                   const twoHoursBeforeEntry2 = new Date(entry2Date);
                   twoHoursBeforeEntry2.setHours(entry2Date.getHours() - 2);
 
-                  // Mostrar en consola los horarios
-                  console.log('Horario de entrada del empleado:', fechaDate.toLocaleTimeString('es-MX'));
-                  console.log('Horario de tolerancia para entry1:', entry1DatePlusTolerance.toLocaleTimeString('es-MX'));
-                  console.log('Horario de tolerancia para entry2:', entry2DatePlusTolerance.toLocaleTimeString('es-MX'));
-
-                  if (fechaDate <= entry1DatePlusTolerance) {
-                    valid = true;
-                  }
-                  else if (fechaDate <= entry2DatePlusTolerance) {
-                    if (fechaDate >= twoHoursBeforeEntry2) {
-                      valid = true;
-                    }
-                    else {
-                      valid = false;
-                    }
-                  }
-                  else {
-                    valid = false;
-                  }
-
+                  valid = (fechaDate <= entry1DatePlusTolerance) ||
+                    (fechaDate <= entry2DatePlusTolerance && fechaDate >= twoHoursBeforeEntry2);
 
                   const info = { idEmployee: data[0]?.idEmployee, type: 'IN', timeStamp: fecha, valid: valid, active: true };
                   console.log(info);

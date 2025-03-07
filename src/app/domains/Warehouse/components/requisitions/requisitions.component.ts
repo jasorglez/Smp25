@@ -175,9 +175,25 @@ public gridOptions: any = {
           return '';
         }
       },
+      { field: 'delivery', headerName: 'Identificador', editable: true, filter: true, width: 150 },
+      
+      { 
+        field: 'idDepartament', headerName: 'Departamento Solicita', editable: true, width: 180, cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.departamentos ? this.departamentos.map(item => item.id) : [],
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.departamentos ? this.departamentos.find(item => item.id === params.value) : null;
+          return foundItem ? `${foundItem.name}` : params.value;
+        }
+      },
+      { field: 'solicit', headerName: 'Persona Solicita', editable: true, width: 150 },
+      { field: 'delivery', headerName: 'Materiales', editable: true, filter: true, width: 150 },
+      { field: 'solicit', headerName: 'Cantidad', editable: true, width: 150 },
+      { field: 'solicit', headerName: 'Cargado de Cotizaciones', editable: true, width: 150 },
       {
         field: 'dateSupply',
-        headerName: 'Fecha Entrega',
+        headerName: 'Fecha Cotizaciones',
         editable: true,
         width: 150,
         cellDataType: 'dateString',
@@ -188,17 +204,21 @@ public gridOptions: any = {
           return '';
         }
       },
+      { field: 'deliveryTime', headerName: 'ID OC', editable: true, filter: true, width: 150 },
       {
-        field: 'idDepartament', headerName: 'Departamento', editable: true, width: 150, cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.departamentos ? this.departamentos.map(item => item.id) : [],
-        },
+        field: 'dateSupply',
+        headerName: 'Fecha OC',
+        editable: true,
+        width: 150,
+        cellDataType: 'dateString',
         valueFormatter: (params) => {
-          const foundItem = this.departamentos ? this.departamentos.find(item => item.id === params.value) : null;
-          return foundItem ? `${foundItem.name}` : params.value;
+          if (params.value) {
+            return params.value.split('T')[0];
+          }
+          return '';
         }
       },
-      { field: 'delivery', headerName: 'Entrega', editable: true, filter: true, width: 150 },
+
       { field: 'deliveryTime', headerName: 'Tiempo de entrega', editable: true, filter: true, width: 150 },
       {
         field: 'idCurrency', headerName: 'Moneda', editable: true, width: 150, cellEditor: 'agSelectCellEditor',
@@ -222,7 +242,7 @@ public gridOptions: any = {
       },
       { field: 'conditions', headerName: 'Condición', editable: true, width: 150 },
       { field: 'priority', headerName: 'Prioridad', editable: true, width: 150 },
-      { field: 'solicit', headerName: 'Solicita', editable: true, width: 150 },
+     
       { field: 'comments', headerName: 'Comentario', editable: false, width: 150, cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
