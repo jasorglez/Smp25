@@ -7,7 +7,6 @@ import { EmployeesService } from 'app/services/employees.service';
 import { HRService } from 'app/services/hr.service';
 import { SignalsService } from 'app/services/signals.service';
 import { TimeService } from 'app/services/time.service';
-import { interval } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 @Component({
@@ -119,7 +118,7 @@ export class ClockComponent {
           const currentDay = this.currentDayName; // Obtener el día actual almacenado
 
           // Llamar al método para verificar incidentes
-          this.checkIncidents(data[0]?.idEmployee, data[0]?.idBranch, currentDay, fecha);
+          this.checkIncidents(data[0]?.idEmployee, currentDay, fecha);
 
           if (type == 'IN') {
             // El empleado no marcó su salida.
@@ -166,9 +165,8 @@ export class ClockComponent {
               if (clockData[0]?.enabled === false) {
                 valid = true;
               } else {
-                console.log('ID Branch en checkInOrOut: ', data[0]?.idBranch);
                 // Obtener la tolerancia de hrData
-                this.hrService.getHRManagementData(data[0]?.idBranch).subscribe(hrData => {
+                this.hrService.getHRManagementData(this.idBranch).subscribe(hrData => {
                   const clockTolerance = hrData[0]?.clockTolerance || 0; // Usar 0 como valor predeterminado si no está definido
 
                   // Validar las condiciones
@@ -238,9 +236,8 @@ export class ClockComponent {
     });
   }
 
-  private checkIncidents(idEmployee: number, idBranch: number, currentDay: string, fecha: string) {
-    console.log('ID Branch en checkIncidents: ', idBranch);
-    this.hrService.getHRManagementData(idBranch).subscribe(hrData => {
+  private checkIncidents(idEmployee: number, currentDay: string, fecha: string) {
+    this.hrService.getHRManagementData(this.idBranch).subscribe(hrData => {
       const startDay = hrData[0]?.startDay;
 
       let startPeriod: Date;

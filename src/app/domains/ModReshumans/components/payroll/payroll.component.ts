@@ -14,6 +14,7 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { ModalService } from 'app/services/modal.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { ImageHandlerService } from 'app/services/image-handler.service';
+import { DetailpayrollComponent } from "./detailpayroll/detailpayroll.component";
 
 @Component({
   selector: 'app-payroll',
@@ -22,7 +23,9 @@ import { ImageHandlerService } from 'app/services/image-handler.service';
     RouterModule,
     DomainsModule,
     AgGridModule,
-    FormsModule],
+    FormsModule,
+    DetailpayrollComponent
+],
   templateUrl: './payroll.component.html',
   styleUrl: './payroll.component.scss'
 })
@@ -42,7 +45,6 @@ export class PayrollComponent implements OnInit {
     });
   }
 
-
   //private administrationService = inject(AdministrationService);
 
   @HostListener('window:beforeunload', ['$event'])
@@ -53,6 +55,8 @@ export class PayrollComponent implements OnInit {
     }
   }
 
+  mostrarGridDetalle = false;
+  datosDetalle: any = [];
   notSavedChanges: boolean = false;
   private tempIdCounter: number = 0;
   newlyAddedRows: string[] = [];
@@ -62,6 +66,135 @@ export class PayrollComponent implements OnInit {
   selectedRowData: any = null;
   public rowSelection: 'single' | 'multiple' = 'single';
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
+  showPayrollDetailTab: boolean = false;
+  gridHeight: string = '80vh';
+
+  activatePayrollDetailTab() {
+    this.showPayrollDetailTab = true;
+    this.adjustGridSize();
+  }
+
+  adjustGridSize() {
+    this.gridHeight = '20vh'; // Adjust as needed
+  }
+
+  mostrarDetalle(params: any) {
+    this.mostrarGridDetalle = true;
+    this.datosDetalle = [
+      { detalleId: 1, info: `Detalle de ${params.data.nombre}` },
+      { detalleId: 2, info: `Más info de ${params.data.nombre}` }
+    ];
+  }
+
+  cerrarDetalle() {
+    this.mostrarGridDetalle = false;
+  }
+
+  get colMaster(): ColDef[] {
+    return [
+      { headerName: 'Fecha Inicio',
+        field: 'startDate',
+        editable: true,
+        valueGetter: (params) => params.data.startDate ? new Date(params.data.startDate) : null,
+        cellRenderer: 'agDateCellRenderer',
+        cellEditor: 'agDateCellEditor',
+        valueFormatter: (params) => {
+          if (params.value) {
+            console.log("------- dentro de valueFormatter: ", params.value);
+            const date = new Date(params.value);
+            this.valorObtenido = `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
+            console.log("------- dentro de valueFormatter valorObtenido: ", this.valorObtenido);
+            return `${('0' + date.getDate()).slice(-2)}-${(
+              '0' +
+              (date.getMonth() + 1)
+            ).slice(-2)}-${date.getFullYear()}`;
+          }
+          return '';
+        },
+        width: 170
+      },
+      { headerName: 'Fecha Fin',
+        field: 'endDate',
+        valueGetter: (params) => params.data.endDate ? new Date(params.data.endDate) : null,
+        cellRenderer: 'agDateCellRenderer',
+        cellEditor: 'agDateCellEditor',
+        valueFormatter: (params) => {
+          if (params.value) {
+            const date = new Date(params.value);
+            return `${('0' + date.getDate()).slice(-2)}-${(
+              '0' +
+              (date.getMonth() + 1)
+            ).slice(-2)}-${date.getFullYear()}`;
+          }
+          return '';
+        },
+        width: 170,
+        onCellDoubleClicked: (params: any) => this.mostrarDetalle(params)
+       },
+
+      { field: 'totalBaseWorkingDays', headerName: 'Total Jornadas Base', editable: true, width: 170 },
+
+      { field: 'totalBaseExtraDays', headerName: 'Total Jornadas Extra', editable: true, width: 170, cellEditorParams: {
+          maxLength: 15  }
+      },
+
+      { field: 'totalSubtotal', headerName: 'Total Subtotal', editable: true, width: 140 },
+
+      { field: 'totalDescuentos', headerName: 'Total Descuentos', editable: true, width: 160 },
+      { field: 'total', headerName: 'Total', editable: true, width: 100 },
+      { headerName: 'Nóm Digital',
+        field: 'NomDigital',
+        width: 130,
+        cellRenderer: (params) => {
+          const button = document.createElement('button');
+
+          // Verifica la condición (puedes cambiarla por la lógica que necesites)
+          var ndAvailable = params.data.NDAvailable // true o false
+
+          ndAvailable = false;
+
+          button.innerHTML = ndAvailable ? '✅' : '❌'; // Palomita o cruz roja
+          button.style.cursor = 'pointer';
+          button.style.border = 'none';
+          button.style.background = 'transparent';
+          button.style.fontSize = '12px';
+
+          button.addEventListener('click', () => {
+            //alert(`Estado en la fila ${params.node.rowIndex}: ${ndAvailable ? 'Disponible' : 'No disponible'}`);
+            // Aquí puedes ejecutar cualquier otra acción, como actualizar el estado
+          });
+
+          return button;
+        },
+        onCellDoubleClicked: this.onCellDoubleClicked.bind(this)
+      },
+    ]
+  };
+
+  onCellDoubleClicked(event: CellDoubleClickedEvent): void {
+    //alert("Holaaaaaaaaaaaaa");
+    const colId = event.column.getColId();
+    const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
+    const selectedId = selectedRowData.id; // Obtener el ID del registro
+
+    if (colId === 'NomDigital') {     // Filtrar el grid para mostrar solo el registro con el ID seleccionado
+      const filterModel = {
+        id: {
+          type: 'equals',
+          filter: selectedId,
+        },
+      };
+
+      this.gridApi.setFilterModel(filterModel);
+      this.gridApi.onFilterChanged();
+    }
+
+
+      this.activatePayrollDetailTab();
+
+    // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
+     this.selectedRowData = selectedRowData;
+  }
 
   onCellValueChanged(event: any) {
     console.log('Dato cambiado:', event.data);
@@ -183,68 +316,9 @@ public gridOptions: any = {
 
   // Referencia al grid API
   private gridApi: any;
+  private valorObtenido: any;
 
-  get colMaster(): ColDef[] {
-    return [
-      { headerName: 'Fecha Inicio',
-        field: 'startDate',
-        filter: 'agDateColumnFilter',
-        floatingFilter: true,
-        floatingFilterComponentParams: {
-          suppressFilterButton: true,
-        },
-        valueGetter: (params) =>
-          params.data.startDate ? new Date(params.data.startDate) : null,
-        cellRenderer: 'agDateCellRenderer',
-        cellEditor: 'agDateCellEditor',
-        valueFormatter: (params) => {
-          if (params.value) {
-            const date = new Date(params.value);
-            return `${('0' + date.getDate()).slice(-2)}-${(
-              '0' +
-              (date.getMonth() + 1)
-            ).slice(-2)}-${date.getFullYear()}`;
-          }
-          return '';
-        },
-        width: 170
-      },
-      { headerName: 'Fecha Fin',
-        field: 'endDate',
-        filter: 'agDateColumnFilter',
-        floatingFilter: true,
-        floatingFilterComponentParams: {
-          suppressFilterButton: true,
-        },
-        valueGetter: (params) => params.data.endDate ? new Date(params.data.endDate) : null,
-        cellRenderer: 'agDateCellRenderer',
-        cellEditor: 'agDateCellEditor',
-        valueFormatter: (params) => {
-          if (params.value) {
-            const date = new Date(params.value);
-            return `${('0' + date.getDate()).slice(-2)}-${(
-              '0' +
-              (date.getMonth() + 1)
-            ).slice(-2)}-${date.getFullYear()}`;
-          }
-          return '';
-        },
-        width: 170
-       },
 
-      { field: 'totalBaseWorkingDays', headerName: 'Total Jornadas Base', editable: true, width: 170 },
-
-      { field: 'totalBaseExtraDays', headerName: 'Total Jornadas Extra', editable: true, width: 170, cellEditorParams: {
-          maxLength: 15  }
-      },
-
-      { field: 'totalSubtotal', headerName: 'Total Subtotal', editable: true, width: 140 },
-
-      { field: 'totalDescuentos', headerName: 'Total Descuentos', editable: true, width: 160 },
-      { field: 'total', headerName: 'Total', editable: true, width: 100 },
-
-    ]
-  };
 
   // Definición de columnas para AG Grid
   columnDefs: ColDef[] = [

@@ -50,6 +50,7 @@ export class EmployeesTableComponent {
 
   id: number;
   idBranch: number;
+  idRoot: number;
   idEmployee: number;
   rowData: any[] = [];
   cp: string;
@@ -104,6 +105,7 @@ export class EmployeesTableComponent {
     });
 
     effect(() => {
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       if (this.idBranch == null) {
         this.rowData = [];
@@ -289,7 +291,7 @@ export class EmployeesTableComponent {
         field: 'loan',
         headerName: 'Préstamos',
         editable: false,
-        filter: 'agNumberColumnFilter', 
+        filter: 'agNumberColumnFilter',
         suppressMovable: true,
         width: 110,
         valueFormatter: (params) => {
@@ -767,7 +769,7 @@ export class EmployeesTableComponent {
     };
 
     const updateConsecutiveObs = this.hrService
-      .updateHRManagementData(this.idBranch, updatedHRSetupInfo)
+      .updateHRManagementByRootData(this.idRoot, updatedHRSetupInfo)
       .pipe(
         tap((response) => {
           this.prefixAndConsecutive = [updatedHRSetupInfo];
@@ -897,14 +899,14 @@ export class EmployeesTableComponent {
   }
 
   async getHRSetup() {
-    this.hrService.getHRManagementData(this.idBranch).subscribe(
+    this.hrService.getHRManagementByRootData(this.idRoot).subscribe(
       (data: any) => {
         this.prefixAndConsecutive = Array.isArray(data) ? data : [data];
         console.log(this.prefixAndConsecutive);
       },
       (error) => {
         console.error(
-          'Error al obtener la información de gestión de facturación:',
+          'Error al obtener la información de gestión de nómina:',
           error
         );
       }
@@ -944,7 +946,7 @@ export class EmployeesTableComponent {
     const colId = event.column.getColId();
     const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
     const selectedId = selectedRowData.id; // Obtener el ID del registro
-  
+
     if (colId === 'loan' || colId === 'saving') {
       // Filtrar el grid para mostrar solo el registro con el ID seleccionado
       const filterModel = {
@@ -953,23 +955,23 @@ export class EmployeesTableComponent {
           filter: selectedId,
         },
       };
-  
+
       this.gridApi.setFilterModel(filterModel);
       this.gridApi.onFilterChanged();
     }
-  
+
     if (colId === 'loan') {
       this.activateLoansTab();
     }
-  
+
     if (colId === 'saving') {
       this.activateSavingsTab();
     }
-  
+
     // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
      this.selectedRowData = selectedRowData;
   }
-  
+
 
   activateLoansTab() {
     this.showLoansTab = true;
@@ -986,8 +988,4 @@ export class EmployeesTableComponent {
   adjustGridSize() {
     this.gridHeight = '20vh'; // Adjust as needed
   }
-
-
-
-
 }
