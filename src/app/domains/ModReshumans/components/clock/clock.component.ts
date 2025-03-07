@@ -176,19 +176,29 @@ export class ClockComponent {
                   const entry2DatePlusTolerance = new Date(entry2Date);
                   entry2DatePlusTolerance.setMinutes(entry2Date.getMinutes() + clockTolerance); // entry2Date + tolerancia
 
-                  if (fechaDate <= entry1DatePlusTolerance || fechaDate <= entry2DatePlusTolerance) {
-                    valid = true;
-                  } else if (fechaDate > entry1Date) {
-                    const twoHoursBeforeEntry2 = new Date(entry2Date);
-                    twoHoursBeforeEntry2.setHours(entry2Date.getHours() - 2);
+                  const twoHoursBeforeEntry2 = new Date(entry2Date);
+                  twoHoursBeforeEntry2.setHours(entry2Date.getHours() - 2);
 
-                    // Si fechaDate está dentro de las 2 horas antes de entry2Date, valid es true
-                    if (fechaDate >= twoHoursBeforeEntry2 && fechaDate <= entry2Date) {
+                  // Mostrar en consola los horarios
+                  console.log('Horario de entrada del empleado:', fechaDate.toLocaleTimeString('es-MX'));
+                  console.log('Horario de tolerancia para entry1:', entry1DatePlusTolerance.toLocaleTimeString('es-MX'));
+                  console.log('Horario de tolerancia para entry2:', entry2DatePlusTolerance.toLocaleTimeString('es-MX'));
+
+                  if (fechaDate <= entry1DatePlusTolerance) {
+                    valid = true;
+                  }
+                  else if (fechaDate <= entry2DatePlusTolerance) {
+                    if (fechaDate >= twoHoursBeforeEntry2) {
                       valid = true;
-                    } else {
+                    }
+                    else {
                       valid = false;
                     }
                   }
+                  else {
+                    valid = false;
+                  }
+
 
                   const info = { idEmployee: data[0]?.idEmployee, type: 'IN', timeStamp: fecha, valid: valid, active: true };
                   console.log(info);
