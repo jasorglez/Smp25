@@ -30,14 +30,30 @@
                             </select>
                         </div>
                         <div class="col-md-6 col-lg-6">
-                            <label for="consecutive" class="form-label">Tiempo de tolerancia antes de marcar falta
+                            <label for="clockTolerance" class="form-label">Tiempo de tolerancia antes de marcar falta
                                 (minutos) <span class="text-danger">*</span></label>
-                            <input type="number" class="form-control" id="consecutive" placeholder="Tolerancia" min="0"
+                            <input type="number" class="form-control" id="clockTolerance" placeholder="Tolerancia" min="0"
                                 step="1" [(ngModel)]="hrData.clockTolerance">
                         </div>
                     </div>
                 </div>
-
+                <div class="col-12 mt-3">
+                    <h5>Día de inicio laboral</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6 col-lg-6">
+                            <label for="delay1" class="form-label">Tiempo de tolerancia de retardo antes de primer descuento
+                                (minutos) <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="delay1" placeholder="Tolerancia" min="0"
+                                step="1" [(ngModel)]="hrData.delay1">
+                        </div>
+                        <div class="col-md-6 col-lg-6">
+                            <label for="delay2" class="form-label">Tiempo de tolerancia de retardo antes de segundo descuento
+                                (minutos) <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="delay2" placeholder="Tolerancia" min="60"
+                                step="1" [(ngModel)]="hrData.delay2">
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="mt-4 text-end">
                 <button type="button" class="btn btn-primary me-2" (click)="saveChanges()"><i
