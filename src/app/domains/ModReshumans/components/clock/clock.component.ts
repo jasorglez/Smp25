@@ -142,12 +142,12 @@ export class ClockComponent {
               alerts.basicAlert("Error", "Ya ha marcado su entrada el día de hoy", "error");
               return;
             }
-            // Esta podría ser la lógica para sumar +1 a Salidas Pendientes.
-            // El empleado no marcó su salida.
-            // Se verifica que la fecha de entrada sea distinta a la fecha actual.
-            // Si es así, eso significa que el empleado no marcó su salida ayer.
-            else if (data[0]?.lastType === 'IN' && data[0]?.lastCheck.split('T')[0] !== fecha.split('T')[0]) {
 
+            // Si el último lastValid fue false y es el mismo día, setear valid en false
+            let valid = true; // Inicialmente se asume que es válido
+            if (data[0]?.lastValid === false && 
+                data[0]?.lastCheck.split('T')[0] === fecha.split('T')[0]) {
+              valid = false;
             }
 
             // Consultar el horario del empleado para el día actual
@@ -173,12 +173,13 @@ export class ClockComponent {
                 entry2Date.setHours(hour2, minute2, 0);
               }
 
-              let valid = false;
-
               // Si clockData[0]?.enabled es false, valid es true
+              // Y se marca como hora extra
               if (clockData[0]?.enabled === false) {
                 valid = true;
+                let extra = true;
               } else {
+                let extra = false;
                 // Obtener la tolerancia de hrData
                 this.hrService.getHRManagementData(this.idBranch).subscribe(hrData => {
                   const clockTolerance = hrData[0]?.clockTolerance || 0; // Usar 0 como valor predeterminado si no está definido
@@ -193,10 +194,12 @@ export class ClockComponent {
                   const twoHoursBeforeEntry2 = new Date(entry2Date);
                   twoHoursBeforeEntry2.setHours(entry2Date.getHours() - 2);
 
-                  valid = (fechaDate <= entry1DatePlusTolerance) ||
-                    (fechaDate <= entry2DatePlusTolerance && fechaDate >= twoHoursBeforeEntry2);
+                  if (valid) { // Solo validar si valid no fue forzado a false
+                    valid = (fechaDate <= entry1DatePlusTolerance) ||
+                      (fechaDate <= entry2DatePlusTolerance && fechaDate >= twoHoursBeforeEntry2);
+                  }
 
-                  const info = { idEmployee: data[0]?.idEmployee, type: 'IN', timeStamp: fecha, valid: valid, active: true };
+                  const info = { idEmployee: data[0]?.idEmployee, type: 'IN', timeStamp: fecha, valid: valid, extra: extra, active: true };
                   console.log(info);
                   this.clockService.checkInOut(info).subscribe(
                     (clock => {
