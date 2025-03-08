@@ -172,7 +172,8 @@ export class EmployeesClockComponent {
           });
       });
     }
-    this.setBaseHours(this.idEmployee, this.totalHoras);
+    // Activar si se requiere modificar horas base
+    //this.setBaseHours(this.idEmployee, this.totalHoras);
 
     // Opcional: Mostrar confirmación al usuario
     alerts.basicAlert('Horario guardado', `Horario ${this.isNew ? 'creado' : 'actualizado'} correctamente`, 'success');

@@ -142,13 +142,6 @@ export class ClockComponent {
               alerts.basicAlert("Error", "Ya ha marcado su entrada el día de hoy", "error");
               return;
             }
-            // Esta podría ser la lógica para sumar +1 a Salidas Pendientes.
-            // El empleado no marcó su salida.
-            // Se verifica que la fecha de entrada sea distinta a la fecha actual.
-            // Si es así, eso significa que el empleado no marcó su salida ayer.
-            else if (data[0]?.lastType === 'IN' && data[0]?.lastCheck.split('T')[0] !== fecha.split('T')[0]) {
-
-            }
 
             // Consultar el horario del empleado para el día actual
             this.employeesService.getEmployeeClockByDay(data[0]?.idEmployee, currentDay).subscribe(clockData => {
@@ -174,6 +167,7 @@ export class ClockComponent {
               }
 
               let valid = false;
+              let minuteDiscount = 0; // Inicialmente no hay descuento
 
               // Si clockData[0]?.enabled es false, valid es true
               if (clockData[0]?.enabled === false) {
@@ -181,22 +175,53 @@ export class ClockComponent {
               } else {
                 // Obtener la tolerancia de hrData
                 this.hrService.getHRManagementData(this.idBranch).subscribe(hrData => {
-                  const clockTolerance = hrData[0]?.clockTolerance || 0; // Usar 0 como valor predeterminado si no está definido
+                  const clockTolerance = hrData[0]?.clockTolerance || 0; // Tiempo de tolerancia
+                  const delay1 = hrData[0]?.delay1 || 0; // Tiempo antes de que se descuente la primera hora
+                  const delay2 = hrData[0]?.delay2 || 0; // Tiempo antes de que se descuente la segunda hora
+                  const discount1 = hrData[0]?.discount1 || false; // Si se aplica descuento para delay1
+                  const discount2 = hrData[0]?.discount2 || false; // Si se aplica descuento para delay2
 
-                  // Validar las condiciones
+                  // Validar las condiciones para entry1
                   const entry1DatePlusTolerance = new Date(entry1Date);
-                  entry1DatePlusTolerance.setMinutes(entry1Date.getMinutes() + clockTolerance); // entry1Date + tolerancia
+                  entry1DatePlusTolerance.setMinutes(entry1Date.getMinutes() + clockTolerance);
 
+                  const entry1DatePlusDelay1 = new Date(entry1Date);
+                  entry1DatePlusDelay1.setMinutes(entry1Date.getMinutes() + delay1);
+
+                  const entry1DatePlusDelay2 = new Date(entry1Date);
+                  entry1DatePlusDelay2.setMinutes(entry1Date.getMinutes() + delay2);
+
+                  if (fechaDate <= entry1DatePlusTolerance) {
+                    valid = true; // Dentro del tiempo de tolerancia
+                    if (fechaDate > entry1DatePlusDelay1 && discount1) {
+                      const diffInMinutes = Math.floor((fechaDate.getTime() - entry1DatePlusDelay1.getTime()) / (1000 * 60));
+                      minuteDiscount = Math.max(0, 60 - diffInMinutes); // Descuento máximo de 60 minutos
+                    }
+                  } else {
+                    valid = false; // Fuera del tiempo de tolerancia
+                  }
+
+                  // Validar las condiciones para entry2
                   const entry2DatePlusTolerance = new Date(entry2Date);
-                  entry2DatePlusTolerance.setMinutes(entry2Date.getMinutes() + clockTolerance); // entry2Date + tolerancia
+                  entry2DatePlusTolerance.setMinutes(entry2Date.getMinutes() + clockTolerance);
 
-                  const twoHoursBeforeEntry2 = new Date(entry2Date);
-                  twoHoursBeforeEntry2.setHours(entry2Date.getHours() - 2);
+                  const entry2DatePlusDelay1 = new Date(entry2Date);
+                  entry2DatePlusDelay1.setMinutes(entry2Date.getMinutes() + delay1);
 
-                  valid = (fechaDate <= entry1DatePlusTolerance) ||
-                    (fechaDate <= entry2DatePlusTolerance && fechaDate >= twoHoursBeforeEntry2);
+                  const entry2DatePlusDelay2 = new Date(entry2Date);
+                  entry2DatePlusDelay2.setMinutes(entry2Date.getMinutes() + delay2);
 
-                  const info = { idEmployee: data[0]?.idEmployee, type: 'IN', timeStamp: fecha, valid: valid, active: true };
+                  if (fechaDate <= entry2DatePlusTolerance) {
+                    valid = true; // Dentro del tiempo de tolerancia
+                    if (fechaDate > entry2DatePlusDelay1 && discount2) {
+                      const diffInMinutes = Math.floor((fechaDate.getTime() - entry2DatePlusDelay1.getTime()) / (1000 * 60));
+                      minuteDiscount = Math.max(0, 60 - diffInMinutes); // Descuento máximo de 60 minutos
+                    }
+                  } else {
+                    valid = false; // Fuera del tiempo de tolerancia
+                  }
+
+                  const info = { idEmployee: data[0]?.idEmployee, type: 'IN', timeStamp: fecha, minuteDiscount: minuteDiscount, valid: valid, active: true };
                   console.log(info);
                   this.clockService.checkInOut(info).subscribe(
                     (clock => {
@@ -216,13 +241,13 @@ export class ClockComponent {
               return;
             }
 
-            // Si lastType fue IN y lastValid fue false, setear valid en false
+            // Si lastType fue IN and lastValid fue false, setear valid en false
             let valid = true; // Inicialmente se asume que es válido
             if (data[0]?.lastType === 'IN' && !data[0]?.lastValid) {
               valid = false;
             }
 
-            const info = { idEmployee: data[0]?.idEmployee, type: 'OUT', timeStamp: fecha, valid: valid, active: true };
+            const info = { idEmployee: data[0]?.idEmployee, type: 'OUT', timeStamp: fecha, minuteDiscount: 0, valid: valid, active: true };
             console.log(info);
             this.clockService.checkInOut(info).subscribe(
               (clock => {

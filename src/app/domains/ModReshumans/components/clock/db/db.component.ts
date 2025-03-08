@@ -35,7 +35,8 @@ export class DbComponent {
       }
     },
     { headerName: 'Tipo', field: 'type', flex: 1 },
-    { headerName: 'Válido', field: 'valid', flex: 1 }
+    { headerName: 'Válido', field: 'valid', flex: 1 },
+    {headerName: 'Minutos descontados', field: 'minuteDiscount', flex: 1}
     ];
 
   ngOnInit()  {
