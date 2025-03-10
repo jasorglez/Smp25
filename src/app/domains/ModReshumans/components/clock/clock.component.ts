@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
 import { ClockService } from 'app/services/clock.service';
@@ -8,15 +8,17 @@ import { HRService } from 'app/services/hr.service';
 import { SignalsService } from 'app/services/signals.service';
 import { TimeService } from 'app/services/time.service';
 import { map } from 'rxjs/operators';
+import { DbComponent } from './db/db.component';
 
 @Component({
   selector: 'app-clock',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, DbComponent],
   templateUrl: './clock.component.html',
   styleUrl: './clock.component.scss'
 })
 export class ClockComponent {
+  @ViewChild('clockDb') clockDb!: DbComponent; // Referencia al componente DbComponent
 
   private timeService = inject(TimeService);
   private clockService = inject(ClockService);
@@ -37,6 +39,7 @@ export class ClockComponent {
 
   ngOnInit() {
     this.setupTimeUpdates();
+    this.setupModalListener();
   }
 
   constructor() {
@@ -59,6 +62,17 @@ export class ClockComponent {
     // Sincronizar con servidor cada 10 segundos
     // Activar si lo desean
     // interval(10000).subscribe(() => this.getTime());
+  }
+
+  private setupModalListener() {
+    const modal = document.getElementById('clockDbModal');
+    if (modal) {
+      modal.addEventListener('shown.bs.modal', () => {
+        if (this.clockDb) {
+          this.clockDb.getData(); // Refrescar los datos al abrir el modal
+        }
+      });
+    }
   }
 
   getTime() {
@@ -128,13 +142,6 @@ export class ClockComponent {
               alerts.basicAlert("Error", "Ya ha marcado su entrada el día de hoy", "error");
               return;
             }
-            // Esta podría ser la lógica para sumar +1 a Salidas Pendientes.
-            // El empleado no marcó su salida.
-            // Se verifica que la fecha de entrada sea distinta a la fecha actual.
-            // Si es así, eso significa que el empleado no marcó su salida ayer.
-            else if (data[0]?.lastType === 'IN' && data[0]?.lastCheck.split('T')[0] !== fecha.split('T')[0]) {
-
-            }
 
             // Consultar el horario del empleado para el día actual
             this.employeesService.getEmployeeClockByDay(data[0]?.idEmployee, currentDay).subscribe(clockData => {
@@ -160,6 +167,7 @@ export class ClockComponent {
               }
 
               let valid = false;
+              let minuteDiscount = 0; // Inicialmente no hay descuento
 
               // Si clockData[0]?.enabled es false, valid es true
               if (clockData[0]?.enabled === false) {
@@ -167,40 +175,53 @@ export class ClockComponent {
               } else {
                 // Obtener la tolerancia de hrData
                 this.hrService.getHRManagementData(this.idBranch).subscribe(hrData => {
-                  const clockTolerance = hrData[0]?.clockTolerance || 0; // Usar 0 como valor predeterminado si no está definido
+                  const clockTolerance = hrData[0]?.clockTolerance || 0; // Tiempo de tolerancia
+                  const delay1 = hrData[0]?.delay1 || 0; // Tiempo antes de que se descuente la primera hora
+                  const delay2 = hrData[0]?.delay2 || 0; // Tiempo antes de que se descuente la segunda hora
+                  const discount1 = hrData[0]?.discount1 || false; // Si se aplica descuento para delay1
+                  const discount2 = hrData[0]?.discount2 || false; // Si se aplica descuento para delay2
 
-                  // Validar las condiciones
+                  // Validar las condiciones para entry1
                   const entry1DatePlusTolerance = new Date(entry1Date);
-                  entry1DatePlusTolerance.setMinutes(entry1Date.getMinutes() + clockTolerance); // entry1Date + tolerancia
+                  entry1DatePlusTolerance.setMinutes(entry1Date.getMinutes() + clockTolerance);
 
-                  const entry2DatePlusTolerance = new Date(entry2Date);
-                  entry2DatePlusTolerance.setMinutes(entry2Date.getMinutes() + clockTolerance); // entry2Date + tolerancia
+                  const entry1DatePlusDelay1 = new Date(entry1Date);
+                  entry1DatePlusDelay1.setMinutes(entry1Date.getMinutes() + delay1);
 
-                  const twoHoursBeforeEntry2 = new Date(entry2Date);
-                  twoHoursBeforeEntry2.setHours(entry2Date.getHours() - 2);
-
-                  // Mostrar en consola los horarios
-                  console.log('Horario de entrada del empleado:', fechaDate.toLocaleTimeString('es-MX'));
-                  console.log('Horario de tolerancia para entry1:', entry1DatePlusTolerance.toLocaleTimeString('es-MX'));
-                  console.log('Horario de tolerancia para entry2:', entry2DatePlusTolerance.toLocaleTimeString('es-MX'));
+                  const entry1DatePlusDelay2 = new Date(entry1Date);
+                  entry1DatePlusDelay2.setMinutes(entry1Date.getMinutes() + delay2);
 
                   if (fechaDate <= entry1DatePlusTolerance) {
-                    valid = true;
-                  }
-                  else if (fechaDate <= entry2DatePlusTolerance) {
-                    if (fechaDate >= twoHoursBeforeEntry2) {
-                      valid = true;
+                    valid = true; // Dentro del tiempo de tolerancia
+                    if (fechaDate > entry1DatePlusDelay1 && discount1) {
+                      const diffInMinutes = Math.floor((fechaDate.getTime() - entry1DatePlusDelay1.getTime()) / (1000 * 60));
+                      minuteDiscount = Math.max(0, 60 - diffInMinutes); // Descuento máximo de 60 minutos
                     }
-                    else {
-                      valid = false;
-                    }
-                  }
-                  else {
-                    valid = false;
+                  } else {
+                    valid = false; // Fuera del tiempo de tolerancia
                   }
 
+                  // Validar las condiciones para entry2
+                  const entry2DatePlusTolerance = new Date(entry2Date);
+                  entry2DatePlusTolerance.setMinutes(entry2Date.getMinutes() + clockTolerance);
 
-                  const info = { idEmployee: data[0]?.idEmployee, type: 'IN', timeStamp: fecha, valid: valid, active: true };
+                  const entry2DatePlusDelay1 = new Date(entry2Date);
+                  entry2DatePlusDelay1.setMinutes(entry2Date.getMinutes() + delay1);
+
+                  const entry2DatePlusDelay2 = new Date(entry2Date);
+                  entry2DatePlusDelay2.setMinutes(entry2Date.getMinutes() + delay2);
+
+                  if (fechaDate <= entry2DatePlusTolerance) {
+                    valid = true; // Dentro del tiempo de tolerancia
+                    if (fechaDate > entry2DatePlusDelay1 && discount2) {
+                      const diffInMinutes = Math.floor((fechaDate.getTime() - entry2DatePlusDelay1.getTime()) / (1000 * 60));
+                      minuteDiscount = Math.max(0, 60 - diffInMinutes); // Descuento máximo de 60 minutos
+                    }
+                  } else {
+                    valid = false; // Fuera del tiempo de tolerancia
+                  }
+
+                  const info = { idEmployee: data[0]?.idEmployee, type: 'IN', timeStamp: fecha, minuteDiscount: minuteDiscount, valid: valid, active: true };
                   console.log(info);
                   this.clockService.checkInOut(info).subscribe(
                     (clock => {
@@ -220,13 +241,13 @@ export class ClockComponent {
               return;
             }
 
-            // Si lastType fue IN y lastValid fue false, setear valid en false
+            // Si lastType fue IN and lastValid fue false, setear valid en false
             let valid = true; // Inicialmente se asume que es válido
             if (data[0]?.lastType === 'IN' && !data[0]?.lastValid) {
               valid = false;
             }
 
-            const info = { idEmployee: data[0]?.idEmployee, type: 'OUT', timeStamp: fecha, valid: valid, active: true };
+            const info = { idEmployee: data[0]?.idEmployee, type: 'OUT', timeStamp: fecha, minuteDiscount: 0, valid: valid, active: true };
             console.log(info);
             this.clockService.checkInOut(info).subscribe(
               (clock => {

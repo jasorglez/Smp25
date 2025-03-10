@@ -18,6 +18,18 @@ export class ClockService {
     });
   }
 
+  getCheckInfo(): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/EmployeesxCheckInsOuts`, {
+      headers: this.trackingService.getHeaders(),
+    });
+  }
+
+  getCheckInfoByEmployee(idEmployee: number): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/EmployeesxCheckInsOuts/employee/${idEmployee}`, {
+      headers: this.trackingService.getHeaders(),
+    });
+  }
+
   checkInOut(data: any){
     return this.http.post(`${environment.urlAdministration}/EmployeesxCheckInsOuts`, data, {
       headers: this.trackingService.getHeaders(),
