@@ -8,7 +8,7 @@ import { HRService } from 'app/services/hr.service';
 import { SignalsService } from 'app/services/signals.service';
 import { TimeService } from 'app/services/time.service';
 import { map } from 'rxjs/operators';
-import { DbComponent } from './db/db.component';
+import { DbComponent } from '../employees/db/db.component';
 
 @Component({
   selector: 'app-clock',
@@ -174,7 +174,7 @@ export class ClockComponent {
                 valid = true;
               } else {
                 // Obtener la tolerancia de hrData
-                this.hrService.getHRManagementData(this.idBranch).subscribe(hrData => {
+                this.hrService.getHRManagementData(data[0]?.idBranch).subscribe(hrData => {
                   const clockTolerance = hrData[0]?.clockTolerance || 0; // Tiempo de tolerancia
                   const delay1 = hrData[0]?.delay1 || 0; // Tiempo antes de que se descuente la primera hora
                   const delay2 = hrData[0]?.delay2 || 0; // Tiempo antes de que se descuente la segunda hora
