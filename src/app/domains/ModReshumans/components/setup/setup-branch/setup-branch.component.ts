@@ -8,9 +8,10 @@ import * as XLSX from 'xlsx';
 import { NominaData } from '../models/payroll-data.module';
 import { PayrollService } from 'app/services/payroll.service';
 import { AdministrationService } from 'app/services/administration.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 interface Bank {
-  id: number; 
+  id: number;
   name: string;
   active: boolean;
 }
@@ -19,7 +20,7 @@ interface Bank {
   selector: 'app-setup-branch',
   standalone: true,
   imports: [
-    CommonModule, 
+    CommonModule,
     FormsModule],
   templateUrl: './setup-branch.component.html',
   styleUrl: './setup-branch.component.scss'
@@ -28,6 +29,7 @@ interface Bank {
 export class SetupBranchComponent {
   private signalsService = inject(SignalsService);
   private hrService = inject(HRService);
+  private trackingService = inject(TrackingService);
   isLoading: boolean = false;
   error: string | null = null;
   jsonData: any = null;
@@ -53,7 +55,7 @@ export class SetupBranchComponent {
   async ngOnInit() {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
     this.getData();
-    await this.obtenerBanks();
+    //await this.obtenerBanks();
   }
 
   constructor(private payrollService: PayrollService, private administrationService: AdministrationService) {
@@ -66,7 +68,7 @@ export class SetupBranchComponent {
 
   obtenerBanks(): Promise<any> {
     return new Promise((resolve) => {
-      this.administrationService.get2fieldsBanks().subscribe((data: any) => { 
+      this.administrationService.get2fieldsBanks().subscribe((data: any) => {
         this.banks = data;
         resolve(data);
       });
@@ -75,11 +77,15 @@ export class SetupBranchComponent {
 
   onBankSelected() {
     console.log("Banco seleccionado ID:", this.selectedBankId);
-    // Aquí puedes guardar el ID o hacer lo que necesites con él
+    // Aquí puedes guardar el ID o hacer lo que necesites
   }
 
   async sendPayrollData() {
-    console.log("---------- SENDPAYROLLDATA() Bancos: --> ", this.banks);
+    // Tracking Log
+    this.trackingService.addLog('', 'Envio de nomina digital','Configuracion Upload Nomina Digital','');
+
+    //console.log("---------- SENDPAYROLLDATA() Bancos: --> ", this.banks);
+
 
     console.log("---------- SENDPAYROLLDATA() enviando datos de nómina --> ", this.jsonData);
 
@@ -90,36 +96,36 @@ export class SetupBranchComponent {
 
     if (!Array.isArray(this.jsonData)) {
       this.formatNumericPropertiesToTwoDecimals(this.jsonData);
-    } 
+    }
     // En caso de que jsonData sea un array de objetos
     else {
       this.jsonData.forEach(item => {
         this.formatNumericPropertiesToTwoDecimals(item);
       });
     }
-    
+
     // Agregar el ID del banco seleccionado
-    this.jsonData.IdBranch = this.selectedBankId;
-    
+    //this.jsonData.IdBranch = this.selectedBankId;
+
     console.log("---------- SENDPAYROLLDATA() Datos formateados --> ", this.jsonData);
 
-    if (!this.selectedBankId) {
-      alerts.basicAlert("Error", "Por favor seleccione un banco.", "error");
-      return;
-    }
-    
+    //if (!this.selectedBankId) {
+    //  alerts.basicAlert("Error", "Por favor seleccione un banco.", "error");
+    //  return;
+    //}
+
     // Asegúrate de que los bancos estén cargados
-    if (this.banks.length === 0) {
-      await this.obtenerBanks();
-    }
-    
+    //if (this.banks.length === 0) {
+      //await this.obtenerBanks();
+    //}
+
     // Añadir el ID del banco a los datos que envías
-    this.jsonData.IdBank = this.selectedBankId;
+    //this.jsonData.IdBank = this.selectedBankId;
 
     this.jsonData.idBranch = this.idBranch;
-    
+
     console.log("---------- SENDPAYROLLDATA() Datos a enviar con ID de banco --> ", this.jsonData);
-    console.log("---------- SENDPAYROLLDATA() enviando datos de nómina con idBranch --> ", this.jsonData);  
+    console.log("---------- SENDPAYROLLDATA() enviando datos de nómina con idBranch --> ", this.jsonData);
 
     this.payrollService.uploadPayrollData(this.jsonData).subscribe({
       next: (response) => {
@@ -137,10 +143,10 @@ export class SetupBranchComponent {
     // Limpiar datos del archivo
     this.jsonData = null;
     this.fileName = '';
-    
+
     // Limpiar el banco seleccionado
-    this.selectedBankId = null;
-    
+    //this.selectedBankId = null;
+
     // Limpiar el input file para que el usuario pueda seleccionar el mismo archivo si lo desea
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     if (fileInput) {
@@ -153,13 +159,13 @@ export class SetupBranchComponent {
   formatNumericPropertiesToTwoDecimals(obj: any) {
     // Lista de propiedades que necesitan formatearse a 2 decimales
     const propertiesToFormat = [
-      'IMSS', 'IMSSCesantiaVejez', 'IMSSEnfermedad', 'ISPT', 
+      'IMSS', 'IMSSCesantiaVejez', 'IMSSEnfermedad', 'ISPT',
       'impuestoArt96', 'neto', 'otrosIngresos', 'pensionAlimenticia',
       'percepcionesGravadas', 'retencionesINFONAVIT', 'salarioDiario',
       'salarioDiarioIntegrado', 'subsidioArt114', 'subsidioPEmpleo',
       'subsidioPEmpleoAcreditado', 'sueldos', 'totalPercepciones'
     ];
-    
+
     // Recorrer todas las propiedades que necesitan formato
     propertiesToFormat.forEach(prop => {
       if (obj[prop] != null && typeof obj[prop] === 'number') {
@@ -167,7 +173,7 @@ export class SetupBranchComponent {
         obj[prop] = Number(obj[prop].toFixed(2));
       }
     });
-    
+
     return obj;
   }
 
@@ -228,10 +234,10 @@ export class SetupBranchComponent {
     this.isLoading = true;
     this.error = null;
     this.jsonData = null;
-    
+
     const target = event.target as HTMLInputElement;
     const files = target.files;
-    
+
     // Verificamos que haya un archivo seleccionado
     if (!files || files.length !== 1) {
       this.error = 'Por favor selecciona un archivo.';
@@ -242,7 +248,7 @@ export class SetupBranchComponent {
     const file: File = files[0];
     this.fileName = file.name;
     //console.log("nombre del archivo --> ", this.fileName);
-    
+
     // Verificamos que sea un archivo Excel
     if (!this.isExcelFile(file)) {
       this.error = 'El archivo debe ser un Excel (.xlsx, .xls)';
@@ -252,17 +258,17 @@ export class SetupBranchComponent {
 
     // Leemos el archivo como ArrayBuffer
     const reader: FileReader = new FileReader();
-    
+
     reader.onload = (e: ProgressEvent<FileReader>) => {
       try {
         // Procesamos el archivo con XLSX
         const binaryString = e.target?.result;
         const workbook: XLSX.WorkBook = XLSX.read(binaryString, { type: 'binary' });
-        
+
         // Procesamos el Excel de nómina específicamente
         const data = this.processNominaExcel(workbook);
         console.log("la data despues de procesar el archivo es --> ", data);
-        
+
         // Asignamos los datos a nuestra variable para mostrarlos
         this.jsonData = data;
       } catch (error) {
@@ -320,11 +326,12 @@ export class SetupBranchComponent {
     const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:A1');
 
     //console.log("rango de empleados", range);
-    
+
     // Procesamos cada fila a partir de la fila 11 (donde comienzan los datos de empleados)
     for (let rowNum = 10; rowNum <= range.e.r; rowNum++) {
       const nombre = this.getCellValue(worksheet, `B${rowNum}`);
-      
+      const codigoEmpleado = String(this.getCellValue(worksheet, `C${rowNum}`));
+
       //console.log("fila", rowNum);
       //console.log("nombre del empleado", nombre);
 
@@ -332,37 +339,39 @@ export class SetupBranchComponent {
       //if (!nombre || nombre.length < 2) continue;
       // Verificar si un nombre tiene caracteres no alfabéticos o es muy corto
       if (!nombre || !/^[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s]+$/.test(nombre)) continue;
-      
+
+      //
+
       const empleado = {
         nombre: nombre,
-        diasTrabajados: this.getNumericCellValue(worksheet, `C${rowNum}`),
-        salarioDiarioIntegrado: this.getNumericCellValue(worksheet, `D${rowNum}`),
-        salarioDiario: this.getNumericCellValue(worksheet, `E${rowNum}`),
-        sueldos: this.getNumericCellValue(worksheet, `F${rowNum}`),
-        totalPercepciones: this.getNumericCellValue(worksheet, `G${rowNum}`),
-        otrosIngresos: this.getNumericCellValue(worksheet, `H${rowNum}`),
-        percepcionesGravadas: this.getNumericCellValue(worksheet, `I${rowNum}`),
-        impuestoArt96: this.getNumericCellValue(worksheet, `J${rowNum}`),
-        subsidioArt114: this.getNumericCellValue(worksheet, `K${rowNum}`),
-        totalSubsidioPEmpleoArt115: this.getNumericCellValue(worksheet, `L${rowNum}`),
-        subsidioPEmpleoAcreditado: this.getNumericCellValue(worksheet, `M${rowNum}`),
-        ISPT: this.getNumericCellValue(worksheet, `N${rowNum}`),
-        subsidioPEmpleo: this.getNumericCellValue(worksheet, `O${rowNum}`),
-        IMSSEnfermedad: this.getNumericCellValue(worksheet, `P${rowNum}`),
-        IMSSCesantiaVejez: this.getNumericCellValue(worksheet, `Q${rowNum}`),
-        IMSS: this.getNumericCellValue(worksheet, `R${rowNum}`),
-        retencionesINFONAVIT: this.getNumericCellValue(worksheet, `S${rowNum}`),
-        pensionAlimenticia: this.getNumericCellValue(worksheet, `T${rowNum}`),
-        neto: this.getNumericCellValue(worksheet, `U${rowNum}`),
-        firma: this.getCellValue(worksheet, `V${rowNum}`)
+        codigoEmpleado: codigoEmpleado,
+        diasTrabajados: this.getNumericCellValue(worksheet, `D${rowNum}`),
+        salarioDiarioIntegrado: this.getNumericCellValue(worksheet, `E${rowNum}`),
+        salarioDiario: this.getNumericCellValue(worksheet, `F${rowNum}`),
+        sueldos: this.getNumericCellValue(worksheet, `G${rowNum}`),
+        totalPercepciones: this.getNumericCellValue(worksheet, `H${rowNum}`),
+        otrosIngresos: this.getNumericCellValue(worksheet, `I${rowNum}`),
+        percepcionesGravadas: this.getNumericCellValue(worksheet, `J${rowNum}`),
+        impuestoArt96: this.getNumericCellValue(worksheet, `K${rowNum}`),
+        subsidioArt114: this.getNumericCellValue(worksheet, `L${rowNum}`),
+        totalSubsidioPEmpleoArt115: this.getNumericCellValue(worksheet, `M${rowNum}`),
+        subsidioPEmpleoAcreditado: this.getNumericCellValue(worksheet, `N${rowNum}`),
+        ISPT: this.getNumericCellValue(worksheet, `O${rowNum}`),
+        subsidioPEmpleo: this.getNumericCellValue(worksheet, `P${rowNum}`),
+        IMSSEnfermedad: this.getNumericCellValue(worksheet, `Q${rowNum}`),
+        IMSSCesantiaVejez: this.getNumericCellValue(worksheet, `R${rowNum}`),
+        IMSS: this.getNumericCellValue(worksheet, `S${rowNum}`),
+        retencionesINFONAVIT: this.getNumericCellValue(worksheet, `T${rowNum}`),
+        pensionAlimenticia: this.getNumericCellValue(worksheet, `U${rowNum}`),
+        neto: this.getNumericCellValue(worksheet, `V${rowNum}`),
+        firma: this.getCellValue(worksheet, `W${rowNum}`)
       };
 
-      //console.log("empleado", empleado);
-      //console.log("nominaData", nominaData.empleados);
-      
+      console.log("empleado", empleado);
+
       nominaData.empleados.push(empleado);
     }
-    
+
     return nominaData;
   }
 
@@ -403,18 +412,18 @@ export class SetupBranchComponent {
    */
   downloadJson(): void {
     if (!this.jsonData) return;
-    
+
     const jsonString = JSON.stringify(this.jsonData, null, 2);
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = window.URL.createObjectURL(blob);
-    
+
     // Creamos un enlace temporal para la descarga
     const a = document.createElement('a');
     a.href = url;
     a.download = this.fileName.replace(/\.(xlsx|xls)$/i, '.json');
     document.body.appendChild(a);
     a.click();
-    
+
     // Limpiamos
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
@@ -425,7 +434,7 @@ export class SetupBranchComponent {
    */
   copyToClipboard(): void {
     if (!this.jsonData) return;
-    
+
     const jsonString = this.formatJson(this.jsonData);
     navigator.clipboard.writeText(jsonString)
       .then(() => alert('JSON copiado al portapapeles'))
