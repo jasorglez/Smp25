@@ -323,6 +323,7 @@ public gridOptions: any = {
   // Definición de columnas para AG Grid
   columnDefs: ColDef[] = [
     { field: 'nombre', headerName: 'Nombre', sortable: true, filter: true, resizable: true },
+    { field: 'codigoEmpleado', headerName: 'Código', sortable: true, filter: true, resizable: true },
     { field: 'diasTrabajados', headerName: 'Días', sortable: true, filter: true, width: 90 },
     { field: 'salarioDiario', headerName: 'Sal. Diario', sortable: true, filter: true, valueFormatter: this.currencyFormatter },
     { field: 'salarioDiarioIntegrado', headerName: 'SDI', sortable: true, filter: true, valueFormatter: this.currencyFormatter },

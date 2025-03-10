@@ -3,6 +3,7 @@
  */
 export interface Employee {
     nombre: string;
+    codigoEmpleado: string;
     diasTrabajados: number;
     salarioDiarioIntegrado: number;
     salarioDiario: number;
