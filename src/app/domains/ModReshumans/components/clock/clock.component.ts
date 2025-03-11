@@ -194,7 +194,7 @@ export class ClockComponent {
                   if (fechaDate <= entry1DatePlusTolerance) {
                     valid = true; // Dentro del tiempo de tolerancia
                     if (fechaDate > entry1DatePlusDelay1 && discount1) {
-                      const diffInMinutes = Math.floor((fechaDate.getTime() - entry1DatePlusDelay1.getTime()) / (1000 * 60));
+                      const diffInMinutes = Math.floor((fechaDate.getTime() - entry1Date.getTime()) / (1000 * 60));
                       minuteDiscount = Math.max(0, 60 - diffInMinutes); // Descuento máximo de 60 minutos
                     }
                   } else {
@@ -214,7 +214,7 @@ export class ClockComponent {
                   if (fechaDate <= entry2DatePlusTolerance) {
                     valid = true; // Dentro del tiempo de tolerancia
                     if (fechaDate > entry2DatePlusDelay1 && discount2) {
-                      const diffInMinutes = Math.floor((fechaDate.getTime() - entry2DatePlusDelay1.getTime()) / (1000 * 60));
+                      const diffInMinutes = Math.floor((fechaDate.getTime() - entry2Date.getTime()) / (1000 * 60));
                       minuteDiscount = Math.max(0, 60 - diffInMinutes); // Descuento máximo de 60 minutos
                     }
                   } else {
