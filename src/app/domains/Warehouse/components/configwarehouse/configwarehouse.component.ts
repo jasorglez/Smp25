@@ -15,12 +15,13 @@ import { SignalsService } from 'app/services/signals.service';
 import { ProcessComponent } from "../process/process.component";
 import { SetupwarehouseComponent } from "../setupwarehouse/setupwarehouse.component";
 import { SetupService } from 'app/services/setup.service';
+import { CatalogsComponent } from 'app/domains/SMP/Components/catalogs/catalogs.component';
 
 
 @Component({
   selector: 'app-configwarehouse',
   standalone: true,
-  imports: [RouterModule, DomainsModule, AgGridModule, ProcessComponent, SetupwarehouseComponent],
+  imports: [RouterModule, DomainsModule, AgGridModule, ProcessComponent, SetupwarehouseComponent,CatalogsComponent],
   templateUrl: './configwarehouse.component.html',
   styleUrl: './configwarehouse.component.scss'
 })
