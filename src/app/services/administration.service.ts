@@ -29,7 +29,7 @@ export class AdministrationService {
   }
 
   deleteBanks(id: number): Observable<any> {
-    const apiUrl = `${environment.urlAdministration}/Bank/${id}`;      
+    const apiUrl = `${environment.urlAdministration}/Bank/${id}`;
     alert(apiUrl)
     return this.http.delete<any[]>(`${environment.urlAdministration}/Bank/${id}`, { headers: this.trackingService.getHeaders() });
   }
@@ -104,7 +104,11 @@ export class AdministrationService {
 
   // Payroll
   getNormalPayrolls(){
-    return this.http.get(`${environment.urlAdministration}/NormalPayrolls`);
+    return this.http.get(`${environment.urlLocalJG}/NormalPayrolls`);
+  }
+
+  getEmployeesByNormalPayroll(id: number){
+    return this.http.get(`${environment.urlLocalJG}/EmployeesByNormalPayroll`);
   }
 
 }
