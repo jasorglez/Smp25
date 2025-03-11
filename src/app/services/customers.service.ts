@@ -14,34 +14,34 @@ export class CustomersService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
-    // Clientes
-    
-    getCustomers(id: number, type : string) {
-      //const apiUrl = `${environment.urlAdministration}/Customer/branch/${id}?type=${type}`;      
-       //alert(apiUrl)  
-      return this.http.get(`${environment.urlAdministration}/Customer/branch/${id}?type=${type}`, { headers: this.trackingService.getHeaders() });                                              
-    }
-  
-    getCustomersByCompany(branchIds: number[], type: string) {
-      const ids = branchIds.join(','); // Convertimos los IDs a una cadena separada por comas
-      const apiUrl = `${environment.urlAdministration}/Customer/company?branchIds=${encodeURIComponent(ids)}&type=${type}`;    
-      return this.http.get(apiUrl, { headers: this.trackingService.getHeaders() });
-    }
-    
-  
-    addCustomer(data: any): Observable<any> {
-      return this.http.post(`${environment.urlAdministration}/Customer`, data, { headers: this.trackingService.getHeaders() });
-    }
-  
-    updateCustomer(id: string, data: any): Observable<any> {
-      return this.http.put<any[]>(`${environment.urlAdministration}/Customer/${id}`, data, { headers: this.trackingService.getHeaders() });
-    }
-  
-    deleteCustomer(id: number): Observable<any> {
-      return this.http.delete<any[]>(`${environment.urlAdministration}/Customer/${id}`, { headers: this.trackingService.getHeaders() });
-    }
+  // Clientes
 
-    // Clientes Créditos
+  getCustomers(id: number, type: string) {
+    //const apiUrl = `${environment.urlAdministration}/Customer/branch/${id}?type=${type}`;      
+    //alert(apiUrl)  
+    return this.http.get(`${environment.urlAdministration}/Customer/branch/${id}?type=${type}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getCustomersByCompany(branchIds: number[], type: string) {
+    const ids = branchIds.join(','); // Convertimos los IDs a una cadena separada por comas
+    const apiUrl = `${environment.urlAdministration}/Customer/company?branchIds=${encodeURIComponent(ids)}&type=${type}`;
+    return this.http.get(apiUrl, { headers: this.trackingService.getHeaders() });
+  }
+
+
+  addCustomer(data: any): Observable<any> {
+    return this.http.post(`${environment.urlAdministration}/Customer`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateCustomer(id: string, data: any): Observable<any> {
+    return this.http.put<any[]>(`${environment.urlAdministration}/Customer/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteCustomer(id: number): Observable<any> {
+    return this.http.delete<any[]>(`${environment.urlAdministration}/Customer/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  // Clientes Créditos
 
   getClientCredits(id: number) {
     return this.http.get(`${environment.urlAdministration}/CustomerCredits/Customer/${id}`, { headers: this.trackingService.getHeaders() });
@@ -58,5 +58,25 @@ export class CustomersService {
   deleteClientCredit(id: number): Observable<any> {
     return this.http.delete(`${environment.urlAdministration}/CustomerCredits/${id}`, { headers: this.trackingService.getHeaders() });
   }
+
+  // Detalles créditos
+  getDetailsCredits(id: number) {
+    return this.http.get(`${environment.urlAdministration}/PaymentsCreditsxCustomers/credit/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  addDetailCredit(data: any): Observable<any> {
+    return this.http.post(`${environment.urlAdministration}/PaymentsCreditsxCustomers`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateDetailCredit(id: number, data: any): Observable<any> {
+    return this.http.put(`${environment.urlAdministration}/PaymentsCreditsxCustomers/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteDetailCredit(id: number): Observable<any> {
+    return this.http.delete(`${environment.urlAdministration}/PaymentsCreditsxCustomers/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+
+
 
 }

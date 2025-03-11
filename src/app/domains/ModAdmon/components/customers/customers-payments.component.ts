@@ -22,7 +22,7 @@ export class CustomersPaymentsComponent {
 
   ngOnInit() {
     this.obtenerDatos();
-
+    this.getDetailedData();
   }
 
   constructor() {
@@ -70,60 +70,65 @@ export class CustomersPaymentsComponent {
   // Interceptar signals
   idClient = this.signalsService.getIdClient()();
   nameClient = this.signalsService.getNameClient()();
+  idCredit: number = 6;
 
   // Column Definitions: Defines the columns to be displayed.
 
-// Column Definitions: Defines the columns to be displayed.
-public gridOptions: any = {
-  headerHeight: 20,
-  rowHeight: 20,
-  rowClass: (params) => {
-    // Verificar si la fila está seleccionada
-    if (params.node.isSelected()) {
-      return 'selected-row';
-    }
-    return '';
-  },
-  onRowClicked: (event) => {
-    // Seleccionar la fila al hacer clic en cualquier celda
-    event.node.setSelected(true);
-  },
-  onRowSelected: (event) => {
-    // Deseleccionar otras filas cuando se selecciona una nueva
-    if (event.node.isSelected()) {
-      this.gridApi.forEachNode((node) => {
-        if (node.id !== event.node.id) {
-          node.setSelected(false);
-        }
-      });
-    }
-  },
-};
+  // Column Definitions: Defines the columns to be displayed.
+  public gridOptions: any = {
+    headerHeight: 20,
+    rowHeight: 20,
+    rowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onRowClicked: (event) => {
+      // Seleccionar la fila al hacer clic en cualquier celda
+      event.node.setSelected(true);
+    },
+    onRowSelected: (event) => {
+      // Deseleccionar otras filas cuando se selecciona una nueva
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    },
+  };
 
-private maestroGridApi: GridApi;
-private detalleGridApi: GridApi;
-detailNotSavedChanges: boolean = false;
-  
+  private maestroGridApi: GridApi;
+  private detalleGridApi: GridApi;
+  detailNotSavedChanges: boolean = false;
+
   get colMaster(): ColDef[] {
     return [
       { field: 'numberNote', headerName: 'Número de nota', editable: true, filter: true, width: 200 },
-      { field: 'date', headerName: 'Fecha', editable: true, filter: true, width: 200, 
+      {
+        field: 'date', headerName: 'Fecha', editable: true, filter: true, width: 200,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
           if (params.value) {
             return params.value.split('T')[0];
           }
           return '';
-        } },
-   
-      { field: 'total', headerName: 'Total de la Nota', editable: true, 
+        }
+      },
+
+      {
+        field: 'total', headerName: 'Total de la Nota', editable: true,
         valueFormatter: (params) => {
           return new Intl.NumberFormat('es-MX', {
             style: 'currency',
             currency: 'MXN',
           }).format(params.value || 0);
         },
-        width: 200 },
+        width: 200
+      },
       {
         field: 'account', headerName: 'Abono Cuenta', editable: true, filter: true, width: 200, cellDataType: 'number',
         cellEditorParams: {
@@ -137,7 +142,7 @@ detailNotSavedChanges: boolean = false;
 
     ]
   };
-  
+
   onDetalleGridReady(params: GridReadyEvent) {
     this.detalleGridApi = params.api;
   }
@@ -172,8 +177,8 @@ detailNotSavedChanges: boolean = false;
   detalleColumnDefs: ColDef[] = [
     {
       headerName: 'Fecha',
-      field: 'date',
-      valueGetter: (params) => params.data.date ? new Date(params.data.date) : null,
+      field: 'datePayment',
+      valueGetter: (params) => params.data.datePayment ? new Date(params.data.datePayment) : null,
       cellEditor: 'agDateCellEditor',
       cellEditorParams: {
         min: new Date(2000, 0, 1),
@@ -192,7 +197,7 @@ detailNotSavedChanges: boolean = false;
     {
       headerName: 'Abono *',
       headerClass: 'required-header',
-      field: 'total',
+      field: 'amount',
       valueFormatter: (params) => {
         return new Intl.NumberFormat('es-MX', {
           style: 'currency',
@@ -201,19 +206,26 @@ detailNotSavedChanges: boolean = false;
       },
       width: 180,
       editable: (params) => params.data?.__isNew === true
-    },
-    { 
-      headerName: 'Comentario', 
-      field: 'descripcion', 
-      width: 140,
-      editable: (params) => params.data?.__isNew === true
-    },
+    }
   ];
 
   obtenerDatos() {
     this.customersService.getClientCredits(this.idClient).subscribe((data: any) => {
       this.rowData = data;
     });
+  }
+
+  getDetailedData() {
+    this.customersService.getDetailsCredits(this.idCredit).subscribe(
+      (data: any) => {
+      this.detalleRowData = data;
+      console.log(this.detalleRowData);
+    },
+    (error) => {
+      this.detalleRowData = [];
+      console.error(error);
+     }
+  );
   }
 
   onSelectedRow(event: any) {
@@ -377,14 +389,14 @@ detailNotSavedChanges: boolean = false;
 
   revertDetail() {
     throw new Error('Method not implemented.');
-    }
-    saveDetailRow() {
+  }
+  saveDetailRow() {
     throw new Error('Method not implemented.');
-    }
-    addDetailRow() {
+  }
+  addDetailRow() {
     throw new Error('Method not implemented.');
-    }
-    
+  }
+
 
 }
 

@@ -28,10 +28,10 @@
                         </div>
                         <div class="row">
                             <div class="col-6 text-center">
-                                <button class="btn btn-success btn-lg" (click)="checkInOrOut('IN')">ENTRADA</button>
+                                <button class="btn btn-success btn-lg text-uppercase" (click)="checkInOrOut('IN')">Entrada</button>
                             </div>
                             <div class="col-6 text-center">
-                                <button class="btn btn-danger btn-lg" (click)="checkInOrOut('OUT')">SALIDA</button>
+                                <button class="btn btn-danger btn-lg text-uppercase" (click)="checkInOrOut('OUT')">Salida</button>
                             </div>
                         </div>
                     </div>
@@ -63,11 +63,38 @@
                         </div>
                         <div class="row mb-2">
                             <div class="col-6">Retardos:</div>
-                            <div class="col-6" id="retardos">
+                            <div id="retardos"[ngClass]="incidentData.Delays > 0 ? 'col-6 text-danger': 'col-6'"
+                                style="font-weight: bold; font-size: 1.5em">
+                                {{incidentData.Delays}}
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- Botón para abrir el modal -->
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#clockDbModal">
+            Abrir Clock DB
+        </button>
+
+        <!-- Modal -->
+        <div class="modal fade" id="clockDbModal" tabindex="-1" aria-labelledby="clockDbModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="clockDbModalLabel">Registro Entradas y Salidas</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- Aquí se carga el componente app-clock-db -->
+                        <app-clock-db #clockDb></app-clock-db>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+</div>

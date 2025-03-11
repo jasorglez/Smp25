@@ -21,7 +21,6 @@ import { concat, lastValueFrom, toArray } from 'rxjs';
 })
 
 export class DetailpayrollComponent {
-
   private signalsService = inject(SignalsService);
 
   defaultColDef = {
