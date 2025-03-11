@@ -39,11 +39,17 @@
       </div>
     </div>
 
-    <div class="tab-content" id="myTabContent">
-      <div class="tab-pane fade show active" id="loans" role="tabpanel" aria-labelledby="loans-tab" *ngIf="showPayrollDetailTab">
-        <app-detailpayroll></app-detailpayroll>
+    <div class="row">
+      <div class="col-12">
+        <div class="tab-content" id="myTabContent">
+          <div class="tab-pane fade show active" id="detailpayroll" role="tabpanel" aria-labelledby="detailpayroll-tab" *ngIf="showPayrollDetailTab">
+            <app-detailpayroll></app-detailpayroll>
+          </div>
+        </div>
+
       </div>
-    </div>
+
+
 
   <div *ngIf="isLoading" class="d-flex justify-content-center">
     <div class="spinner-border" role="status">

@@ -68,6 +68,7 @@ export class PayrollComponent implements OnInit {
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
   showPayrollDetailTab: boolean = false;
   gridHeight: string = '80vh';
+  DPAvailable: boolean = true;
 
   activatePayrollDetailTab() {
     this.showPayrollDetailTab = true;
@@ -94,7 +95,6 @@ export class PayrollComponent implements OnInit {
     return [
       { headerName: 'Fecha Inicio',
         field: 'startDate',
-        editable: true,
         valueGetter: (params) => params.data.startDate ? new Date(params.data.startDate) : null,
         cellRenderer: 'agDateCellRenderer',
         cellEditor: 'agDateCellEditor',
@@ -129,38 +129,34 @@ export class PayrollComponent implements OnInit {
           return '';
         },
         width: 170,
-        onCellDoubleClicked: (params: any) => this.mostrarDetalle(params)
        },
 
-      { field: 'totalBaseWorkingDays', headerName: 'Total Jornadas Base', editable: true, width: 170 },
+      { field: 'totalBaseWorkingHours', headerName: 'Total Jornadas Base', width: 170 },
 
-      { field: 'totalBaseExtraDays', headerName: 'Total Jornadas Extra', editable: true, width: 170, cellEditorParams: {
+      { field: 'totalBaseExtraHours', headerName: 'Total Jornadas Extra', width: 170, cellEditorParams: {
           maxLength: 15  }
       },
 
-      { field: 'totalSubtotal', headerName: 'Total Subtotal', editable: true, width: 140 },
+      { field: 'totalSubtotal', headerName: 'Total Subtotal', width: 140 },
 
-      { field: 'totalDescuentos', headerName: 'Total Descuentos', editable: true, width: 160 },
-      { field: 'total', headerName: 'Total', editable: true, width: 100 },
+      { field: 'totalDescuentos', headerName: 'Total Descuentos', width: 160 },
+      { field: 'total', headerName: 'Total', width: 100 },
       { headerName: 'Nóm Digital',
         field: 'NomDigital',
         width: 130,
         cellRenderer: (params) => {
           const button = document.createElement('button');
 
-          // Verifica la condición (puedes cambiarla por la lógica que necesites)
-          var ndAvailable = params.data.NDAvailable // true o false
+          this.DPAvailable = true;
 
-          ndAvailable = false;
-
-          button.innerHTML = ndAvailable ? '✅' : '❌'; // Palomita o cruz roja
+          button.innerHTML = this.DPAvailable ? '✅' : '❌'; // Palomita o cruz roja
           button.style.cursor = 'pointer';
           button.style.border = 'none';
           button.style.background = 'transparent';
           button.style.fontSize = '12px';
 
           button.addEventListener('click', () => {
-            //alert(`Estado en la fila ${params.node.rowIndex}: ${ndAvailable ? 'Disponible' : 'No disponible'}`);
+            alert(`Estado en la fila ${params.node.rowIndex}: ${this.DPAvailable ? 'Disponible' : 'No disponible'}`);
             // Aquí puedes ejecutar cualquier otra acción, como actualizar el estado
           });
 
@@ -171,30 +167,7 @@ export class PayrollComponent implements OnInit {
     ]
   };
 
-  onCellDoubleClicked(event: CellDoubleClickedEvent): void {
-    //alert("Holaaaaaaaaaaaaa");
-    const colId = event.column.getColId();
-    const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
-    const selectedId = selectedRowData.id; // Obtener el ID del registro
 
-    if (colId === 'NomDigital') {     // Filtrar el grid para mostrar solo el registro con el ID seleccionado
-      const filterModel = {
-        id: {
-          type: 'equals',
-          filter: selectedId,
-        },
-      };
-
-      this.gridApi.setFilterModel(filterModel);
-      this.gridApi.onFilterChanged();
-    }
-
-
-      this.activatePayrollDetailTab();
-
-    // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
-     this.selectedRowData = selectedRowData;
-  }
 
   onCellValueChanged(event: any) {
     console.log('Dato cambiado:', event.data);
@@ -227,7 +200,69 @@ public gridOptions: any = {
       });
     }
   },
+  onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
 };
+
+onCellDoubleClicked(event: CellDoubleClickedEvent): void {
+  //alert("Holaaaaaaaaaaaaa");
+  const colId = event.column.getColId();
+  const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
+  console.log("DOBLE CLICK", event.data);
+  console.log("DOBLE CLICK en columna", colId);
+
+  const selectedId = selectedRowData.id; // Obtener el ID del registro
+  console.log("el ID NORMAYPAYROLL ES", selectedId);
+
+
+  if (colId === 'NomDigital') {     // Filtrar el grid para mostrar solo el registro con el ID seleccionado
+    const filterModel = {
+      id: {
+        type: 'equals',
+        filter: selectedId,
+      },
+    };
+
+    this.gridApi.setFilterModel(filterModel);
+    this.gridApi.onFilterChanged();
+  }
+
+  this.activatePayrollDetailTab();
+
+  // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
+   this.selectedRowData = selectedRowData;
+}
+
+/*
+onCellDoubleClicked(event: CellDoubleClickedEvent): void {
+  const colId = event.column.getColId();
+  const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
+  const selectedId = selectedRowData.id; // Obtener el ID del registro
+
+  if (colId === 'loan' || colId === 'saving') {
+    // Filtrar el grid para mostrar solo el registro con el ID seleccionado
+    const filterModel = {
+      id: {
+        type: 'equals',
+        filter: selectedId,
+      },
+    };
+
+    this.gridApi.setFilterModel(filterModel);
+    this.gridApi.onFilterChanged();
+  }
+
+  if (colId === 'loan') {
+    this.activateLoansTab();
+  }
+
+  if (colId === 'saving') {
+    this.activateSavingsTab();
+  }
+
+  // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
+   this.selectedRowData = selectedRowData;
+}
+*/
 
   addRow() {
     const tempId = `temp_${this.tempIdCounter++}`;
