@@ -1,5 +1,5 @@
 import { RouterModule } from '@angular/router';
-import { Component, HostListener, inject, OnInit } from '@angular/core';
+import { Component, effect, HostListener, inject, OnInit } from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { PayrollService, PayrollData, EmployeePayroll } from '../../../../services/payroll.service';
 import { FormsModule } from '@angular/forms';
@@ -24,7 +24,7 @@ import { SignalsService } from 'app/services/signals.service';
     AgGridModule,
     FormsModule,
     DetailpayrollComponent
-],
+  ],
   templateUrl: './payroll.component.html',
   styleUrl: './payroll.component.scss'
 })
@@ -32,16 +32,19 @@ import { SignalsService } from 'app/services/signals.service';
 export class PayrollComponent implements OnInit {
 
   ngOnInit() {
-    //Called after the constructor, initializing input properties, and the first call to ngOnChanges.
-    //Add 'implements OnInit' to the class.
+    this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
     this.obtenerDatos();
   }
 
   obtenerDatos() {
-    this.administrationService.getNormalPayrolls().subscribe((data: any) => {
+    this.administrationService.getNormalPayrolls(this.idBranch).subscribe((data: any) => {
       this.rowData = data;
       console.log("--------------- esto llega en data: ", data);
-    });
+    },
+      (error) => {
+        this.rowData = [];
+        console.log("Error al obtener datos de normal payrolls: ", error);
+      });
   }
 
   private signalsService = inject(SignalsService);
@@ -60,6 +63,7 @@ export class PayrollComponent implements OnInit {
   private tempIdCounter: number = 0;
   newlyAddedRows: string[] = [];
   id: string;
+  idBranch: number;
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
   private modalServiceTable = inject(ModalService);
   selectedRowData: any = null;
@@ -92,7 +96,8 @@ export class PayrollComponent implements OnInit {
 
   get colMaster(): ColDef[] {
     return [
-      { headerName: 'Fecha Inicio',
+      {
+        headerName: 'Fecha Inicio',
         field: 'startDate',
         valueGetter: (params) => params.data.startDate ? new Date(params.data.startDate) : null,
         cellRenderer: 'agDateCellRenderer',
@@ -112,7 +117,8 @@ export class PayrollComponent implements OnInit {
         },
         width: 170
       },
-      { headerName: 'Fecha Fin',
+      {
+        headerName: 'Fecha Fin',
         field: 'endDate',
         valueGetter: (params) => params.data.endDate ? new Date(params.data.endDate) : null,
         cellRenderer: 'agDateCellRenderer',
@@ -128,19 +134,22 @@ export class PayrollComponent implements OnInit {
           return '';
         },
         width: 170,
-       },
+      },
 
       { field: 'totalBaseWorkingHours', headerName: 'Total Jornadas Base', width: 170 },
 
-      { field: 'totalBaseExtraHours', headerName: 'Total Jornadas Extra', width: 170, cellEditorParams: {
-          maxLength: 15  }
+      {
+        field: 'totalBaseExtraHours', headerName: 'Total Jornadas Extra', width: 170, cellEditorParams: {
+          maxLength: 15
+        }
       },
 
       { field: 'totalSubtotal', headerName: 'Total Subtotal', width: 140 },
 
       { field: 'totalDescuentos', headerName: 'Total Descuentos', width: 160 },
       { field: 'total', headerName: 'Total', width: 100 },
-      { headerName: 'Nóm Digital',
+      {
+        headerName: 'Nóm Digital',
         field: 'NomDigital',
         width: 130,
         cellRenderer: (params) => {
@@ -175,107 +184,107 @@ export class PayrollComponent implements OnInit {
   }
 
   // Column Definitions: Defines the columns to be displayed.
-public gridOptions: any = {
-  headerHeight: 30,
-  rowHeight: 30,
-  rowClass: (params) => {
-    // Verificar si la fila está seleccionada
-    if (params.node.isSelected()) {
-      return 'selected-row';
+  public gridOptions: any = {
+    headerHeight: 30,
+    rowHeight: 30,
+    rowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onRowClicked: (event) => {
+      // Seleccionar la fila al hacer clic en cualquier celda
+      event.node.setSelected(true);
+    },
+    onRowSelected: (event) => {
+      // Deseleccionar otras filas cuando se selecciona una nueva
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    },
+    onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
+  };
+
+  onCellDoubleClicked(event: CellDoubleClickedEvent): void {
+    //alert("Holaaaaaaaaaaaaa");
+    const colId = event.column.getColId();
+    const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
+    console.log("DOBLE CLICK", event.data);
+    console.log("DOBLE CLICK en columna", colId);
+
+    const selectedId = selectedRowData.id; // Obtener el ID del registro
+    this.signalsService.setNormalPayrollId(selectedId);
+    console.log("el ID NORMAYPAYROLL ES", selectedId);
+
+
+    if (colId === 'NomDigital') {     // Filtrar el grid para mostrar solo el registro con el ID seleccionado
+      const filterModel = {
+        id: {
+          type: 'equals',
+          filter: selectedId,
+        },
+      };
+
+      this.gridApi.setFilterModel(filterModel);
+      this.gridApi.onFilterChanged();
     }
-    return '';
-  },
-  onRowClicked: (event) => {
-    // Seleccionar la fila al hacer clic en cualquier celda
-    event.node.setSelected(true);
-  },
-  onRowSelected: (event) => {
-    // Deseleccionar otras filas cuando se selecciona una nueva
-    if (event.node.isSelected()) {
-      this.gridApi.forEachNode((node) => {
-        if (node.id !== event.node.id) {
-          node.setSelected(false);
-        }
-      });
+
+    this.activatePayrollDetailTab();
+
+    // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
+    this.selectedRowData = selectedRowData;
+  }
+
+  /*
+  onCellDoubleClicked(event: CellDoubleClickedEvent): void {
+    const colId = event.column.getColId();
+    const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
+    const selectedId = selectedRowData.id; // Obtener el ID del registro
+  
+    if (colId === 'loan' || colId === 'saving') {
+      // Filtrar el grid para mostrar solo el registro con el ID seleccionado
+      const filterModel = {
+        id: {
+          type: 'equals',
+          filter: selectedId,
+        },
+      };
+  
+      this.gridApi.setFilterModel(filterModel);
+      this.gridApi.onFilterChanged();
     }
-  },
-  onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
-};
-
-onCellDoubleClicked(event: CellDoubleClickedEvent): void {
-  //alert("Holaaaaaaaaaaaaa");
-  const colId = event.column.getColId();
-  const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
-  console.log("DOBLE CLICK", event.data);
-  console.log("DOBLE CLICK en columna", colId);
-
-  const selectedId = selectedRowData.id; // Obtener el ID del registro
-  this.signalsService.setNormalPayrollId(selectedId);
-  console.log("el ID NORMAYPAYROLL ES", selectedId);
-
-
-  if (colId === 'NomDigital') {     // Filtrar el grid para mostrar solo el registro con el ID seleccionado
-    const filterModel = {
-      id: {
-        type: 'equals',
-        filter: selectedId,
-      },
-    };
-
-    this.gridApi.setFilterModel(filterModel);
-    this.gridApi.onFilterChanged();
+  
+    if (colId === 'loan') {
+      this.activateLoansTab();
+    }
+  
+    if (colId === 'saving') {
+      this.activateSavingsTab();
+    }
+  
+    // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
+     this.selectedRowData = selectedRowData;
   }
-
-  this.activatePayrollDetailTab();
-
-  // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
-   this.selectedRowData = selectedRowData;
-}
-
-/*
-onCellDoubleClicked(event: CellDoubleClickedEvent): void {
-  const colId = event.column.getColId();
-  const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
-  const selectedId = selectedRowData.id; // Obtener el ID del registro
-
-  if (colId === 'loan' || colId === 'saving') {
-    // Filtrar el grid para mostrar solo el registro con el ID seleccionado
-    const filterModel = {
-      id: {
-        type: 'equals',
-        filter: selectedId,
-      },
-    };
-
-    this.gridApi.setFilterModel(filterModel);
-    this.gridApi.onFilterChanged();
-  }
-
-  if (colId === 'loan') {
-    this.activateLoansTab();
-  }
-
-  if (colId === 'saving') {
-    this.activateSavingsTab();
-  }
-
-  // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
-   this.selectedRowData = selectedRowData;
-}
-*/
+  */
 
   addRow() {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idBranch  : 1,
-      name      : '',
-      branch    : '',
-      numBranch : '',
-      contact   : '',
-      phone     : '',
-      picture   : '',
-      code      : '',
+      idBranch: 1,
+      name: '',
+      branch: '',
+      numBranch: '',
+      contact: '',
+      phone: '',
+      picture: '',
+      code: '',
       active: true,
       __isNew: true,
     };
@@ -380,7 +389,12 @@ onCellDoubleClicked(event: CellDoubleClickedEvent): void {
     filter: true
   };
 
-  constructor(private payrollService: PayrollService, private administrationService: AdministrationService) {}
+  constructor(private payrollService: PayrollService, private administrationService: AdministrationService) {
+    effect(() => {
+      this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      this.obtenerDatos();
+    });
+  }
 
   // Formateo de valores monetarios
   currencyFormatter(params: any) {
@@ -395,39 +409,7 @@ onCellDoubleClicked(event: CellDoubleClickedEvent): void {
     }).format(params.value);
   }
 
-  // Carga los datos desde el API
-  loadData(): void {
-    this.isLoading = true;
-
-    this.payrollService.getPayrolls().subscribe({
-      next: (data) => {
-        // Procesar los datos para obtener todos los empleados de todas las nóminas
-        let allEmployees: EmployeePayroll[] = [];
-
-        data.forEach(payroll => {
-          if (payroll.empleados && Array.isArray(payroll.empleados)) {
-            // Añadir información de la nómina a cada empleado
-            const employeesWithPayrollInfo = payroll.empleados.map(emp => ({
-              ...emp,
-              empresa: payroll.empresa,
-              periodo: payroll.periodo,
-              ejercicio: payroll.ejercicio
-            }));
-
-            allEmployees = [...allEmployees, ...employeesWithPayrollInfo];
-          }
-        });
-
-        this.rowData = allEmployees;
-        this.isLoading = false;
-      },
-      error: (error) => {
-        console.error('Error al obtener datos de nóminas:', error);
-        this.isLoading = false;
-        // Aquí podrías mostrar un mensaje de error
-      }
-    });
-  }
+  
 
   // Evento cuando el grid está listo
   onGridReady(params: GridReadyEvent): void {
@@ -447,7 +429,7 @@ onCellDoubleClicked(event: CellDoubleClickedEvent): void {
 
   // Método para refrescar los datos
   refreshData(): void {
-    this.loadData();
+    this.obtenerDatos();
   }
 
   onSelectedRow(event: any) {
@@ -469,8 +451,8 @@ onCellDoubleClicked(event: CellDoubleClickedEvent): void {
     this.gridHeight = '80vh'; // Reset to default height
     this.showPayrollDetailTab = false; // Ocultar la pestaña de detalle
     if (this.gridApi) {
-        this.gridApi.setFilterModel(null); // Limpiar filtros
-        this.gridApi.onFilterChanged(); // Aplicar cambios
+      this.gridApi.setFilterModel(null); // Limpiar filtros
+      this.gridApi.onFilterChanged(); // Aplicar cambios
     }
   }
 }
