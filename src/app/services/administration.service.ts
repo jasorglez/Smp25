@@ -104,11 +104,11 @@ export class AdministrationService {
 
   // Payroll
   getNormalPayrolls(){
-    return this.http.get(`${environment.urlLocalJG}/NormalPayrolls`);
+    return this.http.get(`${environment.urlAdministration}/NormalPayrolls`);
   }
 
   getEmployeesByNormalPayroll(id: number){
-    return this.http.get(`${environment.urlLocalJG}/EmployeesByNormalPayroll`);
+    return this.http.get(`${environment.urlAdministration}/EmployeesByNormalPayroll`);
   }
 
 }

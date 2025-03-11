@@ -126,7 +126,7 @@ export class ClockComponent {
   checkInOrOut(type: string) {
     this.clockService.getEmployeeInfo(this.employeeCode, this.clockPassword).subscribe({
       next: (data) => {
-        console.log(data);
+      console.log(data);
         this.getTimeAgain().subscribe(fecha => {
           console.log(fecha);
           const currentDay = this.currentDayName; // Obtener el día actual almacenado
@@ -259,7 +259,7 @@ export class ClockComponent {
       },
       error: (error) => {
         if (error.status === 404) {
-          alerts.basicAlert("Error", "Los datos proporcionados no son válidos", "error");
+        alerts.basicAlert("Error", "Los datos proporcionados no son válidos", "error");
         } else {
           console.error('Error en la solicitud:', error);
         }

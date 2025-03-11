@@ -38,34 +38,25 @@ export interface EmployeePayroll {
   providedIn: 'root'
 })
 export class PayrollService {
-  private apiUrl = 'http://localhost:5047/api/payroll';
+  //private apiUrl = 'http://localhost:5047/api/payroll';
 
   private apiURL = `${environment.urlAdministration}/payroll`;
   private apiURLJG = `${environment.urlAdministrationJG}/payroll`;
   private apiUrlLocalJG = `${environment.urlLocalJG}/payroll`;
   private apiUrlLocalJGEmployeesByPayroll = `${environment.urlLocalJG}/payroll`
 
-  //getEmployees(idBranch: number) {
-  //  return this.http.get(`${environment.urlAdministration}/Employee/branch/${idBranch}`, { headers: this.trackingService.getHeaders() });
-  //}
-
-  constructor() { }
 
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
   getPayrolls(): Observable<PayrollData[]> {
-    return this.http.get<PayrollData[]>(this.apiUrlLocalJG);
+    return this.http.get<PayrollData[]>(this.apiURL, { headers: this.trackingService.getHeaders() });
   }
 
   getEmployeesByPayroll(idPayroll: number): Observable<any> {
-    return this.http.get<EmployeePayroll[]>(this.apiURLJG);
+    return this.http.get<EmployeePayroll[]>(this.apiURL, { headers: this.trackingService.getHeaders() });
     //`${environment.urlAdministration}/LoansAndCredits/employee/${idEmployee}?Type=${type}`, {headers: this.trackingService.getHeaders()}
   }
-
-  //addEmployeeClock(data: any): Observable<any> {
-  //  return this.http.post(`${environment.urlAdministration}/EmployeesXClock`, data, { headers: this.trackingService.getHeaders() });
-  //}
 
   uploadPayrollData(data: any): Observable<any> {
     console.log("------------ UPLOADPAYROLLDATA() entrando al servicio payroll, la api original es: ", this.apiURLJG);
@@ -75,6 +66,10 @@ export class PayrollService {
     //console.log("------------ UPLOADPAYROLLDATA() saliendo del servicio payroll, la respuesta ORIGINAL es: ", x);
     //var x = this.http.post<any>(this.apiURL, data);
     //console.log("------------ UPLOADPAYROLLDATA() saliendo del servicio payroll, la respuesta VERDADERA es: ", x);
-    return this.http.post<any>(this.apiUrl, data);
+    return this.http.post<any>(this.apiURL, data);
+  }
+
+  getDetailsForNormalPayrolls(idPayroll: number): Observable<any> {
+    return this.http.get<any>(`${environment.urlAdministration}/NormalPayrolls/employees/${idPayroll}`, { headers: this.trackingService.getHeaders() });
   }
 }
