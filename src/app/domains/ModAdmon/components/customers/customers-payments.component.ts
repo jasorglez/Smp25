@@ -70,60 +70,65 @@ export class CustomersPaymentsComponent {
   // Interceptar signals
   idClient = this.signalsService.getIdClient()();
   nameClient = this.signalsService.getNameClient()();
+  idCredit: number = 6;
 
   // Column Definitions: Defines the columns to be displayed.
 
-// Column Definitions: Defines the columns to be displayed.
-public gridOptions: any = {
-  headerHeight: 20,
-  rowHeight: 20,
-  rowClass: (params) => {
-    // Verificar si la fila está seleccionada
-    if (params.node.isSelected()) {
-      return 'selected-row';
-    }
-    return '';
-  },
-  onRowClicked: (event) => {
-    // Seleccionar la fila al hacer clic en cualquier celda
-    event.node.setSelected(true);
-  },
-  onRowSelected: (event) => {
-    // Deseleccionar otras filas cuando se selecciona una nueva
-    if (event.node.isSelected()) {
-      this.gridApi.forEachNode((node) => {
-        if (node.id !== event.node.id) {
-          node.setSelected(false);
-        }
-      });
-    }
-  },
-};
+  // Column Definitions: Defines the columns to be displayed.
+  public gridOptions: any = {
+    headerHeight: 20,
+    rowHeight: 20,
+    rowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onRowClicked: (event) => {
+      // Seleccionar la fila al hacer clic en cualquier celda
+      event.node.setSelected(true);
+    },
+    onRowSelected: (event) => {
+      // Deseleccionar otras filas cuando se selecciona una nueva
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    },
+  };
 
-private maestroGridApi: GridApi;
-private detalleGridApi: GridApi;
-detailNotSavedChanges: boolean = false;
-  
+  private maestroGridApi: GridApi;
+  private detalleGridApi: GridApi;
+  detailNotSavedChanges: boolean = false;
+
   get colMaster(): ColDef[] {
     return [
       { field: 'numberNote', headerName: 'Número de nota', editable: true, filter: true, width: 200 },
-      { field: 'date', headerName: 'Fecha', editable: true, filter: true, width: 200, 
+      {
+        field: 'date', headerName: 'Fecha', editable: true, filter: true, width: 200,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
           if (params.value) {
             return params.value.split('T')[0];
           }
           return '';
-        } },
-   
-      { field: 'total', headerName: 'Total de la Nota', editable: true, 
+        }
+      },
+
+      {
+        field: 'total', headerName: 'Total de la Nota', editable: true,
         valueFormatter: (params) => {
           return new Intl.NumberFormat('es-MX', {
             style: 'currency',
             currency: 'MXN',
           }).format(params.value || 0);
         },
-        width: 200 },
+        width: 200
+      },
       {
         field: 'account', headerName: 'Abono Cuenta', editable: true, filter: true, width: 200, cellDataType: 'number',
         cellEditorParams: {
@@ -137,7 +142,7 @@ detailNotSavedChanges: boolean = false;
 
     ]
   };
-  
+
   onDetalleGridReady(params: GridReadyEvent) {
     this.detalleGridApi = params.api;
   }
@@ -202,9 +207,9 @@ detailNotSavedChanges: boolean = false;
       width: 180,
       editable: (params) => params.data?.__isNew === true
     },
-    { 
-      headerName: 'Comentario', 
-      field: 'descripcion', 
+    {
+      headerName: 'Comentario',
+      field: 'descripcion',
       width: 140,
       editable: (params) => params.data?.__isNew === true
     },
@@ -213,6 +218,12 @@ detailNotSavedChanges: boolean = false;
   obtenerDatos() {
     this.customersService.getClientCredits(this.idClient).subscribe((data: any) => {
       this.rowData = data;
+    });
+  }
+
+  getDetailedData() {
+    this.customersService.getDetailsCredits(this.idCredit).subscribe((data: any) => {
+      this.detalleRowData = data;
     });
   }
 
@@ -377,14 +388,14 @@ detailNotSavedChanges: boolean = false;
 
   revertDetail() {
     throw new Error('Method not implemented.');
-    }
-    saveDetailRow() {
+  }
+  saveDetailRow() {
     throw new Error('Method not implemented.');
-    }
-    addDetailRow() {
+  }
+  addDetailRow() {
     throw new Error('Method not implemented.');
-    }
-    
+  }
+
 
 }
 
