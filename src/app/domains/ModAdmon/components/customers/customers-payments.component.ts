@@ -22,7 +22,7 @@ export class CustomersPaymentsComponent {
 
   ngOnInit() {
     this.obtenerDatos();
-
+    this.getDetailedData();
   }
 
   constructor() {
@@ -177,8 +177,8 @@ export class CustomersPaymentsComponent {
   detalleColumnDefs: ColDef[] = [
     {
       headerName: 'Fecha',
-      field: 'date',
-      valueGetter: (params) => params.data.date ? new Date(params.data.date) : null,
+      field: 'datePayment',
+      valueGetter: (params) => params.data.datePayment ? new Date(params.data.datePayment) : null,
       cellEditor: 'agDateCellEditor',
       cellEditorParams: {
         min: new Date(2000, 0, 1),
@@ -197,7 +197,7 @@ export class CustomersPaymentsComponent {
     {
       headerName: 'Abono *',
       headerClass: 'required-header',
-      field: 'total',
+      field: 'amount',
       valueFormatter: (params) => {
         return new Intl.NumberFormat('es-MX', {
           style: 'currency',
@@ -206,13 +206,7 @@ export class CustomersPaymentsComponent {
       },
       width: 180,
       editable: (params) => params.data?.__isNew === true
-    },
-    {
-      headerName: 'Comentario',
-      field: 'descripcion',
-      width: 140,
-      editable: (params) => params.data?.__isNew === true
-    },
+    }
   ];
 
   obtenerDatos() {
@@ -222,9 +216,16 @@ export class CustomersPaymentsComponent {
   }
 
   getDetailedData() {
-    this.customersService.getDetailsCredits(this.idCredit).subscribe((data: any) => {
+    this.customersService.getDetailsCredits(this.idCredit).subscribe(
+      (data: any) => {
       this.detalleRowData = data;
-    });
+      console.log(this.detalleRowData);
+    },
+    (error) => {
+      this.detalleRowData = [];
+      console.error(error);
+     }
+  );
   }
 
   onSelectedRow(event: any) {
