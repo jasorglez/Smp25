@@ -455,6 +455,15 @@ export class SignalsService {
     this.updateIncAndExp.set(false);
   }
 
+  // Payrolls
+  private normalPayrollId = signal<number>(null);
+  setNormalPayrollId(id: number) {
+    this.normalPayrollId.set(id);
+  }
+  getNormalPayrollId() {
+    return this.normalPayrollId;
+  }
+
   /* Borramos todas las signals, tratar de poner esto a lo último.
   Si van a crear nuevas signals, recuerden introducir una señal
   null en deleteSignals() para que todas las signals se borren

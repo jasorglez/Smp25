@@ -1,7 +1,5 @@
 import { RouterModule } from '@angular/router';
 import { Component, HostListener, inject, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { HttpClientModule } from '@angular/common/http';
 import { AgGridModule } from 'ag-grid-angular';
 import { PayrollService, PayrollData, EmployeePayroll } from '../../../../services/payroll.service';
 import { FormsModule } from '@angular/forms';
@@ -15,6 +13,7 @@ import { ModalService } from 'app/services/modal.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { DetailpayrollComponent } from "./detailpayroll/detailpayroll.component";
+import { SignalsService } from 'app/services/signals.service';
 
 @Component({
   selector: 'app-payroll',
@@ -45,7 +44,7 @@ export class PayrollComponent implements OnInit {
     });
   }
 
-  //private administrationService = inject(AdministrationService);
+  private signalsService = inject(SignalsService);
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
@@ -211,6 +210,7 @@ onCellDoubleClicked(event: CellDoubleClickedEvent): void {
   console.log("DOBLE CLICK en columna", colId);
 
   const selectedId = selectedRowData.id; // Obtener el ID del registro
+  this.signalsService.setNormalPayrollId(selectedId);
   console.log("el ID NORMAYPAYROLL ES", selectedId);
 
 
@@ -463,6 +463,15 @@ onCellDoubleClicked(event: CellDoubleClickedEvent): void {
       delete cleanedData.id;
     }
     return cleanedData;
+  }
+
+  resetGridSize() {
+    this.gridHeight = '80vh'; // Reset to default height
+    this.showPayrollDetailTab = false; // Ocultar la pestaña de detalle
+    if (this.gridApi) {
+        this.gridApi.setFilterModel(null); // Limpiar filtros
+        this.gridApi.onFilterChanged(); // Aplicar cambios
+    }
   }
 }
 
