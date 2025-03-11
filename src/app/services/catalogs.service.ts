@@ -18,7 +18,7 @@ export class CatalogsService {
   }
 
   getPermissionxprocess(id: number): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/process-permission=${id}`, { headers: this.trackingService.getHeaders() });
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/process-permissions?idProcces=${id}`, { headers: this.trackingService.getHeaders() });
   }
 
 
@@ -62,10 +62,7 @@ export class CatalogsService {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog?type=TypeDocument`, { headers: this.trackingService.getHeaders() });
   }
 
-  deleteCatalog(id: number): Observable<any> {
-    return this.http.delete<any>(`${environment.urlWarehouse}/Catalog/${id}`, { headers: this.trackingService.getHeaders() });
-  }
-
+  
   addCatalog(catalog: any): Observable<any> {
     return this.http.post<any>(`${environment.urlWarehouse}/Catalog`, catalog, { headers: this.trackingService.getHeaders() });
   }
@@ -73,5 +70,15 @@ export class CatalogsService {
   updateCatalog(catalog: any): Observable<any> {
     return this.http.put<any>(`${environment.urlWarehouse}/Catalog/${catalog.id}`, catalog, { headers: this.trackingService.getHeaders() });  
   }
+
+  deleteCatalog(id: number): Observable<any> {
+    return this.http.delete<any>(`${environment.urlWarehouse}/Catalog/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+
+  updatePermission(catalog: any): Observable<any> {
+    return this.http.put<any>(`${environment.urlWarehouse}/Catalog/update-permission/${catalog.id}`, catalog, { headers: this.trackingService.getHeaders() });  
+  }
+
 
 }

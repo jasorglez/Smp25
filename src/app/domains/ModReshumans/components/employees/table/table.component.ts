@@ -698,7 +698,6 @@ export class EmployeesTableComponent {
     );
   }
 
-
   onMasterSelectionChanged(event: any) {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {

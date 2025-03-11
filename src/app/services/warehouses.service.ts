@@ -13,8 +13,8 @@ export class WarehousesService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
-  getWarehouses(idBranch: number) {
-    return this.http.get(`${environment.urlWarehouse}/Warehouse?idBranch=${idBranch}`, { headers: this.trackingService.getHeaders() });
+  getWarehouses(idRoot: number) {
+    return this.http.get(`${environment.urlWarehouse}/Warehouse?idBranch=${idRoot}`, { headers: this.trackingService.getHeaders() });
   }
 
   addWarehouse(data: any): Observable<any> {

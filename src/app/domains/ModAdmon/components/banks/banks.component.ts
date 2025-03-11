@@ -176,10 +176,7 @@ get colMaster(): ColDef[] {
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
   }
-
-
-
-  
+ 
 
   addRow() {
     const tempId = `temp_${this.tempIdCounter++}`;

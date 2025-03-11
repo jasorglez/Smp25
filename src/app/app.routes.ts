@@ -48,6 +48,7 @@ export const routes: Routes = [
             path: 'catalogs',
             loadComponent: () => import('./domains/Warehouse/components/catalogs/catalogs.component').then(r => r.EditFamiliesComponent)
           },
+          
           {
             path: 'setupwh',
             loadComponent: () => import('./domains/Warehouse/components/configwarehouse/configwarehouse.component').then(r => r.ConfigwarehouseComponent)
@@ -186,7 +187,10 @@ export const routes: Routes = [
             path: 'branches',
             loadComponent: () => import('./domains/SMP/Components/branches/branches.component').then(u => u.BranchesComponent)
           },
-
+          {
+            path: 'catalog',
+            loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then( c=> c.CatalogsComponent)
+          }
         ]
       },
 
