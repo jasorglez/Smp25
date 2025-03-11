@@ -12,6 +12,7 @@ export class SignalsService {
   /* Aquí se definen las signals para el sidebar */
 
   private rootSelectedBySidebar = signal<number | null>(null);
+  private Procces = signal<number | null>(null);
 
   setRootSelectedBySidebar(id: number) {
     this.rootSelectedBySidebar.set(id);
@@ -38,6 +39,14 @@ export class SignalsService {
 
   setBranchNameSelectedBySidebar(name: string) {
     this.branchNameSelectedBySidebar.set(name);
+  }
+
+  setProcces(id : number){
+    this.Procces.set(id);
+  }
+
+  getProcces(){
+    return this.Procces;
   }
 
   getBranchNameSelectedBySidebar() {

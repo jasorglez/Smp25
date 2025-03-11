@@ -186,7 +186,10 @@ export const routes: Routes = [
             path: 'branches',
             loadComponent: () => import('./domains/SMP/Components/branches/branches.component').then(u => u.BranchesComponent)
           },
-
+          {
+            path: 'catalog',
+            loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then( c=> c.CatalogsComponent)
+          }
         ]
       },
 

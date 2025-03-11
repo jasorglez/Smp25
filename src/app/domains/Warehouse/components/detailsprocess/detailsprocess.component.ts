@@ -7,6 +7,7 @@ import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererP
 import { alerts } from '../../../../helpers/alerts';
  
 import { AgGridModule } from 'ag-grid-angular';
+import { concat, lastValueFrom, toArray } from 'rxjs';
 
 @Component({
   selector: 'app-detailsprocess',
@@ -28,7 +29,7 @@ export class DetailsprocessComponent {
   selectedRowData: any = null;
   depto    : any[] = [];
   proceso  : any[] = [];
-  idRoot: number;
+  
   showDetailsTab: boolean = false;
 
   public rowSelection: 'single' | 'multiple' = 'single';
@@ -44,8 +45,6 @@ export class DetailsprocessComponent {
     }
 
    ngOnInit() {
-
-    this.idRoot = this.signalsService.getRootSelectedBySidebar()();
      this.getPermission();
   }
 
@@ -56,7 +55,7 @@ export class DetailsprocessComponent {
       { field: 'id', headerName: 'Id', editable: true, width: 185 },
   
       { field: 'description', headerName: 'Descripcion', editable: true, filter: true, width: 250 },
-      { field: 'idElection', headerName: 'Eleccion', editable: true, filter: true, width: 250 },
+      { field: 'select', headerName: 'Eleccion', editable: true, filter: true, width: 250 },
     ]
   };
 
@@ -66,9 +65,11 @@ export class DetailsprocessComponent {
       this.id = event.data.id;
     }
   
+    
     onCellValueChanged(event: any) {
       console.log('Dato cambiado:', event.data);
       event.data.__modified = true;
+      this.notSavedChanges  = true;
     }
   
     onGridReady(params: GridReadyEvent) {
@@ -78,7 +79,7 @@ export class DetailsprocessComponent {
     // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
     headerHeight: 30,
-    rowHeight: 30,
+    rowHeight: 25,
     rowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -129,10 +130,11 @@ export class DetailsprocessComponent {
     ///OPERATIONS DE LOS GRABADOS (CRUD)
 
     getPermission() {
-      this.catalogService.getCatalogs(this.idRoot,'DEPARTAMENT').subscribe(
+
+      this.catalogService.getPermissionxprocess(this.signalsService.getProcces()()).subscribe(
         (data: any) => {
           this.rowData = data;      
-          console.log('Data fetched:', this.depto);
+          console.log('Data fetched:', this.rowData);
         },
         (error) => {
           if (error.status == 404) this.depto = [];
@@ -142,20 +144,70 @@ export class DetailsprocessComponent {
   
     }
 
-    addRow() {
-  
+    private cleanDataForServer(data: any): any {
+      const cleanedData = { ...data };
+      delete cleanedData.__isNew;
+      delete cleanedData.__modified;
+      if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
+        delete cleanedData.id;
+      }
+      return cleanedData;
     }
-  
-    saveChanges() {
+
     
+    
+  // Operacioneas de los botones
+    async saveChanges() {
+          const isValid = this.rowData.every((item) => item.description);
+              if (!isValid) {
+                alerts.basicAlert(
+                  'Añadir entrada',
+                  'Debe llenar todos los campos antes de guardar.',
+                  'error'
+                );
+                return;
+              }
+
+             const modifiedRows = this.rowData.filter(
+                (row) => row.__modified && !row.__isNew
+              );
+
+        
+              const updateObservables = modifiedRows.map((row) => {
+                const cleanedData = this.cleanDataForServer(row);
+                console.log('Clean', cleanedData)
+                return this.catalogService.updatePermission(cleanedData);
+              });              
+
+              // Using concat to combine observables and lastValueFrom for async/await
+              try {
+                const responses = await lastValueFrom(
+                  concat(...updateObservables).pipe(toArray())
+                );
+                alerts.basicAlert(
+                  'Datos actualizados',
+                  'Se han actualizado los datos correctamente.',
+                  'success'
+                );
+                this.notSavedChanges = false;
+                this.newlyAddedRows = [];
+                this.getPermission(); // Refrescar los datos
+              } catch (error) {
+                console.error(error);
+                alerts.basicAlert(
+                  'Error',
+                  'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
+                  'error'
+                );
+              }
     }
   
+
     revert(){
-  
+      this.getPermission();
+      this.notSavedChanges = false;
     }
   
-    deleteEntry() {  
-    
-    }
+
   }
 
