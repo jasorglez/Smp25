@@ -1,17 +1,14 @@
 <div class="container-fluid mt-4 mb-4 light-blue-background">
       <div class="row">
         <div class="col-md-2">
-          <div class="form-group mt-2">
-            <label for="notificationChannels">Catalogos en el Proceso:</label>
-            <select id="table" name="nametable" class="form-control" (change)="onCatalogChange($event)">
-              <option value="CURRENCY">CURRENCY</option>
-              <option value="DEPARTAMENT">DEPARTAMENT</option>
-              <option value="FAMILY">FAMILY</option>
-              <option value="SUBFAMILY">SUBFAMILY</option>
-              <option value="MEASURE">MEASURE</option>
-              <option value="UBICATION">UBICATION</option>
-            </select>
-          </div>
+          
+          <select id="root" (change)="onCatalogChange($event)" class="form-control select-side" [value]="selectedCatalog || ''"
+          size="10" 
+          title="{{ 'select' | translate  }} {{ 'list' | translate  }} {{ ' ' | translate  }} {{ 'tables' | translate  }}"> >
+          <option selected value="" disabled>{{ 'Lista Tablas' | translate }}</option>
+          <option *ngFor="let item of table" [value]="item.name">{{ item.nameSpanish }}</option>
+        </select>               
+        
         </div>
         <div class="col-8">
           <div class="row">

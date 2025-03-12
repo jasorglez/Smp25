@@ -29,8 +29,7 @@
               [columnDefs]="colMaster"
               (selectionChanged)="onSelectionChanged($event)"
               [gridOptions]="gridOptions"
-              (cellValueChanged)="onCellValueChanged($event)"
-              
+              (cellValueChanged)="onCellValueChanged($event)"              
               (rowSelected)="onSelectedRow($event)"
               (gridReady)="onGridReady($event)"
               rowSelection="single"
@@ -40,13 +39,12 @@
           </div>
         </div>
       </div>
-  
-                  <div class="tab-content" id="myTabContent">
-                     <div class="tab-pane fade show active" id="loans" role="tabpanel" aria-labelledby="loans-tab" *ngIf="showDetailsTab">
-                         <app-detailsprocess></app-detailsprocess>
-                     </div>
-                 
-                   </div>
+            
+            <div class="tab-content" id="myTabContent">
+                <div class="tab-pane fade show active" id="loans" role="tabpanel" aria-labelledby="loans-tab" *ngIf="showDetailsTab">
+                    <app-detailsprocess></app-detailsprocess>
+                </div>        
+            </div>
   
   </div>
 </div>

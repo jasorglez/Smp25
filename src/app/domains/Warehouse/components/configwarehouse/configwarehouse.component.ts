@@ -26,11 +26,15 @@ import { CatalogsComponent } from 'app/domains/SMP/Components/catalogs/catalogs.
   styleUrl: './configwarehouse.component.scss'
 })
 export class ConfigwarehouseComponent {
+
   idRoot  : number;
   setup : any[] = [];
 
+  constructor() {}
+
     ngOnInit() {
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+      this.signalsService.setCatalogSelected('WAREHOUSE');
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();      
       this.obtenerDatos();
     }
   

@@ -1,8 +1,11 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject, Signal } from '@angular/core';
 import { CatalogsService } from 'app/services/catalogs.service';
+import { TablesxmodulesService } from 'app/services/tablesxmodules.service';
 import { SignalsService } from 'app/services/signals.service';
+
+import { TranslateModule } from '@ngx-translate/core';
 import { concat, lastValueFrom } from 'rxjs';
-import { toArray, tap } from 'rxjs/operators';
+import { toArray } from 'rxjs/operators';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 
@@ -10,31 +13,37 @@ import { ColDef, GridApi, GridReadyEvent, RowSelectedEvent } from 'ag-grid-enter
 import { AgGridModule } from 'ag-grid-angular';
 
 import { alerts } from '../../../../helpers/alerts';
+import { SharedModule } from 'app/shared/shared.module';
  
-
+//soriano
 @Component({
   selector: 'app-catalogs',
   standalone: true,
-  imports: [RouterModule, DomainsModule, AgGridModule],
+  imports: [RouterModule, DomainsModule, AgGridModule, SharedModule, TranslateModule],
   templateUrl: './catalogs.component.html',
   styleUrl: './catalogs.component.scss'
 })
 export class CatalogsComponent {
 
+  menuSelect : number ;
+  showWarehTab: Signal<boolean>;
+  showAdmonTab: Signal<boolean>;
+
   constructor() { }
 
-ngOnInit() {
+  ngOnInit() {
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-   // this.obtenerDatos();
-  }
+    this.obtenerTables() 
 
+  }
+  
   notSavedChanges: boolean = false;
   rowData: any;
-  contracts: { [key: string]: string } = {};
-  newlyAddedRows: string[] = [];
-  selectedRowData: any = null;
-  depto    : any[] = [];
   
+  newlyAddedRows  : string[] = [];
+  table           : any[] = [] ;
+  selectedRowData : any = null;
+ 
   idRoot: number;
   selectedCatalog: string; // Variable para almacenar e
   showDetailsTab: boolean = false;
@@ -46,6 +55,7 @@ ngOnInit() {
   currentIndex = 0;
   private catalogService = inject(CatalogsService);
   private signalsService = inject(SignalsService);
+  private tableService   = inject(TablesxmodulesService) ;
 
   public rowSelection: 'single' | 'multiple' = 'single';
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
@@ -55,14 +65,25 @@ ngOnInit() {
   onCatalogChange(event: Event) {
     const selectElement = event.target as HTMLSelectElement;
     this.selectedCatalog = selectElement.value; // Almacena el valor seleccionado
-    
+    //console.log('Catálogo seleccionado:', event.target.any;    
     this.obtenerDatos(); // Vuelve a ejecutar la consulta con el nuevo valor
   }
 
-  obtenerDatos() {
-    //alert(this.selectedCatalog)
-    //alert(this.idRoot)
+  obtenerTables(){
+    this.tableService.getTablesxmodules(this.signalsService.getCatalogSelected()).subscribe(
+      (data: any) => {
+        this.table = data;
+        console.log('Table:', this.table);
+      },
+      (error) => {
+        if (error.status == 404) this.table = [];
+        console.error('Error fetching data:', error);
+      }
+    );
+  }
 
+  obtenerDatos() {
+    //alert(this.selectedCatalog),   //alert(this.idRoot)
     this.catalogService.getCatalogs(this.idRoot, this.selectedCatalog).subscribe(
       (data: any) => {
         this.rowData = data;
@@ -80,8 +101,9 @@ ngOnInit() {
 
   get colMaster(): ColDef[] {
     return [
+      {field : 'id', headerName: 'Id', editable: true, filter: false, width: 90 },
       { field: 'description', headerName: 'Descripcion', editable: true, filter: true, width: 250 },
-      { field: 'valueAddition', headerName: 'Valor 1', editable: true, width: 185 },
+      { field: 'valueAddition', headerName: 'Valor 1', editable: false, width: 185 },
       { field: 'valueAddition2', headerName: 'Valor 2', editable: true, width: 185 },
       { field: 'parentId', headerName: 'Consecutivo', editable: true, width: 185 },
       { field: 'idElection', headerName: 'Select', editable: true, width: 185 },
