@@ -32,7 +32,7 @@ export class DetailpayrollComponent {
 
   public gridOptions: any = {
     headerHeight: 30,
-    rowHeight: 30
+    rowHeight: 20
   };
 
   rowData: any[] = [];
@@ -102,6 +102,7 @@ export class DetailpayrollComponent {
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
       }
     },
+    /*
     {
       headerName: 'Ahorros',
       width: 400,
@@ -109,7 +110,8 @@ export class DetailpayrollComponent {
       valueFormatter: (params) => {
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
       }
-    },
+    }
+    */
     {
       headerName: 'Total',
       width: 400,
