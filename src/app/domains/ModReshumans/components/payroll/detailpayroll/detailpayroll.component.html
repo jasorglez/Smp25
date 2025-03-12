@@ -1,9 +1,25 @@
-<ag-grid-angular
-    style="width: 100%; height: 50vh;"
+<div mt-5>
+  <ag-grid-angular
+    style="width: 75%; height: 75vh; margin-left: 70px; margin-top: 10px;"
     class="ag-theme-quartz small-text-ag-grid"
     [rowData]="rowData"
     [columnDefs]="columnDefs"
     [defaultColDef]="defaultColDef"
     (gridReady)="onGridReady($event)"
     [gridOptions]="gridOptions">
-</ag-grid-angular>
+  </ag-grid-angular>
+</div>
+
+<!--
+<div class="grid-container">
+  <ag-grid-angular
+      style="width: 750px; height: 80vh;"
+      class="ag-theme-quartz small-text-ag-grid"
+      [rowData]="rowData"
+      [columnDefs]="columnDefs"
+      [defaultColDef]="defaultColDef"
+      (gridReady)="onGridReady($event)"
+      [gridOptions]="gridOptions">
+  </ag-grid-angular>
+</div>
+-->
