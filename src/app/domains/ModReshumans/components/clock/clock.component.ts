@@ -282,7 +282,7 @@ export class ClockComponent {
       if (startDay === currentDay) {
         startPeriod = new Date(fechaDate); // Usar la fecha sin hora
         endPeriod = new Date(fechaDate);
-        endPeriod.setDate(endPeriod.getDate() + 7); // Hoy + 7 días
+        endPeriod.setDate(endPeriod.getDate() + 6); // Hoy + 7 días
       } else {
         // Obtener el último día correspondiente
         const today = new Date(fechaDate); // Usar la fecha sin hora
@@ -293,7 +293,7 @@ export class ClockComponent {
 
         // Calcular el siguiente día correspondiente
         endPeriod = new Date(startPeriod);
-        endPeriod.setDate(startPeriod.getDate() + 7); // Sábado siguiente
+        endPeriod.setDate(startPeriod.getDate() + 6); // Sábado siguiente
       }
 
       // Función para formatear la fecha en YYYY-MM-DD manteniendo la zona horaria local
