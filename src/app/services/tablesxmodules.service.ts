@@ -9,6 +9,8 @@ import { TrackingService } from './tracking.service';
 })
 export class TablesxmodulesService {
 
+  // lo construyo soriano
+
   constructor() { }
 
       private http = inject(HttpClient);
