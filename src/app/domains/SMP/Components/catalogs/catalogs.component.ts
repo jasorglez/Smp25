@@ -25,18 +25,6 @@ import { SharedModule } from 'app/shared/shared.module';
 })
 export class CatalogsComponent {
 
-  menuSelect : number ;
-  showWarehTab: Signal<boolean>;
-  showAdmonTab: Signal<boolean>;
-
-  constructor() { }
-
-  ngOnInit() {
-    this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-    this.obtenerTables() 
-
-  }
-  
   notSavedChanges: boolean = false;
   rowData: any;
   
@@ -52,6 +40,18 @@ export class CatalogsComponent {
   private tempIdCounter: number = 0;
   private gridApi: GridApi;
 
+  menuSelect : number ;
+  showWarehTab: Signal<boolean>;
+  showAdmonTab: Signal<boolean>;
+
+  constructor() { }
+
+  ngOnInit() {
+    this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+    this.obtenerTables() 
+
+  }
+  
   currentIndex = 0;
   private catalogService = inject(CatalogsService);
   private signalsService = inject(SignalsService);

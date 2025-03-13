@@ -189,7 +189,7 @@ public gridOptions: any = {
   private async loadAuthorizers() {
     forkJoin({
       permissions: this.usersxpermissionsService.getDataUsersxPermissions('root'),
-      allUsers: this.usersService.getDataUsers()
+      allUsers: this.usersService.getDataUsers(this.idRoot)
     }).subscribe({
       next: ({ permissions, allUsers }) => {
         // Manejo seguro de las respuestas

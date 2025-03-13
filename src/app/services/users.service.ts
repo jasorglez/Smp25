@@ -21,8 +21,8 @@ export class UsersService {
 
   // Aqui comienzan los cambios hechos a SMP
 
-  getDataUsers(): Observable<any> {
-    return this.http.get(`${environment.urlSecurity}/User/users`, { headers: this.trackingService.getHeaders() });
+  getDataUsers(idCompany: number): Observable<any> {
+    return this.http.get(`${environment.urlSecurity}/User/userdep?id=${idCompany}`, { headers: this.trackingService.getHeaders() });
   }
 
   getUserById(id: number): Observable<any> {

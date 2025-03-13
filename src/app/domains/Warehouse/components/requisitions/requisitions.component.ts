@@ -111,6 +111,7 @@ export class RequisitionsComponent {
   }
 
   ngOnInit() {
+    this.idRoot = this.signalsService.getRootSelectedBySidebar()();
     this.signalsService.deleteRequisitionData();
     this.obtenerDatos();
     this.obtenerDepartamentos();
@@ -346,7 +347,7 @@ public gridOptions: any = {
   }
 
   obtenerUsuarios() {
-    this.usersService.getDataUsers().subscribe(
+    this.usersService.getDataUsers(this.idRoot).subscribe(
       (response: any) => {
         this.usuarios = response.data;
       },

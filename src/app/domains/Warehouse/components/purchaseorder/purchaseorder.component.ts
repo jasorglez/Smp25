@@ -49,6 +49,7 @@ export class PurchaseOrderComponent {
   private materialsService = inject(MaterialsService);
 
   // Variables compartidas
+  
   masterNotSavedChanges: boolean = false;
   detailsNotSavedChanges: boolean = false;
   id: string = null;
@@ -111,6 +112,7 @@ export class PurchaseOrderComponent {
   }
 
   ngOnInit() {
+    this.idRoot = this.signalsService.getRootSelectedBySidebar()();
     this.signalsService.deleteRequisitionData();
     this.obtenerDatos();
     this.obtenerDepartamentos();
@@ -463,7 +465,7 @@ public masterGridOptions: any = {
   }
 
   obtenerUsuarios() {
-    this.usersService.getDataUsers().subscribe(
+    this.usersService.getDataUsers(this.idRoot).subscribe(
       (response: any) => {
         this.usuarios = response.data;
       },

@@ -34,6 +34,8 @@ import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/auto
 })
 export class UsersComponent {
 
+  idRoot: number;
+
   private usersService = inject(UsersService);
   private imageHandlerService = inject(ImageHandlerService);
   private usersxcompanysService = inject(UsersxpermissionsService);
@@ -57,8 +59,9 @@ export class UsersComponent {
   }
 
   ngOnInit() {
-    this.obtenerDepartamentos();
-    this.obtenerDatos();
+     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+     this.obtenerDepartamentos();
+     this.obtenerDatos();
   }
 
   components = {
@@ -80,7 +83,7 @@ export class UsersComponent {
   private tempIdCounter: number = 0;
 
   obtenerDatos() {
-    this.usersService.getDataUsers().subscribe({
+    this.usersService.getDataUsers(this.idRoot).subscribe({
       next: (response: any) => {
         if (response && response.code === 200 && response.data) {
           this.rowData = response.data.map((item: any) => {
@@ -330,6 +333,33 @@ public gridOptions: any = {
     }
   }
 
+
+  addRow() {
+    const tempId = `temp_${this.tempIdCounter++}`;
+    const newItem = {
+      id: tempId,
+      active: 1,
+      displayName: '',
+      country: '',
+      email: '',
+      password: '',
+      age: null,
+      id_company : this.idRoot,
+      idDepartament: 1,
+      phone: '',
+      position: '',
+      picture: './assets/img/profile.png',
+      signature: '',
+      allowWhatsapp: true,
+      __isNew: true
+    };
+
+    this.rowData = [newItem, ...this.rowData];
+    this.newlyAddedRows.push(tempId);
+    this.notSavedChanges = true;
+  }
+
+
   async saveChanges() {
     const isValid = this.rowData.every(
       (item) => item.displayName && item.email && item.password
@@ -349,6 +379,7 @@ public gridOptions: any = {
 
     const addObservables = newRows.map(row => {
       const cleanedData = this.cleanDataForServer(row);
+      console.log('this CleanedData', cleanedData)
       return this.usersService.addUser(cleanedData);
     });
 
@@ -378,29 +409,6 @@ public gridOptions: any = {
     }
   }
 
-  addRow() {
-    const tempId = `temp_${this.tempIdCounter++}`;
-    const newItem = {
-      id: tempId,
-      active: 1,
-      displayName: '',
-      country: '',
-      email: '',
-      password: '',
-      age: null,
-      idDepartament: 1,
-      phone: '',
-      position: '',
-      picture: './assets/img/profile.png',
-      signature: '',
-      allowWhatsapp: true,
-      __isNew: true
-    };
-
-    this.rowData = [newItem, ...this.rowData];
-    this.newlyAddedRows.push(tempId);
-    this.notSavedChanges = true;
-  }
 
   async deleteUser() {
     const selectedNodes = this.gridApi.getSelectedNodes();
