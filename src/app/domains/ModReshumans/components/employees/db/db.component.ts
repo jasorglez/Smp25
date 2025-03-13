@@ -115,7 +115,7 @@ export class DbComponent {
       if (startDay === currentDay) {
         startPeriod = new Date(fechaDate); // Usar la fecha sin hora
         endPeriod = new Date(fechaDate);
-        endPeriod.setDate(endPeriod.getDate() + 7); // Hoy + 7 días
+        endPeriod.setDate(endPeriod.getDate() + 6); // Hoy + 7 días
       } else {
         // Obtener el último día correspondiente
         const today = new Date(fechaDate); // Usar la fecha sin hora
@@ -126,7 +126,7 @@ export class DbComponent {
 
         // Calcular el siguiente día correspondiente
         endPeriod = new Date(startPeriod);
-        endPeriod.setDate(startPeriod.getDate() + 7); // Sábado siguiente
+        endPeriod.setDate(startPeriod.getDate() + 6); // Sábado siguiente
       }
 
       // Función para formatear la fecha en YYYY-MM-DD manteniendo la zona horaria local
@@ -157,7 +157,6 @@ export class DbComponent {
   private getCustomData(idEmployee: number, start: string, end: string) {
     // Convertir end a Date y sumar un día
     const endDate = new Date(end);
-    endDate.setDate(endDate.getDate() + 1); // Sumar un día
     const endDateFormatted = endDate.toISOString().split('T')[0]; // Formatear a YYYY-MM-DD
 
     // Llamar al servicio para verificar incidentes

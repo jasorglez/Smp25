@@ -124,8 +124,8 @@ export class EmployeesTableComponent {
         this.getHRSetup();
         this.getBanks();
         this.getHRSetup();   
-        this. getDeptoandPosition();
-           
+        this.getDeptoandPosition();
+        this.getStates();
       }
     });
   }
@@ -210,7 +210,7 @@ export class EmployeesTableComponent {
       },
       {
         field: 'employeeCode',
-        headerName: 'Código',
+        headerName: 'ID Empleado',
         editable: true,
         suppressMovable: true,
         filter: 'agSetColumnFilter',
@@ -502,13 +502,6 @@ export class EmployeesTableComponent {
         },
       },
       {
-        field: 'username',
-        headerName: 'Nombre de usuario',
-        editable: true,
-        filter: true,
-        width: 150,
-      },
-      {
         field: 'priceXHour',
         headerName: 'Precio por hora',
         editable: true,
@@ -751,7 +744,6 @@ export class EmployeesTableComponent {
       name: '',
       address: '',
       cp: '',
-      username: '',
       city: '',
       neighborhood: '',
       rfc: '',
