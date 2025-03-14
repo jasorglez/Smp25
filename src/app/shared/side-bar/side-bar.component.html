@@ -37,7 +37,7 @@
     </div>
 
     <ul class="nav flex-column">
-      <li class="nav-item">
+      <li class="nav-item" *ngIf="authService.hasMasterPermission('dashboard')">
         <a class="nav-link d-flex align-items-center" [routerLink]="['/dashboardgrales']" routerLinkActive="active-link"
           (click)="Dashboard()">
           <mat-icon>dashboard</mat-icon> {{ 'Dashboard' | translate }}
