@@ -69,6 +69,10 @@ export class PayrollService {
     return this.http.post<any>(this.apiURLJG, data);
   }
 
+  upLoadExcelFile(PayrollId: number, data: any): Observable<any> {
+    return this.http.post<any>(`${this.apiURLJG}/ExcelFile/${PayrollId}`, data);
+  }
+
   getDetailsForNormalPayrolls(idPayroll: number): Observable<any> {
     return this.http.get<any>(`${environment.urlAdministration}/NormalPayrolls/employees/${idPayroll}`, { headers: this.trackingService.getHeaders() });
   }

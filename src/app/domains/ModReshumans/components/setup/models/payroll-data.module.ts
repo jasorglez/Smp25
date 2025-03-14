@@ -8,4 +8,6 @@ export interface NominaData {
   periodo: string;
   ejercicio: string;
   empleados: Employee[];
+  archivo?: File;
+  archivoNombre?: string
 }

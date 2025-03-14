@@ -1,3 +1,4 @@
+import { Employee } from './../models/employee.model';
 import { CommonModule } from '@angular/common';
 import { Component, effect, inject } from '@angular/core';
 import { FormsModule, FormGroup } from '@angular/forms';
@@ -41,6 +42,9 @@ export class SetupBranchComponent {
   idBranch: number;
   banks: Bank[] = [];
   selectedBankId: number | null = null;
+  archivo: File;
+  formData = new FormData();
+  file: File;
 
   diasSemana = [
     'Lunes',
@@ -127,12 +131,21 @@ export class SetupBranchComponent {
     console.log("---------- SENDPAYROLLDATA() Datos a enviar con ID de banco --> ", this.jsonData);
     console.log("---------- SENDPAYROLLDATA() enviando datos de nómina con idBranch --> ", this.jsonData);
 
+
     this.payrollService.uploadPayrollData(this.jsonData).subscribe({
       next: (response) => {
         this.isLoading = true;
         alerts.basicAlert("Actualización", "Los datos fueron guardados exitosamente.", "success");
         console.log('-------------- uploadpayrollDATA() Respuesta del servidor servicio payroll:', response);
-        this.isLoading = false;
+        console.log("---------------justo antes de subir el uplodadexcel: ", this.formData);
+        this.payrollService.upLoadExcelFile(response, this.formData). subscribe({
+          next: (response) => {
+            this.isLoading = true;
+            alerts.basicAlert("Actualización", "El archivo excel fue subido exitosamente!", "success");
+            console.log('-------------- uploadpayrollDATA() Respuesta del servicio uploadexcelfile:', response);
+            this.resetForm();
+          }
+        });
         this.resetForm();
       },
       error: (error) => console.error('Error al enviar los datos:', error)
@@ -143,6 +156,8 @@ export class SetupBranchComponent {
     // Limpiar datos del archivo
     this.jsonData = null;
     this.fileName = '';
+    this.formData = null;
+    this.isLoading = false;
 
     // Limpiar el banco seleccionado
     //this.selectedBankId = null;
@@ -247,7 +262,12 @@ export class SetupBranchComponent {
 
     const file: File = files[0];
     this.fileName = file.name;
-    //console.log("nombre del archivo --> ", this.fileName);
+    this.file = file;
+    this.formData = new FormData();
+    this.formData.append('archivo', this.file);
+    console.log("nombre del archivo --> ", file);
+    console.log("contenido de formData: ", this.formData);
+
 
     // Verificamos que sea un archivo Excel
     if (!this.isExcelFile(file)) {
@@ -319,6 +339,8 @@ export class SetupBranchComponent {
       empresa: this.getCellValue(worksheet, 'B5') || '',
       periodo: this.getCellValue(worksheet, 'B6') || '',
       ejercicio: this.getCellValue(worksheet, 'B7') || '',
+      archivo: this.archivo,
+      archivoNombre: this.fileName,
       empleados: []
     };
 
