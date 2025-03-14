@@ -193,7 +193,11 @@ export class ClockComponent {
 
                   if (fechaDate <= entry1DatePlusTolerance) {
                     valid = true; // Dentro del tiempo de tolerancia
-                    if (fechaDate > entry1DatePlusDelay1 && discount1) {
+                    if(fechaDate > entry1DatePlusDelay2 && discount2) {
+                      const diffInMinutes = Math.floor((fechaDate.getTime() - entry1Date.getTime()) / (1000 * 60));
+                      minuteDiscount = Math.max(0, 60 - diffInMinutes); // Descuento máximo de 60 minutos
+                    }
+                    else if (fechaDate > entry1DatePlusDelay1 && discount1) {
                       const diffInMinutes = Math.floor((fechaDate.getTime() - entry1Date.getTime()) / (1000 * 60));
                       minuteDiscount = Math.max(0, 60 - diffInMinutes); // Descuento máximo de 60 minutos
                     }
@@ -211,9 +215,13 @@ export class ClockComponent {
                   const entry2DatePlusDelay2 = new Date(entry2Date);
                   entry2DatePlusDelay2.setMinutes(entry2Date.getMinutes() + delay2);
 
-                  if (fechaDate <= entry2DatePlusTolerance) {
-                    valid = true; // Dentro del tiempo de tolerancia
-                    if (fechaDate > entry2DatePlusDelay1 && discount2) {
+                  if (fechaDate <= entry2DatePlusTolerance && fechaDate >= new Date(entry2Date.getTime() - 2 * 60 * 60 * 1000)) {
+                    valid = true; // Dentro del tiempo de tolerancia y dentro de las 2 horas previas
+                    if(fechaDate > entry2DatePlusDelay2 && discount2) {
+                      const diffInMinutes = Math.floor((fechaDate.getTime() - entry1Date.getTime()) / (1000 * 60));
+                      minuteDiscount = Math.max(0, 60 - diffInMinutes); // Descuento máximo de 60 minutos
+                    }
+                    else if (fechaDate > entry2DatePlusDelay1 && discount1) {
                       const diffInMinutes = Math.floor((fechaDate.getTime() - entry2Date.getTime()) / (1000 * 60));
                       minuteDiscount = Math.max(0, 60 - diffInMinutes); // Descuento máximo de 60 minutos
                     }
