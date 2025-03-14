@@ -40,11 +40,29 @@ export class PayrollComponent implements OnInit {
     this.administrationService.getNormalPayrolls(this.idBranch).subscribe((data: any) => {
       this.rowData = data;
       console.log("--------------- esto llega en data: ", data);
+      console.log("--------------- este es el idbranch: ", this.idBranch);
     },
       (error) => {
         this.rowData = [];
         console.log("Error al obtener datos de normal payrolls: ", error);
       });
+  }
+
+  obtenerExistenciaDP(startDate, endDate, idBranch) {
+    this.administrationService.getDPPayrollsExistence(startDate, endDate, idBranch).
+      subscribe({
+        next: (payrollId) => {
+          console.log("-------------- PayrollId Recibido: ", payrollId);
+          if (payrollId !== 0) {
+            console.log(`Nómina encontrada con ID: ${payrollId}`);
+          } else {
+            console.log('No se encontró ninguna nómina.');
+          }
+        },
+        error: (error) => {
+          console.error('Error al obtener el PayrollId:', error);
+        }
+      })
   }
 
   private signalsService = inject(SignalsService);
@@ -61,7 +79,6 @@ export class PayrollComponent implements OnInit {
   datosDetalle: any = [];
   notSavedChanges: boolean = false;
   private tempIdCounter: number = 0;
-  newlyAddedRows: string[] = [];
   id: string;
   idBranch: number;
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
@@ -72,6 +89,9 @@ export class PayrollComponent implements OnInit {
   showPayrollDetailTab: boolean = false;
   gridHeight: string = '80vh';
   DPAvailable: boolean = true;
+  aggregatingRecord: boolean = false
+  initialDate: string;
+  endingDate: string;
 
   activatePayrollDetailTab() {
     this.showPayrollDetailTab = true;
@@ -99,40 +119,56 @@ export class PayrollComponent implements OnInit {
       {
         headerName: 'Fecha Inicio',
         field: 'startDate',
-        valueGetter: (params) => params.data.startDate ? new Date(params.data.startDate) : null,
+        editable: (params) => { return this.aggregatingRecord },
+
+
+        valueGetter: (params) => {
+          if (params.node.rowIndex == 0) {
+            console.log('Params completo:', params);
+            console.log('Datos de la fila:', params.data);
+            console.log('Valor de startDate:', params.data.startDate);
+          }
+
+          return params.data.startDate ? new Date(params.data.startDate) : null;
+        },
+
         cellRenderer: 'agDateCellRenderer',
+        /*
         cellEditor: 'agDateCellEditor',
         valueFormatter: (params) => {
           if (params.value) {
-            console.log("------- dentro de valueFormatter: ", params.value);
+            console.log("------- dentro de valueFormatter startDate: ", params.value);
             const date = new Date(params.value);
-            this.valorObtenido = `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
-            console.log("------- dentro de valueFormatter valorObtenido: ", this.valorObtenido);
-            return `${('0' + date.getDate()).slice(-2)}-${(
-              '0' +
-              (date.getMonth() + 1)
-            ).slice(-2)}-${date.getFullYear()}`;
+            this.initialDate = `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
+            console.log("------- dentro de valueFormatter startDate valorObtenido: ", this.initialDate);
+            return this.initialDate;
           }
           return '';
         },
+        */
         width: 170
       },
       {
         headerName: 'Fecha Fin',
         field: 'endDate',
+        editable: (params) => { return this.aggregatingRecord },
+
+        /*
         valueGetter: (params) => params.data.endDate ? new Date(params.data.endDate) : null,
         cellRenderer: 'agDateCellRenderer',
         cellEditor: 'agDateCellEditor',
         valueFormatter: (params) => {
           if (params.value) {
+            console.log("------- dentro de valueFormatter endDate: ", params.value);
+
             const date = new Date(params.value);
-            return `${('0' + date.getDate()).slice(-2)}-${(
-              '0' +
-              (date.getMonth() + 1)
-            ).slice(-2)}-${date.getFullYear()}`;
+            this.endingDate = `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
+            console.log("------- dentro de valueFormatter endDate valorObtenido: ", this.endingDate);
+            return this.endingDate;
           }
           return '';
         },
+        */
         width: 170,
       },
 
@@ -235,7 +271,9 @@ export class PayrollComponent implements OnInit {
       this.gridApi.onFilterChanged();
     }
 
-    this.activatePayrollDetailTab();
+    console.log("---------------- el valor de aggregatingrecord es: ", this.aggregatingRecord);
+    if (!this.aggregatingRecord)
+      this.activatePayrollDetailTab();
 
     // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
     this.selectedRowData = selectedRowData;
@@ -246,7 +284,7 @@ export class PayrollComponent implements OnInit {
     const colId = event.column.getColId();
     const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
     const selectedId = selectedRowData.id; // Obtener el ID del registro
-  
+
     if (colId === 'loan' || colId === 'saving') {
       // Filtrar el grid para mostrar solo el registro con el ID seleccionado
       const filterModel = {
@@ -255,74 +293,85 @@ export class PayrollComponent implements OnInit {
           filter: selectedId,
         },
       };
-  
+
       this.gridApi.setFilterModel(filterModel);
       this.gridApi.onFilterChanged();
     }
-  
+
     if (colId === 'loan') {
       this.activateLoansTab();
     }
-  
+
     if (colId === 'saving') {
       this.activateSavingsTab();
     }
-  
+
     // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
      this.selectedRowData = selectedRowData;
   }
   */
 
   addRow() {
-    const tempId = `temp_${this.tempIdCounter++}`;
+    console.log('---------------------- entrando a alta de nomina');
+    console.log("......... esto contiene rowdata: ", this.rowData);
+    //const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
-      id: tempId,
-      idBranch: 1,
-      name: '',
-      branch: '',
-      numBranch: '',
-      contact: '',
-      phone: '',
-      picture: '',
-      code: '',
+      //id: tempId,
+      idBranch: this.idBranch,
+      startDate: '',
+      endDate: '',
       active: true,
       __isNew: true,
     };
+    console.log(".....................  NUEVO ITEM:   ", newItem);
     this.rowData = [newItem, ...this.rowData];
-    this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
+    this.aggregatingRecord = true;
+    console.log("....................... rowData: ", this.rowData);
+    console.log("....................... newItem: ", newItem.idBranch);
+
   }
 
   async saveChanges() {
-    const isValid = this.rowData.every((item) => item.name && item.branch);
-    if (!isValid) {
+    console.log("----------------------------------- entrando a salvar cambios")
+    const isValid = this.rowData.every((item) => item.startDate && item.endDate && item.idBranch);
+    // llamar al servicio de verificacion de existencia de nomina digital
+
+    if (!isValid || this.rowData.startDate <= this.rowData.endDate) {
       alerts.basicAlert(
         'Añadir entrada',
-        'Debe llenar todos los campos antes de guardar.',
+        'Debe llenar correctamente las fechas de inicio y fin de la semana laborada antes de guardar.',
         'error'
       );
       return;
     }
 
     const newRows = this.rowData.filter((row) => row.__isNew);
+    console.log("----------------estos son los new rows: ", newRows);
     const modifiedRows = this.rowData.filter(
       (row) => row.__modified && !row.__isNew
     );
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.administrationService.addBanks(cleanedData);
+      console.log("-------------------- los datos cleaned son: ", cleanedData);
+      var resultado = this.administrationService.addNormalPayroll(cleanedData);
+      console.log("-------------------- el resultado del endpoint es: ", resultado);
+
+      return resultado;
     });
 
+    /*
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       return this.administrationService.updateBanks(row.id, cleanedData);
     });
+    */
 
     // Using concat to combine observables and lastValueFrom for async/await
     try {
       const responses = await lastValueFrom(
-        concat(...addObservables, ...updateObservables).pipe(toArray())
+        concat(...addObservables).pipe(toArray())
       );
       alerts.basicAlert(
         'Datos actualizados',
@@ -330,8 +379,9 @@ export class PayrollComponent implements OnInit {
         'success'
       );
       this.notSavedChanges = false;
-      this.newlyAddedRows = [];
+      this.aggregatingRecord = false;
       this.obtenerDatos(); // Refrescar los datos
+      this.resetGridSize();
     } catch (error) {
       console.error(error);
       alerts.basicAlert(
@@ -361,8 +411,6 @@ export class PayrollComponent implements OnInit {
   // Referencia al grid API
   private gridApi: any;
   private valorObtenido: any;
-
-
 
   // Definición de columnas para AG Grid
   columnDefs: ColDef[] = [
@@ -409,7 +457,7 @@ export class PayrollComponent implements OnInit {
     }).format(params.value);
   }
 
-  
+
 
   // Evento cuando el grid está listo
   onGridReady(params: GridReadyEvent): void {
@@ -429,7 +477,9 @@ export class PayrollComponent implements OnInit {
 
   // Método para refrescar los datos
   refreshData(): void {
+    this.aggregatingRecord = false;
     this.obtenerDatos();
+    this.resetGridSize();
   }
 
   onSelectedRow(event: any) {

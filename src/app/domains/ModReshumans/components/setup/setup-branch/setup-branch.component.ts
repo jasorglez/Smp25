@@ -325,12 +325,12 @@ export class SetupBranchComponent {
     // Obtenemos el rango de celdas
     const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:A1');
 
-    //console.log("rango de empleados", range);
+    console.log("rango de empleados", range);
 
     // Procesamos cada fila a partir de la fila 11 (donde comienzan los datos de empleados)
     for (let rowNum = 10; rowNum <= range.e.r; rowNum++) {
       const nombre = this.getCellValue(worksheet, `B${rowNum}`);
-      const codigoEmpleado = String(this.getCellValue(worksheet, `C${rowNum}`));
+      const idempleado = this.getNumericCellValue(worksheet, `C${rowNum}`);
 
       //console.log("fila", rowNum);
       //console.log("nombre del empleado", nombre);
@@ -340,11 +340,9 @@ export class SetupBranchComponent {
       // Verificar si un nombre tiene caracteres no alfabéticos o es muy corto
       if (!nombre || !/^[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s]+$/.test(nombre)) continue;
 
-      //
-
       const empleado = {
         nombre: nombre,
-        codigoEmpleado: codigoEmpleado,
+        idEmpleado: idempleado,
         diasTrabajados: this.getNumericCellValue(worksheet, `D${rowNum}`),
         salarioDiarioIntegrado: this.getNumericCellValue(worksheet, `E${rowNum}`),
         salarioDiario: this.getNumericCellValue(worksheet, `F${rowNum}`),
