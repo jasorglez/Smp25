@@ -26,7 +26,18 @@ export class SetupService {
     updateWarehouse(id: string, data: any): Observable<any> {
       return this.http.put<any[]>(`${environment.urlAdministration}/Bank/${id}`, data, { headers: this.trackingService.getHeaders() });
     }
-  
+
+    getWarehouseSetup(idCompany: number): Observable<any> {
+      return this.http.get<any[]>(`${environment.urlWarehouse}/Setup/company/${idCompany}`, { headers: this.trackingService.getHeaders() });
+    }
+
+    addWarehouseSetup(data: any): Observable<any> {
+      return this.http.post(`${environment.urlWarehouse}/Setup`, data, { headers: this.trackingService.getHeaders() });
+    }
+
+    updateWarehouseSetup(idCompany: number, data: any): Observable<any> {
+      return this.http.put<any[]>(`${environment.urlWarehouse}/Setup/company/${idCompany}`, data, { headers: this.trackingService.getHeaders() });
+    }
     
 
 // Setup PV

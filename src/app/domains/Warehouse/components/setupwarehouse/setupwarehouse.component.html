@@ -5,12 +5,12 @@
                     <label>Ver Requisiciones por:</label>
                     
                     <div>
-                        <input type="radio" id="project" name="selection" value="project">
+                        <input type="radio" id="project" name="projectOrBranch" [(ngModel)]="warehouseSetup.projectOrBranch" [value]="true">
                         <label for="project"> Proyectos</label>
                     </div>
 
                     <div>
-                        <input type="radio" id="branch" name="selection" value="branch">
+                        <input type="radio" id="branch" name="projectOrBranch" [(ngModel)]="warehouseSetup.projectOrBranch" [value]="false">
                         <label for="branch">Sucursales</label>
                     </div>
 
@@ -44,7 +44,12 @@
                         </div>
                     </div>
                 </div>
-
+                <div class="mt-4 text-end">
+                    <button type="button" class="btn btn-primary me-2" (click)="saveData()"><i
+                            class="fas fa-save me-2"></i>Guardar</button>
+                    <button type="button" class="btn btn-secondary" (click)="revertChanges()"><i
+                            class="fas fa-times me-2"></i>Cancelar</button>
+                </div>
             </div>
         </div>
 </div>

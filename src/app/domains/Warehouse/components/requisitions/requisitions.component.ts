@@ -16,6 +16,7 @@ import { ModalService } from 'app/services/modal.service';
 import { ReceiptsService } from 'app/services/receipts.service';
 import { UsersService } from 'app/services/users.service';
 import { MaterialsService } from 'app/services/materials.service';
+import { SetupService } from 'app/services/setup.service';
 
 interface Catalog {
   id: number;
@@ -48,6 +49,7 @@ export class RequisitionsComponent {
   private receiptsService = inject(ReceiptsService);
   private usersService = inject(UsersService);
   private materialsService = inject(MaterialsService);
+  private setupService = inject(SetupService);
 
   // Variables compartidas
   masterNotSavedChanges: boolean = false;
@@ -60,12 +62,13 @@ export class RequisitionsComponent {
   private detailsGridApi: GridApi;
   private gridApi: GridApi;
   idRoot: number = null;
+  projectOrBranch: boolean = null; // True = Project, False = Branch
 
   // Variables Master
   masterRowData: any[] = [];
   masterSelectedRowData: any = null;
   newlyAddedMasterRows: string[] = [];
-  
+
   // Catálogos Master
   requisiciones: any[] = [];
   proveedores: any[] = [];
@@ -79,7 +82,7 @@ export class RequisitionsComponent {
   detailsRowData: any[] = [];
   detailsSelectedRowData: any = null;
   newlyAddedDetailRows: string[] = [];
-  
+
   // Catálogos Details
   productos: any[] = [];
 
@@ -95,13 +98,14 @@ export class RequisitionsComponent {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idProject = this.signalsService.getProjectSelectedBySidebar()();
       this.idRequisition = this.signalsService.getIdRequisition()();
-
+      this.getSetupData();
       if (this.idProject == null) {
         this.masterRowData = [];
         alerts.basicAlert('Requisiciones', 'Debe elegir un proyecto primero.', 'error');
       } else {
         this.obtenerDatos();
         this.obtenerProductos();
+        
       }
 
       if (this.idRequisition != null) {
@@ -120,6 +124,7 @@ export class RequisitionsComponent {
     this.obtenerProveedores();
     this.obtenerTipoPago();
     this.obtenerProductos();
+    this.getSetupData();
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -132,33 +137,48 @@ export class RequisitionsComponent {
 
   nameRequisition = this.signalsService.getRequisitionName();
 
-// Column Definitions: Defines the columns to be displayed.
-public gridOptions: any = {
-  headerHeight: 30,
-  rowHeight: 30,
-  rowClass: (params) => {
-    // Verificar si la fila está seleccionada
-    if (params.node.isSelected()) {
-      return 'selected-row';
-    }
-    return '';
-  },
-  onRowClicked: (event) => {
-    // Seleccionar la fila al hacer clic en cualquier celda
-    event.node.setSelected(true);
-  },
-  onRowSelected: (event) => {
-    // Corregir usando el api del evento y verificando existencia
-    if (event.node.isSelected() && event.api) {
-      event.api.forEachNode((node) => {
-        if (node.id !== event.node.id) {
-          node.setSelected(false);
+  // Column Definitions: Defines the columns to be displayed.
+  public gridOptions: any = {
+    headerHeight: 30,
+    rowHeight: 30,
+    rowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onRowClicked: (event) => {
+      // Seleccionar la fila al hacer clic en cualquier celda
+      event.node.setSelected(true);
+    },
+    onRowSelected: (event) => {
+      // Corregir usando el api del evento y verificando existencia
+      if (event.node.isSelected() && event.api) {
+        event.api.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    },
+  };
+
+  getSetupData() {
+    this.setupService.getWarehouseSetup(this.idRoot).subscribe({
+      next: (data: any) => {
+        this.projectOrBranch = data[0].projectOrBranch; // True = Project, False = Branch
+        console.log(this.projectOrBranch);
+      },
+      error: (err) => {
+        if (err.status === 404) {
+          console.error(err);
+          alerts.basicAlert('Requisiciones', 'No se encontró la configuración de almacenes de la empresa.', 'error');
         }
-      });
-    }
-  },
-};
-  
+      }
+    });
+  }
+
   get colMaster(): ColDef[] {
     return [
       { field: 'folio', headerName: 'Número Doc', editable: true, filter: true, width: 150 },
@@ -176,8 +196,8 @@ public gridOptions: any = {
         }
       },
       { field: 'delivery', headerName: 'Identificador', editable: true, filter: true, width: 150 },
-      
-      { 
+
+      {
         field: 'idDepartament', headerName: 'Departamento Solicita', editable: true, width: 180, cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.departamentos ? this.departamentos.map(item => item.id) : [],
@@ -242,8 +262,9 @@ public gridOptions: any = {
       },
       { field: 'conditions', headerName: 'Condición', editable: true, width: 150 },
       { field: 'priority', headerName: 'Prioridad', editable: true, width: 150 },
-     
-      { field: 'comments', headerName: 'Comentario', editable: false, width: 150, cellEditor: 'agPopupTextCellEditor',
+
+      {
+        field: 'comments', headerName: 'Comentario', editable: false, width: 150, cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
           cols: 50,
@@ -267,7 +288,8 @@ public gridOptions: any = {
             return params.value;
           }
           return params.value;
-        } },
+        }
+      },
     ]
   };
 
@@ -298,7 +320,8 @@ public gridOptions: any = {
           return '';
         }
       },
-      { field: 'comment', headerName: 'Comentarios', editable: false, filter: true, flex: 2, cellEditor: 'agPopupTextCellEditor',
+      {
+        field: 'comment', headerName: 'Comentarios', editable: false, filter: true, flex: 2, cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
           cols: 50,
@@ -322,7 +345,8 @@ public gridOptions: any = {
             return params.value;
           }
           return params.value;
-        }},
+        }
+      },
     ]
   };
 
@@ -396,7 +420,7 @@ public gridOptions: any = {
       // Crear una copia profunda del dato seleccionado
       this.masterSelectedRowData = { ...selectedNodes[0].data };
       this.detailsNotSavedChanges = false;
-      
+
       // Solo actualizar las señales si no es una fila nueva
       if (!this.newlyAddedMasterRows.includes(this.masterSelectedRowData.id)) {
         this.signalsService.setIdRequisition(this.masterSelectedRowData.id);
@@ -412,17 +436,17 @@ public gridOptions: any = {
 
   onMasterCellValueChanged(event: any) {
     const updatedData = { ...event.data };
-    
+
     // Preservar el estado temporal y la selección
     if (this.newlyAddedMasterRows.includes(updatedData.id)) {
       updatedData.__isNew = true;
     }
-    
+
     updatedData.__modified = true;
     this.masterNotSavedChanges = true;
 
     // Actualizar el array de datos
-    this.masterRowData = this.masterRowData.map(row => 
+    this.masterRowData = this.masterRowData.map(row =>
       row.id === updatedData.id ? updatedData : row
     );
 
@@ -477,7 +501,7 @@ public gridOptions: any = {
 
     // Forzar la actualización de la cuadrícula y seleccionar la nueva fila
     this.masterGridApi.setGridOption("rowData", this.masterRowData);
-    
+
     // Asegurarnos de que la fila nueva esté seleccionada
     requestAnimationFrame(() => {
       const rowNode = this.masterGridApi.getRowNode(tempId);
@@ -591,7 +615,7 @@ public gridOptions: any = {
     this.receiptsService.generateOC(idRequisition, action);
   }
 
- 
+
 
   // ==================== DETAILS METHODS ====================
 
