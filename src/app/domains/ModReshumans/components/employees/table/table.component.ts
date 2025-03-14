@@ -187,7 +187,7 @@ export class EmployeesTableComponent {
 
   get colMaster(): ColDef[] {
     return [
-      { field: 'id', headerName: 'Id', editable: false, width: 53, hide : false,
+      { field: 'id', headerName: 'Id', editable: false, width: 70, hide : false,
         filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
         filterParams: {
               filterOptions: ['equals'], // Opciones de filtro
@@ -207,44 +207,6 @@ export class EmployeesTableComponent {
         },
         editable: false,
         width: 100,
-      },
-      {
-        field: 'employeeCode',
-        headerName: 'ID Empleado',
-        editable: true,
-        suppressMovable: true,
-        filter: 'agSetColumnFilter',
-        filterParams: {
-          // can be 'windows' or 'mac'
-          excelMode: 'windows',
-        },
-        width: 130,
-        cellEditor: 'autocompleteEditor',
-        cellEditorParams: {
-          filterList: this.rowData.map((e) => e.employeeCode),
-          filterKey: 'employeeCode',
-          placeholder: 'Código de empleado',
-          minLength: 1,
-        },
-        valueSetter: (params) => {
-          const duplicateExists = this.rowData.some(
-            (row, index) =>
-              index !== params.node.rowIndex &&
-              row.employeeCode === params.newValue
-          );
-
-          if (duplicateExists) {
-            alerts.basicAlert(
-              'Código duplicado',
-              'Ya existe un empleado con ese código.',
-              'error'
-            );
-            return false;
-          }
-
-          params.data[params.colDef.field] = params.newValue;
-          return true;
-        },
       },
       {
         field: 'name',
@@ -294,6 +256,67 @@ export class EmployeesTableComponent {
         },
       },
       {
+        field: 'email',
+        headerName: 'Correo electrónico',
+        cellEditor: 'agTextCellEditor',
+        editable: true,
+        cellEditorParams: {
+          useFormatter: true,
+        },
+        valueFormatter: (params) => params.value,
+        valueSetter: (params) => {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (emailRegex.test(params.newValue)) {
+            const duplicateExists = this.rowData.some(
+              (row, index) =>
+                index !== params.node.rowIndex && row.email === params.newValue
+            );
+
+            if (duplicateExists) {
+              alerts.basicAlert(
+                'Email duplicado',
+                'Ya existe un empleado con ese correo electrónico.',
+                'error'
+              );
+              return false;
+            }
+
+            params.data[params.colDef.field] = params.newValue;
+            return true;
+          } else {
+            alerts.basicAlert(
+              'Email inválido',
+              'Formato de correo electrónico no válido.',
+              'error'
+            );
+            return false;
+          }
+        },
+        filter: true,
+      },
+      {
+        field: 'clockPassword',
+        headerName: 'Contraseña Reloj',
+        width: 100,
+        editable: false,
+        cellRenderer: (params: ICellRendererParams) => {
+          // Mostrar valor real para nuevas filas, ocultar para existentes
+          if (params.data.id.toString().startsWith('temp_')) {
+            return params.value;
+          }
+          return '••••'; // Mostrar puntos para contraseñas existentes
+        },
+        onCellDoubleClicked: (params: CellDoubleClickedEvent) => {
+          if (!params.data.id.toString().startsWith('temp_')) {
+            alerts.basicAlert(
+              'Contraseña Reloj',
+              `La contraseña es: ${params.data.clockPassword}`,
+              'info'
+            );
+          }
+        },
+      },
+      {
         field: 'loan',
         headerName: 'Préstamos',
         editable: false,
@@ -325,28 +348,6 @@ export class EmployeesTableComponent {
             }).format(params.value);
           }
           return '$0.00';
-        },
-      },
-      {
-        field: 'clockPassword',
-        headerName: 'Contraseña Reloj',
-        width: 100,
-        editable: false,
-        cellRenderer: (params: ICellRendererParams) => {
-          // Mostrar valor real para nuevas filas, ocultar para existentes
-          if (params.data.id.toString().startsWith('temp_')) {
-            return params.value;
-          }
-          return '••••'; // Mostrar puntos para contraseñas existentes
-        },
-        onCellDoubleClicked: (params: CellDoubleClickedEvent) => {
-          if (!params.data.id.toString().startsWith('temp_')) {
-            alerts.basicAlert(
-              'Contraseña Reloj',
-              `La contraseña es: ${params.data.clockPassword}`,
-              'info'
-            );
-          }
         },
       },
       {
@@ -475,6 +476,21 @@ export class EmployeesTableComponent {
         editable: true,
         filter: true,
         width: 150,
+        valueSetter: (params) => {
+          const phoneValue = params.newValue;
+          // Verificar que el número tenga exactamente 10 dígitos y sea numérico
+          const isValidPhone = /^\d{10}$/.test(phoneValue);
+          if (!isValidPhone) {
+            alerts.basicAlert(
+              'Teléfono inválido',
+              'El teléfono debe contener exactamente 10 dígitos numéricos.',
+              'error'
+            );
+            return false; // No se permite el cambio
+          }
+          params.data[params.colDef.field] = phoneValue;
+          return true;
+        },
       },
       {
         field: 'idPosition',
@@ -569,46 +585,7 @@ export class EmployeesTableComponent {
         editable: true,
         filter: true,
         width: 150,
-      },
-      {
-        field: 'email',
-        headerName: 'Correo electrónico',
-        cellEditor: 'agTextCellEditor',
-        editable: true,
-        cellEditorParams: {
-          useFormatter: true,
-        },
-        valueFormatter: (params) => params.value,
-        valueSetter: (params) => {
-          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-          if (emailRegex.test(params.newValue)) {
-            const duplicateExists = this.rowData.some(
-              (row, index) =>
-                index !== params.node.rowIndex && row.email === params.newValue
-            );
-
-            if (duplicateExists) {
-              alerts.basicAlert(
-                'Email duplicado',
-                'Ya existe un empleado con ese correo electrónico.',
-                'error'
-              );
-              return false;
-            }
-
-            params.data[params.colDef.field] = params.newValue;
-            return true;
-          } else {
-            alerts.basicAlert(
-              'Email inválido',
-              'Formato de correo electrónico no válido.',
-              'error'
-            );
-            return false;
-          }
-        },
-        filter: true,
-      },
+      }
     ];
   }
 
