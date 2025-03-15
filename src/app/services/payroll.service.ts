@@ -41,7 +41,7 @@ export class PayrollService {
   //private apiUrl = 'http://localhost:5047/api/payroll';
 
   private apiURL = `${environment.urlAdministration}/payroll`;
-  private apiURLJG = `${environment.urlAdministrationJG}/payroll`;
+  private apiURLJG = `${environment.urlLocalJG}/payroll`;
   private apiUrlLocalJG = `${environment.urlLocalJG}/payroll`;
   private apiUrlLocalJGEmployeesByPayroll = `${environment.urlLocalJG}/payroll`
 
@@ -66,7 +66,11 @@ export class PayrollService {
     //console.log("------------ UPLOADPAYROLLDATA() saliendo del servicio payroll, la respuesta ORIGINAL es: ", x);
     //var x = this.http.post<any>(this.apiURL, data);
     //console.log("------------ UPLOADPAYROLLDATA() saliendo del servicio payroll, la respuesta VERDADERA es: ", x);
-    return this.http.post<any>(this.apiURL, data);
+    return this.http.post<any>(this.apiURLJG, data);
+  }
+
+  upLoadExcelFile(PayrollId: number, data: any): Observable<any> {
+    return this.http.post<any>(`${this.apiURLJG}/ExcelFile/${PayrollId}`, data);
   }
 
   getDetailsForNormalPayrolls(idPayroll: number): Observable<any> {

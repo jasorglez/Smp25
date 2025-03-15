@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { environment } from '@env/environment';
 import { Observable } from 'rxjs';
@@ -7,6 +7,7 @@ import { TrackingService } from './tracking.service';
 @Injectable({
   providedIn: 'root'
 })
+
 export class AdministrationService {
 
   private http = inject(HttpClient);
@@ -34,7 +35,6 @@ export class AdministrationService {
     return this.http.delete<any[]>(`${environment.urlAdministration}/Bank/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
-
   // Cuentas Bancos
   getAccountBanks(idRoot: number): Observable<any> {
     //const apiUrl = `${environment.urlAdministration}/AccountBanks/Bussines/${idRoot}`;
@@ -58,7 +58,6 @@ export class AdministrationService {
   getBalance(idAccount: number) {
     return this.http.get(`${environment.urlAdministration}/Incomeandexpense/Bussines/balance?id=${idAccount}`, { headers: this.trackingService.getHeaders() });
   }
-
 
   // Setup Puestos
   getSetupManagementInfo(idRoot: number): Observable<any> {
@@ -104,11 +103,23 @@ export class AdministrationService {
 
   // Payroll
   getNormalPayrolls(idBranch: number): Observable<any> {
-    return this.http.get(`${environment.urlAdministration}/NormalPayrolls/branch/${idBranch}`, { headers: this.trackingService.getHeaders() });
+    return this.http.get(`${environment.urlLocalJG}/NormalPayrolls/branch/${idBranch}`, { headers: this.trackingService.getHeaders() });
   }
 
   getEmployeesByNormalPayroll(id: number){
     return this.http.get(`${environment.urlAdministration}/EmployeesByNormalPayroll`);
   }
 
+  getDPPayrollsExistence(startDate: Date, endDate: Date, idBranch: number): Observable<number> {
+    const params = new HttpParams()
+      .set('startDate', startDate.toISOString())
+      .set('endDate', endDate.toISOString())
+      .set('idBranch', idBranch.toString());
+    return this.http.get<number>(`${environment.urlLocalJG}/GetPayrollExistenceId`, { params });
+  }
+
+  // NormalPayroll
+  addNormalPayroll(data: any): Observable<any> {
+    return this.http.post<number>(`${environment.urlLocalJG}/NormalPayrolls`, data, { headers: this.trackingService.getHeaders() });
+  }
 }

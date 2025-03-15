@@ -56,6 +56,8 @@ export const routes: Routes = [
       },
       {
         path: 'dashboardgrales',
+        canActivate: [MasterPermissionsGuard],
+        data: { permissions: { master: 'dashboard' } },
         loadComponent: () => import('./domains/Dashboards/pages/procdash/procdash.component').then(a => a.ProcdashComponent),
         children: [
           { path: '', redirectTo: 'procdash1', pathMatch: 'full' },
@@ -65,7 +67,7 @@ export const routes: Routes = [
             loadComponent: () => import('./domains/Dashboards/pages/procdash1/procdash1.component').then(d => d.Procdash1Component),
             children: [
               { path: '', redirectTo: 'procdash', pathMatch: 'full' },
-              ...SharedModule.getRoutes(),             
+              ...SharedModule.getRoutes(),
               {
                 path: 'dashboard',
                 loadComponent: () => import('./domains/Dashboards/components/marines/marines.component').then(m => m.MarinesComponent)
@@ -188,7 +190,7 @@ export const routes: Routes = [
           },
           {
             path: 'catalog',
-            loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then( c=> c.CatalogsComponent)
+            loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(c => c.CatalogsComponent)
           }
         ]
       },
@@ -240,16 +242,16 @@ export const routes: Routes = [
               { path: '', redirectTo: 'customer', pathMatch: 'full' },
               ...SharedModule.getRoutes(),
 
-                {
-                 path: 'customer',
-                 loadComponent: () => import('./domains/ModAdmon/components/customers/customers.component').then(e => e.CustomersComponent),
-                 data: { type: 'CUSTOMERS' } // Parámetro para clientes
-               },
-               {
-                 path: 'historical',
-                 loadComponent: () => import('./domains/ModAdmon/components/historical/historical.component').then(e => e.HistoricalComponent)
-               },
-               {
+              {
+                path: 'customer',
+                loadComponent: () => import('./domains/ModAdmon/components/customers/customers.component').then(e => e.CustomersComponent),
+                data: { type: 'CUSTOMERS' } // Parámetro para clientes
+              },
+              {
+                path: 'historical',
+                loadComponent: () => import('./domains/ModAdmon/components/historical/historical.component').then(e => e.HistoricalComponent)
+              },
+              {
                 path: 'maps',
                 loadComponent: () => import('./domains/ModAdmon/components/radiusinfluence/radiusinfluence.component').then(r => r.RadiusinfluenceComponent)
               }
@@ -261,15 +263,15 @@ export const routes: Routes = [
             children: [
               { path: '', redirectTo: 'providers', pathMatch: 'full' },
               ...SharedModule.getRoutes(),
-               {
+              {
                 path: 'providers',
                 loadComponent: () => import('./domains/ModAdmon/components/customers/customers.component').then(e => e.CustomersComponent),
                 data: { type: 'PROVIDERS' } // Parámetro para proveedores
-               },
-               {
-                 path: 'historical',
-                 loadComponent: () => import('./domains/ModAdmon/components/historical/historical.component').then(e => e.HistoricalComponent)
-               }
+              },
+              {
+                path: 'historical',
+                loadComponent: () => import('./domains/ModAdmon/components/historical/historical.component').then(e => e.HistoricalComponent)
+              }
             ]
           },
         ]
