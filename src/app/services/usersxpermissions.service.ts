@@ -34,4 +34,9 @@ export class UsersxpermissionsService {
   getUserxPermissionByEmail(type: string, email: string): Observable<any> {
     return this.http.get<any[]>(`${environment.urlSecurity}/Usersxpermission/email?type=${type}&email=${email}`, { headers: this.trackingService.getHeaders() });
   }
+
+  getDataUsersxPermissionsbranch(idCompany, idUser: number): Observable<any> {
+    return this.http.get(`${environment.urlSecurity}/available?idCompany=${idCompany}&idUser=${idUser}`, { headers: this.trackingService.getHeaders() });
+  }
+  
 }

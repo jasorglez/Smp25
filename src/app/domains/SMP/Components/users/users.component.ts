@@ -9,6 +9,7 @@ import { UsersProfileComponent } from "./users-profile.component";
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { MatDialogModule } from '@angular/material/dialog';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
+import { CatalogsService } from 'app/services/catalogs.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { SignalsService } from 'app/services/signals.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
@@ -35,10 +36,26 @@ import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/auto
 export class UsersComponent {
 
   idRoot: number;
+  gridHeight: string = '80vh';
+  newlyAddedRows: string[] = [];
+  entrada       : any;
+  departamentos : any [] = [];
+  position      : any [] = [];
+  rowData       : any [] = [];
+  paginationPageSize = 20; // Tamaño de página
+  pagination = true; // Habilitar paginación
+  notSavedChanges: boolean = false;
+  paginationPageSizeSelector = false;
+  id: string;
+  private gridApi: GridApi;
+  private tempIdCounter: number = 0;
+  private permissionType: string = 'root';
 
   private usersService = inject(UsersService);
   private imageHandlerService = inject(ImageHandlerService);
-  private usersxcompanysService = inject(UsersxpermissionsService);
+  private usersxrootService = inject(UsersxpermissionsService);
+
+  private catalogService = inject(CatalogsService);
   private signalsService = inject(SignalsService);
   profile = computed(() => this.signalsService.profile);
 
@@ -59,9 +76,10 @@ export class UsersComponent {
   }
 
   ngOnInit() {
-     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-     this.obtenerDepartamentos();
-     this.obtenerDatos();
+     this.idRoot = this.signalsService.getRootSelectedBySidebar()()
+     
+     this.obtenerDatos() ;
+     this.getDeptoandPosition();   
   }
 
   components = {
@@ -69,18 +87,7 @@ export class UsersComponent {
     autocompleteEditor: AutocompleteEditorComponent
   }
 
-  gridHeight: string = '80vh';
-  newlyAddedRows: string[] = [];
-  entrada: any;
-  departamentos: { [key: string]: string } = {};
-  rowData: any[] = [];
-  paginationPageSize = 20; // Tamaño de página
-  pagination = true; // Habilitar paginación
-  notSavedChanges: boolean = false;
-  paginationPageSizeSelector = false;
-  id: string;
-  private gridApi: GridApi;
-  private tempIdCounter: number = 0;
+
 
   obtenerDatos() {
     this.usersService.getDataUsers(this.idRoot).subscribe({
@@ -100,17 +107,31 @@ export class UsersComponent {
     });
   }
 
-  obtenerDepartamentos() {
-    this.usersService.getDepartments().subscribe((data: any[]) => {
-      this.departamentos = data.reduce((acc, dep) => {
-        acc[dep.id] = dep.name; // Cambia la estructura para que solo almacene el nombre
-        return acc;
-      }, {});
-    });
+
+  getDeptoandPosition() {
+    this.catalogService.getCatalogs(this.idRoot,'DEPARTAMENT').subscribe(
+      (data: any) => {
+        this.departamentos = data;      
+      },
+      (error) => {
+        if (error.status == 404) this.departamentos = [];
+        console.error('Error fetching data:', error);
+      }
+    );
+
+    /*this.catalogService.getCatalogs(this.idRoot,'POSITION').subscribe(
+      (data: any) => {
+        this.position = data;      
+      },
+      (error) => {
+        if (error.status == 404) this.position = [];
+        console.error('Error fetching data:', error);
+      }
+    );*/
   }
 
   // Se modifica el getDepartmentName para que devuelva el nombre del departamento
-  getDepartmentName(idDepartament: string): string {
+  getDepartmentName(idDepartament: number): string {
     return this.departamentos[idDepartament] || 'Departamento no encontrado';
   }
 
@@ -252,31 +273,31 @@ public gridOptions: any = {
       {
         field: 'idDepartament',
         headerName: 'Departamento',
-        cellEditor: 'agRichSelectCellEditor',
-        cellEditorParams: {
-          values: [Object.keys(this.departamentos)],
-        },
-        valueFormatter: (params) => this.departamentos[params.value] || '',
-        valueSetter: (params) => {
-          const newValue = params.newValue;
-          if (this.departamentos.hasOwnProperty(newValue)) {
-            params.data[params.colDef.field] = newValue;
-            return true;
-          }
-          return false;
-        },
-        valueParser: (params) => params.newValue,
         editable: true,
+        suppressMovable: true,
+        filter: false,
+        width: 190,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: (params) => {
+          // Ensure depto data is available when creating editor
+          return {
+            values: this.departamentos ? this.departamentos.map((item) => item.id) : []
+          };
+        },
+        valueFormatter: (params) => {
+          // Handle potential null values and properly format the displayed value
+          if (!params.value) return '';
+          
+          const foundDepto = this.departamentos 
+            ? this.departamentos.find((item) => item.id === params.value)
+            : null;
+          
+          return foundDepto ? foundDepto.description : params.value;
+        },
       },
       {
         field: 'phone',
         headerName: 'Teléfono',
-        cellEditor: 'agTextCellEditor',
-        editable: true,
-      },
-      {
-        field: 'position',
-        headerName: 'Posición',
         cellEditor: 'agTextCellEditor',
         editable: true,
       },
@@ -324,7 +345,7 @@ public gridOptions: any = {
   }
 
   onCellValueChanged(event) {
-    console.log('Dato cambiado:', event.data);
+   // console.log('Dato cambiado:', event.data);
     // Aquí envío todo a la signal
     this.enviarSignal();
     this.notSavedChanges = true;
@@ -343,13 +364,15 @@ public gridOptions: any = {
       country: '',
       email: '',
       password: '',
+      idRol : 0,
       age: null,
       id_company : this.idRoot,
       idDepartament: 1,
       phone: '',
-      position: '',
+      id_position: 0,
       picture: './assets/img/profile.png',
       signature: '',
+      usersmall: 'SINUSER',
       allowWhatsapp: true,
       __isNew: true
     };
@@ -359,12 +382,11 @@ public gridOptions: any = {
     this.notSavedChanges = true;
   }
 
-
   async saveChanges() {
     const isValid = this.rowData.every(
       (item) => item.displayName && item.email && item.password
     );
-
+  
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
@@ -373,34 +395,80 @@ public gridOptions: any = {
       );
       return;
     }
-
+  
     const newRows = this.rowData.filter(row => row.__isNew);
     const modifiedRows = this.rowData.filter(row => row.__modified && !row.__isNew);
-
-    const addObservables = newRows.map(row => {
-      const cleanedData = this.cleanDataForServer(row);
-      console.log('this CleanedData', cleanedData)
-      return this.usersService.addUser(cleanedData);
-    });
-
-    const updateObservables = modifiedRows.map(row => {
-      const cleanedData = this.cleanDataForServer(row);
-      return this.usersService.updateUser(row.id, cleanedData);
-    });
-
-    // Using concat to combine observables and lastValueFrom for async/await
+  
     try {
-      const responses = await lastValueFrom(concat(...addObservables, ...updateObservables).pipe(toArray()));
+      // Primero creamos/actualizamos los usuarios
+      const addUserRequests = newRows.map(row => {
+        const cleanedData = this.cleanDataForServer(row);
+        console.log('this Add CleanedData', cleanedData);
+        return this.usersService.addUser(cleanedData);
+      });
+  
+      const updateUserRequests = modifiedRows.map(row => {
+        const cleanedData = this.cleanDataForServer(row);
+        console.log('Update CleanedData', cleanedData);
+        return this.usersService.updateUser(row.id, cleanedData);
+      });
+  
+      // Ejecutamos primero las operaciones de usuario
+      console.log('Ejecutando solicitudes de usuario...');
+      const userResponses = await lastValueFrom(
+        concat(...addUserRequests, ...updateUserRequests).pipe(toArray())
+      );
+      
+      console.log('Respuestas de usuario:', userResponses);
+      
+      // Para los nuevos usuarios, guardamos sus permisos
+      const newUserResponses = userResponses.slice(0, newRows.length);
+      console.log('Nuevos usuarios creados:', newUserResponses);
+      
+      // Creamos los permisos para los nuevos usuarios
+        const permissionRequests = newUserResponses.map((response, index) => {
+          // La respuesta contiene el ID dentro del objeto data
+          const userId = response.data?.id || response.data?._id || response.data?.userId;
+          console.log('Estructura de respuesta completa:', response);
+          console.log('Objeto data:', response.data);
+          console.log('ID de usuario obtenido:', userId);
+          
+          if (!userId) {
+            console.warn('No se pudo obtener el ID del usuario para:', response);
+            return null;
+          }
+          
+          const formattedData = {
+            idUser: userId,
+            idPermission: this.idRoot || 0,
+            type: this.permissionType || "string",
+            description: newRows[index].description || "string"
+          };
+          
+          console.log('Datos de permiso a guardar:', formattedData);
+          return this.usersxrootService.addUserxPermission(formattedData);
+        }).filter(req => req !== null); // Eliminamos posibles nul
+      
+      // Ejecutamos las solicitudes de permisos
+      if (permissionRequests.length > 0) {
+        console.log('Ejecutando solicitudes de permisos, cantidad:', permissionRequests.length);
+        const permissionResponses = await lastValueFrom(concat(...permissionRequests).pipe(toArray()));
+        console.log('Respuestas de permisos:', permissionResponses);
+      } else {
+        console.warn('No se crearon solicitudes de permisos');
+      }
+      
       alerts.basicAlert(
         'Datos actualizados',
         'Se han actualizado los datos correctamente.',
         'success'
       );
+      
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
       this.obtenerDatos(); // Refrescar los datos
     } catch (error) {
-      console.error(error);
+      console.error('Error al guardar:', error);
       alerts.basicAlert(
         'Error',
         'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',

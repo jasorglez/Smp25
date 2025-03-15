@@ -65,25 +65,29 @@ export class UsersxbranchesComponent {
   private permissionType: string = 'branch';
 
   obtenerDatos() {
-    forkJoin({
-      users: this.usersxbranchesService.getDataUsersxPermissions(this.permissionType),
-      branches: this.branchesService.getBranches(this.idRoot)
-    }).subscribe(({ users, branches }) => {
-      // Filtrar sucursales por idCompany
-      const filteredBranches = branches.filter(branch => branch.idCompany === this.idRoot);
-      
-      // Crear el diccionario de sucursales filtradas
-      this.warehouses = filteredBranches.reduce((acc, branch) => {
-        acc[branch.id] = branch.name;
-        return acc;
-      }, {});
+    
+    //alert(this.permissionType);
+    this.usersxbranchesService.getDataUsersxPermissions(this.permissionType).subscribe(
+      (data: any) => {
+        this.rowData = data;      
+      },
+      (error) => {
+        if (error.status == 404) this.rowData = [];
+        console.error('Error fetching data:', error);
+      }
+    );
 
-      // Filtrar usuarios por idUser y que coincidan con las sucursales filtradas
-      this.rowData = Array.isArray(users) ? users.filter((row: any) => 
-          row.idUser === this.idUser && 
-          Object.keys(this.warehouses).includes(row.idPermission.toString())
-        ) : [];
-    });
+    
+    this.branchesService.getBranchesByUserAndCompany(this.rowData.idUser, this.idRoot).subscribe(
+      (data: any) => {
+        this.bra.users = data;      
+      },
+      (error) => {
+        if (error.status == 404) this.users = [];
+        console.error('Error fetching data:', error);
+      }
+    );
+    
   }
 
 // Column Definitions: Defines the columns to be displayed.

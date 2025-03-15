@@ -15,7 +15,8 @@
                    ></i></button>
             </nav>
             <div class="col">
-                <ag-grid-angular style="width: 100%; height: 500px;" class="ag-theme-quartz small-text-ag-grid"
+                <ag-grid-angular style="width: 100%; height: 500px;" 
+                class="ag-theme-quartz small-text-ag-grid"
                 [rowData]="rowData" 
                 [columnDefs]="columnDefs"
                 [defaultColDef]="defaultColDef"
@@ -24,7 +25,7 @@
                         (rowSelected)="onSelectedRow($event)"
                         (gridReady)="onGridReady($event)"
                         rowSelection="single" [components]="components"
-                        [gridOptions]="gridOptions">
+                [gridOptions]="gridOptions">
                 </ag-grid-angular>
             </div>
         </div>

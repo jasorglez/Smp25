@@ -22,7 +22,17 @@ export class RootComponent {
   private rootService = inject(RootService);
   private imageHandlerService = inject(ImageHandlerService);
 
+  notSavedChanges: boolean = false;
+  rowData: any[] = [];
+  contracts: { [key: string]: string } = {};
+  newlyAddedRows: string[] = [];
+  selectedRowData: any = null;
+  id: string;
+  private gridApi: GridApi;
+  private tempIdCounter: number = 0;
+
   ngOnInit() {
+    
     this.obtenerDatos();
   }
 
@@ -34,14 +44,7 @@ export class RootComponent {
     }
   }
 
-  notSavedChanges: boolean = false;
-  rowData: any[] = [];
-  contracts: { [key: string]: string } = {};
-  newlyAddedRows: string[] = [];
-  selectedRowData: any = null;
-  id: string;
-  private gridApi: GridApi;
-  private tempIdCounter: number = 0;
+
 
   obtenerDatos() {
     this.rootService

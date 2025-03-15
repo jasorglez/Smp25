@@ -194,7 +194,7 @@ public gridOptions: any = {
     const modifiedRows = this.rowData.filter(
       (row) => row.__modified && !row.__isNew
     );
-
+    
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       return this.usersxrootService.addUserxPermission(cleanedData);
@@ -226,6 +226,7 @@ public gridOptions: any = {
         'error'
       );
     }
+    
   }
 
   async deleteEntry() {

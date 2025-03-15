@@ -29,14 +29,17 @@
         <a class="nav-link" [class.active]="selectedTab === 'usersxroot'" data-toggle="tab"
           (click)="onUsersSelected('usersxroot')">Empresas</a>
       </li>
-      <li class="nav-item" *ngIf="profile().emailUser()">
-        <a class="nav-link" [class.active]="selectedTab === 'usersxwarehouses'" data-toggle="tab"
-          (click)="onUsersSelected('usersxwarehouses')">Almacenes</a>
-      </li>
+  
       <li class="nav-item" *ngIf="profile().emailUser()">
         <a class="nav-link" [class.active]="selectedTab === 'usersxbranches'" data-toggle="tab"
           (click)="onUsersSelected('usersxbranches')">Sucursales</a>
       </li>
+      
+      <li class="nav-item" *ngIf="profile().emailUser()">
+        <a class="nav-link" [class.active]="selectedTab === 'usersxwarehouses'" data-toggle="tab"
+          (click)="onUsersSelected('usersxwarehouses')">Almacenes</a>
+      </li>
+      
       <li class="nav-item" *ngIf="profile().emailUser()">
         <a class="nav-link" [class.active]="selectedTab === 'usersxstores'" data-toggle="tab"
           (click)="onUsersSelected('usersxstores')">Tiendas</a>

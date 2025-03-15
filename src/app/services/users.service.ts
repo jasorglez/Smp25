@@ -38,6 +38,7 @@ export class UsersService {
   }
 
   updateUser(id: string, data: any): Observable<any> {
+    console.log('DATA EN EL UPDATE', data)
     return this.http.put(`${environment.urlSecurity}/User/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
@@ -45,9 +46,7 @@ export class UsersService {
     return this.http.put(`${environment.urlSecurity}/User/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
-  getDepartments() {
-    return this.http.get(`${environment.urlSecurity}/Department`, { headers: this.trackingService.getHeaders() });
-  }
+
   
   // Aqui terminan los cambios a SMP
 
