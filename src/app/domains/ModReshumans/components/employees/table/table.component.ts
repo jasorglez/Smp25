@@ -209,6 +209,13 @@ export class EmployeesTableComponent {
         width: 100,
       },
       {
+        field: 'cp',
+        headerName: 'Nombre sucursal',
+        editable: true,
+        filter: true,
+        width: 100,
+      },
+      {
         field: 'name',
         headerName: 'Nombre *',
         headerClass: 'required-header',

@@ -33,6 +33,8 @@ export class BranchsService {
   }
 
   getBranchesByUserAndCompany(idUser: number, idCompany: number): Observable<any> {
-    return this.http.get(`${environment.urlSmp}/SmpandSecurity/Branch?idUser=${idUser}&idRoot=${idCompany}`, { headers: this.trackingService.getHeaders() });
+     //const apiUrl = `${environment.urlSmp}/SmpandSecurity/Branch?idUser=${idUser}&idRoot=${idCompany}`;      
+    // alert(apiUrl) 
+     return this.http.get(`${environment.urlSmp}/SmpandSecurity/Branch?idUser=${idUser}&idRoot=${idCompany}`, { headers: this.trackingService.getHeaders() });
   }
 }

@@ -22,13 +22,28 @@ export class UsersxbranchesComponent {
   private branchesService = inject(BranchsService);
   private usersxbranchesService = inject(UsersxpermissionsService);
 
+    // Signals con correo
+    profile = computed(() => this.signalsService.profile);
+    idUser: any = this.profile().idUser();
+  
+    notSavedChanges        : boolean = false;
+    rowData                : any [] = [];;
+    branchs                : any [] = [];
+    newlyAddedRows         : string[] = [];
+    selectedRowData        : any = null;
+    id                     : string;
+    idRoot                 : number;
+    private gridApi        : GridApi;
+    private tempIdCounter  : number = 0;
+    private permissionType : string = 'branch';
+
   constructor() {
     effect(() => {
       this.idRoot = this.signalsService.getCompanyFromPermissions()();
 
       if (!this.idRoot) {
         this.rowData = [];
-        this.warehouses = {};
+        this,this.branchs = [];
         alerts.basicAlert('Sucursales', 'Debe elegir una empresa primero para poder ver sus sucursales.', 'error');
       } else {
         this.obtenerDatos();
@@ -37,8 +52,11 @@ export class UsersxbranchesComponent {
   }
 
   ngOnInit() {
+    this.idRoot = this.signalsService.getCompanyFromPermissions()();    
+    //alert('id Root ' + this.idRoot);
     this.obtenerDatos();
-    this.idRoot = this.signalsService.getCompanyFromPermissions()();
+    this.getBranches();
+    
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -49,48 +67,68 @@ export class UsersxbranchesComponent {
     }
   }
 
-  // Signals con correo
-  profile = computed(() => this.signalsService.profile);
-  idUser: any = this.profile().idUser();
 
-  notSavedChanges: boolean = false;
-  rowData: any;
-  warehouses: { [key: string]: string } = {};
-  newlyAddedRows: string[] = [];
-  selectedRowData: any = null;
-  id: string;
-  idRoot: number;
-  private gridApi: GridApi;
-  private tempIdCounter: number = 0;
-  private permissionType: string = 'branch';
-
-  obtenerDatos() {
-    
-    //alert(this.permissionType);
-    this.usersxbranchesService.getDataUsersxPermissions(this.permissionType).subscribe(
+  obtenerDatos() {        
+    this.branchesService.getBranchesByUserAndCompany(this.idUser, this.idRoot).subscribe(
       (data: any) => {
-        this.rowData = data;      
+        this.rowData = data.project; // Extract the array from the response     
       },
       (error) => {
         if (error.status == 404) this.rowData = [];
         console.error('Error fetching data:', error);
       }
     );
+  }
 
-    
-    this.branchesService.getBranchesByUserAndCompany(this.rowData.idUser, this.idRoot).subscribe(
+  getBranches(){
+     //  alert('id User ' + this.idUser);
+     //  alert('id Root ' + this.idRoot);
+    this.usersxbranchesService.getDataUsersxPermissionsbranch(this.idRoot, this.idUser).subscribe(
       (data: any) => {
-        this.bra.users = data;      
+        this.id      = data.id ;
+        console.log('this.id', this.id)  
+        this.branchs = data      
       },
       (error) => {
-        if (error.status == 404) this.users = [];
+        if (error.status == 404) this.branchs = [];
         console.error('Error fetching data:', error);
       }
     );
-    
+
   }
 
-// Column Definitions: Defines the columns to be displayed.
+
+  get columnDefs(): ColDef[] {
+    return [
+      {
+        field: 'idUser',
+        headerName: 'ID del Usuario',
+        hide: true,
+      },
+      {
+        field: 'name',
+        headerName: 'Sucursal',
+        editable: true,
+        suppressMovable: true,
+        filter: false,
+        width: 330,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => {
+          return {
+            values: this.branchs ? this.branchs.map((item) => item.id) : []
+          };
+        },
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const foundBranch = this.branchs.find((item) => item.id === params.value);
+          return foundBranch ? foundBranch.name : params.value;
+        },
+      },
+    ];
+  }
+
+
+  // Column Definitions: Defines the columns to be displayed.
 public gridOptions: any = {
   headerHeight: 30,
   rowHeight: 30,
@@ -117,38 +155,9 @@ public gridOptions: any = {
   },
 };
 
-  get columnDefs(): ColDef[] {
-    return [
-      {
-        field: 'idUser',
-        headerName: 'ID del Usuario',
-        hide: true,
-      },
-      {
-        field: 'idPermission',
-        headerName: 'Sucursal',
-        cellEditor: 'agRichSelectCellEditor',
-        cellEditorParams: {
-          values: Object.keys(this.warehouses).sort((a, b) => this.warehouses[a].localeCompare(this.warehouses[b])),
-        },
-        valueFormatter: (params) => this.warehouses[params.value] || '',
-        valueSetter: (params) => {
-          const newValue = params.newValue;
-          if (this.warehouses.hasOwnProperty(newValue)) {
-            params.data[params.colDef.field] = newValue;
-            return true;
-          }
-          return false;
-        },
-        valueParser: (params) => params.newValue,
-        editable: true,
-        flex: 2,
-      },
-    ];
-  }
-
   onSelectedRow(event: any) {
     this.id = event.data.id;
+    console.log('this.id', this.id)
   }
 
   onSelectionChanged(event: any) {
@@ -161,12 +170,21 @@ public gridOptions: any = {
     }
   }
 
-  onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
-    event.data.__modified = true;
+  onCellValueChanged(event: any) {    
+      console.log('Dato cambiado:', event.data);
+      
+      // When the name field (which contains the branch selection) changes
+      if (event.colDef.field === 'name') {
+        // The event.newValue contains the selected branch ID from the dropdown
+        event.data.idPermission = event.newValue;                     
+      }
+            
+      event.data.__modified = true;
+      this.notSavedChanges = true;          
+
     // Verificar si el campo modificado es 'id_company'
     if (event.colDef.field === 'id_company') {
-      const selectedCompany = this.warehouses[event.data.id_company];
+      const selectedCompany = this.branchs[event.data.idCompany];
       if (selectedCompany) {
         event.data.company = selectedCompany;
       }
@@ -187,11 +205,13 @@ public gridOptions: any = {
   }
 
   addRow() {
-    const tempId = `temp_${this.tempIdCounter++}`;
+    const tempId = `temp_${this.tempIdCounter++}`;    
+    // Get first branch ID if available, otherwise empty
+    const defaultBranchId = this.branchs.length > 0 ? this.branchs[0].id : 0;
     const newItem = {
       id: tempId,
       idUser: this.idUser,
-      idPermission: 0,
+      idPermission: defaultBranchId,
       type: this.permissionType,
       active: 1,
       __isNew: true,
@@ -203,7 +223,7 @@ public gridOptions: any = {
   }
 
   async saveChanges() {
-    const isValid = this.rowData.every((item) => item.idPermission);
+    const isValid = this.rowData.every((item) => item.id);
 
     if (!isValid) {
       alerts.basicAlert(
@@ -215,6 +235,7 @@ public gridOptions: any = {
     }
 
     const newRows = this.rowData.filter((row) => row.__isNew);
+    console.log('newRows', newRows)
     const modifiedRows = this.rowData.filter(
       (row) => row.__modified && !row.__isNew
     );

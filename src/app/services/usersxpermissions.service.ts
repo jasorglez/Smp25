@@ -36,7 +36,9 @@ export class UsersxpermissionsService {
   }
 
   getDataUsersxPermissionsbranch(idCompany, idUser: number): Observable<any> {
-    return this.http.get(`${environment.urlSecurity}/available?idCompany=${idCompany}&idUser=${idUser}`, { headers: this.trackingService.getHeaders() });
-  }
+     //const apiUrl = `${environment.urlSecurity}/Usersxpermission/available?idCompany=${idCompany}&idUser=${idUser}`;      
+    // alert(apiUrl) 
+    return this.http.get(`${environment.urlSecurity}/Usersxpermission/available?idCompany=${idCompany}&idUser=${idUser}`, { headers: this.trackingService.getHeaders() });
+  }                                                  
   
 }
