@@ -15,6 +15,7 @@ import { ImageHandlerService } from 'app/services/image-handler.service';
 import { DetailpayrollComponent } from "./detailpayroll/detailpayroll.component";
 import { SignalsService } from 'app/services/signals.service';
 
+
 @Component({
   selector: 'app-payroll',
   standalone: true,
@@ -188,6 +189,8 @@ export class PayrollComponent implements OnInit {
         headerName: 'Nóm Digital',
         field: 'NomDigital',
         width: 130,
+        //cellRenderer: 'excelDownloadCellRenderer',
+
         cellRenderer: (params) => {
           const button = document.createElement('button');
 
@@ -200,16 +203,64 @@ export class PayrollComponent implements OnInit {
           button.style.fontSize = '12px';
 
           button.addEventListener('click', () => {
-            alert(`Estado en la fila ${params.node.rowIndex}: ${this.DPAvailable ? 'Disponible' : 'No disponible'}`);
+            //alert(`Estado en la fila: row: ${params.node.rowIndex} -- Id: ${params.data.id} -- FechaInicial: ${params.data.startDate} -- FechaFinal: ${params.data.endDate}
+            //  -- IdBranch Tabla: ${params.data.idBranch} -- ${this.DPAvailable ? 'Disponible' : 'No disponible'}`);
+            this.onCheckClick(params);
+
             // Aquí puedes ejecutar cualquier otra acción, como actualizar el estado
           });
 
+
           return button;
         },
+
+
+
         onCellDoubleClicked: this.onCellDoubleClicked.bind(this)
       },
     ]
   };
+
+  onCheckClick(params: any): void {
+    console.log("entrando a oncheckclick()");
+              if (!params.data) return;
+
+          const payrollId = params.data.id;
+          const startDate = params.data.startDate ? new Date(params.data.startDate) : null;
+          const endDate = params.data.endDate ? new Date(params.data.endDate) : null;
+          //const idBranch = this.idBranch;
+          const idBranch = params.data.idBranch;
+          console.log("el valor de idBranch es: ", idBranch);
+
+          if (!startDate || !endDate) {
+            console.error('Fechas no válidas');
+            alert('No se pudo descargar el archivo: fechas no válidas');
+            return;
+          }
+
+          // Llamar al servicio para descargar el Excel
+          this.payrollService.downloadPayrollExcel(idBranch, startDate, endDate)
+            .subscribe({
+              next: (blob: Blob) => {
+                // Crear un nombre de archivo descriptivo
+                const fileName = `Nomina_${new Date(startDate).toISOString().split('T')[0]}_${new Date(endDate).toISOString().split('T')[0]}.xlsx`;
+
+                // Crear URL del objeto y generar la descarga
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = fileName;
+                link.click();
+
+                // Liberar el objeto URL
+                window.URL.revokeObjectURL(url);
+              },
+              error: (error) => {
+                console.error('Error al descargar el archivo:', error);
+                alert('No se pudo descargar el archivo. Por favor, inténtelo de nuevo.');
+              }
+            });
+        }
 
 
 
