@@ -25,12 +25,37 @@ import { UsersXCashRegistersComponent } from "./usersxcashregisters.component";
 })
 export class UsersMenuComponent {
   private trackingService = inject(TrackingService);
-  private signalsService = inject(SignalsService);
+  private signalsService  = inject(SignalsService);
+  
+  showRoot : boolean = false ;
+  
   profile = computed(() => this.signalsService.profile);
 
+  idRoot: number = 0 ;
+  correoglobal: string = ''; // Asegúrate de que esta variable tenga el valor correcto
+
+ /*  selectedTab: string = '';
+
+    // Función para verificar si el correo es root
+  isRootEmail(): boolean {
+    return this.correoglobal === 'root@biapp.com.mx';
+  }*/
+
   constructor() {
+            
     this.onUsersSelected('users');
   }
+ 
+  ngOnInit() {       
+    this.correoglobal = this.signalsService.getemailChoose() ;
+
+    this.idRoot       = this.signalsService.getRootSelectedBySidebar()();
+    
+    if (this.correoglobal === 'root@beapp.com.mx') {
+       this.showRoot = true
+    }
+  }
+
 
   selectedTab: string;
   onUsersSelected(tabName: string) {

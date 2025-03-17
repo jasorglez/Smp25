@@ -88,9 +88,8 @@ export class UsersComponent {
   }
 
 
-
   obtenerDatos() {
-    this.usersService.getDataUsers(this.idRoot).subscribe({
+    const observer = {
       next: (response: any) => {
         if (response && response.code === 200 && response.data) {
           this.rowData = response.data.map((item: any) => {
@@ -104,7 +103,13 @@ export class UsersComponent {
       error: (error) => {
         console.error('Error al obtener los datos:', error);
       }
-    });
+    };
+  
+    if (this.signalsService.getemailChoose() === 'root@beapp.com.mx') {
+      this.usersService.getAllUsers().subscribe(observer);
+    } else {
+      this.usersService.getDataUsers(this.idRoot).subscribe(observer);
+    }
   }
 
 

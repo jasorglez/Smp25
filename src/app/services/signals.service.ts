@@ -11,11 +11,23 @@ export class SignalsService {
 
   /* Aquí se definen las signals para el sidebar */
 
-  private rootSelectedBySidebar = signal<number | null>(null);
+  private emailChoose           = signal<string | null>(null);
+
+  private rootChoose            = signal<string | null>(null);
   
   private catalogSelected       = signal<string | null>(null);
+  
+  private rootSelectedBySidebar = signal<number | null>(null);  
+  
+  private Procces               = signal<number | null>(null);
 
-  private Procces = signal<number | null>(null);
+  setemailChoose(id: string) {
+    this.emailChoose.set(id);
+  }
+
+  setrootChoose(id: string) {
+    this.catalogSelected.set(id);
+  }
 
   setCatalogSelected(id: string) {
     this.catalogSelected.set(id);
@@ -51,6 +63,21 @@ export class SignalsService {
   setProcces(id : number){
     this.Procces.set(id);
   }
+  
+
+  //aqui estan los get
+  getemailChoose()
+  {
+    return this.emailChoose()
+  }
+
+  getrootChoose() {
+     return this.rootChoose() ;
+  }
+
+  getCatalogSelected() {
+    return this.catalogSelected();
+  }
 
   getProcces(){
     return this.Procces;
@@ -58,11 +85,7 @@ export class SignalsService {
 
   getBranchNameSelectedBySidebar() {
     return this.branchNameSelectedBySidebar;
-  }
-
-  getCatalogSelected() {
-    return this.catalogSelected();
-  }
+  }  
 
   getRootSelectedBySidebar() {
     return this.rootSelectedBySidebar;

@@ -116,6 +116,8 @@ export class ComploginComponent implements OnInit {
               this.trackingService.setaproject(datauser.applyproject);
               this.trackingService.setId(datauser.id);
               this.signalsService.setidUser(datauser.id);
+              //aqui atrapa la signal, y le doy el valor del email
+              this.signalsService.setemailChoose(this.emailcapt) ;
 
               // Cargar permisos del usuario
               this.auth.getUserId(this.emailcapt).subscribe((userId) => {

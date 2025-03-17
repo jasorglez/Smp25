@@ -103,10 +103,10 @@ export class CatalogsComponent {
     return [
       {field : 'id', headerName: 'Id', editable: true, filter: false, width: 90 },
       { field: 'description', headerName: 'Descripcion', editable: true, filter: true, width: 250 },
-      { field: 'valueAddition', headerName: 'Valor 1', editable: false, width: 185 },
-      { field: 'valueAddition2', headerName: 'Valor 2', editable: true, width: 185 },
-      { field: 'parentId', headerName: 'Consecutivo', editable: true, width: 185 },
-      { field: 'idElection', headerName: 'Select', editable: true, width: 185 },
+      //{ field: 'valueAddition', headerName: 'Valor 1', editable: false, width: 185 },
+      //{ field: 'valueAddition2', headerName: 'Valor 2', editable: true, width: 185 },
+      //{ field: 'parentId', headerName: 'Consecutivo', editable: true, width: 185 },
+      { field: 'idElection', headerName: 'Administrador', editable: true, width: 185 },
     ]
   };
 
