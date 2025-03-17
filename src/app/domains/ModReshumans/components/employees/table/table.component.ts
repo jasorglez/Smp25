@@ -25,6 +25,7 @@ import { HRService } from 'app/services/hr.service';
 import { EmployeesxSavingsComponent } from '../savings/savings.component';
 import { TimeService } from 'app/services/time.service';
 import { CatalogsService } from 'app/services/catalogs.service';
+import { BranchsService } from 'app/services/branchs.service';
 
 @Component({
   selector: 'app-employees-table',
@@ -48,22 +49,26 @@ export class EmployeesTableComponent {
   private administrationService = inject(AdministrationService);
   private catalogService = inject(CatalogsService);
   private hrService = inject(HRService);
-  private timeService = inject(TimeService);
+  private timeService     = inject(TimeService);
+  private branchesService = inject(BranchsService);
 
   id: number;
   idBranch: number;
   idRoot: number;
   idEmployee: number;
-  rowData: any[] = [];
+  
   cp: string;
   infoCp: any;
   private estados: string[] = [];
   newlyAddedRows: string[] = []; // IDs de filas recién añadidas
   notSavedChanges: boolean = false;
+  
   prefixAndConsecutive: any[] = [];
+  rowData  : any[] = [];
   banks    : any[] = [];
   depto    : any[] = [];
   position : any[] = [];
+  branchs  : any[] = [];
 
   // Variables de control del grid
   selectedRowData: any = null; // Fila seleccionada actualmente
@@ -121,6 +126,7 @@ export class EmployeesTableComponent {
         );
       } else {
         this.obtenerDatos();
+        this.obtenerBranchs() ;
         this.getHRSetup();
         this.getBanks();
         this.getHRSetup();   
@@ -209,11 +215,28 @@ export class EmployeesTableComponent {
         width: 100,
       },
       {
-        field: 'cp',
+        field: 'idBranch',
         headerName: 'Nombre sucursal',
         editable: true,
         filter: true,
-        width: 100,
+        width: 170,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: (params) => {
+          // Ensure depto data is available when creating editor
+          return {
+            values: this.branchs ? this.branchs.map((item) => item.id) : []
+          };
+        },
+        valueFormatter: (params) => {
+          // Handle potential null values and properly format the displayed value
+          if (!params.value) return '';
+          
+          const foundBranch = this.branchs 
+            ? this.branchs.find((item) => item.id === params.value)
+            : null;
+          
+          return foundBranch ? foundBranch.name : params.value;
+        },
       },
       {
         field: 'name',
@@ -597,6 +620,16 @@ export class EmployeesTableComponent {
   }
 
   // ==================== MASTER METHODS ====================
+
+  obtenerBranchs(){
+   // alert('this.branchs'+ this.idBranch)
+    this.branchesService.getBrancheswoa(this.idRoot).subscribe(
+      (data: any) => {
+        this.branchs = data;
+      },
+      (error) => console.error('Error fetching data:', error)
+    );
+  }
 
   obtenerDatos() {
     this.employeeService.getEmployees(this.idBranch).subscribe(

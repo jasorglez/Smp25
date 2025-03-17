@@ -24,6 +24,7 @@ export class UsersxbranchesComponent {
 
     // Signals con correo
     profile = computed(() => this.signalsService.profile);
+
     idUser: any = this.profile().idUser();
   
     notSavedChanges        : boolean = false;
@@ -41,7 +42,7 @@ export class UsersxbranchesComponent {
     effect(() => {
       this.idRoot = this.signalsService.getCompanyFromPermissions()();
 
-      if (!this.idRoot) {
+      if (this.idRoot) {
         this.rowData = [];
         this,this.branchs = [];
         alerts.basicAlert('Sucursales', 'Debe elegir una empresa primero para poder ver sus sucursales.', 'error');
@@ -52,8 +53,14 @@ export class UsersxbranchesComponent {
   }
 
   ngOnInit() {
-    this.idRoot = this.signalsService.getCompanyFromPermissions()();    
-    //alert('id Root ' + this.idRoot);
+    if (this.signalsService.getemailChoose() === 'root@beapp.com.mx') {
+       this.idRoot = this.signalsService.getCompanyFromPermissions()();    
+    }
+    
+    if (this.signalsService.getemailChoose() !== 'root@beapp.com.mx') {
+       this.idRoot = this.signalsService.getRootSelectedBySidebar()()
+    }
+    //alert('id Root ' + this.idRoot);   
     this.obtenerDatos();
     this.getBranches();
     

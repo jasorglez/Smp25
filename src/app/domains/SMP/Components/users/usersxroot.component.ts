@@ -40,11 +40,17 @@ export class UsersxrootComponent {
   idUser: any = this.profile().idUser();
 
   notSavedChanges: boolean = false;
+
   rowData: any;
+  
   root: { [key: string]: string } = {};
+  
   newlyAddedRows: string[] = [];
+  
   selectedRowData: any = null;
+  
   id: number;
+  
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
   private permissionType: string = 'root';

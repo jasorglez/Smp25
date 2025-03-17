@@ -5,28 +5,34 @@
         <a class="nav-link" [class.active]="selectedTab === 'users'" data-toggle="tab"
           (click)="onUsersSelected('users')">Selección de usuarios</a>
       </li>
+     
       <li class="nav-item" *ngIf="profile().emailUser()">
         <a class="nav-link" [class.active]="selectedTab === 'usersxmasterpermissions'" data-toggle="tab"
           (click)="onUsersSelected('usersxmasterpermissions')">Permisos maestros</a>
       </li>
-     <!--  <li class="nav-item" *ngIf="profile().emailUser()">
-        <a class="nav-link" [class.active]="selectedTab === 'usersxcompanys'" data-toggle="tab"
+     
+      <li class="nav-item" *ngIf="profile().emailUser()">
+        <a class="nav-link" [class.active]="selectedTab === 'usersxcompanys'" data-toggle="tab" *ngIf="showRoot"
           (click)="onUsersSelected('usersxcompanys')">Contratistas</a>
       </li>
+      
       <li class="nav-item" *ngIf="profile().emailUser()">
-        <a class="nav-link" [class.active]="selectedTab === 'usersxcontracts'" data-toggle="tab"
+        <a class="nav-link" [class.active]="selectedTab === 'usersxcontracts'" data-toggle="tab" *ngIf="showRoot"
           (click)="onUsersSelected('usersxcontracts')">Contratos</a>
       </li>
+      
       <li class="nav-item" *ngIf="profile().emailUser()">
-        <a class="nav-link" [class.active]="selectedTab === 'usersxoilfields'" data-toggle="tab"
+        <a class="nav-link" [class.active]="selectedTab === 'usersxoilfields'" data-toggle="tab" *ngIf="showRoot"
           (click)="onUsersSelected('usersxoilfields')">Campos petroleros</a>
       </li>
+      
       <li class="nav-item" *ngIf="profile().emailUser()">
-        <a class="nav-link" [class.active]="selectedTab === 'usersxprojects'" data-toggle="tab"
+        <a class="nav-link" [class.active]="selectedTab === 'usersxprojects'" data-toggle="tab" *ngIf="showRoot"
           (click)="onUsersSelected('usersxprojects')">Proyectos</a> 
-      </li> -->
+      </li> 
+
       <li class="nav-item" *ngIf="profile().emailUser()">
-        <a class="nav-link" [class.active]="selectedTab === 'usersxroot'" data-toggle="tab"
+        <a class="nav-link" [class.active]="selectedTab === 'usersxroot'" data-toggle="tab" *ngIf="showRoot"
           (click)="onUsersSelected('usersxroot')">Empresas</a>
       </li>
   
@@ -44,10 +50,12 @@
         <a class="nav-link" [class.active]="selectedTab === 'usersxstores'" data-toggle="tab"
           (click)="onUsersSelected('usersxstores')">Tiendas</a>
       </li>
+
       <li class="nav-item" *ngIf="profile().emailUser()">
         <a class="nav-link" [class.active]="selectedTab === 'usersxcashregisters'" data-toggle="tab"
           (click)="onUsersSelected('usersxcashregisters')">Cajas</a>
       </li>
+
     </ul>
   
     <div class="tab-pane" [class.active]="selectedTab === 'users'" *ngIf="selectedTab === 'users'">

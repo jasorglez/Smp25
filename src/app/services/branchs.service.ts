@@ -37,4 +37,12 @@ export class BranchsService {
     // alert(apiUrl) 
      return this.http.get(`${environment.urlSmp}/SmpandSecurity/Branch?idUser=${idUser}&idRoot=${idCompany}`, { headers: this.trackingService.getHeaders() });
   }
+
+  getBrancheswoa(idroot : number): Observable<any> {
+      //const apiUrl = `${environment.urlSmp}/Branchs/2fieldswoad?idCompany=${idroot}`;      
+      //alert(apiUrl) 
+    return this.http.get(`${environment.urlSmp}/Branchs/2fieldswoad?idCompany=${idroot}`, { headers: this.trackingService.getHeaders() });
+  }
+  
+
 }
