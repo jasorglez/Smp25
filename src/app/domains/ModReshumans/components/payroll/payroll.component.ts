@@ -122,6 +122,7 @@ export class PayrollComponent implements OnInit {
         field: 'startDate',
         editable: (params) => { return this.aggregatingRecord },
 
+        cellEditor: 'agDateCellEditor',
 
         valueGetter: (params) => {
           if (params.node.rowIndex == 0) {
@@ -133,43 +134,91 @@ export class PayrollComponent implements OnInit {
           return params.data.startDate ? new Date(params.data.startDate) : null;
         },
 
-        cellRenderer: 'agDateCellRenderer',
-        /*
-        cellEditor: 'agDateCellEditor',
+
         valueFormatter: (params) => {
           if (params.value) {
-            console.log("------- dentro de valueFormatter startDate: ", params.value);
+            //console.log("------- dentro de valueFormatter startDate: ", params.value);
             const date = new Date(params.value);
             this.initialDate = `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
-            console.log("------- dentro de valueFormatter startDate valorObtenido: ", this.initialDate);
+            //console.log("------- dentro de valueFormatter startDate valorObtenido: ", this.initialDate);
             return this.initialDate;
           }
           return '';
         },
-        */
+        valueSetter: (params) => {
+          if (!params.newValue) {
+            alerts.basicAlert(
+              'Campo requerido',
+              'la fecha de inicio es requerida.',
+              'error'
+            );
+            return false;
+          }
+          const duplicateExists = this.rowData.some(
+            (row, index) =>
+              index !== params.node.rowIndex && row.name === params.newValue
+          );
+
+          if (duplicateExists) {
+            alerts.basicAlert(
+              'Fecha duplicada',
+              'Ya existe una fecha.',
+              'error'
+            );
+            return false;
+          }
+
+          params.data[params.colDef.field] = params.newValue;
+          return true;
+        },
+
         width: 170
       },
       {
         headerName: 'Fecha Fin',
         field: 'endDate',
         editable: (params) => { return this.aggregatingRecord },
-
-        /*
-        valueGetter: (params) => params.data.endDate ? new Date(params.data.endDate) : null,
-        cellRenderer: 'agDateCellRenderer',
         cellEditor: 'agDateCellEditor',
+        valueGetter: (params) => params.data.endDate ? new Date(params.data.endDate) : null,
+
         valueFormatter: (params) => {
           if (params.value) {
-            console.log("------- dentro de valueFormatter endDate: ", params.value);
+            //console.log("------- dentro de valueFormatter endDate: ", params.value);
 
             const date = new Date(params.value);
             this.endingDate = `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
-            console.log("------- dentro de valueFormatter endDate valorObtenido: ", this.endingDate);
+            //console.log("------- dentro de valueFormatter endDate valorObtenido: ", this.endingDate);
             return this.endingDate;
           }
           return '';
         },
-        */
+
+        valueSetter: (params) => {
+          if (!params.newValue) {
+            alerts.basicAlert(
+              'Campo requerido',
+              'la fecha de fin es requerida.',
+              'error'
+            );
+            return false;
+          }
+          const duplicateExists = this.rowData.some(
+            (row, index) =>
+              index !== params.node.rowIndex && row.name === params.newValue
+          );
+
+          if (duplicateExists) {
+            alerts.basicAlert(
+              'Fecha duplicada',
+              'Ya existe una fecha.',
+              'error'
+            );
+            return false;
+          }
+
+          params.data[params.colDef.field] = params.newValue;
+          return true;
+        },
         width: 170,
       },
 
@@ -209,13 +258,8 @@ export class PayrollComponent implements OnInit {
 
             // Aquí puedes ejecutar cualquier otra acción, como actualizar el estado
           });
-
-
           return button;
         },
-
-
-
         onCellDoubleClicked: this.onCellDoubleClicked.bind(this)
       },
     ]
@@ -384,7 +428,8 @@ export class PayrollComponent implements OnInit {
   }
 
   async saveChanges() {
-    console.log("----------------------------------- entrando a salvar cambios")
+    console.log("----------------------------------- ENTRANDO A SALVAR CAMBIOS");
+    console.log("................. estos son los datos de la tabla: ", this.rowData);
     const isValid = this.rowData.every((item) => item.startDate && item.endDate && item.idBranch);
     // llamar al servicio de verificacion de existencia de nomina digital
 
@@ -408,6 +453,11 @@ export class PayrollComponent implements OnInit {
       console.log("-------------------- los datos cleaned son: ", cleanedData);
       var resultado = this.administrationService.addNormalPayroll(cleanedData);
       console.log("-------------------- el resultado del endpoint es: ", resultado);
+      alerts.basicAlert(
+        'Datos actualizados',
+        'Se han actualizado los datos correctamente.',
+        'success'
+      );
 
       return resultado;
     });
@@ -420,6 +470,7 @@ export class PayrollComponent implements OnInit {
     */
 
     // Using concat to combine observables and lastValueFrom for async/await
+    /*
     try {
       const responses = await lastValueFrom(
         concat(...addObservables).pipe(toArray())
@@ -441,6 +492,7 @@ export class PayrollComponent implements OnInit {
         'error'
       );
     }
+      */
   }
 
   onSelectionChanged(event: any) {
