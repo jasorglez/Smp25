@@ -69,7 +69,6 @@ export class SideBarComponent {
             this.permissionsService.getUsersxPermissionsGeneral('administrator', datauser.id).pipe(
               map((data: any[]) => {
                 this.rootAdministrator = data.map(item => item.idPermission);
-                console.log('IDs de permisos de administrador:', this.rootAdministrator);
                 return data;
               })
             ).subscribe();
