@@ -451,15 +451,33 @@ export class PayrollComponent implements OnInit {
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       console.log("-------------------- los datos cleaned son: ", cleanedData);
-      var resultado = this.administrationService.addNormalPayroll(cleanedData);
-      console.log("-------------------- el resultado del endpoint es: ", resultado);
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
-
-      return resultado;
+      this.administrationService.addNormalPayroll(cleanedData).subscribe({
+        next: (response) => {
+          console.log("-----------------------Respuesta del servidor: ", response);
+          alerts.basicAlert(
+            'Datos guardados',
+            response.message,
+            'success'
+          );
+          this.notSavedChanges = false;
+          this.aggregatingRecord = false;
+          this.obtenerDatos(); // Refrescar los datos
+          this.resetGridSize();
+        },
+        error: (error) => {
+          console.log('----------------------------Error al guardar los datos:', error.error);
+          const errorMessage = error?.error || 'Ocurrió un error al guardar los datos. Intente nuevamente.';
+          alerts.basicAlert(
+            'Error',
+            errorMessage,
+            'error'
+          );
+          this.notSavedChanges = false;
+          this.aggregatingRecord = false;
+          this.obtenerDatos(); // Refrescar los datos
+          this.resetGridSize();
+        }
+      });
     });
 
     /*
