@@ -6,7 +6,7 @@ import { UsersService } from 'app/services/users.service';
 import { alerts } from 'app/helpers/alerts';
 import { FormsModule } from '@angular/forms';
 import { UsersProfileComponent } from "./users-profile.component";
-import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { catchError, concat, EMPTY, lastValueFrom, toArray, tap } from 'rxjs';
 import { MatDialogModule } from '@angular/material/dialog';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { CatalogsService } from 'app/services/catalogs.service';
@@ -409,7 +409,15 @@ public gridOptions: any = {
       const addUserRequests = newRows.map(row => {
         const cleanedData = this.cleanDataForServer(row);
         console.log('this Add CleanedData', cleanedData);
-        return this.usersService.addUser(cleanedData);
+        return this.usersService.addUser(cleanedData).pipe(
+          tap(response => {
+            console.log('Respuesta directa del addUser:', {
+              posiblesIds: {
+                id: response.data?.id
+              }
+            });
+          })
+        );
       });
   
       const updateUserRequests = modifiedRows.map(row => {
@@ -431,33 +439,49 @@ public gridOptions: any = {
       console.log('Nuevos usuarios creados:', newUserResponses);
       
       // Creamos los permisos para los nuevos usuarios
-        const permissionRequests = newUserResponses.map((response, index) => {
-          // La respuesta contiene el ID dentro del objeto data
-          const userId = response.data?.id || response.data?._id || response.data?.userId;
-          console.log('Estructura de respuesta completa:', response);
-          console.log('Objeto data:', response.data);
-          console.log('ID de usuario obtenido:', userId);
-          
-          if (!userId) {
-            console.warn('No se pudo obtener el ID del usuario para:', response);
-            return null;
-          }
-          
-          const formattedData = {
+      const permissionRequests = newUserResponses.map((response, index) => {
+        const userId = response.data?.id;
+        
+        if (!userId) {
+          console.warn('No se pudo obtener el ID del usuario para:', response);
+          return null;
+        }
+        
+        const formattedRoot = {
+          idUser: userId,
+          idPermission: this.signalsService.getRootSelectedBySidebar()(),
+          type: "root",
+          description: "SIN DESCRIPCION",
+          active: 1
+        };
+
+        // Array para almacenar las peticiones
+        const requests = [this.usersxrootService.addUserxPermission(formattedRoot)];
+
+        // Solo añadir el permiso de branch si el ID es positivo
+        const branchId = this.signalsService.getBranchSelectedBySidebar()();
+        if (branchId > 0) {
+          const formattedBranch = {
             idUser: userId,
-            idPermission: this.idRoot || 0,
-            type: this.permissionType || "string",
-            description: newRows[index].description || "string"
+            idPermission: branchId,
+            type: "branch",
+            description: "SIN DESCRIPCION",
+            active: 1
           };
-          
-          console.log('Datos de permiso a guardar:', formattedData);
-          return this.usersxrootService.addUserxPermission(formattedData);
-        }).filter(req => req !== null); // Eliminamos posibles nul
+          console.log('Datos de permiso branch a guardar:', formattedBranch);
+          requests.push(this.usersxrootService.addUserxPermission(formattedBranch));
+        }
+        
+        console.log('Datos de permiso root a guardar:', formattedRoot);
+        return requests;
+      }).filter(req => req !== null);
       
       // Ejecutamos las solicitudes de permisos
       if (permissionRequests.length > 0) {
-        console.log('Ejecutando solicitudes de permisos, cantidad:', permissionRequests.length);
-        const permissionResponses = await lastValueFrom(concat(...permissionRequests).pipe(toArray()));
+        console.log('Ejecutando solicitudes de permisos, cantidad:', permissionRequests.length * 2);
+        const permissionResponses = await lastValueFrom(
+          concat(...permissionRequests.flat()).pipe(toArray())
+        );
         console.log('Respuestas de permisos:', permissionResponses);
       } else {
         console.warn('No se crearon solicitudes de permisos');
