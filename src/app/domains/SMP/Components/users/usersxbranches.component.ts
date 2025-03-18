@@ -172,14 +172,6 @@ public gridOptions: any = {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
-      console.log('Datos de la fila seleccionada:', {
-        id: this.selectedRowData.id,
-        idUser: this.selectedRowData.idUser,
-        idPermission: this.selectedRowData.idPermission,
-        type: this.selectedRowData.type,
-        active: this.selectedRowData.active,
-        fila_completa: this.selectedRowData
-      });
       this.signalsService.setBranchFromPermissions(this.selectedRowData.idPermission);
     } else {
       this.selectedRowData = null;
@@ -315,8 +307,6 @@ public gridOptions: any = {
     )
       .subscribe(
         (response) => {
-          console.log("ID: ", id);
-          console.log('Respuesta del borrado:', response);
           alerts.basicAlert(
             'Eliminar entrada',
             'Entrada eliminada satisfactoriamente.',
