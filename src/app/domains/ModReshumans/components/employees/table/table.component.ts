@@ -287,7 +287,8 @@ export class EmployeesTableComponent {
       },
       {
         field: 'email',
-        headerName: 'Correo electrónico',
+        headerName: 'Correo electrónico *',
+        headerClass: 'required-header',
         cellEditor: 'agTextCellEditor',
         editable: true,
         cellEditorParams: {
