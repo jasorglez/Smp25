@@ -92,6 +92,9 @@ export class EmployeesTableComponent {
   showLoansTab: boolean = false;
   showSavingsTab: boolean = false;
   
+  // Agregar esta nueva variable para almacenar el ID de la última fila editada
+  private lastEditedRowId: number | string | null = null;
+
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
     if (this.notSavedChanges) {
@@ -127,9 +130,7 @@ export class EmployeesTableComponent {
       } else {
         this.obtenerDatos();
         this.obtenerBranchs() ;
-        this.getHRSetup();
-        this.getBanks();
-        this.getHRSetup();   
+        this.getBanks()  
         this.getDeptoandPosition();
         this.getStates();
       }
@@ -573,7 +574,7 @@ export class EmployeesTableComponent {
       {
         field: 'baseHours',
         headerName: 'Horas base',
-        editable: false,
+        editable: true,
         filter: true,
         width: 150,
         cellEditor: 'agNumberCellEditor',
@@ -633,12 +634,26 @@ export class EmployeesTableComponent {
   }
 
   obtenerDatos() {
-    this.employeeService.getEmployees(this.idBranch).subscribe(
-      (data: any) => {
-        this.rowData = data;
-      },
-      (error) => console.error('Error fetching data:', error)
-    );
+    return new Promise((resolve) => {
+      this.employeeService.getEmployees(this.idBranch).subscribe(
+        (data: any) => {
+          this.rowData = data;
+          console.log('Datos obtenidos del servidor:', this.rowData);
+          
+          // Actualizar el grid y esperar a que termine
+          this.gridApi.setGridOption('rowData', this.rowData);
+          
+          // Dar tiempo al grid para actualizar los datos
+          setTimeout(() => {
+            resolve(true);
+          }, 100);
+        },
+        (error) => {
+          console.error('Error fetching data:', error);
+          resolve(false);
+        }
+      );
+    });
   }
 
   getStates() {
@@ -760,7 +775,6 @@ export class EmployeesTableComponent {
     const newItem = {
       id: tempId,
       idBranch: this.idBranch,
-      employeeCode: '',
       name: '',
       address: '',
       cp: '',
@@ -826,14 +840,6 @@ export class EmployeesTableComponent {
       (row) => row.__modified && !row.__isNew
     );
 
-    // Generar códigos de empleado para nuevas filas
-    let currentConsecutive = this.prefixAndConsecutive[0].consecutive;
-    newRows.forEach((row) => {
-      currentConsecutive++;
-      row.employeeCode = `${
-        this.prefixAndConsecutive[0].prefix
-      }${currentConsecutive.toString().padStart(4, '0')}`;
-    });
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
@@ -845,28 +851,23 @@ export class EmployeesTableComponent {
       return this.employeeService.updateEmployee(row.id, cleanedData);
     });
 
-    // Crear objeto para actualizar el consecutivo
-    const updatedHRSetupInfo = {
-      ...this.prefixAndConsecutive[0],
-      consecutive: currentConsecutive,
-    };
-
-    const updateConsecutiveObs = this.hrService
-      .updateHRManagementByRootData(this.idRoot, updatedHRSetupInfo)
-      .pipe(
-        tap((response) => {
-          this.prefixAndConsecutive = [updatedHRSetupInfo];
-        })
-      );
-
     try {
       const responses = await lastValueFrom(
         concat(
           ...addObservables,
-          ...updateObservables,
-          updateConsecutiveObs
+          ...updateObservables
         ).pipe(toArray())
       );
+
+      // Guardar el ID de la última fila modificada (si existe)
+      if (modifiedRows.length > 0) {
+        this.lastEditedRowId = modifiedRows[modifiedRows.length - 1].id;
+        console.log('ID guardado de fila modificada:', this.lastEditedRowId);
+      } else if (newRows.length > 0) {
+        this.lastEditedRowId = newRows[newRows.length - 1].id;
+        console.log('ID guardado de fila nueva:', this.lastEditedRowId);
+      }
+
       alerts.basicAlert(
         'Datos actualizados',
         'Se han actualizado los datos correctamente.',
@@ -874,7 +875,17 @@ export class EmployeesTableComponent {
       );
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
-      this.obtenerDatos(); // Refrescar los datos
+      
+      console.log('Antes de obtener datos - ID a seleccionar:', this.lastEditedRowId);
+      await this.obtenerDatos(); // Esperar a que se actualicen los datos
+      console.log('Después de obtener datos - ID a seleccionar:', this.lastEditedRowId);
+
+      // Seleccionar la última fila editada después de recargar los datos
+      if (this.lastEditedRowId) {
+        console.log('Intentando seleccionar fila con ID:', this.lastEditedRowId);
+        this.selectRowById(this.lastEditedRowId);
+        this.lastEditedRowId = null; // Resetear el ID
+      }
     } catch (error) {
       console.error(error);
       alerts.basicAlert(
@@ -883,6 +894,22 @@ export class EmployeesTableComponent {
         'error'
       );
     }
+  }
+
+  private selectRowById(id: number | string) {
+    console.log('Método selectRowById llamado con ID:', id);
+    console.log('Datos actuales en el grid:', this.rowData);
+    
+    // Dar tiempo al grid para que se actualice
+    setTimeout(() => {
+      this.gridApi.forEachNode((node) => {
+        if (node.data.id === id) {
+          console.log('Nodo encontrado:', node.data);
+          node.setSelected(true);
+          this.gridApi.ensureNodeVisible(node, 'middle');
+        }
+      });
+    }, 100);
   }
 
   deleteMasterEntry() {
@@ -980,21 +1007,6 @@ export class EmployeesTableComponent {
       isUnique = !this.rowData.some((row) => row.clockPassword === password);
     }
     return password;
-  }
-
-  async getHRSetup() {
-    this.hrService.getHRManagementByRootData(this.idRoot).subscribe(
-      (data: any) => {
-        this.prefixAndConsecutive = Array.isArray(data) ? data : [data];
-        console.log(this.prefixAndConsecutive);
-      },
-      (error) => {
-        console.error(
-          'Error al obtener la información de gestión de nómina:',
-          error
-        );
-      }
-    );
   }
 
   private validateRequiredField(value: any): any {

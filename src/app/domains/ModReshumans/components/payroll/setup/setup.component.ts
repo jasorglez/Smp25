@@ -196,6 +196,7 @@ export class SetupEmployeesComponent {
     this.hrService.getHRManagementData(this.idBranch).subscribe({
       next: (data: any) => {
         this.hrData = data[0] || {};
+        this.newData = false;
         console.log(data);
       },
       error: (err) => {
