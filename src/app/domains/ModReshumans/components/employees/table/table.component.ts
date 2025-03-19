@@ -71,6 +71,7 @@ export class EmployeesTableComponent {
   branchs  : any[] = [];
 
   // Variables de control del grid
+  valorsenal : string = 'administrador';
   selectedRowData: any = null; // Fila seleccionada actualmente
   tempIdCounter: number = 0; // Contador para IDs temporales
   private digits: number = 4; // Nueva variable para configuración de dígitos
@@ -632,12 +633,25 @@ export class EmployeesTableComponent {
   }
 
   obtenerDatos() {
-    this.employeeService.getEmployees(this.idBranch).subscribe(
-      (data: any) => {
-        this.rowData = data;
-      },
-      (error) => console.error('Error fetching data:', error)
-    );
+    if (this.valorsenal !== 'administrador') {
+      this.employeeService.getEmployees(this.idBranch).subscribe(
+        (data: any) => {
+          this.rowData = data;
+        },
+        (error) => console.error('Error fetching data:', error)
+      );
+    }
+
+  //aqui entra cuando sea un administrador, mostrara todos los empleados de todas las sucursales
+    if (this.valorsenal === 'administrador') {
+      this.employeeService.getEmployees(this.idRoot).subscribe(
+        (data: any) => {
+          this.rowData = data;
+        },
+        (error) => console.error('Error fetching data:', error)
+      );
+    }
+
   }
 
   getStates() {
