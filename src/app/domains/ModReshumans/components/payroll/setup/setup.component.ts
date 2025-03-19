@@ -1,4 +1,4 @@
-import { Employee } from './../models/employee.model';
+import { Employee } from '../../setup/models/employee.model';
 import { CommonModule } from '@angular/common';
 import { Component, effect, inject } from '@angular/core';
 import { FormsModule, FormGroup } from '@angular/forms';
@@ -6,7 +6,7 @@ import { alerts } from 'app/helpers/alerts';
 import { HRService } from 'app/services/hr.service';
 import { SignalsService } from 'app/services/signals.service';
 import * as XLSX from 'xlsx';
-import { NominaData } from '../models/payroll-data.module';
+import { NominaData } from '../../setup/models/payroll-data.module';
 import { PayrollService } from 'app/services/payroll.service';
 import { AdministrationService } from 'app/services/administration.service';
 import { TrackingService } from 'app/services/tracking.service';
@@ -18,16 +18,16 @@ interface Bank {
 }
 
 @Component({
-  selector: 'app-setup-branch',
+  selector: 'app-setup-employees',
   standalone: true,
   imports: [
     CommonModule,
     FormsModule],
-  templateUrl: './setup-branch.component.html',
-  styleUrl: './setup-branch.component.scss'
+  templateUrl: './setup.component.html',
+  styleUrl: './setup.component.scss'
 })
 
-export class SetupBranchComponent {
+export class SetupEmployeesComponent {
   private signalsService = inject(SignalsService);
   private hrService = inject(HRService);
   private trackingService = inject(TrackingService);

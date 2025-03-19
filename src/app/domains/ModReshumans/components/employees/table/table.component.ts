@@ -288,7 +288,8 @@ export class EmployeesTableComponent {
       },
       {
         field: 'email',
-        headerName: 'Correo electrónico',
+        headerName: 'Correo electrónico *',
+        headerClass: 'required-header',
         cellEditor: 'agTextCellEditor',
         editable: true,
         cellEditorParams: {
@@ -727,6 +728,8 @@ export class EmployeesTableComponent {
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
       this.idEmployee = this.selectedRowData.id;
+      
+      console.log('Datos de la fila seleccionada:', this.selectedRowData);
 
       this.signalsService.setIdEmployee(this.idEmployee);
     } else {
@@ -908,9 +911,10 @@ export class EmployeesTableComponent {
     }
 
     const selectedData = selectedNodes[0].data;
+    console.log('Datos del empleado a eliminar:', selectedData);
 
-    // Validar que el préstamo sea 0
-    if (selectedData.loan !== 0) {
+    // Validar que el préstamo sea 0 o no exista
+    if (selectedData.loan && selectedData.loan !== 0) {
       alerts.basicAlert(
         'Error al eliminar',
         'No se puede eliminar el empleado mientras tenga préstamos activos',

@@ -1,3 +1,7 @@
+# Copilot
+.vs/Smp25/CopilotIndices/
+*.vsidx
+
 # Logs
 logs
 *.log

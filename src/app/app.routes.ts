@@ -424,6 +424,17 @@ export const routes: Routes = [
           {
             path: 'payroll',
             loadComponent: () => import('./domains/ModReshumans/components/payroll/payroll.component').then(p => p.PayrollComponent),
+            children: [
+              { path: '', redirectTo: 'master-payroll', pathMatch: 'full' },
+              {
+                path: 'master-payroll',
+                loadComponent: () => import('./domains/ModReshumans/components/payroll/masterpayroll/masterpayroll.component').then(s => s.MasterPayrollComponent)
+              },
+              {
+                path: 'setup',
+                loadComponent: () => import('./domains/ModReshumans/components/payroll/setup/setup.component').then(s => s.SetupEmployeesComponent)
+              },
+            ]
           },
           {
             path: 'clock',

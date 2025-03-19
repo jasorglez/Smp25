@@ -12,7 +12,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { RootService } from 'app/services/root.service';
 import { UsersService } from 'app/services/users.service';
 import { SharedModule } from '../shared.module';
-import { EMPTY } from 'rxjs';
+import { EMPTY, map, tap } from 'rxjs';
 
 
 @Component({
@@ -40,6 +40,8 @@ export class SideBarComponent {
   selectedPlatformId: number = 0;
   usersData: any[];
 
+  private rootAdministrator: number[] = [];
+
   constructor(
     public translateService: TraductorService,
     public trackingService: TrackingService,
@@ -55,21 +57,36 @@ export class SideBarComponent {
     private signalsService: SignalsService
   ) { }
 
+
   async ngOnInit() {
+    // Obtener los permisos de administrador siempre, independientemente del estado del idUser
+    this.permissionsService.getUsersxPermissionsGeneral('administrator', this.signalsService.idUser()).pipe(
+      map((data: any[]) => {
+        this.rootAdministrator = data.map(item => item.idPermission);
+        console.log('IDs de permisos de administrador:', this.rootAdministrator);
+        return data;
+      })
+    ).subscribe();
+
     if (this.signalsService.isidUserEmpty()) {
       this.userService.findEmail(localStorage.getItem('mail')).subscribe({
         next: (datauser: any) => {
           if (datauser) {
-            // Defincion de variables globales
             this.trackingService.setId(datauser.id);
             this.signalsService.setidUser(datauser.id);
-            //this.signalsService.setDisplayName(datauser.displayName);
+            // Obtener los permisos de administrador siempre, independientemente del estado del idUser
+            this.permissionsService.getUsersxPermissionsGeneral('administrator', datauser.id).pipe(
+              map((data: any[]) => {
+                this.rootAdministrator = data.map(item => item.idPermission);
+                console.log('IDs de permisos de administrador:', this.rootAdministrator);
+                return data;
+              })
+            ).subscribe();
             this.getpermissionxRoots();
           }
         },
         error: (error) => {
           console.error('Error al obtener los datos del usuario:', error);
-          // Manejo del error
         }
       })
     } else {
@@ -78,7 +95,6 @@ export class SideBarComponent {
 
     this.loadPermissions();
 
-    // Monitorear cambios en localStorage
     window.addEventListener('storage', (event) => {
       if (event.key === 'mail') {
         this.loadPermissions();
@@ -133,14 +149,26 @@ export class SideBarComponent {
   }
 
   async getpermissionxBranchs(idRoot: number) {
+    // Verificar si el root actual está en rootAdministrator
+    const isAdminRoot = this.rootAdministrator.includes(idRoot);
+
     this.branchService.getBranchesByUserAndCompany(this.signalsService.idUser(), parseInt(localStorage.getItem('company')))
       .subscribe((data) => {
         console.log(data);
-        // Modificación para almacenar id y name en branchData
+        // Crear el array de branches
         this.branchData = data.project.map((branch: any) => ({
           id: branch.id,
           name: branch.name
         }));
+
+        // Si es admin root, añadir la opción "Todas las sucursales" al principio
+        if (isAdminRoot) {
+          this.branchData.unshift({
+            id: -idRoot, // ID negativo del root
+            name: 'Todas las sucursales'
+          });
+        }
+
         if (this.branchData.length > 0) {
           this.selectedBranchId = this.branchData[0].id;
           console.log(this.selectedBranchId);
@@ -185,17 +213,17 @@ export class SideBarComponent {
 
   }
 
-async onBranchSelected(event: Event)  {
-  const target = event.target as HTMLSelectElement;
-  this.selectedBranchId = target.value;
-  if (this.selectedBranchId) {
-    // Lógica para añadir la signal de branch
-    this.signalsService.setBranchSelectedBySidebar(Number(this.selectedBranchId));
-    this.signalsService.setBranchNameSelectedBySidebar(this.branchData.find(branch => branch.id === Number(this.selectedBranchId)).name);
-    console.log(this.selectedBranchId);
-    // Borro la signal de project para resetear el dato
+  async onBranchSelected(event: Event) {
+    const target = event.target as HTMLSelectElement;
+    this.selectedBranchId = target.value;
+    if (this.selectedBranchId) {
+      // Lógica para añadir la signal de branch
+      this.signalsService.setBranchSelectedBySidebar(Number(this.selectedBranchId));
+      this.signalsService.setBranchNameSelectedBySidebar(this.branchData.find(branch => branch.id === Number(this.selectedBranchId)).name);
+      console.log(this.selectedBranchId);
+      // Borro la signal de project para resetear el dato
+    }
   }
-}
 
   async getpermissionxContracts(idRoot: number) {
     // Aquí consulto la tabla donde está el idUser correspondiente a company

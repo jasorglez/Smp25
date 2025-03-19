@@ -27,11 +27,11 @@ export const environment = {
   // urlBpi        : 'https://bi2.centralus.cloudapp.azure.com/bpi/api',
   // urlWarehouse  : 'https://bi2.centralus.cloudapp.azure.com/warehouse/api',
 
- urlSecurity       : 'https://bi2.com.mx/api',
- urlSmp            : 'https://bi2.com.mx/smp/api',
- urlBpi            : 'https://bi2.com.mx/bpi/api',
- urlWarehouse      : 'https://bi2.com.mx/warehouse/api', //
- urlAdministration : 'https://bi2.com.mx/tracking/api', // 5006
+ urlSecurity       : 'https://bi2.com.mx/api', // 5003 
+ urlSmp            : 'https://bi2.com.mx/smp/api', // 5004
+ urlBpi            : 'https://bi2.com.mx/bpi/api', // 5005
+ urlWarehouse      : 'https://bi2.com.mx/warehouse/api', // 5007
+ urlAdministration : 'https://bi2.com.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
 
   //  urlAzure    : 'https://localhost:7089/',
 

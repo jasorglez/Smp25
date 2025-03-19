@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { environment } from '@env/environment';
-import { Observable } from 'rxjs';
+import { Observable, tap } from 'rxjs';
 import { TrackingService } from './tracking.service';
 
 @Injectable({
@@ -120,6 +120,10 @@ export class AdministrationService {
 
   // NormalPayroll
   addNormalPayroll(data: any): Observable<any> {
-    return this.http.post<number>(`${environment.urlLocalJG}/NormalPayrolls`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.post<number>(`${environment.urlLocalJG}/NormalPayrolls`, data, { headers: this.trackingService.getHeaders() }).pipe(
+      tap(response => {
+        console.log("Respuesta del servidor: ", response);
+      })
+    );
   }
 }

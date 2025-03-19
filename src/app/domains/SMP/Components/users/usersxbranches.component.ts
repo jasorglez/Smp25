@@ -40,7 +40,7 @@ export class UsersxbranchesComponent {
 
   constructor() {
     effect(() => {
-      this.idRoot = this.signalsService.getCompanyFromPermissions()();
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
 
       if (this.idRoot) {
         this.rowData = [];
@@ -79,6 +79,7 @@ export class UsersxbranchesComponent {
     this.branchesService.getBranchesByUserAndCompany(this.idUser, this.idRoot).subscribe(
       (data: any) => {
         this.rowData = data.project; // Extract the array from the response     
+        console.log(data);
       },
       (error) => {
         if (error.status == 404) this.rowData = [];
@@ -292,8 +293,7 @@ public gridOptions: any = {
     }
 
     const selectedData = selectedNodes[0].data;
-    const id = selectedData.id;
-    selectedData.active = 0;
+    const id = selectedData.internalId;
     this.usersxbranchesService.deleteUserxPermission(id).pipe(
       catchError((error) => {
         alerts.basicAlert(
@@ -306,19 +306,13 @@ public gridOptions: any = {
       })
     )
       .subscribe(
-        () => {
+        (response) => {
           alerts.basicAlert(
             'Eliminar entrada',
             'Entrada eliminada satisfactoriamente.',
             'success'
           );
           this.obtenerDatos();
-
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
           this.notSavedChanges = false;
           this.selectedRowData = null;
         }
