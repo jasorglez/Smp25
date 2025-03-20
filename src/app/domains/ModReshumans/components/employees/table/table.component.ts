@@ -829,7 +829,6 @@ export class EmployeesTableComponent {
       (row) => row.__modified && !row.__isNew
     );
 
-
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       return this.employeeService.addEmployee(cleanedData);
@@ -848,13 +847,13 @@ export class EmployeesTableComponent {
         ).pipe(toArray())
       );
 
-      // Guardar el ID de la última fila modificada (si existe)
+      // Determinar qué ID vamos a seleccionar después de recargar
       if (modifiedRows.length > 0) {
+        // Si hay filas modificadas, guardamos el ID de la última modificada
         this.lastEditedRowId = modifiedRows[modifiedRows.length - 1].id;
-        console.log('ID guardado de fila modificada:', this.lastEditedRowId);
       } else if (newRows.length > 0) {
-        this.lastEditedRowId = newRows[newRows.length - 1].id;
-        console.log('ID guardado de fila nueva:', this.lastEditedRowId);
+        // Si hay filas nuevas, marcaremos que necesitamos seleccionar el ID máximo
+        this.lastEditedRowId = 'SELECT_MAX_ID';
       }
 
       alerts.basicAlert(
@@ -865,14 +864,17 @@ export class EmployeesTableComponent {
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
       
-      console.log('Antes de obtener datos - ID a seleccionar:', this.lastEditedRowId);
       await this.obtenerDatos(); // Esperar a que se actualicen los datos
-      console.log('Después de obtener datos - ID a seleccionar:', this.lastEditedRowId);
 
-      // Seleccionar la última fila editada después de recargar los datos
+      // Seleccionar la fila apropiada después de recargar
       if (this.lastEditedRowId) {
-        console.log('Intentando seleccionar fila con ID:', this.lastEditedRowId);
-        this.selectRowById(this.lastEditedRowId);
+        if (this.lastEditedRowId === 'SELECT_MAX_ID') {
+          // Encontrar el ID máximo en los datos actuales
+          const maxId = Math.max(...this.rowData.map(row => Number(row.id)));
+          this.selectRowById(maxId);
+        } else {
+          this.selectRowById(this.lastEditedRowId);
+        }
         this.lastEditedRowId = null; // Resetear el ID
       }
     } catch (error) {
@@ -886,14 +888,14 @@ export class EmployeesTableComponent {
   }
 
   private selectRowById(id: number | string) {
-    console.log('Método selectRowById llamado con ID:', id);
-    console.log('Datos actuales en el grid:', this.rowData);
-    
     // Dar tiempo al grid para que se actualice
     setTimeout(() => {
       this.gridApi.forEachNode((node) => {
-        if (node.data.id === id) {
-          console.log('Nodo encontrado:', node.data);
+        // Convertir ambos IDs a número para la comparación
+        const nodeId = typeof node.data.id === 'string' ? parseInt(node.data.id) : node.data.id;
+        const searchId = typeof id === 'string' ? parseInt(id) : id;
+        
+        if (nodeId === searchId) {
           node.setSelected(true);
           this.gridApi.ensureNodeVisible(node, 'middle');
         }
