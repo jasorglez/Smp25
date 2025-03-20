@@ -48,7 +48,6 @@ export class EmployeesTableComponent {
   private inegiService = inject(InegiService);
   private administrationService = inject(AdministrationService);
   private catalogService = inject(CatalogsService);
-  private hrService = inject(HRService);
   private timeService     = inject(TimeService);
   private branchesService = inject(BranchsService);
 
@@ -216,7 +215,8 @@ export class EmployeesTableComponent {
       },
       {
         field: 'idBranch',
-        headerName: 'Nombre sucursal',
+        headerName: 'Nombre sucursal *',
+        headerClass: 'required-header',
         editable: true,
         filter: true,
         width: 170,
@@ -586,7 +586,7 @@ export class EmployeesTableComponent {
       {
         field: 'ingressDate',
         headerName: 'Fecha de ingreso',
-        editable: true,
+        editable: false,
         filter: true,
         width: 150,
         cellRenderer: 'agDateCellRenderer',
@@ -773,7 +773,7 @@ export class EmployeesTableComponent {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idBranch: this.idBranch,
+      idBranch: this.idBranch > 0 ? this.idBranch : null,
       name: '',
       address: '',
       cp: '',
@@ -814,11 +814,11 @@ export class EmployeesTableComponent {
   }
 
   async saveMasterChanges() {
-    const isValid = this.rowData.every((item) => item.name);
+    const isValid = this.rowData.every((item) => item.name && item.idBranch && item.email);
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
-        'Debe llenar todos los campos antes de guardar.',
+        'Debe llenar los campos obligatorios antes de guardar.',
         'error'
       );
       return;
