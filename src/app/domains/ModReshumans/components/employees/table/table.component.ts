@@ -63,7 +63,6 @@ export class EmployeesTableComponent {
   newlyAddedRows: string[] = []; // IDs de filas recién añadidas
   notSavedChanges: boolean = false;
   
-  prefixAndConsecutive: any[] = [];
   rowData  : any[] = [];
   banks    : any[] = [];
   depto    : any[] = [];
@@ -820,16 +819,6 @@ export class EmployeesTableComponent {
       alerts.basicAlert(
         'Añadir entrada',
         'Debe llenar todos los campos antes de guardar.',
-        'error'
-      );
-      return;
-    }
-
-    // Validar que el array tenga elementos
-    if (!this.prefixAndConsecutive?.[0]) {
-      alerts.basicAlert(
-        'Error de configuración',
-        'La configuración de prefijo/consecutivo no está cargada correctamente',
         'error'
       );
       return;
