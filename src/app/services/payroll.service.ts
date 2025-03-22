@@ -75,7 +75,9 @@ export class PayrollService {
   }
 
   getDetailsForNormalPayrolls(idPayroll: number): Observable<any> {
-    return this.http.get<any>(`${environment.urlAdministration}/NormalPayrolls/employees/${idPayroll}`, { headers: this.trackingService.getHeaders() });
+    //return this.http.get<any>(`${environment.urlAdministration}/NormalPayrolls/employees/${idPayroll}`, { headers: this.trackingService.getHeaders() });
+    return this.http.get<any>(`${this.apiUrlLocalJGNormalPayroll}/employees/${idPayroll}`, { headers: this.trackingService.getHeaders() });
+
   }
 
   downloadPayrollExcel(idBranch: number, startDate: Date, endDate: Date): Observable<Blob> {

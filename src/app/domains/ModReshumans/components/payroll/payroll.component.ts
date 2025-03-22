@@ -1,5 +1,5 @@
 import { RouterModule } from '@angular/router';
-import { Component, effect, HostListener, inject, OnInit } from '@angular/core';
+import { Component, computed, effect, HostListener, inject, OnInit } from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { PayrollService, PayrollData, EmployeePayroll } from '../../../../services/payroll.service';
 import { FormsModule } from '@angular/forms';
@@ -67,6 +67,9 @@ export class PayrollComponent implements OnInit {
   }
 
   private signalsService = inject(SignalsService);
+
+  companyName = computed(()=> this.signalsService.getCompanyName());
+  displayName = computed(()=> this.signalsService.getDisplayName());
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
@@ -317,7 +320,7 @@ export class PayrollComponent implements OnInit {
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
     headerHeight: 30,
-    rowHeight: 30,
+    rowHeight: 20,
     rowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
