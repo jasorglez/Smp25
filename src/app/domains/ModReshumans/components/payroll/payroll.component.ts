@@ -4,7 +4,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { PayrollService, PayrollData, EmployeePayroll } from '../../../../services/payroll.service';
 import { FormsModule } from '@angular/forms';
 import { DomainsModule } from 'app/domains/domainsmodule';
-
+import { ModalService } from 'src/app/services/modal.service';
 import { SignalsService } from 'app/services/signals.service';
 
 
