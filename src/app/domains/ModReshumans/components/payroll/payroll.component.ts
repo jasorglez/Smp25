@@ -1,11 +1,14 @@
 import { RouterModule } from '@angular/router';
 import { Component, computed, effect, HostListener, inject, OnInit } from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
-import { PayrollService, PayrollData, EmployeePayroll } from '../../../../services/payroll.service';
+import { PayrollService, PayrollData, EmployeePayroll } from 'app/services/payroll.service';
 import { FormsModule } from '@angular/forms';
 import { DomainsModule } from 'app/domains/domainsmodule';
-import { ModalService } from 'src/app/services/modal.service';
+import { ModalService } from 'app/services/modal.service';
 import { SignalsService } from 'app/services/signals.service';
+import { AdministrationService } from 'app/services/administration.service';
+import { alerts } from 'app/helpers/alerts';
+import { GridApi, ColDef, GridReadyEvent, CellDoubleClickedEvent, ICellRendererParams } from 'ag-grid-enterprise';
 
 
 @Component({
