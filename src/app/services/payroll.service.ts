@@ -50,6 +50,9 @@ export class PayrollService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
+//  return this.http.get(`${environment.urlAdministration}/Employee/branch/${idBranch}`, { headers: this.trackingService.getHeaders() });
+
+
   getPayrolls(idBranch: number): Observable<PayrollData[]> {
     return this.http.get<PayrollData[]>(`${this.apiURL}/branch/${idBranch}`, { headers: this.trackingService.getHeaders() });
   }
@@ -75,14 +78,14 @@ export class PayrollService {
   }
 
   getDetailsForNormalPayrolls(idPayroll: number): Observable<any> {
-    //return this.http.get<any>(`${environment.urlAdministration}/NormalPayrolls/employees/${idPayroll}`, { headers: this.trackingService.getHeaders() });
-    return this.http.get<any>(`${this.apiUrlLocalJGNormalPayroll}/employees/${idPayroll}`, { headers: this.trackingService.getHeaders() });
+    return this.http.get<any>(`${environment.urlAdministration}/NormalPayrolls/employees/${idPayroll}`, { headers: this.trackingService.getHeaders() });
+    //return this.http.get<any>(`${this.apiUrlLocalJGNormalPayroll}/employees/${idPayroll}`, { headers: this.trackingService.getHeaders() });
 
   }
 
   downloadPayrollExcel(idBranch: number, startDate: Date, endDate: Date): Observable<Blob> {
     console.log("------------ DOWNLOADPAYROLLEXCEL() entrando al servicio payroll, la api original es: ", this.apiUrlLocalJGNormalPayroll);
-    return this.http.get(`${this.apiUrlLocalJGNormalPayroll}/download-excel/${idBranch}`, {
+    return this.http.get(`${environment.urlAdministration}/NormalPayrolls/download-excel/${idBranch}`, {
       params: {
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString()

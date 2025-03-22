@@ -26,6 +26,8 @@ export class PayrollComponent {
 
   ngOnInit() {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+    console.log("-------------------- este es el this.idBranch: ", this.idBranch);
+
     this.obtenerDatos();
   }
 
