@@ -1,25 +1,36 @@
 import { RouterModule } from '@angular/router';
-import { Component, computed, effect, HostListener, inject, OnInit } from '@angular/core';
+import { Component, effect, HostListener, inject, OnInit } from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
-import { PayrollService, PayrollData, EmployeePayroll } from '../../../../services/payroll.service';
+import { PayrollService, PayrollData, EmployeePayroll } from '../../../../../services/payroll.service';
 import { FormsModule } from '@angular/forms';
 import { DomainsModule } from 'app/domains/domainsmodule';
 
+import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
+import { alerts } from '../../../../../helpers/alerts';
+import { AdministrationService } from 'app/services/administration.service';
+import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { ModalService } from 'app/services/modal.service';
+import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
+import { ImageHandlerService } from 'app/services/image-handler.service';
+import { DetailpayrollComponent } from "../detailpayroll/detailpayroll.component";
 import { SignalsService } from 'app/services/signals.service';
 
 
 @Component({
-  selector: 'app-payroll',
+  selector: 'app-master-payroll',
   standalone: true,
   imports: [
     RouterModule,
-    DomainsModule
+    DomainsModule,
+    AgGridModule,
+    FormsModule,
+    DetailpayrollComponent
   ],
-  templateUrl: './payroll.component.html',
-  styleUrl: './payroll.component.scss'
+  templateUrl: './masterpayroll.component.html',
+  styleUrl: './masterpayroll.component.scss'
 })
 
-export class PayrollComponent {
+export class MasterPayrollComponent implements OnInit {
 
   ngOnInit() {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();

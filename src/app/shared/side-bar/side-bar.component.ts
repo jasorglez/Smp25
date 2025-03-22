@@ -59,35 +59,42 @@ export class SideBarComponent {
 
 
   async ngOnInit() {
+    // Obtener los permisos de administrador siempre, independientemente del estado del idUser
+    this.permissionsService.getUsersxPermissionsGeneral('administrator', this.signalsService.idUser()).pipe(
+      map((data: any[]) => {
+        this.rootAdministrator = data.map(item => item.idPermission);
+        console.log('IDs de permisos de administrador:', this.rootAdministrator);
+        return data;
+      })
+    ).subscribe();
+
     if (this.signalsService.isidUserEmpty()) {
       this.userService.findEmail(localStorage.getItem('mail')).subscribe({
         next: (datauser: any) => {
           if (datauser) {
-            // Defincion de variables globales
             this.trackingService.setId(datauser.id);
             this.signalsService.setidUser(datauser.id);
+            // Obtener los permisos de administrador siempre, independientemente del estado del idUser
             this.permissionsService.getUsersxPermissionsGeneral('administrator', datauser.id).pipe(
               map((data: any[]) => {
                 this.rootAdministrator = data.map(item => item.idPermission);
+                console.log('IDs de permisos de administrador:', this.rootAdministrator);
                 return data;
               })
             ).subscribe();
-            //this.signalsService.setDisplayName(datauser.displayName);
             this.getpermissionxRoots();
           }
         },
         error: (error) => {
           console.error('Error al obtener los datos del usuario:', error);
-          // Manejo del error
         }
       })
     } else {
       await this.getpermissionxRoots();
-      
     }
+
     this.loadPermissions();
 
-    // Monitorear cambios en localStorage
     window.addEventListener('storage', (event) => {
       if (event.key === 'mail') {
         this.loadPermissions();
