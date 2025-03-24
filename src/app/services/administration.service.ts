@@ -103,7 +103,7 @@ export class AdministrationService {
 
   // Payroll
   getNormalPayrolls(idBranch: number): Observable<any> {
-    return this.http.get(`${environment.urlLocalJG}/NormalPayrolls/branch/${idBranch}`, { headers: this.trackingService.getHeaders() });
+    return this.http.get(`${environment.urlAdministration}/NormalPayrolls/branch/${idBranch}`, { headers: this.trackingService.getHeaders() });
   }
 
   getEmployeesByNormalPayroll(id: number){

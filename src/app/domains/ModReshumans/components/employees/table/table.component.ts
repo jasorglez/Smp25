@@ -48,7 +48,6 @@ export class EmployeesTableComponent {
   private inegiService = inject(InegiService);
   private administrationService = inject(AdministrationService);
   private catalogService = inject(CatalogsService);
-  private hrService = inject(HRService);
   private timeService     = inject(TimeService);
   private branchesService = inject(BranchsService);
 
@@ -63,7 +62,6 @@ export class EmployeesTableComponent {
   newlyAddedRows: string[] = []; // IDs de filas recién añadidas
   notSavedChanges: boolean = false;
   
-  prefixAndConsecutive: any[] = [];
   rowData  : any[] = [];
   banks    : any[] = [];
   depto    : any[] = [];
@@ -93,6 +91,9 @@ export class EmployeesTableComponent {
   showLoansTab: boolean = false;
   showSavingsTab: boolean = false;
   
+  // Agregar esta nueva variable para almacenar el ID de la última fila editada
+  private lastEditedRowId: number | string | null = null;
+
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
     if (this.notSavedChanges) {
@@ -128,9 +129,7 @@ export class EmployeesTableComponent {
       } else {
         this.obtenerDatos();
         this.obtenerBranchs() ;
-        this.getHRSetup();
-        this.getBanks();
-        this.getHRSetup();   
+        this.getBanks()  
         this.getDeptoandPosition();
         this.getStates();
       }
@@ -217,7 +216,8 @@ export class EmployeesTableComponent {
       },
       {
         field: 'idBranch',
-        headerName: 'Nombre sucursal',
+        headerName: 'Nombre sucursal *',
+        headerClass: 'required-header',
         editable: true,
         filter: true,
         width: 170,
@@ -574,7 +574,7 @@ export class EmployeesTableComponent {
       {
         field: 'baseHours',
         headerName: 'Horas base',
-        editable: false,
+        editable: true,
         filter: true,
         width: 150,
         cellEditor: 'agNumberCellEditor',
@@ -587,7 +587,7 @@ export class EmployeesTableComponent {
       {
         field: 'ingressDate',
         headerName: 'Fecha de ingreso',
-        editable: true,
+        editable: false,
         filter: true,
         width: 150,
         cellRenderer: 'agDateCellRenderer',
@@ -634,25 +634,26 @@ export class EmployeesTableComponent {
   }
 
   obtenerDatos() {
-    if (this.valorsenal !== 'administrador') {
+    return new Promise((resolve) => {
       this.employeeService.getEmployees(this.idBranch).subscribe(
         (data: any) => {
           this.rowData = data;
+          console.log('Datos obtenidos del servidor:', this.rowData);
+          
+          // Actualizar el grid y esperar a que termine
+          this.gridApi.setGridOption('rowData', this.rowData);
+          
+          // Dar tiempo al grid para actualizar los datos
+          setTimeout(() => {
+            resolve(true);
+          }, 100);
         },
-        (error) => console.error('Error fetching data:', error)
+        (error) => {
+          console.error('Error fetching data:', error);
+          resolve(false);
+        }
       );
-    }
-
-  //aqui entra cuando sea un administrador, mostrara todos los empleados de todas las sucursales
-    if (this.valorsenal === 'administrador') {
-      this.employeeService.getEmployees(this.idRoot).subscribe(
-        (data: any) => {
-          this.rowData = data;
-        },
-        (error) => console.error('Error fetching data:', error)
-      );
-    }
-
+    });
   }
 
   getStates() {
@@ -773,8 +774,7 @@ export class EmployeesTableComponent {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idBranch: this.idBranch,
-      employeeCode: '',
+      idBranch: this.idBranch > 0 ? this.idBranch : null,
       name: '',
       address: '',
       cp: '',
@@ -815,21 +815,11 @@ export class EmployeesTableComponent {
   }
 
   async saveMasterChanges() {
-    const isValid = this.rowData.every((item) => item.name);
+    const isValid = this.rowData.every((item) => item.name && item.idBranch && item.email);
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
-        'Debe llenar todos los campos antes de guardar.',
-        'error'
-      );
-      return;
-    }
-
-    // Validar que el array tenga elementos
-    if (!this.prefixAndConsecutive?.[0]) {
-      alerts.basicAlert(
-        'Error de configuración',
-        'La configuración de prefijo/consecutivo no está cargada correctamente',
+        'Debe llenar los campos obligatorios antes de guardar.',
         'error'
       );
       return;
@@ -839,15 +829,6 @@ export class EmployeesTableComponent {
     const modifiedRows = this.rowData.filter(
       (row) => row.__modified && !row.__isNew
     );
-
-    // Generar códigos de empleado para nuevas filas
-    let currentConsecutive = this.prefixAndConsecutive[0].consecutive;
-    newRows.forEach((row) => {
-      currentConsecutive++;
-      row.employeeCode = `${
-        this.prefixAndConsecutive[0].prefix
-      }${currentConsecutive.toString().padStart(4, '0')}`;
-    });
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
@@ -859,28 +840,23 @@ export class EmployeesTableComponent {
       return this.employeeService.updateEmployee(row.id, cleanedData);
     });
 
-    // Crear objeto para actualizar el consecutivo
-    const updatedHRSetupInfo = {
-      ...this.prefixAndConsecutive[0],
-      consecutive: currentConsecutive,
-    };
-
-    const updateConsecutiveObs = this.hrService
-      .updateHRManagementByRootData(this.idRoot, updatedHRSetupInfo)
-      .pipe(
-        tap((response) => {
-          this.prefixAndConsecutive = [updatedHRSetupInfo];
-        })
-      );
-
     try {
       const responses = await lastValueFrom(
         concat(
           ...addObservables,
-          ...updateObservables,
-          updateConsecutiveObs
+          ...updateObservables
         ).pipe(toArray())
       );
+
+      // Determinar qué ID vamos a seleccionar después de recargar
+      if (modifiedRows.length > 0) {
+        // Si hay filas modificadas, guardamos el ID de la última modificada
+        this.lastEditedRowId = modifiedRows[modifiedRows.length - 1].id;
+      } else if (newRows.length > 0) {
+        // Si hay filas nuevas, marcaremos que necesitamos seleccionar el ID máximo
+        this.lastEditedRowId = 'SELECT_MAX_ID';
+      }
+
       alerts.basicAlert(
         'Datos actualizados',
         'Se han actualizado los datos correctamente.',
@@ -888,7 +864,20 @@ export class EmployeesTableComponent {
       );
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
-      this.obtenerDatos(); // Refrescar los datos
+      
+      await this.obtenerDatos(); // Esperar a que se actualicen los datos
+
+      // Seleccionar la fila apropiada después de recargar
+      if (this.lastEditedRowId) {
+        if (this.lastEditedRowId === 'SELECT_MAX_ID') {
+          // Encontrar el ID máximo en los datos actuales
+          const maxId = Math.max(...this.rowData.map(row => Number(row.id)));
+          this.selectRowById(maxId);
+        } else {
+          this.selectRowById(this.lastEditedRowId);
+        }
+        this.lastEditedRowId = null; // Resetear el ID
+      }
     } catch (error) {
       console.error(error);
       alerts.basicAlert(
@@ -897,6 +886,22 @@ export class EmployeesTableComponent {
         'error'
       );
     }
+  }
+
+  private selectRowById(id: number | string) {
+    // Dar tiempo al grid para que se actualice
+    setTimeout(() => {
+      this.gridApi.forEachNode((node) => {
+        // Convertir ambos IDs a número para la comparación
+        const nodeId = typeof node.data.id === 'string' ? parseInt(node.data.id) : node.data.id;
+        const searchId = typeof id === 'string' ? parseInt(id) : id;
+        
+        if (nodeId === searchId) {
+          node.setSelected(true);
+          this.gridApi.ensureNodeVisible(node, 'middle');
+        }
+      });
+    }, 100);
   }
 
   deleteMasterEntry() {
@@ -994,21 +999,6 @@ export class EmployeesTableComponent {
       isUnique = !this.rowData.some((row) => row.clockPassword === password);
     }
     return password;
-  }
-
-  async getHRSetup() {
-    this.hrService.getHRManagementByRootData(this.idRoot).subscribe(
-      (data: any) => {
-        this.prefixAndConsecutive = Array.isArray(data) ? data : [data];
-        console.log(this.prefixAndConsecutive);
-      },
-      (error) => {
-        console.error(
-          'Error al obtener la información de gestión de nómina:',
-          error
-        );
-      }
-    );
   }
 
   private validateRequiredField(value: any): any {

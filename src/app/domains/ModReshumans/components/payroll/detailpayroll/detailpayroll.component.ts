@@ -31,7 +31,8 @@ export class DetailpayrollComponent {
   };
 
   public gridOptions: any = {
-    headerHeight: 30,
+    headerHeight: 20,
+    domLayout: 'normal',
     rowHeight: 20
   };
 
@@ -50,20 +51,20 @@ export class DetailpayrollComponent {
   idPayroll: number;
 
   columnDefs: ColDef[] = [
-    { headerName: 'Nombre Empleado', field: 'employeeName', width: 800, filter: true },
+    { headerName: 'Nombre Empleado', field: 'employeeName', width: 300, filter: true },
     {
-      headerName: 'Precio por Hora',
-      width: 400,
+      headerName: 'Precio x Hora',
+      width: 150,
       field: 'priceXHour',
       valueFormatter: (params) => {
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
       }
     },
-    { headerName: 'Horas Trabajadas', width: 400, field: 'workedHours' },
-    { headerName: 'Horas Extra', width: 400, field: 'extraWorkedHours' },
+    { headerName: 'Horas Trabajadas', width: 150, field: 'workedHours' },
+    { headerName: 'Horas Extra', width: 150, field: 'extraWorkedHours' },
     {
       headerName: 'Salario Base',
-      width: 400,
+      width: 150,
       field: 'baseSalary',
       valueFormatter: (params) => {
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
@@ -71,7 +72,7 @@ export class DetailpayrollComponent {
     },
     {
       headerName: 'Salario Extra',
-      width: 400,
+      width: 150,
       field: 'extraSalary',
       valueFormatter: (params) => {
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
@@ -79,16 +80,16 @@ export class DetailpayrollComponent {
     },
     {
       headerName: 'Bonos',
-      width: 400,
+      width: 100,
       field: 'bonus',
       valueFormatter: (params) => {
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
       }
     },
-    { headerName: 'Descuentos (%)', width: 400, field: 'percentageDiscount' },
+    { headerName: 'Descuentos (%)', width: 150, field: 'percentageDiscount' },
     {
       headerName: 'Descuento Real',
-      width: 400,
+      width: 150,
       field: 'realDiscount',
       valueFormatter: (params) => {
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
@@ -96,25 +97,49 @@ export class DetailpayrollComponent {
     },
     {
       headerName: 'Pago Digital',
-      width: 400,
+      width: 150,
       field: 'digitalPayment',
       valueFormatter: (params) => {
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
       }
     },
-    /*
+
     {
       headerName: 'Ahorros',
-      width: 400,
+      width: 100,
       field: 'savings',
       valueFormatter: (params) => {
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
       }
-    }
-    */
+    },
+
+    {
+      headerName: 'Faltas',
+      width: 100,
+      field: '',
+      valueFormatter: (params) => {
+        return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
+      }
+    },
+
+    {
+      headerName: 'Retardos',
+      width: 110,
+      field: '',
+      valueFormatter: (params) => {
+        return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
+      }
+    },
+
+    {
+      headerName: 'Bancos',
+      width: 150,
+      field: 'bancoNombre',
+    },
+
     {
       headerName: 'Total',
-      width: 400,
+      width: 150,
       field: 'total',
       valueFormatter: (params) => {
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
@@ -142,11 +167,11 @@ export class DetailpayrollComponent {
     this.payrollService.getDetailsForNormalPayrolls(this.idPayroll).subscribe(
       (data: any) => {
         this.rowData = data;
-        console.log(this.rowData);
+        console.log("------------------------------------ DEATILPAYROLLSERVICE: ", this.rowData);
         if (this.gridApi) {
           //this.gridApi.sizeColumnsToFit(); // Ajustar columnas al tamaño del contenedor
           // O también puedes usar:
-          this.gridApi.autoSizeAllColumns();
+          //this.gridApi.autoSizeAllColumns();
         }
       },
       (error) => {
@@ -174,7 +199,7 @@ export class DetailpayrollComponent {
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-    this.gridApi.sizeColumnsToFit(); // Ajustar columnas al tamaño del contenedor
+    //this.gridApi.sizeColumnsToFit(); // Ajustar columnas al tamaño del contenedor
   }
 
 }

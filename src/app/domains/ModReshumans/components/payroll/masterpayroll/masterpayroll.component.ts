@@ -34,18 +34,19 @@ export class MasterPayrollComponent implements OnInit {
 
   ngOnInit() {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+    console.log("--------------- este es el idbranch MASTERPAYROLL: ", this.idBranch);
     this.obtenerDatos();
   }
 
   obtenerDatos() {
     this.administrationService.getNormalPayrolls(this.idBranch).subscribe((data: any) => {
       this.rowData = data;
-      console.log("--------------- esto llega en data: ", data);
-      console.log("--------------- este es el idbranch: ", this.idBranch);
+      console.log("--------------- MASTERPAYROLL esto llega en data: ", data);
+      console.log("--------------- MASTERPAYROLL este es el idbranch: ", this.idBranch);
     },
       (error) => {
         this.rowData = [];
-        console.log("Error al obtener datos de normal payrolls: ", error);
+        console.log("-------- MASTERPAYROLL Error al obtener datos de normal payrolls: ", error);
       });
   }
 
@@ -126,9 +127,9 @@ export class MasterPayrollComponent implements OnInit {
 
         valueGetter: (params) => {
           if (params.node.rowIndex == 0) {
-            console.log('Params completo:', params);
-            console.log('Datos de la fila:', params.data);
-            console.log('Valor de startDate:', params.data.startDate);
+            //console.log('Params completo:', params);
+            //console.log('Datos de la fila:', params.data);
+            //console.log('Valor de startDate:', params.data.startDate);
           }
 
           return params.data.startDate ? new Date(params.data.startDate) : null;
