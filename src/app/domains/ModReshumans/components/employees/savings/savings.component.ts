@@ -52,6 +52,7 @@ export class EmployeesxSavingsComponent {
   private tempIdCounter: number = 0;
   masterNewlyAddedRows: string[] = [];
   detailedNewlyAddedRows: string[] = [];
+  private selectedLoanIdBeforeRefresh: number;
 
   ngOnInit() {}
 
@@ -116,7 +117,7 @@ export class EmployeesxSavingsComponent {
     },
   };
 
-  loadData() {
+  loadData(preserveSelection: boolean = false) {
     if (this.idEmployee === null || this.idEmployee === undefined) {
       return;
     }
@@ -129,6 +130,20 @@ export class EmployeesxSavingsComponent {
             this.maestroRowData = this.detalleRowData = [];
           } else {
             this.maestroRowData = maestroRowData;
+            
+            setTimeout(() => {
+              if (this.maestroGridApi && this.maestroRowData.length > 0) {
+                // Buscar la fila que coincide con el ID guardado
+                const rowToSelect = preserveSelection && this.selectedLoanIdBeforeRefresh ? 
+                  this.maestroRowData.findIndex(row => row.id === this.selectedLoanIdBeforeRefresh) : 
+                  0;
+
+                this.maestroGridApi.getDisplayedRowAtIndex(rowToSelect)?.setSelected(true);
+                
+                // Restablecer el ID guardado
+                this.selectedLoanIdBeforeRefresh = null;
+              }
+            });
           }
         },
         (error) => {
@@ -148,6 +163,11 @@ export class EmployeesxSavingsComponent {
           this.detalleRowData = [];
         } else {
           this.detalleRowData = detalleRowData;
+          setTimeout(() => {
+            if (this.detalleGridApi && this.detalleRowData.length > 0) {
+              this.detalleGridApi.getDisplayedRowAtIndex(0)?.setSelected(true);
+            }
+          });
         }
       },
       (error) => {
@@ -159,11 +179,10 @@ export class EmployeesxSavingsComponent {
 
   maestroColumnDefs: ColDef[] = [
     { 
-      headerName: 'ID *', 
-      headerClass: 'required-header',
-      field: 'name', 
-      flex: 2,
-      editable: (params) => params.data?.__isNew === true
+      headerName: 'ID',
+      field: 'id', 
+      flex: 1,
+      editable: false
     },
     {
       headerName: 'Fecha',
@@ -301,8 +320,20 @@ export class EmployeesxSavingsComponent {
             __isNew: true,
             active: true
         };
-        this.maestroRowData = [...this.maestroRowData, newRow];
+        this.maestroRowData = [newRow, ...this.maestroRowData];
         this.masterNotSavedChanges = true;
+        
+        setTimeout(() => {
+            if (this.maestroGridApi) {
+                const rowNode = this.maestroGridApi.getDisplayedRowAtIndex(0);
+                rowNode?.setSelected(true);
+                
+                this.maestroGridApi.startEditingCell({
+                    rowIndex: 0,
+                    colKey: 'monto'
+                });
+            }
+        });
     } else if (type === 'Detailed') {
         const newRow = {
             id: tempId,
@@ -314,8 +345,20 @@ export class EmployeesxSavingsComponent {
             __isNew: true,
             active: true
         };
-        this.detalleRowData = [...this.detalleRowData, newRow];
+        this.detalleRowData = [newRow, ...this.detalleRowData];
         this.detailNotSavedChanges = true;
+        
+        setTimeout(() => {
+            if (this.detalleGridApi) {
+                const rowNode = this.detalleGridApi.getDisplayedRowAtIndex(0);
+                rowNode?.setSelected(true);
+                
+                this.detalleGridApi.startEditingCell({
+                    rowIndex: 0,
+                    colKey: 'total'
+                });
+            }
+        });
     }
   }
 
@@ -339,7 +382,6 @@ export class EmployeesxSavingsComponent {
       }
       
       this.idLoan = selectedMaestro.id;
-      this.nameLoan = selectedMaestro.name;
       this.loadDetailedData();
     } else {
       this.detalleRowData = [];
@@ -383,8 +425,8 @@ export class EmployeesxSavingsComponent {
         'Se han actualizado los datos correctamente.',
         'success'
       );
-      this.masterNotSavedChanges = false;
-      this.masterNewlyAddedRows = [];
+      this.detailNotSavedChanges = false;
+      this.detailedNewlyAddedRows = [];
       await this.loadData(); // Refrescar los datos
       this.signalsService.triggerRefreshEmployees();
     } catch (error) {
@@ -403,6 +445,9 @@ export class EmployeesxSavingsComponent {
   }
 
   async saveDetailChanges() {
+    // Guardar el ID actual antes de actualizar
+    this.selectedLoanIdBeforeRefresh = this.idLoan;
+
     const isValid = this.detalleRowData.every((item) => item.total);
     if (!isValid) {
       alerts.basicAlert(
@@ -441,7 +486,9 @@ export class EmployeesxSavingsComponent {
       );
       this.detailNotSavedChanges = false;
       this.detailedNewlyAddedRows = [];
-      await this.loadData(); // Refrescar los datos
+      
+      // Recargar datos manteniendo la selección
+      await this.loadData(true); // Pasar true para indicar que es una recarga post-guardado
       this.signalsService.triggerRefreshEmployees();
     } catch (error) {
       console.error(error);

@@ -11,7 +11,7 @@ import {
   authState,
 } from '@angular/fire/auth';
 import { TrackingService } from './tracking.service';
-import { BehaviorSubject, firstValueFrom, map, Observable } from 'rxjs';
+import { BehaviorSubject, catchError, firstValueFrom, map, Observable, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Ilogin } from 'app/interface/ilogin';
 import { SignalsService } from './signals.service';
@@ -197,7 +197,12 @@ export class AuthService {
     return this.http.get<number>(`${environment.urlSecurity}/User/email/${email}`,
       { headers: this.trackingService.getHeaders() }
     ).pipe(
-      map(data => data['data'].id)
+      map(data => data['data'].id),
+      catchError(error => {
+        console.error('Error al obtener el ID del usuario:', error);
+        this.router.navigateByUrl('/login');
+        return throwError(() => error);
+      })
     );
   }
 

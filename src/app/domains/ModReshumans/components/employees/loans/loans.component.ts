@@ -44,7 +44,6 @@ export class EmployeesxLoansComponent {
   gridApi: any;
   idEmployee: number;
   idLoan: number = null;
-  nameLoan: string = null;
   id: number;
   masterNotSavedChanges: boolean = false;
   detailNotSavedChanges: boolean = false;
@@ -52,6 +51,7 @@ export class EmployeesxLoansComponent {
   private tempIdCounter: number = 0;
   masterNewlyAddedRows: string[] = [];
   detailedNewlyAddedRows: string[] = [];
+  private selectedLoanIdBeforeRefresh: number;
 
   ngOnInit() {
 
@@ -119,7 +119,7 @@ export class EmployeesxLoansComponent {
     },
   };
 
-  loadData() {
+  loadData(preserveSelection: boolean = false) {
     if (this.idEmployee === null || this.idEmployee === undefined) {
       return;
     }
@@ -132,6 +132,20 @@ export class EmployeesxLoansComponent {
             this.maestroRowData = this.detalleRowData = [];
           } else {
             this.maestroRowData = maestroRowData;
+            
+            setTimeout(() => {
+              if (this.maestroGridApi && this.maestroRowData.length > 0) {
+                // Buscar la fila que coincide con el ID guardado
+                const rowToSelect = preserveSelection && this.selectedLoanIdBeforeRefresh ? 
+                  this.maestroRowData.findIndex(row => row.id === this.selectedLoanIdBeforeRefresh) : 
+                  0;
+
+                this.maestroGridApi.getDisplayedRowAtIndex(rowToSelect)?.setSelected(true);
+                
+                // Restablecer el ID guardado
+                this.selectedLoanIdBeforeRefresh = null;
+              }
+            });
           }
         },
         (error) => {
@@ -151,6 +165,12 @@ export class EmployeesxLoansComponent {
           this.detalleRowData = [];
         } else {
           this.detalleRowData = detalleRowData;
+          // Seleccionar la primera fila después de cargar los datos de detalle
+          setTimeout(() => {
+            if (this.detalleGridApi && this.detalleRowData.length > 0) {
+              this.detalleGridApi.getDisplayedRowAtIndex(0)?.setSelected(true);
+            }
+          });
         }
       },
       (error) => {
@@ -162,11 +182,10 @@ export class EmployeesxLoansComponent {
 
   maestroColumnDefs: ColDef[] = [
     { 
-      headerName: 'ID *', 
-      headerClass: 'required-header',
-      field: 'name', 
-      flex: 2,
-      editable: (params) => params.data?.__isNew === true
+      headerName: 'ID',
+      field: 'id', 
+      flex: 1,
+      editable: false
     },
     {
       headerName: 'Fecha',
@@ -296,16 +315,30 @@ export class EmployeesxLoansComponent {
         const newRow = {
             id: tempId,
             idEmpleado: this.idEmployee,
-            name: `PRESTAMO ${timeData.formatted}`,
-            date: timeData.dateObj,
             type: 'PRESTAMO',
             monto: 0,
             payments: 0,
             __isNew: true,
             active: true
         };
-        this.maestroRowData = [...this.maestroRowData, newRow];
+        // Añadir la nueva fila al principio del array
+        this.maestroRowData = [newRow, ...this.maestroRowData];
         this.masterNotSavedChanges = true;
+        
+        // Seleccionar la nueva fila y entrar en modo edición
+        setTimeout(() => {
+            if (this.maestroGridApi) {
+                // Ahora la fila nueva está en el índice 0
+                const rowNode = this.maestroGridApi.getDisplayedRowAtIndex(0);
+                rowNode?.setSelected(true);
+                
+                // Iniciar la edición de la celda 'monto'
+                this.maestroGridApi.startEditingCell({
+                    rowIndex: 0,
+                    colKey: 'monto'
+                });
+            }
+        });
     } else if (type === 'Detailed') {
         const newRow = {
             id: tempId,
@@ -317,8 +350,24 @@ export class EmployeesxLoansComponent {
             __isNew: true,
             active: true
         };
-        this.detalleRowData = [...this.detalleRowData, newRow];
+        // Añadir la nueva fila al principio del array
+        this.detalleRowData = [newRow, ...this.detalleRowData];
         this.detailNotSavedChanges = true;
+        
+        // Seleccionar la nueva fila
+        setTimeout(() => {
+            if (this.detalleGridApi) {
+                // Ahora la fila nueva está en el índice 0
+                const rowNode = this.detalleGridApi.getDisplayedRowAtIndex(0);
+                rowNode?.setSelected(true);
+                
+                // Iniciar la edición de la celda 'total'
+                this.detalleGridApi.startEditingCell({
+                    rowIndex: 0,
+                    colKey: 'total'
+                });
+            }
+        });
     }
   }
 
@@ -342,7 +391,6 @@ export class EmployeesxLoansComponent {
       }
       
       this.idLoan = selectedMaestro.id;
-      this.nameLoan = selectedMaestro.name;
       this.loadDetailedData();
     } else {
       this.detalleRowData = [];
@@ -407,6 +455,9 @@ export class EmployeesxLoansComponent {
   }
 
   async saveDetailChanges() {
+    // Guardar el ID actual antes de actualizar
+    this.selectedLoanIdBeforeRefresh = this.idLoan;
+
     const isValid = this.detalleRowData.every((item) => item.total);
     if (!isValid) {
       alerts.basicAlert(
@@ -416,7 +467,6 @@ export class EmployeesxLoansComponent {
       );
       return;
     }
-
 
     const newRows = this.detalleRowData.filter((row) => row.__isNew);
     const modifiedRows = this.detalleRowData.filter(
@@ -443,9 +493,11 @@ export class EmployeesxLoansComponent {
         'Se han actualizado los datos correctamente.',
         'success'
       );
-      this.masterNotSavedChanges = false;
-      this.masterNewlyAddedRows = [];
-      await this.loadData(); // Refrescar los datos
+      this.detailNotSavedChanges = false;
+      this.detailedNewlyAddedRows = [];
+      
+      // Recargar datos manteniendo la selección
+      await this.loadData(true); // Pasar true para indicar que es una recarga post-guardado
       this.signalsService.triggerRefreshEmployees();
     } catch (error) {
       console.error(error);
