@@ -182,7 +182,14 @@ export class EmployeesxSavingsComponent {
       headerName: 'ID',
       field: 'id', 
       flex: 1,
-      editable: false
+      editable: false,
+      valueFormatter: (params) => {
+        // Ocultar IDs temporales
+        if (params.value && params.value.toString().startsWith('temp_')) {
+          return '';
+        }
+        return params.value;
+      }
     },
     {
       headerName: 'Fecha',
@@ -281,13 +288,13 @@ export class EmployeesxSavingsComponent {
         }
         return '$0.00';
       },
-      flex: 1,
+      flex: 2,
       editable: (params) => params.data?.__isNew === true
     },
     { 
       headerName: 'Comentario', 
       field: 'descripcion', 
-      flex: 2,
+      flex: 1,
       editable: (params) => params.data?.__isNew === true
     },
   ];
@@ -312,7 +319,6 @@ export class EmployeesxSavingsComponent {
         const newRow = {
             id: tempId,
             idEmpleado: this.idEmployee,
-            name: `AHORRO ${timeData.formatted}`,
             date: timeData.dateObj,
             type: 'AHORRO',
             monto: 0,
