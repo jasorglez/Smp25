@@ -48,25 +48,25 @@ export class EmployeesTableComponent {
   private inegiService = inject(InegiService);
   private administrationService = inject(AdministrationService);
   private catalogService = inject(CatalogsService);
-  private timeService     = inject(TimeService);
+  private timeService = inject(TimeService);
   private branchesService = inject(BranchsService);
 
   id: number;
   idBranch: number;
   idRoot: number;
   idEmployee: number;
-  
+
   cp: string;
   infoCp: any;
   private estados: string[] = [];
   newlyAddedRows: string[] = []; // IDs de filas recién añadidas
   notSavedChanges: boolean = false;
-  
-  rowData  : any[] = [];
-  banks    : any[] = [];
-  depto    : any[] = [];
-  position : any[] = [];
-  branchs  : any[] = [];
+
+  rowData: any[] = [];
+  banks: any[] = [];
+  depto: any[] = [];
+  position: any[] = [];
+  branchs: any[] = [];
 
   // Variables de control del grid
   valorsenal : string = 'administrador';
@@ -74,6 +74,7 @@ export class EmployeesTableComponent {
   tempIdCounter: number = 0; // Contador para IDs temporales
   private digits: number = 4; // Nueva variable para configuración de dígitos
   private gridApi: GridApi; // API del grid
+  private isOpen: boolean = false; // Variable para controlar el modal de edición
   public defaultColDef: ColDef = {
     sortable: true,
     filter: false,
@@ -90,7 +91,7 @@ export class EmployeesTableComponent {
   gridHeight: string = '80vh';
   showLoansTab: boolean = false;
   showSavingsTab: boolean = false;
-  
+
   // Agregar esta nueva variable para almacenar el ID de la última fila editada
   private lastEditedRowId: number | string | null = null;
 
@@ -109,7 +110,7 @@ export class EmployeesTableComponent {
 
   constructor() {
     effect(async () => {
-      if(this.signalsService.getRefreshEmployees()() == true) {
+      if (this.signalsService.getRefreshEmployees()() == true) {
         await this.obtenerDatos(); // Actualizar datos cuando se recibe señal
         this.signalsService.resetRefreshEmployees(); // Resetear la señal después de actualizar
       }
@@ -128,8 +129,8 @@ export class EmployeesTableComponent {
         );
       } else {
         this.obtenerDatos();
-        this.obtenerBranchs() ;
-        this.getBanks()  
+        this.obtenerBranchs();
+        this.getBanks()
         this.getDeptoandPosition();
         this.getStates();
       }
@@ -193,12 +194,13 @@ export class EmployeesTableComponent {
 
   get colMaster(): ColDef[] {
     return [
-      { field: 'id', headerName: 'Id', editable: false, width: 70, hide : false,
+      {
+        field: 'id', headerName: 'Id', editable: false, width: 70, hide: false,
         filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
         filterParams: {
-              filterOptions: ['equals'], // Opciones de filtro
-     },
-    },
+          filterOptions: ['equals'], // Opciones de filtro
+        },
+      },
       {
         field: 'picture',
         headerName: 'Fotografía',
@@ -231,11 +233,11 @@ export class EmployeesTableComponent {
         valueFormatter: (params) => {
           // Handle potential null values and properly format the displayed value
           if (!params.value) return '';
-          
-          const foundBranch = this.branchs 
+
+          const foundBranch = this.branchs
             ? this.branchs.find((item) => item.id === params.value)
             : null;
-          
+
           return foundBranch ? foundBranch.name : params.value;
         },
       },
@@ -399,11 +401,11 @@ export class EmployeesTableComponent {
         valueFormatter: (params) => {
           // Handle potential null values and properly format the displayed value
           if (!params.value) return '';
-          
-          const foundDepto = this.depto 
+
+          const foundDepto = this.depto
             ? this.depto.find((item) => item.id === params.value)
             : null;
-          
+
           return foundDepto ? foundDepto.description : params.value;
         },
       },
@@ -541,11 +543,11 @@ export class EmployeesTableComponent {
         valueFormatter: (params) => {
           // Handle potential null values and properly format the displayed value
           if (!params.value) return '';
-          
-          const foundDepto = this.depto 
+
+          const foundDepto = this.depto
             ? this.position.find((item) => item.id === params.value)
             : null;
-          
+
           return foundDepto ? foundDepto.description : params.value;
         },
       },
@@ -623,8 +625,8 @@ export class EmployeesTableComponent {
 
   // ==================== MASTER METHODS ====================
 
-  obtenerBranchs(){
-   // alert('this.branchs'+ this.idBranch)
+  obtenerBranchs() {
+    // alert('this.branchs'+ this.idBranch)
     this.branchesService.getBrancheswoa(this.idRoot).subscribe(
       (data: any) => {
         this.branchs = data;
@@ -639,10 +641,10 @@ export class EmployeesTableComponent {
         (data: any) => {
           this.rowData = data;
           console.log('Datos obtenidos del servidor:', this.rowData);
-          
+
           // Actualizar el grid y esperar a que termine
           this.gridApi.setGridOption('rowData', this.rowData);
-          
+
           // Dar tiempo al grid para actualizar los datos
           setTimeout(() => {
             resolve(true);
@@ -703,9 +705,9 @@ export class EmployeesTableComponent {
   }
 
   getDeptoandPosition() {
-    this.catalogService.getCatalogs(this.idRoot,'DEPARTAMENT').subscribe(
+    this.catalogService.getCatalogs(this.idRoot, 'DEPARTAMENT').subscribe(
       (data: any) => {
-        this.depto = data;      
+        this.depto = data;
       },
       (error) => {
         if (error.status == 404) this.depto = [];
@@ -713,9 +715,9 @@ export class EmployeesTableComponent {
       }
     );
 
-    this.catalogService.getCatalogs(this.idRoot,'POSITION').subscribe(
+    this.catalogService.getCatalogs(this.idRoot, 'POSITION').subscribe(
       (data: any) => {
-        this.position = data;      
+        this.position = data;
       },
       (error) => {
         if (error.status == 404) this.position = [];
@@ -729,7 +731,7 @@ export class EmployeesTableComponent {
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
       this.idEmployee = this.selectedRowData.id;
-      
+
       console.log('Datos de la fila seleccionada:', this.selectedRowData);
 
       this.signalsService.setIdEmployee(this.idEmployee);
@@ -789,7 +791,7 @@ export class EmployeesTableComponent {
       position: '',
       email: '',
       picture: '',
-      idDepto:0,
+      idDepto: 0,
       vigente: true,
       active: true,
       __isNew: true,
@@ -864,7 +866,7 @@ export class EmployeesTableComponent {
       );
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
-      
+
       await this.obtenerDatos(); // Esperar a que se actualicen los datos
 
       // Seleccionar la fila apropiada después de recargar
@@ -895,7 +897,7 @@ export class EmployeesTableComponent {
         // Convertir ambos IDs a número para la comparación
         const nodeId = typeof node.data.id === 'string' ? parseInt(node.data.id) : node.data.id;
         const searchId = typeof id === 'string' ? parseInt(id) : id;
-        
+
         if (nodeId === searchId) {
           node.setSelected(true);
           this.gridApi.ensureNodeVisible(node, 'middle');
@@ -1030,7 +1032,7 @@ export class EmployeesTableComponent {
     }
   }
 
-  onCellDoubleClicked(event: CellDoubleClickedEvent): void {
+  async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
     const colId = event.column.getColId();
     const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
     const selectedId = selectedRowData.id; // Obtener el ID del registro
@@ -1049,31 +1051,44 @@ export class EmployeesTableComponent {
     }
 
     if (colId === 'loan') {
-      this.activateLoansTab();
+      await this.activateLoansTab();
     }
 
     if (colId === 'saving') {
-      this.activateSavingsTab();
+      await this.activateSavingsTab();
     }
 
     // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
-     this.selectedRowData = selectedRowData;
+    this.selectedRowData = selectedRowData;
   }
 
-
-  activateLoansTab() {
-    this.showLoansTab = true;
-    this.showSavingsTab = false;
-    this.adjustGridSize();
+  async activateLoansTab() {
+    if (!this.isOpen || this.showSavingsTab) {
+      await this.adjustGridSize();
+      this.showLoansTab = true;
+      this.showSavingsTab = false;
+      this.isOpen = true;
+    }
+    else {
+      await this.resetGridSize();
+      this.isOpen = false;
+    }
   }
 
-  activateSavingsTab() {
-    this.showLoansTab = false;
-    this.showSavingsTab = true;
-    this.adjustGridSize();
+  async activateSavingsTab() {
+    if (!this.isOpen || this.showLoansTab) {
+      await this.adjustGridSize();
+      this.showLoansTab = false;
+      this.showSavingsTab = true;
+      this.isOpen = true;
+    }
+    else {
+      await this.resetGridSize();
+      this.isOpen = false;
+    }
   }
 
-  adjustGridSize() {
+  async adjustGridSize() {
     this.gridHeight = '20vh'; // Adjust as needed
   }
 }

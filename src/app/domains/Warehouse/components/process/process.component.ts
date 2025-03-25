@@ -214,7 +214,7 @@ public gridOptions: any = {
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       console.log('cleanedData', cleanedData)
-      return this.catalogService.updateCatalog(cleanedData);
+      return this.catalogService.updateCatalog(1, cleanedData); // Corregir este dato
       
     });
 

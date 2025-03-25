@@ -178,7 +178,9 @@ export const routes: Routes = [
           { path: '', redirectTo: 'SMP', pathMatch: 'full' }, ...SharedModule.getRoutes(),
           {
             path: 'users',
-            loadComponent: () => import('./domains/SMP/Components/users/users-menu.component').then(u => u.UsersMenuComponent)
+            loadComponent: () => import('./domains/SMP/Components/users/users-menu.component').then(u => u.UsersMenuComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'setup', detailed: 'users' } }
           },
           {
             path: 'root',
@@ -186,7 +188,9 @@ export const routes: Routes = [
           },
           {
             path: 'branches',
-            loadComponent: () => import('./domains/SMP/Components/branches/branches.component').then(u => u.BranchesComponent)
+            loadComponent: () => import('./domains/SMP/Components/branches/branches.component').then(u => u.BranchesComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'setup', detailed: 'branches' } }
           },
           {
             path: 'catalog',
@@ -389,16 +393,16 @@ export const routes: Routes = [
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'hr' } },
         children: [
-          { path: '', redirectTo: 'employees', pathMatch: 'full' },
-          {
-            path: 'setup',
-            loadComponent: () => import('./domains/ModReshumans/components/setup/setup.component').then(s => s.SetupComponent)
-          },
+          { path: '', redirectTo: 'employees', pathMatch: 'full' }, ...SharedModule.getRoutes(),
           {
             path: 'employees',
             loadComponent: () => import('./domains/ModReshumans/components/employees/employees.component').then(s => s.EmployeesComponent),
             children: [
               { path: '', redirectTo: 'employees-table', pathMatch: 'full' },
+              {
+                path: 'catalogs',
+                loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(s => s.CatalogsComponent)
+              },
               {
                 path: 'clock',
                 loadComponent: () => import('./domains/ModReshumans/components/employees/employees-clock/employees-clock.component').then(p => p.EmployeesClockComponent)

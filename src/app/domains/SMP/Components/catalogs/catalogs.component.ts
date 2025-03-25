@@ -1,4 +1,4 @@
-import { Component, computed, inject, Signal } from '@angular/core';
+import { Component, computed, effect, inject, Signal } from '@angular/core';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { TablesxmodulesService } from 'app/services/tablesxmodules.service';
 import { SignalsService } from 'app/services/signals.service';
@@ -14,7 +14,7 @@ import { AgGridModule } from 'ag-grid-angular';
 
 import { alerts } from '../../../../helpers/alerts';
 import { SharedModule } from 'app/shared/shared.module';
- 
+
 //soriano
 @Component({
   selector: 'app-catalogs',
@@ -27,40 +27,45 @@ export class CatalogsComponent {
 
   notSavedChanges: boolean = false;
   rowData: any;
-  
-  newlyAddedRows  : string[] = [];
-  table           : any[] = [] ;
-  selectedRowData : any = null;
- 
+
+  newlyAddedRows: string[] = [];
+  table: any[] = [];
+  selectedRowData: any = null;
+
   idRoot: number;
   selectedCatalog: string; // Variable para almacenar e
   showDetailsTab: boolean = false;
-  gridHeight: string = '50vh';  
+  gridHeight: string = '50vh';
   prefixAndConsecutive: any[] = [];
   private tempIdCounter: number = 0;
   private gridApi: GridApi;
 
-  menuSelect : number ;
+  menuSelect: number;
   showWarehTab: Signal<boolean>;
   showAdmonTab: Signal<boolean>;
 
-  constructor() { }
+  constructor() {
+    effect(() => {
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+      this.obtenerTables()
+    })
+  }
 
   ngOnInit() {
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-    this.obtenerTables() 
+    this.obtenerTables()
 
   }
-  
+
   currentIndex = 0;
   private catalogService = inject(CatalogsService);
   private signalsService = inject(SignalsService);
-  private tableService   = inject(TablesxmodulesService) ;
+  private tableService = inject(TablesxmodulesService);
 
   public rowSelection: 'single' | 'multiple' = 'single';
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
-  
+
 
   onCatalogChange(event: Event) {
     const selectElement = event.target as HTMLSelectElement;
@@ -69,7 +74,7 @@ export class CatalogsComponent {
     this.obtenerDatos(); // Vuelve a ejecutar la consulta con el nuevo valor
   }
 
-  obtenerTables(){
+  obtenerTables() {
     this.tableService.getTablesxmodules(this.signalsService.getCatalogSelected()).subscribe(
       (data: any) => {
         this.table = data;
@@ -101,12 +106,11 @@ export class CatalogsComponent {
 
   get colMaster(): ColDef[] {
     return [
-      {field : 'id', headerName: 'Id', editable: true, filter: false, width: 90 },
+      { field: 'id', headerName: 'Id', editable: true, filter: false, width: 90 },
       { field: 'description', headerName: 'Descripcion', editable: true, filter: true, width: 250 },
       //{ field: 'valueAddition', headerName: 'Valor 1', editable: false, width: 185 },
       //{ field: 'valueAddition2', headerName: 'Valor 2', editable: true, width: 185 },
-      //{ field: 'parentId', headerName: 'Consecutivo', editable: true, width: 185 },
-      { field: 'idElection', headerName: 'Administrador', editable: true, width: 185 },
+      //{ field: 'parentId', headerName: 'Consecutivo', editable: true, width: 185 },s
     ]
   };
 
@@ -115,14 +119,14 @@ export class CatalogsComponent {
     if (event.node && event.node.isSelected()) { // Verificar si la fila está seleccionada
       const selectedRowData = event.data;
       const selectedId = selectedRowData?.id;
-  
+
       if (selectedId) {
         // Actualiza el servicio de señales
         this.signalsService.setProcces(parseInt(selectedId));
-  
+
         // Asigna los datos seleccionados
         this.selectedRowData = selectedRowData;
-  
+
         // Forzar la actualización del componente hijo
         this.showDetailsTab = false;
         setTimeout(() => {
@@ -131,7 +135,7 @@ export class CatalogsComponent {
       }
     }
   }
-  
+
 
   onCellValueChanged(event: any) {
     console.log('Dato cambiado:', event.data);
@@ -144,32 +148,32 @@ export class CatalogsComponent {
   }
 
 
-    // Column Definitions: Defines the columns to be displayed.
-public gridOptions: any = {
-  headerHeight: 30,
-  rowHeight: 20,
-  rowClass: (params) => {
-    // Verificar si la fila está seleccionada
-    if (params.node.isSelected()) {
-      return 'selected-row';
-    }
-    return '';
-  },
-  onRowClicked: (event) => {
-    // Seleccionar la fila al hacer clic en cualquier celda
-    event.node.setSelected(true);
-  },
-  onRowSelected: (event) => {
-    // Deseleccionar otras filas cuando se selecciona una nueva
-    if (event.node.isSelected()) {
-      this.gridApi.forEachNode((node) => {
-        if (node.id !== event.node.id) {
-          node.setSelected(false);
-        }
-      });
-    }
-  },
-};
+  // Column Definitions: Defines the columns to be displayed.
+  public gridOptions: any = {
+    headerHeight: 30,
+    rowHeight: 20,
+    rowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onRowClicked: (event) => {
+      // Seleccionar la fila al hacer clic en cualquier celda
+      event.node.setSelected(true);
+    },
+    onRowSelected: (event) => {
+      // Deseleccionar otras filas cuando se selecciona una nueva
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    },
+  };
 
   onSelectionChanged(event: any) {
     const selectedNodes = event.api.getSelectedNodes();
@@ -191,26 +195,29 @@ public gridOptions: any = {
   }
 
 
-  
+
   ///OPERATIONS DE LOS GRABADOS
   addRow() {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      description      : '',
-      valueaddition    : '',
-      valueaddition2   : '',
-      type             : '',
-      code      : '',
-      select    : false, 
-      active   : true,
+      idCompany: this.idRoot,
+      description: '',
+      valueaddition: 'NA',
+      valueaddition2: 'NA',
+      type: this.selectedCatalog,
+      picture: '',
+      select: false,
+      parentId: 0,
+      election: null,
+      active: 1,
       __isNew: true,
     };
     this.rowData = [newItem, ...this.rowData];
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
   }
-  
+
 
   async saveChanges() {
     const isValid = this.rowData.every((item) => item.description);
@@ -230,17 +237,17 @@ public gridOptions: any = {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this,this.catalogService.addCatalog(cleanedData);
+      return this, this.catalogService.addCatalog(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       console.log('cleanedData', cleanedData)
-      return this.catalogService.updateCatalog(cleanedData);
-      
+      return this.catalogService.updateCatalog(row.id, cleanedData);
+
     });
 
-    
+
 
     // Using concat to combine observables and lastValueFrom for async/await
     try {
@@ -267,12 +274,12 @@ public gridOptions: any = {
   }
 
 
-  revert(){
+  revert() {
 
   }
 
-  deleteEntry() {  
-  
+  deleteEntry() {
+
   }
 
 }

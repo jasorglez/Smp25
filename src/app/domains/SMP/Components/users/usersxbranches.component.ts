@@ -39,24 +39,16 @@ export class UsersxbranchesComponent {
     private permissionType : string = 'branch';
 
   constructor() {
-    effect(() => {
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+    effect(async () => {
+      const companyId = await this.signalsService.getCompanyFromPermissions()();
+      const rootId = await this.signalsService.getRootSelectedBySidebar()();
+
+      // Priorizar companyId si existe, de lo contrario usar rootId
+      this.idRoot = companyId || rootId;
 
       if (!this.idRoot) {
         this.rowData = [];
-        this,this.branchs = [];
-        alerts.basicAlert('Sucursales', 'Debe elegir una empresa primero para poder ver sus sucursales.', 'error');
-      } else {
-        this.obtenerDatos();
-      }
-    });
-
-    effect(() => {
-      this.idRoot = this.signalsService.getCompanyFromPermissions()();
-
-      if (!this.idRoot) {
-        this.rowData = [];
-        this,this.branchs = [];
+        this.branchs = [];
         alerts.basicAlert('Sucursales', 'Debe elegir una empresa primero para poder ver sus sucursales.', 'error');
       } else {
         this.obtenerDatos();
