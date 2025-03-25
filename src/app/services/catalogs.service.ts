@@ -67,8 +67,8 @@ export class CatalogsService {
     return this.http.post<any>(`${environment.urlWarehouse}/Catalog`, catalog, { headers: this.trackingService.getHeaders() });
   }
 
-  updateCatalog(catalog: any): Observable<any> {
-    return this.http.put<any>(`${environment.urlWarehouse}/Catalog/${catalog.id}`, catalog, { headers: this.trackingService.getHeaders() });  
+  updateCatalog(id: number, catalog: any): Observable<any> {
+    return this.http.put<any>(`${environment.urlWarehouse}/Catalog/update-catalog/${id}`, catalog, { headers: this.trackingService.getHeaders() });  
   }
 
   deleteCatalog(id: number): Observable<any> {
