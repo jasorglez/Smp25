@@ -69,6 +69,7 @@ export class EmployeesTableComponent {
   branchs: any[] = [];
 
   // Variables de control del grid
+  valorsenal : string = 'administrador';
   selectedRowData: any = null; // Fila seleccionada actualmente
   tempIdCounter: number = 0; // Contador para IDs temporales
   private digits: number = 4; // Nueva variable para configuración de dígitos

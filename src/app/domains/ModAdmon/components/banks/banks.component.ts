@@ -1,7 +1,6 @@
 import { Component, HostListener, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
-
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { alerts } from '../../../../helpers/alerts';
 import { AdministrationService } from 'app/services/administration.service';
@@ -21,8 +20,10 @@ import { ImageHandlerService } from 'app/services/image-handler.service';
 })
 export class BanksComponent {
 
+  constructor() { this.obtenerDatos(); }
+
   ngOnInit() {
-    this.obtenerDatos();
+   // this.obtenerDatos();
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -34,8 +35,8 @@ export class BanksComponent {
   }
 
   notSavedChanges: boolean = false;
-  rowData: any;
-  contracts: { [key: string]: string } = {};
+  Bankdata: any[]=[];
+
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
 
@@ -47,11 +48,9 @@ export class BanksComponent {
 
   currentIndex = 0;
 
-  public rowSelection: 'single' | 'multiple' = 'single';
-  public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
-  public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
-  public paginationPageSize = 15;
-  public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
+//  public rowSelection: 'single' | 'multiple' = 'single';
+ // public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
+
   frameworkComponents = {
     multiLineEditor: MultiLineEditorComponent
   };
@@ -62,24 +61,22 @@ export class BanksComponent {
   private imageHandlerService = inject(ImageHandlerService);
 
 // Column Definitions: Defines the columns to be displayed.
-
-// Column Definitions: Defines the columns to be displayed.
 public gridOptions: any = {
   headerHeight: 30,
   rowHeight: 30,
-  rowClass: (params) => {
-    // Verificar si la fila está seleccionada
+  suppressDragLeaveHidesColumns: true,
+  rowGroupPanelShow: 'never', // Configuración definitiva
+  suppressRowClickSelection: true, // Mejor manejo de selección
+  getRowClass: (params) => {
     if (params.node.isSelected()) {
       return 'selected-row';
     }
     return '';
   },
   onRowClicked: (event) => {
-    // Seleccionar la fila al hacer clic en cualquier celda
     event.node.setSelected(true);
   },
   onRowSelected: (event) => {
-    // Deseleccionar otras filas cuando se selecciona una nueva
     if (event.node.isSelected()) {
       this.gridApi.forEachNode((node) => {
         if (node.id !== event.node.id) {
@@ -92,8 +89,8 @@ public gridOptions: any = {
 
 get colMaster(): ColDef[] {
   return [
-    { field: 'name', headerName: 'Nombre', editable: true, filter: true, width: 200 },
-    { field: 'branch', headerName: 'Sucursal', editable: false, width: 285, filter: true,
+    { field: 'name', headerName: 'Nombre', editable: true, filter: true, width: 220 },
+    { field: 'branch', headerName: 'Sucursal', editable: false, width: 220, filter: true,
       cellEditor: 'agPopupTextCellEditor',
       cellEditorParams: {
         maxLength: 100,
@@ -121,7 +118,7 @@ get colMaster(): ColDef[] {
       }
      },
 
-    { field: 'contact', headerName: 'Contacto', editable: true, width: 255 },
+    { field: 'contact', headerName: 'Contacto', editable: true, width: 200 },
 
     { field: 'phone', headerName: 'Telefono', editable: true, width: 169, cellEditorParams: {
         maxLength: 15  }
@@ -136,24 +133,31 @@ get colMaster(): ColDef[] {
         field: 'picture'
       },
       editable: false,
-      width: 130
+      width: 180
     },
 
-    { field: 'numBranch', headerName: 'Numero Sucursal', editable: true, width: 140 },
+    { field: 'numBranch', headerName: 'Numero Sucursal', editable: true, width: 180 },
 
     { field: 'code', headerName: 'Codigo', editable: true, width: 105 },
 
   ]
 };
 
-  obtenerDatos() {
-    this.administrationService.getBanks().subscribe((data: any) => {
-      this.rowData = data;
-    });
-  }
+obtenerDatos() {
+  this.administrationService.getBanks().subscribe({
+    next: (data: any) => {
+      this.Bankdata = data;
+      //console.log('Data Bank:', data);
+    },
+    error: (error) => {
+      console.error('Error fetching banks:', error);
+      // Optional: show user-friendly error message
+    }
+  });
+}
 
   onSelectedRow(event: any) {
-    console.log('es el evento',event)
+    //console.log('es el evento',event)
     this.id = event.data.id;
   }
 
@@ -168,12 +172,13 @@ get colMaster(): ColDef[] {
   }
 
   onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
+    //console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
   }
 
   onGridReady(params: GridReadyEvent) {
+ //   console.log('Grid API inicializada:', params.api);
     this.gridApi = params.api;
   }
  
@@ -193,13 +198,13 @@ get colMaster(): ColDef[] {
       active: true,
       __isNew: true,
     };
-    this.rowData = [newItem, ...this.rowData];
+    this.Bankdata = [newItem, ...this.Bankdata];
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
   }
 
   async saveChanges() {
-    const isValid = this.rowData.every((item) => item.name && item.branch);
+    const isValid = this.Bankdata.every((item) => item.name && item.branch);
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
@@ -209,8 +214,8 @@ get colMaster(): ColDef[] {
       return;
     }
 
-    const newRows = this.rowData.filter((row) => row.__isNew);
-    const modifiedRows = this.rowData.filter(
+    const newRows = this.Bankdata.filter((row) => row.__isNew);
+    const modifiedRows = this.Bankdata.filter(
       (row) => row.__modified && !row.__isNew
     );
 
