@@ -131,10 +131,8 @@ export class MasterPayrollComponent implements OnInit {
             //console.log('Datos de la fila:', params.data);
             //console.log('Valor de startDate:', params.data.startDate);
           }
-
           return params.data.startDate ? new Date(params.data.startDate) : null;
         },
-
 
         valueFormatter: (params) => {
           if (params.value) {
@@ -146,6 +144,7 @@ export class MasterPayrollComponent implements OnInit {
           }
           return '';
         },
+
         valueSetter: (params) => {
           if (!params.newValue) {
             alerts.basicAlert(
@@ -193,7 +192,47 @@ export class MasterPayrollComponent implements OnInit {
           }
           return '';
         },
+        valueSetter: (params) => {
+          if (!params.newValue) {
+            alerts.basicAlert(
+              'Campo requerido',
+              'la fecha de fin es requerida.',
+              'error'
+            );
+            return false;
+          }
+          const duplicateExists = this.rowData.some(
+            (row, index) =>
+              index !== params.node.rowIndex && row.name === params.newValue
+          );
 
+          if (duplicateExists) {
+            alerts.basicAlert(
+              'Fecha duplicada',
+              'Ya existe una fecha.',
+              'error'
+            );
+            return false;
+          }
+
+          params.data[params.colDef.field] = params.newValue;
+          return true;
+        },
+        width: 170,
+      },
+
+      {
+        headerName: 'Sucursal',
+        field: 'idBranch',
+        editable: (params) => { return this.aggregatingRecord },
+        valueGetter: (params) => params.data.endDate ? new Date(params.data.endDate) : null,
+
+        valueFormatter: (params) => {
+          if (params.value) {
+           
+          }
+          return params.data.idBranch;
+        },
         valueSetter: (params) => {
           if (!params.newValue) {
             alerts.basicAlert(

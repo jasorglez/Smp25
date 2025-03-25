@@ -38,7 +38,6 @@ export interface EmployeePayroll {
   providedIn: 'root'
 })
 export class PayrollService {
-  //private apiUrl = 'http://localhost:5047/api/payroll';
 
   private apiURL = `${environment.urlAdministration}/payroll`;
   private apiURLJG = `${environment.urlLocalJG}/payroll`;
