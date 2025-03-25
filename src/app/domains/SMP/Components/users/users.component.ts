@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, HostListener, inject, Injectable } from '@angular/core';
+import { Component, computed, effect, HostListener, inject, Injectable } from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { UsersService } from 'app/services/users.service';
@@ -38,10 +38,10 @@ export class UsersComponent {
   idRoot: number;
   gridHeight: string = '80vh';
   newlyAddedRows: string[] = [];
-  entrada       : any;
-  departamentos : any [] = [];
-  position      : any [] = [];
-  rowData       : any [] = [];
+  entrada: any;
+  departamentos: any[] = [];
+  position: any[] = [];
+  rowData: any[] = [];
   paginationPageSize = 20; // Tamaño de página
   pagination = true; // Habilitar paginación
   notSavedChanges: boolean = false;
@@ -64,7 +64,7 @@ export class UsersComponent {
     this.signalsService.profileSignal(this.selectedRowData.id, this.selectedRowData.email,
       this.selectedRowData.picture, this.selectedRowData.displayName,
       departmentName, this.selectedRowData.position);
-      this.signalsService.nameCompany.set(null);
+    this.signalsService.nameCompany.set(null);
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -76,10 +76,17 @@ export class UsersComponent {
   }
 
   ngOnInit() {
-     this.idRoot = this.signalsService.getRootSelectedBySidebar()()
-     
-     this.obtenerDatos() ;
-     this.getDeptoandPosition();   
+    this.idRoot = this.signalsService.getRootSelectedBySidebar()()
+    this.obtenerDatos();
+    this.getDeptoandPosition();
+  }
+
+  constructor() {
+    effect(() => {
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()()
+      this.obtenerDatos();
+      this.getDeptoandPosition();
+    })
   }
 
   components = {
@@ -104,7 +111,7 @@ export class UsersComponent {
         console.error('Error al obtener los datos:', error);
       }
     };
-  
+
     if (this.signalsService.getemailChoose() === 'root@beapp.com.mx') {
       this.usersService.getAllUsers().subscribe(observer);
     } else {
@@ -114,9 +121,9 @@ export class UsersComponent {
 
 
   getDeptoandPosition() {
-    this.catalogService.getCatalogs(this.idRoot,'DEPARTAMENT').subscribe(
+    this.catalogService.getCatalogs(this.idRoot, 'DEPARTAMENT').subscribe(
       (data: any) => {
-        this.departamentos = data;      
+        this.departamentos = data;
       },
       (error) => {
         if (error.status == 404) this.departamentos = [];
@@ -144,32 +151,32 @@ export class UsersComponent {
     this.gridApi = params.api;
   }
 
-// Column Definitions: Defines the columns to be displayed.
-public gridOptions: any = {
-  headerHeight: 30,
-  rowHeight: 30,
-  rowClass: (params) => {
-    // Verificar si la fila está seleccionada
-    if (params.node.isSelected()) {
-      return 'selected-row';
-    }
-    return '';
-  },
-  onRowClicked: (event) => {
-    // Seleccionar la fila al hacer clic en cualquier celda
-    event.node.setSelected(true);
-  },
-  onRowSelected: (event) => {
-    // Deseleccionar otras filas cuando se selecciona una nueva
-    if (event.node.isSelected()) {
-      this.gridApi.forEachNode((node) => {
-        if (node.id !== event.node.id) {
-          node.setSelected(false);
-        }
-      });
-    }
-  },
-};
+  // Column Definitions: Defines the columns to be displayed.
+  public gridOptions: any = {
+    headerHeight: 30,
+    rowHeight: 30,
+    rowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onRowClicked: (event) => {
+      // Seleccionar la fila al hacer clic en cualquier celda
+      event.node.setSelected(true);
+    },
+    onRowSelected: (event) => {
+      // Deseleccionar otras filas cuando se selecciona una nueva
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    },
+  };
 
   get columnDefs(): ColDef[] {
     return [
@@ -292,11 +299,11 @@ public gridOptions: any = {
         valueFormatter: (params) => {
           // Handle potential null values and properly format the displayed value
           if (!params.value) return '';
-          
-          const foundDepto = this.departamentos 
+
+          const foundDepto = this.departamentos
             ? this.departamentos.find((item) => item.id === params.value)
             : null;
-          
+
           return foundDepto ? foundDepto.description : params.value;
         },
       },
@@ -350,7 +357,7 @@ public gridOptions: any = {
   }
 
   onCellValueChanged(event) {
-   // console.log('Dato cambiado:', event.data);
+    // console.log('Dato cambiado:', event.data);
     // Aquí envío todo a la signal
     this.enviarSignal();
     this.notSavedChanges = true;
@@ -369,9 +376,9 @@ public gridOptions: any = {
       country: '',
       email: '',
       password: '',
-      idRol : 0,
+      idRol: 0,
       age: null,
-      id_company : this.idRoot,
+      id_company: this.idRoot,
       idDepartament: 1,
       phone: '',
       id_position: 0,
@@ -391,7 +398,7 @@ public gridOptions: any = {
     const isValid = this.rowData.every(
       (item) => item.displayName && item.email && item.password
     );
-  
+
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
@@ -400,10 +407,10 @@ public gridOptions: any = {
       );
       return;
     }
-  
+
     const newRows = this.rowData.filter(row => row.__isNew);
     const modifiedRows = this.rowData.filter(row => row.__modified && !row.__isNew);
-  
+
     try {
       // Primero creamos/actualizamos los usuarios
       const addUserRequests = newRows.map(row => {
@@ -419,34 +426,34 @@ public gridOptions: any = {
           })
         );
       });
-  
+
       const updateUserRequests = modifiedRows.map(row => {
         const cleanedData = this.cleanDataForServer(row);
         console.log('Update CleanedData', cleanedData);
         return this.usersService.updateUser(row.id, cleanedData);
       });
-  
+
       // Ejecutamos primero las operaciones de usuario
       console.log('Ejecutando solicitudes de usuario...');
       const userResponses = await lastValueFrom(
         concat(...addUserRequests, ...updateUserRequests).pipe(toArray())
       );
-      
+
       console.log('Respuestas de usuario:', userResponses);
-      
+
       // Para los nuevos usuarios, guardamos sus permisos
       const newUserResponses = userResponses.slice(0, newRows.length);
       console.log('Nuevos usuarios creados:', newUserResponses);
-      
+
       // Creamos los permisos para los nuevos usuarios
       const permissionRequests = newUserResponses.map((response, index) => {
         const userId = response.data?.id;
-        
+
         if (!userId) {
           console.warn('No se pudo obtener el ID del usuario para:', response);
           return null;
         }
-        
+
         const formattedRoot = {
           idUser: userId,
           idPermission: this.signalsService.getRootSelectedBySidebar()(),
@@ -471,11 +478,11 @@ public gridOptions: any = {
           console.log('Datos de permiso branch a guardar:', formattedBranch);
           requests.push(this.usersxrootService.addUserxPermission(formattedBranch));
         }
-        
+
         console.log('Datos de permiso root a guardar:', formattedRoot);
         return requests;
       }).filter(req => req !== null);
-      
+
       // Ejecutamos las solicitudes de permisos
       if (permissionRequests.length > 0) {
         console.log('Ejecutando solicitudes de permisos, cantidad:', permissionRequests.length * 2);
@@ -486,13 +493,13 @@ public gridOptions: any = {
       } else {
         console.warn('No se crearon solicitudes de permisos');
       }
-      
+
       alerts.basicAlert(
         'Datos actualizados',
         'Se han actualizado los datos correctamente.',
         'success'
       );
-      
+
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
       this.obtenerDatos(); // Refrescar los datos

@@ -52,36 +52,18 @@ export class SideBarComponent {
     public contractService: ContractsService,
     public projectService: ProjectsService,
     private userService: UsersService,
-    private router: Router,
-    private permissionsService: UsersxpermissionsService,
     private signalsService: SignalsService
   ) { }
 
 
   async ngOnInit() {
-    // Obtener los permisos de administrador siempre, independientemente del estado del idUser
-    this.permissionsService.getUsersxPermissionsGeneral('administrator', this.signalsService.idUser()).pipe(
-      map((data: any[]) => {
-        this.rootAdministrator = data.map(item => item.idPermission);
-        console.log('IDs de permisos de administrador:', this.rootAdministrator);
-        return data;
-      })
-    ).subscribe();
-
     if (this.signalsService.isidUserEmpty()) {
       this.userService.findEmail(localStorage.getItem('mail')).subscribe({
         next: (datauser: any) => {
           if (datauser) {
             this.trackingService.setId(datauser.id);
             this.signalsService.setidUser(datauser.id);
-            // Obtener los permisos de administrador siempre, independientemente del estado del idUser
-            this.permissionsService.getUsersxPermissionsGeneral('administrator', datauser.id).pipe(
-              map((data: any[]) => {
-                this.rootAdministrator = data.map(item => item.idPermission);
-                console.log('IDs de permisos de administrador:', this.rootAdministrator);
-                return data;
-              })
-            ).subscribe();
+
             this.getpermissionxRoots();
           }
         },
@@ -150,24 +132,23 @@ export class SideBarComponent {
 
   async getpermissionxBranchs(idRoot: number) {
     // Verificar si el root actual está en rootAdministrator
-    const isAdminRoot = this.rootAdministrator.includes(idRoot);
+    // Si es admin root, o si tiene el permiso principal/see-all-branches, añadir la opción "Todas las sucursales" al principio
 
-    this.branchService.getBranchesByUserAndCompany(this.signalsService.idUser(), parseInt(localStorage.getItem('company')))
-      .subscribe((data) => {
+    if (this.authService.hasDetailedPermission('principal', 'see-all-branches') ||
+      this.signalsService.getemailChoose() === 'root@beapp.com.mx') {
+
+      await this.branchService.getBranches2fields(idRoot).subscribe((data) => {
         console.log(data);
         // Crear el array de branches
-        this.branchData = data.project.map((branch: any) => ({
-          id: branch.id,
-          name: branch.name
-        }));
-
-        // Si es admin root, añadir la opción "Todas las sucursales" al principio
-        if (isAdminRoot) {
-          this.branchData.unshift({
-            id: -idRoot, // ID negativo del root
-            name: 'Todas las sucursales'
-          });
-        }
+        this.branchData = data.map(
+          (branch: any) => ({
+            id: branch.id,
+            name: branch.name
+          }));
+        this.branchData.unshift({
+          id: -idRoot, // ID negativo del root
+          name: 'Todas las sucursales'
+        });
 
         if (this.branchData.length > 0) {
           this.selectedBranchId = this.branchData[0].id;
@@ -194,6 +175,48 @@ export class SideBarComponent {
         console.error('Error al obtener branches:', error);
         this.branchData = []; // Asignar un array vacío en caso de error
       });
+
+    }
+
+    else {
+
+      this.branchService.getBranchesByUserAndCompany(this.signalsService.idUser(), parseInt(localStorage.getItem('company')))
+        .subscribe((data) => {
+          console.log(data);
+          // Crear el array de branches
+          this.branchData = data.project.map((branch: any) => ({
+            id: branch.id,
+            name: branch.name
+          }));
+
+          if (this.branchData.length > 0) {
+            this.selectedBranchId = this.branchData[0].id;
+            console.log(this.selectedBranchId);
+
+            // Agregamos estas líneas para simular la selección automática
+            this.signalsService.setBranchSelectedBySidebar(Number(this.selectedBranchId));
+            this.signalsService.setBranchNameSelectedBySidebar(this.branchData[0].name);
+            this.trackingService.setContract(this.selectedBranchId);
+
+            // Forzamos la actualización del select
+            setTimeout(() => {
+              const selectElement = document.getElementById('branchs') as HTMLSelectElement;
+              if (selectElement) {
+                selectElement.value = this.selectedBranchId;
+                // Disparamos el evento change manualmente
+                selectElement.dispatchEvent(new Event('change'));
+              }
+            });
+          } else {
+            console.log(`No se encontró ningún branch con idRoot ${this.selectedBranchId}`);
+          }
+        }, (error) => {
+          console.error('Error al obtener branches:', error);
+          this.branchData = []; // Asignar un array vacío en caso de error
+        });
+    }
+
+
   }
 
 

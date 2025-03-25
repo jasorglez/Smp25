@@ -178,7 +178,9 @@ export const routes: Routes = [
           { path: '', redirectTo: 'SMP', pathMatch: 'full' }, ...SharedModule.getRoutes(),
           {
             path: 'users',
-            loadComponent: () => import('./domains/SMP/Components/users/users-menu.component').then(u => u.UsersMenuComponent)
+            loadComponent: () => import('./domains/SMP/Components/users/users-menu.component').then(u => u.UsersMenuComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'setup', detailed: 'users' } }
           },
           {
             path: 'root',
@@ -186,7 +188,9 @@ export const routes: Routes = [
           },
           {
             path: 'branches',
-            loadComponent: () => import('./domains/SMP/Components/branches/branches.component').then(u => u.BranchesComponent)
+            loadComponent: () => import('./domains/SMP/Components/branches/branches.component').then(u => u.BranchesComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'setup', detailed: 'branches' } }
           },
           {
             path: 'catalog',

@@ -1,7 +1,9 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { TrackingService } from 'app/services/tracking.service';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
+import { SignalsService } from 'app/services/signals.service';
+import { AuthService } from 'app/services/auth.service';
 
 @Component({
   selector: 'app-proccsmp',
@@ -12,9 +14,30 @@ import { DomainsModule } from 'app/domains/domainsmodule';
 })
 export class ProccsmpComponent {
 
+  private signalsService = inject(SignalsService);
+  private authService = inject(AuthService);
+
+  idRoot: number;
+  isRoot: boolean = false;
+  canSeeBranches: boolean = false;
+  canSeeUsers: boolean = false;
+
+  ngOnInit() {
+    if (this.signalsService.getemailChoose() === 'root@beapp.com.mx') {
+      this.isRoot = true;
+    }
+    else {
+      this.isRoot = false;
+    }
+
+    this.canSeeBranches = this.isRoot || this.authService.hasDetailedPermission('setup', 'branches');
+    this.canSeeUsers = this.authService.hasDetailedPermission('setup', 'users');
+
+  }
+
 
   //inject new way
 
 
-  
+
 }
