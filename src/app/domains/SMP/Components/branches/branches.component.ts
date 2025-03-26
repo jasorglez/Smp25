@@ -168,15 +168,6 @@ public gridOptions: any = {
         }
       },
 
-      {
-        field: 'administrator',
-        headerName: 'Administrador',
-        editable: true,
-        suppressMovable: false,
-        filter: true,
-        width: 200,
-      },
-
     ]
   };
 
@@ -235,7 +226,6 @@ public gridOptions: any = {
       name: '',
       description: '',
       address: '',
-      administrator : false,
       orden : 0,
       active: true,
       __isNew: true,
