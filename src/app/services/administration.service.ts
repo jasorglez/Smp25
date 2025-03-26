@@ -16,7 +16,7 @@ export class AdministrationService {
   // Bancos
   getBanks() {
      const apiUrl = `${environment.urlAdministration}/Bank`;
-     //console.log('apiUrl ',apiUrl)
+     alert(apiUrl)
      return this.http.get(`${environment.urlAdministration}/Bank`, { headers: this.trackingService.getHeaders() });
   }
 
