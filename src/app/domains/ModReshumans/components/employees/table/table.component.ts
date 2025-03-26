@@ -26,6 +26,7 @@ import { EmployeesxSavingsComponent } from '../savings/savings.component';
 import { TimeService } from 'app/services/time.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { BranchsService } from 'app/services/branchs.service';
+import { AuthService } from 'app/services/auth.service';
 
 @Component({
   selector: 'app-employees-table',
@@ -50,6 +51,7 @@ export class EmployeesTableComponent {
   private catalogService = inject(CatalogsService);
   private timeService = inject(TimeService);
   private branchesService = inject(BranchsService);
+  private authService = inject(AuthService);
 
   id: number;
   idBranch: number;
@@ -69,7 +71,7 @@ export class EmployeesTableComponent {
   branchs: any[] = [];
 
   // Variables de control del grid
-  valorsenal : string = 'administrador';
+  valorsenal: string = 'administrador';
   selectedRowData: any = null; // Fila seleccionada actualmente
   tempIdCounter: number = 0; // Contador para IDs temporales
   private digits: number = 4; // Nueva variable para configuración de dígitos
@@ -220,6 +222,8 @@ export class EmployeesTableComponent {
         field: 'idBranch',
         headerName: 'Nombre sucursal *',
         headerClass: 'required-header',
+        hide: this.authService.hasDetailedPermission('principal', 'see-all-branches') ||
+          this.signalsService.getemailChoose() === 'root@beapp.com.mx' ? false : true,
         editable: true,
         filter: true,
         width: 170,

@@ -16,6 +16,7 @@ import { RadiusinfluenceComponent } from '../radiusinfluence/radiusinfluence.com
 import { CustomersService } from 'app/services/customers.service';
 
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
+import { InegiService } from 'app/services/inegi.service';
 
 @Component({
   selector: 'app-customers',
@@ -32,6 +33,7 @@ private modalServiceTable  = inject(ModalService);
 private signalsService     = inject(SignalsService);
 private modalService       = inject(NgbModal);
 private route              = inject(ActivatedRoute);
+private inegiService       = inject(InegiService);
 
   ngOnInit() {
     this.obtenerDatos();
@@ -78,6 +80,7 @@ private route              = inject(ActivatedRoute);
   selectedTab: string = 'customers-payments';
   idBranch: number = null;
   idEmployee: number;
+  infoCp: any;
 
 
   public defaultColDef: ColDef = {
@@ -244,6 +247,26 @@ private route              = inject(ActivatedRoute);
       { field: 'state', headerName: 'Estado', editable: true, filter: true, width: 160 },
       { field: 'city', headerName: 'Ciudad', editable: true, width: 120, filter: true },
       {
+        field: 'neighborhood',
+        headerName: 'Colonia',
+        editable: true,
+        filter: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: (params) => {
+          if (this.infoCp && this.infoCp.length > 0) {
+            const asentamientos = this.infoCp[0].asentamientos;
+            return {
+              values: asentamientos,
+            };
+          }
+          return { values: [] };
+        },
+        valueFormatter: (params) => {
+          return params.value || 'Seleccionar asentamiento';
+        },
+      },
+      {
         field: 'phone', headerName: 'Telefono', editable: true, width: 120, cellEditorParams: {
           maxLength: 15
         }
@@ -318,6 +341,40 @@ private route              = inject(ActivatedRoute);
   onCellValueChanged(event: any) {
     event.data.__modified = true;
     this.notSavedChanges = true;
+
+    if (event.colDef.field === 'cp') {
+      event.data.neighborhood = '';
+
+      this.getZipCodeData(event.newValue).then((data: any) => {
+        if (data && data.length > 0) {
+          const cpData = data[0];
+          event.data.state = cpData.estado;
+          event.data.city = cpData.ciudad || 'N/A';
+
+          this.gridApi.applyTransaction({ update: [event.data] });
+        }
+      });
+    }
+  }
+
+  async getZipCodeData(cp: string): Promise<any> {
+    try {
+      const data = await lastValueFrom(this.inegiService.getZipCodeData(cp));
+      this.infoCp = data;
+      console.log(this.infoCp);
+      return data;
+    } catch (error) {
+      if (error.status === 404) {
+        alerts.basicAlert(
+          'Código Postal',
+          'El código postal no existe o no se encontró información.',
+          'error'
+        );
+      } else {
+        console.error('Error fetching data:', error);
+      }
+      return null;
+    }
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -378,6 +435,7 @@ private route              = inject(ActivatedRoute);
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      console.log('Actualizando cliente con los siguientes datos:', cleanedData);
       return this.customerService.updateCustomer(row.id, cleanedData);
     });
 

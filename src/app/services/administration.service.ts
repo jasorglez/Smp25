@@ -123,7 +123,7 @@ export class AdministrationService {
 
   // NormalPayroll
   addNormalPayroll(data: any): Observable<any> {
-    return this.http.post<number>(`${environment.urlLocalJG}/NormalPayrolls`, data, { headers: this.trackingService.getHeaders() }).pipe(
+    return this.http.post<number>(`${environment.urlAdministration}/NormalPayrolls`, data, { headers: this.trackingService.getHeaders() }).pipe(
       tap(response => {
         console.log("Respuesta del servidor: ", response);
       })

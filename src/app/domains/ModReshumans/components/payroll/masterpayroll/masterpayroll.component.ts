@@ -1,7 +1,7 @@
 import { RouterModule } from '@angular/router';
 import { Component, effect, HostListener, inject, OnInit } from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
-import { PayrollService, PayrollData, EmployeePayroll } from '../../../../../services/payroll.service';
+import { PayrollService, PayrollData, EmployeePayroll } from 'app/services/payroll.service';
 import { FormsModule } from '@angular/forms';
 import { DomainsModule } from 'app/domains/domainsmodule';
 
@@ -131,10 +131,8 @@ export class MasterPayrollComponent implements OnInit {
             //console.log('Datos de la fila:', params.data);
             //console.log('Valor de startDate:', params.data.startDate);
           }
-
           return params.data.startDate ? new Date(params.data.startDate) : null;
         },
-
 
         valueFormatter: (params) => {
           if (params.value) {
@@ -146,6 +144,7 @@ export class MasterPayrollComponent implements OnInit {
           }
           return '';
         },
+
         valueSetter: (params) => {
           if (!params.newValue) {
             alerts.basicAlert(
@@ -193,7 +192,47 @@ export class MasterPayrollComponent implements OnInit {
           }
           return '';
         },
+        valueSetter: (params) => {
+          if (!params.newValue) {
+            alerts.basicAlert(
+              'Campo requerido',
+              'la fecha de fin es requerida.',
+              'error'
+            );
+            return false;
+          }
+          const duplicateExists = this.rowData.some(
+            (row, index) =>
+              index !== params.node.rowIndex && row.name === params.newValue
+          );
 
+          if (duplicateExists) {
+            alerts.basicAlert(
+              'Fecha duplicada',
+              'Ya existe una fecha.',
+              'error'
+            );
+            return false;
+          }
+
+          params.data[params.colDef.field] = params.newValue;
+          return true;
+        },
+        width: 170,
+      },
+
+      {
+        headerName: 'Sucursal',
+        field: 'idBranch',
+        editable: (params) => { return this.aggregatingRecord },
+        valueGetter: (params) => params.data.endDate ? new Date(params.data.endDate) : null,
+
+        valueFormatter: (params) => {
+          if (params.value) {
+
+          }
+          return params.data.idBranch;
+        },
         valueSetter: (params) => {
           if (!params.newValue) {
             alerts.basicAlert(
@@ -307,13 +346,21 @@ export class MasterPayrollComponent implements OnInit {
             });
         }
 
-
-
   onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
+    console.log('Dato cambiado:', event.data.endDate);
+    if ((event.data.endDate && event.data.startDate) && event.data.endDate <= event.data.startDate) {
+      alerts.basicAlert(
+        'Error',
+        'La fecha de fin no puede ser menor o igual a la fecha de inicio.',
+        'error'
+      );
+      event.data.endDate = '';
+      event.data.startDate = '';
+      return;
+    }
     event.data.__modified = true;
     this.notSavedChanges = true;
-  }
+}
 
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
@@ -470,7 +517,7 @@ export class MasterPayrollComponent implements OnInit {
           const errorMessage = error?.error || 'Ocurrió un error al guardar los datos. Intente nuevamente.';
           alerts.basicAlert(
             'Error',
-            errorMessage,
+            error.error.message || errorMessage,
             'error'
           );
           this.notSavedChanges = false;
@@ -626,6 +673,56 @@ export class MasterPayrollComponent implements OnInit {
       this.gridApi.setFilterModel(null); // Limpiar filtros
       this.gridApi.onFilterChanged(); // Aplicar cambios
     }
+  }
+
+  deleteEntry() {
+    const selectedNodes = this.gridApi.getSelectedNodes();
+    if (selectedNodes.length === 0) {
+      alerts.basicAlert(
+        'Eliminar entrada',
+        'Por favor, seleccione una entrada para eliminar.',
+        'error'
+      );
+      return;
+    }
+
+    const selectedData = selectedNodes[0].data;
+    console.log('Datos de la nomina a eliminar:', selectedData);
+
+    const id = selectedData.id;
+    selectedData.active = 0;
+    alerts
+      .confirmAlert(
+        'Eliminar nómina',
+        '¿Está seguro que desea eliminar esta nómina?',
+        'warning',
+        'Sí, eliminar'
+      )
+      .then((result) => {
+        if (result.isConfirmed) {
+          this.payrollService.deletePayroll(id).pipe(
+              catchError((error) => {
+                alerts.basicAlert(
+                  'Eliminar nómina',
+                  'Error al eliminar la nómina.',
+                  'error'
+                );
+                console.error(error);
+                return EMPTY;
+              })
+            )
+            .subscribe(() => {
+              alerts.basicAlert(
+                'Nómina eliminada',
+                'La nómina se eliminó correctamente',
+                'success'
+              );
+              this.obtenerDatos();
+              this.notSavedChanges = false;
+              this.selectedRowData = null;
+            });
+        }
+      });
   }
 }
 
