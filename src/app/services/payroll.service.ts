@@ -53,11 +53,11 @@ export class PayrollService {
 
 
   getPayrolls(idBranch: number): Observable<PayrollData[]> {
-    return this.http.get<PayrollData[]>(`${this.apiURL}/branch/${idBranch}`, { headers: this.trackingService.getHeaders() });
+    return this.http.get<PayrollData[]>(`${environment.urlAdministration}/payroll/branch/${idBranch}`, { headers: this.trackingService.getHeaders() });
   }
 
   getEmployeesByPayroll(idPayroll: number): Observable<any> {
-    return this.http.get<EmployeePayroll[]>(this.apiURL, { headers: this.trackingService.getHeaders() });
+    return this.http.get<EmployeePayroll[]>(`${environment.urlAdministration}/payroll`, { headers: this.trackingService.getHeaders() });
     //`${environment.urlAdministration}/LoansAndCredits/employee/${idEmployee}?Type=${type}`, {headers: this.trackingService.getHeaders()}
   }
 
@@ -69,17 +69,15 @@ export class PayrollService {
     //console.log("------------ UPLOADPAYROLLDATA() saliendo del servicio payroll, la respuesta ORIGINAL es: ", x);
     //var x = this.http.post<any>(this.apiURL, data);
     //console.log("------------ UPLOADPAYROLLDATA() saliendo del servicio payroll, la respuesta VERDADERA es: ", x);
-    return this.http.post<any>(this.apiURLJG, data);
+    return this.http.post<any>(`${environment.urlAdministration}/payroll`, data);
   }
 
   upLoadExcelFile(PayrollId: number, data: any): Observable<any> {
-    return this.http.post<any>(`${this.apiURLJG}/ExcelFile/${PayrollId}`, data);
+    return this.http.post<any>(`${environment.urlAdministration}/payroll/ExcelFile/${PayrollId}`, data);
   }
 
   getDetailsForNormalPayrolls(idPayroll: number): Observable<any> {
     return this.http.get<any>(`${environment.urlAdministration}/NormalPayrolls/employees/${idPayroll}`, { headers: this.trackingService.getHeaders() });
-    //return this.http.get<any>(`${this.apiUrlLocalJGNormalPayroll}/employees/${idPayroll}`, { headers: this.trackingService.getHeaders() });
-
   }
 
   downloadPayrollExcel(idBranch: number, startDate: Date, endDate: Date): Observable<Blob> {
@@ -92,6 +90,10 @@ export class PayrollService {
       headers: this.trackingService.getHeaders(),
       responseType: 'blob'
     });
+  }
+
+  deletePayroll(idPayroll: number): Observable<any> {
+    return this.http.delete(`${environment.urlAdministration}/NormalPayrolls/${idPayroll}`, { headers: this.trackingService.getHeaders() });
   }
 
 }
