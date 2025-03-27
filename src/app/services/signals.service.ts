@@ -498,6 +498,17 @@ export class SignalsService {
     return this.normalPayrollId;
   }
 
+  // Para definir providers o customers
+  private providerOrCustomer = signal<string>(null);
+
+  setProviderOrCustomer(providerOrCustomer: string) {
+    this.providerOrCustomer.set(providerOrCustomer);
+  }
+
+  getProviderOrCustomer() {
+    return this.providerOrCustomer; 
+  }
+
   /* Borramos todas las signals, tratar de poner esto a lo último.
   Si van a crear nuevas signals, recuerden introducir una señal
   null en deleteSignals() para que todas las signals se borren

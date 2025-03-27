@@ -42,7 +42,6 @@ private inegiService       = inject(InegiService);
     
     this.route.data.subscribe(data => {
       this.type = data['type']; // 'CUSTOMERS' o 'PROVIDERS'
-    
 
       this.obtenerDatos(); // Llamar a la función para cargar datos
     });
@@ -518,6 +517,7 @@ private inegiService       = inject(InegiService);
     }
 
     onCellDoubleClicked(event: CellDoubleClickedEvent): void {
+      this.signalsService.setProviderOrCustomer(this.type);
       const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
       const selectedId = selectedRowData.id; // Obtener el ID del registro
     

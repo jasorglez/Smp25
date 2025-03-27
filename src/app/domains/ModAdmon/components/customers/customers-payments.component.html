@@ -11,21 +11,18 @@
           <div class="row">
             <div class="col-auto">
               <div class="d-flex flex-column gap-2 me-3">
-                <button type="button" class="btn btn-primary" (click)="addRow()">
+                <button type="button" class="btn btn-primary" (click)="addRow('Master')">
                   <i class="bi bi-plus-lg"></i>
                 </button>
-                <button type="button" class="btn btn-success position-relative" (click)="saveChanges()">
+                <button type="button" class="btn btn-success position-relative" (click)="saveMasterChanges()">
                   <i class="bi bi-floppy"></i>
                   <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-                    *ngIf="notSavedChanges">
+                    *ngIf="masterNotSavedChanges">
                     <span class="visually-hidden">Hay cambios sin guardar</span>
                   </span>
                 </button>
-                <button type="button" class="btn btn-warning" (click)="revert()">
+                <button type="button" class="btn btn-warning" (click)="revertMasterData()">
                   <i class="bi bi-arrow-clockwise"></i>
-                </button>
-                <button type="button" class="btn btn-danger" (click)="deleteEntry()">
-                  <i class="bi bi-trash"></i>
                 </button>
                 <button type="button" class="btn btn btn-secondary">
                   <i class="bi bi-currency-dollar"></i>
@@ -34,21 +31,12 @@
             </div>
 
             <div class="col p-0">
-              <ag-grid-angular 
-                style="height: 430px; width: 100%;"
-                class="ag-theme-quartz small-text-ag-grid" 
-                [rowData]="rowData"
-                [columnDefs]="colMaster" 
-                (selectionChanged)="onSelectionChanged($event)"
-                (cellValueChanged)="onCellValueChanged($event)" 
-                (rowSelected)="onSelectedRow($event)"
-                (gridReady)="onGridReady($event)" 
-                rowSelection="single" 
-                [pivotPanelShow]="pivotPanelShow"
-                [rowSelection]="rowSelection" 
-                [rowGroupPanelShow]="rowGroupPanelShow"
-                [gridOptions]="gridOptions">
-              </ag-grid-angular>
+              <ag-grid-angular class="ag-theme-quartz small-text-ag-grid master-grid" style="height: 40vh;"
+              [rowData]="maestroRowData" [columnDefs]="maestroColumnDefs" [gridOptions]="maestroGridOptions"
+              (selectionChanged)="onMaestroSelectionChanged($event)"
+              (cellValueChanged)="onMasterCellValueChanged($event)" (gridReady)="onMaestroGridReady($event)"
+              [rowSelection]="'single'">
+            </ag-grid-angular>
             </div>
           </div>
         </div>
@@ -65,30 +53,25 @@
           <div class="row">
             <div class="col-auto">
               <div class="d-flex flex-column gap-2 me-3">
-                <button type="button" class="btn btn-primary" (click)="addDetailRow()">
+                <button type="button" class="btn btn-primary" (click)="addRow('Detailed')">
                   <i class="bi bi-plus-lg"></i>
                 </button>
-                <button type="button" class="btn btn-success position-relative" (click)="saveDetailRow()">
+                <button type="button" class="btn btn-success position-relative" (click)="saveDetailChanges()">
                   <i class="bi bi-floppy"></i>
                   <span class="position-absolute top-0 end-0 translate-middle p-2 bg-danger border border-light rounded-circle"
                     *ngIf="detailNotSavedChanges">
                     <span class="visually-hidden">Hay cambios sin guardar</span>
                   </span>
                 </button>
-                <button type="button" class="btn btn-warning" (click)="revertDetail()">
+                <button type="button" class="btn btn-warning" (click)="revertDetailData()">
                   <i class="bi bi-arrow-clockwise"></i>
                 </button>
               </div>
             </div>
             <div class="col p-0">
-              <ag-grid-angular 
-                class="ag-theme-quartz small-text-ag-grid detail-grid" 
-                style="height: 430px; width: 100%;"
-                [rowData]="detalleRowData" 
-                [columnDefs]="detalleColumnDefs" 
-                [gridOptions]="detalleGridOptions"
-                (gridReady)="onDetalleGridReady($event)" 
-                [rowSelection]="'single'"
+              <ag-grid-angular class="ag-theme-quartz small-text-ag-grid detail-grid" style="height: 40vh;"
+                [rowData]="detalleRowData" [columnDefs]="detalleColumnDefs" [gridOptions]="detalleGridOptions"
+                (gridReady)="onDetalleGridReady($event)" [rowSelection]="'single'"
                 (cellValueChanged)="onDetailCellValueChanged($event)">
               </ag-grid-angular>
             </div>
