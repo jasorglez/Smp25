@@ -4,11 +4,11 @@
     <!-- Columna de botones -->
     <div class="col-auto">
       <div class="d-flex flex-column gap-1">
-        <button type="button" class="btn btn-primary" (click)="addRow()">
+        <button type="button" class="btn btn-primary ms-1 me-1" (click)="addRow()">
           <i class="bi bi-plus-lg"></i>
         </button>
 
-        <button type="button" class="btn btn-success position-relative" (click)="saveChanges()">
+        <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveChanges()">
           <i class="bi bi-floppy"></i>
           <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
             *ngIf="notSavedChanges">
@@ -16,18 +16,14 @@
           </span>
         </button>
 
-        <button type="button" class="btn btn-warning" (click)="revert()">
+        <button type="button" class="btn btn-warning ms-1 me-1" (click)="revert()">
           <i class="bi bi-arrow-clockwise"></i>
         </button>
 
-        <button type="button" class="btn btn-danger" (click)="deleteEntry()">
+        <button type="button" class="btn btn-danger ms-1 me-1" (click)="deleteEntry()">
           <i class="bi bi-trash"></i>
         </button>
-        
-        <button type="button" class="btn btn-secondary ms-1 me-1" (click)="resetGridSize()">
-          <i class="bi bi-arrows-fullscreen"></i>
-        </button>
-                
+                     
       </div>
     </div>
 
@@ -51,7 +47,7 @@
   </div>
 </div>
 
-
+<div class="row">
   <div class="col-12">
     <ul class="nav nav-tabs" id="myTab" role="tablist">
      
@@ -66,3 +62,4 @@
     </div>
   </div>
 
+</div>

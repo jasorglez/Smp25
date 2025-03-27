@@ -10,7 +10,6 @@ import { ModalService } from 'app/services/modal.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { SignalsService } from 'app/services/signals.service';
 import { CustomersPaymentsComponent } from './customers-payments.component';
-import { CustomersSalesComponent } from './customers-sales.component';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { RadiusinfluenceComponent } from '../radiusinfluence/radiusinfluence.component';
 import { CustomersService } from 'app/services/customers.service';
@@ -48,6 +47,14 @@ private inegiService       = inject(InegiService);
   }
 
   constructor() {
+
+    effect(async () => {
+      if (this.signalsService.getRefreshEmployees()() == true) {
+        await this.obtenerDatos(); // Actualizar datos cuando se recibe señal
+        this.signalsService.resetRefreshEmployees(); // Resetear la señal después de actualizar
+      }
+    });
+
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.obtenerDatos();
@@ -68,6 +75,11 @@ private inegiService       = inject(InegiService);
   private gridApi: GridApi;
   notSavedChanges: boolean = false;
   selectedRowData: any = null;
+  isOpen: boolean = false;
+
+  
+  // Agregar esta nueva variable para almacenar el ID de la última fila editada
+  private lastEditedRowId: number | string | null = null;
   
   rowData: any;
   contracts: { [key: string]: string } = {};
@@ -395,7 +407,7 @@ private inegiService       = inject(InegiService);
       address       : '',
       addressfiscal : '',
       state         : '',
-      totalCredit   : 0,
+      total         : 0,
       radio         : 0,
       vigente       : true,
       NumCliente    : 0,
@@ -442,6 +454,16 @@ private inegiService       = inject(InegiService);
       const responses = await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
+
+      // Determinar qué ID vamos a seleccionar después de recargar
+      if (modifiedRows.length > 0) {
+        // Si hay filas modificadas, guardamos el ID de la última modificada
+        this.lastEditedRowId = modifiedRows[modifiedRows.length - 1].id;
+      } else if (newRows.length > 0) {
+        // Si hay filas nuevas, marcaremos que necesitamos seleccionar el ID máximo
+        this.lastEditedRowId = 'SELECT_MAX_ID';
+      }
+
       alerts.basicAlert(
         'Datos actualizados',
         'Se han actualizado los datos correctamente.',
@@ -449,7 +471,20 @@ private inegiService       = inject(InegiService);
       );
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
-      this.obtenerDatos();
+      await this.obtenerDatos();
+
+       // Seleccionar la fila apropiada después de recargar
+       if (this.lastEditedRowId) {
+        if (this.lastEditedRowId === 'SELECT_MAX_ID') {
+          // Encontrar el ID máximo en los datos actuales
+          const maxId = Math.max(...this.rowData.map(row => Number(row.id)));
+          this.selectRowById(maxId);
+        } else {
+          this.selectRowById(this.lastEditedRowId);
+        }
+        this.lastEditedRowId = null; // Resetear el ID
+      }
+
     } catch (error) {
       console.error(error);
       alerts.basicAlert(
@@ -458,6 +493,22 @@ private inegiService       = inject(InegiService);
         'error'
       );
     }
+  }
+
+  private selectRowById(id: number | string) {
+    // Dar tiempo al grid para que se actualice
+    setTimeout(() => {
+      this.gridApi.forEachNode((node) => {
+        // Convertir ambos IDs a número para la comparación
+        const nodeId = typeof node.data.id === 'string' ? parseInt(node.data.id) : node.data.id;
+        const searchId = typeof id === 'string' ? parseInt(id) : id;
+
+        if (nodeId === searchId) {
+          node.setSelected(true);
+          this.gridApi.ensureNodeVisible(node, 'middle');
+        }
+      });
+    }, 100);
   }
 
   async deleteEntry() {
@@ -516,8 +567,9 @@ private inegiService       = inject(InegiService);
       const modalRef = this.modalService.open(RadiusinfluenceComponent, { size: 'lg' });
     }
 
-    onCellDoubleClicked(event: CellDoubleClickedEvent): void {
+    async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
       this.signalsService.setProviderOrCustomer(this.type);
+      const colId = event.column.getColId();
       const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
       const selectedId = selectedRowData.id; // Obtener el ID del registro
     
@@ -533,15 +585,25 @@ private inegiService       = inject(InegiService);
       this.gridApi.onFilterChanged();
     
       // Mostrar el componente <app-employeesxloans>
-      this.activateCreditsTab();
+      if(colId === 'total') {
+        this.activateCreditsTab();
+      }
+     
       console.log('Datos ShowCredits:', this.showCreditsTab);
       this.selectedRowData = selectedRowData; // Guardar los datos seleccionados
     }
   
 
-    activateCreditsTab() {
-      this.showCreditsTab = true;
-      setTimeout(() => this.adjustGridSize(), 0);
+    async activateCreditsTab() {
+      if(!this.isOpen) {
+        setTimeout(async () => await this.adjustGridSize(), 0);
+        this.showCreditsTab = true;
+        this.isOpen = true;
+      }
+      else {
+        this.resetGridSize();
+        this.isOpen = false;
+      }
     }
 
     resetGridSize() {
