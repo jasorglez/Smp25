@@ -389,7 +389,7 @@ export class CustomersPaymentsComponent {
   }
 
   async saveMasterChanges() {
-    const isValid = this.maestroRowData.every((item) => item.monto);
+    const isValid = this.maestroRowData.every((item) => item.total);
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
