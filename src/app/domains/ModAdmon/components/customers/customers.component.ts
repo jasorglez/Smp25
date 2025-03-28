@@ -494,37 +494,35 @@ private authService        = inject(AuthService);
       );
       return;
     }
-
+  
     const newRows = this.rowData.filter((row) => row.__isNew);
     const modifiedRows = this.rowData.filter(
       (row) => row.__modified && !row.__isNew
     );
-
+  
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       return this.customerService.addCustomer(cleanedData);
     });
-
+  
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       console.log('Actualizando cliente con los siguientes datos:', cleanedData);
       return this.customerService.updateCustomer(row.id, cleanedData);
     });
-
+  
     try {
       const responses = await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
-
+  
       // Determinar qué ID vamos a seleccionar después de recargar
       if (modifiedRows.length > 0) {
-        // Si hay filas modificadas, guardamos el ID de la última modificada
         this.lastEditedRowId = modifiedRows[modifiedRows.length - 1].id;
       } else if (newRows.length > 0) {
-        // Si hay filas nuevas, marcaremos que necesitamos seleccionar el ID máximo
         this.lastEditedRowId = 'SELECT_MAX_ID';
       }
-
+  
       alerts.basicAlert(
         'Datos actualizados',
         'Se han actualizado los datos correctamente.',
@@ -532,10 +530,15 @@ private authService        = inject(AuthService);
       );
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
+      
+      // Esperar a que los datos se carguen completamente
       await this.obtenerDatos();
-
-       // Seleccionar la fila apropiada después de recargar
-       if (this.lastEditedRowId) {
+  
+      // Esperar un ciclo de renderizado adicional
+      await new Promise(resolve => setTimeout(resolve, 0));
+  
+      // Seleccionar la fila apropiada después de recargar
+      if (this.lastEditedRowId) {
         if (this.lastEditedRowId === 'SELECT_MAX_ID') {
           // Encontrar el ID máximo en los datos actuales
           const maxId = Math.max(...this.rowData.map(row => Number(row.id)));
@@ -543,9 +546,9 @@ private authService        = inject(AuthService);
         } else {
           this.selectRowById(this.lastEditedRowId);
         }
-        this.lastEditedRowId = null; // Resetear el ID
+        this.lastEditedRowId = null;
       }
-
+  
     } catch (error) {
       console.error(error);
       alerts.basicAlert(
