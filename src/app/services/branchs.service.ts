@@ -41,7 +41,7 @@ export class BranchsService {
   getBrancheswoa(idroot : number): Observable<any> {
       //const apiUrl = `${environment.urlSmp}/Branchs/2fieldswoad?idCompany=${idroot}`;      
       //alert(apiUrl) 
-    return this.http.get(`${environment.urlSmp}/Branchs/2fieldswoad?idCompany=${idroot}`, { headers: this.trackingService.getHeaders() });
+    return this.http.get(`${environment.urlSmp}/Branchs/2fields?idCompany=${idroot}`, { headers: this.trackingService.getHeaders() });
   }
   
 

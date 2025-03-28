@@ -37,7 +37,6 @@ export class EmployeesxSavingsComponent {
     },
   };
 
-  rowData: any[] = [];
   maestroRowData: any[] = [];
   detalleRowData: any[] = [];
   loanIds: number;
