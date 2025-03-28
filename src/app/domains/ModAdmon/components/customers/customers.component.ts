@@ -3,20 +3,20 @@ import { RouterModule, ActivatedRoute } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { alerts } from '../../../../helpers/alerts';
-
+import { States } from 'app/interface/states';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { AgGridModule } from 'ag-grid-angular';
 import { ModalService } from 'app/services/modal.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { SignalsService } from 'app/services/signals.service';
 import { CustomersPaymentsComponent } from './customers-payments.component';
-import { CustomersSalesComponent } from './customers-sales.component';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { RadiusinfluenceComponent } from '../radiusinfluence/radiusinfluence.component';
 import { CustomersService } from 'app/services/customers.service';
-
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { InegiService } from 'app/services/inegi.service';
+import { BranchsService } from 'app/services/branchs.service';
+import { AuthService } from 'app/services/auth.service';
 
 @Component({
   selector: 'app-customers',
@@ -34,6 +34,8 @@ private signalsService     = inject(SignalsService);
 private modalService       = inject(NgbModal);
 private route              = inject(ActivatedRoute);
 private inegiService       = inject(InegiService);
+private branchesService    = inject(BranchsService);
+private authService        = inject(AuthService);
 
   ngOnInit() {
     this.obtenerDatos();
@@ -42,18 +44,33 @@ private inegiService       = inject(InegiService);
     
     this.route.data.subscribe(data => {
       this.type = data['type']; // 'CUSTOMERS' o 'PROVIDERS'
-    
-
       this.obtenerDatos(); // Llamar a la función para cargar datos
+      this.getStates(); // Llamar a la función para obtener los estados
+      this.obtenerBranchs();
     });
   }
 
   constructor() {
+
+    effect(async () => {
+      if (this.signalsService.getRefreshEmployees()() == true) {
+        await this.obtenerDatos(); // Actualizar datos cuando se recibe señal
+        this.signalsService.resetRefreshEmployees(); // Resetear la señal después de actualizar
+      }
+    });
+
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.obtenerDatos();
+      this.obtenerBranchs();
       this.signalsService.deleteClientData();
     });
+
+    effect(() => {
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+      this.obtenerDatos();
+      this.obtenerBranchs();
+  })
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -69,6 +86,11 @@ private inegiService       = inject(InegiService);
   private gridApi: GridApi;
   notSavedChanges: boolean = false;
   selectedRowData: any = null;
+  isOpen: boolean = false;
+  branchs: any[] = [];
+  
+  // Agregar esta nueva variable para almacenar el ID de la última fila editada
+  private lastEditedRowId: number | string | null = null;
   
   rowData: any;
   contracts: { [key: string]: string } = {};
@@ -82,6 +104,7 @@ private inegiService       = inject(InegiService);
   idEmployee: number;
   infoCp: any;
 
+  private estados: string[] = []; // Agregar esta variable para almacenar los estados
 
   public defaultColDef: ColDef = {
     sortable: true,
@@ -135,11 +158,38 @@ private inegiService       = inject(InegiService);
   
   get colMaster(): ColDef[] {
     return [
-      { field: 'id', headerName: 'Id', editable: false, width: 53, hide : false,
+      { field: 'id', headerName: 'Id', editable: false, width: 110, hide : false,
         filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
         filterParams: {
               filterOptions: ['equals'], // Opciones de filtro
      },
+    },
+    {
+      field: 'idBranch',
+      headerName: 'Nombre sucursal *',
+      headerClass: 'required-header',
+      hide: this.authService.hasDetailedPermission('principal', 'see-all-branches') ||
+        this.signalsService.getemailChoose() === 'root@beapp.com.mx' ? false : true,
+      editable: true,
+      filter: true,
+      width: 170,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: (params) => {
+        // Ensure depto data is available when creating editor
+        return {
+          values: this.branchs ? this.branchs.map((item) => item.id) : []
+        };
+      },
+      valueFormatter: (params) => {
+        // Handle potential null values and properly format the displayed value
+        if (!params.value) return '';
+
+        const foundBranch = this.branchs
+          ? this.branchs.find((item) => item.id === params.value)
+          : null;
+
+        return foundBranch ? foundBranch.name : params.value;
+      },
     },
       {
         field: 'company', headerName: 'Compania', editable: false, 
@@ -244,7 +294,17 @@ private inegiService       = inject(InegiService);
           return params.value;
         }
       },
-      { field: 'state', headerName: 'Estado', editable: true, filter: true, width: 160 },
+      {
+        field: 'state',
+        headerName: 'Estado',
+        filter: true,
+        width: 160,
+        editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.estados, // Usar la lista de estados obtenida
+        },
+      },
       { field: 'city', headerName: 'Ciudad', editable: true, width: 120, filter: true },
       {
         field: 'neighborhood',
@@ -321,6 +381,17 @@ private inegiService       = inject(InegiService);
     });
   }
 
+  obtenerBranchs() {
+    // alert('this.branchs'+ this.idBranch)
+    this.branchesService.getBrancheswoa(this.idRoot).subscribe(
+      (data: any) => {
+        this.branchs = data;
+        console.log(data)
+      },
+      (error) => console.error('Error fetching data:', error)
+    );
+  }
+
   onSelectedRow(event: any) {
     this.id = event.data.id;
   }
@@ -345,7 +416,8 @@ private inegiService       = inject(InegiService);
     if (event.colDef.field === 'cp') {
       event.data.neighborhood = '';
 
-      this.getZipCodeData(event.newValue).then((data: any) => {
+      setTimeout(async () => {
+        const data = await this.getZipCodeData(event.newValue);
         if (data && data.length > 0) {
           const cpData = data[0];
           event.data.state = cpData.estado;
@@ -353,7 +425,7 @@ private inegiService       = inject(InegiService);
 
           this.gridApi.applyTransaction({ update: [event.data] });
         }
-      });
+      }, 500);
     }
   }
 
@@ -396,7 +468,7 @@ private inegiService       = inject(InegiService);
       address       : '',
       addressfiscal : '',
       state         : '',
-      totalCredit   : 0,
+      total         : 0,
       radio         : 0,
       vigente       : true,
       NumCliente    : 0,
@@ -443,6 +515,16 @@ private inegiService       = inject(InegiService);
       const responses = await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
+
+      // Determinar qué ID vamos a seleccionar después de recargar
+      if (modifiedRows.length > 0) {
+        // Si hay filas modificadas, guardamos el ID de la última modificada
+        this.lastEditedRowId = modifiedRows[modifiedRows.length - 1].id;
+      } else if (newRows.length > 0) {
+        // Si hay filas nuevas, marcaremos que necesitamos seleccionar el ID máximo
+        this.lastEditedRowId = 'SELECT_MAX_ID';
+      }
+
       alerts.basicAlert(
         'Datos actualizados',
         'Se han actualizado los datos correctamente.',
@@ -450,7 +532,20 @@ private inegiService       = inject(InegiService);
       );
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
-      this.obtenerDatos();
+      await this.obtenerDatos();
+
+       // Seleccionar la fila apropiada después de recargar
+       if (this.lastEditedRowId) {
+        if (this.lastEditedRowId === 'SELECT_MAX_ID') {
+          // Encontrar el ID máximo en los datos actuales
+          const maxId = Math.max(...this.rowData.map(row => Number(row.id)));
+          this.selectRowById(maxId);
+        } else {
+          this.selectRowById(this.lastEditedRowId);
+        }
+        this.lastEditedRowId = null; // Resetear el ID
+      }
+
     } catch (error) {
       console.error(error);
       alerts.basicAlert(
@@ -459,6 +554,22 @@ private inegiService       = inject(InegiService);
         'error'
       );
     }
+  }
+
+  private selectRowById(id: number | string) {
+    // Dar tiempo al grid para que se actualice
+    setTimeout(() => {
+      this.gridApi.forEachNode((node) => {
+        // Convertir ambos IDs a número para la comparación
+        const nodeId = typeof node.data.id === 'string' ? parseInt(node.data.id) : node.data.id;
+        const searchId = typeof id === 'string' ? parseInt(id) : id;
+
+        if (nodeId === searchId) {
+          node.setSelected(true);
+          this.gridApi.ensureNodeVisible(node, 'middle');
+        }
+      });
+    }, 100);
   }
 
   async deleteEntry() {
@@ -473,6 +584,17 @@ private inegiService       = inject(InegiService);
     }
 
     const selectedData = selectedNodes[0].data;
+
+    // Validar que el préstamo sea 0 o no exista
+    if (selectedData.total && selectedData.total !== 0) {
+      alerts.basicAlert(
+        'Error al eliminar',
+        'No se puede eliminar mientras tenga facturas activas',
+        'error'
+      );
+      return;
+    }
+
     const id = selectedData.id;
     selectedData.active = 0;
     this.customerService.deleteCustomer(id).pipe(
@@ -517,31 +639,41 @@ private inegiService       = inject(InegiService);
       const modalRef = this.modalService.open(RadiusinfluenceComponent, { size: 'lg' });
     }
 
-    onCellDoubleClicked(event: CellDoubleClickedEvent): void {
+    async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
+      this.signalsService.setProviderOrCustomer(this.type);
+      const colId = event.column.getColId();
       const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
       const selectedId = selectedRowData.id; // Obtener el ID del registro
     
-      // Filtrar el grid para mostrar solo el registro con el ID seleccionado
-      const filterModel = {
-        id: {
-          type: 'equals',
-          filter: selectedId,
-        },
-      };
+      // Filtrar el grid para mostrar solo el registro con el ID seleccionado solo si la columna es "total"
+      if (colId === 'total') {
+        const filterModel = {
+          id: {
+            type: 'equals',
+            filter: selectedId,
+          },
+        };
     
-      this.gridApi.setFilterModel(filterModel);
-      this.gridApi.onFilterChanged();
-    
-      // Mostrar el componente <app-employeesxloans>
-      this.activateCreditsTab();
+        this.gridApi.setFilterModel(filterModel);
+        this.gridApi.onFilterChanged();
+        this.activateCreditsTab(); // Activar la pestaña de créditos si es necesario
+      }
+     
       console.log('Datos ShowCredits:', this.showCreditsTab);
       this.selectedRowData = selectedRowData; // Guardar los datos seleccionados
     }
   
 
-    activateCreditsTab() {
-      this.showCreditsTab = true;
-      setTimeout(() => this.adjustGridSize(), 0);
+    async activateCreditsTab() {
+      if(!this.isOpen) {
+        setTimeout(async () => await this.adjustGridSize(), 0);
+        this.showCreditsTab = true;
+        this.isOpen = true;
+      }
+      else {
+        this.resetGridSize();
+        this.isOpen = false;
+      }
     }
 
     resetGridSize() {
@@ -554,6 +686,19 @@ private inegiService       = inject(InegiService);
     adjustGridSize() {
       this.gridHeight = '20vh'; // Adjust as needed
     }
+
+  // Agregar esta función para obtener los estados
+  getStates() {
+    this.inegiService.getEstados().subscribe({
+      next: (data: { datos: States[] }) => {
+        this.estados = data.datos.map((estado) => estado.nom_agee);
+        this.estados.unshift('Sin estado'); // Agregar opción "Sin estado"
+      },
+      error: (error) => {
+        console.error('Error fetching states', error);
+      },
+    });
+  }
 }
 
 

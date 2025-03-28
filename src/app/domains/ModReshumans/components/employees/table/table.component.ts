@@ -288,7 +288,7 @@ export class EmployeesTableComponent {
             return false;
           }
 
-          params.data[params.colDef.field] = params.newValue;
+          params.data[params.colDef.field] = params.newValue.toUpperCase();
           return true;
         },
       },
@@ -458,9 +458,9 @@ export class EmployeesTableComponent {
         },
         cellRenderer: (params: ICellRendererParams) => {
           if (params.node.group) {
-            return params.value;
+            return params.value.toUpperCase();
           }
-          return params.value;
+          return params.value.toUpperCase();
         },
       },
       {
