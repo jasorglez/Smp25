@@ -44,10 +44,13 @@ export const routes: Routes = [
             path: 'requisitions',
             loadComponent: () => import('./domains/Warehouse/components/requisitions/requisitions.component').then(r => r.RequisitionsComponent)
           },
+
           {
             path: 'catalogs',
-            loadComponent: () => import('./domains/Warehouse/components/catalogs/catalogs.component').then(r => r.EditFamiliesComponent)
+            loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(s => s.CatalogsComponent)
           },
+
+          
           {
             path: 'setupwh',
             loadComponent: () => import('./domains/Warehouse/components/configwarehouse/configwarehouse.component').then(r => r.ConfigwarehouseComponent)

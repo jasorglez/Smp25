@@ -102,8 +102,8 @@ export class MaterialsComponent {
 
 // Column Definitions: Defines the columns to be displayed.
 public gridOptions: any = {
-  headerHeight: 30,
-  rowHeight: 30,
+  headerHeight: 25,
+  rowHeight: 20,
   rowClass: (params) => {
     // Verificar si la fila está seleccionada
     if (params.node.isSelected()) {
@@ -294,7 +294,7 @@ public gridOptions: any = {
           return locationMenuItems;
         }
       },
-      { field: 'aplicaResg', headerName: 'Resguardar', editable: true, width: 100 },
+     
       {
         field: 'picture', headerName: 'Imagen', editable: false, width: 150,
         cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
@@ -329,6 +329,7 @@ public gridOptions: any = {
       },
       { field: 'stockMin', headerName: 'Stock Mínimo', editable: true, width: 150, cellDataType: 'number', cellEditorParams: { min: 0 } },
       { field: 'stockMax', headerName: 'Stock Máximo', editable: true, width: 150, cellDataType: 'number', cellEditorParams: { min: 0 } },
+      { field: 'aplicaResg', headerName: 'Resguardar', editable: true, width: 100 },
     ]
   };
 
@@ -341,7 +342,7 @@ public gridOptions: any = {
   }
 
   obtenerMedidas() {
-    this.catalogsService.getMeasures().subscribe(
+    this.catalogsService.getCatalogs(this.idRoot, 'MEASURE').subscribe(
       (data: Icatalog[]) => {
         this.medidas = data;
       },
@@ -359,7 +360,7 @@ public gridOptions: any = {
   }
 
   obtenerSubfamilias() {
-    this.catalogsService.getSubfamilies().subscribe(
+    this.catalogsService.getCatalogs(this.idRoot, 'SUBFAMILY').subscribe(
       (data: Icatalog[]) => {
         this.subfamilias2 = data;
       },
@@ -368,7 +369,7 @@ public gridOptions: any = {
   }
 
   obtenerUbicaciones() {
-    this.catalogsService.getLocations().subscribe(
+    this.catalogsService.getCatalogs(this.idRoot, 'UBICATION').subscribe(
       (data: Icatalog[]) => {
         this.ubicaciones = data;
       },
