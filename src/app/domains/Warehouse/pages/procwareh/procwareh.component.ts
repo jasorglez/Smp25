@@ -9,6 +9,7 @@ import { InAndOutComponent } from '../../components/inandout/inandout.component'
 import { SharedModule } from 'app/shared/shared.module';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { RouterModule } from '@angular/router';
+import { SignalsService } from 'app/services/signals.service';
 
 @Component({
   selector: 'app-procwareh',
@@ -19,10 +20,14 @@ import { RouterModule } from '@angular/router';
 })
 export class ProcwarehComponent {
 
+    private signalsService = inject(SignalsService);
+
   selectedTab :string = '';
 
    constructor() {
      this.selectedTab = 'conf' ;
+
+      this.signalsService.setCatalogSelected('WAREHOUSE');
    }
 
 //aqui inyecto de la nueva manera

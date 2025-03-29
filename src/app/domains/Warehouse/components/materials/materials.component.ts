@@ -102,8 +102,8 @@ export class MaterialsComponent {
 
 // Column Definitions: Defines the columns to be displayed.
 public gridOptions: any = {
-  headerHeight: 30,
-  rowHeight: 30,
+  headerHeight: 25,
+  rowHeight: 20,
   rowClass: (params) => {
     // Verificar si la fila está seleccionada
     if (params.node.isSelected()) {
@@ -130,7 +130,7 @@ public gridOptions: any = {
   get colMaster(): ColDef[] {
     return [
       {
-        field: 'insumo', headerName: 'Número Material', editable: true, filter: true, width: 150,
+        field: 'insumo', headerName: 'Num. Material', editable: true, filter: true, width: 150,
         cellEditor: 'autocompleteEditor',
         cellEditorParams: {
           filterList: this.rowData.map(e => e.insumo),
@@ -156,7 +156,7 @@ public gridOptions: any = {
           return true;
         }
       },
-      { field: 'articulo', headerName: 'Artículo', editable: true, filter: true, width: 150 },
+      { field: 'articulo', headerName: 'Codigo Barra', editable: true, filter: true, width: 150 },
       {
         field: 'description', headerName: 'Descripción', editable: false, width: 285, filter: true,
         cellEditor: 'agPopupTextCellEditor',
@@ -209,7 +209,7 @@ public gridOptions: any = {
         }
       },
       {
-        field: 'idFamilia', headerName: 'Familia', editable: true, width: 150, cellEditor: 'agSelectCellEditor',
+        field: 'idFamilia', headerName: 'Categoria', editable: true, width: 150, cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.familias ? this.familias.map(item => item.id) : [],
         },
@@ -233,7 +233,7 @@ public gridOptions: any = {
       },
       {
         field: 'idSubfamilia',
-        headerName: 'Subfamilia',
+        headerName: 'Presentación',
         editable: true,
         width: 150,
         cellEditor: 'agSelectCellEditor',
@@ -272,7 +272,7 @@ public gridOptions: any = {
         }
       },
       {
-        field: 'idUbication', headerName: 'Ubicación', editable: true, width: 150, cellEditor: 'agSelectCellEditor',
+        field: 'idUbication', headerName: 'Zona', editable: true, width: 150, cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.ubicaciones ? this.ubicaciones.map(item => item.id) : [],
         },
@@ -294,7 +294,7 @@ public gridOptions: any = {
           return locationMenuItems;
         }
       },
-      { field: 'aplicaResg', headerName: 'Resguardar', editable: true, width: 100 },
+     
       {
         field: 'picture', headerName: 'Imagen', editable: false, width: 150,
         cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
@@ -316,19 +316,20 @@ public gridOptions: any = {
         }
       },
       {
-        field: 'ventaMN', headerName: 'Costo MXN', editable: true, width: 150,
+        field: 'ventaMN', headerName: 'Venta MXN', editable: true, width: 150,
         valueFormatter: (params) => {
           return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
         }
       },
       {
-        field: 'ventaDLL', headerName: 'Costo DLL', editable: true, width: 150,
+        field: 'ventaDLL', headerName: 'Venta DLL', editable: true, width: 150,
         valueFormatter: (params) => {
           return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(params.value);
         }
       },
       { field: 'stockMin', headerName: 'Stock Mínimo', editable: true, width: 150, cellDataType: 'number', cellEditorParams: { min: 0 } },
       { field: 'stockMax', headerName: 'Stock Máximo', editable: true, width: 150, cellDataType: 'number', cellEditorParams: { min: 0 } },
+      { field: 'aplicaResg', headerName: 'Resguardar', editable: true, width: 100 },
     ]
   };
 
@@ -341,7 +342,7 @@ public gridOptions: any = {
   }
 
   obtenerMedidas() {
-    this.catalogsService.getMeasures().subscribe(
+    this.catalogsService.getCatalogs(this.idRoot, 'MEASURE').subscribe(
       (data: Icatalog[]) => {
         this.medidas = data;
       },
@@ -359,7 +360,7 @@ public gridOptions: any = {
   }
 
   obtenerSubfamilias() {
-    this.catalogsService.getSubfamilies().subscribe(
+    this.catalogsService.getCatalogs(this.idRoot, 'SUBFAMILY').subscribe(
       (data: Icatalog[]) => {
         this.subfamilias2 = data;
       },
@@ -368,7 +369,7 @@ public gridOptions: any = {
   }
 
   obtenerUbicaciones() {
-    this.catalogsService.getLocations().subscribe(
+    this.catalogsService.getCatalogs(this.idRoot, 'UBICATION').subscribe(
       (data: Icatalog[]) => {
         this.ubicaciones = data;
       },
