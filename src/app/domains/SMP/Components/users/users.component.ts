@@ -94,15 +94,17 @@ export class UsersComponent {
     autocompleteEditor: AutocompleteEditorComponent
   }
 
-
   obtenerDatos() {
     const observer = {
       next: (response: any) => {
         if (response && response.code === 200 && response.data) {
+          console.log('Response USER COMPONENT', response.data);
+
           this.rowData = response.data.map((item: any) => {
             return { id: item.id, ...item };
           });
           this.rowData = this.rowData.filter(row => row.active !== 0);
+          console.log('RowData USER COMPONENT', this.rowData);
         } else {
           console.error('Respuesta inválida del servidor');
         }
@@ -133,7 +135,7 @@ export class UsersComponent {
 
     /*this.catalogService.getCatalogs(this.idRoot,'POSITION').subscribe(
       (data: any) => {
-        this.position = data;      
+        this.position = data;
       },
       (error) => {
         if (error.status == 404) this.position = [];
@@ -253,7 +255,7 @@ export class UsersComponent {
         },
         filter: true
       },
-      {
+     /*  {
         field: 'age',
         headerName: 'Edad',
         cellEditor: 'agNumberCellEditor',
@@ -273,7 +275,7 @@ export class UsersComponent {
           values: ['México', 'USA', 'MEX-USA', 'Colombia', 'Chile', 'Otro'],
           selectOnPopup: true
         },
-      },
+      },*/
       {
         headerName: 'Contraseña',
         field: 'password',
@@ -335,6 +337,13 @@ export class UsersComponent {
         },
         editable: false,
         width: 100
+      },
+      {
+        field: 'IsRoot',
+        headerName: 'Root',
+        cellEditor: 'agTextCellEditor',
+        editable: false,
+        width: 100
       }
     ];
   }
@@ -386,6 +395,7 @@ export class UsersComponent {
       signature: '',
       usersmall: 'SINUSER',
       allowWhatsapp: true,
+      isRoot: 1,
       __isNew: true
     };
 
@@ -528,16 +538,27 @@ export class UsersComponent {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
 
+    if (selectedData.isRoot === 1) {
+      alerts.basicAlert(
+        'Eliminar entrada',
+        'No se puede eliminar un usuario administrador',
+        'error'
+      );
+      return;
+    }
+
     // Mostrar mensaje de confirmación
     alerts.confirmAlert(
       'Eliminar empleado',
-      '¿Está seguro que desea eliminar este empleado?',
+      '¿Está seguro que desea eliminar este usuario?',
       'warning',
       'Sí, eliminar'
     ).then((value) => {
       if (value.isConfirmed) {
         // Eliminar el usuario
+        console.log('SelectedData', selectedData);
         selectedData.active = 0;
+        console.log('SelectedData', selectedData);
         this.usersService.deleteUser(id, selectedData).pipe(
           catchError((error) => {
             alerts.basicAlert(

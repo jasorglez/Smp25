@@ -22,10 +22,14 @@ export class UsersService {
   // Aqui comienzan los cambios hechos a SMP
 
   getAllUsers(): Observable<any> {
+    var res = this.http.get(`${environment.urlSecurity}/User/users`, { headers: this.trackingService.getHeaders() });
+    console.log('res getALLUSERS', res);
+
     return this.http.get(`${environment.urlSecurity}/User/users`, { headers: this.trackingService.getHeaders() });
   }
 
   getDataUsers(idCompany: number): Observable<any> {
+    var res = this.http.get(`${environment.urlSecurity}/User/userdep?id=${idCompany}`, { headers: this.trackingService.getHeaders() });
     return this.http.get(`${environment.urlSecurity}/User/userdep?id=${idCompany}`, { headers: this.trackingService.getHeaders() });
   }
 
@@ -36,7 +40,7 @@ export class UsersService {
   getUserByEmail(email: string): Observable<any> {
     return this.http.get(`${environment.urlSecurity}/User/email/${email}`, { headers: this.trackingService.getHeaders() });
     }
-  
+
   addUser(data: any): Observable<any> {
     return this.http.post(`${environment.urlSecurity}/User`, data, { headers: this.trackingService.getHeaders() });
   }
@@ -47,11 +51,13 @@ export class UsersService {
   }
 
   deleteUser(id: number, data: any): Observable<any> {
-    return this.http.put(`${environment.urlSecurity}/User/${id}`, data, { headers: this.trackingService.getHeaders() });
+    //return this.http.put(`${environment.urlSecurity}/User/${id}`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.put(`${environment.urlLocalJGSecurity}/User/${id}`, data, { headers: this.trackingService.getHeaders() });
+
   }
 
 
-  
+
   // Aqui terminan los cambios a SMP
 
   getdataUserAut() {
@@ -71,7 +77,7 @@ export class UsersService {
       return null;
     }
   }
-   
+
 
   findEmail(email: string): Observable<any> {
     const headers = this.trackingService.getHeaders();
@@ -79,7 +85,7 @@ export class UsersService {
     return this.http.get<any>(`${environment.urlSecurity}/User/email/${email}`, { headers }).pipe(
       map(datauser => {
 
-       // console.log('dataUser', datauser);
+       console.log('dataUser', datauser);
 
         // Asegúrate de que datauser contenga al menos un objeto
         const userArray = datauser.data;
