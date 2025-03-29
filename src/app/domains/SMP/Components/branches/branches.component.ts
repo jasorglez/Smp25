@@ -123,14 +123,14 @@ public gridOptions: any = {
     }
   },
 };
-  
+
   get colMaster(): ColDef[] {
     return [
-      { field: 'orden', headerName: 'Orden', editable: true, filter: true, flex: 1 },
+      //{ field: 'orden', headerName: 'Orden', editable: true, filter: true, flex: 1 },
       { field: 'name', headerName: 'Nombre', editable: true, filter: true, flex: 2 },
-      
+
       { field: 'description', headerName: 'Descripción', editable: true, filter: true, flex: 2 },
-      
+
       { field: 'idEstado', headerName: 'Estado', editable: true, filter: true, flex: 1, cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.estados ? this.estados.map(item => item.id) : [],
@@ -140,7 +140,7 @@ public gridOptions: any = {
           return foundItem ? `${foundItem.nom_agee}` : params.value;
         }
       },
-      
+
       { field: 'address', headerName: 'Dirección', editable: false, filter: true, flex: 2, cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
