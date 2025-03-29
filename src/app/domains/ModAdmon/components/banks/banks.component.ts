@@ -89,7 +89,7 @@ public gridOptions: any = {
 
 get colMaster(): ColDef[] {
   return [
-    { field: 'name', headerName: 'Nombre', editable: true, filter: true, width: 220 },
+    { field: 'name', headerName: 'NombrePrueba', editable: true, filter: true, width: 220 },
     { field: 'branch', headerName: 'Sucursal', editable: false, width: 220, filter: true,
       cellEditor: 'agPopupTextCellEditor',
       cellEditorParams: {
