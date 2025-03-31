@@ -188,7 +188,7 @@ export class UsersComponent {
       },
       {
         field: 'displayName',
-        headerName: 'Nombre',
+        headerName: 'Nombre *',
         editable: true,
         filter: true,
         cellEditor: 'autocompleteEditor',
@@ -212,13 +212,13 @@ export class UsersComponent {
             return false;
           }
 
-          params.data[params.colDef.field] = params.newValue;
+          params.data[params.colDef.field] = params.newValue.toUpperCase();
           return true;
         }
       },
       {
         field: 'email',
-        headerName: 'Email',
+        headerName: 'Email *',
         cellEditor: 'agTextCellEditor',
         editable: (params) => params.data.__isNew,
         cellEditorParams: {
@@ -277,7 +277,7 @@ export class UsersComponent {
         },
       },*/
       {
-        headerName: 'Contraseña',
+        headerName: 'Contraseña *',
         field: 'password',
         cellRenderer: (params: any) => {
           return `<span>••••••••</span>`;
@@ -386,7 +386,7 @@ export class UsersComponent {
       email: '',
       password: '',
       idRol: 0,
-      age: null,
+      age: 0,
       id_company: this.idRoot,
       idDepartament: 1,
       phone: '',
@@ -420,6 +420,8 @@ export class UsersComponent {
 
     const newRows = this.rowData.filter(row => row.__isNew);
     const modifiedRows = this.rowData.filter(row => row.__modified && !row.__isNew);
+
+    console.log  ('Nuevas filas:', newRows);
 
     try {
       // Primero creamos/actualizamos los usuarios

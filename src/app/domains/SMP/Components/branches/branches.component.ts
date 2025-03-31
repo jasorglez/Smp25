@@ -32,6 +32,9 @@ export class BranchesComponent {
   newlyAddedMasterRows: string[] = [];
   masterNotSavedChanges: boolean = false;
   idRoot: number = null;
+
+  //idRoot = this.signalsService.getRootSelectedBySidebar(); // Asignar directamente la Signal
+
   id: number = null;
   private masterGridApi: GridApi;
   private tempIdCounter: number = 0;
@@ -43,6 +46,7 @@ export class BranchesComponent {
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
+
 
   constructor() {
     effect(() => {
@@ -63,6 +67,7 @@ export class BranchesComponent {
     this.obtenerDatos();
     this.obtenerStates();
   }
+
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
@@ -127,9 +132,26 @@ public gridOptions: any = {
   get colMaster(): ColDef[] {
     return [
       //{ field: 'orden', headerName: 'Orden', editable: true, filter: true, flex: 1 },
-      { field: 'name', headerName: 'Nombre', editable: true, filter: true, flex: 2 },
+      {
+        field: 'name',
+        headerName: 'Nombre',
+        editable: true,
+        filter: true,
+        flex: 2,
 
-      { field: 'description', headerName: 'Descripción', editable: true, filter: true, flex: 2 },
+        valueSetter: (params) => {
+          params.data[params.colDef.field] = params.newValue.toUpperCase();
+          return true;
+        }
+
+      },
+
+      { field: 'description', headerName: 'Descripción', editable: true, filter: true, flex: 2,
+        valueSetter: (params) => {
+          params.data[params.colDef.field] = params.newValue.toUpperCase();
+          return true;
+        }
+       },
 
       { field: 'idEstado', headerName: 'Estado', editable: true, filter: true, flex: 1, cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
@@ -165,6 +187,10 @@ public gridOptions: any = {
             return params.value;
           }
           return params.value;
+        },
+        valueSetter: (params) => {
+          params.data[params.colDef.field] = params.newValue.toUpperCase();
+          return true;
         }
       },
 
