@@ -22,15 +22,15 @@ export class UsersService {
   // Aqui comienzan los cambios hechos a SMP
 
   getAllUsers(): Observable<any> {
-    var res = this.http.get(`${environment.urlLocalJGSecurity}/User/users`, { headers: this.trackingService.getHeaders() });
-    console.log('res getALLUSERS', res);
+    //var res = this.http.get(`${environment.urlSecurity}/User/users`, { headers: this.trackingService.getHeaders() });
+    //console.log('res getALLUSERS', res);
 
-    return this.http.get(`${environment.urlLocalJGSecurity}/User/users`, { headers: this.trackingService.getHeaders() });
+    return this.http.get(`${environment.urlSecurity}/User/users`, { headers: this.trackingService.getHeaders() });
   }
 
   getDataUsers(idCompany: number): Observable<any> {
-    var res = this.http.get(`${environment.urlLocalJGSecurity}/User/userdep?id=${idCompany}`, { headers: this.trackingService.getHeaders() });
-    return this.http.get(`${environment.urlLocalJGSecurity}/User/userdep?id=${idCompany}`, { headers: this.trackingService.getHeaders() });
+    //var res = this.http.get(`${environment.urlLocalJGSecurity}/User/userdep?id=${idCompany}`, { headers: this.trackingService.getHeaders() });
+    return this.http.get(`${environment.urlSecurity}/User/userdep?id=${idCompany}`, { headers: this.trackingService.getHeaders() });
   }
 
   getUserById(id: number): Observable<any> {
@@ -42,8 +42,7 @@ export class UsersService {
     }
 
   addUser(data: any): Observable<any> {
-    console.log('DATA EN EL ADD', data)
-    return this.http.post(`${environment.urlLocalJGSecurity}/User`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.post(`${environment.urlSecurity}/User`, data, { headers: this.trackingService.getHeaders() });
   }
 
   updateUser(id: string, data: any): Observable<any> {
@@ -53,9 +52,11 @@ export class UsersService {
 
   deleteUser(id: number, data: any): Observable<any> {
     //return this.http.put(`${environment.urlSecurity}/User/${id}`, data, { headers: this.trackingService.getHeaders() });
-    return this.http.put(`${environment.urlLocalJGSecurity}/User/${id}`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.put(`${environment.urlSecurity}/User/${id}`, data, { headers: this.trackingService.getHeaders() });
 
   }
+
+
 
   // Aqui terminan los cambios a SMP
 
