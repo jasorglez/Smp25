@@ -16,6 +16,7 @@ import { ModalService } from 'app/services/modal.service';
 import { ReceiptsService } from 'app/services/receipts.service';
 import { UsersService } from 'app/services/users.service';
 import { MaterialsService } from 'app/services/materials.service';
+import { SetupService } from 'app/services/setup.service';
 
 interface Catalog {
   id: number;
@@ -47,19 +48,24 @@ export class PurchaseOrderComponent {
   private receiptsService = inject(ReceiptsService);
   private usersService = inject(UsersService);
   private materialsService = inject(MaterialsService);
+  private setupService = inject(SetupService);
 
   // Variables compartidas
   
   masterNotSavedChanges: boolean = false;
   detailsNotSavedChanges: boolean = false;
   id: string = null;
+  idBranch: number = null;
   idProject: number = null;
+  idReference: number = null;
   private tempIdCounter: number = 0;
   idRequisition: number = null;
   private masterGridApi: GridApi;
   private detailsGridApi: GridApi;
   private gridApi: GridApi;
   idRoot: number = null;
+  projectOrBranch: boolean = null; // True = Project, False = Branch
+  typeReference: string = null; // project or branch
 
   // Variables Master
   masterRowData: any[] = [];
@@ -94,16 +100,16 @@ export class PurchaseOrderComponent {
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idProject = this.signalsService.getProjectSelectedBySidebar()();
+      this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.idRequisition = this.signalsService.getIdRequisition()();
+      this.getSetupData();
+      this.idReference = this.projectOrBranch ?  this.idProject : this.idBranch;
 
-      if (this.idProject == null) {
-        this.masterRowData = [];
-        alerts.basicAlert('Orden de compra', 'Debe elegir un proyecto primero.', 'error');
-      } else {
+
         this.obtenerDatos();
         this.obtenerRequisiciones();
         this.obtenerProductos();
-      }
+      
 
       if (this.idRequisition != null) {
         this.obtenerDetalles();
@@ -132,6 +138,24 @@ export class PurchaseOrderComponent {
         'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
     }
   }
+
+
+  getSetupData() {
+    this.setupService.getWarehouseSetup(this.idRoot).subscribe({
+      next: (data: any) => {
+        this.projectOrBranch = data[0].projectOrBranch;
+        this.typeReference = this.projectOrBranch ?  'project' : 'branch';
+        console.log(this.projectOrBranch);
+      },
+      error: (err) => {
+        if (err.status === 404) {
+          console.error(err);
+          alerts.basicAlert('Requisiciones', 'No se encontró la configuración de almacenes de la empresa.', 'error');
+        }
+      }
+    });
+  }
+
 
   nameRequisition = this.signalsService.getRequisitionName();
 
@@ -439,7 +463,7 @@ public masterGridOptions: any = {
   // ==================== MASTER METHODS ====================
 
   obtenerDatos() {
-    this.requisitionsService.getOcAndReqs(this.idProject, "OC").subscribe((data: any) => {
+    this.requisitionsService.getOcAndReqs(this.typeReference, this.idReference, "OC").subscribe((data: any) => {
       this.masterRowData = data;
     },
       (error) => console.error('Error fetching data:', error)
@@ -447,7 +471,7 @@ public masterGridOptions: any = {
   }
 
   obtenerRequisiciones() {
-    this.requisitionsService.getOcAndReqs(this.idProject, "REQUIS").subscribe((data: any) => {
+    this.requisitionsService.getOcAndReqs(this.typeReference, this.idReference, "REQUIS").subscribe((data: any) => {
       this.requisiciones = data;
       console.log(this.requisiciones);
     },

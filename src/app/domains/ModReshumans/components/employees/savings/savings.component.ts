@@ -11,7 +11,7 @@ import {
 import { alerts } from 'app/helpers/alerts';
 import { EmployeesxloansService } from 'app/services/employeesxloans.service';
 import { SignalsService } from 'app/services/signals.service';
-import { concat, lastValueFrom, toArray } from 'rxjs';
+import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { TimeService } from 'app/services/time.service';
 
 @Component({
@@ -129,16 +129,21 @@ export class EmployeesxSavingsComponent {
             this.maestroRowData = this.detalleRowData = [];
           } else {
             this.maestroRowData = maestroRowData;
-            
+
             setTimeout(() => {
               if (this.maestroGridApi && this.maestroRowData.length > 0) {
                 // Buscar la fila que coincide con el ID guardado
-                const rowToSelect = preserveSelection && this.selectedLoanIdBeforeRefresh ? 
-                  this.maestroRowData.findIndex(row => row.id === this.selectedLoanIdBeforeRefresh) : 
-                  0;
+                const rowToSelect =
+                  preserveSelection && this.selectedLoanIdBeforeRefresh
+                    ? this.maestroRowData.findIndex(
+                        (row) => row.id === this.selectedLoanIdBeforeRefresh
+                      )
+                    : 0;
 
-                this.maestroGridApi.getDisplayedRowAtIndex(rowToSelect)?.setSelected(true);
-                
+                this.maestroGridApi
+                  .getDisplayedRowAtIndex(rowToSelect)
+                  ?.setSelected(true);
+
                 // Restablecer el ID guardado
                 this.selectedLoanIdBeforeRefresh = null;
               }
@@ -177,9 +182,9 @@ export class EmployeesxSavingsComponent {
   }
 
   maestroColumnDefs: ColDef[] = [
-    { 
+    {
       headerName: 'ID',
-      field: 'id', 
+      field: 'id',
       flex: 1,
       editable: false,
       valueFormatter: (params) => {
@@ -188,23 +193,27 @@ export class EmployeesxSavingsComponent {
           return '';
         }
         return params.value;
-      }
+      },
     },
     {
       headerName: 'Fecha',
       field: 'date',
-      valueGetter: (params) => params.data.date ? new Date(params.data.date) : null,
+      valueGetter: (params) =>
+        params.data.date ? new Date(params.data.date) : null,
       cellRenderer: 'agDateCellRenderer',
       cellEditor: 'agDateCellEditor',
       valueFormatter: (params) => {
         if (params.value) {
           const date = new Date(params.value);
-          return `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
+          return `${('0' + date.getDate()).slice(-2)}-${(
+            '0' +
+            (date.getMonth() + 1)
+          ).slice(-2)}-${date.getFullYear()}`;
         }
         return '';
       },
       flex: 1,
-      editable: (params) => params.data?.__isNew === true
+      editable: (params) => params.data?.__isNew === true,
     },
     {
       headerName: 'Ahorro *',
@@ -220,7 +229,7 @@ export class EmployeesxSavingsComponent {
         return '';
       },
       flex: 1,
-      editable: (params) => params.data?.__isNew === true
+      editable: (params) => params.data?.__isNew === true,
     },
     {
       headerName: 'Retirado',
@@ -235,7 +244,7 @@ export class EmployeesxSavingsComponent {
         return '$0.00';
       },
       flex: 1,
-      editable: false
+      editable: false,
     },
     {
       headerName: 'Restante',
@@ -250,7 +259,7 @@ export class EmployeesxSavingsComponent {
         return '$0.00';
       },
       flex: 1,
-      editable: false
+      editable: false,
     },
   ];
 
@@ -258,7 +267,8 @@ export class EmployeesxSavingsComponent {
     {
       headerName: 'Fecha',
       field: 'date',
-      valueGetter: (params) => params.data.date ? new Date(params.data.date) : null,
+      valueGetter: (params) =>
+        params.data.date ? new Date(params.data.date) : null,
       cellEditor: 'agDateCellEditor',
       cellEditorParams: {
         min: new Date(2000, 0, 1),
@@ -267,12 +277,15 @@ export class EmployeesxSavingsComponent {
       valueFormatter: (params) => {
         if (params.value) {
           const date = new Date(params.value);
-          return `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
+          return `${('0' + date.getDate()).slice(-2)}-${(
+            '0' +
+            (date.getMonth() + 1)
+          ).slice(-2)}-${date.getFullYear()}`;
         }
         return '';
       },
       flex: 1,
-      editable: (params) => params.data?.__isNew === true
+      editable: (params) => params.data?.__isNew === true,
     },
     {
       headerName: 'Abono *',
@@ -288,25 +301,28 @@ export class EmployeesxSavingsComponent {
         return '$0.00';
       },
       flex: 2,
-      editable: (params) => params.data?.__isNew === true
+      editable: (params) => params.data?.__isNew === true,
     },
-    { 
-      headerName: 'Comentario', 
-      field: 'descripcion', 
+    {
+      headerName: 'Comentario',
+      field: 'descripcion',
       flex: 1,
-      editable: (params) => params.data?.__isNew === true
+      editable: (params) => params.data?.__isNew === true,
     },
   ];
 
   private maestroGridApi: GridApi;
   private detalleGridApi: GridApi;
 
-  private async getTime(): Promise<{dateObj: Date, formatted: string}> {
+  private async getTime(): Promise<{ dateObj: Date; formatted: string }> {
     const time = await lastValueFrom(this.timeService.getTime());
     const date = new Date(time.localTime);
     return {
-        dateObj: date,
-        formatted: `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`
+      dateObj: date,
+      formatted: `${('0' + date.getDate()).slice(-2)}-${(
+        '0' +
+        (date.getMonth() + 1)
+      ).slice(-2)}-${date.getFullYear()}`,
     };
   }
 
@@ -315,55 +331,55 @@ export class EmployeesxSavingsComponent {
     const timeData = await this.getTime();
 
     if (type === 'Master') {
-        const newRow = {
-            id: tempId,
-            idEmpleado: this.idEmployee,
-            date: timeData.dateObj,
-            type: 'AHORRO',
-            monto: 0,
-            payments: 0,
-            __isNew: true,
-            active: true
-        };
-        this.maestroRowData = [newRow, ...this.maestroRowData];
-        this.masterNotSavedChanges = true;
-        
-        setTimeout(() => {
-            if (this.maestroGridApi) {
-                const rowNode = this.maestroGridApi.getDisplayedRowAtIndex(0);
-                rowNode?.setSelected(true);
-                
-                this.maestroGridApi.startEditingCell({
-                    rowIndex: 0,
-                    colKey: 'monto'
-                });
-            }
-        });
+      const newRow = {
+        id: tempId,
+        idEmpleado: this.idEmployee,
+        date: timeData.dateObj,
+        type: 'AHORRO',
+        monto: 0,
+        payments: 0,
+        __isNew: true,
+        active: true,
+      };
+      this.maestroRowData = [newRow, ...this.maestroRowData];
+      this.masterNotSavedChanges = true;
+
+      setTimeout(() => {
+        if (this.maestroGridApi) {
+          const rowNode = this.maestroGridApi.getDisplayedRowAtIndex(0);
+          rowNode?.setSelected(true);
+
+          this.maestroGridApi.startEditingCell({
+            rowIndex: 0,
+            colKey: 'monto',
+          });
+        }
+      });
     } else if (type === 'Detailed') {
-        const newRow = {
-            id: tempId,
-            idLoanAndCredit: this.idLoan,
-            date: timeData.dateObj,
-            status: 'Pendiente',
-            total: 0,
-            comments: '',
-            __isNew: true,
-            active: true
-        };
-        this.detalleRowData = [newRow, ...this.detalleRowData];
-        this.detailNotSavedChanges = true;
-        
-        setTimeout(() => {
-            if (this.detalleGridApi) {
-                const rowNode = this.detalleGridApi.getDisplayedRowAtIndex(0);
-                rowNode?.setSelected(true);
-                
-                this.detalleGridApi.startEditingCell({
-                    rowIndex: 0,
-                    colKey: 'total'
-                });
-            }
-        });
+      const newRow = {
+        id: tempId,
+        idLoanAndCredit: this.idLoan,
+        date: timeData.dateObj,
+        status: 'Pendiente',
+        total: 0,
+        comments: '',
+        __isNew: true,
+        active: true,
+      };
+      this.detalleRowData = [newRow, ...this.detalleRowData];
+      this.detailNotSavedChanges = true;
+
+      setTimeout(() => {
+        if (this.detalleGridApi) {
+          const rowNode = this.detalleGridApi.getDisplayedRowAtIndex(0);
+          rowNode?.setSelected(true);
+
+          this.detalleGridApi.startEditingCell({
+            rowIndex: 0,
+            colKey: 'total',
+          });
+        }
+      });
     }
   }
 
@@ -379,13 +395,13 @@ export class EmployeesxSavingsComponent {
     const selectedRows = this.maestroGridApi.getSelectedRows();
     if (selectedRows.length > 0) {
       const selectedMaestro = selectedRows[0];
-      
+
       // Verificar si la fila maestra es nueva
       if (selectedMaestro?.__isNew === true) {
         this.detalleRowData = [];
         return;
       }
-      
+
       this.idLoan = selectedMaestro.id;
       this.loadDetailedData();
     } else {
@@ -403,7 +419,6 @@ export class EmployeesxSavingsComponent {
       );
       return;
     }
-
 
     const newRows = this.maestroRowData.filter((row) => row.__isNew);
     const modifiedRows = this.maestroRowData.filter(
@@ -463,7 +478,6 @@ export class EmployeesxSavingsComponent {
       return;
     }
 
-
     const newRows = this.detalleRowData.filter((row) => row.__isNew);
     const modifiedRows = this.detalleRowData.filter(
       (row) => row.__modified && !row.__isNew
@@ -491,7 +505,7 @@ export class EmployeesxSavingsComponent {
       );
       this.detailNotSavedChanges = false;
       this.detailedNewlyAddedRows = [];
-      
+
       // Recargar datos manteniendo la selección
       await this.loadData(true); // Pasar true para indicar que es una recarga post-guardado
       this.signalsService.triggerRefreshEmployees();
@@ -530,5 +544,101 @@ export class EmployeesxSavingsComponent {
       delete cleanedData.id;
     }
     return cleanedData;
+  }
+
+  async deleteMasterEntry() {
+    const selectedNodes = this.maestroGridApi.getSelectedNodes();
+    if (selectedNodes.length === 0) {
+      alerts.basicAlert(
+        'Eliminar entrada',
+        'Por favor, seleccione una entrada para eliminar.',
+        'error'
+      );
+      return;
+    }
+    const selectedData = selectedNodes[0].data;
+    const id = selectedData.id;
+
+    this.employeesxloansService
+      .deleteLoan(id)
+      .pipe(
+        catchError((error) => {
+          // Verificar si el error es un 400 y mostrar un mensaje específico
+          if (error.status === 400) {
+            alerts.basicAlert(
+              'Eliminar entrada',
+              error.error.message || 'Error al eliminar la entrada.',
+              'error'
+            );
+          } else {
+            alerts.basicAlert(
+              'Eliminar entrada',
+              'Error al eliminar la entrada.',
+              'error'
+            );
+          }
+          console.error(error);
+          return EMPTY;
+        })
+      )
+      .subscribe(() => {
+        alerts.basicAlert(
+          'Eliminar entrada',
+          'Entrada eliminada satisfactoriamente.',
+          'success'
+        );
+        this.loadData();
+
+        alerts.basicAlert(
+          'Eliminar entrada',
+          'Entrada eliminada satisfactoriamente.',
+          'success'
+        );
+        this.masterNotSavedChanges = false;
+      });
+  }
+
+  async deleteDetalleEntry() {
+    const selectedNodes = this.detalleGridApi.getSelectedNodes();
+    if (selectedNodes.length === 0) {
+      alerts.basicAlert(
+        'Eliminar entrada',
+        'Por favor, seleccione una entrada para eliminar.',
+        'error'
+      );
+      return;
+    }
+    const selectedData = selectedNodes[0].data;
+    const id = selectedData.id;
+
+    this.employeesxloansService
+      .deleteConcept(id)
+      .pipe(
+        catchError((error) => {
+            alerts.basicAlert(
+              'Eliminar entrada',
+              'Error al eliminar la entrada.',
+              'error'
+            );
+          console.error(error);
+          return EMPTY;
+        })
+      )
+      .subscribe(() => {
+        alerts.basicAlert(
+          'Eliminar entrada',
+          'Entrada eliminada satisfactoriamente.',
+          'success'
+        );
+        this.loadData();
+
+        alerts.basicAlert(
+          'Eliminar entrada',
+          'Entrada eliminada satisfactoriamente.',
+          'success'
+        );
+        this.detailNotSavedChanges = false;
+        this.signalsService.triggerRefreshEmployees();
+      });
   }
 }

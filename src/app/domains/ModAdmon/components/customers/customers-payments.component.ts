@@ -1,7 +1,12 @@
 import { Component, effect, HostListener, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
-import { ColDef, GridApi, GridReadyEvent, SelectionChangedEvent } from 'ag-grid-enterprise';
+import {
+  ColDef,
+  GridApi,
+  GridReadyEvent,
+  SelectionChangedEvent,
+} from 'ag-grid-enterprise';
 import { alerts } from '../../../../helpers/alerts';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { AgGridModule } from 'ag-grid-angular';
@@ -11,13 +16,12 @@ import { CustomersService } from 'app/services/customers.service';
 import { AccountbanksComponent } from '../accountbanks/accountbanks.component';
 import { TimeService } from 'app/services/time.service';
 
-
 @Component({
   selector: 'app-customers-payments',
   standalone: true,
   imports: [RouterModule, DomainsModule, AgGridModule],
   templateUrl: './customers-payments.component.html',
-  styleUrl: './customers.component.scss'
+  styleUrl: './customers.component.scss',
 })
 export class CustomersPaymentsComponent {
   @HostListener('window:beforeunload', ['$event'])
@@ -44,16 +48,14 @@ export class CustomersPaymentsComponent {
     },
   };
 
-  ngOnInit() {
-  }
+  ngOnInit() {}
 
   constructor() {
     effect(() => {
       this.idClient = this.signalsService.getIdClient()();
       this.type = this.signalsService.getProviderOrCustomer()();
       this.loadData();
-    }
-    );
+    });
   }
 
   maestroRowData: any[] = [];
@@ -135,78 +137,83 @@ export class CustomersPaymentsComponent {
   private maestroGridApi: GridApi;
   private detalleGridApi: GridApi;
 
-
-  maestroColumnDefs: ColDef[] =
-    [
-      { field: 'numberNote',
-        headerName: 'Número de nota',
-        editable: (params) => params.data?.__isNew === true,
-        filter: true,
-        flex: 2
+  maestroColumnDefs: ColDef[] = [
+    {
+      field: 'numberNote',
+      headerName: 'Número de nota',
+      editable: (params) => params.data?.__isNew === true,
+      filter: true,
+      flex: 2,
+    },
+    {
+      field: 'date',
+      headerName: 'Fecha',
+      valueGetter: (params) =>
+        params.data.date ? new Date(params.data.date) : null,
+      cellRenderer: 'agDateCellRenderer',
+      cellEditor: 'agDateCellEditor',
+      valueFormatter: (params) => {
+        if (params.value) {
+          const date = new Date(params.value);
+          return `${('0' + date.getDate()).slice(-2)}-${(
+            '0' +
+            (date.getMonth() + 1)
+          ).slice(-2)}-${date.getFullYear()}`;
+        }
+        return '';
       },
-      {
-        field: 'date',
-        headerName: 'Fecha',
-        valueGetter: (params) => params.data.date ? new Date(params.data.date) : null,
-        cellRenderer: 'agDateCellRenderer',
-        cellEditor: 'agDateCellEditor',
-        valueFormatter: (params) => {
-          if (params.value) {
-            const date = new Date(params.value);
-            return `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
-          }
-          return '';
-        },
-        flex: 1,
-        editable: (params) => params.data?.__isNew === true
-      },
+      flex: 1,
+      editable: (params) => params.data?.__isNew === true,
+    },
 
-      {
-        field: 'total',
-        headerName: 'Total de la Nota',
-        editable: (params) => params.data?.__isNew === true,
-        valueFormatter: (params) => {
+    {
+      field: 'total',
+      headerName: 'Total de la Nota',
+      editable: (params) => params.data?.__isNew === true,
+      valueFormatter: (params) => {
+        return new Intl.NumberFormat('es-MX', {
+          style: 'currency',
+          currency: 'MXN',
+        }).format(params.value || 0);
+      },
+      flex: 1,
+    },
+    {
+      field: 'account',
+      headerName: 'Abono Cuenta',
+      editable: false,
+      filter: true,
+      flex: 1,
+      valueFormatter: (params) => {
+        if (params.value) {
           return new Intl.NumberFormat('es-MX', {
             style: 'currency',
             currency: 'MXN',
-          }).format(params.value || 0);
-        },
-        flex: 1
+          }).format(params.value);
+        }
+        return '$0.00';
       },
-      {
-        field: 'account',
-        headerName: 'Abono Cuenta',
-        editable: false,
-        filter: true,
-        flex: 1,
-        valueFormatter: (params) => {
-          if (params.value) {
-            return new Intl.NumberFormat('es-MX', {
-              style: 'currency',
-              currency: 'MXN',
-            }).format(params.value);
-          }
-          return '$0.00';
-        },
+    },
+    {
+      field: 'remain',
+      headerName: 'Restante',
+      editable: false,
+      valueFormatter: (params) => {
+        return new Intl.NumberFormat('es-MX', {
+          style: 'currency',
+          currency: 'MXN',
+        }).format(params.value || 0);
       },
-      {
-        field: 'remain', headerName: 'Restante',
-        editable: (params) => params.data?.__isNew === true,
-        valueFormatter: (params) => {
-          return new Intl.NumberFormat('es-MX', {
-            style: 'currency',
-            currency: 'MXN',
-          }).format(params.value || 0);
-        },
-        flex: 1
-      },
-    ];
+      flex: 1,
+    },
+  ];
 
   detalleColumnDefs: ColDef[] = [
     {
       headerName: 'Fecha',
       field: 'datePayment',
-      valueGetter: (params) => params.data.datePayment ? new Date(params.data.datePayment) : null,
+      valueGetter: (params) =>
+        params.data.datePayment ? new Date(params.data.datePayment) : null,
       cellEditor: 'agDateCellEditor',
       cellEditorParams: {
         min: new Date(2000, 0, 1),
@@ -215,12 +222,15 @@ export class CustomersPaymentsComponent {
       valueFormatter: (params) => {
         if (params.value) {
           const date = new Date(params.value);
-          return `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
+          return `${('0' + date.getDate()).slice(-2)}-${(
+            '0' +
+            (date.getMonth() + 1)
+          ).slice(-2)}-${date.getFullYear()}`;
         }
         return '';
       },
       width: 178,
-      editable: (params) => params.data?.__isNew === true
+      editable: (params) => params.data?.__isNew === true,
     },
     {
       headerName: 'Abono *',
@@ -233,52 +243,58 @@ export class CustomersPaymentsComponent {
         }).format(params.value || 0);
       },
       width: 180,
-      editable: (params) => params.data?.__isNew === true
-    }
+      editable: (params) => params.data?.__isNew === true,
+    },
   ];
 
-  private async getTime(): Promise<{ dateObj: Date, formatted: string }> {
+  private async getTime(): Promise<{ dateObj: Date; formatted: string }> {
     const time = await lastValueFrom(this.timeService.getTime());
     const date = new Date(time.localTime);
     return {
       dateObj: date,
-      formatted: `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`
+      formatted: `${('0' + date.getDate()).slice(-2)}-${(
+        '0' +
+        (date.getMonth() + 1)
+      ).slice(-2)}-${date.getFullYear()}`,
     };
   }
-
 
   loadData(preserveSelection: boolean = false) {
     if (this.idClient === null || this.idClient === undefined) {
       return;
     }
 
-    this.customersService.getClientCredits(this.idClient)
-      .subscribe(
-        (maestroRowData: any[]) => {
-          if (!maestroRowData || maestroRowData.length === 0) {
-            this.maestroRowData = this.detalleRowData = [];
-          } else {
-            this.maestroRowData = maestroRowData;
+    this.customersService.getClientCredits(this.idClient).subscribe(
+      (maestroRowData: any[]) => {
+        if (!maestroRowData || maestroRowData.length === 0) {
+          this.maestroRowData = this.detalleRowData = [];
+        } else {
+          this.maestroRowData = maestroRowData;
 
-            setTimeout(() => {
-              if (this.maestroGridApi && this.maestroRowData.length > 0) {
-                // Buscar la fila que coincide con el ID guardado
-                const rowToSelect = preserveSelection && this.selectedCreditIdBeforeRefresh ?
-                  this.maestroRowData.findIndex(row => row.id === this.selectedCreditIdBeforeRefresh) :
-                  0;
+          setTimeout(() => {
+            if (this.maestroGridApi && this.maestroRowData.length > 0) {
+              // Buscar la fila que coincide con el ID guardado
+              const rowToSelect =
+                preserveSelection && this.selectedCreditIdBeforeRefresh
+                  ? this.maestroRowData.findIndex(
+                      (row) => row.id === this.selectedCreditIdBeforeRefresh
+                    )
+                  : 0;
 
-                this.maestroGridApi.getDisplayedRowAtIndex(rowToSelect)?.setSelected(true);
+              this.maestroGridApi
+                .getDisplayedRowAtIndex(rowToSelect)
+                ?.setSelected(true);
 
-                // Restablecer el ID guardado
-                this.selectedCreditIdBeforeRefresh = null;
-              }
-            });
-          }
-        },
-        (error) => {
-          console.error('Error loading loans data:', error);
+              // Restablecer el ID guardado
+              this.selectedCreditIdBeforeRefresh = null;
+            }
+          });
         }
-      );
+      },
+      (error) => {
+        console.error('Error loading loans data:', error);
+      }
+    );
   }
 
   loadDetailedData() {
@@ -332,7 +348,7 @@ export class CustomersPaymentsComponent {
 
           this.maestroGridApi.startEditingCell({
             rowIndex: 0,
-            colKey: 'account'
+            colKey: 'account',
           });
         }
       });
@@ -343,7 +359,7 @@ export class CustomersPaymentsComponent {
         datePayment: timeData.dateObj,
         amount: 0,
         __isNew: true,
-        active: true
+        active: true,
       };
       this.detalleRowData = [newRow, ...this.detalleRowData];
       this.detailNotSavedChanges = true;
@@ -355,7 +371,7 @@ export class CustomersPaymentsComponent {
 
           this.detalleGridApi.startEditingCell({
             rowIndex: 0,
-            colKey: 'amount'
+            colKey: 'amount',
           });
         }
       });
@@ -398,7 +414,6 @@ export class CustomersPaymentsComponent {
       );
       return;
     }
-
 
     const newRows = this.maestroRowData.filter((row) => row.__isNew);
     const modifiedRows = this.maestroRowData.filter(
@@ -457,7 +472,6 @@ export class CustomersPaymentsComponent {
       );
       return;
     }
-
 
     const newRows = this.detalleRowData.filter((row) => row.__isNew);
     const modifiedRows = this.detalleRowData.filter(
@@ -527,9 +541,100 @@ export class CustomersPaymentsComponent {
     return cleanedData;
   }
 
+  async deleteMasterEntry() {
+    const selectedNodes = this.maestroGridApi.getSelectedNodes();
+    if (selectedNodes.length === 0) {
+      alerts.basicAlert(
+        'Eliminar entrada',
+        'Por favor, seleccione una entrada para eliminar.',
+        'error'
+      );
+      return;
+    }
+    const selectedData = selectedNodes[0].data;
+    const id = selectedData.id;
+
+    this.customersService
+      .deleteClientCredit(id)
+      .pipe(
+        catchError((error) => {
+          // Verificar si el error es un 400 y mostrar un mensaje específico
+          if (error.status === 400) {
+            alerts.basicAlert(
+              'Eliminar entrada',
+              error.error.message || 'Error al eliminar la entrada.',
+              'error'
+            );
+          } else {
+            alerts.basicAlert(
+              'Eliminar entrada',
+              'Error al eliminar la entrada.',
+              'error'
+            );
+          }
+          console.error(error);
+          return EMPTY;
+        })
+      )
+      .subscribe(() => {
+        alerts.basicAlert(
+          'Eliminar entrada',
+          'Entrada eliminada satisfactoriamente.',
+          'success'
+        );
+        this.loadData();
+
+        alerts.basicAlert(
+          'Eliminar entrada',
+          'Entrada eliminada satisfactoriamente.',
+          'success'
+        );
+        this.masterNotSavedChanges = false;
+        this.signalsService.triggerRefreshEmployees();
+      });
+  }
+
+  async deleteDetalleEntry() {
+    const selectedNodes = this.detalleGridApi.getSelectedNodes();
+    if (selectedNodes.length === 0) {
+      alerts.basicAlert(
+        'Eliminar entrada',
+        'Por favor, seleccione una entrada para eliminar.',
+        'error'
+      );
+      return;
+    }
+    const selectedData = selectedNodes[0].data;
+    const id = selectedData.id;
+
+    this.customersService
+      .deleteDetailCredit(id)
+      .pipe(
+        catchError((error) => {
+          alerts.basicAlert(
+            'Eliminar entrada',
+            'Error al eliminar la entrada.',
+            'error'
+          );
+          console.error(error);
+          return EMPTY;
+        })
+      )
+      .subscribe(() => {
+        alerts.basicAlert(
+          'Eliminar entrada',
+          'Entrada eliminada satisfactoriamente.',
+          'success'
+        );
+        this.loadData();
+
+        alerts.basicAlert(
+          'Eliminar entrada',
+          'Entrada eliminada satisfactoriamente.',
+          'success'
+        );
+        this.detailNotSavedChanges = false;
+        this.signalsService.triggerRefreshEmployees();
+      });
+  }
 }
-
-
-
-
-

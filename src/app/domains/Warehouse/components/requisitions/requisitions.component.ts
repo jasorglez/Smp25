@@ -1,5 +1,11 @@
 import { Component, effect, HostListener, inject } from '@angular/core';
-import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
+import {
+  CellDoubleClickedEvent,
+  ColDef,
+  GridApi,
+  GridReadyEvent,
+  ICellRendererParams,
+} from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
@@ -33,11 +39,9 @@ interface Provider {
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
   templateUrl: './requisitions.component.html',
-  styleUrl: './requisitions.component.scss'
+  styleUrl: './requisitions.component.scss',
 })
 export class RequisitionsComponent {
-
-
   // Inject of new way for Angular 18
   private requisitionsService = inject(OcAndReqsService);
   private providersService = inject(ProvidersService);
@@ -55,7 +59,9 @@ export class RequisitionsComponent {
   masterNotSavedChanges: boolean = false;
   detailsNotSavedChanges: boolean = false;
   id: string = null;
+  idBranch: number = null;
   idProject: number = null;
+  idReference: number = null;
   private tempIdCounter: number = 0;
   idRequisition: number = null;
   private masterGridApi: GridApi;
@@ -63,6 +69,7 @@ export class RequisitionsComponent {
   private gridApi: GridApi;
   idRoot: number = null;
   projectOrBranch: boolean = null; // True = Project, False = Branch
+  typeReference: string = null; // project or branch
 
   // Variables Master
   masterRowData: any[] = [];
@@ -97,35 +104,39 @@ export class RequisitionsComponent {
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idProject = this.signalsService.getProjectSelectedBySidebar()();
+      this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.idRequisition = this.signalsService.getIdRequisition()();
       this.getSetupData();
-      if (this.idProject == null) {
-        this.masterRowData = [];
-        alerts.basicAlert('Requisiciones', 'Debe elegir un proyecto primero.', 'error');
-      } else {
-        this.obtenerDatos();
-        this.obtenerProductos();
-        
-      }
+      this.idReference = this.projectOrBranch ? this.idProject : this.idBranch;
+      console.log(this.idReference);
+      this.obtenerDatos();
+      this.obtenerProductos();
 
       if (this.idRequisition != null) {
         this.obtenerDetalles();
       }
-    })
+    });
   }
 
   ngOnInit() {
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+
     this.signalsService.deleteRequisitionData();
-    this.obtenerDatos();
-    this.obtenerDepartamentos();
-    this.obtenerUbicaciones();
-    this.obtenerMonedas();
-    this.obtenerUsuarios();
-    this.obtenerProveedores();
-    this.obtenerTipoPago();
-    this.obtenerProductos();
-    this.getSetupData();
+    this.idProject = this.signalsService.getProjectSelectedBySidebar()();
+    this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+    this.idRequisition = this.signalsService.getIdRequisition()();
+    
+    this.getSetupData().then(() => {
+      this.idReference = this.projectOrBranch ? this.idProject : this.idBranch;
+      this.obtenerDatos();
+      this.obtenerDepartamentos();
+      this.obtenerUbicaciones();
+      this.obtenerMonedas();
+      this.obtenerUsuarios();
+      this.obtenerProveedores();
+      this.obtenerTipoPago();
+      this.obtenerProductos();
+    });
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -165,24 +176,39 @@ export class RequisitionsComponent {
     },
   };
 
-  getSetupData() {
-    this.setupService.getWarehouseSetup(this.idRoot).subscribe({
-      next: (data: any) => {
-        this.projectOrBranch = data[0].projectOrBranch; // True = Project, False = Branch
-        console.log(this.projectOrBranch);
-      },
-      error: (err) => {
-        if (err.status === 404) {
-          console.error(err);
-          alerts.basicAlert('Requisiciones', 'No se encontró la configuración de almacenes de la empresa.', 'error');
-        }
-      }
+  getSetupData(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.setupService.getWarehouseSetup(this.idRoot).subscribe({
+        next: (data: any) => {
+          this.projectOrBranch = data[0].projectOrBranch;
+          this.typeReference = this.projectOrBranch ? 'project' : 'branch';
+          console.log(this.projectOrBranch);
+          resolve(); // Resolvemos la promesa aquí
+        },
+        error: (err) => {
+          if (err.status === 404) {
+            console.error(err);
+            alerts.basicAlert(
+              'Requisiciones',
+              'No se encontró la configuración de almacenes de la empresa.',
+              'error'
+            );
+          }
+          reject(err); // Rechazamos la promesa en caso de error
+        },
+      });
     });
   }
 
   get colMaster(): ColDef[] {
     return [
-      { field: 'folio', headerName: 'Número Doc', editable: true, filter: true, width: 150 },
+      {
+        field: 'folio',
+        headerName: 'Número Doc',
+        editable: true,
+        filter: true,
+        width: 150,
+      },
       {
         field: 'dateCreate',
         headerName: 'Fecha Solicitud',
@@ -194,24 +220,54 @@ export class RequisitionsComponent {
             return params.value.split('T')[0];
           }
           return '';
-        }
+        },
       },
-      { field: 'delivery', headerName: 'Identificador', editable: true, filter: true, width: 150 },
+      {
+        field: 'delivery',
+        headerName: 'Identificador',
+        editable: true,
+        filter: true,
+        width: 150,
+      },
 
       {
-        field: 'idDepartament', headerName: 'Departamento Solicita', editable: true, width: 180, cellEditor: 'agSelectCellEditor',
+        field: 'idDepartament',
+        headerName: 'Departamento Solicita',
+        editable: true,
+        width: 180,
+        cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: this.departamentos ? this.departamentos.map(item => item.id) : [],
+          values: this.departamentos
+            ? this.departamentos.map((item) => item.id)
+            : [],
         },
         valueFormatter: (params) => {
-          const foundItem = this.departamentos ? this.departamentos.find(item => item.id === params.value) : null;
+          const foundItem = this.departamentos
+            ? this.departamentos.find((item) => item.id === params.value)
+            : null;
           return foundItem ? `${foundItem.name}` : params.value;
-        }
+        },
       },
-      { field: 'solicit', headerName: 'Persona Solicita', editable: true, width: 150 },
-      { field: 'delivery', headerName: 'Materiales', editable: true, filter: true, width: 150 },
+      {
+        field: 'solicit',
+        headerName: 'Persona Solicita',
+        editable: true,
+        width: 150,
+      },
+      {
+        field: 'delivery',
+        headerName: 'Materiales',
+        editable: true,
+        filter: true,
+        width: 150,
+      },
       { field: 'solicit', headerName: 'Cantidad', editable: true, width: 150 },
-      { field: 'solicit', headerName: 'Cargado de Cotizaciones', editable: true, width: 150 },
+      {
+        field: 'solicit',
+        headerName: 'Cargado de Cotizaciones',
+        editable: true,
+        width: 150,
+      },
       {
         field: 'dateSupply',
         headerName: 'Fecha Cotizaciones',
@@ -223,9 +279,15 @@ export class RequisitionsComponent {
             return params.value.split('T')[0];
           }
           return '';
-        }
+        },
       },
-      { field: 'deliveryTime', headerName: 'ID OC', editable: true, filter: true, width: 150 },
+      {
+        field: 'deliveryTime',
+        headerName: 'ID OC',
+        editable: true,
+        filter: true,
+        width: 150,
+      },
       {
         field: 'dateSupply',
         headerName: 'Fecha OC',
@@ -237,35 +299,67 @@ export class RequisitionsComponent {
             return params.value.split('T')[0];
           }
           return '';
-        }
+        },
       },
 
-      { field: 'deliveryTime', headerName: 'Tiempo de entrega', editable: true, filter: true, width: 150 },
       {
-        field: 'idCurrency', headerName: 'Moneda', editable: true, width: 150, cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.monedas ? this.monedas.map(item => item.id) : [],
-        },
-        valueFormatter: (params) => {
-          const foundItem = this.monedas ? this.monedas.find(item => item.id === params.value) : null;
-          return foundItem ? `${foundItem.description}` : params.value;
-        }
+        field: 'deliveryTime',
+        headerName: 'Tiempo de entrega',
+        editable: true,
+        filter: true,
+        width: 150,
       },
       {
-        field: 'idCurrency', headerName: 'Moneda', editable: true, width: 150, cellEditor: 'agSelectCellEditor',
+        field: 'idCurrency',
+        headerName: 'Moneda',
+        editable: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: this.monedas ? this.monedas.map(item => item.id) : [],
+          values: this.monedas ? this.monedas.map((item) => item.id) : [],
         },
         valueFormatter: (params) => {
-          const foundItem = this.monedas ? this.monedas.find(item => item.id === params.value) : null;
+          const foundItem = this.monedas
+            ? this.monedas.find((item) => item.id === params.value)
+            : null;
           return foundItem ? `${foundItem.description}` : params.value;
-        }
+        },
       },
-      { field: 'conditions', headerName: 'Condición', editable: true, width: 150 },
-      { field: 'priority', headerName: 'Prioridad', editable: true, width: 150 },
+      {
+        field: 'idCurrency',
+        headerName: 'Moneda',
+        editable: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.monedas ? this.monedas.map((item) => item.id) : [],
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.monedas
+            ? this.monedas.find((item) => item.id === params.value)
+            : null;
+          return foundItem ? `${foundItem.description}` : params.value;
+        },
+      },
+      {
+        field: 'conditions',
+        headerName: 'Condición',
+        editable: true,
+        width: 150,
+      },
+      {
+        field: 'priority',
+        headerName: 'Prioridad',
+        editable: true,
+        width: 150,
+      },
 
       {
-        field: 'comments', headerName: 'Comentario', editable: false, width: 150, cellEditor: 'agPopupTextCellEditor',
+        field: 'comments',
+        headerName: 'Comentario',
+        editable: false,
+        width: 150,
+        cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
           cols: 50,
@@ -289,25 +383,37 @@ export class RequisitionsComponent {
             return params.value;
           }
           return params.value;
-        }
+        },
       },
-    ]
-  };
+    ];
+  }
 
   // Column Definitions: Defines the columns to be displayed.
   get colDetails(): ColDef[] {
     return [
       {
-        field: 'idSupplie', headerName: 'Producto', editable: true, flex: 3, cellEditor: 'agSelectCellEditor',
+        field: 'idSupplie',
+        headerName: 'Producto',
+        editable: true,
+        flex: 3,
+        cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: this.productos ? this.productos.map(item => item.id) : [],
+          values: this.productos ? this.productos.map((item) => item.id) : [],
         },
         valueFormatter: (params) => {
-          const foundItem = this.productos ? this.productos.find(item => item.id === params.value) : null;
+          const foundItem = this.productos
+            ? this.productos.find((item) => item.id === params.value)
+            : null;
           return foundItem ? `${foundItem.description}` : params.value;
-        }
+        },
       },
-      { field: 'quantity', headerName: 'Cantidad', editable: true, filter: true, flex: 1 },
+      {
+        field: 'quantity',
+        headerName: 'Cantidad',
+        editable: true,
+        filter: true,
+        flex: 1,
+      },
       {
         field: 'dateuse',
         headerName: 'Fecha de uso',
@@ -319,10 +425,15 @@ export class RequisitionsComponent {
             return params.value.split('T')[0];
           }
           return '';
-        }
+        },
       },
       {
-        field: 'comment', headerName: 'Comentarios', editable: false, filter: true, flex: 2, cellEditor: 'agPopupTextCellEditor',
+        field: 'comment',
+        headerName: 'Comentarios',
+        editable: false,
+        filter: true,
+        flex: 2,
+        cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
           cols: 50,
@@ -346,26 +457,31 @@ export class RequisitionsComponent {
             return params.value;
           }
           return params.value;
-        }
+        },
       },
-    ]
-  };
+    ];
+  }
 
   // ==================== MASTER METHODS ====================
 
   obtenerDatos() {
-    this.requisitionsService.getOcAndReqs(this.idProject, "REQUIS").subscribe((data: any) => {
-      this.masterRowData = data;
-    },
-      (error) => console.error('Error fetching data:', error)
-    );
+    this.requisitionsService
+      .getOcAndReqs(this.typeReference, this.idReference, 'REQUIS')
+      .subscribe(
+        (data: any) => {
+          this.masterRowData = data;
+          console.log(this.typeReference, this.idReference, this.masterRowData);
+        },
+        (error) => console.error('Error fetching data:', error)
+      );
   }
 
   obtenerProveedores() {
-    this.providersService.getProviders().subscribe((data: any) => {
-      this.proveedores = data;
-      console.log(this.proveedores);
-    },
+    this.providersService.getProviders().subscribe(
+      (data: any) => {
+        this.proveedores = data;
+        console.log(this.proveedores);
+      },
       (error) => console.error('Error fetching requisitions:', error)
     );
   }
@@ -425,9 +541,15 @@ export class RequisitionsComponent {
       // Solo actualizar las señales si no es una fila nueva
       if (!this.newlyAddedMasterRows.includes(this.masterSelectedRowData.id)) {
         this.signalsService.setIdRequisition(this.masterSelectedRowData.id);
-        this.signalsService.setRequisitionName(this.masterSelectedRowData.folio);
-        this.signalsService.setRequisitionSolicitant(this.masterSelectedRowData.solicit);
-        this.signalsService.setRequisitionDate(this.masterSelectedRowData.dateCreate);
+        this.signalsService.setRequisitionName(
+          this.masterSelectedRowData.folio
+        );
+        this.signalsService.setRequisitionSolicitant(
+          this.masterSelectedRowData.solicit
+        );
+        this.signalsService.setRequisitionDate(
+          this.masterSelectedRowData.dateCreate
+        );
         this.idRequisition = this.signalsService.getIdRequisition()();
       }
     } else {
@@ -447,7 +569,7 @@ export class RequisitionsComponent {
     this.masterNotSavedChanges = true;
 
     // Actualizar el array de datos
-    this.masterRowData = this.masterRowData.map(row =>
+    this.masterRowData = this.masterRowData.map((row) =>
       row.id === updatedData.id ? updatedData : row
     );
 
@@ -456,7 +578,10 @@ export class RequisitionsComponent {
     if (rowNode) {
       rowNode.setData(updatedData);
       // Mantener la selección si es necesario
-      if (this.masterSelectedRowData && this.masterSelectedRowData.id === updatedData.id) {
+      if (
+        this.masterSelectedRowData &&
+        this.masterSelectedRowData.id === updatedData.id
+      ) {
         rowNode.setSelected(true);
       }
     }
@@ -475,7 +600,8 @@ export class RequisitionsComponent {
     const newItem = {
       id: tempId,
       folio: '',
-      idProject: this.idProject,
+      typeReference: this.typeReference,
+      idReference: this.idReference,
       dateCreate: new Date().toISOString(),
       idProveedor: 0,
       idDepartament: 0,
@@ -501,7 +627,7 @@ export class RequisitionsComponent {
     this.masterNotSavedChanges = true;
 
     // Forzar la actualización de la cuadrícula y seleccionar la nueva fila
-    this.masterGridApi.setGridOption("rowData", this.masterRowData);
+    this.masterGridApi.setGridOption('rowData', this.masterRowData);
 
     // Asegurarnos de que la fila nueva esté seleccionada
     requestAnimationFrame(() => {
@@ -576,35 +702,35 @@ export class RequisitionsComponent {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
     selectedData.active = 0;
-    this.requisitionsService.deleteOcAndReq(id).pipe(
-      catchError((error) => {
+    this.requisitionsService
+      .deleteOcAndReq(id)
+      .pipe(
+        catchError((error) => {
+          alerts.basicAlert(
+            'Eliminar entrada',
+            'Error al eliminar la entrada.',
+            'error'
+          );
+          console.error(error);
+          return EMPTY;
+        })
+      )
+      .subscribe(() => {
         alerts.basicAlert(
           'Eliminar entrada',
-          'Error al eliminar la entrada.',
-          'error'
+          'Entrada eliminada satisfactoriamente.',
+          'success'
         );
-        console.error(error);
-        return EMPTY;
-      })
-    )
-      .subscribe(
-        () => {
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.obtenerDatos();
+        this.obtenerDatos();
 
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.masterNotSavedChanges = false;
-          this.masterSelectedRowData = null;
-        }
-      );
+        alerts.basicAlert(
+          'Eliminar entrada',
+          'Entrada eliminada satisfactoriamente.',
+          'success'
+        );
+        this.masterNotSavedChanges = false;
+        this.masterSelectedRowData = null;
+      });
   }
 
   revertMasterData() {
@@ -616,14 +742,14 @@ export class RequisitionsComponent {
     this.receiptsService.generateOC(idRequisition, action);
   }
 
-
-
   // ==================== DETAILS METHODS ====================
 
   obtenerDetalles() {
-    this.requisitionsService.getReqItems(this.idRequisition).subscribe((data: any) => {
-      this.detailsRowData = data;
-    });
+    this.requisitionsService
+      .getReqItems(this.idRequisition)
+      .subscribe((data: any) => {
+        this.detailsRowData = data;
+      });
   }
 
   obtenerProductos() {
@@ -665,7 +791,9 @@ export class RequisitionsComponent {
   }
 
   async saveDetailsChanges() {
-    const isValid = this.detailsRowData.every((item) => item.idSupplie && item.comment && item.dateuse);
+    const isValid = this.detailsRowData.every(
+      (item) => item.idSupplie && item.comment && item.dateuse
+    );
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
@@ -728,35 +856,35 @@ export class RequisitionsComponent {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
     selectedData.active = 0;
-    this.requisitionsService.deleteReqItem(id).pipe(
-      catchError((error) => {
+    this.requisitionsService
+      .deleteReqItem(id)
+      .pipe(
+        catchError((error) => {
+          alerts.basicAlert(
+            'Eliminar entrada',
+            'Error al eliminar la entrada.',
+            'error'
+          );
+          console.error(error);
+          return EMPTY;
+        })
+      )
+      .subscribe(() => {
         alerts.basicAlert(
           'Eliminar entrada',
-          'Error al eliminar la entrada.',
-          'error'
+          'Entrada eliminada satisfactoriamente.',
+          'success'
         );
-        console.error(error);
-        return EMPTY;
-      })
-    )
-      .subscribe(
-        () => {
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.obtenerDetalles();
+        this.obtenerDetalles();
 
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.detailsNotSavedChanges = false;
-          this.detailsSelectedRowData = null;
-        }
-      );
+        alerts.basicAlert(
+          'Eliminar entrada',
+          'Entrada eliminada satisfactoriamente.',
+          'success'
+        );
+        this.detailsNotSavedChanges = false;
+        this.detailsSelectedRowData = null;
+      });
   }
 
   revertDetailsData() {
@@ -803,5 +931,4 @@ export class RequisitionsComponent {
     }
     return cleanedData;
   }
-
 }

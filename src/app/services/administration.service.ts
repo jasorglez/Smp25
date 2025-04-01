@@ -118,7 +118,7 @@ export class AdministrationService {
       .set('startDate', startDate.toISOString())
       .set('endDate', endDate.toISOString())
       .set('idBranch', idBranch.toString());
-    return this.http.get<number>(`${environment.urlLocalJG}/GetPayrollExistenceId`, { params });
+    return this.http.get<number>(`${environment.urlAdministration}/GetPayrollExistenceId`, { params });
   }
 
   // NormalPayroll
