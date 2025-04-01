@@ -4,7 +4,8 @@ import { DomainsModule } from 'app/domains/domainsmodule';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { alerts } from '../../../../helpers/alerts';
 import { States } from 'app/interface/states';
-import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { catchError, concat, EMPTY, lastValueFrom, toArray , throwError } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { AgGridModule } from 'ag-grid-angular';
 import { ModalService } from 'app/services/modal.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
@@ -17,6 +18,9 @@ import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/auto
 import { InegiService } from 'app/services/inegi.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { AuthService } from 'app/services/auth.service';
+import { CatalogsService } from 'app/services/catalogs.service';
+import { Icatalog } from 'app/interface/icatalog';
+import {  HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'app-customers',
@@ -36,6 +40,8 @@ private route              = inject(ActivatedRoute);
 private inegiService       = inject(InegiService);
 private branchesService    = inject(BranchsService);
 private authService        = inject(AuthService);
+private catalogsService    = inject(CatalogsService);
+private http               = inject(HttpClient);
 
   ngOnInit() {
     this.obtenerDatos();
@@ -49,6 +55,7 @@ private authService        = inject(AuthService);
       this.obtenerBranchs();
     });
   }
+  
 
   constructor() {
 
@@ -63,6 +70,7 @@ private authService        = inject(AuthService);
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.obtenerDatos();
       this.obtenerBranchs();
+      this.getTypecop();
       this.signalsService.deleteClientData();
     });
 
@@ -70,6 +78,7 @@ private authService        = inject(AuthService);
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.obtenerDatos();
       this.obtenerBranchs();
+      this.getTypecop();
   })
   }
 
@@ -88,6 +97,7 @@ private authService        = inject(AuthService);
   selectedRowData: any = null;
   isOpen: boolean = false;
   branchs: any[] = [];
+  Typecop: any[] = [];
   
   // Agregar esta nueva variable para almacenar el ID de la última fila editada
   private lastEditedRowId: number | string | null = null;
@@ -332,12 +342,20 @@ private authService        = inject(AuthService);
         }
       },
       { field: 'rfc', headerName: 'RFC', editable: true, hide: true, width: 100 },
-      //AQUI VICTOR 
-      { field: 'typeCustomer', headerName: this.type === 'CUSTOMERS' ? 'Tipo Cliente' : 'Tipo Proveedor',
-        editable: true, width: 135 },
+      {
+        field: 'idTypecop', headerName: 'Tipo cliente', editable: true, width: 150, cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.Typecop? this.Typecop.map(item => item.id) : [],
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.Typecop ? this.Typecop.find(item => item.id === params.value) : null;
+          return foundItem ? `${foundItem.description}` : params.value;
+        }
+      },
       { field: 'radio', headerName: 'Radio', editable: true, width: 90 }, 
       { field: 'latitud', headerName: 'Latitud', editable: true, width: 110, filter: true },
       { field: 'longitud', headerName: 'Longitud', editable: true, width: 120, filter: true },
+      
       
       {
         field: 'email', headerName: 'Correo', width: 200, cellEditor: 'agTextCellEditor',
@@ -419,6 +437,10 @@ private authService        = inject(AuthService);
 
       setTimeout(async () => {
         const data = await this.getZipCodeData(event.newValue);
+        this.getCoordinatesFromCP(data[0].cp).subscribe((data: any) => {
+          event.data.latitud = data[0].lat || 0;
+          event.data.longitud = data[0].lon || 0;
+        })
         if (data && data.length > 0) {
           const cpData = data[0];
           event.data.state = cpData.estado;
@@ -428,6 +450,17 @@ private authService        = inject(AuthService);
         }
       }, 500);
     }
+  }
+
+  getCoordinatesFromCP(cp: string) {
+    const url = `https://nominatim.openstreetmap.org/search?postalcode=${cp}&country=MX&format=json`;
+    return this.http.get(url).pipe(
+      map(data => data),
+      catchError(error => {
+        console.error("Error obteniendo coordenadas:", error);
+        return throwError(() => new Error("Error al obtener coordenadas"));
+      })
+    );
   }
 
   async getZipCodeData(cp: string): Promise<any> {
@@ -475,7 +508,7 @@ private authService        = inject(AuthService);
       NumCliente    : 0,
       latitud       : '',
       longitud      : '',
-      type          : this.type,
+      idTypecop     : 0,
       active        : true,
       __isNew: true,
     };
@@ -702,6 +735,15 @@ private authService        = inject(AuthService);
         console.error('Error fetching states', error);
       },
     });
+  }
+
+  getTypecop(){
+    this.catalogsService.getCatalogs(this.idRoot, 'TYPECLIENT').subscribe(
+      (data: Icatalog[]) => {
+        this.Typecop = data;
+      },
+      (error) => console.error('Error fetching measures:', error)
+    );
   }
 }
 
