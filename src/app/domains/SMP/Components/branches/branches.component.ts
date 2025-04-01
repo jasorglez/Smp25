@@ -32,6 +32,7 @@ export class BranchesComponent {
   newlyAddedMasterRows: string[] = [];
   masterNotSavedChanges: boolean = false;
   idRoot: number = null;
+  gridHeight: string = '85vh';
 
   //idRoot = this.signalsService.getRootSelectedBySidebar(); // Asignar directamente la Signal
 
@@ -46,7 +47,6 @@ export class BranchesComponent {
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
-
 
   constructor() {
     effect(() => {
@@ -324,6 +324,54 @@ public gridOptions: any = {
         'error'
       );
     }
+  }
+
+  async deleteBranch() {
+    const selectedNodes = this.masterGridApi.getSelectedNodes();
+    const selectedData = selectedNodes[0].data;
+    console.log("selectedNodes of Branch", selectedData);
+    if (selectedNodes.length === 0) {
+      alerts.basicAlert(
+        'Eliminar entrada',
+        'Por favor, seleccione una entrada para eliminar.',
+        'error'
+      );
+      return;
+    }
+
+    alerts.confirmAlert(
+      'Eliminar Sucursal',
+      'Está seguro de que desea eliminar esta sucursal?',
+      'warning',
+      'Sí, Eliminar'
+    ).then((result) => {
+      if (result.isConfirmed) {
+        console.log('SelectedData', selectedData);
+        selectedData.active = 0;
+        console.log('SelectedData', selectedData);
+        this.branchesService.deleteBranch(selectedData.id).pipe(
+          catchError((error) => {
+            console.error('Error deletin branch:', error);
+            alerts.basicAlert(
+            'Eliminar sucursal',
+            'No es posible eliminar la sucursal.',
+            'error'
+          );
+          console.error(error.error);
+          return EMPTY;
+      })
+    ).subscribe(() => {
+      alerts.basicAlert(
+        'Eliminar sucursal',
+        'La sucursal ha sido eliminada correctamente.',
+        'success'
+      );
+      this.obtenerDatos(); // Refrescar los datos después de eliminar
+      this.masterNotSavedChanges = false;
+      this.masterSelectedRowData = null;
+    })
+  }
+});
   }
 
   revertMasterData() {

@@ -15,8 +15,8 @@ export class BranchsService {
   private trackingService = inject(TrackingService);
 
   getBranches(idroot : number): Observable<any> {
-    //  const apiUrl = `${environment.urlSmp}/Branchs?idCompany=${idroot}`;      
-     //alert(apiUrl) 
+    //  const apiUrl = `${environment.urlSmp}/Branchs?idCompany=${idroot}`;
+     //alert(apiUrl)
     return this.http.get(`${environment.urlSmp}/Branchs?idCompany=${idroot}`, { headers: this.trackingService.getHeaders() });
   }
 
@@ -33,16 +33,19 @@ export class BranchsService {
   }
 
   getBranchesByUserAndCompany(idUser: number, idCompany: number): Observable<any> {
-     //const apiUrl = `${environment.urlSmp}/SmpandSecurity/Branch?idUser=${idUser}&idRoot=${idCompany}`;      
-    // alert(apiUrl) 
+     //const apiUrl = `${environment.urlSmp}/SmpandSecurity/Branch?idUser=${idUser}&idRoot=${idCompany}`;
+    // alert(apiUrl)
      return this.http.get(`${environment.urlSmp}/SmpandSecurity/Branch?idUser=${idUser}&idRoot=${idCompany}`, { headers: this.trackingService.getHeaders() });
   }
 
   getBrancheswoa(idroot : number): Observable<any> {
-      //const apiUrl = `${environment.urlSmp}/Branchs/2fieldswoad?idCompany=${idroot}`;      
-      //alert(apiUrl) 
+      //const apiUrl = `${environment.urlSmp}/Branchs/2fieldswoad?idCompany=${idroot}`;
+      //alert(apiUrl)
     return this.http.get(`${environment.urlSmp}/Branchs/2fields?idCompany=${idroot}`, { headers: this.trackingService.getHeaders() });
   }
-  
+
+  deleteBranch(id: number): Observable<any> {
+    return this.http.delete(`${environment.urlLocalJGSMP}/Branchs/${id}`, { headers: this.trackingService.getHeaders()});
+  }
 
 }
