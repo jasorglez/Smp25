@@ -1,4 +1,6 @@
-import { Component, AfterViewInit } from '@angular/core';
+import { Component, AfterViewInit, OnInit, inject } from '@angular/core';
+import { AdministrationService } from 'app/services/administration.service';
+import { SignalsService } from 'app/services/signals.service';
 import * as L from 'leaflet';
 
 @Component({
@@ -8,67 +10,83 @@ import * as L from 'leaflet';
   templateUrl: './radiusinfluence.component.html',
   styleUrl: './radiusinfluence.component.scss'
 })
-export class RadiusinfluenceComponent implements AfterViewInit {
-  private map: L.Map;
+export class RadiusinfluenceComponent implements OnInit, AfterViewInit {
+
+  private administrationService = inject(AdministrationService);
+  private signalsService = inject(SignalsService);
   
-  // Use AfterViewInit instead of OnInit to ensure the DOM is fully rendered
+  localitation: any[] = [];
+  private map!: L.Map;
+  idRoot!: number;
+
+  ngOnInit() {
+    this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+    this.obtenerDatos();
+  }
+
+  obtenerDatos() {
+    this.administrationService.getTypecustomers(this.idRoot).subscribe({
+      next: (data: any) => {
+        this.localitation = data;
+        console.log("Datos obtenidos:", data);
+
+        // Solo inicializa el mapa si hay datos
+        if (this.localitation.length > 0) {
+          this.initializeMap();
+        }
+      },
+      error: (error) => {
+        console.error('Error obteniendo datos:', error);
+      }
+    });
+  }
+
   ngAfterViewInit(): void {
     console.log('RadiusinfluenceComponent initialized');
-    
-    // Short timeout to ensure the map container is fully rendered
-    setTimeout(() => {
-      this.initializeMap();
-    }, 100);
   }
-  
+
   private initializeMap(): void {
-    // Coordenadas para el código postal 68310
-    const cp = '68310';
-    const coordinates = this.getCoordinatesFromCP(cp);
-    
-    if (coordinates) {
-      // Inicializa el mapa centrado en las coordenadas del código postal 68310
-      this.map = L.map('map').setView(coordinates, 10); // Reduced initial zoom level to show more area
-      
-      // Agrega una capa de mapa base (OpenStreetMap)
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-      }).addTo(this.map);
-      
-      // Agrega un marcador en las coordenadas del código postal 68310
-      const marker = L.marker(coordinates).addTo(this.map);
-      marker.bindPopup(`Código Postal: ${cp}`).openPopup();
-      
-      // Agrega un círculo de 20 km de radio alrededor del marcador
-      const circle = L.circle(coordinates, {
-        color: 'blue',
-        fillColor: '#87CEEB',
-        fillOpacity: 0.5,
-        radius: 20000 // 20 km
-      }).addTo(this.map);
-      
-      // Ajusta el zoom para asegurar que el círculo completo sea visible
-      const bounds = circle.getBounds();
+    // Inicializa el mapa en la primera ubicación
+    this.map = L.map('map').setView([19.432608, -99.133209], 7); // CDMX como centro inicial
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(this.map);
+
+    const bounds = L.latLngBounds([]);
+
+    // Iterar sobre los datos y agregar marcadores y círculos
+    this.localitation.forEach((loc) => {
+      const lat = parseFloat(loc.latitud);
+      const lon = parseFloat(loc.longitud);
+
+      if (!isNaN(lat) && !isNaN(lon)) {
+        const coordinates: [number, number] = [lat, lon];
+
+        // Agregar marcador
+        const marker = L.marker(coordinates).addTo(this.map);
+        marker.bindPopup(`${loc.nameContact}: ${loc.cp}`).openPopup();
+
+        // Agregar círculo
+        L.circle(coordinates, {
+          color: loc.valueAddition,
+          fillColor: loc.valueAddition,
+          fillOpacity: 0.5,
+          radius: loc.radio * 1000
+        }).addTo(this.map);
+
+        // Extender bounds para incluir este punto
+        bounds.extend(coordinates);
+      }
+    });
+
+    // Ajustar zoom para mostrar todos los puntos
+    if (this.localitation.length > 0) {
       this.map.fitBounds(bounds);
-      
-      // Invalidate size after a short delay to ensure map is properly rendered
-      setTimeout(() => {
-        this.map.invalidateSize();
-      }, 200);
-    } else {
-      console.error('No se encontraron coordenadas para el código postal:', cp);
     }
-  }
-  
-  private getCoordinatesFromCP(cp: string): [number, number] | null {
-    // Implementa la lógica para obtener las coordenadas del CP
-    switch (cp) {
-      case '68310':
-        return [18.0842745, -96.1288426]; // Coordenadas reales para el código postal 68310
-      case '76000':
-        return [20.076989, -98.392631]; // Ejemplo para Santiago de Querétaro
-      default:
-        return null;
-    }
+
+    setTimeout(() => {
+      this.map.invalidateSize();
+    }, 200);
   }
 }

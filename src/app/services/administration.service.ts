@@ -129,4 +129,8 @@ export class AdministrationService {
       })
     );
   }
+
+  getTypecustomers(idRoot: number){
+    return this.http.get(`${environment.urlAdministration}/Customer/GetTypeCustomer?idCompany=${idRoot}`, { headers: this.trackingService.getHeaders() });
+  }
 }
