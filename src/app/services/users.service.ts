@@ -51,12 +51,9 @@ export class UsersService {
   }
 
   deleteUser(id: number, data: any): Observable<any> {
-    //return this.http.put(`${environment.urlSecurity}/User/${id}`, data, { headers: this.trackingService.getHeaders() });
     return this.http.put(`${environment.urlSecurity}/User/${id}`, data, { headers: this.trackingService.getHeaders() });
 
   }
-
-
 
   // Aqui terminan los cambios a SMP
 

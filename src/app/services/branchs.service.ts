@@ -45,7 +45,7 @@ export class BranchsService {
   }
 
   deleteBranch(id: number): Observable<any> {
-    return this.http.delete(`${environment.urlLocalJGSMP}/Branchs/${id}`, { headers: this.trackingService.getHeaders()});
+    return this.http.delete(`${environment.urlSmp}/Branchs/${id}`, { headers: this.trackingService.getHeaders()});
   }
 
 }

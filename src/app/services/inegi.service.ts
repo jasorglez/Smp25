@@ -11,8 +11,8 @@ export class InegiService {
 
   private baseUrl = 'https://gaia.inegi.org.mx/wscatgeo';
 
-private http = inject(HttpClient);
-private trackingService = inject(TrackingService);
+  private http = inject(HttpClient);
+  private trackingService = inject(TrackingService);
 
   getEstados(): Observable<any> {
     return this.http.get(`${this.baseUrl}/mgee`);

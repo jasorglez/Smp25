@@ -111,6 +111,7 @@ export class EmployeesTableComponent {
   };
 
   constructor() {
+
     effect(async () => {
       if (this.signalsService.getRefreshEmployees()() == true) {
         await this.obtenerDatos(); // Actualizar datos cuando se recibe señal
@@ -139,16 +140,14 @@ export class EmployeesTableComponent {
     });
   }
 
-  ngOnInit() {
-
-
-  }
+  ngOnInit() {}
 
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
     suppressEnterWhenEditing: false,
+    rowBuffer: 20,
     rowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -180,13 +179,13 @@ export class EmployeesTableComponent {
 
         if (currentColIndex < editableColumns.length - 1) {
           // Añadir delay de 50ms antes de mover el foco
-          setTimeout(() => {
+          requestAnimationFrame(() => {
             // Mover a la siguiente columna editable
             params.api.startEditingCell({
               rowIndex: params.node.rowIndex,
               colKey: editableColumns[currentColIndex + 1].field,
             });
-          }, 200); // Retraso para permitir que termine la edición actual
+          }); // Retraso para permitir que termine la edición actual
         }
         params.event.preventDefault(); // Prevenir comportamiento por defecto
       }

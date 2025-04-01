@@ -65,7 +65,7 @@ export class BranchesComponent {
 
   ngOnInit() {
     this.obtenerDatos();
-    this.obtenerStates();
+    this.obtenerEstados();
   }
 
 
@@ -82,12 +82,14 @@ export class BranchesComponent {
   obtenerDatos() {
     this.branchesService.getBranches(this.idRoot).subscribe((data: any) => {
       this.masterRowData = data;
+      this.masterNotSavedChanges = false;
     },
       (error) => console.error('Error fetching data:', error)
     );
+    //this.masterNotSavedChanges = false;
   }
 
-  obtenerStates() {
+  obtenerEstados() {
     this.inegiService.getEstados().subscribe({
       next: (data: { datos: States[] }) => {
         this.estados = data.datos.map((estado, index) => ({
@@ -134,26 +136,36 @@ public gridOptions: any = {
       //{ field: 'orden', headerName: 'Orden', editable: true, filter: true, flex: 1 },
       {
         field: 'name',
-        headerName: 'Nombre',
+        headerName: 'Nombre *',
         editable: true,
         filter: true,
         flex: 2,
-
+        width: 100,
         valueSetter: (params) => {
           params.data[params.colDef.field] = params.newValue.toUpperCase();
           return true;
         }
-
       },
-
-      { field: 'description', headerName: 'Descripción', editable: true, filter: true, flex: 2,
+      {
+        field: 'description',
+        headerName: 'Descripción *',
+        editable: true,
+        filter: true,
+        flex: 2,
+        width: 150,
         valueSetter: (params) => {
           params.data[params.colDef.field] = params.newValue.toUpperCase();
           return true;
         }
        },
-
-      { field: 'idEstado', headerName: 'Estado', editable: true, filter: true, flex: 1, cellEditor: 'agSelectCellEditor',
+      {
+        field: 'idEstado',
+        headerName: 'Estado *',
+        editable: true,
+        filter: true,
+        flex: 1,
+        cellEditor: 'agSelectCellEditor',
+        width:100,
         cellEditorParams: {
           values: this.estados ? this.estados.map(item => item.id) : [],
         },
@@ -162,8 +174,13 @@ public gridOptions: any = {
           return foundItem ? `${foundItem.nom_agee}` : params.value;
         }
       },
-
-      { field: 'address', headerName: 'Dirección', editable: false, filter: true, flex: 2, cellEditor: 'agPopupTextCellEditor',
+      {
+        field: 'address',
+        headerName: 'Dirección *',
+        editable: false,
+        filter: true,
+        flex: 2,
+        cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
           cols: 50,
@@ -193,7 +210,14 @@ public gridOptions: any = {
           return true;
         }
       },
-
+      {
+        field: 'vigente',
+        headerName: 'Vigente',
+        editable: true,
+        suppressMovable: true,
+        filter: true,
+        width: 100,
+      }
     ]
   };
 
