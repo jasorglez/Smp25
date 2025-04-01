@@ -57,7 +57,8 @@ export const environment = {
   urlDevelopTrackingNormalPayrollJG: 'http://198.71.49.16:5006/api/NormalPayrolls',
   urlAdministrationJG: 'http://198.71.49.16:5006/api',
   urlLocalJG: 'http://localhost:5047/api',
-  urlLocalJGSecurity: 'http://localhost:5260/api'
+  urlLocalJGSecurity: 'http://localhost:5260/api',
+  urlLocalJGSMP: 'http://localhost:5183/api'
 };
 
 

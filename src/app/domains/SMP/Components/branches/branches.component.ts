@@ -32,6 +32,7 @@ export class BranchesComponent {
   newlyAddedMasterRows: string[] = [];
   masterNotSavedChanges: boolean = false;
   idRoot: number = null;
+  gridHeight: string = '85vh';
 
   //idRoot = this.signalsService.getRootSelectedBySidebar(); // Asignar directamente la Signal
 
@@ -46,7 +47,6 @@ export class BranchesComponent {
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
-
 
   constructor() {
     effect(() => {
@@ -65,7 +65,7 @@ export class BranchesComponent {
 
   ngOnInit() {
     this.obtenerDatos();
-    this.obtenerStates();
+    this.obtenerEstados();
   }
 
 
@@ -82,12 +82,14 @@ export class BranchesComponent {
   obtenerDatos() {
     this.branchesService.getBranches(this.idRoot).subscribe((data: any) => {
       this.masterRowData = data;
+      this.masterNotSavedChanges = false;
     },
       (error) => console.error('Error fetching data:', error)
     );
+    //this.masterNotSavedChanges = false;
   }
 
-  obtenerStates() {
+  obtenerEstados() {
     this.inegiService.getEstados().subscribe({
       next: (data: { datos: States[] }) => {
         this.estados = data.datos.map((estado, index) => ({
@@ -134,26 +136,36 @@ public gridOptions: any = {
       //{ field: 'orden', headerName: 'Orden', editable: true, filter: true, flex: 1 },
       {
         field: 'name',
-        headerName: 'Nombre',
+        headerName: 'Nombre *',
         editable: true,
         filter: true,
         flex: 2,
-
+        width: 100,
         valueSetter: (params) => {
           params.data[params.colDef.field] = params.newValue.toUpperCase();
           return true;
         }
-
       },
-
-      { field: 'description', headerName: 'Descripción', editable: true, filter: true, flex: 2,
+      {
+        field: 'description',
+        headerName: 'Descripción *',
+        editable: true,
+        filter: true,
+        flex: 2,
+        width: 150,
         valueSetter: (params) => {
           params.data[params.colDef.field] = params.newValue.toUpperCase();
           return true;
         }
        },
-
-      { field: 'idEstado', headerName: 'Estado', editable: true, filter: true, flex: 1, cellEditor: 'agSelectCellEditor',
+      {
+        field: 'idEstado',
+        headerName: 'Estado *',
+        editable: true,
+        filter: true,
+        flex: 1,
+        cellEditor: 'agSelectCellEditor',
+        width:100,
         cellEditorParams: {
           values: this.estados ? this.estados.map(item => item.id) : [],
         },
@@ -162,8 +174,13 @@ public gridOptions: any = {
           return foundItem ? `${foundItem.nom_agee}` : params.value;
         }
       },
-
-      { field: 'address', headerName: 'Dirección', editable: false, filter: true, flex: 2, cellEditor: 'agPopupTextCellEditor',
+      {
+        field: 'address',
+        headerName: 'Dirección *',
+        editable: false,
+        filter: true,
+        flex: 2,
+        cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
           cols: 50,
@@ -193,7 +210,17 @@ public gridOptions: any = {
           return true;
         }
       },
-
+      {
+        field: 'vigente',
+        headerName: 'Vigente',
+        editable: true,
+        suppressMovable: true,
+        filter: true,
+        width: 100,
+        cellRenderer: params => {
+          return `<input type="checkbox" ${params.value ? 'checked' : ''} disabled />`;
+        }
+      }
     ]
   };
 
@@ -324,6 +351,54 @@ public gridOptions: any = {
         'error'
       );
     }
+  }
+
+  async deleteBranch() {
+    const selectedNodes = this.masterGridApi.getSelectedNodes();
+    const selectedData = selectedNodes[0].data;
+    console.log("selectedNodes of Branch", selectedData);
+    if (selectedNodes.length === 0) {
+      alerts.basicAlert(
+        'Eliminar entrada',
+        'Por favor, seleccione una entrada para eliminar.',
+        'error'
+      );
+      return;
+    }
+
+    alerts.confirmAlert(
+      'Eliminar Sucursal',
+      'Está seguro de que desea eliminar esta sucursal?',
+      'warning',
+      'Sí, Eliminar'
+    ).then((result) => {
+      if (result.isConfirmed) {
+        console.log('SelectedData', selectedData);
+        selectedData.active = 0;
+        console.log('SelectedData', selectedData);
+        this.branchesService.deleteBranch(selectedData.id).pipe(
+          catchError((error) => {
+            console.error('Error deletin branch:', error);
+            alerts.basicAlert(
+            'Eliminar sucursal',
+            'No es posible eliminar la sucursal.',
+            'error'
+          );
+          console.error(error.error);
+          return EMPTY;
+      })
+    ).subscribe(() => {
+      alerts.basicAlert(
+        'Eliminar sucursal',
+        'La sucursal ha sido eliminada correctamente.',
+        'success'
+      );
+      this.obtenerDatos(); // Refrescar los datos después de eliminar
+      this.masterNotSavedChanges = false;
+      this.masterSelectedRowData = null;
+    })
+  }
+});
   }
 
   revertMasterData() {
