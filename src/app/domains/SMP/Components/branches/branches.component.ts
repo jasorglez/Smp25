@@ -217,6 +217,9 @@ public gridOptions: any = {
         suppressMovable: true,
         filter: true,
         width: 100,
+        cellRenderer: params => {
+          return `<input type="checkbox" ${params.value ? 'checked' : ''} disabled />`;
+        }
       }
     ]
   };
