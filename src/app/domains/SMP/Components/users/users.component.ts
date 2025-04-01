@@ -94,15 +94,17 @@ export class UsersComponent {
     autocompleteEditor: AutocompleteEditorComponent
   }
 
-
   obtenerDatos() {
     const observer = {
       next: (response: any) => {
         if (response && response.code === 200 && response.data) {
+          console.log('Response USER COMPONENT', response.data);
+
           this.rowData = response.data.map((item: any) => {
             return { id: item.id, ...item };
           });
           this.rowData = this.rowData.filter(row => row.active !== 0);
+          console.log('RowData USER COMPONENT', this.rowData);
         } else {
           console.error('Respuesta inválida del servidor');
         }
@@ -133,7 +135,7 @@ export class UsersComponent {
 
     /*this.catalogService.getCatalogs(this.idRoot,'POSITION').subscribe(
       (data: any) => {
-        this.position = data;      
+        this.position = data;
       },
       (error) => {
         if (error.status == 404) this.position = [];
@@ -186,7 +188,7 @@ export class UsersComponent {
       },
       {
         field: 'displayName',
-        headerName: 'Nombre',
+        headerName: 'Nombre *',
         editable: true,
         filter: true,
         cellEditor: 'autocompleteEditor',
@@ -210,13 +212,13 @@ export class UsersComponent {
             return false;
           }
 
-          params.data[params.colDef.field] = params.newValue;
+          params.data[params.colDef.field] = params.newValue.toUpperCase();
           return true;
         }
       },
       {
         field: 'email',
-        headerName: 'Email',
+        headerName: 'Email *',
         cellEditor: 'agTextCellEditor',
         editable: (params) => params.data.__isNew,
         cellEditorParams: {
@@ -253,7 +255,7 @@ export class UsersComponent {
         },
         filter: true
       },
-      {
+     /*  {
         field: 'age',
         headerName: 'Edad',
         cellEditor: 'agNumberCellEditor',
@@ -273,9 +275,9 @@ export class UsersComponent {
           values: ['México', 'USA', 'MEX-USA', 'Colombia', 'Chile', 'Otro'],
           selectOnPopup: true
         },
-      },
+      },*/
       {
-        headerName: 'Contraseña',
+        headerName: 'Contraseña *',
         field: 'password',
         cellRenderer: (params: any) => {
           return `<span>••••••••</span>`;
@@ -335,6 +337,13 @@ export class UsersComponent {
         },
         editable: false,
         width: 100
+      },
+      {
+        field: 'IsRoot',
+        headerName: 'Root',
+        cellEditor: 'agTextCellEditor',
+        editable: false,
+        width: 100
       }
     ];
   }
@@ -377,7 +386,7 @@ export class UsersComponent {
       email: '',
       password: '',
       idRol: 0,
-      age: null,
+      age: 0,
       id_company: this.idRoot,
       idDepartament: 1,
       phone: '',
@@ -386,6 +395,7 @@ export class UsersComponent {
       signature: '',
       usersmall: 'SINUSER',
       allowWhatsapp: true,
+      isRoot: 1,
       __isNew: true
     };
 
@@ -410,6 +420,8 @@ export class UsersComponent {
 
     const newRows = this.rowData.filter(row => row.__isNew);
     const modifiedRows = this.rowData.filter(row => row.__modified && !row.__isNew);
+
+    console.log  ('Nuevas filas:', newRows);
 
     try {
       // Primero creamos/actualizamos los usuarios
@@ -528,16 +540,27 @@ export class UsersComponent {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
 
+    if (selectedData.isRoot === 1) {
+      alerts.basicAlert(
+        'Eliminar entrada',
+        'No se puede eliminar un usuario administrador',
+        'error'
+      );
+      return;
+    }
+
     // Mostrar mensaje de confirmación
     alerts.confirmAlert(
       'Eliminar empleado',
-      '¿Está seguro que desea eliminar este empleado?',
+      '¿Está seguro que desea eliminar este usuario?',
       'warning',
       'Sí, eliminar'
     ).then((value) => {
       if (value.isConfirmed) {
         // Eliminar el usuario
+        console.log('SelectedData', selectedData);
         selectedData.active = 0;
+        console.log('SelectedData', selectedData);
         this.usersService.deleteUser(id, selectedData).pipe(
           catchError((error) => {
             alerts.basicAlert(

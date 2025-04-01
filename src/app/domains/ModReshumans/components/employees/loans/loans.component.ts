@@ -11,7 +11,7 @@ import {
 import { alerts } from 'app/helpers/alerts';
 import { EmployeesxloansService } from 'app/services/employeesxloans.service';
 import { SignalsService } from 'app/services/signals.service';
-import { concat, lastValueFrom, toArray } from 'rxjs';
+import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { TimeService } from 'app/services/time.service';
 
 @Component({
@@ -542,5 +542,102 @@ export class EmployeesxLoansComponent {
       delete cleanedData.id;
     }
     return cleanedData;
+  }
+
+  async deleteMasterEntry() {
+    const selectedNodes = this.maestroGridApi.getSelectedNodes();
+    if (selectedNodes.length === 0) {
+      alerts.basicAlert(
+        'Eliminar entrada',
+        'Por favor, seleccione una entrada para eliminar.',
+        'error'
+      );
+      return;
+    }
+    const selectedData = selectedNodes[0].data;
+    const id = selectedData.id;
+
+    this.employeesxloansService
+      .deleteLoan(id)
+      .pipe(
+        catchError((error) => {
+          // Verificar si el error es un 400 y mostrar un mensaje específico
+          if (error.status === 400) {
+            alerts.basicAlert(
+              'Eliminar entrada',
+              error.error.message || 'Error al eliminar la entrada.',
+              'error'
+            );
+          } else {
+            alerts.basicAlert(
+              'Eliminar entrada',
+              'Error al eliminar la entrada.',
+              'error'
+            );
+          }
+          console.error(error);
+          return EMPTY;
+        })
+      )
+      .subscribe(() => {
+        alerts.basicAlert(
+          'Eliminar entrada',
+          'Entrada eliminada satisfactoriamente.',
+          'success'
+        );
+        this.loadData();
+
+        alerts.basicAlert(
+          'Eliminar entrada',
+          'Entrada eliminada satisfactoriamente.',
+          'success'
+        );
+        this.masterNotSavedChanges = false;
+        this.signalsService.triggerRefreshEmployees();
+      });
+  }
+
+  async deleteDetalleEntry() {
+    const selectedNodes = this.detalleGridApi.getSelectedNodes();
+    if (selectedNodes.length === 0) {
+      alerts.basicAlert(
+        'Eliminar entrada',
+        'Por favor, seleccione una entrada para eliminar.',
+        'error'
+      );
+      return;
+    }
+    const selectedData = selectedNodes[0].data;
+    const id = selectedData.id;
+
+    this.employeesxloansService
+      .deleteConcept(id)
+      .pipe(
+        catchError((error) => {
+            alerts.basicAlert(
+              'Eliminar entrada',
+              'Error al eliminar la entrada.',
+              'error'
+            );
+          console.error(error);
+          return EMPTY;
+        })
+      )
+      .subscribe(() => {
+        alerts.basicAlert(
+          'Eliminar entrada',
+          'Entrada eliminada satisfactoriamente.',
+          'success'
+        );
+        this.loadData();
+
+        alerts.basicAlert(
+          'Eliminar entrada',
+          'Entrada eliminada satisfactoriamente.',
+          'success'
+        );
+        this.detailNotSavedChanges = false;
+        this.signalsService.triggerRefreshEmployees();
+      });
   }
 }

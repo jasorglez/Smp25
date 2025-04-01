@@ -24,6 +24,10 @@ export class EmployeesxloansService {
     return this.http.put<any>(`${environment.urlAdministration}/LoansAndCredits/${id}`, data, {headers: this.trackingService.getHeaders()});
   }
 
+  deleteLoan(id: number): Observable<any> {
+    return this.http.delete<any>(`${environment.urlAdministration}/LoansAndCredits/${id}`, {headers: this.trackingService.getHeaders()});
+  }
+
   getConceptsxLoansCredit(id: number): Observable<any> {
     return this.http.get<any>(`${environment.urlAdministration}/ConceptsxLoansCredits/loanandcredit/${id}`, {headers: this.trackingService.getHeaders()});
   }                                                               
@@ -38,6 +42,10 @@ export class EmployeesxloansService {
 
   updateConcept(id: number, loan: any): Observable<any> {
     return this.http.put<any>(`${environment.urlAdministration}/ConceptsxLoansCredits/${id}`, loan, {headers: this.trackingService.getHeaders()});
+  }
+
+  deleteConcept(id: number): Observable<any> {
+    return this.http.delete<any>(`${environment.urlAdministration}/ConceptsxLoansCredits/${id}`, {headers: this.trackingService.getHeaders()});
   }
 
   addLoanData(loan: any): Observable<any> {

@@ -626,7 +626,7 @@ private http               = inject(HttpClient);
     if (selectedData.total && selectedData.total !== 0) {
       alerts.basicAlert(
         'Error al eliminar',
-        'No se puede eliminar mientras tenga facturas activas',
+        'No se puede eliminar mientras tenga notas activas',
         'error'
       );
       return;
