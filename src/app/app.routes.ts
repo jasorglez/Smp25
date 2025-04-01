@@ -91,7 +91,7 @@ export const routes: Routes = [
         path: 'admon',
         loadComponent: () => import('./domains/Admonapp/Pages/procadmon/procadmon.component').then(a => a.ProcadmonComponent),
         canActivate: [MasterPermissionsGuard],
-        data: { permissions: { master: 'administration' } }
+        data: { permissions: { master: 'administration' } },
       },
       {
         path: 'indicgrals',

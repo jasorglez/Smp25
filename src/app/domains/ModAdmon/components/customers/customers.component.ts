@@ -332,6 +332,7 @@ private authService        = inject(AuthService);
         }
       },
       { field: 'rfc', headerName: 'RFC', editable: true, hide: true, width: 100 },
+      //AQUI VICTOR 
       { field: 'typeCustomer', headerName: this.type === 'CUSTOMERS' ? 'Tipo Cliente' : 'Tipo Proveedor',
         editable: true, width: 135 },
       { field: 'radio', headerName: 'Radio', editable: true, width: 90 }, 
