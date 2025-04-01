@@ -30,6 +30,7 @@ import { WarehousesService } from 'app/services/warehouses.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { SearchableSelectComponent } from 'app/shared/searchable-select/searchable-select.component';
 import { ActivatedRoute } from '@angular/router';
+import { SetupService } from 'app/services/setup.service';
 
 interface Catalog {
   id: number;
@@ -60,13 +61,16 @@ export class InAndOutComponent implements OnInit {
   private usersxpermissionsService = inject(UsersxpermissionsService);
   private warehousesService = inject(WarehousesService);
   private catalogsService = inject(CatalogsService);
+  private setupService = inject(SetupService);
   private route: ActivatedRoute;
 
   // Variables compartidas
   masterNotSavedChanges: boolean = false;
   detailsNotSavedChanges: boolean = false;
   id: string = null;
+  idBranch: number = null;
   idProject: number = null;
+  idReference: number = null;
   idWarehouse: number = null;
   private tempIdCounter: number = 0;
   IdInAndOut: number = null;
@@ -74,6 +78,8 @@ export class InAndOutComponent implements OnInit {
   private detailsGridApi: GridApi;
   private gridApi: GridApi;
   idRoot: number = null;
+  projectOrBranch: boolean = null; // True = Project, False = Branch
+  typeReference: string = null; // project or branch
 
   // Variables Master
   masterRowData: any[] = [];
@@ -109,7 +115,11 @@ export class InAndOutComponent implements OnInit {
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idProject = this.signalsService.getProjectSelectedBySidebar()();
+      this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.IdInAndOut = this.signalsService.getIdInAndOut()();
+
+      this.getSetupData();
+      this.idReference = this.projectOrBranch ?  this.idProject : this.idBranch;
 
       // Solo llamar a obtenerAlmacenesPorUsuario si idWarehouse es null
       if (!this.idWarehouse) {
@@ -160,6 +170,22 @@ export class InAndOutComponent implements OnInit {
       $event.returnValue =
         'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
     }
+  }
+
+  getSetupData() {
+    this.setupService.getWarehouseSetup(this.idRoot).subscribe({
+      next: (data: any) => {
+        this.projectOrBranch = data[0].projectOrBranch;
+        this.typeReference = this.projectOrBranch ?  'project' : 'branch';
+        console.log(this.projectOrBranch);
+      },
+      error: (err) => {
+        if (err.status === 404) {
+          console.error(err);
+          alerts.basicAlert('Requisiciones', 'No se encontró la configuración de almacenes de la empresa.', 'error');
+        }
+      }
+    });
   }
 
   nameInAndOut = this.signalsService.getInAndOutName();
@@ -432,7 +458,7 @@ public gridOptions: any = {
 
   obtenerRequisiciones() {
     this.ocService
-      .getOcAndReqs(this.idProject, this.type == 'IN' ? 'OC' : 'REQUIS')
+      .getOcAndReqs(this.typeReference, this.idReference, this.type == 'IN' ? 'OC' : 'REQUIS')
       .subscribe(
         (data: any) => {
           this.requisiciones = data;

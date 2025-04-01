@@ -64,7 +64,9 @@ export class EntrancesComponent implements OnInit {
   masterNotSavedChanges: boolean = false;
   detailsNotSavedChanges: boolean = false;
   id: string = null;
+  idBranch: number = null;
   idProject: number = null;
+  idReference: number = null;
   idWarehouse: number = null;
   private tempIdCounter: number = 0;
   IdInAndOut: number = null;
@@ -72,6 +74,8 @@ export class EntrancesComponent implements OnInit {
   private detailsGridApi: GridApi;
   private gridApi: GridApi;
   idRoot: number = null;
+  projectOrBranch: boolean = null; // True = Project, False = Branch
+  typeReference: string = null; // project or branch
 
   // Master variables
   masterRowData: any[] = [];
@@ -419,7 +423,7 @@ public gridOptions: any = {
   }
 
   obtenerRequisiciones() {
-    this.ocService.getOcAndReqs(this.idProject, 'OC').subscribe(
+    this.ocService.getOcAndReqs(this.typeReference, this.idProject, 'OC').subscribe(
       (data: any) => {
         this.requisiciones = data;
       },
