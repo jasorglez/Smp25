@@ -192,6 +192,7 @@ export class UsersComponent {
         editable: true,
         filter: true,
         cellEditor: 'autocompleteEditor',
+        flex: 1,
         cellEditorParams: {
           filterList: this.rowData.map(e => e.displayName),
           filterKey: 'displayName',
@@ -220,6 +221,7 @@ export class UsersComponent {
         field: 'email',
         headerName: 'Email *',
         cellEditor: 'agTextCellEditor',
+        flex: 1,
         editable: (params) => params.data.__isNew,
         cellEditorParams: {
           useFormatter: true,
@@ -279,6 +281,7 @@ export class UsersComponent {
       {
         headerName: 'Contraseña *',
         field: 'password',
+        flex:1,
         cellRenderer: (params: any) => {
           return `<span>••••••••</span>`;
         },
@@ -290,7 +293,7 @@ export class UsersComponent {
         editable: true,
         suppressMovable: true,
         filter: false,
-        width: 190,
+        flex: 1,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: (params) => {
           // Ensure depto data is available when creating editor
@@ -324,7 +327,7 @@ export class UsersComponent {
           field: 'picture'
         },
         editable: false,
-        width: 100
+        flex: 1
       },
       {
         field: 'signature',
@@ -336,7 +339,7 @@ export class UsersComponent {
           field: 'signature'
         },
         editable: false,
-        width: 100
+        flex: 1
       },
      /*  {
         field: 'IsRoot',
