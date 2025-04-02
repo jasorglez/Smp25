@@ -309,12 +309,12 @@ export class UsersComponent {
           return foundDepto ? foundDepto.description : params.value;
         },
       },
-      {
+     /*  {
         field: 'phone',
         headerName: 'Teléfono',
         cellEditor: 'agTextCellEditor',
         editable: true,
-      },
+      }, */
       {
         field: 'picture',
         headerName: 'Imagen de perfil',
