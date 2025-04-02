@@ -136,3 +136,6 @@ dist
 # Cache
 .angular
 .angular/cache
+
+# Reconstruir proyecto en Angular
+rebuildFront.sh
