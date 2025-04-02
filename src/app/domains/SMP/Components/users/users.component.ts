@@ -338,13 +338,13 @@ export class UsersComponent {
         editable: false,
         width: 100
       },
-      {
+     /*  {
         field: 'IsRoot',
         headerName: 'Root',
         cellEditor: 'agTextCellEditor',
         editable: false,
         width: 100
-      }
+      } */
     ];
   }
 
