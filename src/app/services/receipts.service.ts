@@ -46,7 +46,8 @@ interface ProjectResponse {
 interface ReqResponse {
   comments: string;
   folio: string;
-  idProject: number;
+  typeReference: string;
+  idReference: number;
   idReq: number;
   solicit: string;
   dateCreate: string;
@@ -97,6 +98,14 @@ export class ReceiptsService {
   private idInOut: number;
   private idOc: number;
   private headerTitle: string;
+
+  private getIdRoot(): number {
+    return Number(localStorage.getItem('company'));
+  }
+
+  private getIdProject(): number {
+    return Number(localStorage.getItem('project'));
+  }
 
   async generateOC(id: number, action: string): Promise<void> {
     try {
@@ -155,35 +164,42 @@ export class ReceiptsService {
 
   private async getRequisitionData(id: number): Promise<void> {
     try {
+      // Aqui obtengo los items de la requisicion
       var data;
       if (this.isInOut == true) {
         data = await lastValueFrom(
           this.inAndOutService.getInAndOutItems(this.idInOut)
         );
-        console.log(data);
       } else {
         data = await lastValueFrom(this.requisitionsService.getReqItems(id));
       }
 
       this.reqItems = data;
       console.log(this.reqItems);
+      // Aqui obtengo la requisicion detallada
       const detailedReq = (await lastValueFrom(
         this.requisitionsService.getDetailedReq(id)
       )) as ReqResponse;
       this.detailedReq = detailedReq; // Cambia 'detailedReq' por el nombre correcto de la propiedad
-
+      console.log("detalles de requis", this.detailedReq);
       // Ahora el proyecto
-      const projectId = Number(localStorage.getItem('project'));
-      const projectResponse = (await lastValueFrom(
-        this.projectsService.getProjectsById(projectId)
-      )) as unknown as ProjectResponse;
-      this.projectDescription = projectResponse.description; // Cambia 'contractDescription' por el nombre correcto de la propiedad
-
+      const projectId = this.getIdProject();
+      if(projectId == 0){
+        console.log("no tiene proyecto")
+        this.projectDescription = 'N/A'; // Cambia 'contractDescription' por el nombre correcto de la propiedad
+      }
+      else {
+        console.log("tiene proyecto");
+        const projectResponse = (await lastValueFrom(
+          this.projectsService.getProjectsById(projectId)
+        )) as unknown as ProjectResponse;
+        this.projectDescription = projectResponse.description; // Cambia 'contractDescription' por el nombre correcto de la propiedad
+      }
+      
       // Ahora consigo el dato del root
       const rootResponse = (await lastValueFrom(
-        this.rootService.getRootbyId(this.idRoot)
+        this.rootService.getRootbyId(this.getIdRoot())
       )) as RootResponse;
-
       // Si es una orden de compra, consigo el dato del proveedor
       if (detailedReq.type == 'OC') {
         const providerResponse = (await lastValueFrom(
@@ -196,7 +212,7 @@ export class ReceiptsService {
         this.requisitionName = requisitionName ? requisitionName.folio : 'N/A';
       }
       this.rootResponse = rootResponse;
-
+      console.log("imagen", this.rootResponse.picture);
       if (this.isInOut == false) {
         // Consigo el dato de quien autoriza
         if (detailedReq.type == 'OC') {

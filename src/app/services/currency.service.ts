@@ -12,8 +12,8 @@ export class CurrencyService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
-  getCurrencies() {
-    return this.http.get(`${environment.urlWarehouse}/Catalog?type=Currency`, { headers: this.trackingService.getHeaders() });
+  getCurrencies(idCompany: number): Observable<any> {
+    return this.http.get(`${environment.urlWarehouse}/Catalog/getCatalogs?idCompany=${idCompany}&type=Currency`, { headers: this.trackingService.getHeaders() });
   }
 
   getPaymentTypes() {
