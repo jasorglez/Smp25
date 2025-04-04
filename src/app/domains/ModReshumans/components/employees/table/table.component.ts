@@ -202,9 +202,9 @@ export class EmployeesTableComponent {
           filterOptions: ['equals'], // Opciones de filtro
         },
       },
-      {
+      /*{
         field: 'picture',
-        headerName: 'Fotografía',
+        headerName: 'Fotografía 2',
         cellRenderer: this.imageHandlerService.imageCellRenderer.bind(
           this.imageHandlerService
         ),
@@ -216,7 +216,7 @@ export class EmployeesTableComponent {
         },
         editable: false,
         width: 100,
-      },
+      },*/
       {
         field: 'idBranch',
         headerName: 'Nombre sucursal *',

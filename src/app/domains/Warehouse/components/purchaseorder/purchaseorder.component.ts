@@ -517,7 +517,7 @@ public masterGridOptions: any = {
   }
 
   obtenerMonedas() {
-    this.currencyService.getCurrencies().subscribe(
+    this.currencyService.getCurrencies(this.idRoot).subscribe(
       (data: Catalog[]) => {
         this.monedas = data;
       },
