@@ -509,6 +509,7 @@ private http               = inject(HttpClient);
       latitud       : '',
       longitud      : '',
       idTypecop     : 0,
+      type          : this.type,
       active        : true,
       __isNew: true,
     };

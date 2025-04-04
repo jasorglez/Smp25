@@ -498,9 +498,10 @@ public masterGridOptions: any = {
   }
 
   obtenerDepartamentos() {
-    this.departmentsService.getDepartments().subscribe(
+    this.departmentsService.getDepartments(this.idRoot).subscribe(
       (data: Provider[]) => {
         this.departamentos = data;
+        console.log(this.departamentos);
       },
       (error) => console.error('Error fetching departments:', error)
     );

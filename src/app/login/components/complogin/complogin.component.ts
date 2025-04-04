@@ -139,13 +139,8 @@ export class ComploginComponent implements OnInit {
         });
       },
       error: (err) => {
-        if (err.error.error.message == "EMAIL_NOT_FOUND") {
-          alerts.basicAlert("Error", 'Invalid email', "error");
-        } else if (err.error.error.message == "INVALID_PASSWORD") {
-          alerts.basicAlert("Error", 'Invalid password', "error");
-        } else {
-          alerts.basicAlert("Error", "An error occurred", "error");
-        }
+        console.log(err);
+        alerts.basicAlert("Error", "Los datos de logueo son inválidos", "error");
       }
     });
   }

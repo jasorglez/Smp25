@@ -179,13 +179,13 @@ export class EmployeesTableComponent {
 
         if (currentColIndex < editableColumns.length - 1) {
           // Añadir delay de 50ms antes de mover el foco
-          requestAnimationFrame(() => {
+          setTimeout(() => {
             // Mover a la siguiente columna editable
             params.api.startEditingCell({
               rowIndex: params.node.rowIndex,
               colKey: editableColumns[currentColIndex + 1].field,
             });
-          }); // Retraso para permitir que termine la edición actual
+          }, 200); // Retraso para permitir que termine la edición actual
         }
         params.event.preventDefault(); // Prevenir comportamiento por defecto
       }

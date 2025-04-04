@@ -99,7 +99,7 @@ export class UsersService {
            const applyplatform = user.applyplatform || ''; // Corregido de user.applybranch a user.applyplatform
            const id           = user.id   ;
            const signature = user.signature || '';
-         //  this.signalsService.setidUser(datauser.id);
+         //  this.signalsService.setidUser(datauser.id); sigue una prueba
          this.signalsService.setDisplayName(displayName);
 
           return { displayName, picture, applyproject, applybranch, applyplatform, email, id, signature };
