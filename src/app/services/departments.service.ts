@@ -12,7 +12,7 @@ export class DepartmentsService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
-  getDepartments() {
-    return this.http.get(`${environment.urlSecurity}/Department`, { headers: this.trackingService.getHeaders() });
+  getDepartments(idCompany: number) {
+    return this.http.get(`${environment.urlWarehouse}/Catalog/getCatalogs?idCompany=${idCompany}&type=departament`, { headers: this.trackingService.getHeaders() });
   }
 }

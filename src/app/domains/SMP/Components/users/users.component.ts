@@ -289,7 +289,7 @@ export class UsersComponent {
       },
       {
         field: 'idDepartament',
-        headerName: 'Departamento',
+        headerName: 'Rol de Usuario',
         editable: true,
         suppressMovable: true,
         filter: false,
