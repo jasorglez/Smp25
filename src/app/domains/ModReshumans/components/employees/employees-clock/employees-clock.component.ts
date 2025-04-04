@@ -212,14 +212,18 @@ export class EmployeesClockComponent {
         if (dia.entry1 && dia.exit1) {
           const minutosEntry1 = dia.entry1.hour * 60 + dia.entry1.minute;
           const minutosExit1 = dia.exit1.hour * 60 + dia.exit1.minute;
-          totalMinutos += minutosExit1 - minutosEntry1;
+          if (minutosExit1 >= minutosEntry1) {
+            totalMinutos += minutosExit1 - minutosEntry1;
+          }
         }
 
         // Suma del segundo turno (entry2 y exit2)
         if (dia.entry2 && dia.exit2) {
           const minutosEntry2 = dia.entry2.hour * 60 + dia.entry2.minute;
           const minutosExit2 = dia.exit2.hour * 60 + dia.exit2.minute;
-          totalMinutos += minutosExit2 - minutosEntry2;
+          if (minutosExit2 >= minutosEntry2) {
+            totalMinutos += minutosExit2 - minutosEntry2;
+          }
         }
       }
     });
