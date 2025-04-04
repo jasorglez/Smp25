@@ -13,6 +13,7 @@ import { RootService } from 'app/services/root.service';
 import { UsersService } from 'app/services/users.service';
 import { SharedModule } from '../shared.module';
 import { EMPTY, map, tap } from 'rxjs';
+import { environment } from '@env/environment';
 
 
 @Component({
@@ -135,7 +136,7 @@ export class SideBarComponent {
     // Si es admin root, o si tiene el permiso principal/see-all-branches, añadir la opción "Todas las sucursales" al principio
 
     if (this.authService.hasDetailedPermission('principal', 'see-all-branches') ||
-      this.signalsService.getemailChoose() === 'root@beapp.com.mx') {
+      this.signalsService.getemailChoose() === environment.root) {
 
       await this.branchService.getBranches2fields(idRoot).subscribe((data) => {
         console.log(data);

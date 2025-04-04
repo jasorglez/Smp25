@@ -21,6 +21,7 @@ import { AuthService } from 'app/services/auth.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { Icatalog } from 'app/interface/icatalog';
 import {  HttpClient } from '@angular/common/http';
+import { environment } from '@env/environment';
 
 @Component({
   selector: 'app-customers',
@@ -179,7 +180,7 @@ private http               = inject(HttpClient);
       headerName: 'Nombre sucursal *',
       headerClass: 'required-header',
       hide: this.authService.hasDetailedPermission('principal', 'see-all-branches') ||
-        this.signalsService.getemailChoose() === 'root@beapp.com.mx' ? false : true,
+        this.signalsService.getemailChoose() === environment.root ? false : true,
       editable: true,
       filter: true,
       width: 170,

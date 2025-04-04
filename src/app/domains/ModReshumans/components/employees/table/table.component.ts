@@ -27,6 +27,7 @@ import { TimeService } from 'app/services/time.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { AuthService } from 'app/services/auth.service';
+import { environment } from '@env/environment';
 
 @Component({
   selector: 'app-employees-table',
@@ -222,7 +223,7 @@ export class EmployeesTableComponent {
         headerName: 'Nombre sucursal *',
         headerClass: 'required-header',
         hide: this.authService.hasDetailedPermission('principal', 'see-all-branches') ||
-          this.signalsService.getemailChoose() === 'root@beapp.com.mx' ? false : true,
+          this.signalsService.getemailChoose() === environment.root ? false : true,
         editable: true,
         filter: true,
         width: 170,
