@@ -112,7 +112,7 @@ export class RequisitionsComponent {
       console.log(this.idReference);
       this.obtenerDatos();
       this.obtenerProductos();
-
+      this.obtenerMonedas();
       if (this.idRequisition != null) {
         this.obtenerDetalles();
       }
@@ -225,7 +225,7 @@ export class RequisitionsComponent {
       },
       {
         field: 'delivery',
-        headerName: 'Identificador',
+        headerName: 'Entrega',
         editable: true,
         filter: true,
         width: 150,
@@ -251,20 +251,7 @@ export class RequisitionsComponent {
       },
       {
         field: 'solicit',
-        headerName: 'Persona Solicita',
-        editable: true,
-        width: 150,
-      },
-      {
-        field: 'delivery',
-        headerName: 'Materiales',
-        editable: true,
-        filter: true,
-        width: 150,
-      },
-      {
-        field: 'solicit',
-        headerName: 'Cargado de Cotizaciones',
+        headerName: 'Encargado de Cotizaciones',
         editable: true,
         width: 150,
       },
@@ -283,7 +270,7 @@ export class RequisitionsComponent {
       },
       {
         field: 'deliveryTime',
-        headerName: 'ID OC',
+        headerName: 'Tiempo Entrega',
         editable: true,
         filter: true,
         width: 150,
@@ -300,14 +287,6 @@ export class RequisitionsComponent {
           }
           return '';
         },
-      },
-
-      {
-        field: 'deliveryTime',
-        headerName: 'Tiempo de entrega',
-        editable: true,
-        filter: true,
-        width: 150,
       },
       {
         field: 'idCurrency',
@@ -499,9 +478,10 @@ export class RequisitionsComponent {
   }
 
   obtenerMonedas() {
-    this.currencyService.getCurrencies().subscribe(
+    this.currencyService.getCurrencies(this.idRoot).subscribe(
       (data: Catalog[]) => {
         this.monedas = data;
+        console.log("Monedas", this.monedas)
       },
       (error) => console.error('Error fetching currencies:', error)
     );
