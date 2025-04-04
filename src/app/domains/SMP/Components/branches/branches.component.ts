@@ -81,7 +81,10 @@ export class BranchesComponent {
 
   obtenerDatos() {
     this.branchesService.getBranches(this.idRoot).subscribe((data: any) => {
-      this.masterRowData = data;
+      //this.masterRowData = data;
+      this.masterRowData = data.sort((a, b) => a.name.localeCompare(b.name));
+
+      //console.log(this.masterRowData);
       this.masterNotSavedChanges = false;
     },
       (error) => console.error('Error fetching data:', error)
@@ -139,8 +142,8 @@ public gridOptions: any = {
         headerName: 'Nombre *',
         editable: true,
         filter: true,
-        flex: 2,
-        width: 100,
+        //flex: 1,
+        width: 250,
         valueSetter: (params) => {
           params.data[params.colDef.field] = params.newValue.toUpperCase();
           return true;
@@ -151,8 +154,8 @@ public gridOptions: any = {
         headerName: 'Descripción *',
         editable: true,
         filter: true,
-        flex: 2,
-        width: 150,
+        //flex: 1,
+        width: 400,
         valueSetter: (params) => {
           params.data[params.colDef.field] = params.newValue.toUpperCase();
           return true;
@@ -163,9 +166,9 @@ public gridOptions: any = {
         headerName: 'Estado *',
         editable: true,
         filter: true,
-        flex: 1,
         cellEditor: 'agSelectCellEditor',
-        width:100,
+        //flex: 1,
+        width: 200,
         cellEditorParams: {
           values: this.estados ? this.estados.map(item => item.id) : [],
         },
@@ -179,7 +182,8 @@ public gridOptions: any = {
         headerName: 'Dirección *',
         editable: false,
         filter: true,
-        flex: 2,
+        //flex: 1,
+        width: 400,
         cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
@@ -216,7 +220,8 @@ public gridOptions: any = {
         editable: true,
         suppressMovable: true,
         filter: true,
-        width: 100,
+        //flex: 1,
+        width: 150,
         cellRenderer: params => {
           return `<input type="checkbox" ${params.value ? 'checked' : ''} disabled />`;
         }
