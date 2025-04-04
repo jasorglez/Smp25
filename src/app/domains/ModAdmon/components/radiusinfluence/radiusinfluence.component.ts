@@ -85,11 +85,14 @@ export class RadiusinfluenceComponent implements OnInit, AfterViewInit, OnDestro
   private addMarkersFromData(): void {
     const bounds = L.latLngBounds([]);
 
+
     this.localitation.forEach((loc) => {
       const lat = parseFloat(loc.latitud);
       const lon = parseFloat(loc.longitud);
+      const veriCp = loc.cp
+      console.log(loc.nameContact ,!isNaN(lat), !isNaN(lon), !isNaN(veriCp))
 
-      if (!isNaN(lat) && !isNaN(lon)) {
+      if (!isNaN(lat) && !isNaN(lon) && veriCp != "0") {
         const coordinates: L.LatLngExpression = [lat, lon];
 
         // Agregar marcador
@@ -151,7 +154,7 @@ export class RadiusinfluenceComponent implements OnInit, AfterViewInit, OnDestro
       Latitud: ${this.newLat = latlng.lat.toFixed(6)}<br>
       Longitud: ${this.newlng = latlng.lng.toFixed(6)}<br>
     `).openPopup();
-    
+
     // Evento para arrastrar
     this.selectedMarker.on('dragend', (e: L.DragEndEvent) => {
       const marker = e.target as L.Marker;
