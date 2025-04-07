@@ -4,7 +4,6 @@ import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { SignalsService } from 'app/services/signals.service';
 import { AuthService } from 'app/services/auth.service';
-import { Environment } from 'ag-grid-enterprise';
 import { environment } from '@env/environment';
 
 @Component({

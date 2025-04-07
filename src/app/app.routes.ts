@@ -196,10 +196,10 @@ export const routes: Routes = [
             data: { permissions: { master: 'setup', detailed: 'branches' } }
           },
           {
-            path: 'log',
+            path: 'logs',
             loadComponent: () => import('./domains/SMP/Components/kardex/kardex.component').then(k => k.KardexComponent),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'setup', detailed: 'logs' } }
+         //   canActivate: [MasterPermissionsGuard],
+         //   data: { permissions: { master: 'setup', detailed: 'logs' } }
           },
           {
             path: 'catalog',

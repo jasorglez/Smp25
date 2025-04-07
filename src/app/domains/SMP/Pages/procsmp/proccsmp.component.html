@@ -18,6 +18,11 @@
                      class="bi bi-person-bounding-box"></i> {{ 'user' | translate}}</a>
             </li>
 
+            <li class="nav-item" *ngIf="canSeeUsers">
+               <a class="nav-link green-tab" routerLink="logs" routerLinkActive="active"><i
+                     class="bi bi-archive-fill"></i> {{ 'log' | translate}}</a>
+            </li>
+
          </ul>
 
          <router-outlet></router-outlet>
