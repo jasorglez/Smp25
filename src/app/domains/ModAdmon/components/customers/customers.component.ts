@@ -4,7 +4,7 @@ import { DomainsModule } from 'app/domains/domainsmodule';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { alerts } from '../../../../helpers/alerts';
 import { States } from 'app/interface/states';
-import { catchError, concat, EMPTY, lastValueFrom, toArray , throwError } from 'rxjs';
+import { catchError, concat, EMPTY, lastValueFrom, toArray, throwError } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { AgGridModule } from 'ag-grid-angular';
 import { ModalService } from 'app/services/modal.service';
@@ -20,35 +20,35 @@ import { BranchsService } from 'app/services/branchs.service';
 import { AuthService } from 'app/services/auth.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { Icatalog } from 'app/interface/icatalog';
-import {  HttpClient } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { environment } from '@env/environment';
 
 @Component({
   selector: 'app-customers',
   standalone: true,
-  imports: [RouterModule, DomainsModule, AgGridModule, MultiLineEditorComponent, 
+  imports: [RouterModule, DomainsModule, AgGridModule, MultiLineEditorComponent,
     CustomersPaymentsComponent],
   templateUrl: './customers.component.html',
   styleUrls: ['./customers.component.scss']
 })
 export class CustomersComponent {
-//  private administrationService = inject(AdministrationService);
-private customerService    = inject(CustomersService);  
-private modalServiceTable  = inject(ModalService);
-private signalsService     = inject(SignalsService);
-private modalService       = inject(NgbModal);
-private route              = inject(ActivatedRoute);
-private inegiService       = inject(InegiService);
-private branchesService    = inject(BranchsService);
-private authService        = inject(AuthService);
-private catalogsService    = inject(CatalogsService);
-private http               = inject(HttpClient);
+  //  private administrationService = inject(AdministrationService);
+  private customerService = inject(CustomersService);
+  private modalServiceTable = inject(ModalService);
+  private signalsService = inject(SignalsService);
+  private modalService = inject(NgbModal);
+  private route = inject(ActivatedRoute);
+  private inegiService = inject(InegiService);
+  private branchesService = inject(BranchsService);
+  private authService = inject(AuthService);
+  private catalogsService = inject(CatalogsService);
+  private http = inject(HttpClient);
 
   ngOnInit() {
     this.obtenerDatos();
     this.signalsService.deleteClientData();
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-    
+
     this.route.data.subscribe(data => {
       this.type = data['type']; // 'CUSTOMERS' o 'PROVIDERS'
       this.obtenerDatos(); // Llamar a la función para cargar datos
@@ -56,7 +56,7 @@ private http               = inject(HttpClient);
       this.obtenerBranchs();
     });
   }
-  
+
 
   constructor() {
 
@@ -80,7 +80,7 @@ private http               = inject(HttpClient);
       this.obtenerDatos();
       this.obtenerBranchs();
       this.getTypecop();
-  })
+    })
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -99,14 +99,14 @@ private http               = inject(HttpClient);
   isOpen: boolean = false;
   branchs: any[] = [];
   Typecop: any[] = [];
-  
+
   // Agregar esta nueva variable para almacenar el ID de la última fila editada
   private lastEditedRowId: number | string | null = null;
-  
+
   rowData: any;
   contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
-  
+
   id: string;
   idRoot: number;
   private tempIdCounter: number = 0;
@@ -165,46 +165,47 @@ private http               = inject(HttpClient);
     },
   };
 
-  
-  
+
+
   get colMaster(): ColDef[] {
     return [
-      { field: 'id', headerName: 'Id', editable: false, width: 110, hide : false,
+      {
+        field: 'id', headerName: 'Id', editable: false, width: 110, hide: false,
         filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
         filterParams: {
-              filterOptions: ['equals'], // Opciones de filtro
-     },
-    },
-    {
-      field: 'idBranch',
-      headerName: 'Nombre sucursal *',
-      headerClass: 'required-header',
-      hide: this.authService.hasDetailedPermission('principal', 'see-all-branches') ||
-        this.signalsService.getemailChoose() === environment.root ? false : true,
-      editable: true,
-      filter: true,
-      width: 170,
-      cellEditor: 'agSelectCellEditor',
-      cellEditorParams: (params) => {
-        // Ensure depto data is available when creating editor
-        return {
-          values: this.branchs ? this.branchs.map((item) => item.id) : []
-        };
+          filterOptions: ['equals'], // Opciones de filtro
+        },
       },
-      valueFormatter: (params) => {
-        // Handle potential null values and properly format the displayed value
-        if (!params.value) return '';
-
-        const foundBranch = this.branchs
-          ? this.branchs.find((item) => item.id === params.value)
-          : null;
-
-        return foundBranch ? foundBranch.name : params.value;
-      },
-    },
       {
-        field: 'company', headerName: 'Compania', editable: false, 
-        width: 250, 
+        field: 'idBranch',
+        headerName: 'Nombre sucursal *',
+        headerClass: 'required-header',
+        hide: this.authService.hasDetailedPermission('principal', 'see-all-branches') ||
+          this.signalsService.getemailChoose() === environment.root ? false : true,
+        editable: true,
+        filter: true,
+        width: 170,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: (params) => {
+          // Ensure depto data is available when creating editor
+          return {
+            values: this.branchs ? this.branchs.map((item) => item.id) : []
+          };
+        },
+        valueFormatter: (params) => {
+          // Handle potential null values and properly format the displayed value
+          if (!params.value) return '';
+
+          const foundBranch = this.branchs
+            ? this.branchs.find((item) => item.id === params.value)
+            : null;
+
+          return foundBranch ? foundBranch.name : params.value;
+        },
+      },
+      {
+        field: 'company', headerName: 'Compania', editable: false,
+        width: 250,
         suppressMovable: true,
         filter: 'agTextColumnFilter',
         cellEditor: 'agPopupTextCellEditor',
@@ -234,10 +235,11 @@ private http               = inject(HttpClient);
         }
       },
       { field: 'nameContact', headerName: 'Nombre Contacto', editable: true, filter: true, width: 200 },
-      { field: 'total', headerName: this.type === 'CUSTOMERS' ? 'Total Credito':'Cuentas X Pagar',
-         editable: false, 
-        filter:'agNumberColumnFilter', suppressMovable: true, 
-        width: 160, 
+      {
+        field: 'total', headerName: this.type === 'CUSTOMERS' ? 'Total Credito' : 'Cuentas X Pagar',
+        editable: false,
+        filter: 'agNumberColumnFilter', suppressMovable: true,
+        width: 160,
         valueFormatter: (params) => {
           if (params.value) {
             return new Intl.NumberFormat('es-MX', {
@@ -323,13 +325,15 @@ private http               = inject(HttpClient);
         headerName: 'Colonia',
         editable: true,
         filter: true,
-        width: 150,
+        width: 300,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: (params) => {
           if (this.infoCp && this.infoCp.length > 0) {
             const asentamientos = this.infoCp[0].asentamientos;
+            // Ordenar los asentamientos alfabéticamente
+            const sortedAsentamientos = asentamientos.sort((a, b) => a.localeCompare(b));
             return {
-              values: asentamientos,
+              values: sortedAsentamientos,
             };
           }
           return { values: [] };
@@ -347,18 +351,18 @@ private http               = inject(HttpClient);
       {
         field: 'idTypecop', headerName: 'Tipo cliente', editable: true, width: 150, cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: this.Typecop? this.Typecop.map(item => item.id) : [],
+          values: this.Typecop ? this.Typecop.map(item => item.id) : [],
         },
         valueFormatter: (params) => {
           const foundItem = this.Typecop ? this.Typecop.find(item => item.id === params.value) : null;
           return foundItem ? `${foundItem.description}` : params.value;
         }
       },
-      { field: 'radio', headerName: 'Radio', editable: true, width: 90 }, 
+      { field: 'radio', headerName: 'Radio', editable: true, width: 90 },
       { field: 'latitud', headerName: 'Latitud', editable: true, width: 110, filter: true },
       { field: 'longitud', headerName: 'Longitud', editable: true, width: 120, filter: true },
-      
-      
+
+
       {
         field: 'email', headerName: 'Correo', width: 200, cellEditor: 'agTextCellEditor',
         editable: (params) => params.data.__isNew,
@@ -397,7 +401,7 @@ private http               = inject(HttpClient);
   }
 
   obtenerDatos() {
-    this.customerService.getCustomers(this.idBranch,this.type).subscribe((data: any) => {
+    this.customerService.getCustomers(this.idBranch, this.type).subscribe((data: any) => {
       this.rowData = data;
     });
   }
@@ -494,25 +498,25 @@ private http               = inject(HttpClient);
     const newItem = {
       id: tempId,
       idBranch: this.idBranch,
-      nameContact   : '',
-      company       : '',
-      phone         : '',
-      rfc           : '',
-      city          : '',
-      mobile        : '',
-      email         : '',
-      address       : '',
-      addressfiscal : '',
-      state         : '',
-      total         : 0,
-      radio         : 0,
-      vigente       : true,
-      NumCliente    : 0,
-      latitud       : '',
-      longitud      : '',
-      idTypecop     : 0,
-      type          : this.type,
-      active        : true,
+      nameContact: '',
+      company: '',
+      phone: '',
+      rfc: '',
+      city: '',
+      mobile: '',
+      email: '',
+      address: '',
+      addressfiscal: '',
+      state: '',
+      total: 0,
+      radio: 0,
+      vigente: true,
+      NumCliente: 0,
+      latitud: '',
+      longitud: '',
+      idTypecop: 0,
+      type: this.type,
+      active: true,
       __isNew: true,
     };
     console.log('Nuevo registro:', newItem);
@@ -531,35 +535,35 @@ private http               = inject(HttpClient);
       );
       return;
     }
-  
+
     const newRows = this.rowData.filter((row) => row.__isNew);
     const modifiedRows = this.rowData.filter(
       (row) => row.__modified && !row.__isNew
     );
-  
+
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       return this.customerService.addCustomer(cleanedData);
     });
-  
+
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       console.log('Actualizando cliente con los siguientes datos:', cleanedData);
       return this.customerService.updateCustomer(row.id, cleanedData);
     });
-  
+
     try {
       const responses = await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
-  
+
       // Determinar qué ID vamos a seleccionar después de recargar
       if (modifiedRows.length > 0) {
         this.lastEditedRowId = modifiedRows[modifiedRows.length - 1].id;
       } else if (newRows.length > 0) {
         this.lastEditedRowId = 'SELECT_MAX_ID';
       }
-  
+
       alerts.basicAlert(
         'Datos actualizados',
         'Se han actualizado los datos correctamente.',
@@ -567,13 +571,13 @@ private http               = inject(HttpClient);
       );
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
-      
+
       // Esperar a que los datos se carguen completamente
       await this.obtenerDatos();
-  
+
       // Esperar un ciclo de renderizado adicional
       await new Promise(resolve => setTimeout(resolve, 0));
-  
+
       // Seleccionar la fila apropiada después de recargar
       if (this.lastEditedRowId) {
         if (this.lastEditedRowId === 'SELECT_MAX_ID') {
@@ -585,7 +589,7 @@ private http               = inject(HttpClient);
         }
         this.lastEditedRowId = null;
       }
-  
+
     } catch (error) {
       console.error(error);
       alerts.basicAlert(
@@ -675,57 +679,57 @@ private http               = inject(HttpClient);
   }
 
 
-    openRadiusInfluenceModal(): void {
-      const modalRef = this.modalService.open(RadiusinfluenceComponent, { size: 'lg' });
-    }
+  openRadiusInfluenceModal(): void {
+    const modalRef = this.modalService.open(RadiusinfluenceComponent, { size: 'lg' });
+  }
 
-    async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
-      this.signalsService.setProviderOrCustomer(this.type);
-      const colId = event.column.getColId();
-      const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
-      const selectedId = selectedRowData.id; // Obtener el ID del registro
-    
-      // Filtrar el grid para mostrar solo el registro con el ID seleccionado solo si la columna es "total"
-      if (colId === 'total') {
-        const filterModel = {
-          id: {
-            type: 'equals',
-            filter: selectedId,
-          },
-        };
-    
-        this.gridApi.setFilterModel(filterModel);
-        this.gridApi.onFilterChanged();
-        this.activateCreditsTab(); // Activar la pestaña de créditos si es necesario
-      }
-     
-      console.log('Datos ShowCredits:', this.showCreditsTab);
-      this.selectedRowData = selectedRowData; // Guardar los datos seleccionados
-    }
-  
+  async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
+    this.signalsService.setProviderOrCustomer(this.type);
+    const colId = event.column.getColId();
+    const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
+    const selectedId = selectedRowData.id; // Obtener el ID del registro
 
-    async activateCreditsTab() {
-      if(!this.isOpen) {
-        setTimeout(async () => await this.adjustGridSize(), 0);
-        this.showCreditsTab = true;
-        this.isOpen = true;
-      }
-      else {
-        this.resetGridSize();
-        this.isOpen = false;
-      }
-    }
+    // Filtrar el grid para mostrar solo el registro con el ID seleccionado solo si la columna es "total"
+    if (colId === 'total') {
+      const filterModel = {
+        id: {
+          type: 'equals',
+          filter: selectedId,
+        },
+      };
 
-    resetGridSize() {
-      this.gridHeight = '80vh'; // Reset to default height
-      this.showCreditsTab = false;
-      this.gridApi.setFilterModel(null);
+      this.gridApi.setFilterModel(filterModel);
       this.gridApi.onFilterChanged();
+      this.activateCreditsTab(); // Activar la pestaña de créditos si es necesario
     }
 
-    adjustGridSize() {
-      this.gridHeight = '20vh'; // Adjust as needed
+    console.log('Datos ShowCredits:', this.showCreditsTab);
+    this.selectedRowData = selectedRowData; // Guardar los datos seleccionados
+  }
+
+
+  async activateCreditsTab() {
+    if (!this.isOpen) {
+      setTimeout(async () => await this.adjustGridSize(), 0);
+      this.showCreditsTab = true;
+      this.isOpen = true;
     }
+    else {
+      this.resetGridSize();
+      this.isOpen = false;
+    }
+  }
+
+  resetGridSize() {
+    this.gridHeight = '80vh'; // Reset to default height
+    this.showCreditsTab = false;
+    this.gridApi.setFilterModel(null);
+    this.gridApi.onFilterChanged();
+  }
+
+  adjustGridSize() {
+    this.gridHeight = '20vh'; // Adjust as needed
+  }
 
   // Agregar esta función para obtener los estados
   getStates() {
@@ -740,7 +744,7 @@ private http               = inject(HttpClient);
     });
   }
 
-  getTypecop(){
+  getTypecop() {
     this.catalogsService.getCatalogs(this.idRoot, 'TYPECLIENT').subscribe(
       (data: Icatalog[]) => {
         this.Typecop = data;

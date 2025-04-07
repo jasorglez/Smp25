@@ -495,13 +495,15 @@ export class EmployeesTableComponent {
         headerName: 'Colonia',
         editable: true,
         filter: true,
-        width: 150,
+        width: 300,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: (params) => {
           if (this.infoCp && this.infoCp.length > 0) {
             const asentamientos = this.infoCp[0].asentamientos;
+            // Ordenar los asentamientos alfabéticamente
+            const sortedAsentamientos = asentamientos.sort((a, b) => a.localeCompare(b));
             return {
-              values: asentamientos,
+              values: sortedAsentamientos,
             };
           }
           return { values: [] };
