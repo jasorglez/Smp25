@@ -370,6 +370,7 @@ export class EmployeesTableComponent {
           }
           return '$0.00';
         },
+        cellStyle: { backgroundColor: '#d4edda' },
       },
       {
         field: 'saving',
@@ -387,6 +388,7 @@ export class EmployeesTableComponent {
           }
           return '$0.00';
         },
+        cellStyle: { backgroundColor: '#d4edda' },
       },
       {
         field: 'idDepto',

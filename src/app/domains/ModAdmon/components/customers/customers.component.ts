@@ -247,6 +247,7 @@ private http               = inject(HttpClient);
           }
           return '$0.00';
         },
+        cellStyle: { backgroundColor: '#d4edda' }
       },
       { field: 'cp', headerName: 'CP', editable: true, filter: true, width: 105 },
       {
