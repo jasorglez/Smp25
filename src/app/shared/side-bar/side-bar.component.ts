@@ -294,13 +294,11 @@ export class SideBarComponent {
             this.selectedProjectId = this.projectData[0].id;
             this.trackingService.setProject(this.selectedProjectId);
           } else {
-            //console.log(`No se encontró ningún Project para el contrato ${idContract}`);
             this.selectedProjectId = '';
             this.trackingService.setProject('');
           }
         },
         error: (error) => {
-          //console.error('Error al obtener proyectos:', error);
           this.selectedProjectId = '';
           this.trackingService.setProject('');
         }
@@ -332,7 +330,6 @@ export class SideBarComponent {
     if (this.trackingService.getaplat() === 'Si') {
       this.companysService.getPermissionsxPlatform(id).subscribe((data) => {
         this.platformData = Object.values(data);
-        //console.log("platformData", this.platformData)
         if (this.platformData.length > 0) {
           this.selectedPlatformId = this.platformData[0].id;
           this.trackingService.setPlatform(this.selectedPlatformId);
@@ -349,7 +346,6 @@ export class SideBarComponent {
 
     //this.trackingService.setPlatform(parseInt(target.value)) ;
     this.trackingService.setPlataforma(target.value);
-    //console.log(target.value)
 
     this.selectedPlatformId = parseInt(target.value, 10);
     this.trackingService.setPlatform(this.selectedPlatformId);
