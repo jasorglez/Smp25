@@ -1,0 +1,12 @@
+<div class="col-auto">
+      <ag-grid-angular style="width: 80vw; height: 750px;"
+        class="ag-theme-quartz small-text-ag-grid"
+        [rowData]="log"
+        [columnDefs]="colLogs"
+        [gridOptions]="gridOptions"
+        (selectionChanged)="onSelectionChanged($event)"
+        (cellValueChanged)="onCellValueChanged($event)" 
+        (gridReady)="onGridReady($event)"
+        [rowSelection]="'single'">
+      </ag-grid-angular>
+    </div>

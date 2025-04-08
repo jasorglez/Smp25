@@ -27,6 +27,7 @@ import { TimeService } from 'app/services/time.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { AuthService } from 'app/services/auth.service';
+import { environment } from '@env/environment';
 
 @Component({
   selector: 'app-employees-table',
@@ -179,13 +180,13 @@ export class EmployeesTableComponent {
 
         if (currentColIndex < editableColumns.length - 1) {
           // Añadir delay de 50ms antes de mover el foco
-          setTimeout(() => {
+          requestAnimationFrame(() => {
             // Mover a la siguiente columna editable
             params.api.startEditingCell({
               rowIndex: params.node.rowIndex,
               colKey: editableColumns[currentColIndex + 1].field,
             });
-          }, 200); // Retraso para permitir que termine la edición actual
+          }); // Retraso para permitir que termine la edición actual
         }
         params.event.preventDefault(); // Prevenir comportamiento por defecto
       }
@@ -222,24 +223,28 @@ export class EmployeesTableComponent {
         headerName: 'Nombre sucursal *',
         headerClass: 'required-header',
         hide: this.authService.hasDetailedPermission('principal', 'see-all-branches') ||
-          this.signalsService.getemailChoose() === 'root@beapp.com.mx' ? false : true,
+          this.signalsService.getemailChoose() === environment.root ? false : true,
         editable: true,
         filter: true,
         width: 170,
         cellEditor: 'agSelectCellEditor',
+
         cellEditorParams: (params) => {
-          // Ensure depto data is available when creating editor
           return {
-            values: this.branchs ? this.branchs.map((item) => item.id) : []
+            values: this.branchs
+              ? this.branchs
+                  .slice() // Creamos una copia para no modificar el array original
+                  .sort((a, b) => a.name.localeCompare(b.name)) // Ordenamos por nombre
+                  .map((item) => item.id) // Extraemos solo los IDs
+              : []
           };
         },
+
         valueFormatter: (params) => {
           // Handle potential null values and properly format the displayed value
           if (!params.value) return '';
 
-          const foundBranch = this.branchs
-            ? this.branchs.find((item) => item.id === params.value)
-            : null;
+          const foundBranch = this.branchs ? this.branchs.find((item) => item.id === params.value) : null;
 
           return foundBranch ? foundBranch.name : params.value;
         },
@@ -369,6 +374,7 @@ export class EmployeesTableComponent {
           }
           return '$0.00';
         },
+        cellStyle: { backgroundColor: '#d4edda' },
       },
       {
         field: 'saving',
@@ -386,6 +392,7 @@ export class EmployeesTableComponent {
           }
           return '$0.00';
         },
+        cellStyle: { backgroundColor: '#d4edda' },
       },
       {
         field: 'idDepto',
@@ -492,13 +499,15 @@ export class EmployeesTableComponent {
         headerName: 'Colonia',
         editable: true,
         filter: true,
-        width: 150,
+        width: 300,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: (params) => {
           if (this.infoCp && this.infoCp.length > 0) {
             const asentamientos = this.infoCp[0].asentamientos;
+            // Ordenar los asentamientos alfabéticamente
+            const sortedAsentamientos = asentamientos.sort((a, b) => a.localeCompare(b));
             return {
-              values: asentamientos,
+              values: sortedAsentamientos,
             };
           }
           return { values: [] };
@@ -531,7 +540,7 @@ export class EmployeesTableComponent {
       },
       {
         field: 'idPosition',
-        headerName: 'Position',
+        headerName: 'Rol',
         editable: true,
         suppressMovable: true,
         filter: false,
@@ -810,13 +819,19 @@ export class EmployeesTableComponent {
     // Encontrar el índice de la nueva fila
     const newRowIndex = this.rowData.findIndex((row) => row.id === tempId);
 
-    // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
-    setTimeout(() => {
-      this.gridApi.startEditingCell({
-        rowIndex: newRowIndex,
-        colKey: 'name',
-      });
-    }, 50); // Un pequeño retraso de 50ms
+// Encontrar la primera columna editable
+const firstEditableCol = this.colMaster.find(col => col.editable);
+const firstEditableColKey = firstEditableCol ? firstEditableCol.field : null;
+
+// Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
+setTimeout(() => {
+  if (firstEditableColKey) {
+    this.gridApi.startEditingCell({
+      rowIndex: newRowIndex,
+      colKey: firstEditableColKey, // Editar la primera columna editable
+    });
+  }
+}, 50); // Un pequeño retraso de 50ms
   }
 
   async saveMasterChanges() {

@@ -42,15 +42,15 @@ export class AccountbanksComponent {
 
   private lastSelectedId: string | null = null;
   notSavedChanges: boolean = false;
-  rowMaster  : any;
-  rowDetails : any ;
+  rowMaster: any;
+  rowDetails: any;
   accounts: { [key: string]: string } = {};
   errorMessage: string = '';
   isLoading: boolean = false
 
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
-    
+
   banks: any;
   id: string;
   private tempIdCounter: number = 0;
@@ -60,7 +60,7 @@ export class AccountbanksComponent {
   currentIndex = 0;
 
   private detailsGridApi!: GridApi<any>;
-  
+
   public rowSelection: 'single' | 'multiple' = 'single';
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
@@ -71,233 +71,240 @@ export class AccountbanksComponent {
   };
 
   // Inject of new way for Angular 18
-  private administrationService = inject(AdministrationService);  
-  private modalServiceTable = inject(ModalService);  
+  private administrationService = inject(AdministrationService);
+  private modalServiceTable = inject(ModalService);
   private imageHandlerService = inject(ImageHandlerService);
 
-// Column Definitions: Defines the columns to be displayed.
-public gridOptions: any = {
-  headerHeight: 30,
-  rowHeight: 30,
-  rowClass: (params) => {
-    // Verificar si la fila está seleccionada
-    if (params.node.isSelected()) {
-      return 'selected-row';
-    }
-    return '';
-  },
-  onRowClicked: (event) => {
-    // Seleccionar la fila al hacer clic en cualquier celda
-    event.node.setSelected(true);
-  },
-  onRowSelected: (event) => {
-    // Deseleccionar otras filas cuando se selecciona una nueva
-    if (event.node.isSelected()) {
-      this.gridApi.forEachNode((node) => {
-        if (node.id !== event.node.id) {
-          node.setSelected(false);
+  // Column Definitions: Defines the columns to be displayed.
+  public gridOptions: any = {
+    headerHeight: 30,
+    rowHeight: 30,
+    rowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onRowClicked: (event) => {
+      // Seleccionar la fila al hacer clic en cualquier celda
+      event.node.setSelected(true);
+    },
+    onRowSelected: (event) => {
+      // Deseleccionar otras filas cuando se selecciona una nueva
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    },
+  };
+
+  // Column Definitions: Defines the columns to be displayed.
+  get colMaster(): ColDef[] {
+    return [
+      {
+        field: 'idBanco', headerName: 'Banco', editable: true, width: 150, cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.banks ? this.banks.map(item => item.id) : [],
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.banks ? this.banks.find(item => item.id === params.value) : null;
+          return foundItem ? `${foundItem.name}` : params.value;
+        }
+      },
+      { field: 'numberAccount', headerName: 'Numero Cuenta', editable: true, filter: true, width: 200 },
+
+      { field: 'nameAccount', headerName: 'Nombre Cuenta', editable: true, width: 200, filter: true },
+
+      { field: 'interbancaria', headerName: 'Interbancaria', editable: true, width: 160 },
+
+      {
+        field: 'folioCheque', headerName: 'Inicio Cheque', editable: true, width: 129, cellEditorParams: {
+          maxLength: 5
+        }
+      },
+
+      { field: 'folioSinCheque', headerName: 'Termino Cheque', editable: true, width: 140 },
+
+      {
+        field: 'gasto', headerName: 'Gastos', editable: true, width: 105,
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+      },
+      {
+        field: 'depositoPagado', headerName: 'Ingresos', editable: true, width: 105,
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+      },
+      {
+        field: 'saldo', headerName: 'Saldo', editable: true, width: 110,
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+      },
+
+    ]
+  };
+
+
+  // Column Definitions: Defines the columns to be displayed.
+  get colDetails(): ColDef[] {
+    return [
+      {
+        field: 'numeroDocumento',
+        headerName: 'Numero Documento',
+        editable: false,
+        filter: true,
+        width: 200,
+        cellStyle: params => {
+          const deposito = typeof params.data.deposito === 'string' ?
+            parseFloat(params.data.deposito.replace(/,/g, '')) :
+            (params.data.deposito || 0);
+          const gasto = typeof params.data.gasto === 'string' ?
+            parseFloat(params.data.gasto.replace(/,/g, '')) :
+            (params.data.gasto || 0);
+          return {
+            backgroundColor: deposito > 0 ? '#e6ffe6' : gasto > 0 ? '#ffe6e6' : null
+          };
+        }
+      },
+      {
+        field: 'fecha',
+        headerName: 'Fecha',
+        editable: false,
+        width: 200,
+        filter: true
+      },
+      {
+        field: 'descripcion',
+        headerName: 'Descripcion',
+        editable: false,
+        width: 285
+      },
+      {
+        field: 'tipo',
+        headerName: 'Tipo',
+        editable: false,
+        width: 160
+      },
+      {
+        field: 'deposito',
+        headerName: 'Deposito',
+        editable: false,
+        width: 160,
+        valueFormatter: params => {
+          const value = params.value || 0;
+          return `$ ${value.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        },
+        cellStyle: params => {
+          const value = typeof params.value === 'string' ?
+            parseFloat(params.value.replace(/,/g, '')) :
+            (params.value || 0);
+          return {
+            color: value > 0 ? '#008000' : null,
+            backgroundColor: value > 0 ? '#e6ffe6' : null,
+            fontWeight: value > 0 ? 'bold' : 'normal'
+          };
+        }
+      },
+      {
+        field: 'gasto',
+        headerName: 'Gasto',
+        editable: false,
+        width: 160,
+        valueFormatter: params => {
+          const value = params.value || 0;
+          return `$ ${value.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        },
+        cellStyle: params => {
+          const value = typeof params.value === 'string' ?
+            parseFloat(params.value.replace(/,/g, '')) :
+            (params.value || 0);
+          return {
+            color: value > 0 ? '#FF0000' : null,
+            backgroundColor: value > 0 ? '#ffe6e6' : null,
+            fontWeight: value > 0 ? 'bold' : 'normal'
+          };
+        }
+      },
+      {
+        field: 'saldo',
+        headerName: 'SALDO',
+        editable: false,
+        width: 160,
+        valueFormatter: params => {
+          const value = params.value || 0;
+          return `$ ${value.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        },
+        cellStyle: {
+          color: '#000080',
+          fontWeight: 'bold'
+        }
+      }
+    ];
+  }
+
+  obtenerBanks() {
+    this.administrationService.get2fieldsBanks().
+      subscribe((data: any) => {
+        this.banks = data
+      })
+  }
+
+  obtenerDatos() {
+    this.administrationService.getAccountBanks(parseInt(localStorage.getItem('company'))).
+      subscribe((response: any) => {
+        this.rowMaster = response;
+        if (!response || response.length === 0) {
+          alerts.basicAlert('Aviso',
+            'No hay datos disponibles',
+            'info'
+          );
+        }
+      })
+  }
+
+  private loadBalanceData(id: string) {
+    if (!id || id === this.lastSelectedId) return;
+
+    this.lastSelectedId = id;
+    this.rowDetails = [];
+    this.isLoading = true;
+
+    this.administrationService.getBalance(parseInt(id))
+      .subscribe({
+        next: (response: any) => {
+          if (response.success && response.hasData) {
+            this.rowDetails = response.data;
+          } else {
+            this.rowDetails = [];
+            alerts.basicAlert('Aviso', 'No hay datos disponibles', 'info');
+          }
+        },
+        error: () => {
+          this.rowDetails = [];
+          alerts.basicAlert('Error', 'Error al cargar los datos', 'error');
+        },
+        complete: () => {
+          this.isLoading = false;
         }
       });
-    }
-  },
-};
-
-// Column Definitions: Defines the columns to be displayed.
-get colMaster(): ColDef[] {
-  return [
-    { field: 'idBanco', headerName: 'Banco', editable: true, width: 150, cellEditor: 'agSelectCellEditor',
-      cellEditorParams: {
-        values: this.banks ? this.banks.map(item => item.id) : [],
-      },
-      valueFormatter: (params) => {
-        const foundItem = this.banks ? this.banks.find(item => item.id === params.value) : null;
-        return foundItem ? `${foundItem.name}` : params.value;
-      }
-    },    
-    { field: 'numberAccount', headerName: 'Numero Cuenta', editable: true, filter: true, width: 200 },
-
-    { field: 'nameAccount', headerName: 'Nombre Cuenta', editable: true, width: 200, filter: true },
-            
-    { field: 'interbancaria', headerName: 'Interbancaria', editable: true, width: 160 },
-            
-    { field: 'folioCheque', headerName: 'Inicio Cheque', editable: true, width: 129, cellEditorParams: {
-        maxLength: 5  } },
-    
-    { field: 'folioSinCheque', headerName: 'Termino Cheque', editable: true, width: 140 }, 
-
-    { field: 'gasto', headerName: 'Gastos', editable: true, width: 105,
-      valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
-      },
-    { field: 'depositoPagado', headerName: 'Ingresos', editable: true, width: 105,
-      valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
-     },
-    { field: 'saldo', headerName: 'Saldo', editable: true, width: 110,
-      valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
-     },
-    
-  ]
-};
-
-
-// Column Definitions: Defines the columns to be displayed.
-get colDetails(): ColDef[] {
-  return [
-    { 
-      field: 'numeroDocumento', 
-      headerName: 'Numero Documento', 
-      editable: false, 
-      filter: true, 
-      width: 200,
-      cellStyle: params => {
-        const deposito = typeof params.data.deposito === 'string' ? 
-          parseFloat(params.data.deposito.replace(/,/g, '')) : 
-          (params.data.deposito || 0);
-        const gasto = typeof params.data.gasto === 'string' ? 
-          parseFloat(params.data.gasto.replace(/,/g, '')) : 
-          (params.data.gasto || 0);
-        return {
-          backgroundColor: deposito > 0 ? '#e6ffe6' : gasto > 0 ? '#ffe6e6' : null
-        };
-      }
-    },
-    { 
-      field: 'fecha', 
-      headerName: 'Fecha', 
-      editable: false, 
-      width: 200, 
-      filter: true
-    },
-    { 
-      field: 'descripcion', 
-      headerName: 'Descripcion', 
-      editable: false, 
-      width: 285
-    },
-    { 
-      field: 'tipo', 
-      headerName: 'Tipo', 
-      editable: false, 
-      width: 160
-    },
-    { 
-      field: 'deposito', 
-      headerName: 'Deposito', 
-      editable: false, 
-      width: 160,
-      valueFormatter: params => {
-        const value = params.value || 0;
-        return `$ ${value.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-      },
-      cellStyle: params => {
-        const value = typeof params.value === 'string' ? 
-          parseFloat(params.value.replace(/,/g, '')) : 
-          (params.value || 0);
-        return {
-          color: value > 0 ? '#008000' : null,
-          backgroundColor: value > 0 ? '#e6ffe6' : null,
-          fontWeight: value > 0 ? 'bold' : 'normal'
-        };
-      }
-    },
-    { 
-      field: 'gasto', 
-      headerName: 'Gasto', 
-      editable: false, 
-      width: 160,
-      valueFormatter: params => {
-        const value = params.value || 0;
-        return `$ ${value.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-      },
-      cellStyle: params => {
-        const value = typeof params.value === 'string' ? 
-          parseFloat(params.value.replace(/,/g, '')) : 
-          (params.value || 0);
-        return {
-          color: value > 0 ? '#FF0000' : null,
-          backgroundColor: value > 0 ? '#ffe6e6' : null,
-          fontWeight: value > 0 ? 'bold' : 'normal'
-        };
-      }
-    },
-    { 
-      field: 'saldo', 
-      headerName: 'SALDO', 
-      editable: false, 
-      width: 160,
-      valueFormatter: params => {
-        const value = params.value || 0;
-        return `$ ${value.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-      },
-      cellStyle: { 
-        color: '#000080',
-        fontWeight: 'bold'
-      }
-    }
-  ];
-}
-
-obtenerBanks() {
-  this.administrationService.get2fieldsBanks().
-  subscribe((data: any) => { 
-     this.banks = data
-  })
-}
-
-obtenerDatos() {    
-  this.administrationService.getAccountBanks(parseInt(localStorage.getItem('company'))).
-  subscribe((response: any) => {    
-      this.rowMaster = response;
-      if (!response || response.length === 0) {
-        alerts.basicAlert('Aviso',
-          'No hay datos disponibles',
-          'info'
-        );
-      }
-   })
-}
-
-private loadBalanceData(id: string) {
-  if (!id || id === this.lastSelectedId) return;
-  
-  this.lastSelectedId = id;
-  this.rowDetails = [];
-  this.isLoading = true;
-  
-  this.administrationService.getBalance(parseInt(id))
-    .subscribe({
-      next: (response: any) => {
-        if (response.success && response.hasData) {
-          this.rowDetails = response.data;
-        } else {
-          this.rowDetails = [];
-          alerts.basicAlert('Aviso', 'No hay datos disponibles', 'info');
-        }
-      },
-      error: () => {
-        this.rowDetails = [];
-        alerts.basicAlert('Error', 'Error al cargar los datos', 'error');
-      },
-      complete: () => {
-        this.isLoading = false;
-      }
-    });
-}
-
-
- 
-onSelectionChanged(event: any) {
-  const selectedNodes = event.api.getSelectedNodes();
-  if (selectedNodes.length > 0) {
-    const selectedData = selectedNodes[0].data;
-    this.selectedRowData = selectedData;
-    this.loadBalanceData(selectedData.id);
-  } else {
-    this.selectedRowData = null;
   }
-}
+
+
+
+  onSelectionChanged(event: any) {
+    const selectedNodes = event.api.getSelectedNodes();
+    if (selectedNodes.length > 0) {
+      const selectedData = selectedNodes[0].data;
+      this.selectedRowData = selectedData;
+      this.loadBalanceData(selectedData.id);
+    } else {
+      this.selectedRowData = null;
+    }
+  }
 
   onCellValueChanged(event: any) {
-  //  console.log('Dato cambiado:', event.data);
+    //  console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
   }
@@ -305,7 +312,7 @@ onSelectionChanged(event: any) {
   onMasterGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
   }
-  
+
   onDetailGridReady(params: GridReadyEvent) {
     this.detailsGridApi = params.api;
   }
@@ -314,27 +321,44 @@ onSelectionChanged(event: any) {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idBussines     : parseInt(localStorage.getItem('company')),
-      numberAccount  : '',
-      nameAccount    : '',
-      signAccount    : '',
-      interbancaria  : '',
-      folioCheque    : '',      
-      folioSinCheque : '',
-      idBanco        : 0,
-      eAplicaFiscal  : 'Si', 
-      active: true,      
+      idBussines: parseInt(localStorage.getItem('company')),
+      numberAccount: '',
+      nameAccount: '',
+      signAccount: '',
+      interbancaria: '',
+      folioCheque: '',
+      folioSinCheque: '',
+      idBanco: 0,
+      eAplicaFiscal: 'Si',
+      active: true,
       __isNew: true,
     };
     this.rowMaster = [newItem, ...this.rowMaster];
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
+
+    // Encontrar el índice de la nueva fila
+    const newRowIndex = this.rowMaster.findIndex((row) => row.id === tempId);
+
+    // Encontrar la primera columna editable
+    const firstEditableCol = this.colMaster.find(col => col.editable);
+    const firstEditableColKey = firstEditableCol ? firstEditableCol.field : null;
+
+    // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
+    setTimeout(() => {
+      if (firstEditableColKey) {
+        this.gridApi.startEditingCell({
+          rowIndex: newRowIndex,
+          colKey: firstEditableColKey, // Editar la primera columna editable
+        });
+      }
+    }, 50); // Un pequeño retraso de 50ms
   }
 
   async saveChanges() {
 
     //console.log('RowData', this.rowData)
-    
+
     const isValid = this.rowMaster.every((item) => item.numberAccount && item.nameAccount);
     if (!isValid) {
       alerts.basicAlert(

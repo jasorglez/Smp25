@@ -12,11 +12,10 @@ import { LoginService } from '../../../services/login.service';
 import { TrackingService } from '../../../services/tracking.service';
 import { CompanysService } from '../../../services/companys.service';
 
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
-
 import { AuthService } from '../../../services/auth.service';
 import { UsersService } from '../../../services/users.service';
 import { SignalsService } from 'app/services/signals.service';
+import { DomainsModule } from 'app/domains/domainsmodule';
 
 @Component({
   selector: 'app-complogin',
@@ -27,19 +26,11 @@ import { SignalsService } from 'app/services/signals.service';
     CommonModule,
     ReactiveFormsModule,
     RouterModule,
-    TranslateModule
+    DomainsModule
   ]
 
 })
 export class ComploginComponent implements OnInit {
-
-    translationsLoaded = false;
-
-  constructor(private translate: TranslateService) {
-    this.translate.onLangChange.subscribe(() => {
-      this.translationsLoaded = true;
-    });
-  }
 
   //idUser      = computed(()=>  this.signalsService.idUser()) ;
 
