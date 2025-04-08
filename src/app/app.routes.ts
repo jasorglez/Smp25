@@ -329,6 +329,12 @@ export const routes: Routes = [
             data: { permissions: { master: 'sales', detailed: 'cash-register' } }
           },
           {
+            path: 'before-pos',
+            loadComponent: () => import('./domains/ModSales/components/before-pos/before-pos.component').then(s => s.BeforePosComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'sales', detailed: 'pos' } }
+          },
+          {
             path: 'pos',
             loadComponent: () => import('./domains/ModSales/components/pos/pos.component').then(s => s.PosComponent),
             canActivate: [MasterPermissionsGuard],
