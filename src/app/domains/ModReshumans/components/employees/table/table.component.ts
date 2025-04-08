@@ -815,13 +815,19 @@ export class EmployeesTableComponent {
     // Encontrar el índice de la nueva fila
     const newRowIndex = this.rowData.findIndex((row) => row.id === tempId);
 
-    // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
-    setTimeout(() => {
-      this.gridApi.startEditingCell({
-        rowIndex: newRowIndex,
-        colKey: 'name',
-      });
-    }, 50); // Un pequeño retraso de 50ms
+// Encontrar la primera columna editable
+const firstEditableCol = this.colMaster.find(col => col.editable);
+const firstEditableColKey = firstEditableCol ? firstEditableCol.field : null;
+
+// Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
+setTimeout(() => {
+  if (firstEditableColKey) {
+    this.gridApi.startEditingCell({
+      rowIndex: newRowIndex,
+      colKey: firstEditableColKey, // Editar la primera columna editable
+    });
+  }
+}, 50); // Un pequeño retraso de 50ms
   }
 
   async saveMasterChanges() {
