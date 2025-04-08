@@ -13,6 +13,7 @@ import { UsersxbranchesComponent } from './usersxbranches.component';
 import { UsersxMasterPermissions2Component } from "./usersxmasterpermissions2.component";
 import { UsersXStoresComponent } from "./usersxstores.component";
 import { UsersXCashRegistersComponent } from "./usersxcashregisters.component";
+import { environment } from '@env/environment';
 
 @Component({
   selector: 'app-users-menu',
@@ -38,7 +39,7 @@ export class UsersMenuComponent {
 
     // Función para verificar si el correo es root
   isRootEmail(): boolean {
-    return this.correoglobal === 'root@biapp.com.mx';
+    return this.correoglobal === environment.root;
   }*/
 
   constructor() {
@@ -51,7 +52,7 @@ export class UsersMenuComponent {
 
     this.idRoot       = this.signalsService.getRootSelectedBySidebar()();
     
-    if (this.correoglobal === 'root@beapp.com.mx') {
+    if (this.correoglobal === environment.root) {
        this.showRoot = true
     }
   }

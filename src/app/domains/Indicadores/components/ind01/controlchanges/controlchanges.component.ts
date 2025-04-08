@@ -96,14 +96,14 @@ export class ControlChangesComponent {
         return of([]);
       })
     )
-    .subscribe({
-      next: (data: any) => {
-        this.rowData = data;
-      },
-      error: () => {
-        this.rowData = [];
-      }
-    });
+      .subscribe({
+        next: (data: any) => {
+          this.rowData = data;
+        },
+        error: () => {
+          this.rowData = [];
+        }
+      });
   }
 
 
@@ -338,6 +338,23 @@ export class ControlChangesComponent {
     this.rowData = [newItem, ...this.rowData];
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
+
+    // Encontrar el índice de la nueva fila
+    const newRowIndex = this.rowData.findIndex((row) => row.id === tempId);
+
+    // Encontrar la primera columna editable
+    const firstEditableCol = this.columnDefs.find(col => col.editable);
+    const firstEditableColKey = firstEditableCol ? firstEditableCol.field : null;
+
+    // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
+    setTimeout(() => {
+      if (firstEditableColKey) {
+        this.gridApi.startEditingCell({
+          rowIndex: newRowIndex,
+          colKey: firstEditableColKey, // Editar la primera columna editable
+        });
+      }
+    }, 50); // Un pequeño retraso de 50ms
   }
 
   async saveChanges() {
