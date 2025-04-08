@@ -139,7 +139,9 @@ export class SideBarComponent {
       this.signalsService.getemailChoose() === environment.root) {
 
       await this.branchService.getBranches2fields(idRoot).subscribe((data) => {
-        console.log(data);
+        data.sort((a, b) => a.name.localeCompare(b.name));
+        console.log("get2fields ordenado", data);
+
         // Crear el array de branches
         this.branchData = data.map(
           (branch: any) => ({
@@ -168,7 +170,7 @@ export class SideBarComponent {
               // Disparamos el evento change manualmente
               selectElement.dispatchEvent(new Event('change'));
             }
-          });
+          }, 500);
         } else {
           console.log(`No se encontró ningún branch con idRoot ${this.selectedBranchId}`);
         }
@@ -207,7 +209,7 @@ export class SideBarComponent {
                 // Disparamos el evento change manualmente
                 selectElement.dispatchEvent(new Event('change'));
               }
-            });
+            }, 500);
           } else {
             console.log(`No se encontró ningún branch con idRoot ${this.selectedBranchId}`);
           }
@@ -216,10 +218,7 @@ export class SideBarComponent {
           this.branchData = []; // Asignar un array vacío en caso de error
         });
     }
-
-
   }
-
 
   async onContractsSelected(event: Event) {
     const target = event.target as HTMLSelectElement;
@@ -234,7 +233,6 @@ export class SideBarComponent {
       //llamo a los permisos de x Project
       await this.getpermissionxProjects(Number(this.selectedContractId))
     }
-
   }
 
   async onBranchSelected(event: Event) {

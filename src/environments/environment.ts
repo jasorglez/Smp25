@@ -32,6 +32,7 @@ export const environment = {
  urlBpi            : 'https://bi2.com.mx/bpi/api', // 5005
  urlWarehouse      : 'https://bi2.com.mx/warehouse/api', // 5007
  urlAdministration : 'https://bi2.com.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
+ //urlAdministration : 'http://localhost:5047/api', // 5006 -- Tambien conocido como Tracking
 
  root : 'root@beapp.com.mx',
 
@@ -55,12 +56,6 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  urlDevelopSecurityLoginJG: 'http://198.71.49.16:5003/api/Auth/Login',
-  urlDevelopTrackingNormalPayrollJG: 'http://198.71.49.16:5006/api/NormalPayrolls',
-  urlAdministrationJG: 'http://198.71.49.16:5006/api',
-  urlLocalJG: 'http://localhost:5047/api',
-  urlLocalJGSecurity: 'http://localhost:5260/api',
-  urlLocalJGSMP: 'http://localhost:5183/api'
 };
 
 

@@ -1,3 +1,4 @@
+import { alerts } from 'app/helpers/alerts';
 import { RouterModule } from '@angular/router';
 import { Component, effect, HostListener, inject, OnInit } from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
@@ -6,7 +7,6 @@ import { FormsModule } from '@angular/forms';
 import { DomainsModule } from 'app/domains/domainsmodule';
 
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
-import { alerts } from '../../../../../helpers/alerts';
 import { AdministrationService } from 'app/services/administration.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { ModalService } from 'app/services/modal.service';
@@ -14,7 +14,8 @@ import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-edito
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { DetailpayrollComponent } from "../detailpayroll/detailpayroll.component";
 import { SignalsService } from 'app/services/signals.service';
-
+import { AuthService } from 'app/services/auth.service';
+import { BranchsService } from 'app/services/branchs.service';
 
 @Component({
   selector: 'app-master-payroll',
@@ -31,6 +32,26 @@ import { SignalsService } from 'app/services/signals.service';
 })
 
 export class MasterPayrollComponent implements OnInit {
+
+  constructor () {
+    effect(() => {
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+      this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      console.log('this.idBranch desde el constructor: ' + this.idBranch);
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+      if (this.idBranch == null) {
+        this.rowData = [];
+        alerts.basicAlert(
+          'Empleados',
+          'Debe elegir una sucursal primero.',
+          'error'
+        );
+      } else {
+        this.obtenerDatos();
+        this.obtenerBranchs();
+      }
+    });
+  }
 
   ngOnInit() {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
@@ -68,6 +89,11 @@ export class MasterPayrollComponent implements OnInit {
   }
 
   private signalsService = inject(SignalsService);
+  private authService = inject(AuthService);
+  private branchesService = inject(BranchsService);
+  private administrationService = inject(AdministrationService);
+  private payrollService = inject(PayrollService);
+
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
@@ -94,6 +120,9 @@ export class MasterPayrollComponent implements OnInit {
   aggregatingRecord: boolean = false
   initialDate: string;
   endingDate: string;
+  branchs: any[] = [];
+  idRoot: number;
+
 
   activatePayrollDetailTab() {
     this.showPayrollDetailTab = true;
@@ -220,47 +249,65 @@ export class MasterPayrollComponent implements OnInit {
         },
         width: 170,
       },
+/*-
+{
 
+        cellEditorParams: (params) => {
+          // Ensure depto data is available when creating editor
+          return {
+            values: this.branchs ? this.branchs.map((item) => item.id) : []
+          };
+        },
+        valueFormatter: (params) => {
+          // Handle potential null values and properly format the displayed value
+          if (!params.value) return '';
+
+          const foundBranch = this.branchs
+            ? this.branchs.find((item) => item.id === params.value)
+            : null;
+
+          return foundBranch ? foundBranch.name : params.value;
+        },
+      },
+*/
       {
         headerName: 'Sucursal',
         field: 'idBranch',
-        editable: (params) => { return this.aggregatingRecord },
-        valueGetter: (params) => params.data.endDate ? new Date(params.data.endDate) : null,
+        headerClass: 'required-header',
+        hide: this.authService.hasDetailedPermission('principal', 'see-all-branches') ||
+          this.signalsService.getemailChoose() === 'root@beapp.com.mx' ? false : true,
+        editable: true,
+        filter: true,
+        width: 170,
+        cellEditor: 'agSelectCellEditor',
+       /*  cellEditorParams: (params) => {
+          return {
+            values: this.branchs ? this.branchs.map((item) => item.id) : []
+          };
+        }, */
+
+        cellEditorParams: (params) => {
+          return {
+            values: this.branchs
+              ? this.branchs
+                  .slice() // Creamos una copia para no modificar el array original
+                  .sort((a, b) => a.name.localeCompare(b.name)) // Ordenamos por nombre
+                  .map((item) => item.id) // Extraemos solo los IDs
+              : []
+          };
+        },
 
         valueFormatter: (params) => {
-          if (params.value) {
+          // Handle potential null values and properly format the displayed value
+          if (!params.value) return '';
 
-          }
-          return params.data.idBranch;
+          const foundBranch = this.branchs
+            ? this.branchs.find((item) => item.id === params.value)
+            : null;
+
+          return foundBranch ? foundBranch.name : params.value;
         },
-        valueSetter: (params) => {
-          if (!params.newValue) {
-            alerts.basicAlert(
-              'Campo requerido',
-              'la fecha de fin es requerida.',
-              'error'
-            );
-            return false;
-          }
-          const duplicateExists = this.rowData.some(
-            (row, index) =>
-              index !== params.node.rowIndex && row.name === params.newValue
-          );
-
-          if (duplicateExists) {
-            alerts.basicAlert(
-              'Fecha duplicada',
-              'Ya existe una fecha.',
-              'error'
-            );
-            return false;
-          }
-
-          params.data[params.colDef.field] = params.newValue;
-          return true;
-        },
-        width: 170,
-      },
+    },
 
       { field: 'totalBaseWorkingHours', headerName: 'Total Jornadas Base', width: 170 },
 
@@ -460,7 +507,9 @@ export class MasterPayrollComponent implements OnInit {
     //const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       //id: tempId,
-      idBranch: this.idBranch,
+      //idBranch: this.idBranch,
+      idBranch: this.idBranch > 0 ? this.idBranch : null,
+
       startDate: '',
       endDate: '',
       active: true,
@@ -606,12 +655,7 @@ export class MasterPayrollComponent implements OnInit {
     filter: true
   };
 
-  constructor(private payrollService: PayrollService, private administrationService: AdministrationService) {
-    effect(() => {
-      this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-      this.obtenerDatos();
-    });
-  }
+
 
   // Formateo de valores monetarios
   currencyFormatter(params: any) {
@@ -723,6 +767,17 @@ export class MasterPayrollComponent implements OnInit {
             });
         }
       });
+  }
+
+  obtenerBranchs() {
+    console.log('this.branchs ' + this.idBranch);
+    this.branchesService.getBrancheswoa(this.idRoot).subscribe(
+      (data: any) => {
+        this.branchs = data;
+        console.log('this.branchs ' + this.branchs);
+      },
+      (error) => console.error('Error fetching data:', error)
+    );
   }
 }
 

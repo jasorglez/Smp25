@@ -39,12 +39,6 @@ export interface EmployeePayroll {
 })
 export class PayrollService {
 
-  private apiURL = `${environment.urlAdministration}/payroll`;
-  private apiURLJG = `${environment.urlLocalJG}/payroll`;
-  private apiUrlLocalJG = `${environment.urlLocalJG}/payroll`;
-  private apiUrlLocalJGEmployeesByPayroll = `${environment.urlLocalJG}/payroll`;
-  private apiUrlLocalJGNormalPayroll = `${environment.urlLocalJG}/NormalPayrolls`;
-
 
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
@@ -62,13 +56,8 @@ export class PayrollService {
   }
 
   uploadPayrollData(data: any): Observable<any> {
-    console.log("------------ UPLOADPAYROLLDATA() entrando al servicio payroll, la api original es: ", this.apiURLJG);
-    console.log("------------ UPLOADPAYROLLDATA() entrando al servicio payroll, la API CORRECTA es: ", this.apiURL);
     console.log("------------ UPLOADPAYROLLDATA() entrando al servicio payroll, la data es: ", data);
-    //var x = this.http.post<any>(this.apiUrl, data);
-    //console.log("------------ UPLOADPAYROLLDATA() saliendo del servicio payroll, la respuesta ORIGINAL es: ", x);
-    //var x = this.http.post<any>(this.apiURL, data);
-    //console.log("------------ UPLOADPAYROLLDATA() saliendo del servicio payroll, la respuesta VERDADERA es: ", x);
+
     return this.http.post<any>(`${environment.urlAdministration}/payroll`, data);
   }
 
@@ -81,7 +70,6 @@ export class PayrollService {
   }
 
   downloadPayrollExcel(idBranch: number, startDate: Date, endDate: Date): Observable<Blob> {
-    console.log("------------ DOWNLOADPAYROLLEXCEL() entrando al servicio payroll, la api original es: ", this.apiUrlLocalJGNormalPayroll);
     return this.http.get(`${environment.urlAdministration}/NormalPayrolls/download-excel/${idBranch}`, {
       params: {
         startDate: startDate.toISOString(),

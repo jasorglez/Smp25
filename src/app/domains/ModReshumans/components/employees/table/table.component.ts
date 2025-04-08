@@ -180,13 +180,13 @@ export class EmployeesTableComponent {
 
         if (currentColIndex < editableColumns.length - 1) {
           // Añadir delay de 50ms antes de mover el foco
-          setTimeout(() => {
+          requestAnimationFrame(() => {
             // Mover a la siguiente columna editable
             params.api.startEditingCell({
               rowIndex: params.node.rowIndex,
               colKey: editableColumns[currentColIndex + 1].field,
             });
-          }, 200); // Retraso para permitir que termine la edición actual
+          }); // Retraso para permitir que termine la edición actual
         }
         params.event.preventDefault(); // Prevenir comportamiento por defecto
       }
@@ -228,19 +228,23 @@ export class EmployeesTableComponent {
         filter: true,
         width: 170,
         cellEditor: 'agSelectCellEditor',
+
         cellEditorParams: (params) => {
-          // Ensure depto data is available when creating editor
           return {
-            values: this.branchs ? this.branchs.map((item) => item.id) : []
+            values: this.branchs
+              ? this.branchs
+                  .slice() // Creamos una copia para no modificar el array original
+                  .sort((a, b) => a.name.localeCompare(b.name)) // Ordenamos por nombre
+                  .map((item) => item.id) // Extraemos solo los IDs
+              : []
           };
         },
+
         valueFormatter: (params) => {
           // Handle potential null values and properly format the displayed value
           if (!params.value) return '';
 
-          const foundBranch = this.branchs
-            ? this.branchs.find((item) => item.id === params.value)
-            : null;
+          const foundBranch = this.branchs ? this.branchs.find((item) => item.id === params.value) : null;
 
           return foundBranch ? foundBranch.name : params.value;
         },
@@ -536,7 +540,7 @@ export class EmployeesTableComponent {
       },
       {
         field: 'idPosition',
-        headerName: 'Position',
+        headerName: 'Rol',
         editable: true,
         suppressMovable: true,
         filter: false,
