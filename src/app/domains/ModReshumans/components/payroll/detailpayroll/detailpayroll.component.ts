@@ -116,19 +116,19 @@ export class DetailpayrollComponent {
     {
       headerName: 'Faltas',
       width: 100,
-      field: '',
-      valueFormatter: (params) => {
+      field: 'absences',
+     /*  valueFormatter: (params) => {
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
-      }
+      } */
     },
 
     {
       headerName: 'Retardos',
       width: 110,
-      field: '',
-      valueFormatter: (params) => {
+      field: 'delays',
+     /*  valueFormatter: (params) => {
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
-      }
+      } */
     },
 
     {
@@ -151,12 +151,16 @@ export class DetailpayrollComponent {
     effect(() => {
       this.idPayroll = this.signalsService.getNormalPayrollId()();
       this.loadData();
+      console.log("------------------------------------ Constructor ID PAYROLL: ", this.idPayroll);
+      console.log("-------- entrando a detailpayroll, este es el constructor  ")
     });
   }
 
   ngOnInit() {
-    this.idPayroll = this.signalsService.getIdEmployee()();
-    this.loadData();
+      this.idPayroll = this.signalsService.getIdEmployee()();
+      this.loadData();
+      console.log("------------------------------------ ngOninit ID PAYROLL: ", this.idPayroll);
+      console.log("-------- entrando a detailpayroll, este es el ngOninit  ");
   }
 
   loadData() {
@@ -167,7 +171,7 @@ export class DetailpayrollComponent {
     this.payrollService.getDetailsForNormalPayrolls(this.idPayroll).subscribe(
       (data: any) => {
         this.rowData = data;
-        console.log("------------------------------------ DEATILPAYROLLSERVICE: ", this.rowData);
+        console.log("------------------------------------ DETAILPAYROLLSERVICE: ", this.rowData);
         if (this.gridApi) {
           //this.gridApi.sizeColumnsToFit(); // Ajustar columnas al tamaño del contenedor
           // O también puedes usar:
