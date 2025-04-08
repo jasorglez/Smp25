@@ -91,7 +91,7 @@ export const routes: Routes = [
         path: 'admon',
         loadComponent: () => import('./domains/Admonapp/Pages/procadmon/procadmon.component').then(a => a.ProcadmonComponent),
         canActivate: [MasterPermissionsGuard],
-        data: { permissions: { master: 'administration' } }
+        data: { permissions: { master: 'administration' } },
       },
       {
         path: 'indicgrals',
@@ -194,6 +194,12 @@ export const routes: Routes = [
             loadComponent: () => import('./domains/SMP/Components/branches/branches.component').then(u => u.BranchesComponent),
             canActivate: [MasterPermissionsGuard],
             data: { permissions: { master: 'setup', detailed: 'branches' } }
+          },
+          {
+            path: 'logs',
+            loadComponent: () => import('./domains/SMP/Components/kardex/kardex.component').then(k => k.KardexComponent),
+         //   canActivate: [MasterPermissionsGuard],
+         //   data: { permissions: { master: 'setup', detailed: 'logs' } }
           },
           {
             path: 'catalog',

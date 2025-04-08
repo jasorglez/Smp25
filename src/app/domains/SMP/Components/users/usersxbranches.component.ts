@@ -9,6 +9,7 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray, forkJoin } from 'rxj
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { SignalsService } from 'app/services/signals.service';
 import { BranchsService } from 'app/services/branchs.service';
+import { environment } from '@env/environment';
 
 @Component({
   selector: 'app-usersxbranches',
@@ -57,11 +58,11 @@ export class UsersxbranchesComponent {
   }
 
   ngOnInit() {
-    if (this.signalsService.getemailChoose() === 'root@beapp.com.mx') {
+    if (this.signalsService.getemailChoose() === environment.root) {
        this.idRoot = this.signalsService.getCompanyFromPermissions()();    
     }
     
-    if (this.signalsService.getemailChoose() !== 'root@beapp.com.mx') {
+    if (this.signalsService.getemailChoose() !== environment.root) {
        this.idRoot = this.signalsService.getRootSelectedBySidebar()()
     }
     //alert('id Root ' + this.idRoot);   

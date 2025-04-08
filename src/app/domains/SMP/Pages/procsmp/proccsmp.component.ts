@@ -4,6 +4,7 @@ import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { SignalsService } from 'app/services/signals.service';
 import { AuthService } from 'app/services/auth.service';
+import { environment } from '@env/environment';
 
 @Component({
   selector: 'app-proccsmp',
@@ -23,7 +24,7 @@ export class ProccsmpComponent {
   canSeeUsers: boolean = false;
 
   ngOnInit() {
-    if (this.signalsService.getemailChoose() === 'root@beapp.com.mx') {
+    if (this.signalsService.getemailChoose() === environment.root) {
       this.isRoot = true;
     }
     else {

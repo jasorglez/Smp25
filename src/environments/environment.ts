@@ -34,6 +34,8 @@ export const environment = {
  urlAdministration : 'https://bi2.com.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
  //urlAdministration : 'http://localhost:5047/api', // 5006 -- Tambien conocido como Tracking
 
+ root : 'root@beapp.com.mx',
+
   //  urlAzure    : 'https://localhost:7089/',
 
   googleDriveCredentials:{ client_email: 'jsorglez@gmail.com',

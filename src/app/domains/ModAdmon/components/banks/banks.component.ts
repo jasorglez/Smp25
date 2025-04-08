@@ -23,7 +23,7 @@ export class BanksComponent {
   constructor() { this.obtenerDatos(); }
 
   ngOnInit() {
-   // this.obtenerDatos();
+    // this.obtenerDatos();
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -35,7 +35,7 @@ export class BanksComponent {
   }
 
   notSavedChanges: boolean = false;
-  Bankdata: any[]=[];
+  Bankdata: any[] = [];
 
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
@@ -48,8 +48,8 @@ export class BanksComponent {
 
   currentIndex = 0;
 
-//  public rowSelection: 'single' | 'multiple' = 'single';
- // public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
+  //  public rowSelection: 'single' | 'multiple' = 'single';
+  // public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
 
   frameworkComponents = {
     multiLineEditor: MultiLineEditorComponent
@@ -60,101 +60,104 @@ export class BanksComponent {
   private modalServiceTable = inject(ModalService);
   private imageHandlerService = inject(ImageHandlerService);
 
-// Column Definitions: Defines the columns to be displayed.
-public gridOptions: any = {
-  headerHeight: 30,
-  rowHeight: 30,
-  suppressDragLeaveHidesColumns: true,
-  rowGroupPanelShow: 'never', // Configuración definitiva
-  suppressRowClickSelection: true, // Mejor manejo de selección
-  getRowClass: (params) => {
-    if (params.node.isSelected()) {
-      return 'selected-row';
-    }
-    return '';
-  },
-  onRowClicked: (event) => {
-    event.node.setSelected(true);
-  },
-  onRowSelected: (event) => {
-    if (event.node.isSelected()) {
-      this.gridApi.forEachNode((node) => {
-        if (node.id !== event.node.id) {
-          node.setSelected(false);
-        }
-      });
-    }
-  },
-};
+  // Column Definitions: Defines the columns to be displayed.
+  public gridOptions: any = {
+    headerHeight: 30,
+    rowHeight: 30,
+    suppressDragLeaveHidesColumns: true,
+    rowGroupPanelShow: 'never', // Configuración definitiva
+    suppressRowClickSelection: true, // Mejor manejo de selección
+    getRowClass: (params) => {
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onRowClicked: (event) => {
+      event.node.setSelected(true);
+    },
+    onRowSelected: (event) => {
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    },
+  };
 
-get colMaster(): ColDef[] {
-  return [
-    { field: 'name', headerName: 'NombrePrueba', editable: true, filter: true, width: 220 },
-    { field: 'branch', headerName: 'Sucursal', editable: false, width: 220, filter: true,
-      cellEditor: 'agPopupTextCellEditor',
-      cellEditorParams: {
-        maxLength: 100,
-        cols: 50,
-        rows: 3,
-        onKeyDown: (event: KeyboardEvent) => {
-          if (event.key === 'Enter' && !event.shiftKey) {
-            event.stopPropagation();
+  get colMaster(): ColDef[] {
+    return [
+      { field: 'name', headerName: 'NombrePrueba', editable: true, filter: true, width: 220 },
+      {
+        field: 'branch', headerName: 'Sucursal', editable: false, width: 220, filter: true,
+        cellEditor: 'agPopupTextCellEditor',
+        cellEditorParams: {
+          maxLength: 100,
+          cols: 50,
+          rows: 3,
+          onKeyDown: (event: KeyboardEvent) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.stopPropagation();
+            }
+          },
+        },
+        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+          if (!event.node.group) {
+            this.modalServiceTable.showModal({
+              params: event,
+              value: event.value,
+            });
           }
         },
-      },
-      onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-        if (!event.node.group) {
-          this.modalServiceTable.showModal({
-            params: event,
-            value: event.value,
-          });
-        }
-      },
-      cellRenderer: (params: ICellRendererParams) => {
-        if (params.node.group) {
+        cellRenderer: (params: ICellRendererParams) => {
+          if (params.node.group) {
+            return params.value;
+          }
           return params.value;
         }
-        return params.value;
-      }
-     },
-
-    { field: 'contact', headerName: 'Contacto', editable: true, width: 200 },
-
-    { field: 'phone', headerName: 'Telefono', editable: true, width: 169, cellEditorParams: {
-        maxLength: 15  }
-    },
-
-    {
-      field: 'picture',
-      headerName: 'Imagen',
-      cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
-      cellRendererParams: {
-        clicked: this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService),
-        field: 'picture'
       },
-      editable: false,
-      width: 180
-    },
 
-    { field: 'numBranch', headerName: 'Numero Sucursal', editable: true, width: 180 },
+      { field: 'contact', headerName: 'Contacto', editable: true, width: 200 },
 
-    { field: 'code', headerName: 'Codigo', editable: true, width: 105 },
+      {
+        field: 'phone', headerName: 'Telefono', editable: true, width: 169, cellEditorParams: {
+          maxLength: 15
+        }
+      },
 
-  ]
-};
+      {
+        field: 'picture',
+        headerName: 'Imagen',
+        cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
+        cellRendererParams: {
+          clicked: this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService),
+          field: 'picture'
+        },
+        editable: false,
+        width: 180
+      },
 
-obtenerDatos() {
-  this.administrationService.getBanks().subscribe({
-    next: (data: any) => {
-      this.Bankdata = data;
-      //console.log('Data Bank:', data);
-    },
-    error: (error) => {
-      console.error('Error fetching banks:', error);
-      // Optional: show user-friendly error message
-    }
-  });
-}
+      { field: 'numBranch', headerName: 'Numero Sucursal', editable: true, width: 180 },
+
+      { field: 'code', headerName: 'Codigo', editable: true, width: 105 },
+
+    ]
+  };
+
+  obtenerDatos() {
+    this.administrationService.getBanks().subscribe({
+      next: (data: any) => {
+        this.Bankdata = data;
+        //console.log('Data Bank:', data);
+      },
+      error: (error) => {
+        console.error('Error fetching banks:', error);
+        // Optional: show user-friendly error message
+      }
+    });
+  }
 
   onSelectedRow(event: any) {
     //console.log('es el evento',event)
@@ -162,7 +165,7 @@ obtenerDatos() {
   }
 
   onSelectionChanged(event: any) {
-    console.log('Viene del OnSelectionChanged',event)
+    console.log('Viene del OnSelectionChanged', event)
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
@@ -178,29 +181,46 @@ obtenerDatos() {
   }
 
   onGridReady(params: GridReadyEvent) {
- //   console.log('Grid API inicializada:', params.api);
+    //   console.log('Grid API inicializada:', params.api);
     this.gridApi = params.api;
   }
- 
+
 
   addRow() {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idBranch  : 1,
-      name      : '',
-      branch    : '',
-      numBranch : '',
-      contact   : '',
-      phone     : '',
-      picture   : '',
-      code      : '',
+      idBranch: 1,
+      name: '',
+      branch: '',
+      numBranch: '',
+      contact: '',
+      phone: '',
+      picture: '',
+      code: '',
       active: true,
       __isNew: true,
     };
     this.Bankdata = [newItem, ...this.Bankdata];
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
+
+    // Encontrar el índice de la nueva fila
+    const newRowIndex = this.Bankdata.findIndex((row) => row.id === tempId);
+
+    // Encontrar la primera columna editable
+    const firstEditableCol = this.colMaster.find(col => col.editable);
+    const firstEditableColKey = firstEditableCol ? firstEditableCol.field : null;
+
+    // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
+    setTimeout(() => {
+      if (firstEditableColKey) {
+        this.gridApi.startEditingCell({
+          rowIndex: newRowIndex,
+          colKey: firstEditableColKey, // Editar la primera columna editable
+        });
+      }
+    }, 50); // Un pequeño retraso de 50ms
   }
 
   async saveChanges() {

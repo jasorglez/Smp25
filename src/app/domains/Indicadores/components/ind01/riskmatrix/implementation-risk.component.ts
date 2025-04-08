@@ -80,32 +80,32 @@ export class ImplementationRiskComponent {
       });
   }
 
-// Column Definitions: Defines the columns to be displayed.
-public gridOptions: any = {
-  headerHeight: 30,
-  rowHeight: 30,
-  rowClass: (params) => {
-    // Verificar si la fila está seleccionada
-    if (params.node.isSelected()) {
-      return 'selected-row';
-    }
-    return '';
-  },
-  onRowClicked: (event) => {
-    // Seleccionar la fila al hacer clic en cualquier celda
-    event.node.setSelected(true);
-  },
-  onRowSelected: (event) => {
-    // Deseleccionar otras filas cuando se selecciona una nueva
-    if (event.node.isSelected()) {
-      this.gridApi.forEachNode((node) => {
-        if (node.id !== event.node.id) {
-          node.setSelected(false);
-        }
-      });
-    }
-  },
-};
+  // Column Definitions: Defines the columns to be displayed.
+  public gridOptions: any = {
+    headerHeight: 30,
+    rowHeight: 30,
+    rowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onRowClicked: (event) => {
+      // Seleccionar la fila al hacer clic en cualquier celda
+      event.node.setSelected(true);
+    },
+    onRowSelected: (event) => {
+      // Deseleccionar otras filas cuando se selecciona una nueva
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    },
+  };
 
   get columnDefs(): ColDef[] {
     return [
@@ -122,113 +122,113 @@ public gridOptions: any = {
         editable: true,
         width: 140
       },
-    {
-      field: 'reach',
-      headerName: 'Alcance',
-      cellDataType: 'number',
-      editable: true,
-      width: 140
-    },
-    {
-      field: 'time',
-      headerName: 'Tiempo',
-      cellDataType: 'number',
-      editable: true,
-      width: 140
-    },
-    {
-      field: 'cost',
-      headerName: 'Costo',
-      cellDataType: 'number',
-      editable: true,
-      width: 140
-    },
-    {
-      field: 'quality',
-      headerName: 'Calidad',
-      cellDataType: 'number',
-      editable: true,
-      width: 140
-    },
-    {
-      field: 'qualification',
-      headerName: 'Calificación residual',
-      cellDataType: 'number',
-      editable: false,
-      width: 140
-    },
-    {
-      field: 'state',
-      headerName: 'Estado Plan de Respuesta',
-      cellDataType: 'text',
-      editable: true,
-      width: 200
-    },
-    {
-      field: 'reach',
-      headerName: 'Alcance',
-      cellDataType: 'number',
-      editable: true,
-      width: 140
-    },
-    {
-      field: 'advancedReal',
-      headerName: '% Avance Real',
-      cellDataType: 'number',
-      editable: true,
-      width: 140
-    },
-    {
-      field: 'advancedPlanning',
-      headerName: '% Avance Planeado',
-      cellDataType: 'number',
-      editable: true,
-      width: 140
-    },
-    {
-      field: 'spi',
-      headerName: 'SPI',
-      cellDataType: 'number',
-      editable: false,
-      width: 140
-    },
-    {
-      field: 'status',
-      headerName: 'Estado',
-      editable: true,
-      cellEditor: 'agRichSelectCellEditor',
+      {
+        field: 'reach',
+        headerName: 'Alcance',
+        cellDataType: 'number',
+        editable: true,
+        width: 140
+      },
+      {
+        field: 'time',
+        headerName: 'Tiempo',
+        cellDataType: 'number',
+        editable: true,
+        width: 140
+      },
+      {
+        field: 'cost',
+        headerName: 'Costo',
+        cellDataType: 'number',
+        editable: true,
+        width: 140
+      },
+      {
+        field: 'quality',
+        headerName: 'Calidad',
+        cellDataType: 'number',
+        editable: true,
+        width: 140
+      },
+      {
+        field: 'qualification',
+        headerName: 'Calificación residual',
+        cellDataType: 'number',
+        editable: false,
+        width: 140
+      },
+      {
+        field: 'state',
+        headerName: 'Estado Plan de Respuesta',
+        cellDataType: 'text',
+        editable: true,
+        width: 200
+      },
+      {
+        field: 'reach',
+        headerName: 'Alcance',
+        cellDataType: 'number',
+        editable: true,
+        width: 140
+      },
+      {
+        field: 'advancedReal',
+        headerName: '% Avance Real',
+        cellDataType: 'number',
+        editable: true,
+        width: 140
+      },
+      {
+        field: 'advancedPlanning',
+        headerName: '% Avance Planeado',
+        cellDataType: 'number',
+        editable: true,
+        width: 140
+      },
+      {
+        field: 'spi',
+        headerName: 'SPI',
+        cellDataType: 'number',
+        editable: false,
+        width: 140
+      },
+      {
+        field: 'status',
+        headerName: 'Estado',
+        editable: true,
+        cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
           values: ['ABIERTO', 'CERRADO'],
         },
         width: 140
-    },
-    {
-      field: 'condition',
-      headerName: 'Condición Disparadora',
-      cellDataType: 'text',
-      editable: true,
-      width: 200
-    },
-    {
-      field: 'dateClose',
-      headerName: 'Fecha de cierre',
-      editable: true,
-      width: 200,
-      cellDataType: 'dateString',
+      },
+      {
+        field: 'condition',
+        headerName: 'Condición Disparadora',
+        cellDataType: 'text',
+        editable: true,
+        width: 200
+      },
+      {
+        field: 'dateClose',
+        headerName: 'Fecha de cierre',
+        editable: true,
+        width: 200,
+        cellDataType: 'dateString',
         valueFormatter: (params) => {
           if (params.value) {
             return params.value.split('T')[0];
           }
           return '';
         }
-    },
-    {
-      field: 'observation',
-      headerName: 'Observación',
-      cellDataType: 'text',
-      editable: true,
-      width: 200
-    },
+      },
+      {
+        field: 'observation',
+        headerName: 'Observación',
+        cellDataType: 'text',
+        editable: true,
+        width: 200
+      },
     ];
   }
 
@@ -280,7 +280,7 @@ public gridOptions: any = {
       qualification: null,
       state: '',
       advancedReal: 0,
-      advancedPlanning: 0, 
+      advancedPlanning: 0,
       status: '',
       condition: '',
       dateClose: '',
@@ -291,6 +291,23 @@ public gridOptions: any = {
     this.rowData = [newItem, ...this.rowData];
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
+
+    // Encontrar el índice de la nueva fila
+    const newRowIndex = this.rowData.findIndex((row) => row.id === tempId);
+
+    // Encontrar la primera columna editable
+    const firstEditableCol = this.columnDefs.find(col => col.editable);
+    const firstEditableColKey = firstEditableCol ? firstEditableCol.field : null;
+
+    // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
+    setTimeout(() => {
+      if (firstEditableColKey) {
+        this.gridApi.startEditingCell({
+          rowIndex: newRowIndex,
+          colKey: firstEditableColKey, // Editar la primera columna editable
+        });
+      }
+    }, 50); // Un pequeño retraso de 50ms
   }
 
   async saveChanges() {

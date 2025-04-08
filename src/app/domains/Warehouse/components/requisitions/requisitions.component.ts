@@ -107,11 +107,12 @@ export class RequisitionsComponent {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.idRequisition = this.signalsService.getIdRequisition()();
       this.getSetupData();
+      this.obtenerDepartamentos();
       this.idReference = this.projectOrBranch ? this.idProject : this.idBranch;
       console.log(this.idReference);
       this.obtenerDatos();
       this.obtenerProductos();
-
+      this.obtenerMonedas();
       if (this.idRequisition != null) {
         this.obtenerDetalles();
       }
@@ -224,7 +225,7 @@ export class RequisitionsComponent {
       },
       {
         field: 'delivery',
-        headerName: 'Identificador',
+        headerName: 'Entrega',
         editable: true,
         filter: true,
         width: 150,
@@ -245,26 +246,12 @@ export class RequisitionsComponent {
           const foundItem = this.departamentos
             ? this.departamentos.find((item) => item.id === params.value)
             : null;
-          return foundItem ? `${foundItem.name}` : params.value;
+          return foundItem ? `${foundItem.description}` : params.value;
         },
       },
       {
         field: 'solicit',
-        headerName: 'Persona Solicita',
-        editable: true,
-        width: 150,
-      },
-      {
-        field: 'delivery',
-        headerName: 'Materiales',
-        editable: true,
-        filter: true,
-        width: 150,
-      },
-      { field: 'solicit', headerName: 'Cantidad', editable: true, width: 150 },
-      {
-        field: 'solicit',
-        headerName: 'Cargado de Cotizaciones',
+        headerName: 'Encargado de Cotizaciones',
         editable: true,
         width: 150,
       },
@@ -283,7 +270,7 @@ export class RequisitionsComponent {
       },
       {
         field: 'deliveryTime',
-        headerName: 'ID OC',
+        headerName: 'Tiempo Entrega',
         editable: true,
         filter: true,
         width: 150,
@@ -299,30 +286,6 @@ export class RequisitionsComponent {
             return params.value.split('T')[0];
           }
           return '';
-        },
-      },
-
-      {
-        field: 'deliveryTime',
-        headerName: 'Tiempo de entrega',
-        editable: true,
-        filter: true,
-        width: 150,
-      },
-      {
-        field: 'idCurrency',
-        headerName: 'Moneda',
-        editable: true,
-        width: 150,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.monedas ? this.monedas.map((item) => item.id) : [],
-        },
-        valueFormatter: (params) => {
-          const foundItem = this.monedas
-            ? this.monedas.find((item) => item.id === params.value)
-            : null;
-          return foundItem ? `${foundItem.description}` : params.value;
         },
       },
       {
@@ -496,9 +459,10 @@ export class RequisitionsComponent {
   }
 
   obtenerDepartamentos() {
-    this.departmentsService.getDepartments().subscribe(
-      (data: Provider[]) => {
+    this.departmentsService.getDepartments(this.idRoot).subscribe(
+      (data: Catalog[]) => {
         this.departamentos = data;
+        console.log(this.departamentos);
       },
       (error) => console.error('Error fetching departments:', error)
     );
@@ -514,9 +478,10 @@ export class RequisitionsComponent {
   }
 
   obtenerMonedas() {
-    this.currencyService.getCurrencies().subscribe(
+    this.currencyService.getCurrencies(this.idRoot).subscribe(
       (data: Catalog[]) => {
         this.monedas = data;
+        console.log("Monedas", this.monedas)
       },
       (error) => console.error('Error fetching currencies:', error)
     );

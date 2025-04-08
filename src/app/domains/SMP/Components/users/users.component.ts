@@ -14,6 +14,8 @@ import { ImageHandlerService } from 'app/services/image-handler.service';
 import { SignalsService } from 'app/services/signals.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
+import { env } from 'echarts';
+import { environment } from '@env/environment';
 
 @Injectable({
   providedIn: 'root',
@@ -114,7 +116,7 @@ export class UsersComponent {
       }
     };
 
-    if (this.signalsService.getemailChoose() === 'root@beapp.com.mx') {
+    if (this.signalsService.getemailChoose() === environment.root) {
       this.usersService.getAllUsers().subscribe(observer);
     } else {
       this.usersService.getDataUsers(this.idRoot).subscribe(observer);
@@ -289,7 +291,7 @@ export class UsersComponent {
       },
       {
         field: 'idDepartament',
-        headerName: 'Departamento',
+        headerName: 'Rol de Usuario',
         editable: true,
         suppressMovable: true,
         filter: false,

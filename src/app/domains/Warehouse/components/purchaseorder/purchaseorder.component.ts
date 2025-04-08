@@ -139,6 +139,32 @@ export class PurchaseOrderComponent {
     }
   }
 
+  public gridOptions: any = {
+    headerHeight: 25,
+    rowHeight: 20,
+    rowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onRowClicked: (event) => {
+      // Seleccionar la fila al hacer clic en cualquier celda
+      event.node.setSelected(true);
+    },
+    onRowSelected: (event) => {
+      // Corregir usando el api del evento y verificando existencia
+      if (event.node.isSelected() && event.api) {
+        event.api.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    },
+  };
+
 
   getSetupData() {
     this.setupService.getWarehouseSetup(this.idRoot).subscribe({
@@ -498,9 +524,10 @@ public masterGridOptions: any = {
   }
 
   obtenerDepartamentos() {
-    this.departmentsService.getDepartments().subscribe(
+    this.departmentsService.getDepartments(this.idRoot).subscribe(
       (data: Provider[]) => {
         this.departamentos = data;
+        console.log(this.departamentos);
       },
       (error) => console.error('Error fetching departments:', error)
     );
@@ -516,7 +543,7 @@ public masterGridOptions: any = {
   }
 
   obtenerMonedas() {
-    this.currencyService.getCurrencies().subscribe(
+    this.currencyService.getCurrencies(this.idRoot).subscribe(
       (data: Catalog[]) => {
         this.monedas = data;
       },

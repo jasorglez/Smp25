@@ -27,6 +27,7 @@ import { TimeService } from 'app/services/time.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { AuthService } from 'app/services/auth.service';
+import { environment } from '@env/environment';
 
 @Component({
   selector: 'app-employees-table',
@@ -202,9 +203,9 @@ export class EmployeesTableComponent {
           filterOptions: ['equals'], // Opciones de filtro
         },
       },
-      {
+      /*{
         field: 'picture',
-        headerName: 'Fotografía',
+        headerName: 'Fotografía 2',
         cellRenderer: this.imageHandlerService.imageCellRenderer.bind(
           this.imageHandlerService
         ),
@@ -216,13 +217,13 @@ export class EmployeesTableComponent {
         },
         editable: false,
         width: 100,
-      },
+      },*/
       {
         field: 'idBranch',
         headerName: 'Nombre sucursal *',
         headerClass: 'required-header',
         hide: this.authService.hasDetailedPermission('principal', 'see-all-branches') ||
-          this.signalsService.getemailChoose() === 'root@beapp.com.mx' ? false : true,
+          this.signalsService.getemailChoose() === environment.root ? false : true,
         editable: true,
         filter: true,
         width: 170,
@@ -373,6 +374,7 @@ export class EmployeesTableComponent {
           }
           return '$0.00';
         },
+        cellStyle: { backgroundColor: '#d4edda' },
       },
       {
         field: 'saving',
@@ -390,6 +392,7 @@ export class EmployeesTableComponent {
           }
           return '$0.00';
         },
+        cellStyle: { backgroundColor: '#d4edda' },
       },
       {
         field: 'idDepto',
@@ -496,13 +499,15 @@ export class EmployeesTableComponent {
         headerName: 'Colonia',
         editable: true,
         filter: true,
-        width: 150,
+        width: 300,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: (params) => {
           if (this.infoCp && this.infoCp.length > 0) {
             const asentamientos = this.infoCp[0].asentamientos;
+            // Ordenar los asentamientos alfabéticamente
+            const sortedAsentamientos = asentamientos.sort((a, b) => a.localeCompare(b));
             return {
-              values: asentamientos,
+              values: sortedAsentamientos,
             };
           }
           return { values: [] };
@@ -814,13 +819,19 @@ export class EmployeesTableComponent {
     // Encontrar el índice de la nueva fila
     const newRowIndex = this.rowData.findIndex((row) => row.id === tempId);
 
-    // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
-    setTimeout(() => {
-      this.gridApi.startEditingCell({
-        rowIndex: newRowIndex,
-        colKey: 'name',
-      });
-    }, 50); // Un pequeño retraso de 50ms
+// Encontrar la primera columna editable
+const firstEditableCol = this.colMaster.find(col => col.editable);
+const firstEditableColKey = firstEditableCol ? firstEditableCol.field : null;
+
+// Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
+setTimeout(() => {
+  if (firstEditableColKey) {
+    this.gridApi.startEditingCell({
+      rowIndex: newRowIndex,
+      colKey: firstEditableColKey, // Editar la primera columna editable
+    });
+  }
+}, 50); // Un pequeño retraso de 50ms
   }
 
   async saveMasterChanges() {

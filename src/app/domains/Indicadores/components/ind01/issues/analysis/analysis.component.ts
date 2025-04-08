@@ -124,33 +124,33 @@ export class AnalysisComponent {
     }
   }
 
-// Column Definitions: Defines the columns to be displayed.
-public gridOptions: any = {
-  headerHeight: 30,
-  rowHeight: 30,
-  rowClass: (params) => {
-    // Verificar si la fila está seleccionada
-    if (params.node.isSelected()) {
-      return 'selected-row';
-    }
-    return '';
-  },
-  onRowClicked: (event) => {
-    // Seleccionar la fila al hacer clic en cualquier celda
-    event.node.setSelected(true);
-  },
-  onRowSelected: (event) => {
-    // Deseleccionar otras filas cuando se selecciona una nueva
-    if (event.node.isSelected()) {
-      this.gridApi.forEachNode((node) => {
-        if (node.id !== event.node.id) {
-          node.setSelected(false);
-        }
-      });
-    }
-  },
-};
-  
+  // Column Definitions: Defines the columns to be displayed.
+  public gridOptions: any = {
+    headerHeight: 30,
+    rowHeight: 30,
+    rowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onRowClicked: (event) => {
+      // Seleccionar la fila al hacer clic en cualquier celda
+      event.node.setSelected(true);
+    },
+    onRowSelected: (event) => {
+      // Deseleccionar otras filas cuando se selecciona una nueva
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    },
+  };
+
   get columnDefs(): ColDef[] {
     return [
       {
@@ -261,6 +261,23 @@ public gridOptions: any = {
     this.rowData = [newItem, ...this.rowData];
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
+
+    // Encontrar el índice de la nueva fila
+    const newRowIndex = this.rowData.findIndex((row) => row.id === tempId);
+
+    // Encontrar la primera columna editable
+    const firstEditableCol = this.columnDefs.find(col => col.editable);
+    const firstEditableColKey = firstEditableCol ? firstEditableCol.field : null;
+
+    // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
+    setTimeout(() => {
+      if (firstEditableColKey) {
+        this.gridApi.startEditingCell({
+          rowIndex: newRowIndex,
+          colKey: firstEditableColKey, // Editar la primera columna editable
+        });
+      }
+    }, 50); // Un pequeño retraso de 50ms
   }
 
 

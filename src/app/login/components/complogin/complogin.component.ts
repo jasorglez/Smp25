@@ -12,11 +12,10 @@ import { LoginService } from '../../../services/login.service';
 import { TrackingService } from '../../../services/tracking.service';
 import { CompanysService } from '../../../services/companys.service';
 
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
-
 import { AuthService } from '../../../services/auth.service';
 import { UsersService } from '../../../services/users.service';
 import { SignalsService } from 'app/services/signals.service';
+import { DomainsModule } from 'app/domains/domainsmodule';
 
 @Component({
   selector: 'app-complogin',
@@ -27,19 +26,11 @@ import { SignalsService } from 'app/services/signals.service';
     CommonModule,
     ReactiveFormsModule,
     RouterModule,
-    TranslateModule
+    DomainsModule
   ]
 
 })
 export class ComploginComponent implements OnInit {
-
-    translationsLoaded = false;
-
-  constructor(private translate: TranslateService) {
-    this.translate.onLangChange.subscribe(() => {
-      this.translationsLoaded = true;
-    });
-  }
 
   //idUser      = computed(()=>  this.signalsService.idUser()) ;
 
@@ -139,13 +130,8 @@ export class ComploginComponent implements OnInit {
         });
       },
       error: (err) => {
-        if (err.error.error.message == "EMAIL_NOT_FOUND") {
-          alerts.basicAlert("Error", 'Invalid email', "error");
-        } else if (err.error.error.message == "INVALID_PASSWORD") {
-          alerts.basicAlert("Error", 'Invalid password', "error");
-        } else {
-          alerts.basicAlert("Error", "An error occurred", "error");
-        }
+        console.log(err);
+        alerts.basicAlert("Error", "Los datos de logueo son inválidos", "error");
       }
     });
   }

@@ -24,11 +24,11 @@ export class IdentificationRiskComponent implements OnInit {
   private riskMatrixService = inject(RiskmatrixService);
   private signalsService = inject(SignalsService);
   private modalServiceTable = inject(ModalService);
-  private datePipe = inject(DatePipe);  
+  private datePipe = inject(DatePipe);
   idProject: number = null;
   idIdentificationRisk = this.signalsService.getIdIdentificationRisk()();
-  fecha: string;  
-  
+  fecha: string;
+
 
   constructor() {
     effect(() => {
@@ -179,7 +179,7 @@ export class IdentificationRiskComponent implements OnInit {
         editable: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-            values: ['Positivo', 'Negativo'],
+          values: ['Positivo', 'Negativo'],
         },
         flex: 2,
       },
@@ -189,7 +189,7 @@ export class IdentificationRiskComponent implements OnInit {
         editable: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-            values: ['Pemex', 'Contratista', 'Naturaleza'],
+          values: ['Pemex', 'Contratista', 'Naturaleza'],
         },
         flex: 2,
       },
@@ -214,7 +214,7 @@ export class IdentificationRiskComponent implements OnInit {
     this.setSignals();
     event.data.__modified = true;
     this.notSavedChanges = true;
-    
+
     // Añadir esta comprobación
     if (this.newlyAddedRows.includes(event.data.id)) {
       const index = this.rowData.findIndex(row => row.id === event.data.id);
@@ -256,6 +256,23 @@ export class IdentificationRiskComponent implements OnInit {
     this.rowData = [newItem, ...this.rowData];
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
+
+    // Encontrar el índice de la nueva fila
+    const newRowIndex = this.rowData.findIndex((row) => row.id === tempId);
+
+    // Encontrar la primera columna editable
+    const firstEditableCol = this.columnDefs.find(col => col.editable);
+    const firstEditableColKey = firstEditableCol ? firstEditableCol.field : null;
+
+    // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
+    setTimeout(() => {
+      if (firstEditableColKey) {
+        this.gridApi.startEditingCell({
+          rowIndex: newRowIndex,
+          colKey: firstEditableColKey, // Editar la primera columna editable
+        });
+      }
+    }, 50); // Un pequeño retraso de 50ms
   }
 
   async saveChanges() {
@@ -263,19 +280,19 @@ export class IdentificationRiskComponent implements OnInit {
     const modifiedRows = this.rowData.filter(
       (row) => row.__modified && !this.newlyAddedRows.includes(row.id)
     );
-  
+
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       console.log(cleanedData);
       return this.riskMatrixService.addIdentificationRisk(cleanedData);
     });
-  
+
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       console.log(cleanedData);
       return this.riskMatrixService.updateIdentificationRisk(row.id, cleanedData);
     });
-  
+
     try {
       const responses = await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
