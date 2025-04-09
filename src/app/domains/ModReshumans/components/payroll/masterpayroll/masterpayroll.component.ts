@@ -37,7 +37,6 @@ export class MasterPayrollComponent implements OnInit {
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-      console.log('this.idBranch desde el constructor: ' + this.idBranch);
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       if (this.idBranch == null) {
         this.rowData = [];
@@ -55,19 +54,15 @@ export class MasterPayrollComponent implements OnInit {
 
   ngOnInit() {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-    console.log("--------------- este es el idbranch MASTERPAYROLL: ", this.idBranch);
     this.obtenerDatos();
   }
 
   obtenerDatos() {
     this.administrationService.getNormalPayrolls(this.idBranch).subscribe((data: any) => {
       this.rowData = data;
-      console.log("--------------- MASTERPAYROLL esto llega en data: ", data);
-      console.log("--------------- MASTERPAYROLL este es el idbranch: ", this.idBranch);
     },
       (error) => {
         this.rowData = [];
-        console.log("-------- MASTERPAYROLL Error al obtener datos de normal payrolls: ", error);
       });
   }
 
@@ -75,11 +70,8 @@ export class MasterPayrollComponent implements OnInit {
     this.administrationService.getDPPayrollsExistence(startDate, endDate, idBranch).
       subscribe({
         next: (payrollId) => {
-          console.log("-------------- PayrollId Recibido: ", payrollId);
           if (payrollId !== 0) {
-            console.log(`Nómina encontrada con ID: ${payrollId}`);
           } else {
-            console.log('No se encontró ninguna nómina.');
           }
         },
         error: (error) => {
@@ -156,19 +148,15 @@ export class MasterPayrollComponent implements OnInit {
 
         valueGetter: (params) => {
           if (params.node.rowIndex == 0) {
-            //console.log('Params completo:', params);
-            //console.log('Datos de la fila:', params.data);
-            //console.log('Valor de startDate:', params.data.startDate);
+
           }
           return params.data.startDate ? new Date(params.data.startDate) : null;
         },
 
         valueFormatter: (params) => {
           if (params.value) {
-            //console.log("------- dentro de valueFormatter startDate: ", params.value);
             const date = new Date(params.value);
             this.initialDate = `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
-            //console.log("------- dentro de valueFormatter startDate valorObtenido: ", this.initialDate);
             return this.initialDate;
           }
           return '';
@@ -212,11 +200,9 @@ export class MasterPayrollComponent implements OnInit {
 
         valueFormatter: (params) => {
           if (params.value) {
-            //console.log("------- dentro de valueFormatter endDate: ", params.value);
 
             const date = new Date(params.value);
             this.endingDate = `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
-            //console.log("------- dentro de valueFormatter endDate valorObtenido: ", this.endingDate);
             return this.endingDate;
           }
           return '';
@@ -249,27 +235,7 @@ export class MasterPayrollComponent implements OnInit {
         },
         width: 170,
       },
-/*-
-{
 
-        cellEditorParams: (params) => {
-          // Ensure depto data is available when creating editor
-          return {
-            values: this.branchs ? this.branchs.map((item) => item.id) : []
-          };
-        },
-        valueFormatter: (params) => {
-          // Handle potential null values and properly format the displayed value
-          if (!params.value) return '';
-
-          const foundBranch = this.branchs
-            ? this.branchs.find((item) => item.id === params.value)
-            : null;
-
-          return foundBranch ? foundBranch.name : params.value;
-        },
-      },
-*/
       {
         headerName: 'Sucursal',
         field: 'idBranch',
@@ -280,11 +246,6 @@ export class MasterPayrollComponent implements OnInit {
         filter: true,
         width: 170,
         cellEditor: 'agSelectCellEditor',
-       /*  cellEditorParams: (params) => {
-          return {
-            values: this.branchs ? this.branchs.map((item) => item.id) : []
-          };
-        }, */
 
         cellEditorParams: (params) => {
           return {
@@ -353,7 +314,6 @@ export class MasterPayrollComponent implements OnInit {
   };
 
   onCheckClick(params: any): void {
-    console.log("entrando a oncheckclick()");
               if (!params.data) return;
 
           const payrollId = params.data.id;
@@ -361,7 +321,6 @@ export class MasterPayrollComponent implements OnInit {
           const endDate = params.data.endDate ? new Date(params.data.endDate) : null;
           //const idBranch = this.idBranch;
           const idBranch = params.data.idBranch;
-          console.log("el valor de idBranch es: ", idBranch);
 
           if (!startDate || !endDate) {
             console.error('Fechas no válidas');
@@ -394,7 +353,6 @@ export class MasterPayrollComponent implements OnInit {
         }
 
   onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data.endDate);
     if ((event.data.endDate && event.data.startDate) && event.data.endDate <= event.data.startDate) {
       alerts.basicAlert(
         'Error',
@@ -441,12 +399,10 @@ export class MasterPayrollComponent implements OnInit {
     //alert("Holaaaaaaaaaaaaa");
     const colId = event.column.getColId();
     const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
-    console.log("DOBLE CLICK", event.data);
-    console.log("DOBLE CLICK en columna", colId);
+
 
     const selectedId = selectedRowData.id; // Obtener el ID del registro
     this.signalsService.setNormalPayrollId(selectedId);
-    console.log("el ID NORMAYPAYROLL ES", selectedId);
 
 
     if (colId === 'NomDigital') {     // Filtrar el grid para mostrar solo el registro con el ID seleccionado
@@ -461,7 +417,6 @@ export class MasterPayrollComponent implements OnInit {
       this.gridApi.onFilterChanged();
     }
 
-    console.log("---------------- el valor de aggregatingrecord es: ", this.aggregatingRecord);
     if (!this.aggregatingRecord)
       this.activatePayrollDetailTab();
 
@@ -469,41 +424,10 @@ export class MasterPayrollComponent implements OnInit {
     this.selectedRowData = selectedRowData;
   }
 
-  /*
-  onCellDoubleClicked(event: CellDoubleClickedEvent): void {
-    const colId = event.column.getColId();
-    const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
-    const selectedId = selectedRowData.id; // Obtener el ID del registro
 
-    if (colId === 'loan' || colId === 'saving') {
-      // Filtrar el grid para mostrar solo el registro con el ID seleccionado
-      const filterModel = {
-        id: {
-          type: 'equals',
-          filter: selectedId,
-        },
-      };
-
-      this.gridApi.setFilterModel(filterModel);
-      this.gridApi.onFilterChanged();
-    }
-
-    if (colId === 'loan') {
-      this.activateLoansTab();
-    }
-
-    if (colId === 'saving') {
-      this.activateSavingsTab();
-    }
-
-    // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
-     this.selectedRowData = selectedRowData;
-  }
-  */
 
   addRow() {
-    console.log('---------------------- entrando a alta de nomina');
-    console.log("......... esto contiene rowdata: ", this.rowData);
+
     //const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       //id: tempId,
@@ -515,18 +439,15 @@ export class MasterPayrollComponent implements OnInit {
       active: true,
       __isNew: true,
     };
-    console.log(".....................  NUEVO ITEM:   ", newItem);
     this.rowData = [newItem, ...this.rowData];
     this.notSavedChanges = true;
     this.aggregatingRecord = true;
-    console.log("....................... rowData: ", this.rowData);
-    console.log("....................... newItem: ", newItem.idBranch);
+
 
   }
 
   async saveChanges() {
-    console.log("----------------------------------- ENTRANDO A SALVAR CAMBIOS");
-    console.log("................. estos son los datos de la tabla: ", this.rowData);
+
     const isValid = this.rowData.every((item) => item.startDate && item.endDate && item.idBranch);
     // llamar al servicio de verificacion de existencia de nomina digital
 
@@ -540,17 +461,14 @@ export class MasterPayrollComponent implements OnInit {
     }
 
     const newRows = this.rowData.filter((row) => row.__isNew);
-    console.log("----------------estos son los new rows: ", newRows);
     const modifiedRows = this.rowData.filter(
       (row) => row.__modified && !row.__isNew
     );
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log("-------------------- los datos cleaned son: ", cleanedData);
       this.administrationService.addNormalPayroll(cleanedData).subscribe({
         next: (response) => {
-          console.log("-----------------------Respuesta del servidor: ", response);
           alerts.basicAlert(
             'Datos guardados',
             response.message,
@@ -562,7 +480,6 @@ export class MasterPayrollComponent implements OnInit {
           this.resetGridSize();
         },
         error: (error) => {
-          console.log('----------------------------Error al guardar los datos:', error.error);
           const errorMessage = error?.error || 'Ocurrió un error al guardar los datos. Intente nuevamente.';
           alerts.basicAlert(
             'Error',
@@ -577,37 +494,7 @@ export class MasterPayrollComponent implements OnInit {
       });
     });
 
-    /*
-    const updateObservables = modifiedRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      return this.administrationService.updateBanks(row.id, cleanedData);
-    });
-    */
 
-    // Using concat to combine observables and lastValueFrom for async/await
-    /*
-    try {
-      const responses = await lastValueFrom(
-        concat(...addObservables).pipe(toArray())
-      );
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
-      this.notSavedChanges = false;
-      this.aggregatingRecord = false;
-      this.obtenerDatos(); // Refrescar los datos
-      this.resetGridSize();
-    } catch (error) {
-      console.error(error);
-      alerts.basicAlert(
-        'Error',
-        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
-        'error'
-      );
-    }
-      */
   }
 
   onSelectionChanged(event: any) {
@@ -770,7 +657,6 @@ export class MasterPayrollComponent implements OnInit {
   }
 
   obtenerBranchs() {
-    console.log('this.branchs ' + this.idBranch);
     this.branchesService.getBrancheswoa(this.idRoot).subscribe(
       (data: any) => {
         this.branchs = data;
