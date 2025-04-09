@@ -49,6 +49,9 @@ export class UsersComponent {
   notSavedChanges: boolean = false;
   paginationPageSizeSelector = false;
   id: string;
+  userRoot: number = 0;
+  authorizedPass:boolean = false;
+
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
   private permissionType: string = 'root';
@@ -79,13 +82,24 @@ export class UsersComponent {
 
   ngOnInit() {
     this.idRoot = this.signalsService.getRootSelectedBySidebar()()
+    this.userRoot = this.signalsService.getUserRoot()();
     this.obtenerDatos();
     this.getDeptoandPosition();
+    this.verification();
+
   }
+  verification(): boolean {
+  //const permissions = this.signalsService.getStoreFromPermissions();
+  if(this.userRoot == 1){
+    return this.authorizedPass = true;
+  }
+  return this.authorizedPass = false;
+}
 
   constructor() {
     effect(() => {
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()()
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+      this.userRoot = this.signalsService.getUserRoot()();
       this.obtenerDatos();
       this.getDeptoandPosition();
     })
@@ -95,6 +109,9 @@ export class UsersComponent {
     multiLineEditor: MultiLineEditorComponent,
     autocompleteEditor: AutocompleteEditorComponent
   }
+
+  
+  
 
   obtenerDatos() {
     const observer = {
@@ -287,7 +304,8 @@ export class UsersComponent {
         cellRenderer: (params: any) => {
           return `<span>••••••••</span>`;
         },
-        editable: true,
+        
+        editable: this.authorizedPass,
       },
       {
         field: 'idDepartament',

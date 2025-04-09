@@ -262,6 +262,7 @@ export class SignalsService {
   private selectedContract = signal<number>(null);
   idUser = signal<number>(0);
   private displayName = signal<string>(null);
+  private userRoot = signal<number>(null);
   private selectedProject = signal<number>(null);
 
   setCompanyName(name: string) {
@@ -282,6 +283,14 @@ export class SignalsService {
 
   getDisplayName() {
     return this.displayName;
+  }
+
+  setUserRoot(Root: any){
+    return this.userRoot.set(Root);
+  }
+
+  getUserRoot(){
+    return this.userRoot;
   }
 
   /* Signals para Matriz Issues */

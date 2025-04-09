@@ -82,13 +82,13 @@ export class UsersService {
     return this.http.get<any>(`${environment.urlSecurity}/User/email/${email}`, { headers }).pipe(
       map(datauser => {
 
-       console.log('dataUser', datauser);
+       //console.log('dataUser', datauser);
 
         // Asegúrate de que datauser contenga al menos un objeto
         const userArray = datauser.data;
         if (userArray) {
           const user = userArray as any;
-          console.log('User Findemail:', user);
+          //console.log('User Findemail:', user);
 
           // Asegúrate de que todas las propiedades existen en el objeto user
            const displayName = user.displayName || '';
@@ -99,13 +99,15 @@ export class UsersService {
            const applyplatform = user.applyplatform || ''; // Corregido de user.applybranch a user.applyplatform
            const id           = user.id   ;
            const signature = user.signature || '';
+           const userRoot = user.isRoot || 0;
          //  this.signalsService.setidUser(datauser.id); sigue una prueba
          this.signalsService.setDisplayName(displayName);
+         this.signalsService.setUserRoot(userRoot);
 
-          return { displayName, picture, applyproject, applybranch, applyplatform, email, id, signature };
+          return { displayName, picture, applyproject, applybranch, applyplatform, email, id, signature, userRoot};
         } else {
           // Si no se encontró ningún usuario, devuelve un objeto vacío
-          return { displayName: '', picture: '', applyproject: '', applybranch: '', applyplatform: '', email: '', signature: '' };
+          return { displayName: '', picture: '', applyproject: '', applybranch: '', applyplatform: '', email: '', signature: '',userRoot: 0 };
         }
       })
     );
