@@ -178,7 +178,7 @@ export const routes: Routes = [
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'setup' } },
         children: [
-          { path: '', redirectTo: 'SMP', pathMatch: 'full' }, ...SharedModule.getRoutes(),
+          { path: '', redirectTo: 'users', pathMatch: 'full' }, ...SharedModule.getRoutes(),
           {
             path: 'users',
             loadComponent: () => import('./domains/SMP/Components/users/users-menu.component').then(u => u.UsersMenuComponent),

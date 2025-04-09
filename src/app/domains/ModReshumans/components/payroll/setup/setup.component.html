@@ -1,169 +1,181 @@
 @if (idBranch > 0) {
-    <div class="container-fluid mt-4 mb-4 border light-blue-background">
-        <div class="row">
-            <div class="col-8">
-                <h3 class="mb-3"><strong>Configuración de nóminas</strong></h3>
-                <div class="row g-3">
-                    <div class="col-12 mt-3">
-                        <h5>Vigencia</h5>
-                        <div class="row g-3">
-                            <div class="col-md-6 col-lg-6">
-                                <label for="consecutive" class="form-label">Periodo de gracia de vigencia de empleado (días)
-                                    <span class="text-danger">*</span></label>
-                                <input type="number" class="form-control" id="consecutive" placeholder="Consecutivo" min="0"
-                                    step="1" [(ngModel)]="hrData.vigency">
-                            </div>
+<div class="container-fluid mt-4 mb-4 border light-blue-background">
+    <div class="row">
+        <div class="col-8">
+            <h3 class="mb-3"><strong>Configuración de nóminas</strong></h3>
+            <div class="row g-3">
+                <div class="col-12 mt-3">
+                    <h5>Vigencia</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6 col-lg-6">
+                            <label for="consecutive" class="form-label">Periodo de gracia de vigencia de empleado (días)
+                                <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="consecutive" placeholder="Consecutivo" min="0"
+                                step="1" [(ngModel)]="hrData.vigency">
                         </div>
                     </div>
+                </div>
 
-                    <!-- Nuevo select para día de inicio laboral -->
-                    <div class="col-12 mt-3">
-                        <h5>Día de inicio laboral</h5>
-                        <div class="row g-3">
-                            <div class="col-md-6 col-lg-6">
-                                <label for="startDay" class="form-label">Día de inicio de semana laboral <span
-                                        class="text-danger">*</span></label>
-                                <select class="form-select" id="startDay" [(ngModel)]="hrData.startDay">
-                                    <option value="" disabled>Seleccione un día</option>
-                                    <option *ngFor="let dia of diasSemana" [value]="dia">
-                                        {{dia}}
-                                    </option>
-                                </select>
-                            </div>
-                            <div class="col-md-6 col-lg-6">
-                                <label for="clockTolerance" class="form-label">Tiempo de tolerancia antes de marcar falta
-                                    (minutos) <span class="text-danger">*</span></label>
-                                <input type="number" class="form-control" id="clockTolerance" placeholder="Tolerancia" min="0"
-                                    step="1" [(ngModel)]="hrData.clockTolerance">
-                            </div>
+                <!-- Nuevo select para día de inicio laboral -->
+                <div class="col-12 mt-3">
+                    <h5>Día de inicio laboral</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6 col-lg-6">
+                            <label for="startDay" class="form-label">Día de inicio de semana laboral <span
+                                    class="text-danger">*</span></label>
+                            <select class="form-select" id="startDay" [(ngModel)]="hrData.startDay">
+                                <option value="" disabled>Seleccione un día</option>
+                                <option *ngFor="let dia of diasSemana" [value]="dia">
+                                    {{dia}}
+                                </option>
+                            </select>
                         </div>
-                    </div>
-                    <div class="col-12 mt-3">
-                        <h5>Día de inicio laboral</h5>
-                        <div class="row g-3">
-                            <div class="col-md-6 col-lg-6">
-                                <label for="delay1" class="form-label">Tiempo de tolerancia de retardo antes de primer descuento
-                                    (minutos) <span class="text-danger">*</span></label>
-                                <input type="number" class="form-control" id="delay1" placeholder="Tolerancia" min="0"
-                                    step="1" [(ngModel)]="hrData.delay1">
-                            </div>
-                            <div class="col-md-6 col-lg-6">
-                                <label for="delay2" class="form-label">Tiempo de tolerancia de retardo antes de segundo descuento
-                                    (minutos) <span class="text-danger">*</span></label>
-                                <input type="number" class="form-control" id="delay2" placeholder="Tolerancia" min="60"
-                                    step="1" [(ngModel)]="hrData.delay2">
-                            </div>
+                        <div class="col-md-6 col-lg-6">
+                            <label for="clockTolerance" class="form-label">Tiempo de tolerancia antes de marcar falta
+                                (minutos) <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="clockTolerance" placeholder="Tolerancia"
+                                min="0" step="1" [(ngModel)]="hrData.clockTolerance">
                         </div>
                     </div>
                 </div>
-                <div class="mt-4 text-end">
-                    <button type="button" class="btn btn-primary me-2" (click)="saveChanges()"><i
-                            class="fas fa-save me-2"></i>Guardar</button>
-                    <button type="button" class="btn btn-secondary" (click)="revertChanges()"><i
-                            class="fas fa-times me-2"></i>Cancelar</button>
+                <div class="col-12 mt-3">
+                    <h5>Día de inicio laboral</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6 col-lg-6">
+                            <label for="delay1" class="form-label">Tiempo de tolerancia de retardo antes de primer
+                                descuento
+                                (minutos) <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="delay1" placeholder="Tolerancia" min="0"
+                                step="1" [(ngModel)]="hrData.delay1">
+                        </div>
+                        <div class="col-md-6 col-lg-6">
+                            <label for="delay2" class="form-label">Tiempo de tolerancia de retardo antes de segundo
+                                descuento
+                                (minutos) <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="delay2" placeholder="Tolerancia" min="60"
+                                step="1" [(ngModel)]="hrData.delay2">
+                        </div>
+                    </div>
                 </div>
+                <div class="col-12 mt-3">
+                    <h5>Descuentos</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6 col-lg-6">
+                            <label for="discount" class="form-label">Porcentaje de descuento <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="discount" placeholder="Porcentaje" min="0" step="1" [(ngModel)]="hrData.discount">
+                            <small class="form-text text-muted">Ingrese el porcentaje (ejemplo: 10 para 10%).</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4 text-end">
+                <button type="button" class="btn btn-primary me-2" (click)="saveChanges()"><i
+                        class="fas fa-save me-2"></i>Guardar</button>
+                <button type="button" class="btn btn-secondary" (click)="revertChanges()"><i
+                        class="fas fa-times me-2"></i>Cancelar</button>
             </div>
         </div>
     </div>
+</div>
 
-    <div class="container-fluid mt-4 mb-4 border light-blue-background">
-        <div class="row">
-            <div class="col-8">
-                <h3 class="mb-3"><strong>Nómina Digital</strong></h3>
-                <div class="row g-3">
-                    <div class="col-12 mt-3">
-                        <div class="row g-3">
-                            <div class="mb-4">
-                                <label for="fileInput" class="form-label">Selecciona un archivo Excel de nómina:</label>
-                                <input type="file" class="form-control" id="fileInput" (change)="onFileChange($event)"
-                                    accept=".xlsx, .xls" [disabled]="isLoading">
-                                <div class="form-text">
-                                    Formatos aceptados: .xlsx, .xls
-                                </div>
+<div class="container-fluid mt-4 mb-4 border light-blue-background">
+    <div class="row">
+        <div class="col-8">
+            <h3 class="mb-3"><strong>Nómina Digital</strong></h3>
+            <div class="row g-3">
+                <div class="col-12 mt-3">
+                    <div class="row g-3">
+                        <div class="mb-4">
+                            <label for="fileInput" class="form-label">Selecciona un archivo Excel de nómina:</label>
+                            <input type="file" class="form-control" id="fileInput" (change)="onFileChange($event)"
+                                accept=".xlsx, .xls" [disabled]="isLoading">
+                            <div class="form-text">
+                                Formatos aceptados: .xlsx, .xls
                             </div>
-
-                            <!-- Mensaje de error -->
-                            @if (error) {
-                            <div class="alert alert-danger">
-                                {{ error }}
-                            </div>
-                            }
-
-                            <!-- Indicador de carga -->
-                            @if (isLoading) {
-                            <div class="d-flex justify-content-center my-3">
-                                <div class="spinner-border text-primary" role="status">
-                                    <span class="visually-hidden">Cargando...</span>
-                                </div>
-                            </div>
-                            }
-
-                            <!-- Resultados -->
-                            @if (jsonData) {
-                            <div class="mt-4">
-                                <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <h3>Resultado:</h3>
-                                    <div class="btn-group">
-                                        <button class="btn btn-sm btn-outline-secondary" (click)="toggleJsonFormat()">
-                                            {{ prettyJson ? 'JSON Compacto' : 'JSON Formateado' }}
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-primary" (click)="copyToClipboard()">
-                                            Copiar
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-success" (click)="downloadJson()">
-                                            Descargar JSON
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <!-- Resumen de la nómina -->
-                                <div class="card mb-3">
-                                    <div class="card-body">
-                                        <div class="row">
-                                            <div class="col-md-4">
-                                                <strong>Empresa:</strong> {{jsonData.empresa}}
-                                            </div>
-                                            <div class="col-md-4">
-                                                <strong>Período:</strong> {{jsonData.periodo}}
-                                            </div>
-                                            <div class="col-md-4">
-                                                <strong>Ejercicio:</strong> {{jsonData.ejercicio}}
-                                            </div>
-                                        </div>
-                                        <div class="mt-2">
-                                            <strong>Total de empleados:</strong> {{jsonData.empleados.length}}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Visualización del JSON -->
-                                <div class="card">
-                                    <div class="card-header bg-light">
-                                        <h5 class="mb-0">Datos en formato JSON</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <pre class="json-preview">{{ formatJson(jsonData) }}</pre>
-                                    </div>
-                                </div>
-                            </div>
-                            }
                         </div>
+
+                        <!-- Mensaje de error -->
+                        @if (error) {
+                        <div class="alert alert-danger">
+                            {{ error }}
+                        </div>
+                        }
+
+                        <!-- Indicador de carga -->
+                        @if (isLoading) {
+                        <div class="d-flex justify-content-center my-3">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                        </div>
+                        }
+
+                        <!-- Resultados -->
+                        @if (jsonData) {
+                        <div class="mt-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h3>Resultado:</h3>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-outline-secondary" (click)="toggleJsonFormat()">
+                                        {{ prettyJson ? 'JSON Compacto' : 'JSON Formateado' }}
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-primary" (click)="copyToClipboard()">
+                                        Copiar
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-success" (click)="downloadJson()">
+                                        Descargar JSON
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Resumen de la nómina -->
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <strong>Empresa:</strong> {{jsonData.empresa}}
+                                        </div>
+                                        <div class="col-md-4">
+                                            <strong>Período:</strong> {{jsonData.periodo}}
+                                        </div>
+                                        <div class="col-md-4">
+                                            <strong>Ejercicio:</strong> {{jsonData.ejercicio}}
+                                        </div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <strong>Total de empleados:</strong> {{jsonData.empleados.length}}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Visualización del JSON -->
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">Datos en formato JSON</h5>
+                                </div>
+                                <div class="card-body">
+                                    <pre class="json-preview">{{ formatJson(jsonData) }}</pre>
+                                </div>
+                            </div>
+                        </div>
+                        }
                     </div>
                 </div>
-                <div class="mt-4 text-end">
-                    <button type="button" class="btn btn-primary me-2" (click)="sendPayrollData()"><i
-                            class="fas fa-save me-2"></i>Guardar</button>
-                    <button type="button" class="btn btn-secondary" (click)="resetForm()"><i
-                            class="fas fa-times me-2"></i>Cancelar</button>
-                </div>
+            </div>
+            <div class="mt-4 text-end">
+                <button type="button" class="btn btn-primary me-2" (click)="sendPayrollData()"><i
+                        class="fas fa-save me-2"></i>Guardar</button>
+                <button type="button" class="btn btn-secondary" (click)="resetForm()"><i
+                        class="fas fa-times me-2"></i>Cancelar</button>
             </div>
         </div>
     </div>
+</div>
 } @else {
-    <div class="container-fluid mt-4 mb-4">
-        <div class="alert alert-warning text-center">
-            <i class="fas fa-exclamation-triangle me-2"></i>
-            Por favor, seleccione una sucursal para configurar la nómina.
-        </div>
+<div class="container-fluid mt-4 mb-4">
+    <div class="alert alert-warning text-center">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        Por favor, seleccione una sucursal para configurar la nómina.
     </div>
+</div>
 }
