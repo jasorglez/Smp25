@@ -22,18 +22,18 @@ import { BranchsService } from 'app/services/branchs.service';
 @Component({
   selector: 'app-expenditure',
   standalone: true,
-  imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule, 
-            FormsModule, AdditionalInfoComponent, ConceptsComponent],
+  imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
+    FormsModule, AdditionalInfoComponent, ConceptsComponent],
   templateUrl: '../income/income.component.html',
   styleUrl: '../income/income.component.scss'
 })
 export class ExpenditureComponent {
 
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
-  private modalServiceTable         = inject(ModalService);
-  private administrationService     = inject(AdministrationService);
-  private customerService           = inject(CustomersService);
-  private usersxpermissionsService  = inject(UsersxpermissionsService);
+  private modalServiceTable = inject(ModalService);
+  private administrationService = inject(AdministrationService);
+  private customerService = inject(CustomersService);
+  private usersxpermissionsService = inject(UsersxpermissionsService);
   private usersService = inject(UsersService);
   private signalsService = inject(SignalsService);
   private BranchsService = inject(BranchsService)
@@ -122,32 +122,32 @@ export class ExpenditureComponent {
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
 
-// Column Definitions: Defines the columns to be displayed.
-public gridOptions: any = {
-  headerHeight: 30,
-  rowHeight: 30,
-  rowClass: (params) => {
-    // Verificar si la fila está seleccionada
-    if (params.node.isSelected()) {
-      return 'selected-row';
-    }
-    return '';
-  },
-  onRowClicked: (event) => {
-    // Seleccionar la fila al hacer clic en cualquier celda
-    event.node.setSelected(true);
-  },
-  onRowSelected: (event) => {
-    // Deseleccionar otras filas cuando se selecciona una nueva
-    if (event.node.isSelected()) {
-      this.gridApi.forEachNode((node) => {
-        if (node.id !== event.node.id) {
-          node.setSelected(false);
-        }
-      });
-    }
-  },
-};
+  // Column Definitions: Defines the columns to be displayed.
+  public gridOptions: any = {
+    headerHeight: 30,
+    rowHeight: 30,
+    rowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onRowClicked: (event) => {
+      // Seleccionar la fila al hacer clic en cualquier celda
+      event.node.setSelected(true);
+    },
+    onRowSelected: (event) => {
+      // Deseleccionar otras filas cuando se selecciona una nueva
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    },
+  };
 
   public rowSelection: 'single' | 'multiple' = 'single';
   public paginationPageSize = 15;
@@ -428,6 +428,23 @@ public gridOptions: any = {
     this.incomes = [newItem, ...this.incomes];
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
+
+    // Encontrar el índice de la nueva fila
+    const newRowIndex = this.incomes.findIndex((row) => row.id === tempId);
+
+    // Encontrar la primera columna editable
+    const firstEditableCol = this.colMaster.find(col => col.editable);
+    const firstEditableColKey = firstEditableCol ? firstEditableCol.field : null;
+
+    // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
+    setTimeout(() => {
+      if (firstEditableColKey) {
+        this.gridApi.startEditingCell({
+          rowIndex: newRowIndex,
+          colKey: firstEditableColKey, // Editar la primera columna editable
+        });
+      }
+    }, 50); // Un pequeño retraso de 50ms
   }
 
   async saveChanges() {

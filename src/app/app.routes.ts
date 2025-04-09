@@ -91,7 +91,7 @@ export const routes: Routes = [
         path: 'admon',
         loadComponent: () => import('./domains/Admonapp/Pages/procadmon/procadmon.component').then(a => a.ProcadmonComponent),
         canActivate: [MasterPermissionsGuard],
-        data: { permissions: { master: 'administration' } }
+        data: { permissions: { master: 'administration' } },
       },
       {
         path: 'indicgrals',
@@ -178,7 +178,7 @@ export const routes: Routes = [
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'setup' } },
         children: [
-          { path: '', redirectTo: 'SMP', pathMatch: 'full' }, ...SharedModule.getRoutes(),
+          { path: '', redirectTo: 'users', pathMatch: 'full' }, ...SharedModule.getRoutes(),
           {
             path: 'users',
             loadComponent: () => import('./domains/SMP/Components/users/users-menu.component').then(u => u.UsersMenuComponent),
@@ -194,6 +194,12 @@ export const routes: Routes = [
             loadComponent: () => import('./domains/SMP/Components/branches/branches.component').then(u => u.BranchesComponent),
             canActivate: [MasterPermissionsGuard],
             data: { permissions: { master: 'setup', detailed: 'branches' } }
+          },
+          {
+            path: 'logs',
+            loadComponent: () => import('./domains/SMP/Components/kardex/kardex.component').then(k => k.KardexComponent),
+         //   canActivate: [MasterPermissionsGuard],
+         //   data: { permissions: { master: 'setup', detailed: 'logs' } }
           },
           {
             path: 'catalog',
@@ -327,6 +333,12 @@ export const routes: Routes = [
             loadComponent: () => import('./domains/ModSales/components/cash-register/cash-register.component').then(s => s.CashRegisterComponent),
             canActivate: [MasterPermissionsGuard],
             data: { permissions: { master: 'sales', detailed: 'cash-register' } }
+          },
+          {
+            path: 'before-pos',
+            loadComponent: () => import('./domains/ModSales/components/before-pos/before-pos.component').then(s => s.BeforePosComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'sales', detailed: 'pos' } }
           },
           {
             path: 'pos',

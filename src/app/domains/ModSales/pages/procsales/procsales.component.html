@@ -16,7 +16,7 @@
                      class="bi bi-pc-display-horizontal"></i> {{'cash_register' | translate}}</a>
             </li>
             <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'pos')">
-               <a class="nav-link green-tab" routerLink="pos" routerLinkActive="active"><i class="bi bi-cart"></i>
+               <a class="nav-link green-tab" routerLink="pos" [class.active]="isPosActive()"><i class="bi bi-cart"></i>
                   {{'point_of_sale' | translate}}</a>
             </li>
             <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'cash-closing')">

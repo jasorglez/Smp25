@@ -323,7 +323,19 @@ public gridOptions: any = {
       (row) => row.__modified && !row.__isNew
     );
 
-    const addObservables = newRows.map((row) => {
+    const addPromises = newRows.map((row) => {
+      const cleanedData = this.cleanDataForServer(row);
+      console.log(cleanedData);
+      return lastValueFrom(this.branchesService.addBranch(cleanedData));
+    });
+
+    const updatePromises = modifiedRows.map((row) => {
+      const cleanedData = this.cleanDataForServer(row);
+      console.log(cleanedData);
+      return lastValueFrom(this.branchesService.updateBranch(row.id, cleanedData));
+    });
+
+    /* const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       console.log(cleanedData);
       return this.branchesService.addBranch(cleanedData);
@@ -333,13 +345,18 @@ public gridOptions: any = {
       const cleanedData = this.cleanDataForServer(row);
       console.log(cleanedData);
       return this.branchesService.updateBranch(row.id, cleanedData);
-    });
+    }); */
+
+
 
     // Using concat to combine observables and lastValueFrom for async/await
     try {
-      const responses = await lastValueFrom(
+      /* const responses = await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
-      );
+      ); */
+
+      const allResponses = await Promise.all([...addPromises, ...updatePromises]);
+
       alerts.basicAlert(
         'Datos actualizados',
         'Se han actualizado los datos correctamente.',
@@ -347,7 +364,14 @@ public gridOptions: any = {
       );
       this.masterNotSavedChanges = false;
       this.newlyAddedMasterRows = [];
-      this.obtenerDatos(); // Refrescar los datos
+
+       // Asegurarse de obtener los datos tras la última actualización
+       if (allResponses.length > 0) {
+        await this.obtenerDatos(); // Se ejecuta justo después de la última operación exitosa
+      }
+
+      //      setTimeout(() => this.obtenerDatos(), 500); // Refrescar los datos
+
     } catch (error) {
       console.error(error);
       alerts.basicAlert(

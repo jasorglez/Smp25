@@ -73,12 +73,9 @@ export class AdvancesComponent implements OnInit, OnChanges {
     throw new Error('Method not implemented.');
   }
 
-
-
-  private _contractsService = inject(ContractsService);
   private _signalsService = inject(SignalsService);
   private _advancesService = inject(AdvanceService);
-  private _oilfieldsService = inject(OilfieldService);
+
 
   public contracts: any[] = [];
   public curretnContractSelected: number;
@@ -118,7 +115,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
   }
-  
+
   columnDefs: ColDef[] = [
     { field: 'date', headerName: 'Fecha', width: 150, editable: true },
     { field: 'programAdvanced', headerName: 'Programado', width: 150, editable: true },
@@ -132,15 +129,16 @@ export class AdvancesComponent implements OnInit, OnChanges {
         return '';
       }
     },
-    { field: 'accumulatePhysical', headerName: 'Acumulado Fisico', width: 190, editable: true,
+    {
+      field: 'accumulatePhysical', headerName: 'Acumulado Fisico', width: 190, editable: true,
       cellDataType: 'number',
-        valueFormatter: (params) => {
-          if (params.value) {
-            return params.value.toFixed(2);
-          }
-          return '';
+      valueFormatter: (params) => {
+        if (params.value) {
+          return params.value.toFixed(2);
         }
-     }
+        return '';
+      }
+    }
   ];
 
   rowData: ContractAdvance[] = [];
@@ -264,6 +262,23 @@ export class AdvancesComponent implements OnInit, OnChanges {
     this.rowData = [newItem, ...this.rowData];
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
+
+    // Encontrar el índice de la nueva fila
+    const newRowIndex = this.rowData.findIndex((row) => row.id === tempId);
+
+    // Encontrar la primera columna editable
+    const firstEditableCol = this.columnDefs.find(col => col.editable);
+    const firstEditableColKey = firstEditableCol ? firstEditableCol.field : null;
+
+    // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
+    setTimeout(() => {
+      if (firstEditableColKey) {
+        this.gridApi.startEditingCell({
+          rowIndex: newRowIndex,
+          colKey: firstEditableColKey, // Editar la primera columna editable
+        });
+      }
+    }, 50); // Un pequeño retraso de 50ms
   }
 
   async saveChanges() {
