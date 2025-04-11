@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, HostListener, inject } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { Component, effect, HostListener, inject, OnInit } from '@angular/core';
+import { FormsModule, FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
+import * as bootstrap from 'bootstrap';
 import {
   ColDef,
   GridApi,
@@ -17,12 +18,12 @@ import { concat, lastValueFrom, toArray } from 'rxjs';
 @Component({
   selector: 'app-detailpayroll',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [CommonModule, FormsModule, AgGridModule, ReactiveFormsModule ],
   templateUrl: './detailpayroll.component.html',
   styleUrls: ['./detailpayroll.component.css']
 })
 
-export class DetailpayrollComponent {
+export class DetailpayrollComponent implements OnInit{
   private signalsService = inject(SignalsService);
   private payrollService = inject(PayrollService);
 
@@ -39,7 +40,6 @@ export class DetailpayrollComponent {
   rowData: any[] = [];
   loanIds: number;
   gridApi: any;
-  idEmployee: number;
   idLoan: number = null;
   nameLoan: string = null;
   id: number;
@@ -147,13 +147,14 @@ export class DetailpayrollComponent {
     }
   ];
 
-  constructor() {
+  constructor(private fb: FormBuilder) {
     effect(() => {
       this.idPayroll = this.signalsService.getNormalPayrollId()();
       this.loadData();
       console.log("------------------------------------ Constructor ID PAYROLL: ", this.idPayroll);
       console.log("-------- entrando a detailpayroll, este es el constructor  ")
     });
+    
   }
 
   ngOnInit() {
@@ -161,7 +162,9 @@ export class DetailpayrollComponent {
       this.loadData();
       console.log("------------------------------------ ngOninit ID PAYROLL: ", this.idPayroll);
       console.log("-------- entrando a detailpayroll, este es el ngOninit  ");
+
   }
+    
 
   loadData() {
     if (this.idPayroll === null || this.idPayroll === undefined) {
@@ -200,6 +203,7 @@ export class DetailpayrollComponent {
       );
       */
   }
+  
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
