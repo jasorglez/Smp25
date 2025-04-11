@@ -7,6 +7,7 @@ import { CommonModule } from '@angular/common';
 import { map } from 'rxjs';
 import { TimeService } from 'app/services/time.service';
 import { HRService } from 'app/services/hr.service';
+import { SignalsService } from 'app/services/signals.service';
 
 @Component({
   selector: 'app-clock-db',
@@ -20,9 +21,11 @@ export class DbComponent {
   private clockService = inject(ClockService);
   private timeService = inject(TimeService);
   private hrService = inject(HRService);
+  private signalsService = inject(SignalsService);
 
   data: any;
   idEmployee: number;
+  idBranch: number;
   startDate: string = '';
   endDate: string = '';
   localTime: string = '';
@@ -59,12 +62,23 @@ export class DbComponent {
   };
 
   ngOnInit() {
+    this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
     this.getTime();
     this.getData();
   }
 
+  constructor() {
+    effect(() => {
+
+      this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      this.getTime();
+      this.getData();
+
+    });
+  }
+
   getData() {
-    this.clockService.getCheckInfo().subscribe(
+    this.clockService.getCheckInfo(this.idBranch).subscribe(
       data => {
         this.data = data;
         console.log(data);
