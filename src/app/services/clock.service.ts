@@ -18,8 +18,8 @@ export class ClockService {
     });
   }
 
-  getCheckInfo(): Observable<any> {
-    return this.http.get(`${environment.urlAdministration}/EmployeesxCheckInsOuts`, {
+  getCheckInfo(idBranch: number): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/EmployeesxCheckInsOuts?idBranch=${idBranch}`, {
       headers: this.trackingService.getHeaders(),
     });
   }
