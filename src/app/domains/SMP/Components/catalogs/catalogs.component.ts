@@ -48,13 +48,15 @@ export class CatalogsComponent {
   constructor() {
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      this.obtenerTables()
+      this.obtenerTables();
+      this.obtenerDatos();
     })
   }
 
   ngOnInit() {
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
     this.obtenerTables()
+    this.obtenerDatos();
 
   }
 
