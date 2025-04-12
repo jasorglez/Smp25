@@ -3,60 +3,101 @@ import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererP
 import { AgGridModule } from 'ag-grid-angular';
 import { FormsModule, FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import * as bootstrap from 'bootstrap';
+import { alerts } from '../../../../../../../helpers/alerts';
+import { catchError, concat, EMPTY, lastValueFrom, toArray, throwError } from 'rxjs';
 import { SignalsService } from 'app/services/signals.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { CommonModule } from '@angular/common';
+import { AdministrationService } from 'app/services/administration.service';
+import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
+import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
+import { forkJoin } from 'rxjs';
 
 @Component({
   selector: 'app-bonus',
   standalone: true,
-  imports: [AgGridModule, FormsModule, ReactiveFormsModule, CommonModule],
+  imports: [AgGridModule, FormsModule, ReactiveFormsModule, CommonModule, MultiLineEditorComponent],
   templateUrl: './bonus.component.html',
 })
 export class BonusComponent{ 
 
   private signalsService = inject(SignalsService);
   private catalogsService = inject(CatalogsService);
+  private administrationService = inject(AdministrationService);
+  private gridApi: GridApi;
 
+  components = {
+      multiLineEditor: MultiLineEditorComponent,
+      autocompleteEditor: AutocompleteEditorComponent,
+    };
+  
+  id: string;
   rowData: any;
-  bonusForm!: FormGroup;
-  fechasForm!: FormGroup;
+  //bonusForm!: FormGroup;
+  selectFechas!: FormGroup;
   idEmployee: number;
   nameEmployee: string;
   bonoEmployee: number;
   idBranch: number;
   bonusCatalogos: any[] = [];
-
+  fechaInicio: string;
+  isOpen: boolean = false;
+  fechaFin: string;
+  employee: any;
+  idEmpresa: number;
+  notSavedChanges: boolean = false;
+  gridHeight: string = '75vh';
+  showCreditsTab: boolean = false;
+  selectedRowData: any = null;
+  private lastEditedRowId: number | string | null = null;
+  newlyAddedRows: string[] = [];
  
 
   ngOnInit(){
   this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+  this.idEmpresa = this.signalsService.getRootSelectedBySidebar()();
   this.obtenerDatosCatalogos();
-  this.bonusForm = this.fb1.group({
-    nuevoBonus: ['', [Validators.required, Validators.min(0)]],
-    motivo: ['', Validators.required],
-    fechaSelect: ['', Validators.required]
-  });
-  this.fechasForm = this.fb2.group({
+  this.selectFechas = this.fb.group({
     fechaInicio: ['', Validators.required],
     fechaFin: ['', Validators.required]
   });
-
-  this.fechasForm.get('fechaInicio')?.valueChanges.subscribe(fecha => {
-    console.log('Fecha inicio:', fecha);
-  });
-  this.fechasForm.get('fechaFin')?.valueChanges.subscribe(fecha => {
-    console.log('Fecha fin:', fecha);
-  });
   }  
-  constructor(private fb1: FormBuilder,  private fb2: FormBuilder){
-    this.rowData= [{id: 10, name: "Victor Blanco Reyes", bono: 500}];
+  constructor(private fb: FormBuilder){
+  }
+  public gridOptions: any = {
+    headerHeight: 25,
+    rowHeight: 20,
+    rowClass: (params) => {
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onRowClicked: (event) => {
+      event.node.setSelected(true);
+    },
+    onRowSelected: (event) => {
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    },
+  };
+  onSelectedRow(event: any) {
+    this.id = event.data.id;
+  }
+  onGridReady(params: GridReadyEvent) {
+    this.gridApi = params.api;
   }
 
+
   obtenerDatosCatalogos() {
-    this.catalogsService.getCatalogs(this.idBranch, "BONUS").subscribe((data) => {
+    this.catalogsService.getCatalogs(this.idEmpresa , "BONUS").subscribe((data) => {
             this.bonusCatalogos = data;
-            console.log("Log res",this.bonusCatalogos)
+            console.log("Catalogo",this.bonusCatalogos);
           },
           (error) => console.error('Error fetching measures:', error)
         );
@@ -64,42 +105,242 @@ export class BonusComponent{
   
   
   obtenerDatosEmpleados(){
+    this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+    this.administrationService.getEmployeesBonus(this.fechaInicio, this.fechaFin, this.idBranch).subscribe({
+      next: (data) => {
+        this.rowData = data;
+      },
+      error: (err) => {
+        console.error("Error al obtener empleados con bonus:", err);
+      }
+    });
   }  
   get colMaster(): ColDef[] {
     return[
     {
       field: 'id',
       headerName: 'Id empleado',
-      editable: true,
+      editable: false,
       filter: true,
       width: 200,
+      flex: 1,
     },
     {
-      field: 'name',
+      field: 'employeeName',
       headerName: 'Nombre',
-      editable: true,
+      editable: false,
       filter: true,
       width: 200,
+      flex: 1,
     },
     {
-      field: 'bono',
-      headerName: 'Bono',
+      field: 'incidenceDate',
+      headerName: 'Fecha',
+      editable: false,
+      filter: true,
+      width: 200,
+      flex: 1,
+      valueFormatter: (params) => {
+        if (!params.value) return '';
+        return new Date(params.value).toISOString().split('T')[0]; // "YYYY-MM-DD"
+      }
+    },
+    {
+      field: 'description',
+      headerName: 'concepto',
       editable: true,
       filter: true,
       width: 150,
+      flex: 1,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: this.bonusCatalogos ? this.bonusCatalogos.map(item => item.description) : [],
+      },
+      valueFormatter: (params) => {
+        const foundItem = this.bonusCatalogos ? this.bonusCatalogos.find(item => item.description === params.value) : null;
+        return foundItem ? `${foundItem.description}` : params.value;
+      }
+    },
+    {
+      field: 'valueAddition',
+      headerName: 'Monto',
+      editable: false, // importante: es derivado del campo 'description'
+      filter: false,
+      flex: 1,
+      valueGetter: (params) => {
+        const foundItem = this.bonusCatalogos?.find(item => item.description === params.data.description);
+        return foundItem ? foundItem.valueAddition : '';
+      }
     }
   ]}
-
-  saveChanges(){
-
+  onCellValueChanged(event: any) {
+    event.data.__modified = true;
+    this.notSavedChanges = true;
   }
-  revert(){
+  private cleanDataForServer(data: any): any {
+    const cleanedData = { ...data };
+    delete cleanedData.__isNew;
+    delete cleanedData.__modified;
+    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
+      delete cleanedData.id;
+    }
+    return cleanedData;
+  }
+  async saveChanges(){
+    console.log(this.rowData);
+    /*const isValid = this.rowData.every((item) => item.nameContact || item.company);
+        if (!isValid) {
+          alerts.basicAlert(
+            'Añadir entrada',
+            'Debe llenar todos los campos antes de guardar.',
+            'error'
+          );
+          return;
+        }*/
+    
+        const newRows = this.rowData.filter((row) => row.__isNew);
+        const modifiedRows = this.rowData.filter(
+          (row) => row.__modified && !row.__isNew
+        );
+    
+        const addObservables = newRows.map((row) => {
+          const cleanedData = this.cleanDataForServer(row);
+          console.log(cleanedData);
+          //return this.administrationService.addEmployeesBonus(cleanedData);
+        });
+    
+        const updateObservables = modifiedRows.map((row) => {
+          const cleanedData = this.cleanDataForServer(row);
+          console.log('Actualizando cliente con los siguientes datos:', cleanedData);
+          return this.administrationService.addEmployeesBonus(cleanedData);
+        });
+    
+        try {
+          const responses = await lastValueFrom(
+            concat(...addObservables, ...updateObservables).pipe(toArray())
+          );
+    
+          // Determinar qué ID vamos a seleccionar después de recargar
+          if (modifiedRows.length > 0) {
+            this.lastEditedRowId = modifiedRows[modifiedRows.length - 1].id;
+          } else if (newRows.length > 0) {
+            this.lastEditedRowId = 'SELECT_MAX_ID';
+          }
+    
+          alerts.basicAlert(
+            'Datos actualizados',
+            'Se han actualizado los datos correctamente.',
+            'success'
+          );
+          this.notSavedChanges = false;
+          this.newlyAddedRows = [];
+    
+          // Esperar a que los datos se carguen completamente
+          await this.obtenerDatosEmpleados();
+    
+          // Esperar un ciclo de renderizado adicional
+          await new Promise(resolve => setTimeout(resolve, 0));
+    
+          // Seleccionar la fila apropiada después de recargar
+          if (this.lastEditedRowId) {
+            if (this.lastEditedRowId === 'SELECT_MAX_ID') {
+              // Encontrar el ID máximo en los datos actuales
+              const maxId = Math.max(...this.rowData.map(row => Number(row.id)));
+              this.selectRowById(maxId);
+            } else {
+              this.selectRowById(this.lastEditedRowId);
+            }
+            this.lastEditedRowId = null;
+          }
+    
+        } catch (error) {
+          console.error(error);
+          alerts.basicAlert(
+            'Error',
+            'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
+            'error'
+          );
+        }
+  }
+  private selectRowById(id: number | string) {
+    // Dar tiempo al grid para que se actualice
+    setTimeout(() => {
+      this.gridApi.forEachNode((node) => {
+        // Convertir ambos IDs a número para la comparación
+        const nodeId = typeof node.data.id === 'string' ? parseInt(node.data.id) : node.data.id;
+        const searchId = typeof id === 'string' ? parseInt(id) : id;
 
+        if (nodeId === searchId) {
+          node.setSelected(true);
+          this.gridApi.ensureNodeVisible(node, 'middle');
+        }
+      });
+    }, 100);
+  }
+
+  onSelectionChanged(event: any) {
+    const selectedNodes = event.api.getSelectedNodes();
+    if (selectedNodes.length > 0) {
+      this.selectedRowData = selectedNodes[0].data;
+      this.signalsService.setIdClient(this.selectedRowData.id);
+      this.signalsService.setNameClient(this.selectedRowData.company);
+    } else {
+      this.selectedRowData = null;
+    }
+  }
+
+
+  async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
+    //this.signalsService.setProviderOrCustomer(this.type);
+    const colId = event.column.getColId();
+    const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
+    const selectedId = selectedRowData.id; // Obtener el ID del registro
+
+    // Filtrar el grid para mostrar solo el registro con el ID seleccionado solo si la columna es "total"
+    if (colId === 'total') {
+      const filterModel = {
+        id: {
+          type: 'equals',
+          filter: selectedId,
+        },
+      };
+
+      this.gridApi.setFilterModel(filterModel);
+      this.gridApi.onFilterChanged();
+      this.activateCreditsTab(); // Activar la pestaña de créditos si es necesario
+    }
+
+    this.selectedRowData = selectedRowData; // Guardar los datos seleccionados
+  }
+  async activateCreditsTab() {
+    if (!this.isOpen) {
+      setTimeout(async () => await this.adjustGridSize(), 0);
+      this.showCreditsTab = true;
+      this.isOpen = true;
+    }
+    else {
+      this.resetGridSize();
+      this.isOpen = false;
+    }
+  }
+  resetGridSize() {
+    this.gridHeight = '80vh'; // Reset to default height
+    this.showCreditsTab = false;
+    this.gridApi.setFilterModel(null);
+    this.gridApi.onFilterChanged();
+  }
+
+  adjustGridSize() {
+    this.gridHeight = '20vh'; // Adjust as needed
+  }
+
+  revert(){
+    this.obtenerDatosEmpleados();
+    this.notSavedChanges = false;
   }
 
   onRowDoubleClicked(event: any) {
-    console.log("log:" , this.bonusCatalogos)
-    this.bonusForm.reset({
+    /*this.bonusForm.reset({
       nuevoBonus: '',
       motivo: ''
     });
@@ -108,9 +349,9 @@ export class BonusComponent{
     this.bonoEmployee = event.data.bono;
 
     const modal = new bootstrap.Modal(document.getElementById('searchModal')!);
-    modal.show();
+    modal.show();*/
   }
-  guardarBonus(){
+  /*guardarBonus(){
     if (this.bonusForm.valid) {
       const datos = this.bonusForm.value;
       console.log('Bonus actualizado:', {
@@ -121,6 +362,15 @@ export class BonusComponent{
         motivo: datos.motivo,
         fecha: datos.fechaSelect
       });
+    }
+  }*/
+
+  Consultar(){
+    if(this.selectFechas.valid){
+      const datos = this.selectFechas.value;
+      this.fechaInicio = datos.fechaInicio
+      this.fechaFin = datos.fechaFin
+      this.obtenerDatosEmpleados()
     }
   }
 

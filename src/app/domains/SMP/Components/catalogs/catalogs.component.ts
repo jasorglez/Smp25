@@ -40,6 +40,7 @@ export class CatalogsComponent {
   private tempIdCounter: number = 0;
   private gridApi: GridApi;
 
+
   menuSelect: number;
   showWarehTab: Signal<boolean>;
   showAdmonTab: Signal<boolean>;
@@ -86,19 +87,27 @@ export class CatalogsComponent {
       }
     );
   }
+  
 
   obtenerDatos() {
     //alert(this.selectedCatalog),   //alert(this.idRoot)
-    this.catalogService.getCatalogs(this.idRoot, this.selectedCatalog).subscribe(
-      (data: any) => {
-        this.rowData = data;
-        console.log('Catalogo:', this.rowData);
+    this.catalogService.getCatalogs(this.idRoot, this.selectedCatalog).subscribe({
+      next: (data: any[]) => {
+        const nuevoArray = data.map((item) => {
+          return {
+            ...item,
+            valueAddition2: item.valueAddition2 === "true"
+          };
+        });
+        this.rowData = nuevoArray;
+        //this.rowData = data;
+        console.log("Datos procesados:", this.rowData);
       },
-      (error) => {
-        if (error.status == 404) this.rowData = [];
-        console.error('Error fetching data:', error);
+      error: () => {
+        this.rowData = [];
+        console.error("Error al obtener datos del catálogo BONUS.");
       }
-    );
+  });
   }
 
 
@@ -106,14 +115,25 @@ export class CatalogsComponent {
 
   get colMaster(): ColDef[] {
     return [
-      { field: 'id', headerName: 'Id', editable: true, filter: false, width: 90 },
-      { field: 'description', headerName: 'Descripcion', editable: true, filter: true, width: 250 },
-      //{ field: 'valueAddition', headerName: 'Valor 1', editable: false, width: 185 },
-      //{ field: 'valueAddition2', headerName: 'Valor 2', editable: true, width: 185 },
-      //{ field: 'parentId', headerName: 'Consecutivo', editable: true, width: 185 },s
-    ]
-  };
+      { field: 'id', headerName: 'Id', editable: true, filter: false, width: 80 },
+      { field: 'description', headerName: 'Descripción', editable: true, filter: true, width: 250 },
+      {
+        field: 'valueAddition',
+        headerName: this.selectedCatalog !== 'BONUS' ? 'Color' : '',
+        editable: true,
+        width: 100,
+        hide: this.selectedCatalog !== 'BONUS' && this.selectedCatalog !== 'TYPECLIENT' // Oculta si no es BONUS
+      },
+      {
+        field: 'valueAddition2',
+        headerName: 'Validacion',
+        editable: true,
+        width: 100,
 
+      }
+    ];
+    
+  }
 
   onSelectedRow(event: RowSelectedEvent): void {
     if (event.node && event.node.isSelected()) { // Verificar si la fila está seleccionada
@@ -204,7 +224,7 @@ export class CatalogsComponent {
       idCompany: this.idRoot,
       description: '',
       valueaddition: 'NA',
-      valueaddition2: 'NA',
+      valueAddition2: true,
       type: this.selectedCatalog,
       picture: '',
       select: false,
@@ -237,12 +257,16 @@ export class CatalogsComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+
+      cleanedData.valueAddition2 = String(cleanedData.valueAddition2);
+      console.log("añadidos", cleanedData.valueAddition2);
       return this, this.catalogService.addCatalog(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('cleanedData', cleanedData)
+      cleanedData.valueAddition2 = String(cleanedData.valueAddition2);
+      console.log("añadidos", cleanedData.valueAddition2);
       return this.catalogService.updateCatalog(row.id, cleanedData);
 
     });
