@@ -47,13 +47,15 @@ export class CatalogsComponent {
   constructor() {
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      this.obtenerTables()
+      this.obtenerTables();
+      this.obtenerDatos();
     })
   }
 
   ngOnInit() {
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
     this.obtenerTables()
+    this.obtenerDatos();
 
   }
 
@@ -106,8 +108,8 @@ export class CatalogsComponent {
 
   get colMaster(): ColDef[] {
     return [
-      { field: 'id', headerName: 'Id', editable: true, filter: false, width: 90 },
-      { field: 'description', headerName: 'Descripcion', editable: true, filter: true, width: 250 },
+      { field: 'id', headerName: 'Id', editable: false, filter: false, width: 90 },
+      { field: 'description', headerName: 'Descripción', editable: true, filter: true, width: 250 },
       //{ field: 'valueAddition', headerName: 'Valor 1', editable: false, width: 185 },
       //{ field: 'valueAddition2', headerName: 'Valor 2', editable: true, width: 185 },
       //{ field: 'parentId', headerName: 'Consecutivo', editable: true, width: 185 },s

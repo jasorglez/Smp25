@@ -10,6 +10,7 @@ import { NominaData } from '../../setup/models/payroll-data.module';
 import { PayrollService } from 'app/services/payroll.service';
 import { AdministrationService } from 'app/services/administration.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { BonusCatalogComponent } from './bonusCatalog/bonusCatalog.component';
 
 interface Bank {
   id: number;
@@ -22,7 +23,9 @@ interface Bank {
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule],
+    FormsModule,
+    BonusCatalogComponent 
+],
   templateUrl: './setup.component.html',
   styleUrl: './setup.component.scss'
 })

@@ -64,6 +64,7 @@ export class CatalogsService {
 
   
   addCatalog(catalog: any): Observable<any> {
+    console.log(catalog);
     return this.http.post<any>(`${environment.urlWarehouse}/Catalog`, catalog, { headers: this.trackingService.getHeaders() });
   }
 
