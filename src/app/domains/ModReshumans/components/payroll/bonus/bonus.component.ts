@@ -57,9 +57,10 @@ export class BonusComponent{
   ngOnInit(){
   this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
   this.idEmpresa = this.signalsService.getRootSelectedBySidebar()();
-  console.log("en init, esto es bonusCatalog: ", this.bonusCatalogos);
+  //console.log("en init, esto es bonusCatalog: ", this.bonusCatalogos);
   this.obtenerDatosCatalogos();
-  console.log("en init pasada la llamada, esto es bonusCatalog: ", this.bonusCatalogos);
+  //console.log("en init pasada la llamada, esto es bonusCatalog: ", this.bonusCatalogos);
+  this.consultaInical()
 
   this.selectFechas = this.fb.group({
     fechaInicio: ['', Validators.required],
@@ -100,10 +101,10 @@ export class BonusComponent{
   }
 
   obtenerDatosCatalogos() {
-    console.log("------- empresa para obtener catalogos: ", this.idEmpresa);
+    //console.log("------- empresa para obtener catalogos: ", this.idEmpresa);
     this.catalogsService.getCatalogs(this.idEmpresa , "BONUS").subscribe((data) => {
       this.bonusCatalogos = data;
-      console.log("------ Catalogo", data);
+      //console.log("------ Catalogo", data);
     },
       (error) => console.error('Error fetching measures:', error)
     );
@@ -111,10 +112,11 @@ export class BonusComponent{
 
   obtenerDatosEmpleados(){
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+    console.log("Consulta: ", this.fechaInicio, this.fechaFin, this.idBranch)
     this.administrationService.getEmployeesBonus(this.fechaInicio, this.fechaFin, this.idBranch).subscribe({
       next: (data) => {
         this.rowData = data;
-        console.log("----- Datos de bonos: ", data)
+        //console.log("----- Datos de bonos: ", data)
       },
       error: (err) => {
         console.error("Error al obtener empleados con bonus:", err);
@@ -393,20 +395,26 @@ export class BonusComponent{
   }*/
 
   Consultar(){
-    const hoy = new Date();
-    const semanaActual = this.getWeekNumber(hoy);
-    const semanaPasada = semanaActual - 1;
-    const añoActual = hoy.getFullYear();
-    
-    const Lunes  = this.getDateOfISOWeek(semanaActual, añoActual, 1);
-    const Sabado = this.getDateOfISOWeek( semanaPasada, añoActual, 6);
-    console.log("El sabado de la semana pasada fue: ", Sabado.toISOString().split('T')[0],"Y el lunes es:",Lunes.toISOString().split('T')[0]);
     if(this.selectFechas.valid){
       const datos = this.selectFechas.value;
       this.fechaInicio = datos.fechaInicio
       this.fechaFin = datos.fechaFin
       this.obtenerDatosEmpleados()
     }
+  }
+
+  consultaInical(){
+    const hoy = new Date();
+    const semanaActual = this.getWeekNumber(hoy);
+    const semanaPasada = semanaActual - 1;
+    const añoActual = hoy.getFullYear();
+    
+    //const Lunes  = this.getDateOfISOWeek(semanaActual, añoActual, 1);
+    const Sabado = this.getDateOfISOWeek( semanaPasada, añoActual, 6);
+    //console.log("El sabado de la semana pasada fue: ", Sabado.toISOString().split('T')[0]);
+    this.fechaInicio = Sabado.toISOString().split('T')[0];
+    this.fechaFin = hoy.toISOString().split('T')[0];
+    this.obtenerDatosEmpleados();
   }
 
   getDateOfISOWeek(week: number, year: number, dayOfWeek: number): Date {
