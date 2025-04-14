@@ -232,7 +232,7 @@ export class BonusComponent{
         const addObservables = newRows.map((row) => {
           const cleanedData = this.cleanDataForServer(row);
           console.log(cleanedData);
-          return this.administrationService.addEmployeesBonus(cleanedData);
+          return this.administrationService.addEmployeesBonus([]);
         });
 
         const updateObservables = modifiedRows.map((row) => {
