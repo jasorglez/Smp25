@@ -52,19 +52,20 @@ export class BonusComponent{
   private lastEditedRowId: number | string | null = null;
   newlyAddedRows: string[] = [];
   cleanedListData: any[] = [];
+  incidentDate : string;
 
 
   ngOnInit(){
-  this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-  this.idEmpresa = this.signalsService.getRootSelectedBySidebar()();
-  console.log("en init, esto es bonusCatalog: ", this.bonusCatalogos);
-  this.obtenerDatosCatalogos();
-  console.log("en init pasada la llamada, esto es bonusCatalog: ", this.bonusCatalogos);
+    this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+    this.idEmpresa = this.signalsService.getRootSelectedBySidebar()();
+    console.log("en init, esto es bonusCatalog: ", this.bonusCatalogos);
+    this.obtenerDatosCatalogos();
+    console.log("en init pasada la llamada, esto es bonusCatalog: ", this.bonusCatalogos);
 
-  this.selectFechas = this.fb.group({
-    fechaInicio: ['', Validators.required],
-    fechaFin: ['', Validators.required]
-  });
+    this.selectFechas = this.fb.group({
+      fechaInicio: ['', Validators.required],
+      fechaFin: ['', Validators.required]
+    });
   }
   constructor(private fb: FormBuilder){}
 
@@ -143,14 +144,24 @@ export class BonusComponent{
     {
       field: 'incidenceDate',
       headerName: 'Fecha',
-      editable: false,
+      editable: true,
       filter: true,
       width: 200,
       flex: 1,
+      cellEditor: 'agDateCellEditor',
+
+      valueGetter: (params) => params.data.incidenceDate ? new Date(params.data.incidenceDate) : null,
+
       valueFormatter: (params) => {
-        if (!params.value) return '';
-        return new Date(params.value).toISOString().split('T')[0]; // "YYYY-MM-DD"
+        if (params.value) {
+          const date = new Date(params.value);
+          this.incidentDate = `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
+          return this.incidentDate;
+        }
+        return '';
       }
+
+
     },
     {
       field: 'bonus',
