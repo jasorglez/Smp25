@@ -101,10 +101,10 @@ export class BonusComponent{
   }
 
   obtenerDatosCatalogos() {
-    console.log("------- empresa para obtener catalogos: ", this.idEmpresa);
+    //console.log("------- empresa para obtener catalogos: ", this.idEmpresa);
     this.catalogsService.getCatalogs(this.idEmpresa , "BONUS").subscribe((data) => {
       this.bonusCatalogos = data;
-      console.log("------ Catalogo", data);
+      //console.log("------ Catalogo", data);
     },
       (error) => console.error('Error fetching measures:', error)
     );
@@ -112,10 +112,11 @@ export class BonusComponent{
 
   obtenerDatosEmpleados(){
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+    console.log("Consulta: ", this.fechaInicio, this.fechaFin, this.idBranch)
     this.administrationService.getEmployeesBonus(this.fechaInicio, this.fechaFin, this.idBranch).subscribe({
       next: (data) => {
         this.rowData = data;
-        console.log("----- Datos de bonos: ", data)
+        //console.log("----- Datos de bonos: ", data)
       },
       error: (err) => {
         console.error("Error al obtener empleados con bonus:", err);
