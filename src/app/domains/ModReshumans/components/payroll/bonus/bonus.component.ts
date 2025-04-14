@@ -147,8 +147,8 @@ export class BonusComponent{
       }
     },
     {
-      field: 'description',
-      headerName: 'concepto',
+      field: 'bonus',
+      headerName: 'Concepto',
       editable: true,
       filter: true,
       width: 150,
@@ -163,15 +163,15 @@ export class BonusComponent{
       }
     },
     {
-      field: 'valueAddition',
+      field: 'quantity',
       headerName: 'Monto',
-      editable: false, // importante: es derivado del campo 'description'
+      editable: false, 
       filter: false,
       flex: 1,
-      valueGetter: (params) => {
+      /* valueGetter: (params) => {
         const foundItem = this.bonusCatalogos?.find(item => item.description === params.data.description);
         return foundItem ? foundItem.valueAddition : '';
-      }
+      } */
     }
   ]}
   onCellValueChanged(event: any) {
