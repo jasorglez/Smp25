@@ -19,7 +19,7 @@ import { forkJoin } from 'rxjs';
   imports: [AgGridModule, FormsModule, ReactiveFormsModule, CommonModule, MultiLineEditorComponent],
   templateUrl: './bonus.component.html',
 })
-export class BonusComponent{ 
+export class BonusComponent{
 
   private signalsService = inject(SignalsService);
   private catalogsService = inject(CatalogsService);
@@ -30,7 +30,7 @@ export class BonusComponent{
       multiLineEditor: MultiLineEditorComponent,
       autocompleteEditor: AutocompleteEditorComponent,
     };
-  
+
   id: string;
   rowData: any;
   //bonusForm!: FormGroup;
@@ -51,7 +51,7 @@ export class BonusComponent{
   selectedRowData: any = null;
   private lastEditedRowId: number | string | null = null;
   newlyAddedRows: string[] = [];
- 
+
 
   ngOnInit(){
   this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
@@ -61,7 +61,7 @@ export class BonusComponent{
     fechaInicio: ['', Validators.required],
     fechaFin: ['', Validators.required]
   });
-  }  
+  }
   constructor(private fb: FormBuilder){
   }
   public gridOptions: any = {
@@ -102,23 +102,24 @@ export class BonusComponent{
           (error) => console.error('Error fetching measures:', error)
         );
   }
-  
-  
+
   obtenerDatosEmpleados(){
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
     this.administrationService.getEmployeesBonus(this.fechaInicio, this.fechaFin, this.idBranch).subscribe({
       next: (data) => {
         this.rowData = data;
+        console.log("----- Datos de bonos: ", data)
       },
       error: (err) => {
         console.error("Error al obtener empleados con bonus:", err);
       }
     });
-  }  
+  }
+
   get colMaster(): ColDef[] {
     return[
     {
-      field: 'id',
+      field: 'idEmployee',
       headerName: 'Id empleado',
       editable: false,
       filter: true,
@@ -197,36 +198,36 @@ export class BonusComponent{
           );
           return;
         }*/
-    
+
         const newRows = this.rowData.filter((row) => row.__isNew);
         const modifiedRows = this.rowData.filter(
           (row) => row.__modified && !row.__isNew
         );
-    
+
         const addObservables = newRows.map((row) => {
           const cleanedData = this.cleanDataForServer(row);
           console.log(cleanedData);
           //return this.administrationService.addEmployeesBonus(cleanedData);
         });
-    
+
         const updateObservables = modifiedRows.map((row) => {
           const cleanedData = this.cleanDataForServer(row);
           console.log('Actualizando cliente con los siguientes datos:', cleanedData);
           return this.administrationService.addEmployeesBonus(cleanedData);
         });
-    
+
         try {
           const responses = await lastValueFrom(
             concat(...addObservables, ...updateObservables).pipe(toArray())
           );
-    
+
           // Determinar qué ID vamos a seleccionar después de recargar
           if (modifiedRows.length > 0) {
             this.lastEditedRowId = modifiedRows[modifiedRows.length - 1].id;
           } else if (newRows.length > 0) {
             this.lastEditedRowId = 'SELECT_MAX_ID';
           }
-    
+
           alerts.basicAlert(
             'Datos actualizados',
             'Se han actualizado los datos correctamente.',
@@ -234,13 +235,13 @@ export class BonusComponent{
           );
           this.notSavedChanges = false;
           this.newlyAddedRows = [];
-    
+
           // Esperar a que los datos se carguen completamente
           await this.obtenerDatosEmpleados();
-    
+
           // Esperar un ciclo de renderizado adicional
           await new Promise(resolve => setTimeout(resolve, 0));
-    
+
           // Seleccionar la fila apropiada después de recargar
           if (this.lastEditedRowId) {
             if (this.lastEditedRowId === 'SELECT_MAX_ID') {
@@ -252,7 +253,7 @@ export class BonusComponent{
             }
             this.lastEditedRowId = null;
           }
-    
+
         } catch (error) {
           console.error(error);
           alerts.basicAlert(
