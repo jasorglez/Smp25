@@ -51,19 +51,23 @@ export class BonusComponent{
   selectedRowData: any = null;
   private lastEditedRowId: number | string | null = null;
   newlyAddedRows: string[] = [];
+  cleanedListData: any[] = [];
 
 
   ngOnInit(){
   this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
   this.idEmpresa = this.signalsService.getRootSelectedBySidebar()();
+  console.log("en init, esto es bonusCatalog: ", this.bonusCatalogos);
   this.obtenerDatosCatalogos();
+  console.log("en init pasada la llamada, esto es bonusCatalog: ", this.bonusCatalogos);
+
   this.selectFechas = this.fb.group({
     fechaInicio: ['', Validators.required],
     fechaFin: ['', Validators.required]
   });
   }
-  constructor(private fb: FormBuilder){
-  }
+  constructor(private fb: FormBuilder){}
+
   public gridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
@@ -86,21 +90,23 @@ export class BonusComponent{
       }
     },
   };
+
   onSelectedRow(event: any) {
     this.id = event.data.id;
   }
+
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
   }
 
-
   obtenerDatosCatalogos() {
+    console.log("------- empresa para obtener catalogos: ", this.idEmpresa);
     this.catalogsService.getCatalogs(this.idEmpresa , "BONUS").subscribe((data) => {
-            this.bonusCatalogos = data;
-            console.log("Catalogo",this.bonusCatalogos);
-          },
-          (error) => console.error('Error fetching measures:', error)
-        );
+      this.bonusCatalogos = data;
+      console.log("------ Catalogo", data);
+    },
+      (error) => console.error('Error fetching measures:', error)
+    );
   }
 
   obtenerDatosEmpleados(){
@@ -147,8 +153,8 @@ export class BonusComponent{
       }
     },
     {
-      field: 'description',
-      headerName: 'concepto',
+      field: 'bonus',
+      headerName: 'Concepto',
       editable: true,
       filter: true,
       width: 150,
@@ -163,21 +169,37 @@ export class BonusComponent{
       }
     },
     {
-      field: 'valueAddition',
+      field: 'quantity',
       headerName: 'Monto',
-      editable: false, // importante: es derivado del campo 'description'
+      editable: false,
       filter: false,
       flex: 1,
-      valueGetter: (params) => {
-        const foundItem = this.bonusCatalogos?.find(item => item.description === params.data.description);
+     /*  valueGetter: (params) => {
+        const foundItem = this.bonusCatalogos ? this.bonusCatalogos.find(item => item.description === params.data.bonus) : null;
         return foundItem ? foundItem.valueAddition : '';
+      } */
+      valueFormatter: (params) => {
+        const foundItem = this.bonusCatalogos?.find(item => item.description === params.data.bonus);
+        const value = foundItem ? foundItem.valueAddition : params.value;
+        return value ? `$${Number(value).toLocaleString('es-MX', { minimumFractionDigits: 2 })}` : '';
       }
     }
   ]}
   onCellValueChanged(event: any) {
     event.data.__modified = true;
     this.notSavedChanges = true;
+    if (event.colDef.field === 'bonus') {
+      const selectedBonus = event.newValue;
+      const bonusInfo = this.bonusCatalogos?.find(item => item.description === selectedBonus);
+
+      if (bonusInfo) {
+        // Actualizamos el monto (quantity)
+        event.data.quantity = parseFloat(bonusInfo.valueAddition);
+        event.api.refreshCells({ rowNodes: [event.node], columns: ['quantity'] });
+      }
+    }
   }
+
   private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
@@ -187,8 +209,9 @@ export class BonusComponent{
     }
     return cleanedData;
   }
+
   async saveChanges(){
-    console.log(this.rowData);
+    console.log("---- salvando cambios ", this.rowData);
     /*const isValid = this.rowData.every((item) => item.nameContact || item.company);
         if (!isValid) {
           alerts.basicAlert(
@@ -207,13 +230,16 @@ export class BonusComponent{
         const addObservables = newRows.map((row) => {
           const cleanedData = this.cleanDataForServer(row);
           console.log(cleanedData);
-          //return this.administrationService.addEmployeesBonus(cleanedData);
+          return this.administrationService.addEmployeesBonus(cleanedData);
         });
 
         const updateObservables = modifiedRows.map((row) => {
           const cleanedData = this.cleanDataForServer(row);
           console.log('Actualizando cliente con los siguientes datos:', cleanedData);
-          return this.administrationService.addEmployeesBonus(cleanedData);
+          this.cleanedListData.push(cleanedData);
+          console.log('Actualizando arrys de empleados: ', this.cleanedListData);
+
+          return this.administrationService.addEmployeesBonus(this.cleanedListData);
         });
 
         try {
