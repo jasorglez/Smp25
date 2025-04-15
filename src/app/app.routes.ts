@@ -414,10 +414,7 @@ export const routes: Routes = [
             loadComponent: () => import('./domains/ModReshumans/components/employees/employees.component').then(s => s.EmployeesComponent),
             children: [
               { path: '', redirectTo: 'employees-table', pathMatch: 'full' },
-              {
-                path: 'catalogs',
-                loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(s => s.CatalogsComponent)
-              },
+              
               {
                 path: 'clock',
                 loadComponent: () => import('./domains/ModReshumans/components/employees/employees-clock/employees-clock.component').then(p => p.EmployeesClockComponent)
@@ -460,6 +457,10 @@ export const routes: Routes = [
               {
                 path: 'setup',
                 loadComponent: () => import('./domains/ModReshumans/components/payroll/setup/setup.component').then(s => s.SetupEmployeesComponent)
+              },
+              {
+                path: 'catalogs',
+                loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(s => s.CatalogsComponent)
               },
             ]
           },

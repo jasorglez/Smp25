@@ -135,4 +135,13 @@ export class AdministrationService {
   getTypecustomers(idRoot: number){
     return this.http.get(`${environment.urlAdministration}/Customer/GetTypeCustomer?idCompany=${idRoot}`, { headers: this.trackingService.getHeaders() });
   }
+
+  getEmployeesBonus(startDate: string, endDate: string,  idBranch: number) {
+    return this.http.get(`${environment.urlAdministration}/NormalPayrolls/bonus?startDate=${startDate}&endDate=${endDate}&idBranch=${idBranch}`, { headers: this.trackingService.getHeaders() });
+ }
+ addEmployeesBonus(data: any): Observable<any> {
+  return this.http.post(`${environment.urlAdministration}/NormalPayrolls/save-bonuses`, data, { headers: this.trackingService.getHeaders() });
+}
+
+
 }
