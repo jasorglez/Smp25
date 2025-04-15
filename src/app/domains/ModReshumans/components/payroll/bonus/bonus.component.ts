@@ -110,7 +110,7 @@ export class BonusComponent{
     );
   }
 
-  obtenerDatosEmpleados(){
+  obtenerBonosEmpleados(){
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
     console.log("Consulta: ", this.fechaInicio, this.fechaFin, this.idBranch)
     this.administrationService.getEmployeesBonus(this.fechaInicio, this.fechaFin, this.idBranch).subscribe({
@@ -275,7 +275,7 @@ export class BonusComponent{
           this.newlyAddedRows = [];
 
           // Esperar a que los datos se carguen completamente
-          await this.obtenerDatosEmpleados();
+          await this.obtenerBonosEmpleados();
 
           // Esperar un ciclo de renderizado adicional
           await new Promise(resolve => setTimeout(resolve, 0));
@@ -374,7 +374,7 @@ export class BonusComponent{
   }
 
   revert(){
-    this.obtenerDatosEmpleados();
+    this.obtenerBonosEmpleados();
     this.notSavedChanges = false;
   }
 
@@ -409,7 +409,7 @@ export class BonusComponent{
         const datos = this.selectFechas.value;
         this.fechaInicio = datos.fechaInicio;
         this.fechaFin = datos.fechaFin;
-        this.obtenerDatosEmpleados()
+        this.obtenerBonosEmpleados()
       }
     }
 
@@ -423,7 +423,7 @@ export class BonusComponent{
       //console.log("El sabado de la semana pasada fue: ", Sabado.toISOString().split('T')[0],"Y el lunes es:",Lunes.toISOString().split('T')[0]);
       this.fechaInicio = Sabado.toISOString().split('T')[0];
       this.fechaFin = hoy.toISOString().split('T')[0];
-      this.obtenerDatosEmpleados()
+      this.obtenerBonosEmpleados()
     }
   
     getDateOfISOWeek(week: number, year: number, dayOfWeek: number): Date {
