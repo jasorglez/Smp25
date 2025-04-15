@@ -33,14 +33,14 @@ export class MasterClockComponent {
    private http = inject(HttpClient);
  
    ngOnInit() {
+     
+     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
      this.obtenerDatos();
-     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-
    }
  
    constructor() { 
      effect(() => {
-       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
        this.obtenerDatos();
      })
    }
@@ -70,9 +70,8 @@ export class MasterClockComponent {
    newlyAddedRows: string[] = [];
  
    id: string;
-   idRoot: number;
+   idBranch: number;
    selectedTab: string = 'customers-payments';
-   idBranch: number = null;
    idEmployee: number;
    infoCp: any;
  
@@ -101,6 +100,7 @@ export class MasterClockComponent {
    public gridOptions: any = {
      headerHeight: 25,
      rowHeight: 20,
+     groupDefaultExpanded: -1, // -1 significa expandir todos los grupos
      rowClass: (params) => {
        if (params.node.isSelected()) {
          return 'selected-row';
@@ -137,6 +137,28 @@ export class MasterClockComponent {
          rowGroup: true
        },
        {
+        field: 'periodStart',
+        headerName: 'Fecha inicio',
+        editable: false,
+        width: 150,
+        valueGetter: (params) => {
+          if (!params.data?.periodStart) return '';
+          const date = new Date(params.data.periodStart);
+          return date.toISOString().split('T')[0];
+        }
+      },
+      {
+        field: 'periodEnd',
+        headerName: 'Fecha fin',
+        editable: false,
+        width: 150,
+        valueGetter: (params) => {
+          if (!params.data?.periodEnd) return '';
+          const date = new Date(params.data.periodEnd);
+          return date.toISOString().split('T')[0];
+        }
+      },
+       {
         field: 'nameEmployee',
         headerName: 'Nombre Empleado',
         editable: false,
@@ -146,7 +168,13 @@ export class MasterClockComponent {
         field: 'totalHours',
         headerName: 'Horas laboradas',
         editable: false,
-        width: 200
+        width: 200,
+        cellStyle: (params) => {
+          if (params.value == 0) {
+            return { backgroundColor: '#ffcccc' };
+          }
+          return null;
+        }
       },
       {
         field: 'pendingOuts',
@@ -201,7 +229,7 @@ export class MasterClockComponent {
    }
  
    obtenerDatos() {
-     this.payrollService.getMasterClock(this.idRoot, '2025-04-01', '2025-04-07').subscribe((data: any) => {
+     this.payrollService.getMasterClock(this.idBranch, null, null).subscribe((data: any) => {
        this.rowData = data;
      });
    }
