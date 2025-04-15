@@ -180,6 +180,8 @@ export class BonusComponent{
       width: 150,
       flex: 1,
       cellEditor: 'agSelectCellEditor',
+      cellStyle: params => params.value == 'N/A' ? { backgroundColor: '#FFD6E7' } : null,
+
       cellEditorParams: {
         values: this.bonusCatalogos ? this.bonusCatalogos.map(item => item.description) : [],
       },
@@ -412,7 +414,7 @@ export class BonusComponent{
         )
         .then((result) => {
           if (result.isConfirmed) {
-            
+
             alerts.basicAlert('Eliminado', 'El registro ha sido eliminado', 'success');
           }
           else
