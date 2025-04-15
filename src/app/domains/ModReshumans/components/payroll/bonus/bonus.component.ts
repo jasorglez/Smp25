@@ -58,13 +58,13 @@ export class BonusComponent{
   ngOnInit(){
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
     this.idEmpresa = this.signalsService.getRootSelectedBySidebar()();
-    console.log("en init, esto es bonusCatalog: ", this.bonusCatalogos);
+    //console.log("en init, esto es bonusCatalog:cdfdd ", this.bonusCatalogos);
     this.obtenerDatosCatalogos();
-    console.log("en init pasada la llamada, esto es bonusCatalog: ", this.bonusCatalogos);
-
+    //console.log("en init pasada la llamada, esto es bonusCatalog: ", this.bonusCatalogos);
+    this.InicioConsulta();
     this.selectFechas = this.fb.group({
-      fechaInicio: ['', Validators.required],
-      fechaFin: ['', Validators.required]
+      fechaInicio: [this.fechaInicio, Validators.required],
+      fechaFin: [this.fechaFin, Validators.required]
     });
   }
   constructor(private fb: FormBuilder){}
@@ -404,13 +404,50 @@ export class BonusComponent{
     }
   }*/
 
-  Consultar(){
-    if(this.selectFechas.valid){
-      const datos = this.selectFechas.value;
-      this.fechaInicio = datos.fechaInicio
-      this.fechaFin = datos.fechaFin
+    Consultar(){
+      if(this.selectFechas.valid){
+        const datos = this.selectFechas.value;
+        this.fechaInicio = datos.fechaInicio;
+        this.fechaFin = datos.fechaFin;
+        this.obtenerDatosEmpleados()
+      }
+    }
+
+    InicioConsulta(){
+      const hoy = new Date();
+      const semanaActual = this.getWeekNumber(hoy);
+      const semanaPasada = semanaActual - 1;
+      const añoActual = hoy.getFullYear();
+      //const Lunes  = this.getDateOfISOWeek(semanaActual, añoActual, 1);
+      const Sabado = this.getDateOfISOWeek( semanaPasada, añoActual, 6);
+      //console.log("El sabado de la semana pasada fue: ", Sabado.toISOString().split('T')[0],"Y el lunes es:",Lunes.toISOString().split('T')[0]);
+      this.fechaInicio = Sabado.toISOString().split('T')[0];
+      this.fechaFin = hoy.toISOString().split('T')[0];
       this.obtenerDatosEmpleados()
     }
+  
+    getDateOfISOWeek(week: number, year: number, dayOfWeek: number): Date {
+    const simple = new Date(year, 0, 1 + (week - 1) * 7);
+    const dow = simple.getDay(); // 0 = domingo, 1 = lunes, ..., 6 = sábado
+    const ISOWeekStart = simple;
+    
+    if (dow <= 4)
+      ISOWeekStart.setDate(simple.getDate() - simple.getDay() + 1); // lunes
+    else
+      ISOWeekStart.setDate(simple.getDate() + 8 - simple.getDay()); // siguiente lunes
+  
+    const result = new Date(ISOWeekStart);
+    result.setDate(result.getDate() + dayOfWeek - 1); // lunes = 1, viernes = 5
+    return result;
   }
-
+  
+  getWeekNumber(fecha: Date): number {
+    const fechaCopy = new Date(Date.UTC(fecha.getFullYear(), fecha.getMonth(), fecha.getDate()));
+    const diaSemana = fechaCopy.getUTCDay() || 7; // Domingo = 7
+    fechaCopy.setUTCDate(fechaCopy.getUTCDate() + 4 - diaSemana); // Ajustar al jueves
+    const añoInicio = new Date(Date.UTC(fechaCopy.getUTCFullYear(), 0, 1));
+    const diferencia = fechaCopy.getTime() - añoInicio.getTime();
+    const dias = Math.floor(diferencia / (1000 * 60 * 60 * 24));
+    return Math.ceil((dias + 1) / 7);
+  }
 }
