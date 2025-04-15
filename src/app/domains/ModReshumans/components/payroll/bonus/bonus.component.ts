@@ -69,7 +69,7 @@ export class BonusComponent{
     this.selectFechas.get('fechaInicio')?.valueChanges.subscribe(value => {
       this.fechaInicio = value;
     });
-  
+
     // Suscripción para actualizar el valor máximo de fechaInicio
     this.selectFechas.get('fechaFin')?.valueChanges.subscribe(value => {
       this.fechaFin = value;
@@ -412,8 +412,11 @@ export class BonusComponent{
         )
         .then((result) => {
           if (result.isConfirmed) {
+            
             alerts.basicAlert('Eliminado', 'El registro ha sido eliminado', 'success');
           }
+          else
+            alerts.basicAlert('Información','La operación fue cancelada','info');
         })
       };
       this.obtenerBonosEmpleados();
