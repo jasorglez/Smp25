@@ -116,7 +116,7 @@ export class BonusComponent{
     this.administrationService.getEmployeesBonus(this.fechaInicio, this.fechaFin, this.idBranch).subscribe({
       next: (data) => {
         this.rowData = data;
-        //console.log("----- Datos de bonos: ", data)
+        console.log("----- Datos de bonos: ", data)
       },
       error: (err) => {
         console.error("Error al obtener empleados con bonus:", err);
@@ -197,12 +197,16 @@ export class BonusComponent{
       }
     }
   ]}
+
   onCellValueChanged(event: any) {
+    console.log("---- evento de cambio de celda: ", event);
     event.data.__modified = true;
     this.notSavedChanges = true;
     if (event.colDef.field === 'bonus') {
       const selectedBonus = event.newValue;
       const bonusInfo = this.bonusCatalogos?.find(item => item.description === selectedBonus);
+      console.log("---- info del bono: ", bonusInfo);
+      console.log("---- info del bono: ", bonusInfo?.valueAddition);
 
       if (bonusInfo) {
         // Actualizamos el monto (quantity)
@@ -214,6 +218,9 @@ export class BonusComponent{
 
   private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };
+    if (data.bonus == "N/A") {
+      return null;
+    }
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
@@ -239,6 +246,13 @@ export class BonusComponent{
           (row) => row.__modified && !row.__isNew
         );
 
+        console.log("---- rows a guardar: ", newRows);
+        console.log("---- rows modificadas: ", modifiedRows);
+        console.log("---- rows a eliminar: ", this.rowData.filter((row) => !row.__isNew && !row.__modified));
+        console.log("---- rows a eliminar: ", this.rowData.filter((row) => !row.__isNew && !row.__modified).length);
+
+        this.cleanedListData = [];
+
         const addObservables = newRows.map((row) => {
           const cleanedData = this.cleanDataForServer(row);
           console.log(cleanedData);
@@ -248,7 +262,7 @@ export class BonusComponent{
         const updateObservables = modifiedRows.map((row) => {
           const cleanedData = this.cleanDataForServer(row);
           console.log('Actualizando cliente con los siguientes datos:', cleanedData);
-          this.cleanedListData.push(cleanedData);
+          if (cleanedData != null) this.cleanedListData.push(cleanedData);
           console.log('Actualizando arrys de empleados: ', this.cleanedListData);
 
           return this.administrationService.addEmployeesBonus(this.cleanedListData);
@@ -301,6 +315,7 @@ export class BonusComponent{
           );
         }
   }
+
   private selectRowById(id: number | string) {
     // Dar tiempo al grid para que se actualice
     setTimeout(() => {
@@ -425,22 +440,22 @@ export class BonusComponent{
       this.fechaFin = hoy.toISOString().split('T')[0];
       this.obtenerBonosEmpleados()
     }
-  
+
     getDateOfISOWeek(week: number, year: number, dayOfWeek: number): Date {
     const simple = new Date(year, 0, 1 + (week - 1) * 7);
     const dow = simple.getDay(); // 0 = domingo, 1 = lunes, ..., 6 = sábado
     const ISOWeekStart = simple;
-    
+
     if (dow <= 4)
       ISOWeekStart.setDate(simple.getDate() - simple.getDay() + 1); // lunes
     else
       ISOWeekStart.setDate(simple.getDate() + 8 - simple.getDay()); // siguiente lunes
-  
+
     const result = new Date(ISOWeekStart);
     result.setDate(result.getDate() + dayOfWeek - 1); // lunes = 1, viernes = 5
     return result;
   }
-  
+
   getWeekNumber(fecha: Date): number {
     const fechaCopy = new Date(Date.UTC(fecha.getFullYear(), fecha.getMonth(), fecha.getDate()));
     const diaSemana = fechaCopy.getUTCDay() || 7; // Domingo = 7

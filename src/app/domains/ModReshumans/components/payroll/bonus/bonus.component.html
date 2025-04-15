@@ -3,7 +3,7 @@
         <form [formGroup]="selectFechas" (ngSubmit)="Consultar()">
           <span class="">Fecha inicial</span>
           <input formControlName="fechaInicio" type="date"  class="bg-white rounded border-light p-1 w-auto ml-2" />
-          
+
           <span class=" ml-4">Fecha final</span>
           <input formControlName="fechaFin" type="date" class="bg-white rounded border-light p-1 w-auto ml-2" />
           <button type="submit" class="ml-4 btn btn-success position-relative" >
@@ -23,26 +23,29 @@
                       <span class="visually-hidden">Hay cambios sin guardar</span>
                     </span>
                   </button>
-                
+
                     <button type="button" class="btn btn-warning ms-1 me-1" (click)="revert()">
                       <i class="bi bi-arrow-clockwise"></i>
-                    </button> 
-                </div>    
+                    </button>
+                    <button type="button" class="btn btn-danger ms-1 me-1">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                </div>
             </div>
-        
+
             <!-- Columna de la tabla -->
             <div class="col">
                 <ag-grid-angular style="width: 100%;"
                 [ngStyle]="{'height': gridHeight}"
-                class="ag-theme-quartz small-text-ag-grid" 
+                class="ag-theme-quartz small-text-ag-grid"
                   [rowData]="rowData"
-                  [columnDefs]="colMaster" 
-                  (selectionChanged)="onSelectionChanged($event)" 
+                  [columnDefs]="colMaster"
+                  (selectionChanged)="onSelectionChanged($event)"
                   [gridOptions]="gridOptions"
-                  (cellValueChanged)="onCellValueChanged($event)" 
+                  (cellValueChanged)="onCellValueChanged($event)"
                   (rowSelected)="onSelectedRow($event)"
-                  (gridReady)="onGridReady($event)" 
-                  [pagination]="false" 
+                  (gridReady)="onGridReady($event)"
+                  [pagination]="false"
                   (cellDoubleClicked)="onCellDoubleClicked($event)"
                   [components]="components" >
                 </ag-grid-angular>
@@ -62,7 +65,7 @@
               <h5 class="mb-3 w-100 text-center fs-4">
                 <strong>Empleado:</strong> {{ nameEmployee }}
               </h5>
-          
+
               <div class="mb-3 w-100">
                 <strong>Bonus actual:</strong> {{ bonoEmployee }}
               </div>
@@ -71,7 +74,7 @@
                 <input formControlName="fechaSelect"  type="date" class="bg-white rounded border-light p-1 w-auto" required/>
               </div>
 
-              
+
               <div class="mb-2 w-100">
                 <label for="miSelect" class="form-label">Motivo del bonus:</label>
                 <select id="miSelect" name="miSelect" class="form-select" formControlName="motivo" required>
@@ -80,7 +83,7 @@
                       {{ bonus.description }}  - Monto: {{ bonus.valueAddition }}
                     </option>
                   </select>
-                  
+
               </div>
               <div class="mb-3 w-100">
                 <label for="bonusInput" class="form-label"><strong>Actualizar bonus:</strong></label>
@@ -90,13 +93,13 @@
                 <button type="submit" class="btn btn-success position-relative" [disabled]="bonusForm.invalid">
                   <i class="bi bi-floppy"></i> Guardar
                 </button>
-              
+
                 <button type="button" class="btn btn-danger" data-bs-dismiss="modal">
                   <i class="bi bi-x-circle"></i> Cerrar
                 </button>
               </div>
             </div>
-          </form>        
+          </form>
         </div>
       </div>
     </div>
