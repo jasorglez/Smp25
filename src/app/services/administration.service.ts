@@ -140,6 +140,7 @@ export class AdministrationService {
     return this.http.get(`${environment.urlAdministration}/NormalPayrolls/bonus?startDate=${startDate}&endDate=${endDate}&idBranch=${idBranch}`, { headers: this.trackingService.getHeaders() });
  }
  addEmployeesBonus(data: any): Observable<any> {
+  //console.log("datos res", data);
   return this.http.post(`${environment.urlAdministration}/NormalPayrolls/save-bonuses`, data, { headers: this.trackingService.getHeaders() });
 }
 

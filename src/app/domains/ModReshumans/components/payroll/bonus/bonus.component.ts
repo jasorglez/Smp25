@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit ,effect } from '@angular/core';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { FormsModule, FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
@@ -7,6 +7,7 @@ import { alerts } from '../../../../../../../helpers/alerts';
 import { catchError, concat, EMPTY, lastValueFrom, toArray, throwError } from 'rxjs';
 import { SignalsService } from 'app/services/signals.service';
 import { CatalogsService } from 'app/services/catalogs.service';
+import { EmployeesService } from 'app/services/employees.service';
 import { CommonModule } from '@angular/common';
 import { AdministrationService } from 'app/services/administration.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
@@ -24,6 +25,7 @@ export class BonusComponent{
   private signalsService = inject(SignalsService);
   private catalogsService = inject(CatalogsService);
   private administrationService = inject(AdministrationService);
+  private employeeService = inject(EmployeesService);
   private gridApi: GridApi;
 
   components = {
@@ -40,6 +42,7 @@ export class BonusComponent{
   bonoEmployee: number;
   idBranch: number;
   bonusCatalogos: any[] = [];
+  empleadoCatalgos: any[] = [];
   fechaInicio: string;
   isOpen: boolean = false;
   fechaFin: string;
@@ -58,10 +61,11 @@ export class BonusComponent{
   ngOnInit(){
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
     this.idEmpresa = this.signalsService.getRootSelectedBySidebar()();
-    //console.log("en init, esto es bonusCatalog:cdfdd ", this.bonusCatalogos);
+    //console.log("en init, esto es bonusCatalog:", this.bonusCatalogos);
     this.obtenerDatosCatalogos();
     //console.log("en init pasada la llamada, esto es bonusCatalog: ", this.bonusCatalogos);
     this.InicioConsulta();
+    this.obtenerEmpleados();
     this.selectFechas = this.fb.group({
       fechaInicio: [this.fechaInicio, Validators.required],
       fechaFin: [this.fechaFin, Validators.required]
@@ -75,7 +79,16 @@ export class BonusComponent{
       this.fechaFin = value;
     });
   }
-  constructor(private fb: FormBuilder){}
+  constructor(private fb: FormBuilder){
+    effect(() => {
+          this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+          this.Consultar();
+          //this.InicioConsulta();
+          this.obtenerEmpleados();
+        });
+
+    
+  }
 
   public gridOptions: any = {
     headerHeight: 25,
@@ -131,24 +144,59 @@ export class BonusComponent{
       }
     });
   }
+  obtenerEmpleados() {
+    return new Promise((resolve) => {
+      this.employeeService.getEmployees(this.idBranch).subscribe(
+        (data: any) => {
+          this.empleadoCatalgos = data;
+          console.log('Datos obtenidos del servidor:', this.empleadoCatalgos);
+
+          // Actualizar el grid y esperar a que termine
+          /*this.gridApi.setGridOption('rowData', this.rowData);
+
+          // Dar tiempo al grid para actualizar los datos
+          setTimeout(() => {
+            resolve(true);
+          }, 100);*/
+        },
+        (error) => {
+          console.error('Error fetching data:', error);
+          resolve(false);
+        }
+      );
+    });
+  }
+
 
   get colMaster(): ColDef[] {
     return[
-    {
-      field: 'idEmployee',
-      headerName: 'Id empleado',
-      editable: false,
-      filter: true,
-      width: 200,
-      flex: 1,
-    },
+      {
+        field: 'idEmployee',
+        headerName: 'ID Empleado',
+        editable: false,
+        filter: false,
+        width: 150,
+        flex: 1,
+        valueFormatter: (params) => {
+          const emp = this.empleadoCatalgos?.find(e => e.name === params.data.employeeName);
+          //console.log("valor ", emp ? emp.id : '')
+          return emp ? emp.id : '';
+        }
+      },
     {
       field: 'employeeName',
       headerName: 'Nombre',
-      editable: false,
+      editable: true,
       filter: true,
       width: 200,
       flex: 1,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: this.empleadoCatalgos ? this.empleadoCatalgos.map(item => item.name) : [],
+      },
+      valueFormatter: (params) => {
+        return params.value || '';
+      }
     },
     {
       field: 'incidenceDate',
@@ -202,28 +250,38 @@ export class BonusComponent{
       } */
       valueFormatter: (params) => {
         const foundItem = this.bonusCatalogos?.find(item => item.description === params.data.bonus);
+        //console.log(foundItem)
         const value = foundItem ? foundItem.valueAddition : params.value;
+        //console.log(value)
         return value ? `$${Number(value).toLocaleString('es-MX', { minimumFractionDigits: 2 })}` : '';
       }
     }
   ]}
 
   onCellValueChanged(event: any) {
-    console.log("---- evento de cambio de celda: ", event);
+    //console.log("---- evento de cambio de celda: ", event);
     event.data.__modified = true;
     this.notSavedChanges = true;
     if (event.colDef.field === 'bonus') {
       const selectedBonus = event.newValue;
       const bonusInfo = this.bonusCatalogos?.find(item => item.description === selectedBonus);
-      console.log("---- info del bono: ", bonusInfo);
-      console.log("---- info del bono: ", bonusInfo?.valueAddition);
+      //console.log("---- info del bono: ", bonusInfo);
+      //console.log("---- info del bono: ", bonusInfo?.valueAddition);
 
       if (bonusInfo) {
         // Actualizamos el monto (quantity)
         event.data.quantity = parseFloat(bonusInfo.valueAddition);
-        event.api.refreshCells({ rowNodes: [event.node], columns: ['quantity'] });
       }
     }
+    if(event.colDef.field === 'employeeName'){
+      const selecteEmpleado = event.newValue;
+      let empeladosInfo = this.empleadoCatalgos?.find(item => item.name === selecteEmpleado);
+      //console.log(empeladosInfo)
+      if(empeladosInfo){
+        event.data.idEmployee = empeladosInfo.id;
+      }
+    }
+    event.api.refreshCells({ rowNodes: [event.node], columns: ['quantity','idEmployee', 'idBranch'] });
   }
 
   private cleanDataForServer(data: any): any {
@@ -237,6 +295,28 @@ export class BonusComponent{
       delete cleanedData.id;
     }
     return cleanedData;
+  }
+  addRow() {
+
+    //const tempId = `temp_${this.tempIdCounter++}`;
+    const newItem = {
+      active: true,
+      //id: '',
+      idBranch: this.idBranch,
+      idEmployee: '',
+      employeeName: '',
+      incidenceDate: '',
+      bonus: '',
+      quantity: '',
+      valid: true,
+      vigente: false,
+      __isNew: true,
+    };
+    this.rowData = [newItem, ...this.rowData];
+    //this.notSavedChanges = true;
+    //this.aggregatingRecord = true;
+
+
   }
 
   async saveChanges(){
@@ -256,25 +336,33 @@ export class BonusComponent{
           (row) => row.__modified && !row.__isNew
         );
 
-        console.log("---- rows a guardar: ", newRows);
-        console.log("---- rows modificadas: ", modifiedRows);
-        console.log("---- rows a eliminar: ", this.rowData.filter((row) => !row.__isNew && !row.__modified));
-        console.log("---- rows a eliminar: ", this.rowData.filter((row) => !row.__isNew && !row.__modified).length);
+        //console.log("---- rows a guardar: ", newRows);
+        //console.log("---- rows modificadas: ", modifiedRows);
+        //console.log("---- rows a eliminar: ", this.rowData.filter((row) => !row.__isNew && !row.__modified));
+        //console.log("---- rows a eliminar: ", this.rowData.filter((row) => !row.__isNew && !row.__modified).length);
 
         this.cleanedListData = [];
 
         const addObservables = newRows.map((row) => {
           const cleanedData = this.cleanDataForServer(row);
-          console.log(cleanedData);
-          return this.administrationService.addEmployeesBonus([]);
+          const date = new Date(cleanedData.incidenceDate);
+
+          const year = date.getFullYear();
+          const month = ('0' + (date.getMonth() + 1)).slice(-2);
+          const day = ('0' + date.getDate()).slice(-2);
+          
+          cleanedData.incidenceDate = `${year}-${month}-${day}T00:00:00`;
+          //console.log("DATOS",cleanedData);
+          if (cleanedData != null) this.cleanedListData.push(cleanedData);
+          //console.log("Datos por añadir",this.cleanedListData);
+          return this.administrationService.addEmployeesBonus(this.cleanedListData);
         });
 
         const updateObservables = modifiedRows.map((row) => {
           const cleanedData = this.cleanDataForServer(row);
-          console.log('Actualizando cliente con los siguientes datos:', cleanedData);
-          if (cleanedData != null) this.cleanedListData.push(cleanedData);
-          console.log('Actualizando arrys de empleados: ', this.cleanedListData);
-
+          //console.log('Actualizando cliente con los siguientes datos:', cleanedData);
+          if (cleanedData != null) this.cleanedListData.push(cleanedData);      
+          //console.log('Actualizando arrys de empleados: ', this.cleanedListData);
           return this.administrationService.addEmployeesBonus(this.cleanedListData);
         });
 
@@ -454,12 +542,12 @@ export class BonusComponent{
   }*/
 
     Consultar(){
-      if(this.selectFechas.valid){
+      //if(this.selectFechas.valid){
         const datos = this.selectFechas.value;
         this.fechaInicio = datos.fechaInicio;
         this.fechaFin = datos.fechaFin;
         this.obtenerBonosEmpleados()
-      }
+     // }
     }
 
     InicioConsulta(){
