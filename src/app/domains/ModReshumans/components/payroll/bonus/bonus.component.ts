@@ -66,6 +66,14 @@ export class BonusComponent{
       fechaInicio: [this.fechaInicio, Validators.required],
       fechaFin: [this.fechaFin, Validators.required]
     });
+    this.selectFechas.get('fechaInicio')?.valueChanges.subscribe(value => {
+      this.fechaInicio = value;
+    });
+  
+    // Suscripción para actualizar el valor máximo de fechaInicio
+    this.selectFechas.get('fechaFin')?.valueChanges.subscribe(value => {
+      this.fechaFin = value;
+    });
   }
   constructor(private fb: FormBuilder){}
 
