@@ -31,3 +31,18 @@ export class alerts{
 	}
 
 }
+
+/* // Para una operación exitosa
+alerts.basicAlert('¡Éxito!', 'Los datos se han guardado correctamente', 'success');
+
+// Para mostrar un error
+alerts.basicAlert('Error', 'No se pudo conectar con el servidor', 'error');
+
+// Para una advertencia
+alerts.basicAlert('Advertencia', '¿Está seguro de eliminar este registro?', 'warning');
+
+// Para un mensaje informativo
+alerts.basicAlert('Información', 'El sistema estará en mantenimiento esta noche', 'info');
+
+// Para una pregunta
+alerts.basicAlert('Confirmar', '¿Desea continuar con esta operación?', 'question'); */

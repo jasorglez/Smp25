@@ -343,7 +343,6 @@ export class BonusComponent{
     }
   }
 
-
   async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
     //this.signalsService.setProviderOrCustomer(this.type);
     const colId = event.column.getColId();
@@ -361,22 +360,11 @@ export class BonusComponent{
 
       this.gridApi.setFilterModel(filterModel);
       this.gridApi.onFilterChanged();
-      this.activateCreditsTab(); // Activar la pestaña de créditos si es necesario
     }
 
     this.selectedRowData = selectedRowData; // Guardar los datos seleccionados
   }
-  async activateCreditsTab() {
-    if (!this.isOpen) {
-      setTimeout(async () => await this.adjustGridSize(), 0);
-      this.showCreditsTab = true;
-      this.isOpen = true;
-    }
-    else {
-      this.resetGridSize();
-      this.isOpen = false;
-    }
-  }
+
   resetGridSize() {
     this.gridHeight = '80vh'; // Reset to default height
     this.showCreditsTab = false;
@@ -391,6 +379,39 @@ export class BonusComponent{
   revert(){
     this.obtenerBonosEmpleados();
     this.notSavedChanges = false;
+  }
+
+  deleteEntry() {
+    const selectedRows = this.gridApi.getSelectedRows(); // Obtener los datos de la fila seleccionada
+    console.log("---- este es el registro seleccionado para eliminar: ", selectedRows);
+    if (selectedRows.length > 0) {
+      const selectedRow = selectedRows[0];
+      console.log('ID seleccionado:', selectedRow.id);
+      console.log('Fila completa:', selectedRow);
+      if (selectedRow.id < 0) {
+        alerts.basicAlert(
+          'Información',
+          'Este registro es para indicar un bono para ese usuario',
+          'info'
+        );
+      }
+      else {
+        alerts.confirmAlert(
+          'Confirmar',
+          '¿Desea continuar con esta operación?',
+          'warning',
+          'Sí, eliminar'
+        )
+        .then((result) => {
+          if (result.isConfirmed) {
+            alerts.basicAlert('Eliminado', 'El registro ha sido eliminado', 'success');
+          }
+        })
+      };
+      this.obtenerBonosEmpleados();
+    }
+    else
+      return;
   }
 
   onRowDoubleClicked(event: any) {
