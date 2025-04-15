@@ -53,6 +53,7 @@ export class BonusComponent{
   newlyAddedRows: string[] = [];
   cleanedListData: any[] = [];
   incidentDate : string;
+  deleteData: any;
 
 
   ngOnInit(){
@@ -98,6 +99,13 @@ export class BonusComponent{
         });
       }
     },
+    // Esta función se ejecuta para cada fila y determina qué clase aplicar
+    getRowClass: (params) => {
+      if (params.data && params.data.bonus == 'N/A') {
+        return 'negative-id-row';  // Esta clase CSS se aplicará a filas con ID negativo
+      }
+      return '';  // Sin clase especial para otras filas
+    }
   };
 
   onSelectedRow(event: any) {
@@ -169,7 +177,6 @@ export class BonusComponent{
         }
         return '';
       }
-
 
     },
     {
@@ -414,14 +421,26 @@ export class BonusComponent{
         )
         .then((result) => {
           if (result.isConfirmed) {
+            this.administrationService.deleteEmployeeBonus(selectedRow.id).subscribe({
+              next: (data: any) => {
+                this.deleteData = data || null;
+                console.log(data);
+                if (data.success)
+                  alerts.basicAlert('Eliminado', 'El registro ha sido eliminado', data.message);
+                this.obtenerBonosEmpleados();
+              },
+              error: (err) => {
+                console.error("----- error en delete bonus: ", err);
+                alerts.basicAlert('Error', err.message, 'error');
+              }
+            });
+            console.log("------esto devuelve el delete: ", this.deleteData);
 
-            alerts.basicAlert('Eliminado', 'El registro ha sido eliminado', 'success');
           }
           else
             alerts.basicAlert('Información','La operación fue cancelada','info');
         })
       };
-      this.obtenerBonosEmpleados();
     }
     else
       return;
