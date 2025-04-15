@@ -454,6 +454,10 @@ export const routes: Routes = [
                 loadComponent: () => import('./domains/ModReshumans/components/payroll/bonus/bonus.component').then(s => s.BonusComponent)
               },
               {
+                path: 'master-clock',
+                loadComponent: () => import('./domains/ModReshumans/components/payroll/master-clock/master-clock.component').then(s => s.MasterClockComponent)
+              },
+              {
                 path: 'setup',
                 loadComponent: () => import('./domains/ModReshumans/components/payroll/setup/setup.component').then(s => s.SetupEmployeesComponent)
               },

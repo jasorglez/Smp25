@@ -84,4 +84,10 @@ export class PayrollService {
     return this.http.delete(`${environment.urlAdministration}/NormalPayrolls/${idPayroll}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getMasterClock(idCompany: number, startDate: string, endDate: string): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/EmployeesxCheckInsOuts/company/${idCompany}/incidents?start=${startDate}&end=${endDate}`, {
+      headers: this.trackingService.getHeaders()
+    });
+  }
+
 }
