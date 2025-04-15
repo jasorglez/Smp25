@@ -123,8 +123,6 @@ export class AdministrationService {
 
   // NormalPayroll
   addNormalPayroll(data: any): Observable<any> {
-    console.log("------------ addNormalPayroll() entrando al servicio administration, la API CORRECTA es: ", `${environment.urlAdministration}/NormalPayrolls`);
-    console.log("------------ addNormalPayroll() entrando al servicio administration, la data es: ", data);
     return this.http.post<number>(`${environment.urlAdministration}/NormalPayrolls`, data, { headers: this.trackingService.getHeaders() }).pipe(
       tap(response => {
         console.log("Respuesta del servidor: ", response);
@@ -144,5 +142,9 @@ export class AdministrationService {
   return this.http.post(`${environment.urlAdministration}/NormalPayrolls/save-bonuses`, data, { headers: this.trackingService.getHeaders() });
 }
 
+  deleteEmployeeBonus(iDBonus: number): Observable<any> {
+    console.log("------ entrando a administration service -- delete bonus");
+    return this.http.delete(`${environment.urlAdministration}/NormalPayrolls/bonus/${iDBonus}`, { headers: this.trackingService.getHeaders() })
+  }
 
 }
