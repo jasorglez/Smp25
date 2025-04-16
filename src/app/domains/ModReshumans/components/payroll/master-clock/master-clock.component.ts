@@ -165,16 +165,28 @@ export class MasterClockComponent {
         width: 200
       },
       {
-        field: 'totalHours',
+        field: 'hours',
         headerName: 'Horas laboradas',
         editable: false,
-        width: 200,
+        width: 180,
         cellStyle: (params) => {
           if (params.value == 0) {
             return { backgroundColor: '#ffcccc' };
           }
           return null;
         }
+      },
+      {
+        field: 'baseHours',
+        headerName: 'Horas base',
+        editable: false,
+        width: 180
+      },
+      {
+        field: 'extraHours',
+        headerName: 'Horas extra',
+        editable: false,
+        width: 180
       },
       {
         field: 'pendingOuts',
