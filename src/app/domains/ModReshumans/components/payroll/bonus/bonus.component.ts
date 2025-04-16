@@ -9,10 +9,13 @@ import { SignalsService } from 'app/services/signals.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { EmployeesService } from 'app/services/employees.service';
 import { CommonModule } from '@angular/common';
+import { AuthService } from 'app/services/auth.service';
 import { AdministrationService } from 'app/services/administration.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { forkJoin } from 'rxjs';
+import { environment } from '@env/environment';
+import { BranchsService } from 'app/services/branchs.service';
 
 @Component({
   selector: 'app-bonus',
@@ -26,6 +29,8 @@ export class BonusComponent{
   private catalogsService = inject(CatalogsService);
   private administrationService = inject(AdministrationService);
   private employeeService = inject(EmployeesService);
+  private authService = inject(AuthService);
+  private branchesService = inject(BranchsService);
   private gridApi: GridApi;
 
   components = {
@@ -57,6 +62,8 @@ export class BonusComponent{
   cleanedListData: any[] = [];
   incidentDate : string;
   deleteData: any;
+  branchs: any[] = [];
+  idRoot: number;
 
 
   ngOnInit(){
@@ -67,6 +74,7 @@ export class BonusComponent{
     //console.log("en init pasada la llamada, esto es bonusCatalog: ", this.bonusCatalogos);
     this.InicioConsulta();
     this.obtenerEmpleados();
+    this.obtenerBranchs();
     this.selectFechas = this.fb.group({
       fechaInicio: [this.fechaInicio, Validators.required],
       fechaFin: [this.fechaFin, Validators.required]
@@ -83,9 +91,11 @@ export class BonusComponent{
   constructor(private fb: FormBuilder){
     effect(() => {
           this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+          this.idRoot = this.signalsService.getRootSelectedBySidebar()();
           this.Consultar();
           //this.InicioConsulta();
           this.obtenerEmpleados();
+          this.obtenerBranchs();
         });
 
     
@@ -174,23 +184,46 @@ export class BonusComponent{
       );
     });
   }
+  obtenerBranchs() {
+    // alert('this.branchs'+ this.idBranch)
+    this.branchesService.getBrancheswoa(this.idRoot).subscribe(
+      (data: any) => {
+        this.branchs = data;
+        console.log("Branchs",this.branchs)
+      },
+      (error) => console.error('Error fetching data:', error)
+    );
+  }
 
 
   get colMaster(): ColDef[] {
     return[
-      {
-        field: 'idEmployee',
-        headerName: 'ID Empleado',
-        editable: false,
-        filter: false,
-        width: 150,
-        flex: 1,
-        valueFormatter: (params) => {
-          const emp = this.empleadoCatalgos?.find(e => e.name === params.data.employeeName);
-          //console.log("valor ", emp ? emp.id : '')
-          return emp ? emp.id : '';
-        }
-      },
+    {
+      field: 'idEmployee',
+      headerName: 'ID Empleado',
+      editable: false,
+      filter: false,
+      width: 150,
+      flex: 1,
+      valueFormatter: (params) => {
+        const emp = this.empleadoCatalgos?.find(e => e.name === params.data.employeeName);
+        //console.log("valor ", emp ? emp.id : '')
+        return emp ? emp.id : '';
+      }
+    },
+    {
+      field: 'idBranch',
+      headerName: 'Nombre sucursal *',
+      editable: false, // ← Solo mostrarlo, no editarlo
+      filter: true,
+      width: 170,
+      valueFormatter: (params) => {
+        const emp = this.empleadoCatalgos?.find(e => e.name === params.data.employeeName);
+        const selectedBranchId = emp?.idBranch;
+        const branch = this.branchs?.find(item => item.id === selectedBranchId);
+        return branch ? branch.name : '';
+      }
+    },
     {
       field: 'employeeName',
       headerName: 'Nombre',
@@ -283,9 +316,9 @@ export class BonusComponent{
     if(event.colDef.field === 'employeeName'){
       const selecteEmpleado = event.newValue;
       let empeladosInfo = this.empleadoCatalgos?.find(item => item.name === selecteEmpleado);
-      //console.log(empeladosInfo)
       if(empeladosInfo){
         event.data.idEmployee = empeladosInfo.id;
+        event.data.idBranch = empeladosInfo.idBranch;
       }
     }
     event.api.refreshCells({ rowNodes: [event.node], columns: ['quantity','idEmployee', 'idBranch'] });
@@ -309,7 +342,7 @@ export class BonusComponent{
     const newItem = {
       active: true,
       //id: '',
-      idBranch: this.idBranch,
+      idBranch: this.idBranch > 0 ? this.idBranch : null,
       idEmployee: '',
       employeeName: '',
       incidenceDate: '',
@@ -361,7 +394,7 @@ export class BonusComponent{
           cleanedData.incidenceDate = `${year}-${month}-${day}T00:00:00`;
           //console.log("DATOS",cleanedData);
           if (cleanedData != null) this.cleanedListData.push(cleanedData);
-          //console.log("Datos por añadir",this.cleanedListData);
+          console.log("Datos por añadir",this.cleanedListData);
           return this.administrationService.addEmployeesBonus(this.cleanedListData);
         });
 
