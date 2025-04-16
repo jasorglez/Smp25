@@ -200,6 +200,12 @@ public gridOptions: any = {
         filter: true
       },
       {
+        field: 'web',
+        headerName: 'Web',
+        editable: true,
+        flex: 1
+      },
+      {
         field: 'phone',
         headerName: 'Teléfono',
         editable: true,
@@ -287,6 +293,8 @@ public gridOptions: any = {
     const newItem = {
       id: tempId,
       name: '',
+      web : '',
+      email: '',
       nameSmall: '',
       picture: '',
       picture2: '',
@@ -338,6 +346,7 @@ public gridOptions: any = {
       const responses = await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
+      
       alerts.basicAlert(
         'Datos actualizados',
         'Se han actualizado los datos correctamente.',
@@ -370,4 +379,5 @@ public gridOptions: any = {
     }
     return cleanedData;
   }
+
 }

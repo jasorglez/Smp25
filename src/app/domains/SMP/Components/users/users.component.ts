@@ -10,6 +10,8 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray, tap } from 'rxjs';
 import { MatDialogModule } from '@angular/material/dialog';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { CatalogsService } from 'app/services/catalogs.service';
+import { RolesService } from 'app/services/roles.service';
+
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { SignalsService } from 'app/services/signals.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
@@ -56,12 +58,14 @@ export class UsersComponent {
   private tempIdCounter: number = 0;
   private permissionType: string = 'root';
 
-  private usersService = inject(UsersService);
+  private usersService        = inject(UsersService);
   private imageHandlerService = inject(ImageHandlerService);
-  private usersxrootService = inject(UsersxpermissionsService);
+  private usersxrootService   = inject(UsersxpermissionsService);
 
   private catalogService = inject(CatalogsService);
   private signalsService = inject(SignalsService);
+  private rolesService   = inject(RolesService);  
+
   profile = computed(() => this.signalsService.profile);
 
   enviarSignal() {
@@ -79,15 +83,8 @@ export class UsersComponent {
         'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
     }
   }
-
-  ngOnInit() {
-    this.idRoot = this.signalsService.getRootSelectedBySidebar()()
-    this.userRoot = this.signalsService.getUserRoot()();
-    this.obtenerDatos();
-    this.getDeptoandPosition();
-    this.verification();
-
-  }
+    
+    
   verification(): boolean {
   //const permissions = this.signalsService.getStoreFromPermissions();
   if(this.userRoot == 1){
@@ -96,14 +93,17 @@ export class UsersComponent {
   return this.authorizedPass = false;
 }
 
-  constructor() {
+
+constructor() {
     effect(() => {
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      this.userRoot = this.signalsService.getUserRoot()();
-      this.obtenerDatos();
-      this.getDeptoandPosition();
+       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+       this.userRoot = this.signalsService.getUserRoot()();
+       this.obtenerDatos();
+      // this.getRoles();
+       this.getDeptoandPosition();
+      this.verification();
     })
-  }
+}
 
   components = {
     multiLineEditor: MultiLineEditorComponent,
@@ -111,8 +111,6 @@ export class UsersComponent {
   }
 
   
-  
-
   obtenerDatos() {
     const observer = {
       next: (response: any) => {
@@ -140,11 +138,24 @@ export class UsersComponent {
     }
   }
 
+  getRoles() {
+     this.rolesService.getRoles().subscribe(
+      (data: any) => {
+        this.departamentos = data;
+        console.log('Roles:', this.departamentos);
+      },
+      (error) => {
+        if (error.status == 404) this.departamentos = [];
+        console.error('Error fetching data:', error);
+      }
+    );
+  }
 
   getDeptoandPosition() {
     this.catalogService.getCatalogs(this.idRoot, 'DEPARTAMENT').subscribe(
       (data: any) => {
         this.departamentos = data;
+        console.log('Departamentos:', this.departamentos);
       },
       (error) => {
         if (error.status == 404) this.departamentos = [];

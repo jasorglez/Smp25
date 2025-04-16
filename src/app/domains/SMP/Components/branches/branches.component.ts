@@ -11,6 +11,9 @@ import { ModalService } from 'app/services/modal.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { InegiService } from 'app/services/inegi.service';
 import { States } from 'app/interface/states';
+import { environment } from '@env/environment';
+import { Ibranch } from 'app/interface/ibranch';
+
 
 @Component({
   selector: 'app-branches',
@@ -41,6 +44,7 @@ export class BranchesComponent {
   private tempIdCounter: number = 0;
   private estados: any;
 
+
   // Configuración Grid
   public rowSelection: 'single' | 'multiple' = 'single';
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
@@ -51,6 +55,7 @@ export class BranchesComponent {
   constructor() {
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+
 
       if (this.idRoot == null) {
         this.masterRowData = [];
@@ -66,6 +71,7 @@ export class BranchesComponent {
   ngOnInit() {
     this.obtenerDatos();
     this.obtenerEstados();
+    alert(this.idRoot)
   }
 
 
@@ -80,17 +86,28 @@ export class BranchesComponent {
   // ==================== MASTER METHODS ====================
 
   obtenerDatos() {
-    this.branchesService.getBranches(this.idRoot).subscribe((data: any) => {
-      //this.masterRowData = data;
-      this.masterRowData = data.sort((a, b) => a.name.localeCompare(b.name));
-
-      //console.log(this.masterRowData);
-      this.masterNotSavedChanges = false;
-    },
-      (error) => console.error('Error fetching data:', error)
-    );
-    //this.masterNotSavedChanges = false;
-  }
+   if (this.signalsService.getemailChoose() === environment.root) {
+        this.branchesService.getAllBranches().subscribe(
+            (data: Ibranch[]) => {
+                this.masterRowData = data.sort((a, b) => a.name.localeCompare(b.name));
+                this.masterNotSavedChanges = false;
+            },
+            (error) => {
+                console.error('Error fetching all branches:', error);
+            }
+        );
+    } else {
+        this.branchesService.getBranches(this.idRoot).subscribe(
+            (data: Ibranch[]) => {
+                this.masterRowData = data.sort((a, b) => a.name.localeCompare(b.name));
+                this.masterNotSavedChanges = false;
+            },
+            (error) => {
+                console.error('Error fetching branches:', error);
+            }
+        );
+    }
+}
 
   obtenerEstados() {
     this.inegiService.getEstados().subscribe({
@@ -317,44 +334,56 @@ public gridOptions: any = {
       );
       return;
     }
-
+  
     const newRows = this.masterRowData.filter((row) => row.__isNew);
     const modifiedRows = this.masterRowData.filter(
       (row) => row.__modified && !row.__isNew
     );
-
-    const addPromises = newRows.map((row) => {
+  
+    // Tipamos explícitamente las promesas
+    const addPromises: Promise<Ibranch>[] = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       return lastValueFrom(this.branchesService.addBranch(cleanedData));
     });
-
-    const updatePromises = modifiedRows.map((row) => {
+  
+    const updatePromises: Promise<Ibranch>[] = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       return lastValueFrom(this.branchesService.updateBranch(row.id, cleanedData));
     });
-
-    /* const addObservables = newRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData);
-      return this.branchesService.addBranch(cleanedData);
-    });
-
-    const updateObservables = modifiedRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData);
-      return this.branchesService.updateBranch(row.id, cleanedData);
-    }); */
-
-
-
-    // Using concat to combine observables and lastValueFrom for async/await
+  
     try {
-      /* const responses = await lastValueFrom(
-        concat(...addObservables, ...updateObservables).pipe(toArray())
-      ); */
-
+      // Usamos Promise.all sin tipo genérico ya que las promesas ya están tipadas
       const allResponses = await Promise.all([...addPromises, ...updatePromises]);
-
+  
+      // Asignar permisos para los nuevos Branchs creados
+      const currentUserId = this.idRoot; 
+      for (const response of allResponses) {
+        // Verificar si es una nueva creación comparando con los IDs temporales
+        const correspondingNewRow = newRows.find(row => 
+          !row.id || row.id.toString().startsWith('temp_')
+        );
+        
+        if (response.id && correspondingNewRow) {
+          try {
+            await lastValueFrom(
+              this.branchesService.assignPermissionAfterCreation(
+                currentUserId,
+                response.id,
+                'branch'
+              )
+            );
+          } catch (permError) {
+            console.error('Error asignando permiso:', permError);
+            // Opcional: Mostrar alerta pero no interrumpir el flujo principal
+            alerts.basicAlert(
+              'Advertencia',
+              'Se creó la sucursal pero hubo un problema asignando los permisos.',
+              'warning'
+            );
+          }
+        }
+      }
+  
       alerts.basicAlert(
         'Datos actualizados',
         'Se han actualizado los datos correctamente.',
@@ -362,14 +391,11 @@ public gridOptions: any = {
       );
       this.masterNotSavedChanges = false;
       this.newlyAddedMasterRows = [];
-
-       // Asegurarse de obtener los datos tras la última actualización
-       if (allResponses.length > 0) {
-        await this.obtenerDatos(); // Se ejecuta justo después de la última operación exitosa
+  
+      if (allResponses.length > 0) {
+        await this.obtenerDatos();
       }
-
-      //      setTimeout(() => this.obtenerDatos(), 500); // Refrescar los datos
-
+  
     } catch (error) {
       console.error(error);
       alerts.basicAlert(
