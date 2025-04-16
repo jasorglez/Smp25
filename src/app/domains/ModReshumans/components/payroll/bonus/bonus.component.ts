@@ -65,7 +65,6 @@ export class BonusComponent{
   branchs: any[] = [];
   idRoot: number;
 
-
   ngOnInit(){
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
     this.idEmpresa = this.signalsService.getRootSelectedBySidebar()();
@@ -97,8 +96,6 @@ export class BonusComponent{
           this.obtenerEmpleados();
           this.obtenerBranchs();
         });
-
-    
   }
 
   public gridOptions: any = {
@@ -110,9 +107,11 @@ export class BonusComponent{
       }
       return '';
     },
+
     onRowClicked: (event) => {
       event.node.setSelected(true);
     },
+
     onRowSelected: (event) => {
       if (event.node.isSelected()) {
         this.gridApi.forEachNode((node) => {
@@ -162,6 +161,7 @@ export class BonusComponent{
       }
     });
   }
+
   obtenerEmpleados() {
     return new Promise((resolve) => {
       this.employeeService.getEmployees(this.idBranch).subscribe(
@@ -184,6 +184,7 @@ export class BonusComponent{
       );
     });
   }
+
   obtenerBranchs() {
     // alert('this.branchs'+ this.idBranch)
     this.branchesService.getBrancheswoa(this.idRoot).subscribe(
@@ -194,7 +195,6 @@ export class BonusComponent{
       (error) => console.error('Error fetching data:', error)
     );
   }
-
 
   get colMaster(): ColDef[] {
     return[
@@ -247,6 +247,7 @@ export class BonusComponent{
       width: 200,
       flex: 1,
       cellEditor: 'agDateCellEditor',
+      cellRenderer: 'agDateCellRenderer',
 
       valueGetter: (params) => params.data.incidenceDate ? new Date(params.data.incidenceDate) : null,
 
@@ -299,7 +300,7 @@ export class BonusComponent{
   ]}
 
   onCellValueChanged(event: any) {
-    //console.log("---- evento de cambio de celda: ", event);
+    console.log("---- evento de cambio de celda: ", event);
     event.data.__modified = true;
     this.notSavedChanges = true;
     if (event.colDef.field === 'bonus') {
@@ -336,8 +337,8 @@ export class BonusComponent{
     }
     return cleanedData;
   }
-  addRow() {
 
+  addRow() {
     //const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       active: true,
@@ -355,8 +356,6 @@ export class BonusComponent{
     this.rowData = [newItem, ...this.rowData];
     //this.notSavedChanges = true;
     //this.aggregatingRecord = true;
-
-
   }
 
   async saveChanges(){
@@ -376,10 +375,10 @@ export class BonusComponent{
           (row) => row.__modified && !row.__isNew
         );
 
-        //console.log("---- rows a guardar: ", newRows);
-        //console.log("---- rows modificadas: ", modifiedRows);
-        //console.log("---- rows a eliminar: ", this.rowData.filter((row) => !row.__isNew && !row.__modified));
-        //console.log("---- rows a eliminar: ", this.rowData.filter((row) => !row.__isNew && !row.__modified).length);
+        console.log("---- rows a guardar: ", newRows);
+        console.log("---- rows modificadas: ", modifiedRows);
+        console.log("---- rows a eliminar: ", this.rowData.filter((row) => !row.__isNew && !row.__modified));
+        console.log("---- rows a eliminar: ", this.rowData.filter((row) => !row.__isNew && !row.__modified).length);
 
         this.cleanedListData = [];
 
@@ -390,20 +389,30 @@ export class BonusComponent{
           const year = date.getFullYear();
           const month = ('0' + (date.getMonth() + 1)).slice(-2);
           const day = ('0' + date.getDate()).slice(-2);
-          
+
           cleanedData.incidenceDate = `${year}-${month}-${day}T00:00:00`;
-          //console.log("DATOS",cleanedData);
+          console.log("DATOS",cleanedData);
           if (cleanedData != null) this.cleanedListData.push(cleanedData);
           console.log("Datos por añadir",this.cleanedListData);
           return this.administrationService.addEmployeesBonus(this.cleanedListData);
         });
 
         const updateObservables = modifiedRows.map((row) => {
+          const cleanedDataUpdate = this.cleanDataForServer(row);
+          const date = new Date(cleanedDataUpdate.incidenceDate);
+
+          const year = date.getFullYear();
+          const month = ('0' + (date.getMonth() + 1)).slice(-2);
+          const day = ('0' + date.getDate()).slice(-2);
+          cleanedDataUpdate.incidenceDate = `${year}-${month}-${day}T00:00:00`;
+
           const cleanedData = this.cleanDataForServer(row);
-          //console.log('Actualizando cliente con los siguientes datos:', cleanedData);
-          if (cleanedData != null) this.cleanedListData.push(cleanedData);      
-          //console.log('Actualizando arrys de empleados: ', this.cleanedListData);
-          return this.administrationService.addEmployeesBonus(this.cleanedListData);
+
+          console.log('DATOS LIMPIOS POR ACTUALIZAR: ', cleanedData);
+          cleanedData.name = cleanedData.employeeName;
+          if (cleanedData != null) this.cleanedListData.push(cleanedData);
+          console.log('Datos por actualizar: ', this.cleanedListData);
+          return this.administrationService.updateEmployeesBonus(cleanedData.id, cleanedData);
         });
 
         try {
@@ -555,8 +564,6 @@ export class BonusComponent{
                 alerts.basicAlert('Error', err.message, 'error');
               }
             });
-            console.log("------esto devuelve el delete: ", this.deleteData);
-
           }
           else
             alerts.basicAlert('Información','La operación fue cancelada','info');
@@ -579,19 +586,6 @@ export class BonusComponent{
     const modal = new bootstrap.Modal(document.getElementById('searchModal')!);
     modal.show();*/
   }
-  /*guardarBonus(){
-    if (this.bonusForm.valid) {
-      const datos = this.bonusForm.value;
-      console.log('Bonus actualizado:', {
-        id: this.idEmployee,
-        nombre: this.nameEmployee,
-        bonusAnterior: this.bonoEmployee,
-        nuevoBonus: datos.nuevoBonus,
-        motivo: datos.motivo,
-        fecha: datos.fechaSelect
-      });
-    }
-  }*/
 
     Consultar(){
       //if(this.selectFechas.valid){

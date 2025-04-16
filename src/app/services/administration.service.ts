@@ -136,15 +136,20 @@ export class AdministrationService {
 
   getEmployeesBonus(startDate: string, endDate: string,  idBranch: number) {
     return this.http.get(`${environment.urlAdministration}/NormalPayrolls/bonus?startDate=${startDate}&endDate=${endDate}&idBranch=${idBranch}`, { headers: this.trackingService.getHeaders() });
- }
- addEmployeesBonus(data: any): Observable<any> {
-  //console.log("datos res", data);
-  return this.http.post(`${environment.urlAdministration}/NormalPayrolls/save-bonuses`, data, { headers: this.trackingService.getHeaders() });
-}
+  }
+
+  addEmployeesBonus(data: any): Observable<any> {
+    return this.http.post(`${environment.urlAdministration}/NormalPayrolls/save-bonuses`, data, { headers: this.trackingService.getHeaders() });
+  }
 
   deleteEmployeeBonus(iDBonus: number): Observable<any> {
     console.log("------ entrando a administration service -- delete bonus");
     return this.http.delete(`${environment.urlAdministration}/NormalPayrolls/bonus/${iDBonus}`, { headers: this.trackingService.getHeaders() })
+  }
+
+  updateEmployeesBonus(iDBonus: number, data: any): Observable<any> {
+    console.log("------ entrando a administration service -- update bonus");
+    return this.http.put(`${environment.urlAdministration}/NormalPayrolls/${iDBonus}`, data, { headers: this.trackingService.getHeaders() })
   }
 
 }
