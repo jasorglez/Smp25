@@ -409,7 +409,6 @@ export class BonusComponent{
           const cleanedData = this.cleanDataForServer(row);
 
           console.log('DATOS LIMPIOS POR ACTUALIZAR: ', cleanedData);
-          cleanedData.name = cleanedData.employeeName;
           if (cleanedData != null) this.cleanedListData.push(cleanedData);
           console.log('Datos por actualizar: ', this.cleanedListData);
           return this.administrationService.updateEmployeesBonus(cleanedData.id, cleanedData);
