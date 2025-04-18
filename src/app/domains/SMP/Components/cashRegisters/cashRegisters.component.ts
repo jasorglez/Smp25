@@ -370,7 +370,7 @@ export class CashRegistersComponent {
   addMasterRow() {
     const newItem = {
       //id: tempId,
-      idStore: 3,
+      idStore: this.idStore,
       description: '',
       comment: '',
       active: true,
@@ -405,7 +405,7 @@ export class CashRegistersComponent {
     
         const updateObservables = modifiedRows.map((row) => {
           const cleanedData = this.cleanDataForServer(row);
-          return this.cashRegistersService.updateCashRegister(row.id, cleanedData);
+          return this.cashRegistersService.updateCashRegister(cleanedData);
         });
     
         try {
