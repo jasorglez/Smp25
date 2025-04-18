@@ -121,13 +121,22 @@ export class BonusComponent{
         });
       }
     },
+
+    getRowStyle: (params) => {
+      // Verifica el valor de la columna específica
+      if (params.data && params.data.id < 0) {
+        return { background: '#ffeeee' }; // Color rojo claro
+      }
+      return null; // Sin estilo especial para otros valores
+    },
+
     // Esta función se ejecuta para cada fila y determina qué clase aplicar
-    getRowClass: (params) => {
+   /*  getRowClass: (params) => {
       if (params.data && params.data.bonus == 'N/A') {
         return 'negative-id-row';  // Esta clase CSS se aplicará a filas con ID negativo
       }
       return '';  // Sin clase especial para otras filas
-    }
+    } */
   };
 
   onSelectedRow(event: any) {
