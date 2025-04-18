@@ -1,5 +1,15 @@
 
-<div class="col-12 mt-3">
+<div class="col-12 mt-3  light-blue-background">
+  <form [formGroup]="selectFechas" (ngSubmit)="Consultar()" *ngIf="idBranch >= 0">
+    <span class="">Fecha inicial</span>
+    <input formControlName="fechaInicio" type="date" [max]="fechaFin" class="bg-white rounded border-light p-1 w-auto ml-2" />
+
+    <span class=" ml-4">Fecha final</span>
+    <input formControlName="fechaFin" type="date" [min]="fechaInicio" class="bg-white rounded border-light p-1 w-auto ml-2" />
+    <button type="submit" class="ml-4 btn btn-success position-relative" >
+      Consultar
+    </button>
+  </form>
   <div class="row mt-1">
 
 

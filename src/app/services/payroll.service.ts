@@ -87,7 +87,7 @@ export class PayrollService {
  
 
   getMasterClock(idBranch: number, startDate: string, endDate: string): Observable<any> {
-    return this.http.get(`${environment.urlAdministration}/EmployeesxCheckInsOuts/branch/${idBranch}/incidents`, {
+    return this.http.get(`${environment.urlAdministration}/EmployeesxCheckInsOuts/branch/${idBranch}/incidents?start=${startDate}&end=${endDate}`, {
       headers: this.trackingService.getHeaders()
     });
   }

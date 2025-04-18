@@ -1,21 +1,14 @@
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, OnInit } from '@angular/core';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { alerts } from '../../../../../helpers/alerts';
-import { catchError, lastValueFrom, throwError } from 'rxjs';
-import { map } from 'rxjs/operators';
 import { AgGridModule } from 'ag-grid-angular';
-import { ModalService } from 'app/services/modal.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { SignalsService } from 'app/services/signals.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
-import { InegiService } from 'app/services/inegi.service';
-import { BranchsService } from 'app/services/branchs.service';
-import { AuthService } from 'app/services/auth.service';
-import { HttpClient } from '@angular/common/http';
-import { environment } from '@env/environment';
 import { PayrollService } from 'app/services/payroll.service';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 
 @Component({
   selector: 'app-master-clock',
@@ -24,13 +17,12 @@ import { PayrollService } from 'app/services/payroll.service';
   templateUrl: './master-clock.component.html',
   styleUrl: './master-clock.component.scss'
 })
-export class MasterClockComponent {
+export class MasterClockComponent implements OnInit {
    //  private administrationService = inject(AdministrationService);
    private payrollService = inject(PayrollService);
    private signalsService = inject(SignalsService);
    private route = inject(ActivatedRoute);
-   private inegiService = inject(InegiService);
-   private http = inject(HttpClient);
+   private fb = inject(FormBuilder);
  
    ngOnInit() {
      
@@ -39,6 +31,11 @@ export class MasterClockComponent {
    }
  
    constructor() { 
+     this.selectFechas = this.fb.group({
+       fechaInicio: ['', Validators.required],
+       fechaFin: ['', Validators.required]
+     });
+
      effect(() => {
        this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
        this.obtenerDatos();
@@ -52,6 +49,7 @@ export class MasterClockComponent {
      }
    }
  
+   selectFechas: FormGroup;
    type: string = ''; // Para almacenar el tipo (CUSTOMERS o PROVIDERS)
    gridHeight: string = '75vh';
    showCreditsTab: boolean = false;
@@ -73,7 +71,8 @@ export class MasterClockComponent {
    idBranch: number;
    selectedTab: string = 'customers-payments';
    idEmployee: number;
-   infoCp: any;
+   fechaInicio: any;
+   fechaFin: any;
  
  
    public defaultColDef: ColDef = {
@@ -132,7 +131,6 @@ export class MasterClockComponent {
          field: 'nameBranch',
          headerName: 'Nombre sucursal',
          editable: false,
-         width: 200,
          hide: true,
          rowGroup: true
        },
@@ -140,7 +138,6 @@ export class MasterClockComponent {
         field: 'periodStart',
         headerName: 'Fecha inicio',
         editable: false,
-        width: 150,
         valueGetter: (params) => {
           if (!params.data?.periodStart) return '';
           const date = new Date(params.data.periodStart);
@@ -151,7 +148,6 @@ export class MasterClockComponent {
         field: 'periodEnd',
         headerName: 'Fecha fin',
         editable: false,
-        width: 150,
         valueGetter: (params) => {
           if (!params.data?.periodEnd) return '';
           const date = new Date(params.data.periodEnd);
@@ -161,14 +157,12 @@ export class MasterClockComponent {
        {
         field: 'nameEmployee',
         headerName: 'Nombre Empleado',
-        editable: false,
-        width: 200
+        editable: false
       },
       {
         field: 'hours',
         headerName: 'Horas laboradas',
         editable: false,
-        width: 180,
         cellStyle: (params) => {
           if (params.value == 0) {
             return { backgroundColor: '#ffcccc' };
@@ -179,20 +173,22 @@ export class MasterClockComponent {
       {
         field: 'baseHours',
         headerName: 'Horas base',
-        editable: false,
-        width: 180
+        editable: false
       },
       {
         field: 'extraHours',
         headerName: 'Horas extra',
-        editable: false,
-        width: 180
+        editable: false
+      },
+      {
+        field: 'adjustedExtraHours',
+        headerName: 'Horas extra ajustadas',
+        editable: false
       },
       {
         field: 'pendingOuts',
         headerName: 'Salidas pendientes',
         editable: false,
-        width: 200,
         cellStyle: (params) => {
           if (params.value > 0) {
             return { backgroundColor: '#ffcccc' };
@@ -204,7 +200,6 @@ export class MasterClockComponent {
         field: 'absences',
         headerName: 'Ausencias',
         editable: false,
-        width: 200,
         cellStyle: (params) => {
           if (params.value > 0) {
             return { backgroundColor: '#ffcccc' };
@@ -213,10 +208,14 @@ export class MasterClockComponent {
         }
       },
       {
+        field: 'holidays',
+        headerName: 'Festivos',
+        editable: false
+      },
+      {
         field: 'delays',
         headerName: 'Retrasos',
         editable: false,
-        width: 200,
         cellStyle: (params) => {
           if (params.value > 0) {
             return { backgroundColor: '#ffcccc' };
@@ -228,7 +227,6 @@ export class MasterClockComponent {
         field: 'discountHours',
         headerName: 'Horas descontadas',
         editable: false,
-        width: 200,
         cellStyle: (params) => {
           if (params.value > 0) {
             return { backgroundColor: '#ffcccc' };
@@ -240,9 +238,17 @@ export class MasterClockComponent {
 
    }
  
-   obtenerDatos() {
-     this.payrollService.getMasterClock(this.idBranch, null, null).subscribe((data: any) => {
+   obtenerDatos(fechaInicio: string = '', fechaFin: string = '') {
+     this.payrollService.getMasterClock(this.idBranch, fechaInicio, fechaFin).subscribe((data: any) => {
+       this.rowData = [];
        this.rowData = data;
+       
+       // Esperar a que el grid se actualice y luego ajustar las columnas
+       setTimeout(() => {
+         if (this.gridApi) {
+           this.gridApi.sizeColumnsToFit();
+         }
+       }, 100);
      });
    }
  
@@ -337,5 +343,16 @@ export class MasterClockComponent {
      this.gridHeight = '20vh'; // Adjust as needed
    }
  
+   Consultar() {
+     if(this.selectFechas.valid) {
+       const datos = this.selectFechas.value;
+       this.fechaInicio = datos.fechaInicio;
+       this.fechaFin = datos.fechaFin;
+       console.log(this.fechaInicio, this.fechaFin)
+       this.obtenerDatos(this.fechaInicio, this.fechaFin);
+     } else {
+       alerts.basicAlert('Error', 'Por favor selecciona ambas fechas', 'error');
+     }
+   }
 
 }
