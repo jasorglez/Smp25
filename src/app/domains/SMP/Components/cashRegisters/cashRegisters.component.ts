@@ -29,7 +29,9 @@ import { StoresService } from 'app/services/stores.service';
 export class CashRegistersComponent { 
   store: any[] = [];
   idcompany: number = null;
+  // esta es la data que se va a mostrar en el grid
   rowData: any[] = [];
+
   masterSelectedRowData: any = null;
   newlyAddedMasterRows: string[] = [];
   //masterNotSavedChanges: boolean = false;
@@ -367,17 +369,16 @@ export class CashRegistersComponent {
   
   addMasterRow() {
     const newItem = {
-      idStore: this.idStore,
+      //id: tempId,
+      idStore: 3,
       description: '',
       comment: '',
       active: true,
       __isNew: true,
     };
   
-
     this.rowData = [newItem, ...this.rowData];
     this.notSavedChanges = true;
-
   }
       async saveMasterChanges() {
         console.log(this.rowData)
@@ -395,7 +396,7 @@ export class CashRegistersComponent {
         const modifiedRows = this.rowData.filter(
           (row) => row.__modified && !row.__isNew
         );
-        console.log(newRows)
+    
         const addObservables = newRows.map((row) => {
           const cleanedData = this.cleanDataForServer(row);
           console.log(cleanedData);
@@ -404,8 +405,7 @@ export class CashRegistersComponent {
     
         const updateObservables = modifiedRows.map((row) => {
           const cleanedData = this.cleanDataForServer(row);
-          console.log("Actualizar",row.idCaja, cleanedData)
-          return this.cashRegistersService.updateCashRegister(cleanedData);
+          return this.cashRegistersService.updateCashRegister(row.id, cleanedData);
         });
     
         try {
@@ -523,6 +523,8 @@ export class CashRegistersComponent {
         this.obtenerDatos();
         this.notSavedChanges = false;
       }
+
+
       private selectRowById(id: number | string) {
         // Dar tiempo al grid para que se actualice
         setTimeout(() => {
