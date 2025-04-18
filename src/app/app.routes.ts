@@ -207,8 +207,20 @@ export const routes: Routes = [
           {
             path: 'branches',
             loadComponent: () => import('./domains/SMP/Components/branches/branches.component').then(u => u.BranchesComponent),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'setup', detailed: 'branches' } }
+            //canActivate: [MasterPermissionsGuard],
+            //data: { permissions: { master: 'setup', detailed: 'branches' } }
+          },
+          {
+            path: 'stores',
+            loadComponent: () => import('./domains/SMP/Components/store/store.component').then(u => u.StoreComponent),
+            //canActivate: [MasterPermissionsGuard],
+            //data: { permissions: { master: 'setup', detailed: 'stores' } }
+          },
+          {
+            path: 'cashRegisters',
+            loadComponent: () => import('./domains/SMP/Components/cashRegisters/cashRegisters.component').then(u => u.CashRegistersComponent),
+            //canActivate: [MasterPermissionsGuard],
+            //data: { permissions: { master: 'setup', detailed: 'cashRegisters' } }
           },
           {
             path: 'logs',

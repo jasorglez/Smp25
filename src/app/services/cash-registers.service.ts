@@ -11,6 +11,17 @@ export class CashRegistersService {
 
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
+  
+  getCashRegisterAll(): Observable<any> {
+    return this.http.get<any>(`${environment.urlAdministration}/CashRegisters/all`, { headers: this.trackingService.getHeaders() });
+  }
+  getCashRegisterByBranch(idBranch: number): Observable<any> {
+    return this.http.get<any>(`${environment.urlAdministration}/CashRegisters/branch/${idBranch}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getCashRegisterByCompany(idCompany: number): Observable<any> {
+    return this.http.get<any>(`${environment.urlAdministration}/CashRegisters/company/${idCompany}`, { headers: this.trackingService.getHeaders() });
+  }
 
   getCashRegisterList(idStore: number): Observable<any> {
     return this.http.get<any>(`${environment.urlAdministration}/CashRegisters/store/${idStore}`, { headers: this.trackingService.getHeaders() });

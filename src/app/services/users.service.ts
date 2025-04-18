@@ -99,6 +99,8 @@ export class UsersService {
          //  this.signalsService.setidUser(datauser.id); sigue una prueba
          this.signalsService.setDisplayName(displayName);
          this.signalsService.setUserRoot(userRoot);
+         this.signalsService.setidUser(id);
+
 
           return { displayName, picture, applyproject, applybranch, applyplatform, email, id, signature, userRoot};
         } else {
