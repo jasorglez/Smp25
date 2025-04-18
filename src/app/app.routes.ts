@@ -21,12 +21,27 @@ export const routes: Routes = [
         children: [
           { path: '', redirectTo: 'Warehouse', pathMatch: 'full' }, ...SharedModule.getRoutes(),
           {
-            path: 'warehousees',
+            path: 'warehouses',
             loadComponent: () => import('./domains/Warehouse/components/warehouses/warehouses.component').then(w => w.WarehousesComponent)
           },
           {
-            path: 'materials',
-            loadComponent: () => import('./domains/Warehouse/components/materials/materials.component').then(m => m.MaterialsComponent),
+            path: 'page02typemat',
+            loadComponent: () => import('./domains/Warehouse/pages/page02typemat/page02typemat.component').then(p => p.Page02typematComponent),
+            children: [
+              { path: '', redirectTo: 'materials', pathMatch: 'full' },
+              ...SharedModule.getRoutes(),
+
+              {
+                path: 'materials',
+                loadComponent: () => import('./domains/Warehouse/components/materials/materials.component').then(s => s.MaterialsComponent),
+                data: { type: 'SALES' } // Parámetro para materials
+              },
+              {
+                path: 'materials',
+                loadComponent: () => import('./domains/Warehouse/components/materials/materials.component').then(m => m.MaterialsComponent),
+                data: { type: 'CONSUMABLES' } // Parámetro para materials
+              },
+            ]
           },
           {
             path: 'purchaseorder',

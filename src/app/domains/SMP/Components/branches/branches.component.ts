@@ -71,7 +71,6 @@ export class BranchesComponent {
   ngOnInit() {
     this.obtenerDatos();
     this.obtenerEstados();
-    alert(this.idRoot)
   }
 
 
