@@ -29,7 +29,9 @@ import { StoresService } from 'app/services/stores.service';
 export class CashRegistersComponent { 
   store: any[] = [];
   idcompany: number = null;
+  // esta es la data que se va a mostrar en el grid
   rowData: any[] = [];
+
   masterSelectedRowData: any = null;
   newlyAddedMasterRows: string[] = [];
   //masterNotSavedChanges: boolean = false;
@@ -245,6 +247,7 @@ export class CashRegistersComponent {
       // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
       this.selectedRowData = selectedRowData;
     }
+    
     async activateLoansTab() {
       if (!this.isOpen || this.showSavingsTab) {
         await this.adjustGridSize();
@@ -329,93 +332,95 @@ export class CashRegistersComponent {
   addMasterRow() {
     const newItem = {
       //id: tempId,
-      idStore: 3,
+      idStore: 0,
       description: '',
       comment: '',
       active: true,
       __isNew: true,
     };
   
-
     this.rowData = [newItem, ...this.rowData];
     this.notSavedChanges = true;
-
   }
-      async saveMasterChanges() {
-        console.log(this.rowData)
-        const isValid = this.rowData.every((item) => item.description);
-        if (!isValid) {
-          alerts.basicAlert(
-            'Añadir entrada',
-            'Debe llenar los campos obligatorios antes de guardar.',
-            'error'
-          );
-          return;
-        }
-    
-        const newRows = this.rowData.filter((row) => row.__isNew);
-        const modifiedRows = this.rowData.filter(
-          (row) => row.__modified && !row.__isNew
-        );
-    
-        const addObservables = newRows.map((row) => {
-          const cleanedData = this.cleanDataForServer(row);
-          console.log(cleanedData);
-          return this.cashRegistersService.addCashRegister(cleanedData);
-        });
-    
-        const updateObservables = modifiedRows.map((row) => {
-          const cleanedData = this.cleanDataForServer(row);
-          return this.cashRegistersService.updateCashRegister(row.id, cleanedData);
-        });
-    
-        try {
-          const responses = await lastValueFrom(
-            concat(
-              ...addObservables,
-              ...updateObservables
-            ).pipe(toArray())
-          );
-    
-          // Determinar qué ID vamos a seleccionar después de recargar
-          if (modifiedRows.length > 0) {
-            // Si hay filas modificadas, guardamos el ID de la última modificada
-            this.lastEditedRowId = modifiedRows[modifiedRows.length - 1].id;
-          } else if (newRows.length > 0) {
-            // Si hay filas nuevas, marcaremos que necesitamos seleccionar el ID máximo
-            this.lastEditedRowId = 'SELECT_MAX_ID';
-          }
-    
-          alerts.basicAlert(
-            'Datos actualizados',
-            'Se han actualizado los datos correctamente.',
-            'success'
-          );
-          this.notSavedChanges = false;
-          this.newlyAddedRows = [];
-    
-          await this.obtenerDatos(); // Esperar a que se actualicen los datos
-    
-          // Seleccionar la fila apropiada después de recargar
-          if (this.lastEditedRowId) {
-            if (this.lastEditedRowId === 'SELECT_MAX_ID') {
-              // Encontrar el ID máximo en los datos actuales
-              const maxId = Math.max(...this.rowData.map(row => Number(row.id)));
-              this.selectRowById(maxId);
-            } else {
-              this.selectRowById(this.lastEditedRowId);
-            }
-            this.lastEditedRowId = null; // Resetear el ID
-          }
-        } catch (error) {
-          console.error(error);
-          alerts.basicAlert(
-            'Error',
-            'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
-            'error'
-          );
-        }
+
+
+
+async saveMasterChanges() {
+    console.log('El original', this.rowData);
+    const isValid = this.rowData.every((item) => item.description);
+    if (!isValid) {
+      alerts.basicAlert(
+        'Añadir entrada',
+        'Debe llenar los campos obligatorios antes de guardar.',
+        'error'
+      );
+      return;
+    }
+
+    const newRows = this.rowData.filter((row) => row.__isNew);
+    const modifiedRows = this.rowData.filter(
+      (row) => row.__modified && !row.__isNew
+    );
+
+    const addObservables = newRows.map((row) => {
+      const cleanedData = this.cleanDataForServer(row);
+      console.log('El modificado (para agregar)', cleanedData);
+      return this.cashRegistersService.addCashRegister(cleanedData);
+    });
+
+    const updateObservables = modifiedRows.map((row) => {
+      const cleanedData = this.cleanDataForServer(row);
+      console.log('El modificado (para actualizar)', cleanedData);
+      return this.cashRegistersService.updateCashRegister(row.id, cleanedData);
+    });
+
+    try {
+      const responses = await lastValueFrom(
+        concat(
+          ...addObservables,
+          ...updateObservables
+        ).pipe(toArray())
+      );
+
+      // Determinar qué ID vamos a seleccionar después de recargar
+      if (modifiedRows.length > 0) {
+        // Si hay filas modificadas, guardamos el ID de la última modificada
+        this.lastEditedRowId = modifiedRows[modifiedRows.length - 1].id;
+      } else if (newRows.length > 0) {
+        // Si hay filas nuevas, marcaremos que necesitamos seleccionar el ID máximo
+        this.lastEditedRowId = 'SELECT_MAX_ID';
       }
+
+      alerts.basicAlert(
+        'Datos actualizados',
+        'Se han actualizado los datos correctamente.',
+        'success'
+      );
+      this.notSavedChanges = false;
+      this.newlyAddedRows = [];
+
+      await this.obtenerDatos(); // Esperar a que se actualicen los datos
+
+      // Seleccionar la fila apropiada después de recargar
+      if (this.lastEditedRowId) {
+        if (this.lastEditedRowId === 'SELECT_MAX_ID') {
+          // Encontrar el ID máximo en los datos actuales
+          const maxId = Math.max(...this.rowData.map(row => Number(row.id)));
+          this.selectRowById(maxId);
+        } else {
+          this.selectRowById(this.lastEditedRowId);
+        }
+        this.lastEditedRowId = null; // Resetear el ID
+      }
+    } catch (error) {
+      console.error(error);
+      alerts.basicAlert(
+        'Error',
+        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
+        'error'
+      );
+    }
+  }
 
       deleteMasterEntry() {
         const selectedNodes = this.gridApi.getSelectedNodes();
@@ -485,6 +490,8 @@ export class CashRegistersComponent {
         this.obtenerDatos();
         this.notSavedChanges = false;
       }
+
+
       private selectRowById(id: number | string) {
         // Dar tiempo al grid para que se actualice
         setTimeout(() => {
