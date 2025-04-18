@@ -275,6 +275,7 @@ export class SignalsService {
 
   setidUser(id: number) {
     this.idUser.set(id);
+    
   }
 
   setDisplayName(name: string) {
@@ -283,6 +284,10 @@ export class SignalsService {
 
   getDisplayName() {
     return this.displayName;
+  }
+
+  getIdUSer(){
+    return this.idUser;
   }
 
   setUserRoot(Root: any){

@@ -35,6 +35,7 @@ export class BranchesComponent {
   newlyAddedMasterRows: string[] = [];
   masterNotSavedChanges: boolean = false;
   idRoot: number = null;
+  idUser: number = null;
   gridHeight: string = '85vh';
 
   //idRoot = this.signalsService.getRootSelectedBySidebar(); // Asignar directamente la Signal
@@ -55,7 +56,8 @@ export class BranchesComponent {
   constructor() {
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-
+      this.idUser = this.signalsService.getIdUSer()();
+      console.log(this.masterRowData);
 
       if (this.idRoot == null) {
         this.masterRowData = [];
@@ -69,9 +71,11 @@ export class BranchesComponent {
   }
 
   ngOnInit() {
+    this.idUser = this.signalsService.getIdUSer()();
     this.obtenerDatos();
     this.obtenerEstados();
-    alert(this.idRoot)
+    
+    //alert(this.idUser)
   }
 
 
@@ -91,6 +95,7 @@ export class BranchesComponent {
             (data: Ibranch[]) => {
                 this.masterRowData = data.sort((a, b) => a.name.localeCompare(b.name));
                 this.masterNotSavedChanges = false;
+                
             },
             (error) => {
                 console.error('Error fetching all branches:', error);
@@ -116,7 +121,7 @@ export class BranchesComponent {
           ...estado,
           id: index + 1
         }));
-        console.log(this.estados);
+        //console.log(this.estados);
       },
       error: (error) => {
         console.error('Error fetching states', error);

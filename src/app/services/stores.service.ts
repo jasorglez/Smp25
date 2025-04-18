@@ -12,6 +12,14 @@ export class StoresService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
+  getStoreAll(){
+    return this.http.get<any>(`${environment.urlAdministration}/Stores/all`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getStoreCompany(idCompany: number): Observable<any> {
+    return this.http.get<any>(`${environment.urlAdministration}/Stores/company/${idCompany}`, { headers: this.trackingService.getHeaders() });
+  }
+
   getStoreList(idBranch: number): Observable<any> {
     return this.http.get<any>(`${environment.urlAdministration}/Stores/branch/${idBranch}`, { headers: this.trackingService.getHeaders() });
   }
@@ -21,6 +29,7 @@ export class StoresService {
   }
 
   addStore(store: any): Observable<any> {
+    console.log(store);
     return this.http.post<any>(`${environment.urlAdministration}/Stores`, store, { headers: this.trackingService.getHeaders() });
   }
 
