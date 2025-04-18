@@ -381,7 +381,6 @@ export class CashRegistersComponent {
     this.notSavedChanges = true;
   }
       async saveMasterChanges() {
-        console.log(this.rowData)
         const isValid = this.rowData.every((item) => item.description);
         if (!isValid) {
           alerts.basicAlert(
@@ -481,7 +480,6 @@ export class CashRegistersComponent {
         }
     
         const id = selectedData.idCaja;
-        selectedData.active = 0;
         alerts
           .confirmAlert(
             'Eliminar caja',
