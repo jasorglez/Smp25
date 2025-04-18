@@ -43,10 +43,11 @@ export class CashRegistersComponent {
   selectedRowData: any = null;
   showSavingsTab: boolean = false;
   authorizedPass:boolean = false;
+  idStore: number ;
   private lastEditedRowId: number | string | null = null;
   newlyAddedRows: string[] = []; 
 
-  private storeCatalog: string[] = [];
+  private storeCatalog: any[] = [];
   private inegiService = inject(InegiService);
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
@@ -60,15 +61,43 @@ export class CashRegistersComponent {
       multiLineEditor: MultiLineEditorComponent,
       autocompleteEditor: AutocompleteEditorComponent,
     };
-  private cleanDataForServer(data: any): any {
-    const cleanedData = { ...data };
-    delete cleanedData.__isNew;
-    delete cleanedData.__modified;
-    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
-      delete cleanedData.id;
+
+    public defaultColDef: ColDef = {
+      sortable: true,
+      filter: false,
+      resizable: true,
+      lockPosition: false,
+      enableRowGroup: true, // Enable row grouping for all columns
+      flex: 1,
+    };
+    private cleanDataForServer(data: any, isNew: boolean = false): any {
+      // 1. Estructura base garantizada
+      const cleanedData: any = {
+        idStore: this.idStore,  // Prioriza el idStore del dato, sino usa el del componente
+        description: data.descCashRegister,
+        comment: data.comment || undefined,  // Mantiene undefined si no existe
+        active: data.active !== undefined ? data.active : true
+      };
+    
+      // 3. Manejo especial para actualización
+      console.log(data)
+      if (!isNew && data.idCaja && !data.idCaja.toString().startsWith('temp_')) {
+        cleanedData.id = data.idCaja;
+      }
+      if (!isNew && data.idStore && !data.idStore.toString().startsWith('temp_')) {
+        cleanedData.idStore = data.idStore;
+      }
+    
+      // 4. Limpieza de metadatos (sin eliminar campos necesarios)
+      const metaFields = ['__isNew', '__modified', 'store', 'storeId'];
+      metaFields.forEach(prop => {
+        if (cleanedData[prop] !== undefined) {
+          delete cleanedData[prop];
+        }
+      });
+    
+      return cleanedData;
     }
-    return cleanedData;
-  }
   
   constructor() {
     effect(() => {
@@ -143,7 +172,8 @@ export class CashRegistersComponent {
   getStore() {
       this.storesService.getStoreList(this.idBranch).subscribe({
         next: (data: any) => {
-          this.storeCatalog = data.map((store: any) => store.description) || [];
+          this.storeCatalog = data;
+          console.log(this.storeCatalog)
         },
         error: (error) => {
           console.error('Error fetching states', error);
@@ -202,79 +232,85 @@ export class CashRegistersComponent {
   onMasterSelectionChanged(event: any) {
   }
 
-   onMasterCellValueChanged(event: any) {
-      console.log('Dato cambiado:', event.data);
-      event.data.__modified = true;
-      this.notSavedChanges = true;
-    }
-  
-    onMasterGridReady(params: GridReadyEvent) {
-      this.gridApi = params.api;
-    }
-  
-    onMasterRowSelected(event: any) {
-      this.id = event.data.id;
-    }
+  onMasterCellValueChanged(event: any) {
+     console.log('Dato cambiado:', event.data);
+     event.data.__modified = true;
+     this.notSavedChanges = true;
 
-    async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
-      const colId = event.column.getColId();
-      const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
-      const selectedId = selectedRowData.id; // Obtener el ID del registro
-  
-      if (colId === 'loan' || colId === 'saving') {
-        // Filtrar el grid para mostrar solo el registro con el ID seleccionado
-        const filterModel = {
-          id: {
-            type: 'equals',
-            filter: selectedId,
-          },
-        };
-  
-        this.gridApi.setFilterModel(filterModel);
-        this.gridApi.onFilterChanged();
-      }
-  
-      if (colId === 'loan') {
-        await this.activateLoansTab();
-      }
-  
-      if (colId === 'saving') {
-        await this.activateSavingsTab();
-      }
-  
-      // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
-      this.selectedRowData = selectedRowData;
-    }
-    async activateLoansTab() {
-      if (!this.isOpen || this.showSavingsTab) {
-        await this.adjustGridSize();
-        this.showLoansTab = true;
-        this.showSavingsTab = false;
-        this.isOpen = true;
-      }
-      else {
-        await this.resetGridSize();
-        this.isOpen = false;
-      }
-    }
+     if (event.colDef.field === 'description') {
+      const selectedBonus = event.newValue;
+      const idStore = this.storeCatalog?.find(item => item.description === selectedBonus);
 
-    async activateSavingsTab() {
-      if (!this.isOpen || this.showLoansTab) {
-        await this.adjustGridSize();
-        this.showLoansTab = false;
-        this.showSavingsTab = true;
-        this.isOpen = true;
-      }
-      else {
-        await this.resetGridSize();
-        this.isOpen = false;
+      if (idStore) {
+        // Actualizamos el monto (quantity)
+        this.idStore = idStore.id;
       }
     }
-  
-    async adjustGridSize() {
-      this.gridHeight = '20vh'; // Adjust as needed
-    }
+   }
 
+   onMasterGridReady(params: GridReadyEvent) {
+     this.gridApi = params.api;
+   }
+
+   onMasterRowSelected(event: any) {
+     this.id = event.data.idCaja;
+   }
+   async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
+     const colId = event.column.getColId();
+     const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
+     const selectedId = selectedRowData.idCaja; // Obtener el ID del registro
+     if (colId === 'loan' || colId === 'saving') {
+       // Filtrar el grid para mostrar solo el registro con el ID seleccionado
+       const filterModel = {
+         id: {
+           type: 'equals',
+           filter: selectedId,
+         },
+       };
+
+       this.gridApi.setFilterModel(filterModel);
+       this.gridApi.onFilterChanged();
+     }
+
+     if (colId === 'loan') {
+       await this.activateLoansTab();
+     }
+
+     if (colId === 'saving') {
+       await this.activateSavingsTab();
+     }
+
+     // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
+     this.selectedRowData = selectedRowData;
+   }
+   async activateLoansTab() {
+     if (!this.isOpen || this.showSavingsTab) {
+       await this.adjustGridSize();
+       this.showLoansTab = true;
+       this.showSavingsTab = false;
+       this.isOpen = true;
+     }
+     else {
+       await this.resetGridSize();
+       this.isOpen = false;
+     }
+   }
+   async activateSavingsTab() {
+     if (!this.isOpen || this.showLoansTab) {
+       await this.adjustGridSize();
+       this.showLoansTab = false;
+       this.showSavingsTab = true;
+       this.isOpen = true;
+     }
+     else {
+       await this.resetGridSize();
+       this.isOpen = false;
+     }
+   }
+
+   async adjustGridSize() {
+     this.gridHeight = '20vh'; // Adjust as needed
+   }
   get colMaster(): ColDef[]{
     return [
       {
@@ -303,8 +339,11 @@ export class CashRegistersComponent {
         rowGroup:  true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: this.storeCatalog,
+          values: this.storeCatalog ? this.storeCatalog.map(item => item.description) : [],
         },
+        valueFormatter: (params) => {
+          return params.value || '';
+        }
       },
       
       {
@@ -328,8 +367,7 @@ export class CashRegistersComponent {
   
   addMasterRow() {
     const newItem = {
-      //id: tempId,
-      idStore: 3,
+      idStore: this.idStore,
       description: '',
       comment: '',
       active: true,
@@ -357,7 +395,7 @@ export class CashRegistersComponent {
         const modifiedRows = this.rowData.filter(
           (row) => row.__modified && !row.__isNew
         );
-    
+        console.log(newRows)
         const addObservables = newRows.map((row) => {
           const cleanedData = this.cleanDataForServer(row);
           console.log(cleanedData);
@@ -366,7 +404,8 @@ export class CashRegistersComponent {
     
         const updateObservables = modifiedRows.map((row) => {
           const cleanedData = this.cleanDataForServer(row);
-          return this.cashRegistersService.updateCashRegister(row.id, cleanedData);
+          console.log("Actualizar",row.idCaja, cleanedData)
+          return this.cashRegistersService.updateCashRegister(cleanedData);
         });
     
         try {
@@ -441,13 +480,12 @@ export class CashRegistersComponent {
           return;
         }
     
-        const id = selectedData.id;
-        alert(id)
+        const id = selectedData.idCaja;
         selectedData.active = 0;
         alerts
           .confirmAlert(
-            'Eliminar empleado',
-            '¿Está seguro que desea eliminar este empleado?',
+            'Eliminar caja',
+            '¿Está seguro que desea eliminar esta caja?',
             'warning',
             'Sí, eliminar'
           )
@@ -458,8 +496,8 @@ export class CashRegistersComponent {
                 .pipe(
                   catchError((error) => {
                     alerts.basicAlert(
-                      'Eliminar empleado',
-                      'Error al eliminar el empleado.',
+                      'Eliminar caja',
+                      'Error al eliminar la caja.',
                       'error'
                     );
                     console.error(error);
@@ -468,8 +506,8 @@ export class CashRegistersComponent {
                 )
                 .subscribe(() => {
                   alerts.basicAlert(
-                    'Empleado eliminado',
-                    'El empleado se eliminó correctamente',
+                    'Caja eliminado',
+                    'La caja se eliminó correctamente',
                     'success'
                   );
                   this.obtenerDatos();

@@ -57,6 +57,15 @@ export class StoreComponent {
       multiLineEditor: MultiLineEditorComponent,
       autocompleteEditor: AutocompleteEditorComponent,
     };
+
+    public defaultColDef: ColDef = {
+      sortable: true,
+      filter: false,
+      resizable: true,
+      lockPosition: false,
+      enableRowGroup: true, // Enable row grouping for all columns
+      flex: 1,
+    };
   private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
@@ -478,8 +487,8 @@ export class StoreComponent {
         selectedData.active = 0;
         alerts
           .confirmAlert(
-            'Eliminar empleado',
-            '¿Está seguro que desea eliminar este empleado?',
+            'Eliminar Tienda',
+            '¿Está seguro que desea eliminar esta tienda?',
             'warning',
             'Sí, eliminar'
           )
@@ -490,8 +499,8 @@ export class StoreComponent {
                 .pipe(
                   catchError((error) => {
                     alerts.basicAlert(
-                      'Eliminar empleado',
-                      'Error al eliminar el empleado.',
+                      'Eliminar tienda',
+                      'Error al eliminar la tienda.',
                       'error'
                     );
                     console.error(error);
@@ -500,8 +509,8 @@ export class StoreComponent {
                 )
                 .subscribe(() => {
                   alerts.basicAlert(
-                    'Empleado eliminado',
-                    'El empleado se eliminó correctamente',
+                    'Tienda eliminada',
+                    'La tienda se eliminó correctamente',
                     'success'
                   );
                   this.obtenerDatos();
