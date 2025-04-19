@@ -172,6 +172,17 @@ export class CashRegistersComponent {
   }
 
   getStore() {
+    if(this.idBranch <= 0){ 
+      this.storesService.getStoreCompany(this.idcompany).subscribe({
+        next: (data: any) => {
+          this.storeCatalog = data;
+          console.log(this.storeCatalog)
+        },
+        error: (error) => {
+          console.error('Error fetching states', error);
+        },
+      });
+    }else{
       this.storesService.getStoreList(this.idBranch).subscribe({
         next: (data: any) => {
           this.storeCatalog = data;
@@ -181,11 +192,15 @@ export class CashRegistersComponent {
           console.error('Error fetching states', error);
         },
       });
-    }
+    }      
+  }
   public gridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
     suppressEnterWhenEditing: false,
+    groupDefaultExpanded: -1, // -1 significa expandir todos los niveles
+    suppressDragLeaveHidesColumns: true,
+    suppressMakeColumnVisibleAfterUnGroup: true,
     rowBuffer: 20,
     rowClass: (params) => {
       // Verificar si la fila está seleccionada
@@ -194,6 +209,7 @@ export class CashRegistersComponent {
       }
       return '';
     },
+    
     onRowClicked: (event) => {
       // Seleccionar la fila al hacer clic en cualquier celda
       event.node.setSelected(true);

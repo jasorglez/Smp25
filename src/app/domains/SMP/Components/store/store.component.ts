@@ -161,6 +161,9 @@ export class StoreComponent {
     headerHeight: 25,
     rowHeight: 20,
     suppressEnterWhenEditing: false,
+    groupDefaultExpanded: -1, // -1 significa expandir todos los niveles
+    suppressDragLeaveHidesColumns: true,
+    suppressMakeColumnVisibleAfterUnGroup: true,
     rowBuffer: 20,
     rowClass: (params) => {
       // Verificar si la fila está seleccionada
@@ -299,12 +302,24 @@ export class StoreComponent {
         headerName: 'Sucursal',
         editable: false,
         width:100,
-        hide: this.idBranch >= 0 || this.idUser != 42,
-        rowGroup:  this.idBranch <= 0 || this.idUser == 42 ,
+        hide: true,//this.idBranch >= 0 || this.idUser != 42,
+        rowGroup: true,// this.idBranch <= 0 || this.idUser == 42 ,
         valueFormatter: (params) => {
           const branch = this.branchs?.find(item => item.id === params.value);
           return branch ? branch.name : '';
         }
+      },
+      {
+        field: 'idBranch',
+        headerName: 'Sucursal',
+        editable: false,
+        width: 150,
+        hide: false,
+        cellEditor: 'agSelectCellEditor',
+        valueFormatter: (params) => {
+          const branch = this.branchs?.find(item => item.id === params.value);
+          return branch ? branch.name : '';
+        },
       },
       {
         field: 'description',
