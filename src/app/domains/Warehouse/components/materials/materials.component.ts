@@ -11,7 +11,7 @@ import { MaterialsService } from 'app/services/materials.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { SignalsService } from 'app/services/signals.service';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Icatalog } from 'app/interface/icatalog';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 
@@ -26,15 +26,15 @@ declare const bootstrap: any; // Añadir declaración para Bootstrap
 })
 export class MaterialsComponent {
 
-  ngOnInit() {
-    this.obtenerDatos();
-    this.obtenerMedidas();
-    this.obtenerFamilias();
-    this.obtenerSubfamilias();
-    this.obtenerUbicaciones();
-  }
+  type: string = ''; 
 
+  
   constructor(private router: Router) {
+    
+    this.route.data.subscribe(data => {
+      this.type = data['type']; // 'SALES' or 'CONSUMABLE'
+    });
+
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.obtenerDatos();
@@ -99,6 +99,7 @@ export class MaterialsComponent {
   private modalServiceTable = inject(ModalService);
   private imageHandlerService = inject(ImageHandlerService);
   private signalsService = inject(SignalsService);
+    private route = inject(ActivatedRoute);
 
 // Column Definitions: Defines the columns to be displayed.
 public gridOptions: any = {
@@ -156,7 +157,7 @@ public gridOptions: any = {
           return true;
         }
       },
-      { field: 'articulo', headerName: 'Codigo Barra', editable: true, filter: true, width: 150 },
+      { field: 'barCode', headerName: 'Codigo Barra', editable: true, filter: true, width: 150 },
       {
         field: 'description', headerName: 'Descripción', editable: false, width: 285, filter: true,
         cellEditor: 'agPopupTextCellEditor',
@@ -189,7 +190,7 @@ public gridOptions: any = {
         field: 'date',
         headerName: 'Fecha',
         editable: true,
-        width: 150,
+        width: 110,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
           if (params.value) {
@@ -198,6 +199,7 @@ public gridOptions: any = {
           return '';
         }
       },
+      { field: 'typeMaterial', headerName: 'Tipo Material', editable: true, filter: true, width: 150 },
       {
         field: 'idMedida', headerName: 'Medidas', editable: true, width: 150, cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
@@ -335,7 +337,7 @@ public gridOptions: any = {
   };
 
   obtenerDatos() {
-    this.materialsService.getMaterials(this.idRoot).subscribe((data: any) => {
+    this.materialsService.getMaterials(this.idRoot, this.type).subscribe((data: any) => {
       this.rowData = data;
     },
       (error) => console.error('Error fetching data:', error)

@@ -51,6 +51,7 @@ export class CustomersComponent {
 
     this.route.data.subscribe(data => {
       this.type = data['type']; // 'CUSTOMERS' o 'PROVIDERS'
+      
       this.obtenerDatos(); // Llamar a la función para cargar datos
       this.getStates(); // Llamar a la función para obtener los estados
       this.obtenerBranchs();

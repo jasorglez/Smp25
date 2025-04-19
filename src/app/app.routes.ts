@@ -34,12 +34,12 @@ export const routes: Routes = [
               {
                 path: 'materials',
                 loadComponent: () => import('./domains/Warehouse/components/materials/materials.component').then(s => s.MaterialsComponent),
-                data: { type: 'SALES' } // Parámetro para materials
+                data: { type: 'PRODSALES' } // Paso el Parámetro para materials
               },
               {
-                path: 'materials',
+                path: 'materials2',
                 loadComponent: () => import('./domains/Warehouse/components/materials/materials.component').then(m => m.MaterialsComponent),
-                data: { type: 'CONSUMABLES' } // Parámetro para materials
+                data: { type: 'CONSUMABLE' } // Paso el Parámetro para materials
               },
             ]
           },
