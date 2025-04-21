@@ -55,10 +55,10 @@ export class BranchesComponent {
 
   constructor() {
     effect(() => {
+      
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idUser = this.signalsService.getIdUSer()();
       console.log(this.masterRowData);
-
       if (this.idRoot == null) {
         this.masterRowData = [];
         alerts.basicAlert('Sucursales', 'Debe elegir una empresa primero para poder ver sus sucursales.', 'error');

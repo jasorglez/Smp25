@@ -44,6 +44,7 @@ export class StoreComponent {
   private lastEditedRowId: number | string | null = null;
   newlyAddedRows: string[] = []; 
 
+
   private estados: string[] = [];
   private inegiService = inject(InegiService);
   private gridApi: GridApi;
@@ -78,13 +79,13 @@ export class StoreComponent {
   
   constructor() {
     effect(() => {
+      
       this.idUser = this.signalsService.getIdUSer()();
       this.idcompany = this.signalsService.getRootSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.obtenerBranchs();
       this.obtenerDatos();
       this.getStates();
-      
     });
   }
   obtenerBranchs() {
@@ -433,7 +434,33 @@ export class StoreComponent {
               ...updateObservables
             ).pipe(toArray())
           );
-    
+          for (const response of responses) {
+            // Verificar si es una nueva creación comparando con los IDs temporales
+            const correspondingNewRow = newRows.find(row => 
+              !row.id || row.id.toString().startsWith('temp_')
+              
+            );
+            console.log("new",correspondingNewRow)/*
+           if (response.id && correspondingNewRow) {
+                    try {
+                      await lastValueFrom(
+                        this.branchesService.assignPermissionAfterCreation(
+                          this.idUser, //id user 
+                          response.id, // 
+                          'store'
+                        )
+                      );
+                    } catch (permError) {
+                      console.error('Error asignando permiso:', permError);
+                      // Opcional: Mostrar alerta pero no interrumpir el flujo principal
+                      alerts.basicAlert(
+                        'Advertencia',
+                        'Se creó la sucursal pero hubo un problema asignando los permisos.',
+                        'warning'
+                      );
+                    }
+                  }*/
+          }
           // Determinar qué ID vamos a seleccionar después de recargar
           if (modifiedRows.length > 0) {
             // Si hay filas modificadas, guardamos el ID de la última modificada

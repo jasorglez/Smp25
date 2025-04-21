@@ -103,13 +103,13 @@ export class CashRegistersComponent {
   
   constructor() {
     effect(() => {
+      
       this.idUser = this.signalsService.getIdUSer()();
       this.idcompany = this.signalsService.getRootSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.obtenerBranchs();
       this.obtenerDatos();
       this.getStore();
-      
     });
   }
   obtenerBranchs() {
