@@ -310,7 +310,7 @@ export class StoreComponent {
           return branch ? branch.name : '';
         }
       },
-      {
+      /*{
         field: 'idBranch',
         headerName: 'Sucursal',
         editable: false,
@@ -321,7 +321,7 @@ export class StoreComponent {
           const branch = this.branchs?.find(item => item.id === params.value);
           return branch ? branch.name : '';
         },
-      },
+      },*/
       {
         field: 'description',
         headerName: 'Tienda',
@@ -434,13 +434,13 @@ export class StoreComponent {
               ...updateObservables
             ).pipe(toArray())
           );
-          for (const response of responses) {
+          /*for (const response of responses) {
             // Verificar si es una nueva creación comparando con los IDs temporales
             const correspondingNewRow = newRows.find(row => 
               !row.id || row.id.toString().startsWith('temp_')
               
             );
-            console.log("new",correspondingNewRow)/*
+            console.log("new",correspondingNewRow)
            if (response.id && correspondingNewRow) {
                     try {
                       await lastValueFrom(
@@ -459,8 +459,8 @@ export class StoreComponent {
                         'warning'
                       );
                     }
-                  }*/
-          }
+                  }
+          }*/
           // Determinar qué ID vamos a seleccionar después de recargar
           if (modifiedRows.length > 0) {
             // Si hay filas modificadas, guardamos el ID de la última modificada
