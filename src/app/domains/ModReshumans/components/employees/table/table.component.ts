@@ -784,7 +784,7 @@ export class EmployeesTableComponent {
   }
 
   async addMasterRow() {
-    const timeData = await this.getTime();
+    //const timeData = await this.getTime();
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
@@ -799,7 +799,8 @@ export class EmployeesTableComponent {
       phone: '',
       baseHours: 0,
       priceXHour: 0,
-      ingressDate: timeData.dateObj,
+      //ingressDate: timeData.dateObj,
+      ingressDate: '',
       position: '',
       email: '',
       picture: '',
