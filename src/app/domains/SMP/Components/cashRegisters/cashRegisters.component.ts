@@ -412,24 +412,49 @@ export class CashRegistersComponent {
           (row) => row.__modified && !row.__isNew
         );
     
-        const addObservables = newRows.map((row) => {
+        const addObservables: Promise<any>[] = newRows.map((row) => {
           const cleanedData = this.cleanDataForServer(row);
           console.log(cleanedData);
-          return this.cashRegistersService.addCashRegister(cleanedData);
+          return lastValueFrom(this.cashRegistersService.addCashRegister(cleanedData));
         });
     
-        const updateObservables = modifiedRows.map((row) => {
+        const updateObservables: Promise<any>[] = modifiedRows.map((row) => {
           const cleanedData = this.cleanDataForServer(row);
-          return this.cashRegistersService.updateCashRegister(cleanedData);
+          return lastValueFrom(this.cashRegistersService.updateCashRegister(cleanedData));
         });
     
         try {
-          const responses = await lastValueFrom(
-            concat(
-              ...addObservables,
-              ...updateObservables
-            ).pipe(toArray())
-          );
+          const allResponses = await Promise.all([...addObservables, ...updateObservables]);
+
+          //console.log('Promise.all completado. Respuestas:', allResponses); 
+          for (const response of allResponses) {
+            // Verificar si es una nueva creación comparando con los IDs temporales
+            const correspondingNewRow = newRows.find(row => 
+              !row.id || row.id.toString().startsWith('temp_')
+  
+            );
+            
+           if ( response.id && correspondingNewRow) {
+          
+                    try {
+                      await lastValueFrom(
+                        this.branchesService.assignPermissionAfterCreation(
+                          this.idUser, //id user 
+                          response.id, 
+                          'cashRegisters'
+                        )
+                      );
+                    } catch (permError) {
+                      console.error('Error asignando permiso:', permError);
+                      // Opcional: Mostrar alerta pero no interrumpir el flujo principal
+                      alerts.basicAlert(
+                        'Advertencia',
+                        'Se creó la sucursal pero hubo un problema asignando los permisos.',
+                        'warning'
+                      );
+                    }
+                  }
+          }
     
           // Determinar qué ID vamos a seleccionar después de recargar
           if (modifiedRows.length > 0) {

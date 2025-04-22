@@ -400,106 +400,105 @@ export class StoreComponent {
       this.notSavedChanges = true;
   
     }
-      async saveMasterChanges() {
-        const isValid = this.rowData.every((item) => item.description && item.address && item.state);
-        if (!isValid) {
-          alerts.basicAlert(
-            'Añadir entrada',
-            'Debe llenar los campos obligatorios antes de guardar.',
-            'error'
-          );
-          return;
-        }
-    
-        const newRows = this.rowData.filter((row) => row.__isNew);
-        const modifiedRows = this.rowData.filter(
-          (row) => row.__modified && !row.__isNew
+    async saveMasterChanges() {
+      const isValid = this.rowData.every((item) => item.description && item.address && item.state);
+      if (!isValid) {
+        alerts.basicAlert(
+          'Añadir entrada',
+          'Debe llenar los campos obligatorios antes de guardar.',
+          'error'
         );
-    
-        const addObservables = newRows.map((row) => {
-          const cleanedData = this.cleanDataForServer(row);
-          console.log(cleanedData);
-          return this.storesService.addStore(cleanedData);
-        });
-    
-        const updateObservables = modifiedRows.map((row) => {
-          const cleanedData = this.cleanDataForServer(row);
-          return this.storesService.updateStore(row.id, cleanedData);
-        });
-    
-        try {
-          const responses = await lastValueFrom(
-            concat(
-              ...addObservables,
-              ...updateObservables
-            ).pipe(toArray())
-          );
-          /*for (const response of responses) {
-            // Verificar si es una nueva creación comparando con los IDs temporales
-            const correspondingNewRow = newRows.find(row => 
-              !row.id || row.id.toString().startsWith('temp_')
-              
-            );
-            console.log("new",correspondingNewRow)
-           if (response.id && correspondingNewRow) {
-                    try {
-                      await lastValueFrom(
-                        this.branchesService.assignPermissionAfterCreation(
-                          this.idUser, //id user 
-                          response.id, // 
-                          'store'
-                        )
-                      );
-                    } catch (permError) {
-                      console.error('Error asignando permiso:', permError);
-                      // Opcional: Mostrar alerta pero no interrumpir el flujo principal
-                      alerts.basicAlert(
-                        'Advertencia',
-                        'Se creó la sucursal pero hubo un problema asignando los permisos.',
-                        'warning'
-                      );
-                    }
-                  }
-          }*/
-          // Determinar qué ID vamos a seleccionar después de recargar
-          if (modifiedRows.length > 0) {
-            // Si hay filas modificadas, guardamos el ID de la última modificada
-            this.lastEditedRowId = modifiedRows[modifiedRows.length - 1].id;
-          } else if (newRows.length > 0) {
-            // Si hay filas nuevas, marcaremos que necesitamos seleccionar el ID máximo
-            this.lastEditedRowId = 'SELECT_MAX_ID';
-          }
-    
-          alerts.basicAlert(
-            'Datos actualizados',
-            'Se han actualizado los datos correctamente.',
-            'success'
-          );
-          this.notSavedChanges = false;
-          this.newlyAddedRows = [];
-    
-          await this.obtenerDatos(); // Esperar a que se actualicen los datos
-    
-          // Seleccionar la fila apropiada después de recargar
-          if (this.lastEditedRowId) {
-            if (this.lastEditedRowId === 'SELECT_MAX_ID') {
-              // Encontrar el ID máximo en los datos actuales
-              const maxId = Math.max(...this.rowData.map(row => Number(row.id)));
-              this.selectRowById(maxId);
-            } else {
-              this.selectRowById(this.lastEditedRowId);
-            }
-            this.lastEditedRowId = null; // Resetear el ID
-          }
-        } catch (error) {
-          console.error(error);
-          alerts.basicAlert(
-            'Error',
-            'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
-            'error'
-          );
-        }
+        return;
       }
+  
+      const newRows = this.rowData.filter((row) => row.__isNew);
+      const modifiedRows = this.rowData.filter(
+        (row) => row.__modified && !row.__isNew
+      );
+  
+      const addObservables: Promise<any>[]  = newRows.map((row) => {
+        const cleanedData = this.cleanDataForServer(row);
+        console.log(cleanedData);
+        return lastValueFrom( this.storesService.addStore(cleanedData));
+      });
+  
+      const updateObservables: Promise<any>[] = modifiedRows.map((row) => {
+        const cleanedData = this.cleanDataForServer(row);
+        return lastValueFrom(this.storesService.updateStore(row.id, cleanedData));
+      });
+  
+      try {
+        const allResponses = await Promise.all([...addObservables, ...updateObservables]);
+
+        //console.log('Promise.all completado. Respuestas:', allResponses); 
+        for (const response of allResponses) {
+          // Verificar si es una nueva creación comparando con los IDs temporales
+          const correspondingNewRow = newRows.find(row => 
+            !row.id || row.id.toString().startsWith('temp_')
+
+          );
+          
+         if (response.id && correspondingNewRow) {
+          //console.log(response)
+        
+                  try {
+                    await lastValueFrom(
+                      this.branchesService.assignPermissionAfterCreation(
+                        this.idUser, //id user 
+                        response.id, 
+                        'store'
+                      )
+                    );
+                  } catch (permError) {
+                    console.error('Error asignando permiso:', permError);
+                    // Opcional: Mostrar alerta pero no interrumpir el flujo principal
+                    alerts.basicAlert(
+                      'Advertencia',
+                      'Se creó la sucursal pero hubo un problema asignando los permisos.',
+                      'warning'
+                    );
+                  }
+                }
+        }
+        // Determinar qué ID vamos a seleccionar después de recargar
+        if (modifiedRows.length > 0) {
+          // Si hay filas modificadas, guardamos el ID de la última modificada
+          this.lastEditedRowId = modifiedRows[modifiedRows.length - 1].id;
+        } else if (newRows.length > 0) {
+          // Si hay filas nuevas, marcaremos que necesitamos seleccionar el ID máximo
+          this.lastEditedRowId = 'SELECT_MAX_ID';
+        }
+  
+        alerts.basicAlert(
+          'Datos actualizados',
+          'Se han actualizado los datos correctamente.',
+          'success'
+        );
+        this.notSavedChanges = false;
+        this.newlyAddedRows = [];
+  
+        await this.obtenerDatos(); // Esperar a que se actualicen los datos
+  
+        // Seleccionar la fila apropiada después de recargar
+        if (this.lastEditedRowId) {
+          if (this.lastEditedRowId === 'SELECT_MAX_ID') {
+            // Encontrar el ID máximo en los datos actuales
+            const maxId = Math.max(...this.rowData.map(row => Number(row.id)));
+            this.selectRowById(maxId);
+          } else {
+            this.selectRowById(this.lastEditedRowId);
+          }
+          this.lastEditedRowId = null; // Resetear el ID
+        }
+      } catch (error) {
+        console.error(error);
+        alerts.basicAlert(
+          'Error',
+          'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
+          'error'
+        );
+      }
+    }
 
       deleteMasterEntry() {
         const selectedNodes = this.gridApi.getSelectedNodes();
