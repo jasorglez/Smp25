@@ -357,16 +357,18 @@ public gridOptions: any = {
     });
   
     try {
-      // Usamos Promise.all sin tipo genérico ya que las promesas ya están tipadas
+      
       const allResponses = await Promise.all([...addPromises, ...updatePromises]);
   
       // Asignar permisos para los nuevos Branchs creados
       const currentUserId = this.idRoot; 
+      console.log(allResponses)
       for (const response of allResponses) {
         // Verificar si es una nueva creación comparando con los IDs temporales
         const correspondingNewRow = newRows.find(row => 
           !row.id || row.id.toString().startsWith('temp_')
-        );
+        ); 
+        console.log(correspondingNewRow)
         
         if (response.id && correspondingNewRow) {
           try {
@@ -410,6 +412,7 @@ public gridOptions: any = {
       );
     }
   }
+
 
   async deleteBranch() {
     const selectedNodes = this.masterGridApi.getSelectedNodes();
