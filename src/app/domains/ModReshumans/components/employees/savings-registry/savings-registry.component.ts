@@ -91,6 +91,26 @@ export class SavingsRegistryComponent {
 
   get maestroColumnDefs(): ColDef[] {
     return [
+      {
+        headerName: 'Fecha',
+        field: 'date',
+        filter: 'agTextColumnFilter',
+        valueGetter: (params) =>
+          params.data.date ? new Date(params.data.date) : null,
+        cellRenderer: 'agDateCellRenderer',
+        cellEditor: 'agDateCellEditor',
+        valueFormatter: (params) => {
+          if (params.value) {
+            const date = new Date(params.value);
+            return `${('0' + date.getDate()).slice(-2)}-${(
+              '0' +
+              (date.getMonth() + 1)
+            ).slice(-2)}-${date.getFullYear()}`;
+          }
+          return '';
+        },
+        flex: 1
+      },
     {
       headerName: 'Nombre',
       field: 'employeeName',
@@ -103,26 +123,7 @@ export class SavingsRegistryComponent {
       flex: 2,
       filter: 'agTextColumnFilter'
     },
-    {
-      headerName: 'Fecha',
-      field: 'date',
-      filter: 'agTextColumnFilter',
-      valueGetter: (params) =>
-        params.data.date ? new Date(params.data.date) : null,
-      cellRenderer: 'agDateCellRenderer',
-      cellEditor: 'agDateCellEditor',
-      valueFormatter: (params) => {
-        if (params.value) {
-          const date = new Date(params.value);
-          return `${('0' + date.getDate()).slice(-2)}-${(
-            '0' +
-            (date.getMonth() + 1)
-          ).slice(-2)}-${date.getFullYear()}`;
-        }
-        return '';
-      },
-      flex: 1
-    },
+    
     {
       headerName: 'Abono',
       field: 'monto',

@@ -128,7 +128,7 @@ export class CatalogsComponent {
       },
       {
         field: 'valueAddition2',
-        headerName: 'Validacion',
+        headerName: 'Activo',
         editable: true,
         width: 100,
 

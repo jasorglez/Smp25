@@ -79,7 +79,6 @@ export class StoreComponent {
   
   constructor() {
     effect(() => {
-      
       this.idUser = this.signalsService.getIdUSer()();
       this.idcompany = this.signalsService.getRootSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();

@@ -203,6 +203,14 @@ export class EmployeesTableComponent {
           filterOptions: ['equals'], // Opciones de filtro
         },
       },
+      {
+        field: 'vigente',
+        headerName: 'Vigente',
+        editable: true,
+        suppressMovable: true,
+        filter: true,
+        width: 100,
+      },
       /*{
         field: 'picture',
         headerName: 'Fotografía 2',
@@ -396,7 +404,7 @@ export class EmployeesTableComponent {
       },
       {
         field: 'idDepto',
-        headerName: 'Departamento',
+        headerName: 'Departamento *',
         editable: true,
         suppressMovable: true,
         filter: false,
@@ -420,6 +428,66 @@ export class EmployeesTableComponent {
         },
       },
       {
+        field: 'idPosition',
+        headerName: 'Posicion *',
+        editable: true,
+        suppressMovable: true,
+        filter: false,
+        width: 190,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: (params) => {
+          // Ensure depto data is available when creating editor
+          return {
+            values: this.position ? this.position.map((item) => item.id) : []
+          };
+        },
+        valueFormatter: (params) => {
+          // Handle potential null values and properly format the displayed value
+          if (!params.value) return '';
+
+          const foundDepto = this.depto
+            ? this.position.find((item) => item.id === params.value)
+            : null;
+
+          return foundDepto ? foundDepto.description : params.value;
+        },
+      },
+      {
+        field: 'priceXHour',
+        headerName: 'Precio por hora *',
+        editable: true,
+        filter: true,
+        width: 150,
+        cellEditor: 'agNumberCellEditor',
+        cellEditorParams: {
+          min: 0,
+          max: 999999,
+          precision: 2,
+        },
+        valueFormatter: (params) => {
+          if (params.value) {
+            return new Intl.NumberFormat('es-MX', {
+              style: 'currency',
+              currency: 'MXN',
+            }).format(params.value);
+          }
+          return '';
+        },
+      },
+      {
+        field: 'baseHours',
+        headerName: 'Horas base *',
+        editable: true,
+        filter: true,
+        width: 150,
+        cellEditor: 'agNumberCellEditor',
+        cellEditorParams: {
+          min: 0,
+          max: 96,
+          precision: 0,
+        },
+      },
+      {
         field: 'idBank',
         headerName: 'Banco',
         editable: true,
@@ -436,6 +504,54 @@ export class EmployeesTableComponent {
             : null;
           return foundBank ? `${foundBank.name}` : params.value;
         },
+      },
+      {
+        field: 'ingressDate',
+        headerName: 'Fecha de ingreso',
+        editable: false,
+        filter: true,
+        width: 150,
+        cellRenderer: 'agDateCellRenderer',
+        cellEditor: 'agDateCellEditor',
+        valueFormatter: (params) => {
+          if (params.value) {
+            const date = new Date(params.value);
+            return `${('0' + date.getDate()).slice(-2)}-${(
+              '0' +
+              (date.getMonth() + 1)
+            ).slice(-2)}-${date.getFullYear()}`;
+          }
+          return '';
+        },
+      },
+      {
+        field: 'phone',
+        headerName: 'Teléfono',
+        editable: true,
+        filter: true,
+        width: 150,
+        valueSetter: (params) => {
+          const phoneValue = params.newValue;
+          // Verificar que el número tenga exactamente 10 dígitos y sea numérico
+          const isValidPhone = /^\d{10}$/.test(phoneValue);
+          if (!isValidPhone) {
+            alerts.basicAlert(
+              'Teléfono inválido',
+              'El teléfono debe contener exactamente 10 dígitos numéricos.',
+              'error'
+            );
+            return false; // No se permite el cambio
+          }
+          params.data[params.colDef.field] = phoneValue;
+          return true;
+        },
+      },
+      {
+        field: 'cp',
+        headerName: 'CP',
+        editable: true,
+        filter: true,
+        width: 100,
       },
       {
         field: 'address',
@@ -469,19 +585,13 @@ export class EmployeesTableComponent {
           return params.value.toUpperCase();
         },
       },
-      {
-        field: 'cp',
-        headerName: 'CP',
-        editable: true,
-        filter: true,
-        width: 100,
-      },
+      
       {
         field: 'state',
         headerName: 'Estado',
         filter: true,
         width: 150,
-        editable: true,
+        editable: false,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.estados,
@@ -490,7 +600,7 @@ export class EmployeesTableComponent {
       {
         field: 'city',
         headerName: 'Ciudad',
-        editable: true,
+        editable: false,
         filter: true,
         width: 150,
       },
@@ -516,115 +626,8 @@ export class EmployeesTableComponent {
           return params.value || 'Seleccionar asentamiento';
         },
       },
-      {
-        field: 'phone',
-        headerName: 'Teléfono',
-        editable: true,
-        filter: true,
-        width: 150,
-        valueSetter: (params) => {
-          const phoneValue = params.newValue;
-          // Verificar que el número tenga exactamente 10 dígitos y sea numérico
-          const isValidPhone = /^\d{10}$/.test(phoneValue);
-          if (!isValidPhone) {
-            alerts.basicAlert(
-              'Teléfono inválido',
-              'El teléfono debe contener exactamente 10 dígitos numéricos.',
-              'error'
-            );
-            return false; // No se permite el cambio
-          }
-          params.data[params.colDef.field] = phoneValue;
-          return true;
-        },
-      },
-      {
-        field: 'idPosition',
-        headerName: 'Rol',
-        editable: true,
-        suppressMovable: true,
-        filter: false,
-        width: 190,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: (params) => {
-          // Ensure depto data is available when creating editor
-          return {
-            values: this.position ? this.position.map((item) => item.id) : []
-          };
-        },
-        valueFormatter: (params) => {
-          // Handle potential null values and properly format the displayed value
-          if (!params.value) return '';
-
-          const foundDepto = this.depto
-            ? this.position.find((item) => item.id === params.value)
-            : null;
-
-          return foundDepto ? foundDepto.description : params.value;
-        },
-      },
-      {
-        field: 'priceXHour',
-        headerName: 'Precio por hora',
-        editable: true,
-        filter: true,
-        width: 150,
-        cellEditor: 'agNumberCellEditor',
-        cellEditorParams: {
-          min: 0,
-          max: 999999,
-          precision: 2,
-        },
-        valueFormatter: (params) => {
-          if (params.value) {
-            return new Intl.NumberFormat('es-MX', {
-              style: 'currency',
-              currency: 'MXN',
-            }).format(params.value);
-          }
-          return '';
-        },
-      },
-      {
-        field: 'baseHours',
-        headerName: 'Horas base',
-        editable: true,
-        filter: true,
-        width: 150,
-        cellEditor: 'agNumberCellEditor',
-        cellEditorParams: {
-          min: 0,
-          max: 96,
-          precision: 0,
-        },
-      },
-      {
-        field: 'ingressDate',
-        headerName: 'Fecha de ingreso',
-        editable: false,
-        filter: true,
-        width: 150,
-        cellRenderer: 'agDateCellRenderer',
-        cellEditor: 'agDateCellEditor',
-        valueFormatter: (params) => {
-          if (params.value) {
-            const date = new Date(params.value);
-            return `${('0' + date.getDate()).slice(-2)}-${(
-              '0' +
-              (date.getMonth() + 1)
-            ).slice(-2)}-${date.getFullYear()}`;
-          }
-          return '';
-        },
-      },
-      {
-        field: 'vigente',
-        headerName: 'Vigente',
-        editable: true,
-        suppressMovable: true,
-        filter: true,
-        width: 100,
-      },
+      
+      
       {
         field: 'rfc',
         headerName: 'RFC',
@@ -835,7 +838,7 @@ setTimeout(() => {
   }
 
   async saveMasterChanges() {
-    const isValid = this.rowData.every((item) => item.name && item.idBranch && item.email);
+    const isValid = this.rowData.every((item) => item.name && item.idBranch && item.email  );//&& item.idDepto && item.idPosition
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',

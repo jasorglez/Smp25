@@ -71,6 +71,10 @@ export class MaterialsComponent {
   ubicaciones: any;
   id: string = null;
   idRoot: number = null;
+  gridHeight: string = '80vh';
+  showLoansTab: boolean = false;
+  showSavingsTab: boolean = false;
+  private isOpen: boolean = false; 
   private tempIdCounter: number = 0;
   material = {
     picture: null as string,
@@ -99,7 +103,7 @@ export class MaterialsComponent {
   private modalServiceTable = inject(ModalService);
   private imageHandlerService = inject(ImageHandlerService);
   private signalsService = inject(SignalsService);
-    private route = inject(ActivatedRoute);
+  private route = inject(ActivatedRoute);
 
 // Column Definitions: Defines the columns to be displayed.
 public gridOptions: any = {
@@ -395,6 +399,72 @@ public gridOptions: any = {
       this.material.picture = this.selectedRowData.picture;
     } else {
       this.selectedRowData = null;
+    }
+  }
+  async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
+    const colId = event.column.getColId();
+    const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
+    const selectedId = selectedRowData.id; // Obtener el ID del registro
+
+    if (colId === 'loan' || colId === 'saving') {
+      // Filtrar el grid para mostrar solo el registro con el ID seleccionado
+      const filterModel = {
+        id: {
+          type: 'equals',
+          filter: selectedId,
+        },
+      };
+
+      this.gridApi.setFilterModel(filterModel);
+      this.gridApi.onFilterChanged();
+    }
+
+    if (colId === 'loan') {
+      await this.activateLoansTab();
+    }
+
+    if (colId === 'saving') {
+      await this.activateSavingsTab();
+    }
+
+    // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
+    this.selectedRowData = selectedRowData;
+  } async activateLoansTab() {
+    if (!this.isOpen || this.showSavingsTab) {
+      await this.adjustGridSize();
+      this.showLoansTab = true;
+      this.showSavingsTab = false;
+      this.isOpen = true;
+    }
+    else {
+      await this.resetGridSize();
+      this.isOpen = false;
+    }
+  }
+  async adjustGridSize() {
+    this.gridHeight = '20vh'; // Adjust as needed
+  }
+
+
+  async activateSavingsTab() {
+    if (!this.isOpen || this.showLoansTab) {
+      await this.adjustGridSize();
+      this.showLoansTab = false;
+      this.showSavingsTab = true;
+      this.isOpen = true;
+    }
+    else {
+      await this.resetGridSize();
+      this.isOpen = false;
+    }
+  }
+  resetGridSize() {
+    this.gridHeight = '80vh'; // Reset to default height
+    this.showLoansTab = false;
+    this.showSavingsTab = false;
+    if (this.gridApi) {
+      this.gridApi.setFilterModel(null);
+      this.gridApi.onFilterChanged();
     }
   }
 
