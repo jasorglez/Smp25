@@ -336,7 +336,7 @@ public gridOptions: any = {
       },
       { field: 'stockMin', headerName: 'Stock Mínimo', editable: true, width: 150, cellDataType: 'number', cellEditorParams: { min: 0 } },
       { field: 'stockMax', headerName: 'Stock Máximo', editable: true, width: 150, cellDataType: 'number', cellEditorParams: { min: 0 } },
-      { field: 'aplicaResg', headerName: 'Resguardar', editable: true, width: 100 },
+      { field: 'vigente', headerName: 'Vigente', editable: true, width: 100 },
     ]
   };
 
