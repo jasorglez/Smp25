@@ -79,7 +79,6 @@ export class StoreComponent {
   
   constructor() {
     effect(() => {
-      
       this.idUser = this.signalsService.getIdUSer()();
       this.idcompany = this.signalsService.getRootSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
@@ -296,7 +295,8 @@ export class StoreComponent {
         showRowGroup: true,
         width:100,
         hide: this.idUser != 42,
-        rowGroup: this.idUser == 42
+        rowGroup: this.idUser == 42,
+        rowGroupIndex: 1,
       },
       {
         field: 'idBranch',

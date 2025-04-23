@@ -431,7 +431,6 @@ export class CashRegistersComponent {
             // Verificar si es una nueva creación comparando con los IDs temporales
             const correspondingNewRow = newRows.find(row => 
               !row.id || row.id.toString().startsWith('temp_')
-  
             );
             
            if ( response.id && correspondingNewRow) {

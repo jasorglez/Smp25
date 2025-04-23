@@ -37,14 +37,15 @@
             (rowSelected)="onSelectedRow($event)"
             (gridReady)="onGridReady($event)" 
             [rowSelection]="rowSelection" 
-            [components]="components">
+            [components]="components"
+            (cellDoubleClicked)="onCellDoubleClicked($event)">
         </ag-grid-angular>
         </section>
       </div>
     </main>
   </div>
 </section>
-
+<!--
 <div class="modal fade" id="addFamilyModal" tabindex="-1" aria-labelledby="addFamilyModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -125,4 +126,4 @@
       </div>
     </div>
   </div>
-</div>
+</div>-->

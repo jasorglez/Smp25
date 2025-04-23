@@ -91,26 +91,6 @@ export class LoansRegistryComponent {
 
   maestroColumnDefs: ColDef[] = [
     {
-      headerName: 'Nombre',
-      field: 'employeeName',
-      filter: 'agTextColumnFilter',
-      floatingFilter: true,
-      floatingFilterComponentParams: {
-        suppressFilterButton: true,
-      },
-      flex: 2
-    },
-    {
-      headerName: 'Prestamo',
-      field: 'name',
-      filter: 'agTextColumnFilter',
-      floatingFilter: true,
-      floatingFilterComponentParams: {
-        suppressFilterButton: true,
-      },
-      flex: 2
-    },
-    {
       headerName: 'Fecha',
       field: 'date',
       filter: 'agDateColumnFilter',
@@ -134,6 +114,27 @@ export class LoansRegistryComponent {
       },
       flex: 1
     },
+    {
+      headerName: 'Nombre',
+      field: 'employeeName',
+      filter: 'agTextColumnFilter',
+      floatingFilter: true,
+      floatingFilterComponentParams: {
+        suppressFilterButton: true,
+      },
+      flex: 2
+    },
+    {
+      headerName: 'Prestamo',
+      field: 'name',
+      filter: 'agTextColumnFilter',
+      floatingFilter: true,
+      floatingFilterComponentParams: {
+        suppressFilterButton: true,
+      },
+      flex: 2
+    },
+    
     {
       headerName: 'Préstamo',
       field: 'monto',
