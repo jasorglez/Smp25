@@ -1,4 +1,4 @@
-import { Component, HostListener, inject } from '@angular/core';
+import { Component, HostListener, effect, inject } from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule } from 'ag-grid-angular';
@@ -6,8 +6,10 @@ import { ContractsService } from 'app/services/contracts.service';
 import { concat, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { SignalsService } from 'app/services/signals.service';
 import { RootService } from 'app/services/root.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
+import { BranchsService } from 'app/services/branchs.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 
 @Component({
@@ -21,6 +23,9 @@ export class RootComponent {
   
   private rootService = inject(RootService);
   private imageHandlerService = inject(ImageHandlerService);
+  private branchesService = inject(BranchsService);
+
+    private signalsService = inject(SignalsService);
 
   notSavedChanges: boolean = false;
   rowData: any[] = [];
@@ -28,13 +33,20 @@ export class RootComponent {
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
   id: string;
+  idUser: number = null;
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
 
   ngOnInit() {
-    
+    this.idUser = this.signalsService.getIdUSer()();
     this.obtenerDatos();
   }
+  constructor() {
+      effect(() => {
+        this.idUser = this.signalsService.getIdUSer()();
+        this.obtenerDatos();
+      });
+    }
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
@@ -330,15 +342,14 @@ public gridOptions: any = {
       (row) => row.__modified && !row.__isNew
     );
 
-    const addObservables = newRows.map((row) => {
+    const addObservables: Promise<any>[] = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-
-      return this.rootService.addRoot(cleanedData);
+      return lastValueFrom(this.rootService.addRoot(cleanedData));
     });
 
-    const updateObservables = modifiedRows.map((row) => {
+    const updateObservables: Promise<any>[] = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.rootService.updateRoot(row.id, cleanedData);
+      return lastValueFrom( this.rootService.updateRoot(row.id, cleanedData));
     });
 
     // Using concat to combine observables and lastValueFrom for async/await
@@ -346,12 +357,40 @@ public gridOptions: any = {
       const responses = await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
+      console.log(responses);
       
       alerts.basicAlert(
         'Datos actualizados',
         'Se han actualizado los datos correctamente.',
         'success'
       );
+      for (const response of responses) {
+        // Verificar si es una nueva creación comparando con los IDs temporales
+        const correspondingNewRow = newRows.find(row => 
+          !row.id || row.id.toString().startsWith('temp_')
+        );
+        
+       if ( response.id && correspondingNewRow) {
+      
+                try {
+                  await lastValueFrom(
+                    this.branchesService.assignPermissionAfterCreation(
+                      this.idUser, //id user 
+                      response.id, 
+                      'company'
+                    )
+                  );
+                } catch (permError) {
+                  console.error('Error asignando permiso:', permError);
+                  // Opcional: Mostrar alerta pero no interrumpir el flujo principal
+                  alerts.basicAlert(
+                    'Advertencia',
+                    'Se creó la sucursal pero hubo un problema asignando los permisos.',
+                    'warning'
+                  );
+                }
+              }
+      }
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
       this.obtenerDatos(); // Refrescar los datos
