@@ -106,6 +106,7 @@ export class AdministrationService {
 
   // Payroll
   getNormalPayrolls(idBranch: number): Observable<any> {
+    console.log("----- llamada a getNormalPayrolls, idBranch es: ", idBranch);
     return this.http.get(`${environment.urlAdministration}/NormalPayrolls/branch/${idBranch}`, { headers: this.trackingService.getHeaders() });
   }
 
