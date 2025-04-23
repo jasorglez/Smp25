@@ -60,6 +60,7 @@ export class MasterPayrollComponent implements OnInit {
   obtenerDatos() {
     this.administrationService.getNormalPayrolls(this.idBranch).subscribe((data: any) => {
       this.rowData = data;
+      console.log("---- Masterpayroll component. esto es data desde obtenerDatos(): ", data);
     },
       (error) => {
         this.rowData = [];
