@@ -461,6 +461,10 @@ export const routes: Routes = [
               {
                 path: 'history-clock',
                 loadComponent: () => import('./domains/ModReshumans/components/employees/db/db.component').then(s => s.DbComponent)
+              },
+              {
+                path: 'catalogs',
+                loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(s => s.CatalogsComponent)  
               }
             ]
           },
