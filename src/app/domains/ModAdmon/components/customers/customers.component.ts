@@ -1,10 +1,23 @@
 import { Component, effect, HostListener, inject } from '@angular/core';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
-import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
+import {
+  CellDoubleClickedEvent,
+  ColDef,
+  GridApi,
+  GridReadyEvent,
+  ICellRendererParams,
+} from 'ag-grid-enterprise';
 import { alerts } from '../../../../helpers/alerts';
 import { States } from 'app/interface/states';
-import { catchError, concat, EMPTY, lastValueFrom, toArray, throwError } from 'rxjs';
+import {
+  catchError,
+  concat,
+  EMPTY,
+  lastValueFrom,
+  toArray,
+  throwError,
+} from 'rxjs';
 import { map } from 'rxjs/operators';
 import { AgGridModule } from 'ag-grid-angular';
 import { ModalService } from 'app/services/modal.service';
@@ -26,10 +39,15 @@ import { environment } from '@env/environment';
 @Component({
   selector: 'app-customers',
   standalone: true,
-  imports: [RouterModule, DomainsModule, AgGridModule, MultiLineEditorComponent,
-    CustomersPaymentsComponent],
+  imports: [
+    RouterModule,
+    DomainsModule,
+    AgGridModule,
+    MultiLineEditorComponent,
+    CustomersPaymentsComponent,
+  ],
   templateUrl: './customers.component.html',
-  styleUrls: ['./customers.component.scss']
+  styleUrls: ['./customers.component.scss'],
 })
 export class CustomersComponent {
   //  private administrationService = inject(AdministrationService);
@@ -49,18 +67,16 @@ export class CustomersComponent {
     this.signalsService.deleteClientData();
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
 
-    this.route.data.subscribe(data => {
+    this.route.data.subscribe((data) => {
       this.type = data['type']; // 'CUSTOMERS' o 'PROVIDERS'
-      
+
       this.obtenerDatos(); // Llamar a la función para cargar datos
       this.getStates(); // Llamar a la función para obtener los estados
       this.obtenerBranchs();
     });
   }
 
-
   constructor() {
-
     effect(async () => {
       if (this.signalsService.getRefreshEmployees()() == true) {
         await this.obtenerDatos(); // Actualizar datos cuando se recibe señal
@@ -81,13 +97,14 @@ export class CustomersComponent {
       this.obtenerDatos();
       this.obtenerBranchs();
       this.getTypecop();
-    })
+    });
   }
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
     if (this.notSavedChanges) {
-      $event.returnValue = 'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
+      $event.returnValue =
+        'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
     }
   }
 
@@ -138,8 +155,6 @@ export class CustomersComponent {
     autocompleteEditor: AutocompleteEditorComponent,
   };
 
-
-
   idClient = this.signalsService.getIdClient();
   nameClient = this.signalsService.getNameClient()();
 
@@ -166,12 +181,14 @@ export class CustomersComponent {
     },
   };
 
-
-
   get colMaster(): ColDef[] {
     return [
       {
-        field: 'id', headerName: 'Id', editable: false, width: 110, hide: false,
+        field: 'id',
+        headerName: 'Id',
+        editable: false,
+        width: 110,
+        hide: false,
         filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
         filterParams: {
           filterOptions: ['equals'], // Opciones de filtro
@@ -181,8 +198,13 @@ export class CustomersComponent {
         field: 'idBranch',
         headerName: 'Nombre sucursal *',
         headerClass: 'required-header',
-        hide: this.authService.hasDetailedPermission('principal', 'see-all-branches') ||
-          this.signalsService.getemailChoose() === environment.root ? false : true,
+        hide:
+          this.authService.hasDetailedPermission(
+            'principal',
+            'see-all-branches'
+          ) || this.signalsService.getemailChoose() === environment.root
+            ? false
+            : true,
         editable: true,
         filter: true,
         width: 170,
@@ -190,7 +212,7 @@ export class CustomersComponent {
         cellEditorParams: (params) => {
           // Ensure depto data is available when creating editor
           return {
-            values: this.branchs ? this.branchs.map((item) => item.id) : []
+            values: this.branchs ? this.branchs.map((item) => item.id) : [],
           };
         },
         valueFormatter: (params) => {
@@ -205,7 +227,9 @@ export class CustomersComponent {
         },
       },
       {
-        field: 'company', headerName: 'Compania', editable: false,
+        field: 'company',
+        headerName: 'Compania',
+        editable: false,
         width: 250,
         suppressMovable: true,
         filter: 'agTextColumnFilter',
@@ -233,13 +257,22 @@ export class CustomersComponent {
             return params.value;
           }
           return params.value;
-        }
+        },
       },
-      { field: 'nameContact', headerName: 'Nombre Contacto', editable: true, filter: true, width: 200 },
       {
-        field: 'total', headerName: this.type === 'CUSTOMERS' ? 'Total Credito' : 'Cuentas X Pagar',
+        field: 'nameContact',
+        headerName: 'Nombre Contacto',
+        editable: true,
+        filter: true,
+        width: 200,
+      },
+      {
+        field: 'total',
+        headerName:
+          this.type === 'CUSTOMERS' ? 'Total Credito' : 'Cuentas X Pagar',
         editable: false,
-        filter: 'agNumberColumnFilter', suppressMovable: true,
+        filter: 'agNumberColumnFilter',
+        suppressMovable: true,
         width: 160,
         valueFormatter: (params) => {
           if (params.value) {
@@ -250,11 +283,21 @@ export class CustomersComponent {
           }
           return '$0.00';
         },
-        cellStyle: { backgroundColor: '#d4edda' }
+        cellStyle: { backgroundColor: '#d4edda' },
       },
-      { field: 'cp', headerName: 'CP', editable: true, filter: true, width: 105 },
       {
-        field: 'address', headerName: 'Direccion', editable: false, width: 250, filter: true,
+        field: 'cp',
+        headerName: 'CP',
+        editable: true,
+        filter: true,
+        width: 105,
+      },
+      {
+        field: 'address',
+        headerName: 'Direccion',
+        editable: false,
+        width: 250,
+        filter: true,
         cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
@@ -279,10 +322,15 @@ export class CustomersComponent {
             return params.value;
           }
           return params.value;
-        }
+        },
       },
       {
-        field: 'addressfiscal', headerName: 'Direccion Fiscal', editable: false, width: 250, filter: true, hide: true,
+        field: 'addressfiscal',
+        headerName: 'Direccion Fiscal',
+        editable: false,
+        width: 250,
+        filter: true,
+        hide: true,
         cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
@@ -307,7 +355,7 @@ export class CustomersComponent {
             return params.value;
           }
           return params.value;
-        }
+        },
       },
       {
         field: 'state',
@@ -320,7 +368,13 @@ export class CustomersComponent {
           values: this.estados, // Usar la lista de estados obtenida
         },
       },
-      { field: 'city', headerName: 'Ciudad', editable: true, width: 120, filter: true },
+      {
+        field: 'city',
+        headerName: 'Ciudad',
+        editable: true,
+        width: 120,
+        filter: true,
+      },
       {
         field: 'neighborhood',
         headerName: 'Colonia',
@@ -332,7 +386,9 @@ export class CustomersComponent {
           if (this.infoCp && this.infoCp.length > 0) {
             const asentamientos = this.infoCp[0].asentamientos;
             // Ordenar los asentamientos alfabéticamente
-            const sortedAsentamientos = asentamientos.sort((a, b) => a.localeCompare(b));
+            const sortedAsentamientos = asentamientos.sort((a, b) =>
+              a.localeCompare(b)
+            );
             return {
               values: sortedAsentamientos,
             };
@@ -344,28 +400,58 @@ export class CustomersComponent {
         },
       },
       {
-        field: 'phone', headerName: 'Telefono', editable: true, width: 120, cellEditorParams: {
-          maxLength: 15
-        }
-      },
-      { field: 'rfc', headerName: 'RFC', editable: true, hide: true, width: 100 },
-      {
-        field: 'idTypecop', headerName: 'Tipo cliente', editable: true, width: 150, cellEditor: 'agSelectCellEditor',
+        field: 'phone',
+        headerName: 'Telefono',
+        editable: true,
+        width: 120,
         cellEditorParams: {
-          values: this.Typecop ? this.Typecop.map(item => item.id) : [],
+          maxLength: 15,
+        },
+      },
+      {
+        field: 'rfc',
+        headerName: 'RFC',
+        editable: true,
+        hide: true,
+        width: 100,
+      },
+      {
+        field: 'idTypecop',
+        headerName: 'Tipo cliente',
+        editable: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.Typecop ? this.Typecop.map((item) => item.id) : [],
         },
         valueFormatter: (params) => {
-          const foundItem = this.Typecop ? this.Typecop.find(item => item.id === params.value) : null;
+          const foundItem = this.Typecop
+            ? this.Typecop.find((item) => item.id === params.value)
+            : null;
           return foundItem ? `${foundItem.description}` : params.value;
-        }
+        },
       },
       { field: 'radio', headerName: 'Radio', editable: true, width: 90 },
-      { field: 'latitud', headerName: 'Latitud', editable: true, width: 110, filter: true },
-      { field: 'longitud', headerName: 'Longitud', editable: true, width: 120, filter: true },
-
+      {
+        field: 'latitud',
+        headerName: 'Latitud',
+        editable: true,
+        width: 110,
+        filter: true,
+      },
+      {
+        field: 'longitud',
+        headerName: 'Longitud',
+        editable: true,
+        width: 120,
+        filter: true,
+      },
 
       {
-        field: 'email', headerName: 'Correo', width: 200, cellEditor: 'agTextCellEditor',
+        field: 'email',
+        headerName: 'Correo',
+        width: 200,
+        cellEditor: 'agTextCellEditor',
         editable: (params) => params.data.__isNew,
         cellEditorParams: {
           useFormatter: true,
@@ -374,8 +460,9 @@ export class CustomersComponent {
         valueSetter: (params) => {
           const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
           if (emailRegex.test(params.newValue)) {
-            const duplicateExists = this.rowData.some((row, index) =>
-              index !== params.node.rowIndex && row.email === params.newValue
+            const duplicateExists = this.rowData.some(
+              (row, index) =>
+                index !== params.node.rowIndex && row.email === params.newValue
             );
             if (duplicateExists) {
               alerts.basicAlert(
@@ -395,16 +482,24 @@ export class CustomersComponent {
             );
             return false;
           }
-        }
+        },
       },
-      { field: 'vigente', headerName: 'Vigente', editable: true, width: 100, filter: true },
+      {
+        field: 'vigente',
+        headerName: 'Vigente',
+        editable: true,
+        width: 100,
+        filter: true,
+      },
     ];
   }
 
   obtenerDatos() {
-    this.customerService.getCustomers(this.idBranch, this.type).subscribe((data: any) => {
-      this.rowData = data;
-    });
+    this.customerService
+      .getCustomers(this.idBranch, this.type)
+      .subscribe((data: any) => {
+        this.rowData = data;
+      });
   }
 
   obtenerBranchs() {
@@ -412,7 +507,7 @@ export class CustomersComponent {
     this.branchesService.getBrancheswoa(this.idRoot).subscribe(
       (data: any) => {
         this.branchs = data;
-        console.log(data)
+        console.log(data);
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -447,7 +542,7 @@ export class CustomersComponent {
         this.getCoordinatesFromCP(data[0].cp).subscribe((data: any) => {
           event.data.latitud = data[0].lat || 0;
           event.data.longitud = data[0].lon || 0;
-        })
+        });
         if (data && data.length > 0) {
           const cpData = data[0];
           event.data.state = cpData.estado;
@@ -462,10 +557,10 @@ export class CustomersComponent {
   getCoordinatesFromCP(cp: string) {
     const url = `https://nominatim.openstreetmap.org/search?postalcode=${cp}&country=MX&format=json`;
     return this.http.get(url).pipe(
-      map(data => data),
-      catchError(error => {
-        console.error("Error obteniendo coordenadas:", error);
-        return throwError(() => new Error("Error al obtener coordenadas"));
+      map((data) => data),
+      catchError((error) => {
+        console.error('Error obteniendo coordenadas:', error);
+        return throwError(() => new Error('Error al obtener coordenadas'));
       })
     );
   }
@@ -525,26 +620,30 @@ export class CustomersComponent {
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
 
-     // Encontrar el índice de la nueva fila
-  const newRowIndex = this.rowData.findIndex((row) => row.id === tempId);
+    // Encontrar el índice de la nueva fila
+    const newRowIndex = this.rowData.findIndex((row) => row.id === tempId);
 
-  // Encontrar la primera columna editable
-  const firstEditableCol = this.colMaster.find(col => col.editable);
-  const firstEditableColKey = firstEditableCol ? firstEditableCol.field : null;
+    // Encontrar la primera columna editable
+    const firstEditableCol = this.colMaster.find((col) => col.editable);
+    const firstEditableColKey = firstEditableCol
+      ? firstEditableCol.field
+      : null;
 
-  // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
-  setTimeout(() => {
-    if (firstEditableColKey) {
-      this.gridApi.startEditingCell({
-        rowIndex: newRowIndex,
-        colKey: firstEditableColKey, // Editar la primera columna editable
-      });
-    }
-  }, 50); // Un pequeño retraso de 50ms
+    // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
+    setTimeout(() => {
+      if (firstEditableColKey) {
+        this.gridApi.startEditingCell({
+          rowIndex: newRowIndex,
+          colKey: firstEditableColKey, // Editar la primera columna editable
+        });
+      }
+    }, 50); // Un pequeño retraso de 50ms
   }
 
   async saveChanges() {
-    const isValid = this.rowData.every((item) => item.nameContact || item.company);
+    const isValid = this.rowData.every(
+      (item) => item.nameContact || item.company
+    );
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
@@ -566,7 +665,10 @@ export class CustomersComponent {
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('Actualizando cliente con los siguientes datos:', cleanedData);
+      console.log(
+        'Actualizando cliente con los siguientes datos:',
+        cleanedData
+      );
       return this.customerService.updateCustomer(row.id, cleanedData);
     });
 
@@ -594,20 +696,19 @@ export class CustomersComponent {
       await this.obtenerDatos();
 
       // Esperar un ciclo de renderizado adicional
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       // Seleccionar la fila apropiada después de recargar
       if (this.lastEditedRowId) {
         if (this.lastEditedRowId === 'SELECT_MAX_ID') {
           // Encontrar el ID máximo en los datos actuales
-          const maxId = Math.max(...this.rowData.map(row => Number(row.id)));
+          const maxId = Math.max(...this.rowData.map((row) => Number(row.id)));
           this.selectRowById(maxId);
         } else {
           this.selectRowById(this.lastEditedRowId);
         }
         this.lastEditedRowId = null;
       }
-
     } catch (error) {
       console.error(error);
       alerts.basicAlert(
@@ -623,7 +724,10 @@ export class CustomersComponent {
     setTimeout(() => {
       this.gridApi.forEachNode((node) => {
         // Convertir ambos IDs a número para la comparación
-        const nodeId = typeof node.data.id === 'string' ? parseInt(node.data.id) : node.data.id;
+        const nodeId =
+          typeof node.data.id === 'string'
+            ? parseInt(node.data.id)
+            : node.data.id;
         const searchId = typeof id === 'string' ? parseInt(id) : id;
 
         if (nodeId === searchId) {
@@ -659,26 +763,29 @@ export class CustomersComponent {
 
     const id = selectedData.id;
     selectedData.active = 0;
-    this.customerService.deleteCustomer(id).pipe(
-      catchError((error) => {
+    this.customerService
+      .deleteCustomer(id)
+      .pipe(
+        catchError((error) => {
+          alerts.basicAlert(
+            'Eliminar entrada',
+            'Error al eliminar la entrada.',
+            'error'
+          );
+          console.error(error);
+          return EMPTY;
+        })
+      )
+      .subscribe(() => {
         alerts.basicAlert(
           'Eliminar entrada',
-          'Error al eliminar la entrada.',
-          'error'
+          'Entrada eliminada satisfactoriamente.',
+          'success'
         );
-        console.error(error);
-        return EMPTY;
-      })
-    ).subscribe(() => {
-      alerts.basicAlert(
-        'Eliminar entrada',
-        'Entrada eliminada satisfactoriamente.',
-        'success'
-      );
-      this.obtenerDatos();
-      this.notSavedChanges = false;
-      this.selectedRowData = null;
-    });
+        this.obtenerDatos();
+        this.notSavedChanges = false;
+        this.selectedRowData = null;
+      });
   }
 
   revert() {
@@ -696,9 +803,10 @@ export class CustomersComponent {
     return cleanedData;
   }
 
-
   openRadiusInfluenceModal(): void {
-    const modalRef = this.modalService.open(RadiusinfluenceComponent, { size: 'lg' });
+    const modalRef = this.modalService.open(RadiusinfluenceComponent, {
+      size: 'lg',
+    });
   }
 
   async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
@@ -725,14 +833,12 @@ export class CustomersComponent {
     this.selectedRowData = selectedRowData; // Guardar los datos seleccionados
   }
 
-
   async activateCreditsTab() {
     if (!this.isOpen) {
       setTimeout(async () => await this.adjustGridSize(), 0);
       this.showCreditsTab = true;
       this.isOpen = true;
-    }
-    else {
+    } else {
       this.resetGridSize();
       this.isOpen = false;
     }
@@ -771,5 +877,3 @@ export class CustomersComponent {
     );
   }
 }
-
-
