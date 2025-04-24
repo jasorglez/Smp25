@@ -60,10 +60,6 @@ export class BranchesComponent implements CanComponentDeactivate {
 
   constructor() {
     effect(() => {
-<<<<<<< HEAD
-=======
-
->>>>>>> ed413074e19a7c43188f3165bfe2d02f128df32e
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idUser = this.signalsService.getIdUSer()();
       console.log(this.masterRowData);
@@ -99,7 +95,6 @@ export class BranchesComponent implements CanComponentDeactivate {
   // ==================== MASTER METHODS ====================
 
   obtenerDatos() {
-<<<<<<< HEAD
     if (this.signalsService.getemailChoose() === environment.root) {
       this.branchesService.getAllBranches().subscribe(
         (data: Ibranch[]) => {
@@ -112,19 +107,6 @@ export class BranchesComponent implements CanComponentDeactivate {
           console.error('Error fetching all branches:', error);
         }
       );
-=======
-   if (this.signalsService.getemailChoose() === environment.root) {
-        this.branchesService.getAllBranches().subscribe(
-            (data: Ibranch[]) => {
-                this.masterRowData = data.sort((a, b) => a.name.localeCompare(b.name));
-                this.masterNotSavedChanges = false;
-
-            },
-            (error) => {
-                console.error('Error fetching all branches:', error);
-            }
-        );
->>>>>>> ed413074e19a7c43188f3165bfe2d02f128df32e
     } else {
       this.branchesService.getBranches(this.idRoot).subscribe(
         (data: Ibranch[]) => {
@@ -393,7 +375,6 @@ export class BranchesComponent implements CanComponentDeactivate {
     });
 
     try {
-<<<<<<< HEAD
       const allResponses = await Promise.all([
         ...addPromises,
         ...updatePromises,
@@ -408,20 +389,6 @@ export class BranchesComponent implements CanComponentDeactivate {
           (row) => !row.id || row.id.toString().startsWith('temp_')
         );
         console.log(correspondingNewRow);
-=======
-
-      const allResponses = await Promise.all([...addPromises, ...updatePromises]);
-
-      // Asignar permisos para los nuevos Branchs creados
-      const currentUserId = this.idRoot;
-      console.log(allResponses)
-      for (const response of allResponses) {
-        // Verificar si es una nueva creación comparando con los IDs temporales
-        const correspondingNewRow = newRows.find(row =>
-          !row.id || row.id.toString().startsWith('temp_')
-        );
-        console.log(correspondingNewRow)
->>>>>>> ed413074e19a7c43188f3165bfe2d02f128df32e
 
         if (response.id && correspondingNewRow) {
           try {
@@ -455,10 +422,6 @@ export class BranchesComponent implements CanComponentDeactivate {
       if (allResponses.length > 0) {
         await this.obtenerDatos();
       }
-<<<<<<< HEAD
-=======
-
->>>>>>> ed413074e19a7c43188f3165bfe2d02f128df32e
     } catch (error) {
       console.error(error);
       alerts.basicAlert(
@@ -481,36 +444,41 @@ export class BranchesComponent implements CanComponentDeactivate {
       return;
     }
 
-    alerts.confirmAlert(
-      'Eliminar Sucursal',
-      'Está seguro de que desea eliminar esta sucursal?',
-      'warning',
-      'Sí, Eliminar'
-    ).then((result) => {
-      if (result.isConfirmed) {
-        selectedData.active = 0;
-        this.branchesService.deleteBranch(selectedData.id).pipe(
-          catchError((error) => {
-            alerts.basicAlert(
-            'Eliminar sucursal',
-            error.error.message,
-            'error'
-          );
-          console.error("este es el error:", error.error);
-          return EMPTY;
-      })
-    ).subscribe(() => {
-      alerts.basicAlert(
-        'Eliminar sucursal',
-        'La sucursal ha sido eliminada correctamente.',
-        'success'
-      );
-      this.obtenerDatos(); // Refrescar los datos después de eliminar
-      this.masterNotSavedChanges = false;
-      this.masterSelectedRowData = null;
-    })
-  }
-});
+    alerts
+      .confirmAlert(
+        'Eliminar Sucursal',
+        'Está seguro de que desea eliminar esta sucursal?',
+        'warning',
+        'Sí, Eliminar'
+      )
+      .then((result) => {
+        if (result.isConfirmed) {
+          selectedData.active = 0;
+          this.branchesService
+            .deleteBranch(selectedData.id)
+            .pipe(
+              catchError((error) => {
+                alerts.basicAlert(
+                  'Eliminar sucursal',
+                  error.error.message,
+                  'error'
+                );
+                console.error('este es el error:', error.error);
+                return EMPTY;
+              })
+            )
+            .subscribe(() => {
+              alerts.basicAlert(
+                'Eliminar sucursal',
+                'La sucursal ha sido eliminada correctamente.',
+                'success'
+              );
+              this.obtenerDatos(); // Refrescar los datos después de eliminar
+              this.masterNotSavedChanges = false;
+              this.masterSelectedRowData = null;
+            });
+        }
+      });
   }
 
   revertMasterData() {
