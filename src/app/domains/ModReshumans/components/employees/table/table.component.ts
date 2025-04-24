@@ -556,10 +556,10 @@ export class EmployeesTableComponent {
       {
         field: 'address',
         headerName: 'Dirección',
-        editable: false,
+        editable: true,
         filter: 'agTextColumnFilter',
         width: 300,
-        cellEditor: 'agPopupTextCellEditor',
+        /*cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
           cols: 50,
@@ -583,7 +583,7 @@ export class EmployeesTableComponent {
             return params.value.toUpperCase();
           }
           return params.value.toUpperCase();
-        },
+        },*/
       },
       
       {
@@ -759,7 +759,6 @@ export class EmployeesTableComponent {
     console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
-
     // Si el campo cambiado es el código postal
     if (event.colDef.field === 'cp') {
       // Limpiar el neighborhood cuando cambia el CP
