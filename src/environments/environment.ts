@@ -32,9 +32,9 @@ export const environment = {
 
  urlSmp            : 'https://bi2.com.mx/smp/api', // 5004
  urlBpi            : 'https://bi2.com.mx/bpi/api', // 5005
- urlAdministration : 'https://bi2.com.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
  urlWarehouse      : 'https://bi2.com.mx/warehouse/api', // 5007
-
+ 
+ urlAdministration : 'https://bi2.com.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
  //urlAdministration : 'http://localhost:5047/api', // 5006 -- Tambien conocido como Tracking
 
  root : 'root@beapp.com.mx',
