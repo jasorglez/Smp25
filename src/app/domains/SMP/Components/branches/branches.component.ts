@@ -55,7 +55,7 @@ export class BranchesComponent {
 
   constructor() {
     effect(() => {
-      
+
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idUser = this.signalsService.getIdUSer()();
       console.log(this.masterRowData);
@@ -74,7 +74,7 @@ export class BranchesComponent {
     this.idUser = this.signalsService.getIdUSer()();
     this.obtenerDatos();
     this.obtenerEstados();
-    
+
     //alert(this.idUser)
   }
 
@@ -95,7 +95,7 @@ export class BranchesComponent {
             (data: Ibranch[]) => {
                 this.masterRowData = data.sort((a, b) => a.name.localeCompare(b.name));
                 this.masterNotSavedChanges = false;
-                
+
             },
             (error) => {
                 console.error('Error fetching all branches:', error);
@@ -339,37 +339,37 @@ public gridOptions: any = {
       );
       return;
     }
-  
+
     const newRows = this.masterRowData.filter((row) => row.__isNew);
     const modifiedRows = this.masterRowData.filter(
       (row) => row.__modified && !row.__isNew
     );
-  
+
     // Tipamos explícitamente las promesas
     const addPromises: Promise<Ibranch>[] = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       return lastValueFrom(this.branchesService.addBranch(cleanedData));
     });
-  
+
     const updatePromises: Promise<Ibranch>[] = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       return lastValueFrom(this.branchesService.updateBranch(row.id, cleanedData));
     });
-  
+
     try {
-      
+
       const allResponses = await Promise.all([...addPromises, ...updatePromises]);
-  
+
       // Asignar permisos para los nuevos Branchs creados
-      const currentUserId = this.idRoot; 
+      const currentUserId = this.idRoot;
       console.log(allResponses)
       for (const response of allResponses) {
         // Verificar si es una nueva creación comparando con los IDs temporales
-        const correspondingNewRow = newRows.find(row => 
+        const correspondingNewRow = newRows.find(row =>
           !row.id || row.id.toString().startsWith('temp_')
-        ); 
+        );
         console.log(correspondingNewRow)
-        
+
         if (response.id && correspondingNewRow) {
           try {
             await lastValueFrom(
@@ -390,7 +390,7 @@ public gridOptions: any = {
           }
         }
       }
-  
+
       alerts.basicAlert(
         'Datos actualizados',
         'Se han actualizado los datos correctamente.',
@@ -398,11 +398,11 @@ public gridOptions: any = {
       );
       this.masterNotSavedChanges = false;
       this.newlyAddedMasterRows = [];
-  
+
       if (allResponses.length > 0) {
         await this.obtenerDatos();
       }
-  
+
     } catch (error) {
       console.error(error);
       alerts.basicAlert(
@@ -412,7 +412,6 @@ public gridOptions: any = {
       );
     }
   }
-
 
   async deleteBranch() {
     const selectedNodes = this.masterGridApi.getSelectedNodes();
@@ -438,10 +437,10 @@ public gridOptions: any = {
           catchError((error) => {
             alerts.basicAlert(
             'Eliminar sucursal',
-            'No es posible eliminar la sucursal.',
+            error.error.message,
             'error'
           );
-          console.error(error.error);
+          console.error("este es el error:", error.error);
           return EMPTY;
       })
     ).subscribe(() => {
