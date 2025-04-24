@@ -1,4 +1,32 @@
-<ul class="nav nav-tabs">
+<div class="col-md-12">
+  <div class="card">
+     <div class="card-header p-2">
+        <ul class="nav nav-pills">
+
+           <li class="nav-item">
+              <a class="nav-link green-tab" routerLink="payroll" routerLinkActive="active"><i 
+                class="bi bi-cash-coin"></i>Nómina</a>
+           </li>
+           <li class="nav-item">
+            <a class="nav-link green-tab" routerLink="employees" routerLinkActive="active"><i
+              class="bi bi-list-ul"></i>Empleados</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link green-tab" routerLink="clock" routerLinkActive="active"><i 
+                class="bi bi-stopwatch"></i>Checador</a>
+              </li>
+        </ul><router-outlet></router-outlet>
+     </div>
+
+  </div>
+</div>
+
+
+
+
+
+
+<!--<ul class="nav nav-tabs">
   <li class="nav-item">
     <a class="nav-link active" data-bs-toggle="tab" href="#roots">Empresa</a>
   </li>
@@ -26,4 +54,4 @@
     <app-catalogs></app-catalogs>
 </div>
 
-</div>
+</div>-->
