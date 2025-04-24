@@ -193,6 +193,12 @@ export class BonusComponent{
       );
     });
   }
+  private validateRequiredField(value: any): any {
+    return {
+      backgroundColor: !value ? '#fff3cd' : 'transparent',
+      border: !value ? '2px solid #ff9966' : 'none',
+    };
+  }
 
   obtenerBranchs() {
     // alert('this.branchs'+ this.idBranch)
@@ -222,7 +228,7 @@ export class BonusComponent{
     },
     {
       field: 'idBranch',
-      headerName: 'Nombre sucursal *',
+      headerName: 'Nombre sucursal',
       editable: false, // ← Solo mostrarlo, no editarlo
       filter: true,
       width: 170,
@@ -236,6 +242,8 @@ export class BonusComponent{
     {
       field: 'employeeName',
       headerName: 'Nombre',
+      headerClass: 'required-header',
+      cellStyle: (params) => this.validateRequiredField(params.value),
       editable: true,
       filter: true,
       width: 200,
@@ -253,6 +261,8 @@ export class BonusComponent{
       headerName: 'Fecha',
       editable: true,
       filter: true,
+      headerClass: 'required-header',
+      cellStyle: (params) => this.validateRequiredField(params.value),
       width: 200,
       flex: 1,
       cellEditor: 'agDateCellEditor',
@@ -276,6 +286,7 @@ export class BonusComponent{
       editable: true,
       filter: true,
       width: 150,
+      headerClass: 'required-header',
       flex: 1,
       cellEditor: 'agSelectCellEditor',
       cellStyle: params => params.value == 'N/A' ? { backgroundColor: '#FFD6E7' } : null,
@@ -369,7 +380,7 @@ export class BonusComponent{
 
   async saveChanges(){
     console.log("---- salvando cambios ", this.rowData);
-    /*const isValid = this.rowData.every((item) => item.nameContact || item.company);
+    const isValid = this.rowData.every((item) => item.employeeName && item.incidenceDate && item.bonus);
         if (!isValid) {
           alerts.basicAlert(
             'Añadir entrada',
@@ -377,7 +388,7 @@ export class BonusComponent{
             'error'
           );
           return;
-        }*/
+        }
 
         const newRows = this.rowData.filter((row) => row.__isNew);
         const modifiedRows = this.rowData.filter(
