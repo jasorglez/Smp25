@@ -50,7 +50,8 @@
                   (gridReady)="onGridReady($event)"
                   [pagination]="false"
                   (cellDoubleClicked)="onCellDoubleClicked($event)"
-                  [components]="components" >
+                  [components]="components" 
+                  [stopEditingWhenCellsLoseFocus]="true">
                 </ag-grid-angular>
             </div>
         </div>

@@ -1,5 +1,5 @@
 <ag-grid-angular style="width: 100%; height: 500px" class="ag-theme-quartz small-text-ag-grid master-grid" [rowData]="data" [columnDefs]="columnDefs"
-    (rowDoubleClicked)="onRowDoubleClicked($event)" [gridOptions]="gridOptions">
+    (rowDoubleClicked)="onRowDoubleClicked($event)" [gridOptions]="gridOptions" [stopEditingWhenCellsLoseFocus]="true">
 </ag-grid-angular>
 
 <!-- Modal -->

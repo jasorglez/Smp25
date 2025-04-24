@@ -38,7 +38,8 @@
             (gridReady)="onGridReady($event)" 
             [rowSelection]="rowSelection" 
             [components]="components"
-            (cellDoubleClicked)="onCellDoubleClicked($event)">
+            (cellDoubleClicked)="onCellDoubleClicked($event)"
+            [stopEditingWhenCellsLoseFocus]="true">
         </ag-grid-angular>
         </section>
       </div>

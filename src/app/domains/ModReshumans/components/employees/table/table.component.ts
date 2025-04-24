@@ -234,7 +234,7 @@ export class EmployeesTableComponent {
       },*/
       {
         field: 'idBranch',
-        headerName: 'Nombre sucursal *',
+        headerName: 'Nombre sucursal',
         headerClass: 'required-header',
         hide:
           this.authService.hasDetailedPermission(
@@ -272,7 +272,7 @@ export class EmployeesTableComponent {
       },
       {
         field: 'name',
-        headerName: 'Nombre *',
+        headerName: 'Nombre',
         headerClass: 'required-header',
         editable: true,
         cellStyle: (params) => this.validateRequiredField(params.value),
@@ -319,7 +319,7 @@ export class EmployeesTableComponent {
       },
       {
         field: 'email',
-        headerName: 'Correo electrónico *',
+        headerName: 'Correo electrónico',
         headerClass: 'required-header',
         cellEditor: 'agTextCellEditor',
         editable: true,
@@ -417,7 +417,7 @@ export class EmployeesTableComponent {
       },
       {
         field: 'idDepto',
-        headerName: 'Departamento *',
+        headerName: 'Departamento',
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
         editable: true,
@@ -444,7 +444,7 @@ export class EmployeesTableComponent {
       },
       {
         field: 'idPosition',
-        headerName: 'Posicion *',
+        headerName: 'Posicion',
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
         editable: true,
@@ -471,7 +471,7 @@ export class EmployeesTableComponent {
       },
       {
         field: 'priceXHour',
-        headerName: 'Precio por hora *',
+        headerName: 'Precio por hora',
         editable: true,
         filter: true,
         width: 150,
@@ -493,7 +493,7 @@ export class EmployeesTableComponent {
       },
       {
         field: 'baseHours',
-        headerName: 'Horas base *',
+        headerName: 'Horas base',
         editable: true,
         filter: true,
         width: 150,

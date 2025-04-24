@@ -48,7 +48,7 @@
                 class="ag-theme-quartz small-text-ag-grid" [gridOptions]="gridOptions" [rowData]="incomes"
                 [columnDefs]="colMaster" [components]="components" (selectionChanged)="onSelectionChanged($event)"
                 (cellValueChanged)="onCellValueChanged($event)" (rowSelected)="onSelectedRow($event)"
-                (gridReady)="onGridReady($event)" rowSelection="single" [class.disabled-grid]="!idAccount">
+                (gridReady)="onGridReady($event)" rowSelection="single" [class.disabled-grid]="!idAccount" [stopEditingWhenCellsLoseFocus]="true">
             </ag-grid-angular>
         </div>
     </div>
