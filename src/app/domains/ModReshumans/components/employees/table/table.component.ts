@@ -472,19 +472,13 @@ export class EmployeesTableComponent {
       },
       {
         field: 'priceXHour',
-<<<<<<< HEAD
         headerName: 'Precio por hora *',
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
-=======
-        headerName: 'Precio por hora',
-        headerClass: 'required-header',
->>>>>>> bf4394da42afca5082be4eeb9b5b6893387d2d61
         editable: true,
         filter: true,
         width: 150,
         cellEditor: 'agNumberCellEditor',
-        cellStyle: (params) => this.validateRequiredField(params.value),
         cellEditorParams: {
           min: 0,
           max: 999999,
@@ -502,16 +496,9 @@ export class EmployeesTableComponent {
       },
       {
         field: 'baseHours',
-<<<<<<< HEAD
         headerName: 'Horas base *',
-=======
-        headerName: 'Horas base',
->>>>>>> bf4394da42afca5082be4eeb9b5b6893387d2d61
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
-        editable: true,
-        filter: true,
-        width: 150,
         cellEditor: 'agNumberCellEditor',
         cellEditorParams: {
           min: 0,
