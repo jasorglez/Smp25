@@ -4,13 +4,13 @@
       padding: 10px;
       color: #FFFFFF;             /* Texto en blanco para contraste */
   }
-  
+
   /* Logo y textos */
-  .sidebar .brand-link,
+  .sidebar,
   .sidebar .brand-text {
       color: #FFFFFF;
   }
-  
+
   /* Estilos para los íconos y enlaces de navegación */
   .sidebar .nav-link {
       color: #FFFFFF;             /* Color de texto blanco */
@@ -18,24 +18,24 @@
       border-radius: 5px;
       transition: background-color 0.3s ease, color 0.3s ease;
   }
-  
+
   .sidebar .nav-link i {
       font-size: 1.2rem;          /* Tamaño del ícono */
       color: #87CEFA;             /* Azul claro para íconos */
       margin-right: 8px;
       transition: color 0.3s ease;
   }
-  
+
   /* Hover para los enlaces */
   .sidebar .nav-link:hover {
       background-color: #005599;  /* Fondo azul más claro */
       color: #FFFFFF;
   }
-  
+
   .sidebar .nav-link:hover i {
       color: #FFFFFF;             /* Cambia el ícono a blanco en hover */
   }
-  
+
   /* Estilo para el select */
   .select-side {
       font-size: 0.9rem;
@@ -47,17 +47,17 @@
       margin-bottom: 10px;        /* Espacio entre selects */
       transition: border-color 0.3s ease;
   }
-  
+
   .select-side:focus {
       border-color: #87CEFA;      /* Borde azul claro en foco */
   }
-  
+
   .nav-link i {
     color: #4CAF50; /* Cambia el color */
     font-size: 20px; /* Ajusta el tamaño */
     transition: transform 0.2s ease, color 0.2s ease;
   }
-  
+
   .nav-link i:hover {
     color: #3E8E41; /* Color al pasar el mouse */
     transform: scale(1.2); /* Efecto de zoom */
@@ -74,10 +74,100 @@
     background-color: #007bff; /* Color de fondo */
     color: white !important; /* Color de texto */
     border-radius: 4px; /* Bordes redondeados */
-    
+
     mat-icon {
         color: white !important; /* Color del icono */
     }
 }
-  
-  
+
+//
+
+.main-sidebar {
+  // background-color: #003366; // mismo que sidebar
+  width: 250px;
+  transition: width 0.3s ease;
+  overflow: hidden;
+}
+
+.main-sidebar.collapsed {
+  width: 70px;
+}
+
+.main-sidebar.collapsed .nav-link span,
+.main-sidebar.collapsed select,
+.main-sidebar.collapsed .user-panel select,
+.main-sidebar.collapsed .user-panel span {
+  display: none;
+}
+
+.toggle-sidebar-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 9999;
+  cursor: pointer;
+}
+
+
+//
+
+.sidebar-logo {
+  width: 168px;
+  height: 58px;
+  transition: all 0.3s ease;
+  object-fit: contain;
+  background-color: transparent;
+}
+
+.main-sidebar.collapsed .sidebar-logo {
+  width: 40px;
+  height: 40px;
+  display: block;
+  margin: 0 auto;
+}
+
+//
+
+.toggle-sidebar-btn {
+  top: 20px;
+  left: 220px; // o lo que sea necesario para que no tape el logo
+}
+
+.main-sidebar.collapsed .toggle-sidebar-btn {
+  top: 20px;
+  left: 50px;
+}
+
+//
+
+.brand-link {
+  background-color: transparent !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 58px;
+  padding: 0;
+}
+
+//
+.main-sidebar.collapsed .brand-link {
+  padding: 0;
+  height: 40px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  padding-left: 10px;
+}
+
+//
+
+.sidebar-logo-text {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: white;
+  transition: all 0.3s ease;
+  padding-left: 5px;
+}

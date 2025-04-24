@@ -1,80 +1,118 @@
 <app-multi-line-editor></app-multi-line-editor>
-<div class="col-12 ">
-    <div class="row mt-3 mb-3">
-        <div class="col">
-            <ng-select [items]="bankAccounts" bindValue="id" [(ngModel)]="idAccount"
-                [disabled]="!bankAccounts?.length"
-                placeholder="{{ bankAccounts?.length ? 'Seleccione cuenta bancaria' : 'No hay cuentas disponibles' }}">
-                <ng-template ng-label-tmp let-item="item">
-                    {{ item?.nameAccount }} - {{ item?.bankName }}
-                </ng-template>
-                <ng-template ng-option-tmp let-item="item">
-                    {{ item.nameAccount }} - {{ item.bankName }}
-                </ng-template>
-            </ng-select>
-        </div>
+<div class="col-12">
+  <div class="row mt-3 mb-3">
+    <div class="col">
+      <ng-select
+        [items]="bankAccounts"
+        bindValue="id"
+        [(ngModel)]="idAccount"
+        [disabled]="!bankAccounts?.length"
+        placeholder="{{
+          bankAccounts?.length
+            ? 'Seleccione cuenta bancaria'
+            : 'No hay cuentas disponibles'
+        }}"
+      >
+        <ng-template ng-label-tmp let-item="item">
+          {{ item?.nameAccount }} - {{ item?.bankName }}
+        </ng-template>
+        <ng-template ng-option-tmp let-item="item">
+          {{ item.nameAccount }} - {{ item.bankName }}
+        </ng-template>
+      </ng-select>
+    </div>
+  </div>
+
+  <div class="row mb-3">
+    <!-- Columna vertical para botones -->
+    <div class="col-auto pe-0">
+      <div class="d-flex flex-column align-items-start gap-2">
+        <button
+          type="button"
+          class="btn btn-primary"
+          (click)="addRow()"
+          [disabled]="!idAccount"
+        >
+          <i class="bi bi-plus-lg"></i>
+        </button>
+        <button
+          type="button"
+          class="btn btn-success position-relative"
+          (click)="saveChanges()"
+          [disabled]="!idAccount || !notSavedChanges"
+        >
+          <i class="bi bi-floppy"></i>
+          <span
+            class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+            *ngIf="notSavedChanges"
+          >
+            <span class="visually-hidden">Hay cambios sin guardar</span>
+          </span>
+        </button>
+        <button
+          type="button"
+          class="btn btn-warning"
+          (click)="revert()"
+          [disabled]="!idAccount || !notSavedChanges"
+        >
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+        <button
+          type="button"
+          class="btn btn-danger"
+          (click)="deleteEntry()"
+          [disabled]="!idAccount || !selectedIncomes"
+        >
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
     </div>
 
-    <div class="row mb-3">
-        <!-- Columna vertical para botones -->
-        <div class="col-auto pe-0">
-            <div class="d-flex flex-column align-items-start gap-2">
-                <button type="button" class="btn btn-primary" (click)="addRow()" [disabled]="!idAccount">
-                    <i class="bi bi-plus-lg"></i>
-                </button>
-                <button type="button" class="btn btn-success position-relative" (click)="saveChanges()"
-                    [disabled]="!idAccount || !notSavedChanges">
-                    <i class="bi bi-floppy"></i>
-                    <span
-                        class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-                        *ngIf="notSavedChanges">
-                        <span class="visually-hidden">Hay cambios sin guardar</span>
-                    </span>
-                </button>
-                <button type="button" class="btn btn-warning" (click)="revert()"
-                    [disabled]="!idAccount || !notSavedChanges">
-                    <i class="bi bi-arrow-clockwise"></i>
-                </button>
-                <button type="button" class="btn btn-danger" (click)="deleteEntry()"
-                    [disabled]="!idAccount || !selectedIncomes">
-                    <i class="bi bi-trash"></i>
-                </button>
-            </div>
-        </div>
-
-        <!-- El componente AG Grid -->
-        <div class="col">
-            <ag-grid-angular style="width: 100%;" [ngStyle]="selectedIncomes ? {'height': '37vh'} : {'height': '67vh'}"
-                class="ag-theme-quartz small-text-ag-grid" [gridOptions]="gridOptions" [rowData]="incomes"
-                [columnDefs]="colMaster" [components]="components" (selectionChanged)="onSelectionChanged($event)"
-                (cellValueChanged)="onCellValueChanged($event)" (rowSelected)="onSelectedRow($event)"
-                (gridReady)="onGridReady($event)" rowSelection="single" [class.disabled-grid]="!idAccount" [stopEditingWhenCellsLoseFocus]="true">
-            </ag-grid-angular>
-        </div>
+    <!-- El componente AG Grid -->
+    <div class="col">
+      <ag-grid-angular
+        style="width: 100%"
+        [ngStyle]="selectedIncomes ? { height: '37vh' } : { height: '67vh' }"
+        class="ag-theme-quartz small-text-ag-grid"
+        [gridOptions]="gridOptions"
+        [rowData]="incomes"
+        [columnDefs]="colMaster"
+        [components]="components"
+        (selectionChanged)="onSelectionChanged($event)"
+        (cellValueChanged)="onCellValueChanged($event)"
+        (rowSelected)="onSelectedRow($event)"
+        (gridReady)="onGridReady($event)"
+        rowSelection="single"
+        [class.disabled-grid]="!idAccount"
+        [stopEditingWhenCellsLoseFocus]="true"
+      >
+      </ag-grid-angular>
     </div>
+  </div>
 
+  <ul class="nav nav-tabs" *ngIf="selectedIncomes">
+    <li class="nav-item">
+      <a class="nav-link active" data-bs-toggle="tab" href="#concepts"
+        >Conceptos</a
+      >
+    </li>
 
-    <ul class="nav nav-tabs" *ngIf="selectedIncomes">
-        <li class="nav-item">
-            <a class="nav-link  active" data-bs-toggle="tab" href="#concepts">Conceptos</a>
-        </li>
-
-        <li class="nav-item">
-            <a class="nav-link" data-bs-toggle="tab" href="#additional-info">Información adicional</a>
-        </li>
-      
-    </ul>
-
+    <li class="nav-item">
+      <a class="nav-link" data-bs-toggle="tab" href="#additional-info"
+        >Información adicional</a
+      >
+    </li>
+  </ul>
 </div>
 <div class="row">
-    <div class="tab-content" *ngIf="selectedIncomes">
-        <div id="additional-info" class="tab-pane fade show active">
-            <app-additional-info></app-additional-info>
-        </div>
+  <div class="tab-content" *ngIf="selectedIncomes">
+    <div id="additional-info" class="tab-pane fade show active">
+      <app-additional-info></app-additional-info>
     </div>
-    <div class="tab-content" *ngIf="selectedIncomes">
-        <div id="concepts" class="tab-pane fade show">
-            <app-concepts></app-concepts>
-        </div>
+  </div>
+  <div class="tab-content" *ngIf="selectedIncomes">
+    <div id="concepts" class="tab-pane fade show">
+      <app-concepts></app-concepts>
     </div>
+  </div>
 </div>

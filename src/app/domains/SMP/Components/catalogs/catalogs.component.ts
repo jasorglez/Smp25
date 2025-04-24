@@ -20,6 +20,8 @@ import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
 
 import { alerts } from '../../../../helpers/alerts';
 import { SharedModule } from 'app/shared/shared.module';
+import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
+import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 
 //soriano
 @Component({
@@ -35,7 +37,7 @@ import { SharedModule } from 'app/shared/shared.module';
   templateUrl: './catalogs.component.html',
   styleUrl: './catalogs.component.scss',
 })
-export class CatalogsComponent {
+export class CatalogsComponent implements CanComponentDeactivate {
   notSavedChanges: boolean = false;
   rowData: any;
 
@@ -320,6 +322,12 @@ export class CatalogsComponent {
   revert() {}
 
   deleteEntry() {}
+
+  // ==================== GUARD ALERT UNSAVED CHANGES ====================
+
+  async canDeactivate(): Promise<boolean> {
+    return confirmExitIfUnsaved(this.notSavedChanges);
+  }
 }
 
 // Componente personalizado para el color picker

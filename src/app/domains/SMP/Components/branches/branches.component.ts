@@ -3,7 +3,13 @@ import { Component, effect, HostListener, inject } from '@angular/core';
 import { SignalsService } from 'app/services/signals.service';
 import { AgGridModule } from 'ag-grid-angular';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
-import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
+import {
+  CellDoubleClickedEvent,
+  ColDef,
+  GridApi,
+  GridReadyEvent,
+  ICellRendererParams,
+} from 'ag-grid-enterprise';
 import { FormsModule } from '@angular/forms';
 import { BranchsService } from 'app/services/branchs.service';
 import { alerts } from 'app/helpers/alerts';
@@ -13,17 +19,17 @@ import { InegiService } from 'app/services/inegi.service';
 import { States } from 'app/interface/states';
 import { environment } from '@env/environment';
 import { Ibranch } from 'app/interface/ibranch';
-
+import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
+import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 
 @Component({
   selector: 'app-branches',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
   templateUrl: './branches.component.html',
-  styleUrl: './branches.component.scss'
+  styleUrl: './branches.component.scss',
 })
-export class BranchesComponent {
-
+export class BranchesComponent implements CanComponentDeactivate {
   private signalsService = inject(SignalsService);
   private branchesService = inject(BranchsService);
   private modalServiceTable = inject(ModalService);
@@ -45,7 +51,6 @@ export class BranchesComponent {
   private tempIdCounter: number = 0;
   private estados: any;
 
-
   // Configuración Grid
   public rowSelection: 'single' | 'multiple' = 'single';
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
@@ -55,29 +60,29 @@ export class BranchesComponent {
 
   constructor() {
     effect(() => {
-      
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idUser = this.signalsService.getIdUSer()();
       console.log(this.masterRowData);
       if (this.idRoot == null) {
         this.masterRowData = [];
-        alerts.basicAlert('Sucursales', 'Debe elegir una empresa primero para poder ver sus sucursales.', 'error');
-      }
-      else {
+        alerts.basicAlert(
+          'Sucursales',
+          'Debe elegir una empresa primero para poder ver sus sucursales.',
+          'error'
+        );
+      } else {
         this.obtenerDatos();
       }
-    }
-    );
+    });
   }
 
   ngOnInit() {
     this.idUser = this.signalsService.getIdUSer()();
     this.obtenerDatos();
     this.obtenerEstados();
-    
+
     //alert(this.idUser)
   }
-
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
@@ -90,71 +95,74 @@ export class BranchesComponent {
   // ==================== MASTER METHODS ====================
 
   obtenerDatos() {
-   if (this.signalsService.getemailChoose() === environment.root) {
-        this.branchesService.getAllBranches().subscribe(
-            (data: Ibranch[]) => {
-                this.masterRowData = data.sort((a, b) => a.name.localeCompare(b.name));
-                this.masterNotSavedChanges = false;
-                
-            },
-            (error) => {
-                console.error('Error fetching all branches:', error);
-            }
-        );
+    if (this.signalsService.getemailChoose() === environment.root) {
+      this.branchesService.getAllBranches().subscribe(
+        (data: Ibranch[]) => {
+          this.masterRowData = data.sort((a, b) =>
+            a.name.localeCompare(b.name)
+          );
+          this.masterNotSavedChanges = false;
+        },
+        (error) => {
+          console.error('Error fetching all branches:', error);
+        }
+      );
     } else {
-        this.branchesService.getBranches(this.idRoot).subscribe(
-            (data: Ibranch[]) => {
-                this.masterRowData = data.sort((a, b) => a.name.localeCompare(b.name));
-                this.masterNotSavedChanges = false;
-            },
-            (error) => {
-                console.error('Error fetching branches:', error);
-            }
-        );
+      this.branchesService.getBranches(this.idRoot).subscribe(
+        (data: Ibranch[]) => {
+          this.masterRowData = data.sort((a, b) =>
+            a.name.localeCompare(b.name)
+          );
+          this.masterNotSavedChanges = false;
+        },
+        (error) => {
+          console.error('Error fetching branches:', error);
+        }
+      );
     }
-}
+  }
 
   obtenerEstados() {
     this.inegiService.getEstados().subscribe({
       next: (data: { datos: States[] }) => {
         this.estados = data.datos.map((estado, index) => ({
           ...estado,
-          id: index + 1
+          id: index + 1,
         }));
         //console.log(this.estados);
       },
       error: (error) => {
         console.error('Error fetching states', error);
-      }
+      },
     });
   }
 
-// Column Definitions: Defines the columns to be displayed.
-public gridOptions: any = {
-  headerHeight: 30,
-  rowHeight: 30,
-  rowClass: (params) => {
-    // Verificar si la fila está seleccionada
-    if (params.node.isSelected()) {
-      return 'selected-row';
-    }
-    return '';
-  },
-  onRowClicked: (event) => {
-    // Seleccionar la fila al hacer clic en cualquier celda
-    event.node.setSelected(true);
-  },
-  onRowSelected: (event) => {
-    // Deseleccionar otras filas cuando se selecciona una nueva
-    if (event.node.isSelected()) {
-      this.masterGridApi.forEachNode((node) => {
-        if (node.id !== event.node.id) {
-          node.setSelected(false);
-        }
-      });
-    }
-  },
-};
+  // Column Definitions: Defines the columns to be displayed.
+  public gridOptions: any = {
+    headerHeight: 30,
+    rowHeight: 30,
+    rowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onRowClicked: (event) => {
+      // Seleccionar la fila al hacer clic en cualquier celda
+      event.node.setSelected(true);
+    },
+    onRowSelected: (event) => {
+      // Deseleccionar otras filas cuando se selecciona una nueva
+      if (event.node.isSelected()) {
+        this.masterGridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    },
+  };
 
   get colMaster(): ColDef[] {
     return [
@@ -169,7 +177,7 @@ public gridOptions: any = {
         valueSetter: (params) => {
           params.data[params.colDef.field] = params.newValue.toUpperCase();
           return true;
-        }
+        },
       },
       {
         field: 'description',
@@ -181,8 +189,8 @@ public gridOptions: any = {
         valueSetter: (params) => {
           params.data[params.colDef.field] = params.newValue.toUpperCase();
           return true;
-        }
-       },
+        },
+      },
       {
         field: 'idEstado',
         headerName: 'Estado *',
@@ -192,12 +200,14 @@ public gridOptions: any = {
         //flex: 1,
         width: 200,
         cellEditorParams: {
-          values: this.estados ? this.estados.map(item => item.id) : [],
+          values: this.estados ? this.estados.map((item) => item.id) : [],
         },
         valueFormatter: (params) => {
-          const foundItem = this.estados ? this.estados.find(item => item.id === params.value) : null;
+          const foundItem = this.estados
+            ? this.estados.find((item) => item.id === params.value)
+            : null;
           return foundItem ? `${foundItem.nom_agee}` : params.value;
-        }
+        },
       },
       {
         field: 'address',
@@ -234,7 +244,7 @@ public gridOptions: any = {
         valueSetter: (params) => {
           params.data[params.colDef.field] = params.newValue.toUpperCase();
           return true;
-        }
+        },
       },
       {
         field: 'vigente',
@@ -244,19 +254,20 @@ public gridOptions: any = {
         filter: true,
         //flex: 1,
         width: 150,
-        cellRenderer: params => {
-          return `<input type="checkbox" ${params.value ? 'checked' : ''} disabled />`;
-        }
-      }
-    ]
-  };
+        cellRenderer: (params) => {
+          return `<input type="checkbox" ${
+            params.value ? 'checked' : ''
+          } disabled />`;
+        },
+      },
+    ];
+  }
 
   onMasterSelectionChanged(event: any) {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       // Crear una copia profunda del dato seleccionado
       this.masterSelectedRowData = { ...selectedNodes[0].data };
-
     } else {
       this.masterSelectedRowData = null;
     }
@@ -274,7 +285,7 @@ public gridOptions: any = {
     this.masterNotSavedChanges = true;
 
     // Actualizar el array de datos
-    this.masterRowData = this.masterRowData.map(row =>
+    this.masterRowData = this.masterRowData.map((row) =>
       row.id === updatedData.id ? updatedData : row
     );
 
@@ -283,7 +294,10 @@ public gridOptions: any = {
     if (rowNode) {
       rowNode.setData(updatedData);
       // Mantener la selección si es necesario
-      if (this.masterSelectedRowData && this.masterSelectedRowData.id === updatedData.id) {
+      if (
+        this.masterSelectedRowData &&
+        this.masterSelectedRowData.id === updatedData.id
+      ) {
         rowNode.setSelected(true);
       }
     }
@@ -306,7 +320,7 @@ public gridOptions: any = {
       name: '',
       description: '',
       address: '',
-      orden : 0,
+      orden: 0,
       active: true,
       __isNew: true,
     };
@@ -317,7 +331,7 @@ public gridOptions: any = {
     this.masterNotSavedChanges = true;
 
     // Forzar la actualización de la cuadrícula y seleccionar la nueva fila
-    this.masterGridApi.setGridOption("rowData", this.masterRowData);
+    this.masterGridApi.setGridOption('rowData', this.masterRowData);
 
     // Asegurarnos de que la fila nueva esté seleccionada
     requestAnimationFrame(() => {
@@ -330,7 +344,9 @@ public gridOptions: any = {
   }
 
   async saveMasterChanges() {
-    const isValid = this.masterRowData.every((item) => item.name && item.description && item.address);
+    const isValid = this.masterRowData.every(
+      (item) => item.name && item.description && item.address
+    );
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
@@ -339,37 +355,41 @@ public gridOptions: any = {
       );
       return;
     }
-  
+
     const newRows = this.masterRowData.filter((row) => row.__isNew);
     const modifiedRows = this.masterRowData.filter(
       (row) => row.__modified && !row.__isNew
     );
-  
+
     // Tipamos explícitamente las promesas
     const addPromises: Promise<Ibranch>[] = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       return lastValueFrom(this.branchesService.addBranch(cleanedData));
     });
-  
+
     const updatePromises: Promise<Ibranch>[] = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return lastValueFrom(this.branchesService.updateBranch(row.id, cleanedData));
+      return lastValueFrom(
+        this.branchesService.updateBranch(row.id, cleanedData)
+      );
     });
-  
+
     try {
-      
-      const allResponses = await Promise.all([...addPromises, ...updatePromises]);
-  
+      const allResponses = await Promise.all([
+        ...addPromises,
+        ...updatePromises,
+      ]);
+
       // Asignar permisos para los nuevos Branchs creados
-      const currentUserId = this.idRoot; 
-      console.log(allResponses)
+      const currentUserId = this.idRoot;
+      console.log(allResponses);
       for (const response of allResponses) {
         // Verificar si es una nueva creación comparando con los IDs temporales
-        const correspondingNewRow = newRows.find(row => 
-          !row.id || row.id.toString().startsWith('temp_')
-        ); 
-        console.log(correspondingNewRow)
-        
+        const correspondingNewRow = newRows.find(
+          (row) => !row.id || row.id.toString().startsWith('temp_')
+        );
+        console.log(correspondingNewRow);
+
         if (response.id && correspondingNewRow) {
           try {
             await lastValueFrom(
@@ -390,7 +410,7 @@ public gridOptions: any = {
           }
         }
       }
-  
+
       alerts.basicAlert(
         'Datos actualizados',
         'Se han actualizado los datos correctamente.',
@@ -398,11 +418,10 @@ public gridOptions: any = {
       );
       this.masterNotSavedChanges = false;
       this.newlyAddedMasterRows = [];
-  
+
       if (allResponses.length > 0) {
         await this.obtenerDatos();
       }
-  
     } catch (error) {
       console.error(error);
       alerts.basicAlert(
@@ -412,7 +431,6 @@ public gridOptions: any = {
       );
     }
   }
-
 
   async deleteBranch() {
     const selectedNodes = this.masterGridApi.getSelectedNodes();
@@ -426,36 +444,41 @@ public gridOptions: any = {
       return;
     }
 
-    alerts.confirmAlert(
-      'Eliminar Sucursal',
-      'Está seguro de que desea eliminar esta sucursal?',
-      'warning',
-      'Sí, Eliminar'
-    ).then((result) => {
-      if (result.isConfirmed) {
-        selectedData.active = 0;
-        this.branchesService.deleteBranch(selectedData.id).pipe(
-          catchError((error) => {
-            alerts.basicAlert(
-            'Eliminar sucursal',
-            'No es posible eliminar la sucursal.',
-            'error'
-          );
-          console.error(error.error);
-          return EMPTY;
-      })
-    ).subscribe(() => {
-      alerts.basicAlert(
-        'Eliminar sucursal',
-        'La sucursal ha sido eliminada correctamente.',
-        'success'
-      );
-      this.obtenerDatos(); // Refrescar los datos después de eliminar
-      this.masterNotSavedChanges = false;
-      this.masterSelectedRowData = null;
-    })
-  }
-});
+    alerts
+      .confirmAlert(
+        'Eliminar Sucursal',
+        'Está seguro de que desea eliminar esta sucursal?',
+        'warning',
+        'Sí, Eliminar'
+      )
+      .then((result) => {
+        if (result.isConfirmed) {
+          selectedData.active = 0;
+          this.branchesService
+            .deleteBranch(selectedData.id)
+            .pipe(
+              catchError((error) => {
+                alerts.basicAlert(
+                  'Eliminar sucursal',
+                  error.error.message,
+                  'error'
+                );
+                console.error('este es el error:', error.error);
+                return EMPTY;
+              })
+            )
+            .subscribe(() => {
+              alerts.basicAlert(
+                'Eliminar sucursal',
+                'La sucursal ha sido eliminada correctamente.',
+                'success'
+              );
+              this.obtenerDatos(); // Refrescar los datos después de eliminar
+              this.masterNotSavedChanges = false;
+              this.masterSelectedRowData = null;
+            });
+        }
+      });
   }
 
   revertMasterData() {
@@ -473,5 +496,11 @@ public gridOptions: any = {
       delete cleanedData.id;
     }
     return cleanedData;
+  }
+
+  // ==================== GUARD ALERT UNSAVED CHANGES ====================
+
+  async canDeactivate(): Promise<boolean> {
+    return confirmExitIfUnsaved(this.masterNotSavedChanges);
   }
 }

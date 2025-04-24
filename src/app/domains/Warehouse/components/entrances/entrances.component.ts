@@ -29,6 +29,8 @@ import { UsersxpermissionsService } from 'app/services/usersxpermissions.service
 import { WarehousesService } from 'app/services/warehouses.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { SearchableSelectComponent } from 'app/shared/searchable-select/searchable-select.component';
+import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
+import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 
 interface Catalog {
   id: number;
@@ -43,12 +45,12 @@ interface Catalog {
     FormsModule,
     AgGridModule,
     MultiLineEditorComponent,
-    SearchableSelectComponent,
+    // SearchableSelectComponent,
   ],
   templateUrl: './entrances.component.html',
   styleUrl: './entrances.component.scss',
 })
-export class EntrancesComponent implements OnInit {
+export class EntrancesComponent implements OnInit, CanComponentDeactivate {
   // Inject services
   private inAndOutsService = inject(InandoutService);
   private signalsService = inject(SignalsService);
@@ -164,33 +166,33 @@ export class EntrancesComponent implements OnInit {
 
   // Column definitions
 
-// Column Definitions: Defines the columns to be displayed.
-public gridOptions: any = {
-  headerHeight: 30,
-  rowHeight: 30,
-  rowClass: (params) => {
-    // Verificar si la fila está seleccionada
-    if (params.node.isSelected()) {
-      return 'selected-row';
-    }
-    return '';
-  },
-  onRowClicked: (event) => {
-    // Seleccionar la fila al hacer clic en cualquier celda
-    event.node.setSelected(true);
-  },
-  onRowSelected: (event) => {
-    // Deseleccionar otras filas cuando se selecciona una nueva
-    if (event.node.isSelected()) {
-      this.gridApi.forEachNode((node) => {
-        if (node.id !== event.node.id) {
-          node.setSelected(false);
-        }
-      });
-    }
-  },
-};
-  
+  // Column Definitions: Defines the columns to be displayed.
+  public gridOptions: any = {
+    headerHeight: 30,
+    rowHeight: 30,
+    rowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onRowClicked: (event) => {
+      // Seleccionar la fila al hacer clic en cualquier celda
+      event.node.setSelected(true);
+    },
+    onRowSelected: (event) => {
+      // Deseleccionar otras filas cuando se selecciona una nueva
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    },
+  };
+
   get colMaster(): ColDef[] {
     return [
       {
@@ -423,12 +425,14 @@ public gridOptions: any = {
   }
 
   obtenerRequisiciones() {
-    this.ocService.getOcAndReqs(this.typeReference, this.idProject, 'OC').subscribe(
-      (data: any) => {
-        this.requisiciones = data;
-      },
-      (error) => console.error('Error fetching requisitions:', error)
-    );
+    this.ocService
+      .getOcAndReqs(this.typeReference, this.idProject, 'OC')
+      .subscribe(
+        (data: any) => {
+          this.requisiciones = data;
+        },
+        (error) => console.error('Error fetching requisitions:', error)
+      );
   }
 
   obtenerTiposEntrada() {
@@ -859,5 +863,11 @@ public gridOptions: any = {
 
   get componentTitle(): string {
     return 'Entradas';
+  }
+
+  // ==================== GUARD ALERT UNSAVED CHANGES ====================
+
+  async canDeactivate(): Promise<boolean> {
+    return confirmExitIfUnsaved(this.masterNotSavedChanges);
   }
 }
