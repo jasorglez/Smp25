@@ -92,4 +92,10 @@ export class PayrollService {
     });
   }
 
+  getDetailClock(idEmployee: number, startDate: string, endDate: string): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/EmployeeCheckInOutSummary?idEmployee=${idEmployee}&startDate=${startDate}&endDate=${endDate}`, {
+      headers: this.trackingService.getHeaders()
+    });
+  }
+
 }
