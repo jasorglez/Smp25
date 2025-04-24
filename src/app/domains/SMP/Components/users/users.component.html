@@ -37,7 +37,8 @@
                     (rowSelected)="onSelectedRow($event)"
                     (gridReady)="onGridReady($event)"
                     [components]="components"
-                    [gridOptions]="gridOptions">
+                    [gridOptions]="gridOptions"
+                    [stopEditingWhenCellsLoseFocus]="true">
                 </ag-grid-angular>
                 </div>
             </div>

@@ -48,6 +48,8 @@ export class CashRegistersComponent {
   idStore: number ;
   private lastEditedRowId: number | string | null = null;
   newlyAddedRows: string[] = []; 
+  resnew: boolean = false;
+  resup: boolean = false;
 
   private storeCatalog: any[] = [];
   private inegiService = inject(InegiService);
@@ -72,7 +74,7 @@ export class CashRegistersComponent {
       enableRowGroup: true, // Enable row grouping for all columns
       flex: 1,
     };
-    private cleanDataForServer(data: any, isNew: boolean = false): any {
+    private cleanDataForServer(data: any): any {
       // 1. Estructura base garantizada
       const cleanedData: any = {
         idStore: this.idStore,  // Prioriza el idStore del dato, sino usa el del componente
@@ -83,11 +85,16 @@ export class CashRegistersComponent {
     
       // 3. Manejo especial para actualización
       console.log(data)
-      if (!isNew && data.idCaja && !data.idCaja.toString().startsWith('temp_')) {
+      if (data.idCaja && !data.idCaja.toString().startsWith('temp_')) {
         cleanedData.id = data.idCaja;
       }
-      if (!isNew && data.idStore && !data.idStore.toString().startsWith('temp_')) {
+      if (this.resnew && data.idStore && !data.idStore.toString().startsWith('temp_')) {
+        cleanedData.idStore = this.idStore;
+        this.resnew = false;
+      }
+      if (this.resup && data.idStore && !data.idStore.toString().startsWith('temp_')) {
         cleanedData.idStore = data.idStore;
+        this.resup= false;
       }
     
       // 4. Limpieza de metadatos (sin eliminar campos necesarios)
@@ -251,10 +258,6 @@ export class CashRegistersComponent {
   }
 
   onMasterCellValueChanged(event: any) {
-     console.log('Dato cambiado:', event.data);
-     event.data.__modified = true;
-     this.notSavedChanges = true;
-
      if (event.colDef.field === 'description') {
       const selectedBonus = event.newValue;
       const idStore = this.storeCatalog?.find(item => item.description === selectedBonus);
@@ -262,8 +265,13 @@ export class CashRegistersComponent {
       if (idStore) {
         // Actualizamos el monto (quantity)
         this.idStore = idStore.id;
+        //alert(this.idStore)
       }
     }
+    console.log('Dato cambiado:', event.data);
+     event.data.id = this.idStore
+     event.data.__modified = true;
+     this.notSavedChanges = true;
    }
 
    onMasterGridReady(params: GridReadyEvent) {
@@ -274,29 +282,7 @@ export class CashRegistersComponent {
      this.id = event.data.idCaja;
    }
    async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
-     const colId = event.column.getColId();
      const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
-     const selectedId = selectedRowData.idCaja; // Obtener el ID del registro
-     if (colId === 'loan' || colId === 'saving') {
-       // Filtrar el grid para mostrar solo el registro con el ID seleccionado
-       const filterModel = {
-         id: {
-           type: 'equals',
-           filter: selectedId,
-         },
-       };
-
-       this.gridApi.setFilterModel(filterModel);
-       this.gridApi.onFilterChanged();
-     }
-
-     if (colId === 'loan') {
-       await this.activateLoansTab();
-     }
-
-     if (colId === 'saving') {
-       await this.activateSavingsTab();
-     }
 
      // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
      this.selectedRowData = selectedRowData;
@@ -408,18 +394,23 @@ export class CashRegistersComponent {
         }
     
         const newRows = this.rowData.filter((row) => row.__isNew);
+
         const modifiedRows = this.rowData.filter(
           (row) => row.__modified && !row.__isNew
         );
     
         const addObservables: Promise<any>[] = newRows.map((row) => {
+          this.resnew = true;
           const cleanedData = this.cleanDataForServer(row);
-          console.log(cleanedData);
+          console.log(typeof(newRows));
+
           return lastValueFrom(this.cashRegistersService.addCashRegister(cleanedData));
         });
     
         const updateObservables: Promise<any>[] = modifiedRows.map((row) => {
+          this.resup = true;
           const cleanedData = this.cleanDataForServer(row);
+          console.log(typeof(modifiedRows));
           return lastValueFrom(this.cashRegistersService.updateCashRegister(cleanedData));
         });
     

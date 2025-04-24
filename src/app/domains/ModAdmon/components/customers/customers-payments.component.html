@@ -34,7 +34,8 @@
               [rowData]="maestroRowData" [columnDefs]="maestroColumnDefs" [gridOptions]="maestroGridOptions"
               (selectionChanged)="onMaestroSelectionChanged($event)"
               (cellValueChanged)="onMasterCellValueChanged($event)" (gridReady)="onMaestroGridReady($event)"
-              [rowSelection]="'single'">
+              [rowSelection]="'single'"
+              [stopEditingWhenCellsLoseFocus]="true">
             </ag-grid-angular>
             </div>
           </div>

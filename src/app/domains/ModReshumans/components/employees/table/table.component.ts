@@ -234,7 +234,7 @@ export class EmployeesTableComponent {
       },*/
       {
         field: 'idBranch',
-        headerName: 'Nombre sucursal *',
+        headerName: 'Nombre sucursal',
         headerClass: 'required-header',
         hide:
           this.authService.hasDetailedPermission(
@@ -272,7 +272,7 @@ export class EmployeesTableComponent {
       },
       {
         field: 'name',
-        headerName: 'Nombre *',
+        headerName: 'Nombre',
         headerClass: 'required-header',
         editable: true,
         cellStyle: (params) => this.validateRequiredField(params.value),
@@ -319,7 +319,7 @@ export class EmployeesTableComponent {
       },
       {
         field: 'email',
-        headerName: 'Correo electrónico *',
+        headerName: 'Correo electrónico',
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
         cellEditor: 'agTextCellEditor',
@@ -418,7 +418,7 @@ export class EmployeesTableComponent {
       },
       {
         field: 'idDepto',
-        headerName: 'Departamento *',
+        headerName: 'Departamento',
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
         editable: true,
@@ -445,7 +445,7 @@ export class EmployeesTableComponent {
       },
       {
         field: 'idPosition',
-        headerName: 'Posicion *',
+        headerName: 'Posicion',
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
         editable: true,
@@ -472,13 +472,19 @@ export class EmployeesTableComponent {
       },
       {
         field: 'priceXHour',
+<<<<<<< HEAD
         headerName: 'Precio por hora *',
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
+=======
+        headerName: 'Precio por hora',
+        headerClass: 'required-header',
+>>>>>>> bf4394da42afca5082be4eeb9b5b6893387d2d61
         editable: true,
         filter: true,
         width: 150,
         cellEditor: 'agNumberCellEditor',
+        cellStyle: (params) => this.validateRequiredField(params.value),
         cellEditorParams: {
           min: 0,
           max: 999999,
@@ -496,7 +502,11 @@ export class EmployeesTableComponent {
       },
       {
         field: 'baseHours',
+<<<<<<< HEAD
         headerName: 'Horas base *',
+=======
+        headerName: 'Horas base',
+>>>>>>> bf4394da42afca5082be4eeb9b5b6893387d2d61
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
         editable: true,
@@ -578,10 +588,10 @@ export class EmployeesTableComponent {
       {
         field: 'address',
         headerName: 'Dirección',
-        editable: false,
+        editable: true,
         filter: 'agTextColumnFilter',
         width: 300,
-        cellEditor: 'agPopupTextCellEditor',
+        /*cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
           cols: 50,
@@ -605,7 +615,7 @@ export class EmployeesTableComponent {
             return params.value.toUpperCase();
           }
           return params.value.toUpperCase();
-        },
+        },*/
       },
 
       {
@@ -782,7 +792,6 @@ export class EmployeesTableComponent {
     console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
-
     // Si el campo cambiado es el código postal
     if (event.colDef.field === 'cp') {
       // Limpiar el neighborhood cuando cambia el CP
@@ -870,8 +879,8 @@ export class EmployeesTableComponent {
         item.email &&
         item.idDepto && // se agregan dos inputs para la validación de los campos requeridos
         item.idPosition &&
-        item.baseHours &&
-        item.priceXHour
+        item.priceXHour &&
+        item.baseHours
     );
     if (!isValid) {
       alerts.basicAlert(
