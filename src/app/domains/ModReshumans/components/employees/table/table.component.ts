@@ -321,6 +321,7 @@ export class EmployeesTableComponent {
         field: 'email',
         headerName: 'Correo electrónico *',
         headerClass: 'required-header',
+        cellStyle: (params) => this.validateRequiredField(params.value),
         cellEditor: 'agTextCellEditor',
         editable: true,
         cellEditorParams: {
@@ -472,6 +473,8 @@ export class EmployeesTableComponent {
       {
         field: 'priceXHour',
         headerName: 'Precio por hora *',
+        headerClass: 'required-header',
+        cellStyle: (params) => this.validateRequiredField(params.value),
         editable: true,
         filter: true,
         width: 150,
@@ -494,6 +497,8 @@ export class EmployeesTableComponent {
       {
         field: 'baseHours',
         headerName: 'Horas base *',
+        headerClass: 'required-header',
+        cellStyle: (params) => this.validateRequiredField(params.value),
         editable: true,
         filter: true,
         width: 150,
@@ -864,7 +869,9 @@ export class EmployeesTableComponent {
         item.idBranch &&
         item.email &&
         item.idDepto && // se agregan dos inputs para la validación de los campos requeridos
-        item.idPosition
+        item.idPosition &&
+        item.baseHours &&
+        item.priceXHour
     );
     if (!isValid) {
       alerts.basicAlert(
