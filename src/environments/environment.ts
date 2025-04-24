@@ -28,10 +28,13 @@ export const environment = {
   // urlWarehouse  : 'https://bi2.centralus.cloudapp.azure.com/warehouse/api',
 
  urlSecurity       : 'https://bi2.com.mx/api', // 5003
+ //urlSecurity       : 'http://198.71.49.16:5003/api', // 5003
+
  urlSmp            : 'https://bi2.com.mx/smp/api', // 5004
  urlBpi            : 'https://bi2.com.mx/bpi/api', // 5005
- urlWarehouse      : 'https://bi2.com.mx/warehouse/api', // 5007
  urlAdministration : 'https://bi2.com.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
+ urlWarehouse      : 'https://bi2.com.mx/warehouse/api', // 5007
+
  //urlAdministration : 'http://localhost:5047/api', // 5006 -- Tambien conocido como Tracking
 
  root : 'root@beapp.com.mx',
