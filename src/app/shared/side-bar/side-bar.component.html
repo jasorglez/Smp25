@@ -1,108 +1,213 @@
-<aside class="main-sidebar sidebar-light-primary elevation-4">
+<aside
+  class="main-sidebar sidebar-light-primary elevation-4"
+  [ngClass]="{ collapsed: isSidebarCollapsed }"
+>
+  <!-- <button
+    class="toggle-sidebar-btn"
+    (click)="isSidebarCollapsed = !isSidebarCollapsed"
+  >
+    <mat-icon>{{ isSidebarCollapsed ? "menu_open" : "menu" }}</mat-icon>
+  </button> -->
   <!-- Brand Logo -->
   <a href="/" class="brand-link">
-    <img [src]="trackingService.getpictureComp()" alt="BI Company" style="width: 168px; height: 58px;" />
+    <!-- Logo completo (solo visible cuando NO está colapsado) -->
+    <img
+      class="sidebar-logo"
+      [src]="trackingService.getpictureComp()"
+      alt="BI Company"
+      *ngIf="!isSidebarCollapsed"
+    />
+
+    <!-- Letras simples (solo visibles cuando SÍ está colapsado) -->
+    <span class="sidebar-logo-text" *ngIf="isSidebarCollapsed"> BI </span>
   </a>
 
   <div class="sidebar">
     <div class="user-panel mt-4 pb-2 mb-2 brand-image">
       <!-- Select Root -->
-      <select id="root" (change)="onRootsSelected($event)" class="form-control select-side" [value]="selectedRoot || ''"
-        title="{{ 'select' | translate  }} {{ 'company' | translate  }}"> >
-        <option selected value="" disabled>{{ 'company' | translate }}</option>
-        <option *ngFor="let item of rootData" [value]="item.id">{{ item.name }}</option>
+      <select
+        id="root"
+        (change)="onRootsSelected($event)"
+        class="form-control select-side"
+        [value]="selectedRoot || ''"
+        title="{{ 'select' | translate }} {{ 'company' | translate }}"
+      >
+        >
+        <option selected value="" disabled>{{ "company" | translate }}</option>
+        <option *ngFor="let item of rootData" [value]="item.id">
+          {{ item.name }}
+        </option>
       </select>
 
       <!-- Select Branchs -->
-      <select id="branchs" (change)="onBranchSelected($event)" class="form-control select-side"
-        [value]="selectedBranchId || ''" title="{{ 'select' | translate  }} {{ 'branchs' | translate  }}">
-        <option selected disabled value="">{{ 'branchs' | translate }}</option>
-        <option *ngFor="let item of branchData" [value]="item.id">{{ item.name }}</option>
+      <select
+        id="branchs"
+        (change)="onBranchSelected($event)"
+        class="form-control select-side"
+        [value]="selectedBranchId || ''"
+        title="{{ 'select' | translate }} {{ 'branchs' | translate }}"
+      >
+        <option selected disabled value="">{{ "branchs" | translate }}</option>
+        <option *ngFor="let item of branchData" [value]="item.id">
+          {{ item.name }}
+        </option>
       </select>
       <span *ngIf="authService.hasDetailedPermission('principal', 'projects')">
         Select Contracts
-        <select id="contract" (change)="onContractsSelected($event)" class="form-control select-side"
-          [value]="selectedContractId || ''" title="{{ 'select' | translate  }} {{ 'contract' | translate  }}"> >
-          <option selected disabled value="">{{ 'contract' | translate }}</option>
-          <option *ngFor="let item of contractData" [value]="item.id">{{ item.name }}</option>
+        <select
+          id="contract"
+          (change)="onContractsSelected($event)"
+          class="form-control select-side"
+          [value]="selectedContractId || ''"
+          title="{{ 'select' | translate }} {{ 'contract' | translate }}"
+        >
+          >
+          <option selected disabled value="">
+            {{ "contract" | translate }}
+          </option>
+          <option *ngFor="let item of contractData" [value]="item.id">
+            {{ item.name }}
+          </option>
         </select>
 
         Select Projects
-        <select id="project" (change)="onProjectSelected($event)" class="form-control select-side"
-          [value]="selectedProjectId || ''" title="{{ 'select' | translate  }} {{ 'projects' | translate  }}"> >
-          <option selected disabled value="">{{ 'projects' | translate }}</option>
-          <option *ngFor="let pj of projectData" [value]="pj.id">{{ pj.name }}</option>
+        <select
+          id="project"
+          (change)="onProjectSelected($event)"
+          class="form-control select-side"
+          [value]="selectedProjectId || ''"
+          title="{{ 'select' | translate }} {{ 'projects' | translate }}"
+        >
+          >
+          <option selected disabled value="">
+            {{ "projects" | translate }}
+          </option>
+          <option *ngFor="let pj of projectData" [value]="pj.id">
+            {{ pj.name }}
+          </option>
         </select>
       </span>
     </div>
 
     <ul class="nav flex-column">
       <li class="nav-item" *ngIf="authService.hasMasterPermission('dashboard')">
-        <a class="nav-link d-flex align-items-center" [routerLink]="['/dashboardgrales']" routerLinkActive="active-link"
-          (click)="Dashboard()">
-          <mat-icon>dashboard</mat-icon> {{ 'Dashboard' | translate }}
+        <a
+          class="nav-link d-flex align-items-center"
+          [routerLink]="['/dashboardgrales']"
+          routerLinkActive="active-link"
+          (click)="Dashboard()"
+        >
+          <mat-icon>dashboard</mat-icon> {{ "Dashboard" | translate }}
         </a>
       </li>
 
-      <li class="nav-item" *ngIf="authService.hasMasterPermission('indicators')">
-        <a class="nav-link d-flex align-items-center" [routerLink]="['/indicgrals']" routerLinkActive="active-link"
-          (click)="Indicadores()">
-          <mat-icon>bar_chart</mat-icon> {{ 'indicators' | translate }}
+      <li
+        class="nav-item"
+        *ngIf="authService.hasMasterPermission('indicators')"
+      >
+        <a
+          class="nav-link d-flex align-items-center"
+          [routerLink]="['/indicgrals']"
+          routerLinkActive="active-link"
+          (click)="Indicadores()"
+        >
+          <mat-icon>bar_chart</mat-icon> {{ "indicators" | translate }}
         </a>
       </li>
 
-      <li class="nav-item" *ngIf="authService.hasMasterPermission('administration')">
-        <a class="nav-link d-flex align-items-center" [routerLink]="['/procmodadmon']" routerLinkActive="active-link"
-          (click)="Admonproc()">
-          <mat-icon>menu_book</mat-icon> {{ 'admins' | translate }}
+      <li
+        class="nav-item"
+        *ngIf="authService.hasMasterPermission('administration')"
+      >
+        <a
+          class="nav-link d-flex align-items-center"
+          [routerLink]="['/procmodadmon']"
+          routerLinkActive="active-link"
+          (click)="Admonproc()"
+        >
+          <mat-icon>menu_book</mat-icon> {{ "admins" | translate }}
         </a>
       </li>
 
-      <li class="nav-item" *ngIf="authService.hasMasterPermission('warehouses')">
-        <a class="nav-link d-flex align-items-center" [routerLink]="['/proceswar']" routerLinkActive="active-link"
-          (click)="warehouseproc()">
-          <mat-icon>warehouse</mat-icon> {{ 'buy' | translate }}
+      <li
+        class="nav-item"
+        *ngIf="authService.hasMasterPermission('warehouses')"
+      >
+        <a
+          class="nav-link d-flex align-items-center"
+          [routerLink]="['/proceswar']"
+          routerLinkActive="active-link"
+          (click)="warehouseproc()"
+        >
+          <mat-icon>warehouse</mat-icon> {{ "buy" | translate }}
         </a>
       </li>
 
-      <li class="nav-item" *ngIf="authService.hasMasterPermission('maintenance')">
-        <a class="nav-link d-flex align-items-center" [routerLink]="['/procmodmaintenance']"
-          routerLinkActive="active-link" (click)="maintenanceproc()">
-          <mat-icon>engineering</mat-icon> {{ 'maintenance' | translate }}
+      <li
+        class="nav-item"
+        *ngIf="authService.hasMasterPermission('maintenance')"
+      >
+        <a
+          class="nav-link d-flex align-items-center"
+          [routerLink]="['/procmodmaintenance']"
+          routerLinkActive="active-link"
+          (click)="maintenanceproc()"
+        >
+          <mat-icon>engineering</mat-icon> {{ "maintenance" | translate }}
         </a>
       </li>
 
       <li class="nav-item" *ngIf="authService.hasMasterPermission('hr')">
-        <a class="nav-link d-flex align-items-center" [routerLink]="['/procreshuman']" routerLinkActive="active-link"
-          (click)="resourcesmenproc()">
-          <mat-icon>diversity_3</mat-icon> {{ 'resourcesmen' | translate }}
+        <a
+          class="nav-link d-flex align-items-center"
+          [routerLink]="['/procreshuman']"
+          routerLinkActive="active-link"
+          (click)="resourcesmenproc()"
+        >
+          <mat-icon>diversity_3</mat-icon> {{ "resourcesmen" | translate }}
         </a>
       </li>
 
       <li class="nav-item" *ngIf="authService.hasMasterPermission('sales')">
-        <a class="nav-link d-flex align-items-center" [routerLink]="['/procsales']" routerLinkActive="active-link"
-          (click)="salesproc()">
-          <mat-icon>point_of_sale</mat-icon> {{ 'Sales' | translate }}
+        <a
+          class="nav-link d-flex align-items-center"
+          [routerLink]="['/procsales']"
+          routerLinkActive="active-link"
+          (click)="salesproc()"
+        >
+          <mat-icon>point_of_sale</mat-icon> {{ "Sales" | translate }}
         </a>
       </li>
 
       <li class="nav-item" *ngIf="authService.hasMasterPermission('setup')">
-        <a class="nav-link d-flex align-items-center" [routerLink]="['/smp']" routerLinkActive="active-link"
-          (click)="SmpSetup()">
-          <mat-icon>settings</mat-icon> {{ 'Setup' | translate }}
+        <a
+          class="nav-link d-flex align-items-center"
+          [routerLink]="['/smp']"
+          routerLinkActive="active-link"
+          (click)="SmpSetup()"
+        >
+          <mat-icon>settings</mat-icon> {{ "Setup" | translate }}
         </a>
       </li>
 
       <li class="nav-item" *ngIf="authService.hasMasterPermission('projects')">
-        <a class="nav-link d-flex align-items-center" [routerLink]="['/projects']" routerLinkActive="active-link"
-          (click)="SmpSetup()">
-          <mat-icon>grading</mat-icon> {{ 'projects' | translate }}
+        <a
+          class="nav-link d-flex align-items-center"
+          [routerLink]="['/projects']"
+          routerLinkActive="active-link"
+          (click)="SmpSetup()"
+        >
+          <mat-icon>grading</mat-icon> {{ "projects" | translate }}
         </a>
       </li>
 
       <li class="nav-item">
-        <a class="nav-link d-flex align-items-center" [routerLink]="['/login']" routerLinkActive="active-link"
-          (click)="authService.logout()">
+        <a
+          class="nav-link d-flex align-items-center"
+          [routerLink]="['/login']"
+          routerLinkActive="active-link"
+          (click)="authService.logout()"
+        >
           <mat-icon>logout</mat-icon> Salir
         </a>
       </li>

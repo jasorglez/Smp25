@@ -1,7 +1,13 @@
 import { Component, HostListener, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
-import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
+import {
+  CellDoubleClickedEvent,
+  ColDef,
+  GridApi,
+  GridReadyEvent,
+  ICellRendererParams,
+} from 'ag-grid-enterprise';
 import { alerts } from '../../../../helpers/alerts';
 import { AdministrationService } from 'app/services/administration.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
@@ -9,18 +15,25 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ModalService } from 'app/services/modal.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { ImageHandlerService } from 'app/services/image-handler.service';
-
+import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
+import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 
 @Component({
   selector: 'app-banks',
   standalone: true,
-  imports: [RouterModule, DomainsModule, AgGridModule, MultiLineEditorComponent],
+  imports: [
+    RouterModule,
+    DomainsModule,
+    AgGridModule,
+    MultiLineEditorComponent,
+  ],
   templateUrl: './banks.component.html',
-  styleUrl: './banks.component.scss'
+  styleUrl: './banks.component.scss',
 })
-export class BanksComponent {
-
-  constructor() { this.obtenerDatos(); }
+export class BanksComponent implements CanComponentDeactivate {
+  constructor() {
+    this.obtenerDatos();
+  }
 
   ngOnInit() {
     // this.obtenerDatos();
@@ -52,7 +65,7 @@ export class BanksComponent {
   // public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
 
   frameworkComponents = {
-    multiLineEditor: MultiLineEditorComponent
+    multiLineEditor: MultiLineEditorComponent,
   };
 
   // Inject of new way for Angular 18
@@ -89,9 +102,19 @@ export class BanksComponent {
 
   get colMaster(): ColDef[] {
     return [
-      { field: 'name', headerName: 'NombrePrueba', editable: true, filter: true, width: 220 },
       {
-        field: 'branch', headerName: 'Sucursal', editable: false, width: 220, filter: true,
+        field: 'name',
+        headerName: 'NombrePrueba',
+        editable: true,
+        filter: true,
+        width: 220,
+      },
+      {
+        field: 'branch',
+        headerName: 'Sucursal',
+        editable: false,
+        width: 220,
+        filter: true,
         cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
@@ -116,35 +139,47 @@ export class BanksComponent {
             return params.value;
           }
           return params.value;
-        }
+        },
       },
 
       { field: 'contact', headerName: 'Contacto', editable: true, width: 200 },
 
       {
-        field: 'phone', headerName: 'Telefono', editable: true, width: 169, cellEditorParams: {
-          maxLength: 15
-        }
+        field: 'phone',
+        headerName: 'Telefono',
+        editable: true,
+        width: 169,
+        cellEditorParams: {
+          maxLength: 15,
+        },
       },
 
       {
         field: 'picture',
         headerName: 'Imagen',
-        cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
+        cellRenderer: this.imageHandlerService.imageCellRenderer.bind(
+          this.imageHandlerService
+        ),
         cellRendererParams: {
-          clicked: this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService),
-          field: 'picture'
+          clicked: this.imageHandlerService.onImageCellClicked.bind(
+            this.imageHandlerService
+          ),
+          field: 'picture',
         },
         editable: false,
-        width: 180
+        width: 180,
       },
 
-      { field: 'numBranch', headerName: 'Numero Sucursal', editable: true, width: 180 },
+      {
+        field: 'numBranch',
+        headerName: 'Numero Sucursal',
+        editable: true,
+        width: 180,
+      },
 
       { field: 'code', headerName: 'Codigo', editable: true, width: 105 },
-
-    ]
-  };
+    ];
+  }
 
   obtenerDatos() {
     this.administrationService.getBanks().subscribe({
@@ -155,7 +190,7 @@ export class BanksComponent {
       error: (error) => {
         console.error('Error fetching banks:', error);
         // Optional: show user-friendly error message
-      }
+      },
     });
   }
 
@@ -165,7 +200,7 @@ export class BanksComponent {
   }
 
   onSelectionChanged(event: any) {
-    console.log('Viene del OnSelectionChanged', event)
+    console.log('Viene del OnSelectionChanged', event);
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
@@ -184,7 +219,6 @@ export class BanksComponent {
     //   console.log('Grid API inicializada:', params.api);
     this.gridApi = params.api;
   }
-
 
   addRow() {
     const tempId = `temp_${this.tempIdCounter++}`;
@@ -209,8 +243,10 @@ export class BanksComponent {
     const newRowIndex = this.Bankdata.findIndex((row) => row.id === tempId);
 
     // Encontrar la primera columna editable
-    const firstEditableCol = this.colMaster.find(col => col.editable);
-    const firstEditableColKey = firstEditableCol ? firstEditableCol.field : null;
+    const firstEditableCol = this.colMaster.find((col) => col.editable);
+    const firstEditableColKey = firstEditableCol
+      ? firstEditableCol.field
+      : null;
 
     // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
     setTimeout(() => {
@@ -296,7 +332,8 @@ export class BanksComponent {
       )
       .then((result) => {
         if (result.isConfirmed) {
-          this.administrationService.deleteBanks(id)
+          this.administrationService
+            .deleteBanks(id)
             .pipe(
               catchError((error) => {
                 alerts.basicAlert(
@@ -337,4 +374,9 @@ export class BanksComponent {
     return cleanedData;
   }
 
+  // ==================== GUARD ALERT UNSAVED CHANGES ====================
+
+  async canDeactivate(): Promise<boolean> {
+    return confirmExitIfUnsaved(this.notSavedChanges);
+  }
 }

@@ -23,6 +23,8 @@ import { ReceiptsService } from 'app/services/receipts.service';
 import { UsersService } from 'app/services/users.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { SetupService } from 'app/services/setup.service';
+import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
+import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 
 interface Catalog {
   id: number;
@@ -41,7 +43,7 @@ interface Provider {
   templateUrl: './requisitions.component.html',
   styleUrl: './requisitions.component.scss',
 })
-export class RequisitionsComponent {
+export class RequisitionsComponent implements CanComponentDeactivate {
   // Inject of new way for Angular 18
   private requisitionsService = inject(OcAndReqsService);
   private providersService = inject(ProvidersService);
@@ -126,7 +128,7 @@ export class RequisitionsComponent {
     this.idProject = this.signalsService.getProjectSelectedBySidebar()();
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
     this.idRequisition = this.signalsService.getIdRequisition()();
-    
+
     this.getSetupData().then(() => {
       this.idReference = this.projectOrBranch ? this.idProject : this.idBranch;
       this.obtenerDatos();
@@ -481,7 +483,7 @@ export class RequisitionsComponent {
     this.currencyService.getCurrencies(this.idRoot).subscribe(
       (data: Catalog[]) => {
         this.monedas = data;
-        console.log("Monedas", this.monedas)
+        console.log('Monedas', this.monedas);
       },
       (error) => console.error('Error fetching currencies:', error)
     );
@@ -895,5 +897,11 @@ export class RequisitionsComponent {
       delete cleanedData.id;
     }
     return cleanedData;
+  }
+
+  // ==================== GUARD ALERT UNSAVED CHANGES ====================
+
+  async canDeactivate(): Promise<boolean> {
+    return confirmExitIfUnsaved(this.masterNotSavedChanges);
   }
 }
