@@ -1,4 +1,5 @@
 import { Component, inject } from '@angular/core';
+import { TranslateModule } from '@ngx-translate/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { SignalsService } from 'app/services/signals.service';
@@ -6,7 +7,7 @@ import { SignalsService } from 'app/services/signals.service';
 @Component({
   selector: 'app-employees',
   standalone: true,
-  imports: [RouterModule, DomainsModule],
+  imports: [RouterModule, DomainsModule, TranslateModule],
   templateUrl: './employees.component.html',
   styleUrl: './employees.component.scss'
 })
