@@ -38,7 +38,8 @@
         (cellValueChanged)="onMasterCellValueChanged($event)" (rowSelected)="onMasterRowSelected($event)"
         (gridReady)="onMasterGridReady($event)" 
         [rowSelection]="rowSelection" 
-        [pivotPanelShow]="pivotPanelShow">
+        [pivotPanelShow]="pivotPanelShow"
+        [stopEditingWhenCellsLoseFocus]="true">
       </ag-grid-angular>
     </div>
   </div>

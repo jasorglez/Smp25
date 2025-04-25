@@ -1,50 +1,70 @@
 <div class="container-fluid mt-4 mb-4 light-blue-background">
+  <div class="row">
+    <div class="col-md-2">
+      <select
+        id="root"
+        (change)="onCatalogChange($event)"
+        class="form-control select-side"
+        [value]="selectedCatalog || ''"
+        size="10"
+        title="{{ 'select' | translate }} {{ 'list' | translate }} {{
+          ' ' | translate
+        }} {{ 'tables' | translate }}"
+      >
+        >
+        <option selected value="" disabled>
+          {{ "Lista Tablas" | translate }}
+        </option>
+        <option *ngFor="let item of table" [value]="item.name">
+          {{ item.nameSpanish }}
+        </option>
+      </select>
+    </div>
+    <div class="col-10">
       <div class="row">
-        <div class="col-md-2">
-          
-          <select id="root" (change)="onCatalogChange($event)" class="form-control select-side" [value]="selectedCatalog || ''"
-          size="10" 
-          title="{{ 'select' | translate  }} {{ 'list' | translate  }} {{ ' ' | translate  }} {{ 'tables' | translate  }}"> >
-          <option selected value="" disabled>{{ 'Lista Tablas' | translate }}</option>
-          <option *ngFor="let item of table" [value]="item.name">{{ item.nameSpanish }}</option>
-        </select>               
-        
-        </div>
-        <div class="col-10">
-          <div class="row">
-            <div class="col-auto">
-              <div class="d-flex flex-column gap-2 align-items-center">
-                <button type="button" class="btn btn-primary" (click)="addRow()">
-                  <i class="bi bi-plus-lg"></i>
-                </button>
-                <button type="button" class="btn btn-success position-relative" (click)="saveChanges()">
-                  <i class="bi bi-floppy"></i>
-                  <span class="position-absolute top-0 end-0 translate-middle p-2 bg-danger border border-light rounded-circle"
-                    *ngIf="notSavedChanges">
-                    <span class="visually-hidden">Hay cambios sin guardar</span>
-                  </span>
-                </button>
-                <button type="button" class="btn btn-warning" (click)="revert()">
-                  <i class="bi bi-arrow-clockwise"></i>
-                </button>
-              </div>
-            </div>
-            <div class="col">
-              <ag-grid-angular style="width: 100%;" [ngStyle]="{'height': gridHeight}" 
-                 class="ag-theme-quartz small-text-ag-grid"
-                [rowData]="rowData" 
-                [columnDefs]="colMaster" 
-                (selectionChanged)="onSelectionChanged($event)"
-                [gridOptions]="gridOptions" 
-                (cellValueChanged)="onCellValueChanged($event)"
-                 (rowSelected)="onSelectedRow($event)"
-                (gridReady)="onGridReady($event)" 
-                rowSelection="single" 
-                [pivotPanelShow]="pivotPanelShow"
-                [rowSelection]="rowSelection">
-              </ag-grid-angular>
-            </div>
+        <div class="col-auto">
+          <div class="d-flex flex-column gap-2 align-items-center">
+            <button type="button" class="btn btn-primary" (click)="addRow()">
+              <i class="bi bi-plus-lg"></i>
+            </button>
+            <button
+              type="button"
+              class="btn btn-success position-relative"
+              (click)="saveChanges()"
+            >
+              <i class="bi bi-floppy"></i>
+              <span
+                class="position-absolute top-0 end-0 translate-middle p-2 bg-danger border border-light rounded-circle"
+                *ngIf="notSavedChanges"
+              >
+                <span class="visually-hidden">Hay cambios sin guardar</span>
+              </span>
+            </button>
+            <button type="button" class="btn btn-warning" (click)="revert()">
+              <i class="bi bi-arrow-clockwise"></i>
+            </button>
           </div>
+        </div>
+        <div class="col">
+          <ag-grid-angular
+            style="width: 100%"
+            [ngStyle]="{ height: gridHeight }"
+            class="ag-theme-quartz small-text-ag-grid"
+            [rowData]="rowData"
+            [columnDefs]="colMaster"
+            (selectionChanged)="onSelectionChanged($event)"
+            [gridOptions]="gridOptions"
+            (cellValueChanged)="onCellValueChanged($event)"
+            (rowSelected)="onSelectedRow($event)"
+            (gridReady)="onGridReady($event)"
+            rowSelection="single"
+            [pivotPanelShow]="pivotPanelShow"
+            [rowSelection]="rowSelection"
+            [stopEditingWhenCellsLoseFocus]="true"
+          >
+          </ag-grid-angular>
         </div>
       </div>
     </div>
+  </div>
+</div>

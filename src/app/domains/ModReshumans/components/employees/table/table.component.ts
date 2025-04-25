@@ -1,13 +1,13 @@
 import { Component, effect, HostListener, inject } from '@angular/core';
 import {
-  CellDoubleClickedEvent, IFilterComp,
+  CellDoubleClickedEvent,
   ColDef,
   GridApi,
   GridReadyEvent,
   ICellRendererParams,
 } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
-import { catchError, concat, EMPTY, lastValueFrom, toArray, tap } from 'rxjs';
+import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -21,7 +21,6 @@ import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/auto
 import { States } from 'app/interface/states';
 import { EmployeesxLoansComponent } from '../loans/loans.component';
 import { AdministrationService } from 'app/services/administration.service';
-import { HRService } from 'app/services/hr.service';
 import { EmployeesxSavingsComponent } from '../savings/savings.component';
 import { TimeService } from 'app/services/time.service';
 import { CatalogsService } from 'app/services/catalogs.service';
@@ -29,19 +28,24 @@ import { BranchsService } from 'app/services/branchs.service';
 import { AuthService } from 'app/services/auth.service';
 import { environment } from '@env/environment';
 
+import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
+import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
+
 @Component({
   selector: 'app-employees-table',
   standalone: true,
-  imports: [CommonModule,
+  imports: [
+    CommonModule,
     FormsModule,
     AgGridModule,
     MultiLineEditorComponent,
     EmployeesxLoansComponent,
-    EmployeesxSavingsComponent,],
+    EmployeesxSavingsComponent,
+  ],
   templateUrl: './table.component.html',
-  styleUrls: ['./table.component.scss']
+  styleUrls: ['./table.component.scss'],
 })
-export class EmployeesTableComponent {
+export class EmployeesTableComponent implements CanComponentDeactivate {
   // Inject of new way for Angular 18
   private imageHandlerService = inject(ImageHandlerService);
   private employeeService = inject(EmployeesService);
@@ -112,7 +116,6 @@ export class EmployeesTableComponent {
   };
 
   constructor() {
-
     effect(async () => {
       if (this.signalsService.getRefreshEmployees()() == true) {
         await this.obtenerDatos(); // Actualizar datos cuando se recibe señal
@@ -134,14 +137,12 @@ export class EmployeesTableComponent {
       } else {
         this.obtenerDatos();
         this.obtenerBranchs();
-        this.getBanks()
+        this.getBanks();
         this.getDeptoandPosition();
         this.getStates();
       }
     });
   }
-
-  ngOnInit() {}
 
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
@@ -197,7 +198,11 @@ export class EmployeesTableComponent {
   get colMaster(): ColDef[] {
     return [
       {
-        field: 'id', headerName: 'Id', editable: false, width: 70, hide: false,
+        field: 'id',
+        headerName: 'Id',
+        editable: false,
+        width: 70,
+        hide: false,
         filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
         filterParams: {
           filterOptions: ['equals'], // Opciones de filtro
@@ -228,10 +233,15 @@ export class EmployeesTableComponent {
       },*/
       {
         field: 'idBranch',
-        headerName: 'Nombre sucursal *',
+        headerName: 'Nombre sucursal',
         headerClass: 'required-header',
-        hide: this.authService.hasDetailedPermission('principal', 'see-all-branches') ||
-          this.signalsService.getemailChoose() === environment.root ? false : true,
+        hide:
+          this.authService.hasDetailedPermission(
+            'principal',
+            'see-all-branches'
+          ) || this.signalsService.getemailChoose() === environment.root
+            ? false
+            : true,
         editable: true,
         filter: true,
         width: 170,
@@ -244,7 +254,7 @@ export class EmployeesTableComponent {
                   .slice() // Creamos una copia para no modificar el array original
                   .sort((a, b) => a.name.localeCompare(b.name)) // Ordenamos por nombre
                   .map((item) => item.id) // Extraemos solo los IDs
-              : []
+              : [],
           };
         },
 
@@ -252,14 +262,16 @@ export class EmployeesTableComponent {
           // Handle potential null values and properly format the displayed value
           if (!params.value) return '';
 
-          const foundBranch = this.branchs ? this.branchs.find((item) => item.id === params.value) : null;
+          const foundBranch = this.branchs
+            ? this.branchs.find((item) => item.id === params.value)
+            : null;
 
           return foundBranch ? foundBranch.name : params.value;
         },
       },
       {
         field: 'name',
-        headerName: 'Nombre *',
+        headerName: 'Nombre',
         headerClass: 'required-header',
         editable: true,
         cellStyle: (params) => this.validateRequiredField(params.value),
@@ -306,8 +318,9 @@ export class EmployeesTableComponent {
       },
       {
         field: 'email',
-        headerName: 'Correo electrónico *',
+        headerName: 'Correo electrónico',
         headerClass: 'required-header',
+        cellStyle: (params) => this.validateRequiredField(params.value),
         cellEditor: 'agTextCellEditor',
         editable: true,
         cellEditorParams: {
@@ -404,7 +417,9 @@ export class EmployeesTableComponent {
       },
       {
         field: 'idDepto',
-        headerName: 'Departamento *',
+        headerName: 'Departamento',
+        headerClass: 'required-header',
+        cellStyle: (params) => this.validateRequiredField(params.value),
         editable: true,
         suppressMovable: true,
         filter: false,
@@ -413,7 +428,7 @@ export class EmployeesTableComponent {
         cellEditorParams: (params) => {
           // Ensure depto data is available when creating editor
           return {
-            values: this.depto ? this.depto.map((item) => item.id) : []
+            values: this.depto ? this.depto.map((item) => item.id) : [],
           };
         },
         valueFormatter: (params) => {
@@ -429,7 +444,9 @@ export class EmployeesTableComponent {
       },
       {
         field: 'idPosition',
-        headerName: 'Posicion *',
+        headerName: 'Posicion',
+        headerClass: 'required-header',
+        cellStyle: (params) => this.validateRequiredField(params.value),
         editable: true,
         suppressMovable: true,
         filter: false,
@@ -438,7 +455,7 @@ export class EmployeesTableComponent {
         cellEditorParams: (params) => {
           // Ensure depto data is available when creating editor
           return {
-            values: this.position ? this.position.map((item) => item.id) : []
+            values: this.position ? this.position.map((item) => item.id) : [],
           };
         },
         valueFormatter: (params) => {
@@ -455,6 +472,8 @@ export class EmployeesTableComponent {
       {
         field: 'priceXHour',
         headerName: 'Precio por hora *',
+        headerClass: 'required-header',
+        cellStyle: (params) => this.validateRequiredField(params.value),
         editable: true,
         filter: true,
         width: 150,
@@ -477,9 +496,8 @@ export class EmployeesTableComponent {
       {
         field: 'baseHours',
         headerName: 'Horas base *',
-        editable: true,
-        filter: true,
-        width: 150,
+        headerClass: 'required-header',
+        cellStyle: (params) => this.validateRequiredField(params.value),
         cellEditor: 'agNumberCellEditor',
         cellEditorParams: {
           min: 0,
@@ -556,10 +574,10 @@ export class EmployeesTableComponent {
       {
         field: 'address',
         headerName: 'Dirección',
-        editable: false,
+        editable: true,
         filter: 'agTextColumnFilter',
         width: 300,
-        cellEditor: 'agPopupTextCellEditor',
+        /*cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
           cols: 50,
@@ -583,9 +601,9 @@ export class EmployeesTableComponent {
             return params.value.toUpperCase();
           }
           return params.value.toUpperCase();
-        },
+        },*/
       },
-      
+
       {
         field: 'state',
         headerName: 'Estado',
@@ -615,7 +633,9 @@ export class EmployeesTableComponent {
           if (this.infoCp && this.infoCp.length > 0) {
             const asentamientos = this.infoCp[0].asentamientos;
             // Ordenar los asentamientos alfabéticamente
-            const sortedAsentamientos = asentamientos.sort((a, b) => a.localeCompare(b));
+            const sortedAsentamientos = asentamientos.sort((a, b) =>
+              a.localeCompare(b)
+            );
             return {
               values: sortedAsentamientos,
             };
@@ -626,15 +646,14 @@ export class EmployeesTableComponent {
           return params.value || 'Seleccionar asentamiento';
         },
       },
-      
-      
+
       {
         field: 'rfc',
         headerName: 'RFC',
         editable: true,
         filter: true,
         width: 150,
-      }
+      },
     ];
   }
 
@@ -746,7 +765,6 @@ export class EmployeesTableComponent {
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
       this.idEmployee = this.selectedRowData.id;
-
       console.log('Datos de la fila seleccionada:', this.selectedRowData);
 
       this.signalsService.setIdEmployee(this.idEmployee);
@@ -759,7 +777,6 @@ export class EmployeesTableComponent {
     console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
-
     // Si el campo cambiado es el código postal
     if (event.colDef.field === 'cp') {
       // Limpiar el neighborhood cuando cambia el CP
@@ -822,23 +839,34 @@ export class EmployeesTableComponent {
     // Encontrar el índice de la nueva fila
     const newRowIndex = this.rowData.findIndex((row) => row.id === tempId);
 
-// Encontrar la primera columna editable
-const firstEditableCol = this.colMaster.find(col => col.editable);
-const firstEditableColKey = firstEditableCol ? firstEditableCol.field : null;
+    // Encontrar la primera columna editable
+    const firstEditableCol = this.colMaster.find((col) => col.editable);
+    const firstEditableColKey = firstEditableCol
+      ? firstEditableCol.field
+      : null;
 
-// Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
-setTimeout(() => {
-  if (firstEditableColKey) {
-    this.gridApi.startEditingCell({
-      rowIndex: newRowIndex,
-      colKey: firstEditableColKey, // Editar la primera columna editable
-    });
-  }
-}, 50); // Un pequeño retraso de 50ms
+    // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
+    setTimeout(() => {
+      if (firstEditableColKey) {
+        this.gridApi.startEditingCell({
+          rowIndex: newRowIndex,
+          colKey: firstEditableColKey, // Editar la primera columna editable
+        });
+      }
+    }, 50); // Un pequeño retraso de 50ms
   }
 
   async saveMasterChanges() {
-    const isValid = this.rowData.every((item) => item.name && item.idBranch && item.email  );//&& item.idDepto && item.idPosition
+    const isValid = this.rowData.every(
+      (item) =>
+        item.name &&
+        item.idBranch &&
+        item.email &&
+        item.idDepto && // se agregan dos inputs para la validación de los campos requeridos
+        item.idPosition &&
+        item.priceXHour &&
+        item.baseHours
+    );
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
@@ -864,11 +892,8 @@ setTimeout(() => {
     });
 
     try {
-      const responses = await lastValueFrom(
-        concat(
-          ...addObservables,
-          ...updateObservables
-        ).pipe(toArray())
+      await lastValueFrom(
+        concat(...addObservables, ...updateObservables).pipe(toArray())
       );
 
       // Determinar qué ID vamos a seleccionar después de recargar
@@ -894,7 +919,7 @@ setTimeout(() => {
       if (this.lastEditedRowId) {
         if (this.lastEditedRowId === 'SELECT_MAX_ID') {
           // Encontrar el ID máximo en los datos actuales
-          const maxId = Math.max(...this.rowData.map(row => Number(row.id)));
+          const maxId = Math.max(...this.rowData.map((row) => Number(row.id)));
           this.selectRowById(maxId);
         } else {
           this.selectRowById(this.lastEditedRowId);
@@ -916,7 +941,10 @@ setTimeout(() => {
     setTimeout(() => {
       this.gridApi.forEachNode((node) => {
         // Convertir ambos IDs a número para la comparación
-        const nodeId = typeof node.data.id === 'string' ? parseInt(node.data.id) : node.data.id;
+        const nodeId =
+          typeof node.data.id === 'string'
+            ? parseInt(node.data.id)
+            : node.data.id;
         const searchId = typeof id === 'string' ? parseInt(id) : id;
 
         if (nodeId === searchId) {
@@ -1058,6 +1086,8 @@ setTimeout(() => {
     const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
     const selectedId = selectedRowData.id; // Obtener el ID del registro
 
+    this.notSavedChanges = true;
+
     if (colId === 'loan' || colId === 'saving') {
       // Filtrar el grid para mostrar solo el registro con el ID seleccionado
       const filterModel = {
@@ -1089,8 +1119,7 @@ setTimeout(() => {
       this.showLoansTab = true;
       this.showSavingsTab = false;
       this.isOpen = true;
-    }
-    else {
+    } else {
       await this.resetGridSize();
       this.isOpen = false;
     }
@@ -1102,8 +1131,7 @@ setTimeout(() => {
       this.showLoansTab = false;
       this.showSavingsTab = true;
       this.isOpen = true;
-    }
-    else {
+    } else {
       await this.resetGridSize();
       this.isOpen = false;
     }
@@ -1111,5 +1139,11 @@ setTimeout(() => {
 
   async adjustGridSize() {
     this.gridHeight = '20vh'; // Adjust as needed
+  }
+
+  // ==================== GUARD ALERT UNSAVED CHANGES ====================
+
+  async canDeactivate(): Promise<boolean> {
+    return confirmExitIfUnsaved(this.notSavedChanges);
   }
 }

@@ -5,42 +5,64 @@
     <!-- Botones y grid principal -->
     <div class="row mb-3">
       <nav class="col-auto d-flex flex-column align-items-start">
-        <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addMasterRow()">
+        <button
+          type="button"
+          class="btn btn-primary ms-1 me-1 mb-2"
+          (click)="addMasterRow()"
+        >
           <i class="bi bi-plus-lg"></i>
         </button>
-        <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveMasterChanges()">
+        <button
+          type="button"
+          class="btn btn-success ms-1 me-1 position-relative mb-2"
+          (click)="saveMasterChanges()"
+        >
           <i class="bi bi-floppy"></i>
           <span
             class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-              *ngIf="masterNotSavedChanges">
+            *ngIf="masterNotSavedChanges"
+          >
             <span class="visually-hidden">Hay cambios sin guardar</span>
           </span>
         </button>
-        <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertMasterData()">
+        <button
+          type="button"
+          class="btn btn-warning ms-1 me-1 mb-2"
+          (click)="revertMasterData()"
+        >
           <i class="bi bi-arrow-clockwise"></i>
         </button>
-        <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteBranch()"><i class="bi bi-trash"></i>
+        <button
+          type="button"
+          class="btn btn-danger ms-1 me-1 mb-2"
+          (click)="deleteBranch()"
+        >
+          <i class="bi bi-trash"></i>
         </button>
       </nav>
 
-    <div class="col">
-      <div class="row">
-        <ag-grid-angular style="width: 100%;"
-          [ngStyle]="{'height': gridHeight}"
-          class="ag-theme-quartz small-text-ag-grid"
-          [rowData]="masterRowData"
-          [columnDefs]="colMaster"
-          (selectionChanged)="onMasterSelectionChanged($event)"
-          [gridOptions]="gridOptions"
-          (cellValueChanged)="onMasterCellValueChanged($event)"
-          (rowSelected)="onMasterRowSelected($event)"
-          (gridReady)="onMasterGridReady($event)"
-          [rowSelection]="rowSelection"
-          [pivotPanelShow]="pivotPanelShow"
-          [paginationPageSize]="paginationPageSize"
-          [paginationPageSizeSelector]="paginationPageSizeSelector"
-          [pagination]="false">
-        </ag-grid-angular>
+      <div class="col">
+        <div class="row">
+          <ag-grid-angular
+            style="width: 100%"
+            [ngStyle]="{ height: gridHeight }"
+            class="ag-theme-quartz small-text-ag-grid"
+            [rowData]="masterRowData"
+            [columnDefs]="colMaster"
+            (selectionChanged)="onMasterSelectionChanged($event)"
+            [gridOptions]="gridOptions"
+            (cellValueChanged)="onMasterCellValueChanged($event)"
+            (rowSelected)="onMasterRowSelected($event)"
+            (gridReady)="onMasterGridReady($event)"
+            [rowSelection]="rowSelection"
+            [pivotPanelShow]="pivotPanelShow"
+            [paginationPageSize]="paginationPageSize"
+            [paginationPageSizeSelector]="paginationPageSizeSelector"
+            [pagination]="false"
+            [stopEditingWhenCellsLoseFocus]="true"
+          >
+          </ag-grid-angular>
+        </div>
       </div>
     </div>
   </div>

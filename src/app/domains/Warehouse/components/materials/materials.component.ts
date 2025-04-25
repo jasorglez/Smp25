@@ -1,5 +1,13 @@
 import { Component, effect, HostListener, inject } from '@angular/core';
-import { CellDoubleClickedEvent, ColDef, GetMainMenuItemsParams, GridApi, GridReadyEvent, ICellRendererParams, MenuItemDef } from 'ag-grid-enterprise';
+import {
+  CellDoubleClickedEvent,
+  ColDef,
+  GetMainMenuItemsParams,
+  GridApi,
+  GridReadyEvent,
+  ICellRendererParams,
+  MenuItemDef,
+} from 'ag-grid-enterprise';
 import { alerts } from '../../../../helpers/alerts';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
@@ -14,24 +22,29 @@ import { SignalsService } from 'app/services/signals.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Icatalog } from 'app/interface/icatalog';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
+import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
+import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 
 declare const bootstrap: any; // Añadir declaración para Bootstrap
 
 @Component({
   selector: 'app-materials',
   standalone: true,
-  imports: [AutocompleteEditorComponent, CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
+  imports: [
+    AutocompleteEditorComponent,
+    CommonModule,
+    FormsModule,
+    AgGridModule,
+    MultiLineEditorComponent,
+  ],
   templateUrl: './materials.component.html',
-  styleUrl: './materials.component.scss'
+  styleUrl: './materials.component.scss',
 })
-export class MaterialsComponent {
+export class MaterialsComponent implements CanComponentDeactivate {
+  type: string = '';
 
-  type: string = ''; 
-
-  
   constructor(private router: Router) {
-    
-    this.route.data.subscribe(data => {
+    this.route.data.subscribe((data) => {
       this.type = data['type']; // 'SALES' or 'CONSUMABLE'
     });
 
@@ -42,8 +55,7 @@ export class MaterialsComponent {
       this.obtenerFamilias();
       this.obtenerSubfamilias();
       this.obtenerUbicaciones();
-    }
-    )
+    });
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -74,13 +86,13 @@ export class MaterialsComponent {
   gridHeight: string = '80vh';
   showLoansTab: boolean = false;
   showSavingsTab: boolean = false;
-  private isOpen: boolean = false; 
+  private isOpen: boolean = false;
   private tempIdCounter: number = 0;
   material = {
     picture: null as string,
     description: null as string,
-    measure: null as string
-  }
+    measure: null as string,
+  };
 
   private gridApi: GridApi;
 
@@ -94,7 +106,7 @@ export class MaterialsComponent {
 
   components = {
     multiLineEditor: MultiLineEditorComponent,
-    autocompleteEditor: AutocompleteEditorComponent
+    autocompleteEditor: AutocompleteEditorComponent,
   };
 
   // Inject of new way for Angular 18
@@ -105,47 +117,52 @@ export class MaterialsComponent {
   private signalsService = inject(SignalsService);
   private route = inject(ActivatedRoute);
 
-// Column Definitions: Defines the columns to be displayed.
-public gridOptions: any = {
-  headerHeight: 25,
-  rowHeight: 20,
-  rowClass: (params) => {
-    // Verificar si la fila está seleccionada
-    if (params.node.isSelected()) {
-      return 'selected-row';
-    }
-    return '';
-  },
-  onRowClicked: (event) => {
-    // Seleccionar la fila al hacer clic en cualquier celda
-    event.node.setSelected(true);
-  },
-  onRowSelected: (event) => {
-    // Deseleccionar otras filas cuando se selecciona una nueva
-    if (event.node.isSelected()) {
-      this.gridApi.forEachNode((node) => {
-        if (node.id !== event.node.id) {
-          node.setSelected(false);
-        }
-      });
-    }
-  },
-};
-  
+  // Column Definitions: Defines the columns to be displayed.
+  public gridOptions: any = {
+    headerHeight: 25,
+    rowHeight: 20,
+    rowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onRowClicked: (event) => {
+      // Seleccionar la fila al hacer clic en cualquier celda
+      event.node.setSelected(true);
+    },
+    onRowSelected: (event) => {
+      // Deseleccionar otras filas cuando se selecciona una nueva
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    },
+  };
+
   get colMaster(): ColDef[] {
     return [
       {
-        field: 'insumo', headerName: 'Num. Material', editable: true, filter: true, width: 150,
+        field: 'insumo',
+        headerName: 'Num. Material',
+        editable: true,
+        filter: true,
+        width: 150,
         cellEditor: 'autocompleteEditor',
         cellEditorParams: {
-          filterList: this.rowData.map(e => e.insumo),
+          filterList: this.rowData.map((e) => e.insumo),
           filterKey: 'insumo',
           placeholder: 'Número Material',
-          minLength: 1
+          minLength: 1,
         },
         valueSetter: (params) => {
-          const duplicateExists = this.rowData.some((row, index) =>
-            index !== params.node.rowIndex && row.insumo === params.newValue
+          const duplicateExists = this.rowData.some(
+            (row, index) =>
+              index !== params.node.rowIndex && row.insumo === params.newValue
           );
 
           if (duplicateExists) {
@@ -159,11 +176,21 @@ public gridOptions: any = {
 
           params.data[params.colDef.field] = params.newValue;
           return true;
-        }
+        },
       },
-      { field: 'barCode', headerName: 'Codigo Barra', editable: true, filter: true, width: 150 },
       {
-        field: 'description', headerName: 'Descripción', editable: false, width: 285, filter: true,
+        field: 'barCode',
+        headerName: 'Codigo Barra',
+        editable: true,
+        filter: true,
+        width: 150,
+      },
+      {
+        field: 'description',
+        headerName: 'Descripción',
+        editable: false,
+        width: 285,
+        filter: true,
         cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
@@ -188,7 +215,7 @@ public gridOptions: any = {
             return params.value;
           }
           return params.value;
-        }
+        },
       },
       {
         field: 'date',
@@ -201,43 +228,61 @@ public gridOptions: any = {
             return params.value.split('T')[0];
           }
           return '';
-        }
+        },
       },
-      { field: 'typeMaterial', headerName: 'Tipo Material', editable: true, filter: true, width: 150 },
       {
-        field: 'idMedida', headerName: 'Medidas', editable: true, width: 150, cellEditor: 'agSelectCellEditor',
+        field: 'typeMaterial',
+        headerName: 'Tipo Material',
+        editable: true,
+        filter: true,
+        width: 150,
+      },
+      {
+        field: 'idMedida',
+        headerName: 'Medidas',
+        editable: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: this.medidas ? this.medidas.map(item => item.id) : [],
+          values: this.medidas ? this.medidas.map((item) => item.id) : [],
         },
         valueFormatter: (params) => {
-          const foundItem = this.medidas ? this.medidas.find(item => item.id === params.value) : null;
+          const foundItem = this.medidas
+            ? this.medidas.find((item) => item.id === params.value)
+            : null;
           return foundItem ? `${foundItem.description}` : params.value;
-        }
+        },
       },
       {
-        field: 'idFamilia', headerName: 'Categoria', editable: true, width: 150, cellEditor: 'agSelectCellEditor',
+        field: 'idFamilia',
+        headerName: 'Categoria',
+        editable: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: this.familias ? this.familias.map(item => item.id) : [],
+          values: this.familias ? this.familias.map((item) => item.id) : [],
         },
         valueFormatter: (params) => {
-          const foundItem = this.familias ? this.familias.find(item => item.id === params.value) : null;
+          const foundItem = this.familias
+            ? this.familias.find((item) => item.id === params.value)
+            : null;
           return foundItem ? `${foundItem.description}` : params.value;
         },
         mainMenuItems: (params: GetMainMenuItemsParams) => {
           const familyMenuItems: (MenuItemDef | string)[] = [
             {
-              name: "Añadir familia",
+              name: 'Añadir familia',
               action: () => {
                 this.openAddFamilyModal();
               },
             },
             'separator',
-            ...params.defaultItems.slice(0)
+            ...params.defaultItems.slice(0),
           ];
           return familyMenuItems;
-        }
+        },
       },
-      
+
       {
         field: 'idSubfamilia',
         headerName: 'Presentación',
@@ -247,13 +292,13 @@ public gridOptions: any = {
         mainMenuItems: (params: GetMainMenuItemsParams) => {
           const subFamilyMenuItems: (MenuItemDef | string)[] = [
             {
-              name: "Añadir subfamilia",
+              name: 'Añadir subfamilia',
               action: () => {
                 this.openAddSubFamilyModal();
               },
             },
             'separator',
-            ...params.defaultItems.slice(0)
+            ...params.defaultItems.slice(0),
           ];
           return subFamilyMenuItems;
         },
@@ -262,88 +307,148 @@ public gridOptions: any = {
           const idFamilia = params.data.idFamilia;
 
           // Filtrar subfamilias por parentId (idFamilia) usando subfamilias2
-          const subfamiliasFiltradas = this.subfamilias2.filter(item => item.parentId === idFamilia);
+          const subfamiliasFiltradas = this.subfamilias2.filter(
+            (item) => item.parentId === idFamilia
+          );
 
           return {
-            values: subfamiliasFiltradas.map(item => item.id),
+            values: subfamiliasFiltradas.map((item) => item.id),
             valueFormatter: (id) => {
-              const foundItem = subfamiliasFiltradas.find(item => item.id === id);
+              const foundItem = subfamiliasFiltradas.find(
+                (item) => item.id === id
+              );
               return foundItem ? foundItem.description : id;
-            }
+            },
           };
         },
         valueFormatter: (params) => {
           // Mostrar la descripción de la subfamilia usando subfamilias2
-          const foundItem = this.subfamilias2 ? this.subfamilias2.find(item => item.id === params.value) : null;
+          const foundItem = this.subfamilias2
+            ? this.subfamilias2.find((item) => item.id === params.value)
+            : null;
           return foundItem ? `${foundItem.description}` : params.value;
-        }
+        },
       },
       {
-        field: 'idUbication', headerName: 'Zona', editable: true, width: 150, cellEditor: 'agSelectCellEditor',
+        field: 'idUbication',
+        headerName: 'Zona',
+        editable: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: this.ubicaciones ? this.ubicaciones.map(item => item.id) : [],
+          values: this.ubicaciones
+            ? this.ubicaciones.map((item) => item.id)
+            : [],
         },
         valueFormatter: (params) => {
-          const foundItem = this.ubicaciones ? this.ubicaciones.find(item => item.id === params.value) : null;
+          const foundItem = this.ubicaciones
+            ? this.ubicaciones.find((item) => item.id === params.value)
+            : null;
           return foundItem ? `${foundItem.description}` : params.value;
         },
         mainMenuItems: (params: GetMainMenuItemsParams) => {
           const locationMenuItems: (MenuItemDef | string)[] = [
             {
-              name: "Añadir ubicación",
+              name: 'Añadir ubicación',
               action: () => {
                 this.openAddLocationModal();
               },
             },
             'separator',
-            ...params.defaultItems.slice(0)
+            ...params.defaultItems.slice(0),
           ];
           return locationMenuItems;
-        }
+        },
       },
-     
+
       {
-        field: 'picture', headerName: 'Imagen', editable: false, width: 150,
-        cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
+        field: 'picture',
+        headerName: 'Imagen',
+        editable: false,
+        width: 150,
+        cellRenderer: this.imageHandlerService.imageCellRenderer.bind(
+          this.imageHandlerService
+        ),
         cellRendererParams: {
-          clicked: this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService),
-          field: 'picture'
+          clicked: this.imageHandlerService.onImageCellClicked.bind(
+            this.imageHandlerService
+          ),
+          field: 'picture',
         },
       },
       {
-        field: 'costoMN', headerName: 'Costo MXN', editable: true, width: 150,
+        field: 'costoMN',
+        headerName: 'Costo MXN',
+        editable: true,
+        width: 150,
         valueFormatter: (params) => {
-          return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
-        }
+          return new Intl.NumberFormat('es-MX', {
+            style: 'currency',
+            currency: 'MXN',
+          }).format(params.value);
+        },
       },
       {
-        field: 'costoDLL', headerName: 'Costo DLL', editable: true, width: 150,
+        field: 'costoDLL',
+        headerName: 'Costo DLL',
+        editable: true,
+        width: 150,
         valueFormatter: (params) => {
-          return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(params.value);
-        }
+          return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+          }).format(params.value);
+        },
       },
       {
-        field: 'ventaMN', headerName: 'Venta MXN', editable: true, width: 150,
+        field: 'ventaMN',
+        headerName: 'Venta MXN',
+        editable: true,
+        width: 150,
         valueFormatter: (params) => {
-          return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
-        }
+          return new Intl.NumberFormat('es-MX', {
+            style: 'currency',
+            currency: 'MXN',
+          }).format(params.value);
+        },
       },
       {
-        field: 'ventaDLL', headerName: 'Venta DLL', editable: true, width: 150,
+        field: 'ventaDLL',
+        headerName: 'Venta DLL',
+        editable: true,
+        width: 150,
         valueFormatter: (params) => {
-          return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(params.value);
-        }
+          return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+          }).format(params.value);
+        },
       },
-      { field: 'stockMin', headerName: 'Stock Mínimo', editable: true, width: 150, cellDataType: 'number', cellEditorParams: { min: 0 } },
-      { field: 'stockMax', headerName: 'Stock Máximo', editable: true, width: 150, cellDataType: 'number', cellEditorParams: { min: 0 } },
+      {
+        field: 'stockMin',
+        headerName: 'Stock Mínimo',
+        editable: true,
+        width: 150,
+        cellDataType: 'number',
+        cellEditorParams: { min: 0 },
+      },
+      {
+        field: 'stockMax',
+        headerName: 'Stock Máximo',
+        editable: true,
+        width: 150,
+        cellDataType: 'number',
+        cellEditorParams: { min: 0 },
+      },
       { field: 'vigente', headerName: 'Vigente', editable: true, width: 100 },
-    ]
-  };
+    ];
+  }
 
   obtenerDatos() {
-    this.materialsService.getMaterials(this.idRoot, this.type).subscribe((data: any) => {
-      this.rowData = data;
-    },
+    this.materialsService.getMaterials(this.idRoot, this.type).subscribe(
+      (data: any) => {
+        this.rowData = data;
+      },
       (error) => console.error('Error fetching data:', error)
     );
   }
@@ -394,7 +499,9 @@ public gridOptions: any = {
       this.selectedRowData = selectedNodes[0].data;
       this.selectedFamily = this.selectedRowData.idFamilia;
       this.material.description = this.selectedRowData.description;
-      const foundMeasure = this.medidas.find(item => item.id === this.selectedRowData.idMedida);
+      const foundMeasure = this.medidas.find(
+        (item) => item.id === this.selectedRowData.idMedida
+      );
       this.material.measure = foundMeasure ? foundMeasure.description : '';
       this.material.picture = this.selectedRowData.picture;
     } else {
@@ -405,6 +512,8 @@ public gridOptions: any = {
     const colId = event.column.getColId();
     const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
     const selectedId = selectedRowData.id; // Obtener el ID del registro
+
+    this.notSavedChanges = true;
 
     if (colId === 'loan' || colId === 'saving') {
       // Filtrar el grid para mostrar solo el registro con el ID seleccionado
@@ -429,14 +538,14 @@ public gridOptions: any = {
 
     // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
     this.selectedRowData = selectedRowData;
-  } async activateLoansTab() {
+  }
+  async activateLoansTab() {
     if (!this.isOpen || this.showSavingsTab) {
       await this.adjustGridSize();
       this.showLoansTab = true;
       this.showSavingsTab = false;
       this.isOpen = true;
-    }
-    else {
+    } else {
       await this.resetGridSize();
       this.isOpen = false;
     }
@@ -445,15 +554,13 @@ public gridOptions: any = {
     this.gridHeight = '20vh'; // Adjust as needed
   }
 
-
   async activateSavingsTab() {
     if (!this.isOpen || this.showLoansTab) {
       await this.adjustGridSize();
       this.showLoansTab = false;
       this.showSavingsTab = true;
       this.isOpen = true;
-    }
-    else {
+    } else {
       await this.resetGridSize();
       this.isOpen = false;
     }
@@ -512,7 +619,9 @@ public gridOptions: any = {
   }
 
   async saveChanges() {
-    const isValid = this.rowData.every((item) => item.insumo && item.description);
+    const isValid = this.rowData.every(
+      (item) => item.insumo && item.description
+    );
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
@@ -574,35 +683,35 @@ public gridOptions: any = {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
     selectedData.active = 0;
-    this.materialsService.deleteMaterial(id).pipe(
-      catchError((error) => {
+    this.materialsService
+      .deleteMaterial(id)
+      .pipe(
+        catchError((error) => {
+          alerts.basicAlert(
+            'Eliminar entrada',
+            'Error al eliminar la entrada.',
+            'error'
+          );
+          console.error(error);
+          return EMPTY;
+        })
+      )
+      .subscribe(() => {
         alerts.basicAlert(
           'Eliminar entrada',
-          'Error al eliminar la entrada.',
-          'error'
+          'Entrada eliminada satisfactoriamente.',
+          'success'
         );
-        console.error(error);
-        return EMPTY;
-      })
-    )
-      .subscribe(
-        () => {
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.obtenerDatos();
+        this.obtenerDatos();
 
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.notSavedChanges = false;
-          this.selectedRowData = null;
-        }
-      );
+        alerts.basicAlert(
+          'Eliminar entrada',
+          'Entrada eliminada satisfactoriamente.',
+          'success'
+        );
+        this.notSavedChanges = false;
+        this.selectedRowData = null;
+      });
   }
 
   revert() {
@@ -652,103 +761,131 @@ public gridOptions: any = {
 
   onSubmitFamily() {
     if (this.newFamilyName) {
-      this.catalogsService.addCatalog({
-        id: 0,
-        idCompany: this.idRoot,
-        description: this.newFamilyName,
-        type: 'FAMILY'
-      }).subscribe(
-        (response) => {
-          alerts.basicAlert('Éxito', 'Familia añadida correctamente', 'success');
-          this.obtenerFamilias();
+      this.catalogsService
+        .addCatalog({
+          id: 0,
+          idCompany: this.idRoot,
+          description: this.newFamilyName,
+          type: 'FAMILY',
+        })
+        .subscribe(
+          (response) => {
+            alerts.basicAlert(
+              'Éxito',
+              'Familia añadida correctamente',
+              'success'
+            );
+            this.obtenerFamilias();
 
-          if (response.catalog.type === 'FAMILY' && this.selectedRowData) {
-            this.selectedRowData.idFamilia = response.id;
-            this.notSavedChanges = true;
-          }
+            if (response.catalog.type === 'FAMILY' && this.selectedRowData) {
+              this.selectedRowData.idFamilia = response.id;
+              this.notSavedChanges = true;
+            }
 
-          const modal = document.getElementById('addFamilyModal');
-          if (modal) {
-            const bootstrapModal = bootstrap.Modal.getInstance(modal);
-            bootstrapModal.hide();
+            const modal = document.getElementById('addFamilyModal');
+            if (modal) {
+              const bootstrapModal = bootstrap.Modal.getInstance(modal);
+              bootstrapModal.hide();
+            }
+            this.newFamilyName = '';
+          },
+          (error) => {
+            alerts.basicAlert('Error', 'No se pudo añadir la familia', 'error');
+            console.error(error);
           }
-          this.newFamilyName = '';
-        },
-        (error) => {
-          alerts.basicAlert('Error', 'No se pudo añadir la familia', 'error');
-          console.error(error);
-        }
-      );
+        );
     }
   }
 
   onSubmitSubFamily() {
     if (this.newSubFamilyName && this.selectedFamily) {
-      this.catalogsService.addCatalog({
-        id: 0,
-        description: this.newSubFamilyName,
-        parentId: this.selectedFamily,
-        type: 'SUBFAMILY'
-      }).subscribe(
-        (response) => {
-          alerts.basicAlert('Éxito', 'Subfamilia añadida correctamente', 'success');
-          this.obtenerSubfamilias();
+      this.catalogsService
+        .addCatalog({
+          id: 0,
+          description: this.newSubFamilyName,
+          parentId: this.selectedFamily,
+          type: 'SUBFAMILY',
+        })
+        .subscribe(
+          (response) => {
+            alerts.basicAlert(
+              'Éxito',
+              'Subfamilia añadida correctamente',
+              'success'
+            );
+            this.obtenerSubfamilias();
 
-          if (response.catalog.type === 'SUBFAMILY' && this.selectedRowData) {
-            this.selectedRowData.idSubfamilia = response.id;
-            this.notSavedChanges = true;
-          }
+            if (response.catalog.type === 'SUBFAMILY' && this.selectedRowData) {
+              this.selectedRowData.idSubfamilia = response.id;
+              this.notSavedChanges = true;
+            }
 
-          const modal = document.getElementById('addSubFamilyModal');
-          if (modal) {
-            const bootstrapModal = bootstrap.Modal.getInstance(modal);
-            bootstrapModal.hide();
+            const modal = document.getElementById('addSubFamilyModal');
+            if (modal) {
+              const bootstrapModal = bootstrap.Modal.getInstance(modal);
+              bootstrapModal.hide();
+            }
+            this.newSubFamilyName = '';
+          },
+          (error) => {
+            alerts.basicAlert('Error', 'No se pudo añadir la familia', 'error');
+            console.error(error);
           }
-          this.newSubFamilyName = '';
-        },
-        (error) => {
-          alerts.basicAlert('Error', 'No se pudo añadir la familia', 'error');
-          console.error(error);
-        }
-      );
+        );
     }
   }
 
   onSubmitLocation() {
     console.log('Intentando enviar ubicación:', {
       name: this.newLocationName,
-      idRoot: this.idRoot
+      idRoot: this.idRoot,
     });
 
     if (this.newLocationName) {
-      this.catalogsService.addCatalog({
-        id: 0,
-        idCompany: this.idRoot,
-        description: this.newLocationName,
-        type: 'UBICATION'
-      }).subscribe(
-        (response) => {
-          console.log('Respuesta del servidor:', response);
-          alerts.basicAlert('Éxito', 'Ubicación añadida correctamente', 'success');
-          this.obtenerUbicaciones();
+      this.catalogsService
+        .addCatalog({
+          id: 0,
+          idCompany: this.idRoot,
+          description: this.newLocationName,
+          type: 'UBICATION',
+        })
+        .subscribe(
+          (response) => {
+            console.log('Respuesta del servidor:', response);
+            alerts.basicAlert(
+              'Éxito',
+              'Ubicación añadida correctamente',
+              'success'
+            );
+            this.obtenerUbicaciones();
 
-          if (this.selectedRowData) {
-            this.selectedRowData.idUbication = response.id;
-            this.notSavedChanges = true;
-          }
+            if (this.selectedRowData) {
+              this.selectedRowData.idUbication = response.id;
+              this.notSavedChanges = true;
+            }
 
-          const modal = document.getElementById('addLocationModal');
-          if (modal) {
-            const bootstrapModal = bootstrap.Modal.getInstance(modal);
-            bootstrapModal.hide();
+            const modal = document.getElementById('addLocationModal');
+            if (modal) {
+              const bootstrapModal = bootstrap.Modal.getInstance(modal);
+              bootstrapModal.hide();
+            }
+            this.newLocationName = '';
+          },
+          (error) => {
+            console.error('Error al añadir ubicación:', error);
+            alerts.basicAlert(
+              'Error',
+              'No se pudo añadir la ubicación',
+              'error'
+            );
           }
-          this.newLocationName = '';
-        },
-        (error) => {
-          console.error('Error al añadir ubicación:', error);
-          alerts.basicAlert('Error', 'No se pudo añadir la ubicación', 'error');
-        }
-      );
+        );
     }
+  }
+
+  // ==================== GUARD ALERT UNSAVED CHANGES ====================
+
+  async canDeactivate(): Promise<boolean> {
+    return confirmExitIfUnsaved(this.notSavedChanges);
   }
 }

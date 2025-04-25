@@ -14,7 +14,7 @@
               <div class="col">
                 <ag-grid-angular class="ag-theme-quartz small-text-ag-grid master-grid" style="height: 70vh;"
                   [rowData]="maestroRowData" [columnDefs]="maestroColumnDefs" [gridOptions]="maestroGridOptions"
-                   [rowSelection]="'single'">
+                   [rowSelection]="'single'" [stopEditingWhenCellsLoseFocus]="true">
                 </ag-grid-angular>
               </div>
             </div>

@@ -3,28 +3,48 @@ import { Component, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { NgSelectModule } from '@ng-select/ng-select';
-import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
+import {
+  CellDoubleClickedEvent,
+  ColDef,
+  GridApi,
+  GridReadyEvent,
+  ICellRendererParams,
+} from 'ag-grid-enterprise';
 import { PosService } from 'app/services/pos.service';
 import { SignalsService } from 'app/services/signals.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { SearchableSelectComponent } from 'app/shared/searchable-select/searchable-select.component';
 import { alerts } from 'app/helpers/alerts';
-import { catchError, debounceTime, distinctUntilChanged, Observable, of, Subject, switchMap } from 'rxjs';
+import {
+  catchError,
+  debounceTime,
+  distinctUntilChanged,
+  Observable,
+  of,
+  Subject,
+  switchMap,
+} from 'rxjs';
 import { CustomersService } from 'app/services/customers.service';
 
 @Component({
   selector: 'app-pos',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, SearchableSelectComponent, NgSelectModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    AgGridModule,
+    SearchableSelectComponent,
+    NgSelectModule,
+  ],
   templateUrl: './pos.component.html',
-  styleUrl: './pos.component.scss'
+  styleUrl: './pos.component.scss',
 })
 export class PosComponent {
   // Inyección de servicios
-  private posService       = inject(PosService);
-  private signalsService   = inject(SignalsService);
+  private posService = inject(PosService);
+  private signalsService = inject(SignalsService);
   private materialsService = inject(MaterialsService);
-  private customerService  = inject(CustomersService);
+  private customerService = inject(CustomersService);
 
   // products
   productInput$ = new Subject<string>();
@@ -45,15 +65,15 @@ export class PosComponent {
   credit: boolean = false;
 
   // Arrays para almacenar datos
-  clients: any[] = [];          // Lista de clientes
-  rowData: any[] = [];         // Datos de la tabla
-  productos: any[] = [];       // Lista de productos
+  clients: any[] = []; // Lista de clientes
+  rowData: any[] = []; // Datos de la tabla
+  productos: any[] = []; // Lista de productos
   newlyAddedRows: string[] = []; // IDs de filas recién añadidas
 
   // Variables de control del grid
-  selectedRowData: any = null;  // Fila seleccionada actualmente
-  tempIdCounter: number = 0;    // Contador para IDs temporales
-  private gridApi: GridApi;     // API del grid
+  selectedRowData: any = null; // Fila seleccionada actualmente
+  tempIdCounter: number = 0; // Contador para IDs temporales
+  private gridApi: GridApi; // API del grid
 
   // Configuración del grid
   public rowSelection: 'single' | 'multiple' = 'single';
@@ -81,15 +101,17 @@ export class PosComponent {
     this.products$ = this.productInput$.pipe(
       debounceTime(200),
       distinctUntilChanged(),
-      switchMap(term => {
+      switchMap((term) => {
         console.log('Buscando materiales con término:', term);
-        return this.materialsService.getMaterialsByNameOrBarcode(this.idCompany, term).pipe(
-          catchError(error => {
-            console.error('Error fetching materials:', error);
-            // Return an empty array instead of throwing an error
-            return of([]);
-          })
-        );
+        return this.materialsService
+          .getMaterialsByNameOrBarcode(this.idCompany, term)
+          .pipe(
+            catchError((error) => {
+              console.error('Error fetching materials:', error);
+              // Return an empty array instead of throwing an error
+              return of([]);
+            })
+          );
       })
     );
   }
@@ -104,12 +126,18 @@ export class PosComponent {
     if (!product) return;
 
     if (this.idCustomer == null) {
-      alerts.basicAlert('Error', 'Seleccione un cliente antes de agregar un producto.', 'error');
+      alerts.basicAlert(
+        'Error',
+        'Seleccione un cliente antes de agregar un producto.',
+        'error'
+      );
       return;
     }
 
     // Find existing row with the same product
-    const existingRowIndex = this.rowData.findIndex(row => row.idProduct === product.id);
+    const existingRowIndex = this.rowData.findIndex(
+      (row) => row.idProduct === product.id
+    );
 
     if (existingRowIndex !== -1) {
       // Increment quantity of existing row
@@ -117,7 +145,9 @@ export class PosComponent {
       updatedRowData[existingRowIndex] = {
         ...updatedRowData[existingRowIndex],
         quantity: (updatedRowData[existingRowIndex].quantity || 0) + 1,
-        total: product.price * ((updatedRowData[existingRowIndex].quantity || 0) + 1)
+        total:
+          product.price *
+          ((updatedRowData[existingRowIndex].quantity || 0) + 1),
       };
 
       this.rowData = updatedRowData;
@@ -135,7 +165,7 @@ export class PosComponent {
         unit: true,
         boxNumber: 0,
         unitNumber: 0,
-        active: true
+        active: true,
       };
 
       this.rowData = [...this.rowData, newItem];
@@ -183,7 +213,11 @@ export class PosComponent {
 
   addRow() {
     if (this.idCustomer == null) {
-      alerts.basicAlert('Error', 'No se puede agregar una fila sin seleccionar un cliente.', 'error');
+      alerts.basicAlert(
+        'Error',
+        'No se puede agregar una fila sin seleccionar un cliente.',
+        'error'
+      );
       return;
     }
 
@@ -198,8 +232,8 @@ export class PosComponent {
       unit: true,
       boxNumber: 0,
       unitNumber: 0,
-      active: true
-    }
+      active: true,
+    };
 
     this.rowData = [...this.rowData, newItem];
     this.newlyAddedRows.push(tempId);
@@ -216,11 +250,17 @@ export class PosComponent {
 
   deleteRow() {
     if (!this.selectedRowData) {
-      alerts.basicAlert('Error', 'Por favor, seleccione una fila para eliminar.', 'error');
+      alerts.basicAlert(
+        'Error',
+        'Por favor, seleccione una fila para eliminar.',
+        'error'
+      );
       return;
     }
 
-    this.rowData = this.rowData.filter(row => row.id !== this.selectedRowData.id);
+    this.rowData = this.rowData.filter(
+      (row) => row.id !== this.selectedRowData.id
+    );
     this.gridApi.setGridOption('rowData', this.rowData);
     this.selectedRowData = null;
   }
@@ -232,7 +272,11 @@ export class PosComponent {
         console.log(this.idBranch, this.idCustomer);
         console.log(setupResponse);
         if (setupResponse.length === 0) {
-          alerts.basicAlert('Error', 'No se encontraron datos de configuración para el POS.', 'error');
+          alerts.basicAlert(
+            'Error',
+            'No se encontraron datos de configuración para el POS.',
+            'error'
+          );
           return;
         }
 
@@ -247,7 +291,7 @@ export class PosComponent {
           lector: this.lector,
           credit: this.credit,
           amount: this.totalGeneral,
-          active: true
+          active: true,
         };
 
         this.posService.addSaleXCustomerItem(data).subscribe({
@@ -256,16 +300,16 @@ export class PosComponent {
             console.log('ID de venta:', saleId);
 
             // Actualizar el idSale en todas las filas y eliminar el id temporal
-            this.rowData = this.rowData.map(row => {
+            this.rowData = this.rowData.map((row) => {
               const { id, ...rowWithoutId } = row;
               return {
                 ...rowWithoutId,
-                idSale: saleId
+                idSale: saleId,
               };
             });
 
             // Crear un array de promesas para enviar cada fila
-            const savePromises = this.rowData.map(row =>
+            const savePromises = this.rowData.map((row) =>
               this.posService.addSaleXConceptItem(row).toPromise()
             );
 
@@ -273,40 +317,70 @@ export class PosComponent {
             Promise.all(savePromises)
               .then(() => {
                 // Mostrar mensaje de éxito
-                alerts.basicAlert('Éxito', 'La compra se ha realizado correctamente. El ID de nota es el ' + numberNote + '.', 'success');
+                alerts.basicAlert(
+                  'Éxito',
+                  'La compra se ha realizado correctamente. El ID de nota es el ' +
+                    numberNote +
+                    '.',
+                  'success'
+                );
 
                 // Actualizar el consecutive en el setupResponse
-                const updatedSetup = { ...setupResponse[0], consecutive: newConsecutive };
-                this.posService.updatePosSetup(this.idBranch, this.idCustomer, updatedSetup).subscribe({
-                  next: () => {
-                    console.log('Consecutive actualizado correctamente.');
-                  },
-                  error: (error) => {
-                    console.error('Error al actualizar el consecutive:', error);
-                    alerts.basicAlert('Error', 'Hubo un error al actualizar el consecutive.', 'error');
-                  }
-                });
+                const updatedSetup = {
+                  ...setupResponse[0],
+                  consecutive: newConsecutive,
+                };
+                this.posService
+                  .updatePosSetup(this.idBranch, this.idCustomer, updatedSetup)
+                  .subscribe({
+                    next: () => {
+                      console.log('Consecutive actualizado correctamente.');
+                    },
+                    error: (error) => {
+                      console.error(
+                        'Error al actualizar el consecutive:',
+                        error
+                      );
+                      alerts.basicAlert(
+                        'Error',
+                        'Hubo un error al actualizar el consecutive.',
+                        'error'
+                      );
+                    },
+                  });
 
                 // Limpiar el grid
                 this.rowData = [];
                 this.gridApi.setGridOption('rowData', this.rowData);
                 this._totalGeneral = 0;
               })
-              .catch(error => {
+              .catch((error) => {
                 console.error('Error al guardar los conceptos:', error);
-                alerts.basicAlert('Error', 'Hubo un error al guardar los conceptos.', 'error');
+                alerts.basicAlert(
+                  'Error',
+                  'Hubo un error al guardar los conceptos.',
+                  'error'
+                );
               });
           },
           error: (error) => {
             console.error('Error al crear la venta', error);
-            alerts.basicAlert('Error', 'Hubo un error al crear la venta.', 'error');
-          }
+            alerts.basicAlert(
+              'Error',
+              'Hubo un error al crear la venta.',
+              'error'
+            );
+          },
         });
       },
       error: (error) => {
         console.error('Error al obtener la configuración del POS', error);
-        alerts.basicAlert('Error', 'Hubo un error al obtener la configuración del POS.', 'error');
-      }
+        alerts.basicAlert(
+          'Error',
+          'Hubo un error al obtener la configuración del POS.',
+          'error'
+        );
+      },
     });
   }
 
@@ -322,9 +396,13 @@ export class PosComponent {
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-    this.gridApi.addEventListener('selectionChanged', () => this.onSelectionChanged());
+    this.gridApi.addEventListener('selectionChanged', () =>
+      this.onSelectionChanged()
+    );
     // Agregar el evento para actualizar el total cuando cambie una celda
-    this.gridApi.addEventListener('cellValueChanged', () => this.calculateTotal());
+    this.gridApi.addEventListener('cellValueChanged', () =>
+      this.calculateTotal()
+    );
   }
 
   // Método para calcular el total
@@ -332,7 +410,7 @@ export class PosComponent {
     this._totalGeneral = this.rowData.reduce((sum, row) => {
       const quantity = Number(row.quantity) || 0;
       const pu = Number(row.pu) || 0;
-      return sum + (quantity * pu);
+      return sum + quantity * pu;
     }, 0);
   }
 
@@ -369,12 +447,12 @@ export class PosComponent {
       {
         field: 'id',
         headerName: 'id',
-        hide: true
+        hide: true,
       },
       {
         field: 'idSale',
         headerName: 'idSale',
-        hide: true
+        hide: true,
       },
       {
         field: 'idProduct',
@@ -398,7 +476,7 @@ export class PosComponent {
         flex: 1,
         editable: true,
         type: 'numericColumn',
-        valueParser: (params) => Number(params.newValue)
+        valueParser: (params) => Number(params.newValue),
       },
       {
         field: 'pu',
@@ -408,9 +486,9 @@ export class PosComponent {
         valueFormatter: (params) => {
           return new Intl.NumberFormat('es-MX', {
             style: 'currency',
-            currency: 'MXN'
+            currency: 'MXN',
           }).format(params.value || 0);
-        }
+        },
       },
       {
         field: 'total',
@@ -425,29 +503,29 @@ export class PosComponent {
         valueFormatter: (params) => {
           return new Intl.NumberFormat('es-MX', {
             style: 'currency',
-            currency: 'MXN'
+            currency: 'MXN',
           }).format(params.value || 0);
-        }
+        },
       },
       {
         field: 'unit',
         headerName: '¿Menudeo?',
         flex: 1,
         editable: true,
-        cellDataType: 'boolean'
+        cellDataType: 'boolean',
       },
       {
         field: 'boxNumber',
         headerName: 'Caja',
         flex: 1,
-        editable: true
+        editable: true,
       },
       {
         field: 'unitNumber',
         headerName: 'Número de Unidad',
         flex: 1,
-        editable: true
-      }
+        editable: true,
+      },
     ];
   }
 
@@ -460,7 +538,7 @@ export class PosComponent {
   formatCurrency(value: number): string {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
-      currency: 'MXN'
+      currency: 'MXN',
     }).format(value);
   }
 
@@ -475,4 +553,3 @@ export class PosComponent {
     }
   }
 }
-

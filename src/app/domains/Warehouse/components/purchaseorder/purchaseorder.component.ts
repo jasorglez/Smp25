@@ -1,5 +1,12 @@
 import { Component, effect, HostListener, inject } from '@angular/core';
-import { CellDoubleClickedEvent, ColDef, GridApi, GridChartsModule, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
+import {
+  CellDoubleClickedEvent,
+  ColDef,
+  GridApi,
+  GridChartsModule,
+  GridReadyEvent,
+  ICellRendererParams,
+} from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
@@ -17,6 +24,8 @@ import { ReceiptsService } from 'app/services/receipts.service';
 import { UsersService } from 'app/services/users.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { SetupService } from 'app/services/setup.service';
+import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
+import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 
 interface Catalog {
   id: number;
@@ -33,10 +42,9 @@ interface Provider {
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
   templateUrl: './purchaseorder.component.html',
-  styleUrl: './purchaseorder.component.scss'
+  styleUrl: './purchaseorder.component.scss',
 })
-export class PurchaseOrderComponent {
-
+export class PurchaseOrderComponent implements CanComponentDeactivate {
   // Inject of new way for Angular 18
   private requisitionsService = inject(OcAndReqsService);
   private providersService = inject(ProvidersService);
@@ -51,7 +59,7 @@ export class PurchaseOrderComponent {
   private setupService = inject(SetupService);
 
   // Variables compartidas
-  
+
   masterNotSavedChanges: boolean = false;
   detailsNotSavedChanges: boolean = false;
   id: string = null;
@@ -71,7 +79,7 @@ export class PurchaseOrderComponent {
   masterRowData: any[] = [];
   masterSelectedRowData: any = null;
   newlyAddedMasterRows: string[] = [];
-  
+
   // Catálogos Master
   requisiciones: any[] = [];
   proveedores: any[] = [];
@@ -85,7 +93,7 @@ export class PurchaseOrderComponent {
   detailsRowData: any[] = [];
   detailsSelectedRowData: any = null;
   newlyAddedDetailRows: string[] = [];
-  
+
   // Catálogos Details
   productos: any[] = [];
 
@@ -103,18 +111,16 @@ export class PurchaseOrderComponent {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.idRequisition = this.signalsService.getIdRequisition()();
       this.getSetupData();
-      this.idReference = this.projectOrBranch ?  this.idProject : this.idBranch;
+      this.idReference = this.projectOrBranch ? this.idProject : this.idBranch;
 
-
-        this.obtenerDatos();
-        this.obtenerRequisiciones();
-        this.obtenerProductos();
-      
+      this.obtenerDatos();
+      this.obtenerRequisiciones();
+      this.obtenerProductos();
 
       if (this.idRequisition != null) {
         this.obtenerDetalles();
       }
-    })
+    });
   }
 
   ngOnInit() {
@@ -165,56 +171,64 @@ export class PurchaseOrderComponent {
     },
   };
 
-
   getSetupData() {
     this.setupService.getWarehouseSetup(this.idRoot).subscribe({
       next: (data: any) => {
         this.projectOrBranch = data[0].projectOrBranch;
-        this.typeReference = this.projectOrBranch ?  'project' : 'branch';
+        this.typeReference = this.projectOrBranch ? 'project' : 'branch';
         console.log(this.projectOrBranch);
       },
       error: (err) => {
         if (err.status === 404) {
           console.error(err);
-          alerts.basicAlert('Requisiciones', 'No se encontró la configuración de almacenes de la empresa.', 'error');
+          alerts.basicAlert(
+            'Requisiciones',
+            'No se encontró la configuración de almacenes de la empresa.',
+            'error'
+          );
         }
-      }
+      },
     });
   }
 
-
   nameRequisition = this.signalsService.getRequisitionName();
 
-// Column Definitions: Defines the columns to be displayed.
-public masterGridOptions: any = {
-  headerHeight: 30,
-  rowHeight: 30,
-  rowClass: (params) => {
-    // Verificar si la fila está seleccionada
-    if (params.node.isSelected()) {
-      return 'selected-row';
-    }
-    return '';
-  },
-  onRowClicked: (event) => {
-    // Seleccionar la fila al hacer clic en cualquier celda
-    event.node.setSelected(true);
-  },
-  onRowSelected: (event) => {
-    // Corregir usando el api del evento y verificando existencia
-    if (event.node.isSelected() && event.api) {
-      event.api.forEachNode((node) => {
-        if (node.id !== event.node.id) {
-          node.setSelected(false);
-        }
-      });
-    }
-  },
-};
-  
+  // Column Definitions: Defines the columns to be displayed.
+  public masterGridOptions: any = {
+    headerHeight: 30,
+    rowHeight: 30,
+    rowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onRowClicked: (event) => {
+      // Seleccionar la fila al hacer clic en cualquier celda
+      event.node.setSelected(true);
+    },
+    onRowSelected: (event) => {
+      // Corregir usando el api del evento y verificando existencia
+      if (event.node.isSelected() && event.api) {
+        event.api.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    },
+  };
+
   get colMaster(): ColDef[] {
     return [
-      { field: 'folio', headerName: 'Orden de compra', editable: true, filter: true, width: 150 },
+      {
+        field: 'folio',
+        headerName: 'Orden de compra',
+        editable: true,
+        filter: true,
+        width: 150,
+      },
       {
         field: 'dateCreate',
         headerName: 'Fecha Solicitud',
@@ -226,7 +240,7 @@ public masterGridOptions: any = {
             return params.value.split('T')[0];
           }
           return '';
-        }
+        },
       },
       {
         field: 'dateSupply',
@@ -239,55 +253,116 @@ public masterGridOptions: any = {
             return params.value.split('T')[0];
           }
           return '';
-        }
+        },
       },
       {
-        field: 'idReq', headerName: 'Requisición', editable: true, filter: true, width: 150, cellEditor: 'agSelectCellEditor',
+        field: 'idReq',
+        headerName: 'Requisición',
+        editable: true,
+        filter: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: this.requisiciones ? this.requisiciones.map(item => item.id) : [],
+          values: this.requisiciones
+            ? this.requisiciones.map((item) => item.id)
+            : [],
         },
         valueFormatter: (params) => {
-          const foundItem = this.requisiciones ? this.requisiciones.find(item => item.id === params.value) : null;
+          const foundItem = this.requisiciones
+            ? this.requisiciones.find((item) => item.id === params.value)
+            : null;
           return foundItem ? `${foundItem.folio}` : params.value;
-        }
+        },
       },
       {
-        field: 'idProvider', headerName: 'Proveedor', editable: true, filter: true, width: 150, cellEditor: 'agSelectCellEditor',
+        field: 'idProvider',
+        headerName: 'Proveedor',
+        editable: true,
+        filter: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: this.proveedores ? this.proveedores.map(item => item.id) : [],
+          values: this.proveedores
+            ? this.proveedores.map((item) => item.id)
+            : [],
         },
         valueFormatter: (params) => {
-          const foundItem = this.proveedores ? this.proveedores.find(item => item.id === params.value) : null;
+          const foundItem = this.proveedores
+            ? this.proveedores.find((item) => item.id === params.value)
+            : null;
           return foundItem ? `${foundItem.name}` : params.value;
-        }
+        },
       },
-      { field: 'delivery', headerName: 'Entrega', editable: true, filter: true, width: 150 },
-      { field: 'deliveryTime', headerName: 'Tiempo de entrega', editable: true, filter: true, width: 150 },
       {
-        field: 'idCurrency', headerName: 'Moneda', editable: true, width: 150, cellEditor: 'agSelectCellEditor',
+        field: 'delivery',
+        headerName: 'Entrega',
+        editable: true,
+        filter: true,
+        width: 150,
+      },
+      {
+        field: 'deliveryTime',
+        headerName: 'Tiempo de entrega',
+        editable: true,
+        filter: true,
+        width: 150,
+      },
+      {
+        field: 'idCurrency',
+        headerName: 'Moneda',
+        editable: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: this.monedas ? this.monedas.map(item => item.id) : [],
+          values: this.monedas ? this.monedas.map((item) => item.id) : [],
         },
         valueFormatter: (params) => {
-          const foundItem = this.monedas ? this.monedas.find(item => item.id === params.value) : null;
+          const foundItem = this.monedas
+            ? this.monedas.find((item) => item.id === params.value)
+            : null;
           return foundItem ? `${foundItem.description}` : params.value;
-        }
+        },
       },
       {
-        field: 'idPayment', headerName: 'Forma de pago', editable: true, width: 150, cellEditor: 'agSelectCellEditor',
+        field: 'idPayment',
+        headerName: 'Forma de pago',
+        editable: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: this.tipoPago ? this.tipoPago.map(item => item.id) : [],
+          values: this.tipoPago ? this.tipoPago.map((item) => item.id) : [],
         },
         valueFormatter: (params) => {
-          const foundItem = this.tipoPago ? this.tipoPago.find(item => item.id === params.value) : null;
+          const foundItem = this.tipoPago
+            ? this.tipoPago.find((item) => item.id === params.value)
+            : null;
           return foundItem ? `${foundItem.description}` : params.value;
-        }
+        },
       },
-      { field: 'discount', headerName: 'Descuento', editable: true, width: 150 },
-      { field: 'ivaRetention', headerName: 'Retención IVA', editable: true, width: 150 },
-      { field: 'conditions', headerName: 'Condición', editable: true, width: 150 },
       {
-        field: 'comments', headerName: 'Comentario', editable: false, width: 150, cellEditor: 'agPopupTextCellEditor',
+        field: 'discount',
+        headerName: 'Descuento',
+        editable: true,
+        width: 150,
+      },
+      {
+        field: 'ivaRetention',
+        headerName: 'Retención IVA',
+        editable: true,
+        width: 150,
+      },
+      {
+        field: 'conditions',
+        headerName: 'Condición',
+        editable: true,
+        width: 150,
+      },
+      {
+        field: 'comments',
+        headerName: 'Comentario',
+        editable: false,
+        width: 150,
+        cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
           cols: 50,
@@ -311,10 +386,14 @@ public masterGridOptions: any = {
             return params.value;
           }
           return params.value;
-        }
+        },
       },
       {
-        field: 'address', headerName: 'Dirección', editable: false, width: 150, cellEditor: 'agPopupTextCellEditor',
+        field: 'address',
+        headerName: 'Dirección',
+        editable: false,
+        width: 150,
+        cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
           cols: 50,
@@ -338,10 +417,14 @@ public masterGridOptions: any = {
             return params.value;
           }
           return params.value;
-        }
+        },
       },
       {
-        field: 'city', headerName: 'Ciudad', editable: false, width: 150, cellEditor: 'agPopupTextCellEditor',
+        field: 'city',
+        headerName: 'Ciudad',
+        editable: false,
+        width: 150,
+        cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
           cols: 50,
@@ -365,10 +448,14 @@ public masterGridOptions: any = {
             return params.value;
           }
           return params.value;
-        }
+        },
       },
       {
-        field: 'phone', headerName: 'Teléfono', editable: false, width: 150, cellEditor: 'agPopupTextCellEditor',
+        field: 'phone',
+        headerName: 'Teléfono',
+        editable: false,
+        width: 150,
+        cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
           cols: 50,
@@ -392,72 +479,110 @@ public masterGridOptions: any = {
             return params.value;
           }
           return params.value;
-        }
+        },
       },
       {
-        field: 'idSolicit', headerName: 'Solicita', editable: true, width: 150, cellEditor: 'agSelectCellEditor',
+        field: 'idSolicit',
+        headerName: 'Solicita',
+        editable: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: this.usuarios ? this.usuarios.map(item => item.id) : [],
+          values: this.usuarios ? this.usuarios.map((item) => item.id) : [],
         },
         valueFormatter: (params) => {
-          const foundItem = this.usuarios ? this.usuarios.find(item => item.id === params.value) : null;
+          const foundItem = this.usuarios
+            ? this.usuarios.find((item) => item.id === params.value)
+            : null;
           return foundItem ? `${foundItem.displayName}` : params.value;
-        }
+        },
       },
       {
-        field: 'idAuthorize', headerName: 'Autoriza', editable: true, width: 150, cellEditor: 'agSelectCellEditor',
+        field: 'idAuthorize',
+        headerName: 'Autoriza',
+        editable: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: this.usuarios ? this.usuarios.map(item => item.id) : [],
+          values: this.usuarios ? this.usuarios.map((item) => item.id) : [],
         },
         valueFormatter: (params) => {
-          const foundItem = this.usuarios ? this.usuarios.find(item => item.id === params.value) : null;
+          const foundItem = this.usuarios
+            ? this.usuarios.find((item) => item.id === params.value)
+            : null;
           return foundItem ? `${foundItem.displayName}` : params.value;
-        }
+        },
       },
-    ]
-  };
+    ];
+  }
 
   // Column Definitions: Defines the columns to be displayed.
   get colDetails(): ColDef[] {
     return [
       {
-        field: 'idSupplie', headerName: 'Producto', editable: true, flex: 3, cellEditor: 'agSelectCellEditor',
+        field: 'idSupplie',
+        headerName: 'Producto',
+        editable: true,
+        flex: 3,
+        cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: this.productos ? this.productos.map(item => item.id) : [],
+          values: this.productos ? this.productos.map((item) => item.id) : [],
         },
         valueFormatter: (params) => {
-          const foundItem = this.productos ? this.productos.find(item => item.id === params.value) : null;
+          const foundItem = this.productos
+            ? this.productos.find((item) => item.id === params.value)
+            : null;
           return foundItem ? `${foundItem.description}` : params.value;
-        }
-      },
-      {
-        field: 'quantity', headerName: 'Cantidad', editable: true, filter: true, flex: 1, cellDataType: 'number',
-        cellEditorParams: {
-          min: 0
         },
-        onCellValueChanged: (event: any) => this.updateTotal(event.data)
       },
       {
-        field: 'price', headerName: 'Precio', editable: true, filter: true, flex: 1, cellDataType: 'number',
+        field: 'quantity',
+        headerName: 'Cantidad',
+        editable: true,
+        filter: true,
+        flex: 1,
+        cellDataType: 'number',
         cellEditorParams: {
-          min: 0
+          min: 0,
+        },
+        onCellValueChanged: (event: any) => this.updateTotal(event.data),
+      },
+      {
+        field: 'price',
+        headerName: 'Precio',
+        editable: true,
+        filter: true,
+        flex: 1,
+        cellDataType: 'number',
+        cellEditorParams: {
+          min: 0,
         },
         valueFormatter: (params) => {
           return params.value ? `$${params.value.toFixed(2)}` : '';
         },
-        onCellValueChanged: (event: any) => this.updateTotal(event.data)
+        onCellValueChanged: (event: any) => this.updateTotal(event.data),
       },
       {
-        field: 'total', headerName: 'Total', editable: false, filter: true, flex: 1, cellDataType: 'number',
+        field: 'total',
+        headerName: 'Total',
+        editable: false,
+        filter: true,
+        flex: 1,
+        cellDataType: 'number',
         cellEditorParams: {
-          min: 0
+          min: 0,
         },
         valueFormatter: (params) => {
           return params.value ? `$${params.value.toFixed(2)}` : '';
-        }
+        },
       },
       {
-        field: 'comment', headerName: 'Comentarios', editable: false, filter: true, flex: 2, cellEditor: 'agPopupTextCellEditor',
+        field: 'comment',
+        headerName: 'Comentarios',
+        editable: false,
+        filter: true,
+        flex: 2,
+        cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
           cols: 50,
@@ -481,35 +606,42 @@ public masterGridOptions: any = {
             return params.value;
           }
           return params.value;
-        }
+        },
       },
-    ]
-  };
+    ];
+  }
 
   // ==================== MASTER METHODS ====================
 
   obtenerDatos() {
-    this.requisitionsService.getOcAndReqs(this.typeReference, this.idReference, "OC").subscribe((data: any) => {
-      this.masterRowData = data;
-    },
-      (error) => console.error('Error fetching data:', error)
-    );
+    this.requisitionsService
+      .getOcAndReqs(this.typeReference, this.idReference, 'OC')
+      .subscribe(
+        (data: any) => {
+          this.masterRowData = data;
+        },
+        (error) => console.error('Error fetching data:', error)
+      );
   }
 
   obtenerRequisiciones() {
-    this.requisitionsService.getOcAndReqs(this.typeReference, this.idReference, "REQUIS").subscribe((data: any) => {
-      this.requisiciones = data;
-      console.log(this.requisiciones);
-    },
-      (error) => console.error('Error fetching requisitions:', error)
-    );
+    this.requisitionsService
+      .getOcAndReqs(this.typeReference, this.idReference, 'REQUIS')
+      .subscribe(
+        (data: any) => {
+          this.requisiciones = data;
+          console.log(this.requisiciones);
+        },
+        (error) => console.error('Error fetching requisitions:', error)
+      );
   }
 
   obtenerProveedores() {
-    this.providersService.getProviders().subscribe((data: any) => {
-      this.proveedores = data;
-      console.log(this.proveedores);
-    },
+    this.providersService.getProviders().subscribe(
+      (data: any) => {
+        this.proveedores = data;
+        console.log(this.proveedores);
+      },
       (error) => console.error('Error fetching requisitions:', error)
     );
   }
@@ -566,13 +698,19 @@ public masterGridOptions: any = {
       // Crear una copia profunda del dato seleccionado
       this.masterSelectedRowData = { ...selectedNodes[0].data };
       this.detailsNotSavedChanges = false;
-      
+
       // Solo actualizar las señales si no es una fila nueva
       if (!this.newlyAddedMasterRows.includes(this.masterSelectedRowData.id)) {
         this.signalsService.setIdRequisition(this.masterSelectedRowData.id);
-        this.signalsService.setRequisitionName(this.masterSelectedRowData.folio);
-        this.signalsService.setRequisitionSolicitant(this.masterSelectedRowData.solicit);
-        this.signalsService.setRequisitionDate(this.masterSelectedRowData.dateCreate);
+        this.signalsService.setRequisitionName(
+          this.masterSelectedRowData.folio
+        );
+        this.signalsService.setRequisitionSolicitant(
+          this.masterSelectedRowData.solicit
+        );
+        this.signalsService.setRequisitionDate(
+          this.masterSelectedRowData.dateCreate
+        );
         this.idRequisition = this.signalsService.getIdRequisition()();
       }
     } else {
@@ -582,17 +720,17 @@ public masterGridOptions: any = {
 
   onMasterCellValueChanged(event: any) {
     const updatedData = { ...event.data };
-    
+
     // Preservar el estado temporal y la selección
     if (this.newlyAddedMasterRows.includes(updatedData.id)) {
       updatedData.__isNew = true;
     }
-    
+
     updatedData.__modified = true;
     this.masterNotSavedChanges = true;
 
     // Actualizar el array de datos
-    this.masterRowData = this.masterRowData.map(row => 
+    this.masterRowData = this.masterRowData.map((row) =>
       row.id === updatedData.id ? updatedData : row
     );
 
@@ -601,7 +739,10 @@ public masterGridOptions: any = {
     if (rowNode) {
       rowNode.setData(updatedData);
       // Mantener la selección si es necesario
-      if (this.masterSelectedRowData && this.masterSelectedRowData.id === updatedData.id) {
+      if (
+        this.masterSelectedRowData &&
+        this.masterSelectedRowData.id === updatedData.id
+      ) {
         rowNode.setSelected(true);
       }
     }
@@ -653,8 +794,8 @@ public masterGridOptions: any = {
     this.masterNotSavedChanges = true;
 
     // Forzar la actualización de la cuadrícula y seleccionar la nueva fila
-    this.masterGridApi.setGridOption("rowData", this.masterRowData);
-    
+    this.masterGridApi.setGridOption('rowData', this.masterRowData);
+
     // Asegurarnos de que la fila nueva esté seleccionada
     requestAnimationFrame(() => {
       const rowNode = this.masterGridApi.getRowNode(tempId);
@@ -728,35 +869,35 @@ public masterGridOptions: any = {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
     selectedData.active = 0;
-    this.requisitionsService.deleteOcAndReq(id).pipe(
-      catchError((error) => {
+    this.requisitionsService
+      .deleteOcAndReq(id)
+      .pipe(
+        catchError((error) => {
+          alerts.basicAlert(
+            'Eliminar entrada',
+            'Error al eliminar la entrada.',
+            'error'
+          );
+          console.error(error);
+          return EMPTY;
+        })
+      )
+      .subscribe(() => {
         alerts.basicAlert(
           'Eliminar entrada',
-          'Error al eliminar la entrada.',
-          'error'
+          'Entrada eliminada satisfactoriamente.',
+          'success'
         );
-        console.error(error);
-        return EMPTY;
-      })
-    )
-      .subscribe(
-        () => {
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.obtenerDatos();
+        this.obtenerDatos();
 
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.masterNotSavedChanges = false;
-          this.masterSelectedRowData = null;
-        }
-      );
+        alerts.basicAlert(
+          'Eliminar entrada',
+          'Entrada eliminada satisfactoriamente.',
+          'success'
+        );
+        this.masterNotSavedChanges = false;
+        this.masterSelectedRowData = null;
+      });
   }
 
   revertMasterData() {
@@ -768,14 +909,14 @@ public masterGridOptions: any = {
     this.receiptsService.generateOC(idRequisition, action);
   }
 
- 
-
   // ==================== DETAILS METHODS ====================
 
   obtenerDetalles() {
-    this.requisitionsService.getReqItems(this.idRequisition).subscribe((data: any) => {
-      this.detailsRowData = data;
-    });
+    this.requisitionsService
+      .getReqItems(this.idRequisition)
+      .subscribe((data: any) => {
+        this.detailsRowData = data;
+      });
   }
 
   obtenerProductos() {
@@ -818,7 +959,9 @@ public masterGridOptions: any = {
   }
 
   async saveDetailsChanges() {
-    const isValid = this.detailsRowData.every((item) => item.idSupplie && item.comment && item.dateuse);
+    const isValid = this.detailsRowData.every(
+      (item) => item.idSupplie && item.comment && item.dateuse
+    );
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
@@ -881,35 +1024,35 @@ public masterGridOptions: any = {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
     selectedData.active = 0;
-    this.requisitionsService.deleteReqItem(id).pipe(
-      catchError((error) => {
+    this.requisitionsService
+      .deleteReqItem(id)
+      .pipe(
+        catchError((error) => {
+          alerts.basicAlert(
+            'Eliminar entrada',
+            'Error al eliminar la entrada.',
+            'error'
+          );
+          console.error(error);
+          return EMPTY;
+        })
+      )
+      .subscribe(() => {
         alerts.basicAlert(
           'Eliminar entrada',
-          'Error al eliminar la entrada.',
-          'error'
+          'Entrada eliminada satisfactoriamente.',
+          'success'
         );
-        console.error(error);
-        return EMPTY;
-      })
-    )
-      .subscribe(
-        () => {
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.obtenerDetalles();
+        this.obtenerDetalles();
 
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.detailsNotSavedChanges = false;
-          this.detailsSelectedRowData = null;
-        }
-      );
+        alerts.basicAlert(
+          'Eliminar entrada',
+          'Entrada eliminada satisfactoriamente.',
+          'success'
+        );
+        this.detailsNotSavedChanges = false;
+        this.detailsSelectedRowData = null;
+      });
   }
 
   revertDetailsData() {
@@ -957,4 +1100,9 @@ public masterGridOptions: any = {
     return cleanedData;
   }
 
+  // ==================== GUARD ALERT UNSAVED CHANGES ====================
+
+  async canDeactivate(): Promise<boolean> {
+    return confirmExitIfUnsaved(this.masterNotSavedChanges);
+  }
 }

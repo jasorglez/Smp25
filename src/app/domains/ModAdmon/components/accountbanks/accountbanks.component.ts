@@ -2,7 +2,13 @@ import { Component, HostListener, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 
-import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
+import {
+  CellDoubleClickedEvent,
+  ColDef,
+  GridApi,
+  GridReadyEvent,
+  ICellRendererParams,
+} from 'ag-grid-enterprise';
 import { alerts } from '../../../../helpers/alerts';
 import { AdministrationService } from 'app/services/administration.service';
 
@@ -11,7 +17,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ModalService } from 'app/services/modal.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { ImageHandlerService } from 'app/services/image-handler.service';
-
+import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 
 interface Bank {
   id: number;
@@ -21,12 +27,16 @@ interface Bank {
 @Component({
   selector: 'app-accountbanks',
   standalone: true,
-  imports: [RouterModule, DomainsModule, AgGridModule, MultiLineEditorComponent],
+  imports: [
+    RouterModule,
+    DomainsModule,
+    AgGridModule,
+    MultiLineEditorComponent,
+  ],
   templateUrl: './accountbanks.component.html',
-  styleUrl: './accountbanks.component.scss'
+  styleUrl: './accountbanks.component.scss',
 })
-export class AccountbanksComponent {
-
+export class AccountbanksComponent implements CanComponentDeactivate {
   ngOnInit() {
     this.obtenerDatos();
     this.obtenerBanks();
@@ -46,7 +56,7 @@ export class AccountbanksComponent {
   rowDetails: any;
   accounts: { [key: string]: string } = {};
   errorMessage: string = '';
-  isLoading: boolean = false
+  isLoading: boolean = false;
 
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
@@ -67,7 +77,7 @@ export class AccountbanksComponent {
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
   frameworkComponents = {
-    multiLineEditor: MultiLineEditorComponent
+    multiLineEditor: MultiLineEditorComponent,
   };
 
   // Inject of new way for Angular 18
@@ -106,45 +116,96 @@ export class AccountbanksComponent {
   get colMaster(): ColDef[] {
     return [
       {
-        field: 'idBanco', headerName: 'Banco', editable: true, width: 150, cellEditor: 'agSelectCellEditor',
+        field: 'idBanco',
+        headerName: 'Banco',
+        editable: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: this.banks ? this.banks.map(item => item.id) : [],
+          values: this.banks ? this.banks.map((item) => item.id) : [],
         },
         valueFormatter: (params) => {
-          const foundItem = this.banks ? this.banks.find(item => item.id === params.value) : null;
+          const foundItem = this.banks
+            ? this.banks.find((item) => item.id === params.value)
+            : null;
           return foundItem ? `${foundItem.name}` : params.value;
-        }
-      },
-      { field: 'numberAccount', headerName: 'Numero Cuenta', editable: true, filter: true, width: 200 },
-
-      { field: 'nameAccount', headerName: 'Nombre Cuenta', editable: true, width: 200, filter: true },
-
-      { field: 'interbancaria', headerName: 'Interbancaria', editable: true, width: 160 },
-
-      {
-        field: 'folioCheque', headerName: 'Inicio Cheque', editable: true, width: 129, cellEditorParams: {
-          maxLength: 5
-        }
-      },
-
-      { field: 'folioSinCheque', headerName: 'Termino Cheque', editable: true, width: 140 },
-
-      {
-        field: 'gasto', headerName: 'Gastos', editable: true, width: 105,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+        },
       },
       {
-        field: 'depositoPagado', headerName: 'Ingresos', editable: true, width: 105,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+        field: 'numberAccount',
+        headerName: 'Numero Cuenta',
+        editable: true,
+        filter: true,
+        width: 200,
+      },
+
+      {
+        field: 'nameAccount',
+        headerName: 'Nombre Cuenta',
+        editable: true,
+        width: 200,
+        filter: true,
+      },
+
+      {
+        field: 'interbancaria',
+        headerName: 'Interbancaria',
+        editable: true,
+        width: 160,
+      },
+
+      {
+        field: 'folioCheque',
+        headerName: 'Inicio Cheque',
+        editable: true,
+        width: 129,
+        cellEditorParams: {
+          maxLength: 5,
+        },
+      },
+
+      {
+        field: 'folioSinCheque',
+        headerName: 'Termino Cheque',
+        editable: true,
+        width: 140,
+      },
+
+      {
+        field: 'gasto',
+        headerName: 'Gastos',
+        editable: true,
+        width: 105,
+        valueFormatter: (params) =>
+          params.value?.toLocaleString('es-MX', {
+            style: 'currency',
+            currency: 'MXN',
+          }),
       },
       {
-        field: 'saldo', headerName: 'Saldo', editable: true, width: 110,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+        field: 'depositoPagado',
+        headerName: 'Ingresos',
+        editable: true,
+        width: 105,
+        valueFormatter: (params) =>
+          params.value?.toLocaleString('es-MX', {
+            style: 'currency',
+            currency: 'MXN',
+          }),
       },
-
-    ]
-  };
-
+      {
+        field: 'saldo',
+        headerName: 'Saldo',
+        editable: true,
+        width: 110,
+        valueFormatter: (params) =>
+          params.value?.toLocaleString('es-MX', {
+            style: 'currency',
+            currency: 'MXN',
+          }),
+      },
+    ];
+  }
 
   // Column Definitions: Defines the columns to be displayed.
   get colDetails(): ColDef[] {
@@ -155,112 +216,123 @@ export class AccountbanksComponent {
         editable: false,
         filter: true,
         width: 200,
-        cellStyle: params => {
-          const deposito = typeof params.data.deposito === 'string' ?
-            parseFloat(params.data.deposito.replace(/,/g, '')) :
-            (params.data.deposito || 0);
-          const gasto = typeof params.data.gasto === 'string' ?
-            parseFloat(params.data.gasto.replace(/,/g, '')) :
-            (params.data.gasto || 0);
+        cellStyle: (params) => {
+          const deposito =
+            typeof params.data.deposito === 'string'
+              ? parseFloat(params.data.deposito.replace(/,/g, ''))
+              : params.data.deposito || 0;
+          const gasto =
+            typeof params.data.gasto === 'string'
+              ? parseFloat(params.data.gasto.replace(/,/g, ''))
+              : params.data.gasto || 0;
           return {
-            backgroundColor: deposito > 0 ? '#e6ffe6' : gasto > 0 ? '#ffe6e6' : null
+            backgroundColor:
+              deposito > 0 ? '#e6ffe6' : gasto > 0 ? '#ffe6e6' : null,
           };
-        }
+        },
       },
       {
         field: 'fecha',
         headerName: 'Fecha',
         editable: false,
         width: 200,
-        filter: true
+        filter: true,
       },
       {
         field: 'descripcion',
         headerName: 'Descripcion',
         editable: false,
-        width: 285
+        width: 285,
       },
       {
         field: 'tipo',
         headerName: 'Tipo',
         editable: false,
-        width: 160
+        width: 160,
       },
       {
         field: 'deposito',
         headerName: 'Deposito',
         editable: false,
         width: 160,
-        valueFormatter: params => {
+        valueFormatter: (params) => {
           const value = params.value || 0;
-          return `$ ${value.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+          return `$ ${value.toLocaleString('es-MX', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}`;
         },
-        cellStyle: params => {
-          const value = typeof params.value === 'string' ?
-            parseFloat(params.value.replace(/,/g, '')) :
-            (params.value || 0);
+        cellStyle: (params) => {
+          const value =
+            typeof params.value === 'string'
+              ? parseFloat(params.value.replace(/,/g, ''))
+              : params.value || 0;
           return {
             color: value > 0 ? '#008000' : null,
             backgroundColor: value > 0 ? '#e6ffe6' : null,
-            fontWeight: value > 0 ? 'bold' : 'normal'
+            fontWeight: value > 0 ? 'bold' : 'normal',
           };
-        }
+        },
       },
       {
         field: 'gasto',
         headerName: 'Gasto',
         editable: false,
         width: 160,
-        valueFormatter: params => {
+        valueFormatter: (params) => {
           const value = params.value || 0;
-          return `$ ${value.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+          return `$ ${value.toLocaleString('es-MX', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}`;
         },
-        cellStyle: params => {
-          const value = typeof params.value === 'string' ?
-            parseFloat(params.value.replace(/,/g, '')) :
-            (params.value || 0);
+        cellStyle: (params) => {
+          const value =
+            typeof params.value === 'string'
+              ? parseFloat(params.value.replace(/,/g, ''))
+              : params.value || 0;
           return {
             color: value > 0 ? '#FF0000' : null,
             backgroundColor: value > 0 ? '#ffe6e6' : null,
-            fontWeight: value > 0 ? 'bold' : 'normal'
+            fontWeight: value > 0 ? 'bold' : 'normal',
           };
-        }
+        },
       },
       {
         field: 'saldo',
         headerName: 'SALDO',
         editable: false,
         width: 160,
-        valueFormatter: params => {
+        valueFormatter: (params) => {
           const value = params.value || 0;
-          return `$ ${value.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+          return `$ ${value.toLocaleString('es-MX', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}`;
         },
         cellStyle: {
           color: '#000080',
-          fontWeight: 'bold'
-        }
-      }
+          fontWeight: 'bold',
+        },
+      },
     ];
   }
 
   obtenerBanks() {
-    this.administrationService.get2fieldsBanks().
-      subscribe((data: any) => {
-        this.banks = data
-      })
+    this.administrationService.get2fieldsBanks().subscribe((data: any) => {
+      this.banks = data;
+    });
   }
 
   obtenerDatos() {
-    this.administrationService.getAccountBanks(parseInt(localStorage.getItem('company'))).
-      subscribe((response: any) => {
+    this.administrationService
+      .getAccountBanks(parseInt(localStorage.getItem('company')))
+      .subscribe((response: any) => {
         this.rowMaster = response;
         if (!response || response.length === 0) {
-          alerts.basicAlert('Aviso',
-            'No hay datos disponibles',
-            'info'
-          );
+          alerts.basicAlert('Aviso', 'No hay datos disponibles', 'info');
         }
-      })
+      });
   }
 
   private loadBalanceData(id: string) {
@@ -270,27 +342,24 @@ export class AccountbanksComponent {
     this.rowDetails = [];
     this.isLoading = true;
 
-    this.administrationService.getBalance(parseInt(id))
-      .subscribe({
-        next: (response: any) => {
-          if (response.success && response.hasData) {
-            this.rowDetails = response.data;
-          } else {
-            this.rowDetails = [];
-            alerts.basicAlert('Aviso', 'No hay datos disponibles', 'info');
-          }
-        },
-        error: () => {
+    this.administrationService.getBalance(parseInt(id)).subscribe({
+      next: (response: any) => {
+        if (response.success && response.hasData) {
+          this.rowDetails = response.data;
+        } else {
           this.rowDetails = [];
-          alerts.basicAlert('Error', 'Error al cargar los datos', 'error');
-        },
-        complete: () => {
-          this.isLoading = false;
+          alerts.basicAlert('Aviso', 'No hay datos disponibles', 'info');
         }
-      });
+      },
+      error: () => {
+        this.rowDetails = [];
+        alerts.basicAlert('Error', 'Error al cargar los datos', 'error');
+      },
+      complete: () => {
+        this.isLoading = false;
+      },
+    });
   }
-
-
 
   onSelectionChanged(event: any) {
     const selectedNodes = event.api.getSelectedNodes();
@@ -341,8 +410,10 @@ export class AccountbanksComponent {
     const newRowIndex = this.rowMaster.findIndex((row) => row.id === tempId);
 
     // Encontrar la primera columna editable
-    const firstEditableCol = this.colMaster.find(col => col.editable);
-    const firstEditableColKey = firstEditableCol ? firstEditableCol.field : null;
+    const firstEditableCol = this.colMaster.find((col) => col.editable);
+    const firstEditableColKey = firstEditableCol
+      ? firstEditableCol.field
+      : null;
 
     // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
     setTimeout(() => {
@@ -356,10 +427,11 @@ export class AccountbanksComponent {
   }
 
   async saveChanges() {
-
     //console.log('RowData', this.rowData)
 
-    const isValid = this.rowMaster.every((item) => item.numberAccount && item.nameAccount);
+    const isValid = this.rowMaster.every(
+      (item) => item.numberAccount && item.nameAccount
+    );
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
@@ -421,35 +493,35 @@ export class AccountbanksComponent {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
     selectedData.active = 0;
-    this.administrationService.deleteBanks(id).pipe(
-      catchError((error) => {
+    this.administrationService
+      .deleteBanks(id)
+      .pipe(
+        catchError((error) => {
+          alerts.basicAlert(
+            'Eliminar entrada',
+            'Error al eliminar la entrada.',
+            'error'
+          );
+          console.error(error);
+          return EMPTY;
+        })
+      )
+      .subscribe(() => {
         alerts.basicAlert(
           'Eliminar entrada',
-          'Error al eliminar la entrada.',
-          'error'
+          'Entrada eliminada satisfactoriamente.',
+          'success'
         );
-        console.error(error);
-        return EMPTY;
-      })
-    )
-      .subscribe(
-        () => {
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.obtenerDatos();
+        this.obtenerDatos();
 
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
-          this.notSavedChanges = false;
-          this.selectedRowData = null;
-        }
-      );
+        alerts.basicAlert(
+          'Eliminar entrada',
+          'Entrada eliminada satisfactoriamente.',
+          'success'
+        );
+        this.notSavedChanges = false;
+        this.selectedRowData = null;
+      });
   }
 
   revert() {
@@ -467,4 +539,19 @@ export class AccountbanksComponent {
     return cleanedData;
   }
 
+  // ==================== GUARD ALERT UNSAVED CHANGES ====================
+
+  async canDeactivate(): Promise<boolean> {
+    if (!this.notSavedChanges) {
+      return Promise.resolve(true);
+    }
+
+    const result = await alerts.confirmAlert(
+      'Cambios sin guardar',
+      'Tienes cambios sin guardar. ¿Deseas salir sin guardar?',
+      'warning',
+      'Sí, salir'
+    );
+    return result.isConfirmed;
+  }
 }
