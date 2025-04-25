@@ -750,6 +750,26 @@ export const routes: Routes = [
             ],
           },
           {
+            path: 'setup',
+            loadComponent: () => import('./domains/ModReshumans/components/setup/setup.component').then(s => s.SetupComponent),
+            children: [
+              { path: '', redirectTo: 'payroll', pathMatch: 'full' },
+              
+              {
+                path: 'payroll',
+                loadComponent: () => import('./domains/ModReshumans/components/setup/payroll/payroll.component').then(p => p.PayrollComponent)
+              },
+              {
+                path: 'employees',
+                loadComponent: () => import('./domains/ModReshumans/components/setup/employees/employees.component').then(p => p.EmployeesComponent)
+              },
+              {
+                path: 'clock',
+                loadComponent: () => import('./domains/ModReshumans/components/setup/clock/clock.component').then(p => p.ClockComponent)
+              },
+            ]
+          },
+          {
             path: 'payroll',
             loadComponent: () =>
               import(

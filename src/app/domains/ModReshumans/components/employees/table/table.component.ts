@@ -495,10 +495,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       },
       {
         field: 'baseHours',
-        headerName: 'Horas base *',
+        headerName: 'Horas base',
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
         cellEditor: 'agNumberCellEditor',
+        editable: true,
         cellEditorParams: {
           min: 0,
           max: 96,

@@ -1,5 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { SetupRootComponent } from "./setup-root/setup-root.component";
+import { RouterModule } from '@angular/router';
 import { SetupEmployeesComponent } from "../payroll/setup/setup.component";
 import { CatalogsComponent } from 'app/domains/SMP/Components/catalogs/catalogs.component';
 import { SignalsService } from 'app/services/signals.service';
@@ -7,7 +8,7 @@ import { SignalsService } from 'app/services/signals.service';
 @Component({
   selector: 'app-setup',
   standalone: true,
-  imports: [SetupRootComponent, SetupEmployeesComponent, CatalogsComponent],
+  imports: [ RouterModule],
   templateUrl: './setup.component.html',
   styleUrl: './setup.component.scss'
 })
