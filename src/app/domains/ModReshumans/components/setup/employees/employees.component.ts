@@ -39,6 +39,7 @@ export class EmployeesComponent {
         this.myForm.patchValue({
           vigency: this.hrData.vigency,
         });
+        this.isNew = false;
       },
       error: (err) => {
         if (err.status === 404) {
@@ -66,7 +67,7 @@ export class EmployeesComponent {
         ...this.hrData, // conserva id u otros campos
         ...values       // actualiza con valores nuevos
       };
-    
+     console.log(this.isNew)
       if (!this.isNew) {
         // Actualizar datos existentes
         this.hrService.updateHRManagementData(this.idBranch, this.hrData).subscribe({
@@ -79,30 +80,31 @@ export class EmployeesComponent {
           }
         });
         return;
+      }else{
+        console.log(values)
+        // Insertar nuevos datos
+        const payload = {
+          active: true,
+          startDay: "",
+          vigency: values.vigency,
+          idBranch: this.idBranch,
+          discount1: true,
+          discount2: true
+        };
+        console.log(payload)
+      
+        this.hrService.addHRManagementData(payload).subscribe({
+          next: () => {
+            alerts.basicAlert("Registro", "Los datos fueron guardados exitosamente", "success");
+            this.getData(); // Refrescar datos
+          },
+          error: () => {
+            alerts.basicAlert("Error", "Error al añadir los datos.", "error");
+          }
+        });
+      
+        this.isNew = false;
       }
-    console.log(values)
-      // Insertar nuevos datos
-      const payload = {
-        active: true,
-        startDay: "",
-        vigency: values.vigency,
-        idBranch: this.idBranch,
-        discount1: true,
-        discount2: true
-      };
-      console.log(payload)
-    
-      this.hrService.addHRManagementData(payload).subscribe({
-        next: () => {
-          alerts.basicAlert("Registro", "Los datos fueron guardados exitosamente", "success");
-          this.getData(); // Refrescar datos
-        },
-        error: () => {
-          alerts.basicAlert("Error", "Error al añadir los datos.", "error");
-        }
-      });
-    
-      this.isNew = false;
     }
 
 

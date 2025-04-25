@@ -43,6 +43,7 @@ export class ClockComponent {
           delay1: this.hrData.delay1,
           delay2: this.hrData.delay2,
         });
+        this.isNew = false;
       },
       error: (err) => {
         if (err.status === 404) {
