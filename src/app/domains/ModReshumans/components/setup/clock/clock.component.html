@@ -1,28 +1,28 @@
 @if (idBranch > 0) {
-    <div class="container-fluid mt-4 mb-4 border light-blue-background">
+    <div class="container-fluid mt-4 mb-4 border light-blue-background py-2">
         <div>
             <form [formGroup]="myForm"  (ngSubmit)="onSubmit()">
 
                 <div class="row">
                     <div class="col-6">
-                        <div>
+                        <div class="py-1">
                             <label for="clockTolerance" class="form-label">Tiempo de tolerancia antes de marcar falta
                                 (minutos) <span class="text-danger">*</span></label>
-                            <input type="number" class="form-control" id="consecutive" placeholder="Consecutivo" formControlName="Periodo">
+                            <input type="number" class="form-control" id="clockTolerance" placeholder="Consecutivo" formControlName="clockTolerance" >
                         </div>
-                        <div>
-                            <label for="clockTolerance" class="form-label">Tiempo de tolerancia de retardo antes de segundo
+                        <div class="py-1">
+                            <label for="delay1" class="form-label">Tiempo de tolerancia de retardo antes de segundo
                                 descuento
                                 (minutos) <span class="text-danger">*</span></label>
-                            <input type="number" class="form-control" id="consecutive" placeholder="Consecutivo" formControlName="Periodo">
+                            <input type="number" class="form-control" id="delay1" placeholder="Consecutivo" formControlName="delay1" >
                         </div>
                     </div>
                     <div class="col-6">
-                        <div>
-                            <label for="clockTolerance" class="form-label">Tiempo de tolerancia de retardo antes de primer
+                        <div class="py-1">
+                            <label for="delay2" class="form-label">Tiempo de tolerancia de retardo antes de primer
                                 descuento
                                 (minutos) <span class="text-danger">*</span></label>
-                            <input type="number" class="form-control" id="consecutive" placeholder="Consecutivo" formControlName="Periodo">
+                            <input type="number" class="form-control" id="delay2" placeholder="Consecutivo" formControlName="delay2" >
                         </div>
 
                     </div>

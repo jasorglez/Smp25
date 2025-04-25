@@ -381,7 +381,6 @@ export class BranchesComponent implements CanComponentDeactivate {
       ]);
 
       // Asignar permisos para los nuevos Branchs creados
-      const currentUserId = this.idRoot;
       console.log(allResponses);
       for (const response of allResponses) {
         // Verificar si es una nueva creación comparando con los IDs temporales
@@ -394,7 +393,7 @@ export class BranchesComponent implements CanComponentDeactivate {
           try {
             await lastValueFrom(
               this.branchesService.assignPermissionAfterCreation(
-                currentUserId,
+                this.idUser,
                 response.id,
                 'branch'
               )
