@@ -3,6 +3,7 @@ import { MainPageComponent } from './pages/main-page/main-page.component';
 import { SharedModule } from './shared/shared.module';
 import { MasterPermissionsGuard } from './guards/master-permissions.guard';
 import { UnsavedChangesGuard } from './guards/unsaved-changes.guard';
+import { HistoryPayrollComponent } from './domains/ModReshumans/components/payroll/history-payroll/history-payroll.component';
 
 export const routes: Routes = [
   {
@@ -769,6 +770,14 @@ export const routes: Routes = [
                   import(
                     './domains/ModReshumans/components/payroll/bonus/bonus.component'
                   ).then((s) => s.BonusComponent),
+                canDeactivate: [UnsavedChangesGuard],
+              },
+              {
+                path: 'history-payroll',
+                loadComponent: () =>
+                  import(
+                    './domains/ModReshumans/components/payroll/history-payroll/history-payroll.component'
+                  ).then((s) => s.HistoryPayrollComponent),
                 canDeactivate: [UnsavedChangesGuard],
               },
               {
