@@ -1,45 +1,35 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  effect,
-  inject,
-  OnInit,
-  signal,
-} from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
 import {
   CellDoubleClickedEvent,
-  CellValueChangedEvent,
   ColDef,
   GridApi,
   GridReadyEvent,
-  RowSelectedEvent,
-  SelectionChangedEvent,
 } from 'ag-grid-enterprise';
 import { HistoryPayrollService } from 'app/services/history-payroll.service';
-import { HistoryPayroll } from '../../../../../interface/history-payroll.interface';
+import {
+  HistoryPayrollResponse,
+  PayrollEmployee,
+} from '../../../../../interface/history-payroll.interface';
 import { SignalsService } from 'app/services/signals.service';
 import { alerts } from 'app/helpers/alerts';
 import { BranchsService } from 'app/services/branchs.service';
-import { AuthService } from 'app/services/auth.service';
-import { AdministrationService } from 'app/services/administration.service';
-import { EMPTY } from 'rxjs';
-import { DetailpayrollComponent } from '../detailpayroll/detailpayroll.component';
+
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { ShowEmployeesTableComponent } from './employees-table/employees-table.component';
 
 @Component({
   selector: 'app-history-payroll',
   standalone: true,
   imports: [
     AgGridModule,
-    // DetailpayrollComponent,
     RouterModule,
     DomainsModule,
     AgGridModule,
     FormsModule,
-    // DetailpayrollComponent,
+    ShowEmployeesTableComponent,
   ],
   templateUrl: './history-payroll.component.html',
 })
@@ -65,7 +55,9 @@ export class HistoryPayrollComponent {
 
   public showPayrollDetailTab = signal(false);
 
-  public rowData: HistoryPayroll[];
+  public rowData: HistoryPayrollResponse[];
+
+  public employeeData = signal<PayrollEmployee[]>([]);
 
   public components: { [p: string]: any };
 
@@ -86,12 +78,6 @@ export class HistoryPayrollComponent {
 
   private aggregatingRecord = signal(false);
 
-  // private initialDate = signal('');
-
-  // private endingDate = signal('');
-
-  private DPAvailable = signal(true);
-
   private selectedRowData = signal(null);
 
   public notSavedChanges = signal(false);
@@ -99,9 +85,6 @@ export class HistoryPayrollComponent {
   // Datos para la tabla
   // Estado de carga
   public isLoading = signal(false);
-
-  // Referencia al grid API
-  // private valorObtenido: any;
 
   private id = signal('');
 
@@ -122,7 +105,7 @@ export class HistoryPayrollComponent {
 
   // MIO
   obtenerDatos() {
-    console.log('id branch en obtener datos: ', this.idBranch);
+    // console.log('id branch en obtener datos: ', this.idBranch);
 
     if (this.idBranch === null || this.idBranch > 0) {
       return this.getHistoryPayrollByBranch(this.idBranch);
@@ -136,7 +119,7 @@ export class HistoryPayrollComponent {
       (data) => {
         this.rowData = data;
         this.isLoading.set(false);
-        console.log('Datos extraidos de history-payroll', data);
+        // console.log('Datos extraidos de history-payroll', data);
       },
       (error) => {
         this.rowData = [];
@@ -149,7 +132,7 @@ export class HistoryPayrollComponent {
       (data) => {
         this.rowData = data;
         this.isLoading.set(false);
-        console.log('Datos extraidos de history-payroll', data);
+        // console.log('Datos extraidos de history-payroll', data);
       },
       (error) => {
         this.rowData = [];
@@ -212,47 +195,6 @@ export class HistoryPayrollComponent {
     ];
   }
 
-  onCheckClick(params: any): void {
-    if (!params.data) return;
-
-    const payrollId = params.data.id;
-    const startDate = params.data.startDate
-      ? new Date(params.data.startDate)
-      : null;
-    const endDate = params.data.endDate ? new Date(params.data.endDate) : null;
-    //const idBranch = this.idBranch;
-    const idBranch = params.data.idBranch;
-
-    if (!startDate || !endDate) {
-      console.error('Fechas no válidas');
-      alert('No se pudo descargar el archivo: fechas no válidas');
-      return;
-    }
-
-    // // Llamar al servicio para descargar el Excel
-    // this.payrollService.downloadPayrollExcel(idBranch, startDate, endDate)
-    //   .subscribe({
-    //     next: (blob: Blob) => {
-    //       // Crear un nombre de archivo descriptivo
-    //       const fileName = `Nomina_${new Date(startDate).toISOString().split('T')[0]}_${new Date(endDate).toISOString().split('T')[0]}.xlsx`;
-
-    //       // Crear URL del objeto y generar la descarga
-    //       const url = window.URL.createObjectURL(blob);
-    //       const link = document.createElement('a');
-    //       link.href = url;
-    //       link.download = fileName;
-    //       link.click();
-
-    //       // Liberar el objeto URL
-    //       window.URL.revokeObjectURL(url);
-    //     },
-    //     error: (error) => {
-    //       console.error('Error al descargar el archivo:', error);
-    //       alert('No se pudo descargar el archivo. Por favor, inténtelo de nuevo.');
-    //     }
-    //   });
-  }
-
   onCellValueChanged(event: any) {
     if (
       event.data.endDate &&
@@ -299,8 +241,6 @@ export class HistoryPayrollComponent {
     },
     onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
   };
-
-  // =======METHOD PRINCIPALS =======
 
   activatePayrollDetailTab() {
     this.showPayrollDetailTab.set(true);
@@ -353,92 +293,14 @@ export class HistoryPayrollComponent {
       this.gridApi.onFilterChanged();
     }
 
-    if (!this.aggregatingRecord) this.activatePayrollDetailTab();
+    if (this.aggregatingRecord) this.activatePayrollDetailTab();
 
     // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
-    this.selectedRowData = selectedRowData;
+    this.selectedRowData.set(selectedRowData);
   }
 
-  // addRow() {
-  //   //const tempId = `temp_${this.tempIdCounter++}`;
-  //   const newItem: HistoryPayroll = {
-  //     //id: tempId,
-  //     //idBranch: this.idBranch,
-  //     payrollId: 0,
-  //     idBranch: this.idBranch > 0 ? this.idBranch : null,
-  //     company: '',
-  //     period: '',
-  //     startDate: new Date(''),
-  //     endDate: new Date(''),
-  //     fiscalYear: '',
-  //     createdAt: new Date(''),
-  //     active: true,
-  //   };
-  //   this.rowData = [newItem, ...this.rowData];
-  //   this.notSavedChanges.set(true);
-  //   this.aggregatingRecord.set(true);
-  // }
-
-  // async saveChanges() {
-  //   const isValid = this.rowData().every(
-  //     (item) => item.startDate && item.endDate && item.idBranch
-  //   );
-  //   // llamar al servicio de verificacion de existencia de nomina digital
-
-  //   if (!isValid || this.rowData.startDate <= this.rowData.endDate) {
-  //     alerts.basicAlert(
-  //       'Añadir entrada',
-  //       'Debe llenar correctamente las fechas de inicio y fin de la semana laborada antes de guardar.',
-  //       'error'
-  //     );
-  //     return;
-  //   }
-
-  //   const newRows = this.rowData.filter((row) => row.__isNew);
-  //   const modifiedRows = this.rowData.filter(
-  //     (row) => row.__modified && !row.__isNew
-  //   );
-
-  //   const addObservables = newRows.map((row) => {
-  //     const cleanedData = this.cleanDataForServer(row);
-  //     this.administrationService.addNormalPayroll(cleanedData).subscribe({
-  //       next: (response) => {
-  //         alerts.basicAlert('Datos guardados', response.message, 'success');
-  //         this.notSavedChanges = false;
-  //         this.aggregatingRecord = false;
-  //         this.obtenerDatos(); // Refrescar los datos
-  //         this.resetGridSize();
-  //       },
-  //       error: (error) => {
-  //         const errorMessage =
-  //           error?.error ||
-  //           'Ocurrió un error al guardar los datos. Intente nuevamente.';
-  //         alerts.basicAlert(
-  //           'Error',
-  //           error.error.message || errorMessage,
-  //           'error'
-  //         );
-  //         this.notSavedChanges = false;
-  //         this.aggregatingRecord = false;
-  //         this.obtenerDatos(); // Refrescar los datos
-  //         this.resetGridSize();
-  //       },
-  //     });
-  //   });
-  // }
-
-  // private cleanDataForServer(data: any): any {
-  //   const cleanedData = { ...data };
-  //   delete cleanedData.__isNew;
-  //   delete cleanedData.__modified;
-  //   if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
-  //     delete cleanedData.id;
-  //   }
-  //   return cleanedData;
-  // }
-
   onSelectionChanged(event: any) {
-    console.log(event);
+    // console.log('onSelectionChanged', event);
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
@@ -517,33 +379,11 @@ export class HistoryPayrollComponent {
     filter: true,
   };
 
-  // Formateo de valores monetarios
-  currencyFormatter(params: any) {
-    if (typeof params.value !== 'number') {
-      return params.value;
-    }
-    return new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: 'MXN',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(params.value);
-  }
-
   // Evento cuando el grid está listo
   onGridReady(params: GridReadyEvent): void {
     this.gridApi = params.api;
     // Ajustar columnas al tamaño óptimo
     // this.gridApi.sizeColumnsToFit();
-  }
-
-  // Método para exportar a Excel
-  exportToExcel(): void {
-    if (this.gridApi) {
-      this.gridApi.exportDataAsExcel({
-        fileName: `Nominas_${new Date().toISOString().split('T')[0]}.xlsx`,
-      });
-    }
   }
 
   // Método para refrescar los datos
@@ -554,7 +394,8 @@ export class HistoryPayrollComponent {
   }
 
   onSelectedRow(event: any) {
-    console.log(event);
+    // console.log('onSelectedRow', event);
+    this.employeeData.set(event.data.payrollEmployees);
     this.id.set(event.data.id);
   }
 

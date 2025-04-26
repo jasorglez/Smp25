@@ -1,15 +1,3 @@
-export interface HistoryPayroll {
-  payrollId: number;
-  idBranch: number;
-  company: string;
-  period: string;
-  startDate: Date;
-  endDate: Date;
-  fiscalYear: string;
-  createdAt: Date;
-  active: boolean;
-}
-
 export interface HistoryPayrollResponse {
   payrollId: number;
   idBranch: number;

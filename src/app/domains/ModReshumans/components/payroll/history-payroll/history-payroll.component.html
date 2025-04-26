@@ -2,10 +2,6 @@
   <div class="row">
     <div class="col-auto mt-3">
       <div class="d-flex flex-column gap-2 me-0">
-        <!-- <button type="button" class="btn btn-primary">
-          <i class="bi bi-plus-lg"></i>
-        </button> -->
-
         <button type="button" class="btn btn-warning" (click)="refreshData()">
           <i class="bi bi-arrow-clockwise"></i>
         </button>
@@ -16,13 +12,13 @@
         >
           <i class="bi bi-trash"></i>
         </button>
-        <!-- <button
+        <button
           type="button"
           class="btn btn-secondary"
           (click)="resetGridSize()"
         >
           <i class="bi bi-arrows-fullscreen"></i>
-        </button> -->
+        </button>
       </div>
     </div>
 
@@ -45,4 +41,21 @@
       </ag-grid-angular>
     </div>
   </div>
+
+  @if (showPayrollDetailTab()) {
+  <div class="row">
+    <div class="col-12">
+      <div class="tab-content" id="myTabContent">
+        <div
+          class="tab-pane fade show active"
+          id="detailpayroll"
+          role="tabpanel"
+          aria-labelledby="detailpayroll-tab"
+        >
+          <app-show-employees-table [rowDataResponse]="employeeData() ?? []" />
+        </div>
+      </div>
+    </div>
+  </div>
+  }
 </div>
