@@ -120,11 +120,6 @@ export class HistoryPayrollComponent {
     });
   }
 
-  // ngOnInit() {
-  //   this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-  //   this.obtenerDatos();
-  // }
-
   // MIO
   obtenerDatos() {
     console.log('id branch en obtener datos: ', this.idBranch);
