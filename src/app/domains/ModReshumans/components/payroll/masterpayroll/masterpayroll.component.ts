@@ -2,17 +2,27 @@ import { alerts } from 'app/helpers/alerts';
 import { RouterModule } from '@angular/router';
 import { Component, effect, HostListener, inject, OnInit } from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
-import { PayrollService, PayrollData, EmployeePayroll } from 'app/services/payroll.service';
+import {
+  PayrollService,
+  PayrollData,
+  EmployeePayroll,
+} from 'app/services/payroll.service';
 import { FormsModule } from '@angular/forms';
 import { DomainsModule } from 'app/domains/domainsmodule';
 
-import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
+import {
+  CellDoubleClickedEvent,
+  ColDef,
+  GridApi,
+  GridReadyEvent,
+  ICellRendererParams,
+} from 'ag-grid-enterprise';
 import { AdministrationService } from 'app/services/administration.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { ModalService } from 'app/services/modal.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { ImageHandlerService } from 'app/services/image-handler.service';
-import { DetailpayrollComponent } from "../detailpayroll/detailpayroll.component";
+import { DetailpayrollComponent } from '../detailpayroll/detailpayroll.component';
 import { SignalsService } from 'app/services/signals.service';
 import { AuthService } from 'app/services/auth.service';
 import { BranchsService } from 'app/services/branchs.service';
@@ -25,15 +35,13 @@ import { BranchsService } from 'app/services/branchs.service';
     DomainsModule,
     AgGridModule,
     FormsModule,
-    DetailpayrollComponent
+    DetailpayrollComponent,
   ],
   templateUrl: './masterpayroll.component.html',
-  styleUrl: './masterpayroll.component.scss'
+  styleUrl: './masterpayroll.component.scss',
 })
-
 export class MasterPayrollComponent implements OnInit {
-
-  constructor () {
+  constructor() {
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
@@ -58,18 +66,24 @@ export class MasterPayrollComponent implements OnInit {
   }
 
   obtenerDatos() {
-    this.administrationService.getNormalPayrolls(this.idBranch).subscribe((data: any) => {
-      this.rowData = data;
-      console.log("---- Masterpayroll component. esto es data desde obtenerDatos(): ", data);
-    },
+    this.administrationService.getNormalPayrolls(this.idBranch).subscribe(
+      (data: any) => {
+        this.rowData = data;
+        console.log(
+          '---- Masterpayroll component. esto es data desde obtenerDatos(): ',
+          data
+        );
+      },
       (error) => {
         this.rowData = [];
-      });
+      }
+    );
   }
 
   obtenerExistenciaDP(startDate, endDate, idBranch) {
-    this.administrationService.getDPPayrollsExistence(startDate, endDate, idBranch).
-      subscribe({
+    this.administrationService
+      .getDPPayrollsExistence(startDate, endDate, idBranch)
+      .subscribe({
         next: (payrollId) => {
           if (payrollId !== 0) {
           } else {
@@ -77,8 +91,8 @@ export class MasterPayrollComponent implements OnInit {
         },
         error: (error) => {
           console.error('Error al obtener el PayrollId:', error);
-        }
-      })
+        },
+      });
   }
 
   private signalsService = inject(SignalsService);
@@ -86,7 +100,6 @@ export class MasterPayrollComponent implements OnInit {
   private branchesService = inject(BranchsService);
   private administrationService = inject(AdministrationService);
   private payrollService = inject(PayrollService);
-
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
@@ -110,12 +123,11 @@ export class MasterPayrollComponent implements OnInit {
   showPayrollDetailTab: boolean = false;
   gridHeight: string = '80vh';
   DPAvailable: boolean = true;
-  aggregatingRecord: boolean = false
+  aggregatingRecord: boolean = false;
   initialDate: string;
   endingDate: string;
   branchs: any[] = [];
   idRoot: number;
-
 
   activatePayrollDetailTab() {
     this.showPayrollDetailTab = true;
@@ -130,7 +142,7 @@ export class MasterPayrollComponent implements OnInit {
     this.mostrarGridDetalle = true;
     this.datosDetalle = [
       { detalleId: 1, info: `Detalle de ${params.data.nombre}` },
-      { detalleId: 2, info: `Más info de ${params.data.nombre}` }
+      { detalleId: 2, info: `Más info de ${params.data.nombre}` },
     ];
   }
 
@@ -143,13 +155,14 @@ export class MasterPayrollComponent implements OnInit {
       {
         headerName: 'Fecha Inicio',
         field: 'startDate',
-        editable: (params) => { return this.aggregatingRecord },
+        editable: (params) => {
+          return this.aggregatingRecord;
+        },
 
         cellEditor: 'agDateCellEditor',
 
         valueGetter: (params) => {
           if (params.node.rowIndex == 0) {
-
           }
           return params.data.startDate ? new Date(params.data.startDate) : null;
         },
@@ -157,7 +170,10 @@ export class MasterPayrollComponent implements OnInit {
         valueFormatter: (params) => {
           if (params.value) {
             const date = new Date(params.value);
-            this.initialDate = `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
+            this.initialDate = `${('0' + date.getDate()).slice(-2)}-${(
+              '0' +
+              (date.getMonth() + 1)
+            ).slice(-2)}-${date.getFullYear()}`;
             return this.initialDate;
           }
           return '';
@@ -190,20 +206,25 @@ export class MasterPayrollComponent implements OnInit {
           return true;
         },
 
-        width: 170
+        width: 170,
       },
       {
         headerName: 'Fecha Fin',
         field: 'endDate',
-        editable: (params) => { return this.aggregatingRecord },
+        editable: (params) => {
+          return this.aggregatingRecord;
+        },
         cellEditor: 'agDateCellEditor',
-        valueGetter: (params) => params.data.endDate ? new Date(params.data.endDate) : null,
+        valueGetter: (params) =>
+          params.data.endDate ? new Date(params.data.endDate) : null,
 
         valueFormatter: (params) => {
           if (params.value) {
-
             const date = new Date(params.value);
-            this.endingDate = `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
+            this.endingDate = `${('0' + date.getDate()).slice(-2)}-${(
+              '0' +
+              (date.getMonth() + 1)
+            ).slice(-2)}-${date.getFullYear()}`;
             return this.endingDate;
           }
           return '';
@@ -241,8 +262,13 @@ export class MasterPayrollComponent implements OnInit {
         headerName: 'Sucursal',
         field: 'idBranch',
         headerClass: 'required-header',
-        hide: this.authService.hasDetailedPermission('principal', 'see-all-branches') ||
-          this.signalsService.getemailChoose() === 'root@beapp.com.mx' ? false : true,
+        hide:
+          this.authService.hasDetailedPermission(
+            'principal',
+            'see-all-branches'
+          ) || this.signalsService.getemailChoose() === 'root@beapp.com.mx'
+            ? false
+            : true,
         editable: true,
         filter: true,
         width: 170,
@@ -255,7 +281,7 @@ export class MasterPayrollComponent implements OnInit {
                   .slice() // Creamos una copia para no modificar el array original
                   .sort((a, b) => a.name.localeCompare(b.name)) // Ordenamos por nombre
                   .map((item) => item.id) // Extraemos solo los IDs
-              : []
+              : [],
           };
         },
 
@@ -269,14 +295,21 @@ export class MasterPayrollComponent implements OnInit {
 
           return foundBranch ? foundBranch.name : params.value;
         },
-    },
-
-      { field: 'totalBaseWorkingHours', headerName: 'Total Jornadas Base', width: 170 },
+      },
 
       {
-        field: 'totalBaseExtraHours', headerName: 'Total Jornadas Extra', width: 170, cellEditorParams: {
-          maxLength: 15
-        }
+        field: 'totalBaseWorkingHours',
+        headerName: 'Total Jornadas Base',
+        width: 170,
+      },
+
+      {
+        field: 'totalBaseExtraHours',
+        headerName: 'Total Jornadas Extra',
+        width: 170,
+        cellEditorParams: {
+          maxLength: 15,
+        },
       },
 
       { field: 'totalSubtotal', headerName: 'Total Subtotal', width: 140 },
@@ -309,52 +342,63 @@ export class MasterPayrollComponent implements OnInit {
           });
           return button;
         },
-        onCellDoubleClicked: this.onCellDoubleClicked.bind(this)
+        onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
       },
-    ]
-  };
+    ];
+  }
 
   onCheckClick(params: any): void {
-              if (!params.data) return;
+    if (!params.data) return;
 
-          const payrollId = params.data.id;
-          const startDate = params.data.startDate ? new Date(params.data.startDate) : null;
-          const endDate = params.data.endDate ? new Date(params.data.endDate) : null;
-          //const idBranch = this.idBranch;
-          const idBranch = params.data.idBranch;
+    const payrollId = params.data.id;
+    const startDate = params.data.startDate
+      ? new Date(params.data.startDate)
+      : null;
+    const endDate = params.data.endDate ? new Date(params.data.endDate) : null;
+    //const idBranch = this.idBranch;
+    const idBranch = params.data.idBranch;
 
-          if (!startDate || !endDate) {
-            console.error('Fechas no válidas');
-            alert('No se pudo descargar el archivo: fechas no válidas');
-            return;
-          }
+    if (!startDate || !endDate) {
+      console.error('Fechas no válidas');
+      alert('No se pudo descargar el archivo: fechas no válidas');
+      return;
+    }
 
-          // Llamar al servicio para descargar el Excel
-          this.payrollService.downloadPayrollExcel(idBranch, startDate, endDate)
-            .subscribe({
-              next: (blob: Blob) => {
-                // Crear un nombre de archivo descriptivo
-                const fileName = `Nomina_${new Date(startDate).toISOString().split('T')[0]}_${new Date(endDate).toISOString().split('T')[0]}.xlsx`;
+    // Llamar al servicio para descargar el Excel
+    this.payrollService
+      .downloadPayrollExcel(idBranch, startDate, endDate)
+      .subscribe({
+        next: (blob: Blob) => {
+          // Crear un nombre de archivo descriptivo
+          const fileName = `Nomina_${
+            new Date(startDate).toISOString().split('T')[0]
+          }_${new Date(endDate).toISOString().split('T')[0]}.xlsx`;
 
-                // Crear URL del objeto y generar la descarga
-                const url = window.URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = fileName;
-                link.click();
+          // Crear URL del objeto y generar la descarga
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = fileName;
+          link.click();
 
-                // Liberar el objeto URL
-                window.URL.revokeObjectURL(url);
-              },
-              error: (error) => {
-                console.error('Error al descargar el archivo:', error);
-                alert('No se pudo descargar el archivo. Por favor, inténtelo de nuevo.');
-              }
-            });
-        }
+          // Liberar el objeto URL
+          window.URL.revokeObjectURL(url);
+        },
+        error: (error) => {
+          console.error('Error al descargar el archivo:', error);
+          alert(
+            'No se pudo descargar el archivo. Por favor, inténtelo de nuevo.'
+          );
+        },
+      });
+  }
 
   onCellValueChanged(event: any) {
-    if ((event.data.endDate && event.data.startDate) && event.data.endDate <= event.data.startDate) {
+    if (
+      event.data.endDate &&
+      event.data.startDate &&
+      event.data.endDate <= event.data.startDate
+    ) {
       alerts.basicAlert(
         'Error',
         'La fecha de fin no puede ser menor o igual a la fecha de inicio.',
@@ -366,7 +410,7 @@ export class MasterPayrollComponent implements OnInit {
     }
     event.data.__modified = true;
     this.notSavedChanges = true;
-}
+  }
 
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
@@ -401,12 +445,11 @@ export class MasterPayrollComponent implements OnInit {
     const colId = event.column.getColId();
     const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
 
-
     const selectedId = selectedRowData.id; // Obtener el ID del registro
     this.signalsService.setNormalPayrollId(selectedId);
 
-
-    if (colId === 'NomDigital') {     // Filtrar el grid para mostrar solo el registro con el ID seleccionado
+    if (colId === 'NomDigital') {
+      // Filtrar el grid para mostrar solo el registro con el ID seleccionado
       const filterModel = {
         id: {
           type: 'equals',
@@ -418,17 +461,13 @@ export class MasterPayrollComponent implements OnInit {
       this.gridApi.onFilterChanged();
     }
 
-    if (!this.aggregatingRecord)
-      this.activatePayrollDetailTab();
+    if (!this.aggregatingRecord) this.activatePayrollDetailTab();
 
     // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
     this.selectedRowData = selectedRowData;
   }
 
-
-
   addRow() {
-
     //const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       //id: tempId,
@@ -443,13 +482,12 @@ export class MasterPayrollComponent implements OnInit {
     this.rowData = [newItem, ...this.rowData];
     this.notSavedChanges = true;
     this.aggregatingRecord = true;
-
-
   }
 
   async saveChanges() {
-
-    const isValid = this.rowData.every((item) => item.startDate && item.endDate && item.idBranch);
+    const isValid = this.rowData.every(
+      (item) => item.startDate && item.endDate && item.idBranch
+    );
     // llamar al servicio de verificacion de existencia de nomina digital
 
     if (!isValid || this.rowData.startDate <= this.rowData.endDate) {
@@ -470,18 +508,16 @@ export class MasterPayrollComponent implements OnInit {
       const cleanedData = this.cleanDataForServer(row);
       this.administrationService.addNormalPayroll(cleanedData).subscribe({
         next: (response) => {
-          alerts.basicAlert(
-            'Datos guardados',
-            response.message,
-            'success'
-          );
+          alerts.basicAlert('Datos guardados', response.message, 'success');
           this.notSavedChanges = false;
           this.aggregatingRecord = false;
           this.obtenerDatos(); // Refrescar los datos
           this.resetGridSize();
         },
         error: (error) => {
-          const errorMessage = error?.error || 'Ocurrió un error al guardar los datos. Intente nuevamente.';
+          const errorMessage =
+            error?.error ||
+            'Ocurrió un error al guardar los datos. Intente nuevamente.';
           alerts.basicAlert(
             'Error',
             error.error.message || errorMessage,
@@ -491,15 +527,13 @@ export class MasterPayrollComponent implements OnInit {
           this.aggregatingRecord = false;
           this.obtenerDatos(); // Refrescar los datos
           this.resetGridSize();
-        }
+        },
       });
     });
-
-
   }
 
   onSelectionChanged(event: any) {
-    console.log(event)
+    console.log(event);
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
@@ -520,18 +554,90 @@ export class MasterPayrollComponent implements OnInit {
 
   // Definición de columnas para AG Grid
   columnDefs: ColDef[] = [
-    { field: 'nombre', headerName: 'Nombre', sortable: true, filter: true, resizable: true },
-    { field: 'codigoEmpleado', headerName: 'Código', sortable: true, filter: true, resizable: true },
-    { field: 'diasTrabajados', headerName: 'Días', sortable: true, filter: true, width: 90 },
-    { field: 'salarioDiario', headerName: 'Sal. Diario', sortable: true, filter: true, valueFormatter: this.currencyFormatter },
-    { field: 'salarioDiarioIntegrado', headerName: 'SDI', sortable: true, filter: true, valueFormatter: this.currencyFormatter },
-    { field: 'sueldos', headerName: 'Sueldos', sortable: true, filter: true, valueFormatter: this.currencyFormatter },
-    { field: 'totalPercepciones', headerName: 'Tot. Percepciones', sortable: true, filter: true, valueFormatter: this.currencyFormatter },
-    { field: 'percepcionesGravadas', headerName: 'Perc. Gravadas', sortable: true, filter: true, valueFormatter: this.currencyFormatter },
-    { field: 'impuestoArt96', headerName: 'Imp. Art.96', sortable: true, filter: true, valueFormatter: this.currencyFormatter },
-    { field: 'ISPT', headerName: 'ISPT', sortable: true, filter: true, valueFormatter: this.currencyFormatter },
-    { field: 'IMSS', headerName: 'IMSS', sortable: true, filter: true, valueFormatter: this.currencyFormatter },
-    { field: 'neto', headerName: 'Neto', sortable: true, filter: true, valueFormatter: this.currencyFormatter }
+    {
+      field: 'nombre',
+      headerName: 'Nombre',
+      sortable: true,
+      filter: true,
+      resizable: true,
+    },
+    {
+      field: 'codigoEmpleado',
+      headerName: 'Código',
+      sortable: true,
+      filter: true,
+      resizable: true,
+    },
+    {
+      field: 'diasTrabajados',
+      headerName: 'Días',
+      sortable: true,
+      filter: true,
+      width: 90,
+    },
+    {
+      field: 'salarioDiario',
+      headerName: 'Sal. Diario',
+      sortable: true,
+      filter: true,
+      valueFormatter: this.currencyFormatter,
+    },
+    {
+      field: 'salarioDiarioIntegrado',
+      headerName: 'SDI',
+      sortable: true,
+      filter: true,
+      valueFormatter: this.currencyFormatter,
+    },
+    {
+      field: 'sueldos',
+      headerName: 'Sueldos',
+      sortable: true,
+      filter: true,
+      valueFormatter: this.currencyFormatter,
+    },
+    {
+      field: 'totalPercepciones',
+      headerName: 'Tot. Percepciones',
+      sortable: true,
+      filter: true,
+      valueFormatter: this.currencyFormatter,
+    },
+    {
+      field: 'percepcionesGravadas',
+      headerName: 'Perc. Gravadas',
+      sortable: true,
+      filter: true,
+      valueFormatter: this.currencyFormatter,
+    },
+    {
+      field: 'impuestoArt96',
+      headerName: 'Imp. Art.96',
+      sortable: true,
+      filter: true,
+      valueFormatter: this.currencyFormatter,
+    },
+    {
+      field: 'ISPT',
+      headerName: 'ISPT',
+      sortable: true,
+      filter: true,
+      valueFormatter: this.currencyFormatter,
+    },
+    {
+      field: 'IMSS',
+      headerName: 'IMSS',
+      sortable: true,
+      filter: true,
+      valueFormatter: this.currencyFormatter,
+    },
+    {
+      field: 'neto',
+      headerName: 'Neto',
+      sortable: true,
+      filter: true,
+      valueFormatter: this.currencyFormatter,
+    },
   ];
 
   // Configuración por defecto para todas las columnas
@@ -540,10 +646,8 @@ export class MasterPayrollComponent implements OnInit {
     minWidth: 100,
     resizable: true,
     sortable: true,
-    filter: true
+    filter: true,
   };
-
-
 
   // Formateo de valores monetarios
   currencyFormatter(params: any) {
@@ -554,11 +658,9 @@ export class MasterPayrollComponent implements OnInit {
       style: 'currency',
       currency: 'MXN',
       minimumFractionDigits: 2,
-      maximumFractionDigits: 2
+      maximumFractionDigits: 2,
     }).format(params.value);
   }
-
-
 
   // Evento cuando el grid está listo
   onGridReady(params: GridReadyEvent): void {
@@ -571,7 +673,7 @@ export class MasterPayrollComponent implements OnInit {
   exportToExcel(): void {
     if (this.gridApi) {
       this.gridApi.exportDataAsExcel({
-        fileName: `Nominas_${new Date().toISOString().split('T')[0]}.xlsx`
+        fileName: `Nominas_${new Date().toISOString().split('T')[0]}.xlsx`,
       });
     }
   }
@@ -584,7 +686,7 @@ export class MasterPayrollComponent implements OnInit {
   }
 
   onSelectedRow(event: any) {
-    console.log(event)
+    console.log(event);
     this.id = event.data.id;
   }
 
@@ -632,7 +734,9 @@ export class MasterPayrollComponent implements OnInit {
       )
       .then((result) => {
         if (result.isConfirmed) {
-          this.payrollService.deletePayroll(id).pipe(
+          this.payrollService
+            .deletePayroll(id)
+            .pipe(
               catchError((error) => {
                 alerts.basicAlert(
                   'Eliminar nómina',
@@ -667,5 +771,3 @@ export class MasterPayrollComponent implements OnInit {
     );
   }
 }
-
-

@@ -55,7 +55,7 @@
                 [rowData]="rowData" [columnDefs]="colMaster" (gridReady)="onGridReady($event)" [gridOptions]="gridOptions"
                 [rowSelection]="rowSelection" [pivotPanelShow]="pivotPanelShow" [rowGroupPanelShow]="rowGroupPanelShow"
                 [paginationPageSize]="paginationPageSize" [paginationPageSizeSelector]="paginationPageSizeSelector"
-                [pagination]="true" [components]="components" (selectionChanged)="onSelectionChanged()">
+                [pagination]="true" [components]="components" (selectionChanged)="onSelectionChanged()" [stopEditingWhenCellsLoseFocus]="true">
             </ag-grid-angular>
         </div>
     </div>

@@ -2,44 +2,63 @@
 
 <section class="col-12 mt-3">
   <div class="row">
-   
     <main [ngClass]="id ? 'col-10' : 'col-12'">
       <div class="row">
-          <!-- Columna de botones -->
-          <nav class="col-auto d-flex flex-column align-items-start">
-                <button type="button" class="btn btn-primary ms-1 me-1" (click)="addRow()">
-                  <i class="bi bi-plus-lg"></i>
-                </button>
-                <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveChanges()">
-                  <i class="bi bi-floppy"></i>
-                  <span
-                    class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-                    *ngIf="notSavedChanges">
-                    <span class="visually-hidden">Hay cambios sin guardar</span>
-                  </span>
-                </button>
-                <button type="button" class="btn btn-warning ms-1 me-1" (click)="revert()">
-                  <i class="bi bi-arrow-clockwise"></i>
-                </button>
-                <button type="button" class="btn btn-danger ms-1 me-1" (click)="deleteEntry()">
-                  <i class="bi bi-trash"></i>
-                </button>
-          </nav>
+        <!-- Columna de botones -->
+        <nav class="col-auto d-flex flex-column align-items-start">
+          <button
+            type="button"
+            class="btn btn-primary ms-1 me-1"
+            (click)="addRow()"
+          >
+            <i class="bi bi-plus-lg"></i>
+          </button>
+          <button
+            type="button"
+            class="btn btn-success ms-1 me-1 position-relative"
+            (click)="saveChanges()"
+          >
+            <i class="bi bi-floppy"></i>
+            <span
+              class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+              *ngIf="notSavedChanges"
+            >
+              <span class="visually-hidden">Hay cambios sin guardar</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            class="btn btn-warning ms-1 me-1"
+            (click)="revert()"
+          >
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+          <button
+            type="button"
+            class="btn btn-danger ms-1 me-1"
+            (click)="deleteEntry()"
+          >
+            <i class="bi bi-trash"></i>
+          </button>
+        </nav>
 
         <section class="col">
-          <ag-grid-angular style="width: 120%; height:80vh;" 
-          class="ag-theme-quartz small-text-ag-grid" 
+          <ag-grid-angular
+            style="width: 120%; height: 80vh"
+            class="ag-theme-quartz small-text-ag-grid"
             [rowData]="rowData"
-            [columnDefs]="colMaster" 
+            [columnDefs]="colMaster"
             (selectionChanged)="onSelectionChanged($event)"
             [gridOptions]="gridOptions"
-            (cellValueChanged)="onCellValueChanged($event)" 
+            (cellValueChanged)="onCellValueChanged($event)"
             (rowSelected)="onSelectedRow($event)"
-            (gridReady)="onGridReady($event)" 
-            [rowSelection]="rowSelection" 
+            (gridReady)="onGridReady($event)"
+            [rowSelection]="rowSelection"
             [components]="components"
-            (cellDoubleClicked)="onCellDoubleClicked($event)">
-        </ag-grid-angular>
+            (cellDoubleClicked)="onCellDoubleClicked($event)"
+            [stopEditingWhenCellsLoseFocus]="true"
+          >
+          </ag-grid-angular>
         </section>
       </div>
     </main>
@@ -57,7 +76,7 @@
         <form (ngSubmit)="onSubmitFamily()">
           <div class="mb-3">
             <label for="familyName" class="form-label fw-bold">Nombre de la Familia</label>
-            <input type="text" class="form-control mb-4" id="familyName" [(ngModel)]="newFamilyName" name="familyName" 
+            <input type="text" class="form-control mb-4" id="familyName" [(ngModel)]="newFamilyName" name="familyName"
               placeholder="Ingrese el nombre de la familia" required>
           </div>
           <div class="modal-footer">
@@ -70,7 +89,7 @@
   </div>
 </div>
 
-<div class="modal fade" id="addSubFamilyModal" tabindex="-1" aria-labelledby="addSubFamilyModalLabel" 
+<div class="modal fade" id="addSubFamilyModal" tabindex="-1" aria-labelledby="addSubFamilyModalLabel"
   aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -86,9 +105,9 @@
               <option value="" disabled selected>Seleccione una familia...</option>
               <option *ngFor="let item of familias" [value]="item.id">{{item.description}}</option>
             </select>
-            
+
             <label for="subFamilyName" class="form-label fw-bold">Nombre de la subfamilia</label>
-            <input type="text" class="form-control mb-4" id="subFamilyName" [(ngModel)]="newSubFamilyName" 
+            <input type="text" class="form-control mb-4" id="subFamilyName" [(ngModel)]="newSubFamilyName"
               name="subFamilyName" placeholder="Ingrese el nombre de la subfamilia" required
               [disabled]="!selectedFamily">
           </div>
@@ -115,7 +134,7 @@
         <form (ngSubmit)="onSubmitLocation()">
           <div class="mb-3">
             <label for="locationName" class="form-label fw-bold">Nombre de la Ubicación</label>
-            <input type="text" class="form-control mb-4" id="locationName" [(ngModel)]="newLocationName" name="locationName" 
+            <input type="text" class="form-control mb-4" id="locationName" [(ngModel)]="newLocationName" name="locationName"
               placeholder="Ingrese el nombre de la ubicación" required>
           </div>
           <div class="modal-footer">

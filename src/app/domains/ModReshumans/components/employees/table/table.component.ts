@@ -1,14 +1,13 @@
 import { Component, effect, HostListener, inject } from '@angular/core';
 import {
   CellDoubleClickedEvent,
-  IFilterComp,
   ColDef,
   GridApi,
   GridReadyEvent,
   ICellRendererParams,
 } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
-import { catchError, concat, EMPTY, lastValueFrom, toArray, tap } from 'rxjs';
+import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -22,13 +21,15 @@ import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/auto
 import { States } from 'app/interface/states';
 import { EmployeesxLoansComponent } from '../loans/loans.component';
 import { AdministrationService } from 'app/services/administration.service';
-import { HRService } from 'app/services/hr.service';
 import { EmployeesxSavingsComponent } from '../savings/savings.component';
 import { TimeService } from 'app/services/time.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { AuthService } from 'app/services/auth.service';
 import { environment } from '@env/environment';
+
+import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
+import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 
 @Component({
   selector: 'app-employees-table',
@@ -44,7 +45,7 @@ import { environment } from '@env/environment';
   templateUrl: './table.component.html',
   styleUrls: ['./table.component.scss'],
 })
-export class EmployeesTableComponent {
+export class EmployeesTableComponent implements CanComponentDeactivate {
   // Inject of new way for Angular 18
   private imageHandlerService = inject(ImageHandlerService);
   private employeeService = inject(EmployeesService);
@@ -143,8 +144,6 @@ export class EmployeesTableComponent {
     });
   }
 
-  ngOnInit() {}
-
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
     headerHeight: 25,
@@ -234,7 +233,7 @@ export class EmployeesTableComponent {
       },*/
       {
         field: 'idBranch',
-        headerName: 'Nombre sucursal *',
+        headerName: 'Nombre sucursal',
         headerClass: 'required-header',
         hide:
           this.authService.hasDetailedPermission(
@@ -272,7 +271,7 @@ export class EmployeesTableComponent {
       },
       {
         field: 'name',
-        headerName: 'Nombre *',
+        headerName: 'Nombre',
         headerClass: 'required-header',
         editable: true,
         cellStyle: (params) => this.validateRequiredField(params.value),
@@ -319,8 +318,9 @@ export class EmployeesTableComponent {
       },
       {
         field: 'email',
-        headerName: 'Correo electrónico *',
+        headerName: 'Correo electrónico',
         headerClass: 'required-header',
+        cellStyle: (params) => this.validateRequiredField(params.value),
         cellEditor: 'agTextCellEditor',
         editable: true,
         cellEditorParams: {
@@ -417,7 +417,7 @@ export class EmployeesTableComponent {
       },
       {
         field: 'idDepto',
-        headerName: 'Departamento *',
+        headerName: 'Departamento',
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
         editable: true,
@@ -444,7 +444,7 @@ export class EmployeesTableComponent {
       },
       {
         field: 'idPosition',
-        headerName: 'Posicion *',
+        headerName: 'Posicion',
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
         editable: true,
@@ -472,6 +472,8 @@ export class EmployeesTableComponent {
       {
         field: 'priceXHour',
         headerName: 'Precio por hora *',
+        headerClass: 'required-header',
+        cellStyle: (params) => this.validateRequiredField(params.value),
         editable: true,
         filter: true,
         width: 150,
@@ -493,11 +495,11 @@ export class EmployeesTableComponent {
       },
       {
         field: 'baseHours',
-        headerName: 'Horas base *',
-        editable: true,
-        filter: true,
-        width: 150,
+        headerName: 'Horas base',
+        headerClass: 'required-header',
+        cellStyle: (params) => this.validateRequiredField(params.value),
         cellEditor: 'agNumberCellEditor',
+        editable: true,
         cellEditorParams: {
           min: 0,
           max: 96,
@@ -764,7 +766,6 @@ export class EmployeesTableComponent {
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
       this.idEmployee = this.selectedRowData.id;
-
       console.log('Datos de la fila seleccionada:', this.selectedRowData);
 
       this.signalsService.setIdEmployee(this.idEmployee);
@@ -863,7 +864,9 @@ export class EmployeesTableComponent {
         item.idBranch &&
         item.email &&
         item.idDepto && // se agregan dos inputs para la validación de los campos requeridos
-        item.idPosition
+        item.idPosition &&
+        item.priceXHour &&
+        item.baseHours
     );
     if (!isValid) {
       alerts.basicAlert(
@@ -890,7 +893,7 @@ export class EmployeesTableComponent {
     });
 
     try {
-      const responses = await lastValueFrom(
+      await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
 
@@ -1084,6 +1087,8 @@ export class EmployeesTableComponent {
     const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
     const selectedId = selectedRowData.id; // Obtener el ID del registro
 
+    this.notSavedChanges = true;
+
     if (colId === 'loan' || colId === 'saving') {
       // Filtrar el grid para mostrar solo el registro con el ID seleccionado
       const filterModel = {
@@ -1135,5 +1140,11 @@ export class EmployeesTableComponent {
 
   async adjustGridSize() {
     this.gridHeight = '20vh'; // Adjust as needed
+  }
+
+  // ==================== GUARD ALERT UNSAVED CHANGES ====================
+
+  async canDeactivate(): Promise<boolean> {
+    return confirmExitIfUnsaved(this.notSavedChanges);
   }
 }

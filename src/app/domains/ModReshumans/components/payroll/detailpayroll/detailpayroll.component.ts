@@ -86,10 +86,11 @@ export class DetailpayrollComponent implements OnInit{
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
       }
     },
-    { headerName: 'Descuentos (%)', width: 150, field: 'percentageDiscount' },
+    /*{ headerName: 'Descuentos (%)', width: 150, field: 'percentageDiscount' },*/
     {
       headerName: 'Descuento Real',
       width: 150,
+      editable: true,
       field: 'realDiscount',
       valueFormatter: (params) => {
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);

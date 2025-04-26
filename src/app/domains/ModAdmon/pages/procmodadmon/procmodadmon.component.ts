@@ -9,8 +9,6 @@ import { SharedModule } from 'app/shared/shared.module';
   imports: [RouterModule, DomainsModule, SharedModule],
   templateUrl: './procmodadmon.component.html',
   styleUrl: './procmodadmon.component.scss',
-  encapsulation: ViewEncapsulation.None // Desactiva la encapsulación
+  encapsulation: ViewEncapsulation.None, // Desactiva la encapsulación
 })
-export class ProcmodadmonComponent {
-
-}
+export class ProcmodadmonComponent {}

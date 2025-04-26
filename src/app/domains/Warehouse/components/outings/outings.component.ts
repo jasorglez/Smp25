@@ -30,6 +30,8 @@ import { WarehousesService } from 'app/services/warehouses.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { SearchableSelectComponent } from 'app/shared/searchable-select/searchable-select.component';
 import { SetupService } from 'app/services/setup.service';
+import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
+import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 
 interface Catalog {
   id: number;
@@ -44,12 +46,12 @@ interface Catalog {
     FormsModule,
     AgGridModule,
     MultiLineEditorComponent,
-    SearchableSelectComponent,
+    // SearchableSelectComponent,
   ],
   templateUrl: './outings.component.html',
   styleUrl: './outings.component.scss',
 })
-export class OutingsComponent implements OnInit {
+export class OutingsComponent implements OnInit, CanComponentDeactivate {
   // Inject services
   private inAndOutsService = inject(InandoutService);
   private signalsService = inject(SignalsService);
@@ -116,7 +118,7 @@ export class OutingsComponent implements OnInit {
       this.IdInAndOut = this.signalsService.getIdInAndOut()();
 
       this.getSetupData();
-      this.idReference = this.projectOrBranch ?  this.idProject : this.idBranch;
+      this.idReference = this.projectOrBranch ? this.idProject : this.idBranch;
 
       // Solo llamar a obtenerAlmacenesPorUsuario si idWarehouse es null
       if (!this.idWarehouse) {
@@ -130,7 +132,8 @@ export class OutingsComponent implements OnInit {
 
       if (this.idProject == null) {
         this.masterRowData = [];
-        alerts.basicAlert('Salidas',
+        alerts.basicAlert(
+          'Salidas',
           'Debe elegir un proyecto primero.',
           'error'
         );
@@ -166,15 +169,19 @@ export class OutingsComponent implements OnInit {
     this.setupService.getWarehouseSetup(this.idRoot).subscribe({
       next: (data: any) => {
         this.projectOrBranch = data[0].projectOrBranch;
-        this.typeReference = this.projectOrBranch ?  'project' : 'branch';
+        this.typeReference = this.projectOrBranch ? 'project' : 'branch';
         console.log(this.projectOrBranch);
       },
       error: (err) => {
         if (err.status === 404) {
           console.error(err);
-          alerts.basicAlert('Requisiciones', 'No se encontró la configuración de almacenes de la empresa.', 'error');
+          alerts.basicAlert(
+            'Requisiciones',
+            'No se encontró la configuración de almacenes de la empresa.',
+            'error'
+          );
         }
-      }
+      },
     });
   }
 
@@ -185,32 +192,32 @@ export class OutingsComponent implements OnInit {
     searchableSelectComponent: SearchableSelectComponent,
   };
 
-// Column Definitions: Defines the columns to be displayed.
-public gridOptions: any = {
-  headerHeight: 30,
-  rowHeight: 30,
-  rowClass: (params) => {
-    // Verificar si la fila está seleccionada
-    if (params.node.isSelected()) {
-      return 'selected-row';
-    }
-    return '';
-  },
-  onRowClicked: (event) => {
-    // Seleccionar la fila al hacer clic en cualquier celda
-    event.node.setSelected(true);
-  },
-  onRowSelected: (event) => {
-    // Deseleccionar otras filas cuando se selecciona una nueva
-    if (event.node.isSelected()) {
-      this.gridApi.forEachNode((node) => {
-        if (node.id !== event.node.id) {
-          node.setSelected(false);
-        }
-      });
-    }
-  },
-};
+  // Column Definitions: Defines the columns to be displayed.
+  public gridOptions: any = {
+    headerHeight: 30,
+    rowHeight: 30,
+    rowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onRowClicked: (event) => {
+      // Seleccionar la fila al hacer clic en cualquier celda
+      event.node.setSelected(true);
+    },
+    onRowSelected: (event) => {
+      // Deseleccionar otras filas cuando se selecciona una nueva
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    },
+  };
 
   get colMaster(): ColDef[] {
     return [
@@ -354,8 +361,7 @@ public gridOptions: any = {
       },
       {
         field: 'quantity',
-        headerName:
-          'Cantidad a entregar',
+        headerName: 'Cantidad a entregar',
         editable: true,
         filter: true,
         flex: 1,
@@ -888,5 +894,11 @@ public gridOptions: any = {
 
   get componentTitle(): string {
     return 'Salidas';
+  }
+
+  // ==================== GUARD ALERT UNSAVED CHANGES ====================
+
+  async canDeactivate(): Promise<boolean> {
+    return confirmExitIfUnsaved(this.masterNotSavedChanges);
   }
 }

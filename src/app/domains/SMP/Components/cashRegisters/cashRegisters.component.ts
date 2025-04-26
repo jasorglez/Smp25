@@ -1,4 +1,10 @@
-import { ChangeDetectionStrategy, Component , effect, HostListener, inject} from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  HostListener,
+  inject,
+} from '@angular/core';
 import { SignalsService } from 'app/services/signals.service';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
@@ -8,7 +14,8 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray, tap } from 'rxjs';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import {
-  CellDoubleClickedEvent, IFilterComp,
+  CellDoubleClickedEvent,
+  IFilterComp,
   ColDef,
   GridApi,
   GridReadyEvent,
@@ -19,6 +26,8 @@ import { States } from 'app/interface/states';
 import { BranchsService } from 'app/services/branchs.service';
 import { CashRegistersService } from 'app/services/cash-registers.service';
 import { StoresService } from 'app/services/stores.service';
+import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
+import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 
 @Component({
   selector: 'cashRegistersComponent',
@@ -26,7 +35,7 @@ import { StoresService } from 'app/services/stores.service';
   imports: [CommonModule, FormsModule, AgGridModule],
   templateUrl: './cashRegisters.component.html',
 })
-export class CashRegistersComponent { 
+export class CashRegistersComponent implements CanComponentDeactivate {
   store: any[] = [];
   idcompany: number = null;
   // esta es la data que se va a mostrar en el grid
@@ -44,10 +53,10 @@ export class CashRegistersComponent {
   showLoansTab: boolean = false;
   selectedRowData: any = null;
   showSavingsTab: boolean = false;
-  authorizedPass:boolean = false;
-  idStore: number ;
+  authorizedPass: boolean = false;
+  idStore: number;
   private lastEditedRowId: number | string | null = null;
-  newlyAddedRows: string[] = []; 
+  newlyAddedRows: string[] = [];
   resnew: boolean = false;
   resup: boolean = false;
 
@@ -59,58 +68,65 @@ export class CashRegistersComponent {
   private branchesService = inject(BranchsService);
   private cashRegistersService = inject(CashRegistersService);
   private storesService = inject(StoresService);
-  private isOpen: boolean = false; 
+  private isOpen: boolean = false;
 
   components = {
-      multiLineEditor: MultiLineEditorComponent,
-      autocompleteEditor: AutocompleteEditorComponent,
+    multiLineEditor: MultiLineEditorComponent,
+    autocompleteEditor: AutocompleteEditorComponent,
+  };
+
+  public defaultColDef: ColDef = {
+    sortable: true,
+    filter: false,
+    resizable: true,
+    lockPosition: false,
+    enableRowGroup: true, // Enable row grouping for all columns
+    flex: 1,
+  };
+  private cleanDataForServer(data: any): any {
+    // 1. Estructura base garantizada
+    const cleanedData: any = {
+      idStore: this.idStore, // Prioriza el idStore del dato, sino usa el del componente
+      description: data.descCashRegister,
+      comment: data.comment || undefined, // Mantiene undefined si no existe
+      active: data.active !== undefined ? data.active : true,
     };
 
-    public defaultColDef: ColDef = {
-      sortable: true,
-      filter: false,
-      resizable: true,
-      lockPosition: false,
-      enableRowGroup: true, // Enable row grouping for all columns
-      flex: 1,
-    };
-    private cleanDataForServer(data: any): any {
-      // 1. Estructura base garantizada
-      const cleanedData: any = {
-        idStore: this.idStore,  // Prioriza el idStore del dato, sino usa el del componente
-        description: data.descCashRegister,
-        comment: data.comment || undefined,  // Mantiene undefined si no existe
-        active: data.active !== undefined ? data.active : true
-      };
-    
-      // 3. Manejo especial para actualización
-      console.log(data)
-      if (data.idCaja && !data.idCaja.toString().startsWith('temp_')) {
-        cleanedData.id = data.idCaja;
-      }
-      if (this.resnew && data.idStore && !data.idStore.toString().startsWith('temp_')) {
-        cleanedData.idStore = this.idStore;
-        this.resnew = false;
-      }
-      if (this.resup && data.idStore && !data.idStore.toString().startsWith('temp_')) {
-        cleanedData.idStore = data.idStore;
-        this.resup= false;
-      }
-    
-      // 4. Limpieza de metadatos (sin eliminar campos necesarios)
-      const metaFields = ['__isNew', '__modified', 'store', 'storeId'];
-      metaFields.forEach(prop => {
-        if (cleanedData[prop] !== undefined) {
-          delete cleanedData[prop];
-        }
-      });
-    
-      return cleanedData;
+    // 3. Manejo especial para actualización
+    console.log(data);
+    if (data.idCaja && !data.idCaja.toString().startsWith('temp_')) {
+      cleanedData.id = data.idCaja;
     }
-  
+    if (
+      this.resnew &&
+      data.idStore &&
+      !data.idStore.toString().startsWith('temp_')
+    ) {
+      cleanedData.idStore = this.idStore;
+      this.resnew = false;
+    }
+    if (
+      this.resup &&
+      data.idStore &&
+      !data.idStore.toString().startsWith('temp_')
+    ) {
+      cleanedData.idStore = data.idStore;
+      this.resup = false;
+    }
+
+    // 4. Limpieza de metadatos (sin eliminar campos necesarios)
+    const metaFields = ['__isNew', '__modified', 'store', 'storeId'];
+    metaFields.forEach((prop) => {
+      if (cleanedData[prop] !== undefined) {
+        delete cleanedData[prop];
+      }
+    });
+
+    return cleanedData;
+  }
+
   constructor() {
     effect(() => {
-      
       this.idUser = this.signalsService.getIdUSer()();
       this.idcompany = this.signalsService.getRootSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
@@ -130,47 +146,50 @@ export class CashRegistersComponent {
     );
   }
 
-  obtenerDatos(){
-    if(this.idUser == 42)
-    {
-        this.cashRegistersService.getCashRegisterAll().subscribe({
-          next: (data: any) => {
-            this.rowData = data;
-            console.log(this.rowData)
-          },
-          error: (error) => {
-            if (error.status === 404) this.store = [];
-            console.error('Error fetching data:', error);
-          }
-        });
-    }else{
-      if(this.idBranch <= 0){ 
-        this.idcompany= Math.abs(this.idcompany);
-        this.cashRegistersService.getCashRegisterByCompany(this.idcompany).subscribe({
-          next: (data: any) => {
-            this.rowData = data;
-            console.log(this.rowData)
-          },
-          error: (error) => {
-            if (error.status === 404) this.store = [];
-            console.error('Error fetching data:', error);
-          }
-        });
-      }else{
-      this.cashRegistersService.getCashRegisterByBranch(this.idBranch).subscribe({
+  obtenerDatos() {
+    if (this.idUser == 42) {
+      this.cashRegistersService.getCashRegisterAll().subscribe({
         next: (data: any) => {
           this.rowData = data;
-          //console.log(this.rowData)
+          console.log(this.rowData);
         },
         error: (error) => {
           if (error.status === 404) this.store = [];
           console.error('Error fetching data:', error);
-        }
-      });}
-    //}
-    
-  }
-  /*@HostListener('window:beforeunload', ['$event'])
+        },
+      });
+    } else {
+      if (this.idBranch <= 0) {
+        this.idcompany = Math.abs(this.idcompany);
+        this.cashRegistersService
+          .getCashRegisterByCompany(this.idcompany)
+          .subscribe({
+            next: (data: any) => {
+              this.rowData = data;
+              console.log(this.rowData);
+            },
+            error: (error) => {
+              if (error.status === 404) this.store = [];
+              console.error('Error fetching data:', error);
+            },
+          });
+      } else {
+        this.cashRegistersService
+          .getCashRegisterByBranch(this.idBranch)
+          .subscribe({
+            next: (data: any) => {
+              this.rowData = data;
+              //console.log(this.rowData)
+            },
+            error: (error) => {
+              if (error.status === 404) this.store = [];
+              console.error('Error fetching data:', error);
+            },
+          });
+      }
+      //}
+    }
+    /*@HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
     if (this.masterNotSavedChanges) {
       $event.returnValue =
@@ -179,27 +198,27 @@ export class CashRegistersComponent {
   }
 
   getStore() {
-    if(this.idBranch <= 0){ 
+    if (this.idBranch <= 0) {
       this.storesService.getStoreCompany(this.idcompany).subscribe({
         next: (data: any) => {
           this.storeCatalog = data;
-          console.log(this.storeCatalog)
+          console.log(this.storeCatalog);
         },
         error: (error) => {
           console.error('Error fetching states', error);
         },
       });
-    }else{
+    } else {
       this.storesService.getStoreList(this.idBranch).subscribe({
         next: (data: any) => {
           this.storeCatalog = data;
-          console.log(this.storeCatalog)
+          console.log(this.storeCatalog);
         },
         error: (error) => {
           console.error('Error fetching states', error);
         },
       });
-    }      
+    }
   }
   public gridOptions: any = {
     headerHeight: 25,
@@ -216,7 +235,7 @@ export class CashRegistersComponent {
       }
       return '';
     },
-    
+
     onRowClicked: (event) => {
       // Seleccionar la fila al hacer clic en cualquier celda
       event.node.setSelected(true);
@@ -254,13 +273,14 @@ export class CashRegistersComponent {
     },
     onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
   };
-  onMasterSelectionChanged(event: any) {
-  }
+  onMasterSelectionChanged(event: any) {}
 
   onMasterCellValueChanged(event: any) {
-     if (event.colDef.field === 'description') {
+    if (event.colDef.field === 'description') {
       const selectedBonus = event.newValue;
-      const idStore = this.storeCatalog?.find(item => item.description === selectedBonus);
+      const idStore = this.storeCatalog?.find(
+        (item) => item.description === selectedBonus
+      );
 
       if (idStore) {
         // Actualizamos el monto (quantity)
@@ -269,59 +289,58 @@ export class CashRegistersComponent {
       }
     }
     console.log('Dato cambiado:', event.data);
-     event.data.id = this.idStore
-     event.data.__modified = true;
-     this.notSavedChanges = true;
-   }
+    event.data.id = this.idStore;
+    event.data.__modified = true;
+    this.notSavedChanges = true;
+  }
 
-   onMasterGridReady(params: GridReadyEvent) {
-     this.gridApi = params.api;
-   }
+  onMasterGridReady(params: GridReadyEvent) {
+    this.gridApi = params.api;
+  }
 
-   onMasterRowSelected(event: any) {
-     this.id = event.data.idCaja;
-   }
-   async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
-     const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
+  onMasterRowSelected(event: any) {
+    this.id = event.data.idCaja;
+  }
+  async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
+    const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
+    this.notSavedChanges = true;
 
-     // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
-     this.selectedRowData = selectedRowData;
-   }
-   async activateLoansTab() {
-     if (!this.isOpen || this.showSavingsTab) {
-       await this.adjustGridSize();
-       this.showLoansTab = true;
-       this.showSavingsTab = false;
-       this.isOpen = true;
-     }
-     else {
-       await this.resetGridSize();
-       this.isOpen = false;
-     }
-   }
-   async activateSavingsTab() {
-     if (!this.isOpen || this.showLoansTab) {
-       await this.adjustGridSize();
-       this.showLoansTab = false;
-       this.showSavingsTab = true;
-       this.isOpen = true;
-     }
-     else {
-       await this.resetGridSize();
-       this.isOpen = false;
-     }
-   }
+    // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
+    this.selectedRowData = selectedRowData;
+  }
+  async activateLoansTab() {
+    if (!this.isOpen || this.showSavingsTab) {
+      await this.adjustGridSize();
+      this.showLoansTab = true;
+      this.showSavingsTab = false;
+      this.isOpen = true;
+    } else {
+      await this.resetGridSize();
+      this.isOpen = false;
+    }
+  }
+  async activateSavingsTab() {
+    if (!this.isOpen || this.showLoansTab) {
+      await this.adjustGridSize();
+      this.showLoansTab = false;
+      this.showSavingsTab = true;
+      this.isOpen = true;
+    } else {
+      await this.resetGridSize();
+      this.isOpen = false;
+    }
+  }
 
-   async adjustGridSize() {
-     this.gridHeight = '20vh'; // Adjust as needed
-   }
-  get colMaster(): ColDef[]{
+  async adjustGridSize() {
+    this.gridHeight = '20vh'; // Adjust as needed
+  }
+  get colMaster(): ColDef[] {
     return [
       {
         field: 'nameSmall',
         headerName: 'Empresa',
         editable: false,
-        width:100,
+        width: 100,
         hide: this.idUser != 42,
         rowGroup: this.idUser == 42,
         rowGroupIndex: 1,
@@ -330,35 +349,37 @@ export class CashRegistersComponent {
         field: 'name',
         headerName: 'Sucursal',
         editable: false,
-        width:100,
+        width: 100,
         hide: this.idBranch >= 0 || this.idUser != 42,
-        rowGroup:  this.idBranch <= 0 || this.idUser == 42 ,
+        rowGroup: this.idBranch <= 0 || this.idUser == 42,
         rowGroupIndex: 2,
       },
       {
         field: 'description',
         headerName: 'Tienda',
         editable: true,
-        width:200,
-        rowGroup:  true,
+        width: 200,
+        rowGroup: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: this.storeCatalog ? this.storeCatalog.map(item => item.description) : [],
+          values: this.storeCatalog
+            ? this.storeCatalog.map((item) => item.description)
+            : [],
         },
         valueFormatter: (params) => {
           return params.value || '';
-        }
+        },
       },
-      
+
       {
         field: 'descCashRegister',
         headerName: 'Numero de caja',
         editable: true,
         width: 250,
       },
-    ]
+    ];
   }
-  
+
   resetGridSize() {
     this.gridHeight = '80vh'; // Reset to default height
     this.showLoansTab = false;
@@ -368,7 +389,7 @@ export class CashRegistersComponent {
       this.gridApi.onFilterChanged();
     }
   }
-  
+
   addMasterRow() {
     const newItem = {
       //id: tempId,
@@ -378,196 +399,208 @@ export class CashRegistersComponent {
       active: true,
       __isNew: true,
     };
-  
+
     this.rowData = [newItem, ...this.rowData];
     this.notSavedChanges = true;
   }
-      async saveMasterChanges() {
-        const isValid = this.rowData.every((item) => item.description);
-        if (!isValid) {
-          alerts.basicAlert(
-            'Añadir entrada',
-            'Debe llenar los campos obligatorios antes de guardar.',
-            'error'
-          );
-          return;
-        }
-    
-        const newRows = this.rowData.filter((row) => row.__isNew);
+  async saveMasterChanges() {
+    const isValid = this.rowData.every((item) => item.description);
+    if (!isValid) {
+      alerts.basicAlert(
+        'Añadir entrada',
+        'Debe llenar los campos obligatorios antes de guardar.',
+        'error'
+      );
+      return;
+    }
 
-        const modifiedRows = this.rowData.filter(
-          (row) => row.__modified && !row.__isNew
+    const newRows = this.rowData.filter((row) => row.__isNew);
+
+    const modifiedRows = this.rowData.filter(
+      (row) => row.__modified && !row.__isNew
+    );
+
+    const addObservables: Promise<any>[] = newRows.map((row) => {
+      this.resnew = true;
+      const cleanedData = this.cleanDataForServer(row);
+      console.log(typeof newRows);
+
+      return lastValueFrom(
+        this.cashRegistersService.addCashRegister(cleanedData)
+      );
+    });
+
+    const updateObservables: Promise<any>[] = modifiedRows.map((row) => {
+      this.resup = true;
+      const cleanedData = this.cleanDataForServer(row);
+      console.log(typeof modifiedRows);
+      return lastValueFrom(
+        this.cashRegistersService.updateCashRegister(cleanedData)
+      );
+    });
+
+    try {
+      const allResponses = await Promise.all([
+        ...addObservables,
+        ...updateObservables,
+      ]);
+
+      //console.log('Promise.all completado. Respuestas:', allResponses);
+      for (const response of allResponses) {
+        // Verificar si es una nueva creación comparando con los IDs temporales
+        const correspondingNewRow = newRows.find(
+          (row) => !row.id || row.id.toString().startsWith('temp_')
         );
-    
-        const addObservables: Promise<any>[] = newRows.map((row) => {
-          this.resnew = true;
-          const cleanedData = this.cleanDataForServer(row);
-          console.log(typeof(newRows));
 
-          return lastValueFrom(this.cashRegistersService.addCashRegister(cleanedData));
-        });
-    
-        const updateObservables: Promise<any>[] = modifiedRows.map((row) => {
-          this.resup = true;
-          const cleanedData = this.cleanDataForServer(row);
-          console.log(typeof(modifiedRows));
-          return lastValueFrom(this.cashRegistersService.updateCashRegister(cleanedData));
-        });
-    
-        try {
-          const allResponses = await Promise.all([...addObservables, ...updateObservables]);
-
-          //console.log('Promise.all completado. Respuestas:', allResponses); 
-          for (const response of allResponses) {
-            // Verificar si es una nueva creación comparando con los IDs temporales
-            const correspondingNewRow = newRows.find(row => 
-              !row.id || row.id.toString().startsWith('temp_')
+        if (response.id && correspondingNewRow) {
+          try {
+            await lastValueFrom(
+              this.branchesService.assignPermissionAfterCreation(
+                this.idUser, //id user
+                response.id,
+                'cashRegisters'
+              )
             );
-            
-           if ( response.id && correspondingNewRow) {
-          
-                    try {
-                      await lastValueFrom(
-                        this.branchesService.assignPermissionAfterCreation(
-                          this.idUser, //id user 
-                          response.id, 
-                          'cashRegisters'
-                        )
-                      );
-                    } catch (permError) {
-                      console.error('Error asignando permiso:', permError);
-                      // Opcional: Mostrar alerta pero no interrumpir el flujo principal
-                      alerts.basicAlert(
-                        'Advertencia',
-                        'Se creó la sucursal pero hubo un problema asignando los permisos.',
-                        'warning'
-                      );
-                    }
-                  }
+          } catch (permError) {
+            console.error('Error asignando permiso:', permError);
+            // Opcional: Mostrar alerta pero no interrumpir el flujo principal
+            alerts.basicAlert(
+              'Advertencia',
+              'Se creó la sucursal pero hubo un problema asignando los permisos.',
+              'warning'
+            );
           }
-    
-          // Determinar qué ID vamos a seleccionar después de recargar
-          if (modifiedRows.length > 0) {
-            // Si hay filas modificadas, guardamos el ID de la última modificada
-            this.lastEditedRowId = modifiedRows[modifiedRows.length - 1].id;
-          } else if (newRows.length > 0) {
-            // Si hay filas nuevas, marcaremos que necesitamos seleccionar el ID máximo
-            this.lastEditedRowId = 'SELECT_MAX_ID';
-          }
-    
-          alerts.basicAlert(
-            'Datos actualizados',
-            'Se han actualizado los datos correctamente.',
-            'success'
-          );
-          this.notSavedChanges = false;
-          this.newlyAddedRows = [];
-    
-          await this.obtenerDatos(); // Esperar a que se actualicen los datos
-    
-          // Seleccionar la fila apropiada después de recargar
-          if (this.lastEditedRowId) {
-            if (this.lastEditedRowId === 'SELECT_MAX_ID') {
-              // Encontrar el ID máximo en los datos actuales
-              const maxId = Math.max(...this.rowData.map(row => Number(row.id)));
-              this.selectRowById(maxId);
-            } else {
-              this.selectRowById(this.lastEditedRowId);
-            }
-            this.lastEditedRowId = null; // Resetear el ID
-          }
-        } catch (error) {
-          console.error(error);
-          alerts.basicAlert(
-            'Error',
-            'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
-            'error'
-          );
         }
       }
 
-      deleteMasterEntry() {
-        const selectedNodes = this.gridApi.getSelectedNodes();
-        if (selectedNodes.length === 0) {
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Por favor, seleccione una entrada para eliminar.',
-            'error'
-          );
-          return;
+      // Determinar qué ID vamos a seleccionar después de recargar
+      if (modifiedRows.length > 0) {
+        // Si hay filas modificadas, guardamos el ID de la última modificada
+        this.lastEditedRowId = modifiedRows[modifiedRows.length - 1].id;
+      } else if (newRows.length > 0) {
+        // Si hay filas nuevas, marcaremos que necesitamos seleccionar el ID máximo
+        this.lastEditedRowId = 'SELECT_MAX_ID';
+      }
+
+      alerts.basicAlert(
+        'Datos actualizados',
+        'Se han actualizado los datos correctamente.',
+        'success'
+      );
+      this.notSavedChanges = false;
+      this.newlyAddedRows = [];
+
+      await this.obtenerDatos(); // Esperar a que se actualicen los datos
+
+      // Seleccionar la fila apropiada después de recargar
+      if (this.lastEditedRowId) {
+        if (this.lastEditedRowId === 'SELECT_MAX_ID') {
+          // Encontrar el ID máximo en los datos actuales
+          const maxId = Math.max(...this.rowData.map((row) => Number(row.id)));
+          this.selectRowById(maxId);
+        } else {
+          this.selectRowById(this.lastEditedRowId);
         }
-    
-        const selectedData = selectedNodes[0].data;
-        console.log('Datos del empleado a eliminar:', selectedData);
-    
-        // Validar que el préstamo sea 0 o no exista
-        if (selectedData.loan && selectedData.loan !== 0) {
-          alerts.basicAlert(
-            'Error al eliminar',
-            'No se puede eliminar el empleado mientras tenga préstamos activos',
-            'error'
-          );
-          return;
+        this.lastEditedRowId = null; // Resetear el ID
+      }
+    } catch (error) {
+      console.error(error);
+      alerts.basicAlert(
+        'Error',
+        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
+        'error'
+      );
+    }
+  }
+
+  deleteMasterEntry() {
+    const selectedNodes = this.gridApi.getSelectedNodes();
+    if (selectedNodes.length === 0) {
+      alerts.basicAlert(
+        'Eliminar entrada',
+        'Por favor, seleccione una entrada para eliminar.',
+        'error'
+      );
+      return;
+    }
+
+    const selectedData = selectedNodes[0].data;
+    console.log('Datos del empleado a eliminar:', selectedData);
+
+    // Validar que el préstamo sea 0 o no exista
+    if (selectedData.loan && selectedData.loan !== 0) {
+      alerts.basicAlert(
+        'Error al eliminar',
+        'No se puede eliminar el empleado mientras tenga préstamos activos',
+        'error'
+      );
+      return;
+    }
+
+    const id = selectedData.idCaja;
+    alerts
+      .confirmAlert(
+        'Eliminar caja',
+        '¿Está seguro que desea eliminar esta caja?',
+        'warning',
+        'Sí, eliminar'
+      )
+      .then((result) => {
+        if (result.isConfirmed) {
+          this.cashRegistersService
+            .deleteCashRegister(id)
+            .pipe(
+              catchError((error) => {
+                alerts.basicAlert(
+                  'Eliminar caja',
+                  'Error al eliminar la caja.',
+                  'error'
+                );
+                console.error(error);
+                return EMPTY;
+              })
+            )
+            .subscribe(() => {
+              alerts.basicAlert(
+                'Caja eliminado',
+                'La caja se eliminó correctamente',
+                'success'
+              );
+              this.obtenerDatos();
+              this.notSavedChanges = false;
+              this.selectedRowData = null;
+            });
         }
-    
-        const id = selectedData.idCaja;
-        alerts
-          .confirmAlert(
-            'Eliminar caja',
-            '¿Está seguro que desea eliminar esta caja?',
-            'warning',
-            'Sí, eliminar'
-          )
-          .then((result) => {
-            if (result.isConfirmed) {
-              this.cashRegistersService
-               .deleteCashRegister(id)
-                .pipe(
-                  catchError((error) => {
-                    alerts.basicAlert(
-                      'Eliminar caja',
-                      'Error al eliminar la caja.',
-                      'error'
-                    );
-                    console.error(error);
-                    return EMPTY;
-                  })
-                )
-                .subscribe(() => {
-                  alerts.basicAlert(
-                    'Caja eliminado',
-                    'La caja se eliminó correctamente',
-                    'success'
-                  );
-                  this.obtenerDatos();
-                  this.notSavedChanges = false;
-                  this.selectedRowData = null;
-                });
-            }
-          });
-      }
-    
+      });
+  }
 
-      revertMasterData() {
-        this.obtenerDatos();
-        this.notSavedChanges = false;
-      }
+  revertMasterData() {
+    this.obtenerDatos();
+    this.notSavedChanges = false;
+  }
 
+  private selectRowById(id: number | string) {
+    // Dar tiempo al grid para que se actualice
+    setTimeout(() => {
+      this.gridApi.forEachNode((node) => {
+        // Convertir ambos IDs a número para la comparación
+        const nodeId =
+          typeof node.data.id === 'string'
+            ? parseInt(node.data.id)
+            : node.data.id;
+        const searchId = typeof id === 'string' ? parseInt(id) : id;
 
-      private selectRowById(id: number | string) {
-        // Dar tiempo al grid para que se actualice
-        setTimeout(() => {
-          this.gridApi.forEachNode((node) => {
-            // Convertir ambos IDs a número para la comparación
-            const nodeId = typeof node.data.id === 'string' ? parseInt(node.data.id) : node.data.id;
-            const searchId = typeof id === 'string' ? parseInt(id) : id;
-    
-            if (nodeId === searchId) {
-              node.setSelected(true);
-              this.gridApi.ensureNodeVisible(node, 'middle');
-            }
-          });
-        }, 100);
-      }
+        if (nodeId === searchId) {
+          node.setSelected(true);
+          this.gridApi.ensureNodeVisible(node, 'middle');
+        }
+      });
+    }, 100);
+  }
 
+  // ==================== GUARD ALERT UNSAVED CHANGES ====================
+
+  async canDeactivate(): Promise<boolean> {
+    return confirmExitIfUnsaved(this.notSavedChanges);
+  }
 }

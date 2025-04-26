@@ -35,6 +35,8 @@ import { CatalogsService } from 'app/services/catalogs.service';
 import { Icatalog } from 'app/interface/icatalog';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '@env/environment';
+import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
+import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 
 @Component({
   selector: 'app-customers',
@@ -49,7 +51,7 @@ import { environment } from '@env/environment';
   templateUrl: './customers.component.html',
   styleUrls: ['./customers.component.scss'],
 })
-export class CustomersComponent {
+export class CustomersComponent implements CanComponentDeactivate {
   //  private administrationService = inject(AdministrationService);
   private customerService = inject(CustomersService);
   private modalServiceTable = inject(ModalService);
@@ -815,6 +817,8 @@ export class CustomersComponent {
     const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
     const selectedId = selectedRowData.id; // Obtener el ID del registro
 
+    this.notSavedChanges = true;
+
     // Filtrar el grid para mostrar solo el registro con el ID seleccionado solo si la columna es "total"
     if (colId === 'total') {
       const filterModel = {
@@ -875,5 +879,11 @@ export class CustomersComponent {
       },
       (error) => console.error('Error fetching measures:', error)
     );
+  }
+
+  // ==================== GUARD ALERT UNSAVED CHANGES ====================
+
+  async canDeactivate(): Promise<boolean> {
+    return confirmExitIfUnsaved(this.notSavedChanges);
   }
 }
