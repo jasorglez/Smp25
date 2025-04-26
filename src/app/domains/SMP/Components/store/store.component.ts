@@ -107,19 +107,35 @@ export class StoreComponent implements CanComponentDeactivate {
 
   obtenerDatos() {
     if (this.idUser == 42) {
-      this.storesService.getStoreAll().subscribe({
-        next: (data: any) => {
-          this.rowData = data;
-          console.log(this.rowData);
-        },
-        error: (error) => {
-          if (error.status === 404) this.store = [];
-          console.error('Error fetching data:', error);
-        },
-      });
-    } else {
-      if (this.idBranch <= 0) {
-        this.idcompany = Math.abs(this.idcompany);
+      return this.storeByRoot();
+    }
+    if (this.idBranch <= 0) {
+      return this.storeByCompany();
+    } 
+    return this.storeByBranch();
+  }
+  @HostListener('window:beforeunload', ['$event'])
+  unloadNotification($event: any): void {
+    if (this.notSavedChanges) {
+      $event.returnValue =
+        'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
+    }
+  }
+  storeByRoot(){
+    this.storesService.getStoreAll().subscribe({
+      next: (data: any) => {
+        this.rowData = data;
+        console.log(this.rowData);
+      },
+      error: (error) => {
+        if (error.status === 404) this.store = [];
+        console.error('Error fetching data:', error);
+      },
+    });
+  }
+
+  storeByCompany(){
+    this.idcompany = Math.abs(this.idcompany);
         this.storesService.getStoreCompany(this.idcompany).subscribe({
           next: (data: any) => {
             this.rowData = data;
@@ -130,26 +146,18 @@ export class StoreComponent implements CanComponentDeactivate {
             console.error('Error fetching data:', error);
           },
         });
-      } else {
-        this.storesService.getStoreList(this.idBranch).subscribe({
-          next: (data: any) => {
-            this.rowData = data;
-            console.log(this.rowData);
-          },
-          error: (error) => {
-            if (error.status === 404) this.store = [];
-            console.error('Error fetching data:', error);
-          },
-        });
-      }
-    }
   }
-  @HostListener('window:beforeunload', ['$event'])
-  unloadNotification($event: any): void {
-    if (this.notSavedChanges) {
-      $event.returnValue =
-        'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
-    }
+  storeByBranch(){
+    this.storesService.getStoreList(this.idBranch).subscribe({
+      next: (data: any) => {
+        this.rowData = data;
+        console.log(this.rowData);
+      },
+      error: (error) => {
+        if (error.status === 404) this.store = [];
+        console.error('Error fetching data:', error);
+      },
+    });
   }
 
   getStates() {
