@@ -3,6 +3,7 @@ import { MainPageComponent } from './pages/main-page/main-page.component';
 import { SharedModule } from './shared/shared.module';
 import { MasterPermissionsGuard } from './guards/master-permissions.guard';
 import { UnsavedChangesGuard } from './guards/unsaved-changes.guard';
+import { HistoryPayrollComponent } from './domains/ModReshumans/components/payroll/history-payroll/history-payroll.component';
 
 export const routes: Routes = [
   {
@@ -766,6 +767,15 @@ export const routes: Routes = [
                 canDeactivate: [UnsavedChangesGuard],
               },
               {
+                path: 'history-payroll',
+                loadComponent: () =>
+                  import(
+                    './domains/ModReshumans/components/payroll/history-payroll/history-payroll.component'
+                  ).then((s) => s.HistoryPayrollComponent),
+                canDeactivate: [UnsavedChangesGuard],
+              },
+              
+              {
                 path: 'setup',
                 loadComponent: () =>
                   import(
@@ -802,15 +812,19 @@ export const routes: Routes = [
               { path: '', redirectTo: 'history-clock', pathMatch: 'full' },
               {
                 path: 'history-clock',
-                loadComponent: () => import('./domains/ModReshumans/components/employees/db/db.component').then((s) => s.DbComponent),
+                loadComponent: () => import('./domains/ModReshumans/components/checkout/db/db.component'),
               },
               {
                 path: 'detail-clock',
-                loadComponent: () =>import('./domains/ModReshumans/components/payroll/detail-clock/detail-clock.component').then((s) => s.DetailClockComponent),
+                loadComponent: () =>import('./domains/ModReshumans/components/checkout/detail-clock/detail-clock.component'),
               },
               {
                 path: 'master-clock',
-                loadComponent: () =>import('./domains/ModReshumans/components/payroll/master-clock/master-clock.component').then((s) => s.MasterClockComponent),
+                loadComponent: () =>import('./domains/ModReshumans/components/checkout/master-clock/master-clock.component'),
+              },
+              {
+                path: 'detail-clock-2',
+                loadComponent: () => import('./domains/ModReshumans/components/checkout/detail-clock-2/detail-clock-2.component'),
               },
 
             ]

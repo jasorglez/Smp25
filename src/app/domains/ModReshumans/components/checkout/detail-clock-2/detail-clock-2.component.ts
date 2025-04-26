@@ -9,25 +9,32 @@ import { SignalsService } from 'app/services/signals.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { PayrollService } from 'app/services/payroll.service';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ClockService } from 'app/services/clock.service';
+import { TimeEditorComponent } from 'app/shared/time-editor/time-editor.component';
+import { TimeEditorModule } from 'app/shared/time-editor/time-editor.module';
 
 @Component({
-  selector: 'app-master-clock',
+  selector: 'app-detail-clock-2',
   standalone: true,
-  imports: [RouterModule, DomainsModule, AgGridModule],
-  templateUrl: './master-clock.component.html',
-  styleUrl: './master-clock.component.scss'
+  imports: [RouterModule, DomainsModule, AgGridModule, TimeEditorModule],
+  templateUrl: './detail-clock-2.component.html',
+  styleUrl: './detail-clock-2.component.scss'
 })
-export class MasterClockComponent implements OnInit {
-   //  private administrationService = inject(AdministrationService);
-   private payrollService = inject(PayrollService);
+export default class DetailClock2Component implements OnInit {
+
+   private clockService = inject(ClockService);
    private signalsService = inject(SignalsService);
    private route = inject(ActivatedRoute);
    private fb = inject(FormBuilder);
  
    ngOnInit() {
      
-     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-     this.obtenerDatos();
+     //this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+     this.idEmployee = 443;
+     
+     this.fechaInicio = '2025-04-19';
+     this.fechaFin = '2025-04-25';
+     this.obtenerDatos(this.fechaInicio, this.fechaFin);
    }
  
    constructor() { 
@@ -38,7 +45,7 @@ export class MasterClockComponent implements OnInit {
 
      effect(() => {
        this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-       this.obtenerDatos();
+       this.obtenerDatos(this.fechaInicio, this.fechaFin);
      })
    }
  
@@ -50,7 +57,7 @@ export class MasterClockComponent implements OnInit {
    }
  
    selectFechas: FormGroup;
-   type: string = ''; // Para almacenar el tipo (CUSTOMERS o PROVIDERS)
+   type: string = '';
    gridHeight: string = '75vh';
    showCreditsTab: boolean = false;
    private gridApi: GridApi;
@@ -93,6 +100,7 @@ export class MasterClockComponent implements OnInit {
    components = {
      multiLineEditor: MultiLineEditorComponent,
      autocompleteEditor: AutocompleteEditorComponent,
+     timeEditor: TimeEditorComponent
    };
  
  
@@ -125,124 +133,121 @@ export class MasterClockComponent implements OnInit {
    get colMaster(): ColDef[] {
      return [
        {
-         field: 'id', headerName: 'Id', editable: false, width: 110, hide: true,
+         field: 'id',
+         headerName: 'ID',
+         editable: true,
+         width: 80,
+         hide: true
        },
        {
-         field: 'nameBranch',
-         headerName: 'Nombre sucursal',
+         field: 'idEmployee',
+         headerName: 'ID Empleado',
+         editable: true,
+         width: 110,
+         hide: true
+       },
+       {
+         field: 'idBranch',
+         headerName: 'ID Sucursal',
+         editable: true,
+         width: 110,
+         hide: true
+       },
+       {
+         field: 'date',
+         headerName: 'Fecha',
          editable: false,
-         hide: true,
+         width: 120,
+         valueFormatter: (params) => {
+           if (!params.value) return '';
+           const date = new Date(params.value);
+           return date.toISOString().split('T')[0];
+         },
          rowGroup: true
        },
        {
-        field: 'periodStart',
-        headerName: 'Fecha inicio',
-        editable: false,
-        valueGetter: (params) => {
-          if (!params.data?.periodStart) return '';
-          const date = new Date(params.data.periodStart);
-          return date.toISOString().split('T')[0];
-        }
-      },
-      {
-        field: 'periodEnd',
-        headerName: 'Fecha fin',
-        editable: false,
-        valueGetter: (params) => {
-          if (!params.data?.periodEnd) return '';
-          const date = new Date(params.data.periodEnd);
-          return date.toISOString().split('T')[0];
+         field: 'checkTime',
+         headerName: 'Hora de Registro',
+         editable: false,
+         cellEditor: 'timeEditor',
+         width: 120,
+         valueFormatter: (params) => {
+           if (!params.value) return '';
+           return params.value.split('.')[0];
+         }
+       },
+       {
+        field: 'modifiedCheckTime',
+        headerName: 'Hora de Registro Modificada',
+        editable: true,
+        cellEditor: 'timeEditor',
+        width: 120,
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          return params.value.split('.')[0];
         }
       },
        {
-        field: 'nameEmployee',
-        headerName: 'Nombre Empleado',
-        editable: false
-      },
-      {
-        field: 'hours',
-        headerName: 'Horas laboradas',
-        editable: false,
-        cellStyle: (params) => {
-          if (params.value == 0) {
-            return { backgroundColor: '#ffcccc' };
-          }
-          return null;
-        }
-      },
-      {
-        field: 'baseHours',
-        headerName: 'Horas base',
-        editable: false
-      },
-      {
-        field: 'extraHours',
-        headerName: 'Horas extra',
-        editable: false
-      },
-      {
-        field: 'adjustedExtraHours',
-        headerName: 'Horas extra ajustadas',
-        editable: false
-      },
-      {
-        field: 'pendingOuts',
-        headerName: 'Salidas pendientes',
-        editable: false,
-        cellStyle: (params) => {
-          if (params.value > 0) {
-            return { backgroundColor: '#ffcccc' };
-          }
-          return null;
-        }
-      },
-      {
-        field: 'absences',
-        headerName: 'Ausencias',
-        editable: false,
-        cellStyle: (params) => {
-          if (params.value > 0) {
-            return { backgroundColor: '#ffcccc' };
-          }
-          return null;
-        }
-      },
-      {
-        field: 'holidays',
-        headerName: 'Festivos',
-        editable: false
-      },
-      {
-        field: 'delays',
-        headerName: 'Retrasos',
-        editable: false,
-        cellStyle: (params) => {
-          if (params.value > 0) {
-            return { backgroundColor: '#ffcccc' };
-          }
-          return null;
-        }
-      },
-      {
-        field: 'discountHours',
-        headerName: 'Horas descontadas',
-        editable: false,
-        cellStyle: (params) => {
-          if (params.value > 0) {
-            return { backgroundColor: '#ffcccc' };
-          }
-          return null;
-        }
-      },
-      ]
-
+         field: 'type',
+         headerName: 'Tipo',
+         editable: true,
+         width: 100,
+         cellEditor: 'agSelectCellEditor',
+         cellEditorParams: {
+           values: ['IN', 'OUT']
+         },
+         valueFormatter: (params) => {
+           if (params.node.group) return '';
+           return params.value === 'OUT' ? 'Salida' : 'Entrada';
+         }
+       },
+       {
+         field: 'valid',
+         headerName: 'Válido',
+         editable: true,
+         width: 100,
+         valueFormatter: (params) => {
+           if (params.node.group) return '';
+           return params.value ? 'Sí' : 'No';
+         },
+         cellStyle: (params) => {
+           if (params.node.group) return null;
+           if (!params.value) {
+             return { backgroundColor: '#ffcccc' };
+           }
+           return null;
+         }
+       },
+       {
+         field: 'minuteDiscount',
+         headerName: 'Minutos Descontados',
+         editable: true,
+         cellDataType: 'number',
+         cellEditor: 'agTextCellEditor',
+         width: 150 
+       },
+       {
+         field: 'edited',
+         headerName: 'Editado',
+         editable: false,
+         width: 100,
+         valueFormatter: (params) => {
+           return params.value ? 'Sí' : 'No';
+         }
+       },
+       {
+        field: 'comments',
+        headerName: 'Comentarios',
+        editable: true,
+        width: 200
+       }
+     ];
    }
  
-   obtenerDatos(fechaInicio: string = '', fechaFin: string = '') {
-     this.payrollService.getMasterClock(this.idBranch, fechaInicio, fechaFin).subscribe((data: any) => {
+   obtenerDatos(fechaInicio: string = '2025-04-19', fechaFin: string = '2025-04-25') {
+     this.clockService.checkInOutByEmployee(this.idEmployee, fechaInicio, fechaFin).subscribe((data: any) => {
        this.rowData = [];
        this.rowData = data;
-       
        // Esperar a que el grid se actualice y luego ajustar las columnas
        setTimeout(() => {
          if (this.gridApi) {
@@ -269,8 +274,9 @@ export class MasterClockComponent implements OnInit {
  
    onCellValueChanged(event: any) {
      event.data.__modified = true;
+     event.data.edited = true;
      this.notSavedChanges = true;
-      this.lastEditedRowId = event.data.id; // Guardar el ID de la última fila editada
+     this.lastEditedRowId = event.data.id;
    }
  
  

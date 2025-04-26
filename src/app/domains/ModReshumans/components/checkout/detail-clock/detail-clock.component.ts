@@ -17,7 +17,7 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
   templateUrl: './detail-clock.component.html',
   styleUrl: './detail-clock.component.scss'
 })
-export class DetailClockComponent implements OnInit {
+export default class DetailClockComponent implements OnInit {
 
    private payrollService = inject(PayrollService);
    private signalsService = inject(SignalsService);

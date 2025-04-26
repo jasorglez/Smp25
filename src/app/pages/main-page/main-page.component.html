@@ -1,21 +1,12 @@
+<div class="d-flex" style="width: 100%; overflow-x: hidden">
+  <!-- Sidebar -->
+  <app-side-bar />
 
-<div class="wrapper">
-    <!-- Navbar -->
-    <!-- /.navbar -->
-      <!-- Main Sidebar Container -->
-    <app-side-bar></app-side-bar>
-
-    <div class="content-wrapper" style="margin-top: 2vh;">
+  <!-- Contenedor principal -->
+  <div class="d-flex flex-column flex-grow-1 min-vh-100">
+    <div class="flex-grow-1 content-wrapper pt-3 px-4">
       <router-outlet></router-outlet>
     </div>
-
     <app-footer></app-footer>
-
-    <!-- Control Sidebar -->
-    <aside class="control-sidebar control-sidebar-dark">
-      <!-- Control sidebar content goes here -->
-    </aside>
-    <!-- /.control-sidebar -->
+  </div>
 </div>
-
-
