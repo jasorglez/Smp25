@@ -21,24 +21,13 @@
         </button>
       </div>
     </div>
-
     <div class="col mt-3">
-      <ag-grid-angular
-        [ngStyle]="{ height: gridHeight() }"
-        class="ag-theme-quartz small-text-ag-grid"
+      <digital-payroll-details-table
         [rowData]="rowData"
-        [columnDefs]="colMaster"
-        (selectionChanged)="onSelectionChanged($event)"
-        [gridOptions]="gridOptions"
-        (cellValueChanged)="onCellValueChanged($event)"
-        (rowSelected)="onSelectedRow($event)"
-        (gridReady)="onGridReady($event)"
-        rowSelection="single"
-        [pivotPanelShow]="pivotPanelShow"
-        [rowSelection]="rowSelection"
-        [stopEditingWhenCellsLoseFocus]="true"
-      >
-      </ag-grid-angular>
+        (showPayrollDetailTab)="setShowPayrollDetails($event)"
+        (employeeData)="setEmployeeData($event)"
+        [gridHeight]="gridHeight()"
+      />
     </div>
   </div>
 

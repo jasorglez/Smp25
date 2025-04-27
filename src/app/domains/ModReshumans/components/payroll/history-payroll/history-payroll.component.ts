@@ -1,11 +1,6 @@
 import { Component, effect, inject, signal } from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
-import {
-  CellDoubleClickedEvent,
-  ColDef,
-  GridApi,
-  GridReadyEvent,
-} from 'ag-grid-enterprise';
+import { GridApi } from 'ag-grid-enterprise';
 import { HistoryPayrollService } from 'app/services/history-payroll.service';
 import {
   HistoryPayrollResponse,
@@ -19,6 +14,7 @@ import { DomainsModule } from 'app/domains/domainsmodule';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { ShowEmployeesTableComponent } from './employees-table/employees-table.component';
+import { DigitalPayrollDetailsTableComponent } from './digital-payroll-details-table/digital-payroll-details-table.component';
 
 @Component({
   selector: 'app-history-payroll',
@@ -27,9 +23,9 @@ import { ShowEmployeesTableComponent } from './employees-table/employees-table.c
     AgGridModule,
     RouterModule,
     DomainsModule,
-    AgGridModule,
     FormsModule,
     ShowEmployeesTableComponent,
+    DigitalPayrollDetailsTableComponent,
   ],
   templateUrl: './history-payroll.component.html',
 })
@@ -42,10 +38,6 @@ export class HistoryPayrollComponent {
   private signalsService = inject(SignalsService);
 
   private branchesService = inject(BranchsService);
-
-  // private authService = inject(AuthService);
-
-  // private administrationService = inject(AdministrationService);
 
   private idBranch: number = 0;
 
@@ -65,28 +57,18 @@ export class HistoryPayrollComponent {
 
   public showLoansTab: any;
 
-  public showSavingsTab: any;
-
   // Referencia al grid API
   private gridApi: GridApi;
 
   private branchs = signal([]);
 
-  private mostrarGridDetalle = signal<boolean>(false);
-
-  private datosDetalle = signal<Array<{ detalleId: number; info: string }>>([]);
-
   private aggregatingRecord = signal(false);
-
-  private selectedRowData = signal(null);
 
   public notSavedChanges = signal(false);
 
   // Datos para la tabla
   // Estado de carga
   public isLoading = signal(false);
-
-  private id = signal('');
 
   public rowSelection: 'single' | 'multiple' = 'single';
 
@@ -101,6 +83,15 @@ export class HistoryPayrollComponent {
       this.obtenerDatos();
       this.obtenerBranchs();
     });
+  }
+
+  setShowPayrollDetails(event: boolean) {
+    this.showPayrollDetailTab.set(event);
+    this.adjustGridSize();
+  }
+
+  setEmployeeData(employeeData) {
+    this.employeeData.set(employeeData);
   }
 
   // MIO
@@ -140,127 +131,8 @@ export class HistoryPayrollComponent {
     );
   }
 
-  get colMaster(): ColDef[] {
-    return [
-      {
-        field: 'payrollId',
-        headerName: 'Id Nomina',
-        width: 170,
-        cellEditor: 'agSelectCellEditor',
-      },
-      // {
-      //   field: 'idBranch',
-      //   headerName: 'Sucursal',
-      //   width: 170,
-      //   cellEditor: 'agSelectCellEditor',
-      // },
-      {
-        field: 'company',
-        headerName: 'Compañia',
-        width: 200,
-      },
-      {
-        field: 'period',
-        headerName: 'Periodo',
-        width: 260,
-      },
-      {
-        field: 'startDate',
-        headerName: 'Fecha de inicio',
-        width: 140,
-      },
-
-      {
-        field: 'endDate',
-        headerName: 'Fecha final',
-        width: 160,
-      },
-      {
-        field: 'fiscalYear',
-        headerName: 'Año fiscal',
-        width: 160,
-      },
-      // {
-      //   field: 'createdAt',
-      //   headerName: 'Creado',
-      //   width: 100,
-      // },
-      {
-        field: 'active',
-        headerName: 'Vigente',
-        width: 130,
-        editable: false,
-        // onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
-      },
-    ];
-  }
-
-  onCellValueChanged(event: any) {
-    if (
-      event.data.endDate &&
-      event.data.startDate &&
-      event.data.endDate <= event.data.startDate
-    ) {
-      alerts.basicAlert(
-        'Error',
-        'La fecha de fin no puede ser menor o igual a la fecha de inicio.',
-        'error'
-      );
-      event.data.endDate = '';
-      event.data.startDate = '';
-      return;
-    }
-    event.data.__modified = true;
-    this.notSavedChanges.set(true);
-  }
-
-  // Column Definitions: Defines the columns to be displayed.
-  public gridOptions: any = {
-    headerHeight: 30,
-    rowHeight: 30,
-    rowClass: (params) => {
-      // Verificar si la fila está seleccionada
-      if (params.node.isSelected()) {
-        return 'selected-row';
-      }
-      return '';
-    },
-    onRowClicked: (event) => {
-      // Seleccionar la fila al hacer clic en cualquier celda
-      event.node.setSelected(true);
-    },
-    onRowSelected: (event) => {
-      // Deseleccionar otras filas cuando se selecciona una nueva
-      if (event.node.isSelected()) {
-        this.gridApi.forEachNode((node) => {
-          if (node.id !== event.node.id) {
-            node.setSelected(false);
-          }
-        });
-      }
-    },
-    onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
-  };
-
-  activatePayrollDetailTab() {
-    this.showPayrollDetailTab.set(true);
-    this.adjustGridSize();
-  }
-
   adjustGridSize() {
     this.gridHeight.set('20vh'); // Adjust as needed
-  }
-
-  mostrarDetalle(params: any) {
-    this.mostrarGridDetalle.set(true);
-    this.datosDetalle.set([
-      { detalleId: 1, info: `Detalle de ${params.data.nombre}` },
-      { detalleId: 2, info: `Más info de ${params.data.nombre}` },
-    ]);
-  }
-
-  cerrarDetalle() {
-    this.mostrarGridDetalle.set(false);
   }
 
   resetGridSize() {
@@ -272,131 +144,11 @@ export class HistoryPayrollComponent {
     }
   }
 
-  onCellDoubleClicked(event: CellDoubleClickedEvent): void {
-    //alert("Holaaaaaaaaaaaaa");
-    const colId = event.column.getColId();
-    const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
-
-    const selectedId = selectedRowData.id; // Obtener el ID del registro
-    this.signalsService.setNormalPayrollId(selectedId);
-
-    if (colId === 'NomDigital') {
-      // Filtrar el grid para mostrar solo el registro con el ID seleccionado
-      const filterModel = {
-        id: {
-          type: 'equals',
-          filter: selectedId,
-        },
-      };
-
-      this.gridApi.setFilterModel(filterModel);
-      this.gridApi.onFilterChanged();
-    }
-
-    if (this.aggregatingRecord) this.activatePayrollDetailTab();
-
-    // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
-    this.selectedRowData.set(selectedRowData);
-  }
-
-  onSelectionChanged(event: any) {
-    // console.log('onSelectionChanged', event);
-    const selectedNodes = event.api.getSelectedNodes();
-    if (selectedNodes.length > 0) {
-      this.selectedRowData = selectedNodes[0].data;
-    } else {
-      this.selectedRowData = null;
-    }
-  }
-
-  // Definición de columnas para AG Grid
-  columnDefs: ColDef[] = [
-    {
-      field: 'payrollId',
-      headerName: 'Id Payroll',
-      sortable: true,
-      filter: true,
-      resizable: true,
-    },
-    {
-      field: 'idBranch',
-      headerName: 'ID Branch',
-      sortable: true,
-      filter: true,
-      resizable: true,
-    },
-    {
-      field: 'company',
-      headerName: 'Compañia',
-      sortable: true,
-      filter: true,
-      width: 90,
-    },
-    {
-      field: 'period',
-      headerName: 'Periodo',
-      sortable: true,
-      filter: true,
-    },
-    {
-      field: 'startDate',
-      headerName: 'Fecha de inicio',
-      sortable: true,
-      filter: true,
-    },
-    {
-      field: 'endDate',
-      headerName: 'Fecha Final',
-      sortable: true,
-      filter: true,
-    },
-    {
-      field: 'fiscalYear',
-      headerName: 'Año Fiscal',
-      sortable: true,
-      filter: true,
-    },
-    {
-      field: 'createdAt',
-      headerName: 'Creado',
-      sortable: true,
-      filter: true,
-    },
-    {
-      field: 'active',
-      headerName: 'Activo',
-      sortable: true,
-      filter: true,
-    },
-  ];
-
-  // Configuración por defecto para todas las columnas
-  defaultColDef: ColDef = {
-    flex: 1,
-    minWidth: 100,
-    resizable: true,
-    sortable: true,
-    filter: true,
-  };
-
-  // Evento cuando el grid está listo
-  onGridReady(params: GridReadyEvent): void {
-    this.gridApi = params.api;
-    // Ajustar columnas al tamaño óptimo
-    // this.gridApi.sizeColumnsToFit();
-  }
-
   // Método para refrescar los datos
   refreshData(): void {
     this.aggregatingRecord.set(false);
     this.obtenerDatos();
     this.resetGridSize();
-  }
-
-  onSelectedRow(event: any) {
-    // console.log('onSelectedRow', event);
-    this.employeeData.set(event.data.payrollEmployees);
-    this.id.set(event.data.id);
   }
 
   // ESTA SI ME SIRVE
