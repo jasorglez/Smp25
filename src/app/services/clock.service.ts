@@ -36,6 +36,12 @@ export class ClockService {
     });
   }
 
+  checkInOutByEmployee(idEmployee: number, start: string, end: string): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/EmployeesxCheckInsOuts/employee/${idEmployee}?start=${start}&end=${end}`, {
+      headers: this.trackingService.getHeaders(),
+    });
+  }
+
   checkIncidentsByEmployee(idEmployee: number, start: string, end: string): Observable<any> {
     return this.http.get(`${environment.urlAdministration}/EmployeesxCheckInsOuts/employee/${idEmployee}/incidents?start=${start}&end=${end}`, {
       headers: this.trackingService.getHeaders(),

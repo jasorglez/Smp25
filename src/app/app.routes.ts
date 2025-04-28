@@ -3,6 +3,7 @@ import { MainPageComponent } from './pages/main-page/main-page.component';
 import { SharedModule } from './shared/shared.module';
 import { MasterPermissionsGuard } from './guards/master-permissions.guard';
 import { UnsavedChangesGuard } from './guards/unsaved-changes.guard';
+import { HistoryPayrollComponent } from './domains/ModReshumans/components/payroll/history-payroll/history-payroll.component';
 
 export const routes: Routes = [
   {
@@ -732,13 +733,6 @@ export const routes: Routes = [
                   ).then((s) => s.SavingsRegistryComponent),
               },
               {
-                path: 'history-clock',
-                loadComponent: () =>
-                  import(
-                    './domains/ModReshumans/components/employees/db/db.component'
-                  ).then((s) => s.DbComponent),
-              },
-              {
                 path: 'catalogs',
                 loadComponent: () =>
                   import(
@@ -748,26 +742,7 @@ export const routes: Routes = [
               },
             ],
           },
-          {
-            path: 'setup',
-            loadComponent: () => import('./domains/ModReshumans/components/setup/setup.component').then(s => s.SetupComponent),
-            children: [
-              { path: '', redirectTo: 'payroll', pathMatch: 'full' },
-              
-              {
-                path: 'payroll',
-                loadComponent: () => import('./domains/ModReshumans/components/setup/payroll/payroll.component').then(p => p.PayrollComponent)
-              },
-              {
-                path: 'employees',
-                loadComponent: () => import('./domains/ModReshumans/components/setup/employees/employees.component').then(p => p.EmployeesComponent)
-              },
-              {
-                path: 'clock',
-                loadComponent: () => import('./domains/ModReshumans/components/setup/clock/clock.component').then(p => p.ClockComponent)
-              },
-            ]
-          },
+          
           {
             path: 'payroll',
             loadComponent: () =>
@@ -792,19 +767,14 @@ export const routes: Routes = [
                 canDeactivate: [UnsavedChangesGuard],
               },
               {
-                path: 'master-clock',
+                path: 'history-payroll',
                 loadComponent: () =>
                   import(
-                    './domains/ModReshumans/components/payroll/master-clock/master-clock.component'
-                  ).then((s) => s.MasterClockComponent),
+                    './domains/ModReshumans/components/payroll/history-payroll/history-payroll.component'
+                  ).then((s) => s.HistoryPayrollComponent),
+                canDeactivate: [UnsavedChangesGuard],
               },
-              {
-                path: 'detail-clock',
-                loadComponent: () =>
-                  import(
-                    './domains/ModReshumans/components/payroll/detail-clock/detail-clock.component'
-                  ).then((s) => s.DetailClockComponent),
-              },
+              
               {
                 path: 'setup',
                 loadComponent: () =>
@@ -812,22 +782,60 @@ export const routes: Routes = [
                     './domains/ModReshumans/components/payroll/setup/setup.component'
                   ).then((s) => s.SetupEmployeesComponent),
               },
-              {
-                path: 'catalogs',
-                loadComponent: () =>
-                  import(
-                    './domains/SMP/Components/catalogs/catalogs.component'
-                  ).then((s) => s.CatalogsComponent),
-                canDeactivate: [UnsavedChangesGuard],
-              },
+              
             ],
           },
           {
+            path: 'setup',
+            loadComponent: () => import('./domains/ModReshumans/components/setup/setup.component').then(s => s.SetupComponent),
+            children: [
+              { path: '', redirectTo: 'payroll', pathMatch: 'full' },
+              
+              {
+                path: 'payroll',
+                loadComponent: () => import('./domains/ModReshumans/components/setup/payroll/payroll.component').then(p => p.PayrollComponent)
+              },
+              {
+                path: 'employees',
+                loadComponent: () => import('./domains/ModReshumans/components/setup/employees/employees.component').then(p => p.EmployeesComponent)
+              },
+              {
+                path: 'clock',
+                loadComponent: () => import('./domains/ModReshumans/components/setup/clock/clock.component').then(p => p.ClockComponent)
+              },
+            ]
+          },
+          {
             path: 'clock',
+            loadComponent: () => import('./domains/ModReshumans/components/checkout/checkout.component').then(s => s.CheckoutComponent),
+            children: [
+              { path: '', redirectTo: 'history-clock', pathMatch: 'full' },
+              {
+                path: 'history-clock',
+                loadComponent: () => import('./domains/ModReshumans/components/checkout/db/db.component'),
+              },
+              {
+                path: 'detail-clock',
+                loadComponent: () =>import('./domains/ModReshumans/components/checkout/detail-clock/detail-clock.component'),
+              },
+              {
+                path: 'master-clock',
+                loadComponent: () =>import('./domains/ModReshumans/components/checkout/master-clock/master-clock.component'),
+              },
+              {
+                path: 'detail-clock-2',
+                loadComponent: () => import('./domains/ModReshumans/components/checkout/detail-clock-2/detail-clock-2.component'),
+              },
+
+            ]
+          },
+          {
+            path: 'catalogs',
             loadComponent: () =>
               import(
-                './domains/ModReshumans/components/clock/clock.component'
-              ).then((p) => p.ClockComponent),
+                './domains/SMP/Components/catalogs/catalogs.component'
+              ).then((s) => s.CatalogsComponent),
+            canDeactivate: [UnsavedChangesGuard],
           },
         ],
       },

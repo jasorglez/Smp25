@@ -16,7 +16,7 @@ import { SignalsService } from 'app/services/signals.service';
   templateUrl: './db.component.html',
   styleUrl: './db.component.scss'
 })
-export class DbComponent {
+export default class DbComponent {
 
   private clockService = inject(ClockService);
   private timeService = inject(TimeService);

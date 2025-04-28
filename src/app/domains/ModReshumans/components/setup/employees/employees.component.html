@@ -1,12 +1,12 @@
 @if (idBranch > 0) {
-    <div class="container-fluid mt-4 mb-4 border light-blue-background">
+    <div class="container-fluid mt-4 mb-4 border light-blue-background py-2">
         <form [formGroup]="myForm"  (ngSubmit)="onSubmit()">
             <div class="row">
                 <div class="col-6">
-                    <div >
-                        <label for="consecutive" class="form-label">Periodo de gracia de vigencia de empleado (días)
+                    <div class="py-1">
+                        <label for="vigency" class="form-label">Periodo de gracia de vigencia de empleado (días)
                             <span class="text-danger">*</span></label>
-                        <input type="number" class="form-control" id="consecutive" placeholder="Consecutivo"  formControlName="Periodo">
+                        <input type="number" class="form-control" id="vigency" placeholder="Consecutivo" formControlName="vigency">
                     </div>
                 </div>
                 <div class="col-6">

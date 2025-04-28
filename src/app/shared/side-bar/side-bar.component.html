@@ -1,93 +1,82 @@
 <aside
-  class="main-sidebar sidebar-light-primary elevation-4"
+  class="d-flex flex-column border-end vh-100 sidebar sidebarback"
   [ngClass]="{ collapsed: isSidebarCollapsed }"
 >
-  <!-- <button
-    class="toggle-sidebar-btn"
-    (click)="isSidebarCollapsed = !isSidebarCollapsed"
-  >
-    <mat-icon>{{ isSidebarCollapsed ? "menu_open" : "menu" }}</mat-icon>
-  </button> -->
-  <!-- Brand Logo -->
-  <a href="/" class="brand-link">
-    <!-- Logo completo (solo visible cuando NO está colapsado) -->
+  <div class="d-flex flex-column align-items-center p-3 border-bottom">
+    <!-- Logo -->
     <img
-      class="sidebar-logo"
+      *ngIf="!isSidebarCollapsed"
       [src]="trackingService.getpictureComp()"
       alt="BI Company"
-      *ngIf="!isSidebarCollapsed"
+      class="img-fluid sidebar-logo"
     />
+    <span *ngIf="isSidebarCollapsed" class="fw-bold fs-5">BI</span>
+  </div>
 
-    <!-- Letras simples (solo visibles cuando SÍ está colapsado) -->
-    <span class="sidebar-logo-text" *ngIf="isSidebarCollapsed"> BI </span>
-  </a>
+  <div class="flex-grow-1 overflow-auto p-3">
+    <!-- Select Root -->
+    <select
+      id="root"
+      (change)="onRootsSelected($event)"
+      class="form-select mb-2"
+      [value]="selectedRoot || ''"
+      title="{{ 'select' | translate }} {{ 'company' | translate }}"
+    >
+      >
+      <option selected value="" disabled>{{ "company" | translate }}</option>
+      <option *ngFor="let item of rootData" [value]="item.id">
+        {{ item.name }}
+      </option>
+    </select>
 
-  <div class="sidebar">
-    <div class="user-panel mt-4 pb-2 mb-2 brand-image">
-      <!-- Select Root -->
+    <!-- Select Branchs -->
+    <select
+      id="branchs"
+      (change)="onBranchSelected($event)"
+      class="form-select mb-2"
+      [value]="selectedBranchId || ''"
+      title="{{ 'select' | translate }} {{ 'branchs' | translate }}"
+    >
+      <option selected disabled value="">{{ "branchs" | translate }}</option>
+      <option *ngFor="let item of branchData" [value]="item.id">
+        {{ item.name }}
+      </option>
+    </select>
+    <span *ngIf="authService.hasDetailedPermission('principal', 'projects')">
+      Select Contracts
       <select
-        id="root"
-        (change)="onRootsSelected($event)"
-        class="form-control select-side"
-        [value]="selectedRoot || ''"
-        title="{{ 'select' | translate }} {{ 'company' | translate }}"
+        id="contract"
+        (change)="onContractsSelected($event)"
+        class="form-select mb-2"
+        [value]="selectedContractId || ''"
+        title="{{ 'select' | translate }} {{ 'contract' | translate }}"
       >
         >
-        <option selected value="" disabled>{{ "company" | translate }}</option>
-        <option *ngFor="let item of rootData" [value]="item.id">
+        <option selected disabled value="">
+          {{ "contract" | translate }}
+        </option>
+        <option *ngFor="let item of contractData" [value]="item.id">
           {{ item.name }}
         </option>
       </select>
 
-      <!-- Select Branchs -->
+      Select Projects
       <select
-        id="branchs"
-        (change)="onBranchSelected($event)"
-        class="form-control select-side"
-        [value]="selectedBranchId || ''"
-        title="{{ 'select' | translate }} {{ 'branchs' | translate }}"
+        id="project"
+        (change)="onProjectSelected($event)"
+        class="form-select mb-2"
+        [value]="selectedProjectId || ''"
+        title="{{ 'select' | translate }} {{ 'projects' | translate }}"
       >
-        <option selected disabled value="">{{ "branchs" | translate }}</option>
-        <option *ngFor="let item of branchData" [value]="item.id">
-          {{ item.name }}
+        >
+        <option selected disabled value="">
+          {{ "projects" | translate }}
+        </option>
+        <option *ngFor="let pj of projectData" [value]="pj.id">
+          {{ pj.name }}
         </option>
       </select>
-      <span *ngIf="authService.hasDetailedPermission('principal', 'projects')">
-        Select Contracts
-        <select
-          id="contract"
-          (change)="onContractsSelected($event)"
-          class="form-control select-side"
-          [value]="selectedContractId || ''"
-          title="{{ 'select' | translate }} {{ 'contract' | translate }}"
-        >
-          >
-          <option selected disabled value="">
-            {{ "contract" | translate }}
-          </option>
-          <option *ngFor="let item of contractData" [value]="item.id">
-            {{ item.name }}
-          </option>
-        </select>
-
-        Select Projects
-        <select
-          id="project"
-          (change)="onProjectSelected($event)"
-          class="form-control select-side"
-          [value]="selectedProjectId || ''"
-          title="{{ 'select' | translate }} {{ 'projects' | translate }}"
-        >
-          >
-          <option selected disabled value="">
-            {{ "projects" | translate }}
-          </option>
-          <option *ngFor="let pj of projectData" [value]="pj.id">
-            {{ pj.name }}
-          </option>
-        </select>
-      </span>
-    </div>
+    </span>
 
     <ul class="nav flex-column">
       <li class="nav-item" *ngIf="authService.hasMasterPermission('dashboard')">
@@ -213,4 +202,11 @@
       </li>
     </ul>
   </div>
+  <!-- Botón de colapsar -->
+  <!-- <button
+    class="btn btn-outline-secondary w-100 mb-2"
+    (click)="isSidebarCollapsed = !isSidebarCollapsed"
+  >
+    <mat-icon>{{ isSidebarCollapsed ? "menu_open" : "menu" }}</mat-icon>
+  </button> -->
 </aside>
