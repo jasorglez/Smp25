@@ -27,7 +27,7 @@ interface Bank {
     BonusCatalogComponent 
 ],
   templateUrl: './setup.component.html',
-  styleUrl: './setup.component.scss'
+  
 })
 
 export class SetupEmployeesComponent {

@@ -22,6 +22,14 @@ interface Bank {
   standalone: true,
   imports: [ NgFor, ReactiveFormsModule ],
   templateUrl: './payroll.component.html',
+  styles: [`
+    .json-preview {
+      width: 60svw;  
+      max-width: 1200px; 
+      overflow-x: auto; /* scroll horizontal si es necesario */
+      white-space: pre;
+    }
+  `]
 })
 export class PayrollComponent {
   idBranch: number;
@@ -280,6 +288,7 @@ export class PayrollComponent {
  
      return obj;
    }
+   
 
  
    saveChanges() {

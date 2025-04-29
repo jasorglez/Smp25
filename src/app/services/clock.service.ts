@@ -42,6 +42,12 @@ export class ClockService {
     });
   }
 
+  updateCheckInOut(id: number, data: any): Observable<any> {
+    return this.http.put(`${environment.urlAdministration}/EmployeesxCheckInsOuts/${id}`, data, {
+      headers: this.trackingService.getHeaders(),
+    });
+  }
+
   checkIncidentsByEmployee(idEmployee: number, start: string, end: string): Observable<any> {
     return this.http.get(`${environment.urlAdministration}/EmployeesxCheckInsOuts/employee/${idEmployee}/incidents?start=${start}&end=${end}`, {
       headers: this.trackingService.getHeaders(),
