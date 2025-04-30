@@ -6,6 +6,7 @@ import {
   GridReadyEvent,
   ICellRendererParams,
 } from 'ag-grid-enterprise';
+import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
@@ -57,6 +58,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   private timeService = inject(TimeService);
   private branchesService = inject(BranchsService);
   private authService = inject(AuthService);
+  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   id: number;
   idBranch: number;
@@ -203,7 +205,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         editable: false,
         width: 70,
         hide: false,
-        filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
         filterParams: {
           filterOptions: ['equals'], // Opciones de filtro
         },
@@ -212,8 +213,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         field: 'vigente',
         headerName: 'Vigente',
         editable: true,
-        suppressMovable: true,
-        filter: true,
+        /*suppressMovable: true,
+        filter: true,*/
         width: 100,
       },
       /*{
@@ -355,7 +356,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             return false;
           }
         },
-        filter: true,
+        //filter: "agSetColumnFilter",
+        //suppressMovable: true,
       },
       {
         field: 'clockPassword',
@@ -416,60 +418,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         cellStyle: { backgroundColor: '#d4edda' },
       },
       {
-        field: 'idDepto',
-        headerName: 'Departamento',
-        headerClass: 'required-header',
-        cellStyle: (params) => this.validateRequiredField(params.value),
-        editable: true,
-        suppressMovable: true,
-        filter: false,
-        width: 190,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: (params) => {
-          // Ensure depto data is available when creating editor
-          return {
-            values: this.depto ? this.depto.map((item) => item.id) : [],
-          };
-        },
-        valueFormatter: (params) => {
-          // Handle potential null values and properly format the displayed value
-          if (!params.value) return '';
-
-          const foundDepto = this.depto
-            ? this.depto.find((item) => item.id === params.value)
-            : null;
-
-          return foundDepto ? foundDepto.description : params.value;
-        },
-      },
-      {
-        field: 'idPosition',
-        headerName: 'Posicion',
-        headerClass: 'required-header',
-        cellStyle: (params) => this.validateRequiredField(params.value),
-        editable: true,
-        suppressMovable: true,
-        filter: false,
-        width: 190,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: (params) => {
-          // Ensure depto data is available when creating editor
-          return {
-            values: this.position ? this.position.map((item) => item.id) : [],
-          };
-        },
-        valueFormatter: (params) => {
-          // Handle potential null values and properly format the displayed value
-          if (!params.value) return '';
-
-          const foundDepto = this.depto
-            ? this.position.find((item) => item.id === params.value)
-            : null;
-
-          return foundDepto ? foundDepto.description : params.value;
-        },
-      },
-      {
         field: 'priceXHour',
         headerName: 'Precio por hora *',
         headerClass: 'required-header',
@@ -507,11 +455,67 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         },
       },
       {
+        field: 'idDepto',
+        headerName: 'Departamento',
+        headerClass: 'required-header',
+        cellStyle: (params) => this.validateRequiredField(params.value),
+        editable: true,
+        suppressMovable: true,
+        filter: true,
+        width: 190,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: (params) => {
+          // Ensure depto data is available when creating editor
+          return {
+            values: this.depto ? this.depto.map((item) => item.id) : [],
+          };
+        },
+        valueFormatter: (params) => {
+          // Handle potential null values and properly format the displayed value
+          if (!params.value) return '';
+
+          const foundDepto = this.depto
+            ? this.depto.find((item) => item.id === params.value)
+            : null;
+
+          return foundDepto ? foundDepto.description : params.value;
+        },
+        
+      },
+      {
+        field: 'idPosition',
+        headerName: 'Posicion',
+        headerClass: 'required-header',
+        cellStyle: (params) => this.validateRequiredField(params.value),
+        editable: true,
+        suppressMovable: true,
+        filter: true,
+        width: 190,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: (params) => {
+          // Ensure depto data is available when creating editor
+          return {
+            values: this.position ? this.position.map((item) => item.id) : [],
+          };
+        },
+        valueFormatter: (params) => {
+          // Handle potential null values and properly format the displayed value
+          if (!params.value) return '';
+
+          const foundDepto = this.depto
+            ? this.position.find((item) => item.id === params.value)
+            : null;
+
+          return foundDepto ? foundDepto.description : params.value;
+        },
+      },
+      
+      {
         field: 'idBank',
         headerName: 'Banco',
         editable: true,
         suppressMovable: true,
-        filter: false,
+        filter: true,
         width: 200,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
@@ -528,7 +532,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         field: 'ingressDate',
         headerName: 'Fecha de ingreso',
         editable: false,
-        filter: true,
+        filter: 'agDateColumnFilter',
         width: 150,
         cellRenderer: 'agDateCellRenderer',
         cellEditor: 'agDateCellEditor',
@@ -547,7 +551,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         field: 'phone',
         headerName: 'Teléfono',
         editable: true,
-        filter: true,
+        filter: false,
         width: 150,
         valueSetter: (params) => {
           const phoneValue = params.newValue;
@@ -578,6 +582,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         editable: true,
         filter: 'agTextColumnFilter',
         width: 300,
+        valueSetter: (params) => {
+          params.data[params.colDef.field] = params.newValue.toUpperCase();
+          return true;
+        },
         /*cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
