@@ -444,15 +444,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       {
         field: 'baseHours',
         headerName: 'Horas base',
-        headerClass: 'required-header',
-        cellStyle: (params) => this.validateRequiredField(params.value),
-        cellEditor: 'agNumberCellEditor',
-        editable: true,
-        cellEditorParams: {
-          min: 0,
-          max: 96,
-          precision: 0,
-        },
+        editable: false,
       },
       {
         field: 'idDepto',
@@ -738,8 +730,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   getBanks() {
     this.administrationService.get2fieldsBanks().subscribe(
       (data: any) => {
-        this.banks = data;
-      },
+        this.banks = [{ idBank: '', name: 'Efectivo' }, ...data];
+      },      
       (error) => {
         if (error.status == 404) this.banks = [];
         console.error('Error fetching data:', error);
@@ -873,8 +865,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         item.email &&
         item.idDepto && // se agregan dos inputs para la validación de los campos requeridos
         item.idPosition &&
-        item.priceXHour &&
-        item.baseHours
+        item.priceXHour
     );
     if (!isValid) {
       alerts.basicAlert(

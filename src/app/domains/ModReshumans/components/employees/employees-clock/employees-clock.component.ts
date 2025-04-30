@@ -18,14 +18,17 @@ export class EmployeesClockComponent {
 
   private employeesService = inject(EmployeesService);
   private signalsService = inject(SignalsService);
+  
 
   idEmployee: number = null;
   horario: any = [];
   diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
   isNew: boolean = true;
   idBranch: number;
-  employees: any[] = [];
+  employees: any= [];
   totalHoras: number = 0;
+
+  baseHours: string;
 
   ngOnInit() {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
@@ -89,6 +92,7 @@ export class EmployeesClockComponent {
             entry2: this.parseHora(dia.entry2),
             exit2: this.parseHora(dia.exit2)
           }));
+          console.log(this.horario*8)
           this.isNew = false;
         } else {
           this.initializeWeek();
@@ -172,12 +176,34 @@ export class EmployeesClockComponent {
           });
       });
     }
+    
     // Activar si se requiere modificar horas base
     //this.setBaseHours(this.idEmployee, this.totalHoras);
 
     // Opcional: Mostrar confirmación al usuario
     alerts.basicAlert('Horario guardado', `Horario ${this.isNew ? 'creado' : 'actualizado'} correctamente`, 'success');
+    this.guardarHoras();
   }
+  guardarHoras() {
+    const index = this.employees.findIndex(emp => emp.id === this.idEmployee);
+    if (index !== -1) {
+      this.employees[index].baseHours = this.baseHours;
+  
+      this.employeesService.updateEmployee(this.idEmployee, this.employees[index])
+        .subscribe({
+          next: () => {
+            console.log("Las horas base fueron actualizadas", "success");
+          },
+          error: (err) => {
+            console.log("No se pudo actualizar el empleado", "error");
+            console.error(err);
+          }
+        });
+    } else {
+      console.log("Empleado no encontrado", "error");
+    }
+  }
+  
 
   private formatearHora(hora: any): string | null {
     if (!hora || !hora.hour) return null;
@@ -232,8 +258,11 @@ export class EmployeesClockComponent {
     const horas = Math.floor(totalMinutos / 60);
     const minutos = totalMinutos % 60;
     this.totalHoras = totalMinutos / 60;
-    return `${horas}h ${minutos}m`;
+    this.baseHours = `${horas}.${minutos}`
+    const horaBase = `${horas}h ${minutos}m`
+    return horaBase;
   }
+  
 
   setBaseHours(idEmployee: number, totalHoras: number) {
     this.employeesService.getEmployeeById(idEmployee).subscribe(
