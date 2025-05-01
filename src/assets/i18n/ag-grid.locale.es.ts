@@ -1,35 +1,97 @@
 export const AG_GRID_LOCALE_ES = {
-    // Solo te doy los más comunes, puedes agregar más
-    selectAll: 'Seleccionar todo',
-    searchOoo: 'Buscar...',
-    blanks: 'Vacíos',
-    noMatches: 'Sin coincidencias',
-    filterOoo: 'Filtrar...',
-    equals: 'Igual a',
-    notEqual: 'Distinto de',
-    lessThan: 'Menor que',
-    greaterThan: 'Mayor que',
-    contains: 'Contiene',
-    notContains: 'No contiene',
-    startsWith: 'Empieza con',
-    endsWith: 'Termina con',
-    // Paginación
-    page: 'Página',
-    more: 'Más',
-    to: 'a',
-    of: 'de',
-    next: 'Siguiente',
-    last: 'Último',
-    first: 'Primero',
-    previous: 'Anterior',
-    loadingOoo: 'Cargando...',
-    // No rows
-    noRowsToShow: 'No hay filas para mostrar',
-    // Otros
-    pinColumn: 'Fijar columna',
-    autosizeThiscolumn: 'Ajustar ancho',
-    resetColumns: 'Reiniciar columnas',
-    expandAll: 'Expandir todo',
-    collapseAll: 'Colapsar todo',
+  page: 'Pagina',
+  more: 'Mas',
+  to: 'a',
+  of: 'de',
+  next: 'Siguente',
+  last: 'Último',
+  first: 'Primero',
+  previous: 'Anteror',
+  loadingOoo: 'Cargando...',
+  reset: 'Reiniciar',
+  resets: 'Reiniciar',
+
+  // for set filter
+  selectAll: 'Seleccionar Todo',
+  searchOoo: 'Buscar...',
+  blanks: 'Vacíos',
+  blank: 'Vacíos',
+  notBlank: 'No vacíos',
+  notBlanks: 'No vacíos',
+
+
+  // for number filter and text filter
+  filterOoo: 'Filtrar',
+  applyFilter: 'Aplicar Filtro...',
+  equals: 'Igual',
+  notEqual: 'No Igual',
+
+  // for number filter
+  lessThan: 'Menos que',
+  greaterThan: 'Mayor que',
+  lessThanOrEqual: 'Menos o igual que',
+  greaterThanOrEqual: 'Mayor o igual que',
+  inRange: 'En rango de',
+
+  // for text filter
+  contains: 'Contiene',
+  notContains: 'No contiene',
+  startsWith: 'Empieza con',
+  endsWith: 'Termina con',
+
+  // filter conditions
+  andCondition: 'Y',
+  orCondition: 'O',
+
+  // the header of the default group column
+  group: 'Grupo',
+
+  // tool panel
+  columns: 'Columnas',
+  filters: 'Filtros',
+  valueColumns: 'Valos de las Columnas',
+  pivotMode: 'Modo Pivote',
+  groups: 'Grupos',
+  values: 'Valores',
+  pivots: 'Pivotes',
+  toolPanelButton: 'BotonDelPanelDeHerramientas',
+
+  // other
+  noRowsToShow: 'No hay filas para mostrar',
+
+  // enterprise menu
+  pinColumn: 'Columna Pin',
+  valueAggregation: 'Agregar valor',
+  autosizeThiscolumn: 'Autoajustar esta columna',
+  autosizeAllColumns: 'Ajustar todas las columnas',
+  groupBy: 'agrupar',
+  ungroupBy: 'desagrupar',
+  resetColumns: 'Reiniciar Columnas',
+  expandAll: 'Expandir todo',
+  collapseAll: 'Colapsar todo',
+  toolPanel: 'Panel de Herramientas',
+  export: 'Exportar',
+  csvExport: 'Exportar a CSV',
+  excelExport: 'Exportar a Excel (.xlsx)',
+  excelXmlExport: 'Exportar a Excel (.xml)',
+
+
+  // enterprise menu pinning
+  pinLeft: 'Pin Izquierdo',
+  pinRight: 'Pin Derecho',
+
+
+  // enterprise menu aggregation and status bar
+  sum: 'Suman',
+  min: 'Minimo',
+  max: 'Maximo',
+  none: 'nada',
+  count: 'contar',
+  average: 'promedio',
+
+  // standard menu
+  copy: 'Copiar',
+  copyWithHeaders: 'Copiar con cabeceras',
+  paste: 'Pegar' 
   };
   

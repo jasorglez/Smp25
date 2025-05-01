@@ -247,6 +247,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         filter: true,
         width: 170,
         cellEditor: 'agSelectCellEditor',
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
 
         cellEditorParams: (params) => {
           return {
@@ -269,6 +274,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
           return foundBranch ? foundBranch.name : params.value;
         },
+        valueGetter: (params) => {
+          if (!params.data || !params.data.idBranch) return '';
+          const branch = this.branchs?.find(b => b.id === params.data.idBranch);
+          return branch ? branch.name : '';
+        },
       },
       {
         field: 'name',
@@ -280,7 +290,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         filter: 'agSetColumnFilter',
         filterParams: {
           // can be 'windows' or 'mac'
-          excelMode: 'mac',
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
         },
         width: 270,
         cellEditor: 'autocompleteEditor',
@@ -387,6 +398,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         editable: false,
         filter: 'agNumberColumnFilter',
         suppressMovable: true,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         width: 110,
         valueFormatter: (params) => {
           if (params.value) {
@@ -404,8 +420,14 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         headerName: 'Ahorro',
         editable: false,
         filter: 'agNumberColumnFilter',
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         suppressMovable: true,
         width: 100,
+        
         valueFormatter: (params) => {
           if (params.value) {
             return new Intl.NumberFormat('es-MX', {
@@ -424,6 +446,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         cellStyle: (params) => this.validateRequiredField(params.value),
         editable: true,
         filter: true,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         width: 150,
         cellEditor: 'agNumberCellEditor',
         cellEditorParams: {
@@ -454,6 +481,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         editable: true,
         suppressMovable: true,
         filter: true,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         width: 190,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: (params) => {
@@ -472,6 +504,16 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
           return foundDepto ? foundDepto.description : params.value;
         },
+        valueGetter: (params) => {
+          // Handle potential null values and properly format the displayed value
+          if (!params.data || !params.data.idDepto) return '';
+
+          const foundDepto = this.depto
+            ? this.depto.find((d) => d.id === params.data.idDepto)
+            : null;
+
+          return foundDepto ? foundDepto.description :'';
+        },
         
       },
       {
@@ -482,6 +524,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         editable: true,
         suppressMovable: true,
         filter: true,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         width: 190,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: (params) => {
@@ -500,6 +547,16 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
           return foundDepto ? foundDepto.description : params.value;
         },
+        valueGetter: (params) => {
+          // Handle potential null values and properly format the displayed value
+          if (!params.data || !params.data.idPosition) return '';
+
+          const foundDepto = this.depto
+            ? this.position.find((item) => item.id === params.data.idPosition)
+            : null;
+
+          return foundDepto ? foundDepto.description :'';
+        },
       },
       
       {
@@ -508,10 +565,20 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         editable: true,
         suppressMovable: true,
         filter: true,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         width: 200,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.banks.map((user) => user.id),
+        },
+        valueGetter: (params) => {
+          if (!params.data || !params.data.idBank) return '';
+          const foundBank = this.banks?.find((user) => user.id === params.data.idBank);
+          return foundBank ? foundBank.name : '';
         },
         valueFormatter: (params) => {
           const foundBank = this.banks
@@ -519,12 +586,18 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             : null;
           return foundBank ? `${foundBank.name}` : params.value;
         },
+       
       },
       {
         field: 'ingressDate',
         headerName: 'Fecha de ingreso',
         editable: false,
         filter: 'agDateColumnFilter',
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         width: 150,
         cellRenderer: 'agDateCellRenderer',
         cellEditor: 'agDateCellEditor',
@@ -566,12 +639,22 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         headerName: 'CP',
         editable: true,
         filter: true,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         width: 100,
       },
       {
         field: 'address',
         headerName: 'Dirección',
         editable: true,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         filter: 'agTextColumnFilter',
         width: 300,
         valueSetter: (params) => {
@@ -609,6 +692,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         field: 'state',
         headerName: 'Estado',
         filter: true,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         width: 150,
         editable: false,
         cellEditor: 'agSelectCellEditor',
@@ -621,6 +709,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         headerName: 'Ciudad',
         editable: false,
         filter: true,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         width: 150,
       },
       {
@@ -628,6 +721,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         headerName: 'Colonia',
         editable: true,
         filter: true,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         width: 300,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: (params) => {
@@ -653,6 +751,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         headerName: 'RFC',
         editable: true,
         filter: true,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         width: 150,
       },
     ];

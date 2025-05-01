@@ -258,7 +258,8 @@ export class EmployeesClockComponent {
     const horas = Math.floor(totalMinutos / 60);
     const minutos = totalMinutos % 60;
     this.totalHoras = totalMinutos / 60;
-    this.baseHours = `${horas}.${minutos}`
+    const cover = minutos * 100 /6
+    this.baseHours = `${horas}.${cover}`
     const horaBase = `${horas}h ${minutos}m`
     return horaBase;
   }
