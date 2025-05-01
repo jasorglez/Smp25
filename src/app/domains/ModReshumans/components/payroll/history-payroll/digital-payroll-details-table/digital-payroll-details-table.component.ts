@@ -68,7 +68,8 @@ export class DigitalPayrollDetailsTableComponent {
       // },
       {
         field: 'company',
-        headerName: 'Compañia',
+        headerName: 'Sucursal',
+        filter: true,
         width: 200,
       },
       {
@@ -79,17 +80,36 @@ export class DigitalPayrollDetailsTableComponent {
       {
         field: 'startDate',
         headerName: 'Fecha de inicio',
+        filter: 'agDateColumnFilter',
         width: 140,
+        valueFormatter: (params) => {
+          const date = new Date(params.value);
+          return date.toLocaleString('es-MX', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+          });
+        }
       },
 
       {
         field: 'endDate',
         headerName: 'Fecha final',
+        filter: 'agDateColumnFilter',
         width: 160,
+        valueFormatter: (params) => {
+          const date = new Date(params.value);
+          return date.toLocaleString('es-MX', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+          });
+        }
       },
       {
         field: 'fiscalYear',
         headerName: 'Año fiscal',
+        filter: true,
         width: 160,
       },
       // {

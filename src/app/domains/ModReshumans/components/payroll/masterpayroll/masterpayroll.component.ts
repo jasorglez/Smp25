@@ -155,6 +155,8 @@ export class MasterPayrollComponent implements OnInit {
       {
         headerName: 'Fecha Inicio',
         field: 'startDate',
+        filter: 'agDateColumnFilter',
+        
         editable: (params) => {
           return this.aggregatingRecord;
         },
@@ -211,6 +213,7 @@ export class MasterPayrollComponent implements OnInit {
       {
         headerName: 'Fecha Fin',
         field: 'endDate',
+        filter: 'agDateColumnFilter',
         editable: (params) => {
           return this.aggregatingRecord;
         },

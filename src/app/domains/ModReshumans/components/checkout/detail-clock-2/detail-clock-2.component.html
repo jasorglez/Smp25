@@ -1,51 +1,44 @@
+<div class="col-12 mt-3 light-blue-background">
+  <div class="row mt-1">
+    <!-- Columna de botones -->
+    <div class="col-auto">
+      <div class="d-flex flex-column gap-1">
+        <button type="button" class="btn btn-primary ms-1 me-1" (click)="addDetailRow()">
+          <i class="bi bi-plus-lg"></i>
+        </button>
+        <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveDetailChanges()">
+          <i class="bi bi-floppy"></i>
+          <span
+            class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+            *ngIf="notSavedChanges">
+            <span class="visually-hidden">Hay cambios sin guardar</span>
+          </span>
+        </button>
+        <button type="button" class="btn btn-warning ms-1 me-1" (click)="revertDetailData()">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+      </div>
+    </div>
 
-<div class="col-12 mt-3  light-blue-background">
-    <form [formGroup]="selectFechas" (ngSubmit)="Consultar()" *ngIf="idBranch >= 0">
-      <span class="">Fecha inicial</span>
-      <input formControlName="fechaInicio" type="date" [max]="fechaFin" class="bg-white rounded border-light p-1 w-auto ml-2" />
-  
-      <span class=" ml-4">Fecha final</span>
-      <input formControlName="fechaFin" type="date" [min]="fechaInicio" class="bg-white rounded border-light p-1 w-auto ml-2" />
-      <button type="submit" class="ml-4 btn btn-success position-relative" >
-        Consultar
-      </button>
-    </form>
-    <div class="row mt-1">
-  
-  
-      <!-- Columna de la tabla -->
-      <div class="col">
-        <ag-grid-angular style="width: 100%;"
-        [ngStyle]="{'height': gridHeight}"
-        class="ag-theme-quartz small-text-ag-grid" 
-          [rowData]="rowData"
-          [columnDefs]="colMaster" 
-          (selectionChanged)="onSelectionChanged($event)" 
-          [gridOptions]="gridOptions"
-          (cellValueChanged)="onCellValueChanged($event)" 
-          (rowSelected)="onSelectedRow($event)"
-          (gridReady)="onGridReady($event)" 
-          [pagination]="false" 
-          (cellDoubleClicked)="onCellDoubleClicked($event)"
-          [components]="components" >
-        </ag-grid-angular>
-      </div>
+    <!-- Columna de la tabla -->
+    <div class="col">
+      <ag-grid-angular style="width: 100%" [ngStyle]="{ height: gridHeight }" class="ag-theme-quartz small-text-ag-grid"
+        [rowData]="rowData" [columnDefs]="colDetail" (selectionChanged)="onSelectionChanged($event)"
+        [gridOptions]="gridOptions" (cellValueChanged)="onCellValueChanged($event)"
+        (rowSelected)="onSelectedRow($event)" (gridReady)="onGridReady($event)" [pagination]="false"
+      [components]="components">
+      </ag-grid-angular>
     </div>
   </div>
-  
-  <div class="row">
-    <div class="col-12">
-      <ul class="nav nav-tabs" id="myTab" role="tablist">
-       
-  
-      </ul>
-  
-      <div class="tab-content" id="myTabContent">
-        <div class="tab-pane fade show active" id="credits" role="tabpanel" aria-labelledby="credit-tab" *ngIf="showCreditsTab">
-          
-        </div>
-       
-      </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <ul class="nav nav-tabs" id="myTab" role="tablist"></ul>
+
+    <div class="tab-content" id="myTabContent">
+      <div class="tab-pane fade show active" id="credits" role="tabpanel" aria-labelledby="credit-tab"
+        *ngIf="showCreditsTab"></div>
     </div>
-  
   </div>
+</div>
