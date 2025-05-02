@@ -523,6 +523,24 @@ export class SignalsService {
     return this.providerOrCustomer; 
   }
 
+  // Para llevar el idEmployee, el startDate y el endDate
+  private dataClockEmployee =  {
+    idEmployee: signal<number>(null),
+    startDate: signal<string>(null),
+    endDate: signal<string>(null)
+  };
+
+  setDetailClockForEmployee(idEmployee: number, startDate: string, endDate: string) {
+    this.dataClockEmployee.idEmployee.set(idEmployee);
+    this.dataClockEmployee.startDate.set(startDate);
+    this.dataClockEmployee.endDate.set(endDate);
+  }
+  
+  getDetailClockForEmployee() {
+    return this.dataClockEmployee;
+  }
+
+
   /* Borramos todas las signals, tratar de poner esto a lo último.
   Si van a crear nuevas signals, recuerden introducir una señal
   null en deleteSignals() para que todas las signals se borren

@@ -4,7 +4,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { FormsModule } from '@angular/forms';
 import * as bootstrap from 'bootstrap';
 import { CommonModule } from '@angular/common';
-import { map } from 'rxjs';
+import { filter, map } from 'rxjs';
 import { TimeService } from 'app/services/time.service';
 import { HRService } from 'app/services/hr.service';
 import { SignalsService } from 'app/services/signals.service';
@@ -33,11 +33,12 @@ export default class DbComponent {
   customData: any = { Hours: null, PendingOuts: null, Absences: null, Delays: null };
 
   columnDefs = [
-    { headerName: 'Nombre Empleado', field: 'name', flex: 2 },
+    { headerName: 'Nombre Empleado', field: 'name', flex: 2 , filter: true},
     {
       headerName: 'Fecha y Hora',
       field: 'timeStamp',
       flex: 2,
+      filter: true,
       valueFormatter: (params) => {
         const date = new Date(params.value);
         return date.toLocaleString('es-MX', {
@@ -50,7 +51,7 @@ export default class DbComponent {
         });
       }
     },
-    { headerName: 'Tipo', field: 'type', flex: 1 },
+    { headerName: 'Tipo', field: 'type', flex: 1},
     { headerName: 'Válido', field: 'valid', flex: 1 },
     { headerName: 'Minutos descontados', field: 'minuteDiscount', flex: 1 }
   ];

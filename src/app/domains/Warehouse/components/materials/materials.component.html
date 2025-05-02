@@ -44,8 +44,9 @@
 
         <section class="col">
           <ag-grid-angular
-            style="width: 120%; height: 80vh"
+            style="width: 120%"
             class="ag-theme-quartz small-text-ag-grid"
+            [ngStyle]="{ height: gridHeight }"
             [rowData]="rowData"
             [columnDefs]="colMaster"
             (selectionChanged)="onSelectionChanged($event)"
@@ -53,7 +54,6 @@
             (cellValueChanged)="onCellValueChanged($event)"
             (rowSelected)="onSelectedRow($event)"
             (gridReady)="onGridReady($event)"
-            [rowSelection]="rowSelection"
             [components]="components"
             (cellDoubleClicked)="onCellDoubleClicked($event)"
             [stopEditingWhenCellsLoseFocus]="true"
@@ -64,6 +64,58 @@
     </main>
   </div>
 </section>
+
+@if (showContainerTabs) {
+<div class="row mt-2">
+  <section class="flex flex-row gap-2 ml-4">
+    <button
+      class="btn mr-2"
+      [class.btn-primary]="showMeasureTab"
+      [class.btn-link]="!showMeasureTab"
+      (click)="selectTab('showMeasureTab')"
+    >
+      Unidades de medidas
+    </button>
+    <button
+      class="btn mr-2"
+      [class.btn-primary]="showMeasureTab"
+      [class.btn-link]="!showMeasureTab"
+    >
+      Entradas
+    </button>
+    <button
+      class="btn mr-2"
+      [class.btn-primary]="showMeasureTab"
+      [class.btn-link]="!showMeasureTab"
+    >
+      Salidas
+    </button>
+  </section>
+</div>
+
+<div class="row mt-2">
+  <div class="col-12">
+    <ul class="nav nav-tabs" id="myTab" role="tablist"></ul>
+
+    <div class="tab-content" id="myTabContent">
+      @if (showMeasureTab) {
+      <div
+        class="tab-pane fade show active"
+        id="loans"
+        role="tabpanel"
+        aria-labelledby="loans-tab"
+      >
+        <price-products-presentations
+          [inputRowData]="priceXproductsData()"
+          [inputIdMaterial]="idMaterial()"
+          [inputMedidas]="medidas"
+        />
+      </div>
+      }
+    </div>
+  </div>
+</div>
+}
 <!--
 <div class="modal fade" id="addFamilyModal" tabindex="-1" aria-labelledby="addFamilyModalLabel" aria-hidden="true">
   <div class="modal-dialog">

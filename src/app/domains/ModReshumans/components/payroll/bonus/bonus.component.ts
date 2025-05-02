@@ -12,6 +12,7 @@ import {
   GridReadyEvent,
   ICellRendererParams,
 } from 'ag-grid-enterprise';
+import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { AgGridModule } from 'ag-grid-angular';
 import {
   FormsModule,
@@ -30,6 +31,7 @@ import {
   toArray,
   throwError,
 } from 'rxjs';
+import { HRService } from 'app/services/hr.service';
 import { SignalsService } from 'app/services/signals.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { EmployeesService } from 'app/services/employees.service';
@@ -64,6 +66,22 @@ export class BonusComponent implements CanComponentDeactivate {
   private authService = inject(AuthService);
   private branchesService = inject(BranchsService);
   private gridApi: GridApi;
+  private hrService = inject(HRService);
+  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+
+
+  dias:any[] = [
+    {id: 1 , dia: 'Lunes'},
+    {id: 2 , dia: 'Martes'},
+    {id: 3 , dia: 'Miércoles'},
+    {id: 4 , dia: 'Jueves'},
+    {id: 5 , dia: 'Viernes'},
+    {id: 6 , dia: 'Sábado'},
+    {id: 7 , dia: 'Domingo'},
+    
+  ]
+  
+  
 
   components = {
     multiLineEditor: MultiLineEditorComponent,
@@ -72,6 +90,7 @@ export class BonusComponent implements CanComponentDeactivate {
 
   id: string;
   rowData: any;
+  hrData: any = {};
   //bonusForm!: FormGroup;
   selectFechas!: FormGroup;
   idEmployee: number;
@@ -80,6 +99,7 @@ export class BonusComponent implements CanComponentDeactivate {
   idBranch: number;
   bonusCatalogos: any[] = [];
   empleadoCatalgos: any[] = [];
+  Fechas: number;
   fechaInicio: string;
   isOpen: boolean = false;
   fechaFin: string;
@@ -96,39 +116,59 @@ export class BonusComponent implements CanComponentDeactivate {
   deleteData: any;
   branchs: any[] = [];
   idRoot: number;
+  hoy = new Date();
+  idDia: any ;
+  inicio: any;
+  semanaPasada: any;
+  ultimaFecha: any;
 
   ngOnInit() {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
     this.idEmpresa = this.signalsService.getRootSelectedBySidebar()();
-    //console.log("en init, esto es bonusCatalog:", this.bonusCatalogos);
-    this.obtenerDatosCatalogos();
-    //console.log("en init pasada la llamada, esto es bonusCatalog: ", this.bonusCatalogos);
-    this.InicioConsulta();
-    this.obtenerEmpleados();
     this.obtenerBranchs();
+    // 1. Primero inicializas el FormGroup vacío
     this.selectFechas = this.fb.group({
-      fechaInicio: [this.fechaInicio, Validators.required],
-      fechaFin: [this.fechaFin, Validators.required],
+      fechaInicio: [null, Validators.required],
+      fechaFin: [null, Validators.required],
     });
+  
+    // 2. Suscripciones a cambios
     this.selectFechas.get('fechaInicio')?.valueChanges.subscribe((value) => {
       this.fechaInicio = value;
     });
-
-    // Suscripción para actualizar el valor máximo de fechaInicio
     this.selectFechas.get('fechaFin')?.valueChanges.subscribe((value) => {
       this.fechaFin = value;
     });
+  
+    // 3. Luego cargas toda la info
+    this.obtenerDatosCatalogos();
+    this.obtenerEmpleados();
+    this.getDateResiv();
+    this.obtenerConfig();
+    
+  
+    // 4. InicioConsulta la mandas después de cargar configuración si depende de datos de config
   }
+
+  
   constructor(private fb: FormBuilder) {
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      this.Consultar();
-      //this.InicioConsulta();
-      this.obtenerEmpleados();
+      this.idEmpresa = this.signalsService.getRootSelectedBySidebar()();
       this.obtenerBranchs();
+      //console.log("en init, esto es bonusCatalog:", this.bonusCatalogos);
+      this.obtenerDatosCatalogos();
+      this.InicioConsulta();
+      this.obtenerEmpleados();
+      this.selectFechas = this.fb.group({
+        fechaInicio: [this.fechaInicio, Validators.required],
+        fechaFin: [this.fechaFin, Validators.required],
+      });
+      this.getDateResiv();
+      this.obtenerConfig();
     });
   }
+
 
   public gridOptions: any = {
     headerHeight: 25,
@@ -177,6 +217,17 @@ export class BonusComponent implements CanComponentDeactivate {
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+    
+  }
+  
+  obtenerBranchs() {
+    this.branchesService.getBrancheswoa(this.idEmpresa).subscribe(
+      (data: any) => {
+        this.branchs = data;
+        console.log('Branchs', this.branchs);
+      },
+      (error) => console.error('Error fetching data:', error)
+    );
   }
 
   obtenerDatosCatalogos() {
@@ -211,7 +262,7 @@ export class BonusComponent implements CanComponentDeactivate {
       this.employeeService.getEmployees(this.idBranch).subscribe(
         (data: any) => {
           this.empleadoCatalgos = data;
-          console.log('Datos obtenidos del servidor:', this.empleadoCatalgos);
+         // console.log('Datos obtenidos del servidor:', this.empleadoCatalgos);
 
           // Actualizar el grid y esperar a que termine
           /*this.gridApi.setGridOption('rowData', this.rowData);
@@ -228,6 +279,32 @@ export class BonusComponent implements CanComponentDeactivate {
       );
     });
   }
+
+  obtenerConfig(){
+    this.hrService.getHRManagementData(this.idBranch).subscribe({
+      next: (data: any) => {
+        this.hrData = data[0] || {};
+        this.InicioConsulta();
+      },error: (err) => {
+          this.hrData = {};
+          this.idDia= 6;
+          this.getDateNew();
+          if(this.idBranch >= 0 ){
+            alerts.basicAlert('Atención', 'No hay configuración registrada.', 'info');
+          }
+      }
+    });
+  }
+
+  getDateResiv(){
+      this.administrationService.getNormalPayrolls(this.idBranch).subscribe(
+      (data: any) => {
+        const endDate = new Date(data[0].endDate);
+        this.ultimaFecha = endDate.toISOString().split('T')[0];
+      },(error) => 
+        console.error('Error fetching data:', error)
+    );
+  }
   private validateRequiredField(value: any): any {
     return {
       backgroundColor: !value ? '#fff3cd' : 'transparent',
@@ -235,16 +312,7 @@ export class BonusComponent implements CanComponentDeactivate {
     };
   }
 
-  obtenerBranchs() {
-    // alert('this.branchs'+ this.idBranch)
-    this.branchesService.getBrancheswoa(this.idRoot).subscribe(
-      (data: any) => {
-        this.branchs = data;
-        console.log('Branchs', this.branchs);
-      },
-      (error) => console.error('Error fetching data:', error)
-    );
-  }
+  
 
   get colMaster(): ColDef[] {
     return [
@@ -303,7 +371,6 @@ export class BonusComponent implements CanComponentDeactivate {
         field: 'incidenceDate',
         headerName: 'Fecha',
         editable: true,
-        filter: true,
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
         width: 200,
@@ -435,7 +502,7 @@ export class BonusComponent implements CanComponentDeactivate {
       idBranch: this.idBranch > 0 ? this.idBranch : null,
       idEmployee: '',
       employeeName: '',
-      incidenceDate: '',
+      incidenceDate: this.hoy.toISOString().split('T')[0],
       bonus: '',
       quantity: '',
       valid: true,
@@ -708,17 +775,39 @@ export class BonusComponent implements CanComponentDeactivate {
   }
 
   InicioConsulta() {
-    const hoy = new Date();
-    const semanaActual = this.getWeekNumber(hoy);
-    const semanaPasada = semanaActual - 1;
-    const añoActual = hoy.getFullYear();
-    //const Lunes  = this.getDateOfISOWeek(semanaActual, añoActual, 1);
-    const Sabado = this.getDateOfISOWeek(semanaPasada, añoActual, 6);
-    //console.log("El sabado de la semana pasada fue: ", Sabado.toISOString().split('T')[0],"Y el lunes es:",Lunes.toISOString().split('T')[0]);
-    this.fechaInicio = Sabado.toISOString().split('T')[0];
-    this.fechaFin = hoy.toISOString().split('T')[0];
+  
+    const diaEncontrado = this.dias.find(d => d.dia === this.hrData.startDay);
+    this.idDia = diaEncontrado ? diaEncontrado.id : 1; // Por defecto lunes
+  
+    this.getDateNew();
+  
     this.obtenerBonosEmpleados();
   }
+  
+  getDateNew(){
+    const semanaActual = this.getWeekNumber(this.hoy);
+    if(this.hrData.payrollPeriod >0 || this.idBranch < 0){
+      this.semanaPasada = semanaActual - 1; 
+      const añoActual = this.hoy.getFullYear();
+      this.inicio = this.getDateOfISOWeek(this.semanaPasada, añoActual, this.idDia);
+      this.fechaInicio= this.inicio.toISOString().split('T')[0];
+    }else{
+      this.semanaPasada = this.ultimaFecha;
+    }
+    if(this.hrData.payrollPeriod >0){
+      const fecha = new Date(this.inicio);
+      fecha.setDate(fecha.getDate() + this.hrData.payrollPeriod - 1);
+      this.fechaFin = fecha.toISOString().split('T')[0];
+    }else{
+      this.fechaFin = this.hoy.toISOString().split('T')[0];
+    }
+    this.selectFechas.patchValue({
+      fechaInicio: this.fechaInicio,
+      fechaFin: this.fechaFin,
+    });
+  }
+  
+
 
   getDateOfISOWeek(week: number, year: number, dayOfWeek: number): Date {
     const simple = new Date(year, 0, 1 + (week - 1) * 7);

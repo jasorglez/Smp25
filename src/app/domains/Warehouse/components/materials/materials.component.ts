@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, signal } from '@angular/core';
 import {
   CellDoubleClickedEvent,
   ColDef,
@@ -24,6 +24,8 @@ import { Icatalog } from 'app/interface/icatalog';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
+import { PricePresentations } from 'app/interface/materials.interface';
+import { PriceProductsPresentationsComponent } from './components/price-products-presentations/price-products-presentations.component';
 
 declare const bootstrap: any; // Añadir declaración para Bootstrap
 
@@ -36,6 +38,7 @@ declare const bootstrap: any; // Añadir declaración para Bootstrap
     FormsModule,
     AgGridModule,
     MultiLineEditorComponent,
+    PriceProductsPresentationsComponent,
   ],
   templateUrl: './materials.component.html',
   styleUrl: './materials.component.scss',
@@ -72,6 +75,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
   newSubFamilyName: string = '';
   selectedFamily: number = null;
   rowData: any[] = [];
+  public priceXproductsData = signal<PricePresentations[]>([]);
+  public idMaterial = signal<number>(0);
   contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
@@ -84,7 +89,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
   id: string = null;
   idRoot: number = null;
   gridHeight: string = '80vh';
-  showLoansTab: boolean = false;
+  showContainerTabs: boolean = false;
+  showMeasureTab: boolean = false;
   showSavingsTab: boolean = false;
   private isOpen: boolean = false;
   private tempIdCounter: number = 0;
@@ -142,10 +148,21 @@ export class MaterialsComponent implements CanComponentDeactivate {
         });
       }
     },
+    // onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
   };
 
   get colMaster(): ColDef[] {
     return [
+      {
+        field: 'id',
+        editable: false,
+        width: 70,
+        hide: true,
+        filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
+        filterParams: {
+          filterOptions: ['equals'], // Opciones de filtro
+        },
+      },
       {
         field: 'insumo',
         headerName: 'Num. Material',
@@ -177,6 +194,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
           params.data[params.colDef.field] = params.newValue;
           return true;
         },
+        cellStyle: { backgroundColor: '#d4edda' },
       },
       {
         field: 'barCode',
@@ -445,7 +463,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
   }
 
   obtenerDatos() {
-    this.materialsService.getMaterials(this.idRoot, this.type).subscribe(
+    return this.materialsService.getMaterials(this.idRoot, this.type).subscribe(
       (data: any) => {
         this.rowData = data;
       },
@@ -508,6 +526,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
       this.selectedRowData = null;
     }
   }
+
   async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
     const colId = event.column.getColId();
     const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
@@ -515,7 +534,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
 
     this.notSavedChanges = true;
 
-    if (colId === 'loan' || colId === 'saving') {
+    if (colId === 'insumo') {
       // Filtrar el grid para mostrar solo el registro con el ID seleccionado
       const filterModel = {
         id: {
@@ -524,50 +543,63 @@ export class MaterialsComponent implements CanComponentDeactivate {
         },
       };
 
+      this.priceXproductsData.set(selectedRowData.pricePresentations);
+      this.idMaterial.set(selectedRowData.id);
       this.gridApi.setFilterModel(filterModel);
       this.gridApi.onFilterChanged();
-    }
-
-    if (colId === 'loan') {
-      await this.activateLoansTab();
-    }
-
-    if (colId === 'saving') {
-      await this.activateSavingsTab();
+      this.activatedTabs();
     }
 
     // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
     this.selectedRowData = selectedRowData;
   }
-  async activateLoansTab() {
-    if (!this.isOpen || this.showSavingsTab) {
-      await this.adjustGridSize();
-      this.showLoansTab = true;
-      this.showSavingsTab = false;
-      this.isOpen = true;
-    } else {
-      await this.resetGridSize();
-      this.isOpen = false;
-    }
-  }
-  async adjustGridSize() {
-    this.gridHeight = '20vh'; // Adjust as needed
+
+  // TODO para futuros botones de navegacion
+  async selectTab(tab: string) {
+    await this.activateMeasureTab();
   }
 
-  async activateSavingsTab() {
-    if (!this.isOpen || this.showLoansTab) {
+  async activatedTabs() {
+    if (!this.isOpen) {
       await this.adjustGridSize();
-      this.showLoansTab = false;
-      this.showSavingsTab = true;
+      this.activateMeasureTab();
+      this.showContainerTabs = true;
       this.isOpen = true;
     } else {
       await this.resetGridSize();
       this.isOpen = false;
+      this.showMeasureTab = false;
+      this.showContainerTabs = false;
     }
   }
+
+  async activateMeasureTab() {
+    if (!this.isOpen || this.showSavingsTab) {
+      await this.adjustGridSize();
+      this.showMeasureTab = true;
+      // this.showSavingsTab = false;
+      // this.isOpen = true;
+    }
+  }
+
+  async adjustGridSize() {
+    this.gridHeight = '40vh'; // Adjust as needed
+  }
+
+  // async activateSavingsTab() {
+  //   if (!this.isOpen || this.showLoansTab) {
+  //     await this.adjustGridSize();
+  //     this.showLoansTab = false;
+  //     this.showSavingsTab = true;
+  //     this.isOpen = true;
+  //   } else {
+  //     await this.resetGridSize();
+  //     this.isOpen = false;
+  //   }
+  // }
   resetGridSize() {
     this.gridHeight = '80vh'; // Reset to default height
-    this.showLoansTab = false;
+    this.showMeasureTab = false;
     this.showSavingsTab = false;
     if (this.gridApi) {
       this.gridApi.setFilterModel(null);
@@ -616,6 +648,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
     this.rowData = [newItem, ...this.rowData];
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
+    this.gridApi.setGridOption('rowData', this.rowData);
   }
 
   async saveChanges() {

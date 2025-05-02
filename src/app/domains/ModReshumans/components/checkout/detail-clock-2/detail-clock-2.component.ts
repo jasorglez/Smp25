@@ -34,23 +34,24 @@ export default class DetailClock2Component implements OnInit {
   private fb = inject(FormBuilder);
 
   ngOnInit() {
-    //this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-    this.idEmployee = 443;
-
-    this.fechaInicio = '2025-04-19';
-    this.fechaFin = '2025-04-25';
-    this.obtenerDatos(this.fechaInicio, this.fechaFin);
+    this.idEmployee = this.signalsService.getDetailClockForEmployee().idEmployee();
+    this.fechaInicio = this.signalsService.getDetailClockForEmployee().startDate();
+    this.fechaFin = this.signalsService.getDetailClockForEmployee().endDate();
+    this.obtenerDatos(this.idEmployee, this.fechaInicio, this.fechaFin);
   }
 
   constructor() {
-    this.selectFechas = this.fb.group({
-      fechaInicio: ['', Validators.required],
-      fechaFin: ['', Validators.required],
+    effect(() => {
+      this.idEmployee = this.signalsService.getDetailClockForEmployee().idEmployee();
+      this.fechaInicio = this.signalsService.getDetailClockForEmployee().startDate();
+      this.fechaFin = this.signalsService.getDetailClockForEmployee().endDate();
+      console.log(this.idEmployee, this.fechaInicio, this.fechaFin);
+      this.obtenerDatos(this.idEmployee, this.fechaInicio, this.fechaFin);
     });
 
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-      this.obtenerDatos(this.fechaInicio, this.fechaFin);
+      this.obtenerDatos(this.idEmployee, this.fechaInicio, this.fechaFin);
     });
   }
 
@@ -64,7 +65,7 @@ export default class DetailClock2Component implements OnInit {
 
   selectFechas: FormGroup;
   type: string = '';
-  gridHeight: string = '75vh';
+  gridHeight: string = '55vh';
   showCreditsTab: boolean = false;
   private gridApi: GridApi;
   notSavedChanges: boolean = false;
@@ -167,6 +168,11 @@ export default class DetailClock2Component implements OnInit {
           const date = new Date(params.value);
           return date.toISOString().split('T')[0];
         },
+        valueParser: (params) => {
+          if (!params.newValue) return null;
+          const date = new Date(params.newValue);
+          return date.toISOString().split('T')[0];
+        },
         rowGroup: true,
       },
       {
@@ -199,11 +205,7 @@ export default class DetailClock2Component implements OnInit {
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: ['IN', 'OUT'],
-        },
-        valueFormatter: (params) => {
-          if (params.node.group) return '';
-          return params.value === 'OUT' ? 'Salida' : 'Entrada';
-        },
+        }
       },
       {
         field: 'valid',
@@ -254,19 +256,20 @@ export default class DetailClock2Component implements OnInit {
     ];
   }
 
-  obtenerDatos(
-    fechaInicio: string = '2025-04-19',
-    fechaFin: string = '2025-04-25'
-  ) {
+  obtenerDatos(idEmployee: number, fechaInicio: string, fechaFin: string) {
     this.clockService
-      .checkInOutByEmployee(this.idEmployee, fechaInicio, fechaFin)
+      .checkInOutByEmployee(idEmployee, fechaInicio, fechaFin)
       .subscribe((data: any) => {
         this.rowData = [];
         this.rowData = data;
         // Esperar a que el grid se actualice y luego ajustar las columnas
         setTimeout(() => {
           if (this.gridApi) {
-            this.gridApi.sizeColumnsToFit();
+            // Obtener todas las columnas y ajustarlas automáticamente
+            const allColumnIds = this.gridApi.getColumns().map(column => column.getColId());
+            this.gridApi.autoSizeColumns(allColumnIds);
+            // Forzar un redraw del grid para asegurar que los cambios se apliquen
+            this.gridApi.redrawRows();
           }
         }, 100);
       });
@@ -329,30 +332,6 @@ export default class DetailClock2Component implements OnInit {
     }, 100);
   }
 
-  async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
-    this.signalsService.setProviderOrCustomer(this.type);
-    const colId = event.column.getColId();
-    const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
-    const selectedId = selectedRowData.id; // Obtener el ID del registro
-
-    // Filtrar el grid para mostrar solo el registro con el ID seleccionado solo si la columna es "total"
-    if (colId === 'total') {
-      const filterModel = {
-        id: {
-          type: 'equals',
-          filter: selectedId,
-        },
-      };
-
-      this.gridApi.setFilterModel(filterModel);
-      this.gridApi.onFilterChanged();
-      this.activateCreditsTab(); // Activar la pestaña de créditos si es necesario
-    }
-
-    console.log('Datos ShowCredits:', this.showCreditsTab);
-    this.selectedRowData = selectedRowData; // Guardar los datos seleccionados
-  }
-
   async activateCreditsTab() {
     if (!this.isOpen) {
       setTimeout(async () => await this.adjustGridSize(), 0);
@@ -375,18 +354,6 @@ export default class DetailClock2Component implements OnInit {
     this.gridHeight = '20vh'; // Adjust as needed
   }
 
-  Consultar() {
-    if (this.selectFechas.valid) {
-      const datos = this.selectFechas.value;
-      this.fechaInicio = datos.fechaInicio;
-      this.fechaFin = datos.fechaFin;
-      console.log(this.fechaInicio, this.fechaFin);
-      this.obtenerDatos(this.fechaInicio, this.fechaFin);
-    } else {
-      alerts.basicAlert('Error', 'Por favor selecciona ambas fechas', 'error');
-    }
-  }
-
   addDetailRow() {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
@@ -404,7 +371,7 @@ export default class DetailClock2Component implements OnInit {
       editedBy: this.signalsService.getDisplayName()(),
       active: true,
       __isNew: true, // Marca la fila como nueva
-    }
+    };
 
     // Actualizar el estado
     this.rowData = [newItem, ...this.rowData];
@@ -433,11 +400,7 @@ export default class DetailClock2Component implements OnInit {
   }
 
   async saveDetailChanges() {
-    const isValid = this.rowData.every(
-      (item) =>
-        item.date &&
-        item.checkTime
-    );
+    const isValid = this.rowData.every((item) => item.date && item.checkTime);
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
@@ -498,7 +461,7 @@ export default class DetailClock2Component implements OnInit {
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
 
-      await this.obtenerDatos(); // Esperar a que se actualicen los datos
+      await this.obtenerDatos(this.idEmployee, this.fechaInicio, this.fechaFin); // Esperar a que se actualicen los datos
 
       // Seleccionar la fila apropiada después de recargar
       if (this.lastEditedRowId) {
@@ -522,7 +485,7 @@ export default class DetailClock2Component implements OnInit {
   }
 
   revertDetailData() {
-    this.obtenerDatos();
+    this.obtenerDatos(this.idEmployee, this.fechaInicio, this.fechaFin);
     this.notSavedChanges = false;
   }
 
@@ -539,21 +502,25 @@ export default class DetailClock2Component implements OnInit {
     // Añadir timeStamp como concatenación de date y checkTime
     if (cleanedData.date && cleanedData.checkTime) {
       // Asegurarse de que checkTime tenga el formato correcto (HH:MM:SS)
-      const formattedCheckTime = cleanedData.checkTime.includes('.') 
-        ? cleanedData.checkTime.split('.')[0] 
+      const formattedCheckTime = cleanedData.checkTime.includes('.')
+        ? cleanedData.checkTime.split('.')[0]
         : cleanedData.checkTime;
-      
-      cleanedData.timeStamp = cleanedData.date.split('T')[0]+ 'T' + formattedCheckTime;
+
+      cleanedData.timeStamp =
+        cleanedData.date.split('T')[0] + 'T' + formattedCheckTime;
     }
 
     // Añadir modifiedTimeStamp como concatenación de date y modifiedCheckTime
     if (cleanedData.date && cleanedData.modifiedCheckTime) {
       // Asegurarse de que modifiedCheckTime tenga el formato correcto (HH:MM:SS)
-      const formattedModifiedCheckTime = cleanedData.modifiedCheckTime.includes('.') 
-        ? cleanedData.modifiedCheckTime.split('.')[0] 
+      const formattedModifiedCheckTime = cleanedData.modifiedCheckTime.includes(
+        '.'
+      )
+        ? cleanedData.modifiedCheckTime.split('.')[0]
         : cleanedData.modifiedCheckTime;
-      
-      cleanedData.timeStampModified = cleanedData.date.split('T')[0]+ 'T' + formattedModifiedCheckTime;
+
+      cleanedData.timeStampModified =
+        cleanedData.date.split('T')[0] + 'T' + formattedModifiedCheckTime;
     }
     delete cleanedData.date;
     delete cleanedData.checkTime;

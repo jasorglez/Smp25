@@ -6,6 +6,7 @@ import {
   GridReadyEvent,
   ICellRendererParams,
 } from 'ag-grid-enterprise';
+import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
@@ -57,6 +58,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   private timeService = inject(TimeService);
   private branchesService = inject(BranchsService);
   private authService = inject(AuthService);
+  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   id: number;
   idBranch: number;
@@ -203,7 +205,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         editable: false,
         width: 70,
         hide: false,
-        filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
         filterParams: {
           filterOptions: ['equals'], // Opciones de filtro
         },
@@ -212,8 +213,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         field: 'vigente',
         headerName: 'Vigente',
         editable: true,
-        suppressMovable: true,
-        filter: true,
+        /*suppressMovable: true,
+        filter: true,*/
         width: 100,
       },
       /*{
@@ -246,6 +247,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         filter: true,
         width: 170,
         cellEditor: 'agSelectCellEditor',
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'windows',
+        },
 
         cellEditorParams: (params) => {
           return {
@@ -268,41 +274,51 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
           return foundBranch ? foundBranch.name : params.value;
         },
+        valueGetter: (params) => {
+          if (!params.data || !params.data.idBranch) return '';
+          const branch = this.branchs?.find(b => b.id === params.data.idBranch);
+          return branch ? branch.name : '';
+        },
       },
       {
         field: 'name',
         headerName: 'Nombre',
         headerClass: 'required-header',
         editable: true,
-        cellStyle: (params) => this.validateRequiredField(params.value),
         suppressMovable: true,
+        width: 270,
         filter: 'agSetColumnFilter',
         filterParams: {
-          // can be 'windows' or 'mac'
           excelMode: 'mac',
         },
-        width: 270,
+        cellStyle: (params) => this.validateRequiredField(params.value),
         cellEditor: 'autocompleteEditor',
         cellEditorParams: {
-          filterList: this.rowData.map((e) => e.name),
+          filterList: this.rowData?.map((e) => e.name.toUpperCase()) || [],
           filterKey: 'name',
           placeholder: 'Buscar empleado...',
           minLength: 1,
         },
         valueSetter: (params) => {
-          if (!params.newValue || params.newValue.trim() === '') {
-            alerts.basicAlert(
-              'Campo requerido',
-              'El nombre es obligatorio',
-              'error'
-            );
+          const rawValue = params.newValue;
+          if (!rawValue || typeof rawValue !== 'string') {
+            alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
             return false;
           }
+      
+          const normalizedValue = rawValue.trim().toUpperCase();
+      
+          if (!normalizedValue) {
+            alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
+            return false;
+          }
+      
           const duplicateExists = this.rowData.some(
             (row, index) =>
-              index !== params.node.rowIndex && row.name === params.newValue
+              index !== params.node.rowIndex &&
+              row.name?.toUpperCase() === normalizedValue
           );
-
+      
           if (duplicateExists) {
             alerts.basicAlert(
               'Nombre duplicado',
@@ -311,10 +327,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             );
             return false;
           }
-
-          params.data[params.colDef.field] = params.newValue.toUpperCase();
+      
+          params.data[params.colDef.field] = normalizedValue;
           return true;
         },
+        valueFormatter: (params) => params.value || '',
       },
       {
         field: 'email',
@@ -355,7 +372,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             return false;
           }
         },
-        filter: true,
+        //filter: "agSetColumnFilter",
+        //suppressMovable: true,
       },
       {
         field: 'clockPassword',
@@ -385,6 +403,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         editable: false,
         filter: 'agNumberColumnFilter',
         suppressMovable: true,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         width: 110,
         valueFormatter: (params) => {
           if (params.value) {
@@ -402,8 +425,14 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         headerName: 'Ahorro',
         editable: false,
         filter: 'agNumberColumnFilter',
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         suppressMovable: true,
         width: 100,
+        
         valueFormatter: (params) => {
           if (params.value) {
             return new Intl.NumberFormat('es-MX', {
@@ -416,66 +445,17 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         cellStyle: { backgroundColor: '#d4edda' },
       },
       {
-        field: 'idDepto',
-        headerName: 'Departamento',
-        headerClass: 'required-header',
-        cellStyle: (params) => this.validateRequiredField(params.value),
-        editable: true,
-        suppressMovable: true,
-        filter: false,
-        width: 190,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: (params) => {
-          // Ensure depto data is available when creating editor
-          return {
-            values: this.depto ? this.depto.map((item) => item.id) : [],
-          };
-        },
-        valueFormatter: (params) => {
-          // Handle potential null values and properly format the displayed value
-          if (!params.value) return '';
-
-          const foundDepto = this.depto
-            ? this.depto.find((item) => item.id === params.value)
-            : null;
-
-          return foundDepto ? foundDepto.description : params.value;
-        },
-      },
-      {
-        field: 'idPosition',
-        headerName: 'Posicion',
-        headerClass: 'required-header',
-        cellStyle: (params) => this.validateRequiredField(params.value),
-        editable: true,
-        suppressMovable: true,
-        filter: false,
-        width: 190,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: (params) => {
-          // Ensure depto data is available when creating editor
-          return {
-            values: this.position ? this.position.map((item) => item.id) : [],
-          };
-        },
-        valueFormatter: (params) => {
-          // Handle potential null values and properly format the displayed value
-          if (!params.value) return '';
-
-          const foundDepto = this.depto
-            ? this.position.find((item) => item.id === params.value)
-            : null;
-
-          return foundDepto ? foundDepto.description : params.value;
-        },
-      },
-      {
         field: 'priceXHour',
         headerName: 'Precio por hora *',
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
         editable: true,
         filter: true,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         width: 150,
         cellEditor: 'agNumberCellEditor',
         cellEditorParams: {
@@ -496,26 +476,114 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       {
         field: 'baseHours',
         headerName: 'Horas base',
+        editable: false,
+      },
+      {
+        field: 'idDepto',
+        headerName: 'Departamento',
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
-        cellEditor: 'agNumberCellEditor',
         editable: true,
-        cellEditorParams: {
-          min: 0,
-          max: 96,
-          precision: 0,
+        suppressMovable: true,
+        filter: true,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
+        width: 190,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: (params) => {
+          // Ensure depto data is available when creating editor
+          return {
+            values: this.depto ? this.depto.map((item) => item.id) : [],
+          };
+        },
+        valueFormatter: (params) => {
+          // Handle potential null values and properly format the displayed value
+          if (!params.value) return '';
+
+          const foundDepto = this.depto
+            ? this.depto.find((item) => item.id === params.value)
+            : null;
+
+          return foundDepto ? foundDepto.description : params.value;
+        },
+        valueGetter: (params) => {
+          // Handle potential null values and properly format the displayed value
+          if (!params.data || !params.data.idDepto) return '';
+
+          const foundDepto = this.depto
+            ? this.depto.find((d) => d.id === params.data.idDepto)
+            : null;
+
+          return foundDepto ? foundDepto.description :'';
+        },
+        
+      },
+      {
+        field: 'idPosition',
+        headerName: 'Posicion',
+        headerClass: 'required-header',
+        cellStyle: (params) => this.validateRequiredField(params.value),
+        editable: true,
+        suppressMovable: true,
+        filter: true,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
+        width: 190,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: (params) => {
+          // Ensure depto data is available when creating editor
+          return {
+            values: this.position ? this.position.map((item) => item.id) : [],
+          };
+        },
+        valueFormatter: (params) => {
+          // Handle potential null values and properly format the displayed value
+          if (!params.value) return '';
+
+          const foundDepto = this.depto
+            ? this.position.find((item) => item.id === params.value)
+            : null;
+
+          return foundDepto ? foundDepto.description : params.value;
+        },
+        valueGetter: (params) => {
+          // Handle potential null values and properly format the displayed value
+          if (!params.data || !params.data.idPosition) return '';
+
+          const foundDepto = this.depto
+            ? this.position.find((item) => item.id === params.data.idPosition)
+            : null;
+
+          return foundDepto ? foundDepto.description :'';
         },
       },
+      
       {
         field: 'idBank',
         headerName: 'Banco',
         editable: true,
         suppressMovable: true,
-        filter: false,
+        filter: true,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         width: 200,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.banks.map((user) => user.id),
+        },
+        valueGetter: (params) => {
+          if (!params.data || !params.data.idBank) return '';
+          const foundBank = this.banks?.find((user) => user.id === params.data.idBank);
+          return foundBank ? foundBank.name : '';
         },
         valueFormatter: (params) => {
           const foundBank = this.banks
@@ -523,12 +591,18 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             : null;
           return foundBank ? `${foundBank.name}` : params.value;
         },
+       
       },
       {
         field: 'ingressDate',
         headerName: 'Fecha de ingreso',
         editable: false,
-        filter: true,
+        filter: 'agDateColumnFilter',
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         width: 150,
         cellRenderer: 'agDateCellRenderer',
         cellEditor: 'agDateCellEditor',
@@ -547,7 +621,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         field: 'phone',
         headerName: 'Teléfono',
         editable: true,
-        filter: true,
+        filter: false,
         width: 150,
         valueSetter: (params) => {
           const phoneValue = params.newValue;
@@ -570,14 +644,28 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         headerName: 'CP',
         editable: true,
         filter: true,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         width: 100,
       },
       {
         field: 'address',
         headerName: 'Dirección',
         editable: true,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         filter: 'agTextColumnFilter',
         width: 300,
+        valueSetter: (params) => {
+          params.data[params.colDef.field] = params.newValue.toUpperCase();
+          return true;
+        },
         /*cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
@@ -609,6 +697,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         field: 'state',
         headerName: 'Estado',
         filter: true,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         width: 150,
         editable: false,
         cellEditor: 'agSelectCellEditor',
@@ -621,6 +714,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         headerName: 'Ciudad',
         editable: false,
         filter: true,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         width: 150,
       },
       {
@@ -628,6 +726,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         headerName: 'Colonia',
         editable: true,
         filter: true,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         width: 300,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: (params) => {
@@ -653,6 +756,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         headerName: 'RFC',
         editable: true,
         filter: true,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         width: 150,
       },
     ];
@@ -730,8 +838,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   getBanks() {
     this.administrationService.get2fieldsBanks().subscribe(
       (data: any) => {
-        this.banks = data;
-      },
+        this.banks = [{ idBank: '', name: 'Efectivo' }, ...data];
+      },      
       (error) => {
         if (error.status == 404) this.banks = [];
         console.error('Error fetching data:', error);
@@ -798,6 +906,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
   onMasterGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+    
   }
 
   onMasterRowSelected(event: any) {
@@ -851,10 +960,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       if (firstEditableColKey) {
         this.gridApi.startEditingCell({
           rowIndex: newRowIndex,
-          colKey: firstEditableColKey, // Editar la primera columna editable
+          colKey: 'idBranch', // Editar la primera columna editable
         });
       }
     }, 50); // Un pequeño retraso de 50ms
+    
   }
 
   async saveMasterChanges() {
@@ -865,8 +975,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         item.email &&
         item.idDepto && // se agregan dos inputs para la validación de los campos requeridos
         item.idPosition &&
-        item.priceXHour &&
-        item.baseHours
+        item.priceXHour
     );
     if (!isValid) {
       alerts.basicAlert(
