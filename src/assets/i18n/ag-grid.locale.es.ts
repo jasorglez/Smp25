@@ -1,7 +1,7 @@
 export const AG_GRID_LOCALE_ES = {
   page: 'Pagina',
   more: 'Mas',
-  to: 'a',
+  tos: 'a',
   of: 'de',
   next: 'Siguente',
   last: 'Último',
@@ -10,7 +10,10 @@ export const AG_GRID_LOCALE_ES = {
   loadingOoo: 'Cargando...',
   reset: 'Reiniciar',
   resets: 'Reiniciar',
-
+  froms: 'Desde',
+  after: 'Despues',
+  before: 'Antes',
+  
   // for set filter
   selectAll: 'Seleccionar Todo',
   searchOoo: 'Buscar...',

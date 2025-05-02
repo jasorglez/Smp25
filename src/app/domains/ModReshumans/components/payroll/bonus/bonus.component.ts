@@ -265,12 +265,12 @@ export class BonusComponent implements CanComponentDeactivate {
          // console.log('Datos obtenidos del servidor:', this.empleadoCatalgos);
 
           // Actualizar el grid y esperar a que termine
-          /*this.gridApi.setGridOption('rowData', this.rowData);
+          this.gridApi.setGridOption('rowData', this.rowData);
 
           // Dar tiempo al grid para actualizar los datos
           setTimeout(() => {
             resolve(true);
-          }, 100);*/
+          }, 100);
         },
         (error) => {
           console.error('Error fetching data:', error);
@@ -495,10 +495,8 @@ export class BonusComponent implements CanComponentDeactivate {
   }
 
   addRow() {
-    //const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       active: true,
-      //id: '',
       idBranch: this.idBranch > 0 ? this.idBranch : null,
       idEmployee: '',
       employeeName: '',
@@ -510,9 +508,19 @@ export class BonusComponent implements CanComponentDeactivate {
       __isNew: true,
     };
     this.rowData = [newItem, ...this.rowData];
-    //this.notSavedChanges = true;
-    //this.aggregatingRecord = true;
+  
+    setTimeout(() => {
+      const firstRowIndex = 0;
+  
+      this.gridApi.ensureIndexVisible(firstRowIndex);
+  
+      this.gridApi.startEditingCell({
+        rowIndex: firstRowIndex,
+        colKey: 'employeeName'
+      });
+    }, 0);
   }
+  
 
   async saveChanges() {
     console.log('---- salvando cambios ', this.rowData);
