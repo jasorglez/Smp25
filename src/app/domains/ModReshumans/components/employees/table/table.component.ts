@@ -250,7 +250,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         filterParams: {
           // can be 'windows' or 'mac'
           defaultToNothingSelected: true,
-          //excelMode: 'mac',
+          //excelMode: 'windows',
         },
 
         cellEditorParams: (params) => {
@@ -285,36 +285,40 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         headerName: 'Nombre',
         headerClass: 'required-header',
         editable: true,
-        cellStyle: (params) => this.validateRequiredField(params.value),
         suppressMovable: true,
+        width: 270,
         filter: 'agSetColumnFilter',
         filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
+          excelMode: 'mac',
         },
-        width: 270,
+        cellStyle: (params) => this.validateRequiredField(params.value),
         cellEditor: 'autocompleteEditor',
         cellEditorParams: {
-          filterList: this.rowData.map((e) => e.name),
+          filterList: this.rowData?.map((e) => e.name.toUpperCase()) || [],
           filterKey: 'name',
           placeholder: 'Buscar empleado...',
           minLength: 1,
         },
         valueSetter: (params) => {
-          if (!params.newValue || params.newValue.trim() === '') {
-            alerts.basicAlert(
-              'Campo requerido',
-              'El nombre es obligatorio',
-              'error'
-            );
+          const rawValue = params.newValue;
+          if (!rawValue || typeof rawValue !== 'string') {
+            alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
             return false;
           }
+      
+          const normalizedValue = rawValue.trim().toUpperCase();
+      
+          if (!normalizedValue) {
+            alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
+            return false;
+          }
+      
           const duplicateExists = this.rowData.some(
             (row, index) =>
-              index !== params.node.rowIndex && row.name === params.newValue
+              index !== params.node.rowIndex &&
+              row.name?.toUpperCase() === normalizedValue
           );
-
+      
           if (duplicateExists) {
             alerts.basicAlert(
               'Nombre duplicado',
@@ -323,10 +327,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             );
             return false;
           }
-
-          params.data[params.colDef.field] = params.newValue.toUpperCase();
+      
+          params.data[params.colDef.field] = normalizedValue;
           return true;
         },
+        valueFormatter: (params) => params.value || '',
       },
       {
         field: 'email',
@@ -901,6 +906,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
   onMasterGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+    
   }
 
   onMasterRowSelected(event: any) {
@@ -954,10 +960,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       if (firstEditableColKey) {
         this.gridApi.startEditingCell({
           rowIndex: newRowIndex,
-          colKey: firstEditableColKey, // Editar la primera columna editable
+          colKey: 'idBranch', // Editar la primera columna editable
         });
       }
     }, 50); // Un pequeño retraso de 50ms
+    
   }
 
   async saveMasterChanges() {
