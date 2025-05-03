@@ -3,6 +3,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { EmployeesxloansService } from 'app/services/employeesxloans.service';
 import { SignalsService } from 'app/services/signals.service';
+import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 
 @Component({
   selector: 'app-savings-registry',
@@ -14,6 +15,7 @@ import { SignalsService } from 'app/services/signals.service';
 export class SavingsRegistryComponent {
   private employeesxloansService = inject(EmployeesxloansService);
   private signalsService = inject(SignalsService);
+  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   defaultColDef = {
     flex: 1,

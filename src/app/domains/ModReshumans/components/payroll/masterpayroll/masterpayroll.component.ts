@@ -2,6 +2,8 @@ import { alerts } from 'app/helpers/alerts';
 import { RouterModule } from '@angular/router';
 import { Component, effect, HostListener, inject, OnInit } from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
+import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+
 import {
   PayrollService,
   PayrollData,
@@ -41,6 +43,8 @@ import { BranchsService } from 'app/services/branchs.service';
   styleUrl: './masterpayroll.component.scss',
 })
 export class MasterPayrollComponent implements OnInit {
+  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+  
   constructor() {
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();

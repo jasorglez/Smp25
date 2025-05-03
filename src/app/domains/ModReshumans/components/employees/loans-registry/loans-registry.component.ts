@@ -3,6 +3,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { EmployeesxloansService } from 'app/services/employeesxloans.service';
 import { SignalsService } from 'app/services/signals.service';
+import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 
 @Component({
   selector: 'app-loans-registry',
@@ -35,7 +36,8 @@ export class LoansRegistryComponent {
   detailedNewlyAddedRows: string[] = [];
   private maestroGridApi: GridApi;
   idBranch: number;
-
+  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+  
   constructor() {
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
