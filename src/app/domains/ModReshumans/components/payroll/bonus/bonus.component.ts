@@ -232,7 +232,7 @@ export class BonusComponent implements CanComponentDeactivate {
 
   obtenerDatosCatalogos() {
     //console.log("------- empresa para obtener catalogos: ", this.idEmpresa);
-    this.catalogsService.getCatalogs(this.idEmpresa, 'BONUS').subscribe(
+    this.catalogsService.getCatalogsElection(this.idEmpresa, 'BONUS').subscribe(
       (data) => {
         this.bonusCatalogos = data;
         //console.log("------ Catalogo", data);

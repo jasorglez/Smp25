@@ -16,6 +16,9 @@ export class CatalogsService {
   getCatalogs(idRoot: number, type: string): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/getCatalogs?idCompany=${idRoot}&type=${type}`, { headers: this.trackingService.getHeaders() });
   }
+  getCatalogsElection(idRoot: number, type: string): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/getCatalogsElection?idCompany=${idRoot}&type=${type}`, { headers: this.trackingService.getHeaders() });
+  }
 
   getPermissionxprocess(id: number): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/process-permissions?idProcces=${id}`, { headers: this.trackingService.getHeaders() });
