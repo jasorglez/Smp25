@@ -106,13 +106,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
       .getCatalogs(this.idRoot, this.selectedCatalog)
       .subscribe({
         next: (data: any[]) => {
-          const nuevoArray = data.map((item) => {
-            return {
-              ...item,
-              idElection: item.idElection === 'true',
-            };
-          });
-          this.rowData = nuevoArray;
+          this.rowData = data;
           //this.rowData = data;
           console.log('Datos procesados:', this.rowData);
         },
@@ -143,7 +137,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
       },
       {
         field: 'valueAddition',
-        headerName: this.selectedCatalog !== 'BONUS' ? 'Color' : '',
+        headerName: this.selectedCatalog !== 'BONUS' ? 'Color' : 'Monto',
         cellRenderer:
           this.selectedCatalog !== 'BONUS' ? ColorPickerRenderer : '',
         cellRendererParams: {
@@ -255,7 +249,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
       description: '',
       valueAddition: '',
       type: this.selectedCatalog,
-      election: null,
+      idElection: true,
       active: 1,
       __isNew: true,
     };
@@ -319,7 +313,12 @@ export class CatalogsComponent implements CanComponentDeactivate {
     }
   }
 
-  revert() {}
+  revert() {
+    this.obtenerTables();
+    this.obtenerDatos();
+    this.notSavedChanges = false;
+
+  }
 
   deleteEntry() {}
 

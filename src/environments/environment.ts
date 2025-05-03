@@ -33,7 +33,9 @@ export const environment = {
  urlSmp            : 'https://bi2.com.mx/smp/api', // 5004
  //urlSmp             : 'http://localhost:5183/api',
  urlBpi            : 'https://bi2.com.mx/bpi/api', // 5005
+ 
  urlWarehouse      : 'https://bi2.com.mx/warehouse/api', // 5007
+ //urlWarehouse      : 'http://localhost:5199/api',
 
  urlAdministration : 'https://bi2.com.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
  //urlAdministration : 'http://localhost:5047/api', // 5006 -- Tambien conocido como Tracking

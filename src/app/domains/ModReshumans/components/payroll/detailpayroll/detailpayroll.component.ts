@@ -62,6 +62,24 @@ export class DetailpayrollComponent implements OnInit{
     },
     { headerName: 'Horas Trabajadas', width: 150, field: 'workedHours' },
     { headerName: 'Horas Extra', width: 150, field: 'extraWorkedHours' },
+    { headerName: 'Horas Extra Especiales', width: 150, field: 'extraWorkedHours' },
+    {
+      headerName: 'Faltas',
+      width: 100,
+      field: 'absences',
+     /*  valueFormatter: (params) => {
+        return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
+      } */
+    },
+
+    {
+      headerName: 'Retardos',
+      width: 110,
+      field: 'delays',
+     /*  valueFormatter: (params) => {
+        return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
+      } */
+    },
     {
       headerName: 'Salario Base',
       width: 150,
@@ -88,6 +106,14 @@ export class DetailpayrollComponent implements OnInit{
     },
     /*{ headerName: 'Descuentos (%)', width: 150, field: 'percentageDiscount' },*/
     {
+      headerName: 'Ahorros',
+      width: 100,
+      field: 'savings',
+      valueFormatter: (params) => {
+        return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
+      }
+    },
+    {
       headerName: 'Descuento Real',
       width: 150,
       editable: true,
@@ -95,6 +121,11 @@ export class DetailpayrollComponent implements OnInit{
       valueFormatter: (params) => {
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
       }
+    },
+    {
+      headerName: 'Bancos',
+      width: 150,
+      field: 'bancoNombre',
     },
     {
       headerName: 'Pago Digital',
@@ -105,41 +136,10 @@ export class DetailpayrollComponent implements OnInit{
       }
     },
 
-    {
-      headerName: 'Ahorros',
-      width: 100,
-      field: 'savings',
-      valueFormatter: (params) => {
-        return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
-      }
-    },
+    
 
     {
-      headerName: 'Faltas',
-      width: 100,
-      field: 'absences',
-     /*  valueFormatter: (params) => {
-        return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
-      } */
-    },
-
-    {
-      headerName: 'Retardos',
-      width: 110,
-      field: 'delays',
-     /*  valueFormatter: (params) => {
-        return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
-      } */
-    },
-
-    {
-      headerName: 'Bancos',
-      width: 150,
-      field: 'bancoNombre',
-    },
-
-    {
-      headerName: 'Total',
+      headerName: 'Total Efectivo',
       width: 150,
       field: 'total',
       valueFormatter: (params) => {

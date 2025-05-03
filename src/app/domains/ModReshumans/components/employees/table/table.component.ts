@@ -289,7 +289,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         width: 270,
         filter: 'agSetColumnFilter',
         filterParams: {
-          excelMode: 'mac',
+          //excelMode: 'mac',
+          defaultToNothingSelected: true,
         },
         cellStyle: (params) => this.validateRequiredField(params.value),
         cellEditor: 'autocompleteEditor',
@@ -450,7 +451,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
         editable: true,
-        filter: true,
+        filter: 'agNumberColumnFilter',
         filterParams: {
           // can be 'windows' or 'mac'
           defaultToNothingSelected: true,
@@ -581,9 +582,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           values: this.banks.map((user) => user.id),
         },
         valueGetter: (params) => {
-          if (!params.data || !params.data.idBank) return '';
+          console.log(params.data)
+          if (!params.data || !params.data.idBank) return 'Efectivo';
           const foundBank = this.banks?.find((user) => user.id === params.data.idBank);
-          return foundBank ? foundBank.name : '';
+          return foundBank ? foundBank.name : 'Efectivo';
         },
         valueFormatter: (params) => {
           const foundBank = this.banks
