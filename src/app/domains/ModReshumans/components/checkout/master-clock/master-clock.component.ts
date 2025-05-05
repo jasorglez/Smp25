@@ -32,6 +32,14 @@ export default class MasterClockComponent implements OnInit {
   }
 
   constructor() {
+
+    effect(async () => {
+      if (this.signalsService.getRefreshEmployees()() == true) {
+        await this.obtenerDatos(); // Actualizar datos cuando se recibe señal
+        this.signalsService.resetRefreshEmployees(); // Resetear la señal después de actualizar
+      }
+    });
+    
     this.selectFechas = this.fb.group({
       fechaInicio: ['', Validators.required],
       fechaFin: ['', Validators.required]
