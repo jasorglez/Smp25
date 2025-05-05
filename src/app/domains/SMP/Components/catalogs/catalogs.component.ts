@@ -8,6 +8,7 @@ import { concat, lastValueFrom } from 'rxjs';
 import { toArray } from 'rxjs/operators';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
+import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 
 import {
   ColDef,
@@ -38,6 +39,7 @@ import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
   styleUrl: './catalogs.component.scss',
 })
 export class CatalogsComponent implements CanComponentDeactivate {
+  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   notSavedChanges: boolean = false;
   rowData: any;
 
@@ -131,6 +133,11 @@ export class CatalogsComponent implements CanComponentDeactivate {
       {
         field: 'description',
         headerName: 'Descripción',
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         editable: true,
         filter: true,
         width: 250,
@@ -150,7 +157,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
           this.selectedCatalog !== 'TYPECLIENT', // Oculta si no es BONUS
       },
       {
-        field: 'idElection',
+        field: 'vigente',
         headerName: 'Activo',
         editable: true,
         width: 100,

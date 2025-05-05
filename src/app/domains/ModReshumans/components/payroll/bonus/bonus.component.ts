@@ -232,7 +232,7 @@ export class BonusComponent implements CanComponentDeactivate {
 
   obtenerDatosCatalogos() {
     //console.log("------- empresa para obtener catalogos: ", this.idEmpresa);
-    this.catalogsService.getCatalogsElection(this.idEmpresa, 'BONUS').subscribe(
+    this.catalogsService.getCatalogsVigente(this.idEmpresa, 'BONUS').subscribe(
       (data) => {
         this.bonusCatalogos = data;
         //console.log("------ Catalogo", data);
@@ -259,7 +259,7 @@ export class BonusComponent implements CanComponentDeactivate {
 
   obtenerEmpleados() {
     return new Promise((resolve) => {
-      this.employeeService.getEmployees(this.idBranch).subscribe(
+      this.employeeService.getEmployeesVigente(this.idBranch).subscribe(
         (data: any) => {
           this.empleadoCatalgos = data;
          // console.log('Datos obtenidos del servidor:', this.empleadoCatalgos);
@@ -334,7 +334,13 @@ export class BonusComponent implements CanComponentDeactivate {
       {
         field: 'idBranch',
         headerName: 'Nombre sucursal',
-        editable: false, // ← Solo mostrarlo, no editarlo
+        editable: false, 
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
+
         filter: true,
         width: 170,
         valueFormatter: (params) => {
@@ -347,6 +353,11 @@ export class BonusComponent implements CanComponentDeactivate {
           );
           return branch ? branch.name : '';
         },
+        valueGetter: (params) => {
+          if (!params.data || !params.data.idBranch) return '';
+          const branch = this.branchs?.find(b => b.id === params.data.idBranch);
+          return branch ? branch.name : '';
+        },
       },
       {
         field: 'employeeName',
@@ -354,6 +365,12 @@ export class BonusComponent implements CanComponentDeactivate {
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
         editable: true,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
+
         filter: true,
         width: 200,
         flex: 1,
@@ -401,6 +418,12 @@ export class BonusComponent implements CanComponentDeactivate {
         editable: true,
         filter: true,
         width: 150,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
+
         headerClass: 'required-header',
         flex: 1,
         cellEditor: 'agSelectCellEditor',

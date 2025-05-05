@@ -8,6 +8,8 @@ import { filter, map } from 'rxjs';
 import { TimeService } from 'app/services/time.service';
 import { HRService } from 'app/services/hr.service';
 import { SignalsService } from 'app/services/signals.service';
+import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+
 
 @Component({
   selector: 'app-clock-db',
@@ -23,6 +25,8 @@ export default class DbComponent {
   private hrService = inject(HRService);
   private signalsService = inject(SignalsService);
 
+  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+
   data: any;
   idEmployee: number;
   idBranch: number;
@@ -33,12 +37,17 @@ export default class DbComponent {
   customData: any = { Hours: null, PendingOuts: null, Absences: null, Delays: null };
 
   columnDefs = [
-    { headerName: 'Nombre Empleado', field: 'name', flex: 2 , filter: true},
+    { headerName: 'Nombre Empleado', field: 'name', flex: 2 , filter: true, filterParams: {defaultToNothingSelected: true},},
     {
       headerName: 'Fecha y Hora',
       field: 'timeStamp',
       flex: 2,
       filter: true,
+      filterParams: {
+        // can be 'windows' or 'mac'
+        defaultToNothingSelected: true,
+        //excelMode: 'mac',
+      },
       valueFormatter: (params) => {
         const date = new Date(params.value);
         return date.toLocaleString('es-MX', {

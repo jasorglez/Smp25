@@ -279,6 +279,11 @@ export class MasterPayrollComponent implements OnInit {
         editable: true,
         filter: true,
         width: 170,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         cellEditor: 'agSelectCellEditor',
 
         cellEditorParams: (params) => {
@@ -301,6 +306,11 @@ export class MasterPayrollComponent implements OnInit {
             : null;
 
           return foundBranch ? foundBranch.name : params.value;
+        },
+        valueGetter: (params) => {
+          if (!params.data || !params.data.idBranch) return '';
+          const branch = this.branchs?.find(b => b.id === params.data.idBranch);
+          return branch ? branch.name : '';
         },
       },
 
