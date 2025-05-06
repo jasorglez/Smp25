@@ -53,8 +53,10 @@ export class BranchesComponent implements CanComponentDeactivate {
 
   // Configuración Grid
   public rowSelection: 'single' | 'multiple' = 'single';
+
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
+  
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
 
@@ -98,9 +100,7 @@ export class BranchesComponent implements CanComponentDeactivate {
     if (this.signalsService.getemailChoose() === environment.root) {
       this.branchesService.getAllBranches().subscribe(
         (data: Ibranch[]) => {
-          this.masterRowData = data.sort((a, b) =>
-            a.name.localeCompare(b.name)
-          );
+          this.masterRowData = data;
           this.masterNotSavedChanges = false;
         },
         (error) => {
@@ -165,103 +165,111 @@ export class BranchesComponent implements CanComponentDeactivate {
   };
 
   get colMaster(): ColDef[] {
-    return [
-      //{ field: 'orden', headerName: 'Orden', editable: true, filter: true, flex: 1 },
-      {
-        field: 'name',
-        headerName: 'Nombre *',
-        editable: true,
-        filter: true,
-        //flex: 1,
-        width: 250,
-        valueSetter: (params) => {
-          params.data[params.colDef.field] = params.newValue.toUpperCase();
-          return true;
+    const columns: ColDef[] = [];
+    
+    // Agregar columna condicional
+    if (this.signalsService.getemailChoose() === environment.root) {
+        columns.push({          
+            field: 'rootName', 
+            headerName: 'Empresa', 
+            editable: false, 
+            filter: true,
+            width: 200,
+            enableRowGroup: true,  // Permite agrupar por esta columna
+            enablePivot: true,    // Permite usar esta columna como pivote
+            rowGroup: true,      // Inicialmente no agrupado (puedes cambiarlo a true si quieres que se agrupe por defecto)
+            pivot: true,
+            headerCheckboxSelection: false,
+            checkboxSelection: false       // Inicialmente no como pivote
+        })
+    }
+
+    // Agregar el resto de las columnas
+    columns.push(
+        {
+            field: 'name',
+            headerName: 'Nombre *',
+            editable: true,
+            filter: true,
+            width: 250,
+            valueSetter: (params) => {
+                params.data[params.colDef.field] = params.newValue?.toUpperCase();
+                return true;
+            },
         },
-      },
-      {
-        field: 'description',
-        headerName: 'Descripción *',
-        editable: true,
-        filter: true,
-        //flex: 1,
-        width: 400,
-        valueSetter: (params) => {
-          params.data[params.colDef.field] = params.newValue.toUpperCase();
-          return true;
+        {
+            field: 'description',
+            headerName: 'Descripción *',
+            editable: true,
+            filter: true,
+            width: 400,
+            valueSetter: (params) => {
+                params.data[params.colDef.field] = params.newValue?.toUpperCase();
+                return true;
+            },
         },
-      },
-      {
-        field: 'idEstado',
-        headerName: 'Estado *',
-        editable: true,
-        filter: true,
-        cellEditor: 'agSelectCellEditor',
-        //flex: 1,
-        width: 200,
-        cellEditorParams: {
-          values: this.estados ? this.estados.map((item) => item.id) : [],
+        {
+            field: 'idEstado',
+            headerName: 'Estado *',
+            editable: true,
+            filter: true,
+            cellEditor: 'agSelectCellEditor',
+            width: 200,
+            cellEditorParams: {
+                values: this.estados ? this.estados.map((item) => item.id) : [],
+            },
+            valueFormatter: (params) => {
+                const foundItem = this.estados
+                    ? this.estados.find((item) => item.id === params.value)
+                    : null;
+                return foundItem ? `${foundItem.nom_agee}` : params.value;
+            },
         },
-        valueFormatter: (params) => {
-          const foundItem = this.estados
-            ? this.estados.find((item) => item.id === params.value)
-            : null;
-          return foundItem ? `${foundItem.nom_agee}` : params.value;
+        {
+            field: 'address',
+            headerName: 'Dirección *',
+            editable: false,
+            filter: true,
+            width: 400,
+            cellEditor: 'agPopupTextCellEditor',
+            cellEditorParams: {
+                maxLength: 100,
+                cols: 50,
+                rows: 3,
+            },
+            onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+                if (!event.node.group) {
+                    this.modalServiceTable.showModal({
+                        params: event,
+                        value: event.value,
+                    });
+                }
+            },
+            cellRenderer: (params: ICellRendererParams) => {
+                return params.node.group ? params.value : params.value;
+            },
+            valueSetter: (params) => {
+                params.data[params.colDef.field] = params.newValue?.toUpperCase();
+                return true;
+            },
         },
-      },
-      {
-        field: 'address',
-        headerName: 'Dirección *',
-        editable: false,
-        filter: true,
-        //flex: 1,
-        width: 400,
-        cellEditor: 'agPopupTextCellEditor',
-        cellEditorParams: {
-          maxLength: 100,
-          cols: 50,
-          rows: 3,
-          onKeyDown: (event: KeyboardEvent) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.stopPropagation();
-            }
-          },
-        },
-        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-          if (!event.node.group) {
-            this.modalServiceTable.showModal({
-              params: event,
-              value: event.value,
-            });
-          }
-        },
-        cellRenderer: (params: ICellRendererParams) => {
-          if (params.node.group) {
-            return params.value;
-          }
-          return params.value;
-        },
-        valueSetter: (params) => {
-          params.data[params.colDef.field] = params.newValue.toUpperCase();
-          return true;
-        },
-      },
-      {
-        field: 'vigente',
-        headerName: 'Vigente',
-        editable: true,
-        suppressMovable: true,
-        filter: true,
-        //flex: 1,
-        width: 150,
-        cellRenderer: (params) => {
-          return `<input type="checkbox" ${
-            params.value ? 'checked' : ''
-          } disabled />`;
-        },
-      },
-    ];
-  }
+        {
+            field: 'vigente',
+            headerName: 'Vigente',
+            editable: true,
+            suppressMovable: true,
+            filter: true,
+            width: 150,
+            cellRenderer: (params) => {
+                return `<input type="checkbox" ${
+                    params.value ? 'checked' : ''
+                } disabled />`;
+            },
+        }
+    );
+
+    return columns;
+}
 
   onMasterSelectionChanged(event: any) {
     const selectedNodes = event.api.getSelectedNodes();
