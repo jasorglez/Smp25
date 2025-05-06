@@ -53,8 +53,10 @@ export class BranchesComponent implements CanComponentDeactivate {
 
   // Configuración Grid
   public rowSelection: 'single' | 'multiple' = 'single';
+
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
+  
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
 
@@ -98,9 +100,7 @@ export class BranchesComponent implements CanComponentDeactivate {
     if (this.signalsService.getemailChoose() === environment.root) {
       this.branchesService.getAllBranches().subscribe(
         (data: Ibranch[]) => {
-          this.masterRowData = data.sort((a, b) =>
-            a.name.localeCompare(b.name)
-          );
+          this.masterRowData = data;
           this.masterNotSavedChanges = false;
         },
         (error) => {
@@ -169,13 +169,19 @@ export class BranchesComponent implements CanComponentDeactivate {
     
     // Agregar columna condicional
     if (this.signalsService.getemailChoose() === environment.root) {
-        columns.push({
+        columns.push({          
             field: 'rootName', 
             headerName: 'Empresa', 
             editable: false, 
             filter: true,
-            width: 200 // Añade un ancho apropiado
-        });
+            width: 200,
+            enableRowGroup: true,  // Permite agrupar por esta columna
+            enablePivot: true,    // Permite usar esta columna como pivote
+            rowGroup: true,      // Inicialmente no agrupado (puedes cambiarlo a true si quieres que se agrupe por defecto)
+            pivot: true,
+            headerCheckboxSelection: false,
+            checkboxSelection: false       // Inicialmente no como pivote
+        })
     }
 
     // Agregar el resto de las columnas
