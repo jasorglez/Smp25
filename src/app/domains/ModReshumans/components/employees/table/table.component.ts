@@ -335,10 +335,63 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         valueFormatter: (params) => params.value || '',
       },
       {
+        field: 'employeeCode',
+        headerName: 'UserName',
+        //headerClass: 'required-header',
+        editable: true,
+        suppressMovable: true,
+        width: 170,
+        filter: 'agSetColumnFilter',
+        filterParams: {
+          defaultToNothingSelected: true,
+        },
+        //cellStyle: (params) => this.validateRequiredField(params.value),
+        cellEditor: 'autocompleteEditor',
+        cellEditorParams: {
+          filterList: this.rowData?.map((e) => e.employeeCode?.toUpperCase()) || [],
+          filterKey: 'employeeCode',
+          placeholder: 'Buscar código...',
+          minLength: 1,
+        },
+        valueSetter: (params) => {
+          const rawValue = params.newValue;
+          if (!rawValue || typeof rawValue !== 'string') {
+            alerts.basicAlert('Campo requerido', 'El código es obligatorio.', 'error');
+            return false;
+          }
+      
+          const normalizedValue = rawValue.trim().toUpperCase();
+      
+          if (!normalizedValue) {
+            alerts.basicAlert('Campo requerido', 'El código es obligatorio.', 'error');
+            return false;
+          }
+      
+          const duplicateExists = this.rowData.some(
+            (row, index) =>
+              index !== params.node.rowIndex &&
+              row.employeeCode?.toUpperCase() === normalizedValue
+          );
+      
+          if (duplicateExists) {
+            alerts.basicAlert(
+              'Código duplicado',
+              'Ya existe un empleado con ese código.',
+              'error'
+            );
+            return false;
+          }
+      
+          params.data[params.colDef.field] = normalizedValue;
+          return true;
+        },
+        valueFormatter: (params) => params.value || '',
+      },
+      {
         field: 'email',
         headerName: 'Correo electrónico',
-        headerClass: 'required-header',
-        cellStyle: (params) => this.validateRequiredField(params.value),
+        //headerClass: 'required-header',
+        //cellStyle: (params) => this.validateRequiredField(params.value),
         cellEditor: 'agTextCellEditor',
         editable: true,
         cellEditorParams: {
@@ -924,6 +977,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       name: '',
       address: '',
       cp: '',
+      employeeCode: '',
       city: '',
       neighborhood: '',
       rfc: '',
@@ -974,7 +1028,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       (item) =>
         item.name &&
         item.idBranch &&
-        item.email &&
+        (item.employeeCode || item.email )&&
         item.idDepto && // se agregan dos inputs para la validación de los campos requeridos
         item.idPosition &&
         item.priceXHour

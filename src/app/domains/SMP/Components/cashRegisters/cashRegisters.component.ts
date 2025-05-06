@@ -59,6 +59,7 @@ export class CashRegistersComponent implements CanComponentDeactivate {
   newlyAddedRows: string[] = [];
   resnew: boolean = false;
   resup: boolean = false;
+  
 
   private storeCatalog: any[] = [];
   private inegiService = inject(InegiService);
@@ -221,6 +222,7 @@ export class CashRegistersComponent implements CanComponentDeactivate {
     }
   }
   public gridOptions: any = {
+    
     headerHeight: 25,
     rowHeight: 20,
     suppressEnterWhenEditing: false,
