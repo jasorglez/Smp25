@@ -18,6 +18,9 @@ export class EmployeesService {
   getEmployees(idBranch: number) {
     return this.http.get(`${environment.urlAdministration}/Employee/branch/${idBranch}`, { headers: this.trackingService.getHeaders() });
   }
+  getEmployeesVigente(idBranch: number) {
+    return this.http.get(`${environment.urlAdministration}/Employee/branchVigente/${idBranch}`, { headers: this.trackingService.getHeaders() });
+  }
   
   getEmployeeById(id: number): Observable<any> {
     return this.http.get<any[]>(`${environment.urlAdministration}/Employee/${id}`, { headers: this.trackingService.getHeaders() });

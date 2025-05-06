@@ -850,7 +850,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   }
 
   getDeptoandPosition() {
-    this.catalogService.getCatalogs(this.idRoot, 'DEPARTAMENT').subscribe(
+    this.catalogService.getCatalogsVigente(this.idRoot, 'DEPARTAMENT').subscribe(
       (data: any) => {
         this.depto = data;
       },
@@ -860,7 +860,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       }
     );
 
-    this.catalogService.getCatalogs(this.idRoot, 'POSITION').subscribe(
+    this.catalogService.getCatalogsVigente(this.idRoot, 'POSITION').subscribe(
       (data: any) => {
         this.position = data;
       },

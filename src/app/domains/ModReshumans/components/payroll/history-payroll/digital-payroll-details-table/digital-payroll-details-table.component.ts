@@ -15,6 +15,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { FormsModule } from '@angular/forms';
+import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 
 @Component({
   selector: 'digital-payroll-details-table',
@@ -52,6 +53,8 @@ export class DigitalPayrollDetailsTableComponent {
 
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
 
+  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+
   get colMaster(): ColDef[] {
     return [
       {
@@ -71,6 +74,11 @@ export class DigitalPayrollDetailsTableComponent {
         headerName: 'Sucursal',
         filter: true,
         width: 200,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
       },
       {
         field: 'period',
@@ -111,6 +119,11 @@ export class DigitalPayrollDetailsTableComponent {
         headerName: 'Año fiscal',
         filter: true,
         width: 160,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
       },
       // {
       //   field: 'createdAt',

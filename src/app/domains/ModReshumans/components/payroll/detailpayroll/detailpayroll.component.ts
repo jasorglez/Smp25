@@ -14,6 +14,7 @@ import { EmployeesxloansService } from 'app/services/employeesxloans.service';
 import { PayrollService } from 'app/services/payroll.service';
 import { SignalsService } from 'app/services/signals.service';
 import { concat, lastValueFrom, toArray } from 'rxjs';
+import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 
 @Component({
   selector: 'app-detailpayroll',
@@ -36,7 +37,7 @@ export class DetailpayrollComponent implements OnInit{
     domLayout: 'normal',
     rowHeight: 20
   };
-
+  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   rowData: any[] = [];
   loanIds: number;
   gridApi: any;
@@ -51,7 +52,7 @@ export class DetailpayrollComponent implements OnInit{
   idPayroll: number;
 
   columnDefs: ColDef[] = [
-    { headerName: 'Nombre Empleado', field: 'employeeName', width: 300, filter: true },
+    { headerName: 'Nombre Empleado', field: 'employeeName', width: 300, filter: true,  filterParams: {defaultToNothingSelected: true,},},
     {
       headerName: 'Precio x Hora',
       width: 150,

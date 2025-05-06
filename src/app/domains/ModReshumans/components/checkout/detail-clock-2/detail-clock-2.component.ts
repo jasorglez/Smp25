@@ -211,18 +211,7 @@ export default class DetailClock2Component implements OnInit {
         field: 'valid',
         headerName: 'Válido',
         editable: true,
-        width: 100,
-        valueFormatter: (params) => {
-          if (params.node.group) return '';
-          return params.value ? 'Sí' : 'No';
-        },
-        cellStyle: (params) => {
-          if (params.node.group) return null;
-          if (!params.value) {
-            return { backgroundColor: '#ffcccc' };
-          }
-          return null;
-        },
+        width: 100
       },
       {
         field: 'minuteDiscount',
@@ -233,13 +222,24 @@ export default class DetailClock2Component implements OnInit {
         width: 150,
       },
       {
+        field: 'minuteDiscountBackup',
+        headerName: 'Minutos Descontados Respaldo',
+        editable: false,
+        cellDataType: 'number',
+        cellEditor: 'agTextCellEditor',
+        width: 150,
+      },
+      {
         field: 'edited',
         headerName: 'Editado',
         editable: false,
-        width: 100,
-        valueFormatter: (params) => {
-          return params.value ? 'Sí' : 'No';
-        },
+        width: 100
+      },
+      {
+        field: 'byTimeClock',
+        headerName: 'Checador?',
+        editable: false,
+        width: 100
       },
       {
         field: 'comments',
@@ -302,10 +302,15 @@ export default class DetailClock2Component implements OnInit {
     // Si se está editando el campo checkTime
     if (event.column.getColId() === 'checkTime') {
       // Si modifiedCheckTime está vacío, guardamos el valor original
-      if (!event.data.modifiedCheckTime) {
+      if (!event.data.modifiedCheckTime && event.data.byTimeClock) {
         event.data.modifiedCheckTime = event.oldValue;
       }
       // Si ya existe un valor en modifiedCheckTime, este no se cambia
+    }
+    if (event.column.getColId() === 'minuteDiscount') {
+      if (!event.data.minuteDiscountBackup && event.data.byTimeClock) {
+        event.data.minuteDiscountBackup = event.oldValue;
+      }
     }
   }
 
@@ -366,7 +371,9 @@ export default class DetailClock2Component implements OnInit {
       type: 'IN',
       valid: true,
       minuteDiscount: 0,
+      minuteDiscountBackup: null,
       edited: true,
+      byTimeClock: false,
       comments: '',
       editedBy: this.signalsService.getDisplayName()(),
       active: true,
@@ -501,26 +508,30 @@ export default class DetailClock2Component implements OnInit {
 
     // Añadir timeStamp como concatenación de date y checkTime
     if (cleanedData.date && cleanedData.checkTime) {
+      // Asegurarse de que date sea una cadena de texto y extraer solo la parte de la fecha
+      let dateStr = typeof cleanedData.date === 'string' ? cleanedData.date : new Date(cleanedData.date).toISOString();
+      dateStr = dateStr.split('T')[0]; // Solo tomar la parte de la fecha
+
       // Asegurarse de que checkTime tenga el formato correcto (HH:MM:SS)
       const formattedCheckTime = cleanedData.checkTime.includes('.')
         ? cleanedData.checkTime.split('.')[0]
         : cleanedData.checkTime;
 
-      cleanedData.timeStamp =
-        cleanedData.date.split('T')[0] + 'T' + formattedCheckTime;
+      cleanedData.timeStamp = `${dateStr}T${formattedCheckTime}`;
     }
 
     // Añadir modifiedTimeStamp como concatenación de date y modifiedCheckTime
     if (cleanedData.date && cleanedData.modifiedCheckTime) {
+      // Asegurarse de que date sea una cadena de texto y extraer solo la parte de la fecha
+      let dateStr = typeof cleanedData.date === 'string' ? cleanedData.date : new Date(cleanedData.date).toISOString();
+      dateStr = dateStr.split('T')[0]; // Solo tomar la parte de la fecha
+
       // Asegurarse de que modifiedCheckTime tenga el formato correcto (HH:MM:SS)
-      const formattedModifiedCheckTime = cleanedData.modifiedCheckTime.includes(
-        '.'
-      )
+      const formattedModifiedCheckTime = cleanedData.modifiedCheckTime.includes('.')
         ? cleanedData.modifiedCheckTime.split('.')[0]
         : cleanedData.modifiedCheckTime;
 
-      cleanedData.timeStampModified =
-        cleanedData.date.split('T')[0] + 'T' + formattedModifiedCheckTime;
+      cleanedData.timeStampBackup = `${dateStr}T${formattedModifiedCheckTime}`;
     }
     delete cleanedData.date;
     delete cleanedData.checkTime;
