@@ -55,8 +55,10 @@ export class SideBarComponent {
     public projectService: ProjectsService,
     private userService: UsersService,
     private signalsService: SignalsService
+    
   ) {}
 
+  
   async ngOnInit() {
     if (this.signalsService.isidUserEmpty()) {
       this.userService.findEmail(localStorage.getItem('mail')).subscribe({

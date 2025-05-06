@@ -1,10 +1,11 @@
 import { Component, computed, effect, inject, Signal } from '@angular/core';
 import { CatalogsService } from 'app/services/catalogs.service';
+import { CatalogadmonService } from 'app/services/catalogadmon.service';
 import { TablesxmodulesService } from 'app/services/tablesxmodules.service';
 import { SignalsService } from 'app/services/signals.service';
 
 import { TranslateModule } from '@ngx-translate/core';
-import { concat, lastValueFrom } from 'rxjs';
+import { concat, EMPTY, lastValueFrom } from 'rxjs';
 import { toArray } from 'rxjs/operators';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
@@ -75,6 +76,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
   private catalogService = inject(CatalogsService);
   private signalsService = inject(SignalsService);
   private tableService = inject(TablesxmodulesService);
+  private catalogAdmonService = inject(CatalogadmonService);
 
   public rowSelection: 'single' | 'multiple' = 'single';
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
@@ -101,21 +103,36 @@ export class CatalogsComponent implements CanComponentDeactivate {
   }
 
   obtenerDatos() {
-    //alert(this.selectedCatalog),   //alert(this.idRoot)
-    this.catalogService
-      .getCatalogs(this.idRoot, this.selectedCatalog)
+    const catalogType = this.signalsService.getCatalogSelected();
+    this.rowData = [];
+    console.log(`Obteniendo datos para tipo: ${catalogType}`);
+  
+    // Mapa de tipos a servicios
+    const serviceMap = {
+      'WAREHOUSE': this.catalogService,
+      'ADMINISTRATION': this.catalogAdmonService
+      // Añade más mapeos aquí: 'BONUS': this.bonusService, etc.
+    };
+  
+    // Obtiene el servicio del mapa
+    const service = serviceMap[catalogType];
+  
+    // Llama al servicio si existe, si no, no hace nada (o maneja el error)
+    (service ? service.getCatalogs(this.idRoot, this.selectedCatalog) : EMPTY) // EMPTY es un Observable que no emite nada y completa. O usa 'of([])' para emitir un array vacío.
       .subscribe({
-        next: (data: any[]) => {
-          this.rowData = data;
-          //this.rowData = data;
-          console.log('Datos procesados:', this.rowData);
-        },
-        error: () => {
-          this.rowData = [];
-          console.error('Error al obtener datos del catálogo BONUS.');
-        },
+        next: (data: any[]) => this.rowData = data,
+        error: (err) => console.error(`Error (${catalogType || 'desconocido'}):`, err),
+        // complete: () => {} // Puedes añadir un bloque complete si es necesario
       });
-  }
+  
+    // Advertencia si el tipo no estaba en el mapa (y no era null/undefined)
+    if (catalogType && !service) {
+        console.warn(`Tipo de catálogo no manejado: ${catalogType}`);
+    }
+  } 
+
+
+  
 
   //OPERACIONES DE LOS GRIDS
 

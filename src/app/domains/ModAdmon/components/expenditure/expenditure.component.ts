@@ -16,38 +16,43 @@ import { SignalsService } from 'app/services/signals.service';
 import { NgSelectComponent, NgSelectModule } from '@ng-select/ng-select';
 import { AdditionalInfoComponent } from "../income/additional-info/additional-info.component";
 import { ConceptsComponent } from "../income/concepts/concepts.component";
-import { CustomersService } from 'app/services/customers.service';
+import { CatalogadmonService } from 'app/services/catalogadmon.service';
 import { BranchsService } from 'app/services/branchs.service';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-expenditure',
   standalone: true,
   imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
-    FormsModule, AdditionalInfoComponent, ConceptsComponent],
-  templateUrl: '../income/income.component.html',
-  styleUrl: '../income/income.component.scss'
+    FormsModule,  ConceptsComponent],
+  templateUrl: './expenditure.component.html',
+  styleUrl: './expenditure.component.scss'
 })
 export class ExpenditureComponent {
 
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
   private modalServiceTable = inject(ModalService);
   private administrationService = inject(AdministrationService);
-  private customerService = inject(CustomersService);
+  private cataalogAdmonService = inject(CatalogadmonService);
   private usersxpermissionsService = inject(UsersxpermissionsService);
   private usersService = inject(UsersService);
   private signalsService = inject(SignalsService);
   private BranchsService = inject(BranchsService)
+  public isIncomeMode: boolean = false; 
+  private route = inject(ActivatedRoute);
 
   async ngOnInit() {
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
     await this.getBillingManagementInfo();
     await this.getBankAccounts();
     await this.getExpenditure();
-    await this.getCustomers();
+    await this.getBills();
     await this.loadAuthorizers();
     await this.getCurrentUser();
-
-  }
+    this.route.data.subscribe((data) => {
+      this.showform = data['showform']; // 'CUSTOMERS' o 'PROVIDERS'
+  });
+}
 
   constructor() {
     effect(async () => {
@@ -56,7 +61,7 @@ export class ExpenditureComponent {
       await this.getBillingManagementInfo();
       await this.getBankAccounts();
       await this.getExpenditure();
-      await this.getCustomers();
+      await this.getBills();
       await this.loadAuthorizers();
       await this.getCurrentUser();
     });
@@ -69,10 +74,12 @@ export class ExpenditureComponent {
     });
   };
 
-  branches: number[] = [];
-  incomes: any[] = [];
-  customers: any[] = [];
-  users: any[] = [];
+  showform : string = '';
+  branches : number[] = [];
+  incomes  : any[] = [];
+  expenses : any[] = [];
+  users    : any[] = [];
+
   id: number;
   notSavedChanges: boolean = false;
   newlyAddedRows: string[] = [];
@@ -174,10 +181,10 @@ export class ExpenditureComponent {
     });
   }
 
-  async getCustomers() {
-    this.customerService.getCustomersByCompany(this.branches, 'CUSTOMERS').subscribe(
+  async getBills() {
+    this.cataalogAdmonService.getCatalogs(this.idRoot, 'BILL').subscribe(
       (data: any) => {
-        this.customers = data;
+        this.expenses = data;
       },
       error => {
         console.error(error);
@@ -245,7 +252,7 @@ export class ExpenditureComponent {
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
     return [
-      { field: 'numberDocument', headerName: '# Documento', editable: false, filter: true, width: 200 },
+      { field: 'numberDocument', headerName: '# Documento', editable: false, filter: true, width: 150 },
       {
         field: 'description', headerName: 'Descripción', editable: true, width: 285, filter: true,
         cellEditor: 'agPopupTextCellEditor',
@@ -276,15 +283,28 @@ export class ExpenditureComponent {
       },
 
       {
-        field: 'date', headerName: 'Fecha', editable: false, cellDataType: 'date', width: 169,
+        field: 'date', headerName: 'Fecha', editable: true, cellDataType: 'date', width: 125,
         valueFormatter: (params) => this.formatDate(params.value)
+      },
+      {
+        field: 'idExpend', headerName: 'Tipo Gasto', editable: true, width: 195,
+        cellEditor: 'searchableSelect',
+        cellEditorParams: {
+          options: this.expenses,
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.expenses
+            ? this.expenses.find((item) => item.id === params.value)
+            : null;
+          return foundItem ? `${foundItem.description}` : params.value;
+        },
       },
       {
         field: 'subtotal',
         headerName: 'Subtotal',
         type: 'number',
         editable: false,
-        width: 130,
+        width: 120,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
       {
@@ -303,22 +323,7 @@ export class ExpenditureComponent {
         width: 130,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
-      {
-        field: 'dateStamped', headerName: 'Fecha de entrega', editable: true, cellDataType: 'date', width: 169,
-        valueFormatter: (params) => this.formatDate(params.value)
-      },
-
-      {
-        field: 'paymentMonth', headerName: 'Mes Cobro', editable: true, width: 140,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: [
-            'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-            'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-          ]
-        }
-      },
-
+         
       {
         field: 'status',
         headerName: 'Estatus',
@@ -333,37 +338,7 @@ export class ExpenditureComponent {
             'Pagada'
           ]
         }
-      },
-
-      {
-        field: 'idCustomer', headerName: 'Cliente', editable: true, width: 105,
-        cellEditor: 'searchableSelect',
-        cellEditorParams: {
-          options: this.customers,
-        },
-        valueFormatter: (params) => {
-          const foundItem = this.customers
-            ? this.customers.find((item) => item.id === params.value)
-            : null;
-          return foundItem ? `${foundItem.description}` : params.value;
-        },
-      },
-      {
-        field: 'idExpend',
-        headerName: 'Autoriza',
-        editable: true,
-        width: 105,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.users.map(user => user.id)
-        },
-        valueFormatter: (params) => {
-          const foundUser = this.users
-            ? this.users.find((user) => user.id === params.value)
-            : null;
-          return foundUser ? `${foundUser.smallName}` : params.value;
-        },
-      },
+      } 
 
     ]
   };

@@ -18,6 +18,7 @@ import { AdditionalInfoComponent } from "./additional-info/additional-info.compo
 import { ConceptsComponent } from "./concepts/concepts.component";
 import { CustomersService } from 'app/services/customers.service';
 import { BranchsService } from 'app/services/branchs.service';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-income',
@@ -35,6 +36,7 @@ export class IncomeComponent {
   private usersService = inject(UsersService);
   private signalsService = inject(SignalsService);
   private BranchsService = inject(BranchsService)
+  private route = inject(ActivatedRoute);
 
   async ngOnInit() {
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
@@ -45,6 +47,9 @@ export class IncomeComponent {
     await this.getCustomers();   // Obtener clientes después de sucursales
     await this.loadAuthorizers();
     await this.getCurrentUser();
+    this.route.data.subscribe((data) => {
+      this.showform = data['showform']; // 'CUSTOMERS' o 'PROVIDERS'
+  });
   }
 
   obtenerBranchs(): Promise<void> {
@@ -74,6 +79,7 @@ export class IncomeComponent {
     });
   };
 
+  showform : string = '';
   branches: number[] = [];
   incomes: any[] = [];
   customers: any[] = [];

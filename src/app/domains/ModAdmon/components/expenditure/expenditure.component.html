@@ -90,11 +90,6 @@
     </div>
   </div>
 
-    <li class="nav-item" *ngIf="selectedIncomes" >
-      <a class="nav-link" data-bs-toggle="tab" href="#additional-info"
-        >Información adicional</a>
-    </li>
-
     <ul class="nav nav-tabs" *ngIf="selectedIncomes">
       <li class="nav-item">
         <a class="nav-link active" data-bs-toggle="tab" href="#concepts"
@@ -104,11 +99,6 @@
   </ul>
 </div>
 <div class="row">
-  <div class="tab-content" *ngIf="selectedIncomes">
-    <div id="additional-info" class="tab-pane fade show active">
-      <app-additional-info></app-additional-info>
-    </div>
-  </div>
 
   <div class="tab-content" *ngIf="selectedIncomes">
     <div id="concepts" class="tab-pane fade show">

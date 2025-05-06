@@ -156,9 +156,10 @@ export class ConceptsComponent {
   }
 
   async getMeasures() {
-    this.catalogsService.getMeasures().subscribe(
+    this.catalogsService.getCatalogs(this.idRoot, 'MEASURE').subscribe(
       (data: any) => {
         this.measures = data;
+        console.log('Medidas:', this.measures);
       },
       (error) => {
         console.error('Error al obtener la información de gestión de facturación:', error);
