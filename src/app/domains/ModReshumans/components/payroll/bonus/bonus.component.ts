@@ -142,10 +142,10 @@ export class BonusComponent implements CanComponentDeactivate {
   
     // 3. Luego cargas toda la info
     this.obtenerDatosCatalogos();
-    this.obtenerEmpleados();
+    
     this.getDateResiv();
     this.obtenerConfig();
-    
+    this.obtenerEmpleados();
   
     // 4. InicioConsulta la mandas después de cargar configuración si depende de datos de config
   }
@@ -159,13 +159,14 @@ export class BonusComponent implements CanComponentDeactivate {
       //console.log("en init, esto es bonusCatalog:", this.bonusCatalogos);
       this.obtenerDatosCatalogos();
       this.InicioConsulta();
-      this.obtenerEmpleados();
+      
       this.selectFechas = this.fb.group({
         fechaInicio: [this.fechaInicio, Validators.required],
         fechaFin: [this.fechaFin, Validators.required],
       });
       this.getDateResiv();
       this.obtenerConfig();
+      this.obtenerEmpleados();
     });
   }
 
@@ -808,7 +809,7 @@ export class BonusComponent implements CanComponentDeactivate {
   InicioConsulta() {
   
     const diaEncontrado = this.dias.find(d => d.dia === this.hrData.startDay);
-    this.idDia = diaEncontrado ? diaEncontrado.id : 1; // Por defecto lunes
+    this.idDia = diaEncontrado ? diaEncontrado.id : 1;
   
     this.getDateNew();
   

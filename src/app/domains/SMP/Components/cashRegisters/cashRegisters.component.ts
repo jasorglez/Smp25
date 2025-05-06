@@ -423,7 +423,6 @@ export class CashRegistersComponent implements CanComponentDeactivate {
     const addObservables: Promise<any>[] = newRows.map((row) => {
       this.resnew = true;
       const cleanedData = this.cleanDataForServer(row);
-      console.log(typeof newRows);
 
       return lastValueFrom(
         this.cashRegistersService.addCashRegister(cleanedData)
@@ -433,7 +432,7 @@ export class CashRegistersComponent implements CanComponentDeactivate {
     const updateObservables: Promise<any>[] = modifiedRows.map((row) => {
       this.resup = true;
       const cleanedData = this.cleanDataForServer(row);
-      console.log(typeof modifiedRows);
+      console.log(cleanedData)
       return lastValueFrom(
         this.cashRegistersService.updateCashRegister(cleanedData)
       );
@@ -444,15 +443,14 @@ export class CashRegistersComponent implements CanComponentDeactivate {
         ...addObservables,
         ...updateObservables,
       ]);
-
-      //console.log('Promise.all completado. Respuestas:', allResponses);
       for (const response of allResponses) {
-        // Verificar si es una nueva creación comparando con los IDs temporales
+        if (!response || !response.id) continue;
+      
         const correspondingNewRow = newRows.find(
           (row) => !row.id || row.id.toString().startsWith('temp_')
         );
-
-        if (response.id && correspondingNewRow) {
+      
+        if (correspondingNewRow) {
           try {
             await lastValueFrom(
               this.branchesService.assignPermissionAfterCreation(

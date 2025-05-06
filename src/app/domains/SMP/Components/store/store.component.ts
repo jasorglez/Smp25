@@ -316,25 +316,30 @@ export class StoreComponent implements CanComponentDeactivate {
         headerName: 'Sucursal',
         editable: false,
         width: 100,
-        hide: true, //this.idBranch >= 0 || this.idUser != 42,
-        rowGroup: true, // this.idBranch <= 0 || this.idUser == 42 ,
+        hide: this.idBranch >= 0 || this.idUser != 42,
+        rowGroup: this.idBranch <= 0 || this.idUser == 42 ,
         valueFormatter: (params) => {
           const branch = this.branchs?.find((item) => item.id === params.value);
           return branch ? branch.name : '';
         },
       },
-      /*{
+      {
         field: 'idBranch',
         headerName: 'Sucursal',
-        editable: false,
+        editable: true,
         width: 150,
-        hide: false,
+        hide: this.idBranch >= 0,
         cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.branchs
+            ? this.branchs.map((item) => item.id)  // <--- usar ID aquí
+            : [],
+        },
         valueFormatter: (params) => {
           const branch = this.branchs?.find(item => item.id === params.value);
           return branch ? branch.name : '';
         },
-      },*/
+      },      
       {
         field: 'description',
         headerName: 'Tienda',
