@@ -15,13 +15,11 @@ import { CatalogsService } from 'app/services/catalogs.service';
 @Component({
   selector: 'app-concepts',
   standalone: true,
-  imports: [AgGridModule, CommonModule, FormsModule, MultiLineEditorComponent],
+  imports: [AgGridModule, CommonModule, FormsModule],
   templateUrl: './concepts.component.html',
   styleUrl: './concepts.component.scss'
 })
 export class ConceptsComponent {
-
-
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
   private signalsService = inject(SignalsService);
   private administrationService = inject(AdministrationService);
@@ -31,22 +29,33 @@ export class ConceptsComponent {
     this.idIncExp = this.signalsService.getIdIncomeAndExpense()();
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
     this.getMeasures();
-    this.getData();
-    await this.getBillingManagementInfo();
+    if (this.idIncExp) {
+      this.getData();
+      await this.getBillingManagementInfo();
+    }
   }
 
   constructor() {
     effect(() => {
       this.idIncExp = this.signalsService.getIdIncomeAndExpense()();
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      this.getData();
-      this.getBillingManagementInfo();
+      this.getMeasures();
+      if (this.idIncExp) {
+        this.getData();
+        this.getBillingManagementInfo();
+      } else {
+        // Clear data when no income/expense is selected
+        this.rowData = [];
+        this.subtotal = 0;
+        this.iva2 = 0;
+        this.total = 0;
+      }
     });
   }
 
   id: number;
   idRoot: number;
-  ivaPercent: number;
+  ivaPercent: number = 0;
   idIncExp: number;
   notSavedChanges: boolean = false;
   newlyAddedRows: string[] = [];
@@ -61,12 +70,15 @@ export class ConceptsComponent {
 
   // Para obtener el dato de la facturacion y el porcentaje
   async getBillingManagementInfo() {
+    if (!this.idRoot) return;
+    
     this.administrationService.getBillingManagementInfo(this.idRoot).subscribe(
       (data: any) => {
-        this.ivaPercent = data[0]?.iIva;
+        this.ivaPercent = data && data[0]?.iIva ? data[0].iIva : 0;
       },
       (error) => {
         console.error('Error al obtener la información de gestión de facturación:', error);
+        this.ivaPercent = 0;
       }
     );
   }
@@ -75,7 +87,7 @@ export class ConceptsComponent {
   public gridOptions: any = {
     headerHeight: 30,
     rowHeight: 30,
-    rowClass: (params) => {
+    getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
         return 'selected-row';
@@ -105,29 +117,57 @@ export class ConceptsComponent {
 
   get colMaster(): ColDef[] {
     return [
-      { field: 'quantity', headerName: 'Cantidad', type: 'number', editable: true, flex: 2 },
-      { field: 'description', headerName: 'Concepto', type: 'text', editable: true, flex: 4 },
       {
-        field: 'unit', headerName: 'Unidad', type: 'text', editable: true, flex: 2,
+        field: 'dateExpend', headerName: 'Fecha',  type: 'date', 
+        editable: true,   flex: 3,
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const date = new Date(params.value);
+          return date.toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: '2-digit',
+            year: '2-digit'
+          });
+        }
+      },
+      {
+        field: 'typeExpense',
+        headerName: 'Tipo Gasto',
+        type: 'text',
+        editable: true,
+        flex: 4,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: ['EMPLEADOS', 'PROVEEDORES', 'OTROS'],
+        }
+      },
+      { field: 'quantity', headerName: 'Cantidad', type: 'number', editable: true, flex: 3 },
+      { field: 'idExpense', headerName: 'ID Gasto', type: 'number', editable: false, flex: 4 },
+                
+      { field: 'description', headerName: 'Concepto', type: 'text', editable: true, flex: 4 },
+     
+      {
+        field: 'unit', headerName: 'Unidad', type: 'text', editable: true, flex: 4,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.measures.map(measure => measure.description),
         }
       },
+
       {
         field: 'price',
         headerName: 'Precio',
         type: 'number',
         editable: true,
-        flex: 2,
+        flex: 4,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
-      },
+      },      
       {
         field: 'total',
         headerName: 'Subtotal',
         type: 'number',
         editable: false,
-        flex: 2,
+        flex: 4,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
       { field: 'iva', headerName: '¿Aplica IVA?', type: 'boolean', editable: true, flex: 2 },
@@ -138,31 +178,51 @@ export class ConceptsComponent {
         hide: true,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
+      { field: 'comment', headerName: 'Comentario', type: 'text', editable: true, flex: 4, cellEditor: 'multiLineEditorComponent' }
     ]
   }
 
   async getData() {
+    if (!this.idIncExp) {
+      this.rowData = [];
+      this.subtotal = 0;
+      this.iva2 = 0;
+      this.total = 0;
+      return;
+    }
+    
+   // console.log('ID en concepts:', this.idIncExp);
     this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(this.idIncExp).subscribe(
       (data: any) => {
-        this.rowData = data;
+        this.rowData = data || [];
         this.subtotal = this.calculateSubtotal();
         this.iva2 = this.calculateTotalIVA();
         this.total = this.subtotal + this.iva2;
       },
       (error) => {
-        console.error('Error al obtener la información de gestión de facturación:', error);
+        console.error('Error al obtener conceptos:', error);
+        this.rowData = [];
+        this.subtotal = 0;
+        this.iva2 = 0;
+        this.total = 0;
       }
     );
   }
 
   async getMeasures() {
+    if (!this.idRoot) {
+      this.measures = [];
+      return;
+    }
+
     this.catalogsService.getCatalogs(this.idRoot, 'MEASURE').subscribe(
       (data: any) => {
-        this.measures = data;
+        this.measures = data || [];
         console.log('Medidas:', this.measures);
       },
       (error) => {
-        console.error('Error al obtener la información de gestión de facturación:', error);
+        console.error('Error al obtener medidas:', error);
+        this.measures = [];
       }
     )
   }
@@ -188,7 +248,7 @@ export class ConceptsComponent {
       const rowData = event.data;
 
       if (event.colDef.field === 'quantity' || event.colDef.field === 'price') {
-        rowData.total = Number(rowData.quantity) * Number(rowData.price);
+        rowData.total = Number(rowData.quantity || 0) * Number(rowData.price || 0);
       }
 
       rowData.iva2 = rowData.iva ? rowData.total * (this.ivaPercent / 100) : 0;
@@ -209,17 +269,30 @@ export class ConceptsComponent {
   }
 
   addRow() {
+    if (!this.idIncExp) {
+      alerts.basicAlert(
+        'Añadir concepto',
+        'Debe seleccionar un registro de gasto para añadir conceptos.',
+        'warning'
+      );
+      return;
+    }
+
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
       idIncorExp: this.idIncExp,
+      typeExpense: 'NA',
+      idExpense: 0,
+      dateExpend: new Date(),
       description: '',
       quantity: 0,
       unit: '',
       price: 0,
-      subtotal: 0,
+      total: 0,
       iva: false,
       iva2: 0,
+      comment: '',
       active: true,
       __isNew: true,
     };
@@ -246,6 +319,15 @@ export class ConceptsComponent {
   }
 
   async saveChanges() {
+    if (!this.idIncExp) {
+      alerts.basicAlert(
+        'Guardar cambios',
+        'No hay un registro de gasto seleccionado.',
+        'warning'
+      );
+      return;
+    }
+
     const isValid = this.rowData.every((item) => item.description);
     if (!isValid) {
       alerts.basicAlert(
@@ -270,7 +352,6 @@ export class ConceptsComponent {
       const cleanedData = this.cleanDataForServer(row);
       return this.incomesAndExpensesService.updateConceptFromIncomesAndExpenses(row.id, cleanedData);
     });
-
 
     try {
       const responses = await lastValueFrom(
@@ -332,8 +413,17 @@ export class ConceptsComponent {
   }
 
   async deleteEntry() {
-    const selectedNodes = this.gridApi.getSelectedNodes();
-    if (selectedNodes.length === 0) {
+    if (!this.idIncExp) {
+      alerts.basicAlert(
+        'Eliminar entrada',
+        'No hay un registro de gasto seleccionado.',
+        'warning'
+      );
+      return;
+    }
+
+    const selectedNodes = this.gridApi?.getSelectedNodes();
+    if (!selectedNodes || selectedNodes.length === 0) {
       alerts.basicAlert(
         'Eliminar entrada',
         'Por favor, seleccione una entrada para eliminar.',
@@ -364,12 +454,6 @@ export class ConceptsComponent {
             'success'
           );
           this.getData();
-
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
           this.notSavedChanges = false;
         }
       );
@@ -397,5 +481,4 @@ export class ConceptsComponent {
   private calculateTotalIVA(): number {
     return this.rowData.reduce((acc, row) => acc + (Number(row.iva2) || 0), 0);
   }
-
 }

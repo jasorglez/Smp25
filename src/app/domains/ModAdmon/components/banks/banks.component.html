@@ -2,10 +2,10 @@
 
 <div class="col-12">
   
-  <div class="row">
+  <div class="row g-2">
     
     <div class="col-auto">
-      <div class="d-flex flex-column gap-1 me-0">
+      <div class="d-flex flex-column gap-1">
         <button type="button" class="btn btn-primary" (click)="addRow()">
           <i class="bi bi-plus-lg"></i>
         </button>
@@ -25,8 +25,8 @@
       </div>
     </div>
 
-    <div class="col-auto">
-      <ag-grid-angular style="width: 70vw; height: 650px;"
+    <div class="col">
+      <ag-grid-angular style="height: 650px; width: 100%; "
         class="ag-theme-quartz small-text-ag-grid"
         [rowData]="Bankdata"
         [columnDefs]="colMaster"
@@ -38,7 +38,6 @@
         [stopEditingWhenCellsLoseFocus]="true">
       </ag-grid-angular>
     </div>
-
 
   </div>
 

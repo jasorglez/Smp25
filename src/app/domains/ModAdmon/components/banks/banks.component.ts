@@ -104,16 +104,16 @@ export class BanksComponent implements CanComponentDeactivate {
     return [
       {
         field: 'name',
-        headerName: 'NombrePrueba',
+        headerName: 'Banco',
         editable: true,
         filter: true,
-        width: 220,
+        width: 150,
       },
       {
         field: 'branch',
         headerName: 'Sucursal',
         editable: false,
-        width: 220,
+        width: 170,
         filter: true,
         cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
@@ -142,13 +142,13 @@ export class BanksComponent implements CanComponentDeactivate {
         },
       },
 
-      { field: 'contact', headerName: 'Contacto', editable: true, width: 200 },
+      { field: 'contact', headerName: 'Contacto', editable: true, width: 150 },
 
       {
         field: 'phone',
         headerName: 'Telefono',
         editable: true,
-        width: 169,
+        width: 120,
         cellEditorParams: {
           maxLength: 15,
         },
@@ -167,17 +167,17 @@ export class BanksComponent implements CanComponentDeactivate {
           field: 'picture',
         },
         editable: false,
-        width: 180,
+        width: 150,
       },
 
       {
         field: 'numBranch',
-        headerName: 'Numero Sucursal',
+        headerName: 'Num. Sucursal',
         editable: true,
-        width: 180,
+        width: 140,
       },
 
-      { field: 'code', headerName: 'Codigo', editable: true, width: 105 },
+      { field: 'code', headerName: 'Codigo', editable: true, width: 95 },
     ];
   }
 

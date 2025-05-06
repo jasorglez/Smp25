@@ -90,19 +90,20 @@
     </div>
   </div>
 
-    <ul class="nav nav-tabs" *ngIf="selectedIncomes">
+  <!-- Only show the tabs when an expenditure item is selected -->
+  <div *ngIf="selectedIncomes" class="concepts-section mt-3">
+    <ul class="nav nav-tabs">
       <li class="nav-item">
-        <a class="nav-link active" data-bs-toggle="tab" href="#concepts"
-          >Conceptos</a>
+        <a class="nav-link active" data-bs-toggle="tab" href="#concepts">Conceptos</a>
       </li>
+    </ul>
 
-  </ul>
-</div>
-<div class="row">
-
-  <div class="tab-content" *ngIf="selectedIncomes">
-    <div id="concepts" class="tab-pane fade show">
-      <app-concepts></app-concepts>
+    <div class="row">
+      <div class="tab-content">
+        <div id="concepts" class="tab-pane fade show active">
+          <app-concepts></app-concepts>
+        </div>
+      </div>
     </div>
   </div>
 </div>

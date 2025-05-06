@@ -93,7 +93,7 @@ export class SideBarComponent {
     if (this.selectedRoot) {
       this.trackingService.setCompany(target.value);
       this.signalsService.setRootSelectedBySidebar(Number(this.selectedRoot));
-      this.getpermissionxContracts(parseInt(this.selectedRoot));
+  //    this.getpermissionxContracts(parseInt(this.selectedRoot));
       this.getpermissionxBranchs(parseInt(this.selectedRoot));
       this.getHeadersCompanys(this.selectedRoot);
     }
@@ -114,7 +114,7 @@ export class SideBarComponent {
           this.trackingService.setCompany(this.selectedRoot);
           this.getHeadersCompanys(this.selectedRoot);
           // Llamar a getpermissionxContracts con el primer elemento
-          this.getpermissionxContracts(parseInt(this.selectedRoot));
+       //   this.getpermissionxContracts(parseInt(this.selectedRoot));
           this.getpermissionxBranchs(parseInt(this.selectedRoot));
           // Forzar la actualización del select
           setTimeout(() => {
@@ -287,7 +287,7 @@ export class SideBarComponent {
     }
   }
 
-  async getpermissionxContracts(idRoot: number) {
+  /*async getpermissionxContracts(idRoot: number) {
     // Aquí consulto la tabla donde está el idUser correspondiente a company
     this.contractService
       .getContractsBy2fields(
@@ -314,7 +314,7 @@ export class SideBarComponent {
           );
         }
       });
-  }
+  } */
 
   async onProjectSelected(event: Event) {
     const target = event.target as HTMLSelectElement;

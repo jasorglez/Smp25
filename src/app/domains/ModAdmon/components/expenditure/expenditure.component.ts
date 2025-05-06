@@ -64,15 +64,12 @@ export class ExpenditureComponent {
       await this.getBills();
       await this.loadAuthorizers();
       await this.getCurrentUser();
-    });
-    effect(() => {
-      const shouldUpdate = this.signalsService.getupdateIncAndExp()();
-      if (shouldUpdate) {
-        this.revert();
-        setTimeout(() => this.signalsService.resetSignalIncAndExp());
-      }
-    });
-  };
+    },
+  
+  {allowSignalWrites : true });
+  }
+
+
 
   showform : string = '';
   branches : number[] = [];
@@ -133,7 +130,7 @@ export class ExpenditureComponent {
   public gridOptions: any = {
     headerHeight: 30,
     rowHeight: 30,
-    rowClass: (params) => {
+    getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
         return 'selected-row';
@@ -345,6 +342,7 @@ export class ExpenditureComponent {
 
   onSelectedRow(event: any) {
     this.id = event.data.id;
+    console.log('Type fila seleccionada:', event.data.type);
     this.signalsService.setIdIncomeAndExpense(this.id);
   }
 
