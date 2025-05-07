@@ -400,7 +400,7 @@ export const routes: Routes = [
               import(
                 './domains/ModAdmon/components/income/income.component'
               ).then((i) => i.IncomeComponent),
-              data: { showform: 'true' }, // Parámetro para clientes
+              data: { showform: 'INCOME' }, // Parámetro para clientes
               canDeactivate: [UnsavedChangesGuard]
           },
           {
@@ -409,7 +409,7 @@ export const routes: Routes = [
               import(
                 './domains/ModAdmon/components/expenditure/expenditure.component'
               ).then((e) => e.ExpenditureComponent),
-              data: { showform: 'false' }, // Parámetro para clientes
+              data: { showform: 'EXPEND' }, // Parámetro para clientes
               canDeactivate: [UnsavedChangesGuard]
           },
           {

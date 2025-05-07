@@ -109,31 +109,17 @@ export class CatalogsComponent implements CanComponentDeactivate {
     this.rowData = [];
     console.log(`Obteniendo datos para tipo: ${catalogType}`);
   
-    // Mapa de tipos a servicios
-    const serviceMap = {
-      'WAREHOUSE': this.catalogService,
-      'ADMINISTRATION': this.catalogAdmonService
-      // Añade más mapeos aquí: 'BONUS': this.bonusService, etc.
-    };
+    // Determina qué servicio usar
+    const service = catalogType === 'ADMINISTRATION' 
+      ? this.catalogAdmonService 
+      : this.catalogService;
   
-    // Obtiene el servicio del mapa
-    const service = serviceMap[catalogType];
-  
-    // Llama al servicio si existe, si no, no hace nada (o maneja el error)
-    (service ? service.getCatalogs(this.idRoot, this.selectedCatalog) : EMPTY) // EMPTY es un Observable que no emite nada y completa. O usa 'of([])' para emitir un array vacío.
+    service.getCatalogs(this.idRoot, this.selectedCatalog)
       .subscribe({
         next: (data: any[]) => this.rowData = data,
-        error: (err) => console.error(`Error (${catalogType || 'desconocido'}):`, err),
-        // complete: () => {} // Puedes añadir un bloque complete si es necesario
+        error: (err) => console.error(`Error (${catalogType || 'desconocido'}):`, err)
       });
-  
-    // Advertencia si el tipo no estaba en el mapa (y no era null/undefined)
-    if (catalogType && !service) {
-        console.warn(`Tipo de catálogo no manejado: ${catalogType}`);
-    }
-  } 
-
-
+  }
   
 
   //OPERACIONES DE LOS GRIDS

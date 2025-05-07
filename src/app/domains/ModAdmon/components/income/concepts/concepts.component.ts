@@ -11,6 +11,7 @@ import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-edito
 import { tap, lastValueFrom, concat, toArray, catchError, EMPTY } from 'rxjs';
 import { Icatalog } from 'app/interface/icatalog';
 import { CatalogsService } from 'app/services/catalogs.service';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-concepts',
@@ -24,6 +25,7 @@ export class ConceptsComponent {
   private signalsService = inject(SignalsService);
   private administrationService = inject(AdministrationService);
   private catalogsService = inject(CatalogsService);
+  private route = inject(ActivatedRoute);
 
   async ngOnInit() {
     this.idIncExp = this.signalsService.getIdIncomeAndExpense()();
@@ -33,6 +35,13 @@ export class ConceptsComponent {
       this.getData();
       await this.getBillingManagementInfo();
     }
+    this.route.data.subscribe((data) => {
+      this.showform = data['showform'];  // 'EXPEND' o 'INCOME'
+      if (this.gridApi) {
+        // Esto forzará a regenerar las columnas con los nuevos valores de hide
+        this.gridApi.updateGridOptions({ columnDefs:this.colMaster});
+      }
+  });
   }
 
   constructor() {
@@ -53,6 +62,7 @@ export class ConceptsComponent {
     });
   }
 
+  showform : string = '';
   id: number;
   idRoot: number;
   ivaPercent: number = 0;
@@ -115,72 +125,82 @@ export class ConceptsComponent {
       multiLineEditorComponent: MultiLineEditorComponent
     }
 
-  get colMaster(): ColDef[] {
-    return [
-      {
-        field: 'dateExpend', headerName: 'Fecha',  type: 'date', 
-        editable: true,   flex: 3,
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          const date = new Date(params.value);
-          return date.toLocaleDateString('es-ES', {
-            day: '2-digit',
-            month: '2-digit',
-            year: '2-digit'
-          });
-        }
-      },
-      {
-        field: 'typeExpense',
-        headerName: 'Tipo Gasto',
-        type: 'text',
-        editable: true,
-        flex: 4,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: ['EMPLEADOS', 'PROVEEDORES', 'OTROS'],
-        }
-      },
-      { field: 'quantity', headerName: 'Cantidad', type: 'number', editable: true, flex: 3 },
-      { field: 'idExpense', headerName: 'ID Gasto', type: 'number', editable: false, flex: 4 },
-                
-      { field: 'description', headerName: 'Concepto', type: 'text', editable: true, flex: 4 },
-     
-      {
-        field: 'unit', headerName: 'Unidad', type: 'text', editable: true, flex: 4,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.measures.map(measure => measure.description),
-        }
-      },
+    get colMaster(): ColDef[] {
+      const columns: ColDef[] = [
+        {
+          field: 'dateExpend', 
+          headerName: 'Fecha',  
+          type: 'date', 
+          editable: true,   
+          flex: 3,
+          valueFormatter: (params) => {
+            if (!params.value) return '';
+            const date = new Date(params.value);
+            return date.toLocaleDateString('es-ES', {
+              day: '2-digit',
+              month: '2-digit',
+              year: '2-digit'
+            });
+          }
+        },
+        {
+          field: 'typeExpense',
+          headerName: 'Tipo Gasto',
+          type: 'text',
+          editable: true,
+          flex: 4,
+          cellEditor: 'agSelectCellEditor',
+          cellEditorParams: {
+            values: ['EMPLEADOS', 'PROVEEDORES', 'OTROS'],
+          }
+        },
+        { field: 'quantity', headerName: 'Cantidad', type: 'number', editable: true, flex: 3 },
+        { field: 'idExpense', headerName: 'ID Gasto', type: 'number', editable: false, flex: 4 },
+        
+        // Conditional columns
+           { field: 'description', headerName: 'Concepto', type: 'text', editable: true, hide: this.showform === 'EXPEND', flex: 4 },
+          {
+            field: 'unit', 
+            headerName: 'Unidad', 
+            type: 'text', 
+            editable: true, 
+            flex: 4,hide: this.showform === 'EXPEND', 
+            cellEditor: 'agSelectCellEditor',
+            cellEditorParams: {
+              values: this.measures.map(measure => measure.description),
+            }
+          },        
+        
+        {
+          field: 'price',
+          headerName: 'Precio',
+          type: 'number',
+          editable: true,
+          flex: 4,
+          valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+        },      
+        {
+          field: 'total',
+          headerName: 'Subtotal',
+          type: 'number',
+          editable: false,
+          flex: 4,
+          valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+        },
+        { field: 'iva', headerName: '¿Aplica IVA?', type: 'boolean', editable: true, flex: 2 },
+        {
+          field: 'iva2',
+          headerName: 'Valor IVA',
+          type: 'number',
+          hide: true,
+          valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+        },
+        { field: 'comment', headerName: 'Comentario', type: 'text', editable: true, flex: 4, cellEditor: 'multiLineEditorComponent' }
+      ];
+    
+      return columns;
+    }
 
-      {
-        field: 'price',
-        headerName: 'Precio',
-        type: 'number',
-        editable: true,
-        flex: 4,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
-      },      
-      {
-        field: 'total',
-        headerName: 'Subtotal',
-        type: 'number',
-        editable: false,
-        flex: 4,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
-      },
-      { field: 'iva', headerName: '¿Aplica IVA?', type: 'boolean', editable: true, flex: 2 },
-      {
-        field: 'iva2',
-        headerName: 'Valor IVA',
-        type: 'number',
-        hide: true,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
-      },
-      { field: 'comment', headerName: 'Comentario', type: 'text', editable: true, flex: 4, cellEditor: 'multiLineEditorComponent' }
-    ]
-  }
 
   async getData() {
     if (!this.idIncExp) {
@@ -266,6 +286,7 @@ export class ConceptsComponent {
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+    params.api.updateGridOptions({ columnDefs: this.colMaster }); 
   }
 
   addRow() {
