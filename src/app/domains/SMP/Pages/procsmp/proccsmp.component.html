@@ -30,6 +30,10 @@
                <a class="nav-link green-tab" routerLink="logs" routerLinkActive="active"><i
                      class="bi bi-archive-fill"></i> {{ 'log' | translate}}</a>
             </li>
+            <li class="nav-item" *ngIf="canSeeBranches">
+               <a class="nav-link green-tab" routerLink="roles" routerLinkActive="active"><i
+                     class="bi bi-building-fill-gear"></i> {{ 'roles' | translate}}</a>
+            </li>
             
 
          </ul>
