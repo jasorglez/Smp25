@@ -16,10 +16,8 @@ export class RolesService {
    private http = inject(HttpClient);
   
       
-    getRoles(): Observable<any> {
-      const apiUrl = `${environment.urlSecurity}/Roles`;
-    //  alert(apiUrl)
-      return this.http.get(`${environment.urlSecurity}/Roles`, { headers: this.trackingService.getHeaders() });
+    getRoles(idCompany: number): Observable<any> {
+      return this.http.get(`${environment.urlSecurity}/Roles?idCompany=${idCompany}`, { headers: this.trackingService.getHeaders() });
     }
   
       

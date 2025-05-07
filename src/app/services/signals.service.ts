@@ -50,12 +50,13 @@ export class SignalsService {
   }
 
   private branchSelectedBySidebar = signal<number | null>(null);
-  private branchNameSelectedBySidebar = signal<string>(null);
 
   setBranchSelectedBySidebar(id: number) {
     this.branchSelectedBySidebar.set(id);
   }
 
+  private branchNameSelectedBySidebar = signal<string>(null);
+  
   setBranchNameSelectedBySidebar(name: string) {
     this.branchNameSelectedBySidebar.set(name);
   }
