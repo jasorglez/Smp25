@@ -12,6 +12,10 @@ export class IncomesAndExpensesService {
   private http = inject(HttpClient);
   private tracking = inject(TrackingService);
 
+  getIncomesAll(): Observable<any> {
+    return this.http.get<any>(environment.urlAdministration + '/Incomeandexpense/all/', { headers: this.tracking.getHeaders() });
+  }
+
   getIncomesAndExpenses(idRoot: number): Observable<any> {
     return this.http.get<any>(environment.urlAdministration + '/Incomeandexpense/Bussines/' + idRoot, { headers: this.tracking.getHeaders() });
   }
