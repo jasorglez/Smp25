@@ -99,8 +99,7 @@ constructor() {
        this.idRoot = this.signalsService.getRootSelectedBySidebar()();
        this.userRoot = this.signalsService.getUserRoot()();
        this.obtenerDatos();
-      // this.getRoles();
-       this.getDeptoandPosition();
+        this.getRoles();
       this.verification();
     })
 }
@@ -139,9 +138,9 @@ constructor() {
   }
 
   getRoles() {
-     this.rolesService.getRoles().subscribe(
+     this.rolesService.getRoles(this.idRoot).subscribe(
       (data: any) => {
-        this.departamentos = data;
+        this.departamentos = data.data;
         console.log('Roles:', this.departamentos);
       },
       (error) => {
@@ -149,29 +148,6 @@ constructor() {
         console.error('Error fetching data:', error);
       }
     );
-  }
-
-  getDeptoandPosition() {
-    this.catalogService.getCatalogs(this.idRoot, 'DEPARTAMENT').subscribe(
-      (data: any) => {
-        this.departamentos = data;
-        console.log('Departamentos:', this.departamentos);
-      },
-      (error) => {
-        if (error.status == 404) this.departamentos = [];
-        console.error('Error fetching data:', error);
-      }
-    );
-
-    /*this.catalogService.getCatalogs(this.idRoot,'POSITION').subscribe(
-      (data: any) => {
-        this.position = data;
-      },
-      (error) => {
-        if (error.status == 404) this.position = [];
-        console.error('Error fetching data:', error);
-      }
-    );*/
   }
 
   // Se modifica el getDepartmentName para que devuelva el nombre del departamento
