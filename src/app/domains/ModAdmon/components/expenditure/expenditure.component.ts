@@ -19,6 +19,8 @@ import { ConceptsComponent } from "../income/concepts/concepts.component";
 import { CatalogadmonService } from 'app/services/catalogadmon.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { ActivatedRoute } from '@angular/router';
+import { environment } from '@env/environment';
+import { AuthService } from 'app/services/auth.service';
 
 @Component({
   selector: 'app-expenditure',
@@ -31,48 +33,67 @@ import { ActivatedRoute } from '@angular/router';
 export class ExpenditureComponent {
 
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
-  private modalServiceTable = inject(ModalService);
-  private administrationService = inject(AdministrationService);
-  private cataalogAdmonService = inject(CatalogadmonService);
-  private usersxpermissionsService = inject(UsersxpermissionsService);
-  private usersService = inject(UsersService);
-  private signalsService = inject(SignalsService);
-  private BranchsService = inject(BranchsService)
+  private modalServiceTable         = inject(ModalService);
+  private administrationService     = inject(AdministrationService);
+  private cataalogAdmonService      = inject(CatalogadmonService);
+  private usersxpermissionsService  = inject(UsersxpermissionsService);
+  private usersService              = inject(UsersService);
+  private signalsService            = inject(SignalsService);
+  private branchesService           = inject(BranchsService)
+  private authService               = inject(AuthService);
   public isIncomeMode: boolean = false; 
   private route = inject(ActivatedRoute);
 
+
   async ngOnInit() {
+    /*this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+    await this.getBillingManagementInfo();
+    await this.getBankAccounts();
+    await this.getExpenditure();
+    await this.getBills();
+    await this.loadAuthorizers();
+    await this.getCurrentUser();*/
+    this.route.data.subscribe((data) => {
+      this.showform = data['showform']; // 'EXPEND' o 'INCOME'
+  });    
+}
+
+
+constructor() {
+  // Primer effect para inicialización (no necesita async)
+  effect(() => {
+    // Lecturas permitidas sin configuración especial
+    const root = this.signalsService.getRootSelectedBySidebar()();
+    const branch = this.signalsService.getBranchSelectedBySidebar()();
+    
+    // Para escrituras necesitamos allowSignalWrites: true
+    this.signalsService.setIdIncomeAndExpense(null); // Ejemplo de escritura
+  }, { allowSignalWrites: true });
+
+  // Segundo effect para operaciones asíncronas
+  effect(async () => {
+    // Lectura de señales
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+    this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+
+    // Operaciones asíncronas
     await this.getBillingManagementInfo();
     await this.getBankAccounts();
     await this.getExpenditure();
     await this.getBills();
     await this.loadAuthorizers();
     await this.getCurrentUser();
-    this.route.data.subscribe((data) => {
-      this.showform = data['showform']; // 'CUSTOMERS' o 'PROVIDERS'
-  });
+    await this.obtenerBranchs();
+
+    // Si necesitas escribir señales aquí también:
+   // this.signalsService.setSomething(value); 
+  }, { allowSignalWrites: true });
 }
 
-  constructor() {
-    effect(async () => {
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      this.idAccount = null;
-      await this.getBillingManagementInfo();
-      await this.getBankAccounts();
-      await this.getExpenditure();
-      await this.getBills();
-      await this.loadAuthorizers();
-      await this.getCurrentUser();
-    },
-  
-  {allowSignalWrites : true });
-  }
 
-
-
+  idBranch: number;
   showform : string = '';
-  branches : number[] = [];
+  branchs  : any[] = [];
   incomes  : any[] = [];
   expenses : any[] = [];
   users    : any[] = [];
@@ -101,15 +122,14 @@ export class ExpenditureComponent {
     return this._idAccount;
   }
 
-  obtenerBranchs(): Promise<void> {
-    return new Promise((resolve) => {
-      this.BranchsService.getBranches(this.idRoot).pipe(
-        map((data: any[]) => data.map(branch => branch.id))
-      ).subscribe((ids: number[]) => {
-        this.branches = ids;
-        resolve();
-      });
-    });
+  obtenerBranchs() {
+    // alert('this.branchs'+ this.idBranch)
+    this.branchesService.getBrancheswoa(this.idRoot).subscribe(
+      (data: any) => {
+        this.branchs = data;
+      },
+      (error) => console.error('Error fetching data:', error)
+    );
   }
 
   async getBillingManagementInfo() {
@@ -250,6 +270,55 @@ export class ExpenditureComponent {
   get colMaster(): ColDef[] {
     return [
       { field: 'numberDocument', headerName: '# Documento', editable: false, filter: true, width: 150 },
+      
+      {
+              field: 'idBranch',
+              headerName: 'Nombre sucursal',
+              headerClass: 'required-header',
+              hide:
+                this.authService.hasDetailedPermission(
+                  'principal',
+                  'see-all-branches'
+                ) || this.signalsService.getemailChoose() === environment.root
+                  ? false
+                  : true,
+              editable: true,
+              filter: true,
+              width: 170,
+              cellEditor: 'agSelectCellEditor',
+              filterParams: {
+                // can be 'windows' or 'mac'
+                defaultToNothingSelected: true,
+                //excelMode: 'windows',
+              },
+      
+              cellEditorParams: (params) => {
+                return {
+                  values: this.branchs
+                    ? this.branchs
+                        .slice() // Creamos una copia para no modificar el array original
+                        .sort((a, b) => a.name.localeCompare(b.name)) // Ordenamos por nombre
+                        .map((item) => item.id) // Extraemos solo los IDs
+                    : [],
+                };
+              },
+              valueFormatter: (params) => {
+                // Handle potential null values and properly format the displayed value
+                if (!params.value) return '';
+      
+                const foundBranch = this.branchs
+                  ? this.branchs.find((item) => item.id === params.value)
+                  : null;
+      
+                return foundBranch ? foundBranch.name : params.value;
+              },
+              valueGetter: (params) => {
+                if (!params.data || !params.data.idBranch) return '';
+                const branch = this.branchs?.find(b => b.id === params.data.idBranch);
+                return branch ? branch.name : '';
+              },
+            },
+      
       {
         field: 'description', headerName: 'Descripción', editable: true, width: 285, filter: true,
         cellEditor: 'agPopupTextCellEditor',
@@ -342,7 +411,7 @@ export class ExpenditureComponent {
 
   onSelectedRow(event: any) {
     this.id = event.data.id;
-    console.log('Type fila seleccionada:', event.data.type);
+    //console.log('Type fila seleccionada:', event.data.type);
     this.signalsService.setIdIncomeAndExpense(this.id);
   }
 
@@ -379,6 +448,7 @@ export class ExpenditureComponent {
       idAccount: this._idAccount,
       numberDocument: "",
       idBusinnes: this.idRoot,
+      idBranch: this.idBranch > 0 ? this.idBranch : null,
       date: new Date().toISOString(),
       idCustomer: 0,
       idExpend: 0,
