@@ -1,6 +1,6 @@
 <div class="row p-3">
-    <div [ngClass]="(profile().emailUser() || selectedRowData) ? 'col-lg-10 col-md-9 col-sm-9 col-9' : 'col-12'">
-        <div class="row mb-3">
+    <div class="col-12">
+        <div class="row mb-3" [ngStyle]="idRole != null ? { height: '25vh' } : { height: '80vh' }">
             <nav class="col-auto d-flex flex-column align-items-start">
                 <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addRow()"><i
                         class="bi bi-plus-lg"></i></button>
@@ -11,32 +11,28 @@
                         *ngIf="notSavedChanges"><span class="visually-hidden">Hay cambios sin guardar</span>
                     </span>
                 </button>
-                <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revert()"><i class="bi bi-arrow-clockwise"
-                   ></i></button>
-                <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteUser()"><i class="bi bi-trash"
-                       ></i></button>
+                <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revert()"><i
+                        class="bi bi-arrow-clockwise"></i></button>
+                <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteUser()"><i
+                        class="bi bi-trash"></i></button>
             </nav>
             <div class="col">
                 <div class="row">
-                    <ag-grid-angular style="width: 100%;"
-                    [ngStyle]="{'height': gridHeight}"
-                    class="ag-theme-quartz small-text-ag-grid"
-                    [rowData]="rowData"
-                    [columnDefs]="columnDefs"
-                    [pagination]="false"
-                    [paginationPageSize]="paginationPageSize"
-                    [paginationPageSizeSelector]="paginationPageSizeSelector"
-                    rowSelection="single"
-                    (selectionChanged)="onSelectionChanged($event)"
-                    (cellValueChanged)="onCellValueChanged($event)"
-                    (rowSelected)="onSelectedRow($event)"
-                    (gridReady)="onGridReady($event)"
-                    [components]="components"
-                    [gridOptions]="gridOptions"
-                    [stopEditingWhenCellsLoseFocus]="true">
-                </ag-grid-angular>
+                    <ag-grid-angular style="width: 100%"
+                    [ngStyle]="idRole != null ? { height: '25vh' } : { height: '80vh' }"
+                        class="ag-theme-quartz small-text-ag-grid" [rowData]="rowData" [columnDefs]="columnDefs"
+                        [pagination]="false" [paginationPageSize]="paginationPageSize"
+                        [paginationPageSizeSelector]="paginationPageSizeSelector" rowSelection="single"
+                        (selectionChanged)="onSelectionChanged($event)" (cellValueChanged)="onCellValueChanged($event)"
+                        (rowSelected)="onSelectedRow($event)" (gridReady)="onGridReady($event)"
+                        [components]="components" [gridOptions]="gridOptions" [stopEditingWhenCellsLoseFocus]="true">
+                    </ag-grid-angular>
                 </div>
             </div>
         </div>
+        <div class="row" *ngIf="idRole != null">
+                <app-roles-detailed></app-roles-detailed>
+        </div>
     </div>
+
 </div>

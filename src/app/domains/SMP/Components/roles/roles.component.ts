@@ -17,6 +17,7 @@ import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-edito
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { env } from 'echarts';
 import { environment } from '@env/environment';
+import { RolesDetailedComponent } from "./roles-detailed/roles-detailed.component";
 
 @Injectable({
   providedIn: 'root',
@@ -30,8 +31,9 @@ import { environment } from '@env/environment';
     CommonModule,
     FormsModule,
     AgGridModule,
-    MatDialogModule
-  ],
+    MatDialogModule,
+    RolesDetailedComponent
+],
   templateUrl: './roles.component.html',
   styleUrl: './roles.component.scss',
 })
@@ -49,6 +51,7 @@ export class RolesComponent {
   notSavedChanges: boolean = false;
   paginationPageSizeSelector = false;
   id: string;
+  idRole: number = null;
   userRoot: number = 0;
   authorizedPass:boolean = false;
 
@@ -60,8 +63,6 @@ export class RolesComponent {
   private permissionType: string = 'root';
 
   private usersService        = inject(UsersService);
-  private imageHandlerService = inject(ImageHandlerService);
-  private usersxrootService   = inject(UsersxpermissionsService);
 
   private catalogService = inject(CatalogsService);
   private signalsService = inject(SignalsService);
@@ -148,33 +149,56 @@ constructor() {
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
   }
+ // Column Definitions: Defines the columns to be displayed.
+ public gridOptions: any = {
+  headerHeight: 25,
+  rowHeight: 20,
+  suppressEnterWhenEditing: false,
+  rowBuffer: 20,
+  rowClass: (params) => {
+    // Verificar si la fila está seleccionada
+    if (params.node.isSelected()) {
+      return 'selected-row';
+    }
+    return '';
+  },
+  onRowClicked: (event) => {
+    // Seleccionar la fila al hacer clic en cualquier celda
+    event.node.setSelected(true);
+    // Puedes agregar aquí más lógica si es necesario, por ejemplo, actualizar datos seleccionados o activar pestañas
+  },
+  onRowSelected: (event) => {
+    // Deseleccionar otras filas cuando se selecciona una nueva
+    if (event.node.isSelected()) {
+      this.gridApi.forEachNode((node) => {
+        if (node.id !== event.node.id) {
+          node.setSelected(false);
+        }
+      });
+    }
+  },
+  onCellKeyDown: (params) => {
+    if (params.event.key === 'Enter') {
+      // Obtener todas las columnas editables
+      const editableColumns = this.columnDefs.filter((col) => col.editable);
+      const currentColIndex = editableColumns.findIndex(
+        (col) => col.field === params.column.getColDef().field
+      );
 
-  // Column Definitions: Defines the columns to be displayed.
-  public gridOptions: any = {
-    headerHeight: 30,
-    rowHeight: 30,
-    rowClass: (params) => {
-      // Verificar si la fila está seleccionada
-      if (params.node.isSelected()) {
-        return 'selected-row';
+      if (currentColIndex < editableColumns.length - 1) {
+        // Añadir delay de 50ms antes de mover el foco
+        requestAnimationFrame(() => {
+          // Mover a la siguiente columna editable
+          params.api.startEditingCell({
+            rowIndex: params.node.rowIndex,
+            colKey: editableColumns[currentColIndex + 1].field,
+          });
+        }); // Retraso para permitir que termine la edición actual
       }
-      return '';
-    },
-    onRowClicked: (event) => {
-      // Seleccionar la fila al hacer clic en cualquier celda
-      event.node.setSelected(true);
-    },
-    onRowSelected: (event) => {
-      // Deseleccionar otras filas cuando se selecciona una nueva
-      if (event.node.isSelected()) {
-        this.gridApi.forEachNode((node) => {
-          if (node.id !== event.node.id) {
-            node.setSelected(false);
-          }
-        });
-      }
-    },
-  };
+      params.event.preventDefault(); // Prevenir comportamiento por defecto
+    }
+  }
+};
 
   get columnDefs(): ColDef[] {
     return [
@@ -233,6 +257,8 @@ constructor() {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
+      this.idRole = selectedNodes[0].data.id;
+      this.signalsService.setIdRole(selectedNodes[0].data.id);
       // Aquí envío todo a la signal
       this.enviarSignal();
     } else {

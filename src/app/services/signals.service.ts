@@ -541,6 +541,18 @@ export class SignalsService {
     return this.dataClockEmployee;
   }
 
+  // Para roles
+
+  private idRole = signal<number>(null);
+
+  setIdRole(id: number) {
+    this.idRole.set(id);
+  }
+
+  getIdRole() {
+    return this.idRole;
+  }
+
 
   /* Borramos todas las signals, tratar de poner esto a lo último.
   Si van a crear nuevas signals, recuerden introducir una señal
