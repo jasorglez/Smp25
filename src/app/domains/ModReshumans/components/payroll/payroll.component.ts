@@ -37,11 +37,6 @@ import {
 export class PayrollComponent {
   ngOnInit() {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-    console.log(
-      '-------------------- este es el this.idBranch: ',
-      this.idBranch
-    );
-
     this.obtenerDatos();
   }
 
@@ -49,8 +44,6 @@ export class PayrollComponent {
     this.administrationService.getNormalPayrolls(this.idBranch).subscribe(
       (data: any) => {
         this.rowData = data;
-        console.log('--------------- esto llega en data: ', data);
-        console.log('--------------- este es el idbranch: ', this.idBranch);
       },
       (error) => {
         this.rowData = [];
