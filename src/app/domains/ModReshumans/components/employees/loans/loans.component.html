@@ -29,7 +29,7 @@
               </div>
             </div>
             <div class="col p-0">
-              <ag-grid-angular class="ag-theme-quartz small-text-ag-grid master-grid" style="height: 40vh;"
+              <ag-grid-angular class="ag-theme-quartz small-text-ag-grid master-grid" style="height: 55vh;"
                 [rowData]="maestroRowData" [columnDefs]="maestroColumnDefs" [gridOptions]="maestroGridOptions"
                 (selectionChanged)="onMaestroSelectionChanged($event)"
                 (cellValueChanged)="onMasterCellValueChanged($event)" (gridReady)="onMaestroGridReady($event)"
@@ -69,7 +69,7 @@
               </div>
             </div>
             <div class="col p-0">
-              <ag-grid-angular class="ag-theme-quartz small-text-ag-grid detail-grid" style="height: 40vh;"
+              <ag-grid-angular class="ag-theme-quartz small-text-ag-grid detail-grid" style="height: 55vh;"
                 [rowData]="detalleRowData" [columnDefs]="detalleColumnDefs" [gridOptions]="detalleGridOptions"
                 (gridReady)="onDetalleGridReady($event)" [rowSelection]="'single'"
                 (cellValueChanged)="onDetailCellValueChanged($event)">

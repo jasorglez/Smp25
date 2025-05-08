@@ -162,6 +162,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     onRowClicked: (event) => {
       // Seleccionar la fila al hacer clic en cualquier celda
       event.node.setSelected(true);
+      // Puedes agregar aquí más lógica si es necesario, por ejemplo, actualizar datos seleccionados o activar pestañas
     },
     onRowSelected: (event) => {
       // Deseleccionar otras filas cuando se selecciona una nueva
@@ -180,7 +181,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         const currentColIndex = editableColumns.findIndex(
           (col) => col.field === params.column.getColDef().field
         );
-
+  
         if (currentColIndex < editableColumns.length - 1) {
           // Añadir delay de 50ms antes de mover el foco
           requestAnimationFrame(() => {
@@ -196,6 +197,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     },
     onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
   };
+  
 
   get colMaster(): ColDef[] {
     return [
@@ -636,9 +638,9 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         },
         valueGetter: (params) => {
           console.log(params.data)
-          if (!params.data || !params.data.idBank) return 'Efectivo';
+          if (!params.data || !params.data.idBank) return 'EFECTIVO';
           const foundBank = this.banks?.find((user) => user.id === params.data.idBank);
-          return foundBank ? foundBank.name : 'Efectivo';
+          return foundBank ? foundBank.name : 'EFECTIVO';
         },
         valueFormatter: (params) => {
           const foundBank = this.banks
@@ -893,7 +895,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   getBanks() {
     this.administrationService.get2fieldsBanks().subscribe(
       (data: any) => {
-        this.banks = [{ idBank: '', name: 'Efectivo' }, ...data];
+        this.banks = [{ idBank: '', name: 'EFECTIVO' }, ...data];
       },      
       (error) => {
         if (error.status == 404) this.banks = [];
@@ -1248,37 +1250,57 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   }
 
   async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
+    // Verificar que event.data esté disponible antes de acceder a sus propiedades
+    if (!event.data) {
+      console.warn('No hay datos en la fila seleccionada');
+      return;
+    }
+  
     const colId = event.column.getColId();
     const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
-    const selectedId = selectedRowData.id; // Obtener el ID del registro
-
+    const selectedId = selectedRowData.id; // Obtener el ID del registro 
+  
     this.notSavedChanges = true;
-
-    if (colId === 'loan' || colId === 'saving') {
-      // Filtrar el grid para mostrar solo el registro con el ID seleccionado
-      const filterModel = {
-        id: {
-          type: 'equals',
-          filter: selectedId,
-        },
-      };
-
-      this.gridApi.setFilterModel(filterModel);
-      this.gridApi.onFilterChanged();
-    }
-
-    if (colId === 'loan') {
-      await this.activateLoansTab();
-    }
-
-    if (colId === 'saving') {
-      await this.activateSavingsTab();
-    }
-
-    // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
     this.selectedRowData = selectedRowData;
+  
+    // Filtrar el grid para mostrar solo el registro con el ID seleccionado
+    if (colId === 'loan' || colId === 'saving') {
+      if (this.gridApi) {
+        const filterModel = {
+          id: {
+            type: 'equals',
+            filter: selectedId,
+          },
+        };
+        this.gridApi.setFilterModel(filterModel);
+        this.gridApi.onFilterChanged();
+      } else {
+        alert('gridApi no disponible');
+      }
+    }
+  
+    // Activar la pestaña de préstamos si la columna es 'loan'
+    if (colId === 'loan') {
+      try {
+        await this.activateLoansTab();
+      } catch (error) {
+        console.error('Error activando la pestaña de préstamos:', error);
+      }
+    }
+  
+    // Activar la pestaña de ahorros si la columna es 'saving'
+    if (colId === 'saving') {
+      try {
+        await this.activateSavingsTab();
+      } catch (error) {
+        console.error('Error activando la pestaña de ahorros:', error);
+      }
+    }
+  
+    // Eliminar la asignación duplicada de selectedRowData
+    // this.selectedRowData = selectedRowData; // Esta línea ya se encuentra al principio
   }
-
+  
   async activateLoansTab() {
     if (!this.isOpen || this.showSavingsTab) {
       await this.adjustGridSize();

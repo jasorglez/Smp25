@@ -144,6 +144,38 @@ export class CatalogsComponent implements CanComponentDeactivate {
         editable: true,
         filter: true,
         width: 250,
+        valueSetter: (params) => {
+          const rawValue = params.newValue;
+          if (!rawValue || typeof rawValue !== 'string') {
+            alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
+            return false;
+          }
+      
+          const normalizedValue = rawValue.trim().toUpperCase();
+      
+          if (!normalizedValue) {
+            alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
+            return false;
+          }
+      
+          const duplicateExists = this.rowData.some(
+            (row, index) =>
+              index !== params.node.rowIndex &&
+              row.description?.toUpperCase() === normalizedValue
+          );
+      
+          if (duplicateExists) {
+            alerts.basicAlert(
+              'Nombre duplicado',
+              'Ya existe un empleado con ese nombre.',
+              'error'
+            );
+            return false;
+          }
+      
+          params.data[params.colDef.field] = normalizedValue;
+          return true;
+        },
       },
       {
         field: 'valueAddition',
@@ -259,7 +291,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
       description: '',
       valueAddition: '',
       type: this.selectedCatalog,
-      idElection: true,
+      vigente: true,
       active: 1,
       __isNew: true,
     };

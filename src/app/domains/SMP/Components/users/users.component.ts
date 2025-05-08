@@ -412,6 +412,16 @@ constructor() {
     this.rowData = [newItem, ...this.rowData];
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
+    setTimeout(() => {
+      const firstRowIndex = 0;
+  
+      this.gridApi.ensureIndexVisible(firstRowIndex);
+  
+      this.gridApi.startEditingCell({
+        rowIndex: firstRowIndex,
+        colKey: 'displayName'
+      });
+    }, 0);
   }
 
   async saveChanges() {

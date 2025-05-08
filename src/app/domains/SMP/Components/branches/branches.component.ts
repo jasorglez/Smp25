@@ -193,9 +193,38 @@ export class BranchesComponent implements CanComponentDeactivate {
             filter: true,
             width: 250,
             valueSetter: (params) => {
-                params.data[params.colDef.field] = params.newValue?.toUpperCase();
-                return true;
+              const rawValue = params.newValue;
+              if (!rawValue || typeof rawValue !== 'string') {
+                alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
+                return false;
+              }
+          
+              const normalizedValue = rawValue.trim().toUpperCase();
+          
+              if (!normalizedValue) {
+                alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
+                return false;
+              }
+          
+              const duplicateExists = this.masterRowData.some(
+                (row, index) =>
+                  index !== params.node.rowIndex &&
+                  row.name?.toUpperCase() === normalizedValue
+              );
+          
+              if (duplicateExists) {
+                alerts.basicAlert(
+                  'Nombre duplicado',
+                  'Ya existe un empleado con ese nombre.',
+                  'error'
+                );
+                return false;
+              }
+          
+              params.data[params.colDef.field] = normalizedValue;
+              return true;
             },
+            
         },
         {
             field: 'description',
@@ -228,11 +257,11 @@ export class BranchesComponent implements CanComponentDeactivate {
         {
             field: 'address',
             headerName: 'Dirección *',
-            editable: false,
+            editable: true,
             filter: true,
             width: 400,
-            cellEditor: 'agPopupTextCellEditor',
-            cellEditorParams: {
+             /*cellEditor: 'agPopupTextCellEditor',
+           cellEditorParams: {
                 maxLength: 100,
                 cols: 50,
                 rows: 3,
@@ -247,7 +276,7 @@ export class BranchesComponent implements CanComponentDeactivate {
             },
             cellRenderer: (params: ICellRendererParams) => {
                 return params.node.group ? params.value : params.value;
-            },
+            },*/
             valueSetter: (params) => {
                 params.data[params.colDef.field] = params.newValue?.toUpperCase();
                 return true;
@@ -255,7 +284,7 @@ export class BranchesComponent implements CanComponentDeactivate {
         },
         {
             field: 'vigente',
-            headerName: 'Vigente',
+            headerName: 'Activo',
             editable: true,
             suppressMovable: true,
             filter: true,
@@ -340,6 +369,16 @@ export class BranchesComponent implements CanComponentDeactivate {
 
     // Forzar la actualización de la cuadrícula y seleccionar la nueva fila
     this.masterGridApi.setGridOption('rowData', this.masterRowData);
+    setTimeout(() => {
+      const firstRowIndex = 0;
+  
+      this.masterGridApi.ensureIndexVisible(firstRowIndex);
+  
+      this.masterGridApi.startEditingCell({
+        rowIndex: firstRowIndex,
+        colKey: 'name'
+      });
+    }, 0);
 
     // Asegurarnos de que la fila nueva esté seleccionada
     requestAnimationFrame(() => {
@@ -349,6 +388,7 @@ export class BranchesComponent implements CanComponentDeactivate {
         this.masterSelectedRowData = newItem;
       }
     });
+    
   }
 
   async saveMasterChanges() {
