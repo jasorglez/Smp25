@@ -372,7 +372,6 @@ export class CashRegistersComponent implements CanComponentDeactivate {
           return params.value || '';
         },
       },
-
       {
         field: 'descCashRegister',
         headerName: 'Numero de caja',

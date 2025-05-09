@@ -305,7 +305,7 @@ export class StoreComponent implements CanComponentDeactivate {
         field: 'companyName',
         headerName: 'Empresa',
         editable: false,
-        showRowGroup: true,
+        //showRowGroup: true,
         width: 100,
         hide: this.idUser != 42,
         rowGroup: this.idUser == 42,

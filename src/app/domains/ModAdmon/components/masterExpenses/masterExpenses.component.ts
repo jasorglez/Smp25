@@ -27,6 +27,8 @@ import { States } from 'app/interface/states';
 import { BranchsService } from 'app/services/branchs.service';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
+import { CatalogadmonService } from 'app/services/catalogadmon.service';
+
 
 @Component({
   selector: 'app-master-expenses',
@@ -45,6 +47,7 @@ export class MasterExpensesComponent {
   id: number = null;
   branchs: any[] = [];
   idBranch: number;
+  expenses : any[] = [];
   idUser: number = null;
   notSavedChanges: boolean = false;
   showLoansTab: boolean = false;
@@ -54,6 +57,7 @@ export class MasterExpensesComponent {
   private lastEditedRowId: number | string | null = null;
   newlyAddedRows: string[] = [];
 
+  private cataalogAdmonService = inject(CatalogadmonService);
   private estados: string[] = [];
   private inegiService = inject(InegiService);
   private gridApi: GridApi;
@@ -93,10 +97,11 @@ export class MasterExpensesComponent {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.obtenerBranchs();
       this.obtenerDatos();
+      this.getBills();
     });
   }
   obtenerBranchs() {
-    this.branchesService.getBrancheswoa(9).subscribe(
+    this.branchesService.getBrancheswoa(4).subscribe(
       (data: any) => {
         this.branchs = data;
         console.log('Branchs', this.branchs);
@@ -106,22 +111,6 @@ export class MasterExpensesComponent {
   }
 
   obtenerDatos() {
-    if (this.idUser == 42) {
-      return this.storeByRoot();
-    }
-    /*if (this.idBranch <= 0) {
-      return this.storeByCompany();
-    } 
-    return this.storeByBranch();*/
-  }
-  @HostListener('window:beforeunload', ['$event'])
-  unloadNotification($event: any): void {
-    if (this.notSavedChanges) {
-      $event.returnValue =
-        'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
-    }
-  }
-  storeByRoot(){
     this.incomesAndExpensesService.getIncomesAll().subscribe({
       next: (data: any) => {
         this.rowData = data;
@@ -134,31 +123,25 @@ export class MasterExpensesComponent {
     });
   }
 
-  /*storeByCompany(){
-    this.idcompany = Math.abs(this.idcompany);
-        this.incomesAndExpensesService.getStoreCompany(this.idcompany).subscribe({
-          next: (data: any) => {
-            this.rowData = data;
-            console.log(this.rowData);
-          },
-          error: (error) => {
-            if (error.status === 404) this.store = [];
-            console.error('Error fetching data:', error);
-          },
-        });
+  getBills() {
+    this.cataalogAdmonService.getCatalogs(4, 'BILL').subscribe(
+      (data: any) => {
+        this.expenses = data;
+        console.log(this.expenses)
+      },
+      error => {
+        console.error(error);
+      }
+    )
   }
-  storeByBranch(){
-    this.incomesAndExpensesService.getStoreList(this.idBranch).subscribe({
-      next: (data: any) => {
-        this.rowData = data;
-        console.log(this.rowData);
-      },
-      error: (error) => {
-        if (error.status === 404) this.store = [];
-        console.error('Error fetching data:', error);
-      },
-    });
-  }*/
+
+  @HostListener('window:beforeunload', ['$event'])
+  unloadNotification($event: any): void {
+    if (this.notSavedChanges) {
+      $event.returnValue =
+        'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
+    }
+  }
 
   public gridOptions: any = {
     headerHeight: 25,
@@ -218,7 +201,22 @@ export class MasterExpensesComponent {
     console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
+    if (event.colDef.field === 'namebranch') {
+      const branchName = event.newValue;
+      
+      const branchId = this.getBranchIdByName(branchName);
+      console.log('Sucursal seleccionada:', branchName, 'ID:', branchId);
+      //alert(branchId);
+      // Si necesitas guardar el ID también en el row:
+      event.data.idBranch = branchId;
+    }
   }
+
+  getBranchIdByName(name: string): number | undefined {
+    const match = this.branchs.find(branch => branch.name === name);
+    return match?.id;
+  }
+  
 
   onMasterGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
@@ -229,36 +227,9 @@ export class MasterExpensesComponent {
   }
 
   async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
-    const colId = event.column.getColId();
-    const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
-    const selectedId = selectedRowData.id; // Obtener el ID del registro
-
     this.notSavedChanges = true;
-
-    if (colId === 'loan' || colId === 'saving') {
-      // Filtrar el grid para mostrar solo el registro con el ID seleccionado
-      const filterModel = {
-        id: {
-          type: 'equals',
-          filter: selectedId,
-        },
-      };
-
-      this.gridApi.setFilterModel(filterModel);
-      this.gridApi.onFilterChanged();
-    }
-
-    if (colId === 'loan') {
-      await this.activateLoansTab();
-    }
-
-    if (colId === 'saving') {
-      await this.activateSavingsTab();
-    }
-
-    // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
-    this.selectedRowData = selectedRowData;
   }
+
   async activateLoansTab() {
     if (!this.isOpen || this.showSavingsTab) {
       await this.adjustGridSize();
@@ -287,6 +258,16 @@ export class MasterExpensesComponent {
     this.gridHeight = '20vh'; // Adjust as needed
   }
 
+  private formatDate(value: string): string {
+    if (!value) return '';
+    const date = new Date(value);
+    return [
+      date.getDate().toString().padStart(2, '0'),
+      (date.getMonth() + 1).toString().padStart(2, '0'),
+      date.getFullYear()
+    ].join('-');
+  }
+
   get colMaster(): ColDef[] {
     return [
       {
@@ -300,7 +281,12 @@ export class MasterExpensesComponent {
         rowGroupIndex: 1,
         cellEditor: 'agSelectCellEditor',
         /*cellEditorParams: {
-          values:,
+          values: this.storeCatalog
+            ? this.storeCatalog.map((item) => item.description)
+            : [],
+        },
+        valueFormatter: (params) => {
+          return params.value || '';
         },*/
       },
       {
@@ -314,13 +300,25 @@ export class MasterExpensesComponent {
         rowGroupIndex: 2,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values:this.branchs,
+          values: this.branchs
+            ? this.branchs.map((item) => item.name)
+            : [],
+        },
+        valueFormatter: (params) => {
+          return params.value || '';
         },
       },
       {
         field: 'numberdocument',
-        headerName: 'Documentp',
-        editable: false,
+        headerName: 'Documento',
+        editable: true,
+        cellEditor: 'autocompleteEditor',
+        cellEditorParams: {
+          filterList: this.rowData?.map((e) => e.numberdocument?.toUpperCase()) || [],
+          filterKey: 'numberdocument',
+          placeholder: 'Buscar código...',
+          minLength: 1,
+        },
         //showRowGroup: true,
         width: 100,
         hide: this.idUser != 42,
@@ -328,17 +326,48 @@ export class MasterExpensesComponent {
         rowGroupIndex: 3,
       },
       {
+        field: 'description',
+        headerName: 'Descripcion',
+        editable: true,
+        width: 100,
+        cellEditor: 'autocompleteEditor',
+        cellEditorParams: {
+          filterList: this.rowData?.map((e) => e.description?.toUpperCase()) || [],
+          filterKey: 'description',
+          placeholder: 'Buscar código...',
+          minLength: 1,
+        },
+      },
+      /*{
+        field: 'description',
+        headerName: 'Descripcion',
+        editable: true,
+        width: 100,
+      },*/
+      {
         field: 'dateexpend',
         headerName: 'Fecha',
         editable: true,
         width: 100,
+        cellDataType: 'date',
+        valueFormatter: (params) => this.formatDate(params.value)
       },
       {
         field: 'typeexpense',
-        headerName: 'Tipo',
+        headerName: 'Tipo de gasto',
         editable: true,
-        width: 100,
-      },
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.expenses
+            ? this.expenses.map((item) => item.description)
+            : [],
+        },
+        valueFormatter: (params) => {
+          return params.value || '';
+        },
+        
+      },      
       {
         field: 'quantity',
         headerName: 'Cantidad',
@@ -366,7 +395,7 @@ export class MasterExpensesComponent {
       {
         field: 'totalDetalle',
         headerName: 'subtotal',
-        editable: true,
+        editable: false,
         width: 100,
       },
     ];
@@ -385,23 +414,26 @@ export class MasterExpensesComponent {
   addMasterRow() {
     const newItem = {
       //id: tempId,
-      idBranch: this.idBranch,
+      name: '',
+      namebranch: '',
+      numberdocument: '',
+      dateexpend: new Date().toISOString(),
+      typeexpense: '',
+      quantity: null,
+      id_customer: null,
       description: '',
-      address: '',
-      city: '',
-      state: '',
-      cp: '',
-      phone: '',
+      price: null,
+      totalDetalle: null,
       active: true,
       __isNew: true,
     };
 
-    this.rowData = [newItem, ...this.rowData];
-    this.notSavedChanges = true;
+    this.rowData.push(newItem);
+    this.rowData = [...this.rowData];
   }
   async saveMasterChanges() {
-    const isValid = this.rowData.every(
-      (item) => item.description && item.address && item.state
+    /*const isValid = this.rowData.every(
+      (item) => item.namebranch && item.dateexpendty && item.dateexpend
     );
     if (!isValid) {
       alerts.basicAlert(
@@ -410,7 +442,7 @@ export class MasterExpensesComponent {
         'error'
       );
       return;
-    }
+    }*/
 
     const newRows = this.rowData.filter((row) => row.__isNew);
     const modifiedRows = this.rowData.filter(

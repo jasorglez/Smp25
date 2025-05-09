@@ -80,9 +80,6 @@ export class BonusComponent implements CanComponentDeactivate {
     {id: 7 , dia: 'Domingo'},
     
   ]
-  
-  
-
   components = {
     multiLineEditor: MultiLineEditorComponent,
     autocompleteEditor: AutocompleteEditorComponent,
@@ -139,14 +136,9 @@ export class BonusComponent implements CanComponentDeactivate {
     this.selectFechas.get('fechaFin')?.valueChanges.subscribe((value) => {
       this.fechaFin = value;
     });
-  
     // 3. Luego cargas toda la info
     this.obtenerDatosCatalogos();
-    
-    this.getDateResiv();
-    this.obtenerConfig();
     this.obtenerEmpleados();
-  
     // 4. InicioConsulta la mandas después de cargar configuración si depende de datos de config
   }
 
@@ -164,8 +156,6 @@ export class BonusComponent implements CanComponentDeactivate {
         fechaInicio: [this.fechaInicio, Validators.required],
         fechaFin: [this.fechaFin, Validators.required],
       });
-      this.getDateResiv();
-      this.obtenerConfig();
       this.obtenerEmpleados();
     });
   }
@@ -225,7 +215,7 @@ export class BonusComponent implements CanComponentDeactivate {
     this.branchesService.getBrancheswoa(this.idEmpresa).subscribe(
       (data: any) => {
         this.branchs = data;
-        console.log('Branchs', this.branchs);
+        //console.log('Branchs', this.branchs);
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -250,7 +240,7 @@ export class BonusComponent implements CanComponentDeactivate {
       .subscribe({
         next: (data) => {
           this.rowData = data;
-          console.log('----- Datos de bonos: ', data);
+          //console.log('----- Datos de bonos: ', data);
         },
         error: (err) => {
           console.error('Error al obtener empleados con bonus:', err);
@@ -281,31 +271,8 @@ export class BonusComponent implements CanComponentDeactivate {
     });
   }
 
-  obtenerConfig(){
-    this.hrService.getHRManagementData(this.idBranch).subscribe({
-      next: (data: any) => {
-        this.hrData = data[0] || {};
-        this.InicioConsulta();
-      },error: (err) => {
-          this.hrData = {};
-          this.idDia= 6;
-          this.getDateNew();
-          if(this.idBranch >= 0 ){
-            alerts.basicAlert('Atención', 'No hay configuración registrada.', 'info');
-          }
-      }
-    });
-  }
+  
 
-  getDateResiv(){
-      this.administrationService.getNormalPayrolls(this.idBranch).subscribe(
-      (data: any) => {
-        const endDate = new Date(data[0].endDate);
-        this.ultimaFecha = endDate.toISOString().split('T')[0];
-      },(error) => 
-        console.error('Error fetching data:', error)
-    );
-  }
   private validateRequiredField(value: any): any {
     return {
       backgroundColor: !value ? '#fff3cd' : 'transparent',
@@ -806,19 +773,41 @@ export class BonusComponent implements CanComponentDeactivate {
     // }
   }
 
-  InicioConsulta() {
-  
-    const diaEncontrado = this.dias.find(d => d.dia === this.hrData.startDay);
-    this.idDia = diaEncontrado ? diaEncontrado.id : 1;
-  
+  InicioConsulta() {  
     this.getDateNew();
-  
     this.obtenerBonosEmpleados();
   }
-  
+
   getDateNew(){
+    this.getDateResiv();
+    this.obtenerConfig();
+    if(this.idBranch < 0){
+      alert("general")
+    }if(this.ultimaFecha != undefined){
+      alert(this.ultimaFecha)
+    }else{
+      const diaEncontrado = this.dias.find(d => d.dia === this.hrData.startDay);
+      this.idDia = diaEncontrado ? diaEncontrado.id : 1;
+      alert(this.hrData.startDay)
+
+    }
+    if(this.hrData.payrollPeriod >0){
+      const fecha = new Date(this.inicio);
+      fecha.setDate(fecha.getDate() + this.hrData.payrollPeriod - 1);
+      this.fechaFin = fecha.toISOString().split('T')[0];
+    }else{
+      this.fechaFin = this.hoy.toISOString().split('T')[0];
+    }
+    
+    this.selectFechas.patchValue({
+      fechaInicio: this.fechaInicio,
+      fechaFin: this.fechaFin,
+    });
+  }
+  
+  /*getDateNew(){
     const semanaActual = this.getWeekNumber(this.hoy);
-    if(this.hrData.payrollPeriod >0 || this.idBranch < 0){
+    if(this.idBranch < 0){
       this.semanaPasada = semanaActual - 1; 
       const añoActual = this.hoy.getFullYear();
       this.inicio = this.getDateOfISOWeek(this.semanaPasada, añoActual, this.idDia);
@@ -837,7 +826,7 @@ export class BonusComponent implements CanComponentDeactivate {
       fechaInicio: this.fechaInicio,
       fechaFin: this.fechaFin,
     });
-  }
+  }*/
   
 
 
@@ -871,5 +860,35 @@ export class BonusComponent implements CanComponentDeactivate {
 
   async canDeactivate(): Promise<boolean> {
     return confirmExitIfUnsaved(this.notSavedChanges);
+  }
+
+  obtenerConfig(){
+    this.hrService.getHRManagementData(this.idBranch).subscribe({
+      next: (data: any) => {
+        this.hrData = data[0] || {};
+      },error: (err) => {
+          this.hrData = {};
+          this.idDia= 6;
+          if(this.idBranch >= 0 ){
+            alerts.basicAlert('Atención', 'No hay configuración registrada.', 'info');
+          }
+      }
+    });
+  }
+
+  getDateResiv(){
+    if(this.idBranch > 0 ){
+      this.administrationService.getNormalPayrolls(this.idBranch).subscribe(
+      (data: any) => {
+        if (data.length > 0) {
+          const endDate = new Date(data[0].endDate);
+          this.ultimaFecha = endDate.toISOString().split('T')[0];
+        } else {
+          this.ultimaFecha = undefined;
+        }        
+      },(error) => 
+        console.error('Error fetching data:', error)
+    );
+    }  
   }
 }

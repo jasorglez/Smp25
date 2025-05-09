@@ -215,7 +215,7 @@ export class BranchesComponent implements CanComponentDeactivate {
               if (duplicateExists) {
                 alerts.basicAlert(
                   'Nombre duplicado',
-                  'Ya existe un empleado con ese nombre.',
+                  'Ya existe una sucursal con ese nombre.',
                   'error'
                 );
                 return false;
@@ -435,7 +435,7 @@ export class BranchesComponent implements CanComponentDeactivate {
         const correspondingNewRow = newRows.find(
           (row) => !row.id || row.id.toString().startsWith('temp_')
         );
-        console.log(correspondingNewRow);
+        console.log(response.id);
 
         if (response.id && correspondingNewRow) {
           try {
