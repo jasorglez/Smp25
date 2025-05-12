@@ -1,9 +1,4 @@
 <div class="row p-3">
-    <div class="col-lg-2 col-md-3 col-sm-3 col-3" *ngIf="profile().emailUser()">
-        <div class="card text-center">
-            <app-users-profile></app-users-profile>
-        </div>
-    </div>
     <div [ngClass]="profile().emailUser() ? 'col-lg-10 col-md-9 col-sm-9 col-9' : 'col-12'">
         <div class="row mb-3">
             <nav class="col-auto d-flex flex-column align-items-start">
@@ -39,6 +34,11 @@
                     </ag-grid-angular>
                 </div>
             </div>
+        </div>
+    </div>
+    <div class="col-lg-2 col-md-3 col-sm-3 col-3" *ngIf="profile().emailUser()">
+        <div class="card text-center">
+            <app-users-profile></app-users-profile>
         </div>
     </div>
 </div>

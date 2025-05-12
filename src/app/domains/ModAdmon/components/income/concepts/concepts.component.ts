@@ -349,7 +349,7 @@ export class ConceptsComponent {
       return;
     }
 
-    const isValid = this.rowData.every((item) => item.description);
+    const isValid = this.rowData.every((item) => item.quantity);
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
