@@ -207,6 +207,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         editable: false,
         width: 70,
         hide: false,
+        filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
         filterParams: {
           filterOptions: ['equals'], // Opciones de filtro
         },
