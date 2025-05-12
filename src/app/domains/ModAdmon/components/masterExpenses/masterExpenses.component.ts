@@ -28,6 +28,8 @@ import { BranchsService } from 'app/services/branchs.service';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { CatalogadmonService } from 'app/services/catalogadmon.service';
+import { RootService } from 'app/services/root.service';
+import { number } from 'echarts';
 
 
 @Component({
@@ -48,6 +50,7 @@ export class MasterExpensesComponent {
   branchs: any[] = [];
   idBranch: number;
   expenses : any[] = [];
+  company: any[] = [];
   idUser: number = null;
   notSavedChanges: boolean = false;
   showLoansTab: boolean = false;
@@ -57,6 +60,9 @@ export class MasterExpensesComponent {
   private lastEditedRowId: number | string | null = null;
   newlyAddedRows: string[] = [];
 
+  companySelect: number;
+  branchSelect: number;
+
   private cataalogAdmonService = inject(CatalogadmonService);
   private estados: string[] = [];
   private inegiService = inject(InegiService);
@@ -65,6 +71,7 @@ export class MasterExpensesComponent {
   private signalsService = inject(SignalsService);
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
   private branchesService = inject(BranchsService);
+  private rootService = inject(RootService);
   private isOpen: boolean = false;
 
   components = {
@@ -95,13 +102,14 @@ export class MasterExpensesComponent {
       this.idUser = this.signalsService.getIdUSer()();
       this.idcompany = this.signalsService.getRootSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-      this.obtenerBranchs();
+      
       this.obtenerDatos();
       this.getBills();
+      this.getCompanys();
     });
   }
   obtenerBranchs() {
-    this.branchesService.getBrancheswoa(4).subscribe(
+    this.branchesService.getBrancheswoa(this.companySelect).subscribe(
       (data: any) => {
         this.branchs = data;
         console.log('Branchs', this.branchs);
@@ -124,10 +132,21 @@ export class MasterExpensesComponent {
   }
 
   getBills() {
-    this.cataalogAdmonService.getCatalogs(4, 'BILL').subscribe(
+    this.cataalogAdmonService.getCatalogs(this.branchSelect, 'BILL').subscribe(
       (data: any) => {
         this.expenses = data;
         console.log(this.expenses)
+      },
+      error => {
+        console.error(error);
+      }
+    )
+  }
+  getCompanys() {
+    this.rootService.getRoot().subscribe(
+      (data: any) => {
+        this.company = data;
+        console.log(this.company)
       },
       error => {
         console.error(error);
@@ -201,7 +220,27 @@ export class MasterExpensesComponent {
     console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
+    if (event.colDef.field === 'name') {
+      const companyName = event.newValue;
+      
+      const companyId = this.getCompanyIdByName(companyName);
+      console.log('Sucursal seleccionada:', companyName, 'ID:', companyId);
+      // Si necesitas guardar el ID también en el row:
+      this.companySelect = companyId;
+      this.obtenerBranchs();
+      //event.data.idBranch = companyId;
+    }
     if (event.colDef.field === 'namebranch') {
+      const branchName = event.newValue;
+      
+      const branchId = this.getBranchIdByName(branchName);
+      console.log('Sucursal seleccionada:', branchName, 'ID:', branchId);
+      this.branchSelect = branchId;
+      this.getBills();
+      // Si necesitas guardar el ID también en el row:
+      //event.data.idBranch = branchId;
+    } 
+    if (event.colDef.field === 'numberdocument') {
       const branchName = event.newValue;
       
       const branchId = this.getBranchIdByName(branchName);
@@ -214,6 +253,10 @@ export class MasterExpensesComponent {
 
   getBranchIdByName(name: string): number | undefined {
     const match = this.branchs.find(branch => branch.name === name);
+    return match?.id;
+  }
+  getCompanyIdByName(name: string): number | undefined {
+    const match = this.company.find(company => company.name === name);
     return match?.id;
   }
   
@@ -280,14 +323,14 @@ export class MasterExpensesComponent {
         rowGroup: this.idUser == 42,
         rowGroupIndex: 1,
         cellEditor: 'agSelectCellEditor',
-        /*cellEditorParams: {
-          values: this.storeCatalog
-            ? this.storeCatalog.map((item) => item.description)
+        cellEditorParams: {
+          values: this.company
+            ? this.company.map((item) => item.name)
             : [],
         },
         valueFormatter: (params) => {
           return params.value || '';
-        },*/
+        },
       },
       {
         field: 'namebranch',
@@ -400,6 +443,24 @@ export class MasterExpensesComponent {
       },
     ];
   }
+  detailCellRendererParams: any = {
+    detailGridOptions: {
+      columnDefs: [
+        { field: "callId" },
+        { field: "direction" },
+        { field: "number", minWidth: 150 },
+        { field: "duration", valueFormatter: "x.toLocaleString() + 's'" },
+        { field: "switchCode", minWidth: 150 },
+      ],
+      defaultColDef: {
+        flex: 1,
+      },
+    },
+    getDetailRowData: function (params) {
+      params.successCallback(params.data.callRecords);
+    },
+  }
+  
 
   resetGridSize() {
     this.gridHeight = '80vh'; // Reset to default height
@@ -412,7 +473,7 @@ export class MasterExpensesComponent {
   }
 
   addMasterRow() {
-    const newItem = {
+    const newItem1 = {
       //id: tempId,
       name: '',
       namebranch: '',
@@ -427,9 +488,23 @@ export class MasterExpensesComponent {
       active: true,
       __isNew: true,
     };
+    const newItem2 = {
+      //id: tempId,
+      name: '',
+      namebranch: '',
+      numberdocument: '',
+      typeexpense: '',
+      quantity: null,
+      id_customer: null,
+      description: '',
+      price: null,
+      totalDetalle: null,
+      active: true,
+      __isNew: true,
+    };
 
-    this.rowData.push(newItem);
-    this.rowData = [...this.rowData];
+    //this.rowData.push(newItem);
+    this.rowData = [newItem1, newItem2,...this.rowData];
   }
   async saveMasterChanges() {
     /*const isValid = this.rowData.every(

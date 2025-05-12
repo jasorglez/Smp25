@@ -525,11 +525,13 @@ constructor() {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      console.log(cleanedData)
       return this.incomesAndExpensesService.addIncomesAndExpenses(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      console.log(cleanedData)
       return this.incomesAndExpensesService.updateIncomesAndExpenses(row.id, cleanedData);
     });
 

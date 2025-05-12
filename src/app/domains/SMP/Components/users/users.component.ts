@@ -348,12 +348,12 @@ constructor() {
         editable: false,
         flex: 1
       },
-     /*  {
-        field: 'IsRoot',
+      /*{
+        field: 'isRoot',
         headerName: 'Root',
         cellEditor: 'agTextCellEditor',
-        editable: false,
-        width: 100
+        editable: true,
+        width: 90
       } */
     ];
   }
@@ -405,7 +405,7 @@ constructor() {
       signature: '',
       usersmall: 'SINUSER',
       allowWhatsapp: true,
-      isRoot: 1,
+      isRoot: true,
       __isNew: true
     };
 

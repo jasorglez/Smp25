@@ -118,6 +118,7 @@ export class BonusComponent implements CanComponentDeactivate {
   inicio: any;
   semanaPasada: any;
   ultimaFecha: any;
+  endDate: any;
 
   ngOnInit() {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
@@ -139,6 +140,7 @@ export class BonusComponent implements CanComponentDeactivate {
     // 3. Luego cargas toda la info
     this.obtenerDatosCatalogos();
     this.obtenerEmpleados();
+    this.InicioConsulta();
     // 4. InicioConsulta la mandas después de cargar configuración si depende de datos de config
   }
 
@@ -147,9 +149,13 @@ export class BonusComponent implements CanComponentDeactivate {
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.idEmpresa = this.signalsService.getRootSelectedBySidebar()();
+      
+      this.getNextPayrollStartDate();
       this.obtenerBranchs();
       //console.log("en init, esto es bonusCatalog:", this.bonusCatalogos);
       this.obtenerDatosCatalogos();
+      
+      this.obtenerConfig();
       this.InicioConsulta();
       
       this.selectFechas = this.fb.group({
@@ -338,7 +344,6 @@ export class BonusComponent implements CanComponentDeactivate {
           defaultToNothingSelected: true,
           //excelMode: 'mac',
         },
-
         filter: true,
         width: 200,
         flex: 1,
@@ -778,27 +783,35 @@ export class BonusComponent implements CanComponentDeactivate {
     this.obtenerBonosEmpleados();
   }
 
+  
   getDateNew(){
-    this.getDateResiv();
-    this.obtenerConfig();
+    
     if(this.idBranch < 0){
-      alert("general")
+      const primerDiaDelMes = new Date(this.hoy.getFullYear(), this.hoy.getMonth(), 1);
+      const ultimoDiaDelMes = new Date(this.hoy.getFullYear(), this.hoy.getMonth() + 1, 0);
+      this.fechaInicio = primerDiaDelMes.toISOString().split('T')[0];
+      this.fechaFin = ultimoDiaDelMes.toISOString().split('T')[0] ;
+      alert(this.fechaInicio )
     }if(this.ultimaFecha != undefined){
-      alert(this.ultimaFecha)
+      /*const endDate = new Date(data[0].endDate);
+            endDate.setDate(endDate.getDate() + 1);
+            this.ultimaFecha = endDate.toISOString().split('T')[0];*/
+      this.fechaInicio = this.ultimaFecha;
+      alert(this.fechaInicio)
     }else{
-      const diaEncontrado = this.dias.find(d => d.dia === this.hrData.startDay);
+      /*const diaEncontrado = this.dias.find(d => d.dia === this.hrData.startDay);
       this.idDia = diaEncontrado ? diaEncontrado.id : 1;
-      alert(this.hrData.startDay)
-
+      console.log(this.hrData.startDay)
+      alert(this.idDia )*/
     }
-    if(this.hrData.payrollPeriod >0){
+    
+    if(this.hrData.payrollPeriod > 0 && this.idBranch > 0){
       const fecha = new Date(this.inicio);
       fecha.setDate(fecha.getDate() + this.hrData.payrollPeriod - 1);
       this.fechaFin = fecha.toISOString().split('T')[0];
-    }else{
+    }if(this.idBranch > 0){
       this.fechaFin = this.hoy.toISOString().split('T')[0];
     }
-    
     this.selectFechas.patchValue({
       fechaInicio: this.fechaInicio,
       fechaFin: this.fechaFin,
@@ -876,19 +889,19 @@ export class BonusComponent implements CanComponentDeactivate {
     });
   }
 
-  getDateResiv(){
-    if(this.idBranch > 0 ){
+  getNextPayrollStartDate(): void {
+    if (this.idBranch > 0) {
       this.administrationService.getNormalPayrolls(this.idBranch).subscribe(
-      (data: any) => {
-        if (data.length > 0) {
-          const endDate = new Date(data[0].endDate);
-          this.ultimaFecha = endDate.toISOString().split('T')[0];
-        } else {
-          this.ultimaFecha = undefined;
-        }        
-      },(error) => 
-        console.error('Error fetching data:', error)
-    );
-    }  
+        (data: { endDate: string }[]) => {
+          if (data.length > 0) {
+            this.ultimaFecha = data;
+          } else {
+            this.ultimaFecha = undefined;
+          }
+        },
+        (error) => console.error('Error fetching payroll data:', error)
+      );
+    }
   }
+  
 }
