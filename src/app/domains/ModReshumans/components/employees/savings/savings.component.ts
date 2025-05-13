@@ -510,12 +510,20 @@ export class EmployeesxSavingsComponent {
       await this.loadData(true); // Pasar true para indicar que es una recarga post-guardado
       this.signalsService.triggerRefreshEmployees();
     } catch (error) {
+      if (error.status === 400) {
+        alerts.basicAlert(
+          'Añadir entrada',
+          error.error.message || 'Error al actualizar los datos.',
+          'error'
+        );
+      } else {
+        alerts.basicAlert(
+          'Error',
+          'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
+          'error'
+        );
+      }
       console.error(error);
-      alerts.basicAlert(
-        'Error',
-        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
-        'error'
-      );
     }
   }
 
