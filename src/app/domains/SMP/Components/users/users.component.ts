@@ -152,7 +152,8 @@ constructor() {
 
   // Se modifica el getDepartmentName para que devuelva el nombre del departamento
   getDepartmentName(idDepartament: number): string {
-    return this.departamentos[idDepartament] || 'Departamento no encontrado';
+    const department = this.departamentos.find(dept => dept.id === idDepartament);
+    return department ? department.description : 'Departamento no encontrado';
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -376,12 +377,20 @@ constructor() {
   }
 
   onCellValueChanged(event) {
-    // console.log('Dato cambiado:', event.data);
-    // Aquí envío todo a la signal
-    this.enviarSignal();
+    // Seleccionar la fila si no está seleccionada
+    if (!event.node.isSelected()) {
+      event.node.setSelected(true);
+    }
+    
     this.notSavedChanges = true;
     if (!event.data.__isNew) {
       event.data.__modified = true;
+    }
+    console.log('Dato cambiado:', event.data);
+    
+    // Solo enviar señal si hay fila seleccionada
+    if (this.selectedRowData) {
+      this.enviarSignal();
     }
   }
 
