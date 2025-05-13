@@ -477,6 +477,21 @@ export class SignalsService {
     return this.idCustomerFromPOS;
   }
 
+  /* Para el refrescado de la sucursal en el sidebar */
+  private updateBranchList = signal<boolean>(false);
+
+  getUpdateBranchList() {
+    return this.updateBranchList;
+  }
+
+  triggerUpdateBranchList() {
+    this.updateBranchList.set(true);
+  }
+
+  resetSignalBranchList() {
+    this.updateBranchList.set(false);
+  }
+
   /* Para el income and expenses */
 
   private idIncomeAndExpense = signal<number>(null);

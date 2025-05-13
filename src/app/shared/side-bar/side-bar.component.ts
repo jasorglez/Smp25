@@ -1,10 +1,9 @@
-import { Component } from '@angular/core';
+import { Component, effect } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { TraductorService } from '../../services/traductor.service';
 import { TrackingService } from '../../services/tracking.service';
 import { CompanysService } from '../../services/companys.service';
-import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { ContractsService } from 'app/services/contracts.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { ProjectsService } from 'app/services/projects.service';
@@ -55,10 +54,16 @@ export class SideBarComponent {
     public projectService: ProjectsService,
     private userService: UsersService,
     private signalsService: SignalsService
-    
-  ) {}
+  ) {
+    effect(async () => {
+      const shouldUpdate = this.signalsService.getUpdateBranchList()();
+      if (shouldUpdate) {
+          await this.getpermissionxBranchs(parseInt(this.selectedRoot)); // Refrescar la lista de branches
+          setTimeout(() => this.signalsService.resetSignalIncAndExp());
+        }
+    });
+  }
 
-  
   async ngOnInit() {
     if (this.signalsService.isidUserEmpty()) {
       this.userService.findEmail(localStorage.getItem('mail')).subscribe({
@@ -93,7 +98,7 @@ export class SideBarComponent {
     if (this.selectedRoot) {
       this.trackingService.setCompany(target.value);
       this.signalsService.setRootSelectedBySidebar(Number(this.selectedRoot));
-  //    this.getpermissionxContracts(parseInt(this.selectedRoot));
+      //    this.getpermissionxContracts(parseInt(this.selectedRoot));
       this.getpermissionxBranchs(parseInt(this.selectedRoot));
       this.getHeadersCompanys(this.selectedRoot);
     }
@@ -114,7 +119,7 @@ export class SideBarComponent {
           this.trackingService.setCompany(this.selectedRoot);
           this.getHeadersCompanys(this.selectedRoot);
           // Llamar a getpermissionxContracts con el primer elemento
-       //   this.getpermissionxContracts(parseInt(this.selectedRoot));
+          //   this.getpermissionxContracts(parseInt(this.selectedRoot));
           this.getpermissionxBranchs(parseInt(this.selectedRoot));
           // Forzar la actualización del select
           setTimeout(() => {
@@ -188,7 +193,7 @@ export class SideBarComponent {
             }, 500);
           } else {
             console.log(
-              `No se encontró ningún branch con idRoot ${this.selectedBranchId}`
+              `No se encontró ningún branch con idBranch ${this.selectedBranchId}`
             );
           }
         },
