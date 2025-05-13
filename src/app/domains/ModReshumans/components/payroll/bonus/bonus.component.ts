@@ -30,6 +30,8 @@ import {
   lastValueFrom,
   toArray,
   throwError,
+  firstValueFrom,
+  forkJoin
 } from 'rxjs';
 import { HRService } from 'app/services/hr.service';
 import { SignalsService } from 'app/services/signals.service';
@@ -40,7 +42,6 @@ import { AuthService } from 'app/services/auth.service';
 import { AdministrationService } from 'app/services/administration.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
-import { forkJoin } from 'rxjs';
 import { environment } from '@env/environment';
 import { BranchsService } from 'app/services/branchs.service';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
@@ -238,22 +239,20 @@ export class BonusComponent implements CanComponentDeactivate {
     );
   }
 
-  obtenerBonosEmpleados() {
+  async obtenerBonosEmpleados() {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
     console.log('Consulta: ', this.fechaInicio, this.fechaFin, this.idBranch);
-    this.administrationService
-      .getEmployeesBonus(this.fechaInicio, this.fechaFin, this.idBranch)
-      .subscribe({
-        next: (data) => {
-          this.rowData = data;
-          //console.log('----- Datos de bonos: ', data);
-        },
-        error: (err) => {
-          console.error('Error al obtener empleados con bonus:', err);
-        },
-      });
+  
+    try {
+      const data = await firstValueFrom(
+        this.administrationService.getEmployeesBonus(this.fechaInicio, this.fechaFin, this.idBranch)
+      );
+      this.rowData = data;
+    } catch (err) {
+      console.error('Error al obtener empleados con bonus:', err);
+    }
   }
-
+  
   obtenerEmpleados() {
     return new Promise((resolve) => {
       this.employeeService.getEmployeesVigente(this.idBranch).subscribe(
@@ -780,43 +779,66 @@ export class BonusComponent implements CanComponentDeactivate {
 
   InicioConsulta() {  
     this.getDateNew();
-    this.obtenerBonosEmpleados();
   }
 
   
-  getDateNew(){
-    
-    if(this.idBranch < 0){
+  async getDateNew() {
+    await this.getNextPayrollStartDate();
+  
+    // Determinar fechaInicio
+    if (this.idBranch < 0) {
       const primerDiaDelMes = new Date(this.hoy.getFullYear(), this.hoy.getMonth(), 1);
-      const ultimoDiaDelMes = new Date(this.hoy.getFullYear(), this.hoy.getMonth() + 1, 0);
       this.fechaInicio = primerDiaDelMes.toISOString().split('T')[0];
-      this.fechaFin = ultimoDiaDelMes.toISOString().split('T')[0] ;
-      alert(this.fechaInicio )
-    }if(this.ultimaFecha != undefined){
-      /*const endDate = new Date(data[0].endDate);
-            endDate.setDate(endDate.getDate() + 1);
-            this.ultimaFecha = endDate.toISOString().split('T')[0];*/
-      this.fechaInicio = this.ultimaFecha;
-      alert(this.fechaInicio)
-    }else{
-      /*const diaEncontrado = this.dias.find(d => d.dia === this.hrData.startDay);
+    } else if (this.ultimaFecha instanceof Date) {
+      const siguienteDia = new Date(this.ultimaFecha);
+      siguienteDia.setDate(siguienteDia.getDate() + 1);
+      this.fechaInicio = siguienteDia.toISOString().split('T')[0];
+    } else {
+      const diaEncontrado = this.dias.find(d => d.dia === this.hrData.startDay);
       this.idDia = diaEncontrado ? diaEncontrado.id : 1;
-      console.log(this.hrData.startDay)
-      alert(this.idDia )*/
+      const diaObjetivo = this.idDia % 7;
+      this.hoy.setHours(0, 0, 0, 0);
+      const fecha = new Date(this.hoy); 
+      const diaActual = fecha.getDay();
+      const diferencia = (diaActual - diaObjetivo + 7) % 7;
+      fecha.setDate(fecha.getDate() - diferencia);
+      this.fechaInicio = fecha.toISOString().split('T')[0];
     }
-    
-    if(this.hrData.payrollPeriod > 0 && this.idBranch > 0){
-      const fecha = new Date(this.inicio);
-      fecha.setDate(fecha.getDate() + this.hrData.payrollPeriod - 1);
-      this.fechaFin = fecha.toISOString().split('T')[0];
-    }if(this.idBranch > 0){
+  
+    // Determinar fechaFin
+    if (this.idBranch < 0) {
+      const ultimoDiaDelMes = new Date(this.hoy.getFullYear(), this.hoy.getMonth() + 1, 0);
+      this.fechaFin = ultimoDiaDelMes.toISOString().split('T')[0];
+    } else if (this.hrData?.payrollPeriod > 0) {
+      const inicio = new Date(this.fechaInicio);
+      inicio.setDate(inicio.getDate() + this.hrData.payrollPeriod - 1);
+      this.fechaFin = inicio.toISOString().split('T')[0];
+    } else {
       this.fechaFin = this.hoy.toISOString().split('T')[0];
     }
+  
+    // Actualizar formulario reactivo
     this.selectFechas.patchValue({
       fechaInicio: this.fechaInicio,
       fechaFin: this.fechaFin,
     });
+  
+    // Cargar bonos (después de tener fechas definidas)
+    await this.obtenerBonosEmpleados();
+  
+    // Debug opcional
+    console.log('Fecha Inicio:', this.fechaInicio);
+    console.log('Fecha Fin:', this.fechaFin);
   }
+  
+  getUltimoDiaInicioSemana(desde: Date, diaInicio: number): Date {
+    const fecha = new Date(desde); // Clonar para no modificar la original
+    const diaActual = fecha.getDay(); // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
+    const diferencia = (diaActual - diaInicio + 7) % 7;
+    fecha.setDate(fecha.getDate() - diferencia);
+    return fecha;
+  }
+  
   
   /*getDateNew(){
     const semanaActual = this.getWeekNumber(this.hoy);
@@ -889,19 +911,23 @@ export class BonusComponent implements CanComponentDeactivate {
     });
   }
 
-  getNextPayrollStartDate(): void {
+  async getNextPayrollStartDate(): Promise<void> {
     if (this.idBranch > 0) {
-      this.administrationService.getNormalPayrolls(this.idBranch).subscribe(
-        (data: { endDate: string }[]) => {
-          if (data.length > 0) {
-            this.ultimaFecha = data;
-          } else {
-            this.ultimaFecha = undefined;
-          }
-        },
-        (error) => console.error('Error fetching payroll data:', error)
-      );
+      try {
+        const data: { endDate: string }[] = await firstValueFrom(
+          this.administrationService.getNormalPayrolls(this.idBranch)
+        );
+  
+        if (data.length > 0) {
+          this.ultimaFecha = new Date(data[0].endDate);
+        } else {
+          this.ultimaFecha = undefined;
+        }
+      } catch (error) {
+        console.error('Error fetching payroll data:', error);
+      }
     }
   }
+  
   
 }

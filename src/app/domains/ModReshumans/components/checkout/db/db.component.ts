@@ -42,7 +42,7 @@ export default class DbComponent {
       headerName: 'Fecha y Hora',
       field: 'timeStamp',
       flex: 2,
-      filter: true,
+      filter: 'agDateColumnFilter',
       filterParams: {
         // can be 'windows' or 'mac'
         defaultToNothingSelected: true,
