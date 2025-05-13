@@ -177,7 +177,8 @@ constructor() {
 
   // Se modifica el getDepartmentName para que devuelva el nombre del departamento
   getDepartmentName(idDepartament: number): string {
-    return this.departamentos[idDepartament] || 'Departamento no encontrado';
+    const department = this.departamentos.find(dept => dept.id === idDepartament);
+    return department ? department.description : 'Departamento no encontrado';
   }
 
   onGridReady(params: GridReadyEvent) {
