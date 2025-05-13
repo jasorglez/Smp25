@@ -406,8 +406,12 @@ constructor() {
   }
 
   onCellValueChanged(event: any) {
+    if (!event.node.isSelected()) {
+      event.node.setSelected(true);
+    }
+    
     this.notSavedChanges = true;
-  
+
     if (!event.data.__isNew) {
       event.data.__modified = true;
     }
@@ -429,8 +433,9 @@ constructor() {
         event.data.idEmployee = null;
         event.data.idBranch = null;
       }
-  
-      this.enviarSignal(); // Aquí porque depende del empleado seleccionado
+      if (this.selectedRowData) {
+        this.enviarSignal();
+      }
     }
   }
   
