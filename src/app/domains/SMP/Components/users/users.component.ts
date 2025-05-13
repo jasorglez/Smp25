@@ -11,7 +11,7 @@ import { MatDialogModule } from '@angular/material/dialog';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { RolesService } from 'app/services/roles.service';
-
+import { EmployeesService } from 'app/services/employees.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { SignalsService } from 'app/services/signals.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
@@ -53,6 +53,7 @@ export class UsersComponent {
   id: string;
   userRoot: number = 0;
   authorizedPass:boolean = false;
+  empleadoCatalgos: any[] = [];
 
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
@@ -65,6 +66,7 @@ export class UsersComponent {
   private catalogService = inject(CatalogsService);
   private signalsService = inject(SignalsService);
   private rolesService   = inject(RolesService);  
+  private employeeService = inject(EmployeesService);
 
   profile = computed(() => this.signalsService.profile);
 
@@ -101,6 +103,7 @@ constructor() {
        this.obtenerDatos();
         this.getRoles();
       this.verification();
+      this.obtenerEmpleados();
     })
 }
 
@@ -108,7 +111,29 @@ constructor() {
     multiLineEditor: MultiLineEditorComponent,
     autocompleteEditor: AutocompleteEditorComponent
   }
+  obtenerEmpleados() {
+    return new Promise((resolve) => {
+      this.employeeService.getEmployeesVigente(-9).subscribe(
+        (data: any) => {
+          this.empleadoCatalgos = data;
+          console.log(this.empleadoCatalgos)
+         // console.log('Datos obtenidos del servidor:', this.empleadoCatalgos);
 
+          // Actualizar el grid y esperar a que termine
+          this.gridApi.setGridOption('rowData', this.rowData);
+
+          // Dar tiempo al grid para actualizar los datos
+          setTimeout(() => {
+            resolve(true);
+          }, 100);
+        },
+        (error) => {
+          console.error('Error fetching data:', error);
+          resolve(false);
+        }
+      );
+    });
+  }
   
   obtenerDatos() {
     const observer = {
@@ -200,16 +225,18 @@ constructor() {
         cellEditor: 'autocompleteEditor',
         flex: 1,
         cellEditorParams: {
-          filterList: this.rowData.map(e => e.displayName),
-          filterKey: 'displayName',
+          filterList: this.empleadoCatalgos.map(e => e.name),
+          filterKey: 'name',
           placeholder: 'Nombre',
           minLength: 1
         },
         valueSetter: (params) => {
+          const newValue = params.newValue?.toUpperCase() ?? '';
+        
           const duplicateExists = this.rowData.some((row, index) =>
-            index !== params.node.rowIndex && row.displayName === params.newValue
+            index !== params.node.rowIndex && row.displayName === newValue
           );
-
+        
           if (duplicateExists) {
             alerts.basicAlert(
               'Nombre duplicado',
@@ -218,10 +245,11 @@ constructor() {
             );
             return false;
           }
-
-          params.data[params.colDef.field] = params.newValue.toUpperCase();
+        
+          params.data[params.colDef.field] = newValue;
           return true;
         }
+        
       },
       {
         field: 'email',
@@ -353,7 +381,8 @@ constructor() {
         headerName: 'Root',
         //cellEditor: 'agTextCellEditor',
         editable: true,
-        width: 90
+        width: 90,
+        hide: !this.authorizedPass
       } 
     ];
   }
@@ -375,15 +404,35 @@ constructor() {
     }
   }
 
-  onCellValueChanged(event) {
-    // console.log('Dato cambiado:', event.data);
-    // Aquí envío todo a la signal
-    this.enviarSignal();
+  onCellValueChanged(event: any) {
     this.notSavedChanges = true;
+  
     if (!event.data.__isNew) {
       event.data.__modified = true;
     }
+  
+    // Solo actuar si se cambió el nombre
+    if (event.colDef.field === 'displayName') {
+      const selectedName = event.newValue?.toUpperCase();
+  
+      const empleadoInfo = this.empleadoCatalgos?.find(
+        (item) => item.name.toUpperCase() === selectedName
+      );
+  
+      if (empleadoInfo) {
+        // Rellenar datos relacionados
+        event.data.idEmployee = empleadoInfo.id;
+        event.data.email = empleadoInfo.email;
+      } else {
+        // Si el nombre ya no está en catálogo, limpia
+        event.data.idEmployee = null;
+        event.data.idBranch = null;
+      }
+  
+      this.enviarSignal(); // Aquí porque depende del empleado seleccionado
+    }
   }
+  
 
 
   addRow() {
