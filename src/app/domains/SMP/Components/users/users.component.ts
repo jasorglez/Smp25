@@ -113,7 +113,7 @@ constructor() {
   }
   obtenerEmpleados() {
     return new Promise((resolve) => {
-      this.employeeService.getEmployeesVigente(-9).subscribe(
+      this.employeeService.getEmployeesVigente(-this.idRoot).subscribe(
         (data: any) => {
           this.empleadoCatalgos = data;
           console.log(this.empleadoCatalgos)

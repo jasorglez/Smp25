@@ -128,7 +128,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       if (this.idBranch == null) {
         this.rowData = [];
         alerts.basicAlert(
