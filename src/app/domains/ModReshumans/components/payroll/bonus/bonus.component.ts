@@ -79,7 +79,7 @@ export class BonusComponent implements CanComponentDeactivate {
     {id: 5 , dia: 'Viernes'},
     {id: 6 , dia: 'Sábado'},
     {id: 7 , dia: 'Domingo'},
-    
+
   ]
   components = {
     multiLineEditor: MultiLineEditorComponent,
@@ -130,7 +130,7 @@ export class BonusComponent implements CanComponentDeactivate {
       fechaInicio: [null, Validators.required],
       fechaFin: [null, Validators.required],
     });
-  
+
     // 2. Suscripciones a cambios
     this.selectFechas.get('fechaInicio')?.valueChanges.subscribe((value) => {
       this.fechaInicio = value;
@@ -145,20 +145,20 @@ export class BonusComponent implements CanComponentDeactivate {
     // 4. InicioConsulta la mandas después de cargar configuración si depende de datos de config
   }
 
-  
+
   constructor(private fb: FormBuilder) {
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.idEmpresa = this.signalsService.getRootSelectedBySidebar()();
-      
+
       this.getNextPayrollStartDate();
       this.obtenerBranchs();
       //console.log("en init, esto es bonusCatalog:", this.bonusCatalogos);
       this.obtenerDatosCatalogos();
-      
+
       this.obtenerConfig();
       this.InicioConsulta();
-      
+
       this.selectFechas = this.fb.group({
         fechaInicio: [this.fechaInicio, Validators.required],
         fechaFin: [this.fechaFin, Validators.required],
@@ -215,9 +215,9 @@ export class BonusComponent implements CanComponentDeactivate {
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-    
+
   }
-  
+
   obtenerBranchs() {
     this.branchesService.getBrancheswoa(this.idEmpresa).subscribe(
       (data: any) => {
@@ -233,7 +233,7 @@ export class BonusComponent implements CanComponentDeactivate {
     this.catalogsService.getCatalogsVigente(this.idEmpresa, 'BONUS').subscribe(
       (data) => {
         this.bonusCatalogos = data;
-        //console.log("------ Catalogo", data);
+        console.log("------ Catalogo", data);
       },
       (error) => console.error('Error fetching measures:', error)
     );
@@ -242,7 +242,7 @@ export class BonusComponent implements CanComponentDeactivate {
   async obtenerBonosEmpleados() {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
     console.log('Consulta: ', this.fechaInicio, this.fechaFin, this.idBranch);
-  
+
     try {
       const data = await firstValueFrom(
         this.administrationService.getEmployeesBonus(this.fechaInicio, this.fechaFin, this.idBranch)
@@ -252,7 +252,7 @@ export class BonusComponent implements CanComponentDeactivate {
       console.error('Error al obtener empleados con bonus:', err);
     }
   }
-  
+
   obtenerEmpleados() {
     return new Promise((resolve) => {
       this.employeeService.getEmployeesVigente(this.idBranch).subscribe(
@@ -276,16 +276,12 @@ export class BonusComponent implements CanComponentDeactivate {
     });
   }
 
-  
-
   private validateRequiredField(value: any): any {
     return {
       backgroundColor: !value ? '#fff3cd' : 'transparent',
       border: !value ? '2px solid #ff9966' : 'none',
     };
   }
-
-  
 
   get colMaster(): ColDef[] {
     return [
@@ -307,7 +303,7 @@ export class BonusComponent implements CanComponentDeactivate {
       {
         field: 'idBranch',
         headerName: 'Nombre sucursal',
-        editable: false, 
+        editable: false,
         filterParams: {
           // can be 'windows' or 'mac'
           defaultToNothingSelected: true,
@@ -503,19 +499,19 @@ export class BonusComponent implements CanComponentDeactivate {
       __isNew: true,
     };
     this.rowData = [newItem, ...this.rowData];
-  
+
     setTimeout(() => {
       const firstRowIndex = 0;
-  
+
       this.gridApi.ensureIndexVisible(firstRowIndex);
-  
+
       this.gridApi.startEditingCell({
         rowIndex: firstRowIndex,
         colKey: 'employeeName'
       });
     }, 0);
   }
-  
+
 
   async saveChanges() {
     console.log('---- salvando cambios ', this.rowData);
@@ -777,14 +773,14 @@ export class BonusComponent implements CanComponentDeactivate {
     // }
   }
 
-  InicioConsulta() {  
+  InicioConsulta() {
     this.getDateNew();
   }
 
-  
+
   async getDateNew() {
     await this.getNextPayrollStartDate();
-  
+
     // Determinar fechaInicio
     if (this.idBranch < 0) {
       const primerDiaDelMes = new Date(this.hoy.getFullYear(), this.hoy.getMonth(), 1);
@@ -798,13 +794,13 @@ export class BonusComponent implements CanComponentDeactivate {
       this.idDia = diaEncontrado ? diaEncontrado.id : 1;
       const diaObjetivo = this.idDia % 7;
       this.hoy.setHours(0, 0, 0, 0);
-      const fecha = new Date(this.hoy); 
+      const fecha = new Date(this.hoy);
       const diaActual = fecha.getDay();
       const diferencia = (diaActual - diaObjetivo + 7) % 7;
       fecha.setDate(fecha.getDate() - diferencia);
       this.fechaInicio = fecha.toISOString().split('T')[0];
     }
-  
+
     // Determinar fechaFin
     if (this.idBranch < 0) {
       const ultimoDiaDelMes = new Date(this.hoy.getFullYear(), this.hoy.getMonth() + 1, 0);
@@ -816,21 +812,21 @@ export class BonusComponent implements CanComponentDeactivate {
     } else {
       this.fechaFin = this.hoy.toISOString().split('T')[0];
     }
-  
+
     // Actualizar formulario reactivo
     this.selectFechas.patchValue({
       fechaInicio: this.fechaInicio,
       fechaFin: this.fechaFin,
     });
-  
+
     // Cargar bonos (después de tener fechas definidas)
     await this.obtenerBonosEmpleados();
-  
+
     // Debug opcional
     console.log('Fecha Inicio:', this.fechaInicio);
     console.log('Fecha Fin:', this.fechaFin);
   }
-  
+
   getUltimoDiaInicioSemana(desde: Date, diaInicio: number): Date {
     const fecha = new Date(desde); // Clonar para no modificar la original
     const diaActual = fecha.getDay(); // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
@@ -838,12 +834,12 @@ export class BonusComponent implements CanComponentDeactivate {
     fecha.setDate(fecha.getDate() - diferencia);
     return fecha;
   }
-  
-  
+
+
   /*getDateNew(){
     const semanaActual = this.getWeekNumber(this.hoy);
     if(this.idBranch < 0){
-      this.semanaPasada = semanaActual - 1; 
+      this.semanaPasada = semanaActual - 1;
       const añoActual = this.hoy.getFullYear();
       this.inicio = this.getDateOfISOWeek(this.semanaPasada, añoActual, this.idDia);
       this.fechaInicio= this.inicio.toISOString().split('T')[0];
@@ -862,7 +858,7 @@ export class BonusComponent implements CanComponentDeactivate {
       fechaFin: this.fechaFin,
     });
   }*/
-  
+
 
 
   getDateOfISOWeek(week: number, year: number, dayOfWeek: number): Date {
@@ -917,7 +913,7 @@ export class BonusComponent implements CanComponentDeactivate {
         const data: { endDate: string }[] = await firstValueFrom(
           this.administrationService.getNormalPayrolls(this.idBranch)
         );
-  
+
         if (data.length > 0) {
           this.ultimaFecha = new Date(data[0].endDate);
         } else {
@@ -928,6 +924,6 @@ export class BonusComponent implements CanComponentDeactivate {
       }
     }
   }
-  
-  
+
+
 }
