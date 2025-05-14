@@ -98,8 +98,8 @@ export class CatalogsComponent implements CanComponentDeactivate {
     this.tipo =  this.traducciones[this.selectedCatalog] || 'Desconocido';
     this.obtenerDatos(); // Vuelve a ejecutar la consulta con el nuevo valor
   }
-  
-  
+
+
   obtenerTables() {
     this.tableService
       .getTablesxmodules(this.signalsService.getCatalogSelected())
@@ -118,19 +118,19 @@ export class CatalogsComponent implements CanComponentDeactivate {
     const catalogType = this.signalsService.getCatalogSelected();
     this.rowData = [];
     console.log(`Obteniendo datos para tipo: ${catalogType}`);
-  
+
     // Determina qué servicio usar
-    const service = catalogType === 'ADMINISTRATION' 
-      ? this.catalogAdmonService 
+    const service = catalogType === 'ADMINISTRATION'
+      ? this.catalogAdmonService
       : this.catalogService;
-  
+
     service.getCatalogs(this.idRoot, this.selectedCatalog)
       .subscribe({
         next: (data: any[]) => this.rowData = data,
         error: (err) => console.error(`Error (${catalogType || 'desconocido'}):`, err)
       });
   }
-  
+
 
   //OPERACIONES DE LOS GRIDS
 
@@ -160,20 +160,20 @@ export class CatalogsComponent implements CanComponentDeactivate {
             alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
             return false;
           }
-      
+
           const normalizedValue = rawValue.trim().toUpperCase();
-      
+
           if (!normalizedValue) {
             alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
             return false;
           }
-      
+
           const duplicateExists = this.rowData.some(
             (row, index) =>
               index !== params.node.rowIndex &&
               row.description?.toUpperCase() === normalizedValue
           );
-      
+
           if (duplicateExists) {
             alerts.basicAlert(
               'Nombre duplicado',
@@ -182,7 +182,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
             );
             return false;
           }
-      
+
           params.data[params.colDef.field] = normalizedValue;
           return true;
         },
@@ -195,6 +195,19 @@ export class CatalogsComponent implements CanComponentDeactivate {
         cellRendererParams: {
           onChange: (valueAddition: string) => {},
         },
+
+        valueFormatter: (params) => {
+          //const foundItem = this.bonusCatalogos?.find((item) => item.id === params.value);
+          //console.log(foundItem)
+          //const value = foundItem ? foundItem.valueAddition : params.value;
+          //console.log(value)
+          return params.value
+            ? `$${Number(params.value).toLocaleString('es-MX', {
+                minimumFractionDigits: 2,
+              })}`
+            : '';
+        },
+
         editable: true,
         width: 100,
         hide:
