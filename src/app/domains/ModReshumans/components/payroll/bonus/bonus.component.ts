@@ -418,7 +418,7 @@ export class BonusComponent implements CanComponentDeactivate {
 
       },
       {
-        field: 'quantity',
+        field: 'idBonus',
         headerName: 'Monto',
         editable: false,
         filter: false,
@@ -428,9 +428,7 @@ export class BonusComponent implements CanComponentDeactivate {
         return foundItem ? foundItem.valueAddition : '';
       } */
         valueFormatter: (params) => {
-          const foundItem = this.bonusCatalogos?.find(
-            (item) => item.description === params.data.bonus
-          );
+          const foundItem = this.bonusCatalogos?.find((item) => item.id === params.value);
           //console.log(foundItem)
           const value = foundItem ? foundItem.valueAddition : params.value;
           //console.log(value)
