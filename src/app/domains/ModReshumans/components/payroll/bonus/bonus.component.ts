@@ -515,8 +515,7 @@ export class BonusComponent implements CanComponentDeactivate {
 
   async saveChanges() {
     console.log('---- salvando cambios ', this.rowData);
-    const isValid = this.rowData.every(
-      (item) => item.employeeName && item.incidenceDate && item.bonus
+    const isValid = this.rowData.every((item) => item.employeeName && item.incidenceDate && item.idBonus
     );
     if (!isValid) {
       alerts.basicAlert(
