@@ -214,7 +214,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       },
       {
         field: 'vigente',
-        headerName: 'Vigente',
+        headerName: 'Activo',
         editable: true,
         /*suppressMovable: true,
         filter: true,*/

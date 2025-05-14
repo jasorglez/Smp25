@@ -22,6 +22,7 @@ import { Ibranch } from 'app/interface/ibranch';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { HRService } from 'app/services/hr.service';
+import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 
 @Component({
   selector: 'app-branches',
@@ -36,6 +37,11 @@ export class BranchesComponent implements CanComponentDeactivate {
   private modalServiceTable = inject(ModalService);
   private inegiService = inject(InegiService);
   private hrService = inject(HRService);
+  components = {
+    multiLineEditor: MultiLineEditorComponent,
+    autocompleteEditor: AutocompleteEditorComponent
+    
+  }
 
   //Variables master
   masterRowData: any[] = [];
@@ -131,7 +137,7 @@ export class BranchesComponent implements CanComponentDeactivate {
           ...estado,
           id: index + 1,
         }));
-        //console.log(this.estados);
+        console.log(this.estados);
       },
       error: (error) => {
         console.error('Error fetching states', error);
@@ -241,20 +247,35 @@ export class BranchesComponent implements CanComponentDeactivate {
       },
       {
         field: 'idEstado',
-        headerName: 'Estado *',
+        headerName: 'Estado',
         editable: true,
         filter: true,
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: 'autocompleteEditor',
         width: 200,
         cellEditorParams: {
-          values: this.estados ? this.estados.map((item) => item.id) : [],
+          filterList: this.estados.map(e => e.nom_agee
+          ),
+          filterKey: 'nom_agee',
+          placeholder: 'Estado',
+          minLength: 1
         },
         valueFormatter: (params) => {
           const foundItem = this.estados
-            ? this.estados.find((item) => item.id === params.value)
-            : null;
-          return foundItem ? `${foundItem.nom_agee}` : params.value;
+          ? this.estados.find((item) => item.id === params.value)
+          : null;
+          return foundItem ? foundItem.nom_agee : '';
         },
+        
+        valueSetter: (params) => {
+          const selectedName = params.newValue;
+          const estado = this.estados.find(e => e.nom_agee === selectedName);
+          if (estado) {
+            params.data[params.colDef.field] = estado.id;
+            return true;
+          }
+          return false;
+        }
+        
       },
       {
         field: 'address',

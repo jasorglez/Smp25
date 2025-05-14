@@ -36,7 +36,8 @@ export class EmployeesxLoansComponent {
       return params.data?.__isNew === true;
     },
   };
-
+  userRoot: number = 0;
+  authorizedPass:boolean = false;
   rowData: any[] = [];
   maestroRowData: any[] = [];
   detalleRowData: any[] = [];
@@ -58,7 +59,12 @@ export class EmployeesxLoansComponent {
   constructor() {
     effect(() => {
       this.idEmployee = this.signalsService.getIdEmployee()();
+      this.userRoot = this.signalsService.getUserRoot()();
       this.loadData();
+      if(this.userRoot == 1){
+        return this.authorizedPass = true;
+      }
+      return this.authorizedPass = false;
     });
   }
 
@@ -230,7 +236,7 @@ export class EmployeesxLoansComponent {
         return '';
       },
       flex: 1,
-      editable: (params) => params.data?.__isNew === true,
+      editable: (params) => params.data?.__isNew === true || this.authorizedPass,
     },
     {
       headerName: 'Pagado',
@@ -302,7 +308,7 @@ export class EmployeesxLoansComponent {
         return '$0.00';
       },
       flex: 2,
-      editable: (params) => params.data?.__isNew === true,
+      editable: (params) => params.data?.__isNew === true || this.authorizedPass,
     },
     {
       headerName: 'Comentario',

@@ -45,6 +45,8 @@ export class EmployeesxSavingsComponent {
   idLoan: number = null;
   nameLoan: string = null;
   id: number;
+  userRoot: number = 0;
+  authorizedPass:boolean = false;
   masterNotSavedChanges: boolean = false;
   detailNotSavedChanges: boolean = false;
   selectedLoanId: any;
@@ -58,7 +60,13 @@ export class EmployeesxSavingsComponent {
   constructor() {
     effect(() => {
       this.idEmployee = this.signalsService.getIdEmployee()();
+      this.userRoot = this.signalsService.getUserRoot()();
       this.loadData();
+      if(this.userRoot == 1){
+        return this.authorizedPass = true;
+      }
+      return this.authorizedPass = false;
+      
     });
   }
 
@@ -229,7 +237,7 @@ export class EmployeesxSavingsComponent {
         return '';
       },
       flex: 1,
-      editable: (params) => params.data?.__isNew === true,
+      editable: (params) => params.data?.__isNew === true || this.authorizedPass,
     },
     {
       headerName: 'Retirado',
@@ -301,7 +309,7 @@ export class EmployeesxSavingsComponent {
         return '$0.00';
       },
       flex: 2,
-      editable: (params) => params.data?.__isNew === true,
+      editable: (params) => params.data?.__isNew === true || this.authorizedPass,
     },
     {
       headerName: 'Comentario',
