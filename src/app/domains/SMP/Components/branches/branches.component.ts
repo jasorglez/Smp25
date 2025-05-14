@@ -21,6 +21,7 @@ import { environment } from '@env/environment';
 import { Ibranch } from 'app/interface/ibranch';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
+import { HRService } from 'app/services/hr.service';
 
 @Component({
   selector: 'app-branches',
@@ -34,6 +35,7 @@ export class BranchesComponent implements CanComponentDeactivate {
   private branchesService = inject(BranchsService);
   private modalServiceTable = inject(ModalService);
   private inegiService = inject(InegiService);
+  private hrService = inject(HRService);
 
   //Variables master
   masterRowData: any[] = [];
@@ -56,7 +58,7 @@ export class BranchesComponent implements CanComponentDeactivate {
 
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
-  
+
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
 
@@ -166,139 +168,138 @@ export class BranchesComponent implements CanComponentDeactivate {
 
   get colMaster(): ColDef[] {
     const columns: ColDef[] = [];
-    
+
     // Agregar columna condicional
     if (this.signalsService.getemailChoose() === environment.root) {
-        columns.push({          
-            field: 'rootName', 
-            headerName: 'Empresa', 
-            editable: false, 
-            filter: true,
-            width: 200,
-            enableRowGroup: true,  // Permite agrupar por esta columna
-            enablePivot: true,    // Permite usar esta columna como pivote
-            rowGroup: true,      // Inicialmente no agrupado (puedes cambiarlo a true si quieres que se agrupe por defecto)
-            pivot: true,
-            headerCheckboxSelection: false,
-            checkboxSelection: false       // Inicialmente no como pivote
-        })
+      columns.push({
+        field: 'rootName',
+        headerName: 'Empresa',
+        editable: false,
+        filter: true,
+        width: 200,
+        enableRowGroup: true,  // Permite agrupar por esta columna
+        enablePivot: true,    // Permite usar esta columna como pivote
+        rowGroup: true,      // Inicialmente no agrupado (puedes cambiarlo a true si quieres que se agrupe por defecto)
+        pivot: true,
+        headerCheckboxSelection: false,
+        checkboxSelection: false       // Inicialmente no como pivote
+      })
     }
 
     // Agregar el resto de las columnas
     columns.push(
-        {
-            field: 'name',
-            headerName: 'Nombre *',
-            editable: true,
-            filter: true,
-            width: 250,
-            valueSetter: (params) => {
-              const rawValue = params.newValue;
-              if (!rawValue || typeof rawValue !== 'string') {
-                alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
-                return false;
-              }
-          
-              const normalizedValue = rawValue.trim().toUpperCase();
-          
-              if (!normalizedValue) {
-                alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
-                return false;
-              }
-          
-              const duplicateExists = this.masterRowData.some(
-                (row, index) =>
-                  index !== params.node.rowIndex &&
-                  row.name?.toUpperCase() === normalizedValue
-              );
-          
-              if (duplicateExists) {
-                alerts.basicAlert(
-                  'Nombre duplicado',
-                  'Ya existe una sucursal con ese nombre.',
-                  'error'
-                );
-                return false;
-              }
-          
-              params.data[params.colDef.field] = normalizedValue;
-              return true;
-            },
-            
+      {
+        field: 'name',
+        headerName: 'Nombre *',
+        editable: true,
+        filter: true,
+        width: 250,
+        valueSetter: (params) => {
+          const rawValue = params.newValue;
+          if (!rawValue || typeof rawValue !== 'string') {
+            alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
+            return false;
+          }
+
+          const normalizedValue = rawValue.trim().toUpperCase();
+
+          if (!normalizedValue) {
+            alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
+            return false;
+          }
+
+          const duplicateExists = this.masterRowData.some(
+            (row, index) =>
+              index !== params.node.rowIndex &&
+              row.name?.toUpperCase() === normalizedValue
+          );
+
+          if (duplicateExists) {
+            alerts.basicAlert(
+              'Nombre duplicado',
+              'Ya existe una sucursal con ese nombre.',
+              'error'
+            );
+            return false;
+          }
+
+          params.data[params.colDef.field] = normalizedValue;
+          return true;
         },
-        {
-            field: 'description',
-            headerName: 'Descripción *',
-            editable: true,
-            filter: true,
-            width: 400,
-            valueSetter: (params) => {
-                params.data[params.colDef.field] = params.newValue?.toUpperCase();
-                return true;
-            },
+
+      },
+      {
+        field: 'description',
+        headerName: 'Descripción *',
+        editable: true,
+        filter: true,
+        width: 400,
+        valueSetter: (params) => {
+          params.data[params.colDef.field] = params.newValue?.toUpperCase();
+          return true;
         },
-        {
-            field: 'idEstado',
-            headerName: 'Estado *',
-            editable: true,
-            filter: true,
-            cellEditor: 'agSelectCellEditor',
-            width: 200,
-            cellEditorParams: {
-                values: this.estados ? this.estados.map((item) => item.id) : [],
-            },
-            valueFormatter: (params) => {
-                const foundItem = this.estados
-                    ? this.estados.find((item) => item.id === params.value)
-                    : null;
-                return foundItem ? `${foundItem.nom_agee}` : params.value;
-            },
+      },
+      {
+        field: 'idEstado',
+        headerName: 'Estado *',
+        editable: true,
+        filter: true,
+        cellEditor: 'agSelectCellEditor',
+        width: 200,
+        cellEditorParams: {
+          values: this.estados ? this.estados.map((item) => item.id) : [],
         },
-        {
-            field: 'address',
-            headerName: 'Dirección *',
-            editable: true,
-            filter: true,
-            width: 400,
-             /*cellEditor: 'agPopupTextCellEditor',
-           cellEditorParams: {
-                maxLength: 100,
-                cols: 50,
-                rows: 3,
-            },
-            onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-                if (!event.node.group) {
-                    this.modalServiceTable.showModal({
-                        params: event,
-                        value: event.value,
-                    });
-                }
-            },
-            cellRenderer: (params: ICellRendererParams) => {
-                return params.node.group ? params.value : params.value;
-            },*/
-            valueSetter: (params) => {
-                params.data[params.colDef.field] = params.newValue?.toUpperCase();
-                return true;
-            },
+        valueFormatter: (params) => {
+          const foundItem = this.estados
+            ? this.estados.find((item) => item.id === params.value)
+            : null;
+          return foundItem ? `${foundItem.nom_agee}` : params.value;
         },
-        {
-            field: 'vigente',
-            headerName: 'Activo',
-            editable: true,
-            suppressMovable: true,
-            filter: true,
-            width: 150,
-            cellRenderer: (params) => {
-                return `<input type="checkbox" ${
-                    params.value ? 'checked' : ''
-                } disabled />`;
-            },
-        }
+      },
+      {
+        field: 'address',
+        headerName: 'Dirección *',
+        editable: true,
+        filter: true,
+        width: 400,
+        /*cellEditor: 'agPopupTextCellEditor',
+      cellEditorParams: {
+           maxLength: 100,
+           cols: 50,
+           rows: 3,
+       },
+       onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+           if (!event.node.group) {
+               this.modalServiceTable.showModal({
+                   params: event,
+                   value: event.value,
+               });
+           }
+       },
+       cellRenderer: (params: ICellRendererParams) => {
+           return params.node.group ? params.value : params.value;
+       },*/
+        valueSetter: (params) => {
+          params.data[params.colDef.field] = params.newValue?.toUpperCase();
+          return true;
+        },
+      },
+      {
+        field: 'vigente',
+        headerName: 'Activo',
+        editable: true,
+        suppressMovable: true,
+        filter: true,
+        width: 150,
+        cellRenderer: (params) => {
+          return `<input type="checkbox" ${params.value ? 'checked' : ''
+            } disabled />`;
+        },
+      }
     );
 
     return columns;
-}
+  }
 
   onMasterSelectionChanged(event: any) {
     const selectedNodes = event.api.getSelectedNodes();
@@ -371,9 +372,9 @@ export class BranchesComponent implements CanComponentDeactivate {
     this.masterGridApi.setGridOption('rowData', this.masterRowData);
     setTimeout(() => {
       const firstRowIndex = 0;
-  
+
       this.masterGridApi.ensureIndexVisible(firstRowIndex);
-  
+
       this.masterGridApi.startEditingCell({
         rowIndex: firstRowIndex,
         colKey: 'name'
@@ -388,7 +389,7 @@ export class BranchesComponent implements CanComponentDeactivate {
         this.masterSelectedRowData = newItem;
       }
     });
-    
+
   }
 
   async saveMasterChanges() {
@@ -412,7 +413,9 @@ export class BranchesComponent implements CanComponentDeactivate {
     // Tipamos explícitamente las promesas
     const addPromises: Promise<Ibranch>[] = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return lastValueFrom(this.branchesService.addBranch(cleanedData));
+      return lastValueFrom(this.branchesService.addBranch(cleanedData)).then(response => {
+        return response;
+      });
     });
 
     const updatePromises: Promise<Ibranch>[] = modifiedRows.map((row) => {
@@ -437,14 +440,35 @@ export class BranchesComponent implements CanComponentDeactivate {
         );
         console.log(response.id);
 
+        // Aquí construyo HRManagement.
+        const newItem = {
+          idBranch: response.id,
+          vigency: 120,
+          startDay: 'Lunes',
+          clockTolerance: 10,
+          delay1: 60,
+          delay2: 120,
+          discount1: true,
+          discount2: true,
+          discount: 50,
+          payrollPeriod: 15,
+          overtimePay: 100,
+          specialOvertimePay: 150,
+          active: true
+        };
         if (response.id && correspondingNewRow) {
           try {
+            // El creador de la sucursal tiene permisos sobre la sucursal
             await lastValueFrom(
               this.branchesService.assignPermissionAfterCreation(
                 this.idUser,
                 response.id,
                 'branch'
               )
+            );
+            // Se añaden valores por default a HRManagement
+            await lastValueFrom(
+              this.hrService.addHRManagementData(newItem)
             );
           } catch (permError) {
             console.error('Error asignando permiso:', permError);
@@ -469,6 +493,7 @@ export class BranchesComponent implements CanComponentDeactivate {
       if (allResponses.length > 0) {
         await this.obtenerDatos();
       }
+      this.signalsService.triggerUpdateBranchList(); // Actualizamos la sidebar
     } catch (error) {
       console.error(error);
       alerts.basicAlert(
@@ -520,6 +545,7 @@ export class BranchesComponent implements CanComponentDeactivate {
                 'La sucursal ha sido eliminada correctamente.',
                 'success'
               );
+              this.signalsService.triggerUpdateBranchList();
               this.obtenerDatos(); // Refrescar los datos después de eliminar
               this.masterNotSavedChanges = false;
               this.masterSelectedRowData = null;

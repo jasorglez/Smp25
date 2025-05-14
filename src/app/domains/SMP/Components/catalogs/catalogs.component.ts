@@ -49,6 +49,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
   selectedRowData: any = null;
 
   idRoot: number;
+  tipo: string;
   selectedCatalog: string; // Variable para almacenar e
   showDetailsTab: boolean = false;
   gridHeight: string = '50vh';
@@ -84,12 +85,21 @@ export class CatalogsComponent implements CanComponentDeactivate {
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
 
+  private traducciones: { [key: string]: string } = {
+    BONUS: 'bono',
+    POSITION: 'puesto',
+    DEPARTAMENT: 'departamento',
+    ABSENCES: 'justificacion'
+  };
+
   onCatalogChange(event: Event) {
     const selectElement = event.target as HTMLSelectElement;
     this.selectedCatalog = selectElement.value; // Almacena el valor seleccionado
+    this.tipo =  this.traducciones[this.selectedCatalog] || 'Desconocido';
     this.obtenerDatos(); // Vuelve a ejecutar la consulta con el nuevo valor
   }
-
+  
+  
   obtenerTables() {
     this.tableService
       .getTablesxmodules(this.signalsService.getCatalogSelected())
@@ -167,7 +177,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
           if (duplicateExists) {
             alerts.basicAlert(
               'Nombre duplicado',
-              'Ya existe un empleado con ese nombre.',
+              `Ya existe un ${this.tipo} con ese nombre.`,
               'error'
             );
             return false;

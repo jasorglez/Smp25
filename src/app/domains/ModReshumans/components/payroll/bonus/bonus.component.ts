@@ -296,7 +296,6 @@ export class BonusComponent implements CanComponentDeactivate {
           const emp = this.empleadoCatalgos?.find(
             (e) => e.name === params.data.employeeName
           );
-          //console.log("valor ", emp ? emp.id : '')
           return emp ? emp.id : '';
         },
       },
@@ -339,15 +338,17 @@ export class BonusComponent implements CanComponentDeactivate {
           defaultToNothingSelected: true,
           //excelMode: 'mac',
         },
+        cellEditor: 'autocompleteEditor',
+        cellEditorParams: {
+          filterList: this.empleadoCatalgos?.map((e) => e.name.toUpperCase()) || [],
+          filterKey: 'name',
+          placeholder: 'Buscar empleado...',
+          minLength: 1,
+        },
         filter: true,
         width: 200,
         flex: 1,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.empleadoCatalgos
-            ? this.empleadoCatalgos.map((item) => item.name)
-            : [],
-        },
+        
         valueFormatter: (params) => {
           return params.value || '';
         },
@@ -448,11 +449,8 @@ export class BonusComponent implements CanComponentDeactivate {
       const bonusInfo = this.bonusCatalogos?.find(
         (item) => item.description === selectedBonus
       );
-      //console.log("---- info del bono: ", bonusInfo);
-      //console.log("---- info del bono: ", bonusInfo?.valueAddition);
 
       if (bonusInfo) {
-        // Actualizamos el monto (quantity)
         event.data.quantity = parseFloat(bonusInfo.valueAddition);
       }
     }
@@ -561,24 +559,25 @@ export class BonusComponent implements CanComponentDeactivate {
     });
 
     const updateObservables = modifiedRows.map((row) => {
-      const cleanedDataUpdate = this.cleanDataForServer(row);
-      const date = new Date(cleanedDataUpdate.incidenceDate);
-
+      const cleanedData = this.cleanDataForServer(row); // Solo una vez
+    
+      // Formatear fecha
+      const date = new Date(cleanedData.incidenceDate);
       const year = date.getFullYear();
       const month = ('0' + (date.getMonth() + 1)).slice(-2);
       const day = ('0' + date.getDate()).slice(-2);
-      cleanedDataUpdate.incidenceDate = `${year}-${month}-${day}T00:00:00`;
-
-      const cleanedData = this.cleanDataForServer(row);
-
+      cleanedData.incidenceDate = `${year}-${month}-${day}T00:00:00`;
+    
+      // Log y push
       console.log('DATOS LIMPIOS POR ACTUALIZAR: ', cleanedData);
       if (cleanedData != null) this.cleanedListData.push(cleanedData);
-      console.log('Datos por actualizar: ', this.cleanedListData);
+    console.log(row.id,cleanedData)
       return this.administrationService.updateEmployeesBonus(
-        cleanedData.id,
+        row.id,
         cleanedData
       );
     });
+    
 
     try {
       const responses = await lastValueFrom(
