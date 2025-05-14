@@ -44,7 +44,7 @@ import { BranchsService } from 'app/services/branchs.service';
 })
 export class MasterPayrollComponent implements OnInit {
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
-  
+
   constructor() {
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
@@ -160,7 +160,7 @@ export class MasterPayrollComponent implements OnInit {
         headerName: 'Fecha Inicio',
         field: 'startDate',
         filter: 'agDateColumnFilter',
-        
+
         editable: (params) => {
           return this.aggregatingRecord;
         },
@@ -307,6 +307,7 @@ export class MasterPayrollComponent implements OnInit {
 
           return foundBranch ? foundBranch.name : params.value;
         },
+        
         valueGetter: (params) => {
           if (!params.data || !params.data.idBranch) return '';
           const branch = this.branchs?.find(b => b.id === params.data.idBranch);

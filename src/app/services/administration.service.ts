@@ -149,7 +149,7 @@ export class AdministrationService {
   }
 
   updateEmployeesBonus(iDBonus: number, data: any): Observable<any> {
-    console.log("------ entrando a administration service -- update bonus");
+    console.log("------ entrando a administration service -- update bonus", data);
     return this.http.put(`${environment.urlAdministration}/NormalPayrolls/${iDBonus}`, data, { headers: this.trackingService.getHeaders() })
   }
 

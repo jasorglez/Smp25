@@ -248,6 +248,7 @@ export class BonusComponent implements CanComponentDeactivate {
         this.administrationService.getEmployeesBonus(this.fechaInicio, this.fechaFin, this.idBranch)
       );
       this.rowData = data;
+      console.log("---- data de bonos empleados: ", this.rowData);
     } catch (err) {
       console.error('Error al obtener empleados con bonus:', err);
     }
@@ -348,7 +349,7 @@ export class BonusComponent implements CanComponentDeactivate {
         filter: true,
         width: 200,
         flex: 1,
-        
+
         valueFormatter: (params) => {
           return params.value || '';
         },
@@ -382,7 +383,7 @@ export class BonusComponent implements CanComponentDeactivate {
         },
       },
       {
-        field: 'bonus',
+        field: 'idBonus',
         headerName: 'Concepto',
         editable: true,
         filter: true,
@@ -400,18 +401,21 @@ export class BonusComponent implements CanComponentDeactivate {
           params.value == 'N/A' ? { backgroundColor: '#FFD6E7' } : null,
 
         cellEditorParams: {
-          values: this.bonusCatalogos
-            ? this.bonusCatalogos.map((item) => item.description)
-            : [],
+          //values: this.bonusCatalogos ? this.bonusCatalogos.map((item) => item.description) : [],
+          values: this.bonusCatalogos ? this.bonusCatalogos.map((item) => item.id) : [],
+
         },
+
         valueFormatter: (params) => {
-          const foundItem = this.bonusCatalogos
-            ? this.bonusCatalogos.find(
-                (item) => item.description === params.value
-              )
-            : null;
+          const foundItem = this.bonusCatalogos ? this.bonusCatalogos.find(item => item.id === params.value) : null;
           return foundItem ? `${foundItem.description}` : params.value;
         },
+
+        valueParser: (params) => {
+          const foundItem = this.bonusCatalogos ? this.bonusCatalogos.find(item => item.description === params.newValue) : null;
+          return foundItem ? foundItem.id : params.newValue;
+        },
+
       },
       {
         field: 'quantity',
@@ -560,14 +564,14 @@ export class BonusComponent implements CanComponentDeactivate {
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row); // Solo una vez
-    
+
       // Formatear fecha
       const date = new Date(cleanedData.incidenceDate);
       const year = date.getFullYear();
       const month = ('0' + (date.getMonth() + 1)).slice(-2);
       const day = ('0' + date.getDate()).slice(-2);
       cleanedData.incidenceDate = `${year}-${month}-${day}T00:00:00`;
-    
+
       // Log y push
       console.log('DATOS LIMPIOS POR ACTUALIZAR: ', cleanedData);
       if (cleanedData != null) this.cleanedListData.push(cleanedData);
@@ -577,7 +581,7 @@ export class BonusComponent implements CanComponentDeactivate {
         cleanedData
       );
     });
-    
+
 
     try {
       const responses = await lastValueFrom(
