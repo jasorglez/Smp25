@@ -4,7 +4,6 @@ import { AgGridModule } from 'ag-grid-angular';
 import { FormsModule } from '@angular/forms';
 import * as bootstrap from 'bootstrap';
 import { CommonModule } from '@angular/common';
-import { filter, map } from 'rxjs';
 import { TimeService } from 'app/services/time.service';
 import { HRService } from 'app/services/hr.service';
 import { SignalsService } from 'app/services/signals.service';
@@ -37,30 +36,60 @@ export default class DbComponent {
   customData: any = { Hours: null, PendingOuts: null, Absences: null, Delays: null };
 
   columnDefs = [
-    { headerName: 'Nombre Empleado', field: 'name', flex: 2 , filter: true, filterParams: {defaultToNothingSelected: true},},
-    {
-      headerName: 'Fecha y Hora',
-      field: 'timeStamp',
+    { headerName: 'Nombre Empleado',
+      field: 'employeeName',
       flex: 2,
-      filter: 'agDateColumnFilter',
-      filterParams: {
-        // can be 'windows' or 'mac'
-        defaultToNothingSelected: true,
-        //excelMode: 'mac',
+      filter: true,
+      filterParams: { defaultToNothingSelected: true }, },
+      {
+        headerName: 'Fecha',
+        field: 'date',
+        flex: 1,
+        filter: 'agDateColumnFilter',
+        filterParams: {
+          defaultToNothingSelected: true,
+          excelMode: 'windows',
+          // Especificar el comparador de fechas
+          comparator: (filterLocalDateAtMidnight: Date, cellValue: Date) => {
+            const cellDate = new Date(cellValue);
+            cellDate.setHours(0, 0, 0, 0);
+            
+            if (filterLocalDateAtMidnight.getTime() === cellDate.getTime()) {
+              return 0;
+            }
+            if (cellDate < filterLocalDateAtMidnight) {
+              return -1;
+            }
+            return 1;
+          }
+        },
+        // Formateador para mostrar solo la fecha
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          
+          const date = new Date(params.value);
+          const day = date.getDate().toString().padStart(2, '0');
+          const month = (date.getMonth() + 1).toString().padStart(2, '0');
+          const year = date.getFullYear();
+          
+          return `${day}-${month}-${year}`;
+        }
       },
-      valueFormatter: (params) => {
-        const date = new Date(params.value);
-        return date.toLocaleString('es-MX', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit'
-        });
-      }
-    },
-    { headerName: 'Tipo', field: 'type', flex: 1},
+      {
+        headerName: 'Hora',
+        field: 'hour',
+        flex: 1,
+        filter: 'agTextColumnFilter',
+        valueFormatter: (params) => {
+          const date = new Date(params.value);
+          return date.toLocaleTimeString('es-MX', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          });
+        }
+      },
+    { headerName: 'Tipo', field: 'type', flex: 1 },
     { headerName: 'Válido', field: 'valid', flex: 1 },
     { headerName: 'Minutos descontados', field: 'minuteDiscount', flex: 1 }
   ];
@@ -90,15 +119,19 @@ export default class DbComponent {
   getData() {
     this.clockService.getCheckInfo(this.idBranch).subscribe(
       data => {
-        this.data = data;
-        console.log(data);
+        // Convertir las cadenas de fecha a objetos Date
+        this.data = data.map(item => ({
+          ...item,
+          date: new Date(item.date),  // Convertir cadena a Date
+          hour: new Date(`${item.date}T${item.hour}`)  // Combinar fecha y hora
+        }));
+        console.log(this.data);
       },
       error => {
         this.data = null;
         console.error(error)
       });
   }
-
   onRowDoubleClicked(event: any) {
     this.idEmployee = event.data.id;
     console.log(this.localTime.slice(0, 10), event.data.timeStamp);
