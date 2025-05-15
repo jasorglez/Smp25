@@ -1,6 +1,6 @@
 <div class="mt-2 light-blue-background">
     <div class="flex items-center gap-4">
-        <form [formGroup]="selectFechas" (ngSubmit)="Consultar()">
+        <form [formGroup]="selectFechas">
           <span class="">Fecha inicial</span>
           <input formControlName="fechaInicio" type="date" [max]="fechaFin" class="bg-white rounded border-light p-1 w-auto ml-2" />
 

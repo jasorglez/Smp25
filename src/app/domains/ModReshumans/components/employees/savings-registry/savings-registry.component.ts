@@ -54,9 +54,9 @@ export class SavingsRegistryComponent {
     headerHeight: 25,
     rowHeight: 20,
     suppressEnterWhenEditing: false,
-    rowClassRules: {
+    /*rowClassRules: {
       "row-green": params => params.data?.remain != 0
-    },
+    },*/
     rowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {

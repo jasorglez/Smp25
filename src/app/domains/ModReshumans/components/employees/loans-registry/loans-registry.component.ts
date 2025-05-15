@@ -54,9 +54,9 @@ export class LoansRegistryComponent {
     headerHeight: 25,
     rowHeight: 20,
     suppressEnterWhenEditing: false,
-    rowClassRules: {
+    /*rowClassRules: {
       "row-green": params => params.data?.remain == 0
-    },
+    },*/
     rowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -96,10 +96,10 @@ export class LoansRegistryComponent {
       headerName: 'Fecha',
       field: 'date',
       filter: 'agDateColumnFilter',
-      floatingFilter: true,
-      floatingFilterComponentParams: {
+      //floatingFilter: true,
+      /*floatingFilterComponentParams: {
         suppressFilterButton: true,
-      },
+      },*/
       valueGetter: (params) =>
         params.data.date ? new Date(params.data.date) : null,
       cellRenderer: 'agDateCellRenderer',
@@ -120,20 +120,20 @@ export class LoansRegistryComponent {
       headerName: 'Nombre',
       field: 'employeeName',
       filter: 'agTextColumnFilter',
-      floatingFilter: true,
-      floatingFilterComponentParams: {
+      //floatingFilter: true,
+      /*floatingFilterComponentParams: {
         suppressFilterButton: true,
-      },
+      },*/
       flex: 2
     },
     {
       headerName: 'Prestamo',
       field: 'name',
       filter: 'agTextColumnFilter',
-      floatingFilter: true,
-      floatingFilterComponentParams: {
+      //floatingFilter: true,
+      /*floatingFilterComponentParams: {
         suppressFilterButton: true,
-      },
+      },*/
       flex: 2
     },
     

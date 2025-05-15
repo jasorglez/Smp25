@@ -136,13 +136,13 @@ export class CatalogsComponent implements CanComponentDeactivate {
 
   get colMaster(): ColDef[] {
     return [
-      {
+      /*{
         field: 'id',
         headerName: 'Id',
         editable: true,
         filter: false,
         width: 80,
-      },
+      },*/
       {
         field: 'description',
         headerName: 'Descripción',

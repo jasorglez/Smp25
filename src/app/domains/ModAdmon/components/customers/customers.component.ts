@@ -186,16 +186,13 @@ export class CustomersComponent implements CanComponentDeactivate {
   get colMaster(): ColDef[] {
     return [
       {
-        field: 'id',
-        headerName: 'Id',
-        editable: false,
-        width: 110,
-        hide: false,
-        filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
-        filterParams: {
-          filterOptions: ['equals'], // Opciones de filtro
-        },
+        field: 'vigente',
+        headerName: 'Vigente',
+        editable: true,
+        width: 100,
+        filter: true,
       },
+      
       {
         field: 'idBranch',
         headerName: 'Nombre sucursal *',
@@ -229,6 +226,13 @@ export class CustomersComponent implements CanComponentDeactivate {
         },
       },
       {
+        field: 'nameContact',
+        headerName: 'Nombre Contacto',
+        editable: true,
+        filter: true,
+        width: 200,
+      },
+      {
         field: 'company',
         headerName: 'Compania',
         editable: false,
@@ -260,13 +264,6 @@ export class CustomersComponent implements CanComponentDeactivate {
           }
           return params.value;
         },
-      },
-      {
-        field: 'nameContact',
-        headerName: 'Nombre Contacto',
-        editable: true,
-        filter: true,
-        width: 200,
       },
       {
         field: 'total',
@@ -434,7 +431,7 @@ export class CustomersComponent implements CanComponentDeactivate {
         },
       },
       { field: 'radio', headerName: 'Radio', editable: true, width: 90 },
-      {
+      /*{
         field: 'latitud',
         headerName: 'Latitud',
         editable: true,
@@ -447,7 +444,7 @@ export class CustomersComponent implements CanComponentDeactivate {
         editable: true,
         width: 120,
         filter: true,
-      },
+      },*/
 
       {
         field: 'email',
@@ -487,11 +484,15 @@ export class CustomersComponent implements CanComponentDeactivate {
         },
       },
       {
-        field: 'vigente',
-        headerName: 'Vigente',
-        editable: true,
-        width: 100,
-        filter: true,
+        field: 'id',
+        headerName: 'Id',
+        editable: false,
+        width: 110,
+        hide: false,
+        filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
+        filterParams: {
+          filterOptions: ['equals'], // Opciones de filtro
+        },
       },
     ];
   }
