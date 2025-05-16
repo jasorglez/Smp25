@@ -1,6 +1,7 @@
 import { Component, effect, HostListener, inject } from '@angular/core';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
+import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import {
   CellDoubleClickedEvent,
   ColDef,
@@ -63,18 +64,20 @@ export class CustomersComponent implements CanComponentDeactivate {
   private authService = inject(AuthService);
   private catalogsService = inject(CatalogsService);
   private http = inject(HttpClient);
+  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+  
 
   ngOnInit() {
     this.obtenerDatos();
     this.signalsService.deleteClientData();
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-
     this.route.data.subscribe((data) => {
+      
       this.type = data['type']; // 'CUSTOMERS' o 'PROVIDERS'
-
       this.obtenerDatos(); // Llamar a la función para cargar datos
       this.getStates(); // Llamar a la función para obtener los estados
       this.obtenerBranchs();
+      
     });
   }
 
@@ -92,14 +95,18 @@ export class CustomersComponent implements CanComponentDeactivate {
       this.obtenerBranchs();
       this.getTypecop();
       this.signalsService.deleteClientData();
+      
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+      
     });
 
-    effect(() => {
+    /*effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+      this.userRoot = this.signalsService.getUserRoot()();
       this.obtenerDatos();
       this.obtenerBranchs();
       this.getTypecop();
-    });
+    });*/
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -110,6 +117,7 @@ export class CustomersComponent implements CanComponentDeactivate {
     }
   }
 
+  
   type: string = ''; // Para almacenar el tipo (CUSTOMERS o PROVIDERS)
   gridHeight: string = '75vh';
   showCreditsTab: boolean = false;
@@ -119,7 +127,7 @@ export class CustomersComponent implements CanComponentDeactivate {
   isOpen: boolean = false;
   branchs: any[] = [];
   Typecop: any[] = [];
-
+  
   // Agregar esta nueva variable para almacenar el ID de la última fila editada
   private lastEditedRowId: number | string | null = null;
 
@@ -186,17 +194,31 @@ export class CustomersComponent implements CanComponentDeactivate {
   get colMaster(): ColDef[] {
     return [
       {
+        field: 'id',
+        headerName: 'Id',
+        editable: false,
+        width: 110,
+        hide: false,
+        filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
+        filterParams: {
+          filterOptions: ['equals'], // Opciones de filtro
+        },
+      },
+      {
         field: 'vigente',
-        headerName: 'Vigente',
+        headerName: 'Activo',
         editable: true,
         width: 100,
-        filter: true,
       },
-      
       {
         field: 'idBranch',
         headerName: 'Nombre sucursal *',
         headerClass: 'required-header',
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         hide:
           this.authService.hasDetailedPermission(
             'principal',
@@ -224,22 +246,32 @@ export class CustomersComponent implements CanComponentDeactivate {
 
           return foundBranch ? foundBranch.name : params.value;
         },
+        valueGetter: (params) => {
+          if (!params.data || !params.data.idBranch) return '';
+          const branch = this.branchs?.find(b => b.id === params.data.idBranch);
+          return branch ? branch.name : '';
+        },
       },
       {
         field: 'nameContact',
         headerName: 'Nombre Contacto',
         editable: true,
-        filter: true,
+        //filter: true,
         width: 200,
       },
       {
         field: 'company',
         headerName: 'Compania',
-        editable: false,
+        editable: true,
         width: 250,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         suppressMovable: true,
-        filter: 'agTextColumnFilter',
-        cellEditor: 'agPopupTextCellEditor',
+        filter: true,
+        /*cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
           cols: 50,
@@ -263,7 +295,7 @@ export class CustomersComponent implements CanComponentDeactivate {
             return params.value;
           }
           return params.value;
-        },
+        },*/
       },
       {
         field: 'total',
@@ -290,14 +322,24 @@ export class CustomersComponent implements CanComponentDeactivate {
         editable: true,
         filter: true,
         width: 105,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
       },
       {
         field: 'address',
         headerName: 'Direccion',
-        editable: false,
+        editable: true,
         width: 250,
         filter: true,
-        cellEditor: 'agPopupTextCellEditor',
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
+        /*cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
           cols: 50,
@@ -321,9 +363,9 @@ export class CustomersComponent implements CanComponentDeactivate {
             return params.value;
           }
           return params.value;
-        },
+        },*/
       },
-      {
+      /*{
         field: 'addressfiscal',
         headerName: 'Direccion Fiscal',
         editable: false,
@@ -355,12 +397,17 @@ export class CustomersComponent implements CanComponentDeactivate {
           }
           return params.value;
         },
-      },
+      },*/
       {
         field: 'state',
         headerName: 'Estado',
         filter: true,
         width: 160,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         editable: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
@@ -371,12 +418,22 @@ export class CustomersComponent implements CanComponentDeactivate {
         field: 'city',
         headerName: 'Ciudad',
         editable: true,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         width: 120,
         filter: true,
       },
       {
         field: 'neighborhood',
         headerName: 'Colonia',
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         editable: true,
         filter: true,
         width: 300,
@@ -483,17 +540,6 @@ export class CustomersComponent implements CanComponentDeactivate {
           }
         },
       },
-      {
-        field: 'id',
-        headerName: 'Id',
-        editable: false,
-        width: 110,
-        hide: false,
-        filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
-        filterParams: {
-          filterOptions: ['equals'], // Opciones de filtro
-        },
-      },
     ];
   }
 
@@ -525,7 +571,7 @@ export class CustomersComponent implements CanComponentDeactivate {
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
       this.idClient = this.selectedRowData.id;
-      console.log('ID del empleado seleccionado:', this.idClient);
+      //console.log('ID del empleado seleccionado:', this.idClient);
       this.signalsService.setIdClient(this.selectedRowData.id);
       this.signalsService.setNameClient(this.selectedRowData.company);
     } else {
@@ -633,14 +679,17 @@ export class CustomersComponent implements CanComponentDeactivate {
       : null;
 
     // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
+    
     setTimeout(() => {
-      if (firstEditableColKey) {
-        this.gridApi.startEditingCell({
-          rowIndex: newRowIndex,
-          colKey: firstEditableColKey, // Editar la primera columna editable
-        });
-      }
-    }, 50); // Un pequeño retraso de 50ms
+      const firstRowIndex = 0;
+
+      this.gridApi.ensureIndexVisible(firstRowIndex);
+
+      this.gridApi.startEditingCell({
+        rowIndex: firstRowIndex,
+        colKey: 'idBranch'
+      });
+    }, 0);// Un pequeño retraso de 50ms
   }
 
   async saveChanges() {

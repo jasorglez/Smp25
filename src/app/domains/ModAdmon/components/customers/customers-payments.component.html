@@ -35,7 +35,8 @@
               (selectionChanged)="onMaestroSelectionChanged($event)"
               (cellValueChanged)="onMasterCellValueChanged($event)" (gridReady)="onMaestroGridReady($event)"
               [rowSelection]="'single'"
-              [stopEditingWhenCellsLoseFocus]="true">
+              [stopEditingWhenCellsLoseFocus]="true"
+              [localeText]="AG_GRID_LOCALE_ES">
             </ag-grid-angular>
             </div>
           </div>
@@ -74,7 +75,8 @@
               <ag-grid-angular class="ag-theme-quartz small-text-ag-grid detail-grid" style="height: 40vh;"
                 [rowData]="detalleRowData" [columnDefs]="detalleColumnDefs" [gridOptions]="detalleGridOptions"
                 (gridReady)="onDetalleGridReady($event)" [rowSelection]="'single'"
-                (cellValueChanged)="onDetailCellValueChanged($event)">
+                (cellValueChanged)="onDetailCellValueChanged($event)"
+                [localeText]="AG_GRID_LOCALE_ES">
               </ag-grid-angular>
             </div>
           </div>

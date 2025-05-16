@@ -15,6 +15,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { CustomersService } from 'app/services/customers.service';
 import { AccountbanksComponent } from '../accountbanks/accountbanks.component';
 import { TimeService } from 'app/services/time.service';
+import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 
 @Component({
   selector: 'app-customers-payments',
@@ -36,6 +37,7 @@ export class CustomersPaymentsComponent {
   private customersService = inject(CustomersService);
   private signalsService = inject(SignalsService);
   private timeService = inject(TimeService);
+  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   defaultColDef = {
     flex: 1,
@@ -52,17 +54,24 @@ export class CustomersPaymentsComponent {
 
   constructor() {
     effect(() => {
+      this.userRoot = this.signalsService.getUserRoot()();
       this.idClient = this.signalsService.getIdClient()();
       this.type = this.signalsService.getProviderOrCustomer()();
       this.loadData();
+      if(this.userRoot == 1){
+        return this.authorizedPass = true;
+      }
+      return this.authorizedPass = false;
     });
   }
 
+  authorizedPass:boolean = false;
   maestroRowData: any[] = [];
   detalleRowData: any[] = [];
   gridApi: any;
   idCustomer: number;
   type: string = null;
+  userRoot: number = 0;
   id: number;
   masterNotSavedChanges: boolean = false;
   detailNotSavedChanges: boolean = false;
@@ -148,6 +157,7 @@ export class CustomersPaymentsComponent {
     {
       field: 'date',
       headerName: 'Fecha',
+      filter: 'agDateColumnFilter',
       valueGetter: (params) =>
         params.data.date ? new Date(params.data.date) : null,
       cellRenderer: 'agDateCellRenderer',
@@ -182,7 +192,6 @@ export class CustomersPaymentsComponent {
       field: 'account',
       headerName: 'Abono Cuenta',
       editable: false,
-      filter: true,
       flex: 1,
       valueFormatter: (params) => {
         if (params.value) {
@@ -243,7 +252,7 @@ export class CustomersPaymentsComponent {
         }).format(params.value || 0);
       },
       width: 180,
-      editable: (params) => params.data?.__isNew === true,
+      editable: (params) => params.data?.__isNew === true || this.authorizedPass,
     },
   ];
 

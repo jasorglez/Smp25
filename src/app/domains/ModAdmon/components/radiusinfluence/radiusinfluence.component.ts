@@ -1,4 +1,4 @@
-import { Component, AfterViewInit, OnInit, inject, OnDestroy } from '@angular/core';
+import { Component, AfterViewInit, OnInit, inject, OnDestroy, effect } from '@angular/core';
 import { AdministrationService } from 'app/services/administration.service';
 import { SignalsService } from 'app/services/signals.service';
 import * as L from 'leaflet';
@@ -7,8 +7,7 @@ import * as L from 'leaflet';
   selector: 'app-radiusinfluence',
   standalone: true,
   imports: [],
-  templateUrl: './radiusinfluence.component.html',
-  styleUrl: './radiusinfluence.component.css'
+  templateUrl: './radiusinfluence.component.html'
 })
 export class RadiusinfluenceComponent implements OnInit, AfterViewInit, OnDestroy {
   private administrationService = inject(AdministrationService);
@@ -37,8 +36,14 @@ export class RadiusinfluenceComponent implements OnInit, AfterViewInit, OnDestro
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
     this.obtenerDatos();
   }
+  constructor(){
+    effect(() => {
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+    this.obtenerDatos();
+    })
+  }
 
-  obtenerDatos() {
+  obtenerDatos() { 
     this.administrationService.getTypecustomers(this.idRoot).subscribe({
       next: (data: any) => {
         this.localitation = data;
