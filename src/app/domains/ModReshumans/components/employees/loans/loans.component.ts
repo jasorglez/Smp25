@@ -251,7 +251,7 @@ export class EmployeesxLoansComponent {
         return '$0.00';
       },
       flex: 1,
-      editable: true,
+      editable: false,
     },
     {
       headerName: 'Restante',

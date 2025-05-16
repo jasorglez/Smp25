@@ -132,12 +132,14 @@ export class BonusComponent implements CanComponentDeactivate {
     });
 
     // 2. Suscripciones a cambios
-    this.selectFechas.get('fechaInicio')?.valueChanges.subscribe((value) => {
-      this.fechaInicio = value;
+    this.selectFechas.valueChanges.subscribe((values) => {
+      if (this.selectFechas.valid) {
+        this.fechaInicio = values.fechaInicio;
+        this.fechaFin = values.fechaFin;
+        this.obtenerEmpleados(); // aquí controlas manualmente la ejecución
+      }
     });
-    this.selectFechas.get('fechaFin')?.valueChanges.subscribe((value) => {
-      this.fechaFin = value;
-    });
+    
     // 3. Luego cargas toda la info
     this.obtenerDatosCatalogos();
     this.obtenerEmpleados();
@@ -158,12 +160,19 @@ export class BonusComponent implements CanComponentDeactivate {
 
       this.obtenerConfig();
       this.InicioConsulta();
-
+      this.obtenerEmpleados();
       this.selectFechas = this.fb.group({
         fechaInicio: [this.fechaInicio, Validators.required],
         fechaFin: [this.fechaFin, Validators.required],
       });
-      this.obtenerEmpleados();
+      this.selectFechas.valueChanges.subscribe((values) => {
+        if (this.selectFechas.valid) {
+          this.fechaInicio = values.fechaInicio;
+          this.fechaFin = values.fechaFin;
+          this.obtenerBonosEmpleados(); // aquí controlas manualmente la ejecución
+        }
+      });
+     
     });
   }
 
@@ -773,12 +782,8 @@ export class BonusComponent implements CanComponentDeactivate {
     // }
   }
 
-  InicioConsulta() {
-    this.getDateNew();
-  }
 
-
-  async getDateNew() {
+  async InicioConsulta() {
     await this.getNextPayrollStartDate();
 
     // Determinar fechaInicio
@@ -814,10 +819,15 @@ export class BonusComponent implements CanComponentDeactivate {
     }
 
     // Actualizar formulario reactivo
-    this.selectFechas.patchValue({
-      fechaInicio: this.fechaInicio,
-      fechaFin: this.fechaFin,
-    });
+    this.selectFechas.patchValue(
+      {
+        fechaInicio: this.fechaInicio,
+        fechaFin: this.fechaFin,
+      },
+      { emitEvent: false }
+    );
+    
+    
 
     // Cargar bonos (después de tener fechas definidas)
     await this.obtenerBonosEmpleados();
