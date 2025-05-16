@@ -20,6 +20,10 @@ export class CatalogsService {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/getCatalogsVigente?idCompany=${idRoot}&type=${type}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getCatalogsFromAdmon(idRoot: number, type: string): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlAdministration}/Catalog/getCatalogs?idCompany=${idRoot}&type=${type}`, { headers: this.trackingService.getHeaders() });
+  }
+
   getPermissionxprocess(id: number): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/process-permissions?idProcces=${id}`, { headers: this.trackingService.getHeaders() });
   }
