@@ -100,13 +100,12 @@ export class CustomersComponent implements CanComponentDeactivate {
       
     });
 
-    /*effect(() => {
+    effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      this.userRoot = this.signalsService.getUserRoot()();
       this.obtenerDatos();
       this.obtenerBranchs();
       this.getTypecop();
-    });*/
+    });
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -212,7 +211,7 @@ export class CustomersComponent implements CanComponentDeactivate {
       },
       {
         field: 'idBranch',
-        headerName: 'Nombre sucursal *',
+        headerName: 'Nombre sucursal',
         headerClass: 'required-header',
         filterParams: {
           // can be 'windows' or 'mac'
@@ -476,6 +475,7 @@ export class CustomersComponent implements CanComponentDeactivate {
         headerName: 'Tipo cliente',
         editable: true,
         width: 150,
+        hide: this.type != 'CUSTOMERS',
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.Typecop ? this.Typecop.map((item) => item.id) : [],
@@ -487,7 +487,7 @@ export class CustomersComponent implements CanComponentDeactivate {
           return foundItem ? `${foundItem.description}` : params.value;
         },
       },
-      { field: 'radio', headerName: 'Radio', editable: true, width: 90 },
+      { field: 'radio', headerName: 'Radio', editable: true, width: 90 , hide: this.type != 'CUSTOMERS'},
       /*{
         field: 'latitud',
         headerName: 'Latitud',
