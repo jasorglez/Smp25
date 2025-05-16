@@ -67,12 +67,12 @@ export class CustomersComponent implements CanComponentDeactivate {
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   
 
-  ngOnInit() {
+  async ngOnInit() {
     this.obtenerDatos();
     this.signalsService.deleteClientData();
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+    await this.getTypecop();
     this.route.data.subscribe((data) => {
-      
       this.type = data['type']; // 'CUSTOMERS' o 'PROVIDERS'
       this.obtenerDatos(); // Llamar a la función para cargar datos
       this.getStates(); // Llamar a la función para obtener los estados
@@ -94,11 +94,13 @@ export class CustomersComponent implements CanComponentDeactivate {
       this.obtenerDatos();
       this.obtenerBranchs();
       this.getTypecop();
-      this.signalsService.deleteClientData();
-      
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      
+      this.signalsService.deleteClientData();      
     });
+
+    effect(() => {
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+      this.getTypecop();
+  });
 
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
@@ -170,6 +172,8 @@ export class CustomersComponent implements CanComponentDeactivate {
   public gridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
+    suppressEnterWhenEditing: false,
+    rowBuffer: 20,
     rowClass: (params) => {
       if (params.node.isSelected()) {
         return 'selected-row';
@@ -868,23 +872,28 @@ export class CustomersComponent implements CanComponentDeactivate {
     const selectedId = selectedRowData.id; // Obtener el ID del registro
 
     this.notSavedChanges = true;
+    this.selectedRowData = selectedRowData;
 
     // Filtrar el grid para mostrar solo el registro con el ID seleccionado solo si la columna es "total"
     if (colId === 'total') {
-      const filterModel = {
-        id: {
-          type: 'equals',
-          filter: selectedId,
-        },
-      };
+      if(this.gridApi) {
+        const filterModel = {
+          id: {
+            type: 'equals',
+            filter: selectedId,
+          },
+        };
+        this.gridApi.setFilterModel(filterModel);
+        this.gridApi.onFilterChanged();
+      }
+      else {
+        alert('gridApi no disponible');
+      }
 
-      this.gridApi.setFilterModel(filterModel);
-      this.gridApi.onFilterChanged();
       this.activateCreditsTab(); // Activar la pestaña de créditos si es necesario
     }
 
     console.log('Datos ShowCredits:', this.showCreditsTab);
-    this.selectedRowData = selectedRowData; // Guardar los datos seleccionados
   }
 
   async activateCreditsTab() {
