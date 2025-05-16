@@ -923,7 +923,7 @@ export class CustomersComponent implements CanComponentDeactivate {
   }
 
   getTypecop() {
-    this.catalogsService.getCatalogs(this.idRoot, 'TYPECLIENT').subscribe(
+    this.catalogsService.getCatalogsFromAdmon(this.idRoot, 'TYPECLIENT').subscribe(
       (data: Icatalog[]) => {
         this.Typecop = data;
       },
