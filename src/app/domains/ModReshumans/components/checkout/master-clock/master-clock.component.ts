@@ -214,7 +214,7 @@ export default class MasterClockComponent implements OnInit {
         editable: false
       },
       {
-        field: 'adjustedExtraHours',
+        field: 'specialExtraHours',
         headerName: 'Horas extra especiales',
         editable: false
       },
@@ -350,7 +350,7 @@ export default class MasterClockComponent implements OnInit {
       this.gridApi.setFilterModel(filterModel);
       this.gridApi.onFilterChanged();
     }
-    else if (colId === 'adjustedExtraHours') {
+    else if (colId === 'specialExtraHours') {
       if (!this.isOpen) {
         await this.adjustGridSize();
         this.showSpecialTimesTab = true;
