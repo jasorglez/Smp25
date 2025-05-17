@@ -17,6 +17,7 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
   templateUrl: './db.component.html',
   styleUrl: './db.component.scss'
 })
+
 export default class DbComponent {
 
   private clockService = inject(ClockService);
