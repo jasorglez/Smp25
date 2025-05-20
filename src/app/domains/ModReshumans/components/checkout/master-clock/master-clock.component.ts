@@ -10,11 +10,12 @@ import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/auto
 import { PayrollService } from 'app/services/payroll.service';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import DetailClock2Component from "../detail-clock-2/detail-clock-2.component";
+import { SpecialExtraHoursComponent } from "./special-extra-hours/special-extra-hours.component";
 
 @Component({
   selector: 'app-master-clock',
   standalone: true,
-  imports: [RouterModule, DomainsModule, AgGridModule, DetailClock2Component],
+  imports: [RouterModule, DomainsModule, AgGridModule, SpecialExtraHoursComponent, DetailClock2Component],
   templateUrl: './master-clock.component.html',
   styleUrl: './master-clock.component.scss'
 })
@@ -213,7 +214,7 @@ export default class MasterClockComponent implements OnInit {
         editable: false
       },
       {
-        field: 'adjustedExtraHours',
+        field: 'specialExtraHours',
         headerName: 'Horas extra especiales',
         editable: false
       },
@@ -348,12 +349,17 @@ export default class MasterClockComponent implements OnInit {
 
       this.gridApi.setFilterModel(filterModel);
       this.gridApi.onFilterChanged();
-
-
-
     }
-    if (colId === 'adjustedExtraHours') {
-
+    else if (colId === 'specialExtraHours') {
+      if (!this.isOpen) {
+        await this.adjustGridSize();
+        this.showSpecialTimesTab = true;
+        this.isOpen = true;
+      } else {
+        await this.resetGridSize();
+        this.showSpecialTimesTab = false;
+        this.isOpen = false;
+      }
     }
     else {
       await this.activateDetailsTab();
@@ -376,6 +382,7 @@ export default class MasterClockComponent implements OnInit {
   resetGridSize() {
     this.gridHeight = '80vh'; // Reset to default height
     this.showDetailsTab = false;
+    this.showSpecialTimesTab = false;
     this.gridApi.setFilterModel(null);
     this.gridApi.onFilterChanged();
   }

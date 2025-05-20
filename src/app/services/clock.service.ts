@@ -53,4 +53,26 @@ export class ClockService {
       headers: this.trackingService.getHeaders(),
     });
   }
+
+  getSpecialHoursByEmployee(idEmployee: number, start: string, end: string): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/SpecialExtraHours/employee/${idEmployee}?startDate=${start}&endDate=${end}`, {
+      headers: this.trackingService.getHeaders(),
+    });
+  }
+
+  addSpecialHours(data: any): Observable<any> {
+    return this.http.post(`${environment.urlAdministration}/SpecialExtraHours`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateSpecialHours(id: number, data: any): Observable<any> {
+    return this.http.put(`${environment.urlAdministration}/SpecialExtraHours?id=${id}`, data, {
+      headers: this.trackingService.getHeaders(),
+    });
+  }
+
+  deleteSpecialHours(id: number): Observable<any> {
+    return this.http.delete(`${environment.urlAdministration}/SpecialExtraHours?id=${id}`, {
+      headers: this.trackingService.getHeaders(),
+    });
+  }
 }

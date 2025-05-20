@@ -100,11 +100,6 @@ export class CustomersComponent implements CanComponentDeactivate {
 
    /* effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      this.getTypecop();
-  });
-
-    effect(() => {
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.obtenerDatos();
       this.obtenerBranchs();
       this.getTypecop();

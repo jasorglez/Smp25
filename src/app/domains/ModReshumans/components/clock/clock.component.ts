@@ -8,7 +8,7 @@ import { HRService } from 'app/services/hr.service';
 import { SignalsService } from 'app/services/signals.service';
 import { TimeService } from 'app/services/time.service';
 import { map } from 'rxjs/operators';
-import { DbComponent } from '../employees/db/db.component';
+import { DbComponent } from '../checkout/db/db.component';
 
 @Component({
   selector: 'app-clock',

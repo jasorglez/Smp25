@@ -17,6 +17,7 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
   templateUrl: './db.component.html',
   styleUrl: './db.component.scss'
 })
+
 export default class DbComponent {
 
   private clockService = inject(ClockService);
@@ -68,9 +69,13 @@ export default class DbComponent {
           if (!params.value) return '';
           
           const date = new Date(params.value);
-          const day = date.getDate().toString().padStart(2, '0');
-          const month = (date.getMonth() + 1).toString().padStart(2, '0');
-          const year = date.getFullYear();
+          // Ajustar la fecha para compensar la zona horaria
+          const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+          const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
+          
+          const day = adjustedDate.getDate().toString().padStart(2, '0');
+          const month = (adjustedDate.getMonth() + 1).toString().padStart(2, '0');
+          const year = adjustedDate.getFullYear();
           
           return `${day}-${month}-${year}`;
         }
