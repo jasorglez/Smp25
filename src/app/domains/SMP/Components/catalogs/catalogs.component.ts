@@ -1,6 +1,5 @@
 import { Component, computed, effect, inject, Signal } from '@angular/core';
 import { CatalogsService } from 'app/services/catalogs.service';
-import { CatalogadmonService } from 'app/services/catalogadmon.service';
 import { TablesxmodulesService } from 'app/services/tablesxmodules.service';
 import { SignalsService } from 'app/services/signals.service';
 
@@ -79,7 +78,6 @@ export class CatalogsComponent implements CanComponentDeactivate {
   private catalogService = inject(CatalogsService);
   private signalsService = inject(SignalsService);
   private tableService = inject(TablesxmodulesService);
-  private catalogAdmonService = inject(CatalogadmonService);
 
   public rowSelection: 'single' | 'multiple' = 'single';
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
@@ -120,9 +118,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
     console.log(`Obteniendo datos para tipo: ${catalogType}`);
 
     // Determina qué servicio usar
-    const service = catalogType === 'ADMINISTRATION'
-      ? this.catalogAdmonService
-      : this.catalogService;
+    const service = this.catalogService;
 
     service.getCatalogs(this.idRoot, this.selectedCatalog)
       .subscribe({
