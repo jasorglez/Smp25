@@ -250,7 +250,12 @@ export class CustomersComponent implements CanComponentDeactivate {
         field: 'nameContact',
         headerName: 'Nombre Contacto',
         editable: true,
-        //filter: true,
+        filter: true,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
         width: 200,
       },
       {
@@ -945,7 +950,7 @@ export class CustomersComponent implements CanComponentDeactivate {
   }
 
   getTypecop() {
-    this.catalogsService.getCatalogsFromAdmon(this.idRoot, 'TYPECLIENT').subscribe(
+    this.catalogsService.getCatalogsVigente(this.idRoot, 'TYPECLIENT').subscribe(
       (data: Icatalog[]) => {
         this.Typecop = data;
       },
