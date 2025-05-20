@@ -197,7 +197,12 @@ export class CustomersComponent implements CanComponentDeactivate {
 
   get colMaster(): ColDef[] {
     return [
-      
+      {
+        field: 'id',
+        headerName: 'ID',
+        editable: false,
+        width: 70
+      },
       {
         field: 'vigente',
         headerName: 'Activo',
@@ -561,11 +566,20 @@ export class CustomersComponent implements CanComponentDeactivate {
   }
 
   obtenerDatos() {
-    this.customerService
-      .getCustomers(this.idBranch, this.type)
-      .subscribe((data: any) => {
-        this.rowData = data;
-      });
+    return new Promise((resolve) => {
+      this.customerService
+        .getCustomers(this.idBranch, this.type)
+        .subscribe({
+          next: (data: any) => {
+            this.rowData = data;
+            resolve(true);
+          },
+          error: (error) => {
+            console.error('Error obteniendo datos:', error);
+            resolve(false);
+          }
+        });
+    });
   }
 
   obtenerBranchs() {
@@ -573,7 +587,6 @@ export class CustomersComponent implements CanComponentDeactivate {
     this.branchesService.getBrancheswoa(this.idRoot).subscribe(
       (data: any) => {
         this.branchs = data;
-        console.log(data);
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -588,7 +601,6 @@ export class CustomersComponent implements CanComponentDeactivate {
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
       this.idClient = this.selectedRowData.id;
-      //console.log('ID del empleado seleccionado:', this.idClient);
       this.signalsService.setIdClient(this.selectedRowData.id);
       this.signalsService.setNameClient(this.selectedRowData.company);
     } else {
@@ -635,7 +647,7 @@ export class CustomersComponent implements CanComponentDeactivate {
     try {
       const data = await lastValueFrom(this.inegiService.getZipCodeData(cp));
       this.infoCp = data;
-      console.log(this.infoCp);
+      
       return data;
     } catch (error) {
       if (error.status === 404) {
@@ -681,7 +693,6 @@ export class CustomersComponent implements CanComponentDeactivate {
       active: true,
       __isNew: true,
     };
-    console.log('Nuevo registro:', newItem);
     this.rowData = [newItem, ...this.rowData];
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
@@ -727,6 +738,7 @@ export class CustomersComponent implements CanComponentDeactivate {
       (row) => row.__modified && !row.__isNew
     );
 
+
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       return this.customerService.addCustomer(cleanedData);
@@ -734,10 +746,7 @@ export class CustomersComponent implements CanComponentDeactivate {
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(
-        'Actualizando cliente con los siguientes datos:',
-        cleanedData
-      );
+
       return this.customerService.updateCustomer(row.id, cleanedData);
     });
 
@@ -761,25 +770,23 @@ export class CustomersComponent implements CanComponentDeactivate {
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
 
-      // Esperar a que los datos se carguen completamente
       await this.obtenerDatos();
-
-      // Esperar un ciclo de renderizado adicional
-      await new Promise((resolve) => setTimeout(resolve, 0));
 
       // Seleccionar la fila apropiada después de recargar
       if (this.lastEditedRowId) {
         if (this.lastEditedRowId === 'SELECT_MAX_ID') {
           // Encontrar el ID máximo en los datos actuales
           const maxId = Math.max(...this.rowData.map((row) => Number(row.id)));
+
           this.selectRowById(maxId);
         } else {
+
           this.selectRowById(this.lastEditedRowId);
         }
         this.lastEditedRowId = null;
       }
     } catch (error) {
-      console.error(error);
+      console.error('Error en saveChanges:', error);
       alerts.basicAlert(
         'Error',
         'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
@@ -789,6 +796,12 @@ export class CustomersComponent implements CanComponentDeactivate {
   }
 
   private selectRowById(id: number | string) {
+    
+    if (!this.gridApi) {
+      console.error('Grid API no disponible');
+      return;
+    }
+    
     // Dar tiempo al grid para que se actualice
     setTimeout(() => {
       this.gridApi.forEachNode((node) => {
@@ -798,7 +811,6 @@ export class CustomersComponent implements CanComponentDeactivate {
             ? parseInt(node.data.id)
             : node.data.id;
         const searchId = typeof id === 'string' ? parseInt(id) : id;
-
         if (nodeId === searchId) {
           node.setSelected(true);
           this.gridApi.ensureNodeVisible(node, 'middle');
@@ -905,8 +917,6 @@ export class CustomersComponent implements CanComponentDeactivate {
 
       this.activateCreditsTab(); // Activar la pestaña de créditos si es necesario
     }
-
-    console.log('Datos ShowCredits:', this.showCreditsTab);
   }
 
   async activateCreditsTab() {
