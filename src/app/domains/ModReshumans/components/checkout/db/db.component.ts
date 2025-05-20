@@ -69,9 +69,13 @@ export default class DbComponent {
           if (!params.value) return '';
           
           const date = new Date(params.value);
-          const day = date.getDate().toString().padStart(2, '0');
-          const month = (date.getMonth() + 1).toString().padStart(2, '0');
-          const year = date.getFullYear();
+          // Ajustar la fecha para compensar la zona horaria
+          const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+          const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
+          
+          const day = adjustedDate.getDate().toString().padStart(2, '0');
+          const month = (adjustedDate.getMonth() + 1).toString().padStart(2, '0');
+          const year = adjustedDate.getFullYear();
           
           return `${day}-${month}-${year}`;
         }
