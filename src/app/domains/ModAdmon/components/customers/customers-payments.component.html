@@ -3,11 +3,11 @@
 
     <!-- Sección Créditos -->
     <div class="col-7">
-      <div class="card shadow-sm">
+      <div class="shadow-sm" id="cartPrin">
         <div class="card-header">
           <h3 class="card-title mb-0">Créditos</h3>
         </div>
-        <div class="card-body">
+        <div  id="cartSec">
           <div class="row">
             <div class="col-auto">
               <div class="d-flex flex-column gap-0 me-0">
@@ -46,11 +46,11 @@
 
     <!-- Sección Abonos del Crédito -->
     <div class="col-5">
-      <div class="card shadow-sm">
+      <div class="shadow-sm" id="cartPrin">
         <div class="card-header">
           <h3 class="card-title mb-0">Abonos del Crédito</h3>
         </div>
-        <div class="card-body">
+        <div id="cartSec">
           <div class="row">
             <div class="col-auto">
               <div class="d-flex flex-column gap-0 me-0">
@@ -76,6 +76,7 @@
                 [rowData]="detalleRowData" [columnDefs]="detalleColumnDefs" [gridOptions]="detalleGridOptions"
                 (gridReady)="onDetalleGridReady($event)" [rowSelection]="'single'"
                 (cellValueChanged)="onDetailCellValueChanged($event)"
+                [stopEditingWhenCellsLoseFocus]="true"
                 [localeText]="AG_GRID_LOCALE_ES">
               </ag-grid-angular>
             </div>

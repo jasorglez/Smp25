@@ -82,7 +82,7 @@ export class CustomersComponent implements CanComponentDeactivate {
   }
 
   constructor() {
-    effect(async () => {
+   effect(async () => {
       if (this.signalsService.getRefreshEmployees()() == true) {
         await this.obtenerDatos(); // Actualizar datos cuando se recibe señal
         this.signalsService.resetRefreshEmployees(); // Resetear la señal después de actualizar
@@ -91,13 +91,14 @@ export class CustomersComponent implements CanComponentDeactivate {
 
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.obtenerDatos();
       this.obtenerBranchs();
       this.getTypecop();
       this.signalsService.deleteClientData();      
     });
 
-    effect(() => {
+   /* effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.getTypecop();
   });
@@ -107,7 +108,7 @@ export class CustomersComponent implements CanComponentDeactivate {
       this.obtenerDatos();
       this.obtenerBranchs();
       this.getTypecop();
-    });
+    });*/
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -192,21 +193,33 @@ export class CustomersComponent implements CanComponentDeactivate {
         });
       }
     },
+    onCellKeyDown: (params) => {
+      if (params.event.key === 'Enter') {
+        // Obtener todas las columnas editables
+        const editableColumns = this.colMaster.filter((col) => col.editable);
+        const currentColIndex = editableColumns.findIndex(
+          (col) => col.field === params.column.getColDef().field
+        );
+  
+        if (currentColIndex < editableColumns.length - 1) {
+          // Añadir delay de 50ms antes de mover el foco
+          requestAnimationFrame(() => {
+            // Mover a la siguiente columna editable
+            params.api.startEditingCell({
+              rowIndex: params.node.rowIndex,
+              colKey: editableColumns[currentColIndex + 1].field,
+            });
+          }); // Retraso para permitir que termine la edición actual
+        }
+        params.event.preventDefault(); // Prevenir comportamiento por defecto
+      }
+    },
+    onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
   };
 
   get colMaster(): ColDef[] {
     return [
-      {
-        field: 'id',
-        headerName: 'Id',
-        editable: false,
-        width: 110,
-        hide: false,
-        filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
-        filterParams: {
-          filterOptions: ['equals'], // Opciones de filtro
-        },
-      },
+      
       {
         field: 'vigente',
         headerName: 'Activo',
@@ -463,8 +476,20 @@ export class CustomersComponent implements CanComponentDeactivate {
         headerName: 'Telefono',
         editable: true,
         width: 120,
-        cellEditorParams: {
-          maxLength: 15,
+        valueSetter: (params) => {
+          const phoneValue = params.newValue;
+          // Verificar que el número tenga exactamente 10 dígitos y sea numérico
+          const isValidPhone = /^\d{10}$/.test(phoneValue);
+          if (!isValidPhone) {
+            alerts.basicAlert(
+              'Teléfono inválido',
+              'El teléfono debe contener exactamente 10 dígitos numéricos.',
+              'error'
+            );
+            return false; // No se permite el cambio
+          }
+          params.data[params.colDef.field] = phoneValue;
+          return true;
         },
       },
       {
@@ -543,6 +568,16 @@ export class CustomersComponent implements CanComponentDeactivate {
             return false;
           }
         },
+      },{
+        field: 'id',
+        headerName: 'Id',
+        editable: false,
+        width: 70,
+        hide: true,
+        filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
+        filterParams: {
+          filterOptions: ['equals'], // Opciones de filtro
+        },
       },
     ];
   }
@@ -575,7 +610,6 @@ export class CustomersComponent implements CanComponentDeactivate {
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
       this.idClient = this.selectedRowData.id;
-      //console.log('ID del empleado seleccionado:', this.idClient);
       this.signalsService.setIdClient(this.selectedRowData.id);
       this.signalsService.setNameClient(this.selectedRowData.company);
     } else {
@@ -672,6 +706,7 @@ export class CustomersComponent implements CanComponentDeactivate {
     this.rowData = [newItem, ...this.rowData];
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
+    this.gridApi.setGridOption('rowData', this.rowData);
 
     // Encontrar el índice de la nueva fila
     const newRowIndex = this.rowData.findIndex((row) => row.id === tempId);
@@ -698,7 +733,7 @@ export class CustomersComponent implements CanComponentDeactivate {
 
   async saveChanges() {
     const isValid = this.rowData.every(
-      (item) => item.nameContact || item.company
+      (item) => item.idBranch && (item.nameContact || item.company) && item.idTypecop
     );
     if (!isValid) {
       alerts.basicAlert(

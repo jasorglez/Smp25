@@ -22,7 +22,7 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
   standalone: true,
   imports: [RouterModule, DomainsModule, AgGridModule],
   templateUrl: './customers-payments.component.html',
-  styleUrl: './customers.component.scss',
+  styleUrl: './customers-payments.component.scss',
 })
 export class CustomersPaymentsComponent {
   @HostListener('window:beforeunload', ['$event'])
@@ -173,13 +173,13 @@ export class CustomersPaymentsComponent {
         return '';
       },
       flex: 1,
-      editable: (params) => params.data?.__isNew === true,
+      editable: (params) => params.data?.__isNew === true || this.authorizedPass,
     },
 
     {
       field: 'total',
       headerName: 'Total de la Nota',
-      editable: (params) => params.data?.__isNew === true,
+      editable: (params) => params.data?.__isNew === true || this.authorizedPass,
       valueFormatter: (params) => {
         return new Intl.NumberFormat('es-MX', {
           style: 'currency',
@@ -222,7 +222,7 @@ export class CustomersPaymentsComponent {
       headerName: 'Fecha',
       field: 'datePayment',
       valueGetter: (params) =>
-        params.data.datePayment ? new Date(params.data.datePayment) : null,
+        params.data.datePayment ? new Date(params.data.datePayment) : null ,
       cellEditor: 'agDateCellEditor',
       cellEditorParams: {
         min: new Date(2000, 0, 1),
@@ -239,7 +239,7 @@ export class CustomersPaymentsComponent {
         return '';
       },
       width: 178,
-      editable: (params) => params.data?.__isNew === true,
+      editable: (params) => params.data?.__isNew === true || this.authorizedPass,
     },
     {
       headerName: 'Abono *',

@@ -2,11 +2,11 @@
   <div class="row align-items-start">
 
     <div class="col-7">
-      <div class="card shadow-sm">
+      <div class="shadow-sm" id="cartPrin">
         <div class="card-header">
           <h3 class="card-title mb-0">Prestamos</h3>
         </div>
-        <div class="card-body">
+        <div id="cartSec">
           <div class="row">
             <div class="col-auto">
               <div class="d-flex flex-column gap-0 me-0">
@@ -42,11 +42,11 @@
     </div>
 
     <div class="col-5">
-      <div class="card shadow-sm">
+      <div  class="shadow-sm" id="cartPrin">
         <div class="card-header">
           <h3 class="card-title mb-0">Abonos del préstamo {{idLoan}}</h3>
         </div>
-        <div class="card-body">
+        <div id="cartSec">
           <div class="row">
             <div class="col-auto">
               <div class="d-flex flex-column gap-0 me-0">
@@ -72,7 +72,8 @@
               <ag-grid-angular class="ag-theme-quartz small-text-ag-grid detail-grid" style="height: 55vh;"
                 [rowData]="detalleRowData" [columnDefs]="detalleColumnDefs" [gridOptions]="detalleGridOptions"
                 (gridReady)="onDetalleGridReady($event)" [rowSelection]="'single'"
-                (cellValueChanged)="onDetailCellValueChanged($event)">
+                (cellValueChanged)="onDetailCellValueChanged($event)"
+                [stopEditingWhenCellsLoseFocus]="true">
               </ag-grid-angular>
             </div>
           </div>

@@ -221,7 +221,7 @@ export class EmployeesxSavingsComponent {
         return '';
       },
       flex: 1,
-      editable: (params) => params.data?.__isNew === true,
+      editable: (params) => params.data?.__isNew === true || this.authorizedPass,
     },
     {
       headerName: 'Ahorro *',
@@ -293,7 +293,7 @@ export class EmployeesxSavingsComponent {
         return '';
       },
       flex: 1,
-      editable: (params) => params.data?.__isNew === true,
+      editable: (params) => params.data?.__isNew === true || this.authorizedPass,
     },
     {
       headerName: 'Abono *',

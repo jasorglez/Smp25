@@ -626,6 +626,8 @@ export class SignalsService {
     getRefreshEmployees() {
       return this.refreshEmployees;
     }
+
+    
   
     // Método para actualizar el signal
     triggerRefreshEmployees() {

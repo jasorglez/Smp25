@@ -67,9 +67,6 @@ export class RadiusinfluenceComponent implements OnInit, AfterViewInit, OnDestro
   ngOnDestroy(): void {
     this.cleanMap();
   }
-  prueba(){
-    alert("GHSAD")
-  }
 
   private initializeMap(): void {
     this.map = L.map('map', {
@@ -95,7 +92,6 @@ export class RadiusinfluenceComponent implements OnInit, AfterViewInit, OnDestro
       const lat = parseFloat(loc.latitud);
       const lon = parseFloat(loc.longitud);
       const veriCp = loc.cp
-      console.log(loc.nameContact ,!isNaN(lat), !isNaN(lon), !isNaN(veriCp))
 
       if (!isNaN(lat) && !isNaN(lon) && veriCp != "0") {
         const coordinates: L.LatLngExpression = [lat, lon];
@@ -108,6 +104,7 @@ export class RadiusinfluenceComponent implements OnInit, AfterViewInit, OnDestro
         
         marker.bindPopup(`
           <b>${loc.nameContact}</b><br>
+
           CP: ${loc.cp}<br>
           Radio: ${loc.radio} km
         `);
