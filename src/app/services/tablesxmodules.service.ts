@@ -15,11 +15,19 @@ export class TablesxmodulesService {
 
       private http = inject(HttpClient);
       private trackingService = inject(TrackingService);
+
     
       // Setup WareHouse
-      getTablesxmodules(table : string) {
-        return this.http.get(`${environment.urlWarehouse}/TablesXModules?table=${table}`, { headers: this.trackingService.getHeaders() });
+      getTablesxmodules(table: string, selection: string) {
+        return this.http.get(`${environment.urlWarehouse}/TablesXModules`, {
+          headers: this.trackingService.getHeaders(),
+          params: {
+            table: table,
+            selectedSection: selection
+          }
+        });
       }
+      
         
       addTablesxmodules(data: any): Observable<any> {
         return this.http.post(`${environment.urlWarehouse}/TablesXModules`, data, { headers: this.trackingService.getHeaders() });
@@ -29,7 +37,9 @@ export class TablesxmodulesService {
         return this.http.put<any[]>(`${environment.urlWarehouse}/TablesXModules/${id}`, data, { headers: this.trackingService.getHeaders() });
       }
     
-      
+      getTablesxmodulesSection(table : string) {
+        return this.http.get(`${environment.urlWarehouse}/TablesXModules/secions?table=${table}`, { headers: this.trackingService.getHeaders() });
+      }
 
 
 }

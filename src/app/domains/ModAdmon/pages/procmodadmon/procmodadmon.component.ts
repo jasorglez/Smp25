@@ -16,10 +16,14 @@ export class ProcmodadmonComponent {
   private signalsService = inject(SignalsService);
 
   idUser: number = null;
+  ngOnInit() {
+    this.signalsService.setCatalogSelected('ADMINISTRATION');
+  }
 
   constructor() {
       effect(() => {
         this.idUser = this.signalsService.getIdUSer()();
+        this.signalsService.setCatalogSelected('ADMINISTRATION');
       });
     }
 }

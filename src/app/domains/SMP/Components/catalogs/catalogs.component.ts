@@ -2,7 +2,7 @@ import { Component, computed, effect, inject, Signal } from '@angular/core';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { TablesxmodulesService } from 'app/services/tablesxmodules.service';
 import { SignalsService } from 'app/services/signals.service';
-
+import { ActivatedRoute } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { concat, EMPTY, lastValueFrom } from 'rxjs';
 import { toArray } from 'rxjs/operators';
@@ -46,9 +46,8 @@ export class CatalogsComponent implements CanComponentDeactivate {
   newlyAddedRows: string[] = [];
   table: any[] = [];
   selectedRowData: any = null;
-
+  listsections: any[] = [];
   idRoot: number;
-  tipo: string;
   selectedCatalog: string; // Variable para almacenar e
   showDetailsTab: boolean = false;
   gridHeight: string = '50vh';
@@ -59,18 +58,30 @@ export class CatalogsComponent implements CanComponentDeactivate {
   menuSelect: number;
   showWarehTab: Signal<boolean>;
   showAdmonTab: Signal<boolean>;
+  selectedSection: any;
 
-  constructor() {
+  constructor(private route: ActivatedRoute) {
     effect(() => {
+      
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      this.obtenerTables();
-      this.obtenerDatos();
-    });
+      this.route.paramMap.subscribe(params => {
+        this.selectedSection = params.get('section')!;
+      });
+    this.obtenerTables();
+    this.obtenerTablesSecitons();
+    this.obtenerDatos();
+  });
   }
 
   ngOnInit() {
+    this.rowData = []
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+    this.route.paramMap.subscribe(params => {
+      this.selectedSection = params.get('section')!;
+      this.signalsService.setSectionSelected('')
+    });
     this.obtenerTables();
+    this.obtenerTablesSecitons();
     this.obtenerDatos();
   }
 
@@ -83,27 +94,39 @@ export class CatalogsComponent implements CanComponentDeactivate {
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
 
-  private traducciones: { [key: string]: string } = {
-    BONUS: 'bono',
-    POSITION: 'puesto',
-    DEPARTAMENT: 'departamento',
-    ABSENCES: 'justificacion'
-  };
-
+  
+  onSectionSelected(item: any): void {
+    this.signalsService.setSectionSelected(item.sections);
+    this.rowData = [];
+    this.selectedCatalog= '';
+  }
   onCatalogChange(event: Event) {
     const selectElement = event.target as HTMLSelectElement;
     this.selectedCatalog = selectElement.value; // Almacena el valor seleccionado
-    this.tipo =  this.traducciones[this.selectedCatalog] || 'Desconocido';
     this.obtenerDatos(); // Vuelve a ejecutar la consulta con el nuevo valor
   }
 
 
   obtenerTables() {
     this.tableService
-      .getTablesxmodules(this.signalsService.getCatalogSelected())
+      .getTablesxmodules(this.signalsService.getCatalogSelected(), this.signalsService.getSectionSelected())
       .subscribe(
         (data: any) => {
           this.table = data;
+        },
+        (error) => {
+          if (error.status == 404) this.table = [];
+          console.error('Error fetching data:', error);
+        }
+      );
+  }
+  obtenerTablesSecitons() {
+    this.tableService
+      .getTablesxmodulesSection(this.signalsService.getCatalogSelected())
+      .subscribe(
+        (data: any) => {
+          this.listsections = data;
+          console.log(this.listsections)
         },
         (error) => {
           if (error.status == 404) this.table = [];
@@ -127,6 +150,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
       });
   }
 
+  
 
   //OPERACIONES DE LOS GRIDS
 
@@ -173,7 +197,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
           if (duplicateExists) {
             alerts.basicAlert(
               'Nombre duplicado',
-              `Ya existe un ${this.tipo} con ese nombre.`,
+              `Ya existe un  con ese nombre.`,//${}
               'error'
             );
             return false;
@@ -317,6 +341,16 @@ export class CatalogsComponent implements CanComponentDeactivate {
     this.rowData = [newItem, ...this.rowData];
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
+    setTimeout(() => {
+      const firstRowIndex = 0;
+
+      this.gridApi.ensureIndexVisible(firstRowIndex);
+
+      this.gridApi.startEditingCell({
+        rowIndex: firstRowIndex,
+        colKey: 'description'
+      });
+    }, 0);// Un pequeño retraso de 50ms
   }
 
   async saveChanges() {
