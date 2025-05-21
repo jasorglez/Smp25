@@ -193,8 +193,13 @@ export default class MasterClockComponent implements OnInit {
         editable: false
       },
       {
+        field: 'baseHours',
+        headerName: 'Horas base',
+        editable: false
+      },
+      {
         field: 'hours',
-        headerName: 'Horas laboradas',
+        headerName: 'Horas ajustadas',
         editable: false,
         cellStyle: (params) => {
           if (params.value == 0) {
@@ -202,11 +207,6 @@ export default class MasterClockComponent implements OnInit {
           }
           return null;
         }
-      },
-      {
-        field: 'baseHours',
-        headerName: 'Horas base',
-        editable: false
       },
       {
         field: 'extraHours',
@@ -219,8 +219,8 @@ export default class MasterClockComponent implements OnInit {
         editable: false
       },
       {
-        field: 'pendingOuts',
-        headerName: 'Salidas pendientes',
+        field: 'delays',
+        headerName: 'Retardos',
         editable: false,
         cellStyle: (params) => {
           if (params.value > 0) {
@@ -230,8 +230,8 @@ export default class MasterClockComponent implements OnInit {
         }
       },
       {
-        field: 'absences',
-        headerName: 'Ausencias',
+        field: 'pendingOuts',
+        headerName: 'Salidas pendientes',
         editable: false,
         cellStyle: (params) => {
           if (params.value > 0) {
@@ -246,8 +246,8 @@ export default class MasterClockComponent implements OnInit {
         editable: false
       },
       {
-        field: 'delays',
-        headerName: 'Retrasos',
+        field: 'absences',
+        headerName: 'Faltas',
         editable: false,
         cellStyle: (params) => {
           if (params.value > 0) {
