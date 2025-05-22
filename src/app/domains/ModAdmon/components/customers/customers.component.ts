@@ -198,12 +198,6 @@ export class CustomersComponent implements CanComponentDeactivate {
   get colMaster(): ColDef[] {
     return [
       {
-        field: 'id',
-        headerName: 'ID',
-        editable: false,
-        width: 70
-      },
-      {
         field: 'vigente',
         headerName: 'Activo',
         editable: true,
