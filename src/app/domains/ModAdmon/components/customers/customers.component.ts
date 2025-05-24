@@ -107,6 +107,7 @@ export class CustomersComponent implements CanComponentDeactivate {
       this.obtenerDatos();
       this.obtenerBranchs();
       this.getTypecop();
+      console.log(this.contactoCatalog)
     });
   }
 
@@ -128,6 +129,7 @@ export class CustomersComponent implements CanComponentDeactivate {
   isOpen: boolean = false;
   branchs: any[] = [];
   Typecop: any[] = [];
+  contactoCatalog: any[] = [];
   
   // Agregar esta nueva variable para almacenar el ID de la última fila editada
   private lastEditedRowId: number | string | null = null;
@@ -143,6 +145,7 @@ export class CustomersComponent implements CanComponentDeactivate {
   idBranch: number = null;
   idEmployee: number;
   infoCp: any;
+  
 
   private estados: string[] = []; // Agregar esta variable para almacenar los estados
 
@@ -256,6 +259,38 @@ export class CustomersComponent implements CanComponentDeactivate {
           //excelMode: 'mac',
         },
         width: 200,
+        valueSetter: (params) => {
+          const rawValue = params.newValue;
+          if (!rawValue || typeof rawValue !== 'string') {
+            alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
+            return false;
+          }
+
+          const normalizedValue = rawValue.trim().toUpperCase();
+
+          if (!normalizedValue) {
+            alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
+            return false;
+          }
+
+          const duplicateExists = this.contactoCatalog.some(
+            (row, index) =>
+              index !== params.node.rowIndex &&
+              row.nameContact?.toUpperCase() === normalizedValue
+          );
+
+          if (duplicateExists) {
+            alerts.basicAlert(
+              'Nombre duplicado',
+              'Ya existe un nombre de contacto registrado.',
+              'error'
+            );
+            return false;
+          }
+
+          params.data[params.colDef.field] = normalizedValue;
+          return true;
+        },
       },
       {
         field: 'company',
@@ -269,6 +304,10 @@ export class CustomersComponent implements CanComponentDeactivate {
         },
         suppressMovable: true,
         filter: true,
+        valueSetter: (params) => {
+          params.data[params.colDef.field] = params.newValue.toUpperCase();
+          return true;
+        }
         /*cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
@@ -611,6 +650,24 @@ export class CustomersComponent implements CanComponentDeactivate {
     event.data.__modified = true;
     this.notSavedChanges = true;
 
+    if (event.colDef.field === 'idBranch') {
+      const selecteEmpleado = event.newValue;
+      let branchSelect = this.branchs?.find(
+        (item) => item.name === selecteEmpleado
+      );
+      this.customerService
+        .getCustomers(branchSelect.id, this.type)
+        .subscribe({
+          next: (data: any) => {
+            this.contactoCatalog = data;
+            console.log(this.contactoCatalog)
+          },
+          error: (error) => {
+            console.error('Error obteniendo datos:', error);
+          }
+        });
+    }
+
     if (event.colDef.field === 'cp') {
       event.data.neighborhood = '';
 
@@ -625,7 +682,7 @@ export class CustomersComponent implements CanComponentDeactivate {
           event.data.state = cpData.estado;
           event.data.city = cpData.ciudad || 'N/A';
 
-          this.gridApi.applyTransaction({ update: [event.data] });
+          this.gridApi.applyTransaction({ update: [event.data ] });
         }
       }, 500);
     }
@@ -721,7 +778,7 @@ export class CustomersComponent implements CanComponentDeactivate {
 
   async saveChanges() {
     const isValid = this.rowData.every(
-      (item) => item.idBranch && (item.nameContact || item.company) && item.idTypecop
+      (item) => item.idBranch && (item.nameContact || item.company) && (this.type == 'PROVIDERS') || (this.type == 'CUSTOMERS' && item.idTypecop)
     );
     if (!isValid) {
       alerts.basicAlert(
