@@ -218,6 +218,16 @@ public gridOptions: any = {
         flex: 1
       },
       {
+        field: 'personType',
+        headerName: 'Tipo de persona',
+        editable: true,
+        flex: 1,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: ['MORAL', 'FISICA']
+        }
+      },
+      {
         field: 'phone',
         headerName: 'Teléfono',
         editable: true,

@@ -844,6 +844,10 @@ export const routes: Routes = [
             children: [
               { path: '', redirectTo: 'history-clock', pathMatch: 'full' },
               {
+                path: 'discrepancies',
+                loadComponent: () => import('./domains/ModReshumans/components/checkout/discrepancies/discrepancies.component'),
+              },
+              {
                 path: 'history-clock',
                 loadComponent: () => import('./domains/ModReshumans/components/checkout/db/db.component'),
               },
