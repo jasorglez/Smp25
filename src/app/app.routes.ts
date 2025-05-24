@@ -402,6 +402,19 @@ export const routes: Routes = [
               ).then((s) => s.SetupAdmonComponent),
           },
           {
+            path: 'catalogs',
+            loadComponent: () =>
+              import('./domains/SMP/Components/catalogs/catalogs.component')
+                .then((s) => s.CatalogsComponent),
+            canDeactivate: [UnsavedChangesGuard],
+            children: [
+              {
+                path: ':section',
+                loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(p => p.CatalogsComponent)
+              },
+            ],
+          },
+          {
             path: 'income',
             loadComponent: () =>
               import(
@@ -752,14 +765,14 @@ export const routes: Routes = [
                     './domains/ModReshumans/components/employees/savings-registry/savings-registry.component'
                   ).then((s) => s.SavingsRegistryComponent),
               },
-              {
+              /*{
                 path: 'catalogs',
                 loadComponent: () =>
                   import(
                     './domains/SMP/Components/catalogs/catalogs.component'
                   ).then((s) => s.CatalogsComponent),
                 canDeactivate: [UnsavedChangesGuard],
-              },
+              },*/
             ],
           },
           
@@ -831,6 +844,10 @@ export const routes: Routes = [
             children: [
               { path: '', redirectTo: 'history-clock', pathMatch: 'full' },
               {
+                path: 'discrepancies',
+                loadComponent: () => import('./domains/ModReshumans/components/checkout/discrepancies/discrepancies.component'),
+              },
+              {
                 path: 'history-clock',
                 loadComponent: () => import('./domains/ModReshumans/components/checkout/db/db.component'),
               },
@@ -852,11 +869,16 @@ export const routes: Routes = [
           {
             path: 'catalogs',
             loadComponent: () =>
-              import(
-                './domains/SMP/Components/catalogs/catalogs.component'
-              ).then((s) => s.CatalogsComponent),
+              import('./domains/SMP/Components/catalogs/catalogs.component')
+                .then((s) => s.CatalogsComponent),
             canDeactivate: [UnsavedChangesGuard],
-          },
+            children: [
+              {
+                path: ':section',
+                loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(p => p.CatalogsComponent)
+              },
+            ],
+          }
         ],
       },
       {

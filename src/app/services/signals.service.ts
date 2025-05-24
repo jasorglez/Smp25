@@ -16,6 +16,8 @@ export class SignalsService {
   private rootChoose            = signal<string | null>(null);
   
   private catalogSelected       = signal<string | null>(null);
+
+  private sectionSelected       = signal<string | null>(null);
   
   private rootSelectedBySidebar = signal<number | null>(null);  
   
@@ -31,6 +33,10 @@ export class SignalsService {
 
   setCatalogSelected(id: string) {
     this.catalogSelected.set(id);
+  }
+
+  setSectionSelected(id: string) {
+    this.sectionSelected.set(id);
   }
 
   setRootSelectedBySidebar(id: number) {
@@ -78,6 +84,9 @@ export class SignalsService {
 
   getCatalogSelected() {
     return this.catalogSelected();
+  }
+  getSectionSelected() {
+    return this.sectionSelected();
   }
 
   getProcces(){
