@@ -75,4 +75,10 @@ export class ClockService {
       headers: this.trackingService.getHeaders(),
     });
   }
+
+  getHourDiscrepancies(idBranch: number, start: string, end: string): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/EmployeesxCheckInsOuts/branch/${idBranch}/discrepances?start=${start}&end=${end}`, {
+      headers: this.trackingService.getHeaders(),
+    });
+  }
 }
