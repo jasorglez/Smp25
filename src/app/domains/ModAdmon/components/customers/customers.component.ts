@@ -376,6 +376,10 @@ export class CustomersComponent implements CanComponentDeactivate {
           defaultToNothingSelected: true,
           //excelMode: 'mac',
         },
+        valueSetter: (params) => {
+          params.data[params.colDef.field] = params.newValue.toUpperCase();
+          return true;
+        }
         /*cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
