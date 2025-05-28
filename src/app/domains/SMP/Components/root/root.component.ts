@@ -149,6 +149,15 @@ public gridOptions: any = {
           minLength: 1
         },
         valueSetter: (params) => {
+          if (params.newValue.length > 10) {
+            alerts.basicAlert(
+              'Error de validación',
+              'El nombre corto no puede tener más de 10 caracteres.',
+              'error'
+            );
+            return false;
+          }
+
           const duplicateExists = this.rowData.some((row, index) =>
             index !== params.node.rowIndex && row.nameSmall === params.newValue
           );
