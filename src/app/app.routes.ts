@@ -719,6 +719,13 @@ export const routes: Routes = [
             data: { permissions: { master: 'sales', detailed: 'stores' } },
             canDeactivate: [UnsavedChangesGuard],
           },
+          {
+            path: 'ProductFinished',
+            loadComponent: () =>
+              import(
+                './domains/ModSales/components/productFinished/productFinished.component'
+              ).then((p) => p.ProductFinishedComponent),
+          },
         ],
       },
       {
