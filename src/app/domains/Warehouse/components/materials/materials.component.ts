@@ -163,7 +163,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
           filterOptions: ['equals'], // Opciones de filtro
         },
       },
-      {
+      /*{
         field: 'insumo',
         headerName: 'Num. Material',
         editable: true,
@@ -195,81 +195,13 @@ export class MaterialsComponent implements CanComponentDeactivate {
           return true;
         },
         cellStyle: { backgroundColor: '#d4edda' },
-      },
+      },*/
       {
         field: 'barCode',
         headerName: 'Codigo Barra',
         editable: true,
         filter: true,
         width: 150,
-      },
-      {
-        field: 'description',
-        headerName: 'Descripción',
-        editable: false,
-        width: 285,
-        filter: true,
-        cellEditor: 'agPopupTextCellEditor',
-        cellEditorParams: {
-          maxLength: 100,
-          cols: 50,
-          rows: 3,
-          onKeyDown: (event: KeyboardEvent) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.stopPropagation();
-            }
-          },
-        },
-        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-          if (!event.node.group) {
-            this.modalServiceTable.showModal({
-              params: event,
-              value: event.value,
-            });
-          }
-        },
-        cellRenderer: (params: ICellRendererParams) => {
-          if (params.node.group) {
-            return params.value;
-          }
-          return params.value;
-        },
-      },
-      {
-        field: 'date',
-        headerName: 'Fecha',
-        editable: true,
-        width: 110,
-        cellDataType: 'dateString',
-        valueFormatter: (params) => {
-          if (params.value) {
-            return params.value.split('T')[0];
-          }
-          return '';
-        },
-      },
-      {
-        field: 'typeMaterial',
-        headerName: 'Tipo Material',
-        editable: true,
-        filter: true,
-        width: 150,
-      },
-      {
-        field: 'idMedida',
-        headerName: 'Medidas',
-        editable: true,
-        width: 150,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.medidas ? this.medidas.map((item) => item.id) : [],
-        },
-        valueFormatter: (params) => {
-          const foundItem = this.medidas
-            ? this.medidas.find((item) => item.id === params.value)
-            : null;
-          return foundItem ? `${foundItem.description}` : params.value;
-        },
       },
       {
         field: 'idFamilia',
@@ -300,6 +232,47 @@ export class MaterialsComponent implements CanComponentDeactivate {
           return familyMenuItems;
         },
       },
+      {
+        field: 'description',
+        headerName: 'Producto',
+        editable: false,
+        width: 285,
+        filter: true,
+        cellEditor: 'agPopupTextCellEditor',
+        cellEditorParams: {
+          maxLength: 100,
+          cols: 50,
+          rows: 3,
+          onKeyDown: (event: KeyboardEvent) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.stopPropagation();
+            }
+          },
+        },
+        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+          if (!event.node.group) {
+            this.modalServiceTable.showModal({
+              params: event,
+              value: event.value,
+            });
+          }
+        },
+        cellRenderer: (params: ICellRendererParams) => {
+          if (params.node.group) {
+            return params.value;
+          }
+          return params.value;
+        },
+      },
+      /*{
+        field: 'typeMaterial',
+        headerName: 'Tipo Material',
+        editable: true,
+        filter: true,
+        width: 150,
+      },*/
+      
+      
 
       {
         field: 'idSubfamilia',
@@ -347,53 +320,19 @@ export class MaterialsComponent implements CanComponentDeactivate {
           return foundItem ? `${foundItem.description}` : params.value;
         },
       },
+      
+
+      
       {
-        field: 'idUbication',
-        headerName: 'Zona',
-        editable: true,
-        width: 150,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.ubicaciones
-            ? this.ubicaciones.map((item) => item.id)
-            : [],
-        },
-        valueFormatter: (params) => {
-          const foundItem = this.ubicaciones
-            ? this.ubicaciones.find((item) => item.id === params.value)
-            : null;
-          return foundItem ? `${foundItem.description}` : params.value;
-        },
-        mainMenuItems: (params: GetMainMenuItemsParams) => {
-          const locationMenuItems: (MenuItemDef | string)[] = [
-            {
-              name: 'Añadir ubicación',
-              action: () => {
-                this.openAddLocationModal();
-              },
-            },
-            'separator',
-            ...params.defaultItems.slice(0),
-          ];
-          return locationMenuItems;
-        },
+        headerName: 'Precio unitario',
+      },
+      {
+        headerName: 'Cantidad caja',
+      },
+      {
+        headerName: 'Precio X caja',
       },
 
-      {
-        field: 'picture',
-        headerName: 'Imagen',
-        editable: false,
-        width: 150,
-        cellRenderer: this.imageHandlerService.imageCellRenderer.bind(
-          this.imageHandlerService
-        ),
-        cellRendererParams: {
-          clicked: this.imageHandlerService.onImageCellClicked.bind(
-            this.imageHandlerService
-          ),
-          field: 'picture',
-        },
-      },
       {
         field: 'costoMN',
         headerName: 'Costo MXN',
@@ -451,12 +390,98 @@ export class MaterialsComponent implements CanComponentDeactivate {
         cellEditorParams: { min: 0 },
       },
       {
+        headerName: "Cantidad a pedir"
+      },
+      {
         field: 'stockMax',
         headerName: 'Stock Máximo',
         editable: true,
         width: 150,
         cellDataType: 'number',
         cellEditorParams: { min: 0 },
+      },
+      {
+        field: 'picture',
+        headerName: 'Imagen',
+        editable: false,
+        width: 150,
+        cellRenderer: this.imageHandlerService.imageCellRenderer.bind(
+          this.imageHandlerService
+        ),
+        cellRendererParams: {
+          clicked: this.imageHandlerService.onImageCellClicked.bind(
+            this.imageHandlerService
+          ),
+          field: 'picture',
+        },
+      },
+      {
+        field: 'idMedida',
+        headerName: 'Medidas',
+        editable: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.medidas ? this.medidas.map((item) => item.id) : [],
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.medidas
+            ? this.medidas.find((item) => item.id === params.value)
+            : null;
+          return foundItem ? `${foundItem.description}` : params.value;
+        },
+      },
+
+      {
+        headerName: "Peso por unidad"
+      },
+
+      {
+        headerName: "Peso por caja"
+      },
+      {
+        field: 'date',
+        headerName: 'Fecha de alta',
+        editable: true,
+        width: 110,
+        cellDataType: 'dateString',
+        valueFormatter: (params) => {
+          if (params.value) {
+            return params.value.split('T')[0];
+          }
+          return '';
+        },
+      },
+      {
+        field: 'idUbication',
+        headerName: 'Ubicacion',
+        editable: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.ubicaciones
+            ? this.ubicaciones.map((item) => item.id)
+            : [],
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.ubicaciones
+            ? this.ubicaciones.find((item) => item.id === params.value)
+            : null;
+          return foundItem ? `${foundItem.description}` : params.value;
+        },
+        mainMenuItems: (params: GetMainMenuItemsParams) => {
+          const locationMenuItems: (MenuItemDef | string)[] = [
+            {
+              name: 'Añadir ubicación',
+              action: () => {
+                this.openAddLocationModal();
+              },
+            },
+            'separator',
+            ...params.defaultItems.slice(0),
+          ];
+          return locationMenuItems;
+        },
       },
       { field: 'vigente', headerName: 'Vigente', editable: true, width: 100 },
     ];

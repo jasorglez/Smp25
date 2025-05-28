@@ -232,7 +232,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
         width: 100,
         hide:
           this.selectedCatalog !== 'BONUS' &&
-          this.selectedCatalog !== 'TYPECLIENT', // Oculta si no es BONUS
+          this.selectedCatalog !== 'CUSTOMERS', // Oculta si no es BONUS
       },
       {
         field: 'vigente',

@@ -238,7 +238,7 @@ export class CustomersPaymentsComponent {
         }
         return '';
       },
-      width: 178,
+      width: 100,
       editable: (params) => params.data?.__isNew === true || this.authorizedPass,
     },
     {
@@ -251,8 +251,15 @@ export class CustomersPaymentsComponent {
           currency: 'MXN',
         }).format(params.value || 0);
       },
-      width: 180,
+      width: 100,
       editable: (params) => params.data?.__isNew === true || this.authorizedPass,
+    },
+    {
+      field: 'comments',
+      headerName: 'Comentario',
+      editable: (params) => params.data?.__isNew === true || this.authorizedPass,
+      hide: this.signalsService.getProviderOrCustomer()() == 'CUSTOMERS',
+      width: 200,
     },
   ];
 
@@ -279,6 +286,7 @@ export class CustomersPaymentsComponent {
           this.maestroRowData = this.detalleRowData = [];
         } else {
           this.maestroRowData = maestroRowData;
+          console.log(this.maestroRowData)
 
           setTimeout(() => {
             if (this.maestroGridApi && this.maestroRowData.length > 0) {

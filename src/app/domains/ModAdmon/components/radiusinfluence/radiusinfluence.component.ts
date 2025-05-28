@@ -93,7 +93,7 @@ export class RadiusinfluenceComponent implements OnInit, AfterViewInit, OnDestro
       const lon = parseFloat(loc.longitud);
       const veriCp = loc.cp
 
-      if (!isNaN(lat) && !isNaN(lon) && veriCp != "0") {
+      if (!isNaN(lat) && !isNaN(lon) && veriCp != "0"  && lat != 0) {
         const coordinates: L.LatLngExpression = [lat, lon];
 
         // Agregar marcador
