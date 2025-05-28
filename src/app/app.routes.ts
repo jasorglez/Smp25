@@ -103,10 +103,15 @@ export const routes: Routes = [
           {
             path: 'catalogs',
             loadComponent: () =>
-              import(
-                './domains/SMP/Components/catalogs/catalogs.component'
-              ).then((s) => s.CatalogsComponent),
+              import('./domains/SMP/Components/catalogs/catalogs.component')
+                .then((s) => s.CatalogsComponent),
             canDeactivate: [UnsavedChangesGuard],
+            children: [
+              {
+                path: ':section',
+                loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(p => p.CatalogsComponent)
+              },
+            ],
           },
 
           {

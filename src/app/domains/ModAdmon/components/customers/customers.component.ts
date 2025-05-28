@@ -526,10 +526,10 @@ export class CustomersComponent implements CanComponentDeactivate {
       },
       {
         field: 'idTypecop',
-        headerName: 'Tipo cliente',
+        headerName: this.type == 'CUSTOMERS'? 'Tipo cliente' : 'Tipo proveedor',
         editable: true,
         width: 150,
-        hide: this.type != 'CUSTOMERS',
+        //hide: this.type != 'CUSTOMERS',
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.Typecop ? this.Typecop.map((item) => item.id) : [],
@@ -1015,7 +1015,7 @@ export class CustomersComponent implements CanComponentDeactivate {
   }
 
   getTypecop() {
-    this.catalogsService.getCatalogsVigente(this.idRoot, 'TYPECLIENT').subscribe(
+    this.catalogsService.getCatalogsVigente(this.idRoot, this.type).subscribe(
       (data: Icatalog[]) => {
         this.Typecop = data;
       },
