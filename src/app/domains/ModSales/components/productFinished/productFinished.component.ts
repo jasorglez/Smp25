@@ -40,10 +40,10 @@ declare const bootstrap: any; // Añadir declaración para Bootstrap
     MultiLineEditorComponent,
     PriceProductsPresentationsComponent,
   ],
-  templateUrl: './materials.component.html',
-  styleUrl: './materials.component.scss',
+  templateUrl: './productFinished.component.html',
+  styleUrl: './productFinished.component.scss',
 })
-export class MaterialsComponent implements CanComponentDeactivate {
+export class ProductFinishedComponent implements CanComponentDeactivate {
   type: string = '';
 
   constructor(private router: Router) {
@@ -484,7 +484,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
   }
 
   obtenerDatos() {
-    return this.materialsService.getMaterials(this.idRoot, "CONSUMABLE").subscribe(
+    return this.materialsService.getMaterials(this.idRoot, "PRODSALES").subscribe(
+      
       (data: any) => {
         this.rowData = data;
       },

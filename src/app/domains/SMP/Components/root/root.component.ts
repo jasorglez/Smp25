@@ -367,7 +367,35 @@ public gridOptions: any = {
       const responses = await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
-      console.log(responses);
+      
+      for (const response of responses) {
+        // Verificar si es una nueva creación comparando con los IDs temporales
+        const correspondingNewRow = newRows.find(
+          (row) => !row.id || row.id.toString().startsWith('temp_')
+        );
+
+        if (response.id && correspondingNewRow) {
+          //console.log(response)
+
+          try {
+            await lastValueFrom(
+              this.branchesService.assignPermissionAfterCreation(
+                this.idUser, //id user
+                response.id,
+                'company'
+              )
+            );
+          } catch (permError) {
+            console.error('Error asignando permiso:', permError);
+            // Opcional: Mostrar alerta pero no interrumpir el flujo principal
+            alerts.basicAlert(
+              'Advertencia',
+              'Se creó la sucursal pero hubo un problema asignando los permisos.',
+              'warning'
+            );
+          }
+        }
+      }
       
       alerts.basicAlert(
         'Datos actualizados',

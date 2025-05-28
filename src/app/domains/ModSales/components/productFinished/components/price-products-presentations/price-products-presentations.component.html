@@ -1,0 +1,65 @@
+<div class="row">
+  <section class="col-8 mt-3">
+    <div class="row">
+      <main [ngClass]="id ? 'col-10' : 'col-12'">
+        <div class="row">
+          <nav class="col-auto d-flex flex-column align-items-start">
+            <button
+              type="button"
+              class="btn btn-primary ms-1 me-1 mb-2"
+              (click)="addRow()"
+            >
+              <i class="bi bi-plus-lg"></i>
+            </button>
+            <button
+              type="button"
+              class="btn btn-success ms-1 me-1 position-relative mb-2"
+              (click)="saveChanges()"
+            >
+              <i class="bi bi-floppy"></i>
+              <span
+                class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+                *ngIf="notSavedChanges()"
+              >
+                <span class="visually-hidden">Hay cambios sin guardar</span>
+              </span>
+            </button>
+            <button
+              type="button"
+              class="btn btn-warning ms-1 me-1 mb-2"
+              (click)="revert()"
+            >
+              <i class="bi bi-arrow-clockwise"></i>
+            </button>
+            <button
+              type="button"
+              class="btn btn-danger ms-1 me-1 mb-2"
+              (click)="deleteEntry()"
+            >
+              <i class="bi bi-trash"></i>
+            </button>
+          </nav>
+
+          <section class="col">
+            <ag-grid-angular
+              style="width: 100%"
+              class="ag-theme-quartz small-text-ag-grid"
+              [ngStyle]="{ height: gridHeight() }"
+              [rowData]="rowData()"
+              [columnDefs]="colMaster"
+              (selectionChanged)="onSelectionChanged($event)"
+              [gridOptions]="gridOptions"
+              (cellValueChanged)="onCellValueChanged($event)"
+              (rowSelected)="onSelectedRow($event)"
+              (gridReady)="onGridReady($event)"
+              [components]="components"
+              (cellDoubleClicked)="onCellDoubleClicked($event)"
+              [stopEditingWhenCellsLoseFocus]="true"
+            >
+            </ag-grid-angular>
+          </section>
+        </div>
+      </main>
+    </div>
+  </section>
+</div>
