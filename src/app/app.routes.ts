@@ -44,18 +44,18 @@ export const routes: Routes = [
                 './domains/Warehouse/pages/page02typemat/page02typemat.component'
               ).then((p) => p.Page02typematComponent),
             children: [
-              { path: '', redirectTo: 'materials', pathMatch: 'full' },
+              { path: '', redirectTo: 'materials2', pathMatch: 'full' },
               ...SharedModule.getRoutes(),
-
+ /*  
               {
-                path: 'materials',
+             path: 'materials',
                 loadComponent: () =>
                   import(
                     './domains/Warehouse/components/materials/materials.component'
                   ).then((s) => s.MaterialsComponent),
                 data: { type: 'PRODSALES' }, // Paso el Parámetro para materials
                 canDeactivate: [UnsavedChangesGuard],
-              },
+              },*/
               {
                 path: 'materials2',
                 loadComponent: () =>

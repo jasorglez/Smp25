@@ -163,78 +163,10 @@ export class MaterialsComponent implements CanComponentDeactivate {
           filterOptions: ['equals'], // Opciones de filtro
         },
       },
-      {
-        field: 'insumo',
-        headerName: 'Num. Material',
-        editable: true,
-        filter: true,
-        width: 150,
-        cellEditor: 'autocompleteEditor',
-        cellEditorParams: {
-          filterList: this.rowData.map((e) => e.insumo),
-          filterKey: 'insumo',
-          placeholder: 'Número Material',
-          minLength: 1,
-        },
-        valueSetter: (params) => {
-          const duplicateExists = this.rowData.some(
-            (row, index) =>
-              index !== params.node.rowIndex && row.insumo === params.newValue
-          );
-
-          if (duplicateExists) {
-            alerts.basicAlert(
-              'Código duplicado',
-              'Ya existe el código de insumo.',
-              'error'
-            );
-            return false;
-          }
-
-          params.data[params.colDef.field] = params.newValue;
-          return true;
-        },
-        cellStyle: { backgroundColor: '#d4edda' },
-      },
-      {
-        field: 'barCode',
-        headerName: 'Codigo Barra',
-        editable: true,
-        filter: true,
-        width: 150,
-      },
-      {
-        field: 'idFamilia',
-        headerName: 'Categoria',
-        editable: true,
-        width: 150,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.familias ? this.familias.map((item) => item.id) : [],
-        },
-        valueFormatter: (params) => {
-          const foundItem = this.familias
-            ? this.familias.find((item) => item.id === params.value)
-            : null;
-          return foundItem ? `${foundItem.description}` : params.value;
-        },
-        mainMenuItems: (params: GetMainMenuItemsParams) => {
-          const familyMenuItems: (MenuItemDef | string)[] = [
-            {
-              name: 'Añadir familia',
-              action: () => {
-                this.openAddFamilyModal();
-              },
-            },
-            'separator',
-            ...params.defaultItems.slice(0),
-          ];
-          return familyMenuItems;
-        },
-      },
+      
       {
         field: 'description',
-        headerName: 'Producto',
+        headerName: 'Materia prima',
         editable: false,
         width: 285,
         filter: true,
@@ -264,6 +196,43 @@ export class MaterialsComponent implements CanComponentDeactivate {
           return params.value;
         },
       },
+      {
+        headerName: 'Sucursal',
+      },
+
+      {
+        headerName: 'Proveedor',
+      },
+      {
+        field: 'idFamilia',
+        headerName: 'Producto',
+        editable: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.familias ? this.familias.map((item) => item.id) : [],
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.familias
+            ? this.familias.find((item) => item.id === params.value)
+            : null;
+          return foundItem ? `${foundItem.description}` : params.value;
+        },
+        mainMenuItems: (params: GetMainMenuItemsParams) => {
+          const familyMenuItems: (MenuItemDef | string)[] = [
+            {
+              name: 'Añadir familia',
+              action: () => {
+                this.openAddFamilyModal();
+              },
+            },
+            'separator',
+            ...params.defaultItems.slice(0),
+          ];
+          return familyMenuItems;
+        },
+      },
+      
       /*{
         field: 'typeMaterial',
         headerName: 'Tipo Material',
@@ -323,13 +292,30 @@ export class MaterialsComponent implements CanComponentDeactivate {
       {
         headerName: 'Precio unitario',
       },
+
       {
-        headerName: 'Cantidad caja',
+        headerName: "Peso por unidad"
       },
       {
-        headerName: 'Precio X caja',
+        field: 'idMedida',
+        headerName: 'Medidas',
+        editable: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.medidas ? this.medidas.map((item) => item.id) : [],
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.medidas
+            ? this.medidas.find((item) => item.id === params.value)
+            : null;
+          return foundItem ? `${foundItem.description}` : params.value;
+        },
       },
       {
+        headerName: 'Empaquetado',
+      },
+      /*{
         field: 'costoMN',
         headerName: 'Costo MXN',
         editable: true,
@@ -340,8 +326,11 @@ export class MaterialsComponent implements CanComponentDeactivate {
             currency: 'MXN',
           }).format(params.value);
         },
-      },
+      },*/
       {
+        headerName: 'Caducidad',
+      },
+      /*{
         field: 'costoDLL',
         headerName: 'Costo DLL',
         editable: true,
@@ -376,26 +365,29 @@ export class MaterialsComponent implements CanComponentDeactivate {
             currency: 'USD',
           }).format(params.value);
         },
-      },
+      },*/
       {
+        headerName: 'Tiempo de entrega',//en desimal
+      },
+      /*{
         field: 'stockMin',
         headerName: 'Stock Mínimo',
         editable: true,
         width: 150,
         cellDataType: 'number',
         cellEditorParams: { min: 0 },
-      },
-      {
+      },*/ //pasara alguna parte de inventarios
+      /*{
         headerName: "Cantidad a pedir"
-      },
-      {
+      },*/
+      /*{
         field: 'stockMax',
         headerName: 'Stock Máximo',
         editable: true,
         width: 150,
         cellDataType: 'number',
         cellEditorParams: { min: 0 },
-      },
+      },//pasara alguna parte de inventarios*/
       {
         field: 'picture',
         headerName: 'Imagen',
@@ -411,30 +403,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
           field: 'picture',
         },
       },
-      {
-        field: 'idMedida',
-        headerName: 'Medidas',
-        editable: true,
-        width: 150,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.medidas ? this.medidas.map((item) => item.id) : [],
-        },
-        valueFormatter: (params) => {
-          const foundItem = this.medidas
-            ? this.medidas.find((item) => item.id === params.value)
-            : null;
-          return foundItem ? `${foundItem.description}` : params.value;
-        },
-      },
+      
 
-      {
-        headerName: "Peso por unidad"
-      },
-
-      {
-        headerName: "Peso por caja"
-      },
       {
         field: 'date',
         headerName: 'Fecha de alta',
@@ -478,6 +448,46 @@ export class MaterialsComponent implements CanComponentDeactivate {
           ];
           return locationMenuItems;
         },
+      },
+      {
+        field: 'insumo',
+        headerName: 'Num. Material',
+        editable: true,
+        filter: true,
+        width: 150,
+        cellEditor: 'autocompleteEditor',
+        cellEditorParams: {
+          filterList: this.rowData.map((e) => e.insumo),
+          filterKey: 'insumo',
+          placeholder: 'Número Material',
+          minLength: 1,
+        },
+        valueSetter: (params) => {
+          const duplicateExists = this.rowData.some(
+            (row, index) =>
+              index !== params.node.rowIndex && row.insumo === params.newValue
+          );
+
+          if (duplicateExists) {
+            alerts.basicAlert(
+              'Código duplicado',
+              'Ya existe el código de insumo.',
+              'error'
+            );
+            return false;
+          }
+
+          params.data[params.colDef.field] = params.newValue;
+          return true;
+        },
+        cellStyle: { backgroundColor: '#d4edda' },
+      },
+      {
+        field: 'barCode',
+        headerName: 'Codigo Barra',
+        editable: true,
+        filter: true,
+        width: 150,
       },
       { field: 'vigente', headerName: 'Vigente', editable: true, width: 100 },
     ];

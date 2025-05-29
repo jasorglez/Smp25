@@ -354,6 +354,23 @@ export class CustomersComponent implements CanComponentDeactivate {
         cellStyle: { backgroundColor: '#d4edda' },
       },
       {
+        field: 'idTypecop',
+        headerName: this.type == 'CUSTOMERS'? 'Tipo cliente' : 'Tipo proveedor',
+        editable: true,
+        width: 150,
+        //hide: this.type != 'CUSTOMERS',
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.Typecop ? this.Typecop.map((item) => item.id) : [],
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.Typecop
+            ? this.Typecop.find((item) => item.id === params.value)
+            : null;
+          return foundItem ? `${foundItem.description}` : params.value;
+        },
+      },
+      {
         field: 'cp',
         headerName: 'CP',
         editable: true,
@@ -524,23 +541,7 @@ export class CustomersComponent implements CanComponentDeactivate {
         hide: true,
         width: 100,
       },
-      {
-        field: 'idTypecop',
-        headerName: this.type == 'CUSTOMERS'? 'Tipo cliente' : 'Tipo proveedor',
-        editable: true,
-        width: 150,
-        //hide: this.type != 'CUSTOMERS',
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.Typecop ? this.Typecop.map((item) => item.id) : [],
-        },
-        valueFormatter: (params) => {
-          const foundItem = this.Typecop
-            ? this.Typecop.find((item) => item.id === params.value)
-            : null;
-          return foundItem ? `${foundItem.description}` : params.value;
-        },
-      },
+      
       { field: 'radio', headerName: 'Radio', editable: true, width: 90 , hide: this.type != 'CUSTOMERS'},
       /*{
         field: 'latitud',
