@@ -25,6 +25,8 @@ import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/auto
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { PricePresentations } from 'app/interface/materials.interface';
+import { BranchsService } from 'app/services/branchs.service';
+import { CustomersService } from 'app/services/customers.service';
 import { PriceProductsPresentationsComponent } from './components/price-products-presentations/price-products-presentations.component';
 
 declare const bootstrap: any; // Añadir declaración para Bootstrap
@@ -57,6 +59,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
       this.obtenerMedidas();
       this.obtenerFamilias();
       this.obtenerSubfamilias();
+      this.obtenerBranchs();
+      this.obtenerProveedores();
       this.obtenerUbicaciones();
     });
   }
@@ -75,6 +79,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
   newSubFamilyName: string = '';
   selectedFamily: number = null;
   rowData: any[] = [];
+  proveedoresData: any[] = [];
   public priceXproductsData = signal<PricePresentations[]>([]);
   public idMaterial = signal<number>(0);
   contracts: { [key: string]: string } = {};
@@ -85,6 +90,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
   parentId: number = 200;
   familias: any;
   subfamilias2: any;
+  branchs: any[] = [];
+  branchSelect: number;
   ubicaciones: any;
   id: string = null;
   idRoot: number = null;
@@ -116,9 +123,11 @@ export class MaterialsComponent implements CanComponentDeactivate {
   };
 
   // Inject of new way for Angular 18
+  private customerService = inject(CustomersService);
   private materialsService = inject(MaterialsService);
   private catalogsService = inject(CatalogsService);
   private modalServiceTable = inject(ModalService);
+  private branchesService = inject(BranchsService);
   private imageHandlerService = inject(ImageHandlerService);
   private signalsService = inject(SignalsService);
   private route = inject(ActivatedRoute);
@@ -163,14 +172,98 @@ export class MaterialsComponent implements CanComponentDeactivate {
           filterOptions: ['equals'], // Opciones de filtro
         },
       },
-      
+      {
+        field: 'idBranch',
+        headerName: 'Sucursal',
+        headerClass: 'required-header',             
+        editable: true,
+        filter: true,
+        width: 170,
+        cellEditor: 'agSelectCellEditor',
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'windows',
+        },
+
+        cellEditorParams: (params) => {
+          return {
+            values: this.branchs
+              ? this.branchs
+                  .slice() // Creamos una copia para no modificar el array original
+                  .sort((a, b) => a.name.localeCompare(b.name)) // Ordenamos por nombre
+                  .map((item) => item.id) // Extraemos solo los IDs
+              : [],
+          };
+        },
+
+        valueFormatter: (params) => {
+          // Handle potential null values and properly format the displayed value
+          if (!params.value) return '';
+
+          const foundBranch = this.branchs
+            ? this.branchs.find((item) => item.id === params.value)
+            : null;
+
+          return foundBranch ? foundBranch.name : params.value;
+        },
+        valueGetter: (params) => {
+          if (!params.data || !params.data.idBranch) return '';
+          const branch = this.branchs?.find(b => b.id === params.data.idBranch);
+          return branch ? branch.name : '';
+        },
+      },
+      {
+        field: 'idProveedor',
+        headerName: 'Proveedor',
+        editable: true,
+        filter: true,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
+        width: 200,
+        valueSetter: (params) => {
+          const rawValue = params.newValue;
+          if (!rawValue || typeof rawValue !== 'string') {
+            alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
+            return false;
+          }
+
+          const normalizedValue = rawValue.trim().toUpperCase();
+
+          if (!normalizedValue) {
+            alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
+            return false;
+          }
+
+          const duplicateExists = this.proveedoresData.some(
+            (row, index) =>
+              index !== params.node.rowIndex &&
+              row.nameContact?.toUpperCase() === normalizedValue
+          );
+
+          if (duplicateExists) {
+            alerts.basicAlert(
+              'Nombre duplicado',
+              'Ya existe un nombre de contacto registrado.',
+              'error'
+            );
+            return false;
+          }
+
+          params.data[params.colDef.field] = normalizedValue;
+          return true;
+        },
+      },
       {
         field: 'description',
         headerName: 'Materia prima',
-        editable: false,
+        editable: true,
         width: 285,
         filter: true,
-        cellEditor: 'agPopupTextCellEditor',
+        /*cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
           cols: 50,
@@ -194,14 +287,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
             return params.value;
           }
           return params.value;
-        },
-      },
-      {
-        headerName: 'Sucursal',
-      },
-
-      {
-        headerName: 'Proveedor',
+        },*/
       },
       {
         field: 'idFamilia',
@@ -497,6 +583,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
     return this.materialsService.getMaterials(this.idRoot, "CONSUMABLE").subscribe(
       (data: any) => {
         this.rowData = data;
+        console.log(this.rowData)
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -528,7 +615,15 @@ export class MaterialsComponent implements CanComponentDeactivate {
       (error) => console.error('Error fetching subfamilies:', error)
     );
   }
-
+  obtenerBranchs() {
+    // alert('this.branchs'+ this.idBranch)
+    this.branchesService.getBrancheswoa(this.idRoot).subscribe(
+      (data: any) => {
+        this.branchs = data;
+      },
+      (error) => console.error('Error fetching data:', error)
+    );
+  }
   obtenerUbicaciones() {
     this.catalogsService.getCatalogs(this.idRoot, 'UBICATION').subscribe(
       (data: Icatalog[]) => {
@@ -537,6 +632,23 @@ export class MaterialsComponent implements CanComponentDeactivate {
       (error) => console.error('Error fetching locations:', error)
     );
   }
+
+  obtenerProveedores() {
+    return new Promise((resolve) => {
+      this.customerService
+        .getCustomers(this.branchSelect, this.type)
+        .subscribe({
+          next: (data: any) => {
+            this.proveedoresData = data;
+            resolve(true);
+          },
+          error: (error) => {
+            console.error('Error obteniendo datos:', error);
+            resolve(false);
+          }
+        });
+    });
+  }  
 
   onSelectedRow(event: any) {
     this.id = event.data.id;
@@ -645,6 +757,25 @@ export class MaterialsComponent implements CanComponentDeactivate {
     if (event.data.idMedida) {
       event.data.idMedida = Number(event.data.idMedida);
     }
+    if (event.colDef.field === 'idBranch') {
+      const selectedBranch = event.newValue;
+      const branchInfo = this.branchs?.find(
+        (item) => item.name === selectedBranch
+      );
+        this.customerService
+          .getCustomers(branchInfo.id, 'PROVIDERS')
+          .subscribe({
+            next: (data: any) => {
+              this.proveedoresData = data;
+            },
+            error: (error) => {
+              console.error('Error obteniendo datos:', error);
+            }
+          });
+      /*if (bonusInfo) {
+        event.data.quantity = parseFloat(bonusInfo.valueAddition);
+      }*/
+    }
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -680,6 +811,17 @@ export class MaterialsComponent implements CanComponentDeactivate {
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
     this.gridApi.setGridOption('rowData', this.rowData);
+
+    setTimeout(() => {
+      const firstRowIndex = 0;
+
+      this.gridApi.ensureIndexVisible(firstRowIndex);
+
+      this.gridApi.startEditingCell({
+        rowIndex: firstRowIndex,
+        colKey: 'idBranch'
+      });
+    }, 0);// Un pequeño retraso de 50ms
   }
 
   async saveChanges() {

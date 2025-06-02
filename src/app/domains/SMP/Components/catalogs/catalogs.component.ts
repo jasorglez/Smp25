@@ -16,6 +16,7 @@ import {
   GridReadyEvent,
   ICellRendererParams,
   RowSelectedEvent,
+  CellDoubleClickedEvent
 } from 'ag-grid-enterprise';
 import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
 
@@ -23,6 +24,7 @@ import { alerts } from '../../../../helpers/alerts';
 import { SharedModule } from 'app/shared/shared.module';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
+import { SubatalogsComponent } from "../../../Warehouse/components/catalogs/catalogs.component";
 
 //soriano
 @Component({
@@ -34,7 +36,8 @@ import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
     AgGridModule,
     SharedModule,
     TranslateModule,
-  ],
+    SubatalogsComponent
+],
   templateUrl: './catalogs.component.html',
   styleUrl: './catalogs.component.scss',
 })
@@ -54,15 +57,16 @@ export class CatalogsComponent implements CanComponentDeactivate {
   prefixAndConsecutive: any[] = [];
   private tempIdCounter: number = 0;
   private gridApi: GridApi;
+  select: string;
 
   menuSelect: number;
   showWarehTab: Signal<boolean>;
   showAdmonTab: Signal<boolean>;
   selectedSection: any;
+  idCatalog
 
   constructor(private route: ActivatedRoute) {
     effect(() => {
-      
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.route.paramMap.subscribe(params => {
         this.selectedSection = params.get('section')!;
@@ -70,6 +74,12 @@ export class CatalogsComponent implements CanComponentDeactivate {
     this.obtenerTables();
     this.obtenerTablesSecitons();
     this.obtenerDatos();
+    this.gridHeight="50vh"
+
+    if (this.gridApi) {
+      this.gridApi.setFilterModel(null);
+      this.gridApi.onFilterChanged();
+    }
   });
   }
 
@@ -83,6 +93,12 @@ export class CatalogsComponent implements CanComponentDeactivate {
     this.obtenerTables();
     this.obtenerTablesSecitons();
     this.obtenerDatos();
+    this.gridHeight="50vh"
+
+    if (this.gridApi) {
+      this.gridApi.setFilterModel(null);
+      this.gridApi.onFilterChanged();
+    }
   }
 
   currentIndex = 0;
@@ -99,11 +115,42 @@ export class CatalogsComponent implements CanComponentDeactivate {
     this.signalsService.setSectionSelected(item.sections);
     this.rowData = [];
     this.selectedCatalog= '';
+    this.idCatalog = null;
   }
+  onOptionSelected(item: any): void {
+    this.select = item.name
+  }  
   onCatalogChange(event: Event) {
     const selectElement = event.target as HTMLSelectElement;
     this.selectedCatalog = selectElement.value; // Almacena el valor seleccionado
     this.obtenerDatos(); // Vuelve a ejecutar la consulta con el nuevo valor
+  }
+   async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
+      // Verificar que event.data esté disponible antes de acceder a sus propiedades
+      if (!event.data) {
+        console.warn('No hay datos en la fila seleccionada');
+        return;
+      }
+      
+      if(this.select =="FAMILY"){
+        const colId = event.column.getColId();
+        const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
+        this.idCatalog = selectedRowData.id; // Obtener el ID del registro 
+        this.signalsService.setIdCatalogFamily(this.idCatalog)
+        if (this.gridApi) {
+          const filterModel = {
+            id: {
+              type: 'equals',
+              filter: this.idCatalog,
+            },
+          };
+          this.gridApi.setFilterModel(filterModel);
+          this.gridApi.onFilterChanged();
+          this.gridHeight="20vh"
+        } else {
+          alert('gridApi no disponible');
+        }
+   }
   }
 
 
@@ -126,7 +173,6 @@ export class CatalogsComponent implements CanComponentDeactivate {
       .subscribe(
         (data: any) => {
           this.listsections = data;
-          console.log(this.listsections)
         },
         (error) => {
           if (error.status == 404) this.table = [];
@@ -142,7 +188,6 @@ export class CatalogsComponent implements CanComponentDeactivate {
 
     // Determina qué servicio usar
     const service = this.catalogService;
-
     service.getCatalogs(this.idRoot, this.selectedCatalog)
       .subscribe({
         next: (data: any[]) => this.rowData = data,
@@ -156,13 +201,17 @@ export class CatalogsComponent implements CanComponentDeactivate {
 
   get colMaster(): ColDef[] {
     return [
-      /*{
+      {
         field: 'id',
         headerName: 'Id',
         editable: true,
-        filter: false,
         width: 80,
-      },*/
+        hide:true,
+        filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
+        filterParams: {
+          filterOptions: ['equals'], // Opciones de filtro
+        },
+      },
       {
         field: 'description',
         headerName: 'Descripción',
@@ -412,7 +461,12 @@ export class CatalogsComponent implements CanComponentDeactivate {
     this.obtenerTables();
     this.obtenerDatos();
     this.notSavedChanges = false;
-
+    this.idCatalog = null;
+    if (this.gridApi) {
+      this.gridApi.setFilterModel(null);
+      this.gridApi.onFilterChanged();
+    }
+    this.gridHeight="50vh"
   }
 
   deleteEntry() {}
