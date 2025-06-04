@@ -650,11 +650,22 @@ export class SignalsService {
     }
 
   private idCatalogFamily = signal<number>(null);
+  private closeCatalog = signal<boolean>(false);
 
   setIdCatalogFamily(id: number){
     this.idCatalogFamily.set(id);
   }
+
+  setCloseCatalog(valor: boolean){
+    this.closeCatalog.set(valor);
+  }
+
   getIdCatalogFamily(){
     return this.idCatalogFamily;
   }
+
+  getCloseCatalog(){
+    return this.closeCatalog;
+  }
+
 }

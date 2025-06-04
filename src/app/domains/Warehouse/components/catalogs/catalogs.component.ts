@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, Signal } from '@angular/core';
+import { Component, computed, effect, inject,  HostListener, Signal } from '@angular/core';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { TablesxmodulesService } from 'app/services/tablesxmodules.service';
 import { SignalsService } from 'app/services/signals.service';
@@ -75,7 +75,8 @@ export class SubatalogsComponent implements CanComponentDeactivate {
     this.obtenerDatos();
     this.obtenerUnidades();
     this.select = this.signalsService.getCatalogSelected()
-  });
+    this.signalsService.setCloseCatalog(false);
+  },{ allowSignalWrites: true });
   }
 
   ngOnInit() {
@@ -113,7 +114,13 @@ export class SubatalogsComponent implements CanComponentDeactivate {
     this.selectedCatalog = selectElement.value; // Almacena el valor seleccionado
     this.obtenerDatos(); // Vuelve a ejecutar la consulta con el nuevo valor
   }
-
+    @HostListener('window:beforeunload', ['$event'])
+    unloadNotification($event: any): void {
+      if (this.notSavedChanges) {
+        $event.returnValue =
+          'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
+      }
+    }
 
   /*obtenerTables() {
     this.tableService
@@ -157,15 +164,18 @@ export class SubatalogsComponent implements CanComponentDeactivate {
       });*/
       this.catalogService.getSubfamiliesByParentId(this.idCatalog)
       .subscribe({
-        next: (data: any[]) => this.rowData = data,
-        error: (err) => console.error(`Error):`, err)
+        next: (data: any[]) => {this.rowData = data
+          console.log(data)
+        },
+        error: (err) => this.rowData = []
       });
   }
 
   obtenerUnidades() {
       this.catalogService.getCatalogs(this.idRoot, 'UNITS')
       .subscribe({
-        next: (data: any[]) => this.units = data, //console.log(data),
+        next: (data: any[]) =>{ this.units = data 
+         console.log(data)},
         error: (err) => console.error(`Error):`, err)
       });
   }
@@ -226,18 +236,14 @@ export class SubatalogsComponent implements CanComponentDeactivate {
           return true;
         },
       },
-      {
+      /*{
         field: 'valueAddition',
         headerName: 'Unidades',
         editable: true,
         width: 200,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: this.units.map((user) => user.id),
-        },
-        valueFormatter: (params) => {
-          const unidad = this.units.find((u) => u.id === params.value);
-          return unidad ? unidad.description : 'SELECCIONAR';
+          values: this.units.map(u => u.description)
         },
         valueSetter: (params) => {
           const selected = this.units.find(u => u.description === params.newValue);
@@ -246,8 +252,19 @@ export class SubatalogsComponent implements CanComponentDeactivate {
             return true;
           }
           return false;
-        }
-      },      
+        },
+        valueFormatter: (params) => {
+          // Handle potential null values and properly format the displayed value
+          if (!params.value) return '';
+
+          const foundDepto = this.units
+            ? this.units.find((item) => item.id === params.value)
+            : null;
+
+          return foundDepto ? foundDepto.description : params.value;
+        },
+        
+      },      */
       {
         field: 'vigente',
         headerName: 'Activo',
@@ -428,6 +445,9 @@ export class SubatalogsComponent implements CanComponentDeactivate {
     this.obtenerDatos();
     this.notSavedChanges = false;
 
+  }
+  close(){
+    this.signalsService.setCloseCatalog(true);
   }
 
   deleteEntry() {}

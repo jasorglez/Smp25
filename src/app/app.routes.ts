@@ -729,6 +729,7 @@ export const routes: Routes = [
               import(
                 './domains/ModSales/components/productFinished/productFinished.component'
               ).then((p) => p.ProductFinishedComponent),
+               data: { type: 'PRODSALES' }, // Paso el Parámetro para materials
           },
         ],
       },
