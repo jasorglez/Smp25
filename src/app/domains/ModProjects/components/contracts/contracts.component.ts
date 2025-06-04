@@ -1,5 +1,4 @@
-
-import { Component, inject, TemplateRef, ViewChild } from '@angular/core';
+import { Component, effect, inject, TemplateRef, ViewChild } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { NgbModal, NgbModalOptions } from '@ng-bootstrap/ng-bootstrap';
 import { Icontract } from '../../../../interface/icontract';
@@ -8,11 +7,14 @@ import { DomainsModule } from 'app/domains/domainsmodule';
 import { FollowprojectsService } from '../../../../services/followprojects.service';
 import { TrackingService } from '../../../../services/tracking.service';
 
-import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AbstractControl, FormControl, FormGroup, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, EMPTY } from 'rxjs';
 import { CompanysService } from 'app/services/companys.service';
+import { SignalsService } from 'app/services/signals.service';
+import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { ContractDetailsComponent } from './contract-details/contract-details.component';
 
 // Esta funcion valida que dateStar sea siempre menor a dateEnd
 export function dateRangeValidator(): ValidatorFn {
@@ -42,12 +44,16 @@ export function noDefaultValueValidator(): ValidatorFn {
 @Component({
   selector: 'app-contracts',
   standalone: true,
-  imports: [RouterOutlet, DomainsModule],
+  imports: [DomainsModule, ContractDetailsComponent],
   templateUrl: './contracts.component.html',
   styleUrl: './contracts.component.scss'
 })
 export class ContractsComponent {
   constructor() {
+    effect(() => {
+      this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      this.getContracts();
+    });
     this.initForm();
   }
 
@@ -57,6 +63,7 @@ export class ContractsComponent {
 
   formData: any;
   providers: any;
+  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   selectedRowData: Icontract | null = null;
 
   isEditing = false;
@@ -64,30 +71,33 @@ export class ContractsComponent {
   isCancel = false;
   isDelete = false;
   isPrint = false;
+  private isOpen: boolean = false;
+  showDetailsTab: boolean = false;
+  idContract: number | null = null;
+
+  idBranch: number;
 
   screenSizeSM = false;
   notSavedChanges: boolean = false;
+
+  // Declare the missing properties
+  gridHeight: string = '80vh';
 
   // Inject of new way for Angular 18
   private trackingService = inject(TrackingService);
   private followprojectsService = inject(FollowprojectsService);
   private modalService = inject(NgbModal);
   private companysService = inject(CompanysService);
+  private signalsService = inject(SignalsService);
 
   public contract: Icontract[] = [];
   private gridApi!: GridApi<Icontract>;
 
-  // Define data of Grid
-  public rowSelection: 'single' | 'multiple' = 'single';
-  public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
-  public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
-  public paginationPageSize = 15;
-  public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
-
-  // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
-    headerHeight: 30,
-    rowHeight: 30,
+    headerHeight: 25,
+    rowHeight: 20,
+    suppressEnterWhenEditing: false,
+    rowBuffer: 20,
     rowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -98,6 +108,7 @@ export class ContractsComponent {
     onRowClicked: (event) => {
       // Seleccionar la fila al hacer clic en cualquier celda
       event.node.setSelected(true);
+      // Puedes agregar aquí más lógica si es necesario, por ejemplo, actualizar datos seleccionados o activar pestañas
     },
     onRowSelected: (event) => {
       // Deseleccionar otras filas cuando se selecciona una nueva
@@ -109,7 +120,84 @@ export class ContractsComponent {
         });
       }
     },
+    onCellKeyDown: (params) => {
+      if (params.event.key === 'Enter') {
+        // Obtener todas las columnas editables
+        const editableColumns = this.colMaster.filter((col) => col.editable);
+        const currentColIndex = editableColumns.findIndex(
+          (col) => col.field === params.column.getColDef().field
+        );
+  
+        if (currentColIndex < editableColumns.length - 1) {
+          // Añadir delay de 50ms antes de mover el foco
+          requestAnimationFrame(() => {
+            // Mover a la siguiente columna editable
+            params.api.startEditingCell({
+              rowIndex: params.node.rowIndex,
+              colKey: editableColumns[currentColIndex + 1].field,
+            });
+          }); // Retraso para permitir que termine la edición actual
+        }
+        params.event.preventDefault(); // Prevenir comportamiento por defecto
+      }
+    },
+    onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
   };
+
+  async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
+    // Verificar que event.data esté disponible antes de acceder a sus propiedades
+    if (!event.data) {
+      console.warn('No hay datos en la fila seleccionada');
+      return;
+    }
+  
+    const colId = event.column.getColId();
+    const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
+    const selectedId = selectedRowData.id; // Obtener el ID del registro 
+  
+    this.notSavedChanges = true;
+    this.selectedRowData = selectedRowData;
+  
+
+      try {
+        await this.activateDetailsTab();
+      } catch (error) {
+        console.error('Error activando la pestaña de préstamos:', error);
+      }
+    
+  }
+
+  async activateDetailsTab() {
+    if (!this.isOpen) {
+      await this.adjustGridSize();
+      this.showDetailsTab = true;
+      this.isOpen = true;
+    } else {
+      await this.resetGridSize();
+      this.isOpen = false;
+    }
+  }
+
+  async adjustGridSize() {
+    this.gridHeight = '20vh'; // Adjust as needed
+  }
+
+  resetGridSize() {
+    this.gridHeight = '80vh'; // Reset to default height
+    this.showDetailsTab = false;
+    if (this.gridApi) {
+      this.gridApi.setFilterModel(null);
+      this.gridApi.onFilterChanged();
+    }
+  }
+
+  // Define data of Grid
+  public rowSelection: 'single' | 'multiple' = 'single';
+  public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
+  public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
+  public paginationPageSize = 15;
+  public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
+
 
   colMaster: ColDef[] = [
     { field: 'numberContract', headerName: 'Contrato', filter: true, width: 30 },
@@ -155,11 +243,12 @@ export class ContractsComponent {
   }
 
   getContracts() {
-    this.followprojectsService.getContract(1).subscribe(
+    this.followprojectsService.getContract(this.idBranch).subscribe(
       (resp: any) => {
         this.contract = this.mapContract(resp);
       },
       (error) => {
+        this.contract = [];
         console.error('Error fetching contracts', error);
       }
     );
@@ -182,7 +271,7 @@ export class ContractsComponent {
       dateEnd: w.dateEnd,
       stateContract: w.stateContract,
       term: w.term,
-      idBussines: w.idBussines,
+      idBranch: w.idBranch,
       consecutive: w.consecutive
     } as Icontract));
   }
@@ -191,6 +280,7 @@ export class ContractsComponent {
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
+      this.idContract = this.selectedRowData.id;
     } else {
       this.selectedRowData = null;
     }
@@ -219,6 +309,14 @@ export class ContractsComponent {
   };
 
   addRow() {
+    if (this.idBranch < 0) {
+      alerts.basicAlert(
+        'Crear contrato',
+        'Debe seleccionar una sucursal para crear un contrato.',
+        'warning'
+      );
+      return;
+    }
     this.isEditing = false;
     this.initForm();
     this.openModal();
@@ -255,7 +353,7 @@ export class ContractsComponent {
       dateEnd: this.formatDateForInput(data.dateEnd),
       stateContract: data.stateContract,
       term: data.term,
-      idBussines: data.idBussines,
+      idBranch: data.idBranch,
       consecutive: data.consecutive
     });
   }
