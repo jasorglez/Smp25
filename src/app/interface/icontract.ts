@@ -4,7 +4,7 @@ export interface Icontract {
   description   : string;
   descripSmall  : string;
   idContrato     : number;
-  idBussines     : number;
+  idBranch      : number;
   idProvider    : number;
   dateStar      : string | null;
   dateEnd      : string | null;

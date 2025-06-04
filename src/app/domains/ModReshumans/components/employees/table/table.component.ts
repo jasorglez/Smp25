@@ -28,7 +28,6 @@ import { CatalogsService } from 'app/services/catalogs.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { AuthService } from 'app/services/auth.service';
 import { environment } from '@env/environment';
-
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 

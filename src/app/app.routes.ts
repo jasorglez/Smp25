@@ -111,9 +111,39 @@ export const routes: Routes = [
                 path: ':section',
                 loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(p => p.CatalogsComponent)
               },
+              /*{
+                path: 'MATERIALES2',
+                loadComponent: () => import('./domains/Warehouse/components/catalogs/catalogs.component').then(p => p.CatalogsComponent)
+              },*/
             ],
           },
-
+          {
+            path: 'page03',
+            loadComponent: () =>
+              import('./domains/Warehouse/pages/pages03/pages03.component').then(
+                (p) => p.Pages03Component
+              ),
+            children: [
+              { path: '', redirectTo: 'providers', pathMatch: 'full' },
+              ...SharedModule.getRoutes(),
+              {
+                path: 'providers',
+                loadComponent: () =>
+                  import(
+                    './domains/ModAdmon/components/customers/customers.component'
+                  ).then((e) => e.CustomersComponent),
+                data: { type: 'PROVIDERS' }, // Parámetro para proveedores
+                canDeactivate: [UnsavedChangesGuard],
+              },
+              {
+                path: 'historical',
+                loadComponent: () =>
+                  import(
+                    './domains/ModAdmon/components/historical/historical.component'
+                  ).then((e) => e.HistoricalComponent),
+              },
+            ],
+          },
           {
             path: 'setupwh',
             loadComponent: () =>
@@ -515,33 +545,7 @@ export const routes: Routes = [
               },
             ],
           },
-          {
-            path: 'page03',
-            loadComponent: () =>
-              import('./domains/ModAdmon/pages/pages03/pages03.component').then(
-                (p) => p.Pages03Component
-              ),
-            children: [
-              { path: '', redirectTo: 'providers', pathMatch: 'full' },
-              ...SharedModule.getRoutes(),
-              {
-                path: 'providers',
-                loadComponent: () =>
-                  import(
-                    './domains/ModAdmon/components/customers/customers.component'
-                  ).then((e) => e.CustomersComponent),
-                data: { type: 'PROVIDERS' }, // Parámetro para proveedores
-                canDeactivate: [UnsavedChangesGuard],
-              },
-              {
-                path: 'historical',
-                loadComponent: () =>
-                  import(
-                    './domains/ModAdmon/components/historical/historical.component'
-                  ).then((e) => e.HistoricalComponent),
-              },
-            ],
-          },
+          
         ],
       },
 
@@ -725,6 +729,7 @@ export const routes: Routes = [
               import(
                 './domains/ModSales/components/productFinished/productFinished.component'
               ).then((p) => p.ProductFinishedComponent),
+               data: { type: 'PRODSALES' }, // Paso el Parámetro para materials
           },
         ],
       },

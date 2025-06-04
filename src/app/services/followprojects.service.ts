@@ -15,7 +15,7 @@ export class FollowprojectsService {
   private http = inject(HttpClient);
 
   getContract(contract: number): Observable<Icontract> {
-    return this.http.get<Icontract>(`${environment.urlSmp}/Contract?idBussines=${contract}`, { headers: this.trackingService.getHeaders() });
+    return this.http.get<Icontract>(`${environment.urlSmp}/Contract?idBranch=${contract}`, { headers: this.trackingService.getHeaders() });
   }
 
   getContractById(id: number): Observable<any> {

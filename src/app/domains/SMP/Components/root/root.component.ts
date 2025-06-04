@@ -391,7 +391,7 @@ public gridOptions: any = {
               this.branchesService.assignPermissionAfterCreation(
                 this.idUser, //id user
                 response.id,
-                'company'
+                'root'
               )
             );
           } catch (permError) {

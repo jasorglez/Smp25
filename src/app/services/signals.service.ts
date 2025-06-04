@@ -423,6 +423,7 @@ export class SignalsService {
   /* Para entradas y salidas */
   private idInAndOut = signal<number>(null);
   private nameInAndOut = signal<string>(null);
+  
 
   setIdInAndOut(id: number) {
     this.idInAndOut.set(id);
@@ -647,4 +648,24 @@ export class SignalsService {
     resetRefreshEmployees() {
       this.refreshEmployees.set(false);
     }
+
+  private idCatalogFamily = signal<number>(null);
+  private closeCatalog = signal<boolean>(false);
+
+  setIdCatalogFamily(id: number){
+    this.idCatalogFamily.set(id);
+  }
+
+  setCloseCatalog(valor: boolean){
+    this.closeCatalog.set(valor);
+  }
+
+  getIdCatalogFamily(){
+    return this.idCatalogFamily;
+  }
+
+  getCloseCatalog(){
+    return this.closeCatalog;
+  }
+
 }

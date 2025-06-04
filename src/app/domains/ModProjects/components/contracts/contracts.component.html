@@ -1,25 +1,51 @@
 <div class="row p-3">
   <div class="col-12">
-    <!-- En este row van los botones de CRUD -->
-    <div class="row mb-3">
-      <div class="col text-right">
-        <button type="button" class="btn btn-primary me-1" (click)="addRow()"><i
-            class="bi bi-plus-lg" style="font-size: 1.5rem;"></i></button>
-        <button type="button" class="btn btn-warning ms-1 me-1" (click)="editRow()"><i class="bi bi-pencil-square"
-            style="font-size: 1.5rem;"></i></button>
-        <button type="button" class="btn btn-danger ms-1" (click)="deleteContract()"><i class="bi bi-trash"
-            style="font-size: 1.5rem;"></i></button>
+    <!-- Botones y grid principal -->
+    <div class="row mt-3">
+      <!-- Columna de botones -->
+      <div class="col-auto">
+        <div class="d-flex flex-column gap-1">
+          <button
+            type="button"
+            class="btn btn-primary ms-1 me-1"
+            (click)="addRow()"
+            [disabled]="idBranch < 0"
+            [title]="idBranch < 0 ? 'Debe seleccionar una sucursal para crear un contrato' : ''"
+          >
+            <i class="bi bi-plus-lg"></i>
+          </button>
+          <button
+            type="button"
+            class="btn btn-warning ms-1 me-1"
+            (click)="editRow()"
+          >
+            <i class="bi bi-pencil-square"></i>
+          </button>
+          <button
+            type="button"
+            class="btn btn-danger ms-1 me-1"
+            (click)="deleteContract()"
+          >
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
       </div>
-    </div>
-    <!-- En este row va el ag-grid -->
-    <div class="row">
-      <!-- The AG Grid component -->
-      <ag-grid-angular [columnDefs]="colMaster" [defaultColDef]="defaultColDef" [rowSelection]="rowSelection"
-        [rowData]="contract" (selectionChanged)="onSelectionChanged($event)" class="ag-theme-quartz small-text-ag-grid"
-        [rowGroupPanelShow]="rowGroupPanelShow" [pivotPanelShow]="pivotPanelShow" [pagination]="true"
-        (gridReady)="onGridReady($event)" [paginationPageSize]="paginationPageSize" [gridOptions]="gridOptions"
-        [paginationPageSizeSelector]="paginationPageSizeSelector" [statusBar]="statusBar" [stopEditingWhenCellsLoseFocus]="true">
-      </ag-grid-angular>
+      <div class="col">
+        <ag-grid-angular
+          style="width: 100%"
+          [ngStyle]="{ height: gridHeight }"
+          class="ag-theme-quartz small-text-ag-grid"
+          [columnDefs]="colMaster"
+          [defaultColDef]="defaultColDef"
+          [rowData]="contract"
+          (selectionChanged)="onSelectionChanged($event)"
+          [pagination]="true"
+          (gridReady)="onGridReady($event)"
+          [gridOptions]="gridOptions"
+          [stopEditingWhenCellsLoseFocus]="true"
+        [localeText]="AG_GRID_LOCALE_ES">
+        </ag-grid-angular>
+      </div>
     </div>
   </div>
 </div>
@@ -83,7 +109,8 @@
             <input type="text" formControlName="resident" id="resident" class="form-control" placeholder="Residente">
           </div>
           <div class="mb-2">
-            <input type="text" formControlName="supervisor" id="supervisor" class="form-control" placeholder="Supervisor">
+            <input type="text" formControlName="supervisor" id="supervisor" class="form-control"
+              placeholder="Supervisor">
           </div>
           <div class="mb-2">
             <input type="number" formControlName="amountMx" id="amountMx" class="form-control"
@@ -114,3 +141,11 @@
     <button type="button" class="btn btn-secondary" (click)="modal.close('Close click')">Cancelar</button>
   </div>
 </ng-template>
+
+<div class="row" *ngIf="idContract != null">
+  <div class="col-12">
+    <ul class="nav nav-tabs" id="myTab" role="tablist"></ul>
+
+      <app-contract-details></app-contract-details>
+    </div>
+  </div>
