@@ -308,7 +308,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
         headerName: 'Válido',
         editable: true,
         width: 100,
-        hide:this.selectedCatalog !== 'REASON'
+        hide:this.selectedCatalog !== 'ABSENCES'
       },
       {
         field: 'vigente',
