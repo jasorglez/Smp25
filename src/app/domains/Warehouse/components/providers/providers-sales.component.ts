@@ -12,13 +12,13 @@ import { PosService } from 'app/services/pos.service';
 
 
 @Component({
-  selector: 'app-customers-sales',
+  selector: 'app-providers-sales',
   standalone: true,
   imports: [RouterModule, DomainsModule, AgGridModule, MultiLineEditorComponent],
-  templateUrl: './customers-sales.component.html',
-  styleUrl: './customers.component.scss'
+  templateUrl: './providers-sales.component.html',
+  styleUrl: './providers.component.scss'
 })
-export class CustomersSalesComponent {
+export class ProvidersSalesComponent {
 
 
   ngOnInit() {

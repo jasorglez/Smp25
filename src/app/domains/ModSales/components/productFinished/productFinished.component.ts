@@ -483,11 +483,11 @@ export class ProductFinishedComponent implements CanComponentDeactivate {
     ];
   }
 
-  obtenerDatos() {
-    return this.materialsService.getMaterials(this.idRoot, "PRODSALES").subscribe(
-      
+ obtenerDatos() {
+    return this.materialsService.getMaterials(this.idRoot, 'PRODSALES').subscribe(
       (data: any) => {
         this.rowData = data;
+        console.log(this.rowData)
       },
       (error) => console.error('Error fetching data:', error)
     );

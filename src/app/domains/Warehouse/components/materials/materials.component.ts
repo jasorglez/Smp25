@@ -580,7 +580,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
   }
 
   obtenerDatos() {
-    return this.materialsService.getMaterials(this.idRoot, "CONSUMABLE").subscribe(
+    return this.materialsService.getMaterials(this.idRoot, this.type).subscribe(
       (data: any) => {
         this.rowData = data;
         console.log(this.rowData)

@@ -13,18 +13,18 @@ import { AgGridModule } from 'ag-grid-angular';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { SignalsService } from 'app/services/signals.service';
 import { CustomersService } from 'app/services/customers.service';
-import { AccountbanksComponent } from '../accountbanks/accountbanks.component';
+import { AccountbanksComponent } from 'app/domains/ModAdmon/components/accountbanks/accountbanks.component';
 import { TimeService } from 'app/services/time.service';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 
 @Component({
-  selector: 'app-customers-payments',
+  selector: 'app-providers-payments',
   standalone: true,
   imports: [RouterModule, DomainsModule, AgGridModule],
-  templateUrl: './customers-payments.component.html',
-  styleUrl: './customers-payments.component.scss',
+  templateUrl: './providers-payments.component.html',
+  styleUrl: './providers-payments.component.scss',
 })
-export class CustomersPaymentsComponent {
+export class ProvidersPaymentsComponent {
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
     if (this.masterNotSavedChanges || this.detailNotSavedChanges) {

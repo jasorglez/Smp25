@@ -67,6 +67,16 @@ export class CatalogsComponent implements CanComponentDeactivate {
 
   constructor(private route: ActivatedRoute) {
     effect(() => {
+    if(this.signalsService.getCloseCatalog()()){
+      this.notSavedChanges = false;
+      this.idCatalog = null;
+      if (this.gridApi) {
+        this.gridApi.setFilterModel(null);
+        this.gridApi.onFilterChanged();
+      }
+      this.gridHeight="50vh";
+      this.signalsService.setCloseCatalog(false);
+    }
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.route.paramMap.subscribe(params => {
         this.selectedSection = params.get('section')!;
@@ -75,12 +85,12 @@ export class CatalogsComponent implements CanComponentDeactivate {
     this.obtenerTablesSecitons();
     this.obtenerDatos();
     this.gridHeight="50vh"
-
     if (this.gridApi) {
       this.gridApi.setFilterModel(null);
       this.gridApi.onFilterChanged();
     }
-  });
+    
+  },{ allowSignalWrites: true });
   }
 
   ngOnInit() {
@@ -190,7 +200,8 @@ export class CatalogsComponent implements CanComponentDeactivate {
     const service = this.catalogService;
     service.getCatalogs(this.idRoot, this.selectedCatalog)
       .subscribe({
-        next: (data: any[]) => this.rowData = data,
+        next: (data: any[]) => {this.rowData = data 
+         console.log(data)},
         error: (err) => console.error(`Error (${catalogType || 'desconocido'}):`, err)
       });
   }
@@ -461,12 +472,13 @@ export class CatalogsComponent implements CanComponentDeactivate {
     this.obtenerTables();
     this.obtenerDatos();
     this.notSavedChanges = false;
-    this.idCatalog = null;
-    if (this.gridApi) {
+    //this.idCatalog = null;
+    /*if (this.gridApi) {
       this.gridApi.setFilterModel(null);
       this.gridApi.onFilterChanged();
     }
-    this.gridHeight="50vh"
+    this.gridHeight="50vh"*/
+    
   }
 
   deleteEntry() {}
