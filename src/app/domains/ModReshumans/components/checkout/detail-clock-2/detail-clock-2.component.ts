@@ -176,6 +176,68 @@ export default class DetailClock2Component implements OnInit {
         rowGroup: true,
       },
       {
+        headerName: 'Horas Laboradas',
+        field: 'hoursWorked',
+        editable: false,
+        width: 150,
+        cellRenderer: (params) => {
+          if (params.node.group) {
+            const groupData = params.node.allLeafChildren;
+            let totalHours = 0;
+            let totalDiscountHours = 0; // Acumulador de descuentos
+            let lastInTime = null;
+
+            // Filtrar y ordenar registros válidos por hora
+            const validRecords = [...groupData]
+              .filter(node =>
+                node.data.valid === true &&
+                node.data.checkTime
+              )
+              .sort((a, b) =>
+                a.data.checkTime.localeCompare(b.data.checkTime)
+              );
+
+            // 1. Calcular horas trabajadas
+            for (const node of validRecords) {
+              const record = node.data;
+              if (record.type === 'IN') {
+                lastInTime = record.checkTime;
+              } else if (record.type === 'OUT' && lastInTime) {
+                totalHours += this.calculateTimeDifference(
+                  lastInTime,
+                  record.checkTime
+                );
+                lastInTime = null;
+              }
+            }
+
+            // 2. Calcular descuentos totales del día
+            const discountMinutes = validRecords.reduce((sum, node) => {
+              const record = node.data;
+              // Solo considerar registros con minuteDiscount válido
+              if (record.minuteDiscount !== null &&
+                record.minuteDiscount !== undefined &&
+                !isNaN(record.minuteDiscount)) {
+                return sum + Number(record.minuteDiscount);
+              }
+              return sum;
+            }, 0);
+
+            totalDiscountHours = discountMinutes / 60;
+
+            // 3. Aplicar descuento
+            const netHours = totalHours - totalDiscountHours;
+
+            // Formatear resultado neto
+            return this.formatHours(netHours);
+          }
+          return null;
+        },
+        hide: false,
+        valueGetter: () => null,
+        aggFunc: 'sum',
+      },
+      {
         field: 'checkTime',
         headerName: 'Hora de Registro',
         editable: true,
@@ -538,4 +600,28 @@ export default class DetailClock2Component implements OnInit {
     delete cleanedData.modifiedCheckTime;
     return cleanedData;
   }
+
+  // Agregar esta función auxiliar para calcular diferencia horaria
+  private calculateTimeDifference(start: string, end: string): number {
+    const startParts = start.split(':').map(Number);
+    const endParts = end.split(':').map(Number);
+
+    const startDate = new Date(0, 0, 0, startParts[0], startParts[1], startParts[2] || 0);
+    const endDate = new Date(0, 0, 0, endParts[0], endParts[1], endParts[2] || 0);
+
+    let diff = endDate.getTime() - startDate.getTime();
+    if (diff < 0) {
+      diff += 24 * 60 * 60 * 1000; // Ajuste para tiempos que cruzan medianoche
+    }
+    return diff / 1000 / 60 / 60; // Convertir a horas
+  }
+
+  private formatHours(totalHours: number): string {
+    if (totalHours < 0) totalHours = 0; // Evitar valores negativos
+    
+    const hours = Math.floor(totalHours);
+    const minutes = Math.round((totalHours - hours) * 60);
+    
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+}
 }
