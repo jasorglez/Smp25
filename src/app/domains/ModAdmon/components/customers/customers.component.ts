@@ -253,12 +253,20 @@ export class CustomersComponent implements CanComponentDeactivate {
         headerName: 'Nombre Contacto',
         editable: true,
         filter: true,
+        //suppressMovable: true,
+        width: 270,
+        cellEditor: 'autocompleteEditor',
         filterParams: {
           // can be 'windows' or 'mac'
           defaultToNothingSelected: true,
-          //excelMode: 'mac',
+          //excelMode: 'mac',d
         },
-        width: 200,
+        cellEditorParams: {
+          filterList: this.rowData?.map((e) => e.nameContact.toUpperCase()) || [],
+          filterKey: 'nameContact',
+          placeholder: 'Nombre Contacto',
+          minLength: 1
+        },
         valueSetter: (params) => {
           const rawValue = params.newValue;
           if (!rawValue || typeof rawValue !== 'string') {
