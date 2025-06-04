@@ -9,7 +9,7 @@ import {
   GridReadyEvent,
   ICellRendererParams,
 } from 'ag-grid-enterprise';
-import { alerts } from '../../../../helpers/alerts';
+import { alerts } from '../../../../../../helpers/alerts';
 import { States } from 'app/interface/states';
 import {
   catchError,
@@ -18,8 +18,8 @@ import {
   lastValueFrom,
   toArray,
   throwError,
+  map 
 } from 'rxjs';
-import { map } from 'rxjs/operators';
 import { AgGridModule } from 'ag-grid-angular';
 import { ModalService } from 'app/services/modal.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
@@ -53,7 +53,7 @@ import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
   styleUrls: ['./providers.component.scss'],
 })
 export class ProvidersComponent implements CanComponentDeactivate {
-  //  private administrationService = inject(AdministrationService);
+  //  private administrationService = inject(AdministrationService);d
   private customerService = inject(CustomersService);
   private modalServiceTable = inject(ModalService);
   private signalsService = inject(SignalsService);
@@ -75,7 +75,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
     this.route.data.subscribe((data) => {
       this.type = data['type']; // 'CUSTOMERS' o 'PROVIDERS'
       this.obtenerDatos(); // Llamar a la función para cargar datos
-      this.getStates(); // Llamar a la función para obtener los estados
+      this.getStates(); // Llamar a la función para obtener los estadosd
       this.obtenerBranchs();
       
     });
@@ -107,7 +107,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
       this.obtenerDatos();
       this.obtenerBranchs();
       this.getTypecop();
-      console.log(this.contactoCatalog)
     });
   }
 
@@ -253,12 +252,17 @@ export class ProvidersComponent implements CanComponentDeactivate {
         headerName: 'Nombre Contacto',
         editable: true,
         filter: true,
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
+        cellEditor: 'autocompleteEditor',
         width: 200,
+        cellEditorParams: {
+          filterList: this.rowData?.map(e => e.nameContact
+          ),
+          filterKey: 'nameContact',
+          placeholder: 'Nombre Contacto',
+          minLength: 1,
+          width: 300
+        },
+        
         valueSetter: (params) => {
           const rawValue = params.newValue;
           if (!rawValue || typeof rawValue !== 'string') {
@@ -290,6 +294,11 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
           params.data[params.colDef.field] = normalizedValue;
           return true;
+        },
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',d
         },
       },
       {
@@ -615,6 +624,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
         .subscribe({
           next: (data: any) => {
             this.rowData = data;
+            console.log(data)
             resolve(true);
           },
           error: (error) => {

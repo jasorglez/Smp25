@@ -130,8 +130,8 @@ export const routes: Routes = [
                 path: 'providers',
                 loadComponent: () =>
                   import(
-                    './domains/ModAdmon/components/customers/customers.component'
-                  ).then((e) => e.CustomersComponent),
+                    './domains/Warehouse/components/providers/providers.component'
+                  ).then((e) => e.ProvidersComponent),
                 data: { type: 'PROVIDERS' }, // Parámetro para proveedores
                 canDeactivate: [UnsavedChangesGuard],
               },
