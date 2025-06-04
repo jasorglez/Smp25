@@ -154,6 +154,7 @@ export class ContractsComponent {
     const colId = event.column.getColId();
     const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
     const selectedId = selectedRowData.id; // Obtener el ID del registro 
+    this.idContract = selectedRowData.id;
   
     this.notSavedChanges = true;
     this.selectedRowData = selectedRowData;
@@ -184,6 +185,7 @@ export class ContractsComponent {
 
   resetGridSize() {
     this.gridHeight = '80vh'; // Reset to default height
+    this.idContract = null;
     this.showDetailsTab = false;
     if (this.gridApi) {
       this.gridApi.setFilterModel(null);
@@ -280,7 +282,6 @@ export class ContractsComponent {
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
-      this.idContract = this.selectedRowData.id;
     } else {
       this.selectedRowData = null;
     }
