@@ -38,6 +38,8 @@ export default class DetailClock2Component implements OnInit {
     this.fechaInicio = this.signalsService.getDetailClockForEmployee().startDate();
     this.fechaFin = this.signalsService.getDetailClockForEmployee().endDate();
     this.obtenerDatos(this.idEmployee, this.fechaInicio, this.fechaFin);
+    this.idCompany = this.signalsService.getRootSelectedBySidebar()();
+    this.obtenerCatalogoAusencias(this.idCompany);
   }
 
   constructor() {
@@ -52,6 +54,11 @@ export default class DetailClock2Component implements OnInit {
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.obtenerDatos(this.idEmployee, this.fechaInicio, this.fechaFin);
+    });
+
+    effect(() => {
+      this.idCompany = this.signalsService.getRootSelectedBySidebar()();
+      this.obtenerCatalogoAusencias(this.idCompany);
     });
   }
 
@@ -73,6 +80,7 @@ export default class DetailClock2Component implements OnInit {
   isOpen: boolean = false;
   branchs: any[] = [];
   Typecop: any[] = [];
+  idCompany: number;
   tempIdCounter: number = 0; // Contador para IDs temporales
 
   // Agregar esta nueva variable para almacenar el ID de la última fila editada
@@ -88,6 +96,7 @@ export default class DetailClock2Component implements OnInit {
   idEmployee: number;
   fechaInicio: any;
   fechaFin: any;
+  catalogoAusencias: any[] = [];
 
   public defaultColDef: ColDef = {
     sortable: true,
@@ -388,10 +397,22 @@ export default class DetailClock2Component implements OnInit {
         width: 150
       },
       {
-        field: 'comments',
-        headerName: 'Comentarios',
+        field: 'idReason',
+        headerName: 'Razón de justificación de falta',
         editable: true,
         width: 200,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.catalogoAusencias.map(item => item.id.toString()),
+        },
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const ausencia = this.catalogoAusencias.find(item => item.id.toString() === params.value.toString());
+          return ausencia ? ausencia.description : '';
+        },
+        valueParser: (params) => {
+          return params.newValue;
+        }
       },
       {
         field: 'editedBy',
@@ -400,6 +421,13 @@ export default class DetailClock2Component implements OnInit {
         width: 200,
       },
     ];
+  }
+
+  obtenerCatalogoAusencias(idCompany: number) {
+    this.clockService.getCatalogsAbsences(idCompany).subscribe((data: any) => {
+      this.catalogoAusencias = data;
+      console.log(this.catalogoAusencias);
+    });
   }
 
   obtenerDatos(idEmployee: number, fechaInicio: string, fechaFin: string) {
@@ -520,7 +548,7 @@ export default class DetailClock2Component implements OnInit {
       minuteDiscountBackup: null,
       edited: true,
       byTimeClock: false,
-      comments: '',
+      idReason: null,
       editedBy: this.signalsService.getDisplayName()(),
       active: true,
       __isNew: true, // Marca la fila como nueva
