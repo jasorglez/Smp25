@@ -200,7 +200,8 @@ export class CatalogsComponent implements CanComponentDeactivate {
     const service = this.catalogService;
     service.getCatalogs(this.idRoot, this.selectedCatalog)
       .subscribe({
-        next: (data: any[]) => {this.rowData = data 
+        next: (data: any[]) => {
+          this.rowData = data 
          console.log(data)},
         error: (err) => console.error(`Error (${catalogType || 'desconocido'}):`, err)
       });
@@ -269,9 +270,14 @@ export class CatalogsComponent implements CanComponentDeactivate {
       },
       {
         field: 'valueAddition',
-        headerName: this.selectedCatalog !== 'BONUS' ? 'Color' : 'Monto',
+        headerName:
+          this.selectedCatalog === 'BONUS'
+            ? 'Monto'
+            : this.selectedCatalog === 'CUSTOMERS'
+            ? 'Color'
+            : 'Campo',
         cellRenderer:
-          this.selectedCatalog !== 'BONUS' ? ColorPickerRenderer : '',
+          this.selectedCatalog === 'CUSTOMERS' ? ColorPickerRenderer : '',
         cellRendererParams: {
           onChange: (valueAddition: string) => {},
         },
@@ -281,18 +287,28 @@ export class CatalogsComponent implements CanComponentDeactivate {
           //console.log(foundItem)
           //const value = foundItem ? foundItem.valueAddition : params.value;
           //console.log(value)
-          return params.value
+          if(this.selectedCatalog === 'BONUS'){
+            return params.value
             ? `$${Number(params.value).toLocaleString('es-MX', {
                 minimumFractionDigits: 2,
               })}`
             : '';
+          }
+          return params.value
         },
 
         editable: true,
         width: 100,
         hide:
           this.selectedCatalog !== 'BONUS' &&
-          this.selectedCatalog !== 'CUSTOMERS', // Oculta si no es BONUS
+          this.selectedCatalog !== 'CUSTOMERS'
+      },
+      {
+        field: 'valueAdditionBit',
+        headerName: 'Válido',
+        editable: true,
+        width: 100,
+        hide:this.selectedCatalog !== 'ABSENCES'
       },
       {
         field: 'vigente',
@@ -393,6 +409,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
       idCompany: this.idRoot,
       description: '',
       valueAddition: '',
+      valueAdditionBit: true,
       type: this.selectedCatalog,
       vigente: true,
       active: 1,
