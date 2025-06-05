@@ -87,4 +87,10 @@ export class ClockService {
       headers: this.trackingService.getHeaders(),
     });
   }
+
+  getCatalogsDiscrepancies(idCompany: number): Observable<any> {
+    return this.http.get(`${environment.urlWarehouse}/Catalog/getCatalogs?idCompany=${idCompany}&type=ABSENCES`, {
+      headers: this.trackingService.getHeaders(),
+    });
+  }
 }

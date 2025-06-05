@@ -426,7 +426,6 @@ export default class DetailClock2Component implements OnInit {
   obtenerCatalogoAusencias(idCompany: number) {
     this.clockService.getCatalogsAbsences(idCompany).subscribe((data: any) => {
       this.catalogoAusencias = data;
-      console.log(this.catalogoAusencias);
     });
   }
 
