@@ -218,12 +218,20 @@ export class MaterialsComponent implements CanComponentDeactivate {
         headerName: 'Proveedor',
         editable: true,
         filter: true,
+        cellEditor: 'autocompleteEditor',
+        width: 200,
+        cellEditorParams: {
+          filterList: this.proveedoresData?.map(e => e.nameContact
+          ),
+          filterKey: 'nameContact',
+          placeholder: 'Proveedor',
+          minLength: 1
+        },
         filterParams: {
           // can be 'windows' or 'mac'
           defaultToNothingSelected: true,
           //excelMode: 'mac',
         },
-        width: 200,
         valueSetter: (params) => {
           const rawValue = params.newValue;
           if (!rawValue || typeof rawValue !== 'string') {
@@ -238,7 +246,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
             return false;
           }
 
-          const duplicateExists = this.proveedoresData.some(
+          /*const duplicateExists = this.proveedoresData.some(
             (row, index) =>
               index !== params.node.rowIndex &&
               row.nameContact?.toUpperCase() === normalizedValue
@@ -251,7 +259,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
               'error'
             );
             return false;
-          }
+          }*/
 
           params.data[params.colDef.field] = normalizedValue;
           return true;
@@ -772,6 +780,17 @@ export class MaterialsComponent implements CanComponentDeactivate {
               console.error('Error obteniendo datos:', error);
             }
           });
+      /*if (bonusInfo) {
+        event.data.quantity = parseFloat(bonusInfo.valueAddition);
+      }*/
+    }
+    if (event.colDef.field === 'idProveedor') {
+      const selectedProveedor = event.newValue;
+      const proveedorInfo = this.proveedoresData?.find(
+        (item) => item.nameContact === selectedProveedor
+      );
+        
+      console.log(proveedorInfo.id)
       /*if (bonusInfo) {
         event.data.quantity = parseFloat(bonusInfo.valueAddition);
       }*/
