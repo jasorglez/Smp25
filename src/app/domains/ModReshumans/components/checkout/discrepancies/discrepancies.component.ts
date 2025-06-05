@@ -10,12 +10,11 @@ import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/auto
 import { PayrollService } from 'app/services/payroll.service';
 import { ClockService } from 'app/services/clock.service';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import DetailClock2Component from "../detail-clock-2/detail-clock-2.component";
 
 @Component({
   selector: 'app-discrepancies',
   standalone: true,
-  imports: [RouterModule, DomainsModule, AgGridModule, DetailClock2Component],
+  imports: [RouterModule, DomainsModule, AgGridModule],
   templateUrl: './discrepancies.component.html',
   styleUrl: './discrepancies.component.scss'
 })
@@ -30,7 +29,9 @@ export default class DiscrepanciesComponent implements OnInit {
   ngOnInit() {
 
     /* this.idBranch = this.signalsService.getBranchSelectedBySidebar()();*/
-    this.obtenerDatos(); 
+    this.obtenerDatos();
+    this.idCompany = this.signalsService.getRootSelectedBySidebar()();
+    this.obtenerCatalogoDiscrepancias(this.idCompany);
   }
 
   constructor() {
@@ -51,6 +52,11 @@ export default class DiscrepanciesComponent implements OnInit {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.obtenerDatos();
     }) */
+
+      effect(() => {
+        this.idCompany = this.signalsService.getRootSelectedBySidebar()();
+        this.obtenerCatalogoDiscrepancias(this.idCompany);
+      });
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -71,6 +77,7 @@ export default class DiscrepanciesComponent implements OnInit {
   isOpen: boolean = false;
   branchs: any[] = [];
   Typecop: any[] = [];
+  idCompany: number;
 
   // Agregar esta nueva variable para almacenar el ID de la última fila editada
   private lastEditedRowId: number | string | null = null;
@@ -85,6 +92,7 @@ export default class DiscrepanciesComponent implements OnInit {
   idEmployee: number;
   fechaInicio: any = '2025-05-17';
   fechaFin: any = '2025-05-23';
+  catalogoDiscrepancias: any[] = [];
 
 
   public defaultColDef: ColDef = {
@@ -221,14 +229,35 @@ export default class DiscrepanciesComponent implements OnInit {
       {
         field: 'allowDiscrepance',
         headerName: 'Permitir Diferencia',
-        editable: true,
-        width: 150
+        editable: false,
+        hide: true
       },
       {
         field: 'discrepanceAllowedReason',
-        headerName: 'Razón Permitida',
-        editable: false,
-        width: 150
+        headerName: 'Razón de discrepancia',
+        editable: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.catalogoDiscrepancias.map(item => item.id.toString()),
+        },
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const discrepancia = this.catalogoDiscrepancias.find(item => item.id.toString() === params.value.toString());
+          return discrepancia ? discrepancia.description : '';
+        },
+        valueParser: (params) => {
+          return params.newValue;
+        },
+        onCellValueChanged: (params) => {
+          if (params.newValue) {
+            const discrepancia = this.catalogoDiscrepancias.find(item => item.id.toString() === params.newValue.toString());
+            if (discrepancia) {
+              params.data.allowDiscrepance = discrepancia.valueAdditionBit;
+              params.api.refreshCells({ force: true });
+            }
+          }
+        }
       },
       {
         field: 'discrepanceAllowedApprovedBy',
@@ -316,4 +345,10 @@ export default class DiscrepanciesComponent implements OnInit {
     }
   }
 
+  obtenerCatalogoDiscrepancias(idCompany: number) {
+    this.clockService.getCatalogsDiscrepancies(idCompany).subscribe((data: any) => {
+      this.catalogoDiscrepancias = data;
+      console.log(this.catalogoDiscrepancias);
+    });
+  }
 }
