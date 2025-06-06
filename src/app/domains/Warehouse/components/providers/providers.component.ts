@@ -259,8 +259,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
           ),
           filterKey: 'nameContact',
           placeholder: 'Nombre Contacto',
-          minLength: 1,
-          width: 300
+          minLength: 1
         },
         
         valueSetter: (params) => {

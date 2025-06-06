@@ -48,6 +48,13 @@ export class ClockService {
     });
   }
 
+
+  updateCheckInOutForDiscrepancies(id: number, data: any): Observable<any> {
+    return this.http.patch(`${environment.urlAdministration}/EmployeesxCheckInsOuts/${id}/discrepance`, data, {
+      headers: this.trackingService.getHeaders(),
+    });
+  }
+
   checkIncidentsByEmployee(idEmployee: number, start: string, end: string): Observable<any> {
     return this.http.get(`${environment.urlAdministration}/EmployeesxCheckInsOuts/employee/${idEmployee}/incidents?start=${start}&end=${end}`, {
       headers: this.trackingService.getHeaders(),

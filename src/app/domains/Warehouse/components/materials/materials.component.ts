@@ -1,4 +1,5 @@
 import { Component, effect, HostListener, inject, signal } from '@angular/core';
+import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import {
   CellDoubleClickedEvent,
   ColDef,
@@ -116,6 +117,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
+  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   components = {
     multiLineEditor: MultiLineEditorComponent,
@@ -218,12 +220,20 @@ export class MaterialsComponent implements CanComponentDeactivate {
         headerName: 'Proveedor',
         editable: true,
         filter: true,
+        cellEditor: 'autocompleteEditor',
+        width: 200,
+        cellEditorParams: {
+          filterList: this.proveedoresData?.map(e => e.nameContact
+          ),
+          filterKey: 'nameContact',
+          placeholder: 'Proveedor',
+          minLength: 1
+        },
         filterParams: {
           // can be 'windows' or 'mac'
           defaultToNothingSelected: true,
           //excelMode: 'mac',
         },
-        width: 200,
         valueSetter: (params) => {
           const rawValue = params.newValue;
           if (!rawValue || typeof rawValue !== 'string') {
@@ -238,7 +248,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
             return false;
           }
 
-          const duplicateExists = this.proveedoresData.some(
+          /*const duplicateExists = this.proveedoresData.some(
             (row, index) =>
               index !== params.node.rowIndex &&
               row.nameContact?.toUpperCase() === normalizedValue
@@ -251,7 +261,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
               'error'
             );
             return false;
-          }
+          }*/
 
           params.data[params.colDef.field] = normalizedValue;
           return true;
@@ -294,6 +304,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
         headerName: 'Producto',
         editable: true,
         width: 150,
+        filter: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.familias ? this.familias.map((item) => item.id) : [],
@@ -303,6 +314,13 @@ export class MaterialsComponent implements CanComponentDeactivate {
             ? this.familias.find((item) => item.id === params.value)
             : null;
           return foundItem ? `${foundItem.description}` : params.value;
+        },
+        valueGetter: (params) => {
+          console.log(params)
+          if (!params.data || !params.data.idFamilia) return '';
+          const familias = this.familias?.find(b => b.id === params.data.idFamilia);
+        
+          return familias ? familias.description : '';
         },
         mainMenuItems: (params: GetMainMenuItemsParams) => {
           const familyMenuItems: (MenuItemDef | string)[] = [
@@ -334,6 +352,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
         headerName: 'Presentación',
         editable: true,
         width: 150,
+        filter: true,
         cellEditor: 'agSelectCellEditor',
         mainMenuItems: (params: GetMainMenuItemsParams) => {
           const subFamilyMenuItems: (MenuItemDef | string)[] = [
@@ -373,6 +392,13 @@ export class MaterialsComponent implements CanComponentDeactivate {
             ? this.subfamilias2.find((item) => item.id === params.value)
             : null;
           return foundItem ? `${foundItem.description}` : params.value;
+        },
+        valueGetter: (params) => {
+          console.log(params)
+          if (!params.data || !params.data.idSubfamilia) return '';
+          const familias = this.subfamilias2?.find(b => b.id === params.data.idSubfamilia);
+        
+          return familias ? familias.description : '';
         },
       },
       {
@@ -772,6 +798,17 @@ export class MaterialsComponent implements CanComponentDeactivate {
               console.error('Error obteniendo datos:', error);
             }
           });
+      /*if (bonusInfo) {
+        event.data.quantity = parseFloat(bonusInfo.valueAddition);
+      }*/
+    }
+    if (event.colDef.field === 'idProveedor') {
+      const selectedProveedor = event.newValue;
+      const proveedorInfo = this.proveedoresData?.find(
+        (item) => item.nameContact === selectedProveedor
+      );
+        
+      console.log(proveedorInfo.id)
       /*if (bonusInfo) {
         event.data.quantity = parseFloat(bonusInfo.valueAddition);
       }*/
