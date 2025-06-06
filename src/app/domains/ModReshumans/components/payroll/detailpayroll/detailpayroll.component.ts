@@ -8,6 +8,7 @@ import {
   GridApi,
   GridReadyEvent,
   SelectionChangedEvent,
+  CellDoubleClickedEvent
 } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { EmployeesxloansService } from 'app/services/employeesxloans.service';
@@ -15,11 +16,12 @@ import { PayrollService } from 'app/services/payroll.service';
 import { SignalsService } from 'app/services/signals.service';
 import { concat, lastValueFrom, toArray } from 'rxjs';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { EmployeesxSavingsComponent } from "../../employees/savings/savings.component";
 
 @Component({
   selector: 'app-detailpayroll',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, ReactiveFormsModule ],
+  imports: [CommonModule, FormsModule, AgGridModule, ReactiveFormsModule, EmployeesxSavingsComponent],
   templateUrl: './detailpayroll.component.html',
   styleUrls: ['./detailpayroll.component.css']
 })
@@ -155,6 +157,7 @@ export class DetailpayrollComponent implements OnInit{
       this.loadData();
       console.log("------------------------------------ Constructor ID PAYROLL: ", this.idPayroll);
       console.log("-------- entrando a detailpayroll, este es el constructor  ")
+      
     });
     
   }
@@ -204,6 +207,16 @@ export class DetailpayrollComponent implements OnInit{
         }
       );
       */
+  }
+  async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
+     const colId = event.column.getColId();
+    if(colId =="savings"){
+        const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
+        console.log(selectedRowData)
+        this.signalsService.setIdEmployee(selectedRowData.id_employee);
+        const modal = new bootstrap.Modal(document.getElementById('searchModal')!);
+        modal.show();
+    }
   }
   
 

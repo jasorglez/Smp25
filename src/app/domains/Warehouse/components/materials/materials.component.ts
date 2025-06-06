@@ -164,6 +164,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
 
   get colMaster(): ColDef[] {
     return [
+      { field: 'vigente', headerName: 'Activo', editable: true, width: 100 },
       {
         field: 'id',
         editable: false,
@@ -174,7 +175,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
           filterOptions: ['equals'], // Opciones de filtro
         },
       },
-      {
+      /*{
         field: 'idBranch',
         headerName: 'Sucursal',
         headerClass: 'required-header',             
@@ -214,8 +215,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
           const branch = this.branchs?.find(b => b.id === params.data.idBranch);
           return branch ? branch.name : '';
         },
-      },
-      {
+      },*/
+      /*{
         field: 'idProveedor',
         headerName: 'Proveedor',
         editable: true,
@@ -261,12 +262,12 @@ export class MaterialsComponent implements CanComponentDeactivate {
               'error'
             );
             return false;
-          }*/
+          }
 
           params.data[params.colDef.field] = normalizedValue;
           return true;
         },
-      },
+      },*/
       {
         field: 'description',
         headerName: 'Materia prima',
@@ -299,7 +300,76 @@ export class MaterialsComponent implements CanComponentDeactivate {
           return params.value;
         },*/
       },
+
       {
+        headerName: 'Descripcion',
+      },
+      {
+        field: 'insumo',
+        headerName: 'Num. Material',
+        editable: true,
+        filter: true,
+        width: 150,
+        cellEditor: 'autocompleteEditor',
+        cellEditorParams: {
+          filterList: this.rowData.map((e) => e.insumo),
+          filterKey: 'insumo',
+          placeholder: 'Número Material',
+          minLength: 1,
+        },
+        valueSetter: (params) => {
+          const duplicateExists = this.rowData.some(
+            (row, index) =>
+              index !== params.node.rowIndex && row.insumo === params.newValue
+          );
+
+          if (duplicateExists) {
+            alerts.basicAlert(
+              'Código duplicado',
+              'Ya existe el código de insumo.',
+              'error'
+            );
+            return false;
+          }
+
+          params.data[params.colDef.field] = params.newValue;
+          return true;
+        },
+        cellStyle: { backgroundColor: '#d4edda' },
+      },
+      {
+        field: 'date',
+        headerName: 'Fecha de alta MP',
+        editable: true,
+        width: 110,
+        cellDataType: 'dateString',
+        valueFormatter: (params) => {
+          if (params.value) {
+            return params.value.split('T')[0];
+          }
+          return '';
+        },
+      },
+      {
+        field: 'stockMin',
+        headerName: 'Stock Mínimo',
+        editable: true,
+        width: 150,
+        cellDataType: 'number',
+        cellEditorParams: { min: 0 },
+      },//pasara alguna parte de inventarios
+      /*{
+        headerName: "Cantidad a pedir"
+      },*/
+      {
+        field: 'stockMax',
+        headerName: 'Stock Máximo',
+        editable: true,
+        width: 150,
+        cellDataType: 'number',
+        cellEditorParams: { min: 0 },
+      },//pasara alguna parte de inventarios
+      /*{
         field: 'idFamilia',
         headerName: 'Producto',
         editable: true,
@@ -337,13 +407,13 @@ export class MaterialsComponent implements CanComponentDeactivate {
         },
       },
       
-      /*{
+      {
         field: 'typeMaterial',
         headerName: 'Tipo Material',
         editable: true,
         filter: true,
         width: 150,
-      },*/
+      },
       
       
 
@@ -400,9 +470,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
         
           return familias ? familias.description : '';
         },
-      },
-      {
-        headerName: 'Precio unitario',
       },
 
       {
@@ -481,25 +548,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
       {
         headerName: 'Tiempo de entrega',//en desimal
       },
-      /*{
-        field: 'stockMin',
-        headerName: 'Stock Mínimo',
-        editable: true,
-        width: 150,
-        cellDataType: 'number',
-        cellEditorParams: { min: 0 },
-      },*/ //pasara alguna parte de inventarios
-      /*{
-        headerName: "Cantidad a pedir"
-      },*/
-      /*{
-        field: 'stockMax',
-        headerName: 'Stock Máximo',
-        editable: true,
-        width: 150,
-        cellDataType: 'number',
-        cellEditorParams: { min: 0 },
-      },//pasara alguna parte de inventarios*/
+      
       {
         field: 'picture',
         headerName: 'Imagen',
@@ -516,20 +565,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
         },
       },
       
-
-      {
-        field: 'date',
-        headerName: 'Fecha de alta',
-        editable: true,
-        width: 110,
-        cellDataType: 'dateString',
-        valueFormatter: (params) => {
-          if (params.value) {
-            return params.value.split('T')[0];
-          }
-          return '';
-        },
-      },
+      /*
+      
       {
         field: 'idUbication',
         headerName: 'Ubicacion',
@@ -560,48 +597,16 @@ export class MaterialsComponent implements CanComponentDeactivate {
           ];
           return locationMenuItems;
         },
-      },
-      {
-        field: 'insumo',
-        headerName: 'Num. Material',
-        editable: true,
-        filter: true,
-        width: 150,
-        cellEditor: 'autocompleteEditor',
-        cellEditorParams: {
-          filterList: this.rowData.map((e) => e.insumo),
-          filterKey: 'insumo',
-          placeholder: 'Número Material',
-          minLength: 1,
-        },
-        valueSetter: (params) => {
-          const duplicateExists = this.rowData.some(
-            (row, index) =>
-              index !== params.node.rowIndex && row.insumo === params.newValue
-          );
-
-          if (duplicateExists) {
-            alerts.basicAlert(
-              'Código duplicado',
-              'Ya existe el código de insumo.',
-              'error'
-            );
-            return false;
-          }
-
-          params.data[params.colDef.field] = params.newValue;
-          return true;
-        },
-        cellStyle: { backgroundColor: '#d4edda' },
-      },
-      {
+      },*/
+      
+      /*{
         field: 'barCode',
         headerName: 'Codigo Barra',
         editable: true,
         filter: true,
         width: 150,
-      },
-      { field: 'vigente', headerName: 'Vigente', editable: true, width: 100 },
+      },*/
+      
     ];
   }
 

@@ -202,7 +202,7 @@ export class SubatalogsComponent implements CanComponentDeactivate {
         },
         editable: true,
         filter: true,
-        width: 250,
+        width: 100,
         valueSetter: (params) => {
           const rawValue = params.newValue;
           if (!rawValue || typeof rawValue !== 'string') {
@@ -236,35 +236,33 @@ export class SubatalogsComponent implements CanComponentDeactivate {
           return true;
         },
       },
-      /*{
-        field: 'valueAddition',
+      {
+        field: 'subParentId',
         headerName: 'Unidades',
         editable: true,
-        width: 200,
+        width: 150,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: this.units.map(u => u.description)
+          // Aquí el editor muestra los IDs
+          values: this.units.map(u => u.id)
+        },
+        valueFormatter: (params) => {
+          // Este formatter traduce el ID a su descripción visible
+          const found = this.units.find(u => u.id === params.value);
+          return found ? found.description : '';
         },
         valueSetter: (params) => {
-          const selected = this.units.find(u => u.description === params.newValue);
+          // Acepta tanto el ID directo como el texto (por seguridad)
+          const selected = this.units.find(u =>
+            u.id === params.newValue || u.description === params.newValue
+          );
           if (selected) {
-            params.data.valueAddition = selected.id;
+            params.data.subParentId = selected.id;
             return true;
           }
           return false;
-        },
-        valueFormatter: (params) => {
-          // Handle potential null values and properly format the displayed value
-          if (!params.value) return '';
-
-          const foundDepto = this.units
-            ? this.units.find((item) => item.id === params.value)
-            : null;
-
-          return foundDepto ? foundDepto.description : params.value;
-        },
-        
-      },      */
+        }
+      },
       {
         field: 'vigente',
         headerName: 'Activo',
@@ -366,6 +364,7 @@ export class SubatalogsComponent implements CanComponentDeactivate {
       valueAddition: '',
       type: 'SUBFAMILY',
       parentId: this.idCatalog,
+      subParentId: '',
       vigente: true,
       active: 1,
       __isNew: true,
