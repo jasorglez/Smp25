@@ -1,6 +1,5 @@
-
 <div class="col-12 mt-3  light-blue-background">
-    <!-- <form [formGroup]="selectFechas" (ngSubmit)="Consultar()" *ngIf="idBranch >= 0">
+    <form [formGroup]="selectFechas" (ngSubmit)="Consultar()" *ngIf="idBranch >= 0">
       <span class="">Fecha inicial</span>
       <input formControlName="fechaInicio" type="date" [max]="fechaFin" class="bg-white rounded border-light p-1 w-auto ml-2" />
   
@@ -9,10 +8,25 @@
       <button type="submit" class="ml-4 btn btn-success position-relative" >
         Consultar
       </button>
-    </form> -->
+    </form>
     <div class="row mt-1">
-  
-  
+      <!-- Columna de botones -->
+      <div class="col-auto">
+        <div class="d-flex flex-column gap-1">
+          <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveChanges()">
+            <i class="bi bi-floppy"></i>
+            <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+              *ngIf="notSavedChanges">
+              <span class="visually-hidden">Hay cambios sin guardar</span>
+            </span>
+          </button>
+
+          <button type="button" class="btn btn-warning ms-1 me-1" (click)="revert()">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+        </div>
+      </div>
+
       <!-- Columna de la tabla -->
       <div class="col">
         <ag-grid-angular style="width: 100%;"

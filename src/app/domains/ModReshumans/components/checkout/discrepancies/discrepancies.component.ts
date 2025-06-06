@@ -10,6 +10,7 @@ import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/auto
 import { PayrollService } from 'app/services/payroll.service';
 import { ClockService } from 'app/services/clock.service';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { concat, toArray } from 'rxjs';
 
 @Component({
   selector: 'app-discrepancies',
@@ -27,22 +28,20 @@ export default class DiscrepanciesComponent implements OnInit {
   private clockService = inject(ClockService);
 
   ngOnInit() {
-
-    /* this.idBranch = this.signalsService.getBranchSelectedBySidebar()();*/
+    this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
     this.obtenerDatos();
     this.idCompany = this.signalsService.getRootSelectedBySidebar()();
     this.obtenerCatalogoDiscrepancias(this.idCompany);
   }
 
   constructor() {
-
-    /* effect(async () => {
+    effect(async () => {
       if (this.signalsService.getRefreshEmployees()() == true) {
         await this.obtenerDatos(); // Actualizar datos cuando se recibe señal
         this.signalsService.resetRefreshEmployees(); // Resetear la señal después de actualizar
       }
     });
-    
+
     this.selectFechas = this.fb.group({
       fechaInicio: ['', Validators.required],
       fechaFin: ['', Validators.required]
@@ -51,12 +50,12 @@ export default class DiscrepanciesComponent implements OnInit {
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.obtenerDatos();
-    }) */
+    });
 
-      effect(() => {
-        this.idCompany = this.signalsService.getRootSelectedBySidebar()();
-        this.obtenerCatalogoDiscrepancias(this.idCompany);
-      });
+    effect(() => {
+      this.idCompany = this.signalsService.getRootSelectedBySidebar()();
+      this.obtenerCatalogoDiscrepancias(this.idCompany);
+    });
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -86,7 +85,7 @@ export default class DiscrepanciesComponent implements OnInit {
   contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
 
-  id: string;
+  id: number;
   idBranch: number = 8;
   selectedTab: string = 'customers-payments';
   idEmployee: number;
@@ -120,11 +119,9 @@ export default class DiscrepanciesComponent implements OnInit {
     headerHeight: 25,
     rowHeight: 20,
     groupDefaultExpanded: -1, // -1 significa expandir todos los grupos
-    rowClass: (params) => {
-      if (params.node.isSelected()) {
-        return 'selected-row';
-      }
-      return '';
+    rowClassRules: {
+      'discrepancy-row': (params) => params.data && !params.data.hasOwnProperty('allowDiscrepance'),
+      'selected-row': (params) => params.node.isSelected()
     },
     onRowClicked: (event) => {
       event.node.setSelected(true);
@@ -218,13 +215,7 @@ export default class DiscrepanciesComponent implements OnInit {
         field: 'timeDiscrepance',
         headerName: 'Diferencia (min)',
         editable: false,
-        width: 120,
-        cellStyle: (params) => {
-          if (params.value > 0) {
-            return { backgroundColor: '#ffcccc' };
-          }
-          return null;
-        }
+        width: 120
       },
       {
         field: 'allowDiscrepance',
@@ -261,7 +252,7 @@ export default class DiscrepanciesComponent implements OnInit {
       },
       {
         field: 'discrepanceAllowedApprovedBy',
-        headerName: 'Aprobado Por',
+        headerName: 'Modificado por',
         editable: false,
         width: 150
       },
@@ -274,7 +265,7 @@ export default class DiscrepanciesComponent implements OnInit {
     ];
   }
 
-  obtenerDatos(fechaInicio: string = '2025-05-17', fechaFin: string = '2025-05-23') {
+  obtenerDatos(fechaInicio: string = '', fechaFin: string = '') {
     this.clockService.getHourDiscrepancies(this.idBranch, fechaInicio, fechaFin).subscribe((data: any) => {
       this.rowData = [];
       this.rowData = data;
@@ -282,6 +273,7 @@ export default class DiscrepanciesComponent implements OnInit {
       // Esperar a que el grid se actualice y luego ajustar las columnas
       setTimeout(() => {
         if (this.gridApi) {
+          this.gridApi.redrawRows();
           // Obtener todas las columnas y ajustarlas automáticamente
           const allColumnIds = this.gridApi.getColumns().map(column => column.getColId());
           this.gridApi.autoSizeColumns(allColumnIds);
@@ -300,7 +292,7 @@ export default class DiscrepanciesComponent implements OnInit {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
-         } else {
+    } else {
       this.selectedRowData = null;
     }
   }
@@ -309,6 +301,7 @@ export default class DiscrepanciesComponent implements OnInit {
     event.data.__modified = true;
     this.notSavedChanges = true;
     this.lastEditedRowId = event.data.id; // Guardar el ID de la última fila editada
+    event.data.discrepanceAllowedApprovedBy = this.signalsService.getDisplayName()();
   }
 
 
@@ -350,5 +343,50 @@ export default class DiscrepanciesComponent implements OnInit {
       this.catalogoDiscrepancias = data;
       console.log(this.catalogoDiscrepancias);
     });
+  }
+
+  saveChanges() {
+    // Filtrar solo las filas modificadas
+    const modifiedRows = this.rowData.filter(row => row.__modified);
+    console.log(modifiedRows);
+
+    if (modifiedRows.length === 0) {
+      alerts.basicAlert('Info', 'No hay cambios para guardar', 'info');
+      return;
+    }
+
+    const updateObservables = modifiedRows.map((row) => {
+      const cleanedData = this.cleanDataForServer(row);
+      return this.clockService.updateCheckInOutForDiscrepancies(row.id, cleanedData);
+    });
+
+    // Ejecutar todas las suscripciones
+    concat(...updateObservables).pipe(toArray()).subscribe({
+      next: () => {
+        alerts.basicAlert('Éxito', 'Cambios guardados correctamente', 'success');
+        this.notSavedChanges = false;
+      },
+      error: (error) => {
+        alerts.basicAlert('Error', 'Error al guardar los cambios', 'error');
+        console.error('Error al guardar:', error);
+      }
+    });
+  }
+
+  revert() {
+    this.notSavedChanges = false;
+  }
+
+  private cleanDataForServer(data: any): any {
+    const cleanedData = { ...data };
+    delete cleanedData.__modified;
+    delete cleanedData.idEmployee;
+    delete cleanedData.name;
+    delete cleanedData.idBranch;
+    delete cleanedData.dateStamp;
+    delete cleanedData.timeStampOnly;
+    delete cleanedData.realTimeOnly;
+    delete cleanedData.timeDiscrepance;
+    return cleanedData;
   }
 }
