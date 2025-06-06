@@ -205,48 +205,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
         editable: true,
         width: 100,
       },
-      {
-        field: 'idBranch',
-        headerName: 'Nombre sucursal',
-        headerClass: 'required-header',
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        hide:
-          this.authService.hasDetailedPermission(
-            'principal',
-            'see-all-branches'
-          ) || this.signalsService.getemailChoose() === environment.root
-            ? false
-            : true,
-        editable: true,
-        filter: true,
-        width: 170,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: (params) => {
-          // Ensure depto data is available when creating editor
-          return {
-            values: this.branchs ? this.branchs.map((item) => item.id) : [],
-          };
-        },
-        valueFormatter: (params) => {
-          // Handle potential null values and properly format the displayed value
-          if (!params.value) return '';
-
-          const foundBranch = this.branchs
-            ? this.branchs.find((item) => item.id === params.value)
-            : null;
-
-          return foundBranch ? foundBranch.name : params.value;
-        },
-        valueGetter: (params) => {
-          if (!params.data || !params.data.idBranch) return '';
-          const branch = this.branchs?.find(b => b.id === params.data.idBranch);
-          return branch ? branch.name : '';
-        },
-      },
+      
       {
         field: 'nameContact',
         headerName: 'Nombre Contacto',
@@ -361,7 +320,50 @@ export class ProvidersComponent implements CanComponentDeactivate {
         },
         cellStyle: { backgroundColor: '#d4edda' },
       },
-      {
+      /*{
+        field: 'idBranch',
+        headerName: 'Nombre sucursal',
+        headerClass: 'required-header',
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
+        hide:
+          this.authService.hasDetailedPermission(
+            'principal',
+            'see-all-branches'
+          ) || this.signalsService.getemailChoose() === environment.root
+            ? false
+            : true,
+        editable: true,
+        filter: true,
+        width: 170,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: (params) => {
+          // Ensure depto data is available when creating editor
+          return {
+            values: this.branchs ? this.branchs.map((item) => item.id) : [],
+          };
+        },
+        valueFormatter: (params) => {
+          // Handle potential null values and properly format the displayed value
+          if (!params.value) return '';
+
+          const foundBranch = this.branchs
+            ? this.branchs.find((item) => item.id === params.value)
+            : null;
+
+          return foundBranch ? foundBranch.name : params.value;
+        },
+        valueGetter: (params) => {
+          if (!params.data || !params.data.idBranch) return '';
+          const branch = this.branchs?.find(b => b.id === params.data.idBranch);
+          return branch ? branch.name : '';
+        },
+      },*/
+      
+      /*{
         field: 'idTypecop',
         headerName: this.type == 'CUSTOMERS'? 'Tipo cliente' : 'Tipo proveedor',
         editable: true,
@@ -377,7 +379,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
             : null;
           return foundItem ? `${foundItem.description}` : params.value;
         },
-      },
+      },*/
       {
         field: 'cp',
         headerName: 'CP',
