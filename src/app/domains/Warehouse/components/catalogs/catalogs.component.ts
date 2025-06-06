@@ -364,7 +364,7 @@ export class SubatalogsComponent implements CanComponentDeactivate {
       valueAddition: '',
       type: 'SUBFAMILY',
       parentId: this.idCatalog,
-      subParentId: '',
+      subParentId: this.units,
       vigente: true,
       active: 1,
       __isNew: true,
