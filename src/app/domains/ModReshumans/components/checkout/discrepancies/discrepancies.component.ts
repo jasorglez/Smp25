@@ -89,8 +89,8 @@ export default class DiscrepanciesComponent implements OnInit {
   idBranch: number = 8;
   selectedTab: string = 'customers-payments';
   idEmployee: number;
-  fechaInicio: any = '2025-05-17';
-  fechaFin: any = '2025-05-23';
+  fechaInicio: any;
+  fechaFin: any;
   catalogoDiscrepancias: any[] = [];
 
 
@@ -364,6 +364,7 @@ export default class DiscrepanciesComponent implements OnInit {
     concat(...updateObservables).pipe(toArray()).subscribe({
       next: () => {
         alerts.basicAlert('Éxito', 'Cambios guardados correctamente', 'success');
+        this.obtenerDatos();
         this.notSavedChanges = false;
       },
       error: (error) => {
@@ -374,6 +375,7 @@ export default class DiscrepanciesComponent implements OnInit {
   }
 
   revert() {
+    this.obtenerDatos();
     this.notSavedChanges = false;
   }
 
