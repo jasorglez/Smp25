@@ -40,6 +40,7 @@ export default class DetailClock2Component implements OnInit {
     this.obtenerDatos(this.idEmployee, this.fechaInicio, this.fechaFin);
     this.idCompany = this.signalsService.getRootSelectedBySidebar()();
     this.obtenerCatalogoAusencias(this.idCompany);
+    this.obtenerCatalogoAusenciasVigente(this.idCompany);
   }
 
   constructor() {
@@ -59,6 +60,7 @@ export default class DetailClock2Component implements OnInit {
     effect(() => {
       this.idCompany = this.signalsService.getRootSelectedBySidebar()();
       this.obtenerCatalogoAusencias(this.idCompany);
+      this.obtenerCatalogoAusenciasVigente(this.idCompany);
     });
   }
 
@@ -97,6 +99,7 @@ export default class DetailClock2Component implements OnInit {
   fechaInicio: any;
   fechaFin: any;
   catalogoAusencias: any[] = [];
+  catalogoAusenciasVigente: any[] = [];
 
   public defaultColDef: ColDef = {
     sortable: true,
@@ -407,7 +410,7 @@ export default class DetailClock2Component implements OnInit {
         },
         valueFormatter: (params) => {
           if (!params.value) return '';
-          const ausencia = this.catalogoAusencias.find(item => item.id.toString() === params.value.toString());
+          const ausencia = this.catalogoAusenciasVigente.find(item => item.id.toString() === params.value.toString());
           return ausencia ? ausencia.description : '';
         },
         valueParser: (params) => {
@@ -426,6 +429,12 @@ export default class DetailClock2Component implements OnInit {
   obtenerCatalogoAusencias(idCompany: number) {
     this.clockService.getCatalogsAbsences(idCompany).subscribe((data: any) => {
       this.catalogoAusencias = data;
+    });
+  }
+
+  obtenerCatalogoAusenciasVigente(idCompany: number) {
+    this.clockService.getCatalogsAbsencesVigente(idCompany).subscribe((data: any) => {
+      this.catalogoAusenciasVigente = data;
     });
   }
 
