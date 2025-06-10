@@ -194,9 +194,14 @@ export default class DiscrepanciesComponent implements OnInit {
         headerName: 'Fecha',
         editable: false,
         width: 120,
-        valueGetter: (params) => {
+        valueFormatter: (params) => {
           if (!params.data?.dateStamp) return '';
-          return params.data.dateStamp;
+          const date = new Date(params.data.dateStamp);
+          return date.toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+          }).replace(/\//g, '-');
         }
       },
       {
@@ -225,7 +230,7 @@ export default class DiscrepanciesComponent implements OnInit {
       },
       {
         field: 'discrepanceAllowedReason',
-        headerName: 'Razón de discrepancia',
+        headerName: 'Suma a horas ajustadas',
         editable: true,
         width: 150,
         cellEditor: 'agSelectCellEditor',
@@ -265,8 +270,8 @@ export default class DiscrepanciesComponent implements OnInit {
     ];
   }
 
-  obtenerDatos(fechaInicio: string = '', fechaFin: string = '') {
-    this.clockService.getHourDiscrepancies(this.idBranch, fechaInicio, fechaFin).subscribe((data: any) => {
+  obtenerDatos() {
+    this.clockService.getHourDiscrepancies(this.idBranch).subscribe((data: any) => {
       this.rowData = [];
       this.rowData = data;
       console.log(this.rowData);
@@ -329,10 +334,7 @@ export default class DiscrepanciesComponent implements OnInit {
   Consultar() {
     if (this.selectFechas.valid) {
       const datos = this.selectFechas.value;
-      this.fechaInicio = datos.fechaInicio;
-      this.fechaFin = datos.fechaFin;
-      console.log(this.fechaInicio, this.fechaFin)
-      this.obtenerDatos(this.fechaInicio, this.fechaFin);
+      this.obtenerDatos();
     } else {
       alerts.basicAlert('Error', 'Por favor selecciona ambas fechas', 'error');
     }
