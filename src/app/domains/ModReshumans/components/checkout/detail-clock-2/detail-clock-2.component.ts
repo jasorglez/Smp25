@@ -201,16 +201,44 @@ export default class DetailClock2Component implements OnInit {
         width: 120,
         valueFormatter: (params) => {
           if (!params.value) return '';
-          const date = new Date(params.value);
-          const day = date.getDate().toString().padStart(2, '0');
-          const month = (date.getMonth() + 1).toString().padStart(2, '0');
-          const year = date.getFullYear();
-          return `${day}-${month}-${year}`;
+          try {
+            // Intentar parsear la fecha en diferentes formatos
+            let date: Date;
+            if (typeof params.value === 'string') {
+              if (params.value.includes('T')) {
+                date = new Date(params.value);
+              } else {
+                // Si es una fecha en formato YYYY-MM-DD
+                const [year, month, day] = params.value.split('-').map(Number);
+                date = new Date(year, month - 1, day);
+              }
+            } else {
+              date = new Date(params.value);
+            }
+
+            if (isNaN(date.getTime())) {
+              console.error('Fecha inválida:', params.value);
+              return '';
+            }
+
+            const day = date.getDate().toString().padStart(2, '0');
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const year = date.getFullYear();
+            return `${day}-${month}-${year}`;
+          } catch (error) {
+            console.error('Error al formatear fecha:', error);
+            return '';
+          }
         },
         valueParser: (params) => {
           if (!params.newValue) return null;
-          const [day, month, year] = params.newValue.split('-');
-          return `${year}-${month}-${day}`;
+          try {
+            const [day, month, year] = params.newValue.split('-').map(Number);
+            return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+          } catch (error) {
+            console.error('Error al parsear fecha:', error);
+            return null;
+          }
         },
         rowGroup: true,
       },
@@ -468,8 +496,12 @@ export default class DetailClock2Component implements OnInit {
     this.clockService
       .checkInOutByEmployee(idEmployee, fechaInicio, fechaFin)
       .subscribe((data: any) => {
-        this.rowData = [];
-        this.rowData = data;
+        // Asegurarse de que las fechas estén en el formato correcto
+        this.rowData = data.map((item: any) => ({
+          ...item,
+          date: item.date ? new Date(item.date).toISOString().split('T')[0] : null
+        }));
+        
         // Esperar a que el grid se actualice y luego ajustar las columnas
         setTimeout(() => {
           if (this.gridApi) {
@@ -805,7 +837,6 @@ export default class DetailClock2Component implements OnInit {
   // Método para confirmar la adición del justificante
   confirmarAnadir() {
     if (this.justificanteForm.valid) {
-      // Capturar los valores del formulario antes de cualquier otra operación
       const formValues = { ...this.justificanteForm.value };
       console.log('Valores capturados del formulario:', formValues);
 
@@ -822,119 +853,75 @@ export default class DetailClock2Component implements OnInit {
             const employee = data[0];
             console.log('Datos del empleado:', employee);
 
-            if (employee && employee.enabled) {
-              const fecha = formValues.fecha;
-              const idReason = formValues.justificante;
-              console.log('Valor del justificante seleccionado:', idReason);
-              console.log('Tipo del valor del justificante:', typeof idReason);
-
-              if (!idReason) {
-                alerts.basicAlert(
-                  'Error',
-                  'Debe seleccionar un justificante',
-                  'error'
-                );
-                return;
-              }
-
-              const nuevasFilas = [];
-
-              // Crear fila para entry1
-              const filaEntry1 = {
-                id: `temp_${this.tempIdCounter++}`,
-                idEmployee: this.idEmployee,
-                idBranch: this.idBranch,
-                date: fecha,
-                checkTime: employee.entry1,
-                modifiedCheckTime: '',
-                type: 'IN',
-                valid: false,
-                minuteDiscount: 0,
-                minuteDiscountBackup: null,
-                edited: true,
-                byTimeClock: false,
-                idReason: Number(idReason),
-                editedBy: this.signalsService.getDisplayName()(),
-                active: true,
-                __isNew: true
-              };
-              console.log('Fila entry1 creada:', filaEntry1);
-              nuevasFilas.push(filaEntry1);
-
-              // Crear fila para exit1
-              const filaExit1 = {
-                id: `temp_${this.tempIdCounter++}`,
-                idEmployee: this.idEmployee,
-                idBranch: this.idBranch,
-                date: fecha,
-                checkTime: employee.exit1,
-                modifiedCheckTime: '',
-                type: 'OUT',
-                valid: false,
-                minuteDiscount: 0,
-                minuteDiscountBackup: null,
-                edited: true,
-                byTimeClock: false,
-                idReason: Number(idReason),
-                editedBy: this.signalsService.getDisplayName()(),
-                active: true,
-                __isNew: true
-              };
-              console.log('Fila exit1 creada:', filaExit1);
-
-              // Si existen entry2 y exit2, crear filas adicionales
-              if (employee.entry2 && employee.exit2) {
-                // Crear fila para entry2
-                const filaEntry2 = {
-                  id: `temp_${this.tempIdCounter++}`,
-                  idEmployee: this.idEmployee,
-                  idBranch: this.idBranch,
-                  date: fecha,
-                  checkTime: employee.entry2,
-                  modifiedCheckTime: '',
-                  type: 'IN',
-                  valid: false,
-                  minuteDiscount: 0,
-                  minuteDiscountBackup: null,
-                  edited: true,
-                  byTimeClock: false,
-                  idReason: Number(idReason),
-                  editedBy: this.signalsService.getDisplayName()(),
-                  active: true,
-                  __isNew: true
-                };
-                console.log('Fila entry2 creada:', filaEntry2);
-                nuevasFilas.push(filaEntry2);
-
-                // Crear fila para exit2
-                const filaExit2 = {
-                  id: `temp_${this.tempIdCounter++}`,
-                  idEmployee: this.idEmployee,
-                  idBranch: this.idBranch,
-                  date: fecha,
-                  checkTime: employee.exit2,
-                  modifiedCheckTime: '',
-                  type: 'OUT',
-                  valid: false,
-                  minuteDiscount: 0,
-                  minuteDiscountBackup: null,
-                  edited: true,
-                  byTimeClock: false,
-                  idReason: Number(idReason),
-                  editedBy: this.signalsService.getDisplayName()(),
-                  active: true,
-                  __isNew: true
-                };
-                console.log('Fila exit2 creada:', filaExit2);
-                nuevasFilas.push(filaExit2);
-              }
-
-              // Añadir las nuevas filas al grid
-              console.log('Filas que se añaden al grid:', nuevasFilas);
-              this.rowData = [...nuevasFilas, ...this.rowData];
-              this.gridApi.setGridOption('rowData', this.rowData);
-              this.notSavedChanges = true;
+            if (!employee) {
+              alerts.basicAlert(
+                'Error',
+                'No se encontró información del horario del empleado para este día.',
+                'error'
+              );
+              return;
             }
+
+            if (!employee.enabled) {
+              alerts.basicAlert(
+                'Error',
+                'El empleado no labora este día.',
+                'error'
+              );
+              return;
+            }
+
+            const fecha = formValues.fecha;
+            const idReason = formValues.justificante;
+            console.log('Valor del justificante seleccionado:', idReason);
+            console.log('Tipo del valor del justificante:', typeof idReason);
+
+            if (!idReason) {
+              alerts.basicAlert(
+                'Error',
+                'Debe seleccionar un justificante',
+                'error'
+              );
+              return;
+            }
+
+            const nuevasFilas = [];
+
+            // Función auxiliar para crear filas
+            const crearFila = (checkTime: string, type: 'IN' | 'OUT') => ({
+              id: `temp_${this.tempIdCounter++}`,
+              idEmployee: this.idEmployee,
+              idBranch: this.idBranch,
+              date: fecha,
+              checkTime: checkTime,
+              modifiedCheckTime: '',
+              type: type,
+              valid: true,
+              minuteDiscount: 0,
+              minuteDiscountBackup: null,
+              edited: true,
+              byTimeClock: false,
+              idReason: Number(idReason),
+              editedBy: this.signalsService.getDisplayName()(),
+              active: true,
+              __isNew: true
+            });
+
+            // Crear filas para entry1 y exit1
+            nuevasFilas.push(crearFila(employee.entry1, 'IN'));
+            nuevasFilas.push(crearFila(employee.exit1, 'OUT'));
+
+            // Si existen entry2 y exit2, crear filas adicionales
+            if (employee.entry2 && employee.exit2) {
+              nuevasFilas.push(crearFila(employee.entry2, 'IN'));
+              nuevasFilas.push(crearFila(employee.exit2, 'OUT'));
+            }
+
+            // Añadir las nuevas filas al grid
+            console.log('Filas que se añaden al grid:', nuevasFilas);
+            this.rowData = [...nuevasFilas, ...this.rowData];
+            this.gridApi.setGridOption('rowData', this.rowData);
+            this.notSavedChanges = true;
           });
           
           // Cerrar el modal
