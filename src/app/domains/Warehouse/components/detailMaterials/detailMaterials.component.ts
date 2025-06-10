@@ -342,7 +342,7 @@ export class DetailMaterialsComponent {
           return true;
         },
       },
-      {
+      /*{
         field: 'idFamilia',
         headerName: 'Producto',
         editable: true,
@@ -379,16 +379,6 @@ export class DetailMaterialsComponent {
           return familyMenuItems;
         },
       },
-      
-     /* {
-        field: 'typeMaterial',
-        headerName: 'Tipo Material',
-        editable: true,
-        filter: true,
-        width: 150,
-      },*/
-      
-      
 
       {
         field: 'idSubfamilia',
@@ -443,7 +433,7 @@ export class DetailMaterialsComponent {
         
           return familias ? familias.description : '';
         },
-      },
+      },*/
     ];
   }
 

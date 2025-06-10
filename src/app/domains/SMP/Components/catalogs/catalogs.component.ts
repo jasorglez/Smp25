@@ -305,10 +305,15 @@ export class CatalogsComponent implements CanComponentDeactivate {
       },
       {
         field: 'valueAdditionBit',
-        headerName: 'Válido',
+        headerName: 
+        this.selectedCatalog === 'ABSENCES'
+            ? 'Suma a horas ajustadas'
+            : this.selectedCatalog === 'REASON'
+            ? 'Aplicacion de horas a nomina'
+            : 'Campo',
         editable: true,
-        width: 100,
-        hide:this.selectedCatalog !== 'ABSENCES'
+        width: 200,
+        hide:this.selectedCatalog !== 'ABSENCES' && this.selectedCatalog !== 'REASON'
       },
       {
         field: 'vigente',

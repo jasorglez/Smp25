@@ -62,6 +62,11 @@
             <small class="text-muted">Día: {{diaSemana}}</small>
           </div>
           <div class="mb-3">
+            <label for="fecha" class="form-label">Fecha</label>
+            <input type="date" class="form-control" id="fecha" formControlName="fecha">
+            <small class="text-muted">Día: {{diaSemana}}</small>
+          </div>
+          <div class="mb-3">
             <label for="justificante" class="form-label">Justificante</label>
             <select class="form-select" id="justificante" formControlName="justificante" required>
               <option [ngValue]="null" disabled>Seleccione un justificante</option>

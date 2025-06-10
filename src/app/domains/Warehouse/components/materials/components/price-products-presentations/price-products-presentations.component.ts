@@ -5,23 +5,29 @@ import {
   inject,
   input,
   signal,
+  effect,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
+import { Icatalog } from 'app/interface/icatalog';
 import {
   CellDoubleClickedEvent,
   ColDef,
   GridApi,
   GridReadyEvent,
+  GetMainMenuItemsParams,
+  MenuItemDef,
 } from 'ag-grid-enterprise';
 import { PricePresentations } from 'app/interface/materials.interface';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { OnInit } from '@angular/core';
 import { alerts } from 'app/helpers/alerts';
+import { SignalsService } from 'app/services/signals.service';
 import { PriceXProductsPresentationService } from 'app/services/priceXProductsPresentation.service';
 import { concat, lastValueFrom, toArray } from 'rxjs';
 import { CatalogsService } from 'app/services/catalogs.service';
+declare const bootstrap: any;
 
 @Component({
   selector: 'price-products-presentations',
@@ -41,6 +47,8 @@ export class PriceProductsPresentationsComponent implements OnInit {
 
   catalogsService = inject(CatalogsService);
 
+  private signalsService = inject(SignalsService);
+
   rowData = signal([]);
 
   selectedRowData: PricePresentations;
@@ -54,14 +62,66 @@ export class PriceProductsPresentationsComponent implements OnInit {
   id: number;
 
   newlyAddedRows: number[] = [];
+  idRoot: number = null;
+  idUser: number = null;
+  familias: any;
+  subfamilias2: any;
+  units: any[] = [];
 
   ngOnInit(): void {
-    const rows = this.inputRowData().map((item) => ({
+    this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+    this.idUser = this.signalsService.getIdUSer()();
+     const rows = this.inputRowData().map((item) => ({
       ...item,
       idMaterials: this.inputIdMaterial(),
     }));
 
     this.rowData.set(rows);
+    this.obtenerFamilias();
+    this.obtenerSubfamilias();
+    this.obtenerUnidades();
+  }
+  constructor() {
+      effect(() => {
+        this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+        this.idUser = this.signalsService.getIdUSer()();
+         const rows = this.inputRowData().map((item) => ({
+          ...item,
+          idMaterials: this.inputIdMaterial(),
+        }));
+        
+        this.rowData.set(rows);
+        this.obtenerFamilias();
+        this.obtenerSubfamilias();
+        this.obtenerUnidades();
+      });
+    }
+
+   obtenerFamilias() {
+        this.catalogsService.getFamilyById(this.idRoot).subscribe(
+          (data: Icatalog[]) => {
+            this.familias = data;
+          },
+          (error) => console.error('Error fetching families:', error)
+        );
+      }
+    
+    obtenerSubfamilias() {
+      this.catalogsService.getCatalogs(this.idRoot, 'SUBFAMILY').subscribe(
+        (data: Icatalog[]) => {
+          this.subfamilias2 = data;
+        },
+        (error) => console.error('Error fetching subfamilies:', error)
+      );
+    }
+
+    obtenerUnidades() {
+      this.catalogsService.getCatalogs(this.idRoot, 'UNITS')
+      .subscribe({
+        next: (data: any[]) =>{ this.units = data 
+         console.log(data)},
+        error: (err) => console.error(`Error):`, err)
+      });
   }
 
   // Column Definitions: Defines the columns to be displayed.
@@ -120,14 +180,91 @@ export class PriceProductsPresentationsComponent implements OnInit {
         width: 150,
         cellEditor: 'autocompleteEditor',
       },
-
-      //
-
       {
-        field: 'idCatalogs',
-        hide: true, // oculto, pero el valor real se guarda aquí
+        field: 'idFamilia',
+        headerName: 'Producto',
+        editable: true,
+        width: 150,
+        filter: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.familias ? this.familias.map((item) => item.id) : [],
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.familias
+            ? this.familias.find((item) => item.id === params.value)
+            : null;
+          return foundItem ? `${foundItem.description}` : params.value;
+        },
+        valueGetter: (params) => {
+          console.log(params)
+          if (!params.data || !params.data.idFamilia) return '';
+          const familias = this.familias?.find(b => b.id === params.data.idFamilia);
+        
+          return familias ? familias.description : '';
+        },
+        mainMenuItems: (params: GetMainMenuItemsParams) => {
+          const familyMenuItems: (MenuItemDef | string)[] = [
+            {
+              name: 'Añadir familia',
+              action: () => {
+                this.openAddFamilyModal();
+              },
+            },
+            'separator',
+            ...params.defaultItems.slice(0),
+          ];
+          return familyMenuItems;
+        },
       },
-      {
+     {
+      field: 'idSubfamilia',
+      headerName: 'Presentación',
+      editable: true,
+      width: 150,
+      filter: true,
+      cellEditor: 'agSelectCellEditor',
+      mainMenuItems: (params: GetMainMenuItemsParams) => {
+        return [
+          {
+            name: 'Añadir subfamilia',
+            action: () => this.openAddSubFamilyModal(),
+          },
+          'separator',
+          ...params.defaultItems.slice(0),
+        ];
+      },
+      cellEditorParams: (params) => {
+        const idFamilia = params.data.idFamilia;
+        const subfamiliasFiltradas = this.subfamilias2.filter(
+          (item) => item.parentId === idFamilia
+        )   ;
+      
+        return {
+          values: subfamiliasFiltradas.map((item) => item.id),
+          valueFormatter: (id: string) => {
+            const found = subfamiliasFiltradas.find((item) => item.id === id);
+            if (!found) return id;
+            const unidadDesc = this.getUnidadDescripcionById(found.subParentId);
+            return `${found.description} ${unidadDesc}`;
+          },
+        };
+      },
+      valueFormatter: (params) => {
+        const found = this.subfamilias2?.find((item) => item.id === params.value);
+        if (!found) return params.value;
+        const unidadDesc = this.getUnidadDescripcionById(found.subParentId);
+        return `${found.description} ${unidadDesc}`;
+      },
+      valueGetter: (params) => {
+        const found = this.subfamilias2?.find((item) => item.id === params.data?.idSubfamilia);
+        if (!found) return '';
+        const unidadDesc = this.getUnidadDescripcionById(found.subParentId);
+        return `${found.description} ${unidadDesc}`;
+      },
+    },
+
+      /*{
         headerName: 'Medida',
         field: 'idCatalogs',
         editable: true,
@@ -141,7 +278,7 @@ export class PriceProductsPresentationsComponent implements OnInit {
           );
           return medida ? medida.description : '';
         },
-      },
+      },*/
 
       //
 
@@ -153,6 +290,21 @@ export class PriceProductsPresentationsComponent implements OnInit {
         width: 150,
       },
       {
+        field: 'units',
+        headerName: 'Total unidades',
+        editable: true,
+        filter: true,
+        width: 150,
+      },
+      {
+        field: 'weight',
+        headerName: 'Peso',
+        editable: true,
+        filter: true,
+        width: 150,
+      },
+
+      {
         field: 'active',
         headerName: 'Vigente',
         editable: true,
@@ -161,6 +313,15 @@ export class PriceProductsPresentationsComponent implements OnInit {
       },
     ];
   }
+
+  getUnidadDescripcionById(id: string): string {
+  console.log(id)
+  const unidad = this.units?.find((u) => u.id === id);
+  console.log(unidad)
+  return unidad ? unidad.description : id;
+}
+
+
 
   onSelectionChanged(event: any) {
     const selectedNodes = event.api.getSelectedNodes();
@@ -178,6 +339,21 @@ export class PriceProductsPresentationsComponent implements OnInit {
 
     if (event.data.idMedida) {
       event.data.idMedida = Number(event.data.idMedida);
+    }
+  }
+
+  openAddFamilyModal() {
+    const modal = document.getElementById('addFamilyModal');
+    if (modal) {
+      const bootstrapModal = new bootstrap.Modal(modal);
+      bootstrapModal.show();
+    }
+  }
+   openAddSubFamilyModal() {
+    const modal = document.getElementById('addSubFamilyModal');
+    if (modal) {
+      const bootstrapModal = new bootstrap.Modal(modal);
+      bootstrapModal.show();
     }
   }
 
