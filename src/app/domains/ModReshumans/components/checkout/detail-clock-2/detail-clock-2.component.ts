@@ -48,7 +48,7 @@ export default class DetailClock2Component implements OnInit {
 
     // Inicializar el formulario de justificantes
     this.justificanteForm = this.fb.group({
-      fecha: [new Date().toISOString().split('T')[0], Validators.required],
+      fecha: [this.getLocalDate(), Validators.required],
       justificante: ['', Validators.required]
     });
 
@@ -57,8 +57,13 @@ export default class DetailClock2Component implements OnInit {
       this.actualizarDiaSemana(fecha);
     });
 
+    // Suscribirse a los cambios del formulario completo
+    this.justificanteForm.valueChanges.subscribe(values => {
+      console.log('Estado actual del formulario:', values);
+    });
+
     // Inicializar el día de la semana con la fecha actual
-    this.actualizarDiaSemana(new Date().toISOString().split('T')[0]);
+    this.actualizarDiaSemana(this.getLocalDate());
   }
 
   constructor() {
@@ -197,12 +202,15 @@ export default class DetailClock2Component implements OnInit {
         valueFormatter: (params) => {
           if (!params.value) return '';
           const date = new Date(params.value);
-          return date.toISOString().split('T')[0];
+          const day = date.getDate().toString().padStart(2, '0');
+          const month = (date.getMonth() + 1).toString().padStart(2, '0');
+          const year = date.getFullYear();
+          return `${day}-${month}-${year}`;
         },
         valueParser: (params) => {
           if (!params.newValue) return null;
-          const date = new Date(params.newValue);
-          return date.toISOString().split('T')[0];
+          const [day, month, year] = params.newValue.split('-');
+          return `${year}-${month}-${day}`;
         },
         rowGroup: true,
       },
@@ -779,13 +787,28 @@ export default class DetailClock2Component implements OnInit {
       'Sábado'
     ];
     
-    const fechaObj = new Date(fecha);
+    // Parsear la fecha asegurándonos de que se interprete en la zona horaria local
+    const [year, month, day] = fecha.split('-').map(Number);
+    const fechaObj = new Date(year, month - 1, day);
     this.diaSemana = diasSemana[fechaObj.getDay()];
+  }
+
+  // Método para obtener la fecha local en formato YYYY-MM-DD
+  private getLocalDate(): string {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   // Método para confirmar la adición del justificante
   confirmarAnadir() {
     if (this.justificanteForm.valid) {
+      // Capturar los valores del formulario antes de cualquier otra operación
+      const formValues = { ...this.justificanteForm.value };
+      console.log('Valores capturados del formulario:', formValues);
+
       alerts.confirmAlert(
         'Confirmar',
         '¿Está seguro que desea añadir estos datos al sistema?',
@@ -793,20 +816,31 @@ export default class DetailClock2Component implements OnInit {
         'Sí, añadir'
       ).then((result) => {
         if (result.isConfirmed) {
-          // Por ahora no hacemos nada, como se solicitó
-          console.log('Datos del formulario:', this.justificanteForm.value);
+          console.log('Datos del formulario:', formValues);
           
           this.employeesService.getEmployeeClockByDay(this.idEmployee, this.diaSemana).subscribe((data: any) => {
             const employee = data[0];
             console.log('Datos del empleado:', employee);
 
             if (employee && employee.enabled) {
-              const fecha = this.justificanteForm.get('fecha')?.value;
-              const idReason = this.justificanteForm.get('justificante')?.value;
+              const fecha = formValues.fecha;
+              const idReason = formValues.justificante;
+              console.log('Valor del justificante seleccionado:', idReason);
+              console.log('Tipo del valor del justificante:', typeof idReason);
+
+              if (!idReason) {
+                alerts.basicAlert(
+                  'Error',
+                  'Debe seleccionar un justificante',
+                  'error'
+                );
+                return;
+              }
+
               const nuevasFilas = [];
 
               // Crear fila para entry1
-              nuevasFilas.push({
+              const filaEntry1 = {
                 id: `temp_${this.tempIdCounter++}`,
                 idEmployee: this.idEmployee,
                 idBranch: this.idBranch,
@@ -819,14 +853,16 @@ export default class DetailClock2Component implements OnInit {
                 minuteDiscountBackup: null,
                 edited: true,
                 byTimeClock: false,
-                idReason: idReason,
+                idReason: Number(idReason),
                 editedBy: this.signalsService.getDisplayName()(),
                 active: true,
                 __isNew: true
-              });
+              };
+              console.log('Fila entry1 creada:', filaEntry1);
+              nuevasFilas.push(filaEntry1);
 
               // Crear fila para exit1
-              nuevasFilas.push({
+              const filaExit1 = {
                 id: `temp_${this.tempIdCounter++}`,
                 idEmployee: this.idEmployee,
                 idBranch: this.idBranch,
@@ -839,16 +875,17 @@ export default class DetailClock2Component implements OnInit {
                 minuteDiscountBackup: null,
                 edited: true,
                 byTimeClock: false,
-                idReason: idReason,
+                idReason: Number(idReason),
                 editedBy: this.signalsService.getDisplayName()(),
                 active: true,
                 __isNew: true
-              });
+              };
+              console.log('Fila exit1 creada:', filaExit1);
 
               // Si existen entry2 y exit2, crear filas adicionales
               if (employee.entry2 && employee.exit2) {
                 // Crear fila para entry2
-                nuevasFilas.push({
+                const filaEntry2 = {
                   id: `temp_${this.tempIdCounter++}`,
                   idEmployee: this.idEmployee,
                   idBranch: this.idBranch,
@@ -861,14 +898,16 @@ export default class DetailClock2Component implements OnInit {
                   minuteDiscountBackup: null,
                   edited: true,
                   byTimeClock: false,
-                  idReason: idReason,
+                  idReason: Number(idReason),
                   editedBy: this.signalsService.getDisplayName()(),
                   active: true,
                   __isNew: true
-                });
+                };
+                console.log('Fila entry2 creada:', filaEntry2);
+                nuevasFilas.push(filaEntry2);
 
                 // Crear fila para exit2
-                nuevasFilas.push({
+                const filaExit2 = {
                   id: `temp_${this.tempIdCounter++}`,
                   idEmployee: this.idEmployee,
                   idBranch: this.idBranch,
@@ -881,14 +920,17 @@ export default class DetailClock2Component implements OnInit {
                   minuteDiscountBackup: null,
                   edited: true,
                   byTimeClock: false,
-                  idReason: idReason,
+                  idReason: Number(idReason),
                   editedBy: this.signalsService.getDisplayName()(),
                   active: true,
                   __isNew: true
-                });
+                };
+                console.log('Fila exit2 creada:', filaExit2);
+                nuevasFilas.push(filaExit2);
               }
 
               // Añadir las nuevas filas al grid
+              console.log('Filas que se añaden al grid:', nuevasFilas);
               this.rowData = [...nuevasFilas, ...this.rowData];
               this.gridApi.setGridOption('rowData', this.rowData);
               this.notSavedChanges = true;
@@ -904,7 +946,7 @@ export default class DetailClock2Component implements OnInit {
           
           // Resetear el formulario
           this.justificanteForm.reset({
-            fecha: new Date().toISOString().split('T')[0],
+            fecha: this.getLocalDate(),
             justificante: ''
           });
         }

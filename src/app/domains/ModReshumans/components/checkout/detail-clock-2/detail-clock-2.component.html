@@ -63,9 +63,9 @@
           </div>
           <div class="mb-3">
             <label for="justificante" class="form-label">Justificante</label>
-            <select class="form-select" id="justificante" formControlName="justificante">
-              <option value="" disabled>Seleccione un justificante</option>
-              <option *ngFor="let justificante of catalogoAusencias" [value]="justificante.id">
+            <select class="form-select" id="justificante" formControlName="justificante" required>
+              <option [ngValue]="null" disabled>Seleccione un justificante</option>
+              <option *ngFor="let justificante of catalogoAusencias" [ngValue]="justificante.id">
                 {{justificante.description}}
               </option>
             </select>
