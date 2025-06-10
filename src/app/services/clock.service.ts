@@ -90,6 +90,11 @@ export class ClockService {
   }
 
   getCatalogsAbsences(idCompany: number): Observable<any> {
+    return this.http.get(`${environment.urlWarehouse}/Catalog/getCatalogsVigente?idCompany=${idCompany}&type=REASON`, {
+      headers: this.trackingService.getHeaders(),
+    });
+  }
+   getCatalogsAbsencesVigente(idCompany: number): Observable<any> {
     return this.http.get(`${environment.urlWarehouse}/Catalog/getCatalogs?idCompany=${idCompany}&type=REASON`, {
       headers: this.trackingService.getHeaders(),
     });
