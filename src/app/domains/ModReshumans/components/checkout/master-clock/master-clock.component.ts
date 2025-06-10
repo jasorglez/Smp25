@@ -171,20 +171,28 @@ export default class MasterClockComponent implements OnInit {
         field: 'periodStart',
         headerName: 'Fecha inicio',
         editable: false,
-        valueGetter: (params) => {
-          if (!params.data?.periodStart) return '';
-          const date = new Date(params.data.periodStart);
-          return date.toISOString().split('T')[0];
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const date = new Date(params.value);
+          return date.toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+          }).replace(/\//g, '-');
         }
       },
       {
         field: 'periodEnd',
         headerName: 'Fecha fin',
         editable: false,
-        valueGetter: (params) => {
-          if (!params.data?.periodEnd) return '';
-          const date = new Date(params.data.periodEnd);
-          return date.toISOString().split('T')[0];
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const date = new Date(params.value);
+          return date.toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+          }).replace(/\//g, '-');
         }
       },
       {
