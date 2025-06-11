@@ -50,7 +50,7 @@
                   (gridReady)="onGridReady($event)"
                   [pagination]="false"
                   (cellDoubleClicked)="onCellDoubleClicked($event)"
-                  [components]="components" 
+                  [components]="components"
                   [stopEditingWhenCellsLoseFocus]="true"
                   [localeText]="AG_GRID_LOCALE_ES">
                 </ag-grid-angular>
@@ -60,52 +60,3 @@
 </div>
 
 
-<!--
-<div class="modal fade" id="searchModal" tabindex="-1" aria-labelledby="searchModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered ">
-      <div class="modal-content">
-        <div class="modal-header flex-column align-items-center">
-          <form [formGroup]="bonusForm" (ngSubmit)="guardarBonus()">
-            <div class="modal-header flex-column align-items-center">
-              <h5 class="mb-3 w-100 text-center fs-4">
-                <strong>Empleado:</strong> {{ nameEmployee }}
-              </h5>
-
-              <div class="mb-3 w-100">
-                <strong>Bonus actual:</strong> {{ bonoEmployee }}
-              </div>
-              <div class="mb-3 w-100">
-                <strong class="me-2">Fecha de asignación</strong>
-                <input formControlName="fechaSelect"  type="date" class="bg-white rounded border-light p-1 w-auto" required/>
-              </div>
-
-
-              <div class="mb-2 w-100">
-                <label for="miSelect" class="form-label">Motivo del bonus:</label>
-                <select id="miSelect" name="miSelect" class="form-select" formControlName="motivo" required>
-                    <option value="" disabled>-- Selecciona una opción --</option>
-                    <option *ngFor="let bonus of bonusCatalogos" [ngValue]="bonus">
-                      {{ bonus.description }}  - Monto: {{ bonus.valueAddition }}
-                    </option>
-                  </select>
-
-              </div>
-              <div class="mb-3 w-100">
-                <label for="bonusInput" class="form-label"><strong>Actualizar bonus:</strong></label>
-                <input type="number" id="bonusInput" class="form-control" formControlName="nuevoBonus" placeholder="Ingresa el nuevo bonus" />
-              </div>
-              <div class="w-100 d-flex justify-content-center gap-2 mt-3">
-                <button type="submit" class="btn btn-success position-relative" [disabled]="bonusForm.invalid">
-                  <i class="bi bi-floppy"></i> Guardar
-                </button>
-
-                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">
-                  <i class="bi bi-x-circle"></i> Cerrar
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  </div>-->
