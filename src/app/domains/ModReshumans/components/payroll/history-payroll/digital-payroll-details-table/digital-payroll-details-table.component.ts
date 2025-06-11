@@ -57,12 +57,12 @@ export class DigitalPayrollDetailsTableComponent {
 
   get colMaster(): ColDef[] {
     return [
-      {
+     /*  {
         field: 'payrollId',
         headerName: 'Id Nomina',
         width: 170,
         cellEditor: 'agSelectCellEditor',
-      },
+      }, */
       // {
       //   field: 'idBranch',
       //   headerName: 'Sucursal',
@@ -71,7 +71,7 @@ export class DigitalPayrollDetailsTableComponent {
       // },
       {
         field: 'company',
-        headerName: 'Sucursal',
+        headerName: 'Compañia',
         filter: true,
         width: 200,
         filterParams: {

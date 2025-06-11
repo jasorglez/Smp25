@@ -107,15 +107,15 @@ export class DetailpayrollComponent implements OnInit{
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
       }
     },
-    /*{ headerName: 'Descuentos (%)', width: 150, field: 'percentageDiscount' },*/
-    {
-      headerName: 'Ahorros',
-      width: 100,
-      field: 'savings',
+     {
+      headerName: 'Sueldo Bruto',
+      width: 150,
+      field: 'grossSalary',
       valueFormatter: (params) => {
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
       }
     },
+
     {
       headerName: 'Descuento Real',
       width: 150,
@@ -125,6 +125,16 @@ export class DetailpayrollComponent implements OnInit{
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
       }
     },
+    /*{ headerName: 'Descuentos (%)', width: 150, field: 'percentageDiscount' },*/
+    {
+      headerName: 'Ahorros',
+      width: 100,
+      field: 'savings',
+      valueFormatter: (params) => {
+        return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
+      }
+    },
+
     {
       headerName: 'Bancos',
       width: 150,
@@ -139,7 +149,7 @@ export class DetailpayrollComponent implements OnInit{
       }
     },
 
-    
+
 
     {
       headerName: 'Total Efectivo',
@@ -157,9 +167,9 @@ export class DetailpayrollComponent implements OnInit{
       this.loadData();
       console.log("------------------------------------ Constructor ID PAYROLL: ", this.idPayroll);
       console.log("-------- entrando a detailpayroll, este es el constructor  ")
-      
+
     });
-    
+
   }
 
   ngOnInit() {
@@ -169,7 +179,7 @@ export class DetailpayrollComponent implements OnInit{
       console.log("-------- entrando a detailpayroll, este es el ngOninit  ");
 
   }
-    
+
 
   loadData() {
     if (this.idPayroll === null || this.idPayroll === undefined) {
@@ -218,7 +228,7 @@ export class DetailpayrollComponent implements OnInit{
         modal.show();
     }
   }
-  
+
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;

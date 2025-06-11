@@ -3,12 +3,14 @@ import { RouterModule } from '@angular/router';
 import { Component, effect, HostListener, inject, OnInit } from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { CurrencyPipe, formatCurrency } from '@angular/common';
 
 import {
   PayrollService,
   PayrollData,
   EmployeePayroll,
 } from 'app/services/payroll.service';
+
 import { FormsModule } from '@angular/forms';
 import { DomainsModule } from 'app/domains/domainsmodule';
 
@@ -19,6 +21,7 @@ import {
   GridReadyEvent,
   ICellRendererParams,
 } from 'ag-grid-enterprise';
+
 import { AdministrationService } from 'app/services/administration.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { ModalService } from 'app/services/modal.service';
@@ -307,7 +310,7 @@ export class MasterPayrollComponent implements OnInit {
 
           return foundBranch ? foundBranch.name : params.value;
         },
-        
+
         valueGetter: (params) => {
           if (!params.data || !params.data.idBranch) return '';
           const branch = this.branchs?.find(b => b.id === params.data.idBranch);
@@ -330,14 +333,33 @@ export class MasterPayrollComponent implements OnInit {
         },
       },
 
-      { field: 'totalSubtotal', headerName: 'Total Subtotal', width: 140 },
+       { field: 'totalBonos',
+        headerName: 'Total Bonos',
+        width: 140,
+        valueFormatter: params =>  this.formatCurrencyMx(params.value)
+      },
 
-      { field: 'totalDescuentos', headerName: 'Total Descuentos', width: 160 },
-      { field: 'total', headerName: 'Total', width: 100 },
+      { field: 'totalSubtotal',
+        headerName: 'Total Subtotal',
+        width: 140,
+        valueFormatter: params =>  this.formatCurrencyMx(params.value)
+      },
+
+      { field: 'totalDescuentos',
+        headerName: 'Total Descuentos',
+        width: 160,
+        valueFormatter: params => this.formatCurrencyMx(params.value)
+       },
+      { field: 'total',
+        headerName: 'Total',
+        width: 100,
+        valueFormatter: params => this.formatCurrencyMx(params.value)
+      },
       {
         headerName: 'Nóm Digital',
         field: 'NomDigital',
         width: 130,
+        valueFormatter: params => this.formatCurrencyMx(params.value),
         //cellRenderer: 'excelDownloadCellRenderer',
 
         cellRenderer: (params) => {
@@ -369,9 +391,7 @@ export class MasterPayrollComponent implements OnInit {
     if (!params.data) return;
 
     const payrollId = params.data.id;
-    const startDate = params.data.startDate
-      ? new Date(params.data.startDate)
-      : null;
+    const startDate = params.data.startDate ? new Date(params.data.startDate) : null;
     const endDate = params.data.endDate ? new Date(params.data.endDate) : null;
     //const idBranch = this.idBranch;
     const idBranch = params.data.idBranch;
@@ -788,4 +808,15 @@ export class MasterPayrollComponent implements OnInit {
       (error) => console.error('Error fetching data:', error)
     );
   }
+
+  formatCurrencyMx(value: number): string {
+  if (value == null) return '';
+  return value.toLocaleString('es-MX', {
+    style: 'currency',
+    currency: 'MXN',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
 }
