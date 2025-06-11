@@ -155,6 +155,7 @@ export class ContractsComponent {
     const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
     const selectedId = selectedRowData.id; // Obtener el ID del registro 
     this.idContract = selectedRowData.id;
+    this.signalsService.setIdContract(selectedId);
   
     this.notSavedChanges = true;
     this.selectedRowData = selectedRowData;
