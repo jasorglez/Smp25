@@ -889,6 +889,10 @@ export const routes: Routes = [
                 path: 'detail-clock-2',
                 loadComponent: () => import('./domains/ModReshumans/components/checkout/detail-clock-2/detail-clock-2.component'),
               },
+              {
+                path: 'holidays',
+                loadComponent: () => import('./domains/ModReshumans/components/checkout/holidays/holidays.component'),
+              },
 
             ]
           },

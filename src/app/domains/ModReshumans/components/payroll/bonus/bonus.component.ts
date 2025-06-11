@@ -140,7 +140,7 @@ export class BonusComponent implements CanComponentDeactivate {
         this.obtenerEmpleados(); // aquí controlas manualmente la ejecución
       }
     });
-    
+
     // 3. Luego cargas toda la info
     this.obtenerDatosCatalogos();
     this.obtenerDatosCatalogosVigente();
@@ -174,7 +174,7 @@ export class BonusComponent implements CanComponentDeactivate {
           this.obtenerBonosEmpleados(); // aquí controlas manualmente la ejecución
         }
       });
-     
+
     });
   }
 
@@ -540,8 +540,7 @@ export class BonusComponent implements CanComponentDeactivate {
 
   async saveChanges() {
     console.log('---- salvando cambios ', this.rowData);
-    const isValid = this.rowData.every((item) => item.employeeName && item.incidenceDate && item.idBonus
-    );
+    const isValid = this.rowData.every((item) => item.employeeName && item.incidenceDate && item.idBonus);
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
@@ -842,8 +841,8 @@ export class BonusComponent implements CanComponentDeactivate {
       },
       { emitEvent: false }
     );
-    
-    
+
+
 
     // Cargar bonos (después de tener fechas definidas)
     await this.obtenerBonosEmpleados();
