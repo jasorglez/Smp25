@@ -158,7 +158,15 @@ export default class MasterClockComponent implements OnInit {
   get colMaster(): ColDef[] {
     return [
       {
-        field: 'id', headerName: 'Id', editable: false, width: 110, hide: true,
+        field: 'idEmployee',
+        headerName: 'Id',
+        editable: false,
+        width: 110,
+        hide: true,
+        filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
+        filterParams: {
+          filterOptions: ['equals'], // Opciones de filtro
+        },
       },
       {
         field: 'nameBranch',
@@ -171,20 +179,28 @@ export default class MasterClockComponent implements OnInit {
         field: 'periodStart',
         headerName: 'Fecha inicio',
         editable: false,
-        valueGetter: (params) => {
-          if (!params.data?.periodStart) return '';
-          const date = new Date(params.data.periodStart);
-          return date.toISOString().split('T')[0];
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const date = new Date(params.value);
+          return date.toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+          }).replace(/\//g, '-');
         }
       },
       {
         field: 'periodEnd',
         headerName: 'Fecha fin',
         editable: false,
-        valueGetter: (params) => {
-          if (!params.data?.periodEnd) return '';
-          const date = new Date(params.data.periodEnd);
-          return date.toISOString().split('T')[0];
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const date = new Date(params.value);
+          return date.toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+          }).replace(/\//g, '-');
         }
       },
       {
@@ -272,20 +288,32 @@ export default class MasterClockComponent implements OnInit {
   }
 
   obtenerDatos(fechaInicio: string = '', fechaFin: string = '') {
-    this.payrollService.getMasterClock(this.idBranch, fechaInicio, fechaFin).subscribe((data: any) => {
-      this.rowData = [];
-      this.rowData = data;
+    return new Promise((resolve) => {
+      this.payrollService.getMasterClock(this.idBranch, fechaInicio, fechaFin).subscribe(
+        (data: any) => {
+          this.rowData = [];
+          this.rowData = data;
 
-      // Esperar a que el grid se actualice y luego ajustar las columnas
-      setTimeout(() => {
-        if (this.gridApi) {
-          // Obtener todas las columnas y ajustarlas automáticamente
-          const allColumnIds = this.gridApi.getColumns().map(column => column.getColId());
-          this.gridApi.autoSizeColumns(allColumnIds);
-          // Forzar un redraw del grid para asegurar que los cambios se apliquen
-          this.gridApi.redrawRows();
+          // Actualizar el grid y esperar a que termine
+          this.gridApi.setGridOption('rowData', this.rowData);
+
+          // Esperar a que el grid se actualice y luego ajustar las columnas
+          setTimeout(() => {
+            if (this.gridApi) {
+              // Obtener todas las columnas y ajustarlas automáticamente
+              const allColumnIds = this.gridApi.getColumns().map(column => column.getColId());
+              this.gridApi.autoSizeColumns(allColumnIds);
+              // Forzar un redraw del grid para asegurar que los cambios se apliquen
+              this.gridApi.redrawRows();
+              resolve(true);
+            }
+          }, 100);
+        },
+        (error) => {
+          console.error('Error fetching data:', error);
+          resolve(false);
         }
-      }, 100);
+      );
     });
   }
 
@@ -336,21 +364,21 @@ export default class MasterClockComponent implements OnInit {
     this.signalsService.setProviderOrCustomer(this.type);
     const colId = event.column.getColId();
     const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
-    const selectedId = selectedRowData.id; // Obtener el ID del registro
+    const selectedId = selectedRowData.idEmployee; // Obtener el ID del registro
 
-    // Filtrar el grid para mostrar solo el registro con el ID seleccionado solo si la columna es "total"
-    if (colId === 'nameEmployee') {
-      const filterModel = {
-        id: {
-          type: 'equals',
-          filter: selectedId,
-        },
-      };
+    // Filtrar el grid para mostrar solo el registro con el ID seleccionado
+    const filterModel = {
+      idEmployee: {
+        type: 'equals',
+        filter: selectedId,
+      },
+    };
 
-      this.gridApi.setFilterModel(filterModel);
-      this.gridApi.onFilterChanged();
-    }
-    else if (colId === 'specialExtraHours') {
+    this.gridApi.setFilterModel(filterModel);
+    this.gridApi.onFilterChanged();
+
+    // Manejar casos especiales para pestañas
+    if (colId === 'specialExtraHours') {
       if (!this.isOpen) {
         await this.adjustGridSize();
         this.showSpecialTimesTab = true;
@@ -360,8 +388,7 @@ export default class MasterClockComponent implements OnInit {
         this.showSpecialTimesTab = false;
         this.isOpen = false;
       }
-    }
-    else {
+    } else {
       await this.activateDetailsTab();
     }
     this.selectedRowData = selectedRowData; // Guardar los datos seleccionados

@@ -83,13 +83,18 @@ export class ClockService {
     });
   }
 
-  getHourDiscrepancies(idBranch: number, start: string, end: string): Observable<any> {
-    return this.http.get(`${environment.urlAdministration}/EmployeesxCheckInsOuts/branch/${idBranch}/discrepances?start=${start}&end=${end}`, {
+  getHourDiscrepancies(idBranch: number): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/EmployeesxCheckInsOuts/branch/${idBranch}/discrepances`, {
       headers: this.trackingService.getHeaders(),
     });
   }
 
   getCatalogsAbsences(idCompany: number): Observable<any> {
+    return this.http.get(`${environment.urlWarehouse}/Catalog/getCatalogsVigente?idCompany=${idCompany}&type=REASON`, {
+      headers: this.trackingService.getHeaders(),
+    });
+  }
+   getCatalogsAbsencesVigente(idCompany: number): Observable<any> {
     return this.http.get(`${environment.urlWarehouse}/Catalog/getCatalogs?idCompany=${idCompany}&type=REASON`, {
       headers: this.trackingService.getHeaders(),
     });

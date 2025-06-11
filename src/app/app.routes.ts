@@ -44,7 +44,7 @@ export const routes: Routes = [
                 './domains/Warehouse/pages/page02typemat/page02typemat.component'
               ).then((p) => p.Page02typematComponent),
             children: [
-              { path: '', redirectTo: 'materials2', pathMatch: 'full' },
+              { path: '', redirectTo: 'materialsMaster', pathMatch: 'full' },
               ...SharedModule.getRoutes(),
  /*  
               {
@@ -57,11 +57,20 @@ export const routes: Routes = [
                 canDeactivate: [UnsavedChangesGuard],
               },*/
               {
-                path: 'materials2',
+                path: 'materialsMaster',
                 loadComponent: () =>
                   import(
                     './domains/Warehouse/components/materials/materials.component'
                   ).then((m) => m.MaterialsComponent),
+                data: { type: 'CONSUMABLE' }, // Paso el Parámetro para materials
+                canDeactivate: [UnsavedChangesGuard],
+              },
+              {
+                path: 'materials',
+                loadComponent: () =>
+                  import(
+                    './domains/Warehouse/components/detailMaterials/detailMaterials.component'
+                  ).then((m) => m.DetailMaterialsComponent),
                 data: { type: 'CONSUMABLE' }, // Paso el Parámetro para materials
                 canDeactivate: [UnsavedChangesGuard],
               },

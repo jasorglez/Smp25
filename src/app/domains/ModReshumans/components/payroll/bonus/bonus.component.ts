@@ -96,6 +96,7 @@ export class BonusComponent implements CanComponentDeactivate {
   bonoEmployee: number;
   idBranch: number;
   bonusCatalogos: any[] = [];
+  bonusCatalogosVigentes: any[] = [];
   empleadoCatalgos: any[] = [];
   Fechas: number;
   fechaInicio: string;
@@ -142,6 +143,7 @@ export class BonusComponent implements CanComponentDeactivate {
 
     // 3. Luego cargas toda la info
     this.obtenerDatosCatalogos();
+    this.obtenerDatosCatalogosVigente();
     this.obtenerEmpleados();
     this.InicioConsulta();
     // 4. InicioConsulta la mandas después de cargar configuración si depende de datos de config
@@ -157,7 +159,7 @@ export class BonusComponent implements CanComponentDeactivate {
       this.obtenerBranchs();
       //console.log("en init, esto es bonusCatalog:", this.bonusCatalogos);
       this.obtenerDatosCatalogos();
-
+      this.obtenerDatosCatalogosVigente();
       this.obtenerConfig();
       this.InicioConsulta();
       this.obtenerEmpleados();
@@ -239,9 +241,19 @@ export class BonusComponent implements CanComponentDeactivate {
 
   obtenerDatosCatalogos() {
     //console.log("------- empresa para obtener catalogos: ", this.idEmpresa);
-    this.catalogsService.getCatalogsVigente(this.idEmpresa, 'BONUS').subscribe(
+    this.catalogsService.getCatalogs(this.idEmpresa, 'BONUS').subscribe(
       (data) => {
         this.bonusCatalogos = data;
+        console.log("------ Catalogo", data);
+      },
+      (error) => console.error('Error fetching measures:', error)
+    );
+  }
+  obtenerDatosCatalogosVigente() {
+    //console.log("------- empresa para obtener catalogos: ", this.idEmpresa);
+    this.catalogsService.getCatalogsVigente(this.idEmpresa, 'BONUS').subscribe(
+      (data) => {
+        this.bonusCatalogosVigentes = data;
         console.log("------ Catalogo", data);
       },
       (error) => console.error('Error fetching measures:', error)
@@ -411,7 +423,7 @@ export class BonusComponent implements CanComponentDeactivate {
 
         cellEditorParams: {
           //values: this.bonusCatalogos ? this.bonusCatalogos.map((item) => item.description) : [],
-          values: this.bonusCatalogos ? this.bonusCatalogos.map((item) => item.id) : [],
+          values: this.bonusCatalogosVigentes ? this.bonusCatalogosVigentes.map((item) => item.id) : [],
 
         },
 
@@ -419,7 +431,11 @@ export class BonusComponent implements CanComponentDeactivate {
           const foundItem = this.bonusCatalogos ? this.bonusCatalogos.find(item => item.id === params.value) : null;
           return foundItem ? `${foundItem.description}` : params.value;
         },
-
+        valueGetter: (params) => {
+          if (!params.data || !params.data.idBonus) return '';
+          const catalog = this.bonusCatalogos?.find(b => b.id === params.data.idBonus);
+          return catalog ? catalog.description : '';
+        },
         valueParser: (params) => {
           const foundItem = this.bonusCatalogos ? this.bonusCatalogos.find(item => item.description === params.newValue) : null;
           return foundItem ? foundItem.id : params.newValue;

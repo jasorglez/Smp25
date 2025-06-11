@@ -13,17 +13,20 @@ import { AgGridModule } from 'ag-grid-angular';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { SignalsService } from 'app/services/signals.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
-import { PayrollService } from 'app/services/payroll.service';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ClockService } from 'app/services/clock.service';
 import { TimeEditorComponent } from 'app/shared/time-editor/time-editor.component';
 import { TimeEditorModule } from 'app/shared/time-editor/time-editor.module';
 import { lastValueFrom, concat, toArray } from 'rxjs';
+import { CommonModule } from '@angular/common';
+import { EmployeesService } from 'app/services/employees.service';
+
+declare var bootstrap: any;
 
 @Component({
   selector: 'app-detail-clock-2',
   standalone: true,
-  imports: [RouterModule, DomainsModule, AgGridModule, TimeEditorModule],
+  imports: [RouterModule, DomainsModule, AgGridModule, TimeEditorModule, ReactiveFormsModule, CommonModule],
   templateUrl: './detail-clock-2.component.html',
   styleUrl: './detail-clock-2.component.scss',
 })
@@ -32,6 +35,7 @@ export default class DetailClock2Component implements OnInit {
   private signalsService = inject(SignalsService);
   private route = inject(ActivatedRoute);
   private fb = inject(FormBuilder);
+  private employeesService = inject(EmployeesService);
 
   ngOnInit() {
     this.idEmployee = this.signalsService.getDetailClockForEmployee().idEmployee();
@@ -40,6 +44,26 @@ export default class DetailClock2Component implements OnInit {
     this.obtenerDatos(this.idEmployee, this.fechaInicio, this.fechaFin);
     this.idCompany = this.signalsService.getRootSelectedBySidebar()();
     this.obtenerCatalogoAusencias(this.idCompany);
+    this.obtenerCatalogoAusenciasVigente(this.idCompany);
+
+    // Inicializar el formulario de justificantes
+    this.justificanteForm = this.fb.group({
+      fecha: [this.getLocalDate(), Validators.required],
+      justificante: ['', Validators.required]
+    });
+
+    // Suscribirse a los cambios de fecha para actualizar el día de la semana
+    this.justificanteForm.get('fecha')?.valueChanges.subscribe(fecha => {
+      this.actualizarDiaSemana(fecha);
+    });
+
+    // Suscribirse a los cambios del formulario completo
+    this.justificanteForm.valueChanges.subscribe(values => {
+      console.log('Estado actual del formulario:', values);
+    });
+
+    // Inicializar el día de la semana con la fecha actual
+    this.actualizarDiaSemana(this.getLocalDate());
   }
 
   constructor() {
@@ -59,6 +83,7 @@ export default class DetailClock2Component implements OnInit {
     effect(() => {
       this.idCompany = this.signalsService.getRootSelectedBySidebar()();
       this.obtenerCatalogoAusencias(this.idCompany);
+      this.obtenerCatalogoAusenciasVigente(this.idCompany);
     });
   }
 
@@ -97,6 +122,7 @@ export default class DetailClock2Component implements OnInit {
   fechaInicio: any;
   fechaFin: any;
   catalogoAusencias: any[] = [];
+  catalogoAusenciasVigente: any[] = [];
 
   public defaultColDef: ColDef = {
     sortable: true,
@@ -175,16 +201,80 @@ export default class DetailClock2Component implements OnInit {
         width: 120,
         valueFormatter: (params) => {
           if (!params.value) return '';
-          const date = new Date(params.value);
-          return date.toISOString().split('T')[0];
+          try {
+            // Intentar parsear la fecha en diferentes formatos
+            let date: Date;
+            if (typeof params.value === 'string') {
+              if (params.value.includes('T')) {
+                date = new Date(params.value);
+              } else {
+                // Si es una fecha en formato YYYY-MM-DD
+                const [year, month, day] = params.value.split('-').map(Number);
+                date = new Date(year, month - 1, day);
+              }
+            } else {
+              date = new Date(params.value);
+            }
+
+            if (isNaN(date.getTime())) {
+              console.error('Fecha inválida:', params.value);
+              return '';
+            }
+
+            const day = date.getDate().toString().padStart(2, '0');
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const year = date.getFullYear();
+            return `${day}-${month}-${year}`;
+          } catch (error) {
+            console.error('Error al formatear fecha:', error);
+            return '';
+          }
         },
         valueParser: (params) => {
           if (!params.newValue) return null;
-          const date = new Date(params.newValue);
-          return date.toISOString().split('T')[0];
+          try {
+            const [day, month, year] = params.newValue.split('-').map(Number);
+            return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+          } catch (error) {
+            console.error('Error al parsear fecha:', error);
+            return null;
+          }
         },
         rowGroup: true,
       },
+      {
+        field: 'checkTime',
+        headerName: 'Hora de Registro',
+        editable: true,
+        cellEditor: 'timeEditor',
+        width: 200,
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          return params.value.split('.')[0];
+        },
+      },
+      {
+        field: 'modifiedCheckTime',
+        headerName: 'Hora de Registro Respaldo',
+        editable: false,
+        cellEditor: 'timeEditor',
+        width: 200,
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          return params.value.split('.')[0];
+        },
+      },
+      {
+        field: 'type',
+        headerName: 'Tipo',
+        editable: true,
+        width: 100,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: ['IN', 'OUT'],
+        }
+      },
+
       {
         headerName: 'Horas Laboradas',
         field: 'hoursWorked',
@@ -248,54 +338,24 @@ export default class DetailClock2Component implements OnInit {
         aggFunc: 'sum',
       },
       {
-        field: 'checkTime',
-        headerName: 'Hora de Registro',
-        editable: true,
-        cellEditor: 'timeEditor',
-        width: 200,
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          return params.value.split('.')[0];
-        },
-      },
-      {
-        field: 'modifiedCheckTime',
-        headerName: 'Hora de Registro Respaldo',
-        editable: false,
-        cellEditor: 'timeEditor',
-        width: 200,
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          return params.value.split('.')[0];
-        },
-      },
-      {
-        field: 'type',
-        headerName: 'Tipo',
-        editable: true,
-        width: 100,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: ['IN', 'OUT'],
-        }
-      },
-      {
-        headerName: 'Faltas',
-        field: 'absences',
+        headerName: 'Retardos',
+        field: 'delays',
         editable: false,
         width: 200,
         cellRenderer: (params) => {
           if (params.node.group) {
             const groupData = params.node.allLeafChildren;
 
-            // Contar registros tipo IN con valid: false
-            const absencesCount = [...groupData].filter(node => {
+            // Contar registros con minuteDiscount > 0
+            const delaysCount = [...groupData].filter(node => {
               const record = node.data;
-              return record.type === 'IN' &&
-                record.valid === false;
+              return record.valid === true &&
+                record.minuteDiscount !== null &&
+                record.minuteDiscount !== undefined &&
+                Number(record.minuteDiscount) > 0;
             }).length;
 
-            return absencesCount.toString();
+            return delaysCount.toString();
           }
           return null;
         },
@@ -343,30 +403,45 @@ export default class DetailClock2Component implements OnInit {
         width: 100
       },
       {
-        headerName: 'Retardos',
-        field: 'delays',
+        headerName: 'Faltas',
+        field: 'absences',
         editable: false,
         width: 200,
         cellRenderer: (params) => {
           if (params.node.group) {
             const groupData = params.node.allLeafChildren;
 
-            // Contar registros con minuteDiscount > 0
-            const delaysCount = [...groupData].filter(node => {
+            // Verificar si hay al menos un registro tipo IN con valid: false
+            const hasAbsence = [...groupData].some(node => {
               const record = node.data;
-              return record.valid === true &&
-                record.minuteDiscount !== null &&
-                record.minuteDiscount !== undefined &&
-                Number(record.minuteDiscount) > 0;
-            }).length;
+              return record.type === 'IN' && record.valid === false;
+            });
 
-            return delaysCount.toString();
+            return hasAbsence ? '1' : '0';
           }
           return null;
         },
         hide: false,
         valueGetter: () => null,
         aggFunc: 'sum',
+      },
+      {
+        field: 'idReason',
+        headerName: 'Razón de justificación de falta',
+        editable: true,
+        width: 200,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.catalogoAusencias.map(item => item.id.toString()),
+        },
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const ausencia = this.catalogoAusencias.find(item => item.id.toString() === params.value.toString());
+          return ausencia ? ausencia.description : '';
+        },
+        valueParser: (params) => {
+          return params.newValue;
+        }
       },
       {
         field: 'minuteDiscount',
@@ -397,24 +472,6 @@ export default class DetailClock2Component implements OnInit {
         width: 150
       },
       {
-        field: 'idReason',
-        headerName: 'Razón de justificación de falta',
-        editable: true,
-        width: 200,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.catalogoAusencias.map(item => item.id.toString()),
-        },
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          const ausencia = this.catalogoAusencias.find(item => item.id.toString() === params.value.toString());
-          return ausencia ? ausencia.description : '';
-        },
-        valueParser: (params) => {
-          return params.newValue;
-        }
-      },
-      {
         field: 'editedBy',
         headerName: 'Editado por',
         editable: false,
@@ -429,12 +486,22 @@ export default class DetailClock2Component implements OnInit {
     });
   }
 
+  obtenerCatalogoAusenciasVigente(idCompany: number) {
+    this.clockService.getCatalogsAbsencesVigente(idCompany).subscribe((data: any) => {
+      this.catalogoAusenciasVigente = data;
+    });
+  }
+
   obtenerDatos(idEmployee: number, fechaInicio: string, fechaFin: string) {
     this.clockService
       .checkInOutByEmployee(idEmployee, fechaInicio, fechaFin)
       .subscribe((data: any) => {
-        this.rowData = [];
-        this.rowData = data;
+        // Asegurarse de que las fechas estén en el formato correcto
+        this.rowData = data.map((item: any) => ({
+          ...item,
+          date: item.date ? new Date(item.date).toISOString().split('T')[0] : null
+        }));
+        
         // Esperar a que el grid se actualice y luego ajustar las columnas
         setTimeout(() => {
           if (this.gridApi) {
@@ -734,5 +801,149 @@ export default class DetailClock2Component implements OnInit {
     const minutes = Math.round((totalHours - hours) * 60);
 
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  }
+
+  // Propiedades para el modal de justificantes
+  justificanteForm: FormGroup;
+  diaSemana: string = '';
+
+  // Método para obtener el día de la semana en español
+  private actualizarDiaSemana(fecha: string) {
+    const diasSemana = [
+      'Domingo',
+      'Lunes',
+      'Martes',
+      'Miércoles',
+      'Jueves',
+      'Viernes',
+      'Sábado'
+    ];
+    
+    // Parsear la fecha asegurándonos de que se interprete en la zona horaria local
+    const [year, month, day] = fecha.split('-').map(Number);
+    const fechaObj = new Date(year, month - 1, day);
+    this.diaSemana = diasSemana[fechaObj.getDay()];
+  }
+
+  // Método para obtener la fecha local en formato YYYY-MM-DD
+  private getLocalDate(): string {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  // Método para confirmar la adición del justificante
+  confirmarAnadir() {
+    if (this.justificanteForm.valid) {
+      const formValues = { ...this.justificanteForm.value };
+      console.log('Valores capturados del formulario:', formValues);
+
+      alerts.confirmAlert(
+        'Confirmar',
+        '¿Está seguro que desea añadir estos datos al sistema?',
+        'warning',
+        'Sí, añadir'
+      ).then((result) => {
+        if (result.isConfirmed) {
+          console.log('Datos del formulario:', formValues);
+          
+          this.employeesService.getEmployeeClockByDay(this.idEmployee, this.diaSemana).subscribe((data: any) => {
+            const employee = data[0];
+            console.log('Datos del empleado:', employee);
+
+            if (!employee) {
+              alerts.basicAlert(
+                'Error',
+                'No se encontró información del horario del empleado para este día.',
+                'error'
+              );
+              return;
+            }
+
+            if (!employee.enabled) {
+              alerts.basicAlert(
+                'Error',
+                'El empleado no labora este día.',
+                'error'
+              );
+              return;
+            }
+
+            const fecha = formValues.fecha;
+            const idReason = formValues.justificante;
+            console.log('Valor del justificante seleccionado:', idReason);
+            console.log('Tipo del valor del justificante:', typeof idReason);
+
+            if (!idReason) {
+              alerts.basicAlert(
+                'Error',
+                'Debe seleccionar un justificante',
+                'error'
+              );
+              return;
+            }
+
+            const nuevasFilas = [];
+
+            // Función auxiliar para crear filas
+            const crearFila = (checkTime: string, type: 'IN' | 'OUT') => ({
+              id: `temp_${this.tempIdCounter++}`,
+              idEmployee: this.idEmployee,
+              idBranch: this.idBranch,
+              date: fecha,
+              checkTime: checkTime,
+              modifiedCheckTime: '',
+              type: type,
+              valid: true,
+              minuteDiscount: 0,
+              minuteDiscountBackup: null,
+              edited: true,
+              byTimeClock: false,
+              idReason: Number(idReason),
+              editedBy: this.signalsService.getDisplayName()(),
+              active: true,
+              __isNew: true
+            });
+
+            // Crear filas para entry1 y exit1
+            nuevasFilas.push(crearFila(employee.entry1, 'IN'));
+            nuevasFilas.push(crearFila(employee.exit1, 'OUT'));
+
+            // Si existen entry2 y exit2, crear filas adicionales
+            if (employee.entry2 && employee.exit2) {
+              nuevasFilas.push(crearFila(employee.entry2, 'IN'));
+              nuevasFilas.push(crearFila(employee.exit2, 'OUT'));
+            }
+
+            // Añadir las nuevas filas al grid
+            console.log('Filas que se añaden al grid:', nuevasFilas);
+            this.rowData = [...nuevasFilas, ...this.rowData];
+            this.gridApi.setGridOption('rowData', this.rowData);
+            this.notSavedChanges = true;
+          });
+          
+          // Cerrar el modal
+          const modalElement = document.getElementById('addJustificanteModal');
+          const modal = bootstrap.Modal.getInstance(modalElement);
+          if (modal) {
+            modal.hide();
+          }
+          
+          // Resetear el formulario
+          this.justificanteForm.reset({
+            fecha: this.getLocalDate(),
+            justificante: ''
+          });
+        }
+      });
+    } else {
+      alerts.basicAlert(
+        'Error',
+        'Por favor complete todos los campos requeridos',
+        'error'
+      );
+    }
   }
 }
