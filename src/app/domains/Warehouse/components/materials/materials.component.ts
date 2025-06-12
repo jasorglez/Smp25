@@ -22,6 +22,7 @@ import { ImageHandlerService } from 'app/services/image-handler.service';
 import { SignalsService } from 'app/services/signals.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Icatalog } from 'app/interface/icatalog';
+import { ProvedoorByBranchComponent } from './components/ProvedoorByBranch/ProvedoorByBranch.component';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
@@ -42,6 +43,7 @@ declare const bootstrap: any; // Añadir declaración para Bootstrap
     AgGridModule,
     MultiLineEditorComponent,
     PriceProductsPresentationsComponent,
+    ProvedoorByBranchComponent
   ],
   templateUrl: './materials.component.html',
   styleUrl: './materials.component.scss',
@@ -98,6 +100,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
   idRoot: number = null;
   gridHeight: string = '80vh';
   showContainerTabs: boolean = false;
+  showContainerTabsProveedoresByBranch: boolean = false;
   showMeasureTab: boolean = false;
   showSavingsTab: boolean = false;
   private isOpen: boolean = false;
@@ -215,8 +218,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
           const branch = this.branchs?.find(b => b.id === params.data.idBranch);
           return branch ? branch.name : '';
         },
-      },*/
-      /*{
+      },
+      {
         field: 'idProveedor',
         headerName: 'Proveedor',
         editable: true,
@@ -249,7 +252,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
             return false;
           }
 
-          /*const duplicateExists = this.proveedoresData.some(
+          const duplicateExists = this.proveedoresData.some(
             (row, index) =>
               index !== params.node.rowIndex &&
               row.nameContact?.toUpperCase() === normalizedValue
@@ -268,6 +271,11 @@ export class MaterialsComponent implements CanComponentDeactivate {
           return true;
         },
       },*/
+      {
+       field: 'idProveedor',
+        headerName: 'Proveedor',
+        editable: false,
+      },
       {
         field: 'description',
         headerName: 'Materia prima',
@@ -328,7 +336,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
         filter: true,
         width: 150,
       },
-      /*{
+      {
         field: 'insumo',
         headerName: 'Num. Material',
         editable: true,
@@ -360,7 +368,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
           return true;
         },
         cellStyle: { backgroundColor: '#d4edda' },
-      },*/
+      },
       {
         field: 'date',
         headerName: 'Fecha de alta MP',
@@ -747,6 +755,19 @@ export class MaterialsComponent implements CanComponentDeactivate {
       this.gridApi.onFilterChanged();
       this.activatedTabs();
     }
+    if (colId === 'idProveedor') {
+      // Filtrar el grid para mostrar solo el registro con el ID seleccionado
+      const filterModel = {
+          id: {
+            type: 'equals',
+            filter: selectedId,
+          },
+        };
+        this.idMaterial.set(selectedRowData.id);
+        this.gridApi.setFilterModel(filterModel);
+        this.gridApi.onFilterChanged();
+        this.activatedTabsProveedoresByBranch();
+      };
 
     // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
     this.selectedRowData = selectedRowData;
@@ -771,6 +792,20 @@ export class MaterialsComponent implements CanComponentDeactivate {
     }
   }
 
+  async activatedTabsProveedoresByBranch() {
+    if (!this.isOpen) {
+      await this.adjustGridSize();
+      this.activateMeasureTab();
+      this.showContainerTabsProveedoresByBranch = true;
+      this.isOpen = true;
+    } else {
+      await this.resetGridSize();
+      this.isOpen = false;
+      this.showMeasureTab = false;
+      this.showContainerTabsProveedoresByBranch = false;
+    }
+  }
+
   async activateMeasureTab() {
     if (!this.isOpen || this.showSavingsTab) {
       await this.adjustGridSize();
@@ -781,7 +816,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
   }
 
   async adjustGridSize() {
-    this.gridHeight = '40vh'; // Adjust as needed
+    this.gridHeight = '25vh'; // Adjust as needed
   }
 
   // async activateSavingsTab() {
@@ -809,10 +844,10 @@ export class MaterialsComponent implements CanComponentDeactivate {
     event.data.__modified = true;
     this.notSavedChanges = true;
 
-    if (event.data.idMedida) {
+    /*if (event.data.idMedida) {
       event.data.idMedida = Number(event.data.idMedida);
     }
-    if (event.colDef.field === 'idBranch') {
+    /*if (event.colDef.field === 'idBranch') {
       const selectedBranch = event.newValue;
       const branchInfo = this.branchs?.find(
         (item) => item.name === selectedBranch
@@ -827,9 +862,9 @@ export class MaterialsComponent implements CanComponentDeactivate {
               console.error('Error obteniendo datos:', error);
             }
           });
-      /*if (bonusInfo) {
+      if (bonusInfo) {
         event.data.quantity = parseFloat(bonusInfo.valueAddition);
-      }*/
+      }
     }
     if (event.colDef.field === 'idProveedor') {
       const selectedProveedor = event.newValue;
@@ -838,10 +873,11 @@ export class MaterialsComponent implements CanComponentDeactivate {
       );
         
       console.log(proveedorInfo.id)
-      /*if (bonusInfo) {
+      if (bonusInfo) {
         event.data.quantity = parseFloat(bonusInfo.valueAddition);
-      }*/
-    }
+      }
+    }*/
+   
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -869,6 +905,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
       ventaDLL: 0,
       stockMin: 0,
       stockMax: 0,
+      vigente: true,
       active: true,
       __isNew: true,
     };
@@ -885,7 +922,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
 
       this.gridApi.startEditingCell({
         rowIndex: firstRowIndex,
-        colKey: 'idBranch'
+        colKey: 'description'
       });
     }, 0);// Un pequeño retraso de 50ms
   }
