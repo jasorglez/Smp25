@@ -2,14 +2,18 @@ import { ChangeDetectionStrategy, effect, Component ,inject} from '@angular/core
 import { alerts } from 'app/helpers/alerts';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormControl } from '@angular/forms';
 import { SignalsService } from 'app/services/signals.service';
+import { ClockService } from 'app/services/clock.service';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-holidays',
   standalone: true,
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, CommonModule],
   templateUrl: './holidays.component.html',
 })
 export default class  HolidaysComponent { 
+
+  private clockService = inject(ClockService);
   private signalsService = inject(SignalsService);
   
   
@@ -17,33 +21,27 @@ export default class  HolidaysComponent {
   fechaInicio: string;
   fechaFin: string;
   myForm;
-  diaSemana: string = '';
+  diaSemanaInicio: string = '';
+  diaSemanaFin: string = '';
+  catalogoFestive: any[] = [];
+  catalogoFestiveVigente: any[] = [];
 
    constructor(private formBuilder: FormBuilder) {
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-
+    this.obtenerCatalogoFestivo(this.idRoot);
+    this.obtenerCatalogoFestivoVigente(this.idRoot);
     this.myForm = this.formBuilder.group({
       fechaInicio: [null, Validators.required],
       fechaFin: [null, Validators.required],
       justificante: ['', Validators.required],
     });
 
-    // Día de la semana inicial (basado en la fecha actual)
-    const fechaHoy = this.getLocalDate();
-    this.actualizarDiaSemana(fechaHoy);
 
-    // Escuchar cambios de fechaInicio
-    this.myForm.get('fechaInicio')?.valueChanges.subscribe((fechaInicio: string) => {
-      if (fechaInicio) {
-        this.actualizarDiaSemana(fechaInicio);
-      }
-    });
     this.myForm.valueChanges.subscribe((values) => {
-      if (this.myForm.valid) {
-        alert(values.fechaInicio)
         this.fechaInicio = values.fechaInicio;
+        this.actualizarDiaSemanaInicio(values.fechaInicio);
         this.fechaFin = values.fechaFin;
-      }
+        this.actualizarDiaSemanaFin(values.fechaFin);
     });
 
     // Log de cambios del formulario completo
@@ -52,7 +50,7 @@ export default class  HolidaysComponent {
     });
   }
 
-  private actualizarDiaSemana(fecha: string): void {
+  private actualizarDiaSemanaInicio(fecha: string): void {
     const diasSemana = [
       'Domingo',
       'Lunes',
@@ -65,7 +63,7 @@ export default class  HolidaysComponent {
 
     // Validación robusta
     if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
-      this.diaSemana = 'Fecha inválida';
+      this.diaSemanaInicio = 'Fecha inválida';
       return;
     }
 
@@ -73,9 +71,35 @@ export default class  HolidaysComponent {
     const fechaObj = new Date(year, month - 1, day);
 
     if (isNaN(fechaObj.getTime())) {
-      this.diaSemana = 'Fecha inválida';
+      this.diaSemanaInicio = 'Fecha inválida';
     } else {
-      this.diaSemana = diasSemana[fechaObj.getDay()];
+      this.diaSemanaInicio = diasSemana[fechaObj.getDay()];
+    }
+  }
+  private actualizarDiaSemanaFin(fecha: string): void {
+    const diasSemana = [
+      'Domingo',
+      'Lunes',
+      'Martes',
+      'Miércoles',
+      'Jueves',
+      'Viernes',
+      'Sábado',
+    ];
+
+    // Validación robusta
+    if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+      this.diaSemanaFin = 'Fecha inválida';
+      return;
+    }
+
+    const [year, month, day] = fecha.split('-').map(Number);
+    const fechaObj = new Date(year, month - 1, day);
+
+    if (isNaN(fechaObj.getTime())) {
+      this.diaSemanaFin = 'Fecha inválida';
+    } else {
+      this.diaSemanaFin = diasSemana[fechaObj.getDay()];
     }
   }
 
@@ -85,6 +109,19 @@ export default class  HolidaysComponent {
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  obtenerCatalogoFestivo(idCompany: number) {
+    this.clockService.getCatalogsFestive(idCompany).subscribe((data: any) => {
+      this.catalogoFestive = data;
+    });
+  }
+
+  obtenerCatalogoFestivoVigente(idCompany: number) {
+    this.clockService.getCatalogsFestiveVigente(idCompany).subscribe((data: any) => {
+      this.catalogoFestiveVigente = data;
+      console.log(this.catalogoFestiveVigente)
+    });
   }
   onSubmit() {
 

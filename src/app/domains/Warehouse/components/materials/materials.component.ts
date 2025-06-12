@@ -305,6 +305,30 @@ export class MaterialsComponent implements CanComponentDeactivate {
         headerName: 'Descripcion',
       },
       {
+        headerName: 'Medidas',
+      },
+      {
+        field: 'price',
+        headerName: 'Precio',
+        editable: true,
+        filter: true,
+        width: 150,
+      },
+      /*{
+        field: 'weight',
+        headerName: 'Unidad',
+        editable: true,
+        filter: true,
+        width: 150,
+      },*/
+      {
+        field: 'weight',
+        headerName: 'Peso por unidad',
+        editable: true,
+        filter: true,
+        width: 150,
+      },
+      /*{
         field: 'insumo',
         headerName: 'Num. Material',
         editable: true,
@@ -336,7 +360,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
           return true;
         },
         cellStyle: { backgroundColor: '#d4edda' },
-      },
+      },*/
       {
         field: 'date',
         headerName: 'Fecha de alta MP',
@@ -507,7 +531,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
         },
       },*/
       {
-        headerName: 'Caducidad',
+        headerName: 'Caducidad (En meses)',
       },
       /*{
         field: 'costoDLL',
@@ -546,7 +570,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
         },
       },*/
       {
-        headerName: 'Tiempo de entrega',//en desimal
+        headerName: 'Tiempo de entrega (En semanas)',//en desimal
       },
       
       {

@@ -5,13 +5,13 @@
           <div class="col-md-6 mb-3">
             <label for="fecha1" class="form-label">Fecha inicio</label>
             <input type="date" class="form-control" id="fecha1" [max]="fechaFin" formControlName="fechaInicio">
-            <small class="text-muted">Día: </small>
+            <small class="text-muted">Día:{{diaSemanaInicio}} </small>
           </div>
       
           <div class="col-md-6 mb-3">
             <label for="fecha2" class="form-label">Fecha fin</label>
             <input type="date" class="form-control" id="fecha2" [min]="fechaInicio" formControlName="fechaFin">
-            <small class="text-muted">Día: </small>
+            <small class="text-muted">Día: {{diaSemanaFin}}</small>
           </div>
         </div>
 
@@ -21,8 +21,8 @@
             <label for="justificante" class="form-label">Justificante</label>
             <select class="form-select" id="justificante" formControlName="justificante" required>
               <option [ngValue]="null" disabled>Seleccione un justificante</option>
-              <option *ngFor="let justificante of catalogoAusencias" [ngValue]="justificante.id">
-                {{ justificante.description }}
+              <option *ngFor="let festivo of catalogoFestiveVigente" [ngValue]="festivo.id">
+                {{ festivo.description }}
               </option>
             </select>
           </div>
