@@ -578,6 +578,16 @@ export class SignalsService {
     return this.idRole;
   }
 
+  // Contratos
+
+  setIdContract(id: number) {
+    this.idContract.set(id);
+  }
+
+  getIdContract() {
+    return this.idContract;
+  }
+
 
   /* Borramos todas las signals, tratar de poner esto a lo último.
   Si van a crear nuevas signals, recuerden introducir una señal

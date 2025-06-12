@@ -8,11 +8,14 @@ import { lastValueFrom, concat, toArray, catchError, EMPTY } from 'rxjs';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { FollowprojectsService } from 'app/services/followprojects.service';
+import { AttachHandlerService } from 'app/services/attach-handler.service';
+import { SafePipe } from 'app/shared/pipes/safe.pipe';
 
 @Component({
   selector: 'app-contract-details',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [CommonModule, FormsModule, AgGridModule, SafePipe],
   templateUrl: './contract-details.component.html',
   styleUrl: './contract-details.component.scss'
 })
@@ -20,6 +23,8 @@ export class ContractDetailsComponent {
   private employeesxloansService = inject(EmployeesxloansService);
   private signalsService = inject(SignalsService);
   private timeService = inject(TimeService);
+  private followProjectsService = inject(FollowprojectsService);
+  private attachHandlerService = inject(AttachHandlerService);
 
   defaultColDef = {
     flex: 1,
@@ -36,12 +41,12 @@ export class ContractDetailsComponent {
   detalleRowData: any[] = [];
   loanIds: number;
   gridApi: any;
-  idEmployee: number;
+  idContract: number;
   idLoan: number = null;
   nameLoan: string = null;
   id: number;
   userRoot: number = 0;
-  authorizedPass:boolean = false;
+  authorizedPass: boolean = false;
   masterNotSavedChanges: boolean = false;
   detailNotSavedChanges: boolean = false;
   selectedLoanId: any;
@@ -49,19 +54,15 @@ export class ContractDetailsComponent {
   masterNewlyAddedRows: string[] = [];
   detailedNewlyAddedRows: string[] = [];
   private selectedLoanIdBeforeRefresh: number;
+  selectedDocumentUrl: string = null;
 
-  ngOnInit() {}
+  ngOnInit() { }
 
   constructor() {
     effect(() => {
-      this.idEmployee = this.signalsService.getIdEmployee()();
-      this.userRoot = this.signalsService.getUserRoot()();
+      this.idContract = this.signalsService.getIdContract()();
+      console.log(this.idContract);
       this.loadData();
-      if(this.userRoot == 1){
-        return this.authorizedPass = true;
-      }
-      return this.authorizedPass = false;
-      
     });
   }
 
@@ -92,40 +93,10 @@ export class ContractDetailsComponent {
     },
   };
 
-  public detalleGridOptions: any = {
-    headerHeight: 25,
-    rowHeight: 20,
-    suppressEnterWhenEditing: false,
-    rowClass: (params) => {
-      // Verificar si la fila está seleccionada
-      if (params.node.isSelected()) {
-        return 'selected-row';
-      }
-      return '';
-    },
-    onDetalleRowClicked: (event) => {
-      // Seleccionar la fila al hacer clic en cualquier celda
-      event.node.setSelected(true);
-    },
-    onDetalleRowSelected: (event) => {
-      // Deseleccionar otras filas cuando se selecciona una nueva
-      if (event.node.isSelected()) {
-        this.gridApi.forEachNode((node) => {
-          if (node.id !== event.node.id) {
-            node.setSelected(false);
-          }
-        });
-      }
-    },
-  };
-
   loadData(preserveSelection: boolean = false) {
-    if (this.idEmployee === null || this.idEmployee === undefined) {
-      return;
-    }
 
-    this.employeesxloansService
-      .getLoansByEmployee(this.idEmployee, 'AHORRO')
+    this.followProjectsService
+      .getContractDetails(this.idContract)
       .subscribe(
         (maestroRowData: any[]) => {
           if (!maestroRowData || maestroRowData.length === 0) {
@@ -133,14 +104,16 @@ export class ContractDetailsComponent {
           } else {
             this.maestroRowData = maestroRowData;
 
+            console.log(this.maestroRowData);
+
             setTimeout(() => {
               if (this.maestroGridApi && this.maestroRowData.length > 0) {
                 // Buscar la fila que coincide con el ID guardado
                 const rowToSelect =
                   preserveSelection && this.selectedLoanIdBeforeRefresh
                     ? this.maestroRowData.findIndex(
-                        (row) => row.id === this.selectedLoanIdBeforeRefresh
-                      )
+                      (row) => row.id === this.selectedLoanIdBeforeRefresh
+                    )
                     : 0;
 
                 this.maestroGridApi
@@ -159,163 +132,31 @@ export class ContractDetailsComponent {
       );
   }
 
-  loadDetailedData() {
-    if (this.idLoan === null || this.idLoan === undefined) {
-      return;
-    }
-
-    this.employeesxloansService.getConceptsxLoansCredit(this.idLoan).subscribe(
-      (detalleRowData) => {
-        if (!detalleRowData || detalleRowData.length === 0) {
-          this.detalleRowData = [];
-        } else {
-          this.detalleRowData = detalleRowData;
-          setTimeout(() => {
-            if (this.detalleGridApi && this.detalleRowData.length > 0) {
-              this.detalleGridApi.getDisplayedRowAtIndex(0)?.setSelected(true);
-            }
-          });
-        }
-      },
-      (error) => {
-        console.error('Error loading detailed loan data:', error);
-        alerts.basicAlert('Error', 'Error al cargar los datos', 'error');
-      }
-    );
-  }
 
   maestroColumnDefs: ColDef[] = [
     {
-      headerName: 'ID',
-      field: 'id',
+      headerName: 'Nombre Documento',
+      field: 'documentName',
       flex: 1,
-      editable: false,
-      valueFormatter: (params) => {
-        // Ocultar IDs temporales
-        if (params.value && params.value.toString().startsWith('temp_')) {
-          return '';
-        }
-        return params.value;
-      },
+      editable: true
     },
     {
-      headerName: 'Fecha',
-      field: 'date',
-      valueGetter: (params) =>
-        params.data.date ? new Date(params.data.date) : null,
-      cellRenderer: 'agDateCellRenderer',
-      cellEditor: 'agDateCellEditor',
-      valueFormatter: (params) => {
-        if (params.value) {
-          const date = new Date(params.value);
-          return `${('0' + date.getDate()).slice(-2)}-${(
-            '0' +
-            (date.getMonth() + 1)
-          ).slice(-2)}-${date.getFullYear()}`;
-        }
-        return '';
-      },
+      headerName: 'Añadir/Actualizar documento',
+      field: 'urlDocument',
       flex: 1,
-      editable: (params) => params.data?.__isNew === true || this.authorizedPass,
-    },
-    {
-      headerName: 'Ahorro *',
-      headerClass: 'required-header',
-      field: 'monto',
-      valueFormatter: (params) => {
-        if (params.value) {
-          return new Intl.NumberFormat('es-MX', {
-            style: 'currency',
-            currency: 'MXN',
-          }).format(params.value);
+      onCellDoubleClicked: async (params) => {
+        try {
+          const url = await this.attachHandlerService.uploadPdf();
+          params.node.setDataValue('urlDocument', url);
+          this.masterNotSavedChanges = true;
+        } catch (error) {
+          console.error('Error al subir el documento:', error);
         }
-        return '';
-      },
-      flex: 1,
-      editable: (params) => params.data?.__isNew === true || this.authorizedPass,
-    },
-    {
-      headerName: 'Retirado',
-      field: 'payments',
-      valueFormatter: (params) => {
-        if (params.value) {
-          return new Intl.NumberFormat('es-MX', {
-            style: 'currency',
-            currency: 'MXN',
-          }).format(params.value);
-        }
-        return '$0.00';
-      },
-      flex: 1,
-      editable: false,
-    },
-    {
-      headerName: 'Restante',
-      field: 'remain',
-      valueFormatter: (params) => {
-        if (params.value) {
-          return new Intl.NumberFormat('es-MX', {
-            style: 'currency',
-            currency: 'MXN',
-          }).format(params.value);
-        }
-        return '$0.00';
-      },
-      flex: 1,
-      editable: false,
-    },
-  ];
-
-  detalleColumnDefs: ColDef[] = [
-    {
-      headerName: 'Fecha',
-      field: 'date',
-      valueGetter: (params) =>
-        params.data.date ? new Date(params.data.date) : null,
-      cellEditor: 'agDateCellEditor',
-      cellEditorParams: {
-        min: new Date(2000, 0, 1),
-        max: new Date(2050, 11, 31),
-      },
-      valueFormatter: (params) => {
-        if (params.value) {
-          const date = new Date(params.value);
-          return `${('0' + date.getDate()).slice(-2)}-${(
-            '0' +
-            (date.getMonth() + 1)
-          ).slice(-2)}-${date.getFullYear()}`;
-        }
-        return '';
-      },
-      flex: 1,
-      editable: (params) => params.data?.__isNew === true || this.authorizedPass,
-    },
-    {
-      headerName: 'Abono *',
-      headerClass: 'required-header',
-      field: 'total',
-      valueFormatter: (params) => {
-        if (params.value) {
-          return new Intl.NumberFormat('es-MX', {
-            style: 'currency',
-            currency: 'MXN',
-          }).format(params.value);
-        }
-        return '$0.00';
-      },
-      flex: 2,
-      editable: (params) => params.data?.__isNew === true || this.authorizedPass,
-    },
-    {
-      headerName: 'Comentario',
-      field: 'descripcion',
-      flex: 1,
-      editable: (params) => params.data?.__isNew === true,
-    },
+      }
+    }
   ];
 
   private maestroGridApi: GridApi;
-  private detalleGridApi: GridApi;
 
   private async getTime(): Promise<{ dateObj: Date; formatted: string }> {
     const time = await lastValueFrom(this.timeService.getTime());
@@ -333,91 +174,50 @@ export class ContractDetailsComponent {
     const tempId = `temp_${this.tempIdCounter++}`;
     const timeData = await this.getTime();
 
-    if (type === 'Master') {
-      const newRow = {
-        id: tempId,
-        idEmpleado: this.idEmployee,
-        date: timeData.dateObj,
-        type: 'AHORRO',
-        monto: 0,
-        payments: 0,
-        __isNew: true,
-        active: true,
-      };
-      this.maestroRowData = [newRow, ...this.maestroRowData];
-      this.masterNotSavedChanges = true;
+    const newRow = {
+      id: tempId,
+      idContract: this.idContract,
+      documentName: null,
+      urlDocument: null,
+      __isNew: true,
+      active: true,
+    };
+    this.maestroRowData = [newRow, ...this.maestroRowData];
+    this.masterNotSavedChanges = true;
 
-      setTimeout(() => {
-        if (this.maestroGridApi) {
-          const rowNode = this.maestroGridApi.getDisplayedRowAtIndex(0);
-          rowNode?.setSelected(true);
+    setTimeout(() => {
+      if (this.maestroGridApi) {
+        const rowNode = this.maestroGridApi.getDisplayedRowAtIndex(0);
+        rowNode?.setSelected(true);
 
-          this.maestroGridApi.startEditingCell({
-            rowIndex: 0,
-            colKey: 'monto',
-          });
-        }
-      });
-    } else if (type === 'Detailed') {
-      const newRow = {
-        id: tempId,
-        idLoanAndCredit: this.idLoan,
-        date: timeData.dateObj,
-        status: 'Pendiente',
-        total: 0,
-        comments: '',
-        __isNew: true,
-        active: true,
-      };
-      this.detalleRowData = [newRow, ...this.detalleRowData];
-      this.detailNotSavedChanges = true;
-
-      setTimeout(() => {
-        if (this.detalleGridApi) {
-          const rowNode = this.detalleGridApi.getDisplayedRowAtIndex(0);
-          rowNode?.setSelected(true);
-
-          this.detalleGridApi.startEditingCell({
-            rowIndex: 0,
-            colKey: 'total',
-          });
-        }
-      });
-    }
+        this.maestroGridApi.startEditingCell({
+          rowIndex: 0,
+          colKey: 'documentName',
+        });
+      }
+    });
   }
 
   onMaestroGridReady(params: GridReadyEvent) {
     this.maestroGridApi = params.api;
   }
 
-  onDetalleGridReady(params: GridReadyEvent) {
-    this.detalleGridApi = params.api;
-  }
-
   onMaestroSelectionChanged(event: SelectionChangedEvent) {
     const selectedRows = this.maestroGridApi.getSelectedRows();
     if (selectedRows.length > 0) {
       const selectedMaestro = selectedRows[0];
-
-      // Verificar si la fila maestra es nueva
-      if (selectedMaestro?.__isNew === true) {
-        this.detalleRowData = [];
-        return;
-      }
-
-      this.idLoan = selectedMaestro.id;
-      this.loadDetailedData();
+      this.selectedDocumentUrl = selectedMaestro.urlDocument;
     } else {
-      this.detalleRowData = [];
+      this.selectedDocumentUrl = null;
     }
   }
 
   async saveMasterChanges() {
-    const isValid = this.maestroRowData.every((item) => item.monto);
+    const isValid = this.maestroRowData.every((item) => item.urlDocument && item.documentName);
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
-        'Debe ingresar un valor de préstamo.',
+        'Debe ingresar nombre y documento.',
         'error'
       );
       return;
@@ -430,12 +230,12 @@ export class ContractDetailsComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.employeesxloansService.addLoan(cleanedData);
+      return this.followProjectsService.addContractDetails(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.employeesxloansService.updateLoan(row.id, cleanedData);
+      return this.followProjectsService.updateContractDetails(row.id, cleanedData);
     });
 
     try {
@@ -448,8 +248,7 @@ export class ContractDetailsComponent {
         'Se han actualizado los datos correctamente.',
         'success'
       );
-      this.detailNotSavedChanges = false;
-      this.detailedNewlyAddedRows = [];
+      this.masterNotSavedChanges = false;
       await this.loadData(); // Refrescar los datos
       this.signalsService.triggerRefreshEmployees();
     } catch (error) {
@@ -467,84 +266,10 @@ export class ContractDetailsComponent {
     this.masterNotSavedChanges = false;
   }
 
-  async saveDetailChanges() {
-    // Guardar el ID actual antes de actualizar
-    this.selectedLoanIdBeforeRefresh = this.idLoan;
-
-    const isValid = this.detalleRowData.every((item) => item.total);
-    if (!isValid) {
-      alerts.basicAlert(
-        'Añadir entrada',
-        'Debe ingresar un valor de abono.',
-        'error'
-      );
-      return;
-    }
-
-    const newRows = this.detalleRowData.filter((row) => row.__isNew);
-    const modifiedRows = this.detalleRowData.filter(
-      (row) => row.__modified && !row.__isNew
-    );
-
-    const addObservables = newRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      return this.employeesxloansService.addConcept(cleanedData);
-    });
-
-    const updateObservables = modifiedRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      return this.employeesxloansService.updateConcept(row.id, cleanedData);
-    });
-
-    try {
-      const responses = await lastValueFrom(
-        concat(...addObservables, ...updateObservables).pipe(toArray())
-      );
-
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
-      this.detailNotSavedChanges = false;
-      this.detailedNewlyAddedRows = [];
-
-      // Recargar datos manteniendo la selección
-      await this.loadData(true); // Pasar true para indicar que es una recarga post-guardado
-      this.signalsService.triggerRefreshEmployees();
-    } catch (error) {
-      if (error.status === 400) {
-        alerts.basicAlert(
-          'Añadir entrada',
-          error.error.message || 'Error al actualizar los datos.',
-          'error'
-        );
-      } else {
-        alerts.basicAlert(
-          'Error',
-          'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
-          'error'
-        );
-      }
-      console.error(error);
-    }
-  }
-
-  revertDetailData() {
-    this.loadDetailedData();
-    this.detailNotSavedChanges = false;
-  }
-
   onMasterCellValueChanged(event: any): void {
     console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.masterNotSavedChanges = true;
-  }
-
-  onDetailCellValueChanged($event) {
-    console.log('Dato cambiado:', $event.data);
-    $event.data.__modified = true;
-    this.detailNotSavedChanges = true;
   }
 
   private cleanDataForServer(data: any): any {
@@ -570,8 +295,8 @@ export class ContractDetailsComponent {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
 
-    this.employeesxloansService
-      .deleteLoan(id)
+    this.followProjectsService
+      .deleteContractDetails(id)
       .pipe(
         catchError((error) => {
           // Verificar si el error es un 400 y mostrar un mensaje específico
@@ -606,50 +331,6 @@ export class ContractDetailsComponent {
           'success'
         );
         this.masterNotSavedChanges = false;
-      });
-  }
-
-  async deleteDetalleEntry() {
-    const selectedNodes = this.detalleGridApi.getSelectedNodes();
-    if (selectedNodes.length === 0) {
-      alerts.basicAlert(
-        'Eliminar entrada',
-        'Por favor, seleccione una entrada para eliminar.',
-        'error'
-      );
-      return;
-    }
-    const selectedData = selectedNodes[0].data;
-    const id = selectedData.id;
-
-    this.employeesxloansService
-      .deleteConcept(id)
-      .pipe(
-        catchError((error) => {
-            alerts.basicAlert(
-              'Eliminar entrada',
-              'Error al eliminar la entrada.',
-              'error'
-            );
-          console.error(error);
-          return EMPTY;
-        })
-      )
-      .subscribe(() => {
-        alerts.basicAlert(
-          'Eliminar entrada',
-          'Entrada eliminada satisfactoriamente.',
-          'success'
-        );
-        this.loadData();
-
-        alerts.basicAlert(
-          'Eliminar entrada',
-          'Entrada eliminada satisfactoriamente.',
-          'success'
-        );
-        this.detailNotSavedChanges = false;
-        this.signalsService.triggerRefreshEmployees();
       });
   }
 }

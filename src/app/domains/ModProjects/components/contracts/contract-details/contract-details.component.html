@@ -5,7 +5,7 @@
       <div class="col-6">
         <div class="shadow-sm" id="cartPrin">
           <div class="card-header">
-            <h3 class="card-title mb-0">Ahorros</h3>
+            <h3 class="card-title mb-0">Documentos</h3>
           </div>
           <div class="" id="cartSec">
             <div class="row">
@@ -46,9 +46,15 @@
   
       <!-- Grupo Detalles del Ahorro -->
       <div class="col-6">
-        <div class=" shadow-sm" id="cartPrin">
+        <div class="shadow-sm" id="cartPrin">
           <div class="card-header">
-            <h3 class="card-title mb-0">Retiros del abono {{idLoan}}</h3>
+            <h3 class="card-title mb-0">Vista previa</h3>
+          </div>
+          <div class="card-body p-0" style="height: 55vh;">
+            <iframe *ngIf="selectedDocumentUrl" [src]="selectedDocumentUrl | safe" style="width: 100%; height: 100%; border: none;"></iframe>
+            <div *ngIf="!selectedDocumentUrl" class="d-flex justify-content-center align-items-center h-100">
+              <p class="text-muted">Seleccione un documento para ver su contenido</p>
+            </div>
           </div>
         </div>
       </div>
