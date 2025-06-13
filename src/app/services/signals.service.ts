@@ -660,10 +660,15 @@ export class SignalsService {
     }
 
   private idCatalogFamily = signal<number>(null);
+  private idMaterial = signal<number>(null);
   private closeCatalog = signal<boolean>(false);
 
   setIdCatalogFamily(id: number){
     this.idCatalogFamily.set(id);
+  }
+
+  setIdMaterial(id: number){
+    this.idMaterial.set(id);
   }
 
   setCloseCatalog(valor: boolean){
@@ -672,6 +677,10 @@ export class SignalsService {
 
   getIdCatalogFamily(){
     return this.idCatalogFamily;
+  }
+
+  getIdMaterial(){
+    return this.idMaterial;
   }
 
   getCloseCatalog(){

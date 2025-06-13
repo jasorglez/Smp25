@@ -763,7 +763,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
             filter: selectedId,
           },
         };
-        this.idMaterial.set(selectedRowData.id);
+        this.signalsService.setIdMaterial(selectedId);
         this.gridApi.setFilterModel(filterModel);
         this.gridApi.onFilterChanged();
         this.activatedTabsProveedoresByBranch();
