@@ -1,0 +1,52 @@
+<app-multi-line-editor></app-multi-line-editor>
+<div class="row p-3">
+  <div class="col-12">
+    <div class="row mt-3">
+      <!-- Columna de botones -->
+      <div class="col-auto">
+        <div class="d-flex flex-column gap-1">
+          <button type="button" class="btn btn-primary ms-1 me-1" (click)="addRow()">
+            <i class="bi bi-plus-lg"></i>
+          </button>
+          <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveChanges()">
+            <i class="bi bi-floppy"></i>
+            <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+              *ngIf="notSavedChanges">
+              <span class="visually-hidden">Hay cambios sin guardar</span>
+            </span>
+          </button>
+          <button type="button" class="btn btn-warning ms-1 me-1" (click)="revert()">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+          <button type="button" class="btn btn-danger ms-1 me-1" (click)="deleteEntry()">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      </div>
+      <!-- Grid principal -->
+      <div class="col">
+        <ag-grid-angular 
+        style="width: 100%"
+        [ngStyle]="{ height: gridHeight }"
+        class="ag-theme-quartz small-text-ag-grid"
+          [rowData]="rowData" 
+          [gridOptions]="gridOptions"
+          [columnDefs]="columnDefs" 
+          (selectionChanged)="onSelectionChanged($event)"
+          (cellValueChanged)="onCellValueChanged($event)"
+          (gridReady)="onGridReady($event)" 
+          rowSelection="single"
+          [localeText]="AG_GRID_LOCALE_ES">
+        </ag-grid-angular>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row" *ngIf="idConvention != null">
+  <div class="col-12">
+    <ul class="nav nav-tabs" id="myTab" role="tablist"></ul>
+
+      <app-convention-details *ngIf="showDetailsTab"></app-convention-details>
+    </div>
+  </div>

@@ -1,0 +1,63 @@
+<div class="col-12">
+    <div class="row align-items-start">
+  
+      <!-- Grupo Ahorros -->
+      <div class="col-6">
+        <div class="shadow-sm" id="cartPrin">
+          <div class="card-header">
+            <h3 class="card-title mb-0">Documentos</h3>
+          </div>
+          <div class="" id="cartSec">
+            <div class="row">
+              <!-- Columna de botones para Ahorros -->
+              <div class="col-auto">
+                <div class="d-flex flex-column gap-0 me-0">
+                  <button type="button" class="btn btn-primary" (click)="addRow('Master')">
+                    <i class="bi bi-plus-lg"></i>
+                  </button>
+                  <button type="button" class="btn btn-success position-relative" (click)="saveMasterChanges()">
+                    <i class="bi bi-floppy"></i>
+                    <span
+                      class="position-absolute top-0 end-0 translate-middle p-2 bg-danger border border-light rounded-circle"
+                      *ngIf="masterNotSavedChanges">
+                      <span class="visually-hidden">Hay cambios sin guardar</span>
+                    </span>
+                  </button>
+                  <button type="button" class="btn btn-warning" (click)="revertMasterData()">
+                    <i class="bi bi-arrow-clockwise"></i>
+                  </button>
+                  <button type="button" class="btn btn-danger" (click)="deleteMasterEntry()"><i class="bi bi-trash"></i></button>
+                </div>
+              </div>
+              <!-- Grid Maestro -->
+              <div class="col p-0">
+                <ag-grid-angular class="ag-theme-quartz small-text-ag-grid master-grid" style="height: 55vh;"
+                  [rowData]="maestroRowData" [columnDefs]="maestroColumnDefs" [gridOptions]="maestroGridOptions"
+                  (selectionChanged)="onMaestroSelectionChanged($event)"
+                  (cellValueChanged)="onMasterCellValueChanged($event)" (gridReady)="onMaestroGridReady($event)"
+                  [rowSelection]="'single'"
+                  [stopEditingWhenCellsLoseFocus]="true">
+                </ag-grid-angular>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+  
+      <!-- Grupo Detalles del Ahorro -->
+      <div class="col-6">
+        <div class="shadow-sm" id="cartPrin">
+          <div class="card-header">
+            <h3 class="card-title mb-0">Vista previa</h3>
+          </div>
+          <div class="card-body p-0" style="height: 55vh;">
+            <iframe *ngIf="selectedDocumentUrl" [src]="selectedDocumentUrl | safe" style="width: 100%; height: 100%; border: none;"></iframe>
+            <div *ngIf="!selectedDocumentUrl" class="d-flex justify-content-center align-items-center h-100">
+              <p class="text-muted">Seleccione un documento para ver su contenido</p>
+            </div>
+          </div>
+        </div>
+      </div>
+  
+    </div>
+  </div>
