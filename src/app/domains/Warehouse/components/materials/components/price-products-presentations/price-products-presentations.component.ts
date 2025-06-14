@@ -172,7 +172,7 @@ export class PriceProductsPresentationsComponent implements OnInit {
         field: 'idMaterials',
         hide: true,
       },
-      {
+      /*{
         field: 'description',
         headerName: 'Descripción',
         editable: true,
@@ -262,7 +262,7 @@ export class PriceProductsPresentationsComponent implements OnInit {
         const unidadDesc = this.getUnidadDescripcionById(found.subParentId);
         return `${found.description} ${unidadDesc}`;
       },
-    },
+    },*/
 
       /*{
         headerName: 'Medida',
@@ -282,13 +282,7 @@ export class PriceProductsPresentationsComponent implements OnInit {
 
       //
 
-      {
-        field: 'price',
-        headerName: 'Precio',
-        editable: true,
-        filter: true,
-        width: 150,
-      },
+      
       {
         field: 'units',
         headerName: 'Total unidades',
@@ -298,12 +292,18 @@ export class PriceProductsPresentationsComponent implements OnInit {
       },
       {
         field: 'weight',
-        headerName: 'Peso',
+        headerName: 'Peso por unidad',
         editable: true,
         filter: true,
         width: 150,
       },
-
+      {
+        field: 'weight',
+        headerName: 'Medidas',
+        editable: true,
+        filter: true,
+        width: 150,
+      },
       {
         field: 'active',
         headerName: 'Vigente',

@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { environment } from '@env/environment';
 import { TrackingService } from './tracking.service';
+import { Observable } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -32,29 +33,19 @@ export class ConventionsService {
     return this.http.delete(`${environment.urlSmp}/Convention/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
-  getImages(idConvention: number) {
-    return this.http.get(`${environment.urlSmp}/Attach?idTabla=${idConvention}&typeDocto=IMG`,
-      { headers: this.trackingService.getHeaders() });
+  getConventionDetails(id: number): Observable<any> {
+    return this.http.get<any>(`${environment.urlSmp}/ConventionDetails?conventionId=${id}`, { headers: this.trackingService.getHeaders() });
   }
 
-  getDocuments(idConvention: number) {
-    return this.http.get(`${environment.urlSmp}/Attach?idTabla=${idConvention}&typeDocto=PDF`,
-      { headers: this.trackingService.getHeaders() });
+  addConventionDetails(data: any): Observable<any> {
+    return this.http.post(`${environment.urlSmp}/ConventionDetails`, data, { headers: this.trackingService.getHeaders() });
   }
 
-  uploadImage(idTabla: number, docto: string) {
-    return this.http.post(`${environment.urlSmp}/Attach`,
-      { idTabla: idTabla, docto: docto, typeDocto: 'IMG', type: 'CONVENIOS', active: 1 },
-      { headers: this.trackingService.getHeaders() });
+  updateConventionDetails(id: number, data: any): Observable<any> {
+    return this.http.put(`${environment.urlSmp}/ConventionDetails/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
-  uploadDocument(idTabla: number, docto: string) {
-    return this.http.post(`${environment.urlSmp}/Attach`,
-      { idTabla: idTabla, docto: docto, typeDocto: 'PDF', type: 'CONVENIOS', active: 1 },
-      { headers: this.trackingService.getHeaders() });
-  }
-
-  deleteAttachment(idAttach: number) {
-    return this.http.delete(`${environment.urlSmp}/Attach/${idAttach}`, { headers: this.trackingService.getHeaders() });
+  deleteConventionDetails(id: number): Observable<any> {
+    return this.http.delete(`${environment.urlSmp}/ConventionDetails/${id}`, { headers: this.trackingService.getHeaders() });
   }
 }

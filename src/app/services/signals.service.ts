@@ -588,6 +588,18 @@ export class SignalsService {
     return this.idContract;
   }
 
+  // Convenios
+
+  private idConvention = signal<number>(null);
+
+
+  setIdConvention(id: number) {
+    this.idConvention.set(id);
+  }
+
+  getIdConvention() {
+    return this.idConvention;
+  }
 
   /* Borramos todas las signals, tratar de poner esto a lo último.
   Si van a crear nuevas signals, recuerden introducir una señal
@@ -660,10 +672,15 @@ export class SignalsService {
     }
 
   private idCatalogFamily = signal<number>(null);
+  private idMaterial = signal<number>(null);
   private closeCatalog = signal<boolean>(false);
 
   setIdCatalogFamily(id: number){
     this.idCatalogFamily.set(id);
+  }
+
+  setIdMaterial(id: number){
+    this.idMaterial.set(id);
   }
 
   setCloseCatalog(valor: boolean){
@@ -672,6 +689,10 @@ export class SignalsService {
 
   getIdCatalogFamily(){
     return this.idCatalogFamily;
+  }
+
+  getIdMaterial(){
+    return this.idMaterial;
   }
 
   getCloseCatalog(){

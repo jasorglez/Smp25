@@ -9,7 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 export const sharedRoutes: Routes = [
   { 
     path: 'conventions', 
-    loadComponent: () => import('../domains/Indicadores/components/ind01/conventions/conventions.component').then(a => a.ConventionsComponent)
+    loadComponent: () => import('../domains/ModProjects/components/projects/conventions/conventions.component').then(a => a.ConventionsComponent)
   },
   { 
     path: 'advances', 

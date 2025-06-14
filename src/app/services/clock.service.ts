@@ -90,12 +90,22 @@ export class ClockService {
   }
 
   getCatalogsAbsences(idCompany: number): Observable<any> {
-    return this.http.get(`${environment.urlWarehouse}/Catalog/getCatalogsVigente?idCompany=${idCompany}&type=REASON`, {
+    return this.http.get(`${environment.urlWarehouse}/Catalog/getCatalogs?idCompany=${idCompany}&type=REASON`, {
       headers: this.trackingService.getHeaders(),
     });
   }
    getCatalogsAbsencesVigente(idCompany: number): Observable<any> {
-    return this.http.get(`${environment.urlWarehouse}/Catalog/getCatalogs?idCompany=${idCompany}&type=REASON`, {
+    return this.http.get(`${environment.urlWarehouse}/Catalog/getCatalogsVigente?idCompany=${idCompany}&type=REASON`, {
+      headers: this.trackingService.getHeaders(),
+    });
+  }
+  getCatalogsFestive(idCompany: number): Observable<any> {
+    return this.http.get(`${environment.urlWarehouse}/Catalog/getCatalogs?idCompany=${idCompany}&type=FESTIVE`, {
+      headers: this.trackingService.getHeaders(),
+    });
+  }
+   getCatalogsFestiveVigente(idCompany: number): Observable<any> {
+    return this.http.get(`${environment.urlWarehouse}/Catalog/getCatalogsVigente?idCompany=${idCompany}&type=FESTIVE`, {
       headers: this.trackingService.getHeaders(),
     });
   }
