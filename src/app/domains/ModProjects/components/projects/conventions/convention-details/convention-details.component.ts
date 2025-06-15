@@ -11,20 +11,22 @@ import { FormsModule } from '@angular/forms';
 import { FollowprojectsService } from 'app/services/followprojects.service';
 import { AttachHandlerService } from 'app/services/attach-handler.service';
 import { SafePipe } from 'app/shared/pipes/safe.pipe';
+import { ConventionsService } from 'app/services/conventions.service';
 
 @Component({
-  selector: 'app-contract-details',
+  selector: 'app-convention-details',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, SafePipe],
-  templateUrl: './contract-details.component.html',
-  styleUrl: './contract-details.component.scss'
+  templateUrl: './convention-details.component.html',
+  styleUrl: './convention-details.component.scss'
 })
-export class ContractDetailsComponent {
+export class conventionDetailsComponent {
   private employeesxloansService = inject(EmployeesxloansService);
   private signalsService = inject(SignalsService);
   private timeService = inject(TimeService);
   private followProjectsService = inject(FollowprojectsService);
   private attachHandlerService = inject(AttachHandlerService);
+  private conventionsService = inject(ConventionsService);
 
   defaultColDef = {
     flex: 1,
@@ -41,7 +43,7 @@ export class ContractDetailsComponent {
   detalleRowData: any[] = [];
   loanIds: number;
   gridApi: any;
-  idContract: number;
+  idConvention: number;
   idLoan: number = null;
   nameLoan: string = null;
   id: number;
@@ -56,12 +58,16 @@ export class ContractDetailsComponent {
   private selectedLoanIdBeforeRefresh: number;
   selectedDocumentUrl: string = null;
 
-  ngOnInit() { }
+  ngOnInit() {
+    this.idConvention = this.signalsService.getIdConvention()();
+      console.log(this.idConvention);
+      this.loadData();
+  }
 
   constructor() {
     effect(() => {
-      this.idContract = this.signalsService.getIdContract()();
-      console.log(this.idContract);
+      this.idConvention = this.signalsService.getIdConvention()();
+      console.log(this.idConvention);
       this.loadData();
     });
   }
@@ -95,8 +101,8 @@ export class ContractDetailsComponent {
 
   loadData(preserveSelection: boolean = false) {
 
-    this.followProjectsService
-      .getContractDetails(this.idContract)
+    this.conventionsService
+      .getConventionDetails(this.idConvention)
       .subscribe(
         (maestroRowData: any[]) => {
           if (!maestroRowData || maestroRowData.length === 0) {
@@ -127,6 +133,7 @@ export class ContractDetailsComponent {
           }
         },
         (error) => {
+          this.maestroRowData = [];
           console.error('Error loading loans data:', error);
         }
       );
@@ -182,7 +189,7 @@ export class ContractDetailsComponent {
 
     const newRow = {
       id: tempId,
-      idContract: this.idContract,
+      idConvention: this.idConvention,
       documentName: null,
       urlDocument: null,
       __isNew: true,
@@ -236,12 +243,12 @@ export class ContractDetailsComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.followProjectsService.addContractDetails(cleanedData);
+      return this.conventionsService.addConventionDetails(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.followProjectsService.updateContractDetails(row.id, cleanedData);
+      return this.conventionsService.updateConventionDetails(row.id, cleanedData);
     });
 
     try {
@@ -301,8 +308,8 @@ export class ContractDetailsComponent {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
 
-    this.followProjectsService
-      .deleteContractDetails(id)
+    this.conventionsService
+      .deleteConventionDetails(id)
       .pipe(
         catchError((error) => {
           // Verificar si el error es un 400 y mostrar un mensaje específico

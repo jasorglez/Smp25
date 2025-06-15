@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
-import { ConventionsComponent } from "../../components/ind01/conventions/conventions.component";
+import { ConventionsComponent } from "../../../ModProjects/components/projects/conventions/conventions.component";
 import { AdvancesComponent } from "../../components/ind01/advances/advances.component";
 import { IssuesComponent } from '../../components/ind01/issues/issues.component';
 
