@@ -70,8 +70,8 @@
             <label for="justificante" class="form-label">Justificante</label>
             <select class="form-select" id="justificante" formControlName="justificante" required>
               <option [ngValue]="null" disabled>Seleccione un justificante</option>
-              <option *ngFor="let justificante of catalogoAusencias" [ngValue]="justificante.id">
-                {{justificante.description}}
+              <option *ngFor="let festivo of catalogoFestiveVigente" [ngValue]="festivo.id">
+                {{festivo.description}}
               </option>
             </select>
           </div>

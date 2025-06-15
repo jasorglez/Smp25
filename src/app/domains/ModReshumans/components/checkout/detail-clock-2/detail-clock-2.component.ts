@@ -84,6 +84,8 @@ export default class DetailClock2Component implements OnInit {
       this.idCompany = this.signalsService.getRootSelectedBySidebar()();
       this.obtenerCatalogoAusencias(this.idCompany);
       this.obtenerCatalogoAusenciasVigente(this.idCompany);
+      this.obtenerCatalogoFestivo(this.idCompany);
+      this.obtenerCatalogoFestivoVigente(this.idCompany);
     });
   }
 
@@ -123,6 +125,8 @@ export default class DetailClock2Component implements OnInit {
   fechaFin: any;
   catalogoAusencias: any[] = [];
   catalogoAusenciasVigente: any[] = [];
+  catalogoFestive: any[] = [];
+  catalogoFestiveVigente: any[] = [];
 
   public defaultColDef: ColDef = {
     sortable: true,
@@ -489,6 +493,19 @@ export default class DetailClock2Component implements OnInit {
   obtenerCatalogoAusenciasVigente(idCompany: number) {
     this.clockService.getCatalogsAbsencesVigente(idCompany).subscribe((data: any) => {
       this.catalogoAusenciasVigente = data;
+    });
+  }
+
+  obtenerCatalogoFestivo(idCompany: number) {
+    this.clockService.getCatalogsFestive(idCompany).subscribe((data: any) => {
+      this.catalogoFestive = data;
+    });
+  }
+
+  obtenerCatalogoFestivoVigente(idCompany: number) {
+    this.clockService.getCatalogsFestiveVigente(idCompany).subscribe((data: any) => {
+      this.catalogoFestiveVigente = data;
+      console.log(this.catalogoFestiveVigente)
     });
   }
 

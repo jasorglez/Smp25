@@ -17,7 +17,7 @@ export default class  HolidaysComponent {
   private signalsService = inject(SignalsService);
   
   
-  idRoot: number;
+  idCompany: number;
   fechaInicio: string;
   fechaFin: string;
   myForm;
@@ -25,29 +25,28 @@ export default class  HolidaysComponent {
   diaSemanaFin: string = '';
   catalogoFestive: any[] = [];
   catalogoFestiveVigente: any[] = [];
+  festivo: number;
 
    constructor(private formBuilder: FormBuilder) {
-    this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-    this.obtenerCatalogoFestivo(this.idRoot);
-    this.obtenerCatalogoFestivoVigente(this.idRoot);
+    this.idCompany = this.signalsService.getRootSelectedBySidebar()();
+    this.obtenerCatalogoFestivo(this.idCompany);
+    this.obtenerCatalogoFestivoVigente(this.idCompany);
     this.myForm = this.formBuilder.group({
       fechaInicio: [null, Validators.required],
       fechaFin: [null, Validators.required],
-      justificante: ['', Validators.required],
+      festivo: ['', Validators.required],
     });
 
 
     this.myForm.valueChanges.subscribe((values) => {
+      console.log(values)
         this.fechaInicio = values.fechaInicio;
         this.actualizarDiaSemanaInicio(values.fechaInicio);
         this.fechaFin = values.fechaFin;
         this.actualizarDiaSemanaFin(values.fechaFin);
+        this.festivo = values.festivo;
     });
 
-    // Log de cambios del formulario completo
-    this.myForm.valueChanges.subscribe((values) => {
-      console.log('Estado actual del formulario:', values);
-    });
   }
 
   private actualizarDiaSemanaInicio(fecha: string): void {
@@ -124,7 +123,7 @@ export default class  HolidaysComponent {
     });
   }
   onSubmit() {
-
+    console.log(this.diaSemanaInicio, this.diaSemanaFin, this.festivo )
   }
 
   revertChanges(){
