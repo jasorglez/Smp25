@@ -109,7 +109,6 @@ export class BranchesComponent implements CanComponentDeactivate {
       this.branchesService.getAllBranches().subscribe(
         (data: Ibranch[]) => {
           this.masterRowData = data;
-          console.log(this.masterRowData);
           this.masterNotSavedChanges = false;
         },
         (error) => {
@@ -150,7 +149,6 @@ export class BranchesComponent implements CanComponentDeactivate {
   public gridOptions: any = {
     headerHeight: 30,
     rowHeight: 30,
-    groupDefaultExpanded: -1,
     rowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -191,12 +189,7 @@ export class BranchesComponent implements CanComponentDeactivate {
         pivot: true,
         headerCheckboxSelection: false,
         checkboxSelection: false       // Inicialmente no como pivote
-      },
-    {
-      field: 'idCompany',
-      headerName: 'ID Compañía',
-      hide: true
-    })
+      })
     }
 
     // Agregar el resto de las columnas
@@ -379,35 +372,9 @@ export class BranchesComponent implements CanComponentDeactivate {
 
   addMasterRow() {
     const tempId = `temp_${this.tempIdCounter++}`;
-    const selectedNodes = this.masterGridApi.getSelectedNodes();
-    let selectedGroup = null;
-    let selectedGroupIdCompany = null;
-
-    // Verificar si hay un nodo seleccionado
-    if (selectedNodes.length > 0) {
-      const selectedNode = selectedNodes[0];
-      if (selectedNode.group) {
-        // Si es un grupo, obtener sus datos
-        selectedGroup = selectedNode.key;
-        const groupData = this.masterRowData.find(row => row.rootName === selectedGroup);
-        if (groupData) {
-          selectedGroupIdCompany = groupData.idCompany;
-        }
-      } else {
-        // Si es una fila individual, obtener sus datos
-        const selectedData = selectedNode.data;
-        if (selectedData) {
-          selectedGroup = selectedData.rootName;
-          selectedGroupIdCompany = selectedData.idCompany;
-        }
-      }
-    }
-
     const newItem = {
       id: tempId,
-      idCompany: this.signalsService.getemailChoose() === environment.root 
-        ? selectedGroupIdCompany || this.masterRowData[0]?.idCompany 
-        : this.idRoot,
+      idCompany: this.idRoot,
       idEstado: null,
       name: '',
       description: '',
@@ -415,9 +382,6 @@ export class BranchesComponent implements CanComponentDeactivate {
       orden: 0,
       active: true,
       __isNew: true,
-      rootName: this.signalsService.getemailChoose() === environment.root 
-        ? selectedGroup || this.masterRowData[0]?.rootName || '' 
-        : this.masterRowData[0]?.rootName || ''
     };
 
     // Actualizar el estado
@@ -446,6 +410,7 @@ export class BranchesComponent implements CanComponentDeactivate {
         this.masterSelectedRowData = newItem;
       }
     });
+
   }
 
   async saveMasterChanges() {
