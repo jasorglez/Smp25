@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, effect, HostListener, inject } from '@angular/core';
 import { SignalsService } from 'app/services/signals.service';
 import { AgGridModule } from 'ag-grid-angular';
+import { NgbModal, NgbModalOptions } from '@ng-bootstrap/ng-bootstrap';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import {
   CellDoubleClickedEvent,
@@ -10,7 +11,7 @@ import {
   GridReadyEvent,
   ICellRendererParams,
 } from 'ag-grid-enterprise';
-import { FormsModule } from '@angular/forms';
+import { FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { BranchsService } from 'app/services/branchs.service';
 import { alerts } from 'app/helpers/alerts';
 import { ModalService } from 'app/services/modal.service';
@@ -23,18 +24,23 @@ import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { HRService } from 'app/services/hr.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
+import { dateRangeValidator, noDefaultValueValidator } from 'app/domains/ModProjects/components/contracts/contracts.component';
 
 @Component({
   selector: 'app-branches',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, AgGridModule, MultiLineEditorComponent],
   templateUrl: './branches.component.html',
   styleUrl: './branches.component.scss',
 })
 export class BranchesComponent implements CanComponentDeactivate {
+onSubmit() {
+throw new Error('Method not implemented.');
+}
   private signalsService = inject(SignalsService);
   private branchesService = inject(BranchsService);
   private modalServiceTable = inject(ModalService);
+  private modalService = inject(NgbModal);
   private inegiService = inject(InegiService);
   private hrService = inject(HRService);
   components = {
@@ -51,6 +57,7 @@ export class BranchesComponent implements CanComponentDeactivate {
   idRoot: number = null;
   idUser: number = null;
   gridHeight: string = '85vh';
+  addBranch: FormGroup;
 
   //idRoot = this.signalsService.getRootSelectedBySidebar(); // Asignar directamente la Signal
 
@@ -597,4 +604,26 @@ export class BranchesComponent implements CanComponentDeactivate {
   async canDeactivate(): Promise<boolean> {
     return confirmExitIfUnsaved(this.masterNotSavedChanges);
   }
+
+  initForm() {
+    this.addBranch = new FormGroup({
+      id: new FormControl(),
+      numberContract: new FormControl('', Validators.required),
+      description: new FormControl('', Validators.required),
+      descripSmall: new FormControl('', Validators.required),
+      resident: new FormControl('', Validators.required),
+      supervisor: new FormControl('', Validators.required),
+      amountMx: new FormControl('', Validators.required),
+      amountDll: new FormControl('', Validators.required),
+      speciality: new FormControl('Seleccione una especialidad', [Validators.required, noDefaultValueValidator()]),
+      idProvider: new FormControl('Seleccione un contratista', [Validators.required, noDefaultValueValidator()]),
+      dateStar: new FormControl('', Validators.required),
+      dateEnd: new FormControl('', Validators.required),
+      stateContract: new FormControl('Seleccione un estado', [Validators.required, noDefaultValueValidator()]),
+      term: new FormControl(),
+      idBussines: new FormControl(1),
+      consecutive: new FormControl(0),
+    }, { validators: dateRangeValidator() });
+  }
+
 }

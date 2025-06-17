@@ -69,3 +69,87 @@
     </div>
   </div>
 </div>
+
+<ng-template #content let-modal>
+  <div class="modal-header">
+    <h3 class="modal-title">Nueva sucursal</h3>
+    <button type="button" class="btn-close" aria-label="Close" (click)="modal.dismiss('Cross click')"></button>
+  </div>
+  <div class="modal-body">
+    <form [formGroup]="addBranch" (ngSubmit)="onSubmit()">
+      <div class="row">
+        <div class="col-md-6">
+          <div class="mb-2">
+            <input type="text" formControlName="numberContract" id="numberContract" class="form-control"
+              placeholder="Número de contrato">
+          </div>
+          <div class="mb-2">
+            <select formControlName="stateContract" id="stateContract" class="form-select">
+              <option selected disabled>Seleccione un estado</option>
+              <option value="Ejecución">Ejecución</option>
+              <option value="Cierre Administrativo">Cierre Administrativo</option>
+              <option value="En proceso de Rescisión">En proceso de Rescisión</option>
+              <option value="Extinguido">Extinguido</option>
+              <option value="Finiquitado">Finiquitado</option>
+              <option value="Juicios">Juicios</option>
+              <option value="Suspendido">Suspendido</option>
+            </select>
+          </div>
+          <div class="mb-2">
+            <select formControlName="speciality" id="speciality" class="form-select">
+              <option selected disabled>Seleccione una especialidad</option>
+              <option value="Ductos Marinos">Ductos Marinos</option>
+              <option value="Ductos Terrestres">Ductos Terrestres</option>
+              <option value="Instalaciones">Instalaciones</option>
+              <option value="Obras Marinas">Obras Marinas</option>
+              <option value="Obras Terrestres">Obras Terrestres</option>
+              <option value="Patios">Patios</option>
+              <option value="Terrestres">Terrestres</option>
+            </select>
+          </div>
+          <div class="mb-2">
+            <textarea formControlName="description" id="description" class="form-control"
+              placeholder="Descripción larga del contrato" rows="4"></textarea>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="mb-2">
+            <input type="text" formControlName="descripSmall" id="descripSmall" class="form-control"
+              placeholder="Descripción corta del contrato">
+          </div>
+          <div class="mb-2">
+            <input type="text" formControlName="resident" id="resident" class="form-control" placeholder="Residente">
+          </div>
+          <div class="mb-2">
+            <input type="text" formControlName="supervisor" id="supervisor" class="form-control"
+              placeholder="Supervisor">
+          </div>
+          <div class="mb-2">
+            <input type="number" formControlName="amountMx" id="amountMx" class="form-control"
+              placeholder="Monto en pesos mexicanos">
+          </div>
+          <div class="mb-2">
+            <input type="number" formControlName="amountDll" id="amountDll" class="form-control"
+              placeholder="Monto en dólares">
+          </div>
+          <div class="row mb-2">
+            <div class="col">
+              <label for="dateStar" class="form-label">Inicio</label>
+              <input type="date" formControlName="dateStar" id="dateStar" class="form-control"
+                placeholder="Fecha de inicio de contrato">
+            </div>
+            <div class="col">
+              <label for="dateEnd" class="form-label">Fin</label>
+              <input type="date" formControlName="dateEnd" id="dateEnd" class="form-control"
+                placeholder="Fecha de fin de contrato">
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+  <div class="modal-footer">
+    <button type="submit" class="btn btn-primary" (click)="onSubmit()">Guardar</button>
+    <button type="button" class="btn btn-secondary" (click)="modal.close('Close click')">Cancelar</button>
+  </div>
+</ng-template>
