@@ -392,17 +392,87 @@ export class CashRegistersComponent implements CanComponentDeactivate {
   }
 
   addMasterRow() {
+    const tempId = `temp_${this.tempIdCounter++}`;
+    const selectedNodes = this.gridApi.getSelectedNodes();
+    let selectedCompany = null;
+    let selectedBranch = null;
+    let selectedStore = null;
+
+    // Verificar si hay un nodo seleccionado
+    if (selectedNodes.length > 0) {
+      const selectedNode = selectedNodes[0];
+      if (selectedNode.group) {
+        // Si es un grupo, obtener sus datos
+        if (selectedNode.level === 0) {
+          // Grupo de empresa
+          selectedCompany = selectedNode.key;
+          const groupData = this.rowData.find(row => row.nameSmall === selectedCompany);
+          if (groupData) {
+            selectedBranch = groupData.idBranch;
+            selectedStore = groupData.idStore;
+          }
+        } else if (selectedNode.level === 1) {
+          // Grupo de sucursal
+          selectedBranch = selectedNode.key;
+          const groupData = this.rowData.find(row => row.name === selectedBranch);
+          if (groupData) {
+            selectedCompany = groupData.nameSmall;
+            selectedStore = groupData.idStore;
+          }
+        }
+      } else {
+        // Si es una fila individual, obtener sus datos
+        const selectedData = selectedNode.data;
+        if (selectedData) {
+          selectedCompany = selectedData.nameSmall;
+          selectedBranch = selectedData.name;
+          selectedStore = selectedData.idStore;
+        }
+      }
+    }
+
     const newItem = {
-      //id: tempId,
-      idStore: this.idStore,
+      id: tempId,
+      idStore: this.idUser === 42 
+        ? selectedStore || this.rowData[0]?.idStore 
+        : this.idStore,
+      nameSmall: this.idUser === 42 
+        ? selectedCompany || this.rowData[0]?.nameSmall || '' 
+        : this.rowData[0]?.nameSmall || '',
+      name: this.idUser === 42 
+        ? selectedBranch || this.rowData[0]?.name || '' 
+        : this.rowData[0]?.name || '',
       description: '',
+      descCashRegister: '',
       comment: '',
       active: true,
       __isNew: true,
     };
 
+    // Actualizar el estado
     this.rowData = [newItem, ...this.rowData];
+    this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
+
+    // Forzar la actualización de la cuadrícula y seleccionar la nueva fila
+    this.gridApi.setGridOption('rowData', this.rowData);
+    setTimeout(() => {
+      const firstRowIndex = 0;
+      this.gridApi.ensureIndexVisible(firstRowIndex);
+      this.gridApi.startEditingCell({
+        rowIndex: firstRowIndex,
+        colKey: 'description'
+      });
+    }, 0);
+
+    // Asegurarnos de que la fila nueva esté seleccionada
+    requestAnimationFrame(() => {
+      const rowNode = this.gridApi.getRowNode(tempId);
+      if (rowNode) {
+        rowNode.setSelected(true);
+        this.selectedRowData = newItem;
+      }
+    });
   }
   async saveMasterChanges() {
     const isValid = this.rowData.every((item) => item.description);

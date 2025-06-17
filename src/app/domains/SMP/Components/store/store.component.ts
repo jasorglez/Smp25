@@ -96,13 +96,23 @@ export class StoreComponent implements CanComponentDeactivate {
     });
   }
   obtenerBranchs() {
-    this.branchesService.getBrancheswoa(this.idcompany).subscribe(
-      (data: any) => {
-        this.branchs = data;
-        console.log('Branchs', this.branchs);
-      },
-      (error) => console.error('Error fetching data:', error)
-    );
+    if (this.idUser === 42) {
+      this.branchesService.getAllBranches().subscribe(
+        (data: any) => {
+          this.branchs = data;
+          console.log('All Branchs', this.branchs);
+        },
+        (error) => console.error('Error fetching data:', error)
+      );
+    } else {
+      this.branchesService.getBrancheswoa(this.idcompany).subscribe(
+        (data: any) => {
+          this.branchs = data;
+          console.log('Branchs', this.branchs);
+        },
+        (error) => console.error('Error fetching data:', error)
+      );
+    }
   }
 
   obtenerDatos() {
@@ -111,7 +121,7 @@ export class StoreComponent implements CanComponentDeactivate {
     }
     if (this.idBranch <= 0) {
       return this.storeByCompany();
-    } 
+    }
     return this.storeByBranch();
   }
   @HostListener('window:beforeunload', ['$event'])
@@ -121,7 +131,7 @@ export class StoreComponent implements CanComponentDeactivate {
         'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
     }
   }
-  storeByRoot(){
+  storeByRoot() {
     this.storesService.getStoreAll().subscribe({
       next: (data: any) => {
         this.rowData = data;
@@ -134,20 +144,20 @@ export class StoreComponent implements CanComponentDeactivate {
     });
   }
 
-  storeByCompany(){
+  storeByCompany() {
     this.idcompany = Math.abs(this.idcompany);
-        this.storesService.getStoreCompany(this.idcompany).subscribe({
-          next: (data: any) => {
-            this.rowData = data;
-            console.log(this.rowData);
-          },
-          error: (error) => {
-            if (error.status === 404) this.store = [];
-            console.error('Error fetching data:', error);
-          },
-        });
+    this.storesService.getStoreCompany(this.idcompany).subscribe({
+      next: (data: any) => {
+        this.rowData = data;
+        console.log(this.rowData);
+      },
+      error: (error) => {
+        if (error.status === 404) this.store = [];
+        console.error('Error fetching data:', error);
+      },
+    });
   }
-  storeByBranch(){
+  storeByBranch() {
     this.storesService.getStoreList(this.idBranch).subscribe({
       next: (data: any) => {
         this.rowData = data;
@@ -224,7 +234,7 @@ export class StoreComponent implements CanComponentDeactivate {
     },
     onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
   };
-  onMasterSelectionChanged(event: any) {}
+  onMasterSelectionChanged(event: any) { }
 
   onMasterCellValueChanged(event: any) {
     console.log('Dato cambiado:', event.data);
@@ -311,24 +321,25 @@ export class StoreComponent implements CanComponentDeactivate {
         rowGroup: this.idUser == 42,
         rowGroupIndex: 1,
       },
-      {
-        field: 'idBranch',
-        headerName: 'Sucursal',
-        editable: false,
-        width: 100,
-        hide: this.idBranch >= 0 || this.idUser != 42,
-        rowGroup: this.idBranch <= 0 || this.idUser == 42 ,
-        valueFormatter: (params) => {
-          const branch = this.branchs?.find((item) => item.id === params.value);
-          return branch ? branch.name : '';
-        },
-      },
+      /*       {
+              field: 'idBranch',
+              headerName: 'Sucursal',
+              editable: false,
+              width: 100,
+              hide: this.idBranch >= 0 || this.idUser != 42 ? true: false,
+              rowGroup: this.idBranch <= 0 || this.idUser == 42,
+              valueFormatter: (params) => {
+                const branch = this.branchs?.find((item) => item.id === params.value);
+                return branch ? branch.name : '';
+              },
+            }, */
       {
         field: 'idBranch',
         headerName: 'Sucursal',
         editable: true,
         width: 150,
         hide: this.idBranch >= 0,
+        rowGroup: this.idBranch <= 0 || this.idUser == 42,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.branchs
@@ -339,7 +350,7 @@ export class StoreComponent implements CanComponentDeactivate {
           const branch = this.branchs?.find(item => item.id === params.value);
           return branch ? branch.name : '';
         },
-      },      
+      },
       {
         field: 'description',
         headerName: 'Tienda',
@@ -400,9 +411,39 @@ export class StoreComponent implements CanComponentDeactivate {
   }
 
   addMasterRow() {
+    const tempId = `temp_${this.tempIdCounter++}`;
+    const selectedNodes = this.gridApi.getSelectedNodes();
+    let selectedCompany = null;
+    let selectedBranch = null;
+
+    // Verificar si hay un nodo seleccionado
+    if (selectedNodes.length > 0) {
+      const selectedNode = selectedNodes[0];
+      if (selectedNode.group) {
+        // Si es un grupo, obtener sus datos
+        selectedCompany = selectedNode.key;
+        const groupData = this.rowData.find(row => row.companyName === selectedCompany);
+        if (groupData) {
+          selectedBranch = groupData.idBranch;
+        }
+      } else {
+        // Si es una fila individual, obtener sus datos
+        const selectedData = selectedNode.data;
+        if (selectedData) {
+          selectedCompany = selectedData.companyName;
+          selectedBranch = selectedData.idBranch;
+        }
+      }
+    }
+
     const newItem = {
-      //id: tempId,
-      idBranch: this.idBranch,
+      id: tempId,
+      idBranch: this.idUser === 42
+        ? selectedBranch || this.rowData[0]?.idBranch
+        : this.idBranch,
+      companyName: this.idUser === 42
+        ? selectedCompany || this.rowData[0]?.companyName || ''
+        : this.rowData[0]?.companyName || '',
       description: '',
       address: '',
       city: '',
@@ -413,8 +454,30 @@ export class StoreComponent implements CanComponentDeactivate {
       __isNew: true,
     };
 
+    // Actualizar el estado
     this.rowData = [newItem, ...this.rowData];
+    this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
+
+    // Forzar la actualización de la cuadrícula y seleccionar la nueva fila
+    this.gridApi.setGridOption('rowData', this.rowData);
+    setTimeout(() => {
+      const firstRowIndex = 0;
+      this.gridApi.ensureIndexVisible(firstRowIndex);
+      this.gridApi.startEditingCell({
+        rowIndex: firstRowIndex,
+        colKey: 'description'
+      });
+    }, 0);
+
+    // Asegurarnos de que la fila nueva esté seleccionada
+    requestAnimationFrame(() => {
+      const rowNode = this.gridApi.getRowNode(tempId);
+      if (rowNode) {
+        rowNode.setSelected(true);
+        this.selectedRowData = newItem;
+      }
+    });
   }
   async saveMasterChanges() {
     const isValid = this.rowData.every(
