@@ -4,7 +4,7 @@
           <!-- Fechas en la misma fila -->
           <div class="col-md-6 mb-3">
             <label for="fecha1" class="form-label">Fecha inicio</label>
-            <input type="date" class="form-control" id="fecha1" [max]="fechaFin" formControlName="fechaInicio">
+            <input type="date" class="form-control" id="fecha1" [max]="fechaFin" [value]="fechaInicio" formControlName="fechaInicio">
             <small class="text-muted">Día:{{diaSemanaInicio}} </small>
           </div>
       
@@ -18,9 +18,9 @@
         <!-- Justificante en su propia fila -->
         <div class="row">
           <div class="col-md-12 mb-3">
-            <label for="justificante" class="form-label">Justificante</label>
-            <select class="form-select" id="justificante" formControlName="justificante" required>
-              <option [ngValue]="null" disabled>Seleccione un justificante</option>
+            <label for="justificante" class="form-label">Dia festivo</label>
+            <select class="form-select" id="festivo" formControlName="festivo" required>
+              <option [ngValue]="null" disabled>Seleccione un dia festivo</option>
               <option *ngFor="let festivo of catalogoFestiveVigente" [ngValue]="festivo.id">
                 {{ festivo.description }}
               </option>

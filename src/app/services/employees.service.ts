@@ -46,6 +46,10 @@ export class EmployeesService {
     return this.http.get<any[]>(`${environment.urlAdministration}/EmployeesXClock/employee/${idEmployee}/${day}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getEmployeeClockByBranch(idBranch: number, day: string[]): Observable<any> {
+    return this.http.get<any[]>(`${environment.urlAdministration}/EmployeesXClock/branch/${idBranch}/${day}`, { headers: this.trackingService.getHeaders() });
+  }
+
   updateEmployeeClock(idEmployee: number, day: string, data: any): Observable<any> {
     return this.http.put<any[]>(`${environment.urlAdministration}/EmployeesXClock/${idEmployee}/${day}`, data, { headers: this.trackingService.getHeaders() });
   } 

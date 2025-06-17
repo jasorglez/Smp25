@@ -695,6 +695,7 @@ export default class DetailClock2Component implements OnInit {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      console.log(cleanedData);
       return this.clockService.checkInOut(cleanedData);
     });
 
