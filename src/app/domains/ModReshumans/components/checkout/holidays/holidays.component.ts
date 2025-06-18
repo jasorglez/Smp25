@@ -124,113 +124,98 @@ export default class  HolidaysComponent {
   }
 
   onSubmit() {
-    console.log(this.idBranch)
-    if(this.myForm.value.fechaInicio != null && this.myForm.value.festivo != ''){
-      const inicio = this.diasSemana.indexOf(this.diaSemanaInicio);
-      const fin = this.diasSemana.indexOf(this.diaSemanaFin);
-          if (inicio >= 0 && fin >= 0 && inicio <= fin) {
-        const diasSeleccionados = this.diasSemana.slice(inicio, fin + 1);
-        this.employeesService.getEmployeeClockByBranch(this.idBranch, diasSeleccionados).subscribe((data: any) => {
-          this.Asignacion(data)});
-      } else {
-        const diasSeleccionados = [this.diaSemanaInicio];
-        this.employeesService.getEmployeeClockByBranch(this.idBranch, diasSeleccionados).subscribe((data: any) => {
-          this.Asignacion(data)});
-      }
-    }else{
-      alerts.basicAlert(
-        'Carga fallida',
-        'Por favor, seleccione un motivo.',
-        'error'
-      );
-      return;
-    }
+  const fechaInicio = this.myForm.value.fechaInicio;
+  const fechaFin = this.myForm.value.fechaFin || fechaInicio; // Si no hay fin, se usa el inicio
+  const idReason = this.myForm.value.festivo;
+
+  if (!fechaInicio || !idReason) {
+    alerts.basicAlert('Error', 'Debe seleccionar una fecha y un motivo.', 'error');
+    return;
   }
-  Asignacion(valor: EmployeeClockData[]){
-    
-    alerts.confirmAlert(
-        'Confirmar',
-        '¿Está seguro que desea añadir estos datos al sistema?',
-        'warning',
-        'Sí, añadir'
-      ).then((result) => {
-        if (result.isConfirmed) {
-          for (const item of valor) {
-            const newHora = this.sumarHoras(item.entry1, item.hours);
-            const fechaCorrespondiente = this.obtenerFechaPorNombreDia(
-              this.myForm.value.fechaInicio,
-              this.myForm.value.fechaFin,
-              item.day
-            );
-          
-            const data1 = {
+
+  alerts.confirmAlert(
+    'Confirmar',
+    '¿Está seguro que desea añadir estos datos al sistema?',
+    'warning',
+    'Sí, añadir'
+  ).then((result) => {
+    if (!result.isConfirmed) return;
+
+    const inicio = new Date(fechaInicio + 'T00:00:00');
+    const fin = new Date(fechaFin + 'T00:00:00');
+    const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const allRequests = [];
+
+    const recorrerDias = (current: Date) => {
+      if (current > fin) {
+        forkJoin(allRequests).subscribe({
+          next: (responses) => {
+            console.log('✅ Registros completados:', responses);
+            alerts.basicAlert('Éxito', 'Se procesaron todos los registros.', 'success');
+          },
+          error: (err) => {
+            console.error('❌ Error al procesar registros:', err);
+            alerts.basicAlert('Error', 'Hubo un problema al guardar los datos.', 'error');
+          }
+        });
+        return;
+      }
+
+      const nombreDia = diasSemana[current.getDay()];
+      const fechaStr = current.toISOString().split('T')[0];
+
+      this.employeesService.getEmployeeClockByBranch(this.idBranch, nombreDia).subscribe({
+        next: (empleados) => {
+          empleados.forEach((item: any) => {
+            const horaSalida = this.sumarHoras(item.entry1, item.hours);
+
+            const baseData = {
               active: true,
               byTimeClock: false,
               edited: true,
               editedBy: this.signalsService.getDisplayName()(),
               idEmployee: item.idEmployee,
-              idReason: this.myForm.value.festivo,
+              idReason: idReason,
               minuteDiscount: 0,
               minuteDiscountBackup: null,
-              timeStamp: `${fechaCorrespondiente}T${item.entry1}`,
-              type: 'IN',
-              valid: true,
+              valid: true
             };
-          
-            const data2 = {
-              ...data1,
-              timeStamp: `${fechaCorrespondiente}T${newHora}`,
-              type: 'OUT',
+
+            const dataIn = {
+              ...baseData,
+              timeStamp: `${fechaStr}T${item.entry1}`,
+              type: 'IN'
             };
-          
-            // Añadir los observables a la lista
-            this.requests.push(this.clockService.checkInOut(data1));
-            this.requests.push(this.clockService.checkInOut(data2));
-          }
-          
-          forkJoin(this.requests).subscribe({
-            next: (responses) => {
-              console.log('✅ Todos los registros procesados con éxito:', responses);
-              alerts.basicAlert(
-                'Carga exitosa',
-                'Se han añadido los datos correctamente.',
-                'success'
-              );
-            },
-            error: (error) => {
-              console.error('❌ Error en alguna de las peticiones:', error);
-              alerts.basicAlert(
-                'Error',
-                'Ocurrió un error al cargar los datos. Por favor, intente nuevamente.',
-                'error'
-              );
-            },
+
+            const dataOut = {
+              ...baseData,
+              timeStamp: `${fechaStr}T${horaSalida}`,
+              type: 'OUT'
+            };
+            console.log(dataIn)
+            console.log(dataOut)
+            allRequests.push(this.clockService.checkInOut(dataIn));
+            allRequests.push(this.clockService.checkInOut(dataOut));
           });
+
+          // Ir al siguiente día
+          current.setDate(current.getDate() + 1);
+          recorrerDias(current);
+        },
+        error: (err) => {
+          console.error(`❌ Error al obtener empleados para ${nombreDia}:`, err);
+          alerts.basicAlert('Error', `Error al obtener empleados para ${nombreDia}`, 'error');
         }
-    });
-  }
+      });
+    };
+
+    recorrerDias(new Date(inicio)); // Iniciar proceso
+  });
+}
+
   revertChanges(){
 
   }
-
-  private obtenerFechaPorNombreDia(fechaInicio: string, fechaFin: string, diaBuscado: string): string | null {
-  const inicio = new Date(fechaInicio + 'T00:00:00');
-  const fin = fechaFin ? new Date(fechaFin  + 'T00:00:00') : new Date(fechaInicio  + 'T00:00:00'); // Si no hay fechaFin, solo evalúa una
-
-  for (let d = new Date(inicio); d <= fin; d.setDate(d.getDate() + 1)) {
-    const nombreDia = this.diasSemana[d.getDay()];
-    //console.log(nombreDia, diaBuscado)
-    if (nombreDia === diaBuscado) {
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    }
-  }
-
-  return null; // No se encontró
-}
-
 
 
   sumarHoras(horaStr: string, horasASumar: number): string {

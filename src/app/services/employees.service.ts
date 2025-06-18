@@ -46,7 +46,7 @@ export class EmployeesService {
     return this.http.get<any[]>(`${environment.urlAdministration}/EmployeesXClock/employee/${idEmployee}/${day}`, { headers: this.trackingService.getHeaders() });
   }
 
-  getEmployeeClockByBranch(idBranch: number, day: string[]): Observable<any> {
+  getEmployeeClockByBranch(idBranch: number, day: string): Observable<any> {
     return this.http.get<any[]>(`${environment.urlAdministration}/EmployeesXClock/branch/${idBranch}/${day}`, { headers: this.trackingService.getHeaders() });
   }
 

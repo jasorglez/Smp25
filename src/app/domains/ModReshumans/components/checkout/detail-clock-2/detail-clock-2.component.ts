@@ -47,15 +47,24 @@ export default class DetailClock2Component implements OnInit {
     this.obtenerCatalogoAusenciasVigente(this.idCompany);
 
     // Inicializar el formulario de justificantes
+    this.diaInicio = this.getLocalDate();
     this.justificanteForm = this.fb.group({
-      fecha: [this.getLocalDate(), Validators.required],
+      controlInicio: [this.diaInicio, Validators.required],
+      controlFin: ['', Validators.required],
       justificante: ['', Validators.required]
     });
 
     // Suscribirse a los cambios de fecha para actualizar el día de la semana
-    this.justificanteForm.get('fecha')?.valueChanges.subscribe(fecha => {
-      this.actualizarDiaSemana(fecha);
+    this.justificanteForm.get('controlInicio')?.valueChanges.subscribe(fecha => {
+      this.diaSemanaInicio = this.obtenerNombreDiaSemana(fecha);
+      this.diaInicio = fecha
     });
+    
+    this.justificanteForm.get('controlFin')?.valueChanges.subscribe(fecha => {
+      this.diaSemanaFin = this.obtenerNombreDiaSemana(fecha);
+      this.diaFin = fecha
+    });
+
 
     // Suscribirse a los cambios del formulario completo
     this.justificanteForm.valueChanges.subscribe(values => {
@@ -63,7 +72,7 @@ export default class DetailClock2Component implements OnInit {
     });
 
     // Inicializar el día de la semana con la fecha actual
-    this.actualizarDiaSemana(this.getLocalDate());
+    
   }
 
   constructor() {
@@ -88,6 +97,25 @@ export default class DetailClock2Component implements OnInit {
       this.obtenerCatalogoFestivo(this.idCompany);
       this.obtenerCatalogoFestivoVigente(this.idCompany);
     });
+    this.diaInicio = this.getLocalDate();
+    this.diaSemanaInicio = this.obtenerNombreDiaSemana(this.diaInicio);
+    this.justificanteForm = this.fb.group({
+      controlInicio: [this.diaInicio, Validators.required],
+      controlFin: ['', Validators.required],
+      justificante: ['', Validators.required]
+    });
+    this.justificanteForm.get('controlInicio')?.valueChanges.subscribe(fecha => {
+      this.diaSemanaInicio = this.obtenerNombreDiaSemana(fecha);
+      this.diaInicio = fecha
+    });
+    
+    this.justificanteForm.get('controlFin')?.valueChanges.subscribe(fecha => {
+      this.diaSemanaFin = this.obtenerNombreDiaSemana(fecha);
+      this.diaFin = fecha
+    });
+     this.justificanteForm.valueChanges.subscribe(values => {
+      console.log('Estado actual del formulario:', values);
+    });
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -110,6 +138,14 @@ export default class DetailClock2Component implements OnInit {
   Typecop: any[] = [];
   idCompany: number;
   tempIdCounter: number = 0; // Contador para IDs temporales
+
+  // Propiedades para el modal de justificantes
+  justificanteForm: FormGroup;
+  diaSemana: string = '';
+  diaSemanaInicio: string = '';
+  diaSemanaFin: string = '';
+  diaInicio: string = '';
+  diaFin: string = '';
 
   // Agregar esta nueva variable para almacenar el ID de la última fila editada
   private lastEditedRowId: number | string | null = null;
@@ -829,27 +865,18 @@ export default class DetailClock2Component implements OnInit {
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   }
 
-  // Propiedades para el modal de justificantes
-  justificanteForm: FormGroup;
-  diaSemana: string = '';
-
   // Método para obtener el día de la semana en español
-  private actualizarDiaSemana(fecha: string) {
-    const diasSemana = [
-      'Domingo',
-      'Lunes',
-      'Martes',
-      'Miércoles',
-      'Jueves',
-      'Viernes',
-      'Sábado'
-    ];
-    
-    // Parsear la fecha asegurándonos de que se interprete en la zona horaria local
+    private diasSemana = [
+    'Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'
+  ];
+
+  // Este sí retorna el nombre del día, lo puedes usar si lo necesitas aparte
+  private obtenerNombreDiaSemana(fecha: string): string {
     const [year, month, day] = fecha.split('-').map(Number);
     const fechaObj = new Date(year, month - 1, day);
-    this.diaSemana = diasSemana[fechaObj.getDay()];
+    return this.diasSemana[fechaObj.getDay()];
   }
+
 
   // Método para obtener la fecha local en formato YYYY-MM-DD
   private getLocalDate(): string {
@@ -861,64 +888,87 @@ export default class DetailClock2Component implements OnInit {
   }
 
   // Método para confirmar la adición del justificante
-  confirmarAnadir() {
-    if (this.justificanteForm.valid) {
-      const formValues = { ...this.justificanteForm.value };
-      console.log('Valores capturados del formulario:', formValues);
+ confirmarAnadir() {
+  if (this.justificanteForm.value.controlInicio !== '' && this.justificanteForm.value.justificante !== '') {
+    const formValues = { ...this.justificanteForm.value };
+    const fechaInicio = new Date(formValues.controlInicio + 'T00:00:00');
+    const fechaFin = formValues.controlFin
+      ? new Date(formValues.controlFin + 'T00:00:00')
+      : new Date(fechaInicio); // Si no hay fecha fin, solo se procesa un día
 
-      alerts.confirmAlert(
-        'Confirmar',
-        '¿Está seguro que desea añadir estos datos al sistema?',
-        'warning',
-        'Sí, añadir'
-      ).then((result) => {
-        if (result.isConfirmed) {
-          console.log('Datos del formulario:', formValues);
-          
-          this.employeesService.getEmployeeClockByDay(this.idEmployee, this.diaSemana).subscribe((data: any) => {
+    const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const nuevasFilas = [];
+
+    alerts.confirmAlert(
+      'Confirmar',
+      '¿Está seguro que desea añadir estos datos al sistema?',
+      'warning',
+      'Sí, añadir'
+    ).then((result) => {
+      if (!result.isConfirmed) return;
+
+      const procesarDia = (current: Date) => {
+        if (current > fechaFin) {
+          // Ya terminó el recorrido, ahora sí aplica al grid
+          console.log('Filas que se añaden al grid:', nuevasFilas);
+          this.rowData = [...nuevasFilas, ...this.rowData];
+          this.gridApi.setGridOption('rowData', this.rowData);
+          this.notSavedChanges = true;
+
+          // Cerrar el modal
+          const modalElement = document.getElementById('addJustificanteModal');
+          const modal = bootstrap.Modal.getInstance(modalElement);
+          if (modal) modal.hide();
+
+          // Resetear formulario
+          this.justificanteForm.reset({
+            controlInicio: this.getLocalDate(),
+            controlFin: '',
+            justificante: ''
+          });
+
+          return;
+        }
+
+        const nombreDia = diasSemana[current.getDay()];
+        const fechaStr = current.toISOString().split('T')[0];
+        const idReason = formValues.justificante;
+
+        this.employeesService.getEmployeeClockByDay(this.idEmployee, nombreDia).subscribe({
+          next: (data: any) => {
             const employee = data[0];
-            console.log('Datos del empleado:', employee);
 
             if (!employee) {
               alerts.basicAlert(
                 'Error',
-                'No se encontró información del horario del empleado para este día.',
+                `No se encontró información del horario para el día ${nombreDia}`,
                 'error'
               );
+              // Continuar con el siguiente día
+              current.setDate(current.getDate() + 1);
+              procesarDia(current);
               return;
             }
 
             if (!employee.enabled) {
+              if(this.justificanteForm.value.controlFin == ''){
               alerts.basicAlert(
                 'Error',
-                'El empleado no labora este día.',
+                `El empleado no labora el día ${nombreDia}`,
                 'error'
-              );
+              );}
+              // Continuar con el siguiente día
+              current.setDate(current.getDate() + 1);
+              procesarDia(current);
               return;
             }
-
-            const fecha = formValues.fecha;
-            const idReason = formValues.justificante;
-            console.log('Valor del justificante seleccionado:', idReason);
-            console.log('Tipo del valor del justificante:', typeof idReason);
-
-            if (!idReason) {
-              alerts.basicAlert(
-                'Error',
-                'Debe seleccionar un justificante',
-                'error'
-              );
-              return;
-            }
-
-            const nuevasFilas = [];
 
             // Función auxiliar para crear filas
             const crearFila = (checkTime: string, type: 'IN' | 'OUT') => ({
               id: `temp_${this.tempIdCounter++}`,
               idEmployee: this.idEmployee,
               idBranch: this.idBranch,
-              date: fecha,
+              date: fechaStr,
               checkTime: checkTime,
               modifiedCheckTime: '',
               type: type,
@@ -933,40 +983,37 @@ export default class DetailClock2Component implements OnInit {
               __isNew: true
             });
 
-            // Crear filas para entry1 y exit1
             nuevasFilas.push(crearFila(employee.entry1, 'IN'));
             const newHora = this.sumarHoras(employee.entry1, employee.hours);
             nuevasFilas.push(crearFila(newHora, 'OUT'));
 
-            // Añadir las nuevas filas al grid
-            console.log('Filas que se añaden al grid:', nuevasFilas);
-            this.rowData = [...nuevasFilas, ...this.rowData];
-            this.gridApi.setGridOption('rowData', this.rowData);
-            this.notSavedChanges = true;
-          });
-          
-          // Cerrar el modal
-          const modalElement = document.getElementById('addJustificanteModal');
-          const modal = bootstrap.Modal.getInstance(modalElement);
-          if (modal) {
-            modal.hide();
+            // Continuar con el siguiente día
+            current.setDate(current.getDate() + 1);
+            procesarDia(current);
+          },
+          error: (err) => {
+            console.error(`Error al obtener datos del empleado para ${nombreDia}`, err);
+            alerts.basicAlert(
+              'Error',
+              `Error al obtener datos del empleado para ${nombreDia}`,
+              'error'
+            );
+            // Continuar con el siguiente día aunque falle
+            current.setDate(current.getDate() + 1);
+            procesarDia(current);
           }
-          
-          // Resetear el formulario
-          this.justificanteForm.reset({
-            fecha: this.getLocalDate(),
-            justificante: ''
-          });
-        }
-      });
-    } else {
-      alerts.basicAlert(
-        'Error',
-        'Por favor complete todos los campos requeridos',
-        'error'
-      );
-    }
+        });
+      };
+
+      // Iniciar recorrido
+      procesarDia(new Date(fechaInicio));
+    });
+  } else {
+    alerts.basicAlert('Error', 'Por favor complete todos los campos requeridos', 'error');
   }
+}
+
+
   sumarHoras(horaStr: string, horasASumar: number): string {
   const [h, m, s] = horaStr.split(':').map(Number);
 

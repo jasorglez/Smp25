@@ -58,13 +58,13 @@
         <form [formGroup]="justificanteForm">
           <div class="mb-3">
             <label for="fecha" class="form-label">Fecha</label>
-            <input type="date" class="form-control" id="fecha" formControlName="fecha">
-            <small class="text-muted">Día: {{diaSemana}}</small>
+            <input type="date" class="form-control" id="diaInicio" [max]="diaFin" formControlName="controlInicio">
+            <small class="text-muted">Día: {{diaSemanaInicio}}</small>
           </div>
           <div class="mb-3">
             <label for="fecha" class="form-label">Fecha</label>
-            <input type="date" class="form-control" id="fecha" formControlName="fecha">
-            <small class="text-muted">Día: {{diaSemana}}</small>
+            <input type="date" class="form-control" id="diaFin" [min]="diaInicio" formControlName="controlFin">
+            <small class="text-muted">Día: {{diaSemanaFin}}</small>
           </div>
           <div class="mb-3">
             <label for="justificante" class="form-label">Justificante</label>
