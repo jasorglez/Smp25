@@ -71,7 +71,7 @@ export default class DetailClock2Component implements OnInit {
       this.idEmployee = this.signalsService.getDetailClockForEmployee().idEmployee();
       this.fechaInicio = this.signalsService.getDetailClockForEmployee().startDate();
       this.fechaFin = this.signalsService.getDetailClockForEmployee().endDate();
-      console.log(this.idEmployee, this.fechaInicio, this.fechaFin);
+      //console.log(this.idEmployee, this.fechaInicio, this.fechaFin);
       this.obtenerDatos(this.idEmployee, this.fechaInicio, this.fechaFin);
     });
 
@@ -82,6 +82,7 @@ export default class DetailClock2Component implements OnInit {
 
     effect(() => {
       this.idCompany = this.signalsService.getRootSelectedBySidebar()();
+      this.obtenerCatalogo(this.idCompany);
       this.obtenerCatalogoAusencias(this.idCompany);
       this.obtenerCatalogoAusenciasVigente(this.idCompany);
       this.obtenerCatalogoFestivo(this.idCompany);
@@ -123,6 +124,7 @@ export default class DetailClock2Component implements OnInit {
   idEmployee: number;
   fechaInicio: any;
   fechaFin: any;
+  catalogoAll: any[] = [];
   catalogoAusencias: any[] = [];
   catalogoAusenciasVigente: any[] = [];
   catalogoFestive: any[] = [];
@@ -440,7 +442,7 @@ export default class DetailClock2Component implements OnInit {
         },
         valueFormatter: (params) => {
           if (!params.value) return '';
-          const ausencia = this.catalogoAusencias.find(item => item.id.toString() === params.value.toString());
+          const ausencia = this.catalogoAll.find(item => item.id.toString() === params.value.toString());
           return ausencia ? ausencia.description : '';
         },
         valueParser: (params) => {
@@ -482,6 +484,12 @@ export default class DetailClock2Component implements OnInit {
         width: 200,
       },
     ];
+  }
+  obtenerCatalogo(idCompany: number) {
+    this.clockService.getCatalogs(idCompany).subscribe((data: any) => {
+      this.catalogoAll = data;
+      console.log(this.catalogoAll)
+    });
   }
 
   obtenerCatalogoAusencias(idCompany: number) {
@@ -695,6 +703,7 @@ export default class DetailClock2Component implements OnInit {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      console.log(cleanedData);
       return this.clockService.checkInOut(cleanedData);
     });
 
@@ -926,13 +935,8 @@ export default class DetailClock2Component implements OnInit {
 
             // Crear filas para entry1 y exit1
             nuevasFilas.push(crearFila(employee.entry1, 'IN'));
-            nuevasFilas.push(crearFila(employee.exit1, 'OUT'));
-
-            // Si existen entry2 y exit2, crear filas adicionales
-            if (employee.entry2 && employee.exit2) {
-              nuevasFilas.push(crearFila(employee.entry2, 'IN'));
-              nuevasFilas.push(crearFila(employee.exit2, 'OUT'));
-            }
+            const newHora = this.sumarHoras(employee.entry1, employee.hours);
+            nuevasFilas.push(crearFila(newHora, 'OUT'));
 
             // Añadir las nuevas filas al grid
             console.log('Filas que se añaden al grid:', nuevasFilas);
@@ -963,4 +967,24 @@ export default class DetailClock2Component implements OnInit {
       );
     }
   }
+  sumarHoras(horaStr: string, horasASumar: number): string {
+  const [h, m, s] = horaStr.split(':').map(Number);
+
+  // Convertir hora base a minutos totales
+  let totalMinutos = h * 60 + m;
+
+  // Convertir horas decimales a minutos
+  const minutosASumar = Math.round(horasASumar * 60);
+
+  totalMinutos += minutosASumar;
+
+  // Calcular nueva hora
+  const nuevaHora = Math.floor(totalMinutos / 60) % 24;
+  const nuevosMinutos = totalMinutos % 60;
+
+  // Convertir a string con formato HH:mm:ss
+  const horaFormateada = `${String(nuevaHora).padStart(2, '0')}:${String(nuevosMinutos).padStart(2, '0')}:00`;
+
+  return horaFormateada;
+}
 }
