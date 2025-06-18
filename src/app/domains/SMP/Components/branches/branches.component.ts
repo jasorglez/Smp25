@@ -1,15 +1,13 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, ViewChild } from '@angular/core';
 import { SignalsService } from 'app/services/signals.service';
 import { AgGridModule } from 'ag-grid-angular';
-import { NgbModal, NgbModalOptions } from '@ng-bootstrap/ng-bootstrap';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import {
-  CellDoubleClickedEvent,
   ColDef,
   GridApi,
-  GridReadyEvent,
-  ICellRendererParams,
+  GridReadyEvent
 } from 'ag-grid-enterprise';
 import { FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { BranchsService } from 'app/services/branchs.service';
@@ -24,7 +22,7 @@ import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { HRService } from 'app/services/hr.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
-import { dateRangeValidator, noDefaultValueValidator } from 'app/domains/ModProjects/components/contracts/contracts.component';
+import { RootService } from 'app/services/root.service';
 
 @Component({
   selector: 'app-branches',
@@ -34,20 +32,15 @@ import { dateRangeValidator, noDefaultValueValidator } from 'app/domains/ModProj
   styleUrl: './branches.component.scss',
 })
 export class BranchesComponent implements CanComponentDeactivate {
-onSubmit() {
-throw new Error('Method not implemented.');
-}
-  private signalsService = inject(SignalsService);
+  @ViewChild('content') content: any;
+  
+  public signalsService = inject(SignalsService);
+  public environment = environment;
   private branchesService = inject(BranchsService);
-  private modalServiceTable = inject(ModalService);
   private modalService = inject(NgbModal);
   private inegiService = inject(InegiService);
   private hrService = inject(HRService);
-  components = {
-    multiLineEditor: MultiLineEditorComponent,
-    autocompleteEditor: AutocompleteEditorComponent
-    
-  }
+  private rootService = inject(RootService);
 
   //Variables master
   masterRowData: any[] = [];
@@ -58,13 +51,15 @@ throw new Error('Method not implemented.');
   idUser: number = null;
   gridHeight: string = '85vh';
   addBranch: FormGroup;
+  estados: any;
+  isEditing: boolean = false;
+  companies: any[] = []; // Nueva propiedad para almacenar las compañías
 
   //idRoot = this.signalsService.getRootSelectedBySidebar(); // Asignar directamente la Signal
 
   id: number = null;
   private masterGridApi: GridApi;
   private tempIdCounter: number = 0;
-  private estados: any;
 
   // Configuración Grid
   public rowSelection: 'single' | 'multiple' = 'single';
@@ -76,10 +71,10 @@ throw new Error('Method not implemented.');
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
 
   constructor() {
+    this.initForm();
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idUser = this.signalsService.getIdUSer()();
-      console.log(this.masterRowData);
       if (this.idRoot == null) {
         this.masterRowData = [];
         alerts.basicAlert(
@@ -97,8 +92,9 @@ throw new Error('Method not implemented.');
     this.idUser = this.signalsService.getIdUSer()();
     this.obtenerDatos();
     this.obtenerEstados();
-
-    //alert(this.idUser)
+    if (this.signalsService.getemailChoose() === environment.root) {
+      this.obtenerCompanias();
+    }
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -144,7 +140,6 @@ throw new Error('Method not implemented.');
           ...estado,
           id: index + 1,
         }));
-        console.log(this.estados);
       },
       error: (error) => {
         console.error('Error fetching states', error);
@@ -152,10 +147,27 @@ throw new Error('Method not implemented.');
     });
   }
 
+  obtenerCompanias() {
+    this.rootService.getRoot().subscribe({
+      next: (data: any) => {
+        this.companies = data;
+      },
+      error: (error) => {
+        console.error('Error al obtener las compañías:', error);
+        alerts.basicAlert(
+          'Error',
+          'No se pudieron obtener las compañías',
+          'error'
+        );
+      }
+    });
+  }
+
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
     headerHeight: 30,
     rowHeight: 30,
+    groupDefaultExpanded: -1,
     rowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -177,7 +189,26 @@ throw new Error('Method not implemented.');
         });
       }
     },
+    onCellDoubleClicked: (event) => {
+      this.editRow(event.data);
+    }
   };
+
+  editRow(data: any) {
+    this.isEditing = true;
+    this.initForm();
+    this.addBranch.patchValue({
+      id: data.id,
+      idCompany:data.idCompany,
+      idEstado: data.idEstado,
+      name: data.name,
+      description: data.description,
+      address: data.address,
+      orden: data.orden,
+      active: data.active
+    });
+    this.modalService.open(this.content, { size: 'lg' });
+  }
 
   get colMaster(): ColDef[] {
     const columns: ColDef[] = [];
@@ -186,6 +217,7 @@ throw new Error('Method not implemented.');
     if (this.signalsService.getemailChoose() === environment.root) {
       columns.push({
         field: 'rootName',
+        hide: true,
         headerName: 'Empresa',
         editable: false,
         filter: true,
@@ -204,7 +236,7 @@ throw new Error('Method not implemented.');
       {
         field: 'name',
         headerName: 'Nombre *',
-        editable: true,
+        editable: false,
         filter: true,
         width: 250,
         valueSetter: (params) => {
@@ -244,7 +276,7 @@ throw new Error('Method not implemented.');
       {
         field: 'description',
         headerName: 'Descripción *',
-        editable: true,
+        editable: false,
         filter: true,
         width: 400,
         valueSetter: (params) => {
@@ -255,7 +287,7 @@ throw new Error('Method not implemented.');
       {
         field: 'idEstado',
         headerName: 'Estado',
-        editable: true,
+        editable: false,
         filter: true,
         cellEditor: 'autocompleteEditor',
         width: 200,
@@ -287,7 +319,7 @@ throw new Error('Method not implemented.');
       {
         field: 'address',
         headerName: 'Dirección *',
-        editable: true,
+        editable: false,
         filter: true,
         width: 400,
         /*cellEditor: 'agPopupTextCellEditor',
@@ -315,7 +347,7 @@ throw new Error('Method not implemented.');
       {
         field: 'vigente',
         headerName: 'Activo',
-        editable: true,
+        editable: false,
         suppressMovable: true,
         filter: true,
         width: 150,
@@ -339,194 +371,101 @@ throw new Error('Method not implemented.');
     }
   }
 
-  onMasterCellValueChanged(event: any) {
-    const updatedData = { ...event.data };
-
-    // Preservar el estado temporal y la selección
-    if (this.newlyAddedMasterRows.includes(updatedData.id)) {
-      updatedData.__isNew = true;
-    }
-
-    updatedData.__modified = true;
-    this.masterNotSavedChanges = true;
-
-    // Actualizar el array de datos
-    this.masterRowData = this.masterRowData.map((row) =>
-      row.id === updatedData.id ? updatedData : row
-    );
-
-    // Actualizar la fila en la cuadrícula
-    const rowNode = this.masterGridApi.getRowNode(updatedData.id);
-    if (rowNode) {
-      rowNode.setData(updatedData);
-      // Mantener la selección si es necesario
-      if (
-        this.masterSelectedRowData &&
-        this.masterSelectedRowData.id === updatedData.id
-      ) {
-        rowNode.setSelected(true);
-      }
-    }
-  }
-
   onMasterGridReady(params: GridReadyEvent) {
     this.masterGridApi = params.api;
   }
 
-  onMasterRowSelected(event: any) {
-    this.id = event.data.id;
-  }
-
   addMasterRow() {
-    const tempId = `temp_${this.tempIdCounter++}`;
-    const newItem = {
-      id: tempId,
-      idCompany: this.idRoot,
-      idEstado: null,
-      name: '',
-      description: '',
-      address: '',
-      orden: 0,
-      active: true,
-      __isNew: true,
-    };
-
-    // Actualizar el estado
-    this.masterRowData = [newItem, ...this.masterRowData];
-    this.newlyAddedMasterRows.push(tempId);
-    this.masterNotSavedChanges = true;
-
-    // Forzar la actualización de la cuadrícula y seleccionar la nueva fila
-    this.masterGridApi.setGridOption('rowData', this.masterRowData);
-    setTimeout(() => {
-      const firstRowIndex = 0;
-
-      this.masterGridApi.ensureIndexVisible(firstRowIndex);
-
-      this.masterGridApi.startEditingCell({
-        rowIndex: firstRowIndex,
-        colKey: 'name'
-      });
-    }, 0);
-
-    // Asegurarnos de que la fila nueva esté seleccionada
-    requestAnimationFrame(() => {
-      const rowNode = this.masterGridApi.getRowNode(tempId);
-      if (rowNode) {
-        rowNode.setSelected(true);
-        this.masterSelectedRowData = newItem;
-      }
-    });
-
+    this.isEditing = false;
+    this.initForm();
+    this.modalService.open(this.content, { size: 'lg' });
   }
 
-  async saveMasterChanges() {
-    const isValid = this.masterRowData.every(
-      (item) => item.name && item.description && item.address
-    );
-    if (!isValid) {
-      alerts.basicAlert(
-        'Añadir entrada',
-        'Debe llenar todos los campos antes de guardar.',
-        'error'
-      );
-      return;
-    }
+  async onSubmit() {
+    if (this.addBranch.valid) {
+      const formData = this.addBranch.value;
+      const newItem = {
+        id: formData.id || `temp_${this.tempIdCounter++}`,
+        idCompany: this.signalsService.getemailChoose() === environment.root ? formData.idCompany : this.idRoot,
+        idEstado: formData.idEstado,
+        name: formData.name.toUpperCase(),
+        description: formData.description.toUpperCase(),
+        address: formData.address.toUpperCase(),
+        orden: formData.orden || 0,
+        vigente: formData.vigente || 1,
+        __isNew: !formData.id,
+        __modified: !!formData.id
+      };
 
-    const newRows = this.masterRowData.filter((row) => row.__isNew);
-    const modifiedRows = this.masterRowData.filter(
-      (row) => row.__modified && !row.__isNew
-    );
+      try {
+        if (formData.id) {
+          // Actualizar sucursal existente
+          const cleanedData = this.cleanDataForServer(newItem);
+          await lastValueFrom(this.branchesService.updateBranch(formData.id, cleanedData));
+          
+          alerts.basicAlert(
+            'Éxito',
+            'La sucursal ha sido actualizada correctamente',
+            'success'
+          );
+        } else {
+          // Agregar nueva sucursal
+          const cleanedData = this.cleanDataForServer(newItem);
+          const response = await lastValueFrom(this.branchesService.addBranch(cleanedData));
+          
+          // Actualizar el ID temporal con el real
+          newItem.id = response.id;
+          
+          // Asignar permisos para el nuevo Branch creado
+          await lastValueFrom(
+            this.branchesService.assignPermissionAfterCreation(
+              this.idUser,
+              response.id,
+              'branch'
+            )
+          );
 
-    // Tipamos explícitamente las promesas
-    const addPromises: Promise<Ibranch>[] = newRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      return lastValueFrom(this.branchesService.addBranch(cleanedData)).then(response => {
-        return response;
-      });
-    });
-
-    const updatePromises: Promise<Ibranch>[] = modifiedRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      return lastValueFrom(
-        this.branchesService.updateBranch(row.id, cleanedData)
-      );
-    });
-
-    try {
-      const allResponses = await Promise.all([
-        ...addPromises,
-        ...updatePromises,
-      ]);
-
-      // Asignar permisos para los nuevos Branchs creados
-      console.log(allResponses);
-      for (const response of allResponses) {
-        // Verificar si es una nueva creación comparando con los IDs temporales
-        const correspondingNewRow = newRows.find(
-          (row) => !row.id || row.id.toString().startsWith('temp_')
-        );
-        console.log(response.id);
-
-        // Aquí construyo HRManagement.
-        const newItem = {
-          idBranch: response.id,
-          vigency: 120,
-          startDay: 'Lunes',
-          clockTolerance: 120,
-          delay1: 5,
-          delay2: 65,
-          discount1: true,
-          discount2: true,
-          discount: 50,
-          payrollPeriod: 15,
-          overtimePay: 100,
-          specialOvertimePay: 150,
-          active: true
-        };
-        if (response.id && correspondingNewRow) {
-          try {
-            // El creador de la sucursal tiene permisos sobre la sucursal
-            await lastValueFrom(
-              this.branchesService.assignPermissionAfterCreation(
-                this.idUser,
-                response.id,
-                'branch'
-              )
-            );
-            // Se añaden valores por default a HRManagement
-            await lastValueFrom(
-              this.hrService.addHRManagementData(newItem)
-            );
-          } catch (permError) {
-            console.error('Error asignando permiso:', permError);
-            // Opcional: Mostrar alerta pero no interrumpir el flujo principal
-            alerts.basicAlert(
-              'Advertencia',
-              'Se creó la sucursal pero hubo un problema asignando los permisos.',
-              'warning'
-            );
-          }
+          // Añadir valores por default a HRManagement
+          const hrManagementData = {
+            idBranch: response.id,
+            vigency: 120,
+            startDay: 'Lunes',
+            clockTolerance: 120,
+            delay1: 5,
+            delay2: 65,
+            discount1: true,
+            discount2: true,
+            discount: 50,
+            payrollPeriod: 15,
+            overtimePay: 100,
+            specialOvertimePay: 150,
+            active: true
+          };
+          await lastValueFrom(this.hrService.addHRManagementData(hrManagementData));
+          
+          alerts.basicAlert(
+            'Éxito',
+            'La sucursal ha sido creada correctamente',
+            'success'
+          );
         }
-      }
 
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
-      this.masterNotSavedChanges = false;
-      this.newlyAddedMasterRows = [];
-
-      if (allResponses.length > 0) {
-        await this.obtenerDatos();
+        // Actualizar la lista de sucursales y cerrar el modal
+        this.revertMasterData();
+        this.modalService.dismissAll();
+        
+      } catch (error) {
+        console.error('Error al procesar la sucursal:', error);
+        alerts.basicAlert(
+          'Error',
+          'Ocurrió un error al procesar la sucursal',
+          'error'
+        );
       }
-      this.signalsService.triggerUpdateBranchList(); // Actualizamos la sidebar
-    } catch (error) {
-      console.error(error);
+    } else {
       alerts.basicAlert(
         'Error',
-        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
+        'Por favor complete todos los campos requeridos',
         'error'
       );
     }
@@ -608,22 +547,13 @@ throw new Error('Method not implemented.');
   initForm() {
     this.addBranch = new FormGroup({
       id: new FormControl(),
-      numberContract: new FormControl('', Validators.required),
-      description: new FormControl('', Validators.required),
-      descripSmall: new FormControl('', Validators.required),
-      resident: new FormControl('', Validators.required),
-      supervisor: new FormControl('', Validators.required),
-      amountMx: new FormControl('', Validators.required),
-      amountDll: new FormControl('', Validators.required),
-      speciality: new FormControl('Seleccione una especialidad', [Validators.required, noDefaultValueValidator()]),
-      idProvider: new FormControl('Seleccione un contratista', [Validators.required, noDefaultValueValidator()]),
-      dateStar: new FormControl('', Validators.required),
-      dateEnd: new FormControl('', Validators.required),
-      stateContract: new FormControl('Seleccione un estado', [Validators.required, noDefaultValueValidator()]),
-      term: new FormControl(),
-      idBussines: new FormControl(1),
-      consecutive: new FormControl(0),
-    }, { validators: dateRangeValidator() });
+      idCompany: new FormControl(this.idRoot, [Validators.required]),
+      idEstado: new FormControl('', [Validators.required]),
+      name: new FormControl('', [Validators.required]),
+      description: new FormControl('', [Validators.required]),
+      address: new FormControl('', [Validators.required]),
+      orden: new FormControl(0),
+      vigente: new FormControl(true)
+    });
   }
-
 }
