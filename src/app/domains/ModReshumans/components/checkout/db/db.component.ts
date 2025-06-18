@@ -37,12 +37,8 @@ export default class DbComponent {
   customData: any = { Hours: null, PendingOuts: null, Absences: null, Delays: null };
 
   columnDefs = [
-    { headerName: 'Nombre Empleado',
-      field: 'employeeName',
-      flex: 2,
-      filter: true,
-      filterParams: { defaultToNothingSelected: true }, },
-      {
+    
+    {
         headerName: 'Fecha',
         field: 'date',
         flex: 1,
@@ -80,6 +76,15 @@ export default class DbComponent {
           return `${day}-${month}-${year}`;
         }
       },
+      {
+        headerName: "sucursal"
+      },
+      { headerName: 'Nombre Empleado',
+      field: 'employeeName',
+      flex: 2,
+      filter: true,
+      filterParams: { defaultToNothingSelected: true }, },
+      
       {
         headerName: 'Hora',
         field: 'hour',
