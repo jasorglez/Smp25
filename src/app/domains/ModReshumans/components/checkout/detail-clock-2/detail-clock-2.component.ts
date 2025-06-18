@@ -1012,6 +1012,13 @@ export default class DetailClock2Component implements OnInit {
     alerts.basicAlert('Error', 'Por favor complete todos los campos requeridos', 'error');
   }
 }
+cancelar(){
+  this.justificanteForm.reset({
+            controlInicio: this.getLocalDate(),
+            controlFin: '',
+            justificante: ''
+          });
+}
 
 
   sumarHoras(horaStr: string, horasASumar: number): string {

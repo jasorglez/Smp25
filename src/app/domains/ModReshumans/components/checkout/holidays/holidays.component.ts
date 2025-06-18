@@ -214,7 +214,12 @@ export default class  HolidaysComponent {
 }
 
   revertChanges(){
-
+    this.fechaInicio = this.getLocalDate();
+      this.myForm = this.formBuilder.group({
+        fechaInicio: [this.fechaInicio, Validators.required],
+        fechaFin: [null, Validators.required],
+        festivo: ['', Validators.required],
+      });
   }
 
 
