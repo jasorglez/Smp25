@@ -77,6 +77,13 @@ export const routes: Routes = [
             ],
           },
           {
+            path: 'raw-materials',
+            loadComponent: () =>
+              import(
+                './domains/Warehouse/components/raw-materials/raw-materials.component'
+              ).then((s) => s.RawMaterialsComponent)
+          },
+          {
             path: 'purchaseorder',
             loadComponent: () =>
               import(
