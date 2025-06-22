@@ -11,6 +11,9 @@ import { PayrollService } from 'app/services/payroll.service';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import DetailClock2Component from "../detail-clock-2/detail-clock-2.component";
 import { SpecialExtraHoursComponent } from "./special-extra-hours/special-extra-hours.component";
+import { AdministrationService } from 'app/services/administration.service';
+import { HRService } from 'app/services/hr.service';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-master-clock',
@@ -22,13 +25,16 @@ import { SpecialExtraHoursComponent } from "./special-extra-hours/special-extra-
 export default class MasterClockComponent implements OnInit {
   //  private administrationService = inject(AdministrationService);
   private payrollService = inject(PayrollService);
+  private hrService = inject(HRService);
   private signalsService = inject(SignalsService);
   private route = inject(ActivatedRoute);
+  private administrationService = inject(AdministrationService);
   private fb = inject(FormBuilder);
 
   ngOnInit() {
-
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+    this.obtenerConfig();
+    this.Consultar();
     this.obtenerDatos();
   }
 
@@ -42,14 +48,23 @@ export default class MasterClockComponent implements OnInit {
     });
     
     this.selectFechas = this.fb.group({
-      fechaInicio: ['', Validators.required],
-      fechaFin: ['', Validators.required]
+      fechaInicio: [this.fechaInicio, Validators.required],
+      fechaFin: [this.fechaFin, Validators.required]
+    });
+    this.selectFechas.valueChanges.subscribe((values) => {
+      if (this.selectFechas.valid) {
+        this.fechaInicio = values.fechaInicio;
+        this.fechaFin = values.fechaFin;
+        this.obtenerDatos(this.fechaInicio, this.fechaFin);
+      }
     });
 
-    effect(() => {
-      this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-      this.obtenerDatos();
-    })
+   effect(async () => {
+    this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+    await this.obtenerConfig();
+    await this.Consultar();
+    });
+
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -70,6 +85,21 @@ export default class MasterClockComponent implements OnInit {
   isOpen: boolean = false;
   branchs: any[] = [];
   Typecop: any[] = [];
+  hrData: any = {};
+  ultimaFecha: any;
+  idDia: any ;
+  hoy = new Date();
+
+   dias:any[] = [
+    {id: 1 , dia: 'Lunes'},
+    {id: 2 , dia: 'Martes'},
+    {id: 3 , dia: 'Miércoles'},
+    {id: 4 , dia: 'Jueves'},
+    {id: 5 , dia: 'Viernes'},
+    {id: 6 , dia: 'Sábado'},
+    {id: 7 , dia: 'Domingo'},
+
+  ]
 
   // Agregar esta nueva variable para almacenar el ID de la última fila editada
   private lastEditedRowId: number | string | null = null;
@@ -172,8 +202,8 @@ export default class MasterClockComponent implements OnInit {
         field: 'nameBranch',
         headerName: 'Nombre sucursal',
         editable: false,
-        hide: true,
-        rowGroup: true
+        hide: true,//this.idBranch >= 0, // Ocultar si no es la sucursal principal
+        rowGroup: this.idBranch <= 0
       },
       {
         field: 'periodStart',
@@ -287,12 +317,14 @@ export default class MasterClockComponent implements OnInit {
 
   }
 
-  obtenerDatos(fechaInicio: string = '', fechaFin: string = '') {
+  async obtenerDatos(fechaInicio: string = '', fechaFin: string = '') {
     return new Promise((resolve) => {
+      //console.log(this.idBranch, fechaInicio, fechaFin)
       this.payrollService.getMasterClock(this.idBranch, fechaInicio, fechaFin).subscribe(
         (data: any) => {
           this.rowData = [];
           this.rowData = data;
+          //console.log(data)
 
           // Actualizar el grid y esperar a que termine
           this.gridApi.setGridOption('rowData', this.rowData);
@@ -418,16 +450,97 @@ export default class MasterClockComponent implements OnInit {
     this.gridHeight = '15vh'; // Adjust as needed
   }
 
-  Consultar() {
-    if (this.selectFechas.valid) {
+  async Consultar() {
+    /*if (this.selectFechas.valid) {
       const datos = this.selectFechas.value;
       this.fechaInicio = datos.fechaInicio;
       this.fechaFin = datos.fechaFin;
       console.log(this.fechaInicio, this.fechaFin)
+
       this.obtenerDatos(this.fechaInicio, this.fechaFin);
     } else {
       alerts.basicAlert('Error', 'Por favor selecciona ambas fechas', 'error');
+    }*/
+   await this.getNextPayrollStartDate();
+    // Determinar fechaInicio
+    if (this.idBranch < 0) {
+      const primerDiaDelMes = new Date(this.hoy.getFullYear(), this.hoy.getMonth(), 1);
+      this.fechaInicio = primerDiaDelMes.toISOString().split('T')[0];
+      console.log(this.fechaInicio);
+    } else if (this.ultimaFecha instanceof Date) {
+      const siguienteDia = new Date(this.ultimaFecha);
+      siguienteDia.setDate(siguienteDia.getDate() + 1);
+      this.fechaInicio = siguienteDia.toISOString().split('T')[0];
+    } else {
+      const diaEncontrado = this.dias.find(d => d.dia === this.hrData.startDay);
+      this.idDia = diaEncontrado ? diaEncontrado.id : 1;
+      const diaObjetivo = this.idDia % 7;
+      this.hoy.setHours(0, 0, 0, 0);
+      const fecha = new Date(this.hoy);
+      const diaActual = fecha.getDay();
+      const diferencia = (diaActual - diaObjetivo + 7) % 7;
+      fecha.setDate(fecha.getDate() - diferencia);
+      this.fechaInicio = fecha.toISOString().split('T')[0];
     }
-  }
 
+    // Determinar fechaFin
+    if (this.idBranch < 0) {
+      const ultimoDiaDelMes = new Date(this.hoy.getFullYear(), this.hoy.getMonth() + 1, 0);
+      this.fechaFin = ultimoDiaDelMes.toISOString().split('T')[0];
+    } else if (this.hrData?.payrollPeriod > 0) {
+      const inicio = new Date(this.fechaInicio);
+      inicio.setDate(inicio.getDate() + this.hrData.payrollPeriod - 1);
+      this.fechaFin = inicio.toISOString().split('T')[0];
+    } else {
+      this.fechaFin = this.hoy.toISOString().split('T')[0];
+    }
+
+    // Actualizar formulario reactivo
+    this.selectFechas.patchValue(
+      {
+        fechaInicio: this.fechaInicio,
+        fechaFin: this.fechaFin,
+      },
+      { emitEvent: false }
+    );
+    if(this.idBranch > 0){
+      this.obtenerDatos(this.fechaInicio, this.fechaFin);
+    }else{
+      this.obtenerDatos();
+    }
+    
+  }
+  async getNextPayrollStartDate(): Promise<void> {
+      if (this.idBranch > 0) {
+        try {
+          const data: { endDate: string }[] = await firstValueFrom(
+            this.administrationService.getNormalPayrolls(this.idBranch)
+          );
+  
+          if (data.length > 0) {
+            this.ultimaFecha = undefined;//= new Date(data[0].endDate);
+          } else {
+            this.ultimaFecha = undefined;
+          }
+        } catch (error) {
+          console.error('Error fetching payroll data:', error);
+        }
+      }
+    }
+
+   obtenerConfig(): Promise<void> {
+    return new Promise((resolve) => {
+      this.hrService.getHRManagementData(this.idBranch).subscribe({
+        next: (data: any) => {
+          this.hrData = data[0] || {};
+          resolve();
+        },
+        error: () => {
+          this.hrData = {};
+          this.idDia = 6;
+          resolve();
+        }
+      });
+    });
+  }
 }
