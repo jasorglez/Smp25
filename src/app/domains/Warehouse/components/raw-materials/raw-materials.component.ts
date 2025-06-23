@@ -112,16 +112,7 @@ export class RawMaterialsComponent {
 
   ngOnInit() {
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-    this.signalsService.deleteRequisitionData();
     this.obtenerDatos();
-    this.obtenerDepartamentos();
-    this.obtenerUbicaciones();
-    this.obtenerMonedas();
-    this.obtenerUsuarios();
-    this.obtenerRequisiciones();
-    this.obtenerProveedores();
-    this.obtenerTipoPago();
-    this.obtenerProductos();
   }
 
   @HostListener('window:beforeunload', ['$event'])
