@@ -23,7 +23,7 @@ export class EmployeesClockComponent {
   idEmployee: number = null;
   horario: any = [];
   diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-  isNew: boolean = true;
+  isNew   : boolean = true;
   idBranch: number;
   employees: any= [];
   totalHoras: number = 0;

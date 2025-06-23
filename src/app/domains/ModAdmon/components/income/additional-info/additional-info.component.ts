@@ -30,7 +30,12 @@ export class AdditionalInfoComponent {
   }
 
   constructor() {
+     // Añadir binding de métodos
+    this.onCellValueChanged = this.onCellValueChanged.bind(this);
+    this.onGridReady = this.onGridReady.bind(this);
+
     effect(() => {
+      this.idRoot     = this.signalsService.getRootSelectedBySidebar()();
       this.idInAndExp = this.signalsService.getIdIncomeAndExpense()();
       this.notSavedChanges = false;
       this.getAdditionalInfo();
@@ -39,6 +44,7 @@ export class AdditionalInfoComponent {
     });
   }
 
+  idRoot: number ;
   rowData: any[] = [];
   idInAndExp: number;
   newData: boolean;
@@ -100,7 +106,7 @@ export class AdditionalInfoComponent {
   }
 
   async getPaymentTypes() {
-    this.catalogsService.getCatalogsByType("pay").subscribe(
+    this.catalogsService.getCatalogs(this.idRoot,"PAY").subscribe(
       (data) => {
         this.paymentTypesList = data;
         console.log(this.paymentTypesList);
@@ -115,7 +121,7 @@ export class AdditionalInfoComponent {
   }
 
   async getCurrencies() {
-    this.catalogsService.getCatalogsByType("currency").subscribe(
+    this.catalogsService.getCatalogs(this.idRoot,"CURRENCY").subscribe(
       (data) => {
         this.currencies = data;
         console.log(data);
@@ -131,14 +137,14 @@ export class AdditionalInfoComponent {
   addRow() {
     const newRow = {
       idIncorexp: this.idInAndExp,
-      orderNumber: '',
+      orderNumber: 'S/O',
       idTypepay: 0,
       quote: '',
       idConditionspay: 0,
-      purchaseOrder: '',
+      purchaseOrder: 'S/OC',
       idTypemoney: 0,
-      numberEntry: '',
-      folioFiscal: '',
+      numberEntry: 'S/ENT',
+      folioFiscal: 'SIN FOLIO',
       active: true,
       __isNew: true,
     };
@@ -164,9 +170,16 @@ export class AdditionalInfoComponent {
     }, 50); // Un pequeño retraso de 50ms
   }
 
-  onGridReady(params: GridReadyEvent) {
-    this.gridApi = params.api;
+ onGridReady = (params: GridReadyEvent) => {
+  this.gridApi = params.api;
+  
+  // Actualizar columnas si es necesario
+  if ( this.colMaster) {
+    params.api.updateGridOptions({ columnDefs: this.colMaster });
   }
+  
+  console.log('Grid ready:', params.api);
+}
 
   onCellValueChanged(event: any) {
     console.log('Dato cambiado:', event.data);

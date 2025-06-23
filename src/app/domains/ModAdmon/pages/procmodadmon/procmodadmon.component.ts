@@ -3,6 +3,7 @@ import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { SharedModule } from 'app/shared/shared.module';
 import { SignalsService } from 'app/services/signals.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-procmodadmon',
@@ -13,17 +14,28 @@ import { SignalsService } from 'app/services/signals.service';
   encapsulation: ViewEncapsulation.None, // Desactiva la encapsulación
 })
 export class ProcmodadmonComponent {
-  private signalsService = inject(SignalsService);
+   private signalsService = inject(SignalsService);
+   private trackingService = inject(TrackingService);
 
   idUser: number = null;
-  ngOnInit() {
-    this.signalsService.setCatalogSelected('ADMINISTRATION');
-  }
 
   constructor() {
-      effect(() => {
-        this.idUser = this.signalsService.getIdUSer()();
-        this.signalsService.setCatalogSelected('ADMINISTRATION');
-      });
-    }
+    // --- ACCIÓN INICIAL ---
+    // Establecemos el valor inicial de la señal UNA SOLA VEZ al crear el componente.
+    // Esto es una acción, no una reacción, por lo tanto, va fuera del effect.
+    this.signalsService.setCatalogSelected('ADMINISTRATION');
+
+    // --- REACCIÓN A CAMBIOS FUTUROS ---
+    // El effect ahora solo se usa para su propósito: reaccionar a cambios y
+    // actualizar propiedades locales, sin escribir en otras señales.
+    effect(() => {
+      this.idUser = this.signalsService.getIdUSer()();
+      console.log('El ID de usuario ha cambiado a:', this.idUser); // Opcional, para debugging
+      this.signalsService.getDisplayName()()  ;
+      console.log('El nombre de usuario ha cambiado a:', this.signalsService.getDisplayName()());
+          
+    });
+  }
+
+
 }

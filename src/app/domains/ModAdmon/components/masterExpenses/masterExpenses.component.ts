@@ -506,6 +506,8 @@ export class MasterExpensesComponent {
     //this.rowData.push(newItem);
     this.rowData = [newItem1, newItem2,...this.rowData];
   }
+
+
   async saveMasterChanges() {
     /*const isValid = this.rowData.every(
       (item) => item.namebranch && item.dateexpendty && item.dateexpend
@@ -526,12 +528,13 @@ export class MasterExpensesComponent {
 
     const addObservables: Promise<any>[] = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData);
+      
       return lastValueFrom(this.incomesAndExpensesService.addIncomesAndExpenses(cleanedData));
     });
 
-    const updateObservables: Promise<any>[] = modifiedRows.map((row) => {
+    const updateObservables: Promise<any>[] = modifiedRows.map((row) => {      
       const cleanedData = this.cleanDataForServer(row);
+      
       return lastValueFrom(this.incomesAndExpensesService.updateIncomesAndExpenses(row.id, cleanedData));
     });
 

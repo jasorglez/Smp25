@@ -90,29 +90,55 @@
     </div>
   </div>
 
-    <li class="nav-item" *ngIf="selectedIncomes" >
-      <a class="nav-link" data-bs-toggle="tab" href="#additional-info"
-        >Información adicional</a>
-    </li>
+  <!-- ==================================================================== -->
+  <!-- INICIO DE LA SECCIÓN DE PESTAÑAS CORREGIDA -->
+  <!-- Tu código anterior aquí tenía una estructura HTML inválida que causaba el error. -->
+  <!-- Ha sido reemplazado por esta estructura de pestañas funcional y controlada por Angular. -->
+  <!-- ==================================================================== -->
 
-    <ul class="nav nav-tabs" *ngIf="selectedIncomes">
-      <li class="nav-item">
-        <a class="nav-link active" data-bs-toggle="tab" href="#concepts"
-          >Conceptos</a>
+  <!-- Contenedor principal para las pestañas de detalle. Solo se muestra si hay una fila seleccionada. -->
+  <div *ngIf="selectedIncomes" class="mt-3">
+
+    <!-- 1. Estructura de NAVEGACIÓN de pestañas (unificada y correcta) -->
+    <ul class="nav nav-tabs" id="incomeDetailTab" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button 
+          class="nav-link" 
+          [class.active]="activeTab === 'concepts'"
+          (click)="setActiveTab('concepts')" 
+          type="button">
+          Conceptos
+        </button>
       </li>
+      <li class="nav-item" role="presentation">
+        <button 
+          class="nav-link" 
+          [class.active]="activeTab === 'info'"
+          (click)="setActiveTab('info')" 
+          type="button">
+          Información Adicional
+        </button>
+      </li>
+    </ul>
 
-  </ul>
-</div>
-<div class="row">
-  <div class="tab-content" *ngIf="selectedIncomes">
-    <div id="additional-info" class="tab-pane fade show active">
-      <app-additional-info></app-additional-info>
+    <!-- 2. Contenedor del CONTENIDO de las pestañas (unificado y correcto) -->
+    <div class="tab-content pt-3" id="incomeDetailTabContent">
+      
+      <!-- Panel para "Conceptos" -->
+      <!-- La clave: *ngIf asegura que el componente SÓLO se renderice si su pestaña está activa -->
+      <div *ngIf="activeTab === 'concepts'" class="tab-pane fade show active">
+        <app-conceptsincome></app-conceptsincome>
+      </div>
+
+      <!-- Panel para "Información Adicional" -->
+      <div *ngIf="activeTab === 'info'" class="tab-pane fade show active">
+        <app-additional-info></app-additional-info>
+      </div>
+      
     </div>
   </div>
 
-  <div class="tab-content" *ngIf="selectedIncomes">
-    <div id="concepts" class="tab-pane fade show">
-      <app-concepts></app-concepts>
-    </div>
-  </div>
 </div>
+
+<!-- Las etiquetas de cierre que estaban aquí abajo se han movido o integrado arriba
+     para formar una estructura HTML válida. -->

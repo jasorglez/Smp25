@@ -325,6 +325,7 @@ export class TrackingService {
     const datetime = new Date();
 
     if (!user) user = this.getEmail();
+   // console.log('Email en el addLog:', this.getEmail());
 
     const data = {
       company,
@@ -334,6 +335,8 @@ export class TrackingService {
       user,
       idn: 0,
     };
+
+    //console.log('TRACKING DATA en el ADDLOG:', data);
 
     try {
       const response: any = await this.http
@@ -369,27 +372,40 @@ export class TrackingService {
   }
 
   getTrackingRecordsByUser(user: string) {
-    const url = `${environment.urlFirebase}tracking.json?orderBy="user"&equalTo="${user}"`;
+    const url = `${environment.urlFirebase}tracking.json`;
+    //console.log('URL de Tracking:', url);
 
     return this.http.get(url).pipe(
-      map((response: any) => {
-        // Filtrar los registros por el campo "user"
-        const filteredRecords = Object.values(response).filter(
-          (record: any) => record.user === user
-        );
-
+      map((response: any) => {        
+        
         // Ordenar los registros por el campo "idn" en forma ascendente
-        const sortedRecords = filteredRecords.sort(
+        const sortedRecords = Object.values(response).sort(
           (a: any, b: any) => a.idn - b.idn
         );
 
         // Invertir el orden de los registros para que los últimos aparezcan primero
         const reversedRecords = sortedRecords.reverse();
 
-        return reversedRecords;
+        // Tomar solo los primeros 5000 registros (los más recientes)
+        const limitedRecords = reversedRecords.slice(0, 5000);
+
+        return limitedRecords;
       })
     );
   }
+
+  getLast500TrackingRecords() {
+    const url = `${environment.urlFirebase}tracking.json?orderBy="idn"&limitToLast=500`;
+    console.log('URL de Tracking (Optimizada):', url);
+
+    return this.http.get(url).pipe(
+      map((response: any) => {
+        // Convertir objeto de Firebase en array y ordenar DESC (idn más alto primero)
+        const recordsArray = Object.values(response || {});
+        return recordsArray.sort((a: any, b: any) => b.idn - a.idn);
+      })
+    );
+}
 
   getIdUser(email: string) {
     return this.http.get(`${environment.urlSecurity}/User/email/${email}`, {

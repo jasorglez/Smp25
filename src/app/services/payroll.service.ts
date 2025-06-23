@@ -43,9 +43,6 @@ export class PayrollService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
-//  return this.http.get(`${environment.urlAdministration}/Employee/branch/${idBranch}`, { headers: this.trackingService.getHeaders() });
-
-
   getPayrolls(idBranch: number): Observable<PayrollData[]> {
     return this.http.get<PayrollData[]>(`${environment.urlAdministration}/payroll/branch/${idBranch}`, { headers: this.trackingService.getHeaders() });
   }

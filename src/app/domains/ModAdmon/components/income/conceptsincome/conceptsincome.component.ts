@@ -14,53 +14,74 @@ import { CatalogsService } from 'app/services/catalogs.service';
 import { ActivatedRoute } from '@angular/router';
 
 @Component({
-  selector: 'app-concepts',
+  selector: 'app-conceptsincome',
   standalone: true,
   imports: [AgGridModule, CommonModule, FormsModule],
-  templateUrl: './concepts.component.html',
-  styleUrl: './concepts.component.scss'
+  templateUrl: './conceptsincome.component.html',
+  styleUrl: './conceptsincome.component.scss'
 })
-export class ConceptsComponent {
-  private incomesAndExpensesService = inject(IncomesAndExpensesService);
+export class ConceptsincomeComponent {
+
+    private incomesAndExpensesService = inject(IncomesAndExpensesService);
   private signalsService = inject(SignalsService);
   private administrationService = inject(AdministrationService);
   private catalogsService = inject(CatalogsService);
   private route = inject(ActivatedRoute);
 
-  async ngOnInit() {
-    this.idIncExp = this.signalsService.getIdIncomeAndExpense()();
-    this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-    this.getMeasures();
-    if (this.idIncExp) {
-      this.getData();
-      await this.getBillingManagementInfo();
-    }
-    this.route.data.subscribe((data) => {
-      this.showform = data['showform'];  // 'EXPEND' o 'INCOME'
-      if (this.gridApi) {
-        // Esto forzará a regenerar las columnas con los nuevos valores de hide
-        this.gridApi.updateGridOptions({ columnDefs:this.colMaster});
-      }
-  });
-  }
-
-  constructor() {
-    effect(() => {
-      this.idIncExp = this.signalsService.getIdIncomeAndExpense()();
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      this.getMeasures();
-      if (this.idIncExp) {
-        this.getData();
-        this.getBillingManagementInfo();
-      } else {
-        // Clear data when no income/expense is selected
-        this.rowData = [];
-        this.subtotal = 0;
-        this.iva2 = 0;
-        this.total = 0;
-      }
+ ngOnInit() {
+  console.log('Concepts Component Initializing');
+  this.idIncExp = this.signalsService.getIdIncomeAndExpense()();
+  this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+  console.log('Initial values - idIncExp:', this.idIncExp, 'idRoot:', this.idRoot);
+  
+  this.getMeasures();
+  
+  if (this.idIncExp) {
+    console.log('Initial load with idIncExp:', this.idIncExp);
+    this.getData();
+    this.getBillingManagementInfo().then(() => {
+      console.log('Billing info loaded');
     });
   }
+  
+  this.route.data.subscribe((data) => {
+    console.log('Route data changed:', data);
+    this.showform = data['showform'];
+    if (this.gridApi) {
+      console.log('Updating grid columns');
+      this.gridApi.updateGridOptions({ columnDefs: this.colMaster });
+    }
+  });
+}
+
+
+ constructor() {
+  // Añadir binding de métodos
+  this.onSelectedRow = this.onSelectedRow.bind(this);
+  this.onSelectionChanged = this.onSelectionChanged.bind(this);
+  this.onCellValueChanged = this.onCellValueChanged.bind(this);
+  this.onGridReady = this.onGridReady.bind(this);
+  effect(() => {
+    const newId = this.signalsService.getIdIncomeAndExpense()();
+    console.log('Signal changed - new idIncExp:', newId);
+    
+    this.idIncExp = newId;
+    this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+    
+    this.getMeasures();
+    
+    if (this.idIncExp) {
+      console.log('Loading data for idIncExp:', this.idIncExp);
+      this.getData();
+    } else {
+      // Clear data when no income/expense is selected
+      this.rowData = [];
+      this.subtotal = 0;
+      this.iva2 = 0;
+      this.total = 0;
+    }
+  }, { allowSignalWrites: true });
+}
 
   showform : string = '';
   id: number;
@@ -95,30 +116,32 @@ export class ConceptsComponent {
 
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
-    headerHeight: 30,
-    rowHeight: 30,
-    getRowClass: (params) => {
-      // Verificar si la fila está seleccionada
-      if (params.node.isSelected()) {
-        return 'selected-row';
-      }
-      return '';
-    },
-    onRowClicked: (event) => {
-      // Seleccionar la fila al hacer clic en cualquier celda
-      event.node.setSelected(true);
-    },
-    onRowSelected: (event) => {
-      // Deseleccionar otras filas cuando se selecciona una nueva
-      if (event.node.isSelected()) {
-        this.gridApi.forEachNode((node) => {
-          if (node.id !== event.node.id) {
-            node.setSelected(false);
+        headerHeight: 30,
+        rowHeight: 30,
+        getRowClass: (params) => {
+          if (params.node.isSelected()) {
+            return 'selected-row';
           }
-        });
-      }
-    },
-  };
+          return '';
+        },
+        onRowClicked: (event) => {
+          event.node.setSelected(true);
+        },
+        onRowSelected: (event) => {
+          if (event.node.isSelected() && this.gridApi) {
+            this.gridApi.forEachNode((node) => {
+              if (node.id !== event.node.id) {
+                node.setSelected(false);
+              }
+            });
+          }
+        },
+        // Asegurar que los callbacks estén correctamente referenciados
+        onSelectionChanged: (event) => this.onSelectionChanged(event),
+        onCellValueChanged: (event) => this.onCellValueChanged(event),
+        onGridReady: (event) => this.onGridReady(event)
+};
+
 
   components =
     {
@@ -143,19 +166,8 @@ export class ConceptsComponent {
             });
           }
         },
-        {
-          field: 'typeExpense',
-          headerName: 'Tipo Gasto',
-          type: 'text',
-          editable: true,
-          flex: 4,
-          cellEditor: 'agSelectCellEditor',
-          cellEditorParams: {
-            values: ['EMPLEADOS', 'PROVEEDORES', 'OTROS'],
-          }
-        },
+     
         { field: 'quantity', headerName: 'Cantidad', type: 'number', editable: true, flex: 3 },
-        { field: 'idExpense', headerName: 'ID Gasto', type: 'number', editable: false, flex: 4 },
         
         // Conditional columns
            { field: 'description', headerName: 'Concepto', type: 'text', editable: true, hide: this.showform === 'EXPEND', flex: 4 },
@@ -260,29 +272,45 @@ export class ConceptsComponent {
     }
   }
 
-  onCellValueChanged(event: any) {
-    event.data.__modified = true;
-    this.notSavedChanges = true;
+  onCellValueChanged = (event: any) => {
+  event.data.__modified = true;
+  this.notSavedChanges = true;
 
-    if (['iva', 'quantity', 'price'].includes(event.colDef.field)) {
-      const rowData = event.data;
+  if (['iva', 'quantity', 'price'].includes(event.colDef.field)) {
+    const rowData = event.data;
 
-      if (event.colDef.field === 'quantity' || event.colDef.field === 'price') {
-        rowData.total = Number(rowData.quantity || 0) * Number(rowData.price || 0);
-      }
+    if (event.colDef.field === 'quantity' || event.colDef.field === 'price') {
+      rowData.total = Number(rowData.quantity || 0) * Number(rowData.price || 0);
+    }
 
-      rowData.iva2 = rowData.iva ? rowData.total * (this.ivaPercent / 100) : 0;
+    rowData.iva2 = rowData.iva ? rowData.total * (this.ivaPercent / 100) : 0;
 
+    // Verificar que gridApi existe antes de usarlo
+    if (this.gridApi) {
       this.gridApi.applyTransactionAsync({
         update: [rowData]
       });
-
-      // Actualizar todos los totales
-      this.subtotal = this.calculateSubtotal();
-      this.iva2 = this.calculateTotalIVA();
-      this.total = this.subtotal + this.iva2;
     }
+
+    // Recalcular totales de forma segura
+    this.recalculateTotals();
   }
+}
+
+
+    private recalculateTotals() {
+      try {
+        this.subtotal = this.calculateSubtotal();
+        this.iva2 = this.calculateTotalIVA();
+        this.total = this.subtotal + this.iva2;
+      } catch (error) {
+        console.error('Error recalculando totales:', error);
+        // Valores por defecto en caso de error
+        this.subtotal = 0;
+        this.iva2 = 0;
+        this.total = 0;
+      }
+    }
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
@@ -307,7 +335,7 @@ export class ConceptsComponent {
       idExpense: 0,
       dateExpend: new Date(),
       description: '',
-      quantity: 0,
+      quantity: 1,
       unit: '',
       price: 0,
       total: 0,
@@ -503,3 +531,5 @@ export class ConceptsComponent {
     return this.rowData.reduce((acc, row) => acc + (Number(row.iva2) || 0), 0);
   }
 }
+
+
