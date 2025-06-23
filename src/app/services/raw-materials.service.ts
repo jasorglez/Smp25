@@ -1,9 +1,14 @@
-import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { inject, Injectable } from '@angular/core';
+import { TrackingService } from './tracking.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class RawMaterialsService {
 
-  constructor() { }
+  private http            = inject(HttpClient);
+  private trackingService = inject(TrackingService);
+
+  
 }
