@@ -91,6 +91,8 @@ export class ComploginComponent implements OnInit {
     };
 
     // Ejecutamos el servicio del Login
+    //console.log('Datos de Login:', data);
+   // console.log('Email capturado:', this.trackingService.getEmail());
     this.trackingService.addLog('', "Inicio del Sistema ", "Origen del Formulario Login", this.emailcapt);
 
     this.auth.login(data).subscribe({

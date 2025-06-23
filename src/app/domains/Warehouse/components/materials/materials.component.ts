@@ -272,9 +272,10 @@ export class MaterialsComponent implements CanComponentDeactivate {
         },
       },*/
       {
-       field: 'idProveedor',
+        field: 'idProveedor',
         headerName: 'Proveedor',
         editable: false,
+
       },
       {
         field: 'description',
@@ -308,14 +309,13 @@ export class MaterialsComponent implements CanComponentDeactivate {
           return params.value;
         },*/
       },
-
       {
         headerName: 'Descripcion',
       },
       {
         headerName: 'Medidas',
       },
-      {
+      /*{
         field: 'price',
         headerName: 'Precio',
         editable: true,
@@ -382,7 +382,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
           return '';
         },
       },
-      {
+      /*{
         field: 'stockMin',
         headerName: 'Stock Mínimo',
         editable: true,
@@ -390,9 +390,9 @@ export class MaterialsComponent implements CanComponentDeactivate {
         cellDataType: 'number',
         cellEditorParams: { min: 0 },
       },//pasara alguna parte de inventarios
-      /*{
+      {
         headerName: "Cantidad a pedir"
-      },*/
+      },
       {
         field: 'stockMax',
         headerName: 'Stock Máximo',
@@ -400,8 +400,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
         width: 150,
         cellDataType: 'number',
         cellEditorParams: { min: 0 },
-      },//pasara alguna parte de inventarios
-      /*{
+      },pasara alguna parte de inventarios
+      {
         field: 'idFamilia',
         headerName: 'Producto',
         editable: true,

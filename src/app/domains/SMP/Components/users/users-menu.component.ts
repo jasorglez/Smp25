@@ -57,8 +57,8 @@ export class UsersMenuComponent {
     }
   }
 
-
   selectedTab: string;
+
   onUsersSelected(tabName: string) {
     this.selectedTab = tabName;
     switch (tabName) {
@@ -66,7 +66,7 @@ export class UsersMenuComponent {
         this.trackingService.addLog(
           this.trackingService.getnameComp(),
           'Click en la Pestaña Users',
-          'Warehouses',
+          'SETUP',
           this.trackingService.getEmail()
         );
         break;
@@ -74,7 +74,7 @@ export class UsersMenuComponent {
           this.trackingService.addLog(
             this.trackingService.getnameComp(),
             'Click en la Pestaña Users x Companys',
-            'Warehouses',
+            'SETUP',
             this.trackingService.getEmail()
           );
           break;
@@ -82,7 +82,7 @@ export class UsersMenuComponent {
             this.trackingService.addLog(
               this.trackingService.getnameComp(),
               'Click en la Pestaña Users x Contracts',
-              'Warehouses',
+              'SETUP',
               this.trackingService.getEmail()
             );
             break;
@@ -90,7 +90,7 @@ export class UsersMenuComponent {
         this.trackingService.addLog(
           this.trackingService.getnameComp(),
           'Click en la Pestaña Users x Projects',
-          'Warehouses',
+          'SETUP',
           this.trackingService.getEmail()
         );
         break;
@@ -98,7 +98,7 @@ export class UsersMenuComponent {
         this.trackingService.addLog(
           this.trackingService.getnameComp(),
           'Click en la Pestaña Users x Oilfields',
-          'Warehouses',
+          'SETUP',
           this.trackingService.getEmail()
         );
         break;

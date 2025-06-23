@@ -940,7 +940,7 @@ export class BonusComponent implements CanComponentDeactivate {
         );
 
         if (data.length > 0) {
-          this.ultimaFecha = new Date(data[0].endDate);
+          this.ultimaFecha = undefined;//= new Date(data[0].endDate);
         } else {
           this.ultimaFecha = undefined;
         }

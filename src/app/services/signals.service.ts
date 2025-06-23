@@ -11,6 +11,49 @@ export class SignalsService {
 
   /* Aquí se definen las signals para el sidebar */
 
+  // ✅ CORRECCIÓN: Signal para actualizar el maestro
+  private masterUpdateTrigger = signal<any>(null);
+
+  private masterRowToUpdate = signal<any | null>(null);
+
+ // El componente maestro leerá esta señal
+  get masterRowToUpdate$() {
+    return this.masterRowToUpdate.asReadonly();
+  }
+
+ setMasterRowUpdate (data: any | null) {
+   this.masterRowToUpdate.set(data);
+ }
+
+
+// Señal para disparar actualización del grid maestro
+private updateMasterGrid = signal<{ id: number; subtotal: number; tax: number; total: number } | null>(null);
+
+// ✅ CORRECCIÓN: Método mejorado para disparar actualizaciones
+  triggerMasterUpdate(data: { id: number; subtotal: number; tax: number; total: number }) {
+    console.log('🎯 SignalsService: triggerMasterUpdate llamado con:', data);
+    
+    // ✅ CORRECCIÓN: Crear una nueva referencia de objeto para forzar la detección de cambios
+    const updateData = {
+      ...data,
+      timestamp: Date.now() // Agregar timestamp para garantizar cambio
+    };
+    
+    console.log('🚀 SignalsService: Estableciendo signal con:', updateData);
+    this.masterUpdateTrigger.set(updateData);
+    
+    // ✅ CORRECCIÓN: Limpiar el signal después de un tiempo para permitir futuros triggers
+    setTimeout(() => {
+      console.log('🧹 SignalsService: Limpiando signal');
+      this.masterUpdateTrigger.set(null);
+    }, 500);
+  }
+
+// Getter para la señal
+getMasterUpdateTrigger() {  
+  return this.updateMasterGrid.asReadonly();
+}
+
   private emailChoose           = signal<string | null>(null);
 
   private rootChoose            = signal<string | null>(null);

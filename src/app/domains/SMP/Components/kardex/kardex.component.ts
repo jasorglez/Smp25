@@ -30,8 +30,8 @@ export class KardexComponent {
         { field: "number", checkboxSelection: true,
           headerName : '#', width :80,
           },
-        { field: "company" },
-        { field: "datetime" },
+        { field: "company", filter : true },
+        { field: "datetime", filter : true },
         { field: "description", filter : true, width : 400 },
         { field: "origin" },
         { field: "user", filter : true },
@@ -53,7 +53,7 @@ export class KardexComponent {
      getdataTracking()
       {
 
-        this.trackingService.getTrackingRecordsByUser(this.trackingService.getemailprof()).subscribe((resp:any)=>{
+        this.trackingService.getLast500TrackingRecords().subscribe((resp:any)=>{
 
           /*=============================================
         Integrando respuesta de base de datos con la interfaz

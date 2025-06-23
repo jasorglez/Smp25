@@ -1,0 +1,84 @@
+<div class="dashboard-container">
+  
+  <!-- Bloque 1: Título y KPI Principal --> 
+
+  <div class="kpi-and-filters-row">
+    <div class="kpi-card">
+      <div class="kpi-content">
+        <span class="kpi-title">VENTAS TOTALES</span>
+        <span class="kpi-value">{{ totalSalesKpi | currency:'$':'symbol':'1.2-2' }}</span>
+      </div>
+      <i class="bi bi-cart3 kpi-icon"></i>
+    </div>
+    <div class="time-range-filters">
+      <button [class.active]="timeRangeInMonths === 3" (click)="setTimeRange(3)">3m</button>
+      <button [class.active]="timeRangeInMonths === 6" (click)="setTimeRange(6)">6m</button>
+      <button [class.active]="timeRangeInMonths === 12" (click)="setTimeRange(12)">12m</button>
+    </div>
+  </div>
+
+  <!-- Bloque 2: Vistas Anuales -->
+  <div class="dashboard-row">
+    <div class="dashboard-card chart-card">
+      <apx-chart *ngIf="groupedAnnualChartOptions?.series"
+        [series]="groupedAnnualChartOptions.series"
+        [chart]="groupedAnnualChartOptions.chart"
+        [xaxis]="groupedAnnualChartOptions.xaxis"
+        [yaxis]="groupedAnnualChartOptions.yaxis"
+        [title]="groupedAnnualChartOptions.title"
+        [plotOptions]="groupedAnnualChartOptions.plotOptions"
+        [tooltip]="groupedAnnualChartOptions.tooltip"
+      [dataLabels]="currentYearChartOptions.dataLabels" 
+      ></apx-chart>
+    </div>
+    
+    <div class="dashboard-card chart-card">
+      <apx-chart *ngIf="currentYearChartOptions?.series"
+        [series]="currentYearChartOptions.series"
+        [chart]="currentYearChartOptions.chart"
+        [xaxis]="currentYearChartOptions.xaxis"
+        [yaxis]="currentYearChartOptions.yaxis"
+        [title]="currentYearChartOptions.title"
+        [tooltip]="currentYearChartOptions.tooltip"
+        [dataLabels]="currentYearChartOptions.dataLabels" 
+      ></apx-chart>
+    </div>
+
+    
+  </div>
+
+  <!-- Bloque 3: Vistas de Tendencia y Distribución -->
+  <div class="dashboard-row">
+    <div class="dashboard-card list-card">
+        <h5 class="list-title">LISTADO DE VENTAS POR CLIENTES</h5>
+        <ul class="client-list">
+            <li *ngFor="let client of clientList">
+                <span>{{ client.name }}</span>
+                <span class="client-total">{{ client.total | currency:'$':'symbol':'1.2-2' }}</span>
+            </li>
+        </ul>
+    </div>
+
+      <div class="dashboard-card chart-card wide-card">
+        <apx-chart *ngIf="salesTrendChartOptions?.series"
+          [series]="salesTrendChartOptions.series"
+          [chart]="salesTrendChartOptions.chart"
+          [xaxis]="salesTrendChartOptions.xaxis"
+          [yaxis]="salesTrendChartOptions.yaxis"
+          [title]="salesTrendChartOptions.title"
+          [stroke]="salesTrendChartOptions.stroke"
+          [tooltip]="salesTrendChartOptions.tooltip"
+        ></apx-chart>
+    </div>
+    <div class="dashboard-card chart-card">
+      <apx-chart *ngIf="pieChartOptions?.series"
+        [series]="pieChartOptions.series"
+        [chart]="pieChartOptions.chart"
+        [labels]="pieChartOptions.labels"
+        [title]="pieChartOptions.title"
+        [legend]="pieChartOptions.legend"
+      ></apx-chart>
+    </div>
+  </div>
+
+</div>

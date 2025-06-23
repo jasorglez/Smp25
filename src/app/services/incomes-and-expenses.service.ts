@@ -12,9 +12,16 @@ export class IncomesAndExpensesService {
   private http = inject(HttpClient);
   private tracking = inject(TrackingService);
 
+
+
   getIncomesAll(): Observable<any> {
     return this.http.get<any>(environment.urlAdministration + '/Incomeandexpense/all/', { headers: this.tracking.getHeaders() });
   }
+
+  getIncomesxroot(idRoot: number): Observable<any> {
+    return this.http.get<any>(environment.urlAdministration + '/Incomeandexpense/incomexroot?idroot=' + idRoot, { headers: this.tracking.getHeaders() });
+  }
+
 
   getIncomesAndExpenses(idRoot: number): Observable<any> {
     return this.http.get<any>(environment.urlAdministration + '/Incomeandexpense/Bussines/' + idRoot, { headers: this.tracking.getHeaders() });
@@ -31,6 +38,13 @@ export class IncomesAndExpensesService {
   updateIncomesAndExpenses(id: number, incomesAndExpenses: any): Observable<any> {
     return this.http.put<any>(environment.urlAdministration + '/Incomeandexpense/' + id, incomesAndExpenses, { headers: this.tracking.getHeaders() });
   }
+
+  updateTotal(id: number, incomesAndExpenses: any): Observable<any> {
+   // const apiUrl = `${environment.urlAdministration + '/Incomeandexpense/totals/' + id }`;
+   // alert(apiUrl)
+    return this.http.patch<any>(environment.urlAdministration + '/Incomeandexpense/totals/' + id, incomesAndExpenses, { headers: this.tracking.getHeaders() });
+  }
+  
 
   deleteIncomesAndExpenses(id: number): Observable<any> {
     return this.http.delete<any>(environment.urlAdministration + '/Incomeandexpense/' + id, { headers: this.tracking.getHeaders() });

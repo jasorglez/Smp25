@@ -8,6 +8,7 @@ import { TimeService } from 'app/services/time.service';
 import { HRService } from 'app/services/hr.service';
 import { SignalsService } from 'app/services/signals.service';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { BranchsService } from 'app/services/branchs.service';
 
 
 @Component({
@@ -24,12 +25,15 @@ export default class DbComponent {
   private timeService = inject(TimeService);
   private hrService = inject(HRService);
   private signalsService = inject(SignalsService);
+  private branchesService = inject(BranchsService);
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   data: any;
   idEmployee: number;
   idBranch: number;
+  idRoot: number;
+  branchs: any[] = [];
   startDate: string = '';
   endDate: string = '';
   localTime: string = '';
@@ -37,49 +41,101 @@ export default class DbComponent {
   customData: any = { Hours: null, PendingOuts: null, Absences: null, Delays: null };
 
   columnDefs = [
-    { headerName: 'Nombre Empleado',
+    {
+  headerName: 'Fecha',
+  field: 'hour',
+  flex: 1,
+  filter: 'agDateColumnFilter',
+  filterParams: {
+     excelMode: 'mac',
+    comparator: (filterLocalDateAtMidnight: Date, cellValue: any): number => {
+      if (!cellValue) return -1;
+
+      const date = typeof cellValue === 'string'
+        ? this.parseAsUTC(cellValue)
+        : new Date(cellValue);
+
+      if (isNaN(date.getTime())) return -1;
+
+      // Comparar solo fecha local (sin horas)
+      const cellDay = date.getDate();
+      const cellMonth = date.getMonth();
+      const cellYear = date.getFullYear();
+
+      const filterDay = filterLocalDateAtMidnight.getDate();
+      const filterMonth = filterLocalDateAtMidnight.getMonth();
+      const filterYear = filterLocalDateAtMidnight.getFullYear();
+
+      if (cellYear < filterYear) return -1;
+      if (cellYear > filterYear) return 1;
+      if (cellMonth < filterMonth) return -1;
+      if (cellMonth > filterMonth) return 1;
+      if (cellDay < filterDay) return -1;
+      if (cellDay > filterDay) return 1;
+      return 0;
+    }
+  },
+  valueFormatter: (params) => {
+    if (!params.value) return '';
+
+    const date = typeof params.value === 'string'
+      ? this.parseAsUTC(params.value)
+      : new Date(params.value);
+
+    return date.toLocaleDateString('es-MX', {
+      timeZone: 'America/Mexico_City', // muestra correctamente en zona local
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  }
+},
+    {
+        field: 'idBranch',
+        headerName: 'Nombre sucursal',
+        editable: true,
+        filter: true,
+        width: 170,
+        cellEditor: 'agSelectCellEditor',
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'windows',
+        },
+
+        cellEditorParams: (params) => {
+          return {
+            values: this.branchs
+              ? this.branchs
+                  .slice() // Creamos una copia para no modificar el array original
+                  .sort((a, b) => a.name.localeCompare(b.name)) // Ordenamos por nombre
+                  .map((item) => item.id) // Extraemos solo los IDs
+              : [],
+          };
+        },
+
+        valueFormatter: (params) => {
+          // Handle potential null values and properly format the displayed value
+          if (!params.value) return '';
+
+          const foundBranch = this.branchs
+            ? this.branchs.find((item) => item.id === params.value)
+            : null;
+
+          return foundBranch ? foundBranch.name : params.value;
+        },
+        valueGetter: (params) => {
+          if (!params.data || !params.data.idBranch) return '';
+          const branch = this.branchs?.find(b => b.id === params.data.idBranch);
+          return branch ? branch.name : '';
+        },
+      },
+      { headerName: 'Nombre Empleado',
       field: 'employeeName',
       flex: 2,
       filter: true,
       filterParams: { defaultToNothingSelected: true }, },
-      {
-        headerName: 'Fecha',
-        field: 'date',
-        flex: 1,
-        filter: 'agDateColumnFilter',
-        filterParams: {
-          defaultToNothingSelected: true,
-          excelMode: 'windows',
-          // Especificar el comparador de fechas
-          comparator: (filterLocalDateAtMidnight: Date, cellValue: Date) => {
-            const cellDate = new Date(cellValue);
-            cellDate.setHours(0, 0, 0, 0);
-            
-            if (filterLocalDateAtMidnight.getTime() === cellDate.getTime()) {
-              return 0;
-            }
-            if (cellDate < filterLocalDateAtMidnight) {
-              return -1;
-            }
-            return 1;
-          }
-        },
-        // Formateador para mostrar solo la fecha
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          
-          const date = new Date(params.value);
-          // Ajustar la fecha para compensar la zona horaria
-          const userTimezoneOffset = date.getTimezoneOffset() * 60000;
-          const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
-          
-          const day = adjustedDate.getDate().toString().padStart(2, '0');
-          const month = (adjustedDate.getMonth() + 1).toString().padStart(2, '0');
-          const year = adjustedDate.getFullYear();
-          
-          return `${day}-${month}-${year}`;
-        }
-      },
+      
       {
         headerName: 'Hora',
         field: 'hour',
@@ -107,19 +163,29 @@ export default class DbComponent {
 
   ngOnInit() {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+    this.idRoot = this.signalsService.getRootSelectedBySidebar()();
     this.getTime();
     this.getData();
+    this.obtenerBranchs();
   }
 
   constructor() {
     effect(() => {
 
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.getTime();
       this.getData();
+      this.obtenerBranchs();
 
     });
   }
+
+  parseAsUTC(dateStr: string): Date {
+  // Convierte '2025-06-24 18:00:00.000' → '2025-06-24T18:00:00Z'
+  const [datePart, timePart] = dateStr.trim().split(' ');
+  return new Date(`${datePart}T${timePart}Z`);
+}
 
   getData() {
     this.clockService.getCheckInfo(this.idBranch).subscribe(
@@ -161,6 +227,17 @@ export default class DbComponent {
       console.log('Fecha y hora local:', this.localTime);
     });
   }
+
+  obtenerBranchs() {
+    // alert('this.branchs'+ this.idBranch)
+    this.branchesService.getBrancheswoa(this.idRoot).subscribe(
+      (data: any) => {
+        this.branchs = data;
+      },
+      (error) => console.error('Error fetching data:', error)
+    );
+  }
+
 
   private checkIncidentsByWeek(idEmployee: number, currentDay: string, fecha: string) {
     this.hrService.getHRManagementData(8).subscribe(hrData => {

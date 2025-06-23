@@ -211,6 +211,9 @@ export class ProvedoorByBranchComponent {
     get col(): ColDef[] {
       return [
         { field: 'idBranch', headerName: 'Sucursales', editable: true, width: 200 },
+        { field: 'price', headerName: 'Precio' },
+        { field: 'stockMin', headerName: 'Stock Mínimo' },
+        { field: 'stockMax', headerName: 'Stock Máximo' }
       ];
     }
   

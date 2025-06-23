@@ -15,15 +15,16 @@ import { UsersService } from 'app/services/users.service';
 import { SignalsService } from 'app/services/signals.service';
 import { NgSelectComponent, NgSelectModule } from '@ng-select/ng-select';
 import { AdditionalInfoComponent } from "./additional-info/additional-info.component";
-import { ConceptsComponent } from "./concepts/concepts.component";
+import { ConceptsincomeComponent } from './conceptsincome/conceptsincome.component';
 import { CustomersService } from 'app/services/customers.service';
 import { BranchsService } from 'app/services/branchs.service';
-import { ActivatedRoute } from '@angular/router';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-income',
   standalone: true,
-  imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule, FormsModule, AdditionalInfoComponent, ConceptsComponent],
+  imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule, 
+             FormsModule, AdditionalInfoComponent, ConceptsincomeComponent],
   templateUrl: './income.component.html',
   styleUrl: './income.component.scss'
 })
@@ -35,49 +36,47 @@ export class IncomeComponent {
   private usersxpermissionsService = inject(UsersxpermissionsService);
   private usersService = inject(UsersService);
   private signalsService = inject(SignalsService);
+  private trackingService = inject(TrackingService);
   private BranchsService = inject(BranchsService)
-  private route = inject(ActivatedRoute);
+  
 
-  async ngOnInit() {
-    this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-    await this.getBillingManagementInfo();
-    await this.getBankAccounts();
-    await this.getIncomes();
-    await this.obtenerBranchs(); // Esperar a obtener las sucursales
-    await this.getCustomers();   // Obtener clientes después de sucursales
-    await this.loadAuthorizers();
-    await this.getCurrentUser();
-    this.route.data.subscribe((data) => {
-      this.showform = data['showform']; // 'CUSTOMERS' o 'PROVIDERS'
-  });
+  ngOnInit() {       
+   
   }
-
-  obtenerBranchs(): Promise<void> {
-    return new Promise((resolve) => {
-      this.BranchsService.getBranches(this.idRoot).pipe(
-        map((data: any[]) => data.map(branch => branch.id))
-      ).subscribe((ids: number[]) => {
-        this.branches = ids;
-        resolve();
-      });
-    });
-  }
-
 
   constructor() {
+     this.onSelectedRow = this.onSelectedRow.bind(this);
+     this.onSelectionChanged = this.onSelectionChanged.bind(this);
+
+     this.onCellValueChanged = this.onCellValueChanged.bind(this);
+     this.onGridReady = this.onGridReady.bind(this);
+
     effect(async () => {
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+      this.root = this.signalsService.getRootSelectedBySidebar()();
+      this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.idAccount = null;
 
-    });
+      await this.getBillingManagementInfo();
+      await this.getBankAccounts();
+      await this.getIncomes();
+    
+      await this.getCustomers();   // Obtener clientes después de sucursales
+      await this.loadAuthorizers();
+      await this.getCurrentUser();
+
+    }, { allowSignalWrites: true });
     effect(() => {
       const shouldUpdate = this.signalsService.getupdateIncAndExp()();
       if (shouldUpdate) {
         this.revert();
         setTimeout(() => this.signalsService.resetSignalIncAndExp());
       }
-    });
+    }, { allowSignalWrites: true }); // Add this option);
+    
   };
+
+  // NUEVA PROPIEDAD: Para controlar qué pestaña está visible,  'concepts' será la pestaña por defecto al inicio.
+  public activeTab: string = 'concepts';
 
   showform : string = '';
   branches: number[] = [];
@@ -89,7 +88,8 @@ export class IncomeComponent {
   newlyAddedRows: string[] = [];
   selectedIncomes: any = null;
   currentUser: string;
-  idRoot: number;
+  root: number;
+  idBranch: number;
   bankAccounts: any[] = [];
   prefixAndConsecutive: any[] = [];
 
@@ -108,8 +108,14 @@ export class IncomeComponent {
     return this._idAccount;
   }
 
+
+  // NUEVO MÉTODO: Para cambiar la pestaña activa al hacer clic.
+  public setActiveTab(tab: string): void {
+    this.activeTab = tab;
+  }
+  
   async getBillingManagementInfo() {
-    this.administrationService.getBillingManagementInfo(this.idRoot).subscribe(
+    this.administrationService.getBillingManagementInfo(this.root).subscribe(
       (data: any) => {
         this.prefixAndConsecutive = Array.isArray(data) ? data : [data];
       },
@@ -158,7 +164,7 @@ export class IncomeComponent {
   };
 
   async getIncomes() {
-    this.incomesAndExpensesService.getIncomesAndExpenses(this.idRoot).subscribe({
+    this.incomesAndExpensesService.getIncomesAndExpenses(this.root).subscribe({
       next: (incomes) => {
         // Filtrado y manejo de caso sin datos
         const filtered = incomes?.filter(income => {
@@ -175,9 +181,8 @@ export class IncomeComponent {
   }
 
 
-
   async getCustomers() {
-    this.customersService.getCustomersByCompany(this.branches, 'CUSTOMERS').subscribe(
+    this.customersService.getCustomersByCompany(this.root, 'CUSTOMERS').subscribe(
       (data: any) => {
         this.customers = data;
       },
@@ -191,7 +196,7 @@ export class IncomeComponent {
   private async loadAuthorizers() {
     forkJoin({
       permissions: this.usersxpermissionsService.getDataUsersxPermissions('root'),
-      allUsers: this.usersService.getDataUsers(this.idRoot)
+      allUsers: this.usersService.getDataUsers(this.root)
     }).subscribe({
       next: ({ permissions, allUsers }) => {
         // Manejo seguro de las respuestas
@@ -201,7 +206,7 @@ export class IncomeComponent {
         const authorizedUserIds = [
           ...new Set(
             validPermissions
-              .filter((p: { idPermission: number }) => p.idPermission === this.idRoot)
+              .filter((p: { idPermission: number }) => p.idPermission === this.root)
               .map((p: { idUser: number }) => p.idUser)
           )
         ] as number[];
@@ -278,14 +283,29 @@ export class IncomeComponent {
       },
 
       {
-        field: 'dateStamped', headerName: 'Fecha Entrega', editable: true, cellDataType: 'date', width: 130,
+        field: 'dateStamped', headerName: 'Entrega', editable: true, cellDataType: 'date', width: 130,
         valueFormatter: (params) => this.formatDate(params.value)
       },
 
       {
-        field: 'date', headerName: 'Fecha', editable: false, cellDataType: 'date', width: 100,
+        field: 'date', headerName: 'Pago', editable: true, cellDataType: 'date', width: 100,
         valueFormatter: (params) => this.formatDate(params.value)
       },
+
+      {
+        field: 'idCustomer', headerName: 'Cliente', editable: true, width: 160,
+        cellEditor: 'searchableSelect',
+        cellEditorParams: {
+          options: this.customers,
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.customers
+            ? this.customers.find((item) => item.id === params.value)
+            : null;
+          return foundItem ? `${foundItem.description}` : params.value;
+        },
+      },
+
       {
         field: 'subtotal',
         headerName: 'Subtotal',
@@ -337,20 +357,7 @@ export class IncomeComponent {
           ]
         }
       },
-
-      {
-        field: 'idCustomer', headerName: 'Cliente', editable: true, width: 215,
-        cellEditor: 'searchableSelect',
-        cellEditorParams: {
-          options: this.customers,
-        },
-        valueFormatter: (params) => {
-          const foundItem = this.customers
-            ? this.customers.find((item) => item.id === params.value)
-            : null;
-          return foundItem ? `${foundItem.description}` : params.value;
-        },
-      },
+  
       {
         field: 'idExpend',
         headerName: 'Autoriza',
@@ -373,18 +380,26 @@ export class IncomeComponent {
 
   onSelectedRow(event: any) {
     this.id = event.data.id;
+      console.log('Setting idIncomeAndExpense to:', this.id); // Debug log
     this.signalsService.setIdIncomeAndExpense(this.id);
   }
 
+// MODIFICAMOS onSelectionChanged
   onSelectionChanged(event: any) {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedIncomes = selectedNodes[0].data;
       this.signalsService.setIdIncomeAndExpense(this.selectedIncomes.id);
+      
+      // Cada vez que seleccionamos una nueva fila, volvemos a la pestaña por defecto.
+      this.setActiveTab('concepts'); 
+
     } else {
-      this.selectedIncomes = null;
+       this.selectedIncomes = null;
+       this.signalsService.setIdIncomeAndExpense(null);
     }
   }
+
 
   onCellValueChanged(event: any) {
 
@@ -406,14 +421,15 @@ export class IncomeComponent {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idAccount: this._idAccount,
-      numberDocument: "",
-      idBusinnes: this.idRoot,
-      date: new Date().toISOString(),
-      idCustomer: 0,
-      idExpend: 0,
-      uuid: "NA",
-      paymentMonth: '',
+      idAccount      : this._idAccount,
+      numberDocument : "",
+      idBusinnes     : this.root,
+      idBranch       : this.idBranch, // Asignar la primera sucursal por defecto
+      date           : new Date().toISOString(),
+      idCustomer     : 0,
+      idExpend       : 0,
+      uuid           : "NA",
+      paymentMonth   : '',
       dateStamped: null,
       description: "",
       type: "DEPOSITO",
@@ -431,6 +447,8 @@ export class IncomeComponent {
     this.incomes = [newItem, ...this.incomes];
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
+
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Ingreso en Administracion', 'Menu Administracion Ingresos',  this.trackingService.getEmail());
 
     // Encontrar el índice de la nueva fila
     const newRowIndex = this.incomes.findIndex((row) => row.id === tempId);
@@ -451,7 +469,11 @@ export class IncomeComponent {
   }
 
   async saveChanges() {
-    const isValid = this.incomes.every((item) => item.description);
+    
+    const isValid = this.incomes.every((item) =>   item.description );
+  
+    console.log('Guardando cambios...', isValid);
+
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
@@ -485,11 +507,13 @@ export class IncomeComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Save Registro en Ingresos', 'Menu Administracion Ingresos',  this.trackingService.getEmail());
       return this.incomesAndExpensesService.addIncomesAndExpenses(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Ingresos', 'Menu Administracion Ingresos',  this.trackingService.getEmail());
       return this.incomesAndExpensesService.updateIncomesAndExpenses(row.id, cleanedData);
     });
 
@@ -500,7 +524,7 @@ export class IncomeComponent {
     };
 
     const updateConsecutiveObs = this.administrationService.updateBillingManagementInfo(
-      this.idRoot,
+      this.root,
       updatedBillingInfo // Enviar objeto directamente
     ).pipe(
       tap(response => {
@@ -571,6 +595,7 @@ export class IncomeComponent {
             'Entrada eliminada satisfactoriamente.',
             'success'
           );
+          this.trackingService.addLog(this.trackingService.getnameComp(),'Delete Registro Ingresos', 'Menu Administracion Ingresos',  this.trackingService.getEmail());
           this.notSavedChanges = false;
           this.selectedIncomes = null;
         }
@@ -580,6 +605,10 @@ export class IncomeComponent {
   revert() {
     this.getIncomes();
     this.notSavedChanges = false;
+    console.log('Reverted unsaved changes', this.trackingService.getnameComp());
+    console.log('Reverted Email:  ', this.trackingService.getEmail());
+
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Cancelar Salvar Registro Ingresos', 'Menu Administracion Ingresos',  this.trackingService.getEmail());    
   }
 
   private cleanDataForServer(data: any): any {
@@ -593,7 +622,7 @@ export class IncomeComponent {
   }
 
   async getBankAccounts() {
-    this.administrationService.getAccountBanks(this.idRoot).subscribe(
+    this.administrationService.getAccountBanks(this.root).subscribe(
       (data: any) => {
         this.bankAccounts = data;
       },

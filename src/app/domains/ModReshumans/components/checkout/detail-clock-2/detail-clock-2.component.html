@@ -58,27 +58,27 @@
         <form [formGroup]="justificanteForm">
           <div class="mb-3">
             <label for="fecha" class="form-label">Fecha</label>
-            <input type="date" class="form-control" id="fecha" formControlName="fecha">
-            <small class="text-muted">Día: {{diaSemana}}</small>
+            <input type="date" class="form-control" id="diaInicio" [max]="diaFin" formControlName="controlInicio">
+            <small class="text-muted">Día: {{diaSemanaInicio}}</small>
           </div>
           <div class="mb-3">
             <label for="fecha" class="form-label">Fecha</label>
-            <input type="date" class="form-control" id="fecha" formControlName="fecha">
-            <small class="text-muted">Día: {{diaSemana}}</small>
+            <input type="date" class="form-control" id="diaFin" [min]="diaInicio" formControlName="controlFin">
+            <small class="text-muted">Día: {{diaSemanaFin}}</small>
           </div>
           <div class="mb-3">
             <label for="justificante" class="form-label">Justificante</label>
             <select class="form-select" id="justificante" formControlName="justificante" required>
               <option [ngValue]="null" disabled>Seleccione un justificante</option>
-              <option *ngFor="let justificante of catalogoAusencias" [ngValue]="justificante.id">
-                {{justificante.description}}
+              <option *ngFor="let festivo of catalogoFestiveVigente" [ngValue]="festivo.id">
+                {{festivo.description}}
               </option>
             </select>
           </div>
         </form>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" (click)="cancelar()">Cancelar</button>
         <button type="button" class="btn btn-primary" (click)="confirmarAnadir()">Añadir</button>
       </div>
     </div>

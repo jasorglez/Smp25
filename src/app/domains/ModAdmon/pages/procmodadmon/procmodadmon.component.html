@@ -2,29 +2,40 @@
   <div class="card">
     <div class="card-header px-2">
       <ul class="nav nav-pills">
+
+         <li class="nav-item">
+          <a class="nav-link green-tab d-flex align-items-center" routerLink="dashmodadmon" routerLinkActive="active">
+             <mat-icon>dashboard</mat-icon> {{ 'dashboard' | translate }}             
+          </a>
+        </li>
+
         <li class="nav-item">
           <a class="nav-link green-tab d-flex align-items-center" routerLink="setup" routerLinkActive="active">
             <mat-icon>phonelink_setup</mat-icon> {{ 'setting' | translate }}
           </a>
         </li>
+
         <li class="nav-item">
           <a class="nav-link green-tab d-flex align-items-center" routerLink="page01" routerLinkActive="active">
             <mat-icon>account_balance</mat-icon> {{ 'bank' | translate }}
           </a>
         </li>
+
         <li class="nav-item">
           <a class="nav-link green-tab d-flex align-items-center" routerLink="income" routerLinkActive="active">
             <mat-icon>payments</mat-icon> {{ 'income' | translate }}
           </a>
         </li>
+
         <li class="nav-item">
           <a class="nav-link green-tab d-flex align-items-center" routerLink="expend" routerLinkActive="active">
             <mat-icon>paid</mat-icon> {{ 'expend' | translate }}
           </a>
         </li>
-          <li class="nav-item"  *ngIf="idUser === 42">
+
+        <li class="nav-item"  *ngIf="idUser === 42">
           <a class="nav-link green-tab d-flex align-items-center" routerLink="masterExpenses" routerLinkActive="active">
-            <mat-icon>paid</mat-icon> {{ 'expend' | translate }} 2
+            <mat-icon>paid</mat-icon> {{ 'expend' | translate }} 3
           </a>
         </li>
         
@@ -33,6 +44,7 @@
             <mat-icon>people</mat-icon> {{ 'customer' | translate }}
           </a>
         </li>
+
         <!--<li class="nav-item">
           <a class="nav-link green-tab d-flex align-items-center" routerLink="page03" routerLinkActive="active">
             <mat-icon>groups</mat-icon> {{ 'providers' | translate }}
