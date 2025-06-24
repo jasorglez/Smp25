@@ -7,23 +7,23 @@
                     <div class="col-6">
                        
                         <div class="py-1">
-                            <label for="delay2" class="form-label">Tiempo de tolerancia de retardo antes de primer
+                            <label for="delay1" class="form-label">Tiempo de tolerancia de retardo antes de primer
                                 descuento
                                 (minutos) <span class="text-danger">*</span></label>
-                            <input type="number" class="form-control" id="delay2" placeholder="Consecutivo" formControlName="delay2" >
+                            <input type="number" class="form-control" id="delay1" placeholder="Consecutivo" formControlName="delay1" min="0" max="60">
                         </div>
                         <div class="py-1">
-                            <label for="delay1" class="form-label">Tiempo de tolerancia de retardo antes de segundo
+                            <label for="delay2" class="form-label">Tiempo de tolerancia de retardo antes de segundo
                                 descuento
                                 (minutos) <span class="text-danger">*</span></label>
-                            <input type="number" class="form-control" id="delay1" placeholder="Consecutivo" formControlName="delay1" >
+                            <input type="number" class="form-control" id="delay2" placeholder="Consecutivo" formControlName="delay2" min="60" max="120">
                         </div>
                     </div>
                     <div class="col-6">
                          <div class="py-1">
                             <label for="clockTolerance" class="form-label">Tiempo de tolerancia antes de marcar falta
                                 (minutos) <span class="text-danger">*</span></label>
-                            <input type="number" class="form-control" id="clockTolerance" placeholder="Consecutivo" formControlName="clockTolerance" >
+                            <input type="number" class="form-control" id="clockTolerance" placeholder="Consecutivo" formControlName="clockTolerance" min="120">
                         </div>
 
                     </div>
