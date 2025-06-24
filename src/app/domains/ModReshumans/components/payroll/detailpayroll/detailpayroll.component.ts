@@ -17,11 +17,12 @@ import { SignalsService } from 'app/services/signals.service';
 import { concat, lastValueFrom, toArray } from 'rxjs';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { EmployeesxSavingsComponent } from "../../employees/savings/savings.component";
+import { BonusComponent } from '../bonus/bonus.component';
 
 @Component({
   selector: 'app-detailpayroll',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, ReactiveFormsModule, EmployeesxSavingsComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, ReactiveFormsModule, EmployeesxSavingsComponent, BonusComponent],
   templateUrl: './detailpayroll.component.html',
   styleUrls: ['./detailpayroll.component.css']
 })
@@ -222,11 +223,17 @@ export class DetailpayrollComponent implements OnInit{
      const colId = event.column.getColId();
     if(colId =="savings"){
         const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
-        console.log(selectedRowData)
         this.signalsService.setIdEmployee(selectedRowData.id_employee);
-        const modal = new bootstrap.Modal(document.getElementById('searchModal')!);
+        const modal = new bootstrap.Modal(document.getElementById('ModalAhorros')!);
         modal.show();
     }
+    /*if(colId =="bonus"){
+        const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
+        //this.signalsService.setIdEmployee(selectedRowData.id_employee);
+        const modalElement = document.getElementById('ModalBonos')!;
+        const modal = bootstrap.Modal.getOrCreateInstance(modalElement); // usa instancia si ya existe
+        modal.show();
+    }*/
   }
 
 
