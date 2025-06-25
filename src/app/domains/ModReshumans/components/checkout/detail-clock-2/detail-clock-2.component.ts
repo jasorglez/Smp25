@@ -558,6 +558,7 @@ export default class DetailClock2Component implements OnInit {
       .checkInOutByEmployee(idEmployee, fechaInicio, fechaFin)
       .subscribe((data: any) => {
         // Asegurarse de que las fechas estén en el formato correcto
+        console.log('Datos obtenidos:', data);
         this.rowData = data.map((item: any) => ({
           ...item,
           date: item.date ? new Date(item.date).toISOString().split('T')[0] : null
@@ -747,7 +748,8 @@ export default class DetailClock2Component implements OnInit {
       const cleanedData = this.cleanDataForServer(row);
       return this.clockService.updateCheckInOut(row.id, cleanedData);
     });
-
+    this.signalsService.triggerRefreshEmployees();
+    //alert(this.signalsService.getRefreshEmployees()() )
     try {
       await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
