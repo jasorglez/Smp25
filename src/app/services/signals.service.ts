@@ -424,6 +424,7 @@ getMasterUpdateTrigger() {
     this.idEmployee.set(id);
   }
 
+
   getIdEmployee() {
     return this.idEmployee;
   }
@@ -717,6 +718,8 @@ getMasterUpdateTrigger() {
   private idCatalogFamily = signal<number>(null);
   private idMaterial = signal<number>(null);
   private closeCatalog = signal<boolean>(false);
+  private fechaInicioNomina = signal<string>(null);
+  private fechaFinNomina = signal<string>(null);
 
   setIdCatalogFamily(id: number){
     this.idCatalogFamily.set(id);
@@ -740,6 +743,17 @@ getMasterUpdateTrigger() {
 
   getCloseCatalog(){
     return this.closeCatalog;
+  }
+
+  setFechaNomina(fechaInicio: string, fechaFin: string) {
+    this.fechaInicioNomina.set(fechaInicio);
+    this.fechaFinNomina.set(fechaFin);
+  }
+  getFechaNomina() {
+    return {
+      fechaInicio: this.fechaInicioNomina(),
+      fechaFin: this.fechaFinNomina()
+    };
   }
 
 }

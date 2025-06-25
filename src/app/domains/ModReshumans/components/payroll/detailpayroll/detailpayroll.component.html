@@ -31,8 +31,8 @@
 -->
 
 
-<!-- Modal -->
-<div class="modal fade" id="ModalAhorros" tabindex="-1" aria-labelledby="ModalAhorrosLabel" aria-hidden="true">
+<!-- Modal 
+<div class="modal fade" id="savings" tabindex="-1" aria-labelledby="ModalAhorrosLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-xl">
     <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
       <div class="modal-header p-0 border-0">
@@ -50,16 +50,17 @@
       </div>
     </div>
   </div>
-</div>
+</div>-->
 
-<div class="modal fade" id="ModalBonos" tabindex="-1" aria-labelledby="ModalBonosLabel" aria-hidden="true">
+<div class="modal fade" id="modal" tabindex="-1" aria-labelledby="ModalBonosLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-xl">
     <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
       <div class="modal-header p-0 border-0">
         <div class="container-fluid">
           <div class="row">
             <div class="col-12">
-              <h1>adsddsa</h1>
+              <app-employeesxsavings *ngIf="typeModal === 'savings'"></app-employeesxsavings>
+              <app-modal-bonus *ngIf="typeModal === 'bonus'"></app-modal-bonus>
               <div class="d-flex justify-content-center mt-4 py-1">
                 <button type="button" class="btn btn-danger" data-bs-dismiss="modal">
                   <i class="bi bi-x-circle-fill"></i>
