@@ -223,11 +223,18 @@ export class DetailpayrollComponent implements OnInit{
   }
   async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
      const colId = event.column.getColId();
-    if(colId =="savings" ){//|| colId == "bonus"
+    if(colId =="savings" ){//
         this.typeModal = colId;
         const selectedRowData = event.data; 
         this.signalsService.setIdEmployee(selectedRowData.id_employee);
-        const modal = new bootstrap.Modal(document.getElementById('modal')!);
+        const modal = new bootstrap.Modal(document.getElementById('savings')!);
+        modal.show();
+    }
+    if( colId == "bonus"){//
+        this.typeModal = colId;
+        const selectedRowData = event.data; 
+        this.signalsService.setIdEmployee(selectedRowData.id_employee);
+        const modal = new bootstrap.Modal(document.getElementById('bonus')!);
         modal.show();
     }
   }
