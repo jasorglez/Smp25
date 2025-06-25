@@ -623,6 +623,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         field: 'idBank',
         headerName: 'Banco',
         editable: true,
+        headerClass: 'required-header',
+        cellStyle: (params) => this.validateRequiredField(params.value),
         suppressMovable: true,
         filter: true,
         filterParams: {
@@ -1032,7 +1034,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         (item.employeeCode || item.email )&&
         item.idDepto && // se agregan dos inputs para la validación de los campos requeridos
         item.idPosition &&
-        item.priceXHour
+        item.priceXHour &&
+        item.idBank
     );
     if (!isValid) {
       alerts.basicAlert(
