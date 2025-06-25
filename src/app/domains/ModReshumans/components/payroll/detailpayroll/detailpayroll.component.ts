@@ -167,11 +167,15 @@ export class DetailpayrollComponent implements OnInit{
   constructor(private fb: FormBuilder) {
     effect(() => {
       this.idPayroll = this.signalsService.getNormalPayrollId()();
+      if (this.signalsService.getRefreshNomina()() == true) {
+        this.loadData(); // Actualizar datos cuando se recibe señal
+        this.signalsService.resetRefreshNomina(); // Resetear la señal después de actualizar
+      }
       this.loadData();
       console.log("------------------------------------ Constructor ID PAYROLL: ", this.idPayroll);
       console.log("-------- entrando a detailpayroll, este es el constructor  ")
 
-    });
+    }, { allowSignalWrites: true });
 
   }
 
@@ -183,6 +187,9 @@ export class DetailpayrollComponent implements OnInit{
 
   }
 
+  refreshGrid() {
+    this.signalsService.triggerRefreshNomina();
+  }
 
   loadData() {
     if (this.idPayroll === null || this.idPayroll === undefined) {

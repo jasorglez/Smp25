@@ -41,7 +41,7 @@
             <div class="col-12">
               <app-employeesxsavings></app-employeesxsavings>
               <div class="d-flex justify-content-center mt-4 py-1">
-                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">
+                <button type="button" class="btn btn-danger" data-bs-dismiss="modal" (click)="refreshGrid()">
                   <i class="bi bi-x-circle-fill"></i>
                 </button>
               </div>
@@ -63,7 +63,7 @@
             <div class="col-12">
               <app-modal-bonus ></app-modal-bonus>
               <div class="d-flex justify-content-center mt-4 py-1">
-                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">
+                <button type="button" class="btn btn-danger" data-bs-dismiss="modal" (click)="refreshGrid()">
                   <i class="bi bi-x-circle-fill"></i>
                 </button>
               </div>

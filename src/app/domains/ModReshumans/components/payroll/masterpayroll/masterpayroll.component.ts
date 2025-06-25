@@ -53,6 +53,10 @@ export class MasterPayrollComponent implements OnInit {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+      if (this.signalsService.getRefreshNomina()() == true) {
+        this.obtenerDatos(); // Actualizar datos cuando se recibe señal
+        this.signalsService.resetRefreshNomina(); // Resetear la señal después de actualizar
+      }
       if (this.idBranch == null) {
         this.rowData = [];
         alerts.basicAlert(
@@ -64,7 +68,7 @@ export class MasterPayrollComponent implements OnInit {
         this.obtenerDatos();
         this.obtenerBranchs();
       }
-    });
+    }, { allowSignalWrites: true });
   }
 
   ngOnInit() {

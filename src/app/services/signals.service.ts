@@ -702,9 +702,6 @@ getMasterUpdateTrigger() {
     getRefreshEmployees() {
       return this.refreshEmployees;
     }
-
-    
-  
     // Método para actualizar el signal
     triggerRefreshEmployees() {
       this.refreshEmployees.set(true);
@@ -713,6 +710,22 @@ getMasterUpdateTrigger() {
     // Método para resetear el signal
     resetRefreshEmployees() {
       this.refreshEmployees.set(false);
+    }
+
+    private refreshNomina = signal<boolean>(false);
+
+    // Método para obtener el signal
+    getRefreshNomina() {
+      return this.refreshNomina;
+    }
+    // Método para actualizar el signal
+    triggerRefreshNomina() {
+      this.refreshNomina.set(true);
+    }
+  
+    // Método para resetear el signal
+    resetRefreshNomina() {
+      this.refreshNomina.set(false);
     }
 
   private idCatalogFamily = signal<number>(null);
