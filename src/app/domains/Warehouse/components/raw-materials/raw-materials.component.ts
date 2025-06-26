@@ -201,6 +201,12 @@ export class RawMaterialsComponent {
   get colMaster(): ColDef[] {
     return [
       {
+        field: 'id',
+        headerName: 'ID',
+        editable: false,
+        hide: true
+      },
+      {
         field: 'idRawMaterial',
         headerName: 'Materia Padre',
         editable: true,

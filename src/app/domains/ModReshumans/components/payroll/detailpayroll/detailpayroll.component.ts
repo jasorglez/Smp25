@@ -17,11 +17,13 @@ import { SignalsService } from 'app/services/signals.service';
 import { concat, lastValueFrom, toArray } from 'rxjs';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { EmployeesxSavingsComponent } from "../../employees/savings/savings.component";
+import { BonusComponent } from '../bonus/bonus.component';
+import { ModalBonusComponent } from './modalBonus/modalBonus.component';
 
 @Component({
   selector: 'app-detailpayroll',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, ReactiveFormsModule, EmployeesxSavingsComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, ReactiveFormsModule, EmployeesxSavingsComponent, ModalBonusComponent],
   templateUrl: './detailpayroll.component.html',
   styleUrls: ['./detailpayroll.component.css']
 })
@@ -46,6 +48,7 @@ export class DetailpayrollComponent implements OnInit{
   idLoan: number = null;
   nameLoan: string = null;
   id: number;
+  typeModal: string ='';
   masterNotSavedChanges: boolean = false;
   detailNotSavedChanges: boolean = false;
   selectedLoanId: any;
@@ -164,11 +167,15 @@ export class DetailpayrollComponent implements OnInit{
   constructor(private fb: FormBuilder) {
     effect(() => {
       this.idPayroll = this.signalsService.getNormalPayrollId()();
+      if (this.signalsService.getRefreshNomina()() == true) {
+        this.loadData(); // Actualizar datos cuando se recibe señal
+        this.signalsService.resetRefreshNomina(); // Resetear la señal después de actualizar
+      }
       this.loadData();
       console.log("------------------------------------ Constructor ID PAYROLL: ", this.idPayroll);
       console.log("-------- entrando a detailpayroll, este es el constructor  ")
 
-    });
+    }, { allowSignalWrites: true });
 
   }
 
@@ -180,6 +187,9 @@ export class DetailpayrollComponent implements OnInit{
 
   }
 
+  refreshGrid() {
+    this.signalsService.triggerRefreshNomina();
+  }
 
   loadData() {
     if (this.idPayroll === null || this.idPayroll === undefined) {
@@ -220,11 +230,18 @@ export class DetailpayrollComponent implements OnInit{
   }
   async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
      const colId = event.column.getColId();
-    if(colId =="savings"){
-        const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
-        console.log(selectedRowData)
+    if(colId =="savings" ){//
+        this.typeModal = colId;
+        const selectedRowData = event.data; 
         this.signalsService.setIdEmployee(selectedRowData.id_employee);
-        const modal = new bootstrap.Modal(document.getElementById('searchModal')!);
+        const modal = new bootstrap.Modal(document.getElementById('savings')!);
+        modal.show();
+    }
+    if( colId == "bonus"){//
+        this.typeModal = colId;
+        const selectedRowData = event.data; 
+        this.signalsService.setIdEmployee(selectedRowData.id_employee);
+        const modal = new bootstrap.Modal(document.getElementById('bonus')!);
         modal.show();
     }
   }

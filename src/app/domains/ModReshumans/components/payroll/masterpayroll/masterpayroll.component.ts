@@ -53,6 +53,10 @@ export class MasterPayrollComponent implements OnInit {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+      if (this.signalsService.getRefreshNomina()() == true) {
+        this.obtenerDatos(); // Actualizar datos cuando se recibe señal
+        this.signalsService.resetRefreshNomina(); // Resetear la señal después de actualizar
+      }
       if (this.idBranch == null) {
         this.rowData = [];
         alerts.basicAlert(
@@ -64,7 +68,7 @@ export class MasterPayrollComponent implements OnInit {
         this.obtenerDatos();
         this.obtenerBranchs();
       }
-    });
+    }, { allowSignalWrites: true });
   }
 
   ngOnInit() {
@@ -482,6 +486,13 @@ export class MasterPayrollComponent implements OnInit {
     //alert("Holaaaaaaaaaaaaa");
     const colId = event.column.getColId();
     const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
+    console.log(
+      'Datos de la fila seleccionada:',
+      selectedRowData,
+      'Columna:',
+      colId
+    );
+    this.signalsService.setFechaNomina(selectedRowData.startDate, selectedRowData.endDate);
 
     const selectedId = selectedRowData.id; // Obtener el ID del registro
     this.signalsService.setNormalPayrollId(selectedId);
@@ -494,6 +505,7 @@ export class MasterPayrollComponent implements OnInit {
           filter: selectedId,
         },
       };
+      console.log(selectedId);
 
       this.gridApi.setFilterModel(filterModel);
       this.gridApi.onFilterChanged();

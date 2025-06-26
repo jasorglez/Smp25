@@ -33,7 +33,7 @@ import { RootService } from 'app/services/root.service';
 })
 export class BranchesComponent implements CanComponentDeactivate {
   @ViewChild('content') content: any;
-  
+
   public signalsService = inject(SignalsService);
   public environment = environment;
   private branchesService = inject(BranchsService);
@@ -190,16 +190,17 @@ export class BranchesComponent implements CanComponentDeactivate {
       }
     },
     onCellDoubleClicked: (event) => {
-      this.editRow(event.data);
+      this.signalsService.getemailChoose() === environment.root ? this.editRow(event.data) : '  ';
     }
   };
+
 
   editRow(data: any) {
     this.isEditing = true;
     this.initForm();
     this.addBranch.patchValue({
       id: data.id,
-      idCompany:data.idCompany,
+      idCompany: data.idCompany,
       idEstado: data.idEstado,
       name: data.name,
       description: data.description,
@@ -219,7 +220,7 @@ export class BranchesComponent implements CanComponentDeactivate {
         field: 'rootName',
         hide: true,
         headerName: 'Empresa',
-        editable: false,
+        editable: this.signalsService.getemailChoose() === environment.root ? false : true,
         filter: true,
         width: 200,
         enableRowGroup: true,  // Permite agrupar por esta columna
@@ -236,7 +237,7 @@ export class BranchesComponent implements CanComponentDeactivate {
       {
         field: 'name',
         headerName: 'Nombre *',
-        editable: false,
+        editable: this.signalsService.getemailChoose() === environment.root ? false : true,
         filter: true,
         width: 250,
         valueSetter: (params) => {
@@ -276,7 +277,7 @@ export class BranchesComponent implements CanComponentDeactivate {
       {
         field: 'description',
         headerName: 'Descripción *',
-        editable: false,
+        editable: this.signalsService.getemailChoose() === environment.root ? false : true,
         filter: true,
         width: 400,
         valueSetter: (params) => {
@@ -287,7 +288,7 @@ export class BranchesComponent implements CanComponentDeactivate {
       {
         field: 'idEstado',
         headerName: 'Estado',
-        editable: false,
+        editable: this.signalsService.getemailChoose() === environment.root ? false : true,
         filter: true,
         cellEditor: 'autocompleteEditor',
         width: 200,
@@ -300,11 +301,11 @@ export class BranchesComponent implements CanComponentDeactivate {
         },
         valueFormatter: (params) => {
           const foundItem = this.estados
-          ? this.estados.find((item) => item.id === params.value)
-          : null;
+            ? this.estados.find((item) => item.id === params.value)
+            : null;
           return foundItem ? foundItem.nom_agee : '';
         },
-        
+
         valueSetter: (params) => {
           const selectedName = params.newValue;
           const estado = this.estados.find(e => e.nom_agee === selectedName);
@@ -314,12 +315,12 @@ export class BranchesComponent implements CanComponentDeactivate {
           }
           return false;
         }
-        
+
       },
       {
         field: 'address',
         headerName: 'Dirección *',
-        editable: false,
+        editable: this.signalsService.getemailChoose() === environment.root ? false : true,
         filter: true,
         width: 400,
         /*cellEditor: 'agPopupTextCellEditor',
@@ -347,7 +348,7 @@ export class BranchesComponent implements CanComponentDeactivate {
       {
         field: 'vigente',
         headerName: 'Activo',
-        editable: false,
+        editable: this.signalsService.getemailChoose() === environment.root ? false : true,
         suppressMovable: true,
         filter: true,
         width: 150,
@@ -359,6 +360,36 @@ export class BranchesComponent implements CanComponentDeactivate {
     );
 
     return columns;
+  }
+
+  onMasterCellValueChanged(event: any) {
+    const updatedData = { ...event.data };
+
+    // Preservar el estado temporal y la selección
+    if (this.newlyAddedMasterRows.includes(updatedData.id)) {
+      updatedData.__isNew = true;
+    }
+
+    updatedData.__modified = true;
+    this.masterNotSavedChanges = true;
+
+    // Actualizar el array de datos
+    this.masterRowData = this.masterRowData.map((row) =>
+      row.id === updatedData.id ? updatedData : row
+    );
+
+    // Actualizar la fila en la cuadrícula
+    const rowNode = this.masterGridApi.getRowNode(updatedData.id);
+    if (rowNode) {
+      rowNode.setData(updatedData);
+      // Mantener la selección si es necesario
+      if (
+        this.masterSelectedRowData &&
+        this.masterSelectedRowData.id === updatedData.id
+      ) {
+        rowNode.setSelected(true);
+      }
+    }
   }
 
   onMasterSelectionChanged(event: any) {
@@ -376,9 +407,28 @@ export class BranchesComponent implements CanComponentDeactivate {
   }
 
   addMasterRow() {
+    const tempId = `temp_${this.tempIdCounter++}`;
+    const newItem = {
+      id: tempId,
+      idCompany: this.idRoot,
+      idEstado: null,
+      name: '',
+      description: '',
+      address: '',
+      orden: 0,
+      active: true,
+      __isNew: true,
+    };
+
+    if (this.signalsService.getemailChoose() === environment.root) {
+      this.initForm();
+      this.modalService.open(this.content, { size: 'lg' });
+    }
+    else {
+      this.masterRowData = [newItem, ...this.masterRowData];
+    }
     this.isEditing = false;
-    this.initForm();
-    this.modalService.open(this.content, { size: 'lg' });
+
   }
 
   async onSubmit() {
@@ -402,7 +452,7 @@ export class BranchesComponent implements CanComponentDeactivate {
           // Actualizar sucursal existente
           const cleanedData = this.cleanDataForServer(newItem);
           await lastValueFrom(this.branchesService.updateBranch(formData.id, cleanedData));
-          
+
           alerts.basicAlert(
             'Éxito',
             'La sucursal ha sido actualizada correctamente',
@@ -412,10 +462,10 @@ export class BranchesComponent implements CanComponentDeactivate {
           // Agregar nueva sucursal
           const cleanedData = this.cleanDataForServer(newItem);
           const response = await lastValueFrom(this.branchesService.addBranch(cleanedData));
-          
+
           // Actualizar el ID temporal con el real
           newItem.id = response.id;
-          
+
           // Asignar permisos para el nuevo Branch creado
           await lastValueFrom(
             this.branchesService.assignPermissionAfterCreation(
@@ -442,7 +492,7 @@ export class BranchesComponent implements CanComponentDeactivate {
             active: true
           };
           await lastValueFrom(this.hrService.addHRManagementData(hrManagementData));
-          
+
           alerts.basicAlert(
             'Éxito',
             'La sucursal ha sido creada correctamente',
@@ -453,7 +503,7 @@ export class BranchesComponent implements CanComponentDeactivate {
         // Actualizar la lista de sucursales y cerrar el modal
         this.revertMasterData();
         this.modalService.dismissAll();
-        
+
       } catch (error) {
         console.error('Error al procesar la sucursal:', error);
         alerts.basicAlert(
@@ -466,6 +516,118 @@ export class BranchesComponent implements CanComponentDeactivate {
       alerts.basicAlert(
         'Error',
         'Por favor complete todos los campos requeridos',
+        'error'
+      );
+    }
+  }
+
+  async saveMasterChanges() {
+    const isValid = this.masterRowData.every(
+      (item) => item.name && item.description && item.address
+    );
+    if (!isValid) {
+      alerts.basicAlert(
+        'Añadir entrada',
+        'Debe llenar todos los campos antes de guardar.',
+        'error'
+      );
+      return;
+    }
+
+    const newRows = this.masterRowData.filter((row) => row.__isNew);
+    const modifiedRows = this.masterRowData.filter(
+      (row) => row.__modified && !row.__isNew
+    );
+
+    // Tipamos explícitamente las promesas
+    const addPromises: Promise<Ibranch>[] = newRows.map((row) => {
+      const cleanedData = this.cleanDataForServer(row);
+      return lastValueFrom(this.branchesService.addBranch(cleanedData)).then(response => {
+        return response;
+      });
+    });
+
+    const updatePromises: Promise<Ibranch>[] = modifiedRows.map((row) => {
+      const cleanedData = this.cleanDataForServer(row);
+      return lastValueFrom(
+        this.branchesService.updateBranch(row.id, cleanedData)
+      );
+    });
+
+    try {
+      const allResponses = await Promise.all([
+        ...addPromises,
+        ...updatePromises,
+      ]);
+
+      // Asignar permisos para los nuevos Branchs creados
+      console.log(allResponses);
+      for (const response of allResponses) {
+        // Verificar si es una nueva creación comparando con los IDs temporales
+        const correspondingNewRow = newRows.find(
+          (row) => !row.id || row.id.toString().startsWith('temp_')
+        );
+        console.log(response.id);
+
+        // Aquí construyo HRManagement.
+        const newItem = {
+          idBranch: response.id,
+          vigency: 120,
+          startDay: 'Lunes',
+          clockTolerance: 120,
+          delay1: 5,
+          delay2: 65,
+          discount1: true,
+          discount2: true,
+          discount: 50,
+          payrollPeriod: 15,
+          overtimePay: 100,
+          specialOvertimePay: 150,
+          active: true
+        };
+        if (response.id && correspondingNewRow) {
+          try {
+            // El creador de la sucursal tiene permisos sobre la sucursal
+            await lastValueFrom(
+              this.branchesService.assignPermissionAfterCreation(
+                this.idUser,
+                response.id,
+                'branch'
+              )
+            );
+            // Se añaden valores por default a HRManagement
+            await lastValueFrom(
+              this.hrService.addHRManagementData(newItem)
+            );
+          } catch (permError) {
+            console.error('Error asignando permiso:', permError);
+            // Opcional: Mostrar alerta pero no interrumpir el flujo principal
+            alerts.basicAlert(
+              'Advertencia',
+              'Se creó la sucursal pero hubo un problema asignando los permisos.',
+              'warning'
+            );
+          }
+        }
+      }
+
+      alerts.basicAlert(
+        'Datos actualizados',
+        'Se han actualizado los datos correctamente.',
+        'success'
+      );
+      this.masterNotSavedChanges = false;
+      this.newlyAddedMasterRows = [];
+
+      if (allResponses.length > 0) {
+        await this.obtenerDatos();
+      }
+      this.signalsService.triggerUpdateBranchList(); // Actualizamos la sidebar
+    } catch (error) {
+      console.error(error);
+      alerts.basicAlert(
+        'Error',
+        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
         'error'
       );
     }

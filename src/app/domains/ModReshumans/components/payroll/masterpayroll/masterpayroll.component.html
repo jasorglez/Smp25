@@ -35,6 +35,7 @@
           (selectionChanged)="onSelectionChanged($event)"
           [gridOptions]="gridOptions"
           (cellValueChanged)="onCellValueChanged($event)"
+          (cellDoubleClicked)="onCellDoubleClicked($event)"
           (rowSelected)="onSelectedRow($event)"
           (gridReady)="onGridReady($event)"
           rowSelection="single"
