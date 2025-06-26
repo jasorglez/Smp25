@@ -856,8 +856,13 @@ export default class DetailClock2Component implements OnInit {
   private formatHours(totalHours: number): string {
     if (totalHours < 0) totalHours = 0; // Evitar valores negativos
 
-    const hours = Math.floor(totalHours);
-    const minutes = Math.round((totalHours - hours) * 60);
+    let hours = Math.floor(totalHours);
+    let minutes = Math.round((totalHours - hours) * 60);
+    if(minutes == 60)
+    {
+      minutes = 0;
+      hours = hours + 1;
+    }
 
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   }
