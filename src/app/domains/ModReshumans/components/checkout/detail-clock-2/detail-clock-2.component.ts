@@ -318,67 +318,62 @@ export default class DetailClock2Component implements OnInit {
       },
 
       {
-        headerName: 'Horas Laboradas',
-        field: 'hoursWorked',
-        editable: false,
-        width: 200,
-        cellRenderer: (params) => {
-          if (params.node.group) {
-            const groupData = params.node.allLeafChildren;
-            let totalHours = 0;
-            let totalDiscountHours = 0; // Acumulador de descuentos
-            let lastInTime = null;
+  headerName: 'Horas Laboradas',
+  field: 'hoursWorked',
+  editable: false,
+  width: 200,
+  cellRenderer: (params) => {
+    if (params.node.group) {
+      const groupData = params.node.allLeafChildren;
+      let totalHours = 0;
+      let totalDiscountHours = 0;
+      let lastInTime = null;
 
-            // Filtrar y ordenar registros válidos por hora
-            const validRecords = [...groupData]
-              .filter(node =>
-                node.data.valid === true &&
-                node.data.checkTime
-              )
-              .sort((a, b) =>
-                a.data.checkTime.localeCompare(b.data.checkTime)
-              );
+      const validRecords = [...groupData]
+        .filter(node =>
+          node.data.valid === true &&
+          (node.data.realHourBySystem || node.data.checkTime)
+        )
+        .sort((a, b) => {
+          const timeA = a.data.realHourBySystem ?? a.data.checkTime;
+          const timeB = b.data.realHourBySystem ?? b.data.checkTime;
+          return timeA.localeCompare(timeB);
+        });
 
-            // 1. Calcular horas trabajadas
-            for (const node of validRecords) {
-              const record = node.data;
-              if (record.type === 'IN') {
-                lastInTime = record.checkTime;
-              } else if (record.type === 'OUT' && lastInTime) {
-                totalHours += this.calculateTimeDifference(
-                  lastInTime,
-                  record.checkTime
-                );
-                lastInTime = null;
-              }
-            }
+      for (const node of validRecords) {
+        const record = node.data;
+        const hora = record.realHourBySystem ?? record.checkTime;
 
-            // 2. Calcular descuentos totales del día
-            const discountMinutes = validRecords.reduce((sum, node) => {
-              const record = node.data;
-              // Solo considerar registros con minuteDiscount válido
-              if (record.minuteDiscount !== null &&
-                record.minuteDiscount !== undefined &&
-                !isNaN(record.minuteDiscount)) {
-                return sum + Number(record.minuteDiscount);
-              }
-              return sum;
-            }, 0);
+        if (record.type === 'IN') {
+          lastInTime = hora;
+        } else if (record.type === 'OUT' && lastInTime) {
+          totalHours += this.calculateTimeDifference(lastInTime, hora);
+          lastInTime = null;
+        }
+      }
 
-            totalDiscountHours = discountMinutes / 60;
+      const discountMinutes = validRecords.reduce((sum, node) => {
+        const record = node.data;
+        if (record.minuteDiscount !== null &&
+            record.minuteDiscount !== undefined &&
+            !isNaN(record.minuteDiscount)) {
+          return sum + Number(record.minuteDiscount);
+        }
+        return sum;
+      }, 0);
 
-            // 3. Aplicar descuento
-            const netHours = totalHours - totalDiscountHours;
+      totalDiscountHours = discountMinutes / 60;
+      const netHours = totalHours - totalDiscountHours;
 
-            // Formatear resultado neto
-            return this.formatHours(netHours);
-          }
-          return null;
-        },
-        hide: false,
-        valueGetter: () => null,
-        aggFunc: 'sum',
-      },
+      return this.formatHours(netHours);
+    }
+    return null;
+  },
+  hide: false,
+  valueGetter: () => null,
+  aggFunc: 'sum',
+},
+
       {
         headerName: 'Retardos',
         field: 'delays',

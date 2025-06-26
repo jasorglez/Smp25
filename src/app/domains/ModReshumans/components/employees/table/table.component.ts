@@ -1034,8 +1034,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         (item.employeeCode || item.email )&&
         item.idDepto && // se agregan dos inputs para la validación de los campos requeridos
         item.idPosition &&
-        item.priceXHour &&
-        item.idBank
+        item.priceXHour 
     );
     if (!isValid) {
       alerts.basicAlert(
