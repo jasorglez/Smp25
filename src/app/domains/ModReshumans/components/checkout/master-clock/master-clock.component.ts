@@ -244,7 +244,7 @@ export default class MasterClockComponent implements OnInit {
         editable: false
       },
       {
-        field: 'hours',
+        field: 'hoursWithMinutes',
         headerName: 'Horas ajustadas',
         editable: false,
         cellStyle: (params) => {
@@ -255,7 +255,7 @@ export default class MasterClockComponent implements OnInit {
         }
       },
       {
-        field: 'extraHours',
+        field: 'extraHoursWithMinutes',
         headerName: 'Horas extra',
         editable: false
       },
@@ -303,7 +303,7 @@ export default class MasterClockComponent implements OnInit {
         }
       },
       {
-        field: 'discountHours',
+        field: 'discountHoursWithMinutes',
         headerName: 'Horas descontadas',
         editable: false,
         cellStyle: (params) => {
