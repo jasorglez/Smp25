@@ -425,6 +425,16 @@ export class BranchesComponent implements CanComponentDeactivate {
       this.modalService.open(this.content, { size: 'lg' });
     }
     else {
+      setTimeout(() => {
+      const firstRowIndex = 0;
+
+      this.masterGridApi.ensureIndexVisible(firstRowIndex);
+
+      this.masterGridApi.startEditingCell({
+        rowIndex: firstRowIndex,
+        colKey: 'name'
+      });
+    }, 0);
       this.masterRowData = [newItem, ...this.masterRowData];
     }
     this.isEditing = false;
