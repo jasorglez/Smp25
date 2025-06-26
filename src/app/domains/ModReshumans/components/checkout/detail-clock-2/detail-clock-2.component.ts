@@ -858,6 +858,8 @@ export default class DetailClock2Component implements OnInit {
 
     let hours = Math.floor(totalHours);
     let minutes = Math.round((totalHours - hours) * 60);
+
+    // Corrección para que no aparezcan 60 minutos en la vista
     if(minutes == 60)
     {
       minutes = 0;
