@@ -24,6 +24,7 @@ import { UsersService } from 'app/services/users.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { SetupService } from 'app/services/setup.service';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
+import { RawMaterialsService } from 'app/services/raw-materials.service';
 
 interface Catalog {
   id: number;
@@ -55,6 +56,7 @@ export class RawMaterialsComponent {
   private receiptsService = inject(ReceiptsService);
   private usersService = inject(UsersService);
   private materialsService = inject(MaterialsService);
+  private rawMaterialsService = inject(RawMaterialsService);
   private setupService = inject(SetupService);
 
   // Variables compartidas
@@ -266,8 +268,8 @@ export class RawMaterialsComponent {
     // ==================== MASTER METHODS ====================
 
   obtenerDatos() {
-    this.requisitionsService
-      .getOcAndReqs(this.typeReference, this.idReference, 'OC')
+    this.rawMaterialsService
+      .getRawMaterialDetailsByParent(1)
       .subscribe(
         (data: any) => {
           this.masterRowData = data;
@@ -512,4 +514,5 @@ export class RawMaterialsComponent {
   async canDeactivate(): Promise<boolean> {
     return confirmExitIfUnsaved(this.masterNotSavedChanges);
   }
+
 }
