@@ -177,6 +177,7 @@ export default class  HolidaysComponent {
               idEmployee: item.idEmployee,
               idReason: idReason,
               minuteDiscount: 0,
+              holiday: true,
               minuteDiscountBackup: null,
               valid: true
             };

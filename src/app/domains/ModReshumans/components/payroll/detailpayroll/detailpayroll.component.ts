@@ -189,6 +189,7 @@ export class DetailpayrollComponent implements OnInit{
 
   refreshGrid() {
     this.signalsService.triggerRefreshNomina();
+    this.signalsService.resetInitSaving();
   }
 
   loadData() {
@@ -234,6 +235,7 @@ export class DetailpayrollComponent implements OnInit{
         this.typeModal = colId;
         const selectedRowData = event.data; 
         this.signalsService.setIdEmployee(selectedRowData.id_employee);
+        this.signalsService.setInitSaving();
         const modal = new bootstrap.Modal(document.getElementById('savings')!);
         modal.show();
     }

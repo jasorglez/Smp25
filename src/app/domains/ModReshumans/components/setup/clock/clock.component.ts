@@ -32,6 +32,7 @@ export class ClockComponent {
     clockTolerance: ['', [Validators.required, Validators.min(120)]],
     delay1: ['', [Validators.required, Validators.min(0), Validators.max(60)]],
     delay2: ['', [Validators.required, Validators.min(60), Validators.max(120)]],
+    settingToleranceTime: ['', [Validators.required]],
   });
 
   getData() {
@@ -42,6 +43,7 @@ export class ClockComponent {
           clockTolerance: this.hrData.clockTolerance,
           delay1: this.hrData.delay1,
           delay2: this.hrData.delay2,
+          settingToleranceTime: this.hrData.settingToleranceTime,
         });
         this.isNew = false;
       },
@@ -128,6 +130,6 @@ export class ClockComponent {
   }
 
   revertChanges() {
-    //this.getData(); // Refrescar datos
+    this.getData(); // Refrescar datos
   }
 }

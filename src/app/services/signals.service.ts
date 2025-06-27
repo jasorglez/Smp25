@@ -733,6 +733,7 @@ getMasterUpdateTrigger() {
   private closeCatalog = signal<boolean>(false);
   private fechaInicioNomina = signal<string>(null);
   private fechaFinNomina = signal<string>(null);
+  private initSaving = signal<boolean>(false);
 
   setIdCatalogFamily(id: number){
     this.idCatalogFamily.set(id);
@@ -767,6 +768,15 @@ getMasterUpdateTrigger() {
       fechaInicio: this.fechaInicioNomina(),
       fechaFin: this.fechaFinNomina()
     };
+  }
+  setInitSaving() {
+    this.initSaving.set(true);
+  }
+  getInitSaving() {
+    return this.initSaving;
+  }
+  resetInitSaving() {
+    this.initSaving.set(false);
   }
 
 }
