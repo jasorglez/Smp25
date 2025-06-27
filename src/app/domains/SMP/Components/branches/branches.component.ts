@@ -288,34 +288,29 @@ export class BranchesComponent implements CanComponentDeactivate {
       {
         field: 'idEstado',
         headerName: 'Estado',
-        editable: this.signalsService.getemailChoose() === environment.root ? false : true,
+        editable: this.signalsService.getemailChoose() !== environment.root,
         filter: true,
-        cellEditor: 'autocompleteEditor',
-        width: 200,
+        cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          filterList: this.estados.map(e => e.nom_agee
-          ),
-          filterKey: 'nom_agee',
-          placeholder: 'Estado',
-          minLength: 1
+          values: this.estados.map(e => e.nom_agee), // valores visibles en el editor
         },
         valueFormatter: (params) => {
-          const foundItem = this.estados
-            ? this.estados.find((item) => item.id === params.value)
-            : null;
-          return foundItem ? foundItem.nom_agee : '';
+          const found = this.estados.find(e => e.id === params.value);
+          return found ? found.nom_agee : '';
         },
-
+        valueGetter: (params) => {
+          // Devuelve el ID real, para mantener consistencia interna
+          return params.data?.idEstado ?? null;
+        },
         valueSetter: (params) => {
-          const selectedName = params.newValue;
+          const selectedName = (params.newValue || '').trim();
           const estado = this.estados.find(e => e.nom_agee === selectedName);
           if (estado) {
-            params.data[params.colDef.field] = estado.id;
+            params.data.idEstado = estado.id;
             return true;
           }
           return false;
         }
-
       },
       {
         field: 'address',
