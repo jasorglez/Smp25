@@ -54,6 +54,7 @@ export class EmployeesxSavingsComponent {
   masterNewlyAddedRows: string[] = [];
   detailedNewlyAddedRows: string[] = [];
   private selectedLoanIdBeforeRefresh: number;
+  modal:boolean = false;
 
   ngOnInit() {}
 
@@ -62,6 +63,11 @@ export class EmployeesxSavingsComponent {
       this.idEmployee = this.signalsService.getIdEmployee()();
       this.userRoot = this.signalsService.getUserRoot()();
       this.loadData();
+      if (this.signalsService.getInitSaving()() == true) {
+        this.modal = true; // Abrir modal si la señal está activa
+        this.addRow('Master'); // Actualizar datos cuando se recibe señal
+        this.signalsService.resetInitSaving(); // Resetear la señal después de actualizar
+      }
       if(this.userRoot == 1){
         return this.authorizedPass = true;
       }
@@ -342,7 +348,7 @@ export class EmployeesxSavingsComponent {
       const newRow = {
         id: tempId,
         idEmpleado: this.idEmployee,
-        date: timeData.dateObj,
+        date: this.modal? this.signalsService.getFechaNomina().fechaFin : timeData.dateObj,
         type: 'AHORRO',
         monto: 0,
         payments: 0,
@@ -362,7 +368,7 @@ export class EmployeesxSavingsComponent {
             colKey: 'monto',
           });
         }
-      });
+      }, 300);
     } else if (type === 'Detailed') {
       const newRow = {
         id: tempId,
