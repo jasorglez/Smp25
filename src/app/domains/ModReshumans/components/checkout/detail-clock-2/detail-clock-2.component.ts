@@ -977,7 +977,7 @@ export default class DetailClock2Component implements OnInit {
               modifiedCheckTime: '',
               holiday: true,
               type: type,
-              valid: true,
+              valid: false,
               minuteDiscount: 0,
               minuteDiscountBackup: null,
               edited: true,

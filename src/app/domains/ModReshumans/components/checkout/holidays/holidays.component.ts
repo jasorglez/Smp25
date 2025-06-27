@@ -179,7 +179,7 @@ export default class  HolidaysComponent {
               minuteDiscount: 0,
               holiday: true,
               minuteDiscountBackup: null,
-              valid: true
+              valid: false
             };
 
             const dataIn = {
