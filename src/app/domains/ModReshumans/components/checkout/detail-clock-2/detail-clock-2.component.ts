@@ -318,62 +318,68 @@ export default class DetailClock2Component implements OnInit {
       },
 
       {
-  headerName: 'Horas Laboradas',
-  field: 'hoursWorked',
-  editable: false,
-  width: 200,
-  cellRenderer: (params) => {
-    if (params.node.group) {
-      const groupData = params.node.allLeafChildren;
-      let totalHours = 0;
-      let totalDiscountHours = 0;
-      let lastInTime = null;
+        headerName: 'Horas Laboradas',
+        field: 'hoursWorked',
+        editable: false,
+        width: 200,
+        cellRenderer: (params) => {
+  if (params.node.group) {
+    const groupData = params.node.allLeafChildren;
+    let totalHours = 0;
+    let totalDiscountHours = 0;
+    let lastInTime = null;
 
-      const validRecords = [...groupData]
-        .filter(node =>
-          node.data.valid === true &&
-          (node.data.realHourBySystem || node.data.checkTime)
-        )
-        .sort((a, b) => {
-          const timeA = a.data.realHourBySystem ?? a.data.checkTime;
-          const timeB = b.data.realHourBySystem ?? b.data.checkTime;
-          return timeA.localeCompare(timeB);
-        });
+    const validRecords = [...groupData]
+      .filter(node =>
+        (node.data.realHourBySystem || node.data.checkTime)
+      )
+      .sort((a, b) => {
+        const timeA = a.data.realHourBySystem ?? a.data.checkTime;
+        const timeB = b.data.realHourBySystem ?? b.data.checkTime;
+        return timeA.localeCompare(timeB);
+      });
 
-      for (const node of validRecords) {
-        const record = node.data;
-        const hora = record.realHourBySystem ?? record.checkTime;
+    for (const node of validRecords) {
+      const record = node.data;
 
-        if (record.type === 'IN') {
-          lastInTime = hora;
-        } else if (record.type === 'OUT' && lastInTime) {
-          totalHours += this.calculateTimeDifference(lastInTime, hora);
-          lastInTime = null;
-        }
+      // ⛔️ Excluir registros inválidos y no festivos
+      if (record.valid !== true && record.holiday !== true) continue;
+
+      const hora = record.realHourBySystem ?? record.checkTime;
+
+      if (record.type === 'IN') {
+        lastInTime = hora;
+      } else if (record.type === 'OUT' && lastInTime) {
+        totalHours += this.calculateTimeDifference(lastInTime, hora);
+        lastInTime = null;
       }
-
-      const discountMinutes = validRecords.reduce((sum, node) => {
-        const record = node.data;
-        if (record.minuteDiscount !== null &&
-            record.minuteDiscount !== undefined &&
-            !isNaN(record.minuteDiscount)) {
-          return sum + Number(record.minuteDiscount);
-        }
-        return sum;
-      }, 0);
-
-      totalDiscountHours = discountMinutes / 60;
-      const netHours = totalHours - totalDiscountHours;
-
-      return this.formatHours(netHours);
     }
-    return null;
-  },
-  hide: false,
-  valueGetter: () => null,
-  aggFunc: 'sum',
+
+    const discountMinutes = validRecords.reduce((sum, node) => {
+      const record = node.data;
+      if (
+        (record.valid === true || record.holiday === true) &&
+        record.minuteDiscount !== null &&
+        record.minuteDiscount !== undefined &&
+        !isNaN(record.minuteDiscount)
+      ) {
+        return sum + Number(record.minuteDiscount);
+      }
+      return sum;
+    }, 0);
+
+    totalDiscountHours = discountMinutes / 60;
+    const netHours = totalHours - totalDiscountHours;
+
+    return this.formatHours(netHours);
+  }
+  return null;
 },
 
+        hide: false,
+        valueGetter: () => null,
+        aggFunc: 'sum',
+      },
       {
         headerName: 'Retardos',
         field: 'delays',
