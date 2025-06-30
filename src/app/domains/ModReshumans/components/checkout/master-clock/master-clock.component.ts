@@ -203,7 +203,8 @@ export default class MasterClockComponent implements OnInit {
         headerName: 'Nombre sucursal',
         editable: false,
         hide: true,//this.idBranch >= 0, // Ocultar si no es la sucursal principal
-        rowGroup: this.idBranch <= 0
+        rowGroup: this.idBranch <= 0,
+        showRowGroup: 'nameBranch'
       },
       {
         field: 'periodStart',

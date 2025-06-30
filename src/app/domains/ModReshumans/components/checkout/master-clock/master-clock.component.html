@@ -19,6 +19,7 @@
       [ngStyle]="{'height': gridHeight}"
       class="ag-theme-quartz small-text-ag-grid" 
         [rowData]="rowData"
+        [autoGroupColumnDef]="{ headerName: 'Sucursales' }"
         [columnDefs]="colMaster" 
         (selectionChanged)="onSelectionChanged($event)" 
         [gridOptions]="gridOptions"
