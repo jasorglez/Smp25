@@ -122,7 +122,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         await this.obtenerDatos(); // Actualizar datos cuando se recibe señal
         this.signalsService.resetRefreshEmployees(); // Resetear la señal después de actualizar
       }
-    });
+    }, { allowSignalWrites: true });
 
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
