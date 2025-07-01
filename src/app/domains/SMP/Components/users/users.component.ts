@@ -337,6 +337,7 @@ constructor() {
             values: this.departamentos ? this.departamentos.map((item) => item.id) : []
           };
         },
+        // Asignacion de permisos por usuario es en roles
         valueFormatter: (params) => {
           // Handle potential null values and properly format the displayed value
           if (!params.value) return '';

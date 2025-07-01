@@ -215,9 +215,22 @@ export class RawMaterialsComponent {
         hide: false
       },
       {
+        field: 'articuloDetalle',
+        headerName: 'Materia Padre',
+        editable: false,
+        hide: false,
+        rowGroup: true
+      },
+      {
         field: 'idMaterial',
         headerName: 'Materia Prima',
         editable: true,
+        hide: false
+      },
+      {
+        field: 'articuloMateriaPrima',
+        headerName: 'Materia Prima Nombre',
+        editable: false,
         hide: false
       },
       {
@@ -276,6 +289,10 @@ export class RawMaterialsComponent {
         },
         (error) => console.error('Error fetching data:', error)
       );
+  }
+
+  obtenerMateriales(id: number, type: string) {
+    this.materialsService
   }
 
  
