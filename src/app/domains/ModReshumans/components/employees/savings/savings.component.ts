@@ -73,7 +73,7 @@ export class EmployeesxSavingsComponent {
       }
       return this.authorizedPass = false;
       
-    });
+    }, { allowSignalWrites: true });
   }
 
   public maestroGridOptions: any = {
@@ -368,7 +368,7 @@ export class EmployeesxSavingsComponent {
             colKey: 'monto',
           });
         }
-      }, 300);
+      }, 500);
     } else if (type === 'Detailed') {
       const newRow = {
         id: tempId,
@@ -448,11 +448,15 @@ export class EmployeesxSavingsComponent {
       const cleanedData = this.cleanDataForServer(row);
       return this.employeesxloansService.updateLoan(row.id, cleanedData);
     });
-
+    
     try {
       const responses = await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
+
+      if(this.modal){
+        alert(responses[0].id);
+      }
 
       alerts.basicAlert(
         'Datos actualizados',
