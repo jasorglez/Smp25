@@ -178,6 +178,7 @@ constructor() {
   // Se modifica el getDepartmentName para que devuelva el nombre del departamento
   getDepartmentName(idDepartament: number): string {
     const department = this.departamentos.find(dept => dept.id === idDepartament);
+    console.log('Department:', department);
     return department ? department.description : 'Departamento no encontrado';
   }
 
@@ -337,6 +338,7 @@ constructor() {
             values: this.departamentos ? this.departamentos.map((item) => item.id) : []
           };
         },
+        // Asignacion de permisos por usuario es en roles
         valueFormatter: (params) => {
           // Handle potential null values and properly format the displayed value
           if (!params.value) return '';
