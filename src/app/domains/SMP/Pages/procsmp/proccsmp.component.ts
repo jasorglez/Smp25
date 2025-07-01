@@ -16,7 +16,7 @@ import { environment } from '@env/environment';
 export class ProccsmpComponent {
 
   private signalsService = inject(SignalsService);
-  private authService = inject(AuthService);
+  authService = inject(AuthService);
 
   idRoot: number;
   isRoot: boolean = false;

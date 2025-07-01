@@ -9,24 +9,24 @@
                </li> -->
 
                   
-               <li class="nav-item">
+               <li class="nav-item" *ngIf="authService.hasDetailedPermission('hr', 'employees')">
                   <a class="nav-link green-tab" routerLink="employees" routerLinkActive="active"><i
                         class="bi bi-list-ul"></i> {{'employees' | translate}}</a>
                </li>
-               <li class="nav-item ">
+               <li class="nav-item" *ngIf="authService.hasDetailedPermission('hr', 'payroll')">
                   <a class="nav-link green-tab" routerLink="payroll" routerLinkActive="active"><i class="bi bi-cash-coin"></i>
                      Nómina</a>
                </li>
-               <li class="nav-item ">
+               <li class="nav-item" *ngIf="authService.hasDetailedPermission('hr', 'clock')">
                   <a class="nav-link green-tab" routerLink="clock" routerLinkActive="active"><i class="bi bi-stopwatch"></i>
                      Checador</a>
                </li>
                
-               <li class="nav-item">
+               <li class="nav-item" *ngIf="authService.hasDetailedPermission('hr', 'catalogs')">
                   <a class="nav-link green-tab" routerLink="catalogs" routerLinkActive="active"><i
                       class="bi bi-list-ul"></i> {{'catalogs' | translate}}</a>
                </li>
-               <li class="nav-item ">
+               <li class="nav-item" *ngIf="authService.hasDetailedPermission('hr', 'setup')">
                   <a class="nav-link green-tab" routerLink="setup" routerLinkActive="active"><i class="bi bi-gear"></i>
                      Configuración</a>
                </li>
