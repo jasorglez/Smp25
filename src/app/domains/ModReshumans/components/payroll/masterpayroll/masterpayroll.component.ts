@@ -23,7 +23,7 @@ import {
 } from 'ag-grid-enterprise';
 
 import { AdministrationService } from 'app/services/administration.service';
-import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { catchError, concat, EMPTY, lastValueFrom, toArray, tap } from 'rxjs';
 import { ModalService } from 'app/services/modal.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { ImageHandlerService } from 'app/services/image-handler.service';
@@ -394,7 +394,7 @@ export class MasterPayrollComponent implements OnInit {
         headerName: 'Cerrada',
         field: 'closed',
         width: 130,
-        editable: true
+        editable: (params) => !params.data.closed 
       }
     ];
   }
@@ -544,52 +544,85 @@ export class MasterPayrollComponent implements OnInit {
   }
 
   async saveChanges() {
-    const isValid = this.rowData.every(
-      (item) => item.startDate && item.endDate && item.idBranch
+  const isValid = this.rowData.every(
+    (item) => item.startDate && item.endDate && item.idBranch && item.startDate <= item.endDate
+  );
+
+  if (!isValid) {
+    alerts.basicAlert(
+      'Añadir entrada',
+      'Debe llenar correctamente las fechas de inicio y fin de la semana laborada antes de guardar.',
+      'error'
     );
-    // llamar al servicio de verificacion de existencia de nomina digital
-
-    if (!isValid || this.rowData.startDate <= this.rowData.endDate) {
-      alerts.basicAlert(
-        'Añadir entrada',
-        'Debe llenar correctamente las fechas de inicio y fin de la semana laborada antes de guardar.',
-        'error'
-      );
-      return;
-    }
-
-    const newRows = this.rowData.filter((row) => row.__isNew);
-    const modifiedRows = this.rowData.filter(
-      (row) => row.__modified && !row.__isNew
-    );
-
-    const addObservables = newRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      this.administrationService.addNormalPayroll(cleanedData).subscribe({
-        next: (response) => {
-          alerts.basicAlert('Datos guardados', response.message, 'success');
-          this.notSavedChanges = false;
-          this.aggregatingRecord = false;
-          this.obtenerDatos(); // Refrescar los datos
-          this.resetGridSize();
-        },
-        error: (error) => {
-          const errorMessage =
-            error?.error ||
-            'Ocurrió un error al guardar los datos. Intente nuevamente.';
-          alerts.basicAlert(
-            'Error',
-            error.error.message || errorMessage,
-            'error'
-          );
-          this.notSavedChanges = false;
-          this.aggregatingRecord = false;
-          this.obtenerDatos(); // Refrescar los datos
-          this.resetGridSize();
-        },
-      });
-    });
+    return;
   }
+
+  const newRows = this.rowData.filter((row) => row.__isNew);
+  const modifiedRows = this.rowData.filter(
+    (row) => row.__modified && !row.__isNew
+  );
+
+  const addObservables = newRows.map((row) => {
+    const cleanedData = this.cleanDataForServer(row);
+    return this.administrationService.addNormalPayroll(cleanedData).pipe(
+      tap((response) => {
+        alerts.basicAlert('Datos guardados', response.message, 'success');
+        this.notSavedChanges = false;
+        this.aggregatingRecord = false;
+        this.obtenerDatos();
+        this.resetGridSize();
+      }),
+      catchError((error) => {
+        const errorMessage =
+          error?.error?.message ||
+          'Ocurrió un error al guardar los datos. Intente nuevamente.';
+        alerts.basicAlert('Error', errorMessage, 'error');
+        this.notSavedChanges = false;
+        this.aggregatingRecord = false;
+        this.obtenerDatos();
+        this.resetGridSize();
+        return EMPTY;
+      })
+    );
+  });
+
+  const updateObservables = modifiedRows.map((row) => {
+    return this.administrationService.updateNormalPayroll(row.id).pipe(
+      catchError((error) => {
+        alerts.basicAlert(
+          'Error',
+          error?.error?.message || 'Error al actualizar los datos.',
+          'error'
+        );
+        
+        return EMPTY;
+      })
+    );
+  });
+
+  try {
+    const responses = await lastValueFrom(
+      concat(...addObservables, ...updateObservables).pipe(toArray())
+    );
+    alerts.basicAlert(
+      'Datos actualizados',
+      'Se han actualizado los datos correctamente.',
+      'success'
+    );
+    this.notSavedChanges = false;
+    this.aggregatingRecord = false;
+    this.obtenerDatos();
+    this.resetGridSize();
+  } catch (error) {
+    console.error(error);
+    alerts.basicAlert(
+      'Error',
+      'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
+      'error'
+    );
+  }
+}
+
 
   onSelectionChanged(event: any) {
     console.log(event);
@@ -740,6 +773,7 @@ export class MasterPayrollComponent implements OnInit {
   // Método para refrescar los datos
   refreshData(): void {
     this.aggregatingRecord = false;
+    this.notSavedChanges = false;
     this.obtenerDatos();
     this.resetGridSize();
   }
