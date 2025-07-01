@@ -53,7 +53,7 @@ export class MasterPayrollComponent implements OnInit {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      if (this.signalsService.getRefreshNomina()() == true) {
+      if (this.signalsService.getRefreshNomina() == true) {
         this.obtenerDatos(); // Actualizar datos cuando se recibe señal
         this.signalsService.resetRefreshNomina(); // Resetear la señal después de actualizar
       }
@@ -388,6 +388,12 @@ export class MasterPayrollComponent implements OnInit {
         },
         onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
       },
+      /*{
+        headerName: 'Cerrada',
+        field: 'closed',
+        width: 130,
+        editable: true
+      }*/
     ];
   }
 
@@ -526,6 +532,7 @@ export class MasterPayrollComponent implements OnInit {
 
       startDate: '',
       endDate: '',
+      //closed : false,
       active: true,
       __isNew: true,
     };

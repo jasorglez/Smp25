@@ -715,7 +715,7 @@ getMasterUpdateTrigger() {
     private refreshNomina = signal<boolean>(false);
 
     // Método para obtener el signal
-    getRefreshNomina() {
+    get getRefreshNomina() {
       return this.refreshNomina;
     }
     // Método para actualizar el signal

@@ -244,7 +244,7 @@ obtenerEmpleado(): Promise<any> {
         rowIndex: firstRowIndex,
         colKey: 'incidenceDate'
       });
-    }, 0);
+    }, 200);
   }
   async saveMasterChanges() {
     this.signalsService.triggerRefreshNomina();

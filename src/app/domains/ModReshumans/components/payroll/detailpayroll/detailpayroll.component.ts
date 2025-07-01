@@ -167,7 +167,7 @@ export class DetailpayrollComponent implements OnInit{
   constructor(private fb: FormBuilder) {
     effect(() => {
       this.idPayroll = this.signalsService.getNormalPayrollId()();
-      if (this.signalsService.getRefreshNomina()() == true) {
+      if (this.signalsService.getRefreshNomina() == true) {
         this.loadData(); // Actualizar datos cuando se recibe señal
         this.signalsService.resetRefreshNomina(); // Resetear la señal después de actualizar
       }
