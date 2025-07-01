@@ -178,6 +178,7 @@ constructor() {
   // Se modifica el getDepartmentName para que devuelva el nombre del departamento
   getDepartmentName(idDepartament: number): string {
     const department = this.departamentos.find(dept => dept.id === idDepartament);
+    console.log('Department:', department);
     return department ? department.description : 'Departamento no encontrado';
   }
 

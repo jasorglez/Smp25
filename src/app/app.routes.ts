@@ -368,8 +368,14 @@ export const routes: Routes = [
               import(
                 './domains/SMP/Components/users/users-menu.component'
               ).then((u) => u.UsersMenuComponent),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'setup', detailed: 'users' } },
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: {
+              permissions: { master: 'setup', detailed: 'users' },
+              tracking: {
+                logMessage: 'Click en Pestaña Configuración Módulo Usuarios',
+                category: 'Setup'
+              }
+            }
             // canDeactivate: [UnsavedChangesGuard],
           },
           {
