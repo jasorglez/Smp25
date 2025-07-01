@@ -47,16 +47,16 @@ export const routes: Routes = [
             children: [
               { path: '', redirectTo: 'materialsMaster', pathMatch: 'full' },
               ...SharedModule.getRoutes(),
- /*  
-              {
-             path: 'materials',
-                loadComponent: () =>
-                  import(
-                    './domains/Warehouse/components/materials/materials.component'
-                  ).then((s) => s.MaterialsComponent),
-                data: { type: 'PRODSALES' }, // Paso el Parámetro para materials
-                canDeactivate: [UnsavedChangesGuard],
-              },*/
+              /*  
+                           {
+                          path: 'materials',
+                             loadComponent: () =>
+                               import(
+                                 './domains/Warehouse/components/materials/materials.component'
+                               ).then((s) => s.MaterialsComponent),
+                             data: { type: 'PRODSALES' }, // Paso el Parámetro para materials
+                             canDeactivate: [UnsavedChangesGuard],
+                           },*/
               {
                 path: 'materialsMaster',
                 loadComponent: () =>
@@ -385,6 +385,8 @@ export const routes: Routes = [
               import('./domains/SMP/Components/roles/roles.component').then(
                 (r) => r.RolesComponent
               ),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'setup', detailed: 'roles' } },
           },
           {
             path: 'branches',
@@ -402,9 +404,9 @@ export const routes: Routes = [
               import('./domains/SMP/Components/store/store.component').then(
                 (u) => u.StoreComponent
               ),
-            //canActivate: [MasterPermissionsGuard],
-            //data: { permissions: { master: 'setup', detailed: 'stores' } }
-            canDeactivate: [UnsavedChangesGuard],
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'setup', detailed: 'stores' } },
+            //canDeactivate: [UnsavedChangesGuard],
           },
           {
             path: 'cashRegisters',
@@ -412,9 +414,9 @@ export const routes: Routes = [
               import(
                 './domains/SMP/Components/cashRegisters/cashRegisters.component'
               ).then((u) => u.CashRegistersComponent),
-            //canActivate: [MasterPermissionsGuard],
-            //data: { permissions: { master: 'setup', detailed: 'cashRegisters' } }
-            canDeactivate: [UnsavedChangesGuard],
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'setup', detailed: 'cash-registers' } }
+            //canDeactivate: [UnsavedChangesGuard], 
           },
           {
             path: 'logs',
@@ -422,8 +424,8 @@ export const routes: Routes = [
               import('./domains/SMP/Components/kardex/kardex.component').then(
                 (k) => k.KardexComponent
               ),
-            //   canActivate: [MasterPermissionsGuard],
-            //   data: { permissions: { master: 'setup', detailed: 'logs' } }
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'setup', detailed: 'log' } }
           },
           {
             path: 'catalog',
@@ -452,43 +454,43 @@ export const routes: Routes = [
               import(
                 './domains/ModAdmon/components/dashboardmodadmon/dashboarhost/dashboarhost.component'
               ).then((s) => s.DashboarhostComponent),
-              canActivate: [TrackingGuard],
-                data: {
-                  tracking: {
-                    logMessage: 'Click en Pestaña Dashboard Modulo Administracion',
-                    category: 'Administration'
-                  }
-                }
+            canActivate: [TrackingGuard],
+            data: {
+              tracking: {
+                logMessage: 'Click en Pestaña Dashboard Modulo Administracion',
+                category: 'Administration'
+              }
+            }
           },
 
           {
-                path: 'setup',
-                loadComponent: () =>
-                  import(
+            path: 'setup',
+            loadComponent: () =>
+              import(
                 './domains/ModAdmon/components/setup/setup.component'
               ).then((s) => s.SetupAdmonComponent),
-              canActivate: [TrackingGuard],
-              data: {
-                tracking: {
-                  logMessage: 'Click en Pestaña Setup Modulo Administracion',
-                  category: 'Administration'
-                }
+            canActivate: [TrackingGuard],
+            data: {
+              tracking: {
+                logMessage: 'Click en Pestaña Setup Modulo Administracion',
+                category: 'Administration'
               }
+            }
           },
-          
+
           {
             path: 'catalogs',
             loadComponent: () =>
               import('./domains/SMP/Components/catalogs/catalogs.component')
                 .then((s) => s.CatalogsComponent),
-                canActivate: [TrackingGuard],
-              data: {
-                tracking: {
-                  logMessage: 'Click en Pestaña CATALOGOS Modulo Administracion',
-                  category: 'Administration'
-                }
-              },
-               canDeactivate: [UnsavedChangesGuard],
+            canActivate: [TrackingGuard],
+            data: {
+              tracking: {
+                logMessage: 'Click en Pestaña CATALOGOS Modulo Administracion',
+                category: 'Administration'
+              }
+            },
+            canDeactivate: [UnsavedChangesGuard],
             children: [
               {
                 path: ':section',
@@ -496,38 +498,38 @@ export const routes: Routes = [
               },
             ],
           },
-          
+
           {
             path: 'income',
             loadComponent: () =>
               import(
                 './domains/ModAdmon/components/income/income.component'
               ).then((i) => i.IncomeComponent),
-                 canActivate: [TrackingGuard],
-              data: {
-                tracking: {
-                  logMessage: 'Click en Pestaña Ingreso Administracion',
-                  category: 'Administration'
-                }
-              },
-              
-              canDeactivate: [UnsavedChangesGuard]
+            canActivate: [TrackingGuard],
+            data: {
+              tracking: {
+                logMessage: 'Click en Pestaña Ingreso Administracion',
+                category: 'Administration'
+              }
+            },
+
+            canDeactivate: [UnsavedChangesGuard]
           },
-          
+
           {
             path: 'expend',
             loadComponent: () =>
               import(
                 './domains/ModAdmon/components/expenditure/expenditure.component'
               ).then((e) => e.ExpenditureComponent),
-              canActivate: [TrackingGuard],
-              data: {
-                tracking: {
-                  logMessage: 'Click en Pestaña Egreso Administracion',
-                  category: 'Administration'
-                }
-              },
-              canDeactivate: [UnsavedChangesGuard]
+            canActivate: [TrackingGuard],
+            data: {
+              tracking: {
+                logMessage: 'Click en Pestaña Egreso Administracion',
+                category: 'Administration'
+              }
+            },
+            canDeactivate: [UnsavedChangesGuard]
           },
 
           {
@@ -536,14 +538,14 @@ export const routes: Routes = [
               import(
                 './domains/ModAdmon/components/masterExpenses/masterExpenses.component'
               ).then((e) => e.MasterExpensesComponent),
-                canActivate: [TrackingGuard],
-              data: {
-                tracking: {
-                  logMessage: 'Click en Pestaña Master Egreso Administracion',
-                  category: 'Administration'
-                }
-              },
-              canDeactivate: [UnsavedChangesGuard]
+            canActivate: [TrackingGuard],
+            data: {
+              tracking: {
+                logMessage: 'Click en Pestaña Master Egreso Administracion',
+                category: 'Administration'
+              }
+            },
+            canDeactivate: [UnsavedChangesGuard]
           },
 
           {
@@ -559,13 +561,13 @@ export const routes: Routes = [
             loadComponent: () =>
               import('./domains/ModAdmon/pages/pages01/page01.component').then(
                 (p) => p.Page01Component),
-                     canActivate: [TrackingGuard],
-              data: {
-                tracking: {
-                  logMessage: 'Click en Pestaña Radio Influencia Administracion',
-                  category: 'Administration'
-                }
-              },
+            canActivate: [TrackingGuard],
+            data: {
+              tracking: {
+                logMessage: 'Click en Pestaña Radio Influencia Administracion',
+                category: 'Administration'
+              }
+            },
             children: [
               { path: '', redirectTo: 'banks', pathMatch: 'full' },
               ...SharedModule.getRoutes(),
@@ -576,13 +578,13 @@ export const routes: Routes = [
                   import(
                     './domains/ModAdmon/components/banks/banks.component'
                   ).then((b) => b.BanksComponent),
-                       canActivate: [TrackingGuard],
-              data: {
-                tracking: {
-                  logMessage: 'Click en Pestaña Bancos Administracion',
-                  category: 'Administration'
-                }
-              },
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Pestaña Bancos Administracion',
+                    category: 'Administration'
+                  }
+                },
                 canDeactivate: [UnsavedChangesGuard],
               },
               {
@@ -591,13 +593,13 @@ export const routes: Routes = [
                   import(
                     './domains/ModAdmon/components/accountbanks/accountbanks.component'
                   ).then((a) => a.AccountbanksComponent),
-                       canActivate: [TrackingGuard],
-              data: {
-                tracking: {
-                  logMessage: 'Click en Pestaña Master Cuentas Bancos Administracion',
-                  category: 'Administration'
-                }
-              },
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Pestaña Master Cuentas Bancos Administracion',
+                    category: 'Administration'
+                  }
+                },
               },
             ],
           },
@@ -606,13 +608,13 @@ export const routes: Routes = [
             loadComponent: () =>
               import('./domains/ModAdmon/pages/pages02/pages02.component').then(
                 (p) => p.Pages02Component),
-                     canActivate: [TrackingGuard],
-              data: {
-                tracking: {
-                  logMessage: 'Click en Pestaña Clientes Administracion',
-                  category: 'Administration'
-                }
-              },
+            canActivate: [TrackingGuard],
+            data: {
+              tracking: {
+                logMessage: 'Click en Pestaña Clientes Administracion',
+                category: 'Administration'
+              }
+            },
             children: [
               { path: '', redirectTo: 'customer', pathMatch: 'full' },
               ...SharedModule.getRoutes(),
@@ -623,44 +625,44 @@ export const routes: Routes = [
                   import(
                     './domains/ModAdmon/components/customers/customers.component'
                   ).then((e) => e.CustomersComponent),
-                  
+
                 data: { type: 'CUSTOMERS' }, // Parámetro para clientes
                 canDeactivate: [UnsavedChangesGuard],
               },
-              
+
               {
                 path: 'historical',
                 loadComponent: () =>
                   import(
                     './domains/ModAdmon/components/historical/historical.component'
                   ).then((e) => e.HistoricalComponent),
-                       canActivate: [TrackingGuard],
-                    data: {
-                      tracking: {
-                        logMessage: 'Click en Pestaña Historicos Administracion',
-                        category: 'Administration'
-                      }
-                    },
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Pestaña Historicos Administracion',
+                    category: 'Administration'
+                  }
+                },
               },
-              
+
               {
                 path: 'maps',
                 loadComponent: () =>
                   import(
                     './domains/ModAdmon/components/radiusinfluence/radiusinfluence.component'
                   ).then((r) => r.RadiusinfluenceComponent),
-                       canActivate: [TrackingGuard],
-                    data: {
-                      tracking: {
-                        logMessage: 'Click en Pestaña Mapas Administracion',
-                        category: 'Administration'
-                      }
-                    },
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Pestaña Mapas Administracion',
+                    category: 'Administration'
+                  }
+                },
               },
 
             ],
           },
-          
+
         ],
       },
 
@@ -844,7 +846,7 @@ export const routes: Routes = [
               import(
                 './domains/ModSales/components/productFinished/productFinished.component'
               ).then((p) => p.ProductFinishedComponent),
-               data: { type: 'PRODSALES' }, // Paso el Parámetro para materials
+            data: { type: 'PRODSALES' }, // Paso el Parámetro para materials
           },
         ],
       },
@@ -865,6 +867,8 @@ export const routes: Routes = [
               import(
                 './domains/ModReshumans/components/employees/employees.component'
               ).then((s) => s.EmployeesComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'hr', detailed: 'employees' } },
             children: [
               { path: '', redirectTo: 'employees-table', pathMatch: 'full' },
 
@@ -907,13 +911,15 @@ export const routes: Routes = [
               },*/
             ],
           },
-          
+
           {
             path: 'payroll',
             loadComponent: () =>
               import(
                 './domains/ModReshumans/components/payroll/payroll.component'
               ).then((p) => p.PayrollComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'hr', detailed: 'payroll' } },
             children: [
               { path: '', redirectTo: 'master-payroll', pathMatch: 'full' },
               {
@@ -939,7 +945,7 @@ export const routes: Routes = [
                   ).then((s) => s.HistoryPayrollComponent),
                 canDeactivate: [UnsavedChangesGuard],
               },
-              
+
               {
                 path: 'setup',
                 loadComponent: () =>
@@ -947,15 +953,17 @@ export const routes: Routes = [
                     './domains/ModReshumans/components/payroll/setup/setup.component'
                   ).then((s) => s.SetupEmployeesComponent),
               },
-              
+
             ],
           },
           {
             path: 'setup',
             loadComponent: () => import('./domains/ModReshumans/components/setup/setup.component').then(s => s.SetupComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'hr', detailed: 'setup' } },
             children: [
               { path: '', redirectTo: 'payroll', pathMatch: 'full' },
-              
+
               {
                 path: 'payroll',
                 loadComponent: () => import('./domains/ModReshumans/components/setup/payroll/payroll.component').then(p => p.PayrollComponent)
@@ -973,6 +981,8 @@ export const routes: Routes = [
           {
             path: 'clock',
             loadComponent: () => import('./domains/ModReshumans/components/checkout/checkout.component').then(s => s.CheckoutComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'hr', detailed: 'clock' } },
             children: [
               { path: '', redirectTo: 'master-clock', pathMatch: 'full' },
               {
@@ -985,11 +995,11 @@ export const routes: Routes = [
               },
               {
                 path: 'detail-clock',
-                loadComponent: () =>import('./domains/ModReshumans/components/checkout/detail-clock/detail-clock.component'),
+                loadComponent: () => import('./domains/ModReshumans/components/checkout/detail-clock/detail-clock.component'),
               },
               {
                 path: 'master-clock',
-                loadComponent: () =>import('./domains/ModReshumans/components/checkout/master-clock/master-clock.component'),
+                loadComponent: () => import('./domains/ModReshumans/components/checkout/master-clock/master-clock.component'),
               },
               {
                 path: 'detail-clock-2',
@@ -1007,6 +1017,8 @@ export const routes: Routes = [
             loadComponent: () =>
               import('./domains/SMP/Components/catalogs/catalogs.component')
                 .then((s) => s.CatalogsComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'hr', detailed: 'catalogs' } },
             canDeactivate: [UnsavedChangesGuard],
             children: [
               {
