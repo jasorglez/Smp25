@@ -130,6 +130,13 @@ export class AdministrationService {
       })
     );
   }
+  updateNormalPayroll(idNormal: number){
+    return this.http.put(`${environment.urlAdministration}/NormalPayrolls/NormalPayrollClosing/${idNormal}`, {}, { headers: this.trackingService.getHeaders() })
+  }
+
+  updateSavingNormalPayroll(idNormalEmployee: number, monto: number): Observable<any> {
+    return this.http.put(`${environment.urlAdministration}/NormalPayrolls/UpdateSavingEmployeePayroll/${idNormalEmployee}/${monto}`, {}, { headers: this.trackingService.getHeaders() })
+  }
 
   getTypecustomers(idRoot: number){
     return this.http.get(`${environment.urlAdministration}/Customer/GetTypeCustomer?idCompany=${idRoot}`, { headers: this.trackingService.getHeaders() });

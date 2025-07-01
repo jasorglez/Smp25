@@ -234,6 +234,7 @@ export class DetailpayrollComponent implements OnInit{
     if(colId =="savings" ){//
         this.typeModal = colId;
         const selectedRowData = event.data; 
+        this.signalsService.setIdEmployeePayroll(selectedRowData.id);
         this.signalsService.setIdEmployee(selectedRowData.id_employee);
         this.signalsService.setInitSaving();
         const modal = new bootstrap.Modal(document.getElementById('savings')!);

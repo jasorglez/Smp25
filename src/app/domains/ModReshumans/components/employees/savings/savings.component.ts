@@ -13,6 +13,7 @@ import { EmployeesxloansService } from 'app/services/employeesxloans.service';
 import { SignalsService } from 'app/services/signals.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { TimeService } from 'app/services/time.service';
+import { AdministrationService } from 'app/services/administration.service';
 
 @Component({
   selector: 'app-employeesxsavings',
@@ -22,6 +23,7 @@ import { TimeService } from 'app/services/time.service';
   styleUrl: './savings.component.scss',
 })
 export class EmployeesxSavingsComponent {
+  private administrationService = inject(AdministrationService);
   private employeesxloansService = inject(EmployeesxloansService);
   private signalsService = inject(SignalsService);
   private timeService = inject(TimeService);
@@ -455,7 +457,28 @@ export class EmployeesxSavingsComponent {
       );
 
       if(this.modal){
-        alert(responses[0].id);
+        const idEmployeePayroll = this.signalsService.getIdEmployeePayroll()();
+        this.administrationService.updateSavingNormalPayroll(
+          idEmployeePayroll,
+          responses[0].monto
+        ).subscribe(
+          (res) => {
+            console.log('Ahorro actualizado correctamente:', res);
+            alerts.basicAlert(
+              'Ahorro actualizado',
+              'El ahorro se ha actualizado correctamente.',
+              'success'
+            );
+          },
+          (error) => {
+            console.error('Error al actualizar el ahorro:', error);
+            alerts.basicAlert(
+              'Error',
+              error?.error?.message || 'No se pudo actualizar el ahorro.',
+              'error'
+            );
+          }
+        );
       }
 
       alerts.basicAlert(
