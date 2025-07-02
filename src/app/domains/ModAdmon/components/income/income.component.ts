@@ -96,13 +96,28 @@ export class IncomeComponent {
   private _idAccount: number; // Variable de respaldo para el setter
 
   // Añadir setter para idAccount con lógica de actualización
+  
   set idAccount(value: number) {
     if (this._idAccount !== value) {
       this._idAccount = value;
+    
+     // Agregar log cuando se selecciona una cuenta
+    if (value) {
+      const selectedAccount = this.bankAccounts.find(account => account.id === value);
+      if (selectedAccount) {
+        const accountDetails = `${selectedAccount.nameAccount} - ${selectedAccount.bankName}`;
+        this.trackingService.addLog(
+          this.trackingService.getnameComp(), `Selección de cuenta bancaria: ${accountDetails}`, 'Menu Administracion Ingresos - Selección Cuenta',
+          this.trackingService.getEmail()
+        );
+      }
+    }
+
       this.signalsService.setIdIncomeAndExpense(null);
       this.getIncomes(); // Ejecutar getIncomes cuando cambia el valor
-    }
   }
+}
+
 
   get idAccount(): number {
     return this._idAccount;
@@ -164,6 +179,8 @@ export class IncomeComponent {
   };
 
   async getIncomes() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Ingresos`, 'Menu Administracion Ingresos',
+          this.trackingService.getEmail() );
     this.incomesAndExpensesService.getIncomesAndExpenses(this.root).subscribe({
       next: (incomes) => {
         // Filtrado y manejo de caso sin datos
