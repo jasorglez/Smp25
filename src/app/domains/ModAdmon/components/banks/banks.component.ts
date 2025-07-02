@@ -1,6 +1,8 @@
 import { Component, HostListener, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
+import { TrackingService } from 'app/services/tracking.service';
+
 import {
   CellDoubleClickedEvent,
   ColDef,
@@ -34,6 +36,8 @@ export class BanksComponent implements CanComponentDeactivate {
   constructor() {
     this.obtenerDatos();
   }
+
+    private trackingService = inject(TrackingService);
 
   ngOnInit() {
     // this.obtenerDatos();
@@ -192,6 +196,8 @@ export class BanksComponent implements CanComponentDeactivate {
         // Optional: show user-friendly error message
       },
     });
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Bancos`, 'Menu Administracion BANCOS ',
+          this.trackingService.getEmail() );
   }
 
   onSelectedRow(event: any) {
@@ -295,6 +301,9 @@ export class BanksComponent implements CanComponentDeactivate {
         'Se han actualizado los datos correctamente.',
         'success'
       );
+        this.trackingService.addLog(this.trackingService.getnameComp(), `Agregar Un Banco`, 'Menu Administracion BANCOS ',
+          this.trackingService.getEmail() );
+
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
       this.obtenerDatos(); // Refrescar los datos
@@ -351,6 +360,8 @@ export class BanksComponent implements CanComponentDeactivate {
                 'El Banco Se eliminó correctamente',
                 'success'
               );
+              this.trackingService.addLog(this.trackingService.getnameComp(), `Borrar Registro de un Banco`, 'Menu Administracion BANCOS ',
+               this.trackingService.getEmail() );
               this.obtenerDatos();
               this.notSavedChanges = false;
               this.selectedRowData = null;
@@ -362,6 +373,8 @@ export class BanksComponent implements CanComponentDeactivate {
   revert() {
     this.obtenerDatos();
     this.notSavedChanges = false;
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Cancelacion del Registro`, 'Menu Administracion BANCOS ',
+          this.trackingService.getEmail() );
   }
 
   private cleanDataForServer(data: any): any {

@@ -20,6 +20,7 @@ import { CatalogadmonService } from 'app/services/catalogadmon.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { environment } from '@env/environment';
 import { AuthService } from 'app/services/auth.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-expenditure',
@@ -40,8 +41,9 @@ export class ExpenditureComponent {
   private signalsService            = inject(SignalsService);
   private branchesService           = inject(BranchsService)
   private authService               = inject(AuthService);
-  public isIncomeMode: boolean = false; 
-  
+  public trackingService = inject(TrackingService);
+
+  public isIncomeMode: boolean = false;      
 
   async ngOnInit() {
     
@@ -147,6 +149,17 @@ constructor() {
   set idAccount(value: number) {
     if (this._idAccount !== value) {
       this._idAccount = value;
+
+          // Agregar log cuando se selecciona una cuenta
+    if (value) {
+      const selectedAccount = this.bankAccounts.find(account => account.id === value);
+      if (selectedAccount) {
+        const accountDetails = `${selectedAccount.nameAccount} - ${selectedAccount.bankName}`;
+        this.trackingService.addLog(this.trackingService.getnameComp(), `Selección de cuenta bancaria: ${accountDetails}`, 
+                                    'Menu Administracion Egresos - Selección Cuenta', this.trackingService.getEmail());        
+      }
+    }
+      
       this.signalsService.setIdIncomeAndExpense(null);
       this.getExpenditure(); // Ejecutar getIncomes cuando cambia el valor
     }
@@ -164,6 +177,8 @@ constructor() {
       },
       (error) => console.error('Error fetching data:', error)
     );
+        this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Sucursales`, 'Menu Administracion Egresos ',
+          this.trackingService.getEmail() );
   }
 
   async getBillingManagementInfo() {
@@ -175,6 +190,8 @@ constructor() {
         console.error('Error al obtener la información de gestión de facturación:', error);
       }
     );
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Cuentas Bancarias`, 'Menu Administracion Egresos ',
+          this.trackingService.getEmail() );
   }
 
   private gridApi: GridApi;
@@ -230,6 +247,8 @@ constructor() {
         this.incomes = [];
       }
     });
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Egresos`, 'Menu Administracion Egresos ',
+          this.trackingService.getEmail() );
   }
 
   async getBills() {
