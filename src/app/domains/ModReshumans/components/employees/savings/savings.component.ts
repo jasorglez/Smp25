@@ -67,8 +67,10 @@ export class EmployeesxSavingsComponent {
       this.loadData();
       if (this.signalsService.getInitSaving()() == true) {
         this.modal = true; // Abrir modal si la señal está activa
-        this.addRow('Master'); // Actualizar datos cuando se recibe señal
-        this.signalsService.resetInitSaving(); // Resetear la señal después de actualizar
+        setTimeout(() => {
+        this.addRow('Master'); // Espera a que se renderice el modal y grid
+        this.signalsService.resetInitSaving();
+      }, 300);
       }
       if(this.userRoot == 1){
         return this.authorizedPass = true;

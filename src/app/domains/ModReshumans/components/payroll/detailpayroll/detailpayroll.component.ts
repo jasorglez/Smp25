@@ -48,6 +48,7 @@ export class DetailpayrollComponent implements OnInit{
   idLoan: number = null;
   nameLoan: string = null;
   id: number;
+  closed: boolean = false;
   typeModal: string ='';
   masterNotSavedChanges: boolean = false;
   detailNotSavedChanges: boolean = false;
@@ -108,7 +109,8 @@ export class DetailpayrollComponent implements OnInit{
       field: 'bonus',
       valueFormatter: (params) => {
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
-      }
+      },
+      
     },
      {
       headerName: 'Sueldo Bruto',
@@ -122,11 +124,11 @@ export class DetailpayrollComponent implements OnInit{
     {
       headerName: 'Descuento Real',
       width: 150,
-      editable: true,
+      editable: this.signalsService.getClosedPayroll()(),
       field: 'realDiscount',
       valueFormatter: (params) => {
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
-      }
+      },
     },
     /*{ headerName: 'Descuentos (%)', width: 150, field: 'percentageDiscount' },*/
     {
@@ -231,7 +233,8 @@ export class DetailpayrollComponent implements OnInit{
   }
   async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
      const colId = event.column.getColId();
-    if(colId =="savings" ){//
+     if(this.signalsService.getClosedPayroll()()){
+      if(colId =="savings" ){//
         this.typeModal = colId;
         const selectedRowData = event.data; 
         this.signalsService.setIdEmployeePayroll(selectedRowData.id);
@@ -247,6 +250,9 @@ export class DetailpayrollComponent implements OnInit{
         const modal = new bootstrap.Modal(document.getElementById('bonus')!);
         modal.show();
     }
+
+     }
+    
   }
 
 
