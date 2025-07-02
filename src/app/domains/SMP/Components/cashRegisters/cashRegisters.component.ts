@@ -28,6 +28,7 @@ import { CashRegistersService } from 'app/services/cash-registers.service';
 import { StoresService } from 'app/services/stores.service';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'cashRegistersComponent',
@@ -70,6 +71,7 @@ export class CashRegistersComponent implements CanComponentDeactivate {
   private cashRegistersService = inject(CashRegistersService);
   private storesService = inject(StoresService);
   private isOpen: boolean = false;
+  private trackingService = inject(TrackingService);
 
   components = {
     multiLineEditor: MultiLineEditorComponent,
@@ -403,7 +405,9 @@ export class CashRegistersComponent implements CanComponentDeactivate {
 
     this.rowData = [newItem, ...this.rowData];
     this.notSavedChanges = true;
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Cajas Registradoras', 'Menu Administracion Cajas Registradoras',  this.trackingService.getEmail());
   }
+
   async saveMasterChanges() {
     const isValid = this.rowData.every((item) => item.description);
     if (!isValid) {
@@ -424,7 +428,7 @@ export class CashRegistersComponent implements CanComponentDeactivate {
     const addObservables: Promise<any>[] = newRows.map((row) => {
       this.resnew = true;
       const cleanedData = this.cleanDataForServer(row);
-
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Save Registro en Cajas Registradoras', 'Menu Administracion Cajas Registradoras',  this.trackingService.getEmail());
       return lastValueFrom(
         this.cashRegistersService.addCashRegister(cleanedData)
       );
@@ -433,7 +437,8 @@ export class CashRegistersComponent implements CanComponentDeactivate {
     const updateObservables: Promise<any>[] = modifiedRows.map((row) => {
       this.resup = true;
       const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData)
+      console.log(cleanedData);
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Cajas Registradoras', 'Menu Administracion Cajas Registradoras',  this.trackingService.getEmail());
       return lastValueFrom(
         this.cashRegistersService.updateCashRegister(cleanedData)
       );
@@ -565,6 +570,7 @@ export class CashRegistersComponent implements CanComponentDeactivate {
                 'La caja se eliminó correctamente',
                 'success'
               );
+              this.trackingService.addLog(this.trackingService.getnameComp(),'Delete Registro en Cajas Registradoras', 'Menu Administracion Cajas Registradoras',  this.trackingService.getEmail());
               this.obtenerDatos();
               this.notSavedChanges = false;
               this.selectedRowData = null;
@@ -576,6 +582,7 @@ export class CashRegistersComponent implements CanComponentDeactivate {
   revertMasterData() {
     this.obtenerDatos();
     this.notSavedChanges = false;
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Cancelar Salvar Registro en Cajas Registradoras', 'Menu Administracion Cajas Registradoras',  this.trackingService.getEmail());
   }
 
   private selectRowById(id: number | string) {
