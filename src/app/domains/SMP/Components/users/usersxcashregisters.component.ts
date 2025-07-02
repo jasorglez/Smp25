@@ -88,6 +88,7 @@ export class UsersXCashRegistersComponent {
           row.idUser === this.idUser && 
           Object.keys(this.warehouses).includes(row.idPermission.toString())
         ) : [];
+        this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Usuarios por Caja Registradora', 'Menu Administracion Usuarios por Caja Registradora',  this.trackingService.getEmail());
     });
   }
 // Column Definitions: Defines the columns to be displayed.

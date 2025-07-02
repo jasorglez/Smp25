@@ -13,6 +13,7 @@ import { EmployeesxloansService } from 'app/services/employeesxloans.service';
 import { SignalsService } from 'app/services/signals.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { TimeService } from 'app/services/time.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-employeesxloans',
@@ -25,6 +26,7 @@ export class EmployeesxLoansComponent {
   private employeesxloansService = inject(EmployeesxloansService);
   private signalsService = inject(SignalsService);
   private timeService = inject(TimeService);
+  private trackingService = inject(TrackingService);
 
   defaultColDef = {
     flex: 1,
@@ -155,6 +157,7 @@ export class EmployeesxLoansComponent {
               }
             });
           }
+          this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Prestamos', 'Menu Recursos Humanos Prestamos',  this.trackingService.getEmail());
         },
         (error) => {
           console.error('Error loading loans data:', error);
@@ -180,6 +183,7 @@ export class EmployeesxLoansComponent {
             }
           });
         }
+        this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Detalle de Prestamos', 'Menu Recursos Humanos Prestamos',  this.trackingService.getEmail());
       },
       (error) => {
         console.error('Error loading detailed loan data:', error);
@@ -350,6 +354,7 @@ export class EmployeesxLoansComponent {
       };
       // Añadir la nueva fila al principio del array
       this.maestroRowData = [newRow, ...this.maestroRowData];
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Prestamos', 'Menu Administracion Prestamos',  this.trackingService.getEmail());
       this.masterNotSavedChanges = true;
 
       // Seleccionar la nueva fila y entrar en modo edición
@@ -379,6 +384,7 @@ export class EmployeesxLoansComponent {
       };
       // Añadir la nueva fila al principio del array
       this.detalleRowData = [newRow, ...this.detalleRowData];
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Prestamos', 'Menu Administracion Prestamos',  this.trackingService.getEmail());
       this.detailNotSavedChanges = true;
 
       // Seleccionar la nueva fila
@@ -442,11 +448,13 @@ export class EmployeesxLoansComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Prestamos', 'Menu Administracion Prestamos',  this.trackingService.getEmail());
       return this.employeesxloansService.addLoan(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Prestamos', 'Menu Administracion Prestamos',  this.trackingService.getEmail());
       return this.employeesxloansService.updateLoan(row.id, cleanedData);
     });
 
@@ -479,6 +487,7 @@ export class EmployeesxLoansComponent {
   revertMasterData() {
     this.loadData();
     this.masterNotSavedChanges = false;
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Revertir Registro en Prestamos', 'Menu Administracion Prestamos',  this.trackingService.getEmail());
   }
 
   async saveDetailChanges() {
@@ -502,11 +511,13 @@ export class EmployeesxLoansComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Detalle de Prestamos', 'Menu Administracion Prestamos',  this.trackingService.getEmail());
       return this.employeesxloansService.addConcept(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Detalle de Prestamos', 'Menu Administracion Prestamos',  this.trackingService.getEmail());
       return this.employeesxloansService.updateConcept(row.id, cleanedData);
     });
 
@@ -547,6 +558,7 @@ export class EmployeesxLoansComponent {
   revertDetailData() {
     this.loadDetailedData();
     this.detailNotSavedChanges = false;
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Revertir Detalle Registro en Prestamos', 'Menu Administracion Prestamos',  this.trackingService.getEmail());
   }
 
   onMasterCellValueChanged(event: any): void {
@@ -620,6 +632,7 @@ export class EmployeesxLoansComponent {
           'success'
         );
         this.masterNotSavedChanges = false;
+        this.trackingService.addLog(this.trackingService.getnameComp(),'Delete Registro en Prestamos', 'Menu Administracion Prestamos',  this.trackingService.getEmail());
         this.signalsService.triggerRefreshEmployees();
       });
   }
@@ -664,6 +677,7 @@ export class EmployeesxLoansComponent {
           'success'
         );
         this.detailNotSavedChanges = false;
+        this.trackingService.addLog(this.trackingService.getnameComp(),'Delete Detalle Registro en Prestamos', 'Menu Administracion Prestamos',  this.trackingService.getEmail());
         this.signalsService.triggerRefreshEmployees();
       });
   }

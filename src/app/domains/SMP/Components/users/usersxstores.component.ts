@@ -9,6 +9,7 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray, forkJoin } from 'rxj
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { SignalsService } from 'app/services/signals.service';
 import { StoresService } from 'app/services/stores.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-usersxstores',
@@ -21,6 +22,7 @@ export class UsersXStoresComponent {
   private signalsService = inject(SignalsService);
   private storesService = inject(StoresService);
   private usersxstoresService = inject(UsersxpermissionsService);
+  private trackingService = inject(TrackingService);
 
   constructor() {
     effect(() => {
@@ -83,6 +85,7 @@ export class UsersXStoresComponent {
           row.idUser === this.idUser && 
           Object.keys(this.warehouses).includes(row.idPermission.toString())
         ) : [];
+        this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Usuarios por Tienda', 'Menu Administracion Usuarios por Tienda',  this.trackingService.getEmail());
     });
   }
 
@@ -217,11 +220,13 @@ public gridOptions: any = {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Usuarios por Tienda', 'Menu Administracion Usuarios por Tienda',  this.trackingService.getEmail());
       return this.usersxstoresService.addUserxPermission(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Usuarios por Tienda', 'Menu Administracion Usuarios por Tienda',  this.trackingService.getEmail());
       return this.usersxstoresService.updateUserxPermission(row.id, cleanedData);
     });
 
@@ -288,6 +293,7 @@ public gridOptions: any = {
             'success'
           );
           this.notSavedChanges = false;
+          this.trackingService.addLog(this.trackingService.getnameComp(),'Delete Registro en Usuarios por Tienda', 'Menu Administracion Usuarios por Tienda',  this.trackingService.getEmail());
           this.selectedRowData = null;
         }
       );
@@ -296,6 +302,7 @@ public gridOptions: any = {
   revert() {
     this.obtenerDatos();
     this.notSavedChanges = false;
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Revert Registro en Usuarios por Tienda', 'Menu Administracion Usuarios por Tienda',  this.trackingService.getEmail());
   }
 
   private cleanDataForServer(data: any): any {

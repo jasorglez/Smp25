@@ -14,6 +14,7 @@ import { SpecialExtraHoursComponent } from "./special-extra-hours/special-extra-
 import { AdministrationService } from 'app/services/administration.service';
 import { HRService } from 'app/services/hr.service';
 import { firstValueFrom } from 'rxjs';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-master-clock',
@@ -30,6 +31,7 @@ export default class MasterClockComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private administrationService = inject(AdministrationService);
   private fb = inject(FormBuilder);
+  private trackingService = inject(TrackingService);
 
   ngOnInit() {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
@@ -46,7 +48,7 @@ export default class MasterClockComponent implements OnInit {
         this.signalsService.resetRefreshEmployees(); // Resetear la señal después de actualizar
       }
     });
-    
+
     this.selectFechas = this.fb.group({
       fechaInicio: [this.fechaInicio, Validators.required],
       fechaFin: [this.fechaFin, Validators.required]
@@ -59,10 +61,10 @@ export default class MasterClockComponent implements OnInit {
       }
     });
 
-   effect(async () => {
-    this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-    await this.obtenerConfig();
-    await this.Consultar();
+    effect(async () => {
+      this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      await this.obtenerConfig();
+      await this.Consultar();
     });
 
   }
@@ -87,17 +89,17 @@ export default class MasterClockComponent implements OnInit {
   Typecop: any[] = [];
   hrData: any = {};
   ultimaFecha: any;
-  idDia: any ;
+  idDia: any;
   hoy = new Date();
 
-   dias:any[] = [
-    {id: 1 , dia: 'Lunes'},
-    {id: 2 , dia: 'Martes'},
-    {id: 3 , dia: 'Miércoles'},
-    {id: 4 , dia: 'Jueves'},
-    {id: 5 , dia: 'Viernes'},
-    {id: 6 , dia: 'Sábado'},
-    {id: 7 , dia: 'Domingo'},
+  dias: any[] = [
+    { id: 1, dia: 'Lunes' },
+    { id: 2, dia: 'Martes' },
+    { id: 3, dia: 'Miércoles' },
+    { id: 4, dia: 'Jueves' },
+    { id: 5, dia: 'Viernes' },
+    { id: 6, dia: 'Sábado' },
+    { id: 7, dia: 'Domingo' },
 
   ]
 
@@ -326,7 +328,7 @@ export default class MasterClockComponent implements OnInit {
           this.rowData = [];
           this.rowData = data;
           //console.log(data)
-
+          this.trackingService.addLog(this.trackingService.getnameComp(), 'Get Registro en Maestro de Checador', 'Menu Maestro de Checador', this.trackingService.getEmail());
           // Actualizar el grid y esperar a que termine
           this.gridApi.setGridOption('rowData', this.rowData);
 
@@ -359,7 +361,7 @@ export default class MasterClockComponent implements OnInit {
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
       //console.log('ID del empleado seleccionado:', this.selectedRowData.idEmployee, this.selectedRowData.periodStart.split('T')[0], this.selectedRowData.periodEnd.split('T')[0]);
-      this.signalsService.setDetailClockForEmployee(this.selectedRowData.idEmployee, this.selectedRowData.periodStart.split('T')[0], this.selectedRowData.periodEnd.split('T')[0] );
+      this.signalsService.setDetailClockForEmployee(this.selectedRowData.idEmployee, this.selectedRowData.periodStart.split('T')[0], this.selectedRowData.periodEnd.split('T')[0]);
     } else {
       this.selectedRowData = null;
     }
@@ -462,7 +464,7 @@ export default class MasterClockComponent implements OnInit {
     } else {
       alerts.basicAlert('Error', 'Por favor selecciona ambas fechas', 'error');
     }*/
-   await this.getNextPayrollStartDate();
+    await this.getNextPayrollStartDate();
     // Determinar fechaInicio
     if (this.idBranch < 0) {
       const primerDiaDelMes = new Date(this.hoy.getFullYear(), this.hoy.getMonth(), 1);
@@ -504,32 +506,32 @@ export default class MasterClockComponent implements OnInit {
       },
       { emitEvent: false }
     );
-    if(this.idBranch > 0){
+    if (this.idBranch > 0) {
       this.obtenerDatos(this.fechaInicio, this.fechaFin);
-    }else{
+    } else {
       this.obtenerDatos();
     }
-    
+
   }
   async getNextPayrollStartDate(): Promise<void> {
-      if (this.idBranch > 0) {
-        try {
-          const data: { endDate: string }[] = await firstValueFrom(
-            this.administrationService.getNormalPayrolls(this.idBranch)
-          );
-  
-          if (data.length > 0) {
-            this.ultimaFecha = undefined;//= new Date(data[0].endDate);
-          } else {
-            this.ultimaFecha = undefined;
-          }
-        } catch (error) {
-          console.error('Error fetching payroll data:', error);
+    if (this.idBranch > 0) {
+      try {
+        const data: { endDate: string }[] = await firstValueFrom(
+          this.administrationService.getNormalPayrolls(this.idBranch)
+        );
+
+        if (data.length > 0) {
+          this.ultimaFecha = undefined;//= new Date(data[0].endDate);
+        } else {
+          this.ultimaFecha = undefined;
         }
+      } catch (error) {
+        console.error('Error fetching payroll data:', error);
       }
     }
+  }
 
-   obtenerConfig(): Promise<void> {
+  obtenerConfig(): Promise<void> {
     return new Promise((resolve) => {
       this.hrService.getHRManagementData(this.idBranch).subscribe({
         next: (data: any) => {

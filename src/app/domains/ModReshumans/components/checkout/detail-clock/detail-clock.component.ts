@@ -9,6 +9,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { PayrollService } from 'app/services/payroll.service';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-detail-clock',
@@ -23,6 +24,7 @@ export default class DetailClockComponent implements OnInit {
    private signalsService = inject(SignalsService);
    private route = inject(ActivatedRoute);
    private fb = inject(FormBuilder);
+   private trackingService = inject(TrackingService);
  
    ngOnInit() {
      
@@ -299,7 +301,7 @@ export default class DetailClockComponent implements OnInit {
      this.payrollService.getDetailClock(this.idEmployee, fechaInicio, fechaFin).subscribe((data: any) => {
        this.rowData = [];
        this.rowData = data;
-       
+       this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Detalle de Checador', 'Menu Detalle de Checador',  this.trackingService.getEmail());
        // Esperar a que el grid se actualice y luego ajustar las columnas
        setTimeout(() => {
          if (this.gridApi) {

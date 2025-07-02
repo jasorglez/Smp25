@@ -2,6 +2,7 @@ import { Component, AfterViewInit, OnInit, inject, OnDestroy, effect } from '@an
 import { AdministrationService } from 'app/services/administration.service';
 import { SignalsService } from 'app/services/signals.service';
 import * as L from 'leaflet';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-radiusinfluence',
@@ -12,7 +13,8 @@ import * as L from 'leaflet';
 export class RadiusinfluenceComponent implements OnInit, AfterViewInit, OnDestroy {
   private administrationService = inject(AdministrationService);
   private signalsService = inject(SignalsService);
-  
+  private trackingService = inject(TrackingService);
+
   localitation: any[] = [];
   private map!: L.Map;
   idRoot!: number;
@@ -53,6 +55,7 @@ export class RadiusinfluenceComponent implements OnInit, AfterViewInit, OnDestro
           this.initializeMap();
           this.addMarkersFromData();
         }
+        this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Radios de Influencia', 'Menu Administracion Radios de Influencia',  this.trackingService.getEmail());
       },
       error: (error) => {
         console.error('Error obteniendo datos:', error);
@@ -187,6 +190,7 @@ export class RadiusinfluenceComponent implements OnInit, AfterViewInit, OnDestro
       this.map.remove();
       this.markers = [];
       this.circles = [];
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Delete Registro en Radios de Influencia', 'Menu Administracion Radios de Influencia',  this.trackingService.getEmail());
     }
   }
 
@@ -206,8 +210,9 @@ export class RadiusinfluenceComponent implements OnInit, AfterViewInit, OnDestro
         latitud: this.selectedMarker.getLatLng().lat.toString(),
         longitud: this.selectedMarker.getLatLng().lng.toString()
       };
-      
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Radios de Influencia', 'Menu Administracion Radios de Influencia',  this.trackingService.getEmail());
       this.localitation.push(newLocation);
+
       // Aquí podrías llamar a tu servicio para guardar la nueva ubicación
     }
   }

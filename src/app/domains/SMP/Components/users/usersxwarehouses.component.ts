@@ -9,6 +9,7 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray, forkJoin } from 'rxj
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { SignalsService } from 'app/services/signals.service';
 import { WarehousesService } from 'app/services/warehouses.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-usersxwarehouses',
@@ -21,7 +22,7 @@ export class UsersxwarehousesComponent {
   private signalsService = inject(SignalsService);
   private warehousesService = inject(WarehousesService);
   private usersxwarehousesService = inject(UsersxpermissionsService);
-
+  private trackingService = inject(TrackingService);
   ngOnInit() {
     this.cargarDatos();
   }
@@ -73,6 +74,7 @@ export class UsersxwarehousesComponent {
           row.idUser === this.idUser && 
           almacenes.some(almacen => almacen.id === row.idPermission && almacen.idBranch === idBranchActual)
         );
+        this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Usuarios por Almacén', 'Menu Administracion Usuarios por Almacén',  this.trackingService.getEmail());
       },
       error: (error) => {
         console.error('Error al cargar los datos:', error);
@@ -192,6 +194,7 @@ public gridOptions: any = {
     };
 
     this.rowData = [newItem, ...this.rowData];
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Usuarios por Almacén', 'Menu Administracion Usuarios por Almacén',  this.trackingService.getEmail());
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
   }
@@ -215,11 +218,13 @@ public gridOptions: any = {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Usuarios por Almacén', 'Menu Administracion Usuarios por Almacén',  this.trackingService.getEmail());
       return this.usersxwarehousesService.addUserxPermission(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Usuarios por Almacén', 'Menu Administracion Usuarios por Almacén',  this.trackingService.getEmail());
       return this.usersxwarehousesService.updateUserxPermission(row.id, cleanedData);
     });
 
@@ -286,6 +291,7 @@ public gridOptions: any = {
             'success'
           );
           this.notSavedChanges = false;
+          this.trackingService.addLog(this.trackingService.getnameComp(),'Delete Registro en Usuarios por Almacén', 'Menu Administracion Usuarios por Almacén',  this.trackingService.getEmail());
           this.selectedRowData = null;
         }
       );
@@ -294,6 +300,7 @@ public gridOptions: any = {
   revert() {
     this.cargarDatos();
     this.notSavedChanges = false;
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Revert Registro en Usuarios por Almacén', 'Menu Administracion Usuarios por Almacén',  this.trackingService.getEmail());
   }
 
   private cleanDataForServer(data: any): any {

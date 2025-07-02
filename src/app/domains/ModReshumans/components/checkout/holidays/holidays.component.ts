@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, effect, Component ,inject} from '@angular/core';
+import { ChangeDetectionStrategy, effect, Component, inject } from '@angular/core';
 import { alerts } from 'app/helpers/alerts';
 import { forkJoin } from 'rxjs';
 import { EmployeeClockData } from 'app/interface/EmpleyeeClock';
@@ -15,7 +15,7 @@ import { TrackingService } from 'app/services/tracking.service';
   imports: [ReactiveFormsModule, CommonModule],
   templateUrl: './holidays.component.html',
 })
-export default class  HolidaysComponent { 
+export default class HolidaysComponent {
 
   private clockService = inject(ClockService);
   private employeesService = inject(EmployeesService);
@@ -23,15 +23,15 @@ export default class  HolidaysComponent {
   private trackingService = inject(TrackingService);
 
   diasSemana = [
-      'Domingo',
-      'Lunes',
-      'Martes',
-      'Miércoles',
-      'Jueves',
-      'Viernes',
-      'Sábado',
-    ];
-  
+    'Domingo',
+    'Lunes',
+    'Martes',
+    'Miércoles',
+    'Jueves',
+    'Viernes',
+    'Sábado',
+  ];
+
   idCompany: number;
   idBranch: number;
   fechaInicio: string;
@@ -44,7 +44,7 @@ export default class  HolidaysComponent {
   catalogoFestiveVigente: any[] = [];
   festivo: number = null;
 
-   constructor(private formBuilder: FormBuilder) {
+  constructor(private formBuilder: FormBuilder) {
     effect(() => {
       this.idCompany = this.signalsService.getRootSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
@@ -52,25 +52,25 @@ export default class  HolidaysComponent {
       this.obtenerCatalogoFestivoVigente(this.idCompany);
     });
 
-      this.fechaInicio = this.getLocalDate();
-      this.myForm = this.formBuilder.group({
-        fechaInicio: [this.fechaInicio, Validators.required],
-        fechaFin: [null, Validators.required],
-        festivo: ['', Validators.required],
-      });
-      this.actualizarDiaSemanaInicio(this.fechaInicio);
-    
-      this.myForm.valueChanges.subscribe((values) => {
-          this.fechaInicio = values.fechaInicio;
-          this.actualizarDiaSemanaInicio(values.fechaInicio);
-          this.fechaFin = values.fechaFin;
-          this.actualizarDiaSemanaFin(values.fechaFin);
-          this.festivo = values.festivo;
-      });
+    this.fechaInicio = this.getLocalDate();
+    this.myForm = this.formBuilder.group({
+      fechaInicio: [this.fechaInicio, Validators.required],
+      fechaFin: [null, Validators.required],
+      festivo: ['', Validators.required],
+    });
+    this.actualizarDiaSemanaInicio(this.fechaInicio);
+
+    this.myForm.valueChanges.subscribe((values) => {
+      this.fechaInicio = values.fechaInicio;
+      this.actualizarDiaSemanaInicio(values.fechaInicio);
+      this.fechaFin = values.fechaFin;
+      this.actualizarDiaSemanaFin(values.fechaFin);
+      this.festivo = values.festivo;
+    });
   }
 
   private actualizarDiaSemanaInicio(fecha: string): void {
-    
+
 
     // Validación robusta
     if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
@@ -116,137 +116,138 @@ export default class  HolidaysComponent {
   obtenerCatalogoFestivo(idCompany: number) {
     this.clockService.getCatalogsFestive(idCompany).subscribe((data: any) => {
       this.catalogoFestive = data;
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Feriados', 'Menu Recursos Humanos Feriados',  this.trackingService.getEmail());
     });
   }
 
   obtenerCatalogoFestivoVigente(idCompany: number) {
     this.clockService.getCatalogsFestiveVigente(idCompany).subscribe((data: any) => {
       this.catalogoFestiveVigente = data;
-      
+
     });
   }
 
   onSubmit() {
-  const fechaInicio = this.myForm.value.fechaInicio;
-  const fechaFin = this.myForm.value.fechaFin || fechaInicio; // Si no hay fin, se usa el inicio
-  const idReason = this.myForm.value.festivo;
+    const fechaInicio = this.myForm.value.fechaInicio;
+    const fechaFin = this.myForm.value.fechaFin || fechaInicio; // Si no hay fin, se usa el inicio
+    const idReason = this.myForm.value.festivo;
 
-  if (!fechaInicio || !idReason) {
-    alerts.basicAlert('Error', 'Debe seleccionar una fecha y un motivo.', 'error');
-    return;
-  }
+    if (!fechaInicio || !idReason) {
+      alerts.basicAlert('Error', 'Debe seleccionar una fecha y un motivo.', 'error');
+      return;
+    }
 
-  alerts.confirmAlert(
-    'Confirmar',
-    '¿Está seguro que desea añadir estos datos al sistema?',
-    'warning',
-    'Sí, añadir'
-  ).then((result) => {
-    if (!result.isConfirmed) return;
+    alerts.confirmAlert(
+      'Confirmar',
+      '¿Está seguro que desea añadir estos datos al sistema?',
+      'warning',
+      'Sí, añadir'
+    ).then((result) => {
+      if (!result.isConfirmed) return;
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Add Registro en Feriados', 'Menu Recursos Humanos Feriados', this.trackingService.getEmail());
+      const inicio = new Date(fechaInicio + 'T00:00:00');
+      const fin = new Date(fechaFin + 'T00:00:00');
+      const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+      const allRequests = [];
 
-    const inicio = new Date(fechaInicio + 'T00:00:00');
-    const fin = new Date(fechaFin + 'T00:00:00');
-    const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-    const allRequests = [];
+      const recorrerDias = (current: Date) => {
+        if (current > fin) {
+          forkJoin(allRequests).subscribe({
+            next: (responses) => {
+              console.log('✅ Registros completados:', responses);
+              alerts.basicAlert('Éxito', 'Se procesaron todos los registros.', 'success');
+            },
+            error: (err) => {
+              console.error('❌ Error al procesar registros:', err);
+              alerts.basicAlert('Error', 'Hubo un problema al guardar los datos.', 'error');
+            }
+          });
+          return;
+        }
 
-    const recorrerDias = (current: Date) => {
-      if (current > fin) {
-        forkJoin(allRequests).subscribe({
-          next: (responses) => {
-            console.log('✅ Registros completados:', responses);
-            alerts.basicAlert('Éxito', 'Se procesaron todos los registros.', 'success');
+        const nombreDia = diasSemana[current.getDay()];
+        const fechaStr = current.toISOString().split('T')[0];
+
+        this.employeesService.getEmployeeClockByBranch(this.idBranch, nombreDia).subscribe({
+          next: (empleados) => {
+            empleados.forEach((item: any) => {
+              const horaSalida = this.sumarHoras(item.entry1, item.hours);
+
+              const baseData = {
+                active: true,
+                byTimeClock: false,
+                edited: true,
+                editedBy: this.signalsService.getDisplayName()(),
+                idEmployee: item.idEmployee,
+                idReason: idReason,
+                minuteDiscount: 0,
+                holiday: true,
+                minuteDiscountBackup: null,
+                valid: false
+              };
+
+              const dataIn = {
+                ...baseData,
+                timeStamp: `${fechaStr}T${item.entry1}`,
+                type: 'IN'
+              };
+
+              const dataOut = {
+                ...baseData,
+                timeStamp: `${fechaStr}T${horaSalida}`,
+                type: 'OUT'
+              };
+              console.log(dataIn)
+              console.log(dataOut)
+              allRequests.push(this.clockService.checkInOut(dataIn));
+              allRequests.push(this.clockService.checkInOut(dataOut));
+            });
+
+            // Ir al siguiente día
+            current.setDate(current.getDate() + 1);
+            recorrerDias(current);
           },
           error: (err) => {
-            console.error('❌ Error al procesar registros:', err);
-            alerts.basicAlert('Error', 'Hubo un problema al guardar los datos.', 'error');
+            console.error(`❌ Error al obtener empleados para ${nombreDia}:`, err);
+            alerts.basicAlert('Error', `Error al obtener empleados para ${nombreDia}`, 'error');
           }
         });
-        return;
-      }
+      };
 
-      const nombreDia = diasSemana[current.getDay()];
-      const fechaStr = current.toISOString().split('T')[0];
+      recorrerDias(new Date(inicio)); // Iniciar proceso
+    });
+  }
 
-      this.employeesService.getEmployeeClockByBranch(this.idBranch, nombreDia).subscribe({
-        next: (empleados) => {
-          empleados.forEach((item: any) => {
-            const horaSalida = this.sumarHoras(item.entry1, item.hours);
-
-            const baseData = {
-              active: true,
-              byTimeClock: false,
-              edited: true,
-              editedBy: this.signalsService.getDisplayName()(),
-              idEmployee: item.idEmployee,
-              idReason: idReason,
-              minuteDiscount: 0,
-              holiday: true,
-              minuteDiscountBackup: null,
-              valid: false
-            };
-
-            const dataIn = {
-              ...baseData,
-              timeStamp: `${fechaStr}T${item.entry1}`,
-              type: 'IN'
-            };
-
-            const dataOut = {
-              ...baseData,
-              timeStamp: `${fechaStr}T${horaSalida}`,
-              type: 'OUT'
-            };
-            console.log(dataIn)
-            console.log(dataOut)
-            allRequests.push(this.clockService.checkInOut(dataIn));
-            allRequests.push(this.clockService.checkInOut(dataOut));
-          });
-
-          // Ir al siguiente día
-          current.setDate(current.getDate() + 1);
-          recorrerDias(current);
-        },
-        error: (err) => {
-          console.error(`❌ Error al obtener empleados para ${nombreDia}:`, err);
-          alerts.basicAlert('Error', `Error al obtener empleados para ${nombreDia}`, 'error');
-        }
-      });
-    };
-
-    recorrerDias(new Date(inicio)); // Iniciar proceso
-  });
-}
-
-  revertChanges(){
+  revertChanges() {
     this.fechaInicio = this.getLocalDate();
-      this.myForm = this.formBuilder.group({
-        fechaInicio: [this.fechaInicio, Validators.required],
-        fechaFin: [null, Validators.required],
-        festivo: ['', Validators.required],
-      });
-      this.trackingService.addLog(this.trackingService.getnameComp(),'Revertir Registro en Feriados', 'Menu Feriados en Checador',  this.trackingService.getEmail());
+    this.myForm = this.formBuilder.group({
+      fechaInicio: [this.fechaInicio, Validators.required],
+      fechaFin: [null, Validators.required],
+      festivo: ['', Validators.required],
+    });
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Revertir Registro en Feriados', 'Menu Feriados en Checador', this.trackingService.getEmail());
   }
 
 
   sumarHoras(horaStr: string, horasASumar: number): string {
-  const [h, m, s] = horaStr.split(':').map(Number);
+    const [h, m, s] = horaStr.split(':').map(Number);
 
-  // Convertir hora base a minutos totales
-  let totalMinutos = h * 60 + m;
+    // Convertir hora base a minutos totales
+    let totalMinutos = h * 60 + m;
 
-  // Convertir horas decimales a minutos
-  const minutosASumar = Math.round(horasASumar * 60);
+    // Convertir horas decimales a minutos
+    const minutosASumar = Math.round(horasASumar * 60);
 
-  totalMinutos += minutosASumar;
+    totalMinutos += minutosASumar;
 
-  // Calcular nueva hora
-  const nuevaHora = Math.floor(totalMinutos / 60) % 24;
-  const nuevosMinutos = totalMinutos % 60;
+    // Calcular nueva hora
+    const nuevaHora = Math.floor(totalMinutos / 60) % 24;
+    const nuevosMinutos = totalMinutos % 60;
 
-  // Convertir a string con formato HH:mm:ss
-  const horaFormateada = `${String(nuevaHora).padStart(2, '0')}:${String(nuevosMinutos).padStart(2, '0')}:00`;
+    // Convertir a string con formato HH:mm:ss
+    const horaFormateada = `${String(nuevaHora).padStart(2, '0')}:${String(nuevosMinutos).padStart(2, '0')}:00`;
 
-  return horaFormateada;
-}
+    return horaFormateada;
+  }
 
 }

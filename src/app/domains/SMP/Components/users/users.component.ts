@@ -150,6 +150,7 @@ constructor() {
         } else {
           console.error('Respuesta inválida del servidor');
         }
+        this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Usuarios', 'Menu Recursos Humanos Usuarios',  this.trackingService.getEmail());
       },
       error: (error) => {
         console.error('Error al obtener los datos:', error);

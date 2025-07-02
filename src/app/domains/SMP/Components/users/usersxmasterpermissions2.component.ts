@@ -48,6 +48,7 @@ export class UsersxMasterPermissions2Component {
     this.permissionService.getMasterPermissions().subscribe((data: any) => {
       this.masterPermissions = data;
       console.log(this.masterPermissions);
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Permisos Maestros', 'Menu Administracion Permisos Maestros',  this.trackingService.getEmail());
     });
 
     // Obtener permisos del usuario

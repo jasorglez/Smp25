@@ -62,6 +62,7 @@ export class UsersxrootComponent {
       .getDataUsersxPermissions(this.permissionType)
       .subscribe((data: any) => {
         this.rowData = data.filter((row: any) => row.idUser === this.idUser);
+        this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Usuarios por Empresa', 'Menu Administracion Usuarios por Empresa',  this.trackingService.getEmail());
       });
   }
 

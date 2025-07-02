@@ -9,6 +9,7 @@ import { UsersProfileComponent } from './users-profile.component';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { SignalsService } from 'app/services/signals.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-usersxoilfields',
@@ -20,8 +21,8 @@ export class UsersxoilfieldsComponent {
 
   private signalsService = inject(SignalsService);
   private oilfieldsService = inject(OilfieldService);
-  private usersxoilfieldsService = inject(UsersxpermissionsService);
-
+  private usersxoilfieldsService = inject(UsersxpermissionsService);  
+  private trackingService = inject(TrackingService);
   ngOnInit() {
     this.obtenerDatos();
     this.obtenerOilfields();
@@ -54,6 +55,7 @@ export class UsersxoilfieldsComponent {
       .getDataUsersxPermissions(this.permissionType)
       .subscribe((data: any) => {
         this.rowData = data.filter((row: any) => row.idUser === this.idUser);
+        this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Usuarios por Campo Petrolero', 'Menu Administracion Usuarios por Campo Petrolero',  this.trackingService.getEmail());
       });
   }
 
