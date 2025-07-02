@@ -411,6 +411,7 @@ getMasterUpdateTrigger() {
   private nameRequisition = signal<string>(null);
   private requisitionSolicitant = signal<string>(null);
   private requisitionDate = signal<string>(null);
+  private idEmployeePayroll = signal<number>(null);
 
   setIdRequisition(id: number) {
     this.idRequisition.set(id);
@@ -424,11 +425,17 @@ getMasterUpdateTrigger() {
     this.idEmployee.set(id);
   }
 
-
   getIdEmployee() {
     return this.idEmployee;
   }
 
+  setIdEmployeePayroll(id: number) {
+    this.idEmployeePayroll.set(id);
+  }
+
+  getIdEmployeePayroll() {
+    return this.idEmployeePayroll;
+  }
 
   setRequisitionName(name: string) {
     this.nameRequisition.set(name);
