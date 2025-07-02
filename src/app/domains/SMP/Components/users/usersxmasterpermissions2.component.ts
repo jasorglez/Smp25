@@ -7,6 +7,7 @@ import { UsersProfileComponent } from './users-profile.component';
 import { SignalsService } from 'app/services/signals.service';
 import { MasterPermissions2Service } from 'app/services/master-permissions-2.service';
 import { tap } from 'rxjs/operators';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-usersxmasterpermissions2',
@@ -26,7 +27,8 @@ export class UsersxMasterPermissions2Component {
   selectedUserId: number; // Cambia esto según el usuario seleccionado
   private permissionService = inject(MasterPermissions2Service);
   private signalsService = inject(SignalsService);
-
+  private trackingService = inject(TrackingService);
+  
   profile = computed(() => this.signalsService.profile);
 
   ngOnInit(): void {
@@ -65,9 +67,11 @@ export class UsersxMasterPermissions2Component {
     
     if (this.isPermissionChecked(permissionId)) {
       // Si el permiso ya está seleccionado, lo quitamos
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Remove Permiso de Usuario en Permisos Maestros', 'Menu Administracion Permisos Maestros',  this.trackingService.getEmail());
       this.userPermissions = this.userPermissions.filter((id) => id !== permissionId);
     } else {
       // Si el permiso no está seleccionado, lo agregamos
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Add Permiso de Usuario en Permisos Maestros', 'Menu Administracion Permisos Maestros',  this.trackingService.getEmail());
       this.userPermissions.push(permissionId);
     }
 

@@ -23,6 +23,7 @@ import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { HRService } from 'app/services/hr.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { RootService } from 'app/services/root.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-branches',
@@ -41,6 +42,7 @@ export class BranchesComponent implements CanComponentDeactivate {
   private inegiService = inject(InegiService);
   private hrService = inject(HRService);
   private rootService = inject(RootService);
+  private trackingService = inject(TrackingService);
 
   //Variables master
   masterRowData: any[] = [];
@@ -433,7 +435,7 @@ export class BranchesComponent implements CanComponentDeactivate {
       this.masterRowData = [newItem, ...this.masterRowData];
     }
     this.isEditing = false;
-
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Sucursales', 'Menu Administracion Sucursales',  this.trackingService.getEmail());
   }
 
   async onSubmit() {
@@ -547,6 +549,7 @@ export class BranchesComponent implements CanComponentDeactivate {
     // Tipamos explícitamente las promesas
     const addPromises: Promise<Ibranch>[] = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Save Registro en Sucursales', 'Menu Administracion Sucursales',  this.trackingService.getEmail());
       return lastValueFrom(this.branchesService.addBranch(cleanedData)).then(response => {
         return response;
       });
@@ -554,6 +557,7 @@ export class BranchesComponent implements CanComponentDeactivate {
 
     const updatePromises: Promise<Ibranch>[] = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Sucursales', 'Menu Administracion Sucursales',  this.trackingService.getEmail());
       return lastValueFrom(
         this.branchesService.updateBranch(row.id, cleanedData)
       );
@@ -681,6 +685,7 @@ export class BranchesComponent implements CanComponentDeactivate {
               );
               this.signalsService.triggerUpdateBranchList();
               this.obtenerDatos(); // Refrescar los datos después de eliminar
+              this.trackingService.addLog(this.trackingService.getnameComp(),'Delete Registro en Sucursales', 'Menu Administracion Sucursales',  this.trackingService.getEmail());
               this.masterNotSavedChanges = false;
               this.masterSelectedRowData = null;
             });
@@ -691,6 +696,7 @@ export class BranchesComponent implements CanComponentDeactivate {
   revertMasterData() {
     this.obtenerDatos();
     this.masterNotSavedChanges = false;
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Cancelar Salvar Registro en Sucursales', 'Menu Administracion Sucursales',  this.trackingService.getEmail());
   }
 
   // ==================== UTILITY METHODS ====================

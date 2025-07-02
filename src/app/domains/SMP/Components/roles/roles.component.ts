@@ -18,6 +18,7 @@ import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/auto
 import { env } from 'echarts';
 import { environment } from '@env/environment';
 import { RolesDetailedComponent } from "./roles-detailed/roles-detailed.component";
+import { TrackingService } from 'app/services/tracking.service';
 
 @Injectable({
   providedIn: 'root',
@@ -67,6 +68,7 @@ export class RolesComponent {
   private catalogService = inject(CatalogsService);
   private signalsService = inject(SignalsService);
   private rolesService   = inject(RolesService);  
+  private trackingService = inject(TrackingService);
 
   profile = computed(() => this.signalsService.profile);
 
@@ -291,6 +293,7 @@ constructor() {
     this.rowData = [newItem, ...this.rowData];
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Roles', 'Menu Administracion Roles',  this.trackingService.getEmail());
   }
 
   async saveChanges() {
@@ -328,11 +331,13 @@ constructor() {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Save Registro en Roles', 'Menu Administracion Roles',  this.trackingService.getEmail());
       return this.rolesService.addRoles(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Roles', 'Menu Administracion Roles',  this.trackingService.getEmail());
       return this.rolesService.updateRoles(row.id, cleanedData);
     });
 
@@ -441,6 +446,7 @@ constructor() {
                 'Entrada eliminada satisfactoriamente.',
                 'success'
               );
+              this.trackingService.addLog(this.trackingService.getnameComp(),'Delete Registro en Roles', 'Menu Administracion Roles',  this.trackingService.getEmail());
               this.notSavedChanges = false;
               this.selectedRowData = null;
             }
@@ -452,6 +458,7 @@ constructor() {
   revert() {
     this.obtenerDatos();
     this.notSavedChanges = false;
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Cancelar Salvar Registro en Roles', 'Menu Administracion Roles',  this.trackingService.getEmail());
   }
 
   private cleanDataForServer(data: any): any {

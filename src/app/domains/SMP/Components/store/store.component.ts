@@ -27,6 +27,7 @@ import { States } from 'app/interface/states';
 import { BranchsService } from 'app/services/branchs.service';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'storeComponent',
@@ -60,6 +61,7 @@ export class StoreComponent implements CanComponentDeactivate {
   private signalsService = inject(SignalsService);
   private storesService = inject(StoresService);
   private branchesService = inject(BranchsService);
+  private trackingService = inject(TrackingService);
   private isOpen: boolean = false;
 
   components = {
@@ -415,7 +417,9 @@ export class StoreComponent implements CanComponentDeactivate {
 
     this.rowData = [newItem, ...this.rowData];
     this.notSavedChanges = true;
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Tiendas', 'Menu Administracion Tiendas',  this.trackingService.getEmail());
   }
+
   async saveMasterChanges() {
     const isValid = this.rowData.every(
       (item) => item.description && item.address && item.state
@@ -437,11 +441,13 @@ export class StoreComponent implements CanComponentDeactivate {
     const addObservables: Promise<any>[] = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       console.log(cleanedData);
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Save Registro en Tiendas', 'Menu Administracion Tiendas',  this.trackingService.getEmail());
       return lastValueFrom(this.storesService.addStore(cleanedData));
     });
 
     const updateObservables: Promise<any>[] = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Tiendas', 'Menu Administracion Tiendas',  this.trackingService.getEmail());
       return lastValueFrom(this.storesService.updateStore(row.id, cleanedData));
     });
 
@@ -574,6 +580,7 @@ export class StoreComponent implements CanComponentDeactivate {
                 'La tienda se eliminó correctamente',
                 'success'
               );
+              this.trackingService.addLog(this.trackingService.getnameComp(),'Delete Registro en Tiendas', 'Menu Administracion Tiendas',  this.trackingService.getEmail());
               this.obtenerDatos();
               this.notSavedChanges = false;
               this.selectedRowData = null;
@@ -585,7 +592,9 @@ export class StoreComponent implements CanComponentDeactivate {
   revertMasterData() {
     this.obtenerDatos();
     this.notSavedChanges = false;
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Cancelar Salvar Registro en Tiendas', 'Menu Administracion Tiendas',  this.trackingService.getEmail());
   }
+
   private selectRowById(id: number | string) {
     // Dar tiempo al grid para que se actualice
     setTimeout(() => {

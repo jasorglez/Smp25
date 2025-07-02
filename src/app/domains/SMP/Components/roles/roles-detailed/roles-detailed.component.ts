@@ -20,6 +20,7 @@ import { TimeEditorModule } from 'app/shared/time-editor/time-editor.module';
 import { lastValueFrom, concat, toArray, forkJoin } from 'rxjs';
 import { RolesService } from 'app/services/roles.service';
 import { TimeService } from 'app/services/time.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-roles-detailed',
@@ -35,6 +36,7 @@ export class RolesDetailedComponent implements OnInit {
   private timeService = inject(TimeService);
   private route = inject(ActivatedRoute);
   private fb = inject(FormBuilder);
+  private trackingService = inject(TrackingService);
 
   ngOnInit() {
     this.idRole = this.signalsService.getIdRole()();
@@ -274,19 +276,19 @@ export class RolesDetailedComponent implements OnInit {
         // Si llegamos aquí, el permiso existe, así que lo agregamos a updateObservables
         const timeResponse = await lastValueFrom(this.timeService.getTime());
         cleanedData.updatedAt = timeResponse.localTime;
-        console.log('Datos enviados a UPDATE:', cleanedData);
         updateObservables.push(
           this.rolesService.updateDetailedPermissionsxRoles(row.idRole, row.idDetailedPermission, cleanedData)
         );
+        this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Detalle de Roles', 'Menu Administracion Detalle de Roles',  this.trackingService.getEmail());
       } catch (error) {
         // Si el error es 404, significa que el permiso no existe y debemos crearlo
         if (error.status === 404) {
           const timeResponse = await lastValueFrom(this.timeService.getTime());
           cleanedData.createdAt = timeResponse.localTime;
-          console.log('Datos enviados a ADD:', cleanedData);
           addObservables.push(
             this.rolesService.addDetailedPermissionsxRoles(cleanedData)
           );
+          this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Detalle de Roles', 'Menu Administracion Detalle de Roles',  this.trackingService.getEmail());
         } else {
           // Si es otro tipo de error, lo propagamos
           throw error;
