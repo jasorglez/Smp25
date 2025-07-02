@@ -18,6 +18,7 @@ import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-edito
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { env } from 'echarts';
 import { environment } from '@env/environment';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Injectable({
   providedIn: 'root',
@@ -62,7 +63,7 @@ export class UsersComponent {
   private usersService        = inject(UsersService);
   private imageHandlerService = inject(ImageHandlerService);
   private usersxrootService   = inject(UsersxpermissionsService);
-
+  private trackingService = inject(TrackingService);
   private catalogService = inject(CatalogsService);
   private signalsService = inject(SignalsService);
   private rolesService   = inject(RolesService);  
@@ -467,6 +468,7 @@ constructor() {
     };
 
     this.rowData = [newItem, ...this.rowData];
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Usuarios', 'Menu Administracion Usuarios',  this.trackingService.getEmail());
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
     setTimeout(() => {
@@ -505,6 +507,7 @@ constructor() {
       const addUserRequests = newRows.map(row => {
         const cleanedData = this.cleanDataForServer(row);
         console.log('this Add CleanedData', cleanedData);
+        this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Usuarios', 'Menu Administracion Usuarios',  this.trackingService.getEmail());
         return this.usersService.addUser(cleanedData).pipe(
           tap(response => {
             console.log('Respuesta directa del addUser:', {
@@ -519,6 +522,7 @@ constructor() {
       const updateUserRequests = modifiedRows.map(row => {
         const cleanedData = this.cleanDataForServer(row);
         console.log('Update CleanedData', cleanedData);
+        this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Usuarios', 'Menu Administracion Usuarios',  this.trackingService.getEmail());
         return this.usersService.updateUser(row.id, cleanedData);
       });
 
@@ -663,6 +667,7 @@ constructor() {
                 'Entrada eliminada satisfactoriamente.',
                 'success'
               );
+              this.trackingService.addLog(this.trackingService.getnameComp(),'Delete Registro en Usuarios', 'Menu Administracion Usuarios',  this.trackingService.getEmail());
               this.notSavedChanges = false;
               this.selectedRowData = null;
             }
@@ -674,6 +679,7 @@ constructor() {
   revert() {
     this.obtenerDatos();
     this.notSavedChanges = false;
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Revertir Registro en Usuarios', 'Menu Administracion Usuarios',  this.trackingService.getEmail());
   }
 
   private cleanDataForServer(data: any): any {
