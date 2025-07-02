@@ -501,6 +501,7 @@ export class MasterPayrollComponent implements OnInit {
       colId
     );
     this.signalsService.setFechaNomina(selectedRowData.startDate, selectedRowData.endDate);
+    this.signalsService.setClosedPayroll(!selectedRowData.closed);
 
     const selectedId = selectedRowData.id; // Obtener el ID del registro
     this.signalsService.setNormalPayrollId(selectedId);
