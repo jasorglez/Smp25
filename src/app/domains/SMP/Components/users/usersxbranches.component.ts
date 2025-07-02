@@ -10,6 +10,7 @@ import { UsersxpermissionsService } from 'app/services/usersxpermissions.service
 import { SignalsService } from 'app/services/signals.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { environment } from '@env/environment';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-usersxbranches',
@@ -22,6 +23,7 @@ export class UsersxbranchesComponent {
   private signalsService = inject(SignalsService);
   private branchesService = inject(BranchsService);
   private usersxbranchesService = inject(UsersxpermissionsService);
+  private trackingService = inject(TrackingService);
 
     // Signals con correo
     profile = computed(() => this.signalsService.profile);
@@ -231,6 +233,7 @@ public gridOptions: any = {
     };
 
     this.rowData = [newItem, ...this.rowData];
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Usuarios por Sucursal', 'Menu Administracion Usuarios por Sucursal',  this.trackingService.getEmail());
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
   }
@@ -255,11 +258,13 @@ public gridOptions: any = {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Usuarios por Sucursal', 'Menu Administracion Usuarios por Sucursal',  this.trackingService.getEmail());
       return this.usersxbranchesService.addUserxPermission(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Usuarios por Sucursal', 'Menu Administracion Usuarios por Sucursal',  this.trackingService.getEmail());
       return this.usersxbranchesService.updateUserxPermission(row.id, cleanedData);
     });
 
@@ -318,6 +323,7 @@ public gridOptions: any = {
             'success'
           );
           this.obtenerDatos();
+          this.trackingService.addLog(this.trackingService.getnameComp(),'Delete Registro en Usuarios por Sucursal', 'Menu Administracion Usuarios por Sucursal',  this.trackingService.getEmail());
           this.notSavedChanges = false;
           this.selectedRowData = null;
         }
@@ -327,6 +333,7 @@ public gridOptions: any = {
   revert() {
     this.obtenerDatos();
     this.notSavedChanges = false;
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Revertir Registro en Usuarios por Sucursal', 'Menu Administracion Usuarios por Sucursal',  this.trackingService.getEmail());
   }
 
   private cleanDataForServer(data: any): any {

@@ -9,6 +9,7 @@ import { UsersProfileComponent } from './users-profile.component';
 import { catchError, concat, EMPTY, forkJoin, lastValueFrom, map, toArray } from 'rxjs';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { SignalsService } from 'app/services/signals.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-usersxcontracts',
@@ -21,6 +22,7 @@ export class UsersxcontractsComponent {
   private signalsService = inject(SignalsService);
   private contractsService = inject(ContractsService);
   private usersxcontractsService = inject(UsersxpermissionsService);
+  private trackingService = inject(TrackingService);
 
 
   ngOnInit() {
@@ -218,6 +220,7 @@ public gridOptions: any = {
     };
 
     this.rowData = [newItem, ...this.rowData];
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Usuarios por Contrato', 'Menu Administracion Usuarios por Contrato',  this.trackingService.getEmail());
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
   }
@@ -241,11 +244,13 @@ public gridOptions: any = {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Usuarios por Contrato', 'Menu Administracion Usuarios por Contrato',  this.trackingService.getEmail());
       return this.usersxcontractsService.addUserxPermission(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Usuarios por Contrato', 'Menu Administracion Usuarios por Contrato',  this.trackingService.getEmail());
       return this.usersxcontractsService.updateUserxPermission(row.id, cleanedData);
     });
 
@@ -312,6 +317,7 @@ public gridOptions: any = {
             'success'
           );
           this.notSavedChanges = false;
+          this.trackingService.addLog(this.trackingService.getnameComp(),'Delete Registro en Usuarios por Contrato', 'Menu Administracion Usuarios por Contrato',  this.trackingService.getEmail());
           this.selectedRowData = null;
         }
       );
@@ -320,6 +326,7 @@ public gridOptions: any = {
   revert() {
     this.filteredData();
     this.notSavedChanges = false;
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Revertir Registro en Usuarios por Contrato', 'Menu Administracion Usuarios por Contrato',  this.trackingService.getEmail());
   }
 
   private cleanDataForServer(data: any): any {

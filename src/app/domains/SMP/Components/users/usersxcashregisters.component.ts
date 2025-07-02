@@ -10,6 +10,7 @@ import { UsersxpermissionsService } from 'app/services/usersxpermissions.service
 import { SignalsService } from 'app/services/signals.service';
 import { StoresService } from 'app/services/stores.service';
 import { CashRegistersService } from 'app/services/cash-registers.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-usersxcashregisters',
@@ -22,6 +23,7 @@ export class UsersXCashRegistersComponent {
   private signalsService = inject(SignalsService);
   private cashRegistersService = inject(CashRegistersService);
   private usersxcashregistersService = inject(UsersxpermissionsService);
+  private trackingService = inject(TrackingService);
 
   constructor() {
     effect(() => {
@@ -195,6 +197,7 @@ public gridOptions: any = {
     };
 
     this.rowData = [newItem, ...this.rowData];
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Usuarios por Caja Registradora', 'Menu Administracion Usuarios por Caja Registradora',  this.trackingService.getEmail());
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
   }
@@ -218,11 +221,13 @@ public gridOptions: any = {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Usuarios por Caja Registradora', 'Menu Administracion Usuarios por Caja Registradora',  this.trackingService.getEmail());
       return this.usersxcashregistersService.addUserxPermission(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Usuarios por Caja Registradora', 'Menu Administracion Usuarios por Caja Registradora',  this.trackingService.getEmail());
       return this.usersxcashregistersService.updateUserxPermission(row.id, cleanedData);
     });
 
@@ -289,6 +294,7 @@ public gridOptions: any = {
             'success'
           );
           this.notSavedChanges = false;
+          this.trackingService.addLog(this.trackingService.getnameComp(),'Delete Registro en Usuarios por Caja Registradora', 'Menu Administracion Usuarios por Caja Registradora',  this.trackingService.getEmail());
           this.selectedRowData = null;
         }
       );
@@ -297,6 +303,7 @@ public gridOptions: any = {
   revert() {
     this.obtenerDatos();
     this.notSavedChanges = false;
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Revertir Registro en Usuarios por Caja Registradora', 'Menu Administracion Usuarios por Caja Registradora',  this.trackingService.getEmail());
   }
 
   private cleanDataForServer(data: any): any {
