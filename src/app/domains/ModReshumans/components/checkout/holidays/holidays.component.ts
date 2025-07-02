@@ -7,6 +7,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { ClockService } from 'app/services/clock.service';
 import { CommonModule } from '@angular/common';
 import { EmployeesService } from 'app/services/employees.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-holidays',
@@ -19,6 +20,8 @@ export default class  HolidaysComponent {
   private clockService = inject(ClockService);
   private employeesService = inject(EmployeesService);
   private signalsService = inject(SignalsService);
+  private trackingService = inject(TrackingService);
+
   diasSemana = [
       'Domingo',
       'Lunes',
@@ -221,6 +224,7 @@ export default class  HolidaysComponent {
         fechaFin: [null, Validators.required],
         festivo: ['', Validators.required],
       });
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Revertir Registro en Feriados', 'Menu Feriados en Checador',  this.trackingService.getEmail());
   }
 
 

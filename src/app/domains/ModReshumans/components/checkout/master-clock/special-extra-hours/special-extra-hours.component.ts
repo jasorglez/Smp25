@@ -15,6 +15,7 @@ import { TimeService } from 'app/services/time.service';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ClockService } from 'app/services/clock.service';
 import { TimeEditorComponent } from 'app/shared/time-editor/time-editor.component';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-special-extra-hours',
@@ -36,6 +37,7 @@ export class SpecialExtraHoursComponent {
   private clockService = inject(ClockService);
   private signalsService = inject(SignalsService);
   private timeService = inject(TimeService);
+  private trackingService = inject(TrackingService);
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   defaultColDef = {
@@ -446,6 +448,7 @@ maestroColumnDefs: ColDef[] = [
         __isNew: true,
       };
       this.maestroRowData = [newRow, ...this.maestroRowData];
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Horas Extras Especiales', 'Menu Horas Extras Especiales en Checador',  this.trackingService.getEmail());
       this.masterNotSavedChanges = true;
 
       setTimeout(() => {
@@ -530,6 +533,7 @@ maestroColumnDefs: ColDef[] = [
   revertMasterData() {
     this.loadData();
     this.masterNotSavedChanges = false;
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Revertir Registro en Horas Extras Especiales', 'Menu Horas Extras Especiales en Checador',  this.trackingService.getEmail());
   }
 
   onMasterCellValueChanged(event: any): void {
@@ -592,6 +596,7 @@ maestroColumnDefs: ColDef[] = [
         this.loadData();
         this.masterNotSavedChanges = false;
         this.signalsService.triggerRefreshEmployees();
+        this.trackingService.addLog(this.trackingService.getnameComp(),'Delete Registro en Horas Extras Especiales', 'Menu Horas Extras Especiales en Checador',  this.trackingService.getEmail());
       });
   }
 

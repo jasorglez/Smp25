@@ -9,6 +9,7 @@ import { UsersProfileComponent } from './users-profile.component';
 import { concat, lastValueFrom, toArray } from 'rxjs';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { SignalsService } from 'app/services/signals.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-usersxroot',
@@ -21,7 +22,8 @@ export class UsersxrootComponent {
   private signalsService = inject(SignalsService);
   private rootService = inject(RootService);
   private usersxrootService = inject(UsersxpermissionsService);
-
+  private trackingService = inject(TrackingService);
+  
   ngOnInit() {
     this.obtenerDatos();
     this.obtenerRoot();
@@ -180,6 +182,7 @@ public gridOptions: any = {
     };
 
     this.rowData = [newItem, ...this.rowData];
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Usuarios por Empresa', 'Menu Administracion Usuarios por Empresa',  this.trackingService.getEmail());
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
   }
@@ -203,11 +206,13 @@ public gridOptions: any = {
     
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Usuarios por Empresa', 'Menu Administracion Usuarios por Empresa',  this.trackingService.getEmail());
       return this.usersxrootService.addUserxPermission(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Usuarios por Empresa', 'Menu Administracion Usuarios por Empresa',  this.trackingService.getEmail());
       return this.usersxrootService.updateUserxPermission(row.id, cleanedData);
     });
 
@@ -264,6 +269,7 @@ public gridOptions: any = {
         'Entrada eliminada satisfactoriamente.',
         'success'
       );
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Delete Registro en Usuarios por Empresa', 'Menu Administracion Usuarios por Empresa',  this.trackingService.getEmail());
       this.notSavedChanges = false;
       this.selectedRowData = null;
     } catch (error) {
@@ -278,6 +284,7 @@ public gridOptions: any = {
   revert() {
     this.obtenerDatos();
     this.notSavedChanges = false;
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Revertir Registro en Usuarios por Empresa', 'Menu Administracion Usuarios por Empresa',  this.trackingService.getEmail());
   }
 
   private cleanDataForServer(data: any): any {

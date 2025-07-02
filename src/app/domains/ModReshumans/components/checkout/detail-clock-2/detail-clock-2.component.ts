@@ -20,6 +20,7 @@ import { TimeEditorModule } from 'app/shared/time-editor/time-editor.module';
 import { lastValueFrom, concat, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { EmployeesService } from 'app/services/employees.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 declare var bootstrap: any;
 
@@ -36,6 +37,7 @@ export default class DetailClock2Component implements OnInit {
   private route = inject(ActivatedRoute);
   private fb = inject(FormBuilder);
   private employeesService = inject(EmployeesService);
+  private trackingService = inject(TrackingService);
 
   ngOnInit() {
     this.idEmployee = this.signalsService.getDetailClockForEmployee().idEmployee();
@@ -59,7 +61,7 @@ export default class DetailClock2Component implements OnInit {
       this.diaSemanaInicio = this.obtenerNombreDiaSemana(fecha);
       this.diaInicio = fecha
     });
-    
+
     this.justificanteForm.get('controlFin')?.valueChanges.subscribe(fecha => {
       this.diaSemanaFin = this.obtenerNombreDiaSemana(fecha);
       this.diaFin = fecha
@@ -72,7 +74,7 @@ export default class DetailClock2Component implements OnInit {
     });
 
     // Inicializar el día de la semana con la fecha actual
-    
+
   }
 
   constructor() {
@@ -108,12 +110,12 @@ export default class DetailClock2Component implements OnInit {
       this.diaSemanaInicio = this.obtenerNombreDiaSemana(fecha);
       this.diaInicio = fecha
     });
-    
+
     this.justificanteForm.get('controlFin')?.valueChanges.subscribe(fecha => {
       this.diaSemanaFin = this.obtenerNombreDiaSemana(fecha);
       this.diaFin = fecha
     });
-     this.justificanteForm.valueChanges.subscribe(values => {
+    this.justificanteForm.valueChanges.subscribe(values => {
       console.log('Estado actual del formulario:', values);
     });
   }
@@ -323,58 +325,58 @@ export default class DetailClock2Component implements OnInit {
         editable: false,
         width: 200,
         cellRenderer: (params) => {
-  if (params.node.group) {
-    const groupData = params.node.allLeafChildren;
-    let totalHours = 0;
-    let totalDiscountHours = 0;
-    let lastInTime = null;
+          if (params.node.group) {
+            const groupData = params.node.allLeafChildren;
+            let totalHours = 0;
+            let totalDiscountHours = 0;
+            let lastInTime = null;
 
-    const validRecords = [...groupData]
-      .filter(node =>
-        (node.data.realHourBySystem || node.data.checkTime)
-      )
-      .sort((a, b) => {
-        const timeA = a.data.realHourBySystem ?? a.data.checkTime;
-        const timeB = b.data.realHourBySystem ?? b.data.checkTime;
-        return timeA.localeCompare(timeB);
-      });
+            const validRecords = [...groupData]
+              .filter(node =>
+                (node.data.realHourBySystem || node.data.checkTime)
+              )
+              .sort((a, b) => {
+                const timeA = a.data.realHourBySystem ?? a.data.checkTime;
+                const timeB = b.data.realHourBySystem ?? b.data.checkTime;
+                return timeA.localeCompare(timeB);
+              });
 
-    for (const node of validRecords) {
-      const record = node.data;
+            for (const node of validRecords) {
+              const record = node.data;
 
-      // ⛔️ Excluir registros inválidos y no festivos
-      if (record.valid !== true && record.holiday !== true) continue;
+              // ⛔️ Excluir registros inválidos y no festivos
+              if (record.valid !== true && record.holiday !== true) continue;
 
-      const hora = record.realHourBySystem ?? record.checkTime;
+              const hora = record.realHourBySystem ?? record.checkTime;
 
-      if (record.type === 'IN') {
-        lastInTime = hora;
-      } else if (record.type === 'OUT' && lastInTime) {
-        totalHours += this.calculateTimeDifference(lastInTime, hora);
-        lastInTime = null;
-      }
-    }
+              if (record.type === 'IN') {
+                lastInTime = hora;
+              } else if (record.type === 'OUT' && lastInTime) {
+                totalHours += this.calculateTimeDifference(lastInTime, hora);
+                lastInTime = null;
+              }
+            }
 
-    const discountMinutes = validRecords.reduce((sum, node) => {
-      const record = node.data;
-      if (
-        (record.valid === true || record.holiday === true) &&
-        record.minuteDiscount !== null &&
-        record.minuteDiscount !== undefined &&
-        !isNaN(record.minuteDiscount)
-      ) {
-        return sum + Number(record.minuteDiscount);
-      }
-      return sum;
-    }, 0);
+            const discountMinutes = validRecords.reduce((sum, node) => {
+              const record = node.data;
+              if (
+                (record.valid === true || record.holiday === true) &&
+                record.minuteDiscount !== null &&
+                record.minuteDiscount !== undefined &&
+                !isNaN(record.minuteDiscount)
+              ) {
+                return sum + Number(record.minuteDiscount);
+              }
+              return sum;
+            }, 0);
 
-    totalDiscountHours = discountMinutes / 60;
-    const netHours = totalHours - totalDiscountHours;
+            totalDiscountHours = discountMinutes / 60;
+            const netHours = totalHours - totalDiscountHours;
 
-    return this.formatHours(netHours);
-  }
-  return null;
-},
+            return this.formatHours(netHours);
+          }
+          return null;
+        },
 
         hide: false,
         valueGetter: () => null,
@@ -564,7 +566,7 @@ export default class DetailClock2Component implements OnInit {
           ...item,
           date: item.date ? new Date(item.date).toISOString().split('T')[0] : null
         }));
-        
+
         // Esperar a que el grid se actualice y luego ajustar las columnas
         setTimeout(() => {
           if (this.gridApi) {
@@ -685,6 +687,7 @@ export default class DetailClock2Component implements OnInit {
 
     // Actualizar el estado
     this.rowData = [newItem, ...this.rowData];
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Add Registro en Detalle de Checador', 'Menu Detalle de Checador', this.trackingService.getEmail());
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
     this.gridApi.setGridOption('rowData', this.rowData);
@@ -742,11 +745,13 @@ export default class DetailClock2Component implements OnInit {
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       console.log(cleanedData);
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Add Registro en Detalle de Checador', 'Menu Detalle de Checador', this.trackingService.getEmail());
       return this.clockService.checkInOut(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Update Registro en Detalle de Checador', 'Menu Detalle de Checador', this.trackingService.getEmail());
       return this.clockService.updateCheckInOut(row.id, cleanedData);
     });
     this.signalsService.triggerRefreshEmployees();
@@ -799,6 +804,7 @@ export default class DetailClock2Component implements OnInit {
   revertDetailData() {
     this.obtenerDatos(this.idEmployee, this.fechaInicio, this.fechaFin);
     this.notSavedChanges = false;
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Revertir Registro en Detalle de Checador', 'Menu Detalle de Checador', this.trackingService.getEmail());
   }
 
   private cleanDataForServer(data: any): any {
@@ -866,8 +872,7 @@ export default class DetailClock2Component implements OnInit {
     let minutes = Math.round((totalHours - hours) * 60);
 
     // Corrección para que no aparezcan 60 minutos en la vista
-    if(minutes == 60)
-    {
+    if (minutes == 60) {
       minutes = 0;
       hours = hours + 1;
     }
@@ -876,7 +881,7 @@ export default class DetailClock2Component implements OnInit {
   }
 
   // Método para obtener el día de la semana en español
-    private diasSemana = [
+  private diasSemana = [
     'Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'
   ];
 
@@ -898,158 +903,159 @@ export default class DetailClock2Component implements OnInit {
   }
 
   // Método para confirmar la adición del justificante
- confirmarAnadir() {
-  if (this.justificanteForm.value.controlInicio !== '' && this.justificanteForm.value.justificante !== '') {
-    const formValues = { ...this.justificanteForm.value };
-    const fechaInicio = new Date(formValues.controlInicio + 'T00:00:00');
-    const fechaFin = formValues.controlFin
-      ? new Date(formValues.controlFin + 'T00:00:00')
-      : new Date(fechaInicio); // Si no hay fecha fin, solo se procesa un día
+  confirmarAnadir() {
+    if (this.justificanteForm.value.controlInicio !== '' && this.justificanteForm.value.justificante !== '') {
+      const formValues = { ...this.justificanteForm.value };
+      const fechaInicio = new Date(formValues.controlInicio + 'T00:00:00');
+      const fechaFin = formValues.controlFin
+        ? new Date(formValues.controlFin + 'T00:00:00')
+        : new Date(fechaInicio); // Si no hay fecha fin, solo se procesa un día
 
-    const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-    const nuevasFilas = [];
+      const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+      const nuevasFilas = [];
 
-    alerts.confirmAlert(
-      'Confirmar',
-      '¿Está seguro que desea añadir estos datos al sistema?',
-      'warning',
-      'Sí, añadir'
-    ).then((result) => {
-      if (!result.isConfirmed) return;
+      alerts.confirmAlert(
+        'Confirmar',
+        '¿Está seguro que desea añadir estos datos al sistema?',
+        'warning',
+        'Sí, añadir'
+      ).then((result) => {
+        if (!result.isConfirmed) return;
 
-      const procesarDia = (current: Date) => {
-        if (current > fechaFin) {
-          // Ya terminó el recorrido, ahora sí aplica al grid
-          console.log('Filas que se añaden al grid:', nuevasFilas);
-          this.rowData = [...nuevasFilas, ...this.rowData];
-          this.gridApi.setGridOption('rowData', this.rowData);
-          this.notSavedChanges = true;
+        const procesarDia = (current: Date) => {
+          if (current > fechaFin) {
+            // Ya terminó el recorrido, ahora sí aplica al grid
+            console.log('Filas que se añaden al grid:', nuevasFilas);
+            this.rowData = [...nuevasFilas, ...this.rowData];
+            this.gridApi.setGridOption('rowData', this.rowData);
+            this.notSavedChanges = true;
 
-          // Cerrar el modal
-          const modalElement = document.getElementById('addJustificanteModal');
-          const modal = bootstrap.Modal.getInstance(modalElement);
-          if (modal) modal.hide();
+            // Cerrar el modal
+            const modalElement = document.getElementById('addJustificanteModal');
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            if (modal) modal.hide();
 
-          // Resetear formulario
-          this.justificanteForm.reset({
-            controlInicio: this.getLocalDate(),
-            controlFin: '',
-            justificante: ''
-          });
-
-          return;
-        }
-
-        const nombreDia = diasSemana[current.getDay()];
-        const fechaStr = current.toISOString().split('T')[0];
-        const idReason = formValues.justificante;
-
-        this.employeesService.getEmployeeClockByDay(this.idEmployee, nombreDia).subscribe({
-          next: (data: any) => {
-            const employee = data[0];
-
-            if (!employee) {
-              alerts.basicAlert(
-                'Error',
-                `No se encontró información del horario para el día ${nombreDia}`,
-                'error'
-              );
-              // Continuar con el siguiente día
-              current.setDate(current.getDate() + 1);
-              procesarDia(current);
-              return;
-            }
-
-            if (!employee.enabled) {
-              if(this.justificanteForm.value.controlFin == ''){
-              alerts.basicAlert(
-                'Error',
-                `El empleado no labora el día ${nombreDia}`,
-                'error'
-              );}
-              // Continuar con el siguiente día
-              current.setDate(current.getDate() + 1);
-              procesarDia(current);
-              return;
-            }
-
-            // Función auxiliar para crear filas
-            const crearFila = (checkTime: string, type: 'IN' | 'OUT') => ({
-              id: `temp_${this.tempIdCounter++}`,
-              idEmployee: this.idEmployee,
-              idBranch: this.idBranch,
-              date: fechaStr,
-              checkTime: checkTime,
-              modifiedCheckTime: '',
-              holiday: true,
-              type: type,
-              valid: false,
-              minuteDiscount: 0,
-              minuteDiscountBackup: null,
-              edited: true,
-              byTimeClock: false,
-              idReason: Number(idReason),
-              editedBy: this.signalsService.getDisplayName()(),
-              active: true,
-              __isNew: true
+            // Resetear formulario
+            this.justificanteForm.reset({
+              controlInicio: this.getLocalDate(),
+              controlFin: '',
+              justificante: ''
             });
 
-            nuevasFilas.push(crearFila(employee.entry1, 'IN'));
-            const newHora = this.sumarHoras(employee.entry1, employee.hours);
-            nuevasFilas.push(crearFila(newHora, 'OUT'));
-
-            // Continuar con el siguiente día
-            current.setDate(current.getDate() + 1);
-            procesarDia(current);
-          },
-          error: (err) => {
-            console.error(`Error al obtener datos del empleado para ${nombreDia}`, err);
-            alerts.basicAlert(
-              'Error',
-              `Error al obtener datos del empleado para ${nombreDia}`,
-              'error'
-            );
-            // Continuar con el siguiente día aunque falle
-            current.setDate(current.getDate() + 1);
-            procesarDia(current);
+            return;
           }
-        });
-      };
 
-      // Iniciar recorrido
-      procesarDia(new Date(fechaInicio));
-    });
-  } else {
-    alerts.basicAlert('Error', 'Por favor complete todos los campos requeridos', 'error');
-  }
-}
-cancelar(){
-  this.justificanteForm.reset({
-            controlInicio: this.getLocalDate(),
-            controlFin: '',
-            justificante: ''
+          const nombreDia = diasSemana[current.getDay()];
+          const fechaStr = current.toISOString().split('T')[0];
+          const idReason = formValues.justificante;
+
+          this.employeesService.getEmployeeClockByDay(this.idEmployee, nombreDia).subscribe({
+            next: (data: any) => {
+              const employee = data[0];
+
+              if (!employee) {
+                alerts.basicAlert(
+                  'Error',
+                  `No se encontró información del horario para el día ${nombreDia}`,
+                  'error'
+                );
+                // Continuar con el siguiente día
+                current.setDate(current.getDate() + 1);
+                procesarDia(current);
+                return;
+              }
+
+              if (!employee.enabled) {
+                if (this.justificanteForm.value.controlFin == '') {
+                  alerts.basicAlert(
+                    'Error',
+                    `El empleado no labora el día ${nombreDia}`,
+                    'error'
+                  );
+                }
+                // Continuar con el siguiente día
+                current.setDate(current.getDate() + 1);
+                procesarDia(current);
+                return;
+              }
+
+              // Función auxiliar para crear filas
+              const crearFila = (checkTime: string, type: 'IN' | 'OUT') => ({
+                id: `temp_${this.tempIdCounter++}`,
+                idEmployee: this.idEmployee,
+                idBranch: this.idBranch,
+                date: fechaStr,
+                checkTime: checkTime,
+                modifiedCheckTime: '',
+                holiday: true,
+                type: type,
+                valid: false,
+                minuteDiscount: 0,
+                minuteDiscountBackup: null,
+                edited: true,
+                byTimeClock: false,
+                idReason: Number(idReason),
+                editedBy: this.signalsService.getDisplayName()(),
+                active: true,
+                __isNew: true
+              });
+
+              nuevasFilas.push(crearFila(employee.entry1, 'IN'));
+              const newHora = this.sumarHoras(employee.entry1, employee.hours);
+              nuevasFilas.push(crearFila(newHora, 'OUT'));
+
+              // Continuar con el siguiente día
+              current.setDate(current.getDate() + 1);
+              procesarDia(current);
+            },
+            error: (err) => {
+              console.error(`Error al obtener datos del empleado para ${nombreDia}`, err);
+              alerts.basicAlert(
+                'Error',
+                `Error al obtener datos del empleado para ${nombreDia}`,
+                'error'
+              );
+              // Continuar con el siguiente día aunque falle
+              current.setDate(current.getDate() + 1);
+              procesarDia(current);
+            }
           });
-}
+        };
+
+        // Iniciar recorrido
+        procesarDia(new Date(fechaInicio));
+      });
+    } else {
+      alerts.basicAlert('Error', 'Por favor complete todos los campos requeridos', 'error');
+    }
+  }
+  cancelar() {
+    this.justificanteForm.reset({
+      controlInicio: this.getLocalDate(),
+      controlFin: '',
+      justificante: ''
+    });
+  }
 
 
   sumarHoras(horaStr: string, horasASumar: number): string {
-  const [h, m, s] = horaStr.split(':').map(Number);
+    const [h, m, s] = horaStr.split(':').map(Number);
 
-  // Convertir hora base a minutos totales
-  let totalMinutos = h * 60 + m;
+    // Convertir hora base a minutos totales
+    let totalMinutos = h * 60 + m;
 
-  // Convertir horas decimales a minutos
-  const minutosASumar = Math.round(horasASumar * 60);
+    // Convertir horas decimales a minutos
+    const minutosASumar = Math.round(horasASumar * 60);
 
-  totalMinutos += minutosASumar;
+    totalMinutos += minutosASumar;
 
-  // Calcular nueva hora
-  const nuevaHora = Math.floor(totalMinutos / 60) % 24;
-  const nuevosMinutos = totalMinutos % 60;
+    // Calcular nueva hora
+    const nuevaHora = Math.floor(totalMinutos / 60) % 24;
+    const nuevosMinutos = totalMinutos % 60;
 
-  // Convertir a string con formato HH:mm:ss
-  const horaFormateada = `${String(nuevaHora).padStart(2, '0')}:${String(nuevosMinutos).padStart(2, '0')}:00`;
+    // Convertir a string con formato HH:mm:ss
+    const horaFormateada = `${String(nuevaHora).padStart(2, '0')}:${String(nuevosMinutos).padStart(2, '0')}:00`;
 
-  return horaFormateada;
-}
+    return horaFormateada;
+  }
 }

@@ -11,6 +11,7 @@ import { PayrollService } from 'app/services/payroll.service';
 import { ClockService } from 'app/services/clock.service';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { concat, toArray } from 'rxjs';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-discrepancies',
@@ -26,6 +27,7 @@ export default class DiscrepanciesComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private fb = inject(FormBuilder);
   private clockService = inject(ClockService);
+  private trackingService = inject(TrackingService);
 
   ngOnInit() {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
@@ -359,6 +361,7 @@ export default class DiscrepanciesComponent implements OnInit {
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Diferencias de Checador', 'Menu Diferencias de Checador',  this.trackingService.getEmail());
       return this.clockService.updateCheckInOutForDiscrepancies(row.id, cleanedData);
     });
 
@@ -379,6 +382,7 @@ export default class DiscrepanciesComponent implements OnInit {
   revert() {
     this.obtenerDatos();
     this.notSavedChanges = false;
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Revertir Registro en Diferencias de Checador', 'Menu Diferencias de Checador',  this.trackingService.getEmail());
   }
 
   private cleanDataForServer(data: any): any {
