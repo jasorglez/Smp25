@@ -384,6 +384,13 @@ export const routes: Routes = [
               import('./domains/SMP/Components/root/root.component').then(
                 (r) => r.RootComponent
               ),
+            canActivate: [TrackingGuard],
+            data: {
+              tracking: {
+                logMessage: 'Click en Pestaña Configuración Módulo Root',
+                category: 'Setup'
+              }
+            }
           },
           {
             path: 'roles',
@@ -391,8 +398,14 @@ export const routes: Routes = [
               import('./domains/SMP/Components/roles/roles.component').then(
                 (r) => r.RolesComponent
               ),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'setup', detailed: 'roles' } },
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: {
+              permissions: { master: 'setup', detailed: 'roles' },
+              tracking: {
+                logMessage: 'Click en Pestaña Configuración Módulo Roles',
+                category: 'Setup'
+              }
+            }
           },
           {
             path: 'branches',
@@ -400,8 +413,14 @@ export const routes: Routes = [
               import(
                 './domains/SMP/Components/branches/branches.component'
               ).then((u) => u.BranchesComponent),
-            //canActivate: [MasterPermissionsGuard],
-            //data: { permissions: { master: 'setup', detailed: 'branches' } }
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: {
+              permissions: { master: 'setup', detailed: 'branches' },
+              tracking: {
+                logMessage: 'Click en Pestaña Configuración Módulo Sucursales',
+                category: 'Setup'
+              }
+            },
             canDeactivate: [UnsavedChangesGuard],
           },
           {
@@ -410,9 +429,15 @@ export const routes: Routes = [
               import('./domains/SMP/Components/store/store.component').then(
                 (u) => u.StoreComponent
               ),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'setup', detailed: 'stores' } },
-            //canDeactivate: [UnsavedChangesGuard],
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: {
+              permissions: { master: 'setup', detailed: 'stores' },
+              tracking: {
+                logMessage: 'Click en Pestaña Configuración Módulo Tiendas',
+                category: 'Setup'
+              }
+            },
+            canDeactivate: [UnsavedChangesGuard],
           },
           {
             path: 'cashRegisters',
@@ -420,9 +445,15 @@ export const routes: Routes = [
               import(
                 './domains/SMP/Components/cashRegisters/cashRegisters.component'
               ).then((u) => u.CashRegistersComponent),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'setup', detailed: 'cash-registers' } }
-            //canDeactivate: [UnsavedChangesGuard], 
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: {
+              permissions: { master: 'setup', detailed: 'cash-registers' },
+              tracking: {
+                logMessage: 'Click en Pestaña Configuración Módulo Cajas Registradoras',
+                category: 'Setup'
+              }
+            },
+            canDeactivate: [UnsavedChangesGuard],
           },
           {
             path: 'logs',
@@ -430,8 +461,14 @@ export const routes: Routes = [
               import('./domains/SMP/Components/kardex/kardex.component').then(
                 (k) => k.KardexComponent
               ),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'setup', detailed: 'log' } }
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: {
+              permissions: { master: 'setup', detailed: 'log' },
+              tracking: {
+                logMessage: 'Click en Pestaña Configuración Módulo Logs',
+                category: 'Setup'
+              }
+            }
           },
           {
             path: 'catalog',
@@ -874,9 +911,19 @@ export const routes: Routes = [
                 './domains/ModReshumans/components/employees/employees.component'
               ).then((s) => s.EmployeesComponent),
             canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'hr', detailed: 'employees' } },
+            data: {
+              permissions:
+              {
+                master: 'hr',
+                detailed: 'employees'
+              }
+            },
             children: [
-              { path: '', redirectTo: 'employees-table', pathMatch: 'full' },
+              {
+                path: '',
+                redirectTo: 'employees-table',
+                pathMatch: 'full'
+              },
 
               {
                 path: 'clock',
@@ -884,6 +931,13 @@ export const routes: Routes = [
                   import(
                     './domains/ModReshumans/components/employees/employees-clock/employees-clock.component'
                   ).then((p) => p.EmployeesClockComponent),
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Pestaña Empleados Módulo Horario de Empleados',
+                    category: 'HR'
+                  }
+                }
               },
               {
                 path: 'employees-table',
@@ -899,6 +953,13 @@ export const routes: Routes = [
                   import(
                     './domains/ModReshumans/components/employees/loans-registry/loans-registry.component'
                   ).then((s) => s.LoansRegistryComponent),
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Pestaña Empleados Módulo Registro de Préstamos',
+                    category: 'HR'
+                  }
+                },
               },
               {
                 path: 'history-savings',
@@ -906,6 +967,13 @@ export const routes: Routes = [
                   import(
                     './domains/ModReshumans/components/employees/savings-registry/savings-registry.component'
                   ).then((s) => s.SavingsRegistryComponent),
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Pestaña Empleados Módulo Registro de Ahorros',
+                    category: 'HR'
+                  }
+                },
               },
               /*{
                 path: 'catalogs',
@@ -934,6 +1002,13 @@ export const routes: Routes = [
                   import(
                     './domains/ModReshumans/components/payroll/masterpayroll/masterpayroll.component'
                   ).then((s) => s.MasterPayrollComponent),
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Pestaña Empleados Módulo Planilla de Pagos',
+                    category: 'HR'
+                  }
+                },
               },
               {
                 path: 'bonus',
@@ -941,6 +1016,13 @@ export const routes: Routes = [
                   import(
                     './domains/ModReshumans/components/payroll/bonus/bonus.component'
                   ).then((s) => s.BonusComponent),
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Pestaña Empleados Módulo Bonos',
+                    category: 'HR'
+                  }
+                },
                 canDeactivate: [UnsavedChangesGuard],
               },
               {
@@ -949,6 +1031,13 @@ export const routes: Routes = [
                   import(
                     './domains/ModReshumans/components/payroll/history-payroll/history-payroll.component'
                   ).then((s) => s.HistoryPayrollComponent),
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Pestaña Empleados Módulo Histórico de Nóminas Digitales',
+                    category: 'HR'
+                  }
+                },
                 canDeactivate: [UnsavedChangesGuard],
               },
 
@@ -958,6 +1047,13 @@ export const routes: Routes = [
                   import(
                     './domains/ModReshumans/components/payroll/setup/setup.component'
                   ).then((s) => s.SetupEmployeesComponent),
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Pestaña Empleados Módulo Configuración de Nóminas',
+                    category: 'HR'
+                  }
+                },
               },
 
             ],
@@ -972,15 +1068,37 @@ export const routes: Routes = [
 
               {
                 path: 'payroll',
-                loadComponent: () => import('./domains/ModReshumans/components/setup/payroll/payroll.component').then(p => p.PayrollComponent)
+                loadComponent: () => import('./domains/ModReshumans/components/setup/payroll/payroll.component').then(p => p.PayrollComponent),
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Pestaña Empleados Módulo Configuración de Nóminas',
+                    category: 'HR'
+                  }
+                }
+
               },
               {
                 path: 'employees',
-                loadComponent: () => import('./domains/ModReshumans/components/setup/employees/employees.component').then(p => p.EmployeesComponent)
+                loadComponent: () => import('./domains/ModReshumans/components/setup/employees/employees.component').then(p => p.EmployeesComponent),
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Pestaña Empleados Módulo Configuración de Empleados',
+                    category: 'HR'
+                  }
+                }
               },
               {
                 path: 'clock',
-                loadComponent: () => import('./domains/ModReshumans/components/setup/clock/clock.component').then(p => p.ClockComponent)
+                loadComponent: () => import('./domains/ModReshumans/components/setup/clock/clock.component').then(p => p.ClockComponent),
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Pestaña Empleados Módulo Configuración de Checador',
+                    category: 'HR'
+                  }
+                }
               },
             ]
           },
@@ -994,18 +1112,46 @@ export const routes: Routes = [
               {
                 path: 'discrepancies',
                 loadComponent: () => import('./domains/ModReshumans/components/checkout/discrepancies/discrepancies.component'),
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Pestaña Empleados Módulo Checador Ajustar Tiempos',
+                    category: 'HR'
+                  }
+                }
               },
               {
                 path: 'history-clock',
                 loadComponent: () => import('./domains/ModReshumans/components/checkout/db/db.component'),
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Pestaña Empleados Módulo Checador Histórico Checador',
+                    category: 'HR'
+                  }
+                }
               },
               {
                 path: 'detail-clock',
                 loadComponent: () => import('./domains/ModReshumans/components/checkout/detail-clock/detail-clock.component'),
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Pestaña Empleados Módulo Checador Detalles Checador',
+                    category: 'HR'
+                  }
+                }
               },
               {
                 path: 'master-clock',
                 loadComponent: () => import('./domains/ModReshumans/components/checkout/master-clock/master-clock.component'),
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Pestaña Empleados Módulo Checador Maestro Checador',
+                    category: 'HR'
+                  }
+                }
               },
               {
                 path: 'detail-clock-2',
@@ -1014,6 +1160,13 @@ export const routes: Routes = [
               {
                 path: 'holidays',
                 loadComponent: () => import('./domains/ModReshumans/components/checkout/holidays/holidays.component'),
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Pestaña Empleados Módulo Checador Feriados',
+                    category: 'HR'
+                  }
+                }
               },
 
             ]
@@ -1029,7 +1182,14 @@ export const routes: Routes = [
             children: [
               {
                 path: ':section',
-                loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(p => p.CatalogsComponent)
+                loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(p => p.CatalogsComponent),
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Pestaña Empleados Módulo Catálogos',
+                    category: 'HR'
+                  }
+                }
               },
             ],
           }
