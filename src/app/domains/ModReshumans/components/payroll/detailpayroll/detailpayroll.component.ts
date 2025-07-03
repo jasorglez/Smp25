@@ -67,7 +67,20 @@ export class DetailpayrollComponent implements OnInit{
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
       }
     },
-    { headerName: 'Horas Trabajadas', width: 150, field: 'workedHours' },
+    {
+      headerName: 'Horas Trabajadas',
+      width: 150,
+      field: 'workedHours',
+      valueFormatter: (params) => {
+        const value = params.value;
+        if (typeof value !== 'number' || isNaN(value)) return '';
+      
+        const hours = Math.floor(value);
+        const minutes = Math.round((value - hours) * 60);
+      
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      },
+    },
     { headerName: 'Horas Extra', width: 150, field: 'extraWorkedHours' },
     { headerName: 'Horas Extra Especiales', width: 150, field: 'extraWorkedHours' },
     {

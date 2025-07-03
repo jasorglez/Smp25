@@ -328,6 +328,15 @@ export class MasterPayrollComponent implements OnInit {
         field: 'totalBaseWorkingHours',
         headerName: 'Total Jornadas Base',
         width: 170,
+        valueFormatter: (params) => {
+        const value = params.value;
+        if (typeof value !== 'number' || isNaN(value)) return '';
+      
+        const hours = Math.floor(value);
+        const minutes = Math.round((value - hours) * 60);
+      
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      },
       },
 
       {
@@ -337,6 +346,15 @@ export class MasterPayrollComponent implements OnInit {
         cellEditorParams: {
           maxLength: 15,
         },
+        valueFormatter: (params) => {
+        const value = params.value;
+        if (typeof value !== 'number' || isNaN(value)) return '';
+      
+        const hours = Math.floor(value);
+        const minutes = Math.round((value - hours) * 60);
+      
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      },
       },
 
        { field: 'totalBonos',
