@@ -16,6 +16,7 @@ import { AuthService } from '../../../services/auth.service';
 import { UsersService } from '../../../services/users.service';
 import { SignalsService } from 'app/services/signals.service';
 import { DomainsModule } from 'app/domains/domainsmodule';
+import { environment } from '@env/environment';
 
 @Component({
   selector: 'app-complogin',
@@ -31,6 +32,8 @@ import { DomainsModule } from 'app/domains/domainsmodule';
 
 })
 export class ComploginComponent implements OnInit {
+
+  environment = environment;
 
   //idUser      = computed(()=>  this.signalsService.idUser()) ;
 
