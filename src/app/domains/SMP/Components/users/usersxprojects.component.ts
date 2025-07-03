@@ -66,6 +66,7 @@ export class UsersxprojectsComponent {
           projectsArray.some(p => p.id === uxp.idPermission)
         ).map(uxp => {
           const matchingProject = projectsArray.find(p => p.id === uxp.idPermission);
+          this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Usuarios por Proyecto', 'Menu Administracion Usuarios por Proyecto',  this.trackingService.getEmail());
           return {
             ...uxp,
             idContract: matchingProject ? matchingProject.idContrato : null

@@ -30,7 +30,7 @@ import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { CatalogadmonService } from 'app/services/catalogadmon.service';
 import { RootService } from 'app/services/root.service';
 import { number } from 'echarts';
-
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-master-expenses',
@@ -39,7 +39,7 @@ import { number } from 'echarts';
   templateUrl: './masterExpenses.component.html',
 })
 export class MasterExpensesComponent {
-
+  private trackingService = inject(TrackingService);
   store: any[] = [];
   idcompany: number = null;
   rowData: any[] = [];
@@ -123,6 +123,7 @@ export class MasterExpensesComponent {
       next: (data: any) => {
         this.rowData = data;
         console.log(this.rowData);
+        this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Gastos', 'Menu Administracion Gastos',  this.trackingService.getEmail());
       },
       error: (error) => {
         if (error.status === 404) this.store = [];
@@ -505,6 +506,7 @@ export class MasterExpensesComponent {
 
     //this.rowData.push(newItem);
     this.rowData = [newItem1, newItem2,...this.rowData];
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Gastos', 'Menu Administracion Gastos',  this.trackingService.getEmail());
   }
 
 
@@ -528,13 +530,13 @@ export class MasterExpensesComponent {
 
     const addObservables: Promise<any>[] = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Gastos', 'Menu Administracion Gastos',  this.trackingService.getEmail());
       return lastValueFrom(this.incomesAndExpensesService.addIncomesAndExpenses(cleanedData));
     });
 
     const updateObservables: Promise<any>[] = modifiedRows.map((row) => {      
       const cleanedData = this.cleanDataForServer(row);
-      
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Gastos', 'Menu Administracion Gastos',  this.trackingService.getEmail());
       return lastValueFrom(this.incomesAndExpensesService.updateIncomesAndExpenses(row.id, cleanedData));
     });
 
@@ -668,6 +670,7 @@ export class MasterExpensesComponent {
                 'success'
               );
               this.obtenerDatos();
+              this.trackingService.addLog(this.trackingService.getnameComp(),'Delete Registro en Gastos', 'Menu Administracion Gastos',  this.trackingService.getEmail());
               this.notSavedChanges = false;
               this.selectedRowData = null;
             });
@@ -678,6 +681,7 @@ export class MasterExpensesComponent {
   revertMasterData() {
     this.obtenerDatos();
     this.notSavedChanges = false;
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Revertir Registro en Gastos', 'Menu Administracion Gastos',  this.trackingService.getEmail());
   }
   private selectRowById(id: number | string) {
     // Dar tiempo al grid para que se actualice

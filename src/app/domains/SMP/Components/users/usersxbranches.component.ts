@@ -87,6 +87,7 @@ export class UsersxbranchesComponent {
       (data: any) => {
         this.rowData = data.project; // Extract the array from the response     
         console.log(data);
+        this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Usuarios por Sucursal', 'Menu Administracion Usuarios por Sucursal',  this.trackingService.getEmail());
       },
       (error) => {
         if (error.status == 404) this.rowData = [];

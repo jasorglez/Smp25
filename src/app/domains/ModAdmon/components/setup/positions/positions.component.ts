@@ -6,6 +6,7 @@ import { FormsModule } from '@angular/forms';
 import { AdministrationService } from 'app/services/administration.service';
 import { SignalsService } from 'app/services/signals.service';
 import { alerts } from 'app/helpers/alerts';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-positions',
@@ -17,7 +18,7 @@ import { alerts } from 'app/helpers/alerts';
 export class PositionsComponent {
   private signalsService = inject(SignalsService);
   private administrationService = inject(AdministrationService);
-
+  private trackingService = inject(TrackingService);
   idRoot: number = null;
   setupData: any = {};
   fiscalRegimes: any = [];
@@ -42,6 +43,7 @@ export class PositionsComponent {
         next: (data: any) => {
           this.setupData = data[0] || {};
           this.newData = false;
+          this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Posiciones', 'Menu Administracion Posiciones',  this.trackingService.getEmail());
         },
         error: (err) => {
           if (err.status === 404) {
@@ -62,6 +64,7 @@ export class PositionsComponent {
           next: () => {
             alerts.basicAlert("Actualización", "Los datos fueron guardados exitosamente.", "success");
             this.getSetupManagementData(); // Refrescar datos
+            this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Posiciones', 'Menu Administracion Posiciones',  this.trackingService.getEmail());
             this.newData = false;
           },
           error: (err) => {
@@ -74,6 +77,7 @@ export class PositionsComponent {
         .subscribe({
           next: () => {
             alerts.basicAlert("Actualización", "Los datos fueron guardados exitosamente.", "success");
+            this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Posiciones', 'Menu Administracion Posiciones',  this.trackingService.getEmail());
             this.getSetupManagementData(); // Refrescar datos
           },
           error: (err) => {

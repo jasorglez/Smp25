@@ -9,7 +9,7 @@ import { HRService } from 'app/services/hr.service';
 import { SignalsService } from 'app/services/signals.service';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { BranchsService } from 'app/services/branchs.service';
-
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-clock-db',
@@ -26,6 +26,7 @@ export default class DbComponent {
   private hrService = inject(HRService);
   private signalsService = inject(SignalsService);
   private branchesService = inject(BranchsService);
+  private trackingService = inject(TrackingService);
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
@@ -42,114 +43,116 @@ export default class DbComponent {
 
   columnDefs = [
     {
-  headerName: 'Fecha',
-  field: 'hour',
-  flex: 1,
-  filter: 'agDateColumnFilter',
-  filterParams: {
-     excelMode: 'mac',
-    comparator: (filterLocalDateAtMidnight: Date, cellValue: any): number => {
-      if (!cellValue) return -1;
+      headerName: 'Fecha',
+      field: 'hour',
+      flex: 1,
+      filter: 'agDateColumnFilter',
+      filterParams: {
+        excelMode: 'mac',
+        comparator: (filterLocalDateAtMidnight: Date, cellValue: any): number => {
+          if (!cellValue) return -1;
 
-      const date = typeof cellValue === 'string'
-        ? this.parseAsUTC(cellValue)
-        : new Date(cellValue);
+          const date = typeof cellValue === 'string'
+            ? this.parseAsUTC(cellValue)
+            : new Date(cellValue);
 
-      if (isNaN(date.getTime())) return -1;
+          if (isNaN(date.getTime())) return -1;
 
-      // Comparar solo fecha local (sin horas)
-      const cellDay = date.getDate();
-      const cellMonth = date.getMonth();
-      const cellYear = date.getFullYear();
+          // Comparar solo fecha local (sin horas)
+          const cellDay = date.getDate();
+          const cellMonth = date.getMonth();
+          const cellYear = date.getFullYear();
 
-      const filterDay = filterLocalDateAtMidnight.getDate();
-      const filterMonth = filterLocalDateAtMidnight.getMonth();
-      const filterYear = filterLocalDateAtMidnight.getFullYear();
+          const filterDay = filterLocalDateAtMidnight.getDate();
+          const filterMonth = filterLocalDateAtMidnight.getMonth();
+          const filterYear = filterLocalDateAtMidnight.getFullYear();
 
-      if (cellYear < filterYear) return -1;
-      if (cellYear > filterYear) return 1;
-      if (cellMonth < filterMonth) return -1;
-      if (cellMonth > filterMonth) return 1;
-      if (cellDay < filterDay) return -1;
-      if (cellDay > filterDay) return 1;
-      return 0;
-    }
-  },
-  valueFormatter: (params) => {
-    if (!params.value) return '';
-
-    const date = typeof params.value === 'string'
-      ? this.parseAsUTC(params.value)
-      : new Date(params.value);
-
-    return date.toLocaleDateString('es-MX', {
-      timeZone: 'America/Mexico_City', // muestra correctamente en zona local
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-  }
-},
-    {
-        field: 'idBranch',
-        headerName: 'Nombre sucursal',
-        editable: true,
-        filter: true,
-        width: 170,
-        cellEditor: 'agSelectCellEditor',
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'windows',
-        },
-
-        cellEditorParams: (params) => {
-          return {
-            values: this.branchs
-              ? this.branchs
-                  .slice() // Creamos una copia para no modificar el array original
-                  .sort((a, b) => a.name.localeCompare(b.name)) // Ordenamos por nombre
-                  .map((item) => item.id) // Extraemos solo los IDs
-              : [],
-          };
-        },
-
-        valueFormatter: (params) => {
-          // Handle potential null values and properly format the displayed value
-          if (!params.value) return '';
-
-          const foundBranch = this.branchs
-            ? this.branchs.find((item) => item.id === params.value)
-            : null;
-
-          return foundBranch ? foundBranch.name : params.value;
-        },
-        valueGetter: (params) => {
-          if (!params.data || !params.data.idBranch) return '';
-          const branch = this.branchs?.find(b => b.id === params.data.idBranch);
-          return branch ? branch.name : '';
-        },
+          if (cellYear < filterYear) return -1;
+          if (cellYear > filterYear) return 1;
+          if (cellMonth < filterMonth) return -1;
+          if (cellMonth > filterMonth) return 1;
+          if (cellDay < filterDay) return -1;
+          if (cellDay > filterDay) return 1;
+          return 0;
+        }
       },
-      { headerName: 'Nombre Empleado',
+      valueFormatter: (params) => {
+        if (!params.value) return '';
+
+        const date = typeof params.value === 'string'
+          ? this.parseAsUTC(params.value)
+          : new Date(params.value);
+
+        return date.toLocaleDateString('es-MX', {
+          timeZone: 'America/Mexico_City', // muestra correctamente en zona local
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        });
+      }
+    },
+    {
+      field: 'idBranch',
+      headerName: 'Nombre sucursal',
+      editable: true,
+      filter: true,
+      width: 170,
+      cellEditor: 'agSelectCellEditor',
+      filterParams: {
+        // can be 'windows' or 'mac'
+        defaultToNothingSelected: true,
+        //excelMode: 'windows',
+      },
+
+      cellEditorParams: (params) => {
+        return {
+          values: this.branchs
+            ? this.branchs
+              .slice() // Creamos una copia para no modificar el array original
+              .sort((a, b) => a.name.localeCompare(b.name)) // Ordenamos por nombre
+              .map((item) => item.id) // Extraemos solo los IDs
+            : [],
+        };
+      },
+
+      valueFormatter: (params) => {
+        // Handle potential null values and properly format the displayed value
+        if (!params.value) return '';
+
+        const foundBranch = this.branchs
+          ? this.branchs.find((item) => item.id === params.value)
+          : null;
+
+        return foundBranch ? foundBranch.name : params.value;
+      },
+      valueGetter: (params) => {
+        if (!params.data || !params.data.idBranch) return '';
+        const branch = this.branchs?.find(b => b.id === params.data.idBranch);
+        return branch ? branch.name : '';
+      },
+    },
+    {
+      headerName: 'Nombre Empleado',
       field: 'employeeName',
       flex: 2,
       filter: true,
-      filterParams: { defaultToNothingSelected: true }, },
-      
-      {
-        headerName: 'Hora',
-        field: 'hour',
-        flex: 1,
-        filter: 'agTextColumnFilter',
-        valueFormatter: (params) => {
-          const date = new Date(params.value);
-          return date.toLocaleTimeString('es-MX', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
-          });
-        }
-      },
+      filterParams: { defaultToNothingSelected: true },
+    },
+
+    {
+      headerName: 'Hora',
+      field: 'hour',
+      flex: 1,
+      filter: 'agTextColumnFilter',
+      valueFormatter: (params) => {
+        const date = new Date(params.value);
+        return date.toLocaleTimeString('es-MX', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        });
+      }
+    },
     { headerName: 'Tipo', field: 'type', flex: 1 },
     { headerName: 'Válido', field: 'valid', flex: 1 },
     { headerName: 'Minutos descontados', field: 'minuteDiscount', flex: 1 }
@@ -182,10 +185,10 @@ export default class DbComponent {
   }
 
   parseAsUTC(dateStr: string): Date {
-  // Convierte '2025-06-24 18:00:00.000' → '2025-06-24T18:00:00Z'
-  const [datePart, timePart] = dateStr.trim().split(' ');
-  return new Date(`${datePart}T${timePart}Z`);
-}
+    // Convierte '2025-06-24 18:00:00.000' → '2025-06-24T18:00:00Z'
+    const [datePart, timePart] = dateStr.trim().split(' ');
+    return new Date(`${datePart}T${timePart}Z`);
+  }
 
   getData() {
     this.clockService.getCheckInfo(this.idBranch).subscribe(
@@ -197,6 +200,7 @@ export default class DbComponent {
           hour: new Date(`${item.date}T${item.hour}`)  // Combinar fecha y hora
         }));
         console.log(this.data);
+        this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Histórico de Checador', 'Menu Recursos HumanosHistórico Checador',  this.trackingService.getEmail());
       },
       error => {
         this.data = null;

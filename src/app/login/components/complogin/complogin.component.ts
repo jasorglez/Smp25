@@ -40,7 +40,9 @@ export class ComploginComponent implements OnInit {
   picture     : string = '' ;
 
   images      : string[] = [
-    '../../../assets/img/building-4803602_1920.webp'
+    '../../../assets/img/building-4803602_1920.webp',
+    '../../../assets/img/architecture-3588171_1920.webp',
+    '../../../assets/img/entrepreneur-1340649_1920.webp',
   ];
 
   private loginService    = inject(LoginService) ;

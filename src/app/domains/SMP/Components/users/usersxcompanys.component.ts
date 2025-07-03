@@ -56,6 +56,7 @@ export class UsersxcompanysComponent {
       .getDataUsersxPermissions(this.permissionType)
       .subscribe((data: any) => {
         this.rowData = data.filter((row: any) => row.idUser === this.idUser);
+        this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Usuarios por Contratista', 'Menu Administracion Usuarios por Contratista',  this.trackingService.getEmail());
       });
   }
 

@@ -86,6 +86,7 @@ export class UsersxcontractsComponent {
           this.rowData = data.filter((row: any) => row.idUser === this.idUser);
           this.rowData = this.rowData.map(({ idProvider, ...rest }) => rest);
         }
+        this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Usuarios por Contrato', 'Menu Administracion Usuarios por Contrato',  this.trackingService.getEmail());
       },
       error => {
         console.error('Error:', error);

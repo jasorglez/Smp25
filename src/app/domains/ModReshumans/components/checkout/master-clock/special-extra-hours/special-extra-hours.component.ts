@@ -405,7 +405,7 @@ maestroColumnDefs: ColDef[] = [
         } else {
           this.maestroRowData = maestroRowData;
           console.log(this.maestroRowData);
-
+          this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Horas Extras Especiales', 'Menu Horas Extras Especiales en Checador',  this.trackingService.getEmail());
           setTimeout(() => {
             if (this.maestroGridApi && this.maestroRowData.length > 0) {
               // Buscar la fila que coincide con el ID guardado

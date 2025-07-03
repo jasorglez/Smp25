@@ -6,6 +6,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { alerts } from 'app/helpers/alerts';
 import * as asn1js from 'asn1js';
 import * as pkijs from 'pkijs';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-billing',
@@ -17,7 +18,7 @@ import * as pkijs from 'pkijs';
 export class BillingComponent {
   private signalsService = inject(SignalsService);
   private administrationService = inject(AdministrationService);
-
+  private trackingService = inject(TrackingService);
   idRoot: number = null;
   billingData: any = {};
   fiscalRegimes: any = [];
@@ -55,6 +56,7 @@ export class BillingComponent {
           }
           this.newData = false;
           console.log(this.billingData)
+          this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Facturación', 'Menu Administracion Facturación',  this.trackingService.getEmail());
         },
         error: (err) => {
           if (err.status === 404) {
@@ -90,6 +92,7 @@ export class BillingComponent {
             alerts.basicAlert("Actualización", "Los datos fueron guardados exitosamente.", "success");
             this.getBillingManagementData(); // Refrescar datos
             this.newData = false;
+            this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Facturación', 'Menu Administracion Facturación',  this.trackingService.getEmail());
           },
           error: (err) => {
             alerts.basicAlert("Error", "Error al actualizar los datos.", "error");
@@ -102,6 +105,7 @@ export class BillingComponent {
           next: () => {
             alerts.basicAlert("Actualización", "Los datos fueron guardados exitosamente.", "success");
             this.getBillingManagementData(); // Refrescar datos
+            this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Facturación', 'Menu Administracion Facturación',  this.trackingService.getEmail());
           },
           error: (err) => {
             alerts.basicAlert("Error", "Error al actualizar los datos.", "error");
@@ -112,6 +116,7 @@ export class BillingComponent {
 
   revertChanges() {
     this.getBillingManagementData();
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Revertir Registro en Facturación', 'Menu Administracion Facturación',  this.trackingService.getEmail());
   }
 
   onCerFileSelected(event: any) {

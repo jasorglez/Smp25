@@ -566,7 +566,7 @@ export default class DetailClock2Component implements OnInit {
           ...item,
           date: item.date ? new Date(item.date).toISOString().split('T')[0] : null
         }));
-
+        this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Detalle de Checador', 'Menu Recursos Humanos Detalle de Checador',  this.trackingService.getEmail());
         // Esperar a que el grid se actualice y luego ajustar las columnas
         setTimeout(() => {
           if (this.gridApi) {
@@ -687,7 +687,7 @@ export default class DetailClock2Component implements OnInit {
 
     // Actualizar el estado
     this.rowData = [newItem, ...this.rowData];
-    this.trackingService.addLog(this.trackingService.getnameComp(), 'Add Registro en Detalle de Checador', 'Menu Detalle de Checador', this.trackingService.getEmail());
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Add Registro en Detalle de Checador', 'Menu Recursos Humanos Detalle de Checador', this.trackingService.getEmail());
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
     this.gridApi.setGridOption('rowData', this.rowData);
@@ -745,13 +745,13 @@ export default class DetailClock2Component implements OnInit {
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       console.log(cleanedData);
-      this.trackingService.addLog(this.trackingService.getnameComp(), 'Add Registro en Detalle de Checador', 'Menu Detalle de Checador', this.trackingService.getEmail());
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Add Registro en Detalle de Checador', 'Menu Recursos Humanos Detalle de Checador', this.trackingService.getEmail());
       return this.clockService.checkInOut(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      this.trackingService.addLog(this.trackingService.getnameComp(), 'Update Registro en Detalle de Checador', 'Menu Detalle de Checador', this.trackingService.getEmail());
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Update Registro en Detalle de Checador', 'Menu Recursos Humanos Detalle de Checador', this.trackingService.getEmail());
       return this.clockService.updateCheckInOut(row.id, cleanedData);
     });
     this.signalsService.triggerRefreshEmployees();
@@ -804,7 +804,7 @@ export default class DetailClock2Component implements OnInit {
   revertDetailData() {
     this.obtenerDatos(this.idEmployee, this.fechaInicio, this.fechaFin);
     this.notSavedChanges = false;
-    this.trackingService.addLog(this.trackingService.getnameComp(), 'Revertir Registro en Detalle de Checador', 'Menu Detalle de Checador', this.trackingService.getEmail());
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Revertir Registro en Detalle de Checador', 'Menu Recursos Humanos Detalle de Checador', this.trackingService.getEmail());
   }
 
   private cleanDataForServer(data: any): any {

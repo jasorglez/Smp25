@@ -6,6 +6,7 @@ import { NgSelectComponent } from '@ng-select/ng-select';
 import { EmployeesService } from 'app/services/employees.service';
 import { SignalsService } from 'app/services/signals.service';
 import { alerts } from 'app/helpers/alerts';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-employees-clock',
@@ -18,6 +19,7 @@ export class EmployeesClockComponent {
 
   private employeesService = inject(EmployeesService);
   private signalsService = inject(SignalsService);
+  private trackingService = inject(TrackingService);
   
 
   idEmployee: number = null;
@@ -99,6 +101,7 @@ export class EmployeesClockComponent {
           this.isNew = true;
         }
         console.log('Estado horario:', this.isNew ? 'Nuevo' : 'Existente');
+        this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Horario de Empleado', 'Menu Recursos Humanos Horario de Empleado',  this.trackingService.getEmail());
         this.horario.sort((a, b) => this.diasSemana.indexOf(a.day) - this.diasSemana.indexOf(b.day));
       },
       (error) => {
@@ -183,7 +186,9 @@ export class EmployeesClockComponent {
     // Opcional: Mostrar confirmación al usuario
     alerts.basicAlert('Horario guardado', `Horario ${this.isNew ? 'creado' : 'actualizado'} correctamente`, 'success');
     this.guardarHoras();
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Modificando Horario de Empleado', 'Menu Recursos Humanos Horario de Empleado',  this.trackingService.getEmail());
   }
+
   guardarHoras() {
     const index = this.employees.findIndex(emp => emp.id === this.idEmployee);
     if (index !== -1) {
@@ -193,6 +198,7 @@ export class EmployeesClockComponent {
         .subscribe({
           next: () => {
             console.log("Las horas base fueron actualizadas", "success");
+            this.trackingService.addLog(this.trackingService.getnameComp(),'Modificando Horario de Empleado', 'Menu Recursos Humanos Horario de Empleado',  this.trackingService.getEmail());
           },
           error: (err) => {
             console.log("No se pudo actualizar el empleado", "error");

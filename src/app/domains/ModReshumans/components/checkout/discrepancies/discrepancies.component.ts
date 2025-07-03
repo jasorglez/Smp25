@@ -277,6 +277,7 @@ export default class DiscrepanciesComponent implements OnInit {
       this.rowData = [];
       this.rowData = data;
       console.log(this.rowData);
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Diferencias de Checador', 'Menu Recursos Humanos Diferencias de Checador',  this.trackingService.getEmail());
       // Esperar a que el grid se actualice y luego ajustar las columnas
       setTimeout(() => {
         if (this.gridApi) {
@@ -361,7 +362,7 @@ export default class DiscrepanciesComponent implements OnInit {
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Diferencias de Checador', 'Menu Diferencias de Checador',  this.trackingService.getEmail());
+      this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Diferencias de Checador', 'Menu Recursos Humanos Diferencias de Checador',  this.trackingService.getEmail());
       return this.clockService.updateCheckInOutForDiscrepancies(row.id, cleanedData);
     });
 
@@ -382,7 +383,7 @@ export default class DiscrepanciesComponent implements OnInit {
   revert() {
     this.obtenerDatos();
     this.notSavedChanges = false;
-    this.trackingService.addLog(this.trackingService.getnameComp(),'Revertir Registro en Diferencias de Checador', 'Menu Diferencias de Checador',  this.trackingService.getEmail());
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Revertir Registro en Diferencias de Checador', 'Menu Recursos Humanos Diferencias de Checador',  this.trackingService.getEmail());
   }
 
   private cleanDataForServer(data: any): any {
