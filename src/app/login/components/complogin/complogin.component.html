@@ -1,5 +1,6 @@
-<div class="hold-transition login-page" [style.backgroundImage]="'url(' + randomImage + ')'" style="position: relative; z-index: 0; background-size: cover; filter: blur(3px); opacity: 0.5;">
-</div>
+<div class="login-background" [style.backgroundImage]="'url(' + randomImage + ')'">
+	<div class="overlay"></div>
+  </div>
 
 <div class="login-box" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1;">
 	  <div class="login-logo" style="width: 100%;">
@@ -16,47 +17,52 @@
 	      	(ngSubmit)="login()"
 	      >
 
-	        <div class="input-group mb-3">
+	        <div class="form-floating mb-3">
 
                 <input type="email"
+				id="inputEmail"
                 class="form-control"
                 placeholder="{{ 'email' | translate}}"
                 formControlName="emaillogin"
                 [ngClass]="{'is-invalid': invalidField('emaillogin')}" >
-
-	          <div class="input-group-append">
-	            <div class="input-group-text">
-	              <span class="fas fa-envelope"></span>
-	            </div>
-	          </div>
+				<label for="inputEmail">Correo Electrónico</label>
 
 	          <div class="invalid-feedback">Please fill out this email correctly..</div>
 
 	        </div>
 
 
-				<div class="input-group mb-3">
-					<input [type]="hide ? 'password' : 'text'" class="form-control" autocomplete="current-password"
-					formControlName="passwordlogin"
-					[ngClass]="{'is-invalid': invalidField('passwordlogin')}"
-						placeholder="{{'password' | translate}}">
-					<div class="input-group-append">
-					  <div class="input-group-text">
-						<span class="fas fa-lock"></span>
-					  </div>
-
-						<button type="button" class="btn btn-default" (click)="toggleHide()">
-							<i class="fas" [ngClass]="{'fa-eye-slash': !hide, 'fa-eye': hide}"></i>
-						</button>
-					</div>
+			<div class="form-floating position-relative mb-3">
+				<input [type]="hide ? 'password' : 'text'"
+					   id="passwordInput"
+					   formControlName="passwordlogin"
+					   class="form-control pe-5"
+					   placeholder="Contraseña"
+					   autocomplete="current-password"
+					   [ngClass]="{'is-invalid': invalidField('passwordlogin')}">
+			  
+				<label for="passwordInput">Contraseña</label>
+			  
+				<!-- Botón para mostrar/ocultar -->
+				<button type="button"
+						class="btn btn-sm btn-link position-absolute top-50 end-0 translate-middle-y me-2"
+						(click)="toggleHide()"
+						tabindex="-1"
+						style="z-index: 5;">
+				  <i class="fas" [ngClass]="{'fa-eye-slash': !hide, 'fa-eye': hide}"></i>
+				</button>
+			  
+				<div class="invalid-feedback">
+				  Contraseña inválida.
 				</div>
-
-	           <div class="invalid-feedback">Please fill out this field correctly.</div>
+			  </div>
 
 	        <div class="row">
 	          <!-- /.col -->
 	          <div class="col-12">
-	            <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+	            <button type="submit" class="btn btn-primary btn-lg w-100 shadow-sm mt-3">
+					<i class="fas fa-sign-in-alt me-2"></i> Iniciar Sesión
+				  </button>
 	          </div>
 	          <!-- /.col -->
 	        </div>
