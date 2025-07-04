@@ -324,7 +324,8 @@ constructor() {
           return `<span>••••••••</span>`;
         },
         
-        editable: this.authorizedPass,
+        //editable: this.authorizedPass,
+        editable:true
       },
       {
         field: 'idDepartament',
