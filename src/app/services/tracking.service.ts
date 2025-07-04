@@ -394,6 +394,27 @@ export class TrackingService {
     );
   }
 
+  getTrackingRecordsByCompany(company: string) {
+    const url = `${environment.urlFirebase}tracking.json?orderBy="company"&equalTo="${company}"&orderBy="$idn"&print=pretty&sortOrder="desc"`;
+    return this.http.get(url).pipe(
+      map((response: any) => {        
+        
+        // Ordenar los registros por el campo "idn" en forma ascendente
+        const sortedRecords = Object.values(response).sort(
+          (a: any, b: any) => a.idn - b.idn
+        );
+
+        // Invertir el orden de los registros para que los últimos aparezcan primero
+        const reversedRecords = sortedRecords.reverse();
+
+        // Tomar solo los primeros 5000 registros (los más recientes)
+        const limitedRecords = reversedRecords.slice(0, 5000);
+
+        return limitedRecords;
+      })
+    );
+  }
+
   getLast500TrackingRecords() {
     const url = `${environment.urlFirebase}tracking.json?orderBy="idn"&limitToLast=500`;
     console.log('URL de Tracking (Optimizada):', url);
