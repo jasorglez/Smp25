@@ -25,7 +25,7 @@ export class ContractsService {
       
     //return this.http.get(`${environment.urlSmp}/SmpandSecurity/contract?idUser=${idUser}&idBussines=${idBussines}`, { headers: this.trackingService.getHeaders() });    
  
-  
+/*   
   getContractsBy2fields(idUser: number, idBussines: number) : Observable<any[]> {
     const url = `${environment.urlSmp}/SmpandSecurity/contract`;
     const params = new HttpParams()
@@ -46,6 +46,10 @@ export class ContractsService {
       }),
       catchError(this.handleError)
     );
+  } */
+
+  getContractsByBranch(idUser: number, idBranch: number) {
+    return this.http.get(`${environment.urlSecurity}/UsersxContractsView?idUser=${idUser}&idBranch=${idBranch}`, { headers: this.trackingService.getHeaders() });
   }
 
   private handleError(error: HttpErrorResponse) {
