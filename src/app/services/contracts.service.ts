@@ -49,7 +49,7 @@ export class ContractsService {
   } */
 
   getContractsByBranch(idUser: number, idBranch: number) {
-    return this.http.get(`${environment.urlSecurity}/UsersxContractsView?idUser=${idUser}&idBranch=${idBranch}`, { headers: this.trackingService.getHeaders() });
+    return this.http.get(`${environment.urlSecurity}/UsersxContractsxProjectsView/contracts?idUser=${idUser}&idBranch=${idBranch}`, { headers: this.trackingService.getHeaders() });
   }
 
   private handleError(error: HttpErrorResponse) {
