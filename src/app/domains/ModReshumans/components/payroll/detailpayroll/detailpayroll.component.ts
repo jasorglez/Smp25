@@ -206,55 +206,82 @@ export class DetailpayrollComponent implements OnInit{
 
   }
  onCellValueChanged(event: any): void {
-  const selectedRowData = event.data; 
-  let newValue = event.newValue;
+  const selectedRowData = event.data;
+  const newValueOriginal = event.newValue;
   const id = selectedRowData.id;
   const idEmployee = selectedRowData.id_employee;
 
   this.employeeService.getEmployeeById(idEmployee).subscribe(
     (data: any) => {
-      console.log("Employee data:", data);
-      if (newValue > data[0].loan) {
-        newValue = data[0].loan;
+      const loan = data?.[0]?.loan;
+
+      if (loan === undefined) {
+        alerts.basicAlert(
+          'Información no disponible',
+          'No se encontró información sobre el préstamo del empleado.',
+          'warning'
+        );
+        this.administrationService.updateRealDiscountNormalPayroll(id, 0).subscribe(() => {
+          this.loadData();
+          this.signalsService.triggerRefreshNomina();
+        });
+        return;
+      }
+
+      let newValue = newValueOriginal;
+
+      if (newValue > loan) {
+        newValue = loan;
         setTimeout(() => {
          alerts.basicAlert(
             'Descuento real actualizado',
-            `El monto es mayor al préstamo del empleado, se ha ajustado $${newValue}.`,
+            `El monto es mayor al préstamo del empleado, se ha ajustado a $${newValue}.`,
             'success'
-          );}, 300);
+          );
+        }, 300);
       }
-      this.administrationService.updateRealDiscountNormalPayroll(
-        id,
-        newValue
-      ).subscribe(
+
+      this.administrationService.updateRealDiscountNormalPayroll(id, newValue).subscribe(
         (res) => {
           console.log('Descuento real actualizado correctamente:', res);
           alerts.basicAlert(
-            'Descuento real actualizado',
+            'Actualización exitosa',
             'El descuento real se ha actualizado correctamente.',
             'success'
           );
           this.loadData();
+          this.signalsService.triggerRefreshNomina();
         },
         (error) => {
           console.error('Error al actualizar el descuento real:', error);
           alerts.basicAlert(
             'Error',
-            error?.error?.message || 'No existe ningún préstamo',
+            error?.error?.message || 'No se pudo actualizar el descuento real.',
             'error'
           );
           this.loadData();
+          this.signalsService.triggerRefreshNomina();
         }
       );
     },
     (error) => {
-      console.error('Error fetching employee data:', error);
+      console.error('Error al obtener datos del empleado:', error);
+      alerts.basicAlert(
+        'Error',
+        'No se pudieron obtener los datos del empleado.',
+        'error'
+      );
     }
   );
-  
 }
-
-
+  /*@HostListener('window:beforeunload', ['$event'])
+  beforeUnloadHandler(event: BeforeUnloadEvent) {
+    if (this.masterNotSavedChanges || this.detailNotSavedChanges) {
+      const confirmationMessage = 'Tienes cambios sin guardar. ¿Estás seguro de que deseas salir?';
+      event.returnValue = confirmationMessage; // Mostrar mensaje de confirmación
+      return confirmationMessage;
+    }
+  }*/
 
   refreshGrid() {
     this.signalsService.triggerRefreshNomina();

@@ -471,6 +471,7 @@ export class EmployeesxSavingsComponent {
               'El ahorro se ha actualizado correctamente.',
               'success'
             );
+            this.signalsService.triggerRefreshNomina();
           },
           (error) => {
             console.error('Error al actualizar el ahorro:', error);
