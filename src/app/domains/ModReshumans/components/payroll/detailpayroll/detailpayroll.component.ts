@@ -141,7 +141,7 @@ export class DetailpayrollComponent implements OnInit{
     {
       headerName: 'Descuento Real',
       width: 150,
-      editable: this.signalsService.getClosedPayroll()(),
+      editable: () => this.signalsService.getClosedPayroll()(),
       field: 'realDiscount',
       valueFormatter: (params) => {
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
