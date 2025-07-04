@@ -138,6 +138,10 @@ export class AdministrationService {
     return this.http.put(`${environment.urlAdministration}/NormalPayrolls/UpdateSavingEmployeePayroll/${idNormalEmployee}/${monto}`, {}, { headers: this.trackingService.getHeaders() })
   }
 
+  updateRealDiscountNormalPayroll(idNormalEmployee: number, monto: number): Observable<any> {
+    return this.http.put(`${environment.urlAdministration}/NormalPayrolls/UpdateRealDiscountEmployeePayroll/${idNormalEmployee}/${monto}`, {}, { headers: this.trackingService.getHeaders() })
+  }
+
   getTypecustomers(idRoot: number){
     return this.http.get(`${environment.urlAdministration}/Customer/GetTypeCustomer?idCompany=${idRoot}`, { headers: this.trackingService.getHeaders() });
   }

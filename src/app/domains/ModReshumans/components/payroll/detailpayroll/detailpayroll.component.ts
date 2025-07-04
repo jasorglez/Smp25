@@ -14,11 +14,13 @@ import { alerts } from 'app/helpers/alerts';
 import { EmployeesxloansService } from 'app/services/employeesxloans.service';
 import { PayrollService } from 'app/services/payroll.service';
 import { SignalsService } from 'app/services/signals.service';
-import { concat, lastValueFrom, toArray } from 'rxjs';
+import { concat, lastValueFrom, timeInterval, toArray } from 'rxjs';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { EmployeesxSavingsComponent } from "../../employees/savings/savings.component";
 import { BonusComponent } from '../bonus/bonus.component';
 import { ModalBonusComponent } from './modalBonus/modalBonus.component';
+import { EmployeesService } from 'app/services/employees.service';
+import { AdministrationService } from 'app/services/administration.service';
 
 @Component({
   selector: 'app-detailpayroll',
@@ -29,6 +31,8 @@ import { ModalBonusComponent } from './modalBonus/modalBonus.component';
 })
 
 export class DetailpayrollComponent implements OnInit{
+  private employeeService = inject(EmployeesService);
+  private administrationService = inject(AdministrationService);
   private signalsService = inject(SignalsService);
   private payrollService = inject(PayrollService);
 
@@ -201,6 +205,56 @@ export class DetailpayrollComponent implements OnInit{
       console.log("-------- entrando a detailpayroll, este es el ngOninit  ");
 
   }
+ onCellValueChanged(event: any): void {
+  const selectedRowData = event.data; 
+  let newValue = event.newValue;
+  const id = selectedRowData.id;
+  const idEmployee = selectedRowData.id_employee;
+
+  this.employeeService.getEmployeeById(idEmployee).subscribe(
+    (data: any) => {
+      console.log("Employee data:", data);
+      if (newValue > data[0].loan) {
+        newValue = data[0].loan;
+        setTimeout(() => {
+         alerts.basicAlert(
+            'Descuento real actualizado',
+            `El monto es mayor al préstamo del empleado, se ha ajustado $${newValue}.`,
+            'success'
+          );}, 300);
+      }
+      this.administrationService.updateRealDiscountNormalPayroll(
+        id,
+        newValue
+      ).subscribe(
+        (res) => {
+          console.log('Descuento real actualizado correctamente:', res);
+          alerts.basicAlert(
+            'Descuento real actualizado',
+            'El descuento real se ha actualizado correctamente.',
+            'success'
+          );
+          this.loadData();
+        },
+        (error) => {
+          console.error('Error al actualizar el descuento real:', error);
+          alerts.basicAlert(
+            'Error',
+            error?.error?.message || 'No existe ningún préstamo',
+            'error'
+          );
+          this.loadData();
+        }
+      );
+    },
+    (error) => {
+      console.error('Error fetching employee data:', error);
+    }
+  );
+  
+}
+
+
 
   refreshGrid() {
     this.signalsService.triggerRefreshNomina();

@@ -9,6 +9,7 @@
     (gridReady)="onGridReady($event)"
     [gridOptions]="gridOptions"
     (cellDoubleClicked)="onCellDoubleClicked($event)"
+    (cellValueChanged)="onCellValueChanged($event)"
     [stopEditingWhenCellsLoseFocus]="true"
     [localeText]="AG_GRID_LOCALE_ES">
   </ag-grid-angular>
