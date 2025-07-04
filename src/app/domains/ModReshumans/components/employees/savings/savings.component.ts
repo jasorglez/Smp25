@@ -14,6 +14,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { TimeService } from 'app/services/time.service';
 import { AdministrationService } from 'app/services/administration.service';
+import { EmployeesService } from 'app/services/employees.service';
 
 @Component({
   selector: 'app-employeesxsavings',
@@ -27,6 +28,7 @@ export class EmployeesxSavingsComponent {
   private employeesxloansService = inject(EmployeesxloansService);
   private signalsService = inject(SignalsService);
   private timeService = inject(TimeService);
+  private employeeService = inject(EmployeesService);
 
   defaultColDef = {
     flex: 1,
@@ -52,6 +54,7 @@ export class EmployeesxSavingsComponent {
   masterNotSavedChanges: boolean = false;
   detailNotSavedChanges: boolean = false;
   selectedLoanId: any;
+  ahorros: number = 0;
   private tempIdCounter: number = 0;
   masterNewlyAddedRows: string[] = [];
   detailedNewlyAddedRows: string[] = [];
@@ -66,6 +69,7 @@ export class EmployeesxSavingsComponent {
       this.userRoot = this.signalsService.getUserRoot()();
       this.loadData();
       if (this.signalsService.getInitSaving()() == true) {
+        this.obtenerAhorroEmpleado();
         this.modal = true; // Abrir modal si la señal está activa
         setTimeout(() => {
         this.addRow('Master'); // Espera a que se renderice el modal y grid
@@ -133,6 +137,21 @@ export class EmployeesxSavingsComponent {
       }
     },
   };
+  obtenerAhorroEmpleado(){
+    const idEmployee = this.signalsService.getIdEmployee()();
+    this.employeeService.getEmployeeById(idEmployee).subscribe(
+      (data) => {
+        this.ahorros = data[0].saving || 0; // Asegurarse de que ahorros tenga un valor numérico
+      },
+      (error) => {
+        console.error('Error al obtener el ahorro del empleado:', error);
+        alerts.basicAlert(
+          'Error',
+          'No se pudo obtener el ahorro del empleado.',
+          'error'
+        );
+      });
+  }
 
   loadData(preserveSelection: boolean = false) {
     if (this.idEmployee === null || this.idEmployee === undefined) {
@@ -471,7 +490,9 @@ export class EmployeesxSavingsComponent {
               'El ahorro se ha actualizado correctamente.',
               'success'
             );
+            this.obtenerAhorroEmpleado();
             this.signalsService.triggerRefreshNomina();
+            this.masterNotSavedChanges = false;
           },
           (error) => {
             console.error('Error al actualizar el ahorro:', error);
@@ -489,7 +510,6 @@ export class EmployeesxSavingsComponent {
         'Se han actualizado los datos correctamente.',
         'success'
       );
-      this.detailNotSavedChanges = false;
       this.detailedNewlyAddedRows = [];
       await this.loadData(); // Refrescar los datos
       this.signalsService.triggerRefreshEmployees();
