@@ -55,8 +55,8 @@
         <option selected disabled value="">
           {{ "contract" | translate }}
         </option>
-        <option *ngFor="let item of contractData" [value]="item.id">
-          {{ item.name }}
+        <option *ngFor="let item of contractData" [value]="item.contractId">
+          {{ item.contract }}
         </option>
       </select>
 

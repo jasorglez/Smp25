@@ -288,19 +288,21 @@ export class SideBarComponent {
         ).name
       );
       console.log(this.selectedBranchId);
+      await this.getpermissionxContracts();
       // Borro la signal de project para resetear el dato
     }
   }
 
-  /*async getpermissionxContracts(idRoot: number) {
+  async getpermissionxContracts() {
     // Aquí consulto la tabla donde está el idUser correspondiente a company
     this.contractService
-      .getContractsBy2fields(
+      .getContractsByBranch(
         this.signalsService.idUser(),
-        parseInt(this.selectedRoot)
+        parseInt(this.selectedBranchId)
       )
       .subscribe((data) => {
         const contract = Object.values(data);
+        console.log('contract', contract);
         if (contract) {
           this.contractData = contract;
           // Ya tengo el id de la compañía root
@@ -319,7 +321,7 @@ export class SideBarComponent {
           );
         }
       });
-  } */
+  } 
 
   async onProjectSelected(event: Event) {
     const target = event.target as HTMLSelectElement;
