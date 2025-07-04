@@ -45,11 +45,12 @@
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translate(-50%, -35%);
+    // Usamos translateY independiente (requiere navegadores modernos)
+    translate: 0 15%;
   }
   to {
     opacity: 1;
-    transform: translate(-50%, -50%);
+    translate: 0 0;
   }
 }
 
@@ -106,4 +107,8 @@ button.btn-link:hover {
   label {
     transition: all 0.3s ease;
   }
+}
+
+.footer-login {
+    color: #ffffff;
 }
