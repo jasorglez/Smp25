@@ -9,6 +9,7 @@ import { PayrollService } from 'app/services/payroll.service';
 import { HRService } from 'app/services/hr.service';
 import { NominaData } from '../../setup/models/payroll-data.module';
 import { AdministrationService } from 'app/services/administration.service';
+import { BranchsService } from 'app/services/branchs.service';
 import * as XLSX from 'xlsx';
 
 interface Bank {
@@ -36,6 +37,7 @@ export class PayrollComponent {
   private signalsService = inject(SignalsService); 
   private trackingService = inject(TrackingService);
   private hrService = inject(HRService);
+  private branchsService = inject(BranchsService);
 
   formBuilder = inject(FormBuilder);
   isLoading: boolean = false;
@@ -52,6 +54,8 @@ export class PayrollComponent {
   archivo: File;
   formData = new FormData();
   file: File;
+  company: number;
+  selectBranch: string = '';
   diasSemana = [
     'Lunes',
     'Martes',
@@ -65,6 +69,8 @@ export class PayrollComponent {
   constructor(private payrollService: PayrollService, private administrationService: AdministrationService) {
       effect(() => {
         this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+        this.company = this.signalsService.getRootSelectedBySidebar()();
+        this.getNameBranch();
         this.getData();
       });
   }
@@ -77,6 +83,16 @@ export class PayrollComponent {
     specialOvertimePay: ['', [Validators.required, Validators.minLength(1)], []],
   })
   
+  getNameBranch() {
+    this.branchsService.getBranches(this.company).subscribe({
+      next: (data: any) => {
+        this.selectBranch = data.find((branch: any) => branch.id === this.idBranch)?.name || '';
+      },
+      error: (err) => {
+          console.error(err);
+      }
+  });
+  }
 
   getData() {
     this.hrService.getHRManagementData(this.idBranch).subscribe({
@@ -363,7 +379,19 @@ export class PayrollComponent {
          // Procesamos el archivo con XLSX
          const binaryString = e.target?.result;
          const workbook: XLSX.WorkBook = XLSX.read(binaryString, { type: 'binary' });
- 
+         const Sucursal = this.verificarSucursal(workbook);
+         if(this.selectBranch != Sucursal){
+          alerts.basicAlert("Error", "El archivo no corresponde a la sucursal seleccionada.", "error");
+           this.jsonData = null;
+           this.fileName = '';
+           this.formData = null;
+           this.isLoading = false;
+           const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+           if (fileInput) {
+             fileInput.value = '';
+           }
+          return
+         }
          // Procesamos el Excel de nómina específicamente
          const data = this.processNominaExcel(workbook);
          console.log("la data despues de procesar el archivo es --> ", data);
@@ -401,6 +429,13 @@ export class PayrollComponent {
      const fileName = file.name.toLowerCase();
      return allowedExtensions.some(ext => fileName.endsWith(ext));
    }
+   private verificarSucursal(workbook: XLSX.WorkBook): any {
+     // Tomamos la primera hoja
+     const firstSheetName = workbook.SheetNames[0];
+     const worksheet = workbook.Sheets[firstSheetName];
+     const Sucursal = this.getCellValue(worksheet, 'B4') || '';
+     return Sucursal;
+   }
  
    /**
     * Procesa el archivo Excel de nómina específicamente
@@ -415,6 +450,7 @@ export class PayrollComponent {
  
      // Creamos el objeto base para la nómina
      const nominaData: NominaData = {
+       sucursal: this.getCellValue(worksheet, 'B4') || '',
        empresa: this.getCellValue(worksheet, 'B5') || '',
        periodo: this.getCellValue(worksheet, 'B6') || '',
        ejercicio: this.getCellValue(worksheet, 'B7') || '',
