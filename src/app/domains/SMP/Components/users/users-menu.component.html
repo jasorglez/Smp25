@@ -2,51 +2,154 @@
   <div class="col-12">
     <ul class="nav nav-pills">
       <li class="nav-item">
-        <a class="nav-link" [class.active]="selectedTab === 'users'" data-toggle="tab"
-          (click)="onUsersSelected('users')">Selección de usuarios</a>
+        <a
+          class="nav-link"
+          [class.active]="selectedTab === 'users'"
+          data-toggle="tab"
+          (click)="onUsersSelected('users')"
+          >Selección de usuarios</a
+        >
       </li>
 
-      <li class="nav-item" *ngIf="profile().emailUser()">
-        <a class="nav-link" [class.active]="selectedTab === 'usersxmasterpermissions'" data-toggle="tab"
-          (click)="onUsersSelected('usersxmasterpermissions')">Permisos maestros</a>
+      <li
+        class="nav-item"
+        *ngIf="
+          profile().emailUser() && (showRoot ||
+            authService.hasDetailedPermission(
+              'users-setup',
+              'master-permissions'
+            ))
+        "
+      >
+        <a
+          class="nav-link"
+          [class.active]="selectedTab === 'usersxmasterpermissions'"
+          data-toggle="tab"
+          (click)="onUsersSelected('usersxmasterpermissions')"
+          >Permisos maestros</a
+        >
       </li>
 
-      <li class="nav-item" *ngIf="profile().emailUser()">
-        <a class="nav-link" [class.active]="selectedTab === 'usersxcompanys'" data-toggle="tab" *ngIf="showRoot"
-          (click)="onUsersSelected('usersxcompanys')">Contratistas</a>
+      <li
+        class="nav-item"
+        *ngIf="
+          profile().emailUser() && (showRoot ||
+            authService.hasDetailedPermission(
+              'users-setup',
+              'contractors'
+            ))
+        "
+      >
+        <a
+          class="nav-link"
+          [class.active]="selectedTab === 'usersxcompanys'"
+          data-toggle="tab"
+          (click)="onUsersSelected('usersxcompanys')"
+          >Contratistas</a
+        >
       </li>
 
-      <li class="nav-item" *ngIf="profile().emailUser()">
-        <a class="nav-link" [class.active]="selectedTab === 'usersxcontracts'" data-toggle="tab" *ngIf="showRoot"
-          (click)="onUsersSelected('usersxcontracts')">Contratos</a>
+      <li
+        class="nav-item"
+        *ngIf="
+          profile().emailUser() && (showRoot ||
+            authService.hasDetailedPermission(
+              'users-setup',
+              'contracts'
+            ))
+        "
+      >
+        <a
+          class="nav-link"
+          [class.active]="selectedTab === 'usersxcontracts'"
+          data-toggle="tab"
+          (click)="onUsersSelected('usersxcontracts')"
+          >Contratos</a
+        >
       </li>
 
-      <li class="nav-item" *ngIf="profile().emailUser()">
-        <a class="nav-link" [class.active]="selectedTab === 'usersxoilfields'" data-toggle="tab" *ngIf="showRoot"
-          (click)="onUsersSelected('usersxoilfields')">Campos petroleros</a>
+      <li
+        class="nav-item"
+        *ngIf="
+          profile().emailUser() && (showRoot ||
+            authService.hasDetailedPermission(
+              'users-setup',
+              'oilfields'
+            ))
+        "
+      >
+        <a
+          class="nav-link"
+          [class.active]="selectedTab === 'usersxoilfields'"
+          data-toggle="tab"
+          (click)="onUsersSelected('usersxoilfields')"
+          >Campos petroleros</a
+        >
       </li>
 
-      <li class="nav-item" *ngIf="profile().emailUser()">
-        <a class="nav-link" [class.active]="selectedTab === 'usersxprojects'" data-toggle="tab" *ngIf="showRoot"
-          (click)="onUsersSelected('usersxprojects')">Proyectos</a>
+      <li
+        class="nav-item"
+        *ngIf="
+          profile().emailUser() && (showRoot ||
+            authService.hasDetailedPermission(
+              'users-setup',
+              'projects'
+            ))
+        "
+      >
+        <a
+          class="nav-link"
+          [class.active]="selectedTab === 'usersxprojects'"
+          data-toggle="tab"
+          (click)="onUsersSelected('usersxprojects')"
+          >Proyectos</a
+        >
       </li>
 
-      <li class="nav-item" *ngIf="profile().emailUser()">
-        <a class="nav-link" [class.active]="selectedTab === 'usersxroot'" data-toggle="tab" *ngIf="showRoot"
-          (click)="onUsersSelected('usersxroot')">Empresas</a>
+      <li
+        class="nav-item"
+        *ngIf="
+          profile().emailUser() && (showRoot ||
+            authService.hasDetailedPermission(
+              'users-setup',
+              'companies'
+            ))
+        "
+      >
+        <a
+          class="nav-link"
+          [class.active]="selectedTab === 'usersxroot'"
+          data-toggle="tab"
+          (click)="onUsersSelected('usersxroot')"
+          >Empresas</a
+        >
       </li>
 
-      <li class="nav-item" *ngIf="profile().emailUser()">
-        <a class="nav-link" [class.active]="selectedTab === 'usersxbranches'" data-toggle="tab"
-          (click)="onUsersSelected('usersxbranches')">Sucursales</a>
+      <li
+        class="nav-item"
+        *ngIf="
+          profile().emailUser() && (showRoot ||
+            authService.hasDetailedPermission(
+              'users-setup',
+              'branches'
+            ))
+        "
+      >
+        <a
+          class="nav-link"
+          [class.active]="selectedTab === 'usersxbranches'"
+          data-toggle="tab"
+          (click)="onUsersSelected('usersxbranches')"
+          >Sucursales</a
+        >
       </li>
 
-     <!--  <li class="nav-item" *ngIf="profile().emailUser()">
+      <!--  <li class="nav-item" *ngIf="profile().emailUser()">
         <a class="nav-link" [class.active]="selectedTab === 'usersxwarehouses'" data-toggle="tab"
           (click)="onUsersSelected('usersxwarehouses')">Almacenes</a>
       </li> -->
 
-     <!--  <li class="nav-item" *ngIf="profile().emailUser()">
+      <!--  <li class="nav-item" *ngIf="profile().emailUser()">
         <a class="nav-link" [class.active]="selectedTab === 'usersxstores'" data-toggle="tab"
           (click)="onUsersSelected('usersxstores')">Tiendas</a>
       </li>
@@ -55,42 +158,84 @@
         <a class="nav-link" [class.active]="selectedTab === 'usersxcashregisters'" data-toggle="tab"
           (click)="onUsersSelected('usersxcashregisters')">Cajas</a>
       </li> -->
-
     </ul>
 
-    <div class="tab-pane" [class.active]="selectedTab === 'users'" *ngIf="selectedTab === 'users'">
+    <div
+      class="tab-pane"
+      [class.active]="selectedTab === 'users'"
+      *ngIf="selectedTab === 'users'"
+    >
       <app-users></app-users>
     </div>
-    <div class="tab-pane" [class.active]="selectedTab === 'usersxcompanys'" *ngIf="selectedTab === 'usersxcompanys'">
+    <div
+      class="tab-pane"
+      [class.active]="selectedTab === 'usersxcompanys'"
+      *ngIf="selectedTab === 'usersxcompanys'"
+    >
       <app-usersxcompanys></app-usersxcompanys>
     </div>
-    <div class="tab-pane" [class.active]="selectedTab === 'usersxcontracts'" *ngIf="selectedTab === 'usersxcontracts'">
+    <div
+      class="tab-pane"
+      [class.active]="selectedTab === 'usersxcontracts'"
+      *ngIf="selectedTab === 'usersxcontracts'"
+    >
       <app-usersxcontracts></app-usersxcontracts>
     </div>
-    <div class="tab-pane" [class.active]="selectedTab === 'usersxprojects'" *ngIf="selectedTab === 'usersxprojects'">
+    <div
+      class="tab-pane"
+      [class.active]="selectedTab === 'usersxprojects'"
+      *ngIf="selectedTab === 'usersxprojects'"
+    >
       <app-usersxprojects></app-usersxprojects>
     </div>
-    <div class="tab-pane" [class.active]="selectedTab === 'usersxoilfields'" *ngIf="selectedTab === 'usersxoilfields'">
+    <div
+      class="tab-pane"
+      [class.active]="selectedTab === 'usersxoilfields'"
+      *ngIf="selectedTab === 'usersxoilfields'"
+    >
       <app-usersxoilfields></app-usersxoilfields>
     </div>
-    <div class="tab-pane" [class.active]="selectedTab === 'usersxroot'" *ngIf="selectedTab === 'usersxroot'">
+    <div
+      class="tab-pane"
+      [class.active]="selectedTab === 'usersxroot'"
+      *ngIf="selectedTab === 'usersxroot'"
+    >
       <app-usersxroot></app-usersxroot>
     </div>
-    <div class="tab-pane" [class.active]="selectedTab === 'usersxwarehouses'" *ngIf="selectedTab === 'usersxwarehouses'">
+    <div
+      class="tab-pane"
+      [class.active]="selectedTab === 'usersxwarehouses'"
+      *ngIf="selectedTab === 'usersxwarehouses'"
+    >
       <app-usersxwarehouses></app-usersxwarehouses>
     </div>
-    <div class="tab-pane" [class.active]="selectedTab === 'usersxbranches'" *ngIf="selectedTab === 'usersxbranches'">
+    <div
+      class="tab-pane"
+      [class.active]="selectedTab === 'usersxbranches'"
+      *ngIf="selectedTab === 'usersxbranches'"
+    >
       <app-usersxbranches></app-usersxbranches>
     </div>
-    <div class="tab-pane" [class.active]="selectedTab === 'usersxmasterpermissions'" *ngIf="selectedTab === 'usersxmasterpermissions'">
+    <div
+      class="tab-pane"
+      [class.active]="selectedTab === 'usersxmasterpermissions'"
+      *ngIf="selectedTab === 'usersxmasterpermissions'"
+    >
       <app-usersxmasterpermissions2></app-usersxmasterpermissions2>
     </div>
-    <div class="tab-pane" [class.active]="selectedTab === 'usersxstores'" *ngIf="selectedTab === 'usersxstores'">
+    <div
+      class="tab-pane"
+      [class.active]="selectedTab === 'usersxstores'"
+      *ngIf="selectedTab === 'usersxstores'"
+    >
       <app-usersxstores></app-usersxstores>
     </div>
-    <div class="tab-pane" [class.active]="selectedTab === 'usersxcashregisters'" *ngIf="selectedTab === 'usersxcashregisters'">
+    <div
+      class="tab-pane"
+      [class.active]="selectedTab === 'usersxcashregisters'"
+      *ngIf="selectedTab === 'usersxcashregisters'"
+    >
       <app-usersxcashregisters></app-usersxcashregisters>
     </div>
   </div>
-
 </div>
