@@ -207,6 +207,17 @@
   "vigency"        : "Vigencia",
   "warehouses"     : "Almacenes",
   "work"           : "Trabajo",
+  "work_orders"    : "OT",
+  "orders"         : "Órdenes",
+  "cadastral"      : "Catastrales",
+  "general"        : "Generales",
+  "connection"     : "Conexión",
+  "inspection"     : "Inspección",
+  "work_orders_description" : "Gestión de Órdenes de Trabajo",
+  "cadastral_description"   : "Información Catastral y Geográfica",
+  "general_description"     : "Configuración General del Sistema",
+  "connection_description"  : "Gestión de Conexiones y Enlaces",
+  "inspection_description"  : "Módulo de Inspecciones y Auditorías",
 
   "menuPM":{
     "gi"  :"Gestion Interesados",

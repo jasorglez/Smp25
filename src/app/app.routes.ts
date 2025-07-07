@@ -349,6 +349,52 @@ export const routes: Routes = [
                 './domains/ModProjects/components/estimates/estimates.component'
               ).then((r) => r.EstimatesComponent),
           },
+          {
+            path: 'ot',
+            loadComponent: () =>
+              import(
+                './domains/ModProjects/pages/procot/procot.component'
+              ).then((o) => o.ProcotComponent),
+            children: [
+              { path: '', redirectTo: 'ordenes', pathMatch: 'full' },
+              ...SharedModule.getRoutes(),
+              {
+                path: 'ordenes',
+                loadComponent: () =>
+                  import(
+                    './domains/ModProjects/components/ot/ordenes/ordenes.component'
+                  ).then((o) => o.OrdenesComponent),
+              },
+              {
+                path: 'catastrales',
+                loadComponent: () =>
+                  import(
+                    './domains/ModProjects/components/ot/catastrales/catastrales.component'
+                  ).then((c) => c.CatastralesComponent),
+              },
+              {
+                path: 'generales',
+                loadComponent: () =>
+                  import(
+                    './domains/ModProjects/components/ot/generales/generales.component'
+                  ).then((g) => g.GeneralesComponent),
+              },
+              {
+                path: 'conexion',
+                loadComponent: () =>
+                  import(
+                    './domains/ModProjects/components/ot/conexion/conexion.component'
+                  ).then((c) => c.ConexionComponent),
+              },
+              {
+                path: 'inspeccion',
+                loadComponent: () =>
+                  import(
+                    './domains/ModProjects/components/ot/inspeccion/inspeccion.component'
+                  ).then((i) => i.InspeccionComponent),
+              },
+            ],
+          },
         ],
       },
       {
