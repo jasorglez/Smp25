@@ -342,10 +342,11 @@ export class SideBarComponent {
   async getpermissionxProjects(idContract: number) {
     this.projectData = []; // Siempre vaciamos el array de proyectos
     this.projectService
-      .getProjectsByContract(idContract, this.signalsService.idUser())
+      .getProjectsByContract(this.signalsService.idUser(), idContract)
       .subscribe({
         next: (data) => {
-          this.projectData = data;
+          this.projectData = Object.values(data);
+          console.log('project', this.signalsService.idUser(), idContract, this.projectData);
           if (this.projectData.length > 0) {
             this.selectedProjectId = this.projectData[0].id;
             this.trackingService.setProject(this.selectedProjectId);

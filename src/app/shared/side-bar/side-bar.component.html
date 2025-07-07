@@ -72,8 +72,8 @@
         <option selected disabled value="">
           {{ "projects" | translate }}
         </option>
-        <option *ngFor="let pj of projectData" [value]="pj.id">
-          {{ pj.name }}
+        <option *ngFor="let pj of projectData" [value]="pj.idProject">
+          {{ pj.projectName }}
         </option>
       </select>
     </span>

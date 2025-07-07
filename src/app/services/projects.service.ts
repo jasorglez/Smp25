@@ -11,7 +11,7 @@ import { catchError, EMPTY, map, Observable, throwError } from 'rxjs';
 })
 export class ProjectsService {
 
-  private http            = inject(HttpClient);
+  private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
   private getAuthToken(): string {
@@ -22,44 +22,26 @@ export class ProjectsService {
 
   getProjectxOil(prio: number, idoil: number): Observable<any> {
     try {
-      const apiUrl = `${environment.urlSmp}/Project/oil?priority=${prio}&oil=${idoil}`;      
-       // alert(apiUrl)
+      const apiUrl = `${environment.urlSmp}/Project/oil?priority=${prio}&oil=${idoil}`;
+      // alert(apiUrl)
       return this.http.get(apiUrl, { headers: this.trackingService.getHeaders() });
-    } catch(error) {
+    } catch (error) {
       console.error("Error Get Project", error);
       return EMPTY; // Import EMPTY from 'rxjs'
     }
   }
 
-  getProjects():Observable<any[]> {
+  getProjects(): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlSmp}/Project`, { headers: this.trackingService.getHeaders() });
   }
 
 
-  getProjectsById(id: number):Observable<any[]> {
+  getProjectsById(id: number): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlSmp}/Project/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
-  getProjectsByContract(idContract: number, idUser: number): Observable<any[]> {
-    const url = `${environment.urlSmp}/SmpandSecurity/project`;
-    const params = new HttpParams()
-      .set('idUser', idUser.toString())
-      .set('idContract', idContract.toString());
-
-    console.log('Requesting URL:', url, 'with params:', params.toString());
-
-    return this.http.get<any>(url, {
-      params: params,
-      headers: this.trackingService.getHeaders()
-    }).pipe(
-      map(response => {
-        if (response && response.project) {
-          return response.project;
-        }
-        return [];
-      }),
-      catchError(this.handleError)
-    );
+  getProjectsByContract(idUser: number, idBranch: number) {
+    return this.http.get(`${environment.urlSecurity}/UsersxContractsxProjectsView/projects?idUser=${idUser}&idContract=${idBranch}`, { headers: this.trackingService.getHeaders() });
   }
 
   private handleError(error: HttpErrorResponse) {
