@@ -300,21 +300,19 @@ export class SideBarComponent {
         this.signalsService.idUser(),
         parseInt(this.selectedBranchId)
       )
-      .subscribe((data) => {
+      .subscribe(async (data) => {
         const contract = Object.values(data);
         console.log('contract', contract);
-        if (contract) {
+        if (contract && contract.length > 0) {
           this.contractData = contract;
-          // Ya tengo el id de la compañía root
-          this.selectedContractId = this.contractData[0].id;
-
-          this.signalsService.setContractSelectedBySidebar(
-            Number(this.selectedContractId)
-          );
-
-          // Ahora consulto la información de root
-          this.trackingService.setContract(this.selectedContractId);
           // this.getpermissionxProjects(parseInt(this.selectedContractId));
+          if (this.contractData.length === 1) {
+            this.selectedContractId = this.contractData[0].contractId;
+            this.signalsService.setContractSelectedBySidebar(Number(this.selectedContractId));
+            this.trackingService.setContract(this.selectedContractId);
+            // Llama a getpermissionxProjects automáticamente si lo necesitas
+            await this.getpermissionxProjects(Number(this.selectedContractId));
+          }
         } else {
           console.log(
             `No se encontró ningún Contract con idRoot ${this.selectedContractId}`
@@ -348,8 +346,11 @@ export class SideBarComponent {
           this.projectData = Object.values(data);
           console.log('project', this.signalsService.idUser(), idContract, this.projectData);
           if (this.projectData.length > 0) {
-            this.selectedProjectId = this.projectData[0].id;
-            this.trackingService.setProject(this.selectedProjectId);
+            if (this.projectData.length === 1) {
+              this.selectedProjectId = this.projectData[0].idProject;
+              this.trackingService.setProject(this.selectedProjectId);
+              this.signalsService.setProjectSelectedBySidebar(Number(this.selectedProjectId));
+            }
           } else {
             this.selectedProjectId = '';
             this.trackingService.setProject('');
