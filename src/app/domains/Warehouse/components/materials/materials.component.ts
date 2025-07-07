@@ -310,6 +310,9 @@ export class MaterialsComponent implements CanComponentDeactivate {
         },*/
       },
       {
+        headerName: 'SubFamilia',
+      },
+      {
         headerName: 'Descripcion',
       },
       {
