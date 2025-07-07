@@ -38,6 +38,7 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '@env/environment';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
+import { TrackingService } from 'app/services/tracking.service';  
 
 @Component({
   selector: 'app-customers',
@@ -53,7 +54,8 @@ import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
   styleUrls: ['./providers.component.scss'],
 })
 export class ProvidersComponent implements CanComponentDeactivate {
-  //  private administrationService = inject(AdministrationService);d
+  
+  private trackingService = inject(TrackingService);
   private customerService = inject(CustomersService);
   private modalServiceTable = inject(ModalService);
   private signalsService = inject(SignalsService);
@@ -63,6 +65,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
   private branchesService = inject(BranchsService);
   private authService = inject(AuthService);
   private catalogsService = inject(CatalogsService);
+
+
   private http = inject(HttpClient);
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   
@@ -619,6 +623,9 @@ export class ProvidersComponent implements CanComponentDeactivate {
   }
 
   obtenerDatos() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Proveedores`, 'Menu Administracion Proveedores ',
+          this.trackingService.getEmail() );
+
     return new Promise((resolve) => {
       this.customerService
         .getCustomers(this.idBranch, this.type)
@@ -634,10 +641,13 @@ export class ProvidersComponent implements CanComponentDeactivate {
           }
         });
     });
+    
   }
 
   obtenerBranchs() {
-    // alert('this.branchs'+ this.idBranch)
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Sucursales`, 'Menu Administracion Proveedores ',
+          this.trackingService.getEmail() );
+
     this.branchesService.getBrancheswoa(this.idRoot).subscribe(
       (data: any) => {
         this.branchs = data;
@@ -740,6 +750,9 @@ export class ProvidersComponent implements CanComponentDeactivate {
   }
 
   addRow() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Agregar Proveedores`, 'Menu Administracion Proveedores ',
+          this.trackingService.getEmail() );
+
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
@@ -793,6 +806,10 @@ export class ProvidersComponent implements CanComponentDeactivate {
   }
 
   async saveChanges() {
+
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Guardar Proveedores`, 'Menu Administracion Proveedores ',
+          this.trackingService.getEmail() );
+
     const isValid = this.rowData.every(
       (item) => item.idBranch && (item.nameContact || item.company) && (this.type == 'PROVIDERS') || (this.type == 'CUSTOMERS' && item.idTypecop)
     );
@@ -892,6 +909,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
   }
 
   async deleteEntry() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Eliminar Proveedores`, 'Menu Administracion Proveedores ',
+          this.trackingService.getEmail() );
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert(

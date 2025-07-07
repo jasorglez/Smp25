@@ -38,6 +38,7 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '@env/environment';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-customers',
@@ -54,19 +55,20 @@ import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 })
 export class CustomersComponent implements CanComponentDeactivate {
   //  private administrationService = inject(AdministrationService);
-  private customerService = inject(CustomersService);
-  private modalServiceTable = inject(ModalService);
-  private signalsService = inject(SignalsService);
-  private modalService = inject(NgbModal);
-  private route = inject(ActivatedRoute);
-  private inegiService = inject(InegiService);
-  private branchesService = inject(BranchsService);
-  private authService = inject(AuthService);
-  private catalogsService = inject(CatalogsService);
+   private customerService = inject(CustomersService);
+   private modalServiceTable = inject(ModalService);
+   private signalsService = inject(SignalsService);
+   private modalService = inject(NgbModal);
+   private route = inject(ActivatedRoute);
+   private inegiService = inject(InegiService);
+   private branchesService = inject(BranchsService);
+   private authService = inject(AuthService);
+   private catalogsService = inject(CatalogsService);
+   private trackingService = inject(TrackingService);
+
   private http = inject(HttpClient);
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   
-
   async ngOnInit() {
     this.obtenerDatos();
     this.signalsService.deleteClientData();
@@ -617,6 +619,9 @@ export class CustomersComponent implements CanComponentDeactivate {
   }
 
   obtenerDatos() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Clientes`, 'Menu Administracion Ingresos',
+           this.trackingService.getEmail() );
+           
     return new Promise((resolve) => {
       this.customerService
         .getCustomers(this.idBranch, this.type)
@@ -631,6 +636,7 @@ export class CustomersComponent implements CanComponentDeactivate {
           }
         });
     });
+    
   }
 
   obtenerBranchs() {

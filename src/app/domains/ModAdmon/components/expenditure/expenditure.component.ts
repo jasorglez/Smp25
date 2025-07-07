@@ -50,7 +50,7 @@ export class ExpenditureComponent {
 }
 
 constructor() {
-  console.log('🏗️ ExpenditureComponent: Constructor iniciado');
+//  console.log('🏗️ ExpenditureComponent: Constructor iniciado');
   
   // Effect para cambios de Root/Branch (sin cambios)
   effect(async () => {
@@ -156,7 +156,7 @@ constructor() {
       if (selectedAccount) {
         const accountDetails = `${selectedAccount.nameAccount} - ${selectedAccount.bankName}`;
         this.trackingService.addLog(this.trackingService.getnameComp(), `Selección de cuenta bancaria: ${accountDetails}`, 
-                                    'Menu Administracion Egresos - Selección Cuenta', this.trackingService.getEmail());        
+                                    'Egresos - Selección Cuenta', this.trackingService.getEmail());        
       }
     }
       
@@ -177,7 +177,7 @@ constructor() {
       },
       (error) => console.error('Error fetching data:', error)
     );
-        this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Sucursales`, 'Menu Administracion Egresos ',
+        this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Sucursales`, 'Egresos ',
           this.trackingService.getEmail() );
   }
 
@@ -190,7 +190,7 @@ constructor() {
         console.error('Error al obtener la información de gestión de facturación:', error);
       }
     );
-    this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Cuentas Bancarias`, 'Menu Administracion Egresos ',
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Cuentas Bancarias`, 'Egresos ',
           this.trackingService.getEmail() );
   }
 
@@ -247,7 +247,7 @@ constructor() {
         this.incomes = [];
       }
     });
-    this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Egresos`, 'Menu Administracion Egresos ',
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Egresos`, 'Egresos ',
           this.trackingService.getEmail() );
   }
 
@@ -260,6 +260,8 @@ constructor() {
         console.error(error);
       }
     )
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Gastos`, 'Egresos ',
+          this.trackingService.getEmail() );
   }
 
   // Nuevo método para cargar usuarios autorizadores
@@ -322,7 +324,8 @@ constructor() {
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
     return [
-      { field: 'numberDocument', headerName: '# Documento', editable: false, filter: true, width: 150 },
+      { field: 'id', headerName: 'Id', editable: true, filter: true, width: 50 },
+      { field: 'numberDocument', headerName: '# Documento', editable: true, filter: true, width: 150 },
       
       {
               field: 'idBranch',
@@ -508,6 +511,9 @@ onGridReady(params: GridReadyEvent) {
   }
 }
   addRow() {
+      this.trackingService.addLog(this.trackingService.getnameComp(), `Creacion de un Egresos`, 'Egresos ',
+          this.trackingService.getEmail() );
+
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
@@ -627,6 +633,10 @@ onGridReady(params: GridReadyEvent) {
         'Se han actualizado los datos correctamente.',
         'success'
       );
+      
+      this.trackingService.addLog(this.trackingService.getnameComp(), `Salvar Egresos`, 'Egresos ',
+          this.trackingService.getEmail() );
+
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
       await this.getExpenditure(); // Refrescar los datos

@@ -181,6 +181,7 @@ export class IncomeComponent {
   async getIncomes() {
     this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Ingresos`, 'Menu Administracion Ingresos',
           this.trackingService.getEmail() );
+          
     this.incomesAndExpensesService.getIncomesAndExpenses(this.root).subscribe({
       next: (incomes) => {
         // Filtrado y manejo de caso sin datos
@@ -207,6 +208,8 @@ export class IncomeComponent {
         console.error(error);
       }
     )
+      this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Clientes`, 'Menu Administracion Ingresos',
+           this.trackingService.getEmail() );
   }
 
   // Nuevo método para cargar usuarios autorizadores
