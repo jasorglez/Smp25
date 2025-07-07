@@ -41,7 +41,7 @@ export class KardexComponent {
     { field: "company", filter: true },
     { field: "datetime", filter: true },
     { field: "description", filter: true, width: 400 },
-    { field: "origin" },
+    { field: "origin", filter: true },
     { field: "user", filter: true },
     { field: "idn" }
   ];

@@ -13,6 +13,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { lastValueFrom, concat, toArray, forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+import { TrackingService } from 'app/services/tracking.service';
 
 interface IGenericEntity { id: number; name: string; [key: string]: any; }
 
@@ -30,9 +31,12 @@ export class ConceptsexpenditureComponent {
       employees: inject(EmployeesService),
       providers: inject(CustomersService),
       incomesAndExpenses: inject(IncomesAndExpensesService),
-      signals: inject(SignalsService),
-      administration: inject(AdministrationService),
+      signals:         inject(SignalsService),
+      administration:  inject(AdministrationService),
+      trackingService: inject(TrackingService),
+
       route: inject(ActivatedRoute),
+
     };
   
     public rowData: any[] = [];
@@ -484,7 +488,13 @@ export class ConceptsexpenditureComponent {
   
   // 5. ✅ CORRECCIÓN: Mejorar el método saveChanges con mejor debugging
   async saveChanges() {
-    console.log('💾 ConceptsComponent: saveChanges iniciado');
+      
+    this.services.trackingService.addLog(
+          this.services.trackingService.getnameComp(), 
+          `Salvar Egresos`, 
+          'Detalle Egresos ',
+          this.services.trackingService.getEmail() );
+              
     console.log('🔍 Estado actual:', {
       idIncExp: this.idIncExp,
       subtotal: this.subtotal(),
@@ -595,7 +605,12 @@ export class ConceptsexpenditureComponent {
   
   
     addRow() {
-      //... (sin cambios)
+      
+          this.services.trackingService.addLog(this.services.trackingService.getnameComp(), 
+          `Agregar Egresos`, 
+          'Detalles Egresos ',
+          this.services.trackingService.getEmail() );
+      
           if (!this.idIncExp) {
         alerts.basicAlert('Añadir concepto', 'Debe seleccionar un registro de gasto.', 'warning');
         return;
