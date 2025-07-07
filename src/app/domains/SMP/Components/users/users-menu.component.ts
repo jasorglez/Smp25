@@ -14,6 +14,7 @@ import { UsersxMasterPermissions2Component } from "./usersxmasterpermissions2.co
 import { UsersXStoresComponent } from "./usersxstores.component";
 import { UsersXCashRegistersComponent } from "./usersxcashregisters.component";
 import { environment } from '@env/environment';
+import { AuthService } from 'app/services/auth.service';
 
 @Component({
   selector: 'app-users-menu',
@@ -27,6 +28,7 @@ import { environment } from '@env/environment';
 export class UsersMenuComponent {
   private trackingService = inject(TrackingService);
   private signalsService  = inject(SignalsService);
+  authService = inject(AuthService);
   
   showRoot : boolean = false ;
   
