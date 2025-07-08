@@ -262,6 +262,12 @@ export class ServicioComponent implements OnInit {
     setTimeout(() => {
       this.originalData = [...this.rowData];
       this.isLoading = false;
+      
+      // Forzar actualización del grid si ya está inicializado
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', this.rowData);
+        this.gridApi.autoSizeAllColumns();
+      }
     }, 1000);
   }
   
@@ -270,18 +276,32 @@ export class ServicioComponent implements OnInit {
     return this.rowData.filter(item => item.prioridad === priority).length;
   }
   
+  // Filtrar por prioridad desde las tarjetas de estadísticas
+  filterByPriority(priority: string) {
+    this.selectedPriorityFilter = priority;
+    if (this.gridApi) {
+      const filterModel = {
+        prioridad: {
+          filterType: 'text',
+          type: 'equals',
+          filter: priority
+        }
+      };
+      this.gridApi.setFilterModel(filterModel);
+    }
+  }
+  
   // Métodos del grid
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-    params.api.autoSizeAllColumns();
     
     // Configurar el filtro rápido
     if (this.searchTerm) {
       params.api.setGridOption('quickFilterText', this.searchTerm);
     }
     
-    // Asegurar que los datos se cargan al inicializar el grid
-    this.gridApi.setGridOption('rowData', this.rowData);
+    // Auto-size columns
+    params.api.autoSizeAllColumns();
   }
 
   onSelectionChanged(event: any) {
