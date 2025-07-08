@@ -78,11 +78,16 @@ export class ServicioComponent implements OnInit {
     suppressCellFocus: false,
     enableRangeSelection: true,
     suppressMenuHide: false,
+    rowSelection: 'single',
     defaultColDef: {
       sortable: true,
       filter: true,
       resizable: true,
-      minWidth: 100
+      minWidth: 100,
+      filterParams: {
+        buttons: ['reset', 'apply'],
+        closeOnApply: true
+      }
     }
   };
 
@@ -274,6 +279,9 @@ export class ServicioComponent implements OnInit {
     if (this.searchTerm) {
       params.api.setGridOption('quickFilterText', this.searchTerm);
     }
+    
+    // Asegurar que los datos se cargan al inicializar el grid
+    this.gridApi.setGridOption('rowData', this.rowData);
   }
 
   onSelectionChanged(event: any) {
@@ -304,13 +312,25 @@ export class ServicioComponent implements OnInit {
   
   onPriorityFilterChanged(event: any) {
     if (this.gridApi) {
-      this.gridApi.setFilterModel({
-        prioridad: {
-          filterType: 'text',
-          type: 'equals',
-          filter: event.value || null
-        }
-      });
+      const filterValue = event.value;
+      console.log('Filtrando por prioridad:', filterValue); // Debug log
+      
+      if (filterValue) {
+        // Aplicar filtro específico de prioridad
+        const filterModel = {
+          prioridad: {
+            filterType: 'text',
+            type: 'equals',
+            filter: filterValue
+          }
+        };
+        this.gridApi.setFilterModel(filterModel);
+        console.log('Filtro aplicado:', filterModel); // Debug log
+      } else {
+        // Limpiar todos los filtros
+        this.gridApi.setFilterModel(null);
+        console.log('Filtros limpiados'); // Debug log
+      }
     }
   }
   
@@ -357,8 +377,8 @@ export class ServicioComponent implements OnInit {
     // Actualizar grid y enfocar
     setTimeout(() => {
       if (this.gridApi) {
-        // Simplemente forzar refresh del grid
-        this.gridApi.refreshCells();
+        // Actualizar los datos del grid después de agregar nueva fila
+        this.gridApi.setGridOption('rowData', this.rowData);
         this.gridApi.setFocusedCell(0, 'codigo');
         this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'codigo' });
       }
@@ -424,8 +444,8 @@ export class ServicioComponent implements OnInit {
     
     // Actualizar grid
     if (this.gridApi) {
-      // Refrescar el grid completo en lugar de setRowData
-      this.gridApi.refreshCells();
+      // Actualizar los datos del grid después de revertir
+      this.gridApi.setGridOption('rowData', this.rowData);
     }
     
     this.showSnackBar('Cambios revertidos exitosamente', 'info');
@@ -446,6 +466,11 @@ export class ServicioComponent implements OnInit {
       this.rowData = this.rowData.filter(row => row !== selectedData);
       this.notSavedChanges = true;
       this.hasSelection = false;
+      
+      // Actualizar el grid después de eliminar
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', this.rowData);
+      }
       
       this.showSnackBar('Registro eliminado exitosamente', 'success');
     }
