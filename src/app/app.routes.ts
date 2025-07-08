@@ -393,6 +393,20 @@ export const routes: Routes = [
                     './domains/ModProjects/components/ot/inspeccion/inspeccion.component'
                   ).then((i) => i.InspeccionComponent),
               },
+              {
+                path: 'unidad',
+                loadComponent: () =>
+                  import(
+                    './domains/ModProjects/components/ot/unidad/unidad.component'
+                  ).then((u) => u.UnidadComponent),
+              },
+              {
+                path: 'servicio',
+                loadComponent: () =>
+                  import(
+                    './domains/ModProjects/components/ot/servicio/servicio.component'
+                  ).then((s) => s.ServicioComponent),
+              },
             ],
           },
         ],
