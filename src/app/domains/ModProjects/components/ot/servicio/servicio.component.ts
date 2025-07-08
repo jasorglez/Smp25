@@ -45,7 +45,9 @@ export class ServicioComponent {
       sortable: true,
       filter: true,
       resizable: true,
-      editable: true
+      editable: true,
+      minWidth: 80,
+      maxWidth: 120
     },
     {
       field: 'descripcion',
@@ -53,7 +55,9 @@ export class ServicioComponent {
       sortable: true,
       filter: true,
       resizable: true,
-      editable: true
+      editable: true,
+      minWidth: 200,
+      maxWidth: 300
     },
     {
       field: 'plazo',
@@ -61,7 +65,9 @@ export class ServicioComponent {
       sortable: true,
       filter: true,
       resizable: true,
-      editable: true
+      editable: true,
+      minWidth: 120,
+      maxWidth: 150
     },
     {
       field: 'origen',
@@ -69,7 +75,9 @@ export class ServicioComponent {
       sortable: true,
       filter: true,
       resizable: true,
-      editable: true
+      editable: true,
+      minWidth: 80,
+      maxWidth: 120
     },
     {
       field: 'prioridad',
@@ -77,7 +85,9 @@ export class ServicioComponent {
       sortable: true,
       filter: true,
       resizable: true,
-      editable: true
+      editable: true,
+      minWidth: 100,
+      maxWidth: 140
     }
   ];
 
