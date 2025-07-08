@@ -9,15 +9,15 @@
       <p class="text-muted mb-0">Gestión de servicios y órdenes de trabajo</p>
     </div>
     <div class="service-stats d-flex gap-3">
-      <div class="stat-card">
+      <div class="stat-card" (click)="filterByPriority('ALTA')" style="cursor: pointer;">
         <div class="stat-number">{{getStatsByPriority('ALTA')}}</div>
         <div class="stat-label text-danger">Alta Prioridad</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card" (click)="filterByPriority('MEDIA')" style="cursor: pointer;">
         <div class="stat-number">{{getStatsByPriority('MEDIA')}}</div>
         <div class="stat-label text-warning">Media Prioridad</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card" (click)="filterByPriority('NORMAL')" style="cursor: pointer;">
         <div class="stat-number">{{getStatsByPriority('NORMAL')}}</div>
         <div class="stat-label text-success">Normal</div>
       </div>

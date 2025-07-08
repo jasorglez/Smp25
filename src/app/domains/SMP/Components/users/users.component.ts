@@ -623,7 +623,7 @@ constructor() {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
 
-    if (selectedData.isRoot === 1) {
+    if (selectedData.isRoot === 1 || selectedData.isRoot === true) {
       alerts.basicAlert(
         'Eliminar entrada',
         'No se puede eliminar un usuario administrador',
