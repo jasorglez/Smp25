@@ -45,8 +45,7 @@ export class ServicioComponent {
       sortable: true,
       filter: true,
       resizable: true,
-      editable: true,
-      flex: 1
+      editable: true
     },
     {
       field: 'descripcion',
@@ -54,8 +53,7 @@ export class ServicioComponent {
       sortable: true,
       filter: true,
       resizable: true,
-      editable: true,
-      flex: 3
+      editable: true
     },
     {
       field: 'plazo',
@@ -63,8 +61,7 @@ export class ServicioComponent {
       sortable: true,
       filter: true,
       resizable: true,
-      editable: true,
-      flex: 1
+      editable: true
     },
     {
       field: 'origen',
@@ -72,8 +69,7 @@ export class ServicioComponent {
       sortable: true,
       filter: true,
       resizable: true,
-      editable: true,
-      flex: 1
+      editable: true
     },
     {
       field: 'prioridad',
@@ -81,8 +77,7 @@ export class ServicioComponent {
       sortable: true,
       filter: true,
       resizable: true,
-      editable: true,
-      flex: 1
+      editable: true
     }
   ];
 
@@ -149,7 +144,7 @@ export class ServicioComponent {
   // Métodos del grid
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-    params.api.sizeColumnsToFit();
+    params.api.autoSizeAllColumns();
   }
 
   onSelectionChanged(event: any) {
