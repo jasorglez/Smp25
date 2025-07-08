@@ -14,8 +14,8 @@ export class ContractsService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
-  getContracts(contract: number) {
-    return this.http.get(`${environment.urlSmp}/Contract?idBussines=${contract}`, { headers: this.trackingService.getHeaders() });
+  getContracts(branch: number) {
+    return this.http.get(`${environment.urlSmp}/Contract?idBranch=${branch}`, { headers: this.trackingService.getHeaders() });
   }
 
   getContractsByProvider(id: number) {
