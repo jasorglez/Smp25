@@ -1,53 +1,144 @@
-<div class="container-fluid">
-  <div class="row">
-    <div class="col-12">
-      <div class="card">
-        <div class="card-header">
-          <h3 class="card-title">
-            <i class="bi bi-wrench"></i> 
-            {{'service' | translate}}
-          </h3>
-        </div>
-        <div class="card-body">
-          <!-- Botones CRUD y AG-Grid -->
-          <div class="row">
-            <!-- Botones de acciones -->
-            <nav class="col-auto d-flex flex-column align-items-start">
-              <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addRow()">
-                <i class="bi bi-plus-lg"></i>
-              </button>
-              <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChanges()">
-                <i class="bi bi-floppy"></i>
-                <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-                      *ngIf="notSavedChanges">
-                  <span class="visually-hidden">Hay cambios sin guardar</span>
-                </span>
-              </button>
-              <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revert()">
-                <i class="bi bi-arrow-clockwise"></i>
-              </button>
-              <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteEntry()">
-                <i class="bi bi-trash"></i>
-              </button>
-            </nav>
-            
-            <!-- AG-Grid para mostrar datos de servicios -->
-            <div class="col">
-              <ag-grid-angular style="width: 100%; height: 750px;"
-                class="ag-theme-quartz small-text-ag-grid"
-                [rowData]="rowData"
-                [columnDefs]="columnDefs"
-                [gridOptions]="gridOptions"
-                (selectionChanged)="onSelectionChanged($event)"
-                (cellValueChanged)="onCellValueChanged($event)"
-                (gridReady)="onGridReady($event)"
-                [rowSelection]="'single'"
-                [stopEditingWhenCellsLoseFocus]="true">
-              </ag-grid-angular>
-            </div>
-          </div>
-        </div>
+<!-- Header con estadísticas y acciones -->
+<div class="service-header mb-4">
+  <div class="d-flex justify-content-between align-items-center">
+    <div class="header-info">
+      <h2 class="page-title mb-1">
+        <mat-icon class="title-icon">build_circle</mat-icon>
+        {{'service' | translate}}
+      </h2>
+      <p class="text-muted mb-0">Gestión de servicios y órdenes de trabajo</p>
+    </div>
+    <div class="service-stats d-flex gap-3">
+      <div class="stat-card">
+        <div class="stat-number">{{getStatsByPriority('ALTA')}}</div>
+        <div class="stat-label text-danger">Alta Prioridad</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">{{getStatsByPriority('MEDIA')}}</div>
+        <div class="stat-label text-warning">Media Prioridad</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">{{getStatsByPriority('NORMAL')}}</div>
+        <div class="stat-label text-success">Normal</div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- Toolbar de acciones -->
+<div class="action-toolbar mb-3">
+  <div class="d-flex justify-content-between align-items-center">
+    <!-- Acciones principales -->
+    <div class="action-buttons d-flex gap-2">
+      <button 
+        type="button" 
+        class="btn btn-primary btn-action" 
+        (click)="addRow()"
+        [attr.aria-label]="'Agregar nuevo servicio'"
+        matTooltip="Agregar nuevo servicio">
+        <mat-icon>add</mat-icon>
+        <span class="d-none d-md-inline ms-1">Nuevo</span>
+      </button>
+      
+      <button 
+        type="button" 
+        class="btn btn-success btn-action position-relative" 
+        (click)="saveChanges()"
+        [disabled]="isSaving"
+        [attr.aria-label]="'Guardar cambios'"
+        matTooltip="Guardar todos los cambios">
+        <mat-icon *ngIf="!isSaving">save</mat-icon>
+        <mat-icon *ngIf="isSaving" class="spinner">sync</mat-icon>
+        <span class="d-none d-md-inline ms-1">{{isSaving ? 'Guardando...' : 'Guardar'}}</span>
+        <span class="changes-indicator" *ngIf="notSavedChanges" aria-label="Hay cambios sin guardar"></span>
+      </button>
+      
+      <button 
+        type="button" 
+        class="btn btn-outline-secondary btn-action" 
+        (click)="revert()"
+        [disabled]="!notSavedChanges"
+        [attr.aria-label]="'Revertir cambios'"
+        matTooltip="Revertir todos los cambios">
+        <mat-icon>refresh</mat-icon>
+        <span class="d-none d-md-inline ms-1">Revertir</span>
+      </button>
+      
+      <button 
+        type="button" 
+        class="btn btn-outline-danger btn-action" 
+        (click)="deleteEntry()"
+        [disabled]="!hasSelection"
+        [attr.aria-label]="'Eliminar registro seleccionado'"
+        matTooltip="Eliminar registro seleccionado">
+        <mat-icon>delete</mat-icon>
+        <span class="d-none d-md-inline ms-1">Eliminar</span>
+      </button>
+    </div>
+    
+    <!-- Filtros y búsqueda -->
+    <div class="search-controls d-flex gap-2">
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>Buscar servicios</mat-label>
+        <input matInput 
+               placeholder="Código, descripción..."
+               [(ngModel)]="searchTerm"
+               (input)="onQuickFilterChanged($event)">
+        <mat-icon matSuffix>search</mat-icon>
+      </mat-form-field>
+      
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>Filtrar por prioridad</mat-label>
+        <mat-select [(value)]="selectedPriorityFilter" (selectionChange)="onPriorityFilterChanged($event)">
+          <mat-option value="">Todas</mat-option>
+          <mat-option value="ALTA">Alta</mat-option>
+          <mat-option value="MEDIA">Media</mat-option>
+          <mat-option value="NORMAL">Normal</mat-option>
+          <mat-option value="BAJA">Baja</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </div>
+</div>
+
+<!-- Estado de datos -->
+<div class="data-status mb-3" *ngIf="notSavedChanges || isSaving">
+  <div class="alert alert-info d-flex align-items-center" role="alert">
+    <mat-icon class="me-2" *ngIf="!isSaving">info</mat-icon>
+    <mat-icon class="me-2 spinner" *ngIf="isSaving">sync</mat-icon>
+    <span *ngIf="notSavedChanges && !isSaving">
+      Tienes cambios sin guardar. No olvides presionar "Guardar" para conservar tus modificaciones.
+    </span>
+    <span *ngIf="isSaving">
+      Guardando cambios, por favor espera...
+    </span>
+  </div>
+</div>
+
+<!-- Grid principal -->
+<div class="grid-container">
+  <div class="grid-wrapper">
+    <ag-grid-angular 
+      class="ag-theme-quartz modern-grid"
+      [rowData]="rowData"
+      [columnDefs]="columnDefs"
+      [gridOptions]="gridOptions"
+      (selectionChanged)="onSelectionChanged($event)"
+      (cellValueChanged)="onCellValueChanged($event)"
+      (gridReady)="onGridReady($event)"
+      [rowSelection]="'single'"
+      [stopEditingWhenCellsLoseFocus]="true"
+      [animateRows]="true"
+      [enableCellTextSelection]="true"
+      [suppressRowClickSelection]="false">
+    </ag-grid-angular>
+  </div>
+</div>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" *ngIf="isLoading">
+  <div class="loading-content">
+    <mat-spinner diameter="50"></mat-spinner>
+    <p class="mt-3">Cargando servicios...</p>
   </div>
 </div>
