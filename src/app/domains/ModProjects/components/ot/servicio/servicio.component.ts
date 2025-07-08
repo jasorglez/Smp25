@@ -45,8 +45,7 @@ export class ServicioComponent {
       sortable: true,
       filter: true,
       resizable: true,
-      editable: true,
-      flex: 1
+      width: 80,
     },
     {
       field: 'descripcion',
@@ -63,8 +62,7 @@ export class ServicioComponent {
       sortable: true,
       filter: true,
       resizable: true,
-      editable: true,
-      flex: 1
+      width: 70
     },
     {
       field: 'origen',
@@ -72,8 +70,7 @@ export class ServicioComponent {
       sortable: true,
       filter: true,
       resizable: true,
-      editable: true,
-      flex: 1
+      width: 50,
     },
     {
       field: 'prioridad',
@@ -81,8 +78,7 @@ export class ServicioComponent {
       sortable: true,
       filter: true,
       resizable: true,
-      editable: true,
-      flex: 1
+      width: 80,
     }
   ];
 

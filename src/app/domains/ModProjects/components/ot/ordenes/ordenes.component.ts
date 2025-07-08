@@ -46,8 +46,7 @@ export class OrdenesComponent {
       sortable: true,
       filter: true,
       resizable: true,
-      editable: true,
-      flex: 0.5
+      width: 77,      
     },
     {
       field: 'registro',
@@ -55,8 +54,7 @@ export class OrdenesComponent {
       sortable: true,
       filter: true,
       resizable: true,
-      editable: true,
-      flex: 1
+      width: 88,
     },
     {
       field: 'numero',
@@ -64,8 +62,7 @@ export class OrdenesComponent {
       sortable: true,
       filter: true,
       resizable: true,
-      editable: true,
-      flex: 1
+      width: 85,
     },
     {
       field: 'unidad',
