@@ -1,12 +1,10 @@
 import { Component } from '@angular/core';
-import { RouterModule } from '@angular/router';
-import { DomainsModule } from '../../domainsmodule';
-import { TranslateModule } from '@ngx-translate/core';
+import { SharedModule } from 'app/shared/shared.module';
 
 @Component({
   selector: 'app-procot',
   standalone: true,
-  imports: [RouterModule, DomainsModule, TranslateModule],
+  imports: [SharedModule],
   templateUrl: './procot.component.html',
   styleUrl: './procot.component.scss'
 })
