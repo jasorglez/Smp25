@@ -55,9 +55,8 @@ export class ServicioComponent {
       sortable: true,
       filter: true,
       resizable: true,
-      editable: true,
-      minWidth: 200,
-      maxWidth: 300
+      minWidth: 400,
+      maxWidth: 600
     },
     {
       field: 'plazo',
@@ -66,8 +65,8 @@ export class ServicioComponent {
       filter: true,
       resizable: true,
       editable: true,
-      minWidth: 120,
-      maxWidth: 150
+      minWidth: 150,
+      maxWidth: 200
     },
     {
       field: 'origen',
