@@ -40,8 +40,20 @@ export class ProjectsService {
     return this.http.get<any[]>(`${environment.urlSmp}/Project/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
-  getProjectsByContract(idUser: number, idBranch: number) {
-    return this.http.get(`${environment.urlSecurity}/UsersxContractsxProjectsView/projects?idUser=${idUser}&idContract=${idBranch}`, { headers: this.trackingService.getHeaders() });
+  getProjectsByContract(idUser: number, idBranch?: number) {
+    let url = `${environment.urlSecurity}/UsersxContractsxProjectsView/projects?idUser=${idUser}`;
+    if (idBranch !== undefined) {
+      url += `&idContract=${idBranch}`;
+    }
+    return this.http.get(url, { headers: this.trackingService.getHeaders() });
+  }
+
+  getProjectListByContract(idContract: number) {
+    return this.http.get(`${environment.urlSmp}/Project/contract?contrato=${idContract}`, { headers: this.trackingService.getHeaders() })
+  }
+
+  getProjectListByCompany(idCompany: number) {
+    return this.http.get(`${environment.urlSmp}/Project/company?idCompany=${idCompany}`, { headers: this.trackingService.getHeaders() })
   }
 
   private handleError(error: HttpErrorResponse) {

@@ -1,4 +1,4 @@
-import { Component, computed, HostListener, inject } from '@angular/core';
+import { Component, computed, effect, HostListener, inject } from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { ContractsService } from 'app/services/contracts.service';
@@ -29,6 +29,12 @@ export class UsersxcontractsComponent {
     this.filteredData();
   }
 
+  constructor() {
+    effect(() => {
+      this.filteredData();
+  })
+  }
+
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
     if (this.notSavedChanges) {
@@ -39,6 +45,7 @@ export class UsersxcontractsComponent {
 
   profile = computed(() => this.signalsService.profile);
   idCompany: any = this.signalsService.idCompany();
+  idBranch: number = this.signalsService.getBranchSelectedBySidebar()();
   idContract = this.signalsService.idContract();
   idUser: any = this.profile().idUser();
   companyChecked = computed(() => this.signalsService.companyChecked());
@@ -57,7 +64,7 @@ export class UsersxcontractsComponent {
   obtenerDatos() {
     forkJoin({
       usersxcontracts: this.usersxcontractsService.getDataUsersxPermissions(this.permissionType),
-      contracts: this.contractsService.getContracts(1)
+      contracts: this.contractsService.getContracts(this.idBranch)
       //contracts: this.contractsService.getContracts(parseInt(localStorage.getItem('company')))
     }).pipe(
       map(({ usersxcontracts, contracts }) => {
@@ -96,7 +103,7 @@ export class UsersxcontractsComponent {
 
   obtenerContracts(contract: number) {
     if (this.companyChecked()() == true) {
-      this.contractsService.getContractsByProvider(this.idCompany).subscribe((data: any[]) => {
+      this.contractsService.getContractsByProvider(this.idBranch).subscribe((data: any[]) => {
         this.contracts = data.reduce((acc, dep) => {
           acc[dep.id] = dep.numberContract + ' - ' + dep.descripSmall; // Cambia la estructura para que solo almacene el nombre
           return acc;
@@ -349,7 +356,7 @@ public gridOptions: any = {
   // Este metodo obtiene los datos filtrados o no
   filteredData() {
     this.obtenerDatos();
-    this.obtenerContracts(1);
+    this.obtenerContracts(this.idBranch);
     //this.obtenerContracts(parseInt(localStorage.getItem('company')));
   }
 
