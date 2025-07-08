@@ -54,46 +54,38 @@ export class UsersxprojectsComponent {
   private permissionType: string = 'project';
 
   obtenerDatos() {
-    forkJoin({
-      usersxprojects: this.usersxprojectsService.getDataUsersxPermissions(this.permissionType),
-      projects: this.projectsService.getProjects()
-    }).pipe(
-      map(({ usersxprojects, projects }) => {
-        // Convertimos a array si no lo es
-        const usersxprojectsArray = Array.isArray(usersxprojects) ? usersxprojects : Object.values(usersxprojects);
-        const projectsArray = Array.isArray(projects) ? projects : Object.values(projects);
-        return usersxprojectsArray.filter(uxp =>
-          projectsArray.some(p => p.id === uxp.idPermission)
-        ).map(uxp => {
-          const matchingProject = projectsArray.find(p => p.id === uxp.idPermission);
-          this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Usuarios por Proyecto', 'Menu Administracion Usuarios por Proyecto',  this.trackingService.getEmail());
-          return {
-            ...uxp,
-            idContract: matchingProject ? matchingProject.idContrato : null
-          };
-        });
-      })
-    ).subscribe(
-      data => {
-        this.rowData = [];
-        if (this.contractChecked()() == true) {
-          this.rowData = data.filter((row: any) => row.idUser === this.idUser && row.idContract === this.idContract);
-          this.rowData = this.rowData.map(({ idContract, ...rest }) => rest);
-        }
-        else {
-          this.rowData = data.filter((row: any) => row.idUser === this.idUser);
-          this.rowData = this.rowData.map(({ idContract, ...rest }) => rest);
-        }
-      },
-      error => {
+    if (this.contractChecked()() === true) {
+      this.projectsService.getProjectsByContract(this.signalsService.idUser(), this.idContract).subscribe((data: any[]) => {
+        this.rowData = data;
+        console.log(data);
+        this.trackingService.addLog(
+          this.trackingService.getnameComp(),
+          'Get Registro en Usuarios por Proyecto',
+          'Menu Administracion Usuarios por Proyecto',
+          this.trackingService.getEmail()
+        );
+      }, error => {
         console.error('Error:', error);
-      }
-    );
+      });
+    } else {
+      this.projectsService.getProjectsByContract(this.signalsService.idUser()).subscribe((data: any[]) => {
+        this.rowData = data;
+        console.log(data);
+        this.trackingService.addLog(
+          this.trackingService.getnameComp(),
+          'Get Registro en Usuarios por Proyecto',
+          'Menu Administracion Usuarios por Proyecto',
+          this.trackingService.getEmail()
+        );
+      }, error => {
+        console.error('Error:', error);
+      });
+    }
   }
 
   obtenerProjects(contract: number) {
     if(this.contractChecked()() == true) {
-      this.projectsService.getProjectsByContract(contract, this.signalsService.idUser()).subscribe((data: any[]) => {
+      this.projectsService.getProjectListByContract(contract).subscribe((data: any[]) => {
         this.projects = data.reduce((acc, dep) => {
           acc[dep.id] = dep.idConsecutivo + ' - ' + dep.name; // Cambia la estructura para que solo almacene el nombre
           return acc;
@@ -145,7 +137,7 @@ public gridOptions: any = {
         hide: true,
       },
       {
-        field: 'idPermission',
+        field: 'idProject',
         headerName: 'Proyecto',
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
@@ -194,9 +186,7 @@ public gridOptions: any = {
     const newItem = {
       id: tempId,
       idUser: this.idUser,
-      idPermission: 0,
-      type: this.permissionType,
-      active: 1,
+      idProject: 0,
       __isNew: true,
     };
 
@@ -207,7 +197,7 @@ public gridOptions: any = {
   }
 
   async saveChanges() {
-    const isValid = this.rowData.every((item) => item.idPermission);
+/*     const isValid = this.rowData.every((item) => item.idPermission);
 
     if (!isValid) {
       alerts.basicAlert(
@@ -216,7 +206,7 @@ public gridOptions: any = {
         'error'
       );
       return;
-    }
+    } */
 
     const newRows = this.rowData.filter((row) => row.__isNew);
     const modifiedRows = this.rowData.filter(
@@ -225,12 +215,14 @@ public gridOptions: any = {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      console.log(cleanedData);
       this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Usuarios por Proyecto', 'Menu Administracion Usuarios por Proyecto',  this.trackingService.getEmail());
       return this.usersxprojectsService.addUserxPermission(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      console.log(cleanedData);
       this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Usuarios por Proyecto', 'Menu Administracion Usuarios por Proyecto',  this.trackingService.getEmail());
       return this.usersxprojectsService.updateUserxPermission(row.id, cleanedData);
     });
@@ -312,6 +304,12 @@ public gridOptions: any = {
 
   private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };
+    // Si existe idProject, lo pasamos a idPermission y lo eliminamos
+    if (cleanedData.hasOwnProperty('idProject')) {
+      cleanedData.idPermission = cleanedData.idProject;
+      cleanedData.type = 'project';
+      delete cleanedData.idProject;
+    }
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {

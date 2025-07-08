@@ -1,5 +1,5 @@
 
-import { Component, inject, TemplateRef, ViewChild } from '@angular/core';
+import { Component, effect, inject, TemplateRef, ViewChild } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { NgbModal, NgbModalOptions } from '@ng-bootstrap/ng-bootstrap';
 import { DomainsModule } from 'app/domains/domainsmodule';
@@ -11,6 +11,7 @@ import { catchError, EMPTY, forkJoin } from 'rxjs';
 import { Iproject } from 'app/interface/iproject';
 import { ProjectsService } from 'app/services/projects.service';
 import { OilfieldService } from 'app/services/oilfield.service';
+import { SignalsService } from 'app/services/signals.service';
 
 // Esta funcion valida que programStart sea siempre menor a programEnd
 export function dateRangeValidator(): ValidatorFn {
@@ -47,13 +48,19 @@ export function noDefaultValueValidator(): ValidatorFn {
 @Component({
   selector: 'app-projects',
   standalone: true,
-  imports: [RouterOutlet, DomainsModule],
+  imports: [DomainsModule],
   templateUrl: './projects.component.html',
   styleUrl: './projects.component.scss'
 })
 export class ProjectsComponent {
   constructor() {
+
     this.initForm();
+
+    effect(() => {
+      this.idCompany = this.signalsService.getRootSelectedBySidebar()();
+      this.getProjects();
+    })
   }
 
   @ViewChild('content') content!: TemplateRef<any>;
@@ -71,6 +78,7 @@ export class ProjectsComponent {
   isCancel = false;
   isDelete = false;
   isPrint = false;
+  idCompany: number = null;
 
   screenSizeSM = false;
   notSavedChanges: boolean = false;
@@ -80,6 +88,7 @@ export class ProjectsComponent {
   private projectsService = inject(ProjectsService);
   private followprojectsService = inject(FollowprojectsService);
   private oilfieldsService = inject(OilfieldService);
+  private signalsService = inject(SignalsService);
 
   public project: Iproject[] = [];
   private gridApi!: GridApi<Iproject>;
@@ -92,33 +101,33 @@ export class ProjectsComponent {
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
   public groupDefaultExpanded = 0;
 
-// Column Definitions: Defines the columns to be displayed.
-public gridOptions: any = {
-  headerHeight: 30,
-  rowHeight: 30,
-  rowClass: (params) => {
-    // Verificar si la fila está seleccionada
-    if (params.node.isSelected()) {
-      return 'selected-row';
-    }
-    return '';
-  },
-  onRowClicked: (event) => {
-    // Seleccionar la fila al hacer clic en cualquier celda
-    event.node.setSelected(true);
-  },
-  onRowSelected: (event) => {
-    // Deseleccionar otras filas cuando se selecciona una nueva
-    if (event.node.isSelected()) {
-      this.gridApi.forEachNode((node) => {
-        if (node.id !== event.node.id) {
-          node.setSelected(false);
-        }
-      });
-    }
-  },
-};
-  
+  // Column Definitions: Defines the columns to be displayed.
+  public gridOptions: any = {
+    headerHeight: 30,
+    rowHeight: 30,
+    rowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onRowClicked: (event) => {
+      // Seleccionar la fila al hacer clic en cualquier celda
+      event.node.setSelected(true);
+    },
+    onRowSelected: (event) => {
+      // Deseleccionar otras filas cuando se selecciona una nueva
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    },
+  };
+
   colMaster: ColDef[] = [
     { field: 'number', headerName: 'OT', flex: 1 },
     { field: 'idConsecutivo', headerName: 'ID PEMEX', flex: 1 },
@@ -165,12 +174,12 @@ public gridOptions: any = {
   }
 
   getProjects() {
-    this.projectsService.getProjects().subscribe(
+    this.projectsService.getProjectListByCompany(this.idCompany).subscribe(
       (resp: any) => {
         this.project = this.mapProject(resp);
       },
       (error) => {
-        console.error('Error fetching contracts', error);
+        console.error('Error fetching projects', error);
       }
     );
   }
@@ -228,13 +237,13 @@ public gridOptions: any = {
     ]
   };
 
-  public defaultColDef : ColDef = {
-    sortable           : true,
-    filter             : true,
-    resizable          : true,
-    lockPosition       : false,
-    enableRowGroup     : true, // Enable row grouping for all columns
-    flex               : 1
+  public defaultColDef: ColDef = {
+    sortable: true,
+    filter: true,
+    resizable: true,
+    lockPosition: false,
+    enableRowGroup: true, // Enable row grouping for all columns
+    flex: 1
   };
 
   addRow() {
@@ -297,7 +306,7 @@ public gridOptions: any = {
 
   openModal() {
     forkJoin({
-      contracts: this.followprojectsService.getContract(1),
+      contracts: this.followprojectsService.getContract(-this.idCompany), // en negativo para aprovechar que ya tenemos u servicio que hace lo que necesitamos con el id negativo
       oilfields: this.oilfieldsService.getOilfields()
     }).pipe(
       catchError(error => {

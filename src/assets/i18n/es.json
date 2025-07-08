@@ -213,11 +213,15 @@
   "general"        : "Generales",
   "connection"     : "Conexión",
   "inspection"     : "Inspección",
+  "unit"           : "Unidad",
+  "service"        : "Servicio",
   "work_orders_description" : "Gestión de Órdenes de Trabajo",
   "cadastral_description"   : "Información Catastral y Geográfica",
   "general_description"     : "Configuración General del Sistema",
   "connection_description"  : "Gestión de Conexiones y Enlaces",
   "inspection_description"  : "Módulo de Inspecciones y Auditorías",
+  "unit_description"        : "Gestión de Unidades Operativas",
+  "service_description"     : "Gestión de Servicios y Mantenimiento",
 
   "menuPM":{
     "gi"  :"Gestion Interesados",

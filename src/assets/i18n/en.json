@@ -5,9 +5,13 @@
   "general": "General",
   "connection": "Connection",
   "inspection": "Inspection",
+  "unit": "Unit",
+  "service": "Service",
   "work_orders_description": "Work Orders Management",
   "cadastral_description": "Cadastral and Geographic Information",
   "general_description": "General System Configuration",
   "connection_description": "Connections and Links Management",
-  "inspection_description": "Inspections and Audits Module"
+  "inspection_description": "Inspections and Audits Module",
+  "unit_description": "Operational Units Management",
+  "service_description": "Services and Maintenance Management"
 }

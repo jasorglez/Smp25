@@ -1,26 +1,22 @@
 <div class="row p-3">
   <div class="col-12">
-    <!-- En este row van los botones de CRUD -->
-    <div class="row mb-3">
-      <div class="col text-right">
-        <button type="button" class="btn btn-primary me-1" (click)="addRow()"><i class="bi bi-plus-lg"
-            style="font-size: 1.5rem;"></i></button>
-        <button type="button" class="btn btn-warning ms-1 me-1" (click)="editRow()"><i class="bi bi-pencil-square"
-            style="font-size: 1.5rem;"></i></button>
-        <button type="button" class="btn btn-danger ms-1" (click)="deleteProject()"><i class="bi bi-trash"
-            style="font-size: 1.5rem;"></i></button>
-      </div>
-    </div>
-    <!-- En este row va el ag-grid -->
     <div class="row">
-      <!-- The AG Grid component -->
-      <ag-grid-angular [columnDefs]="colMaster" [defaultColDef]="defaultColDef" [rowSelection]="rowSelection"
-        [rowData]="project" (selectionChanged)="onSelectionChanged($event)" class="ag-theme-quartz small-text-ag-grid"
-        [rowGroupPanelShow]="rowGroupPanelShow" [pivotPanelShow]="pivotPanelShow" [gridOptions]="gridOptions"
-        [groupDefaultExpanded]="groupDefaultExpanded" [pagination]="true" (gridReady)="onGridReady($event)"
-        [paginationPageSize]="paginationPageSize" [paginationPageSizeSelector]="paginationPageSizeSelector"
-        [statusBar]="statusBar" [stopEditingWhenCellsLoseFocus]="true">
-      </ag-grid-angular>
+      <!-- Columna de botones verticales -->
+      <div class="col-auto d-flex flex-column align-items-start justify-content-start me-3">
+        <button type="button" class="btn btn-primary mb-2" (click)="addRow()"><i class="bi bi-plus-lg"></i></button>
+        <button type="button" class="btn btn-warning mb-2" (click)="editRow()"><i class="bi bi-pencil-square"></i></button>
+        <button type="button" class="btn btn-danger" (click)="deleteProject()"><i class="bi bi-trash"></i></button>
+      </div>
+      <!-- Columna del ag-grid -->
+      <div class="col">
+        <ag-grid-angular [columnDefs]="colMaster" [defaultColDef]="defaultColDef" [rowSelection]="rowSelection"
+          [rowData]="project" (selectionChanged)="onSelectionChanged($event)" class="ag-theme-quartz small-text-ag-grid"
+          [rowGroupPanelShow]="rowGroupPanelShow" [pivotPanelShow]="pivotPanelShow" [gridOptions]="gridOptions"
+          [groupDefaultExpanded]="groupDefaultExpanded" [pagination]="true" (gridReady)="onGridReady($event)"
+          [paginationPageSize]="paginationPageSize" [paginationPageSizeSelector]="paginationPageSizeSelector"
+          [statusBar]="statusBar" [stopEditingWhenCellsLoseFocus]="true">
+        </ag-grid-angular>
+      </div>
     </div>
   </div>
 </div>

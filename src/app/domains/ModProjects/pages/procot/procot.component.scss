@@ -1,16 +1,17 @@
 .green-tab {
     color: #ffffff;
-    background-color: #099728;
-    border-color: #0f481c;
+    background-color: #007bff;
+    border-color: #0056b3;
 }
 
 .green-tab:hover {
     color: #ffffff;
-    background-color: #218838;
-    border-color: #1e7e34;
+    background-color: #0056b3;
+    border-color: #004085;
 }
 
 .nav-pills .nav-link.active {
-    background-color: #218838;
-    border-color: #1e7e34;
+    color: #ffffff !important;
+    background-color: #099728 !important;
+    border-color: #0f481c !important;
 }
