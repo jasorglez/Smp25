@@ -52,6 +52,10 @@ export class ProjectsService {
     return this.http.get(`${environment.urlSmp}/Project/contract?contrato=${idContract}`, { headers: this.trackingService.getHeaders() })
   }
 
+  getProjectListByCompany(idCompany: number) {
+    return this.http.get(`${environment.urlSmp}/Project/company?idCompany=${idCompany}`, { headers: this.trackingService.getHeaders() })
+  }
+
   private handleError(error: HttpErrorResponse) {
     if (error.status === 404) {
       console.log('No projects found');
