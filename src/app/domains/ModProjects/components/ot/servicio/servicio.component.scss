@@ -1,5 +1,4 @@
-// Import additional styles
-@import 'src/styles-servicio.scss';
+// Removemos el import problemático por ahora - los estilos ya están en el componente
 
 // Variables de colores
 :root {
@@ -332,4 +331,35 @@
     --text-primary: #f1f5f9;
     --text-secondary: #94a3b8;
   }
+}
+
+// Estilos específicos para celdas de prioridad
+::ng-deep .priority-high { 
+  background-color: #fee2e2 !important; 
+  color: #991b1b !important;
+  font-weight: 600;
+}
+
+::ng-deep .priority-medium { 
+  background-color: #fef3c7 !important; 
+  color: #92400e !important;
+  font-weight: 600;
+}
+
+::ng-deep .priority-normal { 
+  background-color: #dcfce7 !important; 
+  color: #166534 !important;
+  font-weight: 600;
+}
+
+::ng-deep .priority-low { 
+  background-color: #dbeafe !important; 
+  color: #1e40af !important;
+  font-weight: 600;
+}
+
+::ng-deep .priority-cell {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.25rem !important;
 }

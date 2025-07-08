@@ -357,7 +357,8 @@ export class ServicioComponent implements OnInit {
     // Actualizar grid y enfocar
     setTimeout(() => {
       if (this.gridApi) {
-        this.gridApi.setRowData(this.rowData);
+        // Simplemente forzar refresh del grid
+        this.gridApi.refreshCells();
         this.gridApi.setFocusedCell(0, 'codigo');
         this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'codigo' });
       }
@@ -423,7 +424,8 @@ export class ServicioComponent implements OnInit {
     
     // Actualizar grid
     if (this.gridApi) {
-      this.gridApi.setRowData(this.rowData);
+      // Refrescar el grid completo en lugar de setRowData
+      this.gridApi.refreshCells();
     }
     
     this.showSnackBar('Cambios revertidos exitosamente', 'info');
