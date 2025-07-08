@@ -103,7 +103,8 @@ export class UsersxbranchesComponent {
       (data: any) => {
         this.id      = data.id ;
         console.log('this.id', this.id)  
-        this.branchs = data      
+        this.branchs = data 
+        console.log(this.branchs)     
       },
       (error) => {
         if (error.status == 404) this.branchs = [];
