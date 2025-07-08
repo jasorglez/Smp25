@@ -21,7 +21,7 @@ import {
   GridReadyEvent,
   ICellRendererParams,
 } from 'ag-grid-enterprise';
-
+import { firstValueFrom } from 'rxjs';
 import { AdministrationService } from 'app/services/administration.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray, tap } from 'rxjs';
 import { ModalService } from 'app/services/modal.service';
@@ -31,6 +31,8 @@ import { DetailpayrollComponent } from '../detailpayroll/detailpayroll.component
 import { SignalsService } from 'app/services/signals.service';
 import { AuthService } from 'app/services/auth.service';
 import { BranchsService } from 'app/services/branchs.service';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { HRService } from 'app/services/hr.service';
 
 @Component({
   selector: 'app-master-payroll',
@@ -47,6 +49,16 @@ import { BranchsService } from 'app/services/branchs.service';
 })
 export class MasterPayrollComponent implements OnInit {
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+  dias: any[] = [
+    { id: 1, dia: 'Lunes' },
+    { id: 2, dia: 'Martes' },
+    { id: 3, dia: 'Miércoles' },
+    { id: 4, dia: 'Jueves' },
+    { id: 5, dia: 'Viernes' },
+    { id: 6, dia: 'Sábado' },
+    { id: 7, dia: 'Domingo' },
+
+  ]
 
   constructor() {
     effect(() => {
@@ -69,6 +81,8 @@ export class MasterPayrollComponent implements OnInit {
       } else {
         this.obtenerDatos();
         this.obtenerBranchs();
+        this.obtenerConfig();
+        this.CalculoDeDias();
       }
     }, { allowSignalWrites: true });
   }
@@ -77,6 +91,85 @@ export class MasterPayrollComponent implements OnInit {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
     this.obtenerDatos();
   }
+  
+  async CalculoDeDias() {
+      /*if (this.selectFechas.valid) {
+        const datos = this.selectFechas.value;
+        this.fechaInicio = datos.fechaInicio;
+        this.fechaFin = datos.fechaFin;
+        console.log(this.fechaInicio, this.fechaFin)
+  
+        this.obtenerDatos(this.fechaInicio, this.fechaFin);
+      } else {
+        alerts.basicAlert('Error', 'Por favor selecciona ambas fechas', 'error');
+      }*/
+      await this.getNextPayrollStartDate();
+      // Determinar fechaInicio
+      if (this.idBranch < 0) {
+        const primerDiaDelMes = new Date(this.hoy.getFullYear(), this.hoy.getMonth(), 1);
+        this.fechaInicio = primerDiaDelMes.toISOString().split('T')[0];
+        console.log(this.fechaInicio);
+      } else if (this.ultimaFecha instanceof Date) {
+        const siguienteDia = new Date(this.ultimaFecha);
+        siguienteDia.setDate(siguienteDia.getDate() + 1);
+        this.fechaInicio = siguienteDia.toISOString().split('T')[0];
+      } else {
+        const diaEncontrado = this.dias.find(d => d.dia === this.hrData.startDay);
+        this.idDia = diaEncontrado ? diaEncontrado.id : 1;
+        const diaObjetivo = this.idDia % 7;
+        this.hoy.setHours(0, 0, 0, 0);
+        const fecha = new Date(this.hoy);
+        const diaActual = fecha.getDay();
+        const diferencia = (diaActual - diaObjetivo + 7) % 7;
+        fecha.setDate(fecha.getDate() - diferencia);
+        this.fechaInicio = fecha.toISOString().split('T')[0];
+      }
+  
+      // Determinar fechaFin
+      if (this.idBranch < 0) {
+        const ultimoDiaDelMes = new Date(this.hoy.getFullYear(), this.hoy.getMonth() + 1, 0);
+        this.fechaFin = ultimoDiaDelMes.toISOString().split('T')[0];
+      } else if (this.hrData?.payrollPeriod > 0) {
+        const inicio = new Date(this.fechaInicio);
+        inicio.setDate(inicio.getDate() + this.hrData.payrollPeriod - 1);
+        this.fechaFin = inicio.toISOString().split('T')[0];
+      } else {
+        this.fechaFin = this.hoy.toISOString().split('T')[0];
+      }
+    }
+    async getNextPayrollStartDate(): Promise<void> {
+      if (this.idBranch > 0) {
+        try {
+          const data: { endDate: string }[] = await firstValueFrom(
+            this.administrationService.getNormalPayrolls(this.idBranch)
+          );
+  
+          if (data.length > 0) {
+            this.ultimaFecha = undefined;//= new Date(data[0].endDate);
+          } else {
+            this.ultimaFecha = undefined;
+          }
+        } catch (error) {
+          console.error('Error fetching payroll data:', error);
+        }
+      }
+    }
+  
+    obtenerConfig(): Promise<void> {
+      return new Promise((resolve) => {
+        this.hrService.getHRManagementData(this.idBranch).subscribe({
+          next: (data: any) => {
+            this.hrData = data[0] || {};
+            resolve();
+          },
+          error: () => {
+            this.hrData = {};
+            this.idDia = 6;
+            resolve();
+          }
+        });
+      });
+    }
 
   obtenerDatos() {
     this.administrationService.getNormalPayrolls(this.idBranch).subscribe(
@@ -113,6 +206,7 @@ export class MasterPayrollComponent implements OnInit {
   private branchesService = inject(BranchsService);
   private administrationService = inject(AdministrationService);
   private payrollService = inject(PayrollService);
+  private hrService = inject(HRService);
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
@@ -121,7 +215,7 @@ export class MasterPayrollComponent implements OnInit {
         'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
     }
   }
-
+  selectFechas: FormGroup;
   mostrarGridDetalle = false;
   datosDetalle: any = [];
   notSavedChanges: boolean = false;
@@ -141,6 +235,13 @@ export class MasterPayrollComponent implements OnInit {
   endingDate: string;
   branchs: any[] = [];
   idRoot: number;
+  hrData: any = {};
+  ultimaFecha: any;
+  idDia: any;
+  hoy = new Date();
+  fechaInicio: any;
+  fechaFin: any;
+
 
   activatePayrollDetailTab() {
     this.showPayrollDetailTab = true;
@@ -166,63 +267,61 @@ export class MasterPayrollComponent implements OnInit {
   get colMaster(): ColDef[] {
     return [
       {
-        headerName: 'Fecha Inicio',
-        field: 'startDate',
-        filter: 'agDateColumnFilter',
+  headerName: 'Fecha Inicio',
+  field: 'startDate',
+  filter: 'agDateColumnFilter',
 
-        editable: (params) => {
-          return this.aggregatingRecord;
-        },
+  editable: (params) => {
+    return this.aggregatingRecord;
+  },
 
-        cellEditor: 'agDateCellEditor',
+  cellEditor: 'agDateCellEditor',
 
-        valueGetter: (params) => {
-          if (params.node.rowIndex == 0) {
-          }
-          return params.data.startDate ? new Date(params.data.startDate) : null;
-        },
+  valueGetter: (params) => {
+    return this.parseLocalDate(params.data.startDate);
+  },
 
-        valueFormatter: (params) => {
-          if (params.value) {
-            const date = new Date(params.value);
-            this.initialDate = `${('0' + date.getDate()).slice(-2)}-${(
-              '0' +
-              (date.getMonth() + 1)
-            ).slice(-2)}-${date.getFullYear()}`;
-            return this.initialDate;
-          }
-          return '';
-        },
+  valueFormatter: (params) => {
+    if (params.value) {
+      const date = this.parseLocalDate(params.value);
+      this.initialDate = `${('0' + date.getDate()).slice(-2)}-${(
+        '0' + (date.getMonth() + 1)
+      ).slice(-2)}-${date.getFullYear()}`;
+      return this.initialDate;
+    }
+    return '';
+  },
 
-        valueSetter: (params) => {
-          if (!params.newValue) {
-            alerts.basicAlert(
-              'Campo requerido',
-              'la fecha de inicio es requerida.',
-              'error'
-            );
-            return false;
-          }
-          const duplicateExists = this.rowData.some(
-            (row, index) =>
-              index !== params.node.rowIndex && row.name === params.newValue
-          );
+  valueSetter: (params) => {
+    if (!params.newValue) {
+      alerts.basicAlert(
+        'Campo requerido',
+        'La fecha de inicio es requerida.',
+        'error'
+      );
+      return false;
+    }
 
-          if (duplicateExists) {
-            alerts.basicAlert(
-              'Fecha duplicada',
-              'Ya existe una fecha.',
-              'error'
-            );
-            return false;
-          }
+    const duplicateExists = this.rowData.some(
+      (row, index) =>
+        index !== params.node.rowIndex && row.name === params.newValue
+    );
 
-          params.data[params.colDef.field] = params.newValue;
-          return true;
-        },
+    if (duplicateExists) {
+      alerts.basicAlert(
+        'Fecha duplicada',
+        'Ya existe una fecha.',
+        'error'
+      );
+      return false;
+    }
 
-        width: 170,
-      },
+    params.data[params.colDef.field] = params.newValue;
+    return true;
+  },
+
+  width: 170,
+},
       {
         headerName: 'Fecha Fin',
         field: 'endDate',
@@ -231,20 +330,20 @@ export class MasterPayrollComponent implements OnInit {
           return this.aggregatingRecord;
         },
         cellEditor: 'agDateCellEditor',
-        valueGetter: (params) =>
-          params.data.endDate ? new Date(params.data.endDate) : null,
+        valueGetter: (params) => {
+    return this.parseLocalDate(params.data.endDate);
+  },
 
-        valueFormatter: (params) => {
-          if (params.value) {
-            const date = new Date(params.value);
-            this.endingDate = `${('0' + date.getDate()).slice(-2)}-${(
-              '0' +
-              (date.getMonth() + 1)
-            ).slice(-2)}-${date.getFullYear()}`;
-            return this.endingDate;
-          }
-          return '';
-        },
+  valueFormatter: (params) => {
+    if (params.value) {
+      const date = this.parseLocalDate(params.value);
+      this.initialDate = `${('0' + date.getDate()).slice(-2)}-${(
+        '0' + (date.getMonth() + 1)
+      ).slice(-2)}-${date.getFullYear()}`;
+      return this.initialDate;
+    }
+    return '';
+  },
         valueSetter: (params) => {
           if (!params.newValue) {
             alerts.basicAlert(
@@ -381,7 +480,7 @@ export class MasterPayrollComponent implements OnInit {
       },
       {
         headerName: 'Nóm Digital',
-        field: 'NomDigital',
+        field: 'nomDigital',
         width: 130,
         valueFormatter: params => this.formatCurrencyMx(params.value),
         //cellRenderer: 'excelDownloadCellRenderer',
@@ -389,7 +488,7 @@ export class MasterPayrollComponent implements OnInit {
         cellRenderer: (params) => {
           const button = document.createElement('button');
 
-          this.DPAvailable = true;
+          this.DPAvailable = params.data.nomDigital; // Verificar si la nómina digital está disponible
 
           button.innerHTML = this.DPAvailable ? '✅' : '❌'; // Palomita o cruz roja
           button.style.cursor = 'pointer';
@@ -416,6 +515,30 @@ export class MasterPayrollComponent implements OnInit {
       }
     ];
   }
+
+    parseLocalDate(input: string | Date): Date | null {
+    if (!input) return null;
+
+    if (input instanceof Date) return input;
+
+    // Detectar formato DD/MM/YYYY
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(input)) {
+      const [day, month, year] = input.split('/');
+      return new Date(Number(year), Number(month) - 1, Number(day)); // local
+    }
+
+    // Detectar formato ISO
+    if (/^\d{4}-\d{2}-\d{2}/.test(input)) {
+      const [year, month, day] = input.split('T')[0].split('-');
+      return new Date(Number(year), Number(month) - 1, Number(day));
+    }
+
+    // Fallback: intentar convertir como Date, pero puede fallar
+    const parsed = new Date(input);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+
 
   onCheckClick(params: any): void {
     if (!params.data) return;
@@ -551,8 +674,8 @@ export class MasterPayrollComponent implements OnInit {
       //idBranch: this.idBranch,
       idBranch: this.idBranch > 0 ? this.idBranch : null,
 
-      startDate: '',
-      endDate: '',
+      startDate: this.fechaInicio || '',
+      endDate: this.fechaFin || '',
       closed : false,
       active: true,
       __isNew: true,
