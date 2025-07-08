@@ -48,17 +48,13 @@ export class ServicioComponent implements OnInit {
   // Variables de control
   public notSavedChanges: boolean = false;
   public isSaving: boolean = false;
-  public isLoading: boolean = false;
+  public isLoading: boolean = true; // Cambio: iniciar en true
   public hasSelection: boolean = false;
   public searchTerm: string = '';
   public selectedPriorityFilter: string = '';
   private tempIdCounter: number = 1;
   private originalData: ServicioData[] = [];
   
-  ngOnInit() {
-    this.loadData();
-  }
-
   // Configuración del grid
   public gridApi!: GridApi;
   public gridOptions: any = {
@@ -173,6 +169,18 @@ export class ServicioComponent implements OnInit {
       cellEditorParams: {
         values: ['ALTA', 'MEDIA', 'NORMAL', 'BAJA']
       },
+      // Configuración específica para filtros
+      filter: 'agTextColumnFilter',
+      filterParams: {
+        buttons: ['reset', 'apply'],
+        closeOnApply: true,
+        caseSensitive: false,
+        debounceMs: 200
+      },
+      // Tooltip personalizado que muestra todos los tipos disponibles
+      tooltipValueGetter: (params: any) => {
+        return `Prioridades disponibles:\n🔴 ALTA - Urgente, requiere atención inmediata\n🟡 MEDIA - Importante, atender pronto\n🟢 NORMAL - Rutinario, atender en orden\n🔵 BAJA - Opcional, cuando sea posible\n\nValor actual: ${params.value || 'Sin asignar'}`;
+      },
       cellClass: (params) => {
         const priorityClasses: {[key: string]: string} = {
           'ALTA': 'priority-high',
@@ -195,80 +203,113 @@ export class ServicioComponent implements OnInit {
     }
   ];
 
-  // Datos falsos para el grid
-  public rowData: ServicioData[] = [
-    {
-      codigo: '302',
-      descripcion: 'Suspension del Servicio Por ADEUDO',
-      plazo: '2025-06-08',
-      origen: '0',
-      prioridad: 'NORMAL'
-    },
-    {
-      codigo: '301',
-      descripcion: 'Instalacion de Nuevo Servicio',
-      plazo: '2025-06-10',
-      origen: '1',
-      prioridad: 'ALTA'
-    },
-    {
-      codigo: '303',
-      descripcion: 'Reconexion de Servicio',
-      plazo: '2025-06-12',
-      origen: '0',
-      prioridad: 'NORMAL'
-    },
-    {
-      codigo: '304',
-      descripcion: 'Mantenimiento Preventivo',
-      plazo: '2025-06-15',
-      origen: '2',
-      prioridad: 'MEDIA'
-    },
-    {
-      codigo: '305',
-      descripcion: 'Reparacion de Falla en Servicio',
-      plazo: '2025-06-09',
-      origen: '1',
-      prioridad: 'ALTA'
-    },
-    {
-      codigo: '306',
-      descripcion: 'Cambio de Medidor',
-      plazo: '2025-06-20',
-      origen: '0',
-      prioridad: 'MEDIA'
-    },
-    {
-      codigo: '307',
-      descripcion: 'Inspeccion Tecnica de Instalaciones',
-      plazo: '2025-06-25',
-      origen: '2',
-      prioridad: 'NORMAL'
-    },
-    {
-      codigo: '308',
-      descripcion: 'Actualizacion de Datos del Cliente',
-      plazo: '2025-06-18',
-      origen: '1',
-      prioridad: 'BAJA'
-    }
-  ];
+  // Cambio: Inicializar como array vacío
+  public rowData: ServicioData[] = [];
+  
+  // Datos de ejemplo separados
+  private getMockData(): ServicioData[] {
+    return [
+      {
+        codigo: '302',
+        descripcion: 'Suspension del Servicio Por ADEUDO',
+        plazo: '2025-06-08',
+        origen: '0',
+        prioridad: 'NORMAL'
+      },
+      {
+        codigo: '301',
+        descripcion: 'Instalacion de Nuevo Servicio',
+        plazo: '2025-06-10',
+        origen: '1',
+        prioridad: 'ALTA'
+      },
+      {
+        codigo: '303',
+        descripcion: 'Reconexion de Servicio',
+        plazo: '2025-06-12',
+        origen: '0',
+        prioridad: 'NORMAL'
+      },
+      {
+        codigo: '304',
+        descripcion: 'Mantenimiento Preventivo',
+        plazo: '2025-06-15',
+        origen: '2',
+        prioridad: 'MEDIA'
+      },
+      {
+        codigo: '305',
+        descripcion: 'Reparacion de Falla en Servicio',
+        plazo: '2025-06-09',
+        origen: '1',
+        prioridad: 'ALTA'
+      },
+      {
+        codigo: '306',
+        descripcion: 'Cambio de Medidor',
+        plazo: '2025-06-20',
+        origen: '0',
+        prioridad: 'MEDIA'
+      },
+      {
+        codigo: '307',
+        descripcion: 'Inspeccion Tecnica de Instalaciones',
+        plazo: '2025-06-25',
+        origen: '2',
+        prioridad: 'NORMAL'
+      },
+      {
+        codigo: '308',
+        descripcion: 'Actualizacion de Datos del Cliente',
+        plazo: '2025-06-18',
+        origen: '1',
+        prioridad: 'BAJA'
+      }
+    ];
+  }
 
-  // Métodos del ciclo de vida
+  ngOnInit() {
+    this.loadData();
+  }
+
+  // CORREGIDO: Método de carga de datos
   private loadData() {
+    console.log('🔄 Iniciando carga de datos...');
     this.isLoading = true;
-    // Simular carga de datos
+    
+    // Simular carga de datos del servidor
     setTimeout(() => {
-      this.originalData = [...this.rowData];
+      console.log('📦 Obteniendo datos mock...');
+      const mockData = this.getMockData();
+      
+      // Asignar los datos
+      this.rowData = [...mockData];
+      this.originalData = [...mockData];
+      
+      console.log('✅ Datos cargados exitosamente:', this.rowData.length, 'registros');
+      console.log('📊 Datos:', this.rowData);
+      
       this.isLoading = false;
       
-      // Forzar actualización del grid si ya está inicializado
+      // Si el grid ya está inicializado, actualizar
       if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', this.rowData);
-        this.gridApi.autoSizeAllColumns();
+        console.log('🔄 Actualizando grid con nuevos datos...');
+        this.updateGridData();
       }
-    }, 1000);
+      
+    }, 1500); // Simular delay de red
+  }
+  
+  // Nuevo método para actualizar datos del grid
+  private updateGridData() {
+    if (this.gridApi && this.rowData) {
+      this.gridApi.setGridOption('rowData', this.rowData);
+      
+      // Ajustar columnas después de un pequeño delay
+      setTimeout(() => {
+        this.gridApi.sizeColumnsToFit();
+      }, 100);
+    }
   }
   
   // Métodos de estadísticas
@@ -278,30 +319,45 @@ export class ServicioComponent implements OnInit {
   
   // Filtrar por prioridad desde las tarjetas de estadísticas
   filterByPriority(priority: string) {
+    console.log('🔍 Filtro por prioridad clickeado:', priority);
     this.selectedPriorityFilter = priority;
+    
     if (this.gridApi) {
-      const filterModel = {
-        prioridad: {
-          filterType: 'text',
-          type: 'equals',
-          filter: priority
-        }
-      };
-      this.gridApi.setFilterModel(filterModel);
+      // Limpiar filtros existentes primero
+      this.gridApi.setFilterModel(null);
+      
+      // Aplicar nuevo filtro después de un pequeño delay
+      setTimeout(() => {
+        const filterModel = {
+          prioridad: {
+            filterType: 'text',
+            type: 'equals',
+            filter: priority
+          }
+        };
+        console.log('🎯 Aplicando filtro:', filterModel);
+        this.gridApi.setFilterModel(filterModel);
+      }, 100);
     }
   }
   
-  // Métodos del grid
+  // CORREGIDO: Método onGridReady
   onGridReady(params: GridReadyEvent) {
+    console.log('🎯 Grid ready event triggered');
     this.gridApi = params.api;
     
-    // Configurar el filtro rápido
+    // Si ya tenemos datos cargados, asignarlos
+    if (this.rowData && this.rowData.length > 0) {
+      console.log('📊 Asignando datos existentes al grid:', this.rowData.length, 'registros');
+      this.updateGridData();
+    } else {
+      console.log('⏳ Esperando carga de datos...');
+    }
+    
+    // Configurar filtro rápido si existe
     if (this.searchTerm) {
       params.api.setGridOption('quickFilterText', this.searchTerm);
     }
-    
-    // Auto-size columns
-    params.api.autoSizeAllColumns();
   }
 
   onSelectionChanged(event: any) {
@@ -314,6 +370,7 @@ export class ServicioComponent implements OnInit {
   }
 
   onCellValueChanged(event: any) {
+    console.log('📝 Celda modificada:', event.colDef.field, '=', event.newValue);
     event.data.__modified = true;
     this.notSavedChanges = true;
     
@@ -325,17 +382,20 @@ export class ServicioComponent implements OnInit {
   
   // Métodos de filtrado y búsqueda
   onQuickFilterChanged(event: any) {
+    const searchValue = event.target.value;
+    console.log('🔍 Búsqueda rápida:', searchValue);
+    
     if (this.gridApi) {
-      this.gridApi.setGridOption('quickFilterText', event.target.value);
+      this.gridApi.setGridOption('quickFilterText', searchValue);
     }
   }
   
   onPriorityFilterChanged(event: any) {
+    const filterValue = event.value;
+    console.log('🔍 Dropdown filtro prioridad cambiado a:', filterValue);
+    
     if (this.gridApi) {
-      const filterValue = event.value;
-      console.log('Filtrando por prioridad:', filterValue); // Debug log
-      
-      if (filterValue) {
+      if (filterValue && filterValue.trim() !== '') {
         // Aplicar filtro específico de prioridad
         const filterModel = {
           prioridad: {
@@ -344,12 +404,12 @@ export class ServicioComponent implements OnInit {
             filter: filterValue
           }
         };
+        console.log('🎯 Aplicando filtro desde dropdown:', filterModel);
         this.gridApi.setFilterModel(filterModel);
-        console.log('Filtro aplicado:', filterModel); // Debug log
       } else {
         // Limpiar todos los filtros
+        console.log('🧹 Limpiando filtros');
         this.gridApi.setFilterModel(null);
-        console.log('Filtros limpiados'); // Debug log
       }
     }
   }
@@ -373,7 +433,12 @@ export class ServicioComponent implements OnInit {
     }
     
     // Actualizar el grid para mostrar errores
-    this.gridApi.refreshCells({ rowNodes: [this.gridApi.getDisplayedRowAtIndex(rowIndex)] });
+    if (this.gridApi) {
+      const rowNode = this.gridApi.getDisplayedRowAtIndex(rowIndex);
+      if (rowNode) {
+        this.gridApi.refreshCells({ rowNodes: [rowNode] });
+      }
+    }
   }
 
   // Métodos CRUD
@@ -382,23 +447,20 @@ export class ServicioComponent implements OnInit {
     const newItem: ServicioData = {
       codigo: '',
       descripcion: '',
-      plazo: new Date().toISOString().split('T')[0], // Fecha actual por defecto
-      origen: '1', // Externo por defecto
-      prioridad: 'NORMAL' // Normal por defecto
+      plazo: new Date().toISOString().split('T')[0],
+      origen: '1',
+      prioridad: 'NORMAL'
     };
     
-    // Agregar propiedades de control
     (newItem as any).__isNew = true;
     (newItem as any).id = tempId;
     
     this.rowData = [newItem, ...this.rowData];
     this.notSavedChanges = true;
     
-    // Actualizar grid y enfocar
     setTimeout(() => {
       if (this.gridApi) {
-        // Actualizar los datos del grid después de agregar nueva fila
-        this.gridApi.setGridOption('rowData', this.rowData);
+        this.updateGridData();
         this.gridApi.setFocusedCell(0, 'codigo');
         this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'codigo' });
       }
@@ -408,9 +470,9 @@ export class ServicioComponent implements OnInit {
   }
 
   saveChanges() {
-    // Validar datos requeridos
     const invalidRows = this.rowData.filter(row => 
-      !row.codigo?.trim() || !row.descripcion?.trim() || !row.plazo?.trim() || !row.origen?.trim() || !row.prioridad?.trim()
+      !row.codigo?.trim() || !row.descripcion?.trim() || !row.plazo?.trim() || 
+      !row.origen?.trim() || !row.prioridad?.trim()
     );
     
     if (invalidRows.length > 0) {
@@ -423,11 +485,9 @@ export class ServicioComponent implements OnInit {
     
     this.isSaving = true;
     
-    // Simular guardado (aquí iría la llamada al API)
     setTimeout(() => {
-      console.log('Guardando cambios:', this.rowData);
+      console.log('💾 Guardando cambios:', this.rowData);
       
-      // Limpiar flags de control
       this.rowData.forEach(row => {
         delete (row as any).__isNew;
         delete (row as any).__modified;
@@ -438,7 +498,6 @@ export class ServicioComponent implements OnInit {
         }
       });
       
-      // Actualizar datos originales
       this.originalData = [...this.rowData];
       this.notSavedChanges = false;
       this.isSaving = false;
@@ -453,28 +512,24 @@ export class ServicioComponent implements OnInit {
       return;
     }
     
-    // Mostrar confirmación
     if (!confirm('¿Está seguro de que desea revertir todos los cambios? Esta acción no se puede deshacer.')) {
       return;
     }
     
-    // Restaurar datos originales
     this.rowData = [...this.originalData];
     this.notSavedChanges = false;
     
-    // Actualizar grid
     if (this.gridApi) {
-      // Actualizar los datos del grid después de revertir
-      this.gridApi.setGridOption('rowData', this.rowData);
+      this.updateGridData();
     }
     
     this.showSnackBar('Cambios revertidos exitosamente', 'info');
   }
 
   deleteEntry() {
-    const selectedNodes = this.gridApi.getSelectedNodes();
+    const selectedNodes = this.gridApi?.getSelectedNodes();
     
-    if (selectedNodes.length === 0) {
+    if (!selectedNodes || selectedNodes.length === 0) {
       this.showSnackBar('Por favor seleccione una fila para eliminar', 'warning');
       return;
     }
@@ -487,9 +542,8 @@ export class ServicioComponent implements OnInit {
       this.notSavedChanges = true;
       this.hasSelection = false;
       
-      // Actualizar el grid después de eliminar
       if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', this.rowData);
+        this.updateGridData();
       }
       
       this.showSnackBar('Registro eliminado exitosamente', 'success');
@@ -507,17 +561,15 @@ export class ServicioComponent implements OnInit {
     
     this.snackBar.open(message, 'Cerrar', config);
   }
-
 }
 
-// Estilos adicionales para las celdas de prioridad
+// Estilos dinámicos para las celdas de prioridad
 declare global {
   interface Window {
     addPriorityCellStyles: () => void;
   }
 }
 
-// Agregar estilos dinámicos para las celdas de prioridad
 if (typeof window !== 'undefined') {
   window.addPriorityCellStyles = () => {
     const style = document.createElement('style');
