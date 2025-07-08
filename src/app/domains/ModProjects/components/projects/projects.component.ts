@@ -179,7 +179,7 @@ export class ProjectsComponent {
         this.project = this.mapProject(resp);
       },
       (error) => {
-        console.error('Error fetching contracts', error);
+        console.error('Error fetching projects', error);
       }
     );
   }
@@ -306,7 +306,7 @@ export class ProjectsComponent {
 
   openModal() {
     forkJoin({
-      contracts: this.followprojectsService.getContract(1),
+      contracts: this.followprojectsService.getContract(-this.idCompany), // en negativo para aprovechar que ya tenemos u servicio que hace lo que necesitamos con el id negativo
       oilfields: this.oilfieldsService.getOilfields()
     }).pipe(
       catchError(error => {
