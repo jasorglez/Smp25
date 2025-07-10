@@ -203,8 +203,8 @@ export class DetailpayrollComponent implements OnInit{
       this.loadData();
       console.log("------------------------------------ ngOninit ID PAYROLL: ", this.idPayroll);
       console.log("-------- entrando a detailpayroll, este es el ngOninit  ");
-
   }
+  
  onCellValueChanged(event: any): void {
   const selectedRowData = event.data;
   const newValueOriginal = event.newValue;

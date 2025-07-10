@@ -14,31 +14,31 @@ export class RolesService {
 
    private trackingService = inject(TrackingService);
    private http = inject(HttpClient);
-  
-      
+
+
     getRoles(idCompany: number): Observable<any> {
       return this.http.get(`${environment.urlSecurity}/Roles?idCompany=${idCompany}`, { headers: this.trackingService.getHeaders() });
     }
-  
-      
+
+
     getRolesById(id: number): Observable<any> {
       return this.http.get(`${environment.urlSecurity}/Roles/${id}`, { headers: this.trackingService.getHeaders() });
     }
-  
-    
+
+
     addRoles(data: any): Observable<any> {
       return this.http.post(`${environment.urlSecurity}/Roles`, data, { headers: this.trackingService.getHeaders() });
     }
-  
+
 
     updateRoles(id: string, data: any): Observable<any> {
       console.log('DATA EN EL UPDATE', data)
       return this.http.put(`${environment.urlSecurity}/Roles/${id}`, data, { headers: this.trackingService.getHeaders() });
     }
-  
 
-    deleteRoles(id: number, data: any): Observable<any> {
-      return this.http.put(`${environment.urlSecurity}/Roles/${id}`, data, { headers: this.trackingService.getHeaders() });
+
+    deleteRoles(id: number): Observable<any> {
+      return this.http.delete(`${environment.urlSecurity}/Roles/${id}`, { headers: this.trackingService.getHeaders() });
     }
 
     getPermissionsByRoles(idRole: number): Observable<any> {
@@ -56,6 +56,6 @@ export class RolesService {
     updateDetailedPermissionsxRoles(idRole: number, idDetailedPermission: number, data: any): Observable<any> {
       return this.http.put(`${environment.urlSecurity}/RolesxDetailedPermission?idRole=${idRole}&idDetailedPermission=${idDetailedPermission}`, data, { headers: this.trackingService.getHeaders() });
     }
-  
+
 
 }

@@ -497,7 +497,6 @@ export default class MasterClockComponent implements OnInit {
     } else {
       this.fechaFin = this.hoy.toISOString().split('T')[0];
     }
-
     // Actualizar formulario reactivo
     this.selectFechas.patchValue(
       {
