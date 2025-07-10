@@ -16,6 +16,7 @@ import { ImageHandlerService } from 'app/services/image-handler.service';
 import { SignalsService } from 'app/services/signals.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
+import { RolesTooltipHeaderComponent } from './roles-tooltip-header.component';
 import { env } from 'echarts';
 import { environment } from '@env/environment';
 import { TrackingService } from 'app/services/tracking.service';
@@ -105,12 +106,17 @@ constructor() {
         this.getRoles();
       this.verification();
       this.obtenerEmpleados();
+      // Actualizar contexto del grid con los roles
+      if (this.gridOptions) {
+        this.gridOptions.context.roles = this.departamentos;
+      }
     })
 }
 
   components = {
     multiLineEditor: MultiLineEditorComponent,
-    autocompleteEditor: AutocompleteEditorComponent
+    autocompleteEditor: AutocompleteEditorComponent,
+    rolesTooltipHeader: RolesTooltipHeaderComponent
   }
   obtenerEmpleados() {
     return new Promise((resolve) => {
@@ -169,6 +175,11 @@ constructor() {
       (data: any) => {
         this.departamentos = data.data;
         console.log('Roles:', this.departamentos);
+        // Actualizar el contexto del grid cuando cambien los roles
+        if (this.gridApi) {
+          this.gridOptions.context.roles = this.departamentos;
+          this.gridApi.refreshHeader();
+        }
       },
       (error) => {
         if (error.status == 404) this.departamentos = [];
@@ -192,6 +203,9 @@ constructor() {
   public gridOptions: any = {
     headerHeight: 30,
     rowHeight: 30,
+    context: {
+      roles: this.departamentos
+    },
     rowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -334,6 +348,7 @@ constructor() {
         suppressMovable: true,
         filter: false,
         flex: 1,
+        headerComponent: 'rolesTooltipHeader',
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: (params) => {
           // Ensure depto data is available when creating editor
