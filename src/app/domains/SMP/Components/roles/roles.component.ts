@@ -296,10 +296,11 @@ constructor() {
     this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Roles', 'Menu Administracion Roles',  this.trackingService.getEmail());
   }
 
+
+
   async saveChanges() {
     const isValid = this.rowData.every(
-      (item) => item.description && item.comment
-    );
+      (item) => item.description     );
 
     if (!isValid) {
       alerts.basicAlert(
