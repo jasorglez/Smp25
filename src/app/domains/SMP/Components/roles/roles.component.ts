@@ -67,7 +67,7 @@ export class RolesComponent {
 
   private catalogService = inject(CatalogsService);
   private signalsService = inject(SignalsService);
-  private rolesService   = inject(RolesService);  
+  private rolesService   = inject(RolesService);
   private trackingService = inject(TrackingService);
 
   profile = computed(() => this.signalsService.profile);
@@ -87,8 +87,8 @@ export class RolesComponent {
         'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
     }
   }
-    
-    
+
+
   verification(): boolean {
   //const permissions = this.signalsService.getStoreFromPermissions();
   if(this.userRoot == 1){
@@ -296,9 +296,11 @@ constructor() {
     this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Roles', 'Menu Administracion Roles',  this.trackingService.getEmail());
   }
 
+
+
   async saveChanges() {
     const isValid = this.rowData.every(
-      (item) => item.description && item.comment
+      (item) => item.description
     );
 
     if (!isValid) {
@@ -386,7 +388,7 @@ constructor() {
     }
   }
 
-  async deleteUser() {
+  async deleteRol() {
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert(
@@ -398,6 +400,7 @@ constructor() {
     }
 
     const selectedData = selectedNodes[0].data;
+    console.log("------------ data del rol: ", selectedData);
     const id = selectedData.id;
 
     if (selectedData.isRoot === 1) {
@@ -411,8 +414,8 @@ constructor() {
 
     // Mostrar mensaje de confirmación
     alerts.confirmAlert(
-      'Eliminar empleado',
-      '¿Está seguro que desea eliminar este usuario?',
+      'Eliminar rol',
+      '¿Está seguro que desea eliminar este rol?',
       'warning',
       'Sí, eliminar'
     ).then((value) => {
@@ -421,7 +424,7 @@ constructor() {
         console.log('SelectedData', selectedData);
         selectedData.active = 0;
         console.log('SelectedData', selectedData);
-        this.usersService.deleteUser(id, selectedData).pipe(
+        this.rolesService.deleteRoles(id).pipe(
           catchError((error) => {
             alerts.basicAlert(
               'Eliminar entrada',
