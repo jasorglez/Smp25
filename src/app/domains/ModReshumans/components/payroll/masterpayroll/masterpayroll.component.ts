@@ -267,61 +267,61 @@ export class MasterPayrollComponent implements OnInit {
   get colMaster(): ColDef[] {
     return [
       {
-  headerName: 'Fecha Inicio',
-  field: 'startDate',
-  filter: 'agDateColumnFilter',
+        headerName: 'Fecha Inicio',
+        field: 'startDate',
+        filter: 'agDateColumnFilter',
 
-  editable: (params) => {
-    return this.aggregatingRecord;
-  },
-
-  cellEditor: 'agDateCellEditor',
-
-  valueGetter: (params) => {
-    return this.parseLocalDate(params.data.startDate);
-  },
-
-  valueFormatter: (params) => {
-    if (params.value) {
-      const date = this.parseLocalDate(params.value);
-      this.initialDate = `${('0' + date.getDate()).slice(-2)}-${(
-        '0' + (date.getMonth() + 1)
-      ).slice(-2)}-${date.getFullYear()}`;
-      return this.initialDate;
-    }
-    return '';
-  },
-
-  valueSetter: (params) => {
-    if (!params.newValue) {
-      alerts.basicAlert(
-        'Campo requerido',
-        'La fecha de inicio es requerida.',
-        'error'
-      );
-      return false;
-    }
-
-    const duplicateExists = this.rowData.some(
-      (row, index) =>
-        index !== params.node.rowIndex && row.name === params.newValue
-    );
-
-    if (duplicateExists) {
-      alerts.basicAlert(
-        'Fecha duplicada',
-        'Ya existe una fecha.',
-        'error'
-      );
-      return false;
-    }
-
-    params.data[params.colDef.field] = params.newValue;
-    return true;
-  },
-
-  width: 170,
-},
+        editable: (params) => {
+          return this.aggregatingRecord;
+        },
+      
+        cellEditor: 'agDateCellEditor',
+      
+        valueGetter: (params) => {
+          return this.parseLocalDate(params.data.startDate);
+        },
+      
+        valueFormatter: (params) => {
+          if (params.value) {
+            const date = this.parseLocalDate(params.value);
+            this.initialDate = `${('0' + date.getDate()).slice(-2)}-${(
+              '0' + (date.getMonth() + 1)
+            ).slice(-2)}-${date.getFullYear()}`;
+            return this.initialDate;
+          }
+          return '';
+        },
+      
+        valueSetter: (params) => {
+          if (!params.newValue) {
+            alerts.basicAlert(
+              'Campo requerido',
+              'La fecha de inicio es requerida.',
+              'error'
+            );
+            return false;
+          }
+        
+          const duplicateExists = this.rowData.some(
+            (row, index) =>
+              index !== params.node.rowIndex && row.name === params.newValue
+          );
+        
+          if (duplicateExists) {
+            alerts.basicAlert(
+              'Fecha duplicada',
+              'Ya existe una fecha.',
+              'error'
+            );
+            return false;
+          }
+        
+          params.data[params.colDef.field] = params.newValue;
+          return true;
+        },
+      
+        width: 170,
+      },
       {
         headerName: 'Fecha Fin',
         field: 'endDate',
@@ -331,19 +331,19 @@ export class MasterPayrollComponent implements OnInit {
         },
         cellEditor: 'agDateCellEditor',
         valueGetter: (params) => {
-    return this.parseLocalDate(params.data.endDate);
-  },
-
-  valueFormatter: (params) => {
-    if (params.value) {
-      const date = this.parseLocalDate(params.value);
-      this.initialDate = `${('0' + date.getDate()).slice(-2)}-${(
-        '0' + (date.getMonth() + 1)
-      ).slice(-2)}-${date.getFullYear()}`;
-      return this.initialDate;
-    }
-    return '';
-  },
+          return this.parseLocalDate(params.data.endDate);
+        },
+      
+        valueFormatter: (params) => {
+          if (params.value) {
+            const date = this.parseLocalDate(params.value);
+            this.initialDate = `${('0' + date.getDate()).slice(-2)}-${(
+              '0' + (date.getMonth() + 1)
+            ).slice(-2)}-${date.getFullYear()}`;
+            return this.initialDate;
+          }
+          return '';
+        },
         valueSetter: (params) => {
           if (!params.newValue) {
             alerts.basicAlert(
@@ -425,7 +425,7 @@ export class MasterPayrollComponent implements OnInit {
 
       {
         field: 'totalBaseWorkingHours',
-        headerName: 'Total Jornadas Base',
+        headerName: 'Total Horas Trabajadas',
         width: 170,
         valueFormatter: (params) => {
         const value = params.value;
@@ -440,7 +440,7 @@ export class MasterPayrollComponent implements OnInit {
 
       {
         field: 'totalBaseExtraHours',
-        headerName: 'Total Jornadas Extra',
+        headerName: 'Total Horas Extra',
         width: 170,
         cellEditorParams: {
           maxLength: 15,
@@ -453,28 +453,71 @@ export class MasterPayrollComponent implements OnInit {
         const minutes = Math.round((value - hours) * 60);
       
         return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        },
       },
+      {
+        field: 'totalBaseExtraHoursSpecial',
+        headerName: 'Total Horas Extra Especial',
+        width: 170,
+        cellEditorParams: {
+          maxLength: 15,
+        },
+        valueFormatter: (params) => {
+        const value = params.value;
+        if (typeof value !== 'number' || isNaN(value)) return '';
+      
+        const hours = Math.floor(value);
+        const minutes = Math.round((value - hours) * 60);
+      
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        },
       },
-
-       { field: 'totalBonos',
+       { 
+        field: 'totalBaseSalary',
+        headerName: 'Total Salarios Base',
+        width: 140,
+        valueFormatter: params =>  this.formatCurrencyMx(params.value)
+      },
+       { 
+        field: 'totalExtraSalary',
+        headerName: 'Total Salarios Extra',
+        width: 140,
+        valueFormatter: params =>  this.formatCurrencyMx(params.value)
+      },
+       { 
+        field: 'totalSpecialSalary',
+        headerName: 'Total Salario Extra Especial',
+        width: 140,
+        valueFormatter: params =>  this.formatCurrencyMx(params.value)
+      },
+      { 
+        field: 'totalBonos',
         headerName: 'Total Bonos',
         width: 140,
         valueFormatter: params =>  this.formatCurrencyMx(params.value)
       },
-
       { field: 'totalSubtotal',
-        headerName: 'Total Subtotal',
+        headerName: 'Total Sueldo Bruto',
         width: 140,
         valueFormatter: params =>  this.formatCurrencyMx(params.value)
       },
-
+      { field: 'totalSavings',
+        headerName: 'Total Ahorros',
+        width: 140,
+        valueFormatter: params =>  this.formatCurrencyMx(params.value)
+      },
       { field: 'totalDescuentos',
-        headerName: 'Total Descuentos',
+        headerName: 'Total Descuento Real',
         width: 160,
         valueFormatter: params => this.formatCurrencyMx(params.value)
-       },
+      },
+      { field: 'totalDigitalPayment',
+        headerName: 'Total Pago Digital',
+        width: 160,
+        valueFormatter: params => this.formatCurrencyMx(params.value)
+      },
       { field: 'total',
-        headerName: 'Total',
+        headerName: 'Total Efectivo',
         width: 100,
         valueFormatter: params => this.formatCurrencyMx(params.value)
       },

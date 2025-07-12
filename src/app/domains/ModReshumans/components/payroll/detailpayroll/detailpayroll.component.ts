@@ -85,8 +85,34 @@ export class DetailpayrollComponent implements OnInit{
         return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
       },
     },
-    { headerName: 'Horas Extra', width: 150, field: 'extraWorkedHours' },
-    { headerName: 'Horas Extra Especiales', width: 150, field: 'extraWorkedHours' },
+    { 
+      headerName: 'Horas Extra',
+      width: 150, 
+      field: 'extraWorkedHours' ,
+      valueFormatter: (params) => {
+        const value = params.value;
+        if (typeof value !== 'number' || isNaN(value)) return '';
+      
+        const hours = Math.floor(value);
+        const minutes = Math.round((value - hours) * 60);
+      
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      }
+    },
+    { 
+      headerName: 'Horas Extra Especiales', 
+      width: 150, 
+      field: 'specialWorkedHours', 
+      valueFormatter: (params) => {
+        const value = params.value;
+        if (typeof value !== 'number' || isNaN(value)) return '';
+      
+        const hours = Math.floor(value);
+        const minutes = Math.round((value - hours) * 60);
+      
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      }
+    },
     {
       headerName: 'Faltas',
       width: 100,
@@ -116,6 +142,14 @@ export class DetailpayrollComponent implements OnInit{
       headerName: 'Salario Extra',
       width: 150,
       field: 'extraSalary',
+      valueFormatter: (params) => {
+        return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
+      }
+    },
+    {
+      headerName: 'Salario Extra Especial',
+      width: 150,
+      field: 'specialSalary',
       valueFormatter: (params) => {
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
       }
@@ -170,11 +204,8 @@ export class DetailpayrollComponent implements OnInit{
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
       }
     },
-
-
-
     {
-      headerName: 'Total Efectivo',
+      headerName: 'Efectivo',
       width: 150,
       field: 'total',
       valueFormatter: (params) => {

@@ -209,6 +209,9 @@ export default class MasterClockComponent implements OnInit {
         showRowGroup: 'nameBranch'
       },
       {
+        headerName: 'idBloque'
+      },
+      {
         field: 'periodStart',
         headerName: 'Fecha inicio',
         editable: false,
