@@ -34,6 +34,7 @@
           [columnDefs]="colMaster"
           (selectionChanged)="onSelectionChanged($event)"
           [gridOptions]="gridOptions"
+          (gridReady)="onGridReady2($event)"
           (cellValueChanged)="onCellValueChanged($event)"
           (cellDoubleClicked)="onCellDoubleClicked($event)"
           (rowSelected)="onSelectedRow($event)"
