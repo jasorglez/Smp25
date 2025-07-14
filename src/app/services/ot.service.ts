@@ -27,6 +27,14 @@ export class OtService {
       return this.http.post(`${environment.urlSmp}/OT`, data, { headers: this.trackingService.getHeaders() });
     }
 
+    updateOt(idOt: number, data: any): Observable<any> {
+      return this.http.put(`${environment.urlSmp}/OT/${idOt}`, data, { headers: this.trackingService.getHeaders() });
+    }
+
+    deleteOt(idOt: number): Observable<any> {
+      return this.http.delete(`${environment.urlSmp}/OT/${idOt}`, { headers: this.trackingService.getHeaders() });
+    }
+
     addOtViaPdf(idProject: number, pdfFile: File): Observable<any> {
       const formData = new FormData();
       formData.append('file', pdfFile);
