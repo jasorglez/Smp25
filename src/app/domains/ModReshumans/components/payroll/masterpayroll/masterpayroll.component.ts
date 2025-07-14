@@ -330,7 +330,7 @@ export class MasterPayrollComponent implements OnInit {
       },
       {
         field: 'idBlockPeriod',
-        headerName: 'idBlockPeriod',
+        headerName: 'Bloque del Periodo',
         headerClass: 'required-header',
         editable: true,
         suppressMovable: true,

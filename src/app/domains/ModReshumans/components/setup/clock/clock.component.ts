@@ -33,6 +33,7 @@ export class ClockComponent {
     delay1: ['', [Validators.required, Validators.min(0), Validators.max(60)]],
     delay2: ['', [Validators.required, Validators.min(60), Validators.max(120)]],
     settingToleranceTime: ['', [Validators.required]],
+    identificationBlockPeriod: ['', [Validators.required]]
   });
 
   getData() {
@@ -44,6 +45,7 @@ export class ClockComponent {
           delay1: this.hrData.delay1,
           delay2: this.hrData.delay2,
           settingToleranceTime: this.hrData.settingToleranceTime,
+          identificationBlockPeriod: this.hrData.identificationBlockPeriod,
         });
         this.isNew = false;
       },
@@ -64,10 +66,7 @@ export class ClockComponent {
 
 
   onSubmit() {
-
-
     const values = this.myForm.value;
-
     // Validaciones personalizadas
     if (values.delay1 < 0 || values.delay1 > 60) {
       alerts.basicAlert("Error", "El valor de 'delay1' debe estar entre 0 y 60 minutos.", "error");
@@ -113,6 +112,7 @@ export class ClockComponent {
       delay1: values.delay1,
       delay2: values.delay2,
       idBranch: this.idBranch,
+      identificationBlockPeriod: values.identificationBlockPeriod,
     };
     console.log(payload)
 
