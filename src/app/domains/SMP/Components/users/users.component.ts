@@ -329,7 +329,7 @@ constructor() {
       },
       {
         field: 'idDepartament',
-        headerName: 'Rol de Usuario',
+        headerName: 'Rol de Usuario ℹ️',
         editable: true,
         suppressMovable: true,
         filter: false,
@@ -340,6 +340,28 @@ constructor() {
           return {
             values: this.departamentos ? this.departamentos.map((item) => item.id) : []
           };
+        },
+        // Tooltip personalizado que muestra todos los roles con colores
+        tooltipValueGetter: (params: any) => {
+          if (!this.departamentos || this.departamentos.length === 0) {
+            return 'No hay roles disponibles';
+          }
+          
+          let tooltip = 'Roles Disponibles:\n\n';
+          this.departamentos.forEach((role, index) => {
+            const colorEmoji = this.getRoleColorEmoji(role.id);
+            tooltip += `${colorEmoji} ${role.description}\n`;
+          });
+          
+          const currentRole = this.departamentos.find((item) => item.id === params.value);
+          if (currentRole) {
+            const currentEmoji = this.getRoleColorEmoji(currentRole.id);
+            tooltip += `\nRol actual: ${currentEmoji} ${currentRole.description}`;
+          } else {
+            tooltip += '\nRol actual: Sin asignar';
+          }
+          
+          return tooltip;
         },
         // Asignacion de permisos por usuario es en roles
         valueFormatter: (params) => {
@@ -682,6 +704,27 @@ constructor() {
     this.obtenerDatos();
     this.notSavedChanges = false;
     this.trackingService.addLog(this.trackingService.getnameComp(),'Revertir Registro en Usuarios', 'Menu Administracion Usuarios',  this.trackingService.getEmail());
+  }
+
+  getRoleColorEmoji(roleId: number): string {
+    // Asignar emojis de colores consistentes basados en el ID del rol
+    const colorEmojis = [
+      '🔵', // Azul
+      '🟢', // Verde
+      '🔴', // Rojo
+      '🟡', // Amarillo
+      '🟣', // Púrpura
+      '🟠', // Naranja
+      '🟦', // Turquesa
+      '🩷', // Rosa
+      '⚫', // Gris/Negro
+      '🟦', // Cian
+      '⚪', // Claro
+      '🟤'  // Marrón
+    ];
+    
+    // Usar el ID del rol para seleccionar un emoji de forma consistente
+    return colorEmojis[roleId % colorEmojis.length];
   }
 
   private cleanDataForServer(data: any): any {

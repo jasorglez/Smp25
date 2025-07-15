@@ -33,6 +33,7 @@ import { AuthService } from 'app/services/auth.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { HRService } from 'app/services/hr.service';
+import { IdBlockPeriodsService } from 'app/services/IdBlockPeriods.service';
 
 @Component({
   selector: 'app-master-payroll',
@@ -83,6 +84,7 @@ export class MasterPayrollComponent implements OnInit {
         this.obtenerBranchs();
         this.obtenerConfig();
         this.CalculoDeDias();
+        this.obtenerBlockPariod(this.idBranch);
       }
     }, { allowSignalWrites: true });
   }
@@ -91,7 +93,9 @@ export class MasterPayrollComponent implements OnInit {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
     this.obtenerDatos();
   }
-  
+  onGridReady2(params: GridReadyEvent): void {
+    this.gridApi2 = params.api;
+  }
   async CalculoDeDias() {
       /*if (this.selectFechas.valid) {
         const datos = this.selectFechas.value;
@@ -207,6 +211,7 @@ export class MasterPayrollComponent implements OnInit {
   private administrationService = inject(AdministrationService);
   private payrollService = inject(PayrollService);
   private hrService = inject(HRService);
+  private idBlockPeriodsService = inject(IdBlockPeriodsService);
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
@@ -221,6 +226,7 @@ export class MasterPayrollComponent implements OnInit {
   notSavedChanges: boolean = false;
   private tempIdCounter: number = 0;
   id: string;
+  gridApi2!: GridApi;
   idBranch: number;
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
   private modalServiceTable = inject(ModalService);
@@ -234,6 +240,7 @@ export class MasterPayrollComponent implements OnInit {
   initialDate: string;
   endingDate: string;
   branchs: any[] = [];
+  blockPeriods: any[] = [];
   idRoot: number;
   hrData: any = {};
   ultimaFecha: any;
@@ -263,116 +270,15 @@ export class MasterPayrollComponent implements OnInit {
   cerrarDetalle() {
     this.mostrarGridDetalle = false;
   }
+  private validateRequiredField(value: any): any {
+    return {
+      backgroundColor: !value ? '#fff3cd' : 'transparent',
+      border: !value ? '2px solid #ff9966' : 'none',
+    };
+  }
 
   get colMaster(): ColDef[] {
     return [
-      {
-  headerName: 'Fecha Inicio',
-  field: 'startDate',
-  filter: 'agDateColumnFilter',
-
-  editable: (params) => {
-    return this.aggregatingRecord;
-  },
-
-  cellEditor: 'agDateCellEditor',
-
-  valueGetter: (params) => {
-    return this.parseLocalDate(params.data.startDate);
-  },
-
-  valueFormatter: (params) => {
-    if (params.value) {
-      const date = this.parseLocalDate(params.value);
-      this.initialDate = `${('0' + date.getDate()).slice(-2)}-${(
-        '0' + (date.getMonth() + 1)
-      ).slice(-2)}-${date.getFullYear()}`;
-      return this.initialDate;
-    }
-    return '';
-  },
-
-  valueSetter: (params) => {
-    if (!params.newValue) {
-      alerts.basicAlert(
-        'Campo requerido',
-        'La fecha de inicio es requerida.',
-        'error'
-      );
-      return false;
-    }
-
-    const duplicateExists = this.rowData.some(
-      (row, index) =>
-        index !== params.node.rowIndex && row.name === params.newValue
-    );
-
-    if (duplicateExists) {
-      alerts.basicAlert(
-        'Fecha duplicada',
-        'Ya existe una fecha.',
-        'error'
-      );
-      return false;
-    }
-
-    params.data[params.colDef.field] = params.newValue;
-    return true;
-  },
-
-  width: 170,
-},
-      {
-        headerName: 'Fecha Fin',
-        field: 'endDate',
-        filter: 'agDateColumnFilter',
-        editable: (params) => {
-          return this.aggregatingRecord;
-        },
-        cellEditor: 'agDateCellEditor',
-        valueGetter: (params) => {
-    return this.parseLocalDate(params.data.endDate);
-  },
-
-  valueFormatter: (params) => {
-    if (params.value) {
-      const date = this.parseLocalDate(params.value);
-      this.initialDate = `${('0' + date.getDate()).slice(-2)}-${(
-        '0' + (date.getMonth() + 1)
-      ).slice(-2)}-${date.getFullYear()}`;
-      return this.initialDate;
-    }
-    return '';
-  },
-        valueSetter: (params) => {
-          if (!params.newValue) {
-            alerts.basicAlert(
-              'Campo requerido',
-              'la fecha de fin es requerida.',
-              'error'
-            );
-            return false;
-          }
-          const duplicateExists = this.rowData.some(
-            (row, index) =>
-              index !== params.node.rowIndex && row.name === params.newValue
-          );
-
-          if (duplicateExists) {
-            alerts.basicAlert(
-              'Fecha duplicada',
-              'Ya existe una fecha.',
-              'error'
-            );
-            return false;
-          }
-
-          params.data[params.colDef.field] = params.newValue;
-          return true;
-        },
-        width: 170,
-      },
-
       {
         headerName: 'Sucursal',
         field: 'idBranch',
@@ -422,10 +328,196 @@ export class MasterPayrollComponent implements OnInit {
           return branch ? branch.name : '';
         },
       },
+      {
+        field: 'idBlockPeriod',
+        headerName: 'Bloque del Periodo',
+        headerClass: 'required-header',
+        editable: true,
+        suppressMovable: true,
+        width: 120,
+        filter: 'agSetColumnFilter',
+        filterParams: {
+          //excelMode: 'mac',
+          defaultToNothingSelected: true,
+        },
+        cellEditor: 'autocompleteEditor',
+        cellEditorParams: {
+          filterList: this.rowData?.map((e) => e.id) || [],
+          filterKey: 'idBlockPeriod',
+          placeholder: 'Buscar empleado...',
+          minLength: 1,
+        },
+       valueSetter: (params) => {
+          const rawValue = params.newValue;
+          if (!rawValue || typeof rawValue !== 'string') {
+            alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
+            return false;
+          }
+        
+          const normalizedValue = rawValue.trim().toUpperCase();
+        
+          if (!normalizedValue) {
+            alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
+            return false;
+          }
+        
+          // Busca el blockPeriodCode en la lista
+          const matched = this.blockPeriods?.find(
+            (b) => b.blockPeriodCode.toUpperCase() === normalizedValue
+          );
+        
+          if (!matched) {
+            alerts.basicAlert('No encontrado', 'El periodo no existe.', 'error');
+            return false;
+          }
+          console.log(matched)
+          const duplicateExists = this.rowData.some(
+            (row, index) =>
+              index !== params.node.rowIndex &&
+              row.idBlockPeriod === matched.id
+          );
+        
+          if (duplicateExists) {
+            alerts.basicAlert(
+              'Duplicado',
+              'Ya existe un registro con ese periodo.',
+              'error'
+            );
+            return false;
+          }
+          
+            params.data[params.colDef.field] = matched.id;
+            params.data['startDate'] = matched.startDate;
+            params.data['endDate'] = matched.endDate;
+          return true;
+        },
+        valueFormatter: (params) => {
+          // Handle potential null values and properly format the displayed value
+          if (!params.value) return '';
 
+          const foundblockPeriod = this.blockPeriods
+            ? this.blockPeriods.find((item) => item.id === params.value)
+            : null;
+
+          return foundblockPeriod ? foundblockPeriod.blockPeriodCode : params.value;
+        },
+        valueGetter: (params) => {
+          if (!params.data || !params.data.idBlockPeriod) return '';
+          const blockPeriod = this.blockPeriods?.find(b => b.id === params.data.idBlockPeriod);
+          return blockPeriod ? blockPeriod.blockPeriodCode : '';
+        },
+      },
+      {
+        headerName: 'Fecha Inicio',
+        field: 'startDate',
+        filter: 'agDateColumnFilter',
+
+        editable: (params) => {
+          return this.aggregatingRecord;
+        },
+      
+        cellEditor: 'agDateCellEditor',
+      
+        valueGetter: (params) => {
+          return this.parseLocalDate(params.data.startDate);
+        },
+      
+        valueFormatter: (params) => {
+          if (params.value) {
+            const date = this.parseLocalDate(params.value);
+            this.initialDate = `${('0' + date.getDate()).slice(-2)}-${(
+              '0' + (date.getMonth() + 1)
+            ).slice(-2)}-${date.getFullYear()}`;
+            return this.initialDate;
+          }
+          return '';
+        },
+      
+        valueSetter: (params) => {
+          if (!params.newValue) {
+            alerts.basicAlert(
+              'Campo requerido',
+              'La fecha de inicio es requerida.',
+              'error'
+            );
+            return false;
+          }
+        
+          const duplicateExists = this.rowData.some(
+            (row, index) =>
+              index !== params.node.rowIndex && row.name === params.newValue
+          );
+        
+          if (duplicateExists) {
+            alerts.basicAlert(
+              'Fecha duplicada',
+              'Ya existe una fecha.',
+              'error'
+            );
+            return false;
+          }
+        
+          params.data[params.colDef.field] = params.newValue;
+          return true;
+        },
+      
+        width: 170,
+      },
+      {
+        headerName: 'Fecha Fin',
+        field: 'endDate',
+        filter: 'agDateColumnFilter',
+        editable: (params) => {
+          return this.aggregatingRecord;
+        },
+        cellEditor: 'agDateCellEditor',
+        valueGetter: (params) => {
+          return this.parseLocalDate(params.data.endDate);
+        },
+      
+        valueFormatter: (params) => {
+          if (params.value) {
+            const date = this.parseLocalDate(params.value);
+            this.initialDate = `${('0' + date.getDate()).slice(-2)}-${(
+              '0' + (date.getMonth() + 1)
+            ).slice(-2)}-${date.getFullYear()}`;
+            return this.initialDate;
+          }
+          return '';
+        },
+        valueSetter: (params) => {
+          if (!params.newValue) {
+            alerts.basicAlert(
+              'Campo requerido',
+              'la fecha de fin es requerida.',
+              'error'
+            );
+            return false;
+          }
+          const duplicateExists = this.rowData.some(
+            (row, index) =>
+              index !== params.node.rowIndex && row.name === params.newValue
+          );
+
+          if (duplicateExists) {
+            alerts.basicAlert(
+              'Fecha duplicada',
+              'Ya existe una fecha.',
+              'error'
+            );
+            return false;
+          }
+
+          params.data[params.colDef.field] = params.newValue;
+          return true;
+        },
+        width: 170,
+      },
+
+      
       {
         field: 'totalBaseWorkingHours',
-        headerName: 'Total Jornadas Base',
+        headerName: 'Total Horas Trabajadas',
         width: 170,
         valueFormatter: (params) => {
         const value = params.value;
@@ -440,7 +532,7 @@ export class MasterPayrollComponent implements OnInit {
 
       {
         field: 'totalBaseExtraHours',
-        headerName: 'Total Jornadas Extra',
+        headerName: 'Total Horas Extra',
         width: 170,
         cellEditorParams: {
           maxLength: 15,
@@ -453,28 +545,71 @@ export class MasterPayrollComponent implements OnInit {
         const minutes = Math.round((value - hours) * 60);
       
         return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        },
       },
+      {
+        field: 'totalBaseExtraHoursSpecial',
+        headerName: 'Total Horas Extra Especial',
+        width: 170,
+        cellEditorParams: {
+          maxLength: 15,
+        },
+        valueFormatter: (params) => {
+        const value = params.value;
+        if (typeof value !== 'number' || isNaN(value)) return '';
+      
+        const hours = Math.floor(value);
+        const minutes = Math.round((value - hours) * 60);
+      
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        },
       },
-
-       { field: 'totalBonos',
+       { 
+        field: 'totalBaseSalary',
+        headerName: 'Total Salarios Base',
+        width: 140,
+        valueFormatter: params =>  this.formatCurrencyMx(params.value)
+      },
+       { 
+        field: 'totalExtraSalary',
+        headerName: 'Total Salarios Extra',
+        width: 140,
+        valueFormatter: params =>  this.formatCurrencyMx(params.value)
+      },
+       { 
+        field: 'totalSpecialSalary',
+        headerName: 'Total Salario Extra Especial',
+        width: 140,
+        valueFormatter: params =>  this.formatCurrencyMx(params.value)
+      },
+      { 
+        field: 'totalBonos',
         headerName: 'Total Bonos',
         width: 140,
         valueFormatter: params =>  this.formatCurrencyMx(params.value)
       },
-
       { field: 'totalSubtotal',
-        headerName: 'Total Subtotal',
+        headerName: 'Total Sueldo Bruto',
         width: 140,
         valueFormatter: params =>  this.formatCurrencyMx(params.value)
       },
-
+      { field: 'totalSavings',
+        headerName: 'Total Ahorros',
+        width: 140,
+        valueFormatter: params =>  this.formatCurrencyMx(params.value)
+      },
       { field: 'totalDescuentos',
-        headerName: 'Total Descuentos',
+        headerName: 'Total Descuento Real',
         width: 160,
         valueFormatter: params => this.formatCurrencyMx(params.value)
-       },
+      },
+      { field: 'totalDigitalPayment',
+        headerName: 'Total Pago Digital',
+        width: 160,
+        valueFormatter: params => this.formatCurrencyMx(params.value)
+      },
       { field: 'total',
-        headerName: 'Total',
+        headerName: 'Total Efectivo',
         width: 100,
         valueFormatter: params => this.formatCurrencyMx(params.value)
       },
@@ -599,6 +734,39 @@ export class MasterPayrollComponent implements OnInit {
       event.data.startDate = '';
       return;
     }
+    if (event.colDef.field === 'idBranch') {
+    const selectedBranchId = event.newValue;
+    const rowData = event.data;
+    
+    const branch = this.branchs.find(b => b.name === selectedBranchId);
+    const idBranch = branch ? branch.id : null;
+
+    // Buscar bloque relacionado a la sucursal
+    const relatedBlock = this.blockPeriods.find(
+      (block) => block.idBranch === idBranch
+    );
+    console.log(relatedBlock)
+    if (relatedBlock) {
+      rowData.idBlockPeriod = relatedBlock.id;
+      rowData.startDate = relatedBlock.startDate;
+      rowData.endDate = relatedBlock.endDate;
+
+      // Si usas AgGrid con edición manual, forzar refresco
+      if (this.gridApi) {
+        this.gridApi.refreshCells({
+          rowNodes: [event.node],
+          force: true,
+          columns: ['idBlockPeriod', 'startDate', 'endDate'],
+        });
+      }
+    } else {
+      alerts.basicAlert(
+        'Sin periodo',
+        'No se encontró un bloque asociado a esta sucursal.',
+        'warning'
+      );
+    }
+  }
     event.data.__modified = true;
     this.notSavedChanges = true;
   }
@@ -660,6 +828,9 @@ export class MasterPayrollComponent implements OnInit {
       this.gridApi.setFilterModel(filterModel);
       this.gridApi.onFilterChanged();
     }
+    if (colId === 'Sucursal'){
+      alert(selectedRowData.idBranch)
+    }
 
     if (!this.aggregatingRecord) this.activatePayrollDetailTab();
 
@@ -667,23 +838,55 @@ export class MasterPayrollComponent implements OnInit {
     this.selectedRowData = selectedRowData;
   }
 
-  addRow() {
-    //const tempId = `temp_${this.tempIdCounter++}`;
-    const newItem = {
-      //id: tempId,
-      //idBranch: this.idBranch,
-      idBranch: this.idBranch > 0 ? this.idBranch : null,
+  
 
-      startDate: this.fechaInicio || '',
-      endDate: this.fechaFin || '',
-      closed : false,
-      active: true,
-      __isNew: true,
-    };
-    this.rowData = [newItem, ...this.rowData];
-    this.notSavedChanges = true;
-    this.aggregatingRecord = true;
-  }
+
+  addRow() {
+  const selectedBranchId = this.idBranch > 0 ? this.idBranch : null;
+
+  // Buscar si hay un bloque asociado a la sucursal
+  const relatedBlock = this.blockPeriods.find(
+    (block) => block.idBranch === selectedBranchId
+  );
+
+  const newItem = {
+    idBranch: selectedBranchId,
+    idBlockPeriod: relatedBlock ? relatedBlock.id : null,
+    startDate: relatedBlock ? relatedBlock.startDate : '',
+    endDate: relatedBlock ? relatedBlock.endDate : '',
+    closed: false,
+    active: true,
+    __isNew: true,
+  };
+
+  this.rowData = [newItem, ...this.rowData];
+  this.notSavedChanges = true;
+  this.aggregatingRecord = true;
+
+  const newRowIndex = this.rowData.findIndex((row) => newItem);
+
+    // Encontrar la primera columna editable
+    const firstEditableCol = this.colMaster.find((col) => col.editable);
+    const firstEditableColKey = firstEditableCol
+      ? firstEditableCol.field
+      : null;
+
+  setTimeout(() => {
+      if (firstEditableColKey) {
+        this.gridApi.startEditingCell({
+          rowIndex: newRowIndex,
+          colKey: 'idBranch', // Editar la primera columna editable
+        });
+      }
+    }, 50);
+}
+
+formatDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  return `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
+}
+
+
 
   async saveChanges() {
   const isValid = this.rowData.every(
@@ -1000,10 +1203,20 @@ export class MasterPayrollComponent implements OnInit {
     this.branchesService.getBrancheswoa(this.idRoot).subscribe(
       (data: any) => {
         this.branchs = data;
-        console.log('this.branchs ' + this.branchs);
+        //console.log('this.branchs ' + this.branchs);
       },
       (error) => console.error('Error fetching data:', error)
     );
+  }
+
+  obtenerBlockPariod(idBranch: any){
+    this.idBlockPeriodsService.getIdBlockPeriods(idBranch).subscribe(
+      (data: any) => {
+        this.blockPeriods = data;
+        console.log(this.blockPeriods)
+      },
+      (error) => console.error('Error fetching data:', error)
+    )
   }
 
   formatCurrencyMx(value: number): string {

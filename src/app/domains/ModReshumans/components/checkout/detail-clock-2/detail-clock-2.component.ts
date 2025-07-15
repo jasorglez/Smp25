@@ -130,7 +130,7 @@ export default class DetailClock2Component implements OnInit {
 
   selectFechas: FormGroup;
   type: string = '';
-  gridHeight: string = '55vh';
+  gridHeight: string = '60vh';
   showCreditsTab: boolean = false;
   private gridApi: GridApi;
   notSavedChanges: boolean = false;
