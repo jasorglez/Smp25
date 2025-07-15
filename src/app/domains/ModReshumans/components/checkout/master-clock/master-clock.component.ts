@@ -209,7 +209,9 @@ export default class MasterClockComponent implements OnInit {
         showRowGroup: 'nameBranch'
       },
       {
-        headerName: 'idBloque'
+        field: 'idBlockPeriod',
+        headerName: 'Bloque del periodo',
+        rowGroup: true,
       },
       {
         field: 'periodStart',
@@ -330,7 +332,7 @@ export default class MasterClockComponent implements OnInit {
         (data: any) => {
           this.rowData = [];
           this.rowData = data;
-          //console.log(data)
+          console.log(data)
           this.trackingService.addLog(this.trackingService.getnameComp(), 'Get Registro en Maestro de Checador', 'Menu Maestro de Checador', this.trackingService.getEmail());
           // Actualizar el grid y esperar a que termine
           this.gridApi.setGridOption('rowData', this.rowData);
