@@ -125,6 +125,7 @@ export default class MasterClockComponent implements OnInit {
     lockPosition: false,
     enableRowGroup: true, // Enable row grouping for all columns
     flex: 1,
+    minWidth: 100,
   };
 
   currentIndex = 0;
@@ -132,6 +133,27 @@ export default class MasterClockComponent implements OnInit {
   public rowSelection: 'single' | 'multiple' = 'single';
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'never';
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'never';
+  public autoGroupColumnDef: ColDef = {
+    minWidth: 300,
+    width: 400,
+    cellRenderer: 'agGroupCellRenderer',
+    cellRendererParams: {
+      suppressCount: true, // Esto quita el conteo automático de AG-Grid
+      innerRenderer: (params: any) => {
+        if (params.node.group) {
+          // Para el nivel de sucursal, mostrar el conteo de bloques
+          if (params.node.level === 0) {
+            const childCount = params.node.childrenAfterFilter?.length || 0;
+            return `${params.node.key} (${childCount})`;
+          }
+          return params.node.key;
+        }
+        return params.value;
+      }
+    }
+  };
+  public groupDisplayType: any = 'multipleColumns';
+  public groupDefaultExpanded = 1;
 
   components = {
     multiLineEditor: MultiLineEditorComponent,
@@ -142,7 +164,6 @@ export default class MasterClockComponent implements OnInit {
   public gridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
-    groupDefaultExpanded: -1, // -1 significa expandir todos los grupos
     rowClass: (params) => {
       if (params.node.isSelected()) {
         return 'selected-row';
@@ -189,34 +210,53 @@ export default class MasterClockComponent implements OnInit {
 
   get colMaster(): ColDef[] {
     return [
+      // Nivel 1: Sucursal
+      {
+        field: 'nameBranch',
+        headerName: 'Sucursal',
+        hide: true,//this.idBranch >= 0, // Ocultar si no es la sucursal principal
+        rowGroup: this.idBranch <= 0,
+        showRowGroup: false
+      },
+      // Nivel 2: Bloque con fechas
+      {
+        field: 'blockWithDates',
+        headerName: 'Bloque',
+        rowGroup: true,
+        width: 300,
+        hide: true,
+        showRowGroup: false,
+        valueGetter: (params) => {
+          if (params.data) {
+            const startDate = new Date(params.data.periodStart).toLocaleDateString('es-ES');
+            const endDate = new Date(params.data.periodEnd).toLocaleDateString('es-ES');
+            return `${params.data.idBlockPeriod} (${startDate} - ${endDate})`;
+          }
+          return 'Sin bloque';
+        }
+      },
+      // Nivel 3: Empleado
+      {
+        field: 'nameEmployee',
+        headerName: 'Empleado',
+        hide: true,
+      },
       {
         field: 'idEmployee',
         headerName: 'Id',
         editable: false,
         width: 110,
         hide: true,
-        filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
+        filter: 'agNumberColumnFilter',
         filterParams: {
-          filterOptions: ['equals'], // Opciones de filtro
+          filterOptions: ['equals'],
         },
-      },
-      {
-        field: 'nameBranch',
-        headerName: 'Nombre sucursal',
-        editable: false,
-        hide: true,//this.idBranch >= 0, // Ocultar si no es la sucursal principal
-        rowGroup: this.idBranch <= 0,
-        showRowGroup: 'nameBranch'
-      },
-      {
-        field: 'idBlockPeriod',
-        headerName: 'Bloque del periodo',
-        rowGroup: true,
       },
       {
         field: 'periodStart',
         headerName: 'Fecha inicio',
         editable: false,
+        hide: true,
         valueFormatter: (params) => {
           if (!params.value) return '';
           const date = new Date(params.value);
@@ -231,6 +271,7 @@ export default class MasterClockComponent implements OnInit {
         field: 'periodEnd',
         headerName: 'Fecha fin',
         editable: false,
+        hide: true,
         valueFormatter: (params) => {
           if (!params.value) return '';
           const date = new Date(params.value);
@@ -455,7 +496,7 @@ export default class MasterClockComponent implements OnInit {
   }
 
   adjustGridSize() {
-    this.gridHeight = '15vh'; // Adjust as needed
+    this.gridHeight = '25vh'; // Adjust as needed
   }
 
   async Consultar() {
