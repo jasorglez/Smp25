@@ -1138,7 +1138,7 @@ export const routes: Routes = [
             canActivate: [MasterPermissionsGuard],
             data: { permissions: { master: 'hr', detailed: 'setup' } },
             children: [
-              { path: '', redirectTo: 'payroll', pathMatch: 'full' },
+              { path: '', redirectTo: 'employees', pathMatch: 'full' },
 
               {
                 path: 'payroll',
