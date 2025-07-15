@@ -30,7 +30,7 @@
             </div>
 
             <div class="row mb-3">
-              <div class="col-md-3">
+              <div class="col-md-4">
                 <label class="form-label required">{{ 'Fecha de Registro' | translate }}</label>
                 <input 
                   type="date" 
@@ -42,19 +42,7 @@
                 </div>
               </div>
 
-              <div class="col-md-3">
-                <label class="form-label required">{{ 'ID Proyecto' | translate }}</label>
-                <input 
-                  type="number" 
-                  class="form-control" 
-                  formControlName="idProject"
-                  [class.is-invalid]="isFieldInvalid('idProject')">
-                <div class="invalid-feedback" *ngIf="isFieldInvalid('idProject')">
-                  {{ getFieldError('idProject') }}
-                </div>
-              </div>
-
-              <div class="col-md-3">
+              <div class="col-md-4">
                 <label class="form-label required">{{ 'Número OT' | translate }}</label>
                 <input 
                   type="text" 
@@ -66,7 +54,7 @@
                 </div>
               </div>
 
-              <div class="col-md-3">
+              <div class="col-md-4">
                 <label class="form-label required">{{ 'Fecha Límite' | translate }}</label>
                 <input 
                   type="date" 
@@ -271,20 +259,6 @@
                   type="text" 
                   class="form-control" 
                   formControlName="lectureWater">
-              </div>
-
-              <div class="col-md-3">
-                <label class="form-label">{{ 'Estado' | translate }}</label>
-                <div class="form-check form-switch mt-2">
-                  <input 
-                    class="form-check-input" 
-                    type="checkbox" 
-                    formControlName="active"
-                    id="activeSwitch">
-                  <label class="form-check-label" for="activeSwitch">
-                    {{ 'Activo' | translate }}
-                  </label>
-                </div>
               </div>
             </div>
 

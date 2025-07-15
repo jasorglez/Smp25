@@ -29,6 +29,13 @@
               <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteEntry()">
                 <i class="bi bi-trash"></i>
               </button>
+              <button type="button" class="btn btn-info ms-1 me-1 mb-2" (click)="fileInput.click()" [disabled]="isUploading">
+                <i class="bi bi-file-earmark-pdf" *ngIf="!isUploading"></i>
+                <div class="spinner-border spinner-border-sm" role="status" *ngIf="isUploading">
+                  <span class="visually-hidden">Subiendo...</span>
+                </div>
+              </button>
+              <input #fileInput type="file" accept=".pdf" style="display: none" (change)="onFileSelected($event)">
             </nav>
             
             <!-- AG-Grid para mostrar datos de órdenes -->
