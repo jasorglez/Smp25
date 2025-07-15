@@ -33,9 +33,7 @@ export class OrdenesComponent implements OnInit {
   private router = inject(Router);
   
   // Variables de control
-  public notSavedChanges: boolean = false;
   public isUploading: boolean = false;
-  private tempIdCounter: number = 2;
 
   // Configuración del grid
   public gridApi!: GridApi;
@@ -46,7 +44,8 @@ export class OrdenesComponent implements OnInit {
     suppressHorizontalScroll: false,
     animateRows: true,
     pagination: true,
-    paginationPageSize: 10
+    paginationPageSize: 10,
+    onRowDoubleClicked: (event: any) => this.onRowDoubleClicked(event)
   };
 
   // Definición de columnas
@@ -81,7 +80,6 @@ export class OrdenesComponent implements OnInit {
       sortable: true,
       filter: true,
       resizable: true,
-      editable: true,
       flex: 2
     },
     {
@@ -90,7 +88,6 @@ export class OrdenesComponent implements OnInit {
       sortable: true,
       filter: true,
       resizable: true,
-      editable: true,
       flex: 2
     },
     {
@@ -99,7 +96,6 @@ export class OrdenesComponent implements OnInit {
       sortable: true,
       filter: true,
       resizable: true,
-      editable: true,
       flex: 2
     }
   ];
@@ -141,128 +137,27 @@ export class OrdenesComponent implements OnInit {
     console.log('Fila seleccionada:', selectedRows);
   }
 
-  onCellValueChanged(event: any) {
-    event.data.__modified = true;
-    this.notSavedChanges = true;
+  onRowDoubleClicked(event: any) {
+    const rowData = event.data;
+    if (rowData && rowData.id) {
+      this.router.navigate(['/projects/ot/details', rowData.id]);
+    }
   }
 
   // Métodos CRUD
   addRow() {
-    const tempId = `temp_${this.tempIdCounter++}`;
-    const newItem: OrdenesData = {
-      id: '',
-      registerDate: '',
-      otNumber: '',
-      assignedTo: '',
-      description: '',
-      nameConsumer: ''
-    };
-    
-    // Agregar propiedades de control
-    (newItem as any).__isNew = true;
-    (newItem as any).tempId = tempId;
-    
-    this.rowData = [newItem, ...this.rowData];
-    this.notSavedChanges = true;
-    
-    // Enfocar en la primera celda editable
-    setTimeout(() => {
-      if (this.gridApi) {
-        this.gridApi.setFocusedCell(0, 'id');
-        this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'id' });
-      }
-    }, 100);
-  }
-
-  saveChanges() {
-    // Validar datos requeridos
-    const invalidRows = this.rowData.filter(row => 
-      !row.id?.trim() || !row.registerDate?.trim() || !row.otNumber?.trim() || 
-      !row.assignedTo?.trim() || !row.description?.trim() || !row.nameConsumer?.trim()
-    );
-    
-    if (invalidRows.length > 0) {
-      alert('Por favor complete todos los campos requeridos antes de guardar.');
-      return;
-    }
-    
-    // Filtrar filas nuevas y modificadas
-    const newRows = this.rowData.filter(row => (row as any).__isNew);
-    const modifiedRows = this.rowData.filter(row => (row as any).__modified && !(row as any).__isNew);
-    
-    console.log('Guardando cambios - Nuevas:', newRows, 'Modificadas:', modifiedRows);
-    
-    // Procesar filas nuevas
-    const addPromises = newRows.map(row => {
-      const cleanData = this.cleanDataForServer(row);
-      return this.otService.addOt(cleanData).toPromise();
-    });
-    
-    // Procesar filas modificadas (aquí necesitarías un método updateOt en el servicio)
-    // Por ahora solo mostramos en consola
-    modifiedRows.forEach(row => {
-      console.log('Fila modificada que requiere actualización:', row);
-    });
-    
-    // Ejecutar todas las promesas
-    Promise.all(addPromises).then(() => {
-      this.trackingService.addLog(
-        this.trackingService.getnameComp(),
-        'Save Cambios en Lista de OT',
-        'Menu Proyectos Ordenes de Trabajo',
-        this.trackingService.getEmail()
-      );
-      
-      // Limpiar flags de control
-      this.rowData.forEach(row => {
-        delete (row as any).__isNew;
-        delete (row as any).__modified;
-      });
-      
-      this.notSavedChanges = false;
-      alert('Cambios guardados exitosamente.');
-      
-      // Recargar datos
-      this.obtenerDatos();
-    }).catch(error => {
-      console.error('Error al guardar cambios:', error);
-      alert('Error al guardar los cambios. Por favor, intente nuevamente.');
-    });
-  }
-
-  private cleanDataForServer(data: any): any {
-    const cleanedData = { ...data };
-    delete cleanedData.__isNew;
-    delete cleanedData.__modified;
-    delete cleanedData.tempId;
-    return cleanedData;
+    this.router.navigate(['/projects/ot/details']);
   }
 
   revert() {
     // Recargar datos originales desde el servicio
     this.obtenerDatos();
-    this.notSavedChanges = false;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Revertir Cambios en Lista de OT',
       'Menu Proyectos Ordenes de Trabajo',
       this.trackingService.getEmail()
     );
-  }
-
-  deleteEntry() {
-    const selectedNodes = this.gridApi.getSelectedNodes();
-    
-    if (selectedNodes.length === 0) {
-      alert('Por favor seleccione una fila para eliminar.');
-      return;
-    }
-    
-    if (confirm('¿Está seguro de que desea eliminar este registro?')) {
-      const selectedData = selectedNodes[0].data;
-      this.rowData = this.rowData.filter(row => row !== selectedData);
-      this.notSavedChanges = true;
-    }
   }
 
   onFileSelected(event: Event) {

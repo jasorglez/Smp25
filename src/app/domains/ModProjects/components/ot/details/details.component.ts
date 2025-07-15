@@ -5,6 +5,7 @@ import { TranslateModule } from '@ngx-translate/core';
 import { OtService } from 'app/services/ot.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { ActivatedRoute, Router } from '@angular/router';
+import { SignalsService } from 'app/services/signals.service';
 
 export interface OtDetails {
   id: number;
@@ -49,6 +50,7 @@ export class DetailsComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
+  private signalsService = inject(SignalsService);
   
   public otForm: FormGroup;
   public isEditMode: boolean = false;
@@ -101,8 +103,12 @@ export class DetailsComponent implements OnInit {
   }
 
   private initializeNewOt() {
+    // Obtener el proyecto seleccionado del sidebar
+    const selectedProject = this.signalsService.getProjectSelectedBySidebar();
+    
     this.otForm.patchValue({
       registerDate: new Date().toISOString().split('T')[0],
+      idProject: selectedProject ? selectedProject() : 0,
       active: true
     });
   }
@@ -112,6 +118,12 @@ export class DetailsComponent implements OnInit {
     this.otService.getOtDetails(id).subscribe({
       next: (data: any) => {
         const otData = data.data || data;
+        
+        // Verificar autorización del proyecto
+        if (!this.checkProjectAuthorization(otData)) {
+          this.router.navigate(['/projects/ot/ordenes']);
+          return;
+        }
         
         setTimeout(() => {
           this.populateForm(otData);
@@ -211,10 +223,17 @@ export class DetailsComponent implements OnInit {
   private prepareFormData(): OtDetails {
     const formValue = this.otForm.value;
     
+    // Para nuevas OTs, asegurar que el idProject siempre sea el del signal
+    let idProject = formValue.idProject;
+    if (!this.isEditMode) {
+      const selectedProject = this.signalsService.getProjectSelectedBySidebar();
+      idProject = selectedProject ? selectedProject() : 0;
+    }
+    
     return {
       id: this.otId || 0,
       registerDate: new Date(formValue.registerDate).toISOString(),
-      idProject: formValue.idProject,
+      idProject: idProject,
       otNumber: formValue.otNumber,
       assignedTo: formValue.assignedTo,
       description: formValue.description,
@@ -322,6 +341,25 @@ export class DetailsComponent implements OnInit {
         this.initializeNewOt();
       }
     }
+  }
+
+  private checkProjectAuthorization(otData: any): boolean {
+    const selectedProject = this.signalsService.getProjectSelectedBySidebar();
+    
+    if (!selectedProject) {
+      console.warn('No hay proyecto seleccionado en el sidebar');
+      return false;
+    }
+    
+    const selectedProjectId = selectedProject();
+    const otProjectId = otData.idProject || (Array.isArray(otData) ? otData[0]?.idProject : otData.data?.idProject);
+    
+    if (!otProjectId || selectedProjectId !== otProjectId) {
+      console.warn(`Proyecto no autorizado. Seleccionado: ${selectedProjectId}, OT pertenece a: ${otProjectId}`);
+      return false;
+    }
+    
+    return true;
   }
 
   onDelete() {
