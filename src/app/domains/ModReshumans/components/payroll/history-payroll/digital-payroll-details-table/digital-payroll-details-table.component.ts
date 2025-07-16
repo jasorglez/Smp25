@@ -1,4 +1,4 @@
-import { Component, input, output, signal } from '@angular/core';
+import { Component, input, output, signal , effect, inject } from '@angular/core';
 import {
   CellDoubleClickedEvent,
   ColDef,
@@ -14,6 +14,8 @@ import {
 import { AgGridModule } from 'ag-grid-angular';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
+import { SignalsService } from 'app/services/signals.service';
+import { BranchsService } from 'app/services/branchs.service';
 import { FormsModule } from '@angular/forms';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 
@@ -29,6 +31,10 @@ export class DigitalPayrollDetailsTableComponent {
   public showPayrollDetailTab = output<boolean>();
 
   public rowData = input.required<HistoryPayrollResponse[]>();
+
+  private signalsService = inject(SignalsService);
+
+  private branchesService = inject(BranchsService);
 
   public employeeData = output<PayrollEmployee[]>();
 
@@ -47,7 +53,11 @@ export class DigitalPayrollDetailsTableComponent {
 
   public notSavedChanges = signal(false);
 
+  private branchs = signal([]);
+
   private id = signal('');
+
+  private idRoot: number = 0;
 
   public rowSelection: 'single' | 'multiple' = 'single';
 
@@ -69,7 +79,7 @@ export class DigitalPayrollDetailsTableComponent {
       //   width: 170,
       //   cellEditor: 'agSelectCellEditor',
       // },
-      {
+      /*{
         field: 'company',
         headerName: 'Compañia',
         filter: true,
@@ -78,6 +88,27 @@ export class DigitalPayrollDetailsTableComponent {
           // can be 'windows' or 'mac'
           defaultToNothingSelected: true,
           //excelMode: 'mac',
+        },
+      },*/
+      {
+        field: 'idBranch',
+        headerName: 'Sucursal',
+        width: 170,
+        cellEditor: 'agSelectCellEditor',
+        valueFormatter: (params) => {
+          // Handle potential null values and properly format the displayed value
+          if (!params.value) return '';
+
+          const foundBranch = this.branchs
+            ? this.branchs().find((item) => item.id === params.value)
+            : null;
+
+          return foundBranch ? foundBranch.name : params.value;
+        },
+        valueGetter: (params) => {
+          if (!params.data || !params.data.idBranch) return '';
+          const branch = this.branchs()?.find(b => b.id === params.data.idBranch);
+          return branch ? branch.name : '';
         },
       },
       {
@@ -138,6 +169,21 @@ export class DigitalPayrollDetailsTableComponent {
         // onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
       },
     ];
+  }
+  constructor() {
+      effect(() => {
+        this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+        this.obtenerBranchs();
+      });
+    }
+  obtenerBranchs() {
+    this.branchesService.getBrancheswoa(this.idRoot).subscribe(
+      (data: any) => {
+        this.branchs.set(data);
+        // console.log('this.branchs ', this.branchs);
+      },
+      (error) => console.error('Error fetching data:', error)
+    );
   }
 
   onCellValueChanged(event: any) {

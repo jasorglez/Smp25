@@ -759,16 +759,21 @@ export class MasterPayrollComponent implements OnInit {
           columns: ['idBlockPeriod', 'startDate', 'endDate'],
         });
       }
+      event.data.__modified = true;
+      this.notSavedChanges = true;
     } else {
       alerts.basicAlert(
         'Sin periodo',
         'No se encontró un bloque asociado a esta sucursal.',
         'warning'
       );
+      this.obtenerDatos();
+      this.notSavedChanges = false;
+      event.data.__modified = false;
     }
   }
-    event.data.__modified = true;
-    this.notSavedChanges = true;
+   // event.data.__modified = true;
+   // this.notSavedChanges = true;
   }
 
   // Column Definitions: Defines the columns to be displayed.
@@ -850,7 +855,7 @@ export class MasterPayrollComponent implements OnInit {
   );
 
   const newItem = {
-    idBranch: selectedBranchId,
+    idBranch: this.idBranch >=0 ? this.idBranch : selectedBranchId,
     idBlockPeriod: relatedBlock ? relatedBlock.id : null,
     startDate: relatedBlock ? relatedBlock.startDate : '',
     endDate: relatedBlock ? relatedBlock.endDate : '',
@@ -870,7 +875,7 @@ export class MasterPayrollComponent implements OnInit {
     const firstEditableColKey = firstEditableCol
       ? firstEditableCol.field
       : null;
-
+  if(this.idBranch <= 0){
   setTimeout(() => {
       if (firstEditableColKey) {
         this.gridApi.startEditingCell({
@@ -878,7 +883,7 @@ export class MasterPayrollComponent implements OnInit {
           colKey: 'idBranch', // Editar la primera columna editable
         });
       }
-    }, 50);
+    }, 50);}
 }
 
 formatDate(dateStr: string): string {
