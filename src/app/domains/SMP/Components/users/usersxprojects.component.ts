@@ -1,4 +1,4 @@
-import { Component, computed, HostListener, inject } from '@angular/core';
+import { Component, computed, effect, HostListener, inject } from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { ProjectsService } from 'app/services/projects.service';
@@ -44,7 +44,7 @@ export class UsersxprojectsComponent {
 
 
   notSavedChanges: boolean = false;
-  rowData: any;
+  rowData: any[] = [];
   projects: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
@@ -53,11 +53,48 @@ export class UsersxprojectsComponent {
   private tempIdCounter: number = 0;
   private permissionType: string = 'project';
 
+  constructor() {
+    // Effect para detectar cambios en el usuario seleccionado
+    effect(() => {
+      const selectedUserId = this.profile().idUser();
+      
+      if (selectedUserId && selectedUserId !== this.idUser) {
+        this.idUser = selectedUserId;
+        this.filteredData();
+      } else if (!selectedUserId) {
+        this.rowData = [];
+        this.projects = {};
+        if (this.gridApi) {
+          this.gridApi.setGridOption('rowData', this.rowData);
+        }
+      }
+    });
+  }
+
   obtenerDatos() {
+    // Validar que tenemos un idUser válido del usuario SELECCIONADO en la tabla
+    const currentIdUser = this.profile().idUser();
+    if (!currentIdUser) {
+      this.rowData = [];
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', this.rowData);
+      }
+      return;
+    }
+
+    // Actualizar idUser por si cambió
+    this.idUser = currentIdUser;
+
     if (this.contractChecked()() === true) {
-      this.projectsService.getProjectsByContract(this.signalsService.idUser(), this.idContract).subscribe((data: any[]) => {
-        this.rowData = data;
-        console.log(data);
+      
+      this.projectsService.getProjectsByContract(this.idUser, this.idContract).subscribe((data: any[]) => {
+        this.rowData = Array.isArray(data) ? data : [];
+        
+        // Forzar actualización de ag-grid si existe
+        if (this.gridApi) {
+          this.gridApi.setGridOption('rowData', this.rowData);
+        }
+        
         this.trackingService.addLog(
           this.trackingService.getnameComp(),
           'Get Registro en Usuarios por Proyecto',
@@ -65,12 +102,24 @@ export class UsersxprojectsComponent {
           this.trackingService.getEmail()
         );
       }, error => {
-        console.error('Error:', error);
+        if (error.status == 404) {
+          this.rowData = [];
+        } else {
+          this.rowData = [];
+        }
+        if (this.gridApi) {
+          this.gridApi.setGridOption('rowData', this.rowData);
+        }
       });
     } else {
-      this.projectsService.getProjectsByContract(this.signalsService.idUser()).subscribe((data: any[]) => {
-        this.rowData = data;
-        console.log(data);
+      this.projectsService.getProjectsByContract(this.idUser).subscribe((data: any[]) => {
+        this.rowData = Array.isArray(data) ? data : [];
+        
+        // Forzar actualización de ag-grid si existe
+        if (this.gridApi) {
+          this.gridApi.setGridOption('rowData', this.rowData);
+        }
+        
         this.trackingService.addLog(
           this.trackingService.getnameComp(),
           'Get Registro en Usuarios por Proyecto',
@@ -78,26 +127,60 @@ export class UsersxprojectsComponent {
           this.trackingService.getEmail()
         );
       }, error => {
-        console.error('Error:', error);
+        if (error.status == 404) {
+          this.rowData = [];
+        } else {
+          this.rowData = [];
+        }
+        if (this.gridApi) {
+          this.gridApi.setGridOption('rowData', this.rowData);
+        }
       });
     }
   }
 
   obtenerProjects(contract: number) {
+    // Validar que tenemos un idUser válido del usuario SELECCIONADO en la tabla
+    const currentIdUser = this.profile().idUser();
+    if (!currentIdUser) {
+      this.projects = {};
+      return;
+    }
+
+    // Actualizar idUser por si cambió
+    this.idUser = currentIdUser;
+
     if(this.contractChecked()() == true) {
+      if (!contract) {
+        this.projects = {};
+        return;
+      }
+      
       this.projectsService.getProjectListByContract(contract).subscribe((data: any[]) => {
         this.projects = data.reduce((acc, dep) => {
-          acc[dep.id] = dep.idConsecutivo + ' - ' + dep.name; // Cambia la estructura para que solo almacene el nombre
+          acc[dep.id] = dep.idConsecutivo + ' - ' + dep.name;
           return acc;
         }, {});
+      }, error => {
+        if (error.status == 404) {
+          this.projects = {};
+        } else {
+          this.projects = {};
+        }
       });
     }
     else {
       this.projectsService.getProjects().subscribe((data: any[]) => {
         this.projects = data.reduce((acc, dep) => {
-          acc[dep.id] = dep.idConsecutivo + ' - ' + dep.name; // Cambia la estructura para que solo almacene el nombre
+          acc[dep.id] = dep.idConsecutivo + ' - ' + dep.name;
           return acc;
         }, {});
+      }, error => {
+        if (error.status == 404) {
+          this.projects = {};
+        } else {
+          this.projects = {};
+        }
       });
     }
   }
@@ -190,7 +273,18 @@ public gridOptions: any = {
       __isNew: true,
     };
 
+    // Asegurar que rowData es un array
+    if (!Array.isArray(this.rowData)) {
+      this.rowData = [];
+    }
+
     this.rowData = [newItem, ...this.rowData];
+    
+    // Actualizar ag-grid inmediatamente
+    if (this.gridApi) {
+      this.gridApi.setGridOption('rowData', this.rowData);
+    }
+    
     this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Usuarios por Proyecto', 'Menu Administracion Usuarios por Proyecto',  this.trackingService.getEmail());
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
@@ -215,14 +309,12 @@ public gridOptions: any = {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData);
       this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Usuarios por Proyecto', 'Menu Administracion Usuarios por Proyecto',  this.trackingService.getEmail());
       return this.usersxprojectsService.addUserxPermission(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData);
       this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Usuarios por Proyecto', 'Menu Administracion Usuarios por Proyecto',  this.trackingService.getEmail());
       return this.usersxprojectsService.updateUserxPermission(row.id, cleanedData);
     });
@@ -232,6 +324,7 @@ public gridOptions: any = {
       const responses = await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
+      
       alerts.basicAlert(
         'Datos actualizados',
         'Se han actualizado los datos correctamente.',
@@ -241,7 +334,6 @@ public gridOptions: any = {
       this.newlyAddedRows = [];
       this.filteredData(); // Refrescar los datos
     } catch (error) {
-      console.error(error);
       alerts.basicAlert(
         'Error',
         'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
@@ -264,6 +356,7 @@ public gridOptions: any = {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
     selectedData.active = 0;
+    
     this.usersxprojectsService.deleteUserxPermission(id).pipe(
       catchError((error) => {
         alerts.basicAlert(
@@ -276,7 +369,7 @@ public gridOptions: any = {
       })
     )
       .subscribe(
-        () => {
+        (response) => {
           alerts.basicAlert(
             'Eliminar entrada',
             'Entrada eliminada satisfactoriamente.',
@@ -284,11 +377,6 @@ public gridOptions: any = {
           );
           this.filteredData();
 
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
           this.notSavedChanges = false;
           this.trackingService.addLog(this.trackingService.getnameComp(),'Delete Registro en Usuarios por Proyecto', 'Menu Administracion Usuarios por Proyecto',  this.trackingService.getEmail());
           this.selectedRowData = null;
@@ -304,17 +392,21 @@ public gridOptions: any = {
 
   private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };
+    
     // Si existe idProject, lo pasamos a idPermission y lo eliminamos
     if (cleanedData.hasOwnProperty('idProject')) {
       cleanedData.idPermission = cleanedData.idProject;
       cleanedData.type = 'project';
       delete cleanedData.idProject;
     }
+    
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
+    
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }
+    
     return cleanedData;
   }
 
@@ -324,6 +416,17 @@ public gridOptions: any = {
   }
 
   filteredData() {
+    // Validar que tenemos un usuario válido antes de proceder (usuario SELECCIONADO)
+    const currentIdUser = this.profile().idUser();
+    if (!currentIdUser) {
+      this.rowData = [];
+      this.projects = {};
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', this.rowData);
+      }
+      return;
+    }
+
     this.obtenerDatos();
     this.obtenerProjects(this.signalsService.idContract());
   }

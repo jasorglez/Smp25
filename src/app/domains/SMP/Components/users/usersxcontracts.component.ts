@@ -30,9 +30,17 @@ export class UsersxcontractsComponent {
   }
 
   constructor() {
+    // Effect para detectar cambios en el usuario seleccionado o branch
     effect(() => {
-      this.filteredData();
-  })
+      const selectedUserId = this.profile().idUser();
+      const branchFromPermissions = this.signalsService.getBranchFromPermissions()();
+      const branchFromSidebar = this.signalsService.getBranchSelectedBySidebar()();
+      
+      // Solo refrescar datos si hay un usuario seleccionado
+      if (selectedUserId) {
+        this.filteredData();
+      }
+    });
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -45,10 +53,25 @@ export class UsersxcontractsComponent {
 
   profile = computed(() => this.signalsService.profile);
   idCompany: any = this.signalsService.idCompany();
-  idBranch: number = this.signalsService.getBranchSelectedBySidebar()();
   idContract = this.signalsService.idContract();
   idUser: any = this.profile().idUser();
   companyChecked = computed(() => this.signalsService.companyChecked());
+
+  /**
+   * Getter que implementa la lógica de priorización para obtener el idBranch:
+   * 1. Prioriza getBranchFromPermissions() (branch seleccionado en usersxbranches)
+   * 2. Si no existe, usa getBranchSelectedBySidebar() (branch del sidebar)
+   */
+  get idBranch(): number {
+    const branchFromPermissions = this.signalsService.getBranchFromPermissions()();
+    const branchFromSidebar = this.signalsService.getBranchSelectedBySidebar()();
+    
+    if (branchFromPermissions) {
+      return branchFromPermissions;
+    }
+    
+    return branchFromSidebar;
+  }
 
   notSavedChanges: boolean = false;
   rowData: any;
@@ -65,14 +88,13 @@ export class UsersxcontractsComponent {
     forkJoin({
       usersxcontracts: this.usersxcontractsService.getDataUsersxPermissions(this.permissionType),
       contracts: this.contractsService.getContracts(this.idBranch)
-      //contracts: this.contractsService.getContracts(parseInt(localStorage.getItem('company')))
     }).pipe(
       map(({ usersxcontracts, contracts }) => {
         // Convertimos a array si no lo es
         const usersxcontractsArray = Array.isArray(usersxcontracts) ? usersxcontracts : Object.values(usersxcontracts);
         const contractsArray = Array.isArray(contracts) ? contracts : Object.values(contracts);
 
-        return usersxcontractsArray.filter(uxc =>
+        const filteredData = usersxcontractsArray.filter(uxc =>
           contractsArray.some(c => c.idContrato === uxc.idPermission)
         ).map(uxc => {
           const matchingContract = contractsArray.find(c => c.idContrato === uxc.idPermission);
@@ -81,16 +103,21 @@ export class UsersxcontractsComponent {
             idProvider: matchingContract ? matchingContract.idProvider : null
           };
         });
+
+        return filteredData;
       })
     ).subscribe(
       data => {
         this.rowData = [];
-        if (this.companyChecked()() == true) {
-          this.rowData = data.filter((row: any) => row.idUser === this.idUser && row.idProvider === this.idCompany);
+        const currentIdUser = this.profile().idUser();
+        const companyCheckedValue = this.companyChecked()();
+        
+        if (companyCheckedValue == true) {
+          this.rowData = data.filter((row: any) => row.idUser === currentIdUser && row.idProvider === this.idCompany);
           this.rowData = this.rowData.map(({ idProvider, ...rest }) => rest);
         }
         else {
-          this.rowData = data.filter((row: any) => row.idUser === this.idUser);
+          this.rowData = data.filter((row: any) => row.idUser === currentIdUser);
           this.rowData = this.rowData.map(({ idProvider, ...rest }) => rest);
         }
         this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Usuarios por Contrato', 'Menu Administracion Usuarios por Contrato',  this.trackingService.getEmail());
@@ -105,7 +132,7 @@ export class UsersxcontractsComponent {
     if (this.companyChecked()() == true) {
       this.contractsService.getContractsByProvider(this.idBranch).subscribe((data: any[]) => {
         this.contracts = data.reduce((acc, dep) => {
-          acc[dep.id] = dep.numberContract + ' - ' + dep.descripSmall; // Cambia la estructura para que solo almacene el nombre
+          acc[dep.id] = dep.numberContract + ' - ' + dep.descripSmall;
           return acc;
         }, {});
       });
@@ -113,7 +140,7 @@ export class UsersxcontractsComponent {
     else {
       this.contractsService.getContracts(contract).subscribe((data: any[]) => {
         this.contracts = data.reduce((acc, dep) => {
-          acc[dep.idContrato] = dep.numberContract + ' - ' + dep.descripSmall; // Cambia la estructura para que solo almacene el nombre
+          acc[dep.idContrato] = dep.numberContract + ' - ' + dep.descripSmall;
           return acc;
         }, {});
       });
@@ -183,6 +210,7 @@ public gridOptions: any = {
 
   onSelectionChanged(event: any) {
     const selectedNodes = event.api.getSelectedNodes();
+    
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
       this.enviarContractId();
@@ -217,15 +245,31 @@ public gridOptions: any = {
   }
 
   addRow() {
+    const currentIdUser = this.profile().idUser(); // Usar el usuario seleccionado dinámicamente
+    
+    if (!currentIdUser) {
+      alerts.basicAlert(
+        'Seleccionar usuario',
+        'Debe seleccionar un usuario en la tabla antes de agregar contratos.',
+        'error'
+      );
+      return;
+    }
+
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idUser: this.idUser,
+      idUser: currentIdUser,
       idPermission: 0,
       type: this.permissionType,
       active: 1,
       __isNew: true,
     };
+
+    // Asegurar que rowData es un array
+    if (!Array.isArray(this.rowData)) {
+      this.rowData = [];
+    }
 
     this.rowData = [newItem, ...this.rowData];
     this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Usuarios por Contrato', 'Menu Administracion Usuarios por Contrato',  this.trackingService.getEmail());
@@ -355,9 +399,17 @@ public gridOptions: any = {
 
   // Este metodo obtiene los datos filtrados o no
   filteredData() {
+    // Validar que tenemos un usuario válido antes de proceder
+    const currentIdUser = this.profile().idUser();
+    
+    if (!currentIdUser) {
+      this.rowData = [];
+      this.contracts = {};
+      return;
+    }
+
     this.obtenerDatos();
     this.obtenerContracts(this.idBranch);
-    //this.obtenerContracts(parseInt(localStorage.getItem('company')));
   }
 
   enviarContractId() {
