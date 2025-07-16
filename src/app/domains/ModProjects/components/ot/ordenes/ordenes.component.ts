@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, effect, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { AgGridModule } from 'ag-grid-angular';
@@ -25,7 +25,7 @@ interface OrdenesData {
   templateUrl: './ordenes.component.html',
   styleUrl: './ordenes.component.scss',
 })
-export class OrdenesComponent implements OnInit {
+export class OrdenesComponent {
   private otService = inject(OtService);
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
@@ -33,6 +33,7 @@ export class OrdenesComponent implements OnInit {
 
   // Variables de control
   public isUploading: boolean = false;
+  private idProject: number = 0;
 
   // Configuración del grid
   public gridApi!: GridApi;
@@ -58,28 +59,12 @@ export class OrdenesComponent implements OnInit {
       width: 77,
     }, */
     {
-      field: 'registerDate',
-      headerName: 'Registro',
-      sortable: true,
-      filter: true,
-      resizable: true,
-      width: 88,
-    },
-    {
       field: 'otNumber',
       headerName: 'OT',
       sortable: true,
       filter: true,
       resizable: true,
-      width: 90,
-    },
-    {
-      field: 'assignedTo',
-      headerName: 'Empleado',
-      sortable: true,
-      filter: true,
-      resizable: true,
-      width: 100,
+      flex: 1,
     },
     {
       field: 'description',
@@ -90,109 +75,27 @@ export class OrdenesComponent implements OnInit {
       flex: 2,
     },
     {
-      field: 'timeLimit',
-      headerName: 'Plazo',
+      field: 'address',
+      headerName: 'Dirección',
       sortable: true,
       filter: true,
       resizable: true,
-      width: 88,
+      flex: 2,
     },
-    {
-      field: 'nameConsumer',
-      headerName: 'Consumidor',
-
-      flex: 1,
-    },
-     {
-      field: 'phoneConsumer',
-      headerName: 'Teléfono',
-
-      width: 90
-    },
-    {
-      field: 'address',
-      headerName: 'Dirección',
-
-      flex: 1,
-    },
-    {
-      field: 'addressNumber',
-      headerName: 'Nr Actual',
-
-      width: 90
-    },
-    {
-      field: 'oldAddressNumber',
-      headerName: 'Nr antiguo',
-
-      width: 90
-    },
-    {
-      field: 'neighborhood',
-      headerName: 'Barrio',
-
-      flex: 1
-    },
-     {
-      field: 'addressCrossings',
-      headerName: 'Complemento de la calle',
-
-      flex: 1
-    },
-     {
-      field: 'addressReferences',
-      headerName: 'Punto de referencia',
-
-      flex: 1
-    },
-     {
-      field: 'chargePhase',
-      headerName: 'Punto de referencia',
-
-      width: 80
-    },
-     {
-      field: 'cdc',
-      headerName: 'CDC',
-
-      width: 80
-    },
-     {
-      field: 'hydrometerNumber',
-      headerName: 'Número de hidrómetro',
-
-      width: 80
-    },
-     {
-      field: 'lectureWater',
-      headerName: 'lectura',
-
-      width: 80
-    },
-     {
-      field: 'observations',
-      headerName: 'Observaciones',
-
-      flex: 1
-    },
-     {
-      field: 'results',
-      headerName: 'Resultados',
-
-      flex: 1
-    }
-
   ];
 
   // Datos del grid obtenidos del servicio
   public rowData: OrdenesData[] = [];
 
-  ngOnInit() {
-    this.obtenerDatos();
+  constructor() {
+    effect(() => {
+      this.idProject =this.signalsService.getProjectSelectedBySidebar()();
+      this.obtenerDatos();
+    });
   }
 
   obtenerDatos() {
-    this.otService.getOtList().subscribe({
+    this.otService.getOtListByProject(this.idProject).subscribe({
       next: (data: any) => {
         console.log('Datos obtenidos del servicio OT:', data);
         this.rowData = data;
