@@ -388,7 +388,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         },
         valueFormatter: (params) => params.value || '',
       },
-      {
+      /*{
         field: 'email',
         headerName: 'Correo electrónico',
         //headerClass: 'required-header',
@@ -429,7 +429,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         },
         //filter: "agSetColumnFilter",
         //suppressMovable: true,
-      },
+      },*/
       {
         field: 'clockPassword',
         headerName: 'Contraseña Reloj',
@@ -654,7 +654,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       {
         field: 'ingressDate',
         headerName: 'Fecha de ingreso',
-        editable: false,
+        editable: true,
         filter: 'agDateColumnFilter',
         filterParams: {
           // can be 'windows' or 'mac'
@@ -664,16 +664,41 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         width: 150,
         cellRenderer: 'agDateCellRenderer',
         cellEditor: 'agDateCellEditor',
-        valueFormatter: (params) => {
-          if (params.value) {
-            const date = new Date(params.value);
-            return `${('0' + date.getDate()).slice(-2)}-${(
-              '0' +
-              (date.getMonth() + 1)
-            ).slice(-2)}-${date.getFullYear()}`;
+        valueGetter: (params) => {
+          // Si no hay fecha, usar fecha actual
+          if (!params.data.ingressDate) {
+            return new Date().toISOString();
           }
-          return '';
+          return params.data.ingressDate;
         },
+        valueSetter: (params) => {
+          if (!params.newValue) {
+            params.data.ingressDate = new Date().toISOString();
+            return true;
+          }
+        
+          const date = new Date(params.newValue);
+          if (isNaN(date.getTime())) {
+            alerts.basicAlert('Error', 'Fecha inválida', 'error');
+            return false;
+          } 
+        
+          params.data.ingressDate = date.toISOString();
+          return true;
+        },
+        valueFormatter: (params) => {
+          try {
+            // Si no hay valor, usar fecha actual
+            const dateValue = params.value || new Date().toISOString();
+            const date = new Date(dateValue);
+            if (isNaN(date.getTime())) return '';
+            return `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
+          } catch {
+            return '';
+          }
+        },
+
+
       },
       {
         field: 'phone',
@@ -988,7 +1013,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       phone: '',
       baseHours: 0,
       priceXHour: 0,
-      ingressDate: timeData.dateObj,
+      ingressDate: timeData.dateObj.toISOString(),
       position: '',
       email: '',
       picture: '',

@@ -33,7 +33,6 @@ export class ClockComponent {
     delay1: ['', [Validators.required, Validators.min(0), Validators.max(60)]],
     delay2: ['', [Validators.required, Validators.min(60), Validators.max(120)]],
     settingToleranceTime: ['', [Validators.required]],
-    identificationBlockPeriod: ['', [Validators.required]]
   });
 
   getData() {
@@ -45,7 +44,7 @@ export class ClockComponent {
           delay1: this.hrData.delay1,
           delay2: this.hrData.delay2,
           settingToleranceTime: this.hrData.settingToleranceTime,
-          identificationBlockPeriod: this.hrData.identificationBlockPeriod,
+          
         });
         this.isNew = false;
       },
@@ -112,7 +111,7 @@ export class ClockComponent {
       delay1: values.delay1,
       delay2: values.delay2,
       idBranch: this.idBranch,
-      identificationBlockPeriod: values.identificationBlockPeriod,
+      
     };
     console.log(payload)
 
