@@ -23,21 +23,19 @@
         <div class="card-body" *ngIf="!isLoading">
           <form [formGroup]="otForm" (ngSubmit)="onSubmit()">
             
-            <!-- Número OT -->
+            <!-- Información Básica -->
             <div class="row mb-4">
-              <div class="col-md-6">
-                <label class="form-label required">{{ 'Número OT' | translate }}</label>
-                <input 
-                  type="text" 
-                  class="form-control" 
-                  formControlName="otNumber"
-                  [class.is-invalid]="isFieldInvalid('otNumber')">
-                <div class="invalid-feedback" *ngIf="isFieldInvalid('otNumber')">
-                  {{ getFieldError('otNumber') }}
-                </div>
+              <div class="col-12">
+                <h5 class="section-title">
+                  <i class="bi bi-info-circle me-2"></i>
+                  {{ 'Información Básica' | translate }}
+                </h5>
+                <hr>
               </div>
+            </div>
 
-              <div class="col-md-6">
+            <div class="row mb-3">
+              <div class="col-md-4">
                 <label class="form-label required">{{ 'Fecha de Registro' | translate }}</label>
                 <input 
                   type="date" 
@@ -48,141 +46,255 @@
                   {{ getFieldError('registerDate') }}
                 </div>
               </div>
-            </div>
 
-            <!-- Datos de Servicio -->
-            <div class="mb-4">
-              <h5 class="section-title fw-bold border-bottom pb-2">{{ 'Datos de Servicio' | translate }}</h5>
-              
-              <div class="row mb-3">
-                <div class="col-12">
-                  <label class="form-label required">{{ 'Descripción del servicio solicitante' | translate }}</label>
-                  <textarea 
-                    class="form-control" 
-                    rows="3"
-                    formControlName="description"
-                    [class.is-invalid]="isFieldInvalid('description')"></textarea>
-                  <div class="invalid-feedback" *ngIf="isFieldInvalid('description')">
-                    {{ getFieldError('description') }}
-                  </div>
+              <div class="col-md-4">
+                <label class="form-label required">{{ 'Número OT' | translate }}</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  formControlName="otNumber"
+                  [class.is-invalid]="isFieldInvalid('otNumber')">
+                <div class="invalid-feedback" *ngIf="isFieldInvalid('otNumber')">
+                  {{ getFieldError('otNumber') }}
+                </div>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label required">{{ 'Fecha Límite' | translate }}</label>
+                <input 
+                  type="date" 
+                  class="form-control" 
+                  formControlName="timeLimit"
+                  [class.is-invalid]="isFieldInvalid('timeLimit')">
+                <div class="invalid-feedback" *ngIf="isFieldInvalid('timeLimit')">
+                  {{ getFieldError('timeLimit') }}
                 </div>
               </div>
             </div>
 
-            <!-- Datos Catastrales -->
-            <div class="mb-4">
-              <h5 class="section-title fw-bold border-bottom pb-2">{{ 'Datos Catastrales' | translate }}</h5>
-              
-              <!-- Primera línea: Consumidor | Teléfono -->
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <label class="form-label required">{{ 'Consumidor' | translate }}</label>
-                  <input 
-                    type="text" 
-                    class="form-control" 
-                    formControlName="nameConsumer"
-                    [class.is-invalid]="isFieldInvalid('nameConsumer')">
-                  <div class="invalid-feedback" *ngIf="isFieldInvalid('nameConsumer')">
-                    {{ getFieldError('nameConsumer') }}
-                  </div>
-                </div>
-
-                <div class="col-md-6">
-                  <label class="form-label">{{ 'Teléfono' | translate }}</label>
-                  <input 
-                    type="tel" 
-                    class="form-control" 
-                    formControlName="phoneConsumer">
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label class="form-label required">{{ 'Asignado a' | translate }}</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  formControlName="assignedTo"
+                  [class.is-invalid]="isFieldInvalid('assignedTo')">
+                <div class="invalid-feedback" *ngIf="isFieldInvalid('assignedTo')">
+                  {{ getFieldError('assignedTo') }}
                 </div>
               </div>
 
-              <!-- Segunda línea: Dirección | Nr. Actual | Nr. Antiguo -->
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <label class="form-label">{{ 'Dirección' | translate }}</label>
-                  <input 
-                    type="text" 
-                    class="form-control" 
-                    formControlName="address">
-                </div>
-
-                <div class="col-md-3">
-                  <label class="form-label">{{ 'Nr. Actual' | translate }}</label>
-                  <input 
-                    type="text" 
-                    class="form-control" 
-                    formControlName="addressNumber">
-                </div>
-
-                <div class="col-md-3">
-                  <label class="form-label">{{ 'Nr. Antiguo' | translate }}</label>
-                  <input 
-                    type="text" 
-                    class="form-control" 
-                    formControlName="oldAddressNumber">
-                </div>
-              </div>
-
-              <!-- Tercera línea: Barrio | Complemento de la calle -->
-              <div class="row mb-3">
-                <div class="col-md-3">
-                  <label class="form-label">{{ 'Barrio' | translate }}</label>
-                  <input 
-                    type="text" 
-                    class="form-control" 
-                    formControlName="neighborhood">
-                </div>
-
-                <div class="col-md-9">
-                  <label class="form-label">{{ 'Complemento de la Calle' | translate }}</label>
-                  <input 
-                    type="text" 
-                    class="form-control" 
-                    formControlName="addressCrossings">
-                </div>
-              </div>
-
-              <!-- Cuarta línea: Fase de cobro | Nr. Hidrómetro | Lectura -->
-              <div class="row mb-3">
-                <div class="col-md-4">
-                  <label class="form-label">{{ 'Fase de Cobro' | translate }}</label>
-                  <input 
-                    type="text" 
-                    class="form-control" 
-                    formControlName="chargePhase">
-                </div>
-
-                <div class="col-md-4">
-                  <label class="form-label">{{ 'Nr. Hidrómetro' | translate }}</label>
-                  <input 
-                    type="text" 
-                    class="form-control" 
-                    formControlName="hydrometerNumber">
-                </div>
-
-                <div class="col-md-4">
-                  <label class="form-label">{{ 'Lectura' | translate }}</label>
-                  <input 
-                    type="text" 
-                    class="form-control" 
-                    formControlName="lectureWater">
+              <div class="col-md-6">
+                <label class="form-label required">{{ 'Descripción' | translate }}</label>
+                <textarea 
+                  class="form-control" 
+                  rows="3"
+                  formControlName="description"
+                  [class.is-invalid]="isFieldInvalid('description')"></textarea>
+                <div class="invalid-feedback" *ngIf="isFieldInvalid('description')">
+                  {{ getFieldError('description') }}
                 </div>
               </div>
             </div>
 
-            <!-- Observaciones -->
-            <div class="mb-4">
-              <h5 class="section-title fw-bold border-bottom pb-2">{{ 'Observaciones' | translate }}</h5>
-              
-              <div class="row mb-3">
-                <div class="col-12">
-                  <label class="form-label">{{ 'Observaciones' | translate }}</label>
-                  <textarea 
-                    class="form-control" 
-                    rows="6"
-                    formControlName="observations"
-                    placeholder="Ingrese observaciones..."></textarea>
+            <!-- Información del Consumidor -->
+            <div class="row mb-4">
+              <div class="col-12">
+                <h5 class="section-title">
+                  <i class="bi bi-person me-2"></i>
+                  {{ 'Información del Consumidor' | translate }}
+                </h5>
+                <hr>
+              </div>
+            </div>
+
+            <div class="row mb-3">
+              <div class="col-md-4">
+                <label class="form-label required">{{ 'Nombre Consumidor' | translate }}</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  formControlName="nameConsumer"
+                  [class.is-invalid]="isFieldInvalid('nameConsumer')">
+                <div class="invalid-feedback" *ngIf="isFieldInvalid('nameConsumer')">
+                  {{ getFieldError('nameConsumer') }}
                 </div>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label">{{ 'Número de Propiedad' | translate }}</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  formControlName="propertyNumber">
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label">{{ 'Número de Contrato' | translate }}</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  formControlName="contractNumber">
+              </div>
+            </div>
+
+            <div class="row mb-3">
+              <div class="col-md-4">
+                <label class="form-label">{{ 'Teléfono Consumidor' | translate }}</label>
+                <input 
+                  type="tel" 
+                  class="form-control" 
+                  formControlName="phoneConsumer">
+              </div>
+
+              <div class="col-md-8">
+                <label class="form-label">{{ 'Dirección' | translate }}</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  formControlName="address">
+              </div>
+            </div>
+
+            <!-- Información de Dirección -->
+            <div class="row mb-4">
+              <div class="col-12">
+                <h5 class="section-title">
+                  <i class="bi bi-geo-alt me-2"></i>
+                  {{ 'Detalles de Dirección' | translate }}
+                </h5>
+                <hr>
+              </div>
+            </div>
+
+            <div class="row mb-3">
+              <div class="col-md-3">
+                <label class="form-label">{{ 'Número de Dirección' | translate }}</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  formControlName="addressNumber">
+              </div>
+
+              <div class="col-md-3">
+                <label class="form-label">{{ 'Número Dirección Anterior' | translate }}</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  formControlName="oldAddressNumber">
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">{{ 'Colonia' | translate }}</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  formControlName="neighborhood">
+              </div>
+            </div>
+
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label class="form-label">{{ 'Referencias de Dirección' | translate }}</label>
+                <textarea 
+                  class="form-control" 
+                  rows="2"
+                  formControlName="addressReferences"></textarea>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">{{ 'Cruces de Dirección' | translate }}</label>
+                <textarea 
+                  class="form-control" 
+                  rows="2"
+                  formControlName="addressCrossings"></textarea>
+              </div>
+            </div>
+
+            <!-- Información Técnica -->
+            <div class="row mb-4">
+              <div class="col-12">
+                <h5 class="section-title">
+                  <i class="bi bi-tools me-2"></i>
+                  {{ 'Información Técnica' | translate }}
+                </h5>
+                <hr>
+              </div>
+            </div>
+
+            <div class="row mb-3">
+              <div class="col-md-3">
+                <label class="form-label">{{ 'Fase de Carga' | translate }}</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  formControlName="chargePhase">
+              </div>
+
+              <div class="col-md-3">
+                <label class="form-label">{{ 'CDC' | translate }}</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  formControlName="cdc">
+              </div>
+
+              <div class="col-md-3">
+                <label class="form-label">{{ 'Número Hidrómetro' | translate }}</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  formControlName="hydrometerNumber">
+              </div>
+
+              <div class="col-md-3">
+                <label class="form-label">{{ 'Período' | translate }}</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  formControlName="period">
+              </div>
+            </div>
+
+            <div class="row mb-3">
+              <div class="col-md-3">
+                <label class="form-label">{{ 'Lectura Agua' | translate }}</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  formControlName="lectureWater">
+              </div>
+            </div>
+
+            <!-- Observaciones y Resultados -->
+            <div class="row mb-4">
+              <div class="col-12">
+                <h5 class="section-title">
+                  <i class="bi bi-chat-square-text me-2"></i>
+                  {{ 'Observaciones y Resultados' | translate }}
+                </h5>
+                <hr>
+              </div>
+            </div>
+
+            <div class="row mb-4">
+              <div class="col-md-6">
+                <label class="form-label">{{ 'Observaciones' | translate }}</label>
+                <textarea 
+                  class="form-control" 
+                  rows="4"
+                  formControlName="observations"
+                  placeholder="Ingrese observaciones adicionales..."></textarea>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">{{ 'Resultados' | translate }}</label>
+                <textarea 
+                  class="form-control" 
+                  rows="4"
+                  formControlName="results"
+                  placeholder="Ingrese los resultados del trabajo..."></textarea>
               </div>
             </div>
 
@@ -195,8 +307,8 @@
               <div class="col-12">
                 <div class="d-flex justify-content-between">
                   <div>
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       class="btn btn-danger"
                       *ngIf="isEditMode"
                       (click)="onDelete()"
@@ -206,25 +318,26 @@
                     </button>
                   </div>
                   
+                  <!-- Botones principales -->
                   <div class="d-flex gap-2">
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       class="btn btn-secondary"
                       (click)="onReset()">
                       <i class="bi bi-arrow-clockwise me-1"></i>
                       {{ 'Restablecer' | translate }}
                     </button>
-                    
-                    <button 
-                      type="button" 
+
+                    <button
+                      type="button"
                       class="btn btn-outline-secondary"
                       (click)="onCancel()">
                       <i class="bi bi-x-lg me-1"></i>
                       {{ 'Cancelar' | translate }}
                     </button>
-                    
-                    <button 
-                      type="submit" 
+
+                    <button
+                      type="submit"
                       class="btn btn-primary"
                       [disabled]="otForm.invalid || isLoading">
                       <i class="bi bi-check-lg me-1"></i>
