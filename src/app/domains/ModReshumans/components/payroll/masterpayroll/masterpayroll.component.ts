@@ -646,7 +646,19 @@ export class MasterPayrollComponent implements OnInit {
         headerName: 'Cerrada',
         field: 'closed',
         width: 130,
-        editable: (params) => !params.data.closed 
+        editable: (params) => !params.data.closed,
+        cellRenderer: (params) => {
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.checked = params.value;
+          checkbox.disabled = params.data.closed;
+          
+          checkbox.addEventListener('change', (event) => {
+            params.setValue((event.target as HTMLInputElement).checked);
+          });
+          
+          return checkbox;
+        }
       }
     ];
   }
@@ -734,6 +746,14 @@ export class MasterPayrollComponent implements OnInit {
       event.data.startDate = '';
       return;
     }
+    
+    if (event.colDef.field === 'closed') {
+      console.log('Checkbox changed:', event.newValue);
+      event.data.__modified = true;
+      this.notSavedChanges = true;
+      return;
+    }
+    
     if (event.colDef.field === 'idBranch') {
     const selectedBranchId = event.newValue;
     const rowData = event.data;
@@ -884,6 +904,8 @@ export class MasterPayrollComponent implements OnInit {
         });
       }
     }, 50);}
+  this.notSavedChanges = true;
+  this.aggregatingRecord = true;
 }
 
 formatDate(dateStr: string): string {

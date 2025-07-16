@@ -212,7 +212,7 @@ export class PayrollComponent {
       const inicio = new Date(fechaInicio);
       inicio.setDate(inicio.getDate() + values.payrollPeriod - 1);
       const fechaFin = inicio.toISOString().split('T')[0];
-      const bloque = values.identificationBlockPeriod.toUpperCase() + inicio.getFullYear().toString().slice(-2) + '001';
+      const bloque = values.identificationBlockPeriod.toUpperCase() +"-"+ inicio.getFullYear().toString().slice(-2) + '001';
 
       const mensaje = `Descripción del Bloque: ${bloque} Fecha Inicio: ${fechaInicio} Fecha Fin: ${fechaFin} ¿Desea guardar estos cambios?`;
       
