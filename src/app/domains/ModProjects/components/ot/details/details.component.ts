@@ -6,32 +6,25 @@ import { OtService } from 'app/services/ot.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SignalsService } from 'app/services/signals.service';
+import { alerts } from 'app/helpers/alerts';
 
 export interface OtDetails {
   id: number;
   registerDate: string;
   idProject: number;
   otNumber: string;
-  assignedTo: string;
   description: string;
-  timeLimit: string;
   nameConsumer: string;
-  propertyNumber: string;
-  contractNumber: string;
   phoneConsumer: string;
   address: string;
   addressNumber: string;
   oldAddressNumber: string;
   neighborhood: string;
-  addressReferences: string;
   addressCrossings: string;
   chargePhase: string;
-  cdc: string;
   hydrometerNumber: string;
-  period: string;
   lectureWater: string;
   observations: string;
-  results: string;
   active: boolean;
 }
 
@@ -78,26 +71,18 @@ export class DetailsComponent implements OnInit {
       registerDate: [new Date().toISOString().split('T')[0], [Validators.required]],
       idProject: [0, [Validators.required, Validators.min(1)]],
       otNumber: ['', [Validators.required, Validators.maxLength(50)]],
-      assignedTo: ['', [Validators.required, Validators.maxLength(100)]],
       description: ['', [Validators.required, Validators.maxLength(500)]],
-      timeLimit: ['', [Validators.required]],
       nameConsumer: ['', [Validators.required, Validators.maxLength(100)]],
-      propertyNumber: ['', [Validators.maxLength(50)]],
-      contractNumber: ['', [Validators.maxLength(50)]],
       phoneConsumer: ['', [Validators.maxLength(20)]],
       address: ['', [Validators.maxLength(200)]],
       addressNumber: ['', [Validators.maxLength(20)]],
       oldAddressNumber: ['', [Validators.maxLength(20)]],
       neighborhood: ['', [Validators.maxLength(100)]],
-      addressReferences: ['', [Validators.maxLength(200)]],
       addressCrossings: ['', [Validators.maxLength(200)]],
       chargePhase: ['', [Validators.maxLength(50)]],
-      cdc: ['', [Validators.maxLength(50)]],
       hydrometerNumber: ['', [Validators.maxLength(50)]],
-      period: ['', [Validators.maxLength(50)]],
       lectureWater: ['', [Validators.maxLength(50)]],
       observations: ['', [Validators.maxLength(1000)]],
-      results: ['', [Validators.maxLength(1000)]],
       active: [true]
     });
   }
@@ -141,7 +126,7 @@ export class DetailsComponent implements OnInit {
       error: (error) => {
         console.error('Error al cargar detalles de OT:', error);
         this.isLoading = false;
-        alert('Error al cargar los detalles de la OT');
+        alerts.basicAlert('Error', 'Error al cargar los detalles de la OT', 'error');
       }
     });
   }
@@ -177,26 +162,18 @@ export class DetailsComponent implements OnInit {
       registerDate: registerDate,
       idProject: actualData.idProject !== undefined ? actualData.idProject : 0,
       otNumber: actualData.otNumber !== undefined ? actualData.otNumber : '',
-      assignedTo: actualData.assignedTo !== undefined ? actualData.assignedTo : '',
       description: actualData.description !== undefined ? actualData.description : '',
-      timeLimit: timeLimit,
       nameConsumer: actualData.nameConsumer !== undefined ? actualData.nameConsumer : '',
-      propertyNumber: actualData.propertyNumber !== undefined ? actualData.propertyNumber : '',
-      contractNumber: actualData.contractNumber !== undefined ? actualData.contractNumber : '',
       phoneConsumer: actualData.phoneConsumer !== undefined ? actualData.phoneConsumer : '',
       address: actualData.address !== undefined ? actualData.address : '',
       addressNumber: actualData.addressNumber !== undefined ? actualData.addressNumber : '',
       oldAddressNumber: actualData.oldAddressNumber !== undefined ? actualData.oldAddressNumber : '',
       neighborhood: actualData.neighborhood !== undefined ? actualData.neighborhood : '',
-      addressReferences: actualData.addressReferences !== undefined ? actualData.addressReferences : '',
       addressCrossings: actualData.addressCrossings !== undefined ? actualData.addressCrossings : '',
       chargePhase: actualData.chargePhase !== undefined ? actualData.chargePhase : '',
-      cdc: actualData.cdc !== undefined ? actualData.cdc : '',
       hydrometerNumber: actualData.hydrometerNumber !== undefined ? actualData.hydrometerNumber : '',
-      period: actualData.period !== undefined ? actualData.period : '',
       lectureWater: actualData.lectureWater !== undefined ? actualData.lectureWater : '',
       observations: actualData.observations !== undefined ? actualData.observations : '',
-      results: actualData.results !== undefined ? actualData.results : '',
       active: actualData.active !== undefined ? actualData.active : true
     };
 
@@ -216,7 +193,7 @@ export class DetailsComponent implements OnInit {
       }
     } else {
       this.markFormGroupTouched();
-      alert('Por favor complete todos los campos requeridos');
+      alerts.basicAlert('Formulario incompleto', 'Por favor complete todos los campos requeridos', 'warning');
     }
   }
 
@@ -235,26 +212,18 @@ export class DetailsComponent implements OnInit {
       registerDate: new Date(formValue.registerDate).toISOString(),
       idProject: idProject,
       otNumber: formValue.otNumber,
-      assignedTo: formValue.assignedTo,
       description: formValue.description,
-      timeLimit: new Date(formValue.timeLimit).toISOString(),
       nameConsumer: formValue.nameConsumer,
-      propertyNumber: formValue.propertyNumber,
-      contractNumber: formValue.contractNumber,
       phoneConsumer: formValue.phoneConsumer,
       address: formValue.address,
       addressNumber: formValue.addressNumber,
       oldAddressNumber: formValue.oldAddressNumber,
       neighborhood: formValue.neighborhood,
-      addressReferences: formValue.addressReferences,
       addressCrossings: formValue.addressCrossings,
       chargePhase: formValue.chargePhase,
-      cdc: formValue.cdc,
       hydrometerNumber: formValue.hydrometerNumber,
-      period: formValue.period,
       lectureWater: formValue.lectureWater,
       observations: formValue.observations,
-      results: formValue.results,
       active: formValue.active
     };
   }
@@ -269,13 +238,13 @@ export class DetailsComponent implements OnInit {
           'Menu Proyectos OT Detalles',
           this.trackingService.getEmail()
         );
-        alert('OT creada exitosamente');
-        this.router.navigate(['../'], { relativeTo: this.route });
+        alerts.basicAlert('Éxito', 'OT creada exitosamente', 'success');
+        this.router.navigate(['/projects/ot/ordenes']);
       },
       error: (error) => {
         console.error('Error al crear OT:', error);
         this.isLoading = false;
-        alert('Error al crear la OT');
+        alerts.basicAlert('Error', 'Error al crear la OT', 'error');
       }
     });
   }
@@ -290,13 +259,13 @@ export class DetailsComponent implements OnInit {
           'Menu Proyectos OT Detalles',
           this.trackingService.getEmail()
         );
-        alert('OT actualizada exitosamente');
-        this.router.navigate(['../'], { relativeTo: this.route });
+        alerts.basicAlert('Éxito', 'OT actualizada exitosamente', 'success');
+        this.router.navigate(['/projects/ot/ordenes']);
       },
       error: (error) => {
         console.error('Error al actualizar OT:', error);
         this.isLoading = false;
-        alert('Error al actualizar la OT');
+        alerts.basicAlert('Error', 'Error al actualizar la OT', 'error');
       }
     });
   }
@@ -324,23 +293,37 @@ export class DetailsComponent implements OnInit {
 
   onCancel() {
     if (this.otForm.dirty) {
-      if (confirm('¿Está seguro de que desea cancelar? Se perderán los cambios no guardados.')) {
-        this.router.navigate(['../'], { relativeTo: this.route });
-      }
+      alerts.confirmAlert(
+        'Confirmar cancelación',
+        '¿Está seguro de que desea cancelar? Se perderán los cambios no guardados.',
+        'warning',
+        'Sí, cancelar'
+      ).then((result) => {
+        if (result.isConfirmed) {
+          this.router.navigate(['/projects/ot/ordenes']);
+        }
+      });
     } else {
-      this.router.navigate(['../'], { relativeTo: this.route });
+      this.router.navigate(['/projects/ot/ordenes']);
     }
   }
 
   onReset() {
-    if (confirm('¿Está seguro de que desea restablecer el formulario?')) {
-      if (this.isEditMode && this.otId) {
-        this.loadOtDetails(this.otId);
-      } else {
-        this.otForm.reset();
-        this.initializeNewOt();
+    alerts.confirmAlert(
+      'Confirmar restablecimiento',
+      '¿Está seguro de que desea restablecer el formulario?',
+      'warning',
+      'Sí, restablecer'
+    ).then((result) => {
+      if (result.isConfirmed) {
+        if (this.isEditMode && this.otId) {
+          this.loadOtDetails(this.otId);
+        } else {
+          this.otForm.reset();
+          this.initializeNewOt();
+        }
       }
-    }
+    });
   }
 
   private checkProjectAuthorization(otData: any): boolean {
@@ -364,30 +347,37 @@ export class DetailsComponent implements OnInit {
 
   onDelete() {
     if (!this.isEditMode || !this.otId) {
-      alert('No se puede eliminar una OT que no ha sido guardada');
+      alerts.basicAlert('Error', 'No se puede eliminar una OT que no ha sido guardada', 'error');
       return;
     }
 
-    if (confirm('¿Está seguro de que desea eliminar esta OT? Esta acción no se puede deshacer.')) {
-      this.isLoading = true;
-      this.otService.deleteOt(this.otId).subscribe({
-        next: (response) => {
-          this.isLoading = false;
-          this.trackingService.addLog(
-            this.trackingService.getnameComp(),
-            `Eliminar OT ID: ${this.otId}`,
-            'Menu Proyectos OT Detalles',
-            this.trackingService.getEmail()
-          );
-          alert('OT eliminada exitosamente');
-          this.router.navigate(['../'], { relativeTo: this.route });
-        },
-        error: (error) => {
-          console.error('Error al eliminar OT:', error);
-          this.isLoading = false;
-          alert('Error al eliminar la OT');
-        }
-      });
-    }
+    alerts.confirmAlert(
+      'Confirmar eliminación',
+      '¿Está seguro de que desea eliminar esta OT? Esta acción no se puede deshacer.',
+      'warning',
+      'Sí, eliminar'
+    ).then((result) => {
+      if (result.isConfirmed) {
+        this.isLoading = true;
+        this.otService.deleteOt(this.otId).subscribe({
+          next: (response) => {
+            this.isLoading = false;
+            this.trackingService.addLog(
+              this.trackingService.getnameComp(),
+              `Eliminar OT ID: ${this.otId}`,
+              'Menu Proyectos OT Detalles',
+              this.trackingService.getEmail()
+            );
+            alerts.basicAlert('Éxito', 'OT eliminada exitosamente', 'success');
+            this.router.navigate(['/projects/ot/ordenes']);
+          },
+          error: (error) => {
+            console.error('Error al eliminar OT:', error);
+            this.isLoading = false;
+            alerts.basicAlert('Error', 'Error al eliminar la OT', 'error');
+          }
+        });
+      }
+    });
   }
 }
