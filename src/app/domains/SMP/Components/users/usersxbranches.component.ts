@@ -97,14 +97,10 @@ export class UsersxbranchesComponent {
   }
 
   getBranches(){
-     //  alert('id User ' + this.idUser);
-     //  alert('id Root ' + this.idRoot);
     this.usersxbranchesService.getDataUsersxPermissionsbranch(this.idRoot, this.idUser).subscribe(
       (data: any) => {
         this.id      = data.id ;
-        console.log('this.id', this.id)  
-        this.branchs = data 
-        console.log(this.branchs)     
+        this.branchs = data      
       },
       (error) => {
         if (error.status == 404) this.branchs = [];
@@ -174,14 +170,18 @@ public gridOptions: any = {
 
   onSelectedRow(event: any) {
     this.id = event.data.id;
-    console.log('this.id', this.id)
   }
 
   onSelectionChanged(event: any) {
     const selectedNodes = event.api.getSelectedNodes();
+    
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
-      this.signalsService.setBranchFromPermissions(this.selectedRowData.idPermission);
+      const branchId = this.selectedRowData.id;
+      
+      if (branchId) {
+        this.signalsService.setBranchFromPermissions(branchId);
+      }
     } else {
       this.selectedRowData = null;
     }
