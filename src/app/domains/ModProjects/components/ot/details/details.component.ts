@@ -11,20 +11,28 @@ import { alerts } from 'app/helpers/alerts';
 export interface OtDetails {
   id: number;
   registerDate: string;
+  timeLimit?: string;
   idProject: number;
   otNumber: string;
+  assignedTo?: string;
   description: string;
   nameConsumer: string;
-  phoneConsumer: string;
-  address: string;
-  addressNumber: string;
-  oldAddressNumber: string;
-  neighborhood: string;
-  addressCrossings: string;
-  chargePhase: string;
-  hydrometerNumber: string;
-  lectureWater: string;
-  observations: string;
+  propertyNumber?: string;
+  contractNumber?: string;
+  phoneConsumer?: string;
+  address?: string;
+  addressNumber?: string;
+  oldAddressNumber?: string;
+  neighborhood?: string;
+  addressReferences?: string;
+  addressCrossings?: string;
+  chargePhase?: string;
+  cdc?: string;
+  hydrometerNumber?: string;
+  period?: string;
+  lectureWater?: string;
+  observations?: string;
+  results?: string;
   active: boolean;
 }
 
@@ -71,18 +79,26 @@ export class DetailsComponent implements OnInit {
       registerDate: [new Date().toISOString().split('T')[0], [Validators.required]],
       idProject: [0, [Validators.required, Validators.min(1)]],
       otNumber: ['', [Validators.required, Validators.maxLength(50)]],
+      timeLimit: ['', [Validators.required]],
+      assignedTo: ['', [Validators.required, Validators.maxLength(100)]],
       description: ['', [Validators.required, Validators.maxLength(500)]],
       nameConsumer: ['', [Validators.required, Validators.maxLength(100)]],
+      propertyNumber: ['', [Validators.maxLength(50)]],
+      contractNumber: ['', [Validators.maxLength(50)]],
       phoneConsumer: ['', [Validators.maxLength(20)]],
       address: ['', [Validators.maxLength(200)]],
       addressNumber: ['', [Validators.maxLength(20)]],
       oldAddressNumber: ['', [Validators.maxLength(20)]],
       neighborhood: ['', [Validators.maxLength(100)]],
+      addressReferences: ['', [Validators.maxLength(200)]],
       addressCrossings: ['', [Validators.maxLength(200)]],
       chargePhase: ['', [Validators.maxLength(50)]],
+      cdc: ['', [Validators.maxLength(50)]],
       hydrometerNumber: ['', [Validators.maxLength(50)]],
+      period: ['', [Validators.maxLength(50)]],
       lectureWater: ['', [Validators.maxLength(50)]],
       observations: ['', [Validators.maxLength(1000)]],
+      results: ['', [Validators.maxLength(1000)]],
       active: [true]
     });
   }
@@ -162,18 +178,26 @@ export class DetailsComponent implements OnInit {
       registerDate: registerDate,
       idProject: actualData.idProject !== undefined ? actualData.idProject : 0,
       otNumber: actualData.otNumber !== undefined ? actualData.otNumber : '',
+      timeLimit: timeLimit,
+      assignedTo: actualData.assignedTo !== undefined ? actualData.assignedTo : '',
       description: actualData.description !== undefined ? actualData.description : '',
       nameConsumer: actualData.nameConsumer !== undefined ? actualData.nameConsumer : '',
+      propertyNumber: actualData.propertyNumber !== undefined ? actualData.propertyNumber : '',
+      contractNumber: actualData.contractNumber !== undefined ? actualData.contractNumber : '',
       phoneConsumer: actualData.phoneConsumer !== undefined ? actualData.phoneConsumer : '',
       address: actualData.address !== undefined ? actualData.address : '',
       addressNumber: actualData.addressNumber !== undefined ? actualData.addressNumber : '',
       oldAddressNumber: actualData.oldAddressNumber !== undefined ? actualData.oldAddressNumber : '',
       neighborhood: actualData.neighborhood !== undefined ? actualData.neighborhood : '',
+      addressReferences: actualData.addressReferences !== undefined ? actualData.addressReferences : '',
       addressCrossings: actualData.addressCrossings !== undefined ? actualData.addressCrossings : '',
       chargePhase: actualData.chargePhase !== undefined ? actualData.chargePhase : '',
+      cdc: actualData.cdc !== undefined ? actualData.cdc : '',
       hydrometerNumber: actualData.hydrometerNumber !== undefined ? actualData.hydrometerNumber : '',
+      period: actualData.period !== undefined ? actualData.period : '',
       lectureWater: actualData.lectureWater !== undefined ? actualData.lectureWater : '',
       observations: actualData.observations !== undefined ? actualData.observations : '',
+      results: actualData.results !== undefined ? actualData.results : '',
       active: actualData.active !== undefined ? actualData.active : true
     };
 
@@ -210,22 +234,30 @@ export class DetailsComponent implements OnInit {
     return {
       id: this.otId || 0,
       registerDate: new Date(formValue.registerDate).toISOString(),
+      timeLimit: formValue.timeLimit ? new Date(formValue.timeLimit).toISOString() : '',
       idProject: idProject,
       otNumber: formValue.otNumber,
+      assignedTo: formValue.assignedTo,
       description: formValue.description,
       nameConsumer: formValue.nameConsumer,
+      propertyNumber: formValue.propertyNumber,
+      contractNumber: formValue.contractNumber,
       phoneConsumer: formValue.phoneConsumer,
       address: formValue.address,
       addressNumber: formValue.addressNumber,
       oldAddressNumber: formValue.oldAddressNumber,
       neighborhood: formValue.neighborhood,
+      addressReferences: formValue.addressReferences,
       addressCrossings: formValue.addressCrossings,
       chargePhase: formValue.chargePhase,
+      cdc: formValue.cdc,
       hydrometerNumber: formValue.hydrometerNumber,
+      period: formValue.period,
       lectureWater: formValue.lectureWater,
       observations: formValue.observations,
+      results: formValue.results,
       active: formValue.active
-    };
+    } as any;
   }
 
   private createOt(otData: OtDetails) {
