@@ -100,67 +100,87 @@ export class OrdenesComponent implements OnInit {
     {
       field: 'nameConsumer',
       headerName: 'Consumidor',
-      sortable: true,
-      filter: true,
-      resizable: true,
+
       flex: 1,
     },
      {
       field: 'phoneConsumer',
       headerName: 'Teléfono',
-      sortable: true,
-      filter: true,
-      resizable: true,
+
       width: 90
     },
     {
       field: 'address',
       headerName: 'Dirección',
-      sortable: true,
-      filter: true,
-      resizable: true,
+
       flex: 1,
     },
     {
       field: 'addressNumber',
       headerName: 'Nr Actual',
-      sortable: true,
-      filter: true,
-      resizable: true,
+
       width: 90
     },
     {
       field: 'oldAddressNumber',
       headerName: 'Nr antiguo',
-      sortable: true,
-      filter: true,
-      resizable: true,
+
       width: 90
     },
     {
       field: 'neighborhood',
       headerName: 'Barrio',
-      sortable: true,
-      filter: true,
-      resizable: true,
+
       flex: 1
     },
      {
       field: 'addressCrossings',
       headerName: 'Complemento de la calle',
-      sortable: true,
-      filter: true,
-      resizable: true,
+
       flex: 1
     },
      {
       field: 'addressReferences',
       headerName: 'Punto de referencia',
-      sortable: true,
-      filter: true,
-      resizable: true,
+
       flex: 1
     },
+     {
+      field: 'chargePhase',
+      headerName: 'Punto de referencia',
+
+      width: 80
+    },
+     {
+      field: 'cdc',
+      headerName: 'CDC',
+
+      width: 80
+    },
+     {
+      field: 'hydrometerNumber',
+      headerName: 'Número de hidrómetro',
+
+      width: 80
+    },
+     {
+      field: 'lectureWater',
+      headerName: 'lectura',
+
+      width: 80
+    },
+     {
+      field: 'observations',
+      headerName: 'Observaciones',
+
+      flex: 1
+    },
+     {
+      field: 'results',
+      headerName: 'Resultados',
+
+      flex: 1
+    }
 
   ];
 
