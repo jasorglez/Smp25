@@ -331,36 +331,123 @@ export default class DetailClock2Component implements OnInit {
             let totalDiscountHours = 0;
             let lastInTime = null;
 
+            // DEBUG: Log para ver los datos de entrada
+            const dateGroup = params.node.key;
+            console.log(`=== CALCULANDO HORAS PARA FECHA: ${dateGroup} ===`);
+            
+            // Mostrar todos los registros sin filtrar
+            console.log('Registros originales:', groupData.map(node => ({
+              id: node.data.id,
+              type: node.data.type,
+              checkTime: node.data.checkTime,
+              realHourBySystem: node.data.realHourBySystem,
+              valid: node.data.valid,
+              holiday: node.data.holiday,
+              minuteDiscount: node.data.minuteDiscount
+            })));
+
+            // Filtrar y ordenar registros válidos
             const validRecords = [...groupData]
-              .filter(node =>
-                (node.data.realHourBySystem || node.data.checkTime)
-              )
+              .filter(node => {
+                const record = node.data;
+                // Incluir registros válidos O festivos que tengan hora
+                const hasValidTime = record.realHourBySystem || record.checkTime;
+                const isValidRecord = record.valid === true || record.holiday === true;
+                const shouldInclude = hasValidTime && isValidRecord;
+                
+                console.log(`Registro ${record.id}: hasValidTime=${hasValidTime}, isValidRecord=${isValidRecord}, incluir=${shouldInclude}`);
+                return shouldInclude;
+              })
               .sort((a, b) => {
-                const timeA = a.data.realHourBySystem ?? a.data.checkTime;
-                const timeB = b.data.realHourBySystem ?? b.data.checkTime;
-                return timeA.localeCompare(timeB);
+                // Priorizar realHourBySystem sobre checkTime para el ordenamiento
+                const timeA = a.data.realHourBySystem || a.data.checkTime;
+                const timeB = b.data.realHourBySystem || b.data.checkTime;
+                
+                // Convertir a formato comparable si es necesario
+                if (!timeA || !timeB) return 0;
+                
+                // Normalizar formato de tiempo (remover milisegundos si existen)
+                const normalizeTime = (time) => time.split('.')[0];
+                return normalizeTime(timeA).localeCompare(normalizeTime(timeB));
               });
 
-            for (const node of validRecords) {
-              const record = node.data;
+            console.log('Registros después del filtro y ordenamiento:', validRecords.map(node => ({
+              id: node.data.id,
+              type: node.data.type,
+              hora: node.data.realHourBySystem || node.data.checkTime,
+              valid: node.data.valid,
+              holiday: node.data.holiday
+            })));
 
-              // ⛔️ Excluir registros inválidos y no festivos
-              if (record.valid !== true && record.holiday !== true) continue;
+            // Calcular horas trabajadas con lógica mejorada para pares IN/OUT
+            const usedRecords = new Set();
+            
+            for (let i = 0; i < validRecords.length; i++) {
+              const record = validRecords[i].data;
+              
+              // Skip si ya usamos este registro
+              if (usedRecords.has(record.id)) continue;
+              
+              const hora = record.realHourBySystem || record.checkTime;
+              if (!hora) continue;
 
-              const hora = record.realHourBySystem ?? record.checkTime;
+              console.log(`Procesando registro ${record.id}: ${record.type} a las ${hora}`);
 
               if (record.type === 'IN') {
-                lastInTime = hora;
-              } else if (record.type === 'OUT' && lastInTime) {
-                totalHours += this.calculateTimeDifference(lastInTime, hora);
-                lastInTime = null;
+                // Buscar el próximo OUT que no haya sido usado
+                for (let j = i + 1; j < validRecords.length; j++) {
+                  const outRecord = validRecords[j].data;
+                  
+                  if (usedRecords.has(outRecord.id)) continue;
+                  
+                  if (outRecord.type === 'OUT') {
+                    const outHora = outRecord.realHourBySystem || outRecord.checkTime;
+                    if (outHora) {
+                      const hoursWorked = this.calculateTimeDifference(hora, outHora);
+                      totalHours += hoursWorked;
+                      console.log(`  -> Par encontrado: IN ${hora} - OUT ${outHora} = ${hoursWorked} horas (total acumulado: ${totalHours})`);
+                      
+                      // Marcar ambos registros como usados
+                      usedRecords.add(record.id);
+                      usedRecords.add(outRecord.id);
+                      break;
+                    }
+                  }
+                }
+                
+                // Si no encontramos OUT para este IN
+                if (!usedRecords.has(record.id)) {
+                  console.log(`  -> IN sin OUT correspondiente: ${hora}`);
+                }
+              } else if (record.type === 'OUT' && !usedRecords.has(record.id)) {
+                // OUT sin IN previo - buscar hacia atrás
+                console.log(`  -> OUT sin IN previo: ${hora}, buscando hacia atrás...`);
+                for (let j = i - 1; j >= 0; j--) {
+                  const inRecord = validRecords[j].data;
+                  
+                  if (usedRecords.has(inRecord.id)) continue;
+                  
+                  if (inRecord.type === 'IN') {
+                    const inHora = inRecord.realHourBySystem || inRecord.checkTime;
+                    if (inHora) {
+                      const hoursWorked = this.calculateTimeDifference(inHora, hora);
+                      totalHours += hoursWorked;
+                      console.log(`  -> IN anterior encontrado: ${inHora} - OUT ${hora} = ${hoursWorked} horas (total acumulado: ${totalHours})`);
+                      
+                      // Marcar ambos registros como usados
+                      usedRecords.add(record.id);
+                      usedRecords.add(inRecord.id);
+                      break;
+                    }
+                  }
+                }
               }
             }
 
+            // Calcular descuentos por minutos
             const discountMinutes = validRecords.reduce((sum, node) => {
               const record = node.data;
               if (
-                (record.valid === true || record.holiday === true) &&
                 record.minuteDiscount !== null &&
                 record.minuteDiscount !== undefined &&
                 !isNaN(record.minuteDiscount)
@@ -371,9 +458,12 @@ export default class DetailClock2Component implements OnInit {
             }, 0);
 
             totalDiscountHours = discountMinutes / 60;
-            const netHours = totalHours - totalDiscountHours;
+            const netHours = Math.max(totalDiscountHours);
 
-            return this.formatHours(netHours);
+            console.log(`RESUMEN - Total horas: ${totalHours}, Descuentos: ${totalDiscountHours}, Neto: ${netHours}`);
+            console.log(`=== FIN CÁLCULO PARA FECHA: ${dateGroup} ===`);
+
+            return this.formatHours(totalHours);
           }
           return null;
         },
