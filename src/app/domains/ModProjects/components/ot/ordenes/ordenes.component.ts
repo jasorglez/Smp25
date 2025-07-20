@@ -317,7 +317,7 @@ export class OrdenesComponent {
   // Configuración de columnas para reportes diarios con edición inline
   public reportesColumnDefs: ColDef[] = [
     { 
-      field: 'fecha', 
+      field: 'date', 
       headerName: 'Fecha', 
       width: 120, 
       editable: true,
@@ -349,14 +349,28 @@ export class OrdenesComponent {
       valueSetter: (params) => {
         if (params.newValue) {
           let dateValue;
-          // Si viene del date picker (formato YYYY-MM-DD)
-          if (params.newValue.includes('-')) {
+          
+          // Si es un objeto Date (del date picker)
+          if (params.newValue instanceof Date) {
+            const year = params.newValue.getFullYear();
+            const month = String(params.newValue.getMonth() + 1).padStart(2, '0');
+            const day = String(params.newValue.getDate()).padStart(2, '0');
+            dateValue = `${year}-${month}-${day}`;
+          }
+          // Si es string y contiene guiones (formato YYYY-MM-DD)
+          else if (typeof params.newValue === 'string' && params.newValue.includes('-')) {
             dateValue = params.newValue.split('T')[0];
-          } else {
-            // Si viene escrito manualmente (formato DD/MM/YYYY)
+          }
+          // Si es string y contiene barras (formato DD/MM/YYYY)
+          else if (typeof params.newValue === 'string' && params.newValue.includes('/')) {
             const [day, month, year] = params.newValue.split('/');
             dateValue = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
           }
+          // Si es otro tipo de string, intentar parsearlo
+          else if (typeof params.newValue === 'string') {
+            dateValue = params.newValue;
+          }
+          
           params.data[params.colDef.field] = dateValue;
         } else {
           params.data[params.colDef.field] = '';
@@ -365,7 +379,7 @@ export class OrdenesComponent {
       }
     },
     { 
-      field: 'horaInicio', 
+      field: 'startTime', 
       headerName: 'Inicio', 
       width: 100, 
       editable: true,
@@ -375,7 +389,7 @@ export class OrdenesComponent {
       }
     },
     { 
-      field: 'horaTermino', 
+      field: 'endTime', 
       headerName: 'Hora Término', 
       width: 100, 
       editable: true,
@@ -385,7 +399,7 @@ export class OrdenesComponent {
       }
     },
     { 
-      field: 'tipoNota', 
+      field: 'type', 
       headerName: 'Tipo', 
       width: 120, 
       editable: true,
@@ -401,7 +415,7 @@ export class OrdenesComponent {
       editable: true
     },
     { 
-      field: 'descripcion', 
+      field: 'description', 
       headerName: 'Descripción', 
       flex: 2, 
       editable: true
@@ -712,19 +726,15 @@ export class OrdenesComponent {
       date: '',
       startTime: '',
       endTime: '',
-      supervisor: '',
+      supervisor: 'SIN SUPERVISOR',
       type: 'SUSPENSION',
-      description: '',
+      description: 'SIN DESCRIPCIÓN',
+      result: 'SIN RESULTADO',
       active: true,
-      // Propiedades computadas para el grid
-      fecha: '',
-      horaInicio: '',
-      horaTermino: '',
-      tipoNota: 'SUSPENSION',
-      descripcion: '',
       __isNew: true
     };
 
+    console.log('Agregando nuevo reporte:', newReporte);
     this.reportesDiarios = [newReporte, ...this.reportesDiarios];
     this.notSavedChanges = true;
     
@@ -732,7 +742,7 @@ export class OrdenesComponent {
       if (this.reportesGridApi) {
         this.reportesGridApi.startEditingCell({
           rowIndex: 0,
-          colKey: 'fecha'
+          colKey: 'date'
         });
       }
     }, 0);
@@ -742,7 +752,7 @@ export class OrdenesComponent {
     // Solo validar los reportes nuevos
     const newRows = this.reportesDiarios.filter(row => row.__isNew);
     const isValid = newRows.every(
-      (item) => item.fecha && item.supervisor
+      (item) => item.date && item.supervisor
     );
 
     if (newRows.length > 0 && !isValid) {
@@ -757,8 +767,15 @@ export class OrdenesComponent {
     const modifiedRows = this.reportesDiarios.filter(row => row.__modified && !row.__isNew);
 
     try {
+      console.log('=== DEBUG SAVE CHANGES ===');
+      console.log('URL del endpoint:', `https://bi2.com.mx/smp/api/DailyReport/`);
+      console.log('Token usado:', localStorage.getItem('token'));
+      console.log('Número de filas nuevas a guardar:', newRows.length);
+      
       const addRequests = newRows.map(row => {
         const cleanedData = this.cleanDataForServer(row);
+        console.log('Datos a enviar para nuevo reporte:', cleanedData);
+        console.log('Enviando petición POST...');
         return this.dailyReportService.addDailyReport(cleanedData);
       });
 
@@ -767,7 +784,9 @@ export class OrdenesComponent {
         return this.dailyReportService.updateDailyReport(Number(row.id), cleanedData);
       });
 
-      await Promise.all([...addRequests, ...updateRequests]);
+      const responses = await Promise.all([...addRequests, ...updateRequests]);
+      console.log('Respuestas del servidor:', responses);
+      console.log('Guardado exitoso!');
 
       alerts.basicAlert(
         'Datos actualizados',
@@ -778,7 +797,12 @@ export class OrdenesComponent {
       this.notSavedChanges = false;
       this.loadDailyReports();
     } catch (error) {
-      console.error('Error al guardar:', error);
+      console.error('=== ERROR AL GUARDAR ===');
+      console.error('Error completo:', error);
+      console.error('Status del error:', error.status);
+      console.error('Mensaje del error:', error.message);
+      console.error('Respuesta del servidor:', error.error);
+      
       alerts.basicAlert(
         'Error',
         'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
@@ -841,18 +865,9 @@ export class OrdenesComponent {
       this.dailyReportService.getDailyReportsByOt(otId).subscribe({
         next: (response) => {
           if (response.success && response.data) {
-            // Mapear los datos de la API al formato del grid
+            // Usar los datos directamente sin mapeo
             this.reportesDiarios = response.data.map((item: any) => {
-              return {
-                ...item,
-                // Propiedades computadas para compatibilidad con el grid
-                fecha: item.date.split('T')[0], // "2025-07-20"
-                horaInicio: item.startTime.substring(0, 5), // "08:00"
-                horaTermino: item.endTime.substring(0, 5), // "12:00"
-                tipoNota: item.type,
-                descripcion: item.description || '', // Solo usar description
-                report: item.report || 'Reporte' // Asegurar campo report
-              };
+              return { ...item };
             });
           } else {
             this.reportesDiarios = [];
@@ -982,26 +997,16 @@ export class OrdenesComponent {
 
   // Método para limpiar datos antes de enviar al servidor
   private cleanDataForServer(data: any): any {
-    const cleanedData: any = {
-      idOt: data.idOt,
-      date: data.fecha ? data.fecha + 'T00:00:00' : data.date,
-      startTime: data.horaInicio ? data.horaInicio + ':00' : (data.startTime || '00:00:00'),
-      endTime: data.horaTermino ? data.horaTermino + ':00' : (data.endTime || '00:00:00'),
-      supervisor: data.supervisor || '',
-      type: data.tipoNota || data.type || 'SUSPENSION',
-      description: data.descripcion || data.description || '',
-      report: 'Reporte creado',
-      active: true
-    };
-
-    // Solo incluir ID si no es temporal
-    if (data.id && !data.id.toString().startsWith('temp_')) {
-      cleanedData.id = data.id;
-    }
-
+    const cleanedData = { ...data };
+    
     // Eliminar propiedades temporales de control
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
+    
+    // Solo incluir ID si no es temporal
+    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
+      delete cleanedData.id;
+    }
     
     return cleanedData;
   }

@@ -9,37 +9,279 @@
           </h3>
         </div>
         <div class="card-body">
-          <!-- Botones CRUD y AG-Grid -->
-          <div class="row">
+          <!-- SECCIÓN SUPERIOR: Grid de OTs dividido en 2 columnas -->
+          <div class="row mb-2">
             <!-- Botones de acciones -->
             <nav class="col-auto d-flex flex-column align-items-start">
-              <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addRow()">
+              <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addReporte()">
                 <i class="bi bi-plus-lg"></i>
               </button>
+
               <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revert()">
                 <i class="bi bi-arrow-clockwise"></i>
               </button>
+              
               <button type="button" class="btn btn-info ms-1 me-1 mb-2" (click)="fileInput.click()" [disabled]="isUploading">
                 <i class="bi bi-file-earmark-pdf" *ngIf="!isUploading"></i>
                 <div class="spinner-border spinner-border-sm" role="status" *ngIf="isUploading">
                   <span class="visually-hidden">Subiendo...</span>
                 </div>
               </button>
+              
               <input #fileInput type="file" accept=".pdf" style="display: none" (change)="onFileSelected($event)">
             </nav>
             
-            <!-- AG-Grid para mostrar datos de órdenes -->
             <div class="col">
-              <ag-grid-angular style="width: 100%; height: 700px;"
-                class="ag-theme-quartz small-text-ag-grid"
-                [rowData]="rowData"
-                [columnDefs]="columnDefs"
-                [gridOptions]="gridOptions"
-                (selectionChanged)="onSelectionChanged($event)"
-                (gridReady)="onGridReady($event)"
-                [rowSelection]="'single'"
-                [stopEditingWhenCellsLoseFocus]="true">
-              </ag-grid-angular>
+              <!-- Grid de OTs y Vista previa en fila -->
+              <div class="row">
+                <!-- COLUMNA 1: Lista de OTs -->
+                <div class="col-6">
+                  <h6><i class="bi bi-list-ul"></i> Lista de Órdenes de Trabajo</h6>
+                  <ag-grid-angular style="width: 100%; height: 250px;"
+                    class="ag-theme-quartz small-text-ag-grid"
+                    [rowData]="rowData"
+                    [columnDefs]="columnDefs"
+                    [gridOptions]="gridOptions"
+                    (selectionChanged)="onSelectionChanged($event)"
+                    (gridReady)="onGridReady($event)"
+                    [rowSelection]="'single'"
+                    [stopEditingWhenCellsLoseFocus]="true">
+                  </ag-grid-angular>
+                </div>
+
+                <!-- COLUMNA 2: Vista previa del reporte PDF -->
+                <div class="col-6">
+                  <h6><i class="bi bi-file-earmark-pdf"></i> Vista Previa del Reporte</h6>
+                  <div class="border rounded p-2" style="height: 250px; background-color: #f8f9fa;">
+                    <div *ngIf="selectedOt; else noSelection" class="h-100">
+                      <div class="text-center">
+                        <i class="bi bi-file-earmark-pdf display-4 text-muted"></i>
+                        <h6 class="mt-2">Reporte Diario - OT: {{selectedOt.otNumber}}</h6>
+                        <p class="text-muted small">{{selectedOt.description}}</p>
+                        <button class="btn btn-outline-primary btn-sm" (click)="generatePdfPreview()">
+                          <i class="bi bi-eye"></i> Generar Vista Previa
+                        </button>
+                      </div>
+                    </div>
+                    <ng-template #noSelection>
+                      <div class="h-100 d-flex align-items-center justify-content-center">
+                        <div class="text-center text-muted">
+                          <i class="bi bi-arrow-left display-3"></i>
+                          <p class="mt-2 small">Selecciona una OT para ver el reporte</p>
+                        </div>
+                      </div>
+                    </ng-template>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SECCIÓN INFERIOR: Información detallada con pestañas -->
+          <div class="row" *ngIf="selectedOt">
+            <div class="col-12">
+              <!-- Label con información de la OT seleccionada -->
+              <div class="alert alert-info mb-2 py-2">
+                <small>
+                  <strong><i class="bi bi-info-circle"></i> OT:</strong> {{selectedOt.otNumber}} - {{selectedOt.description}}
+                  <span class="float-end">
+                    <span *ngIf="selectedReporteFecha; else soloOT">
+                      <strong>Fecha:</strong> {{selectedReporteFecha | date:'dd-MM-yyyy'}} 
+                      <strong>{{selectedReporteHoraInicio}}-{{selectedReporteHoraTermino}}</strong>
+                      <span class="badge bg-primary">{{selectedReporteTipo}}</span>
+                    </span>
+                    <ng-template #soloOT>
+                      <strong>Registro:</strong> {{selectedOt.registerDate | date:'dd-MM-yyyy'}}
+                    </ng-template>
+                  </span>
+                </small>
+              </div>
+
+              <!-- Pestañas de navegación -->
+              <ul class="nav nav-tabs mb-3">
+                <li class="nav-item">
+                  <a class="nav-link" 
+                     [class.active]="activeTab === 'reportes'" 
+                     [ngClass]="{'bg-success text-white': activeTab === 'reportes'}"
+                     (click)="setActiveTab('reportes')" 
+                     style="cursor: pointer;">
+                    <i class="bi bi-calendar3"></i> Reportes Diarios
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" 
+                     [class.active]="activeTab === 'personal'" 
+                     [ngClass]="{'bg-success text-white': activeTab === 'personal'}"
+                     (click)="setActiveTab('personal')" 
+                     style="cursor: pointer;">
+                    <i class="bi bi-people"></i> Personal
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" 
+                     [class.active]="activeTab === 'fotos'" 
+                     [ngClass]="{'bg-success text-white': activeTab === 'fotos'}"
+                     (click)="setActiveTab('fotos')" 
+                     style="cursor: pointer;">
+                    <i class="bi bi-images"></i> Fotografías
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" 
+                     [class.active]="activeTab === 'material'" 
+                     [ngClass]="{'bg-success text-white': activeTab === 'material'}"
+                     (click)="setActiveTab('material')" 
+                     style="cursor: pointer;">
+                    <i class="bi bi-box-seam"></i> Material
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" 
+                     [class.active]="activeTab === 'equipos'" 
+                     [ngClass]="{'bg-success text-white': activeTab === 'equipos'}"
+                     (click)="setActiveTab('equipos')" 
+                     style="cursor: pointer;">
+                    <i class="bi bi-tools"></i> Equipos
+                  </a>
+                </li>
+              </ul>
+
+              <!-- Contenido de las pestañas -->
+              <div class="tab-content">
+                <!-- Pestaña Reportes Diarios -->
+                <div class="tab-pane" [class.show]="activeTab === 'reportes'" [class.active]="activeTab === 'reportes'">
+                  <h6><i class="bi bi-calendar3"></i> Reportes Diarios de la OT: {{selectedOt.otNumber}}</h6>
+                  <div class="row" style="height: 300px;">
+                    <!-- Botones de acción -->
+                    <nav class="col-auto d-flex flex-column align-items-start">
+                      <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addReporte()">
+                        <i class="bi bi-plus-lg"></i>
+                      </button>
+                      <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChanges()">
+                        <i class="bi bi-floppy"></i>
+                        <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedChanges">
+                          <span class="visually-hidden">Hay cambios sin guardar</span>
+                        </span>
+                      </button>
+                      <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertReportes()">
+                        <i class="bi bi-arrow-clockwise"></i>
+                      </button>
+                      <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteReporte()">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </nav>
+                    
+                    <!-- Grid de reportes -->
+                    <div class="col">
+                      <ag-grid-angular style="width: 100%; height: 100%;"
+                        class="ag-theme-quartz small-text-ag-grid"
+                        [rowData]="reportesDiarios"
+                        [columnDefs]="reportesColumnDefs"
+                        [gridOptions]="reportesGridOptions"
+                        [components]="components"
+                        [rowSelection]="'single'"
+                        (rowClicked)="selectReporte($event.data)"
+                        [getRowClass]="getReporteRowClass">
+                      </ag-grid-angular>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Pestaña Personal -->
+                <div class="tab-pane" [class.show]="activeTab === 'personal'" [class.active]="activeTab === 'personal'">
+                  <h6><i class="bi bi-people"></i> Personal Asignado
+                    <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">
+                      Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}
+                    </span>
+                  </h6>
+                  <div style="height: 300px;">
+                    <ag-grid-angular style="width: 100%; height: 100%;"
+                      class="ag-theme-quartz small-text-ag-grid"
+                      [rowData]="personalFiltrado"
+                      [columnDefs]="personalColumnDefs"
+                      [gridOptions]="tabGridOptions">
+                    </ag-grid-angular>
+                  </div>
+                </div>
+
+                <!-- Pestaña Fotografías -->
+                <div class="tab-pane" [class.show]="activeTab === 'fotos'" [class.active]="activeTab === 'fotos'">
+                  <h6><i class="bi bi-images"></i> Fotografías del Trabajo
+                    <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">
+                      Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}
+                    </span>
+                  </h6>
+                  <div class="row" style="height: 300px;">
+                    <!-- COLUMNA 1: Grid de Fotografías -->
+                    <div class="col-6">
+                      <ag-grid-angular style="width: 100%; height: 100%;"
+                        class="ag-theme-quartz small-text-ag-grid"
+                        [rowData]="fotografiasFiltradas"
+                        [columnDefs]="fotografiasColumnDefs"
+                        [gridOptions]="tabGridOptions"
+                        [rowSelection]="'single'"
+                        (rowClicked)="selectFotografia($event.data)">
+                      </ag-grid-angular>
+                    </div>
+
+                    <!-- COLUMNA 2: Vista previa de la fotografía -->
+                    <div class="col-6">
+                      <div class="border rounded p-3 h-100" style="background-color: #f8f9fa;">
+                        <div *ngIf="selectedFotografia; else noFotoSelection" class="h-100">
+                          <div class="text-center h-100 d-flex flex-column justify-content-center">
+                            <img [src]="selectedFotografia.url" 
+                                 [alt]="selectedFotografia.descripcion" 
+                                 class="img-fluid rounded"
+                                 style="max-height: 270px; object-fit: cover;">
+                          </div>
+                        </div>
+                        <ng-template #noFotoSelection>
+                          <div class="h-100 d-flex align-items-center justify-content-center">
+                            <div class="text-center text-muted">
+                              <i class="bi bi-arrow-left display-4"></i>
+                              <p class="mt-2">Selecciona una foto para ver la vista previa</p>
+                            </div>
+                          </div>
+                        </ng-template>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Pestaña Material -->
+                <div class="tab-pane" [class.show]="activeTab === 'material'" [class.active]="activeTab === 'material'">
+                  <h6><i class="bi bi-box-seam"></i> Material Utilizado 
+                    <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">
+                      Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}
+                    </span>
+                  </h6>
+                  <div style="height: 300px;">
+                    <ag-grid-angular style="width: 100%; height: 100%;"
+                      class="ag-theme-quartz small-text-ag-grid"
+                      [rowData]="materialesFiltrados"
+                      [columnDefs]="materialesColumnDefs"
+                      [gridOptions]="tabGridOptions">
+                    </ag-grid-angular>
+                  </div>
+                </div>
+
+                <!-- Pestaña Equipos -->
+                <div class="tab-pane" [class.show]="activeTab === 'equipos'" [class.active]="activeTab === 'equipos'">
+                  <h6><i class="bi bi-tools"></i> Equipos Utilizados
+                    <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">
+                      Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}
+                    </span>
+                  </h6>
+                  <div style="height: 300px;">
+                    <ag-grid-angular style="width: 100%; height: 100%;"
+                      class="ag-theme-quartz small-text-ag-grid"
+                      [rowData]="equiposFiltrados"
+                      [columnDefs]="equiposColumnDefs"
+                      [gridOptions]="tabGridOptions">
+                    </ag-grid-angular>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
