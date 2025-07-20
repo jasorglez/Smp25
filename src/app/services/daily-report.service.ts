@@ -29,7 +29,7 @@ export class DailyReportService {
   // Crear un nuevo reporte diario
   addDailyReport(data: any): Observable<any> {
    const apiUrl = `${environment.urlSmp}/DailyReport/`;
-   alert(apiUrl)
+  // alert(apiUrl)
    console.log('Adding new daily report:', data);
 
     return this.http.post(`${environment.urlSmp}/DailyReport/`, data, { headers: this.trackingService.getHeaders() });
