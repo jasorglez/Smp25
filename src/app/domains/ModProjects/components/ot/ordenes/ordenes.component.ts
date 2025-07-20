@@ -748,68 +748,112 @@ export class OrdenesComponent {
     }, 0);
   }
 
-  async saveChanges() {
-    // Solo validar los reportes nuevos
-    const newRows = this.reportesDiarios.filter(row => row.__isNew);
-    const isValid = newRows.every(
-      (item) => item.date && item.supervisor
+
+async saveChanges() {
+  console.log('=== INICIO DEBUG SAVE CHANGES ===');
+  
+  const newRows = this.reportesDiarios.filter(row => row.__isNew);
+  const modifiedRows = this.reportesDiarios.filter(row => row.__modified && !row.__isNew);
+  
+  console.log('Filas nuevas encontradas:', newRows.length);
+  console.log('Filas modificadas encontradas:', modifiedRows.length);
+
+  // Validación
+  const invalidNewRows = newRows.filter(item => !item.date || !item.supervisor);
+  
+  if (invalidNewRows.length > 0) {
+    alerts.basicAlert('Añadir entrada', 'Debe introducir la fecha y supervisor antes de guardar.', 'error');
+    return;
+  }
+
+  if (newRows.length === 0 && modifiedRows.length === 0) {
+    alerts.basicAlert('Info', 'No hay cambios para guardar', 'info');
+    return;
+  }
+
+  try {
+    console.log('=== PREPARANDO REQUESTS ===');
+    
+    const addRequests = newRows.map((row, index) => {
+      const cleanedData = this.cleanDataForServer(row);
+      console.log(`Datos limpiados para nueva fila ${index + 1}:`, cleanedData);
+      return this.dailyReportService.addDailyReport(cleanedData).toPromise();
+    });
+
+    const updateRequests = modifiedRows.map((row, index) => {
+      const cleanedData = this.cleanDataForServer(row);
+      console.log(`Datos limpiados para fila modificada ${index + 1}:`, cleanedData);
+      return this.dailyReportService.updateDailyReport(Number(row.id), cleanedData).toPromise();
+    });
+
+    console.log(`Ejecutando ${addRequests.length} requests de creación`);
+    console.log(`Ejecutando ${updateRequests.length} requests de actualización`);
+
+    const responses = await Promise.all([...addRequests, ...updateRequests]);
+    
+    console.log('=== RESPUESTAS RECIBIDAS ===');
+    console.log('Número de respuestas:', responses.length);
+    responses.forEach((response, index) => {
+      console.log(`Respuesta ${index + 1}:`, response);
+      
+      // Verificar estructura de la respuesta
+      if (response && typeof response === 'object') {
+        console.log(`- success: ${response.success}`);
+        console.log(`- message: ${response.message}`);
+        console.log(`- data: ${response.data ? 'SÍ' : 'NO'}`);
+        
+        if (response.data) {
+          console.log(`- data.id: ${response.data.id}`);
+        }
+      }
+    });
+
+    // Verificar si las respuestas son exitosas
+    const failedResponses = responses.filter(response => 
+      !response || 
+      (response.hasOwnProperty('success') && !response.success) ||
+      (response.status && response.status >= 400)
     );
 
-    if (newRows.length > 0 && !isValid) {
-      alerts.basicAlert(
-        'Añadir entrada',
-        'Debe introducir la fecha y supervisor antes de guardar.',
-        'error'
-      );
-      return;
+    if (failedResponses.length > 0) {
+      console.error('Respuestas fallidas:', failedResponses);
+      throw new Error(`${failedResponses.length} requests fallaron`);
     }
 
-    const modifiedRows = this.reportesDiarios.filter(row => row.__modified && !row.__isNew);
+    console.log('=== GUARDADO EXITOSO ===');
+    alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
 
-    try {
-      console.log('=== DEBUG SAVE CHANGES ===');
-      console.log('URL del endpoint:', `https://bi2.com.mx/smp/api/DailyReport/`);
-      console.log('Token usado:', localStorage.getItem('token'));
-      console.log('Número de filas nuevas a guardar:', newRows.length);
-      
-      const addRequests = newRows.map(row => {
-        const cleanedData = this.cleanDataForServer(row);
-        console.log('Datos a enviar para nuevo reporte:', cleanedData);
-        console.log('Enviando petición POST...');
-        return this.dailyReportService.addDailyReport(cleanedData);
-      });
+    this.notSavedChanges = false;
+    
+    // Recargar datos desde el servidor
+    console.log('Recargando datos desde el servidor...');
+    await this.loadDailyReports();
+    console.log('Datos recargados exitosamente');
 
-      const updateRequests = modifiedRows.map(row => {
-        const cleanedData = this.cleanDataForServer(row);
-        return this.dailyReportService.updateDailyReport(Number(row.id), cleanedData);
-      });
-
-      const responses = await Promise.all([...addRequests, ...updateRequests]);
-      console.log('Respuestas del servidor:', responses);
-      console.log('Guardado exitoso!');
-
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
-
-      this.notSavedChanges = false;
-      this.loadDailyReports();
-    } catch (error) {
-      console.error('=== ERROR AL GUARDAR ===');
-      console.error('Error completo:', error);
-      console.error('Status del error:', error.status);
-      console.error('Mensaje del error:', error.message);
-      console.error('Respuesta del servidor:', error.error);
-      
-      alerts.basicAlert(
-        'Error',
-        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
-        'error'
-      );
+  } catch (error: any) {
+    console.error('=== ERROR DETALLADO ===');
+    console.error('Error completo:', error);
+    
+    let errorMessage = 'Ocurrió un error al actualizar los datos.';
+    
+    if (error.status === 400) {
+      errorMessage = 'Datos inválidos. Verifique que todos los campos estén correctos.';
+    } else if (error.status === 401) {
+      errorMessage = 'No autorizado. Por favor, vuelva a iniciar sesión.';
+    } else if (error.status === 403) {
+      errorMessage = 'No tiene permisos para realizar esta operación.';
+    } else if (error.status === 404) {
+      errorMessage = 'Recurso no encontrado. Verifique la URL del servicio.';
+    } else if (error.status === 500) {
+      errorMessage = 'Error interno del servidor. Contacte al administrador.';
+    } else if (error.message) {
+      errorMessage = error.message;
     }
+    
+    alerts.basicAlert('Error', errorMessage, 'error');
   }
+}
+
 
   revertReportes() {
     this.loadDailyReports();
