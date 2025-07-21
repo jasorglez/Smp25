@@ -635,7 +635,6 @@ export class MasterPayrollComponent implements OnInit {
             //alert(`Estado en la fila: row: ${params.node.rowIndex} -- Id: ${params.data.id} -- FechaInicial: ${params.data.startDate} -- FechaFinal: ${params.data.endDate}
             //  -- IdBranch Tabla: ${params.data.idBranch} -- ${this.DPAvailable ? 'Disponible' : 'No disponible'}`);
             this.onCheckClick(params);
-
             // Aquí puedes ejecutar cualquier otra acción, como actualizar el estado
           });
           return button;
