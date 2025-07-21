@@ -369,6 +369,8 @@ export class SideBarComponent {
       this.trackingService.setnameComp(datacom.name);
       this.signalsService.setCompanyName(datacom.name); // Envio la signal a auth.service
       this.trackingService.setpictureComp(datacom.picture);
+      this.trackingService.setPictureComp2(datacom.picture2);
+      this.trackingService.setPictureComp3(datacom.picture3);
       //this.trackingService.setformatrepint(datacom.formatrep);
       // alert('Format:'+ datacom.formatrep);
     });
