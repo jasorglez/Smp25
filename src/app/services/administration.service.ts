@@ -124,6 +124,7 @@ export class AdministrationService {
 
   // NormalPayroll
   addNormalPayroll(data: any): Observable<any> {
+    console.log("------ entrando a administration service -- addNormalPayroll", data);
     return this.http.post<number>(`${environment.urlAdministration}/NormalPayrolls`, data, { headers: this.trackingService.getHeaders() }).pipe(
       tap(response => {
         console.log("Respuesta del servidor: ", response);

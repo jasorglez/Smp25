@@ -4,7 +4,7 @@ import { Component, effect, HostListener, inject, OnInit } from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { CurrencyPipe, formatCurrency } from '@angular/common';
-
+import * as bootstrap from 'bootstrap';
 import {
   PayrollService,
   PayrollData,
@@ -228,6 +228,9 @@ export class MasterPayrollComponent implements OnInit {
   id: string;
   gridApi2!: GridApi;
   idBranch: number;
+  payrolls: any [];
+  selectedPayrollId: number = 0;
+  idSelected: number = 0;
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
   private modalServiceTable = inject(ModalService);
   selectedRowData: any = null;
@@ -823,6 +826,7 @@ export class MasterPayrollComponent implements OnInit {
     onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
   };
 
+
   onCellDoubleClicked(event: CellDoubleClickedEvent): void {
     //alert("Holaaaaaaaaaaaaa");
     const colId = event.column.getColId();
@@ -933,29 +937,39 @@ formatDate(dateStr: string): string {
     (row) => row.__modified && !row.__isNew
   );
 
-  const addObservables = newRows.map((row) => {
+  // Procesa filas nuevas de forma asíncrona
+  const addObservables: any[] = [];
+  for (const row of newRows) {
     const cleanedData = this.cleanDataForServer(row);
-    return this.administrationService.addNormalPayroll(cleanedData).pipe(
-      tap((response) => {
-        alerts.basicAlert('Datos guardados', response.message, 'success');
-        this.notSavedChanges = false;
-        this.aggregatingRecord = false;
-        this.obtenerDatos();
-        this.resetGridSize();
-      }),
-      catchError((error) => {
-        const errorMessage =
-          error?.error?.message ||
-          'Ocurrió un error al guardar los datos. Intente nuevamente.';
-        alerts.basicAlert('Error', errorMessage, 'error');
-        this.notSavedChanges = false;
-        this.aggregatingRecord = false;
-        this.obtenerDatos();
-        this.resetGridSize();
-        return EMPTY;
-      })
+    const PayrollId = await this.obtenerPayrollsByRange(
+      row.startDate,
+      row.endDate,
+      row.idBranch
     );
-  });
+    cleanedData.payrollId = PayrollId;
+    addObservables.push(
+      this.administrationService.addNormalPayroll(cleanedData).pipe(
+        tap((response) => {
+          alerts.basicAlert('Datos guardados', response.message, 'success');
+          this.notSavedChanges = false;
+          this.aggregatingRecord = false;
+          this.obtenerDatos();
+          this.resetGridSize();
+        }),
+        catchError((error) => {
+          const errorMessage =
+            error?.error?.message ||
+            'Ocurrió un error al guardar los datos. Intente nuevamente.';
+          alerts.basicAlert('Error', errorMessage, 'error');
+          this.notSavedChanges = false;
+          this.aggregatingRecord = false;
+          this.obtenerDatos();
+          this.resetGridSize();
+          return EMPTY;
+        })
+      )
+    );
+  }
 
   const updateObservables = modifiedRows.map((row) => {
     return this.administrationService.updateNormalPayroll(row.id).pipe(
@@ -965,7 +979,6 @@ formatDate(dateStr: string): string {
           error?.error?.message || 'Error al actualizar los datos.',
           'error'
         );
-        
         return EMPTY;
       })
     );
@@ -1225,6 +1238,16 @@ formatDate(dateStr: string): string {
       });
   }
 
+   onPayrollChange(event: Event): void {
+  }
+  selectionPayroll(): void {
+    if (this.selectedPayrollId !== null) {
+      console.log('ID de nómina seleccionada: ' + this.selectedPayrollId);
+    } else {
+      console.log('Por favor, selecciona una nómina.');
+    }
+  }
+
   obtenerBranchs() {
     this.branchesService.getBrancheswoa(this.idRoot).subscribe(
       (data: any) => {
@@ -1234,6 +1257,65 @@ formatDate(dateStr: string): string {
       (error) => console.error('Error fetching data:', error)
     );
   }
+
+ async obtenerPayrollsByRange(startDate: Date, endDate: Date, idBranch: number): Promise<number> {
+  return new Promise((resolve, reject) => {
+    this.payrollService.getPayrollsByRange(startDate, endDate, idBranch).subscribe(
+      (data: any) => {
+        this.payrolls = data;
+        this.payrolls = this.payrolls.map(p => ({
+          ...p,
+          createdAt: new Date(p.createdAt)
+        }));
+
+        if (this.payrolls.length > 1) {
+        // Si hay más de una nómina, mostramos el modal para que el usuario seleccione
+        const modal = new bootstrap.Modal(document.getElementById('payrolls')!);
+        modal.show();
+
+        // Aquí esperamos que el usuario seleccione una nómina
+        const onSelect = () => {
+          console.log('ID seleccionado:', this.selectedPayrollId); // Debug
+          if (this.selectedPayrollId !== null) {
+            resolve(this.selectedPayrollId); // Resolvemos con el ID seleccionado
+            modal.hide(); // Cerrar el modal
+          } else {
+            alert('Por favor, selecciona una nómina.');
+            reject('No se seleccionó ninguna nómina.');
+          }
+        };
+      
+        // 🔽 Aquí pegas el nuevo código
+        const selectButton = document.getElementById('selectPayrollButton');
+        if (selectButton) {
+          selectButton.addEventListener('click', onSelect, { once: true }); // evita múltiples listeners
+        } else {
+          console.error('Botón de selección no encontrado en el DOM');
+          reject('Error al mostrar el modal');
+        }
+      
+        // ⏱️ Opcional: timeout para evitar quedar colgado si no se hace nada
+        setTimeout(() => {
+          reject('Timeout esperando selección de nómina');
+        }, 30000); // 30 segundos de espera
+      } else if (this.payrolls.length === 1) {
+                // Si solo hay una nómina, la devolvemos directamente
+                resolve(this.payrolls[0].payrollId);
+              } else {
+                // Si no hay nóminas, devolvemos 0
+                resolve(0);
+              }
+            },
+            (error) => {
+              console.error('Error fetching data:', error);
+              reject(error); // Si hay un error, rechazamos la promesa
+            }
+          );
+        });
+      }
+
+
+
 
   obtenerBlockPariod(idBranch: any){
     this.idBlockPeriodsService.getIdBlockPeriods(idBranch).subscribe(

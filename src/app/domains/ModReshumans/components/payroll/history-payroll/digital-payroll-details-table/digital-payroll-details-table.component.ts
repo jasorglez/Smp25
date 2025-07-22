@@ -18,6 +18,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { FormsModule } from '@angular/forms';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { IdBlockPeriodsService } from 'app/services/IdBlockPeriods.service';
 
 @Component({
   selector: 'digital-payroll-details-table',
@@ -35,6 +36,8 @@ export class DigitalPayrollDetailsTableComponent {
   private signalsService = inject(SignalsService);
 
   private branchesService = inject(BranchsService);
+
+  private idBlockPeriodsService = inject(IdBlockPeriodsService);
 
   public employeeData = output<PayrollEmployee[]>();
 
@@ -64,6 +67,9 @@ export class DigitalPayrollDetailsTableComponent {
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+  
+  blockPeriods: any[] = [];
+  private idBranch: number = 0;
 
   get colMaster(): ColDef[] {
     return [
@@ -112,9 +118,49 @@ export class DigitalPayrollDetailsTableComponent {
         },
       },
       {
+        field: 'idBlockPeriod',
+        headerName: 'Bloque del Periodo',
+        valueFormatter: (params) => {
+          // Handle potential null values and properly format the displayed value
+          if (!params.value) return '';
+
+          const foundblockPeriod = this.blockPeriods
+            ? this.blockPeriods.find((item) => item.id === params.value)
+            : null;
+
+          return foundblockPeriod ? foundblockPeriod.blockPeriodCode : params.value;
+        },
+        valueGetter: (params) => {
+          if (!params.data || !params.data.idBlockPeriod) return '';
+          const blockPeriod = this.blockPeriods?.find(b => b.id === params.data.idBlockPeriod);
+          return blockPeriod ? blockPeriod.blockPeriodCode : '';
+        },
+        width: 140,
+      },
+      {
         field: 'period',
         headerName: 'Periodo',
         width: 260,
+      },
+      {
+        field: 'createdAt',
+        headerName: 'Creado',
+        width: 260,
+        valueFormatter: (params) => {
+          const date = new Date(params.value);
+          const formattedDate = date.toLocaleDateString('es-MX', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+          });
+          const formattedTime = date.toLocaleTimeString('es-MX', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+          });
+          return `${formattedDate} ${formattedTime}`;
+        }
       },
       {
         field: 'startDate',
@@ -173,7 +219,9 @@ export class DigitalPayrollDetailsTableComponent {
   constructor() {
       effect(() => {
         this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+        this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
         this.obtenerBranchs();
+        this.obtenerBlockPariod(this.idBranch);
       });
     }
   obtenerBranchs() {
@@ -276,6 +324,15 @@ export class DigitalPayrollDetailsTableComponent {
     } else {
       this.selectedRowData.set(null);
     }
+  }
+    obtenerBlockPariod(idBranch: any){
+    this.idBlockPeriodsService.getIdBlockPeriods(idBranch).subscribe(
+      (data: any) => {
+        this.blockPeriods = data;
+        console.log(this.blockPeriods)
+      },
+      (error) => console.error('Error fetching data:', error)
+    )
   }
 
   // Definición de columnas para AG Grid
