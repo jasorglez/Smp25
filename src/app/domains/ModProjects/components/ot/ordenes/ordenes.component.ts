@@ -6,10 +6,12 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { Router } from '@angular/router';
 import { OtService } from 'app/services/ot.service';
 import { DailyReportService } from 'app/services/daily-report.service';
+import { LogbookService } from 'app/services/logbook.service';
 import pdfMake from 'pdfmake/build/pdfmake';
 import { SignalsService } from 'app/services/signals.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { PdfGeneratorService } from 'app/services/pdf-generator.service';
+import { EmployeesService } from 'app/services/employees.service';
 import { alerts } from 'app/helpers/alerts';
 import { environment } from '@env/environment';
 import { TimeEditorComponent } from 'app/domains/Indicadores/components/ind01/timeinactives/time-editor.component';
@@ -79,12 +81,21 @@ interface Equipo {
 
 interface Personal {
   id: string;
-  nombre: string;
-  cargo: string;
-  cantidad: number;
-  horaInicio: string;
-  horaFin: string;
-  fechaTrabajo: string;
+  idOt: number;
+  idReporte: number | string;
+  idResource: string;
+  position: string;
+  quantity: number;
+  start: string;
+  end: string;
+  date: string;
+  typeNote?: string;
+  description?: string;
+  orden?: number;
+  
+  // Propiedades de control CRUD
+  __isNew?: boolean;
+  __modified?: boolean;
 }
 
 interface Fotografia {
@@ -105,11 +116,13 @@ interface Fotografia {
 export class OrdenesComponent {
   private otService = inject(OtService);
   private dailyReportService = inject(DailyReportService);
+  private logbookService = inject(LogbookService);
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
   private router = inject(Router);
   private sanitizer = inject(DomSanitizer);
   private pdfGeneratorService = inject(PdfGeneratorService);
+  private employeesService = inject(EmployeesService);
   gestionarDatos: any[] = [];
 
   // Variables de control
@@ -128,12 +141,17 @@ export class OrdenesComponent {
   
   // Variables para el patrón CRUD
   public notSavedChanges: boolean = false;
+  public notSavedPersonalChanges: boolean = false;
   private tempIdCounter: number = 1;
+  private tempPersonalIdCounter: number = 1;
   private currentEditingRow: number = -1;
   private currentEditingCol: string = '';
   
   // Reportes diarios obtenidos de la API
   public reportesDiarios: ReporteDiario[] = [];
+
+  // Lista de empleados para el select
+  public employees: any[] = [];
 
   // Componentes personalizados para AG-Grid
   components = {
@@ -217,44 +235,7 @@ export class OrdenesComponent {
     }
   ];
 
-  public personal: Personal[] = [
-    {
-      id: 'PER001',
-      nombre: 'Carlos Rodríguez',
-      cargo: 'Técnico Electricista',
-      cantidad: 1,
-      horaInicio: '08:00',
-      horaFin: '17:00',
-      fechaTrabajo: '2024-07-20'
-    },
-    {
-      id: 'PER002',
-      nombre: 'María González',
-      cargo: 'Ayudante General',
-      cantidad: 1,
-      horaInicio: '08:00',
-      horaFin: '17:00',
-      fechaTrabajo: '2024-07-20'
-    },
-    {
-      id: 'PER003',
-      nombre: 'Juan Pérez',
-      cargo: 'Supervisor',
-      cantidad: 1,
-      horaInicio: '07:30',
-      horaFin: '17:30',
-      fechaTrabajo: '2024-07-20'
-    },
-    {
-      id: 'PER004',
-      nombre: 'Ana López',
-      cargo: 'Técnico Soldador',
-      cantidad: 1,
-      horaInicio: '08:00',
-      horaFin: '16:00',
-      fechaTrabajo: '2024-07-21'
-    }
-  ];
+  public personal: Personal[] = [];
 
   public fotografias: Fotografia[] = [
     {
@@ -299,8 +280,18 @@ export class OrdenesComponent {
   }
 
   get personalFiltrado(): Personal[] {
-    if (!this.selectedReporteFecha) return this.personal;
-    return this.personal.filter(p => p.fechaTrabajo === this.selectedReporteFecha);
+    console.log('=== PERSONAL FILTRADO ===');
+    console.log('selectedReporteFecha:', this.selectedReporteFecha);
+    console.log('personal array:', this.personal);
+    
+    if (!this.selectedReporteFecha) {
+      console.log('Sin fecha seleccionada, retornando todo el personal:', this.personal);
+      return this.personal;
+    }
+    
+    const filtered = this.personal.filter(p => p.date === this.selectedReporteFecha);
+    console.log('Personal filtrado por fecha:', filtered);
+    return filtered;
   }
 
   get fotografiasFiltradas(): Fotografia[] {
@@ -327,12 +318,45 @@ export class OrdenesComponent {
 
   public personalColumnDefs: ColDef[] = [
     { field: 'id', headerName: 'ID', width: 80 },
-    { field: 'nombre', headerName: 'Nombre', flex: 2 },
-    { field: 'cargo', headerName: 'Cargo', flex: 1 },
-    { field: 'cantidad', headerName: 'Cantidad', width: 100 },
-    { field: 'horaInicio', headerName: 'Inicio', width: 100 },
-    { field: 'horaFin', headerName: 'Fin', width: 100 },
-    { field: 'fechaTrabajo', headerName: 'Fecha', width: 120 }
+    { 
+      field: 'idResource', 
+      headerName: 'Nombre', 
+      flex: 2,
+      editable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: (params: any) => {
+        return {
+          values: this.employees.map(emp => emp.name)
+        };
+      },
+      valueFormatter: (params: any) => {
+        // Mostrar el nombre del empleado basado en el ID almacenado
+        if (params.value && params.value !== '0') {
+          const employee = this.employees.find(emp => emp.id.toString() === params.value.toString());
+          return employee ? employee.name : '';
+        }
+        return '';
+      },
+      valueSetter: (params: any) => {
+        // Almacenar el ID del empleado basado en el nombre seleccionado
+        if (params.newValue) {
+          const employee = this.employees.find(emp => emp.name === params.newValue);
+          if (employee) {
+            // Convertir a string para consistencia con la interface
+            params.data[params.colDef.field] = employee.id.toString();
+            console.log('ID del empleado seleccionado:', employee.id.toString());
+            return true;
+          }
+        }
+        params.data[params.colDef.field] = params.newValue;
+        return true;
+      }
+    },
+    { field: 'position', headerName: 'Cargo', flex: 1, editable: true },
+    { field: 'quantity', headerName: 'Cantidad', width: 100, editable: true },
+    { field: 'start', headerName: 'Inicio', width: 100, editable: true },
+    { field: 'end', headerName: 'Fin', width: 100, editable: true },
+    { field: 'date', headerName: 'Fecha', width: 120 }
   ];
 
   public fotografiasColumnDefs: ColDef[] = [
@@ -452,6 +476,9 @@ export class OrdenesComponent {
 
   // Variables para el grid de reportes
   public reportesGridApi!: GridApi;
+  
+  // Variables para el grid de personal
+  public personalGridApi!: GridApi;
 
   // Configuración del grid principal
   public gridApi!: GridApi;
@@ -475,6 +502,21 @@ export class OrdenesComponent {
     animateRows: true,
     pagination: false,
     domLayout: 'autoHeight'
+  };
+
+  // Configuración específica para el grid de personal con edición
+  public personalGridOptions: any = {
+    headerHeight: 35,
+    rowHeight: 30,
+    suppressDragLeaveHidesColumns: true,
+    suppressHorizontalScroll: false,
+    animateRows: true,
+    pagination: false,
+    domLayout: 'autoHeight',
+    stopEditingWhenCellsLoseFocus: true,
+    rowSelection: 'single',
+    onCellValueChanged: (event: any) => this.onPersonalCellValueChanged(event),
+    onGridReady: (params: any) => this.onPersonalGridReady(params)
   };
 
   // Configuración específica para el grid de reportes con edición inline
@@ -544,6 +586,33 @@ export class OrdenesComponent {
     effect(() => {
       this.idProject =this.signalsService.getProjectSelectedBySidebar()();
       this.obtenerDatos();
+      this.loadEmployees();
+    });
+  }
+
+  loadEmployees() {
+    const idRoot = this.signalsService.getRootSelectedBySidebar()();
+    const idBranch = -idRoot; // Convertir a negativo como se solicita
+
+    this.employeesService.getEmployees(idBranch).subscribe({
+      next: (response: any) => {
+        if (response && Array.isArray(response)) {
+          // El endpoint devuelve directamente un array de empleados
+          this.employees = response;
+          console.log('Empleados cargados:', this.employees);
+        } else if (response && response.data && Array.isArray(response.data)) {
+          // Por si acaso viene encapsulado en un objeto con propiedad data
+          this.employees = response.data;
+          console.log('Empleados cargados (desde data):', this.employees);
+        } else {
+          this.employees = [];
+          console.log('No se encontraron empleados o formato inesperado:', response);
+        }
+      },
+      error: (error) => {
+        console.error('Error al cargar empleados:', error);
+        this.employees = [];
+      }
     });
   }
 
@@ -600,6 +669,9 @@ export class OrdenesComponent {
       
       // Cargar reportes diarios para esta OT
       this.loadDailyReports();
+      
+      // Cargar datos de Personal para esta OT
+      this.loadPersonalData();
     } else {
       this.selectedOt = null;
     }
@@ -954,6 +1026,53 @@ async saveChanges() {
   }
 
 
+  // Método para cargar datos de Personal desde el servidor
+  loadPersonalData() {
+    if (this.selectedOt) {
+      const otId = parseInt(this.selectedOt.id);
+      console.log('Cargando datos de Personal para OT:', otId);
+      
+      this.logbookService.getInfoByOt(otId, 'PERSONAL').subscribe({
+        next: (response) => {
+          console.log('Respuesta de Personal:', response);
+          if (response.success && response.data) {
+            // Mapear datos del endpoint a la estructura esperada por el ag-grid
+            this.personal = response.data.map((item: any) => ({
+              id: item.id.toString(), // Convertir a string para consistencia
+              idOt: item.idOt,
+              idReporte: item.idReporte,
+              idResource: item.idResource ? item.idResource.toString() : '',
+              position: item.position || '',
+              quantity: item.quantity || 1,
+              start: item.start || '08:00',
+              end: item.end || '17:00',
+              date: item.date ? item.date.split('T')[0] : '',
+              typeNote: item.typeNote,
+              description: item.description || '',
+              orden: item.orden || 1
+            }));
+            console.log('Personal mapeado:', this.personal);
+            console.log('PersonalFiltrado después del mapeo:', this.personalFiltrado);
+            
+            // Forzar actualización del grid si ya está inicializado
+            if (this.personalGridApi) {
+              this.personalGridApi.refreshCells();
+              this.personalGridApi.redrawRows();
+              console.log('Grid actualizado manualmente con datos:', this.personalFiltrado);
+            }
+          } else {
+            console.log('No hay datos de Personal o estructura de respuesta diferente:', response);
+            this.personal = [];
+          }
+        },
+        error: (error) => {
+          console.error('Error al cargar Personal:', error);
+          this.personal = [];
+        }
+      });
+    }
+  }
+
   // Método para cargar reportes diarios desde el servidor
   loadDailyReports() {
     if (this.selectedOt) {
@@ -1165,6 +1284,38 @@ async saveChanges() {
     return cleanedData;
   }
 
+  // Método para limpiar datos de Personal antes de enviar al servidor
+  private cleanPersonalDataForServer(data: any): any {
+    const cleanedData = { ...data };
+    
+    // Eliminar propiedades temporales de control
+    delete cleanedData.__isNew;
+    delete cleanedData.__modified;
+    
+    // Eliminar date ya que el endpoint espera date
+    delete cleanedData.date;
+    
+    // Solo incluir ID si no es temporal
+    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
+      delete cleanedData.id;
+    }
+    
+    // Asegurar que los campos requeridos están presentes
+    if (!cleanedData.idOt) {
+      cleanedData.idOt = this.selectedOt?.id;
+    }
+    if (!cleanedData.idReporte) {
+      cleanedData.idReporte = this.selectedReporteId;
+    }
+    
+    // Agregar campos requeridos por el endpoint
+    cleanedData.typeNote = cleanedData.typeNote || 'PERSONAL';
+    cleanedData.description = cleanedData.description || 'NOTAS';
+    cleanedData.orden = cleanedData.orden || 1;
+    
+    return cleanedData;
+  }
+
   // Método para eliminar reporte siguiendo patrón de usuarios
   async deleteReporte() {
     if (!this.reportesGridApi) {
@@ -1235,6 +1386,249 @@ async saveChanges() {
     if (!event.data.__isNew) {
       event.data.__modified = true;
     }
+  }
+
+  // Método para manejar cambios en el grid de personal
+  onPersonalCellValueChanged(event: any) {
+    console.log('=== CAMBIO EN GRID DE PERSONAL ===');
+    console.log('Campo modificado:', event.colDef.field);
+    console.log('Valor anterior:', event.oldValue);
+    console.log('Valor nuevo:', event.newValue);
+    console.log('Dato completo después del cambio:', event.data);
+    
+    this.notSavedPersonalChanges = true;
+
+    if (!event.data.__isNew) {
+      event.data.__modified = true;
+    }
+  }
+
+  // Grid ready para personal
+  onPersonalGridReady(params: any) {
+    this.personalGridApi = params.api;
+    params.api.sizeColumnsToFit();
+  }
+
+  // Métodos CRUD para Personal
+  addPersonal() {
+    console.log('=== AGREGANDO NUEVO PERSONAL ===');
+    console.log('OT seleccionada:', this.selectedOt);
+    console.log('Fecha de reporte seleccionada:', this.selectedReporteFecha);
+    
+    if (!this.selectedOt) {
+      alerts.basicAlert('Error', 'Debe seleccionar una OT primero', 'error');
+      return;
+    }
+
+    if (!this.selectedReporteFecha) {
+      alerts.basicAlert('Error', 'Debe seleccionar una fecha de reporte primero', 'error');
+      return;
+    }
+
+    const tempId = `temp_personal_${this.tempPersonalIdCounter++}`;
+    const newPersonal = {
+      id: tempId,
+      idOt: parseInt(this.selectedOt.id),
+      idReporte: this.selectedReporteId,
+      idResource: null, // Se almacenará el ID del empleado
+      position: '', 
+      quantity: 1,
+      start: '08:00:00',
+      end: '17:00:00',
+      date: this.selectedReporteFecha,
+      typeNote: 'PERSONAL',
+      description: 'NOTAS',
+      orden: 1,
+      __isNew: true
+    };
+
+    console.log('Nuevo personal creado:', newPersonal);
+    console.log('Personal antes de agregar:', this.personal);
+    this.personal = [newPersonal, ...this.personal];
+    console.log('Personal después de agregar:', this.personal);
+    this.notSavedPersonalChanges = true;
+    
+    setTimeout(() => {
+      if (this.personalGridApi) {
+        this.personalGridApi.startEditingCell({
+          rowIndex: 0,
+          colKey: 'idResource'
+        });
+      }
+    }, 0);
+  }
+
+  async savePersonalChanges() {
+    console.log('=== GUARDANDO CAMBIOS DE PERSONAL ===');
+    console.log('Array completo de personal:', this.personal);
+    
+    const newRows = this.personal.filter(row => row.__isNew);
+    const modifiedRows = this.personal.filter(row => row.__modified && !row.__isNew);
+    
+    console.log('Personal nuevo:', newRows.length, newRows);
+    console.log('Personal modificado:', modifiedRows.length, modifiedRows);
+
+    // Validación básica
+    const invalidRows = newRows.filter(item => !item.idResource || !item.position);
+    
+    if (invalidRows.length > 0) {
+      alerts.basicAlert('Error', 'Debe completar nombre y cargo antes de guardar.', 'error');
+      return;
+    }
+
+    if (newRows.length === 0 && modifiedRows.length === 0) {
+      alerts.basicAlert('Info', 'No hay cambios para guardar', 'info');
+      return;
+    }
+
+    try {
+      console.log('=== USANDO ENDPOINTS DE LOGBOOK SERVICE ===');
+      
+      // Preparar requests para nuevos registros
+      const addRequests = newRows.map((row, index) => {
+        const cleanedData = this.cleanPersonalDataForServer(row);
+        console.log(`Datos para POST ${index + 1}:`, cleanedData);
+        return this.logbookService.addDataForOt(cleanedData).toPromise();
+      });
+
+      // Preparar requests para registros modificados
+      const updateRequests = modifiedRows.map((row, index) => {
+        const cleanedData = this.cleanPersonalDataForServer(row);
+        console.log(`Datos para PUT ${index + 1} (ID: ${row.id}):`, cleanedData);
+        return this.logbookService.updateDataForOt(Number(row.id), cleanedData).toPromise();
+      });
+
+      console.log(`Ejecutando ${addRequests.length} requests de creación`);
+      console.log(`Ejecutando ${updateRequests.length} requests de actualización`);
+
+      // Ejecutar todos los requests
+      const responses = await Promise.all([...addRequests, ...updateRequests]);
+      
+      console.log('=== RESPUESTAS RECIBIDAS ===');
+      console.log('Número de respuestas:', responses.length);
+      responses.forEach((response, index) => {
+        console.log(`Respuesta ${index + 1}:`, response);
+      });
+
+      // Verificar si las respuestas son exitosas
+      const failedResponses = responses.filter(response => 
+        !response || 
+        (response.hasOwnProperty('success') && !response.success) ||
+        (response.status && response.status >= 400)
+      );
+
+      if (failedResponses.length > 0) {
+        console.error('Respuestas fallidas:', failedResponses);
+        throw new Error(`${failedResponses.length} requests fallaron`);
+      }
+
+      console.log('=== GUARDADO EXITOSO ===');
+      alerts.basicAlert('Éxito', 'Cambios de personal guardados correctamente', 'success');
+      this.notSavedPersonalChanges = false;
+      
+      // Limpiar flags de control
+      this.personal.forEach(item => {
+        delete item.__isNew;
+        delete item.__modified;
+      });
+
+      // Recargar datos para reflejar cambios del servidor
+      console.log('Recargando datos de personal...');
+      // Aquí podrías recargar datos si tienes un endpoint específico para personal
+
+    } catch (error: any) {
+      console.error('=== ERROR AL GUARDAR PERSONAL ===');
+      console.error('Error completo:', error);
+      
+      let errorMessage = 'Error al guardar cambios de personal';
+      if (error.status === 400) {
+        errorMessage = 'Datos inválidos. Verifique que todos los campos estén correctos.';
+      } else if (error.status === 401) {
+        errorMessage = 'No autorizado. Por favor, vuelva a iniciar sesión.';
+      } else if (error.status === 500) {
+        errorMessage = 'Error interno del servidor. Contacte al administrador.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      alerts.basicAlert('Error', errorMessage, 'error');
+    }
+  }
+
+  revertPersonal() {
+    console.log('=== REVIRTIENDO CAMBIOS DE PERSONAL ===');
+    console.log('Personal antes de revertir:', this.personal);
+    
+    // Remover elementos nuevos y revertir modificados
+    this.personal = this.personal.filter(item => !item.__isNew);
+    this.personal.forEach(item => {
+      delete item.__modified;
+    });
+    
+    console.log('Personal después de revertir:', this.personal);
+    this.notSavedPersonalChanges = false;
+    alerts.basicAlert('Info', 'Cambios revertidos', 'info');
+  }
+
+  async deletePersonal() {
+    if (!this.personalGridApi) {
+      alerts.basicAlert('Error', 'Grid no disponible', 'error');
+      return;
+    }
+
+    const selectedNodes = this.personalGridApi.getSelectedNodes();
+    if (selectedNodes.length === 0) {
+      alerts.basicAlert('Error', 'Seleccione una entrada de personal para eliminar', 'error');
+      return;
+    }
+
+    const selectedData = selectedNodes[0].data;
+    const id = selectedData.id;
+
+    console.log('=== INTENTANDO ELIMINAR PERSONAL ===');
+    console.log('Registro seleccionado para eliminar:', selectedData);
+    console.log('ID a eliminar:', id);
+    
+    alerts.confirmAlert(
+      'Eliminar personal',
+      '¿Está seguro que desea eliminar este registro de personal?',
+      'warning',
+      'Sí, eliminar'
+    ).then((value) => {
+      if (value.isConfirmed) {
+        console.log('=== CONFIRMACIÓN DE ELIMINACIÓN ===');
+        
+        if (selectedData.__isNew) {
+          console.log('Eliminando registro nuevo (solo local)');
+          this.personal = this.personal.filter(p => p.id !== id);
+          this.notSavedPersonalChanges = this.personal.some(p => p.__isNew);
+          console.log('Personal después de eliminación local:', this.personal);
+          alerts.basicAlert('Éxito', 'Personal eliminado correctamente', 'success');
+        } else {
+          console.log('Eliminando registro existente usando endpoint DELETE');
+          console.log('Enviando DELETE para ID:', id);
+          
+          this.logbookService.deleteDataForOt(Number(id)).subscribe({
+            next: (response) => {
+              console.log('Respuesta del DELETE:', response);
+              this.personal = this.personal.filter(p => p.id !== id);
+              console.log('Personal después de eliminación del servidor:', this.personal);
+              alerts.basicAlert('Éxito', 'Personal eliminado correctamente del servidor', 'success');
+            },
+            error: (error) => {
+              console.error('Error al eliminar personal del servidor:', error);
+              let errorMessage = 'Error al eliminar el registro de personal';
+              if (error.status === 404) {
+                errorMessage = 'El registro ya no existe en el servidor';
+              } else if (error.status === 401) {
+                errorMessage = 'No autorizado para eliminar este registro';
+              }
+              alerts.basicAlert('Error', errorMessage, 'error');
+            }
+          });
+        }
+      }
+    });
   }
 
   async crearPdfEmbedAutomatico() {

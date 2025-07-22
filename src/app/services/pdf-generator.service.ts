@@ -237,8 +237,8 @@ export class PdfGeneratorService {
     const cargoMap = new Map<string, number>();
     
     this.personalData.forEach(person => {
-      const cargo = person.cargo || 'Sin cargo';
-      const cantidad = parseInt(person.cantidad) || 0;
+      const cargo = person.position || 'Sin cargo';
+      const cantidad = parseInt(person.quantity) || 0;
       
       if (cargoMap.has(cargo)) {
         cargoMap.set(cargo, cargoMap.get(cargo)! + cantidad);

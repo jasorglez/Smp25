@@ -167,13 +167,36 @@
                         Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}
                       </span>
                     </h6>
-                    <div class="h-100">
-                      <ag-grid-angular style="width: 100%; height: calc(100% - 35px);"
-                        class="ag-theme-quartz small-text-ag-grid"
-                        [rowData]="personalFiltrado"
-                        [columnDefs]="personalColumnDefs"
-                        [gridOptions]="tabGridOptions">
-                      </ag-grid-angular>
+                    <div class="row h-100">
+                      <!-- Botones de acción para Personal -->
+                      <nav class="col-auto d-flex flex-column align-items-start">
+                        <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addPersonal()">
+                          <i class="bi bi-plus-lg"></i>
+                        </button>
+                        <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="savePersonalChanges()">
+                          <i class="bi bi-floppy"></i>
+                          <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedPersonalChanges">
+                            <span class="visually-hidden">Hay cambios sin guardar</span>
+                          </span>
+                        </button>
+                        <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertPersonal()">
+                          <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                        <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deletePersonal()">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </nav>
+                      
+                      <!-- Grid de personal -->
+                      <div class="col">
+                        <ag-grid-angular style="width: 100%; height: calc(100% - 35px);"
+                          class="ag-theme-quartz small-text-ag-grid"
+                          [rowData]="personalFiltrado"
+                          [columnDefs]="personalColumnDefs"
+                          [gridOptions]="personalGridOptions"
+                          (gridReady)="onPersonalGridReady($event)">
+                        </ag-grid-angular>
+                      </div>
                     </div>
                   </div>
 
