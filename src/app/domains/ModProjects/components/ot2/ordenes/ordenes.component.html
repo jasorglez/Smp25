@@ -1,0 +1,49 @@
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">
+            <i class="bi bi-file-earmark-text"></i> 
+            {{'work_orders' | translate}}
+          </h3>
+        </div>
+        <div class="card-body">
+          <!-- Botones CRUD y AG-Grid -->
+          <div class="row">
+            <!-- Botones de acciones -->
+            <nav class="col-auto d-flex flex-column align-items-start">
+              <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addRow()">
+                <i class="bi bi-plus-lg"></i>
+              </button>
+              <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revert()">
+                <i class="bi bi-arrow-clockwise"></i>
+              </button>
+              <button type="button" class="btn btn-info ms-1 me-1 mb-2" (click)="fileInput.click()" [disabled]="isUploading">
+                <i class="bi bi-file-earmark-pdf" *ngIf="!isUploading"></i>
+                <div class="spinner-border spinner-border-sm" role="status" *ngIf="isUploading">
+                  <span class="visually-hidden">Subiendo...</span>
+                </div>
+              </button>
+              <input #fileInput type="file" accept=".pdf" style="display: none" (change)="onFileSelected($event)">
+            </nav>
+            
+            <!-- AG-Grid para mostrar datos de órdenes -->
+            <div class="col">
+              <ag-grid-angular style="width: 100%; height: 700px;"
+                class="ag-theme-quartz small-text-ag-grid"
+                [rowData]="rowData"
+                [columnDefs]="columnDefs"
+                [gridOptions]="gridOptions"
+                (selectionChanged)="onSelectionChanged($event)"
+                (gridReady)="onGridReady($event)"
+                [rowSelection]="'single'"
+                [stopEditingWhenCellsLoseFocus]="true">
+              </ag-grid-angular>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

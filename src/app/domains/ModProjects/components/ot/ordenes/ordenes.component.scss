@@ -8,3 +8,79 @@
   border-color: #2196f3;
   color: #1976d2;
 }
+
+// Mejoras visuales para el layout con Bootstrap Grid
+.border-end {
+  border-right: 1px solid #dee2e6 !important;
+}
+
+.pdf-preview-container {
+  box-shadow: 0 0 0 1px rgba(13, 110, 253, 0.25);
+  transition: box-shadow 0.15s ease-in-out;
+  
+  &:hover {
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+  }
+}
+
+.tab-content-custom {
+  background-color: #ffffff;
+  border: 1px solid #dee2e6;
+  border-top: none;
+  border-radius: 0 0 0.375rem 0.375rem;
+}
+
+// Estilos para celdas editables en AG-Grid - Solo amarillo cuando está editando
+::ng-deep .ag-theme-quartz {
+  // Solo la celda actualmente en edición se pone amarilla
+  .ag-cell-inline-editing {
+    background-color: #fff3cd !important;
+    border: 2px solid #ffc107 !important;
+    border-radius: 4px;
+    position: relative;
+    
+    &::before {
+      content: "";
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      right: -2px;
+      bottom: -2px;
+      background-color: rgba(255, 193, 7, 0.2);
+      border-radius: 4px;
+      z-index: -1;
+    }
+  }
+  
+  // Input dentro de la celda en edición
+  .ag-cell-edit-input {
+    background-color: #fff3cd !important;
+    border: 1px solid #ffc107 !important;
+    border-radius: 3px;
+    padding: 4px 8px;
+    width: 100%;
+    
+    &:focus {
+      background-color: #fff8e1 !important;
+      border-color: #ff9800 !important;
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.3);
+    }
+  }
+  
+  // Select dropdown para el tipo
+  .ag-cell-editor select {
+    background-color: #fff3cd !important;
+    border: 1px solid #ffc107 !important;
+    border-radius: 3px;
+    padding: 4px 8px;
+    width: 100%;
+    
+    &:focus {
+      background-color: #fff8e1 !important;
+      border-color: #ff9800 !important;
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.3);
+    }
+  }
+}

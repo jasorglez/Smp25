@@ -4,20 +4,22 @@ import { environment } from '@env/environment';
 
 import { HttpClient } from '@angular/common/http';
 import { EMPTY, Observable } from 'rxjs';
+import { TrackingService } from './tracking.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class LogbookService {
 
- private http = inject(HttpClient)
+  private http = inject(HttpClient);
+  private authService = inject(TrackingService)
 
   getLB(dater: string, id: Number): Observable<any> {
     try {
       const apiUrl = `${environment.urlAzure}api/Logbook?lb=${dater}&id=${id}`;
-     // alert(apiUrl)
+      // alert(apiUrl)
       return this.http.get(apiUrl);
-    } catch(error) {
+    } catch (error) {
       console.error("Error Get LogBook", error);
       return EMPTY; // Import EMPTY from 'rxjs'
     }
@@ -25,15 +27,30 @@ export class LogbookService {
 
   //llamo al servicio...
 
-  fetchImages(dater: Date, id: Number): Observable<any>{
+  fetchImages(dater: Date, id: Number): Observable<any> {
     try {
       const apiUrl = `${environment.urlAzure}api/Logbook/showphotos?lb=${dater}&id=&${id}`;
       return this.http.get(apiUrl);
-    } catch(error) {
-        console.error('Error fetching images:', error);
-        return EMPTY ;
-   }
- }
+    } catch (error) {
+      console.error('Error fetching images:', error);
+      return EMPTY;
+    }
+  }
 
+  getInfoByOt(idOt: number, typeNote: string): Observable<any> {
+    return this.http.get(`${environment.urlSmp}/Logbook/ots/${idOt}?typeNote=${typeNote}`, { headers: this.authService.getHeaders() });
+  }
+
+  addDataForOt(data: any): Observable<any> {
+    return this.http.post(`${environment.urlSmp}/Logbook`, data, { headers: this.authService.getHeaders() });
+  }
+
+  updateDataForOt(id: number, data: any): Observable<any> {
+    return this.http.put(`${environment.urlSmp}/Logbook/${id}`, data, { headers: this.authService.getHeaders() });
+  }
+
+  deleteDataForOt(id: number): Observable<any> {
+    return this.http.delete(`${environment.urlSmp}/Logbook/${id}`, { headers: this.authService.getHeaders() });
+  }
 
 }
