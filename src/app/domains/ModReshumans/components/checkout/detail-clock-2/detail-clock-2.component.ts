@@ -286,9 +286,20 @@ export default class DetailClock2Component implements OnInit {
         },
         rowGroup: true,
       },
-      {
+       {
         field: 'checkTime',
         headerName: 'Hora de Registro',
+        editable: true,
+        cellEditor: 'timeEditor',
+        width: 200,
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          return params.value.split('.')[0];
+        },
+      },
+      {
+        field: 'realHourBySystem',
+        headerName: 'Hora de Registro de Sistema',
         editable: true,
         cellEditor: 'timeEditor',
         width: 200,

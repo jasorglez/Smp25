@@ -209,12 +209,20 @@ export class PayrollComponent {
       const diferencia = (diaActual - diaObjetivo + 7) % 7;
       fecha.setDate(fecha.getDate() - diferencia);
       const fechaInicio = fecha.toISOString().split('T')[0];
+      const dia1 = String(fecha.getDate()).padStart(2, '0');
+      const mes1 = String(fecha.getMonth() + 1).padStart(2, '0'); // ¡Ojo! Los mes1es van de 0 a 11
+      const anio1 = fecha.getFullYear();
+      const fechaInicioFormateada = `${dia1}-${mes1}-${anio1}`;
       const inicio = new Date(fechaInicio);
       inicio.setDate(inicio.getDate() + values.payrollPeriod - 1);
+      const dia2 = String(inicio.getDate()).padStart(2, '0');
+      const mes2 = String(inicio.getMonth() + 1).padStart(2, '0'); // ¡Ojo! Los meses van de 0 a 11
+      const anio2 = inicio.getFullYear();
+      const fechaFinFormateada = `${dia2}-${mes2}-${anio2}`;
       const fechaFin = inicio.toISOString().split('T')[0];
       const bloque = values.identificationBlockPeriod.toUpperCase() +"-"+ inicio.getFullYear().toString().slice(-2) + '001';
 
-      const mensaje = `Descripción del Bloque: ${bloque} Fecha Inicio: ${fechaInicio} Fecha Fin: ${fechaFin} ¿Desea guardar estos cambios?`;
+      const mensaje = `Descripción del Bloque: ${bloque} Fecha Inicio: ${fechaInicioFormateada} Fecha Fin: ${fechaFinFormateada} ¿Desea guardar estos cambios?`;
       
       return alerts.confirmAlert("Confirmar Cambios", mensaje, "question", "Sí, guardar cambios").then(async (result) => {
         if(result.isConfirmed){
