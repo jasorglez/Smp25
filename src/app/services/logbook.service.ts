@@ -41,6 +41,10 @@ export class LogbookService {
     return this.http.get(`${environment.urlSmp}/Logbook/ots/${idOt}?typeNote=${typeNote}`, { headers: this.authService.getHeaders() });
   }
 
+  getInfoByReporte(idReporte: number, typeNote: string): Observable<any> {
+    return this.http.get(`${environment.urlSmp}/Logbook/reporte/${idReporte}?typeNote=${typeNote}`, { headers: this.authService.getHeaders() });
+  }
+
   addDataForOt(data: any): Observable<any> {
     return this.http.post(`${environment.urlSmp}/Logbook`, data, { headers: this.authService.getHeaders() });
   }

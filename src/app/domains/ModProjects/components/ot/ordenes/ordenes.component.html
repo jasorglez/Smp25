@@ -37,9 +37,10 @@
                 </div>
                 
                 <!-- Lista de OTs -->
-                <div class="col">
+                <div class="col overflow-auto" style="height: 50vh;">
                   <h6><i class="bi bi-list-ul"></i> Lista de Órdenes de Trabajo</h6>
-                  <ag-grid-angular style="width: 100%; height: 250px;"
+                  <ag-grid-angular 
+                    [ngStyle]="{ height: gridHeight, width: gridWidth }"
                     class="ag-theme-quartz small-text-ag-grid"
                     [rowData]="rowData"
                     [columnDefs]="columnDefs"
@@ -120,7 +121,7 @@
                   </li>
                 </ul>
 
-                <div class="tab-content tab-content-custom p-3" style="height: 350px;">
+                <div class="tab-content tab-content-custom p-3" >
                   <!-- Pestaña Reportes Diarios -->
                   <div class="tab-pane" [class.show]="activeTab === 'reportes'" [class.active]="activeTab === 'reportes'">
                     <h6><i class="bi bi-calendar3"></i> Reportes Diarios de la OT: {{selectedOt.otNumber}}</h6>
@@ -145,8 +146,9 @@
                       </nav>
                       
                       <!-- Grid de reportes -->
-                      <div class="col">
-                        <ag-grid-angular style="width: 100%; height: 100%;"
+                      <div class="col overflow-auto agridWH">
+                        <ag-grid-angular 
+                          [ngStyle]="{ height: gridHeight, width: gridWidth }"
                           class="ag-theme-quartz small-text-ag-grid"
                           [rowData]="reportesDiarios"
                           [columnDefs]="reportesColumnDefs"
@@ -167,7 +169,7 @@
                         Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}
                       </span>
                     </h6>
-                    <div class="row h-100">
+                    <div class="row">
                       <!-- Botones de acción para Personal -->
                       <nav class="col-auto d-flex flex-column align-items-start">
                         <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addPersonal()">
@@ -188,10 +190,11 @@
                       </nav>
                       
                       <!-- Grid de personal -->
-                      <div class="col">
-                        <ag-grid-angular style="width: 100%; height: calc(100% - 35px);"
+                      <div class="col overflow-auto agridWH">
+                        <ag-grid-angular 
+                          [ngStyle]="{ height: gridHeight, width: gridWidth }"
                           class="ag-theme-quartz small-text-ag-grid"
-                          [rowData]="personalFiltrado"
+                          [rowData]="personal"
                           [columnDefs]="personalColumnDefs"
                           [gridOptions]="personalGridOptions"
                           (gridReady)="onPersonalGridReady($event)">
@@ -207,12 +210,13 @@
                         Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}
                       </span>
                     </h6>
-                    <div class="row h-100">
+                    <div class="row">
                       <!-- COLUMNA 1: Grid de Fotografías -->
-                      <div class="col-6">
-                        <ag-grid-angular style="width: 100%; height: calc(100% - 35px);"
+                       <div class="col-6">
+                        <ag-grid-angular 
+                          [ngStyle]="{ height: gridHeight, width: gridWidth }"
                           class="ag-theme-quartz small-text-ag-grid"
-                          [rowData]="fotografiasFiltradas"
+                          [rowData]="fotografias"
                           [columnDefs]="fotografiasColumnDefs"
                           [gridOptions]="tabGridOptions"
                           [rowSelection]="'single'"
@@ -251,13 +255,38 @@
                         Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}
                       </span>
                     </h6>
-                    <div class="h-100">
-                      <ag-grid-angular style="width: 100%; height: calc(100% - 35px);"
-                        class="ag-theme-quartz small-text-ag-grid"
-                        [rowData]="materialesFiltrados"
-                        [columnDefs]="materialesColumnDefs"
-                        [gridOptions]="tabGridOptions">
-                      </ag-grid-angular>
+                    <div class="overflow-auto agridWH">
+                      <div class="row">
+                        <div class="col-2">
+                          <nav class="col-auto d-flex flex-column align-items-start">
+                            <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addMaterial()">
+                              <i class="bi bi-plus-lg"></i>
+                            </button>
+                            <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChanges()">
+                              <i class="bi bi-floppy"></i>
+                              <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedChanges">
+                                <span class="visually-hidden">Hay cambios sin guardar</span>
+                              </span>
+                            </button>
+                            <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertReportes()">
+                              <i class="bi bi-arrow-clockwise"></i>
+                            </button>
+                            <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteReporte()">
+                              <i class="bi bi-trash"></i>
+                            </button>
+                          </nav>
+                        </div>
+                        <div class="col-10">
+                          <ag-grid-angular 
+                            [ngStyle]="{ height: gridHeight, width: gridWidth }"
+                            class="ag-theme-quartz small-text-ag-grid"
+                            [rowData]="materiales"
+                            [columnDefs]="materialesColumnDefs"
+                            [gridOptions]="tabGridOptions">
+                          </ag-grid-angular>
+                        </div>
+                      </div>
+                      
                     </div>
                   </div>
 
@@ -268,13 +297,37 @@
                         Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}
                       </span>
                     </h6>
-                    <div class="h-100">
-                      <ag-grid-angular style="width: 100%; height: calc(100% - 35px);"
+                    <div class="overflow-auto agridWH">
+                      <div class="row">
+                        <div class="col-2">
+                          <nav class="col-auto d-flex flex-column align-items-start">
+                            <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addEquipos()">
+                              <i class="bi bi-plus-lg"></i>
+                            </button>
+                            <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChanges()">
+                              <i class="bi bi-floppy"></i>
+                              <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedChanges">
+                                <span class="visually-hidden">Hay cambios sin guardar</span>
+                              </span>
+                            </button>
+                            <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertReportes()">
+                              <i class="bi bi-arrow-clockwise"></i>
+                            </button>
+                            <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteReporte()">
+                              <i class="bi bi-trash"></i>
+                            </button>
+                          </nav>
+                        </div>
+                        <div class="col-10">
+                      <ag-grid-angular 
+                        [ngStyle]="{ height: gridHeight, width: gridWidth }"
                         class="ag-theme-quartz small-text-ag-grid"
-                        [rowData]="equiposFiltrados"
+                        [rowData]="equipos"
                         [columnDefs]="equiposColumnDefs"
                         [gridOptions]="tabGridOptions">
                       </ag-grid-angular>
+                      </div>
+                      </div>
                     </div>
                   </div>
                 </div>

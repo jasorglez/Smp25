@@ -146,7 +146,9 @@ export class OrdenesComponent {
   private tempPersonalIdCounter: number = 1;
   private currentEditingRow: number = -1;
   private currentEditingCol: string = '';
-  
+  rowDataMaster: any[] = [];
+  notSavedChangesMaster: boolean = false;
+
   // Reportes diarios obtenidos de la API
   public reportesDiarios: ReporteDiario[] = [];
 
@@ -160,13 +162,20 @@ export class OrdenesComponent {
 
   // PDF
   inputData: any;
+  gridHeight = '50vh';
+  gridWidth = '200%'; 
   isGeneratingPdf: boolean = false;
   isGeneratingPdfEmbed: boolean = false;
   pdfUrl: SafeResourceUrl | null = null;
   private originalUrl: string | null = null;
   showPdfEmbed: boolean = false;
 
-  public materiales: Material[] = [
+  public  materiales: any[] = [];
+  public equipos: any[] = [];
+  public personal: any[] = [];
+  public fotografias: any[] = [];
+
+  /*public materiales: Material[] = [
     {
       id: 'MAT001',
       nombre: 'Cable eléctrico 12 AWG',
@@ -266,7 +275,7 @@ export class OrdenesComponent {
       fecha: '2024-07-21',
       url: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=400&h=300&fit=crop'
     }
-  ];
+  ];*/
 
   // Propiedades computadas para filtrar datos
   get materialesFiltrados(): Material[] {
@@ -280,17 +289,17 @@ export class OrdenesComponent {
   }
 
   get personalFiltrado(): Personal[] {
-    console.log('=== PERSONAL FILTRADO ===');
-    console.log('selectedReporteFecha:', this.selectedReporteFecha);
-    console.log('personal array:', this.personal);
+    //console.log('=== PERSONAL FILTRADO ===');
+    //console.log('selectedReporteFecha:', this.selectedReporteFecha);
+    //console.log('personal array:', this.personal);
     
     if (!this.selectedReporteFecha) {
-      console.log('Sin fecha seleccionada, retornando todo el personal:', this.personal);
+      //console.log('Sin fecha seleccionada, retornando todo el personal:', this.personal);
       return this.personal;
     }
     
     const filtered = this.personal.filter(p => p.date === this.selectedReporteFecha);
-    console.log('Personal filtrado por fecha:', filtered);
+    //console.log('Personal filtrado por fecha:', filtered);
     return filtered;
   }
 
@@ -305,7 +314,7 @@ export class OrdenesComponent {
     { field: 'nombre', headerName: 'Material', flex: 2 },
     { field: 'cantidad', headerName: 'Cantidad', width: 100 },
     { field: 'unidad', headerName: 'Unidad', width: 100 },
-    { field: 'fechaUso', headerName: 'Fecha', width: 120 }
+    //{ field: 'fechaUso', headerName: 'Fecha', width: 120 }
   ];
 
   public equiposColumnDefs: ColDef[] = [
@@ -313,7 +322,7 @@ export class OrdenesComponent {
     { field: 'nombre', headerName: 'Equipo', flex: 2 },
     { field: 'tipoEquipo', headerName: 'Tipo', flex: 1 },
     { field: 'horasUso', headerName: 'Horas', width: 100 },
-    { field: 'fechaUso', headerName: 'Fecha', width: 120 }
+    //{ field: 'fechaUso', headerName: 'Fecha', width: 120 }
   ];
 
   public personalColumnDefs: ColDef[] = [
@@ -354,16 +363,16 @@ export class OrdenesComponent {
     },
     { field: 'position', headerName: 'Cargo', flex: 1, editable: true },
     { field: 'quantity', headerName: 'Cantidad', width: 100, editable: true },
-    { field: 'start', headerName: 'Inicio', width: 100, editable: true },
+    /*{ field: 'start', headerName: 'Inicio', width: 100, editable: true },
     { field: 'end', headerName: 'Fin', width: 100, editable: true },
-    { field: 'date', headerName: 'Fecha', width: 120 }
+    { field: 'date', headerName: 'Fecha', width: 120 }*/
   ];
 
   public fotografiasColumnDefs: ColDef[] = [
     { field: 'id', headerName: 'ID', width: 80 },
     { field: 'nombre', headerName: 'Archivo', flex: 2 },
     { field: 'descripcion', headerName: 'Descripción', flex: 2 },
-    { field: 'fecha', headerName: 'Fecha', width: 120 }
+    //{ field: 'fecha', headerName: 'Fecha', width: 120 }
   ];
 
   // Configuración de columnas para reportes diarios con edición inline
@@ -371,7 +380,7 @@ export class OrdenesComponent {
     { 
       field: 'date', 
       headerName: 'Fecha', 
-      width: 120, 
+      width: 80, 
       editable: true,
       cellEditor: 'agDateCellEditor',
       cellEditorParams: {
@@ -433,7 +442,7 @@ export class OrdenesComponent {
     { 
       field: 'startTime', 
       headerName: 'Inicio', 
-      width: 100, 
+      width: 50, 
       editable: true,
       cellEditor: 'timeEditor',
       valueFormatter: (params) => {
@@ -443,7 +452,7 @@ export class OrdenesComponent {
     { 
       field: 'endTime', 
       headerName: 'Hora Término', 
-      width: 100, 
+      width: 50, 
       editable: true,
       cellEditor: 'timeEditor',
       valueFormatter: (params) => {
@@ -453,7 +462,7 @@ export class OrdenesComponent {
     { 
       field: 'type', 
       headerName: 'Tipo', 
-      width: 120, 
+      width: 100, 
       editable: true,
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: {
@@ -463,14 +472,14 @@ export class OrdenesComponent {
     { 
       field: 'supervisor', 
       headerName: 'Supervisor', 
-      flex: 1, 
+      width: 100,
       editable: true
     },
     { 
       field: 'description', 
       headerName: 'Descripción', 
-      flex: 2, 
-      editable: true
+      editable: true,
+      width: 100,
     }
   ];
 
@@ -696,7 +705,11 @@ export class OrdenesComponent {
     this.selectedReporteHoraInicio = reporte.horaInicio || reporte.startTime.substring(0, 5);
     this.selectedReporteHoraTermino = reporte.horaTermino || reporte.endTime.substring(0, 5);
     this.selectedReporteId = reporte.id;
-    
+    this.obtenerMateriales(this.selectedReporteId);
+    this.obtenerEquipos(this.selectedReporteId);
+    this.obtenerPersonal(this.selectedReporteId);
+    this.obtenerFotografias(this.selectedReporteId);
+
     // Resetear vista previa del PDF cuando se selecciona nueva fecha
     this.showPdfEmbed = false;
     this.pdfUrl = null;
@@ -727,7 +740,7 @@ export class OrdenesComponent {
 
   selectFotografia(fotografia: Fotografia) {
     this.selectedFotografia = fotografia;
-    console.log('Fotografía seleccionada:', fotografia.nombre);
+    //console.log('Fotografía seleccionada:', fotografia.nombre);
   }
 
   // Función helper para convertir tiempo a ticks de .NET
@@ -830,11 +843,11 @@ export class OrdenesComponent {
   }
 
   onRowEditingStarted(event: any) {
-    console.log('Iniciando edición de fila:', event.data);
+    //console.log('Iniciando edición de fila:', event.data);
   }
 
   onRowEditingStopped(event: any) {
-    console.log('Finalizando edición de fila:', event.data);
+    //console.log('Finalizando edición de fila:', event.data);
   }
 
   // Método addReporte siguiendo exactamente el patrón de usuarios
@@ -1411,9 +1424,9 @@ async saveChanges() {
 
   // Métodos CRUD para Personal
   addPersonal() {
-    console.log('=== AGREGANDO NUEVO PERSONAL ===');
-    console.log('OT seleccionada:', this.selectedOt);
-    console.log('Fecha de reporte seleccionada:', this.selectedReporteFecha);
+    //console.log('=== AGREGANDO NUEVO PERSONAL ===');
+    //console.log('OT seleccionada:', this.selectedOt);
+    //console.log('Fecha de reporte seleccionada:', this.selectedReporteFecha);
     
     if (!this.selectedOt) {
       alerts.basicAlert('Error', 'Debe seleccionar una OT primero', 'error');
@@ -1453,6 +1466,88 @@ async saveChanges() {
         this.personalGridApi.startEditingCell({
           rowIndex: 0,
           colKey: 'idResource'
+        });
+      }
+    }, 0);
+  }
+
+  addMaterial() {    
+    if (!this.selectedOt) {
+      alerts.basicAlert('Error', 'Debe seleccionar una OT primero', 'error');
+      return;
+    }
+
+    if (!this.selectedReporteFecha) {
+      alerts.basicAlert('Error', 'Debe seleccionar una fecha de reporte primero', 'error');
+      return;
+    }
+
+    const tempId = `temp_personal_${this.tempPersonalIdCounter++}`;
+    const newMaterial = {
+      id: 0,
+      idOt: parseInt(this.selectedOt.id),
+      idReporte: this.selectedReporteId,
+      idResource: null, // Se almacenará el ID del empleado
+      position: '', 
+      quantity: 1,
+      start: '08:00:00',
+      end: '17:00:00',
+      date: this.selectedReporteFecha,
+      typeNote: 'MATERIAL',
+      description: 'NOTAS',
+      orden: 1,
+      __isNew: true
+    };
+
+      this.materiales = [newMaterial, ...this.materiales];
+    this.notSavedChangesMaster = true;
+
+    setTimeout(() => {
+      if (this.personalGridApi) {
+        this.personalGridApi.startEditingCell({
+          rowIndex: 0,
+          colKey: 'nombre'
+        });
+      }
+    }, 0);
+  }
+
+  addEquipos() {    
+    if (!this.selectedOt) {
+      alerts.basicAlert('Error', 'Debe seleccionar una OT primero', 'error');
+      return;
+    }
+
+    if (!this.selectedReporteFecha) {
+      alerts.basicAlert('Error', 'Debe seleccionar una fecha de reporte primero', 'error');
+      return;
+    }
+
+    const tempId = `temp_personal_${this.tempPersonalIdCounter++}`;
+    const newEquipo = {
+      id: tempId,
+      idOt: parseInt(this.selectedOt.id),
+      idReporte: this.selectedReporteId,
+      idResource: null, // Se almacenará el ID del empleado
+      position: '', 
+      quantity: 1,
+      start: '08:00:00',
+      end: '17:00:00',
+      date: this.selectedReporteFecha,
+      typeNote: 'PERSONAL',
+      description: 'NOTAS',
+      orden: 1,
+      __isNew: true
+    };
+
+    this.equipos = [newEquipo, ...this.equipos];
+    this.notSavedPersonalChanges = true;
+    
+    setTimeout(() => {
+      if (this.personalGridApi) {
+        this.personalGridApi.startEditingCell({
+          rowIndex: 0,
+          colKey: 'nombre'
         });
       }
     }, 0);
@@ -1671,4 +1766,48 @@ async saveChanges() {
       this.showPdfEmbed = false;
     }
   }
+
+  obtenerMateriales(selectedReporteId: any) {
+    // alert('this.branchs'+ this.idBranch)
+    this.logbookService.getInfoByReporte(selectedReporteId, "TRABAJO ANTECEDENTES").subscribe(
+      (data: any) => {
+        this.materiales = data.data;
+        console.log('Datos de materiales obtenidos:', this.materiales);
+      },
+      (error) => console.error('Error fetching data:', error)
+    );
+  }
+   obtenerEquipos(selectedReporteId: any) {
+    // alert('this.branchs'+ this.idBranch)
+    this.logbookService.getInfoByReporte(selectedReporteId, "TIPORESULTADOSERVICIO").subscribe(
+      (data: any) => {
+        this.equipos = data.data;
+        console.log('Datos de equipos obtenidos:', this.equipos);
+      },
+      (error) => console.error('Error fetching data:', error)
+    );
+  }
+   obtenerPersonal(selectedReporteId: any) {
+    // alert('this.branchs'+ this.idBranch)
+    this.logbookService.getInfoByReporte(selectedReporteId, "PERSONAL").subscribe(
+      (data: any) => {
+        this.personal = data.data;
+        console.log('Datos de personal obtenidos:', this.personal);
+      },
+      (error) => console.error('Error fetching data:', error)
+    );
+  }
+   obtenerFotografias(selectedReporteId: any) {
+    // alert('this.branchs'+ this.idBranch)
+    this.logbookService.getInfoByReporte(selectedReporteId, "FOTO").subscribe(
+      (data: any) => {
+        this.fotografias = data.data;
+        console.log('Datos de fotografías obtenidos:', this.fotografias);
+      },
+      (error) => console.error('Error fetching data:', error)
+    );
+  }
+  
+
+
 }
