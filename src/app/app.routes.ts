@@ -312,7 +312,7 @@ export const routes: Routes = [
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'projects' } },
         children: [
-          { path: '', redirectTo: 'ModProjects', pathMatch: 'full' },
+          { path: '', redirectTo: 'ot', pathMatch: 'full' },
           ...SharedModule.getRoutes(),
           {
             path: 'providers',

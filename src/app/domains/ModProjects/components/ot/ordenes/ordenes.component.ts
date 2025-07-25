@@ -493,12 +493,12 @@ export class OrdenesComponent {
   public gridApi!: GridApi;
   public gridOptions: any = {
     headerHeight: 35,
-    rowHeight: 30,
+    rowHeight: 25,
     suppressDragLeaveHidesColumns: true,
     suppressHorizontalScroll: false,
     animateRows: true,
     pagination: false,
-    domLayout: 'autoHeight',
+    domLayout: 'normal',
     onRowDoubleClicked: (event: any) => this.onRowDoubleClicked(event),
   };
 
@@ -558,7 +558,7 @@ export class OrdenesComponent {
       sortable: true,
       filter: true,
       resizable: true,
-      width: 80,
+      width: 30,
     },
     {
       field: 'description',
@@ -566,7 +566,7 @@ export class OrdenesComponent {
       sortable: true,
       filter: true,
       resizable: true,
-      flex: 2,
+      width: 80,
     },
  /*   {
       field: 'address',
@@ -583,7 +583,7 @@ export class OrdenesComponent {
       sortable: true,
       filter: true,
       resizable: true,
-      flex: 2,
+      flex: 1,
     },
 
   ];
