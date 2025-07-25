@@ -1769,7 +1769,7 @@ async saveChanges() {
 
   obtenerMateriales(selectedReporteId: any) {
     // alert('this.branchs'+ this.idBranch)
-    this.logbookService.getInfoByReporte(selectedReporteId, "TRABAJO ANTECEDENTES").subscribe(
+    this.logbookService.getInfoByOt(selectedReporteId, "TRABAJO ANTECEDENTES").subscribe(
       (data: any) => {
         this.materiales = data.data;
         console.log('Datos de materiales obtenidos:', this.materiales);
@@ -1779,7 +1779,7 @@ async saveChanges() {
   }
    obtenerEquipos(selectedReporteId: any) {
     // alert('this.branchs'+ this.idBranch)
-    this.logbookService.getInfoByReporte(selectedReporteId, "TIPORESULTADOSERVICIO").subscribe(
+    this.logbookService.getInfoByOt(selectedReporteId, "TIPORESULTADOSERVICIO").subscribe(
       (data: any) => {
         this.equipos = data.data;
         console.log('Datos de equipos obtenidos:', this.equipos);
@@ -1789,7 +1789,7 @@ async saveChanges() {
   }
    obtenerPersonal(selectedReporteId: any) {
     // alert('this.branchs'+ this.idBranch)
-    this.logbookService.getInfoByReporte(selectedReporteId, "PERSONAL").subscribe(
+    this.logbookService.getInfoByOt(selectedReporteId, "PERSONAL").subscribe(
       (data: any) => {
         this.personal = data.data;
         console.log('Datos de personal obtenidos:', this.personal);
@@ -1799,7 +1799,7 @@ async saveChanges() {
   }
    obtenerFotografias(selectedReporteId: any) {
     // alert('this.branchs'+ this.idBranch)
-    this.logbookService.getInfoByReporte(selectedReporteId, "FOTO").subscribe(
+    this.logbookService.getInfoByOt(selectedReporteId, "FOTO").subscribe(
       (data: any) => {
         this.fotografias = data.data;
         console.log('Datos de fotografías obtenidos:', this.fotografias);
