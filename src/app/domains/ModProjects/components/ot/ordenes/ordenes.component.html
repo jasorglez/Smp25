@@ -254,13 +254,13 @@
                             <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addMaterial()">
                               <i class="bi bi-plus-lg"></i>
                             </button>
-                            <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChanges()">
+                            <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChangesMaterial()">
                               <i class="bi bi-floppy"></i>
                               <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedChanges">
                                 <span class="visually-hidden">Hay cambios sin guardar</span>
                               </span>
                             </button>
-                            <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertReportes()">
+                            <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertMaterial()">
                               <i class="bi bi-arrow-clockwise"></i>
                             </button>
                             <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteReporte()">
@@ -296,13 +296,13 @@
                             <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addEquipos()">
                               <i class="bi bi-plus-lg"></i>
                             </button>
-                            <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChanges()">
+                            <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChangesEquipos()">
                               <i class="bi bi-floppy"></i>
                               <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedChanges">
                                 <span class="visually-hidden">Hay cambios sin guardar</span>
                               </span>
                             </button>
-                            <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertReportes()">
+                            <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertEquipos()">
                               <i class="bi bi-arrow-clockwise"></i>
                             </button>
                             <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteReporte()">

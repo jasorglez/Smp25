@@ -310,23 +310,23 @@ export class OrdenesComponent {
 
   // Configuraciones de columnas para AG-Grid
   public materialesColumnDefs: ColDef[] = [
-    { field: 'id', headerName: 'ID', width: 80 },
-    { field: 'nombre', headerName: 'Material', flex: 2 },
-    { field: 'cantidad', headerName: 'Cantidad', width: 100 },
-    { field: 'unidad', headerName: 'Unidad', width: 100 },
+    //{ field: 'id', headerName: 'ID', width: 80 },
+    { field: 'nombre', headerName: 'Material', flex: 2 , editable: true },
+    { field: 'cantidad', headerName: 'Cantidad', width: 100, editable: true },
+    { field: 'unidad', headerName: 'Unidad', width: 100, editable: true },
     //{ field: 'fechaUso', headerName: 'Fecha', width: 120 }
   ];
 
   public equiposColumnDefs: ColDef[] = [
-    { field: 'id', headerName: 'ID', width: 80 },
-    { field: 'nombre', headerName: 'Equipo', flex: 2 },
-    { field: 'tipoEquipo', headerName: 'Tipo', flex: 1 },
-    { field: 'horasUso', headerName: 'Horas', width: 100 },
+    //{ field: 'id', headerName: 'ID', width: 80 },
+    { field: 'nombre', headerName: 'Equipo', flex: 2 , editable: true },
+    { field: 'tipoEquipo', headerName: 'Tipo', flex: 1, editable: true },
+    { field: 'horasUso', headerName: 'Horas', width: 100, editable: true },
     //{ field: 'fechaUso', headerName: 'Fecha', width: 120 }
   ];
 
   public personalColumnDefs: ColDef[] = [
-    { field: 'id', headerName: 'ID', width: 80 },
+    //{ field: 'id', headerName: 'ID', width: 80 },
     { 
       field: 'idResource', 
       headerName: 'Nombre', 
@@ -369,7 +369,7 @@ export class OrdenesComponent {
   ];
 
   public fotografiasColumnDefs: ColDef[] = [
-    { field: 'id', headerName: 'ID', width: 80 },
+    //{ field: 'id', headerName: 'ID', width: 80 },
     { field: 'nombre', headerName: 'Archivo', flex: 2 },
     { field: 'descripcion', headerName: 'Descripción', flex: 2 },
     //{ field: 'fecha', headerName: 'Fecha', width: 120 }
@@ -897,12 +897,12 @@ async saveChanges() {
   console.log('Filas modificadas encontradas:', modifiedRows.length);
 
   // Validación
-  const invalidNewRows = newRows.filter(item => !item.date || !item.supervisor);
+  /*const invalidNewRows = newRows.filter(item => !item.date || !item.supervisor);
   
   if (invalidNewRows.length > 0) {
     alerts.basicAlert('Añadir entrada', 'Debe introducir la fecha y supervisor antes de guardar.', 'error');
     return;
-  }
+  }*/
 
   if (newRows.length === 0 && modifiedRows.length === 0) {
     alerts.basicAlert('Info', 'No hay cambios para guardar', 'info');
@@ -992,9 +992,209 @@ async saveChanges() {
   }
 }
 
+async saveChangesMaterial() {
+  const newRows = this.materiales.filter(row => row.__isNew);
+  const modifiedRows = this.materiales.filter(row => row.__modified && !row.__isNew);
+  /*const invalidNewRows = newRows.filter(item => !item.date || !item.supervisor);
+  
+  if (invalidNewRows.length > 0) {
+    alerts.basicAlert('Añadir entrada', 'Debe introducir la fecha y supervisor antes de guardar.', 'error');
+    return;
+  }*/
+
+  if (newRows.length === 0 && modifiedRows.length === 0) {
+    alerts.basicAlert('Info', 'No hay cambios para guardar', 'info');
+    return;
+  }
+
+  try {
+    const addRequests = newRows.map((row, index) => {
+      const cleanedData = this.cleanDataForServer(row);
+      console.log(`Datos limpiados para nueva fila ${index + 1}:`, cleanedData);
+      return this.logbookService.addDataForOt(cleanedData).toPromise();
+    });
+
+    const updateRequests = modifiedRows.map((row, index) => {
+      const cleanedData = this.cleanDataForServer(row);
+      console.log(`Datos limpiados para fila modificada ${index + 1}:`, cleanedData);
+      return this.logbookService.updateDataForOt(Number(row.id), cleanedData).toPromise();
+    });
+
+    console.log(`Ejecutando ${addRequests.length} requests de creación`);
+    console.log(`Ejecutando ${updateRequests.length} requests de actualización`);
+
+    const responses = await Promise.all([...addRequests, ...updateRequests]);
+    
+    console.log('=== RESPUESTAS RECIBIDAS ===');
+    console.log('Número de respuestas:', responses.length);
+    responses.forEach((response, index) => {
+      console.log(`Respuesta ${index + 1}:`, response);
+      
+      // Verificar estructura de la respuesta
+      if (response && typeof response === 'object') {
+        console.log(`- success: ${response.success}`);
+        console.log(`- message: ${response.message}`);
+        console.log(`- data: ${response.data ? 'SÍ' : 'NO'}`);
+        
+        if (response.data) {
+          console.log(`- data.id: ${response.data.id}`);
+        }
+      }
+    });
+
+    // Verificar si las respuestas son exitosas
+    const failedResponses = responses.filter(response => 
+      !response || 
+      (response.hasOwnProperty('success') && !response.success) ||
+      (response.status && response.status >= 400)
+    );
+
+    if (failedResponses.length > 0) {
+      console.error('Respuestas fallidas:', failedResponses);
+      throw new Error(`${failedResponses.length} requests fallaron`);
+    }
+
+    console.log('=== GUARDADO EXITOSO ===');
+    alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
+
+    this.notSavedChanges = false;
+    
+    // Recargar datos desde el servidor
+    console.log('Recargando datos desde el servidor...');
+    await this.loadDailyReports();
+    console.log('Datos recargados exitosamente');
+
+  } catch (error: any) {
+    console.error('=== ERROR DETALLADO ===');
+    console.error('Error completo:', error);
+    
+    let errorMessage = 'Ocurrió un error al actualizar los datos.';
+    
+    if (error.status === 400) {
+      errorMessage = 'Datos inválidos. Verifique que todos los campos estén correctos.';
+    } else if (error.status === 401) {
+      errorMessage = 'No autorizado. Por favor, vuelva a iniciar sesión.';
+    } else if (error.status === 403) {
+      errorMessage = 'No tiene permisos para realizar esta operación.';
+    } else if (error.status === 404) {
+      errorMessage = 'Recurso no encontrado. Verifique la URL del servicio.';
+    } else if (error.status === 500) {
+      errorMessage = 'Error interno del servidor. Contacte al administrador.';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    alerts.basicAlert('Error', errorMessage, 'error');
+  }
+}
+
+async saveChangesEquipos() {
+  const newRows = this.equipos.filter(row => row.__isNew);
+  const modifiedRows = this.equipos.filter(row => row.__modified && !row.__isNew);
+  /*const invalidNewRows = newRows.filter(item => !item.date || !item.supervisor);
+  
+  if (invalidNewRows.length > 0) {
+    alerts.basicAlert('Añadir entrada', 'Debe introducir la fecha y supervisor antes de guardar.', 'error');
+    return;
+  }*/
+
+  if (newRows.length === 0 && modifiedRows.length === 0) {
+    alerts.basicAlert('Info', 'No hay cambios para guardar', 'info');
+    return;
+  }
+
+  try {
+    const addRequests = newRows.map((row, index) => {
+      const cleanedData = this.cleanDataForServer(row);
+      console.log(`Datos limpiados para nueva fila ${index + 1}:`, cleanedData);
+      return this.logbookService.addDataForOt(cleanedData).toPromise();
+    });
+
+    const updateRequests = modifiedRows.map((row, index) => {
+      const cleanedData = this.cleanDataForServer(row);
+      console.log(`Datos limpiados para fila modificada ${index + 1}:`, cleanedData);
+      return this.logbookService.updateDataForOt(Number(row.id), cleanedData).toPromise();
+    });
+
+    console.log(`Ejecutando ${addRequests.length} requests de creación`);
+    console.log(`Ejecutando ${updateRequests.length} requests de actualización`);
+
+    const responses = await Promise.all([...addRequests, ...updateRequests]);
+    
+    console.log('=== RESPUESTAS RECIBIDAS ===');
+    console.log('Número de respuestas:', responses.length);
+    responses.forEach((response, index) => {
+      console.log(`Respuesta ${index + 1}:`, response);
+      
+      // Verificar estructura de la respuesta
+      if (response && typeof response === 'object') {
+        console.log(`- success: ${response.success}`);
+        console.log(`- message: ${response.message}`);
+        console.log(`- data: ${response.data ? 'SÍ' : 'NO'}`);
+        
+        if (response.data) {
+          console.log(`- data.id: ${response.data.id}`);
+        }
+      }
+    });
+
+    // Verificar si las respuestas son exitosas
+    const failedResponses = responses.filter(response => 
+      !response || 
+      (response.hasOwnProperty('success') && !response.success) ||
+      (response.status && response.status >= 400)
+    );
+
+    if (failedResponses.length > 0) {
+      console.error('Respuestas fallidas:', failedResponses);
+      throw new Error(`${failedResponses.length} requests fallaron`);
+    }
+
+    console.log('=== GUARDADO EXITOSO ===');
+    alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
+
+    this.notSavedChanges = false;
+    
+    // Recargar datos desde el servidor
+    console.log('Recargando datos desde el servidor...');
+    await this.loadDailyReports();
+    console.log('Datos recargados exitosamente');
+
+  } catch (error: any) {
+    console.error('=== ERROR DETALLADO ===');
+    console.error('Error completo:', error);
+    
+    let errorMessage = 'Ocurrió un error al actualizar los datos.';
+    
+    if (error.status === 400) {
+      errorMessage = 'Datos inválidos. Verifique que todos los campos estén correctos.';
+    } else if (error.status === 401) {
+      errorMessage = 'No autorizado. Por favor, vuelva a iniciar sesión.';
+    } else if (error.status === 403) {
+      errorMessage = 'No tiene permisos para realizar esta operación.';
+    } else if (error.status === 404) {
+      errorMessage = 'Recurso no encontrado. Verifique la URL del servicio.';
+    } else if (error.status === 500) {
+      errorMessage = 'Error interno del servidor. Contacte al administrador.';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    alerts.basicAlert('Error', errorMessage, 'error');
+  }
+}
+
 
   revertReportes() {
     this.loadDailyReports();
+    this.notSavedChanges = false;
+  }
+  revertEquipos() {
+    this.obtenerEquipos(this.selectedReporteId);
+    this.notSavedChanges = false;
+  }
+  revertMaterial() {
+    this.obtenerMateriales(this.selectedReporteId);
     this.notSavedChanges = false;
   }
 
@@ -1488,7 +1688,6 @@ async saveChanges() {
       idOt: parseInt(this.selectedOt.id),
       idReporte: this.selectedReporteId,
       idResource: null, // Se almacenará el ID del empleado
-      position: '', 
       quantity: 1,
       start: '08:00:00',
       end: '17:00:00',
@@ -1534,7 +1733,7 @@ async saveChanges() {
       start: '08:00:00',
       end: '17:00:00',
       date: this.selectedReporteFecha,
-      typeNote: 'PERSONAL',
+      typeNote: 'EQUIPMENT',
       description: 'NOTAS',
       orden: 1,
       __isNew: true
@@ -1769,7 +1968,8 @@ async saveChanges() {
 
   obtenerMateriales(selectedReporteId: any) {
     // alert('this.branchs'+ this.idBranch)
-    this.logbookService.getInfoByOt(selectedReporteId, "TRABAJO ANTECEDENTES").subscribe(
+    console.log('Obteniendo materiales para reporte ID:', selectedReporteId);
+    this.logbookService.getInfoByOt(selectedReporteId, "MATERIAL").subscribe(
       (data: any) => {
         this.materiales = data.data;
         console.log('Datos de materiales obtenidos:', this.materiales);
@@ -1779,7 +1979,8 @@ async saveChanges() {
   }
    obtenerEquipos(selectedReporteId: any) {
     // alert('this.branchs'+ this.idBranch)
-    this.logbookService.getInfoByOt(selectedReporteId, "TIPORESULTADOSERVICIO").subscribe(
+    console.log('Obteniendo equipos para reporte ID:', selectedReporteId);
+    this.logbookService.getInfoByOt(selectedReporteId, "EQUIPMENT").subscribe(
       (data: any) => {
         this.equipos = data.data;
         console.log('Datos de equipos obtenidos:', this.equipos);
@@ -1789,6 +1990,7 @@ async saveChanges() {
   }
    obtenerPersonal(selectedReporteId: any) {
     // alert('this.branchs'+ this.idBranch)
+    console.log('Obteniendo personal para reporte ID:', selectedReporteId);
     this.logbookService.getInfoByOt(selectedReporteId, "PERSONAL").subscribe(
       (data: any) => {
         this.personal = data.data;
@@ -1799,6 +2001,7 @@ async saveChanges() {
   }
    obtenerFotografias(selectedReporteId: any) {
     // alert('this.branchs'+ this.idBranch)
+    console.log('Obteniendo fotografías para reporte ID:', selectedReporteId);
     this.logbookService.getInfoByOt(selectedReporteId, "FOTO").subscribe(
       (data: any) => {
         this.fotografias = data.data;
