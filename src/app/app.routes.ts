@@ -328,6 +328,20 @@ export const routes: Routes = [
                 './domains/ModProjects/components/contracts/contracts.component'
               ).then((c) => c.ContractsComponent),
           },
+          /*{
+            path: ':section',
+            loadComponent: () =>
+              import(
+                './domains/SMP/Components/catalogs/catalogs.component'
+              ).then((c) => c.CatalogsComponent),
+          },*/
+          {
+            path: 'materials',
+            loadComponent: () =>
+              import(
+                './domains/ModProjects/components/ot/materials/materials.component'
+              ).then((c) => c.MaterialsComponent),
+          },
           {
             path: 'projects',
             loadComponent: () =>
