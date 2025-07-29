@@ -77,6 +77,12 @@ export class MaterialsComponent implements CanComponentDeactivate {
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }
+    
+    // Mapear ingressDate a date para el servidor
+    if (cleanedData.ingressDate) {
+      cleanedData.date = cleanedData.ingressDate;
+    }
+    
     return cleanedData;
   }
 
@@ -254,7 +260,10 @@ export class MaterialsComponent implements CanComponentDeactivate {
             return false;
           } 
         
+          // Asegurar que la fecha se guarde en el formato correcto
           params.data.ingressDate = date.toISOString();
+          // Marcar como modificado para que se incluya en el save
+          params.data.__modified = true;
           return true;
         },
         valueFormatter: (params) => {

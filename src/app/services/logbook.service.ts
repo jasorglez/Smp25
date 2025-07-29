@@ -46,6 +46,7 @@ export class LogbookService {
   }
 
   addDataForOt(data: any): Observable<any> {
+    console.log('Adding data for OT:', data);
     return this.http.post(`${environment.urlSmp}/Logbook`, data, { headers: this.authService.getHeaders() });
   }
 

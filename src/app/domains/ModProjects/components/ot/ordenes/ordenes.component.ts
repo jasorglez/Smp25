@@ -18,6 +18,7 @@ import { TimeEditorComponent } from 'app/domains/Indicadores/components/ind01/ti
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Pipe, PipeTransform } from '@angular/core';
 import { MaterialsService } from 'app/services/materials.service';
+import { CatalogsService } from 'app/services/catalogs.service';
 
 @Pipe({
   name: 'safe',
@@ -124,6 +125,7 @@ export class OrdenesComponent {
   private sanitizer = inject(DomSanitizer);
   private pdfGeneratorService = inject(PdfGeneratorService);
   private employeesService = inject(EmployeesService);
+  private catalogService = inject(CatalogsService);
   private materialsService = inject(MaterialsService);
   gestionarDatos: any[] = [];
 
@@ -132,7 +134,8 @@ export class OrdenesComponent {
   private idProject: number = 0;
   private idcompany: number = 0;
   private catalogMateriales: any[] = [];
-  
+  private catalogDepartamentos: any[] = [];
+
   // Variables para el nuevo layout
   public selectedOt: OrdenesData | null = null;
   public activeTab: string = 'reportes';
@@ -349,12 +352,12 @@ export class OrdenesComponent {
     { field: 'horasUso', headerName: 'Horas', width: 100, editable: true },
     //{ field: 'fechaUso', headerName: 'Fecha', width: 120 }
   ];
-
+  
   public personalColumnDefs: ColDef[] = [
     //{ field: 'id', headerName: 'ID', width: 80 },
-    { 
-      field: 'idResource', 
-      headerName: 'Nombre', 
+    {
+      field: 'idResource',
+      headerName: 'Nombre',
       flex: 1,
       editable: true,
       cellEditor: 'agSelectCellEditor',
@@ -364,7 +367,6 @@ export class OrdenesComponent {
         };
       },
       valueFormatter: (params: any) => {
-        // Mostrar el nombre del empleado basado en el ID almacenado
         if (params.value && params.value !== '0') {
           const employee = this.employees.find(emp => emp.id.toString() === params.value.toString());
           return employee ? employee.name : '';
@@ -372,22 +374,39 @@ export class OrdenesComponent {
         return '';
       },
       valueSetter: (params: any) => {
-        // Almacenar el ID del empleado basado en el nombre seleccionado
         if (params.newValue) {
           const employee = this.employees.find(emp => emp.name === params.newValue);
           if (employee) {
-            // Convertir a string para consistencia con la interface
+            // Establecer el ID del empleado
             params.data[params.colDef.field] = employee.id.toString();
-            console.log('ID del empleado seleccionado:', employee.id.toString());
+            const depto = this.catalogDepartamentos.find(d => d.id === +employee.idDepto);
+          
+            // 🟢 Establecer automáticamente la posición (o cualquier otro campo que quieras)
+            params.data['position'] = depto ? depto.description : ''; // o employee.position si tienes ese campo
+            //params.data['cuadrilla'] = 'Cuadrilla'; // si quieres poner un valor por defecto también
+          
+            console.log('Empleado seleccionado:', employee);
             return true;
           }
         }
-        params.data[params.colDef.field] = params.newValue;
-        return true;
+        return false;
       }
     },
-    { field: 'position', headerName: 'Cargo', flex: 1, editable: true },
-    { field: 'quantity', headerName: 'Cantidad', flex: 1, editable: true },
+    {
+      field: 'position',
+      headerName: 'Cargo',
+      flex: 1,
+      editable: false
+    },
+
+    { 
+      field: 'cuadrilla', 
+      headerName: 'Cuadrilla', 
+      flex: 1, editable: true , 
+      valueGetter: (params) => {
+        return params.data.cuadrilla || 'Cuadrilla ';
+      }
+    },
     /*{ field: 'start', headerName: 'Inicio', width: 100, editable: true },
     { field: 'end', headerName: 'Fin', width: 100, editable: true },
     { field: 'date', headerName: 'Fecha', width: 120 }*/
@@ -624,6 +643,7 @@ export class OrdenesComponent {
       this.catalogoMateriales();
       this.obtenerDatos();
       this.loadEmployees();
+      this.getDeptoandPosition();
     });
   }
 
@@ -1895,14 +1915,10 @@ async saveChangesEquipos() {
     console.log('Personal antes de revertir:', this.personal);
     
     // Remover elementos nuevos y revertir modificados
-    this.personal = this.personal.filter(item => !item.__isNew);
-    this.personal.forEach(item => {
-      delete item.__modified;
-    });
-    
+    this.obtenerPersonal(this.selectedReporteId);
     console.log('Personal después de revertir:', this.personal);
     this.notSavedPersonalChanges = false;
-    alerts.basicAlert('Info', 'Cambios revertidos', 'info');
+    //alerts.basicAlert('Info', 'Cambios revertidos', 'info');
   }
 
   async deletePersonal() {
@@ -2062,7 +2078,20 @@ async saveChangesEquipos() {
     );
   
   }
+
+  getDeptoandPosition() {
+    this.catalogService.getCatalogsVigente(this.idcompany, 'DEPARTAMENT').subscribe(
+      (data: any) => {
+        this.catalogDepartamentos = data;
+        console.log('Departamentos obtenidos:', this.catalogDepartamentos);
+      },
+      (error) => {
+        if (error.status == 404) this.catalogDepartamentos = [];
+        console.error('Error fetching data:', error);
+      }
+    );
   
+  }
 
 
 }
