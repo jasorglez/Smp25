@@ -395,8 +395,8 @@ export class OrdenesComponent {
 
   public fotografiasColumnDefs: ColDef[] = [
     //{ field: 'id', headerName: 'ID', width: 80 },
-    { field: 'nombre', headerName: 'Archivo', flex: 2 },
-    { field: 'descripcion', headerName: 'Descripción', flex: 2 },
+    { field: 'imageUrl', headerName: 'Archivo', flex: 1, hide: true },
+    { field: 'descripcion', headerName: 'Descripción', flex: 1 },
     //{ field: 'fecha', headerName: 'Fecha', width: 120 }
   ];
 
@@ -765,9 +765,16 @@ export class OrdenesComponent {
     return '';
   };
 
-  selectFotografia(fotografia: Fotografia) {
-    this.selectedFotografia = fotografia;
-    //console.log('Fotografía seleccionada:', fotografia.nombre);
+  selectFotografia(fotografia: any) {
+    // Map the data from the grid to the expected Fotografia interface
+    this.selectedFotografia = {
+      id: fotografia.id,
+      nombre: fotografia.nombre || '',
+      descripcion: fotografia.descripcion || '',
+      fecha: fotografia.fecha || '',
+      url: fotografia.imageUrl || fotografia.url || '' // Use imageUrl from grid or fallback to url
+    };
+    console.log('Fotografía seleccionada:', this.selectedFotografia);
   }
 
   // Función helper para convertir tiempo a ticks de .NET
@@ -1357,20 +1364,18 @@ async saveChangesEquipos() {
 
     try {
       // Preparar los datos para el generador de PDF
+      console.log('Fotografías disponibles para PDF:', this.fotografias);
       const inputData = {
         id: parseInt(this.selectedOt.id),
         date: this.selectedReporteFecha,
         description: this.selectedOt.description,
         personalData: this.personal, // Usar directamente this.personal ya que está filtrado por idReporte
         materialesData: this.materiales,
-        equiposData: this.equipos
+        equiposData: this.equipos,
+        fotografiasData: this.fotografias // Agregar fotografías de la pestaña
       };
+      console.log('InputData completo para PDF:', inputData);
 
-      console.log('=== DEBUG PDF GENERATION ===');
-      console.log('selectedReporteFecha:', this.selectedReporteFecha);
-      console.log('personal array completo:', this.personal);
-      console.log('personalFiltrado:', this.personalFiltrado);
-      console.log('Datos de entrada para PDF:', inputData);
 
       // Generar la definición del documento
       const docDefinition = await this.pdfGeneratorService.generatePdfData(inputData);

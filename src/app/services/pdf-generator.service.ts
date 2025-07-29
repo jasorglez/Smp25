@@ -42,6 +42,7 @@ export class PdfGeneratorService {
     personalData?: any[];
     materialesData?: any[];
     equiposData?: any[];
+    fotografiasData?: any[];
   }) {
     this.id = inputData.id;
     this.lb = inputData.date;
@@ -59,7 +60,17 @@ export class PdfGeneratorService {
     if (inputData.equiposData) {
       this.equiposData = inputData.equiposData;
     }
-    await this.conseguirDatos();
+    
+    // Si se proporcionan fotografías desde Ordenes, procesarlas directamente
+    console.log('Fotografías recibidas en PDF service:', inputData.fotografiasData);
+    if (inputData.fotografiasData && inputData.fotografiasData.length > 0) {
+      console.log('Procesando fotografías desde Ordenes, cantidad:', inputData.fotografiasData.length);
+      await this.processFotografiasFromOrdenes(inputData.fotografiasData);
+    } else {
+      console.log('No hay fotografías de Ordenes, usando método original');
+      // Fallback al método original si no hay fotografías
+      await this.conseguirDatos();
+    }
     return this.generateDocDefinition();
   }
 
@@ -102,6 +113,121 @@ export class PdfGeneratorService {
       .catch((error) => {
         console.error('Error occurred:', error);
       });
+  }
+
+  private async processFotografiasFromOrdenes(fotografiasData: any[]) {
+    try {
+      // Inicializar el objeto de imágenes al principio
+      this.imagenes = {};
+      console.log('Datos de fotografías a procesar:', fotografiasData);
+      // Procesar fotografías directamente desde los datos de Ordenes
+      this.photos = fotografiasData.map((foto, index) => {
+        console.log(`Foto ${index}:`, foto);
+        // Usar imageUrl en lugar de imageAzure que viene como "NO FILE"
+        const mappedPhoto = {
+          description: foto.descripcion || foto.description || '',
+          imageAzure: foto.imageUrl || foto.url || '' // imageUrl contiene la URL real de Firebase
+        };
+        console.log(`Foto ${index} mapeada:`, mappedPhoto);
+        console.log(`URL que se usará: ${mappedPhoto.imageAzure}`);
+        return mappedPhoto;
+      });
+      this.numPhotos = this.photos.length;
+      console.log('Total de fotos procesadas:', this.numPhotos);
+      
+      // Para fotografías desde Ordenes, podemos omitir los datos de notas
+      // ya que el PDF se enfoca en las fotografías
+      this.entrada = [];
+      this.numItems = 0;
+
+      // Procesar directamente las fotografías
+      console.log('Procesando fotografías directamente...');
+      await this.bucleDatosConFotosFromOrdenes();
+      console.log('Procesamiento completado. Estado final de imágenes:', this.imagenes);
+    } catch (error) {
+      console.error('Error processing fotografias from ordenes:', error);
+    }
+  }
+
+  private async bucleDatosConFotosFromOrdenes() {
+    this.gestionarDatos = [];
+    this.gestionarFotos = [];
+    this.captions = [];
+
+    // Limpia las claves $$pdfmake$$
+    this.limpiarPdfMakeKeys(this.imagenes);
+    // NO reinicializar this.imagenes = {} aquí porque borra las imágenes procesadas
+    this.j = 1;
+
+    // Procesar notas (igual que bucleDatos original)
+    if (this.entrada) {
+      const titles = {
+        1: 'TRABAJO ANTECEDENTES',
+        2: 'ACTIVIDADES RELEVANTES',
+        3: 'PROXIMOS PASOS',
+      };
+
+      for (let i = 1; i <= 3; i++) {
+        const correspondingNotes = this.entrada.filter(
+          (note) => note.orden === i
+        );
+
+        if (correspondingNotes.length > 0) {
+          this.gestionarDatos.push({
+            text: i + '.- ' + titles[i],
+            style: 'puntosATratar',
+          });
+
+          const listItems = correspondingNotes.map((note) => {
+            return {
+              text: this.splitTextByEmoji(note.description),
+              margin: [15, 0, 0, 0],
+            };
+          });
+
+          this.gestionarDatos.push(listItems);
+        } else {
+          this.gestionarDatos.push({
+            text: i + '.- ' + titles[i],
+            style: 'puntosATratar',
+          });
+
+          this.gestionarDatos.push({
+            text: 'No hay notas en este punto.',
+            margin: [15, 0, 0, 0],
+          });
+        }
+      }
+    }
+
+    // Procesar fotografías directamente usando las URLs de Firebase
+    console.log('Procesando imágenes, total:', this.photos.length);
+    for (let index = 0; index < this.photos.length; index++) {
+      const photo = this.photos[index];
+      this.captions[index] = photo.description;
+      console.log(`Procesando imagen ${index}, URL: ${photo.imageAzure}, descripción: ${photo.description}`);
+      
+      // Convertir la URL de Firebase a base64 para PDFMake
+      console.log(`Verificando imagen ${index}: imageAzure = "${photo.imageAzure}"`);
+      if (photo.imageAzure && photo.imageAzure !== 'NO FILE') {
+        try {
+          console.log(`Convirtiendo imagen ${index} a base64...`);
+          const base64Image = await this.imageService.convertImageToBase64(photo.imageAzure);
+          this.imagenes[`photo${index}`] = base64Image;
+          console.log(`Imagen ${index} convertida exitosamente a base64`);
+        } catch (error) {
+          console.error(`Error convirtiendo imagen ${index}:`, error);
+          // Continuar con las siguientes imágenes en caso de error
+        }
+      } else {
+        console.log(`Imagen ${index} no tiene URL válida (es "${photo.imageAzure}"), saltando...`);
+      }
+    }
+    
+    console.log('=== FIN DEL PROCESAMIENTO DE IMÁGENES ===');
+    console.log('Imágenes procesadas:', Object.keys(this.imagenes));
+    console.log('Captions procesadas:', this.captions);
+    console.log('Estado final de this.imagenes:', this.imagenes);
   }
 
   private limpiarPdfMakeKeys(obj: any) {
@@ -226,12 +352,7 @@ export class PdfGeneratorService {
   }
 
   private processPersonalData() {
-    console.log('=== PROCESANDO DATOS DE PERSONAL EN PDF ===');
-    console.log('personalData recibido:', this.personalData);
-    console.log('personalData.length:', this.personalData?.length);
-    
     if (!this.personalData || this.personalData.length === 0) {
-      console.log('No hay datos de personal disponibles');
       return [
         ['Cargo', 'Cantidad'],
         ['No hay datos de personal', '0']
@@ -241,11 +362,9 @@ export class PdfGeneratorService {
     // Agrupar por cargo y sumar cantidades
     const cargoMap = new Map<string, number>();
     
-    this.personalData.forEach((person, index) => {
-      console.log(`Persona ${index}:`, person);
+    this.personalData.forEach(person => {
       const cargo = person.position || 'Sin cargo';
-      const cantidad = parseInt(person.quantity) || 1; // Cambiar 0 por 1 como valor por defecto
-      console.log(`- Cargo: "${cargo}", Cantidad: ${cantidad}`);
+      const cantidad = parseInt(person.quantity) || 1;
       
       if (cargoMap.has(cargo)) {
         cargoMap.set(cargo, cargoMap.get(cargo)! + cantidad);
@@ -254,15 +373,12 @@ export class PdfGeneratorService {
       }
     });
 
-    console.log('Mapa de cargos generado:', cargoMap);
-
     // Convertir a array para la tabla
     const tableData = [['Cargo', 'Cantidad']];
     cargoMap.forEach((cantidad, cargo) => {
       tableData.push([cargo, cantidad.toString()]);
     });
 
-    console.log('Datos de tabla final:', tableData);
     return tableData;
   }
 
@@ -334,17 +450,29 @@ export class PdfGeneratorService {
   }
 
   private generateDocDefinition() {
+    console.log('=== GENERANDO DOCUMENTO PDF ===');
+    console.log('Imágenes ANTES de limpiar:', this.imagenes);
+    console.log('Keys ANTES de limpiar:', Object.keys(this.imagenes));
+    
     this.limpiarPdfMakeKeys(this.imagenes);
+    
+    console.log('Imágenes DESPUÉS de limpiar:', this.imagenes);
     const imageKeys = Object.keys(this.imagenes).sort();
+    console.log('Keys de imágenes:', imageKeys);
+    console.log('Número total de imágenes:', imageKeys.length);
+    console.log('¿Existe photo0?', !!this.imagenes['photo0']);
+    console.log('Contenido de photo0:', this.imagenes['photo0'] ? this.imagenes['photo0'].substring(0, 100) : 'No existe');
 
     const contenido = [];
 
     if (imageKeys.length === 0 || !this.imagenes['photo0']) {
+      console.log('No hay imágenes válidas, mostrando mensaje de no fotografías');
       contenido.push({
         text: 'No hay fotografías subidas.',
         margin: [15, 0, 0, 0],
       });
     } else {
+      console.log('Procesando imágenes para el PDF, total:', imageKeys.length);
       for (let i = 0; i < imageKeys.length; i += 2) {
         const rowcontenido = {
           columns: [],
