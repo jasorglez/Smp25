@@ -226,7 +226,12 @@ export class PdfGeneratorService {
   }
 
   private processPersonalData() {
+    console.log('=== PROCESANDO DATOS DE PERSONAL EN PDF ===');
+    console.log('personalData recibido:', this.personalData);
+    console.log('personalData.length:', this.personalData?.length);
+    
     if (!this.personalData || this.personalData.length === 0) {
+      console.log('No hay datos de personal disponibles');
       return [
         ['Cargo', 'Cantidad'],
         ['No hay datos de personal', '0']
@@ -236,9 +241,11 @@ export class PdfGeneratorService {
     // Agrupar por cargo y sumar cantidades
     const cargoMap = new Map<string, number>();
     
-    this.personalData.forEach(person => {
+    this.personalData.forEach((person, index) => {
+      console.log(`Persona ${index}:`, person);
       const cargo = person.position || 'Sin cargo';
-      const cantidad = parseInt(person.quantity) || 0;
+      const cantidad = parseInt(person.quantity) || 1; // Cambiar 0 por 1 como valor por defecto
+      console.log(`- Cargo: "${cargo}", Cantidad: ${cantidad}`);
       
       if (cargoMap.has(cargo)) {
         cargoMap.set(cargo, cargoMap.get(cargo)! + cantidad);
@@ -247,12 +254,15 @@ export class PdfGeneratorService {
       }
     });
 
+    console.log('Mapa de cargos generado:', cargoMap);
+
     // Convertir a array para la tabla
     const tableData = [['Cargo', 'Cantidad']];
     cargoMap.forEach((cantidad, cargo) => {
       tableData.push([cargo, cantidad.toString()]);
     });
 
+    console.log('Datos de tabla final:', tableData);
     return tableData;
   }
 
