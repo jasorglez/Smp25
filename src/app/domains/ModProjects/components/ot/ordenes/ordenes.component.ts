@@ -314,20 +314,20 @@ export class OrdenesComponent {
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: (params: any) => {
         return {
-          values: this.catalogMateriales.map(mat => mat.description)
+          values: this.catalogMateriales.map(mat => mat.articulo)
         };
       },
       valueFormatter: (params: any) => {
         // Mostrar el nombre del empleado basado en el ID almacenado
         if (params.value && params.value !== '0') {
           const material = this.catalogMateriales.find(mat => mat.id.toString() === params.value.toString());
-          return material ? material.description : '';
+          return material ? material.articulo : '';
         }
         return '';
       },
       valueSetter: (params: any) => {
         if (params.newValue) {
-          const material = this.catalogMateriales.find(mat => mat.description === params.newValue);
+          const material = this.catalogMateriales.find(mat => mat.articulo === params.newValue);
           if (material) {
             params.data[params.colDef.field] = material.id.toString();
             return true;

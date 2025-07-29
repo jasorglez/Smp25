@@ -328,13 +328,19 @@ export const routes: Routes = [
                 './domains/ModProjects/components/contracts/contracts.component'
               ).then((c) => c.ContractsComponent),
           },
-          /*{
-            path: ':section',
+          {
+            path: 'catalogs',
             loadComponent: () =>
-              import(
-                './domains/SMP/Components/catalogs/catalogs.component'
-              ).then((c) => c.CatalogsComponent),
-          },*/
+              import('./domains/SMP/Components/catalogs/catalogs.component')
+                .then((s) => s.CatalogsComponent),
+            canDeactivate: [UnsavedChangesGuard],
+            children: [
+              {
+                path: ':section',
+                loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(p => p.CatalogsComponent)
+              },
+            ],
+          },
           {
             path: 'materials',
             loadComponent: () =>
