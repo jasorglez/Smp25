@@ -289,18 +289,9 @@ export class OrdenesComponent {
   }
 
   get personalFiltrado(): Personal[] {
-    //console.log('=== PERSONAL FILTRADO ===');
-    //console.log('selectedReporteFecha:', this.selectedReporteFecha);
-    //console.log('personal array:', this.personal);
-    
-    if (!this.selectedReporteFecha) {
-      //console.log('Sin fecha seleccionada, retornando todo el personal:', this.personal);
-      return this.personal;
-    }
-    
-    const filtered = this.personal.filter(p => p.date === this.selectedReporteFecha);
-    //console.log('Personal filtrado por fecha:', filtered);
-    return filtered;
+    // El personal ya está filtrado por idReporte cuando se carga
+    // No necesitamos filtrar por fecha aquí
+    return this.personal;
   }
 
   get fotografiasFiltradas(): Fotografia[] {
@@ -330,7 +321,7 @@ export class OrdenesComponent {
     { 
       field: 'idResource', 
       headerName: 'Nombre', 
-      flex: 2,
+      flex: 1,
       editable: true,
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: (params: any) => {
@@ -362,7 +353,7 @@ export class OrdenesComponent {
       }
     },
     { field: 'position', headerName: 'Cargo', flex: 1, editable: true },
-    { field: 'quantity', headerName: 'Cantidad', width: 100, editable: true },
+    { field: 'quantity', headerName: 'Cantidad', flex: 1, editable: true },
     /*{ field: 'start', headerName: 'Inicio', width: 100, editable: true },
     { field: 'end', headerName: 'Fin', width: 100, editable: true },
     { field: 'date', headerName: 'Fecha', width: 120 }*/
@@ -1334,11 +1325,15 @@ async saveChangesEquipos() {
         id: parseInt(this.selectedOt.id),
         date: this.selectedReporteFecha,
         description: this.selectedOt.description,
-        personalData: this.personalFiltrado,
-        materialesData: this.materialesFiltrados,
-        equiposData: this.equiposFiltrados
+        personalData: this.personal, // Usar directamente this.personal ya que está filtrado por idReporte
+        materialesData: this.materiales,
+        equiposData: this.equipos
       };
 
+      console.log('=== DEBUG PDF GENERATION ===');
+      console.log('selectedReporteFecha:', this.selectedReporteFecha);
+      console.log('personal array completo:', this.personal);
+      console.log('personalFiltrado:', this.personalFiltrado);
       console.log('Datos de entrada para PDF:', inputData);
 
       // Generar la definición del documento
@@ -1648,6 +1643,7 @@ async saveChangesEquipos() {
       quantity: 1,
       start: '08:00:00',
       end: '17:00:00',
+      azureUrl: 'NO FILE',
       date: this.selectedReporteFecha,
       typeNote: 'PERSONAL',
       description: 'NOTAS',
