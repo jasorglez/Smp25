@@ -42,11 +42,13 @@ export class WorkprogramsComponent {
   typeWorkProgram: string = 'Project';
   measures: any;
   notSavedChanges: boolean = false;
+  idcompany: number = null;
 
   constructor() {
     effect(() => {
       this.idContract = this.signalsService.getContractSelectedBySidebar()();
       this.idProject = this.signalsService.getProjectSelectedBySidebar()();
+      this.idcompany = this.signalsService.getRootSelectedBySidebar()();
       
       // Si idProject es null, significa que solo se ha elegido Contract en general sin un Project específico
       // Pero si idProject tiene un valor, significa que se ha elegido un Project
@@ -410,7 +412,7 @@ export class WorkprogramsComponent {
 
   async getMeasures() {
     try {
-      const measures = await this.catalogsService.getMeasures().toPromise();
+      const measures = await this.catalogsService.getUnits(this.idcompany).toPromise();
       this.measures = measures.map(measure => ({
         key: measure.description.toString(),
         label: measure.description.toString()
@@ -423,7 +425,7 @@ export class WorkprogramsComponent {
 
   async getPhases() {
     try {
-      const phases = await this.catalogsService.getPhases().toPromise();
+      const phases = await this.catalogsService.getPhases(this.idcompany).toPromise();
       this.phases = phases.map(phase => ({
         key: phase.description.toString(),
         label: phase.description.toString()

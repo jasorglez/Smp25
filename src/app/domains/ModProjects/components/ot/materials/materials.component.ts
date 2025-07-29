@@ -211,17 +211,72 @@ export class MaterialsComponent implements CanComponentDeactivate {
   get colMaster(): ColDef[] {
     return [
       {
-        field: 'description',
+        field: 'barCode',
+        headerName: 'Numero del articulo',
+        editable: true,
+        width: 250,
+      },
+      {
+        field: 'articulo',
         headerName: 'Descripción',
         editable: true,
         width: 250,
       },
-      /*{
+      {
+        field: 'date',
+        headerName: 'Fecha',
+        editable: true,
+        filter: 'agDateColumnFilter',
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
+        width: 150,
+        cellRenderer: 'agDateCellRenderer',
+        cellEditor: 'agDateCellEditor',
+        valueGetter: (params) => {
+          // Si no hay fecha, usar fecha actual
+          if (!params.data.ingressDate) {
+            return new Date().toISOString();
+          }
+          return params.data.ingressDate;
+        },
+        valueSetter: (params) => {
+          if (!params.newValue) {
+            params.data.ingressDate = new Date().toISOString();
+            return true;
+          }
+        
+          const date = new Date(params.newValue);
+          if (isNaN(date.getTime())) {
+            alerts.basicAlert('Error', 'Fecha inválida', 'error');
+            return false;
+          } 
+        
+          params.data.ingressDate = date.toISOString();
+          return true;
+        },
+        valueFormatter: (params) => {
+          try {
+            // Si no hay valor, usar fecha actual
+            const dateValue = params.value || new Date().toISOString();
+            const date = new Date(dateValue);
+            if (isNaN(date.getTime())) return '';
+            return `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
+          } catch {
+            return '';
+          }
+        },
+
+
+      },
+      {
         field: 'description',
-        headerName: 'Descripción',
+        headerName: 'Unidad',
         editable: true,
         width: 250,
-      },*/
+      },
     ];
   }
 
@@ -277,7 +332,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
 
       this.gridApi.startEditingCell({
         rowIndex: firstRowIndex,
-        colKey: 'description'
+        colKey: 'barCode'
       });
     }, 0);// Un pequeño retraso de 50ms 
   
