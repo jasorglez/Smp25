@@ -17,6 +17,7 @@ import { environment } from '@env/environment';
 import { TimeEditorComponent } from 'app/domains/Indicadores/components/ind01/timeinactives/time-editor.component';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Pipe, PipeTransform } from '@angular/core';
+import { MaterialsService } from 'app/services/materials.service';
 
 @Pipe({
   name: 'safe',
@@ -123,11 +124,14 @@ export class OrdenesComponent {
   private sanitizer = inject(DomSanitizer);
   private pdfGeneratorService = inject(PdfGeneratorService);
   private employeesService = inject(EmployeesService);
+  private materialsService = inject(MaterialsService);
   gestionarDatos: any[] = [];
 
   // Variables de control
   public isUploading: boolean = false;
   private idProject: number = 0;
+  private idcompany: number = 0;
+  private catalogMateriales: any[] = [];
   
   // Variables para el nuevo layout
   public selectedOt: OrdenesData | null = null;
@@ -163,7 +167,8 @@ export class OrdenesComponent {
   // PDF
   inputData: any;
   gridHeight = '50vh';
-  gridWidth = '200%'; 
+  gridWidth = '200%';
+  gridWidthDetail = '100%'; 
   isGeneratingPdf: boolean = false;
   isGeneratingPdfEmbed: boolean = false;
   pdfUrl: SafeResourceUrl | null = null;
@@ -302,7 +307,36 @@ export class OrdenesComponent {
   // Configuraciones de columnas para AG-Grid
   public materialesColumnDefs: ColDef[] = [
     //{ field: 'id', headerName: 'ID', width: 80 },
-    { field: 'nombre', headerName: 'Material', flex: 2 , editable: true },
+    { field: 'idResource', 
+      headerName: 'Material',
+      flex: 2 ,
+      editable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: (params: any) => {
+        return {
+          values: this.catalogMateriales.map(mat => mat.description)
+        };
+      },
+      valueFormatter: (params: any) => {
+        // Mostrar el nombre del empleado basado en el ID almacenado
+        if (params.value && params.value !== '0') {
+          const material = this.catalogMateriales.find(mat => mat.id.toString() === params.value.toString());
+          return material ? material.description : '';
+        }
+        return '';
+      },
+      valueSetter: (params: any) => {
+        if (params.newValue) {
+          const material = this.catalogMateriales.find(mat => mat.description === params.newValue);
+          if (material) {
+            params.data[params.colDef.field] = material.id.toString();
+            return true;
+          }
+        }
+        params.data[params.colDef.field] = params.newValue;
+        return true;
+      }
+     },
     { field: 'cantidad', headerName: 'Cantidad', width: 100, editable: true },
     { field: 'unidad', headerName: 'Unidad', width: 100, editable: true },
     //{ field: 'fechaUso', headerName: 'Fecha', width: 120 }
@@ -310,7 +344,7 @@ export class OrdenesComponent {
 
   public equiposColumnDefs: ColDef[] = [
     //{ field: 'id', headerName: 'ID', width: 80 },
-    { field: 'nombre', headerName: 'Equipo', flex: 2 , editable: true },
+    { field: 'description', headerName: 'Equipo', flex: 2 , editable: true },
     { field: 'tipoEquipo', headerName: 'Tipo', flex: 1, editable: true },
     { field: 'horasUso', headerName: 'Horas', width: 100, editable: true },
     //{ field: 'fechaUso', headerName: 'Fecha', width: 120 }
@@ -585,6 +619,8 @@ export class OrdenesComponent {
   constructor() {
     effect(() => {
       this.idProject =this.signalsService.getProjectSelectedBySidebar()();
+      this.idcompany = this.signalsService.getRootSelectedBySidebar()();
+      this.catalogoMateriales();
       this.obtenerDatos();
       this.loadEmployees();
     });
@@ -1690,11 +1726,11 @@ async saveChangesEquipos() {
       idReporte: this.selectedReporteId,
       idResource: null, // Se almacenará el ID del empleado
       quantity: 1,
-      start: '08:00:00',
-      end: '17:00:00',
+      start: this.selectedReporteHoraInicio + ':00',
+      end: this.selectedReporteHoraTermino + ':00',
       date: this.selectedReporteFecha,
       typeNote: 'MATERIAL',
-      description: 'NOTAS',
+      description: 'Nota',
       orden: 1,
       __isNew: true
     };
@@ -1731,11 +1767,11 @@ async saveChangesEquipos() {
       idResource: null, // Se almacenará el ID del empleado
       position: '', 
       quantity: 1,
-      start: '08:00:00',
-      end: '17:00:00',
+      start: this.selectedReporteHoraInicio + ':00',
+      end: this.selectedReporteHoraTermino + ':00',
       date: this.selectedReporteFecha,
       typeNote: 'EQUIPMENT',
-      description: 'NOTAS',
+      description: '',
       orden: 1,
       __isNew: true
     };
@@ -1970,7 +2006,7 @@ async saveChangesEquipos() {
   obtenerMateriales(selectedReporteId: any) {
     // alert('this.branchs'+ this.idBranch)
     console.log('Obteniendo materiales para reporte ID:', selectedReporteId);
-    this.logbookService.getInfoByOt(selectedReporteId, "MATERIAL").subscribe(
+    this.logbookService.getInfoByReporte(selectedReporteId, "MATERIAL").subscribe(
       (data: any) => {
         this.materiales = data.data;
         console.log('Datos de materiales obtenidos:', this.materiales);
@@ -1981,7 +2017,7 @@ async saveChangesEquipos() {
    obtenerEquipos(selectedReporteId: any) {
     // alert('this.branchs'+ this.idBranch)
     console.log('Obteniendo equipos para reporte ID:', selectedReporteId);
-    this.logbookService.getInfoByOt(selectedReporteId, "EQUIPMENT").subscribe(
+    this.logbookService.getInfoByReporte(selectedReporteId, "EQUIPMENT").subscribe(
       (data: any) => {
         this.equipos = data.data;
         console.log('Datos de equipos obtenidos:', this.equipos);
@@ -1992,7 +2028,7 @@ async saveChangesEquipos() {
    obtenerPersonal(selectedReporteId: any) {
     // alert('this.branchs'+ this.idBranch)
     console.log('Obteniendo personal para reporte ID:', selectedReporteId);
-    this.logbookService.getInfoByOt(selectedReporteId, "PERSONAL").subscribe(
+    this.logbookService.getInfoByReporte(selectedReporteId, "PERSONAL").subscribe(
       (data: any) => {
         this.personal = data.data;
         console.log('Datos de personal obtenidos:', this.personal);
@@ -2003,13 +2039,24 @@ async saveChangesEquipos() {
    obtenerFotografias(selectedReporteId: any) {
     // alert('this.branchs'+ this.idBranch)
     console.log('Obteniendo fotografías para reporte ID:', selectedReporteId);
-    this.logbookService.getInfoByOt(selectedReporteId, "FOTO").subscribe(
+    this.logbookService.getInfoByReporte(selectedReporteId, "FOTO").subscribe(
       (data: any) => {
         this.fotografias = data.data;
         console.log('Datos de fotografías obtenidos:', this.fotografias);
       },
       (error) => console.error('Error fetching data:', error)
     );
+  }
+
+  catalogoMateriales(){
+    return this.materialsService.getMaterials(this.idcompany, 'CONSUMABLE').subscribe(
+      (data: any) => {
+        this.catalogMateriales = data;
+        console.log(this.catalogMateriales)
+      },
+      (error) => console.error('Error fetching data:', error)
+    );
+  
   }
   
 

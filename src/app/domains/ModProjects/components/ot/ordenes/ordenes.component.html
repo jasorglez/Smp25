@@ -184,7 +184,7 @@
                       <!-- Grid de personal -->
                       <div class="col overflow-auto agridWH">
                         <ag-grid-angular 
-                          [ngStyle]="{ height: gridHeight, width: gridWidth }"
+                          [ngStyle]="{ height: gridHeight, width: gridWidthDetail }"
                           class="ag-theme-quartz small-text-ag-grid"
                           [rowData]="personal"
                           [columnDefs]="personalColumnDefs"
@@ -206,7 +206,7 @@
                       <!-- COLUMNA 1: Grid de Fotografías -->
                        <div class="col-6">
                         <ag-grid-angular 
-                          [ngStyle]="{ height: gridHeight, width: gridWidth }"
+                          [ngStyle]="{ height: gridHeight, width: gridWidthDetail }"
                           class="ag-theme-quartz small-text-ag-grid"
                           [rowData]="fotografias"
                           [columnDefs]="fotografiasColumnDefs"
@@ -247,7 +247,6 @@
                         Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}
                       </span>
                     </h6>
-                    <div class="overflow-auto agridWH">
                       <div class="row">
                         <div class="col-2">
                           <nav class="col-auto d-flex flex-column align-items-start">
@@ -268,9 +267,9 @@
                             </button>
                           </nav>
                         </div>
-                        <div class="col-10">
+                        <div class="col-10 overflow-auto agridWH">
                           <ag-grid-angular 
-                            [ngStyle]="{ height: gridHeight, width: gridWidth }"
+                            [ngStyle]="{ height: gridHeight, width: gridWidthDetail }"
                             class="ag-theme-quartz small-text-ag-grid"
                             [rowData]="materiales"
                             [columnDefs]="materialesColumnDefs"
@@ -278,8 +277,6 @@
                           </ag-grid-angular>
                         </div>
                       </div>
-                      
-                    </div>
                   </div>
 
                   <!-- Pestaña Equipos -->
@@ -289,7 +286,6 @@
                         Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}
                       </span>
                     </h6>
-                    <div class="overflow-auto agridWH">
                       <div class="row">
                         <div class="col-2">
                           <nav class="col-auto d-flex flex-column align-items-start">
@@ -310,9 +306,9 @@
                             </button>
                           </nav>
                         </div>
-                        <div class="col-10">
+                        <div class="col-10 overflow-auto agridWH">
                       <ag-grid-angular 
-                        [ngStyle]="{ height: gridHeight, width: gridWidth }"
+                        [ngStyle]="{ height: gridHeight, width: gridWidthDetail }"
                         class="ag-theme-quartz small-text-ag-grid"
                         [rowData]="equipos"
                         [columnDefs]="equiposColumnDefs"
@@ -324,7 +320,6 @@
                   </div>
                 </div>
               </div>
-            </div>
 
             <!-- COLUMNA 2: Vista previa del reporte PDF -->
             <div class="col-3">
