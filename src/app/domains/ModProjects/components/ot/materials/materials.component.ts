@@ -72,17 +72,37 @@ export class MaterialsComponent implements CanComponentDeactivate {
   };
   private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };
+    
+    // Eliminar siempre estos campos internos
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
-    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
-      delete cleanedData.id;
+    
+    // Eliminar SIEMPRE el ID para updates (el servidor no lo necesita)
+    delete cleanedData.id;
+    
+    // Mapear campos requeridos por el servidor
+    if (cleanedData.articulo) {
+      cleanedData.material = cleanedData.articulo;
+    } else if (cleanedData.insumo) {
+      cleanedData.material = cleanedData.insumo;
+    } else {
+      cleanedData.material = cleanedData.description || '';
     }
     
-    // Mapear ingressDate a date para el servidor
-    if (cleanedData.ingressDate) {
-      cleanedData.date = cleanedData.ingressDate;
+    // Convertir fecha a formato compatible con C# DateTime
+    if (cleanedData.date) {
+      // Convertir a formato que C# puede parsear: "2025-07-29T21:17:11.944"
+      const dateObj = new Date(cleanedData.date);
+      cleanedData.date = dateObj.toISOString().slice(0, -1); // Remover la 'Z'
     }
     
+    // Eliminar campos que no acepta el servidor
+    delete cleanedData.idBranch;
+    delete cleanedData.idCustomer;
+    delete cleanedData.pricePresentations;
+    delete cleanedData.barcode; // Eliminar el campo duplicado incorrecto
+    
+    console.log('Datos limpiados para servidor:', cleanedData);
     return cleanedData;
   }
 
@@ -243,25 +263,34 @@ export class MaterialsComponent implements CanComponentDeactivate {
         cellEditor: 'agDateCellEditor',
         valueGetter: (params) => {
           // Si no hay fecha, usar fecha actual
-          if (!params.data.ingressDate) {
+          if (!params.data.date) {
             return new Date().toISOString();
           }
-          return params.data.ingressDate;
+          return params.data.date;
         },
         valueSetter: (params) => {
           if (!params.newValue) {
-            params.data.ingressDate = new Date().toISOString();
+            params.data.date = new Date().toISOString();
             return true;
           }
         
-          const date = new Date(params.newValue);
+          let date;
+          // Si viene en formato "2025-07-29T00:00:00" del agDateCellEditor
+          console.log('Valor recibido en valueSetter:', params.newValue);
+          if (typeof params.newValue === 'string' && params.newValue.includes('T') && !params.newValue.includes('Z')) {
+            // Agregar 'Z' para que sea UTC y crear la fecha
+            date = new Date(params.newValue + 'Z');
+          } else {
+            date = new Date(params.newValue);
+          }
+          
           if (isNaN(date.getTime())) {
             alerts.basicAlert('Error', 'Fecha inválida', 'error');
             return false;
           } 
         
-          // Asegurar que la fecha se guarde en el formato correcto
-          params.data.ingressDate = date.toISOString();
+          // Asegurar que la fecha se guarde en el formato ISO correcto
+          params.data.date = date.toISOString();
           // Marcar como modificado para que se incluya en el save
           params.data.__modified = true;
           return true;
@@ -308,7 +337,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
       idCustomer: null,
       insumo: '',
       articulo: '',
-      barcode: '',
+      barCode: '',
       idFamilia: 1, // Valor por defecto válido, debe configurarse según necesidad
       idSubfamilia: null,
       idMedida: 1, // Valor por defecto válido, debe configurarse según necesidad
@@ -374,6 +403,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
 
     const updateObservables: Promise<any>[] = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      console.log(cleanedData);
       //this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Tiendas', 'Menu Administracion Tiendas',  this.trackingService.getEmail());
       return lastValueFrom(this.materialsService.updateMaterial(row.id, cleanedData));
     });
