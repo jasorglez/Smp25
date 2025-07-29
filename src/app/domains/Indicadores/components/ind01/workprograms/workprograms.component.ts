@@ -81,6 +81,12 @@ export class WorkprogramsComponent {
     gantt.config.multiselect = true;
     gantt.i18n.setLocale("es");
 
+    // Configurar vista mensual
+    gantt.config.scales = [
+      { unit: "year", step: 1, format: "%Y" },
+      { unit: "month", step: 1, format: "%M" }
+    ];
+
     // Aquí monitoreamos que hubo cambios en el Gantt
     gantt.attachEvent("onAfterTaskAdd", () => this.notSavedChanges = true);
     gantt.attachEvent("onAfterTaskUpdate", () => this.notSavedChanges = true);
@@ -171,6 +177,69 @@ export class WorkprogramsComponent {
       export_api: true,
       multiselect: true
     });
+
+    // Definir escalas de zoom disponibles
+    const zoomConfig = {
+      levels: [
+        {
+          name: "day",
+          scale_height: 60,
+          min_column_width: 30,
+          scales: [
+            { unit: "day", step: 1, format: "%d %M" },
+            { unit: "hour", step: 1, format: "%H" }
+          ]
+        },
+        {
+          name: "week", 
+          scale_height: 60,
+          min_column_width: 50,
+          scales: [
+            { unit: "week", step: 1, format: function (date) {
+              var dateToStr = gantt.date.date_to_str("%d %M");
+              var endDate = gantt.date.add(gantt.date.add(date, 1, "week"), -1, "day");
+              return dateToStr(date) + " - " + dateToStr(endDate);
+            }},
+            { unit: "day", step: 1, format: "%j" }
+          ]
+        },
+        {
+          name: "month",
+          scale_height: 60,
+          min_column_width: 120,
+          scales: [
+            { unit: "year", step: 1, format: "%Y" },
+            { unit: "month", step: 1, format: "%M" }
+          ]
+        },
+        {
+          name: "quarter",
+          height: 60,
+          min_column_width: 90,
+          scales: [
+            { unit: "year", step: 1, format: "%Y" },
+            {
+              unit: "quarter", step: 1, format: function (date) {
+                var dateToStr = gantt.date.date_to_str("%M");
+                var endDate = gantt.date.add(gantt.date.add(date, 3, "month"), -1, "day");
+                return dateToStr(date) + " - " + dateToStr(endDate);
+              }
+            }
+          ]
+        },
+        {
+          name: "year",
+          scale_height: 50,
+          min_column_width: 30,
+          scales: [
+            { unit: "year", step: 1, format: "%Y" }
+          ]
+        }
+      ]
+    };
+
+    gantt.ext.zoom.init(zoomConfig);
+    gantt.ext.zoom.setLevel("month"); // Establecer vista mensual por defecto
 
     gantt.config.lightbox.sections = [
       { name: "description", height: 70, map_to: "text", type: "textarea", focus: true },
@@ -496,5 +565,26 @@ export class WorkprogramsComponent {
         alerts.basicAlert('Eliminado', 'Las tareas seleccionadas han sido eliminadas', 'success');
       }
     });
+  }
+
+  // Métodos para controlar el zoom
+  zoomToYear() {
+    gantt.ext.zoom.setLevel("year");
+  }
+
+  zoomToQuarter() {
+    gantt.ext.zoom.setLevel("quarter");
+  }
+
+  zoomToMonth() {
+    gantt.ext.zoom.setLevel("month");
+  }
+
+  zoomToWeek() {
+    gantt.ext.zoom.setLevel("week");
+  }
+
+  zoomToDay() {
+    gantt.ext.zoom.setLevel("day");
   }
 }
