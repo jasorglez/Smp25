@@ -167,7 +167,7 @@ export class OrdenesComponent {
   // PDF
   inputData: any;
   gridHeight = '50vh';
-  gridWidth = '200%';
+  gridWidth = '100%';
   gridWidthDetail = '100%'; 
   isGeneratingPdf: boolean = false;
   isGeneratingPdfEmbed: boolean = false;
@@ -520,7 +520,7 @@ export class OrdenesComponent {
     headerHeight: 35,
     rowHeight: 25,
     suppressDragLeaveHidesColumns: true,
-    suppressHorizontalScroll: false,
+    suppressHorizontalScroll: true,
     animateRows: true,
     pagination: false,
     domLayout: 'normal',
@@ -583,7 +583,7 @@ export class OrdenesComponent {
       sortable: true,
       filter: true,
       resizable: true,
-      width: 30,
+      flex: 1
     },
     {
       field: 'description',
@@ -591,7 +591,8 @@ export class OrdenesComponent {
       sortable: true,
       filter: true,
       resizable: true,
-      width: 80,
+      width: 1,
+      hide: true
     },
  /*   {
       field: 'address',
@@ -608,7 +609,7 @@ export class OrdenesComponent {
       sortable: true,
       filter: true,
       resizable: true,
-      flex: 1,
+      flex: 3,
     },
 
   ];
@@ -674,7 +675,8 @@ export class OrdenesComponent {
   // Métodos del grid
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-    params.api.sizeColumnsToFit();
+    // Remover sizeColumnsToFit para que funcione el flex
+    // params.api.sizeColumnsToFit();
   }
 
   onSelectionChanged(event: any) {
@@ -792,7 +794,8 @@ export class OrdenesComponent {
   // Grid ready para reportes
   onReportesGridReady(params: any) {
     this.reportesGridApi = params.api;
-    params.api.sizeColumnsToFit();
+    // Remover sizeColumnsToFit para respetar flex
+    // params.api.sizeColumnsToFit();
   }
 
   // Controlar qué celda es editable
@@ -1655,7 +1658,8 @@ async saveChangesEquipos() {
   // Grid ready para personal
   onPersonalGridReady(params: any) {
     this.personalGridApi = params.api;
-    params.api.sizeColumnsToFit();
+    // Remover sizeColumnsToFit para respetar flex
+    // params.api.sizeColumnsToFit();
   }
 
   // Métodos CRUD para Personal
