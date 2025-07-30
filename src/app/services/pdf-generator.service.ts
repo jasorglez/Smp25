@@ -131,7 +131,8 @@ export class PdfGeneratorService {
         const notasMapeadas = response.data.map((nota: any) => {
           return {
             description: nota.description || '',
-            orden: nota.orden || 1
+            typeNote: typeNote, // Mantener el typeNote original para filtrado
+            orden: nota.orden || 1 // Mantener orden como backup
           };
         });
         return notasMapeadas;
@@ -208,21 +209,21 @@ export class PdfGeneratorService {
     // NO reinicializar this.imagenes = {} aquí porque borra las imágenes procesadas
     this.j = 1;
 
-    // Procesar notas (igual que bucleDatos original)
+    // Procesar notas usando typeNote en lugar de orden
     if (this.entrada) {
-      const titles = {
-        1: 'TRABAJO ANTECEDENTES',
-        2: 'ACTIVIDADES RELEVANTES'
-      };
+      const secciones = [
+        { typeNote: 'TRABAJO ANTECEDENTES', titulo: '1.- TRABAJO ANTECEDENTES' },
+        { typeNote: 'ACTIVIDADES RELEVANTES', titulo: '2.- ACTIVIDADES RELEVANTES' }
+      ];
 
-      for (let i = 1; i <= 2; i++) {
+      secciones.forEach(seccion => {
         const correspondingNotes = this.entrada.filter(
-          (note) => note.orden === i
+          (note) => note.typeNote === seccion.typeNote
         );
 
         if (correspondingNotes.length > 0) {
           this.gestionarDatos.push({
-            text: i + '.- ' + titles[i],
+            text: seccion.titulo,
             style: 'puntosATratar',
           });
 
@@ -236,7 +237,7 @@ export class PdfGeneratorService {
           this.gestionarDatos.push(listItems);
         } else {
           this.gestionarDatos.push({
-            text: i + '.- ' + titles[i],
+            text: seccion.titulo,
             style: 'puntosATratar',
           });
 
@@ -245,7 +246,7 @@ export class PdfGeneratorService {
             margin: [15, 0, 0, 0],
           });
         }
-      }
+      });
     }
 
     // Procesar fotografías directamente usando las URLs de Firebase
@@ -290,44 +291,84 @@ export class PdfGeneratorService {
       return;
     }
 
-    const titles = {
-      1: 'TRABAJO ANTECEDENTES',
-      2: 'ACTIVIDADES RELEVANTES'
-    };
+    // Verificar si tenemos typeNote (datos del nuevo endpoint) o usar orden (datos antiguos)
+    const tieneTypeNote = this.entrada.some(note => note.typeNote);
+    
+    if (tieneTypeNote) {
+      // Usar el nuevo método basado en typeNote
+      const secciones = [
+        { typeNote: 'TRABAJO ANTECEDENTES', titulo: '1.- TRABAJO ANTECEDENTES' },
+        { typeNote: 'ACTIVIDADES RELEVANTES', titulo: '2.- ACTIVIDADES RELEVANTES' }
+      ];
 
-    const foundOrders = new Set<number>();
+      secciones.forEach(seccion => {
+        const correspondingNotes = this.entrada.filter(
+          (note) => note.typeNote === seccion.typeNote
+        );
 
-    for (let i = 1; i <= 2; i++) {
-      const correspondingNotes = this.entrada.filter(
-        (note) => note.orden === i
-      );
+        if (correspondingNotes.length > 0) {
+          this.gestionarDatos.push({
+            text: seccion.titulo,
+            style: 'puntosATratar',
+          });
 
-      if (correspondingNotes.length > 0) {
-        this.gestionarDatos.push({
-          text: i + '.- ' + titles[i],
-          style: 'puntosATratar',
-        });
+          const listItems = correspondingNotes.map((note) => {
+            return {
+              text: this.splitTextByEmoji(note.description),
+              margin: [15, 0, 0, 0],
+            };
+          });
 
-        const listItems = correspondingNotes.map((note) => {
-          return {
-            text: this.splitTextByEmoji(note.description),
+          this.gestionarDatos.push(listItems);
+        } else {
+          this.gestionarDatos.push({
+            text: seccion.titulo,
+            style: 'puntosATratar',
+          });
+
+          this.gestionarDatos.push({
+            text: 'No hay notas en este punto.',
             margin: [15, 0, 0, 0],
-          };
-        });
+          });
+        }
+      });
+    } else {
+      // Fallback al método original basado en orden
+      const titles = {
+        1: 'TRABAJO ANTECEDENTES',
+        2: 'ACTIVIDADES RELEVANTES'
+      };
 
-        this.gestionarDatos.push(listItems);
+      for (let i = 1; i <= 2; i++) {
+        const correspondingNotes = this.entrada.filter(
+          (note) => note.orden === i
+        );
 
-        foundOrders.add(i);
-      } else {
-        this.gestionarDatos.push({
-          text: i + '.- ' + titles[i],
-          style: 'puntosATratar',
-        });
+        if (correspondingNotes.length > 0) {
+          this.gestionarDatos.push({
+            text: i + '.- ' + titles[i],
+            style: 'puntosATratar',
+          });
 
-        this.gestionarDatos.push({
-          text: 'No hay notas en este punto.',
-          margin: [15, 0, 0, 0],
-        });
+          const listItems = correspondingNotes.map((note) => {
+            return {
+              text: this.splitTextByEmoji(note.description),
+              margin: [15, 0, 0, 0],
+            };
+          });
+
+          this.gestionarDatos.push(listItems);
+        } else {
+          this.gestionarDatos.push({
+            text: i + '.- ' + titles[i],
+            style: 'puntosATratar',
+          });
+
+          this.gestionarDatos.push({
+            text: 'No hay notas en este punto.',
+            margin: [15, 0, 0, 0],
+          });
+        }
       }
     }
 
