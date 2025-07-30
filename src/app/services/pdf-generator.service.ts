@@ -5,6 +5,7 @@ import { ReceivedataService } from './receivedata.service';
 import { Base64EncodeService } from './base64encode.service';
 import { BlobService } from './blob.service';
 import { TrackingService } from './tracking.service';
+import { LogbookService } from './logbook.service';
 (pdfMake as any).vfs = pdfFonts.pdfMake.vfs;
 
 @Injectable({
@@ -21,6 +22,7 @@ export class PdfGeneratorService {
   imagenes: any = {};
   lb: string;
   id: number;
+  idReport: number;
   punto: number = 1;
   j: number;
   description: any;
@@ -32,7 +34,8 @@ export class PdfGeneratorService {
     private datos: ReceivedataService,
     private imageService: Base64EncodeService,
     private blobService: BlobService,
-    private trackingService: TrackingService
+    private trackingService: TrackingService,
+    private logbookService: LogbookService
   ) {}
 
   async generatePdfData(inputData: { 
@@ -43,9 +46,11 @@ export class PdfGeneratorService {
     materialesData?: any[];
     equiposData?: any[];
     fotografiasData?: any[];
+    idReport?: number;
   }) {
     this.id = inputData.id;
     this.lb = inputData.date;
+    this.idReport = inputData.idReport;
     // Si se proporciona descripción desde la OT, usarla directamente
     if (inputData.description) {
       this.description = inputData.description;
@@ -62,12 +67,9 @@ export class PdfGeneratorService {
     }
     
     // Si se proporcionan fotografías desde Ordenes, procesarlas directamente
-    console.log('Fotografías recibidas en PDF service:', inputData.fotografiasData);
     if (inputData.fotografiasData && inputData.fotografiasData.length > 0) {
-      console.log('Procesando fotografías desde Ordenes, cantidad:', inputData.fotografiasData.length);
       await this.processFotografiasFromOrdenes(inputData.fotografiasData);
     } else {
-      console.log('No hay fotografías de Ordenes, usando método original');
       // Fallback al método original si no hay fotografías
       await this.conseguirDatos();
     }
@@ -76,9 +78,15 @@ export class PdfGeneratorService {
 
   private async conseguirDatos() {
     try {
-      const datos = await this.datos.recibirDatosForOt(this.lb, this.id).toPromise();
-      this.entrada = datos;
-      this.numItems = this.entrada.length;
+      // Si se proporciona idReport, usar el nuevo método para obtener todas las notas
+      if (this.idReport) {
+        await this.obtenerTodasLasNotas();
+      } else {
+        // Fallback al método original
+        const datos = await this.datos.recibirDatosForOt(this.lb, this.id).toPromise();
+        this.entrada = datos;
+        this.numItems = this.entrada.length;
+      }
 
       // Solo obtener nombre de obra si no se proporcionó descripción
       const promises = [this.conseguirDatos2()];
@@ -115,35 +123,76 @@ export class PdfGeneratorService {
       });
   }
 
+  private async obtenerNotasFromReport(typeNote: string) {
+    try {
+      const response = await this.logbookService.getNotesFromReport(this.idReport, typeNote).toPromise();
+      
+      if (response && response.success && response.data) {
+        const notasMapeadas = response.data.map((nota: any) => {
+          return {
+            description: nota.description || '',
+            orden: nota.orden || 1
+          };
+        });
+        return notasMapeadas;
+      } else {
+        return [];
+      }
+    } catch (error) {
+      console.error(`Error obteniendo notas de ${typeNote}:`, error);
+      return [];
+    }
+  }
+
+  private async obtenerTodasLasNotas() {
+    try {
+      // Obtener notas de TRABAJO ANTECEDENTES (orden 1)
+      const notasAntecedentes = await this.obtenerNotasFromReport('TRABAJO ANTECEDENTES');
+      
+      // Obtener notas de ACTIVIDADES RELEVANTES (orden 2)
+      const notasActividades = await this.obtenerNotasFromReport('ACTIVIDADES RELEVANTES');
+      
+      // Combinar todas las notas
+      this.entrada = [
+        ...notasAntecedentes,
+        ...notasActividades
+      ];
+      
+      this.numItems = this.entrada.length;
+      
+    } catch (error) {
+      console.error('Error obteniendo todas las notas:', error);
+      this.entrada = [];
+      this.numItems = 0;
+    }
+  }
+
   private async processFotografiasFromOrdenes(fotografiasData: any[]) {
     try {
       // Inicializar el objeto de imágenes al principio
       this.imagenes = {};
-      console.log('Datos de fotografías a procesar:', fotografiasData);
       // Procesar fotografías directamente desde los datos de Ordenes
       this.photos = fotografiasData.map((foto, index) => {
-        console.log(`Foto ${index}:`, foto);
         // Usar imageUrl en lugar de imageAzure que viene como "NO FILE"
         const mappedPhoto = {
           description: foto.descripcion || foto.description || '',
           imageAzure: foto.imageUrl || foto.url || '' // imageUrl contiene la URL real de Firebase
         };
-        console.log(`Foto ${index} mapeada:`, mappedPhoto);
-        console.log(`URL que se usará: ${mappedPhoto.imageAzure}`);
         return mappedPhoto;
       });
       this.numPhotos = this.photos.length;
-      console.log('Total de fotos procesadas:', this.numPhotos);
       
-      // Para fotografías desde Ordenes, podemos omitir los datos de notas
-      // ya que el PDF se enfoca en las fotografías
-      this.entrada = [];
-      this.numItems = 0;
+      // Si tenemos idReport, obtener todas las notas
+      if (this.idReport) {
+        await this.obtenerTodasLasNotas();
+      } else {
+        // Para fotografías desde Ordenes sin idReport, omitir los datos de notas
+        this.entrada = [];
+        this.numItems = 0;
+      }
 
       // Procesar directamente las fotografías
-      console.log('Procesando fotografías directamente...');
       await this.bucleDatosConFotosFromOrdenes();
-      console.log('Procesamiento completado. Estado final de imágenes:', this.imagenes);
     } catch (error) {
       console.error('Error processing fotografias from ordenes:', error);
     }
@@ -163,11 +212,10 @@ export class PdfGeneratorService {
     if (this.entrada) {
       const titles = {
         1: 'TRABAJO ANTECEDENTES',
-        2: 'ACTIVIDADES RELEVANTES',
-        3: 'PROXIMOS PASOS',
+        2: 'ACTIVIDADES RELEVANTES'
       };
 
-      for (let i = 1; i <= 3; i++) {
+      for (let i = 1; i <= 2; i++) {
         const correspondingNotes = this.entrada.filter(
           (note) => note.orden === i
         );
@@ -201,33 +249,21 @@ export class PdfGeneratorService {
     }
 
     // Procesar fotografías directamente usando las URLs de Firebase
-    console.log('Procesando imágenes, total:', this.photos.length);
     for (let index = 0; index < this.photos.length; index++) {
       const photo = this.photos[index];
       this.captions[index] = photo.description;
-      console.log(`Procesando imagen ${index}, URL: ${photo.imageAzure}, descripción: ${photo.description}`);
       
       // Convertir la URL de Firebase a base64 para PDFMake
-      console.log(`Verificando imagen ${index}: imageAzure = "${photo.imageAzure}"`);
       if (photo.imageAzure && photo.imageAzure !== 'NO FILE') {
         try {
-          console.log(`Convirtiendo imagen ${index} a base64...`);
           const base64Image = await this.imageService.convertImageToBase64(photo.imageAzure);
           this.imagenes[`photo${index}`] = base64Image;
-          console.log(`Imagen ${index} convertida exitosamente a base64`);
         } catch (error) {
           console.error(`Error convirtiendo imagen ${index}:`, error);
           // Continuar con las siguientes imágenes en caso de error
         }
-      } else {
-        console.log(`Imagen ${index} no tiene URL válida (es "${photo.imageAzure}"), saltando...`);
       }
     }
-    
-    console.log('=== FIN DEL PROCESAMIENTO DE IMÁGENES ===');
-    console.log('Imágenes procesadas:', Object.keys(this.imagenes));
-    console.log('Captions procesadas:', this.captions);
-    console.log('Estado final de this.imagenes:', this.imagenes);
   }
 
   private limpiarPdfMakeKeys(obj: any) {
@@ -256,13 +292,12 @@ export class PdfGeneratorService {
 
     const titles = {
       1: 'TRABAJO ANTECEDENTES',
-      2: 'ACTIVIDADES RELEVANTES',
-      3: 'PROXIMOS PASOS',
+      2: 'ACTIVIDADES RELEVANTES'
     };
 
     const foundOrders = new Set<number>();
 
-    for (let i = 1; i <= 3; i++) {
+    for (let i = 1; i <= 2; i++) {
       const correspondingNotes = this.entrada.filter(
         (note) => note.orden === i
       );
@@ -450,29 +485,17 @@ export class PdfGeneratorService {
   }
 
   private generateDocDefinition() {
-    console.log('=== GENERANDO DOCUMENTO PDF ===');
-    console.log('Imágenes ANTES de limpiar:', this.imagenes);
-    console.log('Keys ANTES de limpiar:', Object.keys(this.imagenes));
-    
     this.limpiarPdfMakeKeys(this.imagenes);
-    
-    console.log('Imágenes DESPUÉS de limpiar:', this.imagenes);
     const imageKeys = Object.keys(this.imagenes).sort();
-    console.log('Keys de imágenes:', imageKeys);
-    console.log('Número total de imágenes:', imageKeys.length);
-    console.log('¿Existe photo0?', !!this.imagenes['photo0']);
-    console.log('Contenido de photo0:', this.imagenes['photo0'] ? this.imagenes['photo0'].substring(0, 100) : 'No existe');
 
     const contenido = [];
 
     if (imageKeys.length === 0 || !this.imagenes['photo0']) {
-      console.log('No hay imágenes válidas, mostrando mensaje de no fotografías');
       contenido.push({
         text: 'No hay fotografías subidas.',
         margin: [15, 0, 0, 0],
       });
     } else {
-      console.log('Procesando imágenes para el PDF, total:', imageKeys.length);
       for (let i = 0; i < imageKeys.length; i += 2) {
         const rowcontenido = {
           columns: [],
@@ -683,7 +706,7 @@ export class PdfGeneratorService {
         ...this.gestionarDatos,
         { text: '', pageBreak: 'after' },
         {
-          text: '4.- REPORTE FOTOGRAFICO',
+          text: '3.- REPORTE FOTOGRAFICO',
           pageBreak: (currentPage, pageSize, currentNode, nodesOnPage) => {
             return nodesOnPage.length > 0 ? 'before' : '';
           },
@@ -692,7 +715,7 @@ export class PdfGeneratorService {
         ...contenido,
         { text: '', pageBreak: 'after' },
         {
-          text: '5.- CONTROL DE RECURSOS',
+          text: '4.- CONTROL DE RECURSOS',
           style: 'puntosATratar',
           margin: [0, 20, 0, 10]
         },
