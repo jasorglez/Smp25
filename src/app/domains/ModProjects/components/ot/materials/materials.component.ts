@@ -81,7 +81,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
     delete cleanedData.__modified;
     
     // Eliminar SIEMPRE el ID para updates (el servidor no lo necesita)
-    delete cleanedData.id;
     
     // Mapear campos requeridos por el servidor
     if (cleanedData.articulo) {
@@ -92,12 +91,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
       cleanedData.material = cleanedData.description || '';
     }
     
-    // Convertir fecha a formato compatible con C# DateTime
-    if (cleanedData.date) {
-      // Convertir a formato que C# puede parsear: "2025-07-29T21:17:11.944"
-      const dateObj = new Date(cleanedData.date);
-      cleanedData.date = dateObj.toISOString().slice(0, -1); // Remover la 'Z'
-    }
     
     // Eliminar campos que no acepta el servidor
     delete cleanedData.idBranch;
