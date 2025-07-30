@@ -3,7 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { environment } from '@env/environment';
 
 import { HttpClient } from '@angular/common/http';
-import { EMPTY, Observable } from 'rxjs';
+import { EMPTY, Observable, throttleTime } from 'rxjs';
 import { TrackingService } from './tracking.service';
 
 @Injectable({
@@ -58,4 +58,7 @@ export class LogbookService {
     return this.http.delete(`${environment.urlSmp}/Logbook/${id}`, { headers: this.authService.getHeaders() });
   }
 
+  getNotesFromReport(idReport: number, typeNote: string): Observable<any> {
+    return this.http.get(`${environment.urlSmp}/Logbook/reporte/${idReport}?typeNote=${typeNote}`, { headers: this.authService.getHeaders() })
+  }
 }

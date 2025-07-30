@@ -1413,14 +1413,10 @@ async saveChangesEquipos() {
               description: item.description || '',
               orden: item.orden || 1
             }));
-            console.log('Personal mapeado:', this.personal);
-            console.log('PersonalFiltrado después del mapeo:', this.personalFiltrado);
-            
             // Forzar actualización del grid si ya está inicializado
             if (this.personalGridApi) {
               this.personalGridApi.refreshCells();
               this.personalGridApi.redrawRows();
-              console.log('Grid actualizado manualmente con datos:', this.personalFiltrado);
             }
           } else {
             console.log('No hay datos de Personal o estructura de respuesta diferente:', response);
@@ -1487,9 +1483,9 @@ async saveChangesEquipos() {
         personalData: this.personal, // Usar directamente this.personal ya que está filtrado por idReporte
         materialesData: this.materiales,
         equiposData: this.equipos,
-        fotografiasData: this.fotografias // Agregar fotografías de la pestaña
+        fotografiasData: this.fotografias, // Agregar fotografías de la pestaña
+        idReport: typeof this.selectedReporteId === 'string' ? parseInt(this.selectedReporteId) : this.selectedReporteId // Agregar idReport para obtener notas de TRABAJO ANTECEDENTES
       };
-      console.log('InputData completo para PDF:', inputData);
 
 
       // Generar la definición del documento
@@ -1861,10 +1857,7 @@ async saveChangesEquipos() {
       __isNew: true
     };
 
-    console.log('Nuevo personal creado:', newPersonal);
-    console.log('Personal antes de agregar:', this.personal);
     this.personal = [newPersonal, ...this.personal];
-    console.log('Personal después de agregar:', this.personal);
     this.notSavedPersonalChanges = true;
     
     setTimeout(() => {
@@ -1966,14 +1959,9 @@ async saveChangesEquipos() {
   }
 
   async savePersonalChanges() {
-    console.log('=== GUARDANDO CAMBIOS DE PERSONAL ===');
-    console.log('Array completo de personal:', this.personal);
     
     const newRows = this.personal.filter(row => row.__isNew);
     const modifiedRows = this.personal.filter(row => row.__modified && !row.__isNew);
-    
-    console.log('Personal nuevo:', newRows.length, newRows);
-    console.log('Personal modificado:', modifiedRows.length, modifiedRows);
 
     // Validación básica
     const invalidRows = newRows.filter(item => !item.idResource || !item.position);
@@ -2040,7 +2028,6 @@ async saveChangesEquipos() {
       });
 
       // Recargar datos para reflejar cambios del servidor
-      console.log('Recargando datos de personal...');
       // Aquí podrías recargar datos si tienes un endpoint específico para personal
 
     } catch (error: any) {
@@ -2063,14 +2050,9 @@ async saveChangesEquipos() {
   }
 
   revertPersonal() {
-    console.log('=== REVIRTIENDO CAMBIOS DE PERSONAL ===');
-    console.log('Personal antes de revertir:', this.personal);
-    
     // Remover elementos nuevos y revertir modificados
     this.obtenerPersonal(this.selectedReporteId);
-    console.log('Personal después de revertir:', this.personal);
     this.notSavedPersonalChanges = false;
-    //alerts.basicAlert('Info', 'Cambios revertidos', 'info');
   }
 
   async deletePersonal() {
@@ -2099,23 +2081,14 @@ async saveChangesEquipos() {
       'Sí, eliminar'
     ).then((value) => {
       if (value.isConfirmed) {
-        console.log('=== CONFIRMACIÓN DE ELIMINACIÓN ===');
-        
         if (selectedData.__isNew) {
-          console.log('Eliminando registro nuevo (solo local)');
           this.personal = this.personal.filter(p => p.id !== id);
           this.notSavedPersonalChanges = this.personal.some(p => p.__isNew);
-          console.log('Personal después de eliminación local:', this.personal);
           alerts.basicAlert('Éxito', 'Personal eliminado correctamente', 'success');
         } else {
-          console.log('Eliminando registro existente usando endpoint DELETE');
-          console.log('Enviando DELETE para ID:', id);
-          
           this.logbookService.deleteDataForOt(Number(id)).subscribe({
             next: (response) => {
-              console.log('Respuesta del DELETE:', response);
               this.personal = this.personal.filter(p => p.id !== id);
-              console.log('Personal después de eliminación del servidor:', this.personal);
               alerts.basicAlert('Éxito', 'Personal eliminado correctamente del servidor', 'success');
             },
             error: (error) => {
@@ -2150,7 +2123,6 @@ async saveChangesEquipos() {
       return;
     }
 
-    console.log('Generando PDF automáticamente:', this.inputData);
     this.isGeneratingPdfEmbed = true;
     this.showPdfEmbed = false;
     this.pdfUrl = null;
@@ -2198,23 +2170,17 @@ async saveChangesEquipos() {
     );
   }
    obtenerPersonal(selectedReporteId: any) {
-    // alert('this.branchs'+ this.idBranch)
-    console.log('Obteniendo personal para reporte ID:', selectedReporteId);
     this.logbookService.getInfoByReporte(selectedReporteId, "PERSONAL").subscribe(
       (data: any) => {
         this.personal = data.data;
-        console.log('Datos de personal obtenidos:', this.personal);
       },
       (error) => console.error('Error fetching data:', error)
     );
   }
    obtenerFotografias(selectedReporteId: any) {
-    // alert('this.branchs'+ this.idBranch)
-    console.log('Obteniendo fotografías para reporte ID:', selectedReporteId);
     this.logbookService.getInfoByReporte(selectedReporteId, "FOTO").subscribe(
       (data: any) => {
         this.fotografias = data.data;
-        console.log('Datos de fotografías obtenidos:', this.fotografias);
       },
       (error) => console.error('Error fetching data:', error)
     );
