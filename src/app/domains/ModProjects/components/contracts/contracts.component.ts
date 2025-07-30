@@ -15,6 +15,7 @@ import { CompanysService } from 'app/services/companys.service';
 import { SignalsService } from 'app/services/signals.service';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ContractDetailsComponent } from './contract-details/contract-details.component';
+import { ProvidersService } from 'app/services/providers.service';
 
 // Esta funcion valida que dateStar sea siempre menor a dateEnd
 export function dateRangeValidator(): ValidatorFn {
@@ -51,6 +52,7 @@ export function noDefaultValueValidator(): ValidatorFn {
 export class ContractsComponent {
   constructor() {
     effect(() => {
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.getContracts();
     });
@@ -76,6 +78,7 @@ export class ContractsComponent {
   idContract: number | null = null;
 
   idBranch: number;
+  idRoot: number;
 
   screenSizeSM = false;
   notSavedChanges: boolean = false;
@@ -89,6 +92,8 @@ export class ContractsComponent {
   private modalService = inject(NgbModal);
   private companysService = inject(CompanysService);
   private signalsService = inject(SignalsService);
+  private providersService = inject(ProvidersService);
+
 
   public contract: Icontract[] = [];
   private gridApi!: GridApi<Icontract>;
@@ -367,7 +372,7 @@ export class ContractsComponent {
   }
 
   openModal() {
-    this.companysService.Companys().subscribe({
+    this.providersService.getProviders(this.idRoot).subscribe({
       next: (resp) => {
         this.providers = resp;
         const modalOptions: NgbModalOptions = {

@@ -442,7 +442,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
   }
 
   obtenerProveedores() {
-    this.providersService.getProviders().subscribe(
+    this.providersService.getProviders(this.idRoot).subscribe(
       (data: any) => {
         this.proveedores = data;
         console.log(this.proveedores);

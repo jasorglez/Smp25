@@ -375,6 +375,14 @@ export const routes: Routes = [
               import(
                 './domains/ModProjects/pages/procot/procot.component'
               ).then((o) => o.ProcotComponent),
+              canActivate: [MasterPermissionsGuard],
+            data: {
+              permissions:
+              {
+                master: 'projects',
+                detailed: 'ot'
+              }
+            },
             children: [
               { path: '', redirectTo: 'ordenes', pathMatch: 'full' },
               ...SharedModule.getRoutes(),

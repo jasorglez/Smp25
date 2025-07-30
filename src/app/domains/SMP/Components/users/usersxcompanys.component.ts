@@ -1,4 +1,4 @@
-import { Component, computed, HostListener, inject } from '@angular/core';
+import { Component, computed, effect, HostListener, inject } from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
@@ -29,6 +29,15 @@ export class UsersxcompanysComponent {
     this.obtenerCompanys();
   }
 
+ constructor() {
+  effect(() => {
+    this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+    this.obtenerDatos();
+    this.obtenerCompanys();
+  }
+)
+ } 
+
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
     if (this.notSavedChanges) {
@@ -47,6 +56,7 @@ export class UsersxcompanysComponent {
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
   id: string;
+  idRoot: number;
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
   private permissionType: string = 'comp-prov';
@@ -61,7 +71,7 @@ export class UsersxcompanysComponent {
   }
 
   obtenerCompanys() {
-    this.providersService.getProviders().subscribe((data: any[]) => {
+    this.providersService.getProviders(this.idRoot).subscribe((data: any[]) => {
       this.companys = data.reduce((acc, dep) => {
         acc[dep.id] = dep.name; // Cambia la estructura para que solo almacene el nombre
         return acc;
