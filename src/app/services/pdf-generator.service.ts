@@ -336,11 +336,10 @@ export class PdfGeneratorService {
       // Fallback al método original basado en orden
       const titles = {
         1: 'TRABAJO ANTECEDENTES',
-        2: 'ACTIVIDADES RELEVANTES',
-        3: 'PROXIMOS PASOS'
+        2: 'ACTIVIDADES RELEVANTES'
       };
 
-      for (let i = 1; i <= 3; i++) {
+      for (let i = 1; i <= 2; i++) {
         const correspondingNotes = this.entrada.filter(
           (note) => note.orden === i
         );
