@@ -25,6 +25,7 @@ import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { TrackingService } from 'app/services/tracking.service';
 import { MaterialsService } from 'app/services/materials.service';
+import { CatalogsService } from 'app/services/catalogs.service';
 
 @Component({
   selector: 'storeComponent',
@@ -48,6 +49,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
   authorizedPass: boolean = false;
   private lastEditedRowId: number | string | null = null;
   newlyAddedRows: string[] = [];
+  unitsCatalog: any[] = [];
 
 
   private gridApi: GridApi;
@@ -55,6 +57,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
   private materialsService = inject(MaterialsService);
+  private catalogsService = inject(CatalogsService);
   private isOpen: boolean = false;
 
   components = {
@@ -112,6 +115,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
       this.idcompany = this.signalsService.getRootSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.obtenerDatos();
+      this.obtenerUnidades();
     });
   }
   obtenerDatos(){
@@ -119,6 +123,17 @@ export class MaterialsComponent implements CanComponentDeactivate {
       (data: any) => {
         this.rowData = data;
         console.log(this.rowData)
+      },
+      (error) => console.error('Error fetching data:', error)
+    );
+  
+  }
+
+  obtenerUnidades(){
+    return this.catalogsService.getUnits(this.idcompany).subscribe(
+      (data: any) => {
+        this.unitsCatalog = data;
+        console.log(this.unitsCatalog)
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -243,7 +258,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
         width: 250,
       },
       {
-        field: 'articulo',
+        field: 'description',
         headerName: 'Descripción',
         editable: true,
         width: 250,
@@ -310,11 +325,30 @@ export class MaterialsComponent implements CanComponentDeactivate {
 
       },
       {
-        field: 'description',
-        headerName: 'Unidad',
-        editable: true,
-        width: 250,
+      field: 'idMedida',
+      headerName: 'Unidad',
+      editable: true,
+      width: 250,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: this.unitsCatalog ? this.unitsCatalog.map((item) => item.id) : [],
       },
+      valueFormatter: (params) => {
+        const foundItem = this.unitsCatalog?.find(item => item.id === params.value);
+        return foundItem ? foundItem.description : params.value;
+      },
+    
+      // Este valor es el que edita la celda (id)
+      valueGetter: (params) => {
+        return params.data?.idMedida ?? ''; // id_medida es el valor real
+      },
+    
+      // Cuando el usuario selecciona un description, lo convertimos a id
+      valueParser: (params) => {
+        const foundItem = this.unitsCatalog?.find(item => item.description === params.newValue);
+        return foundItem ? foundItem.id : params.newValue;
+      }
+    }
     ];
   }
 
@@ -340,7 +374,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
       barCode: '',
       idFamilia: 1, // Valor por defecto válido, debe configurarse según necesidad
       idSubfamilia: null,
-      idMedida: 1, // Valor por defecto válido, debe configurarse según necesidad
+      idMedida: '', // Valor por defecto válido, debe configurarse según necesidad
       idUbication: 1, // Valor por defecto válido, debe configurarse según necesidad
       description: '',
       date: new Date().toISOString(), // Formato completo DateTime
@@ -378,7 +412,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
 
   async saveMasterChanges() {
     const isValid = this.rowData.every(
-      (item) => item.description && item.description.trim() !== ''
+      (item) => item.barCode && item.description && item.idMedida && item.date
     );
     if (!isValid) {
       alerts.basicAlert(
