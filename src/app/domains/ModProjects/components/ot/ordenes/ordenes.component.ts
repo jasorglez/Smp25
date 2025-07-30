@@ -337,19 +337,20 @@ export class OrdenesComponent {
         return '';
       },
       valueSetter: (params: any) => {
-        if (params.newValue) {
-          const material = this.catalogMateriales.find(mat => mat.articulo === params.newValue);
-          if (material) {
-            params.data[params.colDef.field] = material.id.toString();
-            return true;
-          }
-        }
-        params.data[params.colDef.field] = params.newValue;
-        return true;
-      }
+  if (params.newValue) {
+    const material = this.catalogMateriales.find(mat => mat.articulo === params.newValue);
+    if (material) {
+      console.log('Material seleccionado:', material);
+      params.data[params.colDef.field] = material.id.toString();
+      params.data['unidad'] = material.description;
+      return true;
+    }
+  }
+  return false; // No se cambia el valor si no es válido
+}
      },
-    { field: 'cantidad', headerName: 'Cantidad', width: 100, editable: true },
-    { field: 'unidad', headerName: 'Unidad', width: 100, editable: true },
+    { field: 'quantity', headerName: 'Cantidad', width: 100, editable: true },
+    { field: 'unidad', headerName: 'Unidad', width: 100, editable: false },
     //{ field: 'fechaUso', headerName: 'Fecha', width: 120 }
   ];
 
@@ -387,7 +388,7 @@ export class OrdenesComponent {
           if (employee) {
             // Establecer el ID del empleado
             params.data[params.colDef.field] = employee.id.toString();
-            const depto = this.catalogDepartamentos.find(d => d.id === +employee.idDepto);
+            const depto = this.catalogDepartamentos.find(d => d.id === +employee.idPosition);
           
             // 🟢 Establecer automáticamente la posición (o cualquier otro campo que quieras)
             params.data['position'] = depto ? depto.description : ''; // o employee.position si tienes ese campo
@@ -1574,7 +1575,6 @@ async saveChangesEquipos() {
     delete cleanedData.__modified;
     
     // Eliminar date ya que el endpoint espera date
-    delete cleanedData.date;
     
     // Solo incluir ID si no es temporal
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
@@ -1708,6 +1708,7 @@ async saveChangesEquipos() {
     }
 
     const tempId = `temp_personal_${this.tempPersonalIdCounter++}`;
+   
     const newPersonal = {
       id: tempId,
       idOt: parseInt(this.selectedOt.id),
@@ -1715,12 +1716,13 @@ async saveChangesEquipos() {
       idResource: null, // Se almacenará el ID del empleado
       position: '', 
       quantity: 1,
-      start: '08:00:00',
-      end: '17:00:00',
+      start: this.selectedReporteHoraInicio + ':00',
+      end: this.selectedReporteHoraTermino + ':00',
       azureUrl: 'NO FILE',
       date: this.selectedReporteFecha,
       typeNote: 'PERSONAL',
       description: 'NOTAS',
+      imageazure: 'NO FILE',
       orden: 1,
       __isNew: true
     };
@@ -2089,7 +2091,7 @@ async saveChangesEquipos() {
   }
 
   getDeptoandPosition() {
-    this.catalogService.getCatalogsVigente(this.idcompany, 'DEPARTAMENT').subscribe(
+    this.catalogService.getCatalogsVigente(this.idcompany, 'POSITION').subscribe(
       (data: any) => {
         this.catalogDepartamentos = data;
         console.log('Departamentos obtenidos:', this.catalogDepartamentos);
