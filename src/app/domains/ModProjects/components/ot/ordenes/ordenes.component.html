@@ -4,8 +4,8 @@
       <div class="card">
         <div class="card-body">
           <!-- SECCIÓN PRINCIPAL: Grid de OTs y Vista previa en columnas -->
-          <div class="row mb-2">
-            <div class="col-12 col-md-8 border-end">
+          <div class="row mb-2" style="position: relative;">
+            <div [class]="'col-12 col-md-' + leftColumnSize + ' border-end'" style="position: relative;">
               <!-- Sección superior: Botones y Lista de OTs lado a lado -->
               <div class="row mb-3">
                 <!-- Botones de acciones -->
@@ -322,7 +322,14 @@
               </div>
 
             <!-- COLUMNA 2: Vista previa del reporte PDF -->
-            <div class="col-12 col-sm-4">
+            <div [class]="'col-12 col-md-' + rightColumnSize" style="position: relative;">
+              <!-- Resizer drag handle -->
+              <div class="column-resizer" 
+                   (mousedown)="onResizerMouseDown($event)"
+                   [class.resizing]="isResizing"
+                   title="Arrastra para redimensionar columnas">
+                <div class="resizer-handle"></div>
+              </div>
               <h6><i class="bi bi-file-earmark-pdf"></i> Vista Previa del Reporte</h6>
               <div class="border rounded p-3 pdf-preview-container" style="height: 650px; background-color: #f8f9fa;">
                 <!-- PDF Embed cuando está generado -->

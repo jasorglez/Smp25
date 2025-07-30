@@ -145,6 +145,14 @@ export class OrdenesComponent {
   public selectedReporteHoraTermino: string = '';
   public selectedReporteId: number | string | null = null;
   public selectedFotografia: Fotografia | null = null;
+
+  // Variables para columnas ajustables
+  public leftColumnSize: number = 8;
+  public rightColumnSize: number = 4;
+  public isResizing: boolean = false;
+  private startX: number = 0;
+  private startLeftSize: number = 0;
+  private containerWidth: number = 0;
   
   // Variables para el patrón CRUD
   public notSavedChanges: boolean = false;
@@ -645,6 +653,7 @@ export class OrdenesComponent {
       this.loadEmployees();
       this.getDeptoandPosition();
     });
+    this.loadColumnSizes();
   }
 
   loadEmployees() {
@@ -2093,5 +2102,73 @@ async saveChangesEquipos() {
   
   }
 
+  // Métodos para manejo de columnas ajustables
+  loadColumnSizes() {
+    const savedSizes = localStorage.getItem('ot-column-sizes');
+    if (savedSizes) {
+      const sizes = JSON.parse(savedSizes);
+      this.leftColumnSize = sizes.left || 8;
+      this.rightColumnSize = sizes.right || 4;
+    }
+  }
+
+  saveColumnSizes() {
+    const sizes = {
+      left: this.leftColumnSize,
+      right: this.rightColumnSize
+    };
+    localStorage.setItem('ot-column-sizes', JSON.stringify(sizes));
+  }
+
+  adjustColumns(leftSize: number) {
+    if (leftSize >= 3 && leftSize <= 9) {
+      this.leftColumnSize = leftSize;
+      this.rightColumnSize = 12 - leftSize;
+      this.saveColumnSizes();
+    }
+  }
+
+  // Métodos para drag resizer
+  onResizerMouseDown(event: MouseEvent) {
+    event.preventDefault();
+    this.isResizing = true;
+    this.startX = event.clientX;
+    this.startLeftSize = this.leftColumnSize;
+    
+    // Obtener el ancho del contenedor
+    const container = (event.target as HTMLElement).closest('.row');
+    if (container) {
+      this.containerWidth = container.clientWidth;
+    }
+
+    // Agregar event listeners globales
+    document.addEventListener('mousemove', this.onMouseMove.bind(this));
+    document.addEventListener('mouseup', this.onMouseUp.bind(this));
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  }
+
+  private onMouseMove(event: MouseEvent) {
+    if (!this.isResizing) return;
+
+    const deltaX = event.clientX - this.startX;
+    const containerWidth = this.containerWidth || 1200; // fallback
+    const deltaPercent = (deltaX / containerWidth) * 12; // Bootstrap tiene 12 columnas
+    
+    let newLeftSize = Math.round(this.startLeftSize + deltaPercent);
+    
+    // Limitar entre 3 y 9 columnas
+    newLeftSize = Math.max(3, Math.min(9, newLeftSize));
+    
+    this.adjustColumns(newLeftSize);
+  }
+
+  private onMouseUp(event: MouseEvent) {
+    this.isResizing = false;
+    document.removeEventListener('mousemove', this.onMouseMove.bind(this));
+    document.removeEventListener('mouseup', this.onMouseUp.bind(this));
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  }
 
 }

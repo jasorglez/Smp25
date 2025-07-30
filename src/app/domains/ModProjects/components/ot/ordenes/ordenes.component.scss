@@ -19,6 +19,56 @@
   border-right: 1px solid #dee2e6 !important;
 }
 
+// Estilos para el resizer drag-and-drop
+.column-resizer {
+  position: absolute;
+  top: 0;
+  left: -5px;
+  bottom: 0;
+  width: 10px;
+  background: transparent;
+  cursor: col-resize;
+  z-index: 10;
+  user-select: none;
+  
+  &:hover .resizer-handle,
+  &.resizing .resizer-handle {
+    background-color: #007bff;
+    opacity: 1;
+  }
+  
+  .resizer-handle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 4px;
+    height: 60px;
+    background-color: #dee2e6;
+    border-radius: 2px;
+    opacity: 0;
+    transition: all 0.2s ease;
+    
+    &::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 2px;
+      height: 20px;
+      background-color: white;
+      border-radius: 1px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+  }
+}
+
+// Mostrar el handle cuando se hace hover en la columna derecha
+div[class*="col-md-"]:hover .column-resizer .resizer-handle {
+  opacity: 0.7;
+}
+
 .pdf-preview-container {
   box-shadow: 0 0 0 1px rgba(13, 110, 253, 0.25);
   transition: box-shadow 0.15s ease-in-out;
