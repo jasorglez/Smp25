@@ -135,6 +135,7 @@ export class OrdenesComponent {
   private idcompany: number = 0;
   private catalogMateriales: any[] = [];
   private catalogDepartamentos: any[] = [];
+  private unitsCatalog: any[] = [];
 
   // Variables para el nuevo layout
   public selectedOt: OrdenesData | null = null;
@@ -157,6 +158,8 @@ export class OrdenesComponent {
   // Variables para el patrón CRUD
   public notSavedChanges: boolean = false;
   public notSavedPersonalChanges: boolean = false;
+  public notSavedMaterialChanges: boolean = false;
+  public notSavedEquipoChanges: boolean = false;
   private tempIdCounter: number = 1;
   private tempPersonalIdCounter: number = 1;
   private currentEditingRow: number = -1;
@@ -316,43 +319,86 @@ export class OrdenesComponent {
   }
 
   // Configuraciones de columnas para AG-Grid
-  public materialesColumnDefs: ColDef[] = [
-    //{ field: 'id', headerName: 'ID', width: 80 },
-    { field: 'idResource', 
-      headerName: 'Material',
-      flex: 2 ,
-      editable: true,
-      cellEditor: 'agSelectCellEditor',
-      cellEditorParams: (params: any) => {
-        return {
-          values: this.catalogMateriales.map(mat => mat.articulo)
-        };
-      },
-      valueFormatter: (params: any) => {
-        // Mostrar el nombre del empleado basado en el ID almacenado
-        if (params.value && params.value !== '0') {
-          const material = this.catalogMateriales.find(mat => mat.id.toString() === params.value.toString());
-          return material ? material.articulo : '';
-        }
-        return '';
-      },
-      valueSetter: (params: any) => {
-  if (params.newValue) {
-    const material = this.catalogMateriales.find(mat => mat.articulo === params.newValue);
-    if (material) {
-      console.log('Material seleccionado:', material);
-      params.data[params.colDef.field] = material.id.toString();
-      params.data['unidad'] = material.description;
+ public get materialesColumnDefs(): ColDef[] {
+  return [
+  {
+  field: 'idResource',
+  headerName: 'Material',
+  flex: 2,
+  editable: true,
+  cellEditor: 'agSelectCellEditor',
+  cellEditorParams: {
+    values: this.catalogMateriales?.map((item) => item.description) || [],
+  },
+  // Muestra la descripción del material
+  valueFormatter: (params) => {
+    // Obtener el ID del material desde idResource
+    const materialId = params.data?.idResource;
+    if (!materialId) return '';
+    
+    const foundItem = this.catalogMateriales?.find(item => item.id == materialId);
+    return foundItem ? foundItem.description : `ID: ${materialId}`;
+  },
+  // Obtiene el valor para mostrar en el editor (descripción)
+  valueGetter: (params) => {
+    if (!params.data || !params.data.idResource) return '';
+    const foundItem = this.catalogMateriales?.find(item => item.id == params.data.idResource);
+    return foundItem ? foundItem.description : '';
+  },
+  // Convierte la descripción seleccionada de vuelta al ID
+  valueSetter: (params) => {
+    console.log('=== VALUE SETTER MATERIALES ===');
+    console.log('Nuevo valor (descripción):', params.newValue);
+    console.log('Valor anterior:', params.oldValue);
+    console.log('Data antes:', params.data.idResource);
+    
+    if (!params.newValue) {
+      params.data.idResource = null;
       return true;
     }
+    
+    const foundItem = this.catalogMateriales?.find(item => item.description === params.newValue);
+    if (foundItem) {
+      console.log('Material encontrado, asignando ID:', foundItem.id);
+      params.data.idResource = foundItem.id;
+      console.log('Data después:', params.data.idResource);
+      return true;
+    } else {
+      console.log('Material no encontrado para:', params.newValue);
+      return false; // No aceptar valores no válidos
+    }
   }
-  return false; // No se cambia el valor si no es válido
-}
-     },
-    { field: 'quantity', headerName: 'Cantidad', width: 100, editable: true },
-    { field: 'unidad', headerName: 'Unidad', width: 100, editable: false },
-    //{ field: 'fechaUso', headerName: 'Fecha', width: 120 }
+  },
+
+  {
+    field: 'quantity',
+    headerName: 'Cantidad',
+    width: 100,
+    editable: true
+  },
+
+  {
+    field: 'unidad',
+    headerName: 'Unidad',
+    width: 100,
+    editable: false,
+    
+    // Obtiene la unidad del material seleccionado
+    valueGetter: (params) => {
+      const materialId = params.data?.idResource;
+      if (!materialId) return '';
+      
+      // Buscar el material en el catálogo
+      const material = this.catalogMateriales?.find(m => m.id == materialId);
+      if (!material || !material.idMedida) return '';
+      
+      // Buscar la descripción de la unidad
+      const unit = this.unitsCatalog?.find(u => u.id == material.idMedida);
+      return unit ? unit.description : material.idMedida;
+    }
+  }
   ];
+ }
 
   public equiposColumnDefs: ColDef[] = [
     //{ field: 'id', headerName: 'ID', width: 80 },
@@ -541,6 +587,12 @@ export class OrdenesComponent {
   
   // Variables para el grid de personal
   public personalGridApi!: GridApi;
+  
+  // Variables para el grid de materiales
+  public materialesGridApi!: GridApi;
+  
+  // Variables para el grid de equipos
+  public equiposGridApi!: GridApi;
 
   // Configuración del grid principal
   public gridApi!: GridApi;
@@ -593,6 +645,35 @@ export class OrdenesComponent {
     stopEditingWhenCellsLoseFocus: true,
     onCellValueChanged: (event: any) => this.onCellValueChangedReportes(event),
     onGridReady: (params: any) => this.onReportesGridReady(params)
+  };
+
+  // Configuración específica para el grid de materiales con edición
+  public materialesGridOptions: any = {
+    headerHeight: 35,
+    rowHeight: 30,
+    suppressDragLeaveHidesColumns: true,
+    suppressHorizontalScroll: false,
+    animateRows: true,
+    pagination: false,
+    domLayout: 'autoHeight',
+    stopEditingWhenCellsLoseFocus: true,
+    rowSelection: 'single',
+    onCellValueChanged: (event: any) => this.onMaterialCellValueChanged(event),
+    onGridReady: (params: any) => this.onMaterialesGridReady(params)
+  };
+
+  public equiposGridOptions: any = {
+    headerHeight: 35,
+    rowHeight: 30,
+    suppressDragLeaveHidesColumns: true,
+    suppressHorizontalScroll: false,
+    animateRows: true,
+    pagination: false,
+    domLayout: 'autoHeight',
+    stopEditingWhenCellsLoseFocus: true,
+    rowSelection: 'single',
+    onCellValueChanged: (event: any) => this.onMaterialCellValueChanged(event),
+    onGridReady: (params: any) => this.onMaterialesGridReady(params)
   };
 
   // Definición de columnas
@@ -653,6 +734,7 @@ export class OrdenesComponent {
       this.obtenerDatos();
       this.loadEmployees();
       this.getDeptoandPosition();
+      this.obtenerUnidades();
     });
     this.loadColumnSizes();
   }
@@ -1124,7 +1206,7 @@ async saveChangesMaterial() {
     console.log('=== GUARDADO EXITOSO ===');
     alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
 
-    this.notSavedChanges = false;
+    this.notSavedMaterialChanges = false;
     
     // Recargar datos desde el servidor
     console.log('Recargando datos desde el servidor...');
@@ -1220,7 +1302,7 @@ async saveChangesEquipos() {
     console.log('=== GUARDADO EXITOSO ===');
     alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
 
-    this.notSavedChanges = false;
+    this.notSavedEquipoChanges = false;
     
     // Recargar datos desde el servidor
     console.log('Recargando datos desde el servidor...');
@@ -1258,11 +1340,11 @@ async saveChangesEquipos() {
   }
   revertEquipos() {
     this.obtenerEquipos(this.selectedReporteId);
-    this.notSavedChanges = false;
+    this.notSavedEquipoChanges = false;
   }
   revertMaterial() {
     this.obtenerMateriales(this.selectedReporteId);
-    this.notSavedChanges = false;
+    this.notSavedMaterialChanges = false;
   }
 
   printReporte() {
@@ -1680,11 +1762,63 @@ async saveChangesEquipos() {
     }
   }
 
+  onCellValueChangedMaterial(event: any) {
+
+    this.notSavedMaterialChanges = true;
+
+    if (!event.data.__isNew) {
+      event.data.__modified = true;
+    }
+  }
+  onCellValueChangedEquipo(event: any) {
+
+    this.notSavedEquipoChanges = true;
+
+    if (!event.data.__isNew) {
+      event.data.__modified = true;
+    }
+  }
+
+  // Método para manejar cambios en el grid de materiales
+  onMaterialCellValueChanged(event: any) {
+    console.log('=== CAMBIO EN GRID DE MATERIALES ===');
+    console.log('Campo modificado:', event.colDef.field);
+    console.log('Valor anterior:', event.oldValue);
+    console.log('Valor nuevo:', event.newValue);
+    console.log('Dato completo después del cambio:', event.data);
+    
+    this.notSavedChangesMaster = true;
+
+    if (!event.data.__isNew) {
+      event.data.__modified = true;
+    }
+
+    // Refrescar las celdas para mostrar la descripción y unidad correctas
+    if (this.materialesGridApi && event.colDef.field === 'idResource') {
+      setTimeout(() => {
+        this.materialesGridApi.refreshCells({
+          rowNodes: [event.node],
+          columns: ['idResource', 'unidad'] // Refrescar tanto el material como la unidad
+        });
+      }, 0);
+    }
+  }
+
   // Grid ready para personal
   onPersonalGridReady(params: any) {
     this.personalGridApi = params.api;
     // Remover sizeColumnsToFit para respetar flex
     // params.api.sizeColumnsToFit();
+  }
+
+  // Grid ready para materiales
+  onMaterialesGridReady(params: any) {
+    this.materialesGridApi = params.api;
+  }
+
+  // Grid ready para equipos
+  onEquiposGridReady(params: any) {
+    this.equiposGridApi = params.api;
   }
 
   // Métodos CRUD para Personal
@@ -1747,13 +1881,14 @@ async saveChangesEquipos() {
       return;
     }
 
-    const tempId = `temp_personal_${this.tempPersonalIdCounter++}`;
+    const tempId = `temp_material_${this.tempPersonalIdCounter++}`;
     const newMaterial = {
       id: 0,
       idOt: parseInt(this.selectedOt.id),
       idReporte: this.selectedReporteId,
-      idResource: null, // Se almacenará el ID del empleado
+      idResource: '', // Inicializar como string vacío para consistencia
       quantity: 1,
+      unidad: '', // Inicializar campo unidad explícitamente
       start: this.selectedReporteHoraInicio + ':00',
       end: this.selectedReporteHoraTermino + ':00',
       date: this.selectedReporteFecha,
@@ -1763,15 +1898,18 @@ async saveChangesEquipos() {
       __isNew: true
     };
 
-      this.materiales = [newMaterial, ...this.materiales];
-    this.notSavedChangesMaster = true;
+    this.materiales = [newMaterial, ...this.materiales];
+    this.notSavedMaterialChanges = true;
 
     setTimeout(() => {
-      if (this.personalGridApi) {
-        this.personalGridApi.startEditingCell({
-          rowIndex: 0,
-          colKey: 'nombre'
-        });
+      if (this.materialesGridApi) {
+        this.materialesGridApi.setGridOption('rowData', this.materiales);
+        setTimeout(() => {
+          this.materialesGridApi.startEditingCell({
+            rowIndex: 0,
+            colKey: 'idResource'
+          });
+        }, 100);
       }
     }, 0);
   }
@@ -1787,12 +1925,12 @@ async saveChangesEquipos() {
       return;
     }
 
-    const tempId = `temp_personal_${this.tempPersonalIdCounter++}`;
+    const tempId = `temp_equipo_${this.tempPersonalIdCounter++}`;
     const newEquipo = {
-      id: tempId,
+      id: 0,
       idOt: parseInt(this.selectedOt.id),
       idReporte: this.selectedReporteId,
-      idResource: null, // Se almacenará el ID del empleado
+      idResource: null, // Se almacenará el ID del equipo
       position: '', 
       quantity: 1,
       start: this.selectedReporteHoraInicio + ':00',
@@ -1805,14 +1943,17 @@ async saveChangesEquipos() {
     };
 
     this.equipos = [newEquipo, ...this.equipos];
-    this.notSavedPersonalChanges = true;
+    this.notSavedEquipoChanges = true;
     
     setTimeout(() => {
-      if (this.personalGridApi) {
-        this.personalGridApi.startEditingCell({
-          rowIndex: 0,
-          colKey: 'nombre'
-        });
+      if (this.equiposGridApi) {
+        this.equiposGridApi.setGridOption('rowData', this.equipos);
+        setTimeout(() => {
+          this.equiposGridApi.startEditingCell({
+            rowIndex: 0,
+            colKey: 'description'
+          });
+        }, 100);
       }
     }, 0);
   }
@@ -2049,7 +2190,13 @@ async saveChangesEquipos() {
     return this.materialsService.getMaterials(this.idcompany, 'CONSUMABLE').subscribe(
       (data: any) => {
         this.catalogMateriales = data;
-        console.log(this.catalogMateriales)
+        console.log('Catálogo de materiales cargado:', this.catalogMateriales);
+        
+        // Actualizar el grid de materiales si ya está inicializado
+        if (this.materialesGridApi) {
+          this.materialesGridApi.refreshCells();
+          console.log('Grid de materiales actualizado con catálogo');
+        }
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -2068,6 +2215,16 @@ async saveChangesEquipos() {
       }
     );
   
+  }
+
+  obtenerUnidades(){
+    return this.catalogService.getUnits(this.idcompany).subscribe(
+      (data: any) => {
+        this.unitsCatalog = data;
+        console.log('Catálogo de unidades obtenido:', this.unitsCatalog);
+      },
+      (error) => console.error('Error fetching units:', error)
+    );
   }
 
   // Métodos para manejo de columnas ajustables
@@ -2137,6 +2294,127 @@ async saveChangesEquipos() {
     document.removeEventListener('mouseup', this.onMouseUp.bind(this));
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
+  }
+
+   async deleteMaterial() {
+    if (!this.materialesGridApi) {
+      alerts.basicAlert('Error', 'Grid no disponible', 'error');
+      return;
+    }
+
+    const selectedNodes = this.materialesGridApi.getSelectedNodes();
+    if (selectedNodes.length === 0) {
+      alerts.basicAlert('Error', 'Seleccione una entrada de material para eliminar', 'error');
+      return;
+    }
+
+    const selectedData = selectedNodes[0].data;
+    const id = selectedData.id;
+
+    console.log('=== INTENTANDO ELIMINAR MATERIAL ===');
+    console.log('Registro seleccionado para eliminar:', selectedData);
+    console.log('ID a eliminar:', id);
+    
+    alerts.confirmAlert(
+      'Eliminar material',
+      '¿Está seguro que desea eliminar este registro de material?',
+      'warning',
+      'Sí, eliminar'
+    ).then((value) => {
+      if (value.isConfirmed) {
+        console.log('=== CONFIRMACIÓN DE ELIMINACIÓN ===');
+        
+        if (selectedData.__isNew) {
+          console.log('Eliminando registro nuevo (solo local)');
+          this.materiales = this.materiales.filter(m => m.id !== id);
+          this.notSavedMaterialChanges = this.materiales.some(m => m.__isNew);
+          console.log('Material después de eliminación local:', this.materiales);
+          alerts.basicAlert('Éxito', 'Material eliminado correctamente', 'success');
+        } else {
+          console.log('Eliminando registro existente usando endpoint DELETE');
+          console.log('Enviando DELETE para ID:', id);
+          
+          this.logbookService.deleteDataForOt(Number(id)).subscribe({
+            next: (response) => {
+              console.log('Respuesta del DELETE:', response);
+              this.materiales = this.materiales.filter(m => m.id !== id);
+              console.log('Material después de eliminación del servidor:', this.materiales);
+              alerts.basicAlert('Éxito', 'Material eliminado correctamente del servidor', 'success');
+            },
+            error: (error) => {
+              console.error('Error al eliminar material del servidor:', error);
+              let errorMessage = 'Error al eliminar el registro de material';
+              if (error.status === 404) {
+                errorMessage = 'El registro ya no existe en el servidor';
+              } else if (error.status === 401) {
+                errorMessage = 'No autorizado para eliminar este registro';
+              }
+              alerts.basicAlert('Error', errorMessage, 'error');
+            }
+          });
+        }
+      }
+    });
+  }
+  async deleteEquipo() {
+    if (!this.equiposGridApi) {
+      alerts.basicAlert('Error', 'Grid no disponible', 'error');
+      return;
+    }
+
+    const selectedNodes = this.equiposGridApi.getSelectedNodes();
+    if (selectedNodes.length === 0) {
+      alerts.basicAlert('Error', 'Seleccione una entrada de equipo para eliminar', 'error');
+      return;
+    }
+
+    const selectedData = selectedNodes[0].data;
+    const id = selectedData.id;
+
+    console.log('=== INTENTANDO ELIMINAR EQUIPO ===');
+    console.log('Registro seleccionado para eliminar:', selectedData);
+    console.log('ID a eliminar:', id);
+    
+    alerts.confirmAlert(
+      'Eliminar equipo',
+      '¿Está seguro que desea eliminar este registro de equipo?',
+      'warning',
+      'Sí, eliminar'
+    ).then((value) => {
+      if (value.isConfirmed) {
+        console.log('=== CONFIRMACIÓN DE ELIMINACIÓN ===');
+        
+        if (selectedData.__isNew) {
+          console.log('Eliminando registro nuevo (solo local)');
+          this.equipos = this.equipos.filter(m => m.id !== id);
+          this.notSavedEquipoChanges = this.equipos.some(m => m.__isNew);
+          console.log('Equipo después de eliminación local:', this.equipos);
+          alerts.basicAlert('Éxito', 'Equipo eliminado correctamente', 'success');
+        } else {
+          console.log('Eliminando registro existente usando endpoint DELETE');
+          console.log('Enviando DELETE para ID:', id);
+          
+          this.logbookService.deleteDataForOt(Number(id)).subscribe({
+            next: (response) => {
+              console.log('Respuesta del DELETE:', response);
+              this.equipos = this.equipos.filter(m => m.id !== id);
+              console.log('Equipo después de eliminación del servidor:', this.equipos);
+              alerts.basicAlert('Éxito', 'Equipo eliminado correctamente del servidor', 'success');
+            },
+            error: (error) => {
+              console.error('Error al eliminar equipo del servidor:', error);
+              let errorMessage = 'Error al eliminar el registro de equipo';
+              if (error.status === 404) {
+                errorMessage = 'El registro ya no existe en el servidor';
+              } else if (error.status === 401) {
+                errorMessage = 'No autorizado para eliminar este registro';
+              }
+              alerts.basicAlert('Error', errorMessage, 'error');
+            }
+          });
+        }
+      }
+    });
   }
 
 }

@@ -255,14 +255,14 @@
                             </button>
                             <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChangesMaterial()">
                               <i class="bi bi-floppy"></i>
-                              <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedChanges">
+                              <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedMaterialChanges">
                                 <span class="visually-hidden">Hay cambios sin guardar</span>
                               </span>
                             </button>
                             <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertMaterial()">
                               <i class="bi bi-arrow-clockwise"></i>
                             </button>
-                            <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteReporte()">
+                            <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteMaterial()">
                               <i class="bi bi-trash"></i>
                             </button>
                           </nav>
@@ -273,7 +273,9 @@
                             class="ag-theme-quartz small-text-ag-grid"
                             [rowData]="materiales"
                             [columnDefs]="materialesColumnDefs"
-                            [gridOptions]="tabGridOptions">
+                            (cellValueChanged)="onCellValueChangedMaterial($event)"
+                            [gridOptions]="materialesGridOptions"
+                            (gridReady)="onMaterialesGridReady($event)">
                           </ag-grid-angular>
                         </div>
                       </div>
@@ -294,14 +296,14 @@
                             </button>
                             <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChangesEquipos()">
                               <i class="bi bi-floppy"></i>
-                              <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedChanges">
+                              <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedEquipoChanges">
                                 <span class="visually-hidden">Hay cambios sin guardar</span>
                               </span>
                             </button>
                             <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertEquipos()">
                               <i class="bi bi-arrow-clockwise"></i>
                             </button>
-                            <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteReporte()">
+                            <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteEquipo()">
                               <i class="bi bi-trash"></i>
                             </button>
                           </nav>
@@ -312,7 +314,10 @@
                         class="ag-theme-quartz small-text-ag-grid"
                         [rowData]="equipos"
                         [columnDefs]="equiposColumnDefs"
-                        [gridOptions]="tabGridOptions">
+                        [gridOptions]="tabGridOptions"
+                        (cellValueChanged)="onCellValueChangedEquipo($event)"
+                        [gridOptions]="equiposGridOptions"
+                        (gridReady)="onEquiposGridReady($event)">
                       </ag-grid-angular>
                       </div>
                       </div>
