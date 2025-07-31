@@ -380,28 +380,203 @@ export class OrdenesComponent {
       cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
         cellRendererParams: {
           clicked: this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService),
-          field: 'picture'
+          field: 'imageUrl'
         },
         editable: false,
      },
-    { field: 'descripcion', headerName: 'Descripción', flex: 1 },
+    { field: 'description', headerName: 'Descripción', flex: 1, editable: true },
     //{ field: 'fecha', headerName: 'Fecha', width: 120 }
   ];
 
   addFotografia(){
+    
+    if (!this.selectedOt) {
+      alerts.basicAlert('Error', 'Debe seleccionar una OT primero', 'error');
+      return;
+    }
 
+    if (!this.selectedReporteFecha) {
+      alerts.basicAlert('Error', 'Debe seleccionar una fecha de reporte primero', 'error');
+      return;
+    }
+
+    const tempId = `temp_personal_${this.tempPersonalIdCounter++}`;
+   
+    const newFotografia = {
+      id: tempId,
+      idOt: parseInt(this.selectedOt.id),
+      idReporte: this.selectedReporteId,
+      idResource: null, // Se almacenará el ID del empleado
+      position: '', 
+      quantity: 1,
+      start: this.selectedReporteHoraInicio + ':00',
+      end: this.selectedReporteHoraTermino + ':00',
+      azureUrl: 'NO FILE',
+      date: this.selectedReporteFecha,
+      typeNote: 'Photo',
+      imageazure: 'NO FILE',
+      orden: 1,
+      __isNew: true
+    };
+
+    this.fotografias = [newFotografia, ...this.fotografias];
+    this.notSavedFotografiaChanges = true;
+
+    setTimeout(() => {
+      if (this.fotografiaGridApi) {
+        this.fotografiaGridApi.startEditingCell({
+          rowIndex: 0,
+          colKey: 'imageUrl'
+        });
+      }
+    }, 0);
   }
 
-  saveFotografiasChanges() {
+  async saveFotografiasChanges() {
+    const newRows = this.fotografias.filter(row => row.__isNew);
+    const modifiedRows = this.fotografias.filter(row => row.__modified && !row.__isNew);
 
+    // Validación básica
+    const invalidRows = newRows.filter(item => !item.imageUrl || !item.descripcion);
+    
+    if (invalidRows.length > 0) {
+      alerts.basicAlert('Error', 'Debe completar la imagen y la descripción antes de guardar.', 'error');
+      return;
+    }
+
+    if (newRows.length === 0 && modifiedRows.length === 0) {
+      alerts.basicAlert('Info', 'No hay cambios para guardar', 'info');
+      return;
+    }
+
+    try {
+      console.log('=== USANDO ENDPOINTS DE LOGBOOK SERVICE ===');
+      
+      // Preparar requests para nuevos registros
+      const addRequests = newRows.map((row, index) => {
+        const cleanedData = this.cleanPersonalDataForServer(row);
+        console.log(`Datos para POST ${index + 1}:`, cleanedData);
+        return this.logbookService.addDataForOt(cleanedData).toPromise();
+      });
+
+      // Preparar requests para registros modificados
+      const updateRequests = modifiedRows.map((row, index) => {
+        const cleanedData = this.cleanPersonalDataForServer(row);
+        console.log(`Datos para PUT ${index + 1} (ID: ${row.id}):`, cleanedData);
+        return this.logbookService.updateDataForOt(Number(row.id), cleanedData).toPromise();
+      });
+
+      console.log(`Ejecutando ${addRequests.length} requests de creación`);
+      console.log(`Ejecutando ${updateRequests.length} requests de actualización`);
+
+      // Ejecutar todos los requests
+      const responses = await Promise.all([...addRequests, ...updateRequests]);
+      
+      console.log('=== RESPUESTAS RECIBIDAS ===');
+      console.log('Número de respuestas:', responses.length);
+      responses.forEach((response, index) => {
+        console.log(`Respuesta ${index + 1}:`, response);
+      });
+
+      // Verificar si las respuestas son exitosas
+      const failedResponses = responses.filter(response => 
+        !response || 
+        (response.hasOwnProperty('success') && !response.success) ||
+        (response.status && response.status >= 400)
+      );
+
+      if (failedResponses.length > 0) {
+        console.error('Respuestas fallidas:', failedResponses);
+        throw new Error(`${failedResponses.length} requests fallaron`);
+      }
+
+      console.log('=== GUARDADO EXITOSO ===');
+      alerts.basicAlert('Éxito', 'Cambios de fotografías guardados correctamente', 'success');
+      this.notSavedFotografiaChanges = false;
+      
+      // Limpiar flags de control
+      this.fotografias.forEach(item => {
+        delete item.__isNew;
+        delete item.__modified;
+      });
+
+      // Recargar datos para reflejar cambios del servidor
+      // Aquí podrías recargar datos si tienes un endpoint específico para fotografías
+
+    } catch (error: any) {
+      console.error('=== ERROR AL GUARDAR FOTOGRAFÍAS ===');
+      console.error('Error completo:', error);
+
+      let errorMessage = 'Error al guardar cambios de fotografías';
+      if (error.status === 400) {
+        errorMessage = 'Datos inválidos. Verifique que todos los campos estén correctos.';
+      } else if (error.status === 401) {
+        errorMessage = 'No autorizado. Por favor, vuelva a iniciar sesión.';
+      } else if (error.status === 500) {
+        errorMessage = 'Error interno del servidor. Contacte al administrador.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      alerts.basicAlert('Error', errorMessage, 'error');
+    }
   }
 
   revertFotografias() {
-
+    this.obtenerFotografias(this.selectedReporteId);
+    this.notSavedFotografiaChanges = false;
   }
 
   deleteFotografia(){
+    if (!this.fotografiaGridApi) {
+      alerts.basicAlert('Error', 'Grid no disponible', 'error');
+      return;
+    }
 
+    const selectedNodes = this.fotografiaGridApi.getSelectedNodes();
+    if (selectedNodes.length === 0) {
+      alerts.basicAlert('Error', 'Seleccione una entrada de fotografía para eliminar', 'error');
+      return;
+    }
+
+    const selectedData = selectedNodes[0].data;
+    const id = selectedData.id;
+
+    console.log('=== INTENTANDO ELIMINAR FOTOGRAFÍA ===');
+    console.log('Registro seleccionado para eliminar:', selectedData);
+    console.log('ID a eliminar:', id);
+    
+    alerts.confirmAlert(
+      'Eliminar fotografía',
+      '¿Está seguro que desea eliminar este registro de fotografía?',
+      'warning',
+      'Sí, eliminar'
+    ).then((value) => {
+      if (value.isConfirmed) {
+        if (selectedData.__isNew) {
+          this.fotografias = this.fotografias.filter(f => f.id !== id);
+          this.notSavedFotografiaChanges = this.fotografias.some(f => f.__isNew);
+          alerts.basicAlert('Éxito', 'Fotografía eliminada correctamente', 'success');
+        } else {
+          this.logbookService.deleteDataForOt(Number(id)).subscribe({
+            next: (response) => {
+              this.fotografias = this.fotografias.filter(f => f.id !== id);
+              alerts.basicAlert('Éxito', 'Fotografía eliminada correctamente del servidor', 'success');
+            },
+            error: (error) => {
+              console.error('Error al eliminar fotografía del servidor:', error);
+              let errorMessage = 'Error al eliminar el registro de fotografía';
+              if (error.status === 404) {
+                errorMessage = 'El registro ya no existe en el servidor';
+              } else if (error.status === 401) {
+                errorMessage = 'No autorizado para eliminar este registro';
+              }
+              alerts.basicAlert('Error', errorMessage, 'error');
+            }
+          });
+        }
+      }
+    });
   }
 
   // Configuración de columnas para reportes diarios con edición inline
@@ -520,6 +695,8 @@ export class OrdenesComponent {
   
   // Variables para el grid de materiales
   public materialesGridApi!: GridApi;
+
+  public fotografiaGridApi!: GridApi;
   
   // Variables para el grid de equipos
   public equiposGridApi!: GridApi;
@@ -563,6 +740,19 @@ export class OrdenesComponent {
     onGridReady: (params: any) => this.onPersonalGridReady(params)
   };
 
+   public fotografiasGridOptions: any = {
+    headerHeight: 35,
+    rowHeight: 30,
+    suppressDragLeaveHidesColumns: true,
+    suppressHorizontalScroll: false,
+    animateRows: true,
+    pagination: false,
+    domLayout: 'autoHeight',
+    stopEditingWhenCellsLoseFocus: true,
+    rowSelection: 'single',
+    onCellValueChanged: (event: any) => this.onCellValueChangedFotografia(event),
+    onGridReady: (params: any) => this.onFotografiasGridReady(params)
+  };
   // Configuración específica para el grid de reportes con edición inline
   public reportesGridOptions: any = {
     headerHeight: 30,
@@ -1701,6 +1891,14 @@ async saveChangesEquipos() {
       event.data.__modified = true;
     }
   }
+   onCellValueChangedFotografia(event: any) {
+
+    this.notSavedFotografiaChanges = true;
+
+    if (!event.data.__isNew) {
+      event.data.__modified = true;
+    }
+  }
   onCellValueChangedEquipo(event: any) {
 
     this.notSavedEquipoChanges = true;
@@ -1750,6 +1948,10 @@ async saveChangesEquipos() {
   // Grid ready para equipos
   onEquiposGridReady(params: any) {
     this.equiposGridApi = params.api;
+  }
+
+  onFotografiasGridReady(params: any) {
+    this.fotografiaGridApi = params.api;
   }
 
   // Métodos CRUD para Personal
@@ -2109,7 +2311,7 @@ async saveChangesEquipos() {
     );
   }
    obtenerFotografias(selectedReporteId: any) {
-    this.logbookService.getInfoByReporte(selectedReporteId, "FOTO").subscribe(
+    this.logbookService.getInfoByReporte(selectedReporteId, "Photo").subscribe(
       (data: any) => {
         this.fotografias = data.data;
       },

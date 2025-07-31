@@ -229,8 +229,7 @@
                           class="ag-theme-quartz small-text-ag-grid"
                           [rowData]="fotografias"
                           [columnDefs]="fotografiasColumnDefs"
-                          [gridOptions]="tabGridOptions"
-                          [rowSelection]="'single'"
+                          [gridOptions]="fotografiasGridOptions"
                           (rowClicked)="selectFotografia($event.data)">
                         </ag-grid-angular>
                       </div>
