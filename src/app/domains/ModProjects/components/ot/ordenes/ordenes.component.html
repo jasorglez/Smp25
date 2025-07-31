@@ -198,12 +198,31 @@
                   <!-- Pestaña Fotografías -->
                   <div class="tab-pane" [class.show]="activeTab === 'fotos'" [class.active]="activeTab === 'fotos'">
                     <h6><i class="bi bi-images"></i> Fotografías del Trabajo
-                      <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">
+                      <span *ngIf="selectedReporteFecha" class="badge bg-secondary ">
                         Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}
                       </span>
                     </h6>
                     <div class="row">
                       <!-- COLUMNA 1: Grid de Fotografías -->
+                       <div class="col-2">
+                          <nav class="col-auto d-flex flex-column align-items-start">
+                          <button type="button" class="btn btn-primary  mb-2" (click)="addFotografia()">
+                            <i class="bi bi-plus-lg"></i>
+                          </button>
+                          <button type="button" class="btn btn-success  position-relative mb-2" (click)="saveFotografiasChanges()">
+                            <i class="bi bi-floppy"></i>
+                            <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedFotografiaChanges">
+                              <span class="visually-hidden">Hay cambios sin guardar</span>
+                            </span>
+                          </button>
+                          <button type="button" class="btn btn-warning  mb-2" (click)="revertFotografias()">
+                            <i class="bi bi-arrow-clockwise"></i>
+                          </button>
+                          <button type="button" class="btn btn-danger  mb-2" (click)="deleteFotografia()">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </nav>
+                       </div>
                        <div class="col-6">
                         <ag-grid-angular 
                           [ngStyle]="{ height: gridHeight, width: gridWidthDetail }"
@@ -217,7 +236,7 @@
                       </div>
 
                       <!-- COLUMNA 2: Vista previa de la fotografía -->
-                      <div class="col-6">
+                      <div class="col-4">
                         <div class="border rounded p-3 h-100" style="background-color: #f8f9fa; height: calc(100% - 35px);">
                           <div *ngIf="selectedFotografia; else noFotoSelection" class="h-100">
                             <div class="text-center h-100 d-flex flex-column justify-content-center">

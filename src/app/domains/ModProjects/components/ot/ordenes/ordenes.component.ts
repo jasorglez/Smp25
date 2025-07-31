@@ -160,6 +160,7 @@ export class OrdenesComponent {
   public notSavedPersonalChanges: boolean = false;
   public notSavedMaterialChanges: boolean = false;
   public notSavedEquipoChanges: boolean = false;
+  public notSavedFotografiaChanges: boolean = false;
   private tempIdCounter: number = 1;
   private tempPersonalIdCounter: number = 1;
   private currentEditingRow: number = -1;
@@ -1869,6 +1870,53 @@ async saveChangesEquipos() {
       }
     }, 0);
   }
+  addFotografia() {
+    //console.log('=== AGREGANDO NUEVO PERSONAL ===');
+    //console.log('OT seleccionada:', this.selectedOt);
+    //console.log('Fecha de reporte seleccionada:', this.selectedReporteFecha);
+    
+    if (!this.selectedOt) {
+      alerts.basicAlert('Error', 'Debe seleccionar una OT primero', 'error');
+      return;
+    }
+
+    if (!this.selectedReporteFecha) {
+      alerts.basicAlert('Error', 'Debe seleccionar una fecha de reporte primero', 'error');
+      return;
+    }
+
+    const tempId = `temp_fotografia_${this.tempPersonalIdCounter++}`;
+
+    const newFotografia = {
+      id: tempId,
+      idOt: parseInt(this.selectedOt.id),
+      idReporte: this.selectedReporteId,
+      idResource: null, // Se almacenará el ID del empleado
+      position: '', 
+      quantity: 1,
+      start: this.selectedReporteHoraInicio + ':00',
+      end: this.selectedReporteHoraTermino + ':00',
+      azureUrl: 'NO FILE',
+      date: this.selectedReporteFecha,
+      typeNote: 'PERSONAL',
+      description: 'NOTAS',
+      imageazure: 'NO FILE',
+      orden: 1,
+      __isNew: true
+    };
+
+    this.fotografias = [newFotografia, ...this.fotografias];
+    this.notSavedFotografiaChanges = true;
+
+    setTimeout(() => {
+      if (this.personalGridApi) {
+        this.personalGridApi.startEditingCell({
+          rowIndex: 0,
+          colKey: 'idResource'
+        });
+      }
+    }, 0);
+  }
 
   addMaterial() {    
     if (!this.selectedOt) {
@@ -1958,6 +2006,96 @@ async saveChangesEquipos() {
     }, 0);
   }
 
+  async saveFotografiasChanges() {
+
+    const newRows = this.fotografias.filter(row => row.__isNew);
+    const modifiedRows = this.fotografias.filter(row => row.__modified && !row.__isNew);
+
+    // Validación básica
+    const invalidRows = newRows.filter(item => !item.idResource || !item.position);
+    
+    if (invalidRows.length > 0) {
+      alerts.basicAlert('Error', 'Error por el momento', 'error');
+      return;
+    }
+
+    if (newRows.length === 0 && modifiedRows.length === 0) {
+      alerts.basicAlert('Info', 'No hay cambios para guardar', 'info');
+      return;
+    }
+
+    try {
+      console.log('=== USANDO ENDPOINTS DE LOGBOOK SERVICE ===');
+      
+      // Preparar requests para nuevos registros
+      const addRequests = newRows.map((row, index) => {
+        const cleanedData = this.cleanPersonalDataForServer(row);
+        console.log(`Datos para POST ${index + 1}:`, cleanedData);
+        return this.logbookService.addDataForOt(cleanedData).toPromise();
+      });
+
+      // Preparar requests para registros modificados
+      const updateRequests = modifiedRows.map((row, index) => {
+        const cleanedData = this.cleanPersonalDataForServer(row);
+        console.log(`Datos para PUT ${index + 1} (ID: ${row.id}):`, cleanedData);
+        return this.logbookService.updateDataForOt(Number(row.id), cleanedData).toPromise();
+      });
+
+      console.log(`Ejecutando ${addRequests.length} requests de creación`);
+      console.log(`Ejecutando ${updateRequests.length} requests de actualización`);
+
+      // Ejecutar todos los requests
+      const responses = await Promise.all([...addRequests, ...updateRequests]);
+      
+      console.log('=== RESPUESTAS RECIBIDAS ===');
+      console.log('Número de respuestas:', responses.length);
+      responses.forEach((response, index) => {
+        console.log(`Respuesta ${index + 1}:`, response);
+      });
+
+      // Verificar si las respuestas son exitosas
+      const failedResponses = responses.filter(response => 
+        !response || 
+        (response.hasOwnProperty('success') && !response.success) ||
+        (response.status && response.status >= 400)
+      );
+
+      if (failedResponses.length > 0) {
+        console.error('Respuestas fallidas:', failedResponses);
+        throw new Error(`${failedResponses.length} requests fallaron`);
+      }
+
+      console.log('=== GUARDADO EXITOSO ===');
+      alerts.basicAlert('Éxito', 'Cambios de personal guardados correctamente', 'success');
+      this.notSavedPersonalChanges = false;
+      
+      // Limpiar flags de control
+      this.personal.forEach(item => {
+        delete item.__isNew;
+        delete item.__modified;
+      });
+
+      // Recargar datos para reflejar cambios del servidor
+      // Aquí podrías recargar datos si tienes un endpoint específico para personal
+
+    } catch (error: any) {
+      console.error('=== ERROR AL GUARDAR PERSONAL ===');
+      console.error('Error completo:', error);
+      
+      let errorMessage = 'Error al guardar cambios de personal';
+      if (error.status === 400) {
+        errorMessage = 'Datos inválidos. Verifique que todos los campos estén correctos.';
+      } else if (error.status === 401) {
+        errorMessage = 'No autorizado. Por favor, vuelva a iniciar sesión.';
+      } else if (error.status === 500) {
+        errorMessage = 'Error interno del servidor. Contacte al administrador.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      alerts.basicAlert('Error', errorMessage, 'error');
+    }
+  }
   async savePersonalChanges() {
     
     const newRows = this.personal.filter(row => row.__isNew);
@@ -2054,8 +2192,64 @@ async saveChangesEquipos() {
     this.obtenerPersonal(this.selectedReporteId);
     this.notSavedPersonalChanges = false;
   }
+  revertFotografias() {
+    // Remover elementos nuevos y revertir modificados
+    this.obtenerFotografias(this.selectedReporteId);
+    this.notSavedFotografiaChanges = false;
+  }
 
   async deletePersonal() {
+    if (!this.personalGridApi) {
+      alerts.basicAlert('Error', 'Grid no disponible', 'error');
+      return;
+    }
+
+    const selectedNodes = this.personalGridApi.getSelectedNodes();
+    if (selectedNodes.length === 0) {
+      alerts.basicAlert('Error', 'Seleccione una entrada de personal para eliminar', 'error');
+      return;
+    }
+
+    const selectedData = selectedNodes[0].data;
+    const id = selectedData.id;
+
+    console.log('=== INTENTANDO ELIMINAR PERSONAL ===');
+    console.log('Registro seleccionado para eliminar:', selectedData);
+    console.log('ID a eliminar:', id);
+    
+    alerts.confirmAlert(
+      'Eliminar personal',
+      '¿Está seguro que desea eliminar este registro de personal?',
+      'warning',
+      'Sí, eliminar'
+    ).then((value) => {
+      if (value.isConfirmed) {
+        if (selectedData.__isNew) {
+          this.personal = this.personal.filter(p => p.id !== id);
+          this.notSavedPersonalChanges = this.personal.some(p => p.__isNew);
+          alerts.basicAlert('Éxito', 'Personal eliminado correctamente', 'success');
+        } else {
+          this.logbookService.deleteDataForOt(Number(id)).subscribe({
+            next: (response) => {
+              this.personal = this.personal.filter(p => p.id !== id);
+              alerts.basicAlert('Éxito', 'Personal eliminado correctamente del servidor', 'success');
+            },
+            error: (error) => {
+              console.error('Error al eliminar personal del servidor:', error);
+              let errorMessage = 'Error al eliminar el registro de personal';
+              if (error.status === 404) {
+                errorMessage = 'El registro ya no existe en el servidor';
+              } else if (error.status === 401) {
+                errorMessage = 'No autorizado para eliminar este registro';
+              }
+              alerts.basicAlert('Error', errorMessage, 'error');
+            }
+          });
+        }
+      }
+    });
+  }
+   async deleteFotografia() {
     if (!this.personalGridApi) {
       alerts.basicAlert('Error', 'Grid no disponible', 'error');
       return;
