@@ -19,6 +19,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Pipe, PipeTransform } from '@angular/core';
 import { MaterialsService } from 'app/services/materials.service';
 import { CatalogsService } from 'app/services/catalogs.service';
+import { ImageHandlerService } from 'app/services/image-handler.service';
 
 @Pipe({
   name: 'safe',
@@ -121,6 +122,7 @@ export class OrdenesComponent {
   private logbookService = inject(LogbookService);
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
+  private imageHandlerService = inject(ImageHandlerService);
   private router = inject(Router);
   private sanitizer = inject(DomSanitizer);
   private pdfGeneratorService = inject(PdfGeneratorService);
@@ -470,7 +472,17 @@ export class OrdenesComponent {
 
   public fotografiasColumnDefs: ColDef[] = [
     //{ field: 'id', headerName: 'ID', width: 80 },
-    { field: 'imageUrl', headerName: 'Archivo', flex: 1, hide: true },
+    { 
+      field: 'imageUrl', 
+      headerName: 'Archivo', 
+      flex: 1,
+      cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
+        cellRendererParams: {
+          clicked: this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService),
+          field: 'picture'
+        },
+        editable: false,
+     },
     { field: 'descripcion', headerName: 'Descripción', flex: 1 },
     //{ field: 'fecha', headerName: 'Fecha', width: 120 }
   ];
