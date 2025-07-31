@@ -2591,21 +2591,6 @@ async saveChangesEquipos() {
   }
 
 
-   addFotografia(){
-
-  }
-
-  saveFotografiasChanges() {
-
-  }
-
-  revertFotografias() {
-
-  }
-
-  deleteFotografia(){
-
-  }
 
 
 }
