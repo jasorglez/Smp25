@@ -32,6 +32,7 @@ export class SafePipe implements PipeTransform {
   }
 }
 
+
 interface OrdenesData {
   id: string;
   registerDate: string;
@@ -161,6 +162,7 @@ export class OrdenesComponent {
   public notSavedMaterialChanges: boolean = false;
   public notSavedEquipoChanges: boolean = false;
   public notSavedFotografiaChanges: boolean = false;
+
   private tempIdCounter: number = 1;
   private tempPersonalIdCounter: number = 1;
   private currentEditingRow: number = -1;
@@ -182,7 +184,7 @@ export class OrdenesComponent {
   // PDF
   inputData: any;
   gridHeight = '50vh';
-  gridWidth = '150%';
+  gridWidth = '100%';
   gridWidthDetail = '100%'; 
   isGeneratingPdf: boolean = false;
   isGeneratingPdfEmbed: boolean = false;
@@ -195,108 +197,7 @@ export class OrdenesComponent {
   public personal: any[] = [];
   public fotografias: any[] = [];
 
-  /*public materiales: Material[] = [
-    {
-      id: 'MAT001',
-      nombre: 'Cable eléctrico 12 AWG',
-      cantidad: 50,
-      unidad: 'metros',
-      fechaUso: '2024-07-20'
-    },
-    {
-      id: 'MAT002',
-      nombre: 'Tubería PVC 1/2"',
-      cantidad: 10,
-      unidad: 'metros',
-      fechaUso: '2024-07-20'
-    },
-    {
-      id: 'MAT003',
-      nombre: 'Tornillos 1/4"',
-      cantidad: 25,
-      unidad: 'piezas',
-      fechaUso: '2024-07-20'
-    },
-    {
-      id: 'MAT004',
-      nombre: 'Conectores eléctricos',
-      cantidad: 15,
-      unidad: 'piezas',
-      fechaUso: '2024-07-21'
-    },
-    {
-      id: 'MAT005',
-      nombre: 'Cinta aislante',
-      cantidad: 5,
-      unidad: 'rollos',
-      fechaUso: '2024-07-21'
-    }
-  ];
-
-  public equipos: Equipo[] = [
-    {
-      id: 'EQ001',
-      nombre: 'Taladro percutor',
-      tipoEquipo: 'Herramienta eléctrica',
-      horasUso: 4.5,
-      fechaUso: '2024-07-20'
-    },
-    {
-      id: 'EQ002',
-      nombre: 'Multímetro digital',
-      tipoEquipo: 'Instrumento de medición',
-      horasUso: 2.0,
-      fechaUso: '2024-07-20'
-    },
-    {
-      id: 'EQ003',
-      nombre: 'Escalera 3 metros',
-      tipoEquipo: 'Equipo de acceso',
-      horasUso: 6.0,
-      fechaUso: '2024-07-20'
-    },
-    {
-      id: 'EQ004',
-      nombre: 'Soldadora portátil',
-      tipoEquipo: 'Herramienta eléctrica',
-      horasUso: 3.5,
-      fechaUso: '2024-07-21'
-    }
-  ];
-
-  public personal: Personal[] = [];
-
-  public fotografias: Fotografia[] = [
-    {
-      id: 'FOT001',
-      nombre: 'inicio_trabajo_001.jpg',
-      descripcion: 'Estado inicial del sitio de trabajo',
-      fecha: '2024-07-20',
-      url: 'https://images.unsplash.com/photo-1581094288338-2314dddb7ece?w=400&h=300&fit=crop'
-    },
-    {
-      id: 'FOT002',
-      nombre: 'progreso_001.jpg',
-      descripcion: 'Avance a medio día - instalación en progreso',
-      fecha: '2024-07-20',
-      url: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400&h=300&fit=crop'
-    },
-    {
-      id: 'FOT003',
-      nombre: 'final_dia_001.jpg',
-      descripcion: 'Estado final del trabajo al terminar la jornada',
-      fecha: '2024-07-20',
-      url: 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=400&h=300&fit=crop'
-    },
-    {
-      id: 'FOT004',
-      nombre: 'inicio_dia2_001.jpg',
-      descripcion: 'Inicio del segundo día de trabajo',
-      fecha: '2024-07-21',
-      url: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=400&h=300&fit=crop'
-    }
-  ];*/
-
+  
   // Propiedades computadas para filtrar datos
   get materialesFiltrados(): Material[] {
     if (!this.selectedReporteFecha) return this.materiales;
@@ -475,12 +376,28 @@ export class OrdenesComponent {
     //{ field: 'fecha', headerName: 'Fecha', width: 120 }
   ];
 
+  addFotografia(){
+
+  }
+
+  saveFotografiasChanges() {
+
+  }
+
+  revertFotografias() {
+
+  }
+
+  deleteFotografia(){
+
+  }
+
   // Configuración de columnas para reportes diarios con edición inline
   public reportesColumnDefs: ColDef[] = [
     { 
       field: 'date', 
       headerName: 'Fecha', 
-      width: 100, 
+      width: 90, 
       editable: true,
       cellEditor: 'agDateCellEditor',
       cellEditorParams: {
@@ -542,7 +459,7 @@ export class OrdenesComponent {
     { 
       field: 'startTime', 
       headerName: 'Inicio', 
-      width: 100, 
+      width: 85, 
       editable: true,
       cellEditor: 'timeEditor',
       valueFormatter: (params) => {
@@ -551,8 +468,8 @@ export class OrdenesComponent {
     },
     { 
       field: 'endTime', 
-      headerName: 'Hora Término', 
-      width: 100, 
+      headerName: 'Término', 
+      width: 105, 
       editable: true,
       cellEditor: 'timeEditor',
       valueFormatter: (params) => {
@@ -562,7 +479,7 @@ export class OrdenesComponent {
     { 
       field: 'type', 
       headerName: 'Tipo', 
-      width: 150, 
+      width: 90, 
       editable: true,
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: {
@@ -572,14 +489,14 @@ export class OrdenesComponent {
     { 
       field: 'supervisor', 
       headerName: 'Supervisor', 
-      width: 150,
+      width: 120,
       editable: true
     },
     { 
       field: 'description', 
       headerName: 'Descripción', 
       editable: true,
-      width: 150,
+      width: 120,
     }
   ];
 
@@ -686,16 +603,8 @@ export class OrdenesComponent {
       filter: true,
       resizable: true,
       width: 77,
-    }, */
-    {
-      field: 'otNumber',
-      headerName: 'OT',
-      sortable: true,
-      filter: true,
-      resizable: true,
-      flex: 1
-    },
-    {
+    }, 
+        {
       field: 'description',
       headerName: 'Descripción del Servicio',
       sortable: true,
@@ -704,22 +613,31 @@ export class OrdenesComponent {
       width: 1,
       hide: true
     },
- /*   {
+    {
       field: 'address',
       headerName: 'Dirección',
       sortable: true,
       filter: true,
       resizable: true,
       flex: 2,
-    },*/
+    },
+   */
 
     {
+      field: 'otNumber',
+      headerName: 'OT',
+      sortable: true,
+      filter: true,
+      resizable: true,
+      flex: 1
+    },
+     {
       field: 'results',
       headerName: 'Resultados',
       sortable: true,
       filter: true,
       resizable: true,
-      flex: 3,
+      flex: 2,
     },
 
   ];
@@ -1870,53 +1788,6 @@ async saveChangesEquipos() {
       }
     }, 0);
   }
-  addFotografia() {
-    //console.log('=== AGREGANDO NUEVO PERSONAL ===');
-    //console.log('OT seleccionada:', this.selectedOt);
-    //console.log('Fecha de reporte seleccionada:', this.selectedReporteFecha);
-    
-    if (!this.selectedOt) {
-      alerts.basicAlert('Error', 'Debe seleccionar una OT primero', 'error');
-      return;
-    }
-
-    if (!this.selectedReporteFecha) {
-      alerts.basicAlert('Error', 'Debe seleccionar una fecha de reporte primero', 'error');
-      return;
-    }
-
-    const tempId = `temp_fotografia_${this.tempPersonalIdCounter++}`;
-
-    const newFotografia = {
-      id: tempId,
-      idOt: parseInt(this.selectedOt.id),
-      idReporte: this.selectedReporteId,
-      idResource: null, // Se almacenará el ID del empleado
-      position: '', 
-      quantity: 1,
-      start: this.selectedReporteHoraInicio + ':00',
-      end: this.selectedReporteHoraTermino + ':00',
-      azureUrl: 'NO FILE',
-      date: this.selectedReporteFecha,
-      typeNote: 'PERSONAL',
-      description: 'NOTAS',
-      imageazure: 'NO FILE',
-      orden: 1,
-      __isNew: true
-    };
-
-    this.fotografias = [newFotografia, ...this.fotografias];
-    this.notSavedFotografiaChanges = true;
-
-    setTimeout(() => {
-      if (this.personalGridApi) {
-        this.personalGridApi.startEditingCell({
-          rowIndex: 0,
-          colKey: 'idResource'
-        });
-      }
-    }, 0);
-  }
 
   addMaterial() {    
     if (!this.selectedOt) {
@@ -2006,96 +1877,6 @@ async saveChangesEquipos() {
     }, 0);
   }
 
-  async saveFotografiasChanges() {
-
-    const newRows = this.fotografias.filter(row => row.__isNew);
-    const modifiedRows = this.fotografias.filter(row => row.__modified && !row.__isNew);
-
-    // Validación básica
-    const invalidRows = newRows.filter(item => !item.idResource || !item.position);
-    
-    if (invalidRows.length > 0) {
-      alerts.basicAlert('Error', 'Error por el momento', 'error');
-      return;
-    }
-
-    if (newRows.length === 0 && modifiedRows.length === 0) {
-      alerts.basicAlert('Info', 'No hay cambios para guardar', 'info');
-      return;
-    }
-
-    try {
-      console.log('=== USANDO ENDPOINTS DE LOGBOOK SERVICE ===');
-      
-      // Preparar requests para nuevos registros
-      const addRequests = newRows.map((row, index) => {
-        const cleanedData = this.cleanPersonalDataForServer(row);
-        console.log(`Datos para POST ${index + 1}:`, cleanedData);
-        return this.logbookService.addDataForOt(cleanedData).toPromise();
-      });
-
-      // Preparar requests para registros modificados
-      const updateRequests = modifiedRows.map((row, index) => {
-        const cleanedData = this.cleanPersonalDataForServer(row);
-        console.log(`Datos para PUT ${index + 1} (ID: ${row.id}):`, cleanedData);
-        return this.logbookService.updateDataForOt(Number(row.id), cleanedData).toPromise();
-      });
-
-      console.log(`Ejecutando ${addRequests.length} requests de creación`);
-      console.log(`Ejecutando ${updateRequests.length} requests de actualización`);
-
-      // Ejecutar todos los requests
-      const responses = await Promise.all([...addRequests, ...updateRequests]);
-      
-      console.log('=== RESPUESTAS RECIBIDAS ===');
-      console.log('Número de respuestas:', responses.length);
-      responses.forEach((response, index) => {
-        console.log(`Respuesta ${index + 1}:`, response);
-      });
-
-      // Verificar si las respuestas son exitosas
-      const failedResponses = responses.filter(response => 
-        !response || 
-        (response.hasOwnProperty('success') && !response.success) ||
-        (response.status && response.status >= 400)
-      );
-
-      if (failedResponses.length > 0) {
-        console.error('Respuestas fallidas:', failedResponses);
-        throw new Error(`${failedResponses.length} requests fallaron`);
-      }
-
-      console.log('=== GUARDADO EXITOSO ===');
-      alerts.basicAlert('Éxito', 'Cambios de personal guardados correctamente', 'success');
-      this.notSavedPersonalChanges = false;
-      
-      // Limpiar flags de control
-      this.personal.forEach(item => {
-        delete item.__isNew;
-        delete item.__modified;
-      });
-
-      // Recargar datos para reflejar cambios del servidor
-      // Aquí podrías recargar datos si tienes un endpoint específico para personal
-
-    } catch (error: any) {
-      console.error('=== ERROR AL GUARDAR PERSONAL ===');
-      console.error('Error completo:', error);
-      
-      let errorMessage = 'Error al guardar cambios de personal';
-      if (error.status === 400) {
-        errorMessage = 'Datos inválidos. Verifique que todos los campos estén correctos.';
-      } else if (error.status === 401) {
-        errorMessage = 'No autorizado. Por favor, vuelva a iniciar sesión.';
-      } else if (error.status === 500) {
-        errorMessage = 'Error interno del servidor. Contacte al administrador.';
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      alerts.basicAlert('Error', errorMessage, 'error');
-    }
-  }
   async savePersonalChanges() {
     
     const newRows = this.personal.filter(row => row.__isNew);
@@ -2192,64 +1973,8 @@ async saveChangesEquipos() {
     this.obtenerPersonal(this.selectedReporteId);
     this.notSavedPersonalChanges = false;
   }
-  revertFotografias() {
-    // Remover elementos nuevos y revertir modificados
-    this.obtenerFotografias(this.selectedReporteId);
-    this.notSavedFotografiaChanges = false;
-  }
 
   async deletePersonal() {
-    if (!this.personalGridApi) {
-      alerts.basicAlert('Error', 'Grid no disponible', 'error');
-      return;
-    }
-
-    const selectedNodes = this.personalGridApi.getSelectedNodes();
-    if (selectedNodes.length === 0) {
-      alerts.basicAlert('Error', 'Seleccione una entrada de personal para eliminar', 'error');
-      return;
-    }
-
-    const selectedData = selectedNodes[0].data;
-    const id = selectedData.id;
-
-    console.log('=== INTENTANDO ELIMINAR PERSONAL ===');
-    console.log('Registro seleccionado para eliminar:', selectedData);
-    console.log('ID a eliminar:', id);
-    
-    alerts.confirmAlert(
-      'Eliminar personal',
-      '¿Está seguro que desea eliminar este registro de personal?',
-      'warning',
-      'Sí, eliminar'
-    ).then((value) => {
-      if (value.isConfirmed) {
-        if (selectedData.__isNew) {
-          this.personal = this.personal.filter(p => p.id !== id);
-          this.notSavedPersonalChanges = this.personal.some(p => p.__isNew);
-          alerts.basicAlert('Éxito', 'Personal eliminado correctamente', 'success');
-        } else {
-          this.logbookService.deleteDataForOt(Number(id)).subscribe({
-            next: (response) => {
-              this.personal = this.personal.filter(p => p.id !== id);
-              alerts.basicAlert('Éxito', 'Personal eliminado correctamente del servidor', 'success');
-            },
-            error: (error) => {
-              console.error('Error al eliminar personal del servidor:', error);
-              let errorMessage = 'Error al eliminar el registro de personal';
-              if (error.status === 404) {
-                errorMessage = 'El registro ya no existe en el servidor';
-              } else if (error.status === 401) {
-                errorMessage = 'No autorizado para eliminar este registro';
-              }
-              alerts.basicAlert('Error', errorMessage, 'error');
-            }
-          });
-        }
-      }
-    });
-  }
-   async deleteFotografia() {
     if (!this.personalGridApi) {
       alerts.basicAlert('Error', 'Grid no disponible', 'error');
       return;
