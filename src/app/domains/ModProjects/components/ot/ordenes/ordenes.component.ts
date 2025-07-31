@@ -425,7 +425,7 @@ export class OrdenesComponent {
     //{ field: 'id', headerName: 'ID', width: 80 },
     { 
       field: 'imageUrl', 
-      headerName: 'Archivo', 
+      headerName: 'Foto', 
       flex: 1,
       cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
         cellRendererParams: {
@@ -437,6 +437,12 @@ export class OrdenesComponent {
     { field: 'description', headerName: 'Descripción', flex: 1, editable: true },
     //{ field: 'fecha', headerName: 'Fecha', width: 120 }
   ];
+
+ public notasColumnDefs: ColDef[] = [
+ ]
+
+  public conceptosColumnDefs: ColDef[] = [
+  ]
 
   addFotografia(){
     
