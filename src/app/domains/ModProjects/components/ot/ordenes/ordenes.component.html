@@ -36,7 +36,7 @@
                     [ngStyle]="{ height: gridHeight, width: gridWidth }"
                     class="ag-theme-quartz small-text-ag-grid"
                     [rowData]="rowData"
-                    [columnDefs]="columnDefs"
+                    [columnDefs]="oTcolumnDefs"
                     [gridOptions]="gridOptions"
                     (selectionChanged)="onSelectionChanged($event)"
                     (gridReady)="onGridReady($event)"
@@ -94,6 +94,7 @@
                       <i class="bi bi-images"></i> Fotografías
                     </a>
                   </li>
+                  
                   <li class="nav-item">
                     <a class="nav-link" 
                        [class.active]="activeTab === 'material'" 
@@ -103,6 +104,7 @@
                       <i class="bi bi-box-seam"></i> Material
                     </a>
                   </li>
+                  
                   <li class="nav-item">
                     <a class="nav-link" 
                        [class.active]="activeTab === 'equipos'" 
@@ -112,6 +114,31 @@
                       <i class="bi bi-tools"></i> Equipos
                     </a>
                   </li>
+
+                  <!-- ===== INICIO DE INSERCIÓN DE PORTALES ===== -->
+                  
+                  <li class="nav-item">
+                    <a class="nav-link" 
+                       [class.active]="activeTab === 'notas'" 
+                       [ngClass]="{'bg-success text-white': activeTab === 'notas'}"
+                       (click)="setActiveTab('notas')" 
+                       style="cursor: pointer;">
+                      <i class="bi bi-journal-text"></i> Notas
+                    </a>
+                  </li>                  
+                  
+                  <li class="nav-item">
+                    <a class="nav-link" 
+                       [class.active]="activeTab === 'conceptos'" 
+                       [ngClass]="{'bg-success text-white': activeTab === 'conceptos'}"
+                       (click)="setActiveTab('conceptos')" 
+                       style="cursor: pointer;">
+                      <i class="bi bi-lightbulb"></i> Conceptos
+                    </a>
+                  </li>
+                  
+                  <!-- ===== FIN DE INSERCIÓN DE PORTALES ===== -->
+
                 </ul>
 
                 <div class="tab-content tab-content-custom p-1" >
@@ -182,7 +209,7 @@
                       </nav>
                       
                       <!-- Grid de personal -->
-                      <div class="col overflow-auto agridWH">
+                      <div class="col overflow-auto" style="height: 60vh;">
                         <ag-grid-angular 
                           [ngStyle]="{ height: gridHeight, width: gridWidthDetail }"
                           class="ag-theme-quartz small-text-ag-grid"
@@ -344,48 +371,79 @@
                    <!-- Termina Equipos -->                   
                 </div>
 
-                <!-- Pestaña Notas -->
-                  <div class="tab-pane" [class.show]="activeTab === 'notas'" [class.active]="activeTab === 'notas'">
-                    <h6><i class="bi bi-tools"></i> Notas Utilizados
+                              <!-- ===== INICIO DE INSERCIÓN DE CÁMARAS DE PODER ===== -->
+
+                  <!-- Pestaña Conceptos -->
+                  <div class="tab-pane" [class.show]="activeTab === 'conceptos'" [class.active]="activeTab === 'conceptos'">
+                    <h6><i class="bi bi-lightbulb"></i> Conceptos del Reporte
                       <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">
                         Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}
                       </span>
                     </h6>
-                      <div class="row">
-                        <div class="col-2">
-                          <nav class="col-auto d-flex flex-column align-items-start">
-                            <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addEquipos()">
-                              <i class="bi bi-plus-lg"></i>
-                            </button>
-                            <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChangesEquipos()">
-                              <i class="bi bi-floppy"></i>
-                              <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedEquipoChanges">
-                                <span class="visually-hidden">Hay cambios sin guardar</span>
-                              </span>
-                            </button>
-                            <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertEquipos()">
-                              <i class="bi bi-arrow-clockwise"></i>
-                            </button>
-                            <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteEquipo()">
-                              <i class="bi bi-trash"></i>
-                            </button>
-                          </nav>
-                        </div>
-                        <div class="col-10 overflow-auto agridWH">
-                            <ag-grid-angular 
-                              [ngStyle]="{ height: gridHeight, width: gridWidthDetail }"
-                              class="ag-theme-quartz small-text-ag-grid"
-                              [rowData]="equipos"
-                              [columnDefs]="equiposColumnDefs"
-                              [gridOptions]="tabGridOptions"
-                              (cellValueChanged)="onCellValueChangedEquipo($event)"
-                              [gridOptions]="equiposGridOptions"
-                              (gridReady)="onEquiposGridReady($event)">
-                            </ag-grid-angular>
+                    <div class="row">
+                      <div class="col-2">
+                        <nav class="col-auto d-flex flex-column align-items-start">
+                          <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addConcepto()">
+                            <i class="bi bi-plus-lg"></i>
+                          </button>
+                          <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveConceptosChanges()">
+                            <i class="bi bi-floppy"></i>
+                          </button>
+                          <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertConceptos()">
+                            <i class="bi bi-arrow-clockwise"></i>
+                          </button>
+                          <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteConcepto()">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </nav>
                       </div>
+                      <div class="col-10 overflow-auto" style="height: 60vh;">
+                        <ag-grid-angular 
+                          class="ag-theme-quartz small-text-ag-grid"
+                          [rowData]="conceptos"
+                          [columnDefs]="conceptosColumnDefs"
+                          [gridOptions]="tabGridOptions">
+                        </ag-grid-angular>
                       </div>
-                    </div>                                   
-                   <!-- Termina Notas -->
+                    </div>
+                  </div>
+
+                  <!-- Pestaña Notas -->
+                  <div class="tab-pane" [class.show]="activeTab === 'notas'" [class.active]="activeTab === 'notas'">
+                    <h6><i class="bi bi-journal-text"></i> Notas del Reporte
+                      <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">
+                        Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}
+                      </span>
+                    </h6>
+                    <div class="row">
+                      <div class="col-2">
+                        <nav class="col-auto d-flex flex-column align-items-start">
+                          <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addNota()">
+                            <i class="bi bi-plus-lg"></i>
+                          </button>
+                          <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveNotasChanges()">
+                            <i class="bi bi-floppy"></i>
+                          </button>
+                          <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertNotas()">
+                            <i class="bi bi-arrow-clockwise"></i>
+                          </button>
+                          <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteNota()">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </nav>
+                      </div>
+                      <div class="col-10 overflow-auto" style="height: 60vh;">
+                        <ag-grid-angular 
+                          class="ag-theme-quartz small-text-ag-grid"
+                          [rowData]="notas"
+                          [columnDefs]="notasColumnDefs"
+                          [gridOptions]="tabGridOptions">
+                        </ag-grid-angular>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- ===== FIN DE INSERCIÓN DE CÁMARAS DE PODER ===== -->
 
                 </div>
               </div>

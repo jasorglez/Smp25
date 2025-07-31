@@ -136,9 +136,11 @@ export class OrdenesComponent {
   public isUploading: boolean = false;
   private idProject: number = 0;
   private idcompany: number = 0;
-  private catalogMateriales: any[] = [];
+  private catalogMateriales   : any[] = [];
   private catalogDepartamentos: any[] = [];
   private unitsCatalog: any[] = [];
+    public conceptos  : any[] = [];
+  public notas        : any[] = [];
 
   // Variables para el nuevo layout
   public selectedOt: OrdenesData | null = null;
@@ -223,6 +225,54 @@ export class OrdenesComponent {
   }
 
   // Configuraciones de columnas para AG-Grid
+  // Definición de columnas
+  public oTcolumnDefs: ColDef[] = [
+    /*   {
+      field: 'id',
+      headerName: 'ID',
+      sortable: true,
+      filter: true,
+      resizable: true,
+      width: 77,
+    }, 
+        {
+      field: 'description',
+      headerName: 'Descripción del Servicio',
+      sortable: true,
+      filter: true,
+      resizable: true,
+      width: 1,
+      hide: true
+    },
+    {
+      field: 'address',
+      headerName: 'Dirección',
+      sortable: true,
+      filter: true,
+      resizable: true,
+      flex: 2,
+    },
+   */
+
+    {
+      field: 'otNumber',
+      headerName: 'OT',
+      sortable: true,
+      filter: true,
+      resizable: true,
+      flex: 1
+    },
+     {
+      field: 'results',
+      headerName: 'Resultados',
+      sortable: true,
+      filter: true,
+      resizable: true,
+      flex: 2,
+    },
+
+  ];
+
  public get materialesColumnDefs(): ColDef[] {
   return [
   {
@@ -388,21 +438,29 @@ export class OrdenesComponent {
     //{ field: 'fecha', headerName: 'Fecha', width: 120 }
   ];
 
-  addFotografia(){
+ // Definición de columnas para los nuevos grids
+  public conceptosColumnDefs: ColDef[] = [
+    { field: 'descripcion', headerName: 'Descripción', flex: 1, editable: true, sortable: true, filter: true, resizable: true },
+    { field: 'clave', headerName: 'Clave', width: 150, editable: true, sortable: true, filter: true, resizable: true }
+  ];
 
-  }
+  public notasColumnDefs: ColDef[] = [
+    { 
+      field: 'nota', 
+      headerName: 'Nota', 
+      flex: 1, 
+      editable: true, 
+      autoHeight: true, 
+      wrapText: true, 
+      sortable: true, 
+      filter: true, 
+      resizable: true 
+    },
+    { field: 'autor', headerName: 'Tipo', width: 150, editable: true, sortable: true, 
+      filter: true, resizable: true }
+  ];
 
-  saveFotografiasChanges() {
 
-  }
-
-  revertFotografias() {
-
-  }
-
-  deleteFotografia(){
-
-  }
 
   // Configuración de columnas para reportes diarios con edición inline
   public reportesColumnDefs: ColDef[] = [
@@ -606,53 +664,6 @@ export class OrdenesComponent {
     onGridReady: (params: any) => this.onMaterialesGridReady(params)
   };
 
-  // Definición de columnas
-  public columnDefs: ColDef[] = [
-    /*   {
-      field: 'id',
-      headerName: 'ID',
-      sortable: true,
-      filter: true,
-      resizable: true,
-      width: 77,
-    }, 
-        {
-      field: 'description',
-      headerName: 'Descripción del Servicio',
-      sortable: true,
-      filter: true,
-      resizable: true,
-      width: 1,
-      hide: true
-    },
-    {
-      field: 'address',
-      headerName: 'Dirección',
-      sortable: true,
-      filter: true,
-      resizable: true,
-      flex: 2,
-    },
-   */
-
-    {
-      field: 'otNumber',
-      headerName: 'OT',
-      sortable: true,
-      filter: true,
-      resizable: true,
-      flex: 1
-    },
-     {
-      field: 'results',
-      headerName: 'Resultados',
-      sortable: true,
-      filter: true,
-      resizable: true,
-      flex: 2,
-    },
-
-  ];
 
   // Datos del grid obtenidos del servicio
   public rowData: OrdenesData[] = [];
@@ -1263,7 +1274,6 @@ async saveChangesEquipos() {
     alerts.basicAlert('Error', errorMessage, 'error');
   }
 }
-
 
   revertReportes() {
     this.loadDailyReports();
@@ -2287,6 +2297,7 @@ async saveChangesEquipos() {
       }
     });
   }
+
   async deleteEquipo() {
     if (!this.equiposGridApi) {
       alerts.basicAlert('Error', 'Grid no disponible', 'error');
@@ -2347,5 +2358,60 @@ async saveChangesEquipos() {
       }
     });
   }
+
+
+ // -- Métodos para Conceptos --
+  addConcepto() {
+    // Tu lógica para añadir un nuevo concepto
+    console.log('Invocando addConcepto...');
+  }
+  saveConceptosChanges() {
+    // Tu lógica para guardar cambios de conceptos
+    console.log('Invocando saveConceptosChanges...');
+  }
+  revertConceptos() {
+    // Tu lógica para revertir cambios de conceptos
+    console.log('Invocando revertConceptos...');
+  }
+  deleteConcepto() {
+    // Tu lógica para eliminar un concepto
+    console.log('Invocando deleteConcepto...');
+  }
+
+  // -- Métodos para Notas --
+  addNota() {
+    // Tu lógica para añadir una nueva nota
+    console.log('Invocando addNota...');
+  }
+  saveNotasChanges() {
+    // Tu lógica para guardar cambios de notas
+    console.log('Invocando saveNotasChanges...');
+  }
+  revertNotas() {
+    // Tu lógica para revertir cambios de notas
+    console.log('Invocando revertNotas...');
+  }
+  deleteNota() {
+    // Tu lógica para eliminar una nota
+    console.log('Invocando deleteNota...');
+  }
+
+
+   addFotografia(){
+
+  }
+
+  saveFotografiasChanges() {
+
+  }
+
+  revertFotografias() {
+
+  }
+
+  deleteFotografia(){
+
+  }
+
 
 }

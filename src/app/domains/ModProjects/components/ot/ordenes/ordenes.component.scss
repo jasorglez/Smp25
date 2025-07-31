@@ -138,4 +138,31 @@ div[class*="col-md-"]:hover .column-resizer .resizer-handle {
       box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.3);
     }
   }
+
+// Contenedor para la barra de navegación de pestañas
+.nav-tabs-container {
+  overflow-x: auto;  // Manifiesta el scroll horizontal si es necesario
+  overflow-y: hidden; // Oculta cualquier scroll vertical no deseado
+  
+  // Estilo para la barra de scroll (opcional pero recomendado)
+  &::-webkit-scrollbar {
+    height: 8px; // Altura de la barra
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: #adb5bd; // Color del manejador
+    border-radius: 4px;
+  }
+}
+
+// Conjuro para el pergamino infinito (scroll)
+.nav-tabs {
+  flex-wrap: nowrap; // Obliga a las pestañas a permanecer en una sola línea
+}
+
+// Decreto de uniformidad para la altura de los grids en las pestañas
+.tab-grid-container {
+  height: 60vh; // La misma altura imperial que tu grid de reportes
+}
+
+
 }
