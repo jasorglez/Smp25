@@ -235,15 +235,15 @@ export class ContractsComponent {
       numberContract: new FormControl('', Validators.required),
       description: new FormControl('', Validators.required),
       descripSmall: new FormControl('', Validators.required),
-      resident: new FormControl('', Validators.required),
-      supervisor: new FormControl('', Validators.required),
-      amountMx: new FormControl('', Validators.required),
-      amountDll: new FormControl('', Validators.required),
-      speciality: new FormControl('Seleccione una especialidad', [Validators.required, noDefaultValueValidator()]),
-      idProvider: new FormControl('Seleccione un contratista', [Validators.required, noDefaultValueValidator()]),
+      resident: new FormControl(''),
+      supervisor: new FormControl(''),
+      amountMx: new FormControl(''),
+      amountDll: new FormControl(''),
+      speciality: new FormControl('Seleccione una especialidad'),
+      idProvider: new FormControl('Seleccione un contratista'),
       dateStar: new FormControl('', Validators.required),
       dateEnd: new FormControl('', Validators.required),
-      stateContract: new FormControl('Seleccione un estado', [Validators.required, noDefaultValueValidator()]),
+      stateContract: new FormControl('Seleccione un estado'),
       term: new FormControl(),
       idBussines: new FormControl(1),
       consecutive: new FormControl(0),
@@ -372,19 +372,31 @@ export class ContractsComponent {
   }
 
   openModal() {
+    // Abrir el modal independientemente de si hay proveedores
+    const modalOptions: NgbModalOptions = {
+      size: 'xl',
+      centered: true
+    };
+    
+    // Intentar cargar proveedores
     this.providersService.getProviders(this.idRoot).subscribe({
       next: (resp) => {
         this.providers = resp;
-        const modalOptions: NgbModalOptions = {
-          size: 'xl',
-          centered: true
-        };
-        this.modalService.open(this.content, modalOptions);
       },
       error: (error) => {
         console.error('Error fetching providers', error);
+        this.providers = []; // Lista vacía si no hay proveedores
+        // Opcional: mostrar alerta informativa
+        alerts.basicAlert(
+          'Proveedores',
+          'No se pudieron cargar los proveedores. Podrá continuar pero deberá seleccionar un contratista manualmente.',
+          'warning'
+        );
       }
     });
+    
+    // Abrir el modal siempre
+    this.modalService.open(this.content, modalOptions);
   }
 
   deleteContract() {
