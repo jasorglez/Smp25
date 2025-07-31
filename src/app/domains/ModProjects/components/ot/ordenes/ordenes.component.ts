@@ -181,7 +181,7 @@ export class OrdenesComponent {
   // PDF
   inputData: any;
   gridHeight = '50vh';
-  gridWidth = '100%';
+  gridWidth = '150%';
   gridWidthDetail = '100%'; 
   isGeneratingPdf: boolean = false;
   isGeneratingPdfEmbed: boolean = false;
@@ -479,7 +479,7 @@ export class OrdenesComponent {
     { 
       field: 'date', 
       headerName: 'Fecha', 
-      width: 80, 
+      width: 100, 
       editable: true,
       cellEditor: 'agDateCellEditor',
       cellEditorParams: {
@@ -541,7 +541,7 @@ export class OrdenesComponent {
     { 
       field: 'startTime', 
       headerName: 'Inicio', 
-      width: 50, 
+      width: 100, 
       editable: true,
       cellEditor: 'timeEditor',
       valueFormatter: (params) => {
@@ -551,7 +551,7 @@ export class OrdenesComponent {
     { 
       field: 'endTime', 
       headerName: 'Hora Término', 
-      width: 50, 
+      width: 100, 
       editable: true,
       cellEditor: 'timeEditor',
       valueFormatter: (params) => {
@@ -561,7 +561,7 @@ export class OrdenesComponent {
     { 
       field: 'type', 
       headerName: 'Tipo', 
-      width: 100, 
+      width: 150, 
       editable: true,
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: {
@@ -571,14 +571,14 @@ export class OrdenesComponent {
     { 
       field: 'supervisor', 
       headerName: 'Supervisor', 
-      width: 100,
+      width: 150,
       editable: true
     },
     { 
       field: 'description', 
       headerName: 'Descripción', 
       editable: true,
-      width: 100,
+      width: 150,
     }
   ];
 
