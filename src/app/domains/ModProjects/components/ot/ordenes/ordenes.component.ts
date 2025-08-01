@@ -408,7 +408,7 @@ export class OrdenesComponent {
       }
     }
   },
-    { field: 'quantity', headerName: 'Tipo', flex: 1, editable: true },
+    { field: 'quantity', headerName: 'Cantidad', flex: 1, editable: true },
     //{ field: 'quantity', headerName: 'Horas', width: 100, editable: true },
     //{ field: 'fechaUso', headerName: 'Fecha', width: 120 }
   ];
@@ -1702,7 +1702,7 @@ async saveChangesEquipos() {
 
         console.log('PDF generado exitosamente para vista previa');
         
-        alerts.basicAlert('Éxito', 'PDF generado correctamente', 'success');
+        //alerts.basicAlert('Éxito', 'PDF generado correctamente', 'success');
       });
 
     } catch (error) {
