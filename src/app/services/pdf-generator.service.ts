@@ -528,7 +528,7 @@ private processMaterialesData(): string[][] {
     const equipoMap = new Map<string, number>();
     
     this.equiposData.forEach(equipo => {
-      const nombre = equipo.nombre || 'Sin nombre';
+      const nombre = equipo.idResource || 'Sin nombre';
       const horas = parseFloat(equipo.horasUso) || 0;
       
       if (equipoMap.has(nombre)) {
