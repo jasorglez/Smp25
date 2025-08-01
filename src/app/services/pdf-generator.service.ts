@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, effect } from '@angular/core';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { ReceivedataService } from './receivedata.service';
@@ -6,6 +6,9 @@ import { Base64EncodeService } from './base64encode.service';
 import { BlobService } from './blob.service';
 import { TrackingService } from './tracking.service';
 import { LogbookService } from './logbook.service';
+import { MaterialsService } from './materials.service';
+import { SignalsService } from './signals.service';
+import { CatalogsService } from './catalogs.service';
 (pdfMake as any).vfs = pdfFonts.pdfMake.vfs;
 
 @Injectable({
@@ -29,14 +32,27 @@ export class PdfGeneratorService {
   personalData: any[];
   materialesData: any[];
   equiposData: any[];
+  idcompany: number;
+  catalogMateriales: any[] = [];
+  unitsCatalog: any[] = [];
 
   constructor(
     private datos: ReceivedataService,
     private imageService: Base64EncodeService,
     private blobService: BlobService,
     private trackingService: TrackingService,
-    private logbookService: LogbookService
-  ) {}
+    private logbookService: LogbookService, 
+    private materialsService: MaterialsService,
+    private signalsService: SignalsService,
+    private catalogsService: CatalogsService
+  ) {
+
+    effect(() => { 
+      this.idcompany = this.signalsService.getRootSelectedBySidebar()();
+      this.catalogoMateriales();
+      this.obtenerUnidades();
+    })
+  }
 
   async generatePdfData(inputData: { 
     id: number; 
@@ -48,6 +64,7 @@ export class PdfGeneratorService {
     fotografiasData?: any[];
     idReport?: number;
   }) {
+    console.log('Input data for PDF generation:', inputData);
     this.id = inputData.id;
     this.lb = inputData.date;
     this.idReport = inputData.idReport;
@@ -458,41 +475,46 @@ export class PdfGeneratorService {
     return tableData;
   }
 
-  private processMaterialesData() {
-    if (!this.materialesData || this.materialesData.length === 0) {
-      return [
-        ['Material', 'Cantidad', 'Unidad'],
-        ['No hay datos de materiales', '0', '-']
-      ];
-    }
-
-    // Agrupar por nombre de material y sumar cantidades
-    const materialMap = new Map<string, { cantidad: number, unidad: string }>();
-    
-    this.materialesData.forEach(material => {
-      const nombre = material.nombre || 'Sin nombre';
-      const cantidad = parseInt(material.cantidad) || 0;
-      const unidad = material.unidad || 'unidad';
-      
-      if (materialMap.has(nombre)) {
-        const existing = materialMap.get(nombre)!;
-        materialMap.set(nombre, { 
-          cantidad: existing.cantidad + cantidad, 
-          unidad: existing.unidad 
-        });
-      } else {
-        materialMap.set(nombre, { cantidad, unidad });
-      }
-    });
-
-    // Convertir a array para la tabla
-    const tableData = [['Material', 'Cantidad', 'Unidad']];
-    materialMap.forEach((data, nombre) => {
-      tableData.push([nombre, data.cantidad.toString(), data.unidad]);
-    });
-
-    return tableData;
+private processMaterialesData(): string[][] {
+  if (!this.materialesData || this.materialesData.length === 0) {
+    return [
+      ['Material', 'Cantidad', 'Unidad'],
+      ['No hay datos de materiales', '0', '-']
+    ];
   }
+
+  const materialMap = new Map<string, { nombre: string, cantidad: number, unidad: string }>();
+
+  this.materialesData.forEach(material => {
+    const materialSeleccionado = this.catalogMateriales.find(m => m.id === material.idResource);
+    console.log('Material seleccionado:', materialSeleccionado);
+    const nombre = materialSeleccionado ? materialSeleccionado.description : 'Sin nombre';
+    const cantidad = material.quantity ?? 0;
+    const unidadMaterial = this.unitsCatalog.find(u => u.id === materialSeleccionado.idMedida);
+    const unidad = unidadMaterial ? unidadMaterial.description : 'unidad desconocida';
+
+    const key = `${material.idResource}-${unidad}`;
+
+    if (materialMap.has(key)) {
+      const existing = materialMap.get(key)!;
+      materialMap.set(key, {
+        nombre: existing.nombre,
+        cantidad: existing.cantidad + cantidad,
+        unidad: existing.unidad
+      });
+    } else {
+      materialMap.set(key, { nombre, cantidad, unidad });
+    }
+  });
+
+  const tableData = [['Material', 'Cantidad', 'Unidad']];
+  materialMap.forEach(data => {
+    tableData.push([data.nombre, data.cantidad.toString(), data.unidad]);
+  });
+
+  return tableData;
+}
+
 
   private processEquiposData() {
     if (!this.equiposData || this.equiposData.length === 0) {
@@ -841,5 +863,21 @@ export class PdfGeneratorService {
       },
     };
     return docDefinition;
+  }
+  catalogoMateriales(){
+    return this.materialsService.getMaterials(this.idcompany, 'CONSUMABLE').subscribe(
+      (data: any) => {
+        this.catalogMateriales = data;
+      },
+      (error) => console.error('Error fetching data:', error)
+    );
+  }
+  obtenerUnidades(){
+    return this.catalogsService.getUnits(this.idcompany).subscribe(
+      (data: any) => {
+        this.unitsCatalog = data;
+      },
+      (error) => console.error('Error fetching units:', error)
+    );
   }
 }
