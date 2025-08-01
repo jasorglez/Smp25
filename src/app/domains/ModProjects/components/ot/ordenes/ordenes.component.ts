@@ -20,6 +20,7 @@ import { Pipe, PipeTransform } from '@angular/core';
 import { MaterialsService } from 'app/services/materials.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
+import { EquipmentService } from 'app/services/equipment.service';
 
 @Pipe({
   name: 'safe',
@@ -119,6 +120,7 @@ interface Fotografia {
 })
 export class OrdenesComponent {
   private otService = inject(OtService);
+  private equipmentService = inject(EquipmentService);
   private dailyReportService = inject(DailyReportService);
   private logbookService = inject(LogbookService);
   private signalsService = inject(SignalsService);
@@ -137,6 +139,7 @@ export class OrdenesComponent {
   private idProject: number = 0;
   private idcompany: number = 0;
   private catalogMateriales   : any[] = [];
+  public catalogEquipos      : any[] = [];
   private catalogDepartamentos: any[] = [];
   private unitsCatalog: any[] = [];
     public conceptos  : any[] = [];
@@ -356,9 +359,57 @@ export class OrdenesComponent {
 
   public equiposColumnDefs: ColDef[] = [
     //{ field: 'id', headerName: 'ID', width: 80 },
-    { field: 'description', headerName: 'Equipo', flex: 2 , editable: true },
-    { field: 'tipoEquipo', headerName: 'Tipo', flex: 1, editable: true },
-    { field: 'horasUso', headerName: 'Horas', width: 100, editable: true },
+    {
+    field: 'idResource',
+    headerName: 'Equipo',
+    flex: 2,
+    editable: true,
+    cellEditor: 'agSelectCellEditor',
+    cellEditorParams: (params: any) => ({
+      values: this.catalogEquipos?.map((item) => item.description) || [],
+    }),
+    // Muestra la descripción del equipo en la celda
+    valueFormatter: (params) => {
+      const equipoId = params.data?.idResource;
+      if (!equipoId) return '';
+
+      const foundItem = this.catalogEquipos?.find(item => item.id == equipoId);
+      return foundItem ? foundItem.description : `ID: ${equipoId}`;
+    },
+    // Muestra la descripción del equipo cuando se lee el valor actual
+    valueGetter: (params) => {
+      const equipoId = params.data?.idResource;
+      if (!equipoId) return '';
+
+      const foundItem = this.catalogEquipos?.find(item => item.id == equipoId);
+      return foundItem ? foundItem.description : '';
+    },
+    // Convierte la descripción seleccionada de vuelta al ID
+    valueSetter: (params) => {
+      console.log('=== VALUE SETTER EQUIPOS ===');
+      console.log('Nuevo valor (descripción):', params.newValue);
+      console.log('Valor anterior:', params.oldValue);
+      console.log('Data antes:', params.data.idResource);
+
+      if (!params.newValue) {
+        params.data.idResource = null;
+        console.log('Data después (null):', params.data.idResource);
+        return true;
+      }
+
+      const foundItem = this.catalogEquipos?.find(item => item.description === params.newValue);
+      if (foundItem) {
+        params.data.idResource = foundItem.id;
+        console.log('Data después:', params.data.idResource);
+        return true;
+      } else {
+        console.warn('Descripción no válida:', params.newValue);
+        return false;
+      }
+    }
+  },
+    { field: 'quantity', headerName: 'Tipo', flex: 1, editable: true },
+    //{ field: 'quantity', headerName: 'Horas', width: 100, editable: true },
     //{ field: 'fechaUso', headerName: 'Fecha', width: 120 }
   ];
   
@@ -861,6 +912,7 @@ export class OrdenesComponent {
       this.idProject =this.signalsService.getProjectSelectedBySidebar()();
       this.idcompany = this.signalsService.getRootSelectedBySidebar()();
       this.catalogoMateriales();
+      this.catalogoEquipo();
       this.obtenerDatos();
       this.loadEmployees();
       this.getDeptoandPosition();
@@ -1384,8 +1436,10 @@ async saveChangesEquipos() {
 
   try {
     const addRequests = newRows.map((row, index) => {
+      console.log(`=== FILA ORIGINAL ${index + 1} ===`, row);
       const cleanedData = this.cleanDataForServer(row);
-      console.log(`Datos limpiados para nueva fila ${index + 1}:`, cleanedData);
+      console.log(`=== DATOS LIMPIADOS ${index + 1} ===`, cleanedData);
+      console.log(`JSON.stringify:`, JSON.stringify(cleanedData, null, 2));
       return this.logbookService.addDataForOt(cleanedData).toPromise();
     });
 
@@ -1443,10 +1497,23 @@ async saveChangesEquipos() {
     console.error('=== ERROR DETALLADO ===');
     console.error('Error completo:', error);
     
+    // Log específico para errores de validación
+    if (error.status === 400 && error.error && error.error.errors) {
+      console.error('Errores de validación específicos:', error.error.errors);
+    }
+    
     let errorMessage = 'Ocurrió un error al actualizar los datos.';
     
     if (error.status === 400) {
       errorMessage = 'Datos inválidos. Verifique que todos los campos estén correctos.';
+      
+      // Mostrar errores específicos si están disponibles
+      if (error.error && error.error.errors) {
+        const validationErrors = Object.keys(error.error.errors).map(key => 
+          `${key}: ${error.error.errors[key].join(', ')}`
+        ).join('\n');
+        errorMessage += '\n\nErrores específicos:\n' + validationErrors;
+      }
     } else if (error.status === 401) {
       errorMessage = 'No autorizado. Por favor, vuelva a iniciar sesión.';
     } else if (error.status === 403) {
@@ -1768,6 +1835,22 @@ async saveChangesEquipos() {
     // Solo incluir ID si no es temporal
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
+    }
+    
+    // Si hay idResource pero no Description, agregar la descripción del equipo
+    if (cleanedData.idResource && !cleanedData.Description) {
+      const foundEquipo = this.catalogEquipos?.find(item => item.id == cleanedData.idResource);
+      if (foundEquipo) {
+        cleanedData.Description = foundEquipo.description;
+      } else {
+        // Si no se encuentra el equipo, usar un valor por defecto
+        cleanedData.Description = `Equipo ID: ${cleanedData.idResource}`;
+      }
+    }
+    
+    // Si no hay Description y es un nuevo registro, poner un valor por defecto
+    if (!cleanedData.Description) {
+      cleanedData.Description = 'Sin descripción';
     }
     
     return cleanedData;
@@ -2332,8 +2415,6 @@ async saveChangesEquipos() {
       (data: any) => {
         this.catalogMateriales = data;
         console.log('Catálogo de materiales cargado:', this.catalogMateriales);
-        
-        // Actualizar el grid de materiales si ya está inicializado
         if (this.materialesGridApi) {
           this.materialesGridApi.refreshCells();
           console.log('Grid de materiales actualizado con catálogo');
@@ -2341,7 +2422,22 @@ async saveChangesEquipos() {
       },
       (error) => console.error('Error fetching data:', error)
     );
-  
+  }
+
+  catalogoEquipo(){
+    return this.equipmentService.getEquipment(this.idcompany).subscribe(
+      (data: any) => {
+        this.catalogEquipos = data;
+        console.log('Catálogo de equipos cargado:', this.catalogEquipos);
+
+        // Actualizar el grid de equipos si ya está inicializado
+        if (this.equiposGridApi) {
+          this.equiposGridApi.refreshCells();
+          console.log('Grid de equipos   actualizado con catálogo');
+        }
+      },
+      (error) => console.error('Error fetching data:', error)
+    );
   }
 
   getDeptoandPosition() {

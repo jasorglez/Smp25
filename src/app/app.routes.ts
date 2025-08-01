@@ -349,6 +349,13 @@ export const routes: Routes = [
               ).then((c) => c.MaterialsComponent),
           },
           {
+            path: 'equipment',
+            loadComponent: () =>
+              import(
+                './domains/ModProjects/components/ot/equipment/equipment.component'
+              ).then((c) => c.EquipmentComponent),
+          },
+          {
             path: 'projects',
             loadComponent: () =>
               import(
