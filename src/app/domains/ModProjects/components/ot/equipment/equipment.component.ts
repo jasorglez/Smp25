@@ -396,7 +396,7 @@ export class EquipmentComponent implements CanComponentDeactivate {
 
   async saveMasterChanges() {
     const isValid = this.rowData.every(
-      (item) => item.description && item.idTypeEquipment && item.measure
+      (item) => item.description && item.idTypeEquipment && item.print
     );
     if (!isValid) {
       alerts.basicAlert(
