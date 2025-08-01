@@ -100,7 +100,17 @@
                         <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteReporte()"><i class="bi bi-trash"></i></button>
                       </nav>
                       <div class="col overflow-auto" style="height: 60vh;">
-                        <ag-grid-angular [ngStyle]="{ height: gridHeight}" class="ag-theme-quartz small-text-ag-grid" [rowData]="reportesDiarios" [columnDefs]="reportesColumnDefs" [gridOptions]="reportesGridOptions" [components]="components" [rowSelection]="'single'" (rowClicked)="selectReporte($event.data)" [getRowClass]="getReporteRowClass"></ag-grid-angular>
+                        <ag-grid-angular 
+                           [ngStyle]="{ height: gridHeight}" 
+                           class="ag-theme-quartz small-text-ag-grid" 
+                           [rowData]="reportesDiarios" 
+                           [columnDefs]="reportesColumnDefs" 
+                           [gridOptions]="reportesGridOptions" 
+                           [components]="components" 
+                           [rowSelection]="'single'" 
+                           (rowClicked)="selectReporte($event.data)" 
+                           [getRowClass]="getReporteRowClass">
+                        </ag-grid-angular>
                       </div>
                     </div>
                   </div>
@@ -116,51 +126,71 @@
                         <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deletePersonal()"><i class="bi bi-trash"></i></button>
                       </nav>
                       <div class="col overflow-auto" style="height: 60vh;">
-                        <ag-grid-angular [ngStyle]="{ height: gridHeight, width: gridWidthDetail }" class="ag-theme-quartz small-text-ag-grid" [rowData]="personal" [columnDefs]="personalColumnDefs" [gridOptions]="personalGridOptions" (gridReady)="onPersonalGridReady($event)"></ag-grid-angular>
+                        <ag-grid-angular 
+                         [ngStyle]="{ height: gridHeight, width: gridWidthDetail }" 
+                         class="ag-theme-quartz small-text-ag-grid" 
+                         [rowData]="personal" 
+                         [columnDefs]="personalColumnDefs" 
+                         [gridOptions]="personalGridOptions" 
+                         (gridReady)="onPersonalGridReady($event)">
+                      </ag-grid-angular>
                       </div>
                     </div>
                   </div>
 
+       
                   <!-- Pestaña Fotografías -->
                   <div class="tab-pane" [class.show]="activeTab === 'fotos'" [class.active]="activeTab === 'fotos'">
                     <h6><i class="bi bi-images"></i> Fotografías del Trabajo <span *ngIf="selectedReporteFecha" class="badge bg-secondary ">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
                     <div class="row">
-                      <div class="col-2">
-                        <nav class="col-auto d-flex flex-column align-items-start">
+                      
+                      <!-- Columna de Botones (Ajustada para flexibilidad) -->
+                      <div class="col-auto">
+                        <nav class="d-flex flex-column align-items-start">
                           <button type="button" class="btn btn-primary  mb-2" (click)="addFotografia()"><i class="bi bi-plus-lg"></i></button>
                           <button type="button" class="btn btn-success  position-relative mb-2" (click)="saveFotografiasChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedFotografiaChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
                           <button type="button" class="btn btn-warning  mb-2" (click)="revertFotografias()"><i class="bi bi-arrow-clockwise"></i></button>
                           <button type="button" class="btn btn-danger  mb-2" (click)="deleteFotografia()"><i class="bi bi-trash"></i></button>
                         </nav>
                       </div>
-                      <div class="col-6">
-                        <ag-grid-angular [ngStyle]="{ height: gridHeight, width: gridWidthDetail }"
-                          class="ag-theme-quartz small-text-ag-grid" 
-                          [rowData]="fotografias" 
-                          [columnDefs]="fotografiasColumnDefs" 
-                          [gridOptions]="fotografiasGridOptions" 
-                          (rowClicked)="selectFotografia($event.data)">
-                        </ag-grid-angular>
+
+                      <!-- Columna del Grid de Fotos -->
+                      <div class="col">
+                        <div class="overflow-auto" style="height: 60vh;"> <!-- LEY MAESTRA -->
+                           <ag-grid-angular                           
+                             [ngStyle]="{ height: '100%', width: '100%' }"
+                             class="ag-theme-quartz small-text-ag-grid" 
+                             [rowData]="fotografias" 
+                             [columnDefs]="fotografiasColumnDefs" 
+                             [gridOptions]="fotografiasGridOptions" 
+                             (rowClicked)="selectFotografia($event.data)">
+                           </ag-grid-angular>
+                        </div>
                       </div>
-                      <div class="col-4">
-                        <div class="border rounded p-3 h-100" style="background-color: #f8f9fa; height: calc(100% - 35px);">
-                          <div *ngIf="selectedFotografia; else noFotoSelection" class="h-100">
-                            <div class="text-center h-100 d-flex flex-column justify-content-center">
-                              <img [src]="selectedFotografia.url" [alt]="selectedFotografia.descripcion" class="img-fluid rounded" style="max-height: 270px; object-fit: cover;">
-                            </div>
+                      
+                      <!-- Columna de la Vista Previa -->
+                      <div class="col-5">
+                        <!-- ===== INICIO DEL EDICTO DE PODER ===== -->
+                        <!-- Se impone la misma ley de altura y se usan clases d-flex para centrar el contenido verticalmente -->
+                        <div class="border rounded p-3 d-flex flex-column" style="height: 30vh; background-color: #f8f9fa;">
+                          <div *ngIf="selectedFotografia; else noFotoSelection" class="flex-grow-1 text-center d-flex flex-column justify-content-center">
+                            <img [src]="selectedFotografia.url" [alt]="selectedFotografia.descripcion" class="img-fluid rounded" style="max-height: 50%; object-fit: contain;">
                           </div>
                           <ng-template #noFotoSelection>
-                            <div class="h-100 d-flex align-items-center justify-content-center">
+                            <div class="flex-grow-1 h-100 d-flex align-items-center justify-content-center">
                               <div class="text-center text-muted">
-                                <i class="bi bi-arrow-left display-4"></i>
+                                <i class="bi bi-camera-reels display-4"></i>
                                 <p class="mt-2">Selecciona una foto para ver la vista previa</p>
                               </div>
                             </div>
                           </ng-template>
                         </div>
+                        <!-- ===== FIN DEL EDICTO DE PODER ===== -->
                       </div>
+
                     </div>
                   </div>
+
 
                   <!-- Pestaña Material -->
                   <div class="tab-pane" [class.show]="activeTab === 'material'" [class.active]="activeTab === 'material'">
