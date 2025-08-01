@@ -493,7 +493,7 @@ export class OrdenesComponent {
     const modifiedRows = this.fotografias.filter(row => row.__modified && !row.__isNew);
 
     // Validación básica
-    const invalidRows = newRows.filter(item => !item.imageUrl || !item.descripcion);
+    const invalidRows = newRows.filter(item => item.imageUrl && item.descripcion);
     
     if (invalidRows.length > 0) {
       alerts.basicAlert('Error', 'Debe completar la imagen y la descripción antes de guardar.', 'error');
