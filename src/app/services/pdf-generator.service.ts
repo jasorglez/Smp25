@@ -9,6 +9,7 @@ import { LogbookService } from './logbook.service';
 import { MaterialsService } from './materials.service';
 import { SignalsService } from './signals.service';
 import { CatalogsService } from './catalogs.service';
+import { EquipmentService } from './equipment.service';
 (pdfMake as any).vfs = pdfFonts.pdfMake.vfs;
 
 @Injectable({
@@ -35,6 +36,7 @@ export class PdfGeneratorService {
   idcompany: number;
   catalogMateriales: any[] = [];
   unitsCatalog: any[] = [];
+  catalogEquipos: any[] = [];
 
   constructor(
     private datos: ReceivedataService,
@@ -44,12 +46,14 @@ export class PdfGeneratorService {
     private logbookService: LogbookService, 
     private materialsService: MaterialsService,
     private signalsService: SignalsService,
-    private catalogsService: CatalogsService
+    private catalogsService: CatalogsService,
+    private equipmentService: EquipmentService
   ) {
 
     effect(() => { 
       this.idcompany = this.signalsService.getRootSelectedBySidebar()();
       this.catalogoMateriales();
+      this.catalogoEquipo();
       this.obtenerUnidades();
     })
   }
@@ -447,7 +451,7 @@ export class PdfGeneratorService {
   private processPersonalData() {
     if (!this.personalData || this.personalData.length === 0) {
       return [
-        ['Cargo', 'Cantidad'],
+        ['Cargo', 'Can.'],
         ['No hay datos de personal', '0']
       ];
     }
@@ -467,7 +471,7 @@ export class PdfGeneratorService {
     });
 
     // Convertir a array para la tabla
-    const tableData = [['Cargo', 'Cantidad']];
+    const tableData = [['Cargo', 'Can.']];
     cargoMap.forEach((cantidad, cargo) => {
       tableData.push([cargo, cantidad.toString()]);
     });
@@ -478,7 +482,7 @@ export class PdfGeneratorService {
 private processMaterialesData(): string[][] {
   if (!this.materialesData || this.materialesData.length === 0) {
     return [
-      ['Material', 'Cantidad', 'Unidad'],
+      ['Material', 'Can.', 'Unidad'],
       ['No hay datos de materiales', '0', '-']
     ];
   }
@@ -507,7 +511,7 @@ private processMaterialesData(): string[][] {
     }
   });
 
-  const tableData = [['Material', 'Cantidad', 'Unidad']];
+  const tableData = [['Material', 'Can.', 'Unidad']];
   materialMap.forEach(data => {
     tableData.push([data.nombre, data.cantidad.toString(), data.unidad]);
   });
@@ -519,29 +523,30 @@ private processMaterialesData(): string[][] {
   private processEquiposData() {
     if (!this.equiposData || this.equiposData.length === 0) {
       return [
-        ['Equipo', 'Horas'],
+        ['Equipo', 'Can.'],
         ['No hay datos de equipos', '0']
       ];
     }
 
-    // Agrupar por nombre de equipo y sumar horas
+    // Agrupar por nombre de equipo y sumar Can.
     const equipoMap = new Map<string, number>();
     
     this.equiposData.forEach(equipo => {
-      const nombre = equipo.idResource || 'Sin nombre';
-      const horas = parseFloat(equipo.horasUso) || 0;
-      
+      const equipoSeleccionado = this.catalogEquipos.find(e => e.id === equipo.idResource);
+      const nombre = equipoSeleccionado ? equipoSeleccionado.description : 'Sin nombre';
+      const Cantidad = equipo.quantity ?? 0;;
+
       if (equipoMap.has(nombre)) {
-        equipoMap.set(nombre, equipoMap.get(nombre)! + horas);
+        equipoMap.set(nombre, equipoMap.get(nombre)! + Cantidad);
       } else {
-        equipoMap.set(nombre, horas);
+        equipoMap.set(nombre, Cantidad);
       }
     });
 
     // Convertir a array para la tabla
-    const tableData = [['Equipo', 'Horas']];
-    equipoMap.forEach((horas, nombre) => {
-      tableData.push([nombre, horas.toFixed(1)]);
+    const tableData = [['Equipo', 'Can.']];
+    equipoMap.forEach((Cantidad, nombre) => {
+      tableData.push([nombre, Cantidad.toString()]);
     });
 
     return tableData;
@@ -868,6 +873,15 @@ private processMaterialesData(): string[][] {
     return this.materialsService.getMaterials(this.idcompany, 'CONSUMABLE').subscribe(
       (data: any) => {
         this.catalogMateriales = data;
+      },
+      (error) => console.error('Error fetching data:', error)
+    );
+  }
+
+  catalogoEquipo(){
+    return this.equipmentService.getEquipment(this.idcompany).subscribe(
+      (data: any) => {
+        this.catalogEquipos = data;
       },
       (error) => console.error('Error fetching data:', error)
     );
