@@ -1,5 +1,5 @@
 import { Component, effect, HostListener, inject } from '@angular/core';
-import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { ColDef, GridApi, GridReadyEvent, CellDoubleClickedEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule } from 'ag-grid-angular';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
@@ -8,11 +8,12 @@ import { FormsModule } from '@angular/forms';
 import { EstimatesService } from 'app/services/estimates.service';
 import { SignalsService } from 'app/services/signals.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
+import { GeneratorsComponent } from './generators.component';
 
 @Component({
   selector: 'app-estimates',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [CommonModule, FormsModule, AgGridModule, GeneratorsComponent],
   templateUrl: '../oil-provider-project.html'
 })
 export class EstimatesComponent {
@@ -52,6 +53,11 @@ export class EstimatesComponent {
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
   private contract = this.signalsService.getContractSelectedBySidebar()();
+  
+  // Propiedades para el comportamiento del toggle
+  gridHeight: string = '500px';
+  showGeneratorsTab: boolean = false;
+  isOpen: boolean = false;
 
   obtenerDatos() {
     this.estimatesService
@@ -90,6 +96,7 @@ export class EstimatesComponent {
         });
       }
     },
+    onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
   };
 
   get columnDefs(): ColDef[] {
@@ -370,6 +377,63 @@ export class EstimatesComponent {
       delete cleanedData.id;
     }
     return cleanedData;
+  }
+
+  async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
+    // Verificar que event.data esté disponible antes de acceder a sus propiedades
+    if (!event.data) {
+      console.warn('No hay datos en la fila seleccionada');
+      return;
+    }
+
+    const selectedRowData = event.data;
+    const selectedId = selectedRowData.id;
+
+    this.notSavedChanges = true;
+    this.selectedRowData = selectedRowData;
+
+    // Filtrar el grid para mostrar solo el registro con el ID seleccionado
+    if (this.gridApi) {
+      const filterModel = {
+        id: {
+          type: 'equals',
+          filter: selectedId,
+        },
+      };
+      this.gridApi.setFilterModel(filterModel);
+      this.gridApi.onFilterChanged();
+    }
+
+    // Activar la pestaña de generators
+    try {
+      await this.activateGeneratorsTab();
+    } catch (error) {
+      console.error('Error activando la pestaña de generators:', error);
+    }
+  }
+
+  async activateGeneratorsTab() {
+    if (!this.isOpen) {
+      await this.adjustGridSize();
+      this.showGeneratorsTab = true;
+      this.isOpen = true;
+    } else {
+      await this.resetGridSize();
+      this.isOpen = false;
+    }
+  }
+
+  async adjustGridSize() {
+    this.gridHeight = '250px'; // Reducir tamaño del grid
+  }
+
+  resetGridSize() {
+    this.gridHeight = '500px'; // Restaurar tamaño original
+    this.showGeneratorsTab = false;
+    if (this.gridApi) {
+      this.gridApi.setFilterModel(null);
+      this.gridApi.onFilterChanged();
+    }
   }
 
 }
