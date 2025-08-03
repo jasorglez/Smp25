@@ -129,16 +129,13 @@ export class GeneratorsComponent implements OnChanges {
     };
 
     if (this.viewMode === 'master') {
-      // Vista Maestro: Grid simple sin Tree Data
+      // Vista Maestro: Grid simple sin Tree Data (SIN doble-click)
       return {
         ...baseOptions,
-        treeData: false,
-        onRowDoubleClicked: (event) => {
-          this.openDetailView(event.data);
-        }
+        treeData: false
       };
     } else {
-      // Vista Detalle: Grid con Tree Data
+      // Vista Detalle: Grid con Tree Data (SIN doble-click)
       return {
         ...baseOptions,
         treeData: true,
@@ -356,11 +353,25 @@ export class GeneratorsComponent implements OnChanges {
     console.log('Selected row:', this.selectedNodeType, this.selectedRowData);
   }
 
-  // Función para abrir vista detalle (doble-click en generador)
+  // Función para abrir vista detalle (con botón)
   openDetailView(generatorData: any) {
     this.selectedGeneratorForDetail = generatorData;
     this.viewMode = 'detail';
     this.obtenerDatos(); // Recargar datos en modo detalle
+  }
+
+  // Función para ver detalle del generador seleccionado
+  viewGeneratorDetail() {
+    if (!this.selectedRowData) {
+      alerts.basicAlert(
+        'Ver Detalle',
+        'Por favor, seleccione un generador para ver su detalle.',
+        'warning'
+      );
+      return;
+    }
+
+    this.openDetailView(this.selectedRowData);
   }
 
   // Función para volver a vista maestro

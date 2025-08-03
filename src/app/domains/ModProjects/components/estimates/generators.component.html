@@ -52,6 +52,11 @@
                         [disabled]="!selectedRowData">
                     <i class="bi bi-trash"></i>
                 </button>
+                <button type="button" class="btn btn-info mb-2" (click)="viewGeneratorDetail()" 
+                        [disabled]="!selectedRowData"
+                        title="Ver detalle del generador seleccionado">
+                    <i class="bi bi-eye"></i>
+                </button>
                 
                 <!-- Indicador del generador seleccionado -->
                 <div class="mt-2 small text-muted" *ngIf="selectedRowData">
