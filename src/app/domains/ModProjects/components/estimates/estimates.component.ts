@@ -96,7 +96,7 @@ export class EstimatesComponent {
         });
       }
     },
-    // onCellDoubleClicked: this.onCellDoubleClicked.bind(this), // Deshabilitado por interferencia con edición
+    onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
   };
 
   get columnDefs(): ColDef[] {
