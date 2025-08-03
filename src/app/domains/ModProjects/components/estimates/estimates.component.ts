@@ -14,7 +14,7 @@ import { GeneratorsComponent } from './generators.component';
   selector: 'app-estimates',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, GeneratorsComponent],
-  templateUrl: '../oil-provider-project.html'
+  templateUrl: './estimates.component.html'
 })
 export class EstimatesComponent {
 
