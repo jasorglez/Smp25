@@ -32,6 +32,7 @@ export class GeneratorsComponent implements OnChanges {
     }
   }
 
+  projectId: number = 0;
   notSavedChanges: boolean = false;
   rowData: any[] = [];
   selectedRowData: any = null;
@@ -105,7 +106,7 @@ export class GeneratorsComponent implements OnChanges {
       return;
     }
 
-    this.workprogramsService.getAtivities(this.contract)
+    this.workprogramsService.getActivities(this.contract)
       .subscribe((activities: any[]) => {
         this.activitiesOptions = activities;
         console.log('Activities loaded:', activities);

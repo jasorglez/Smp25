@@ -32,7 +32,7 @@ export class WorkprogramsService {
     return this.http.delete(`${environment.urlSmp}/Workprogram/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
-  getAtivities(id: number): Observable<any[]> {
+  getActivities(id: number): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlSmp}/Workprogram/onlyactivities?idProject=${id}}`, { headers: this.trackingService.getHeaders() });
   }
 
