@@ -93,14 +93,14 @@ export class GeneratorsComponent implements OnChanges {
   get columnDefs(): ColDef[] {
     return [
       {
-        field: 'numeroGenerador',
+        field: 'numero',
         headerName: 'Número Generador',
         editable: true,
         flex: 1
       },
       {
-        field: 'fechaInicio',
-        headerName: 'Fecha Inicio',
+        field: 'dateStart',
+        headerName: 'Inicio',
         editable: true,
         flex: 1,
         cellDataType: 'dateString',
@@ -112,8 +112,8 @@ export class GeneratorsComponent implements OnChanges {
         }
       },
       {
-        field: 'fechaFinal',
-        headerName: 'Fecha Final',
+        field: 'dateEnd',
+        headerName: 'Final',
         editable: true,
         flex: 1,
         cellDataType: 'dateString',
