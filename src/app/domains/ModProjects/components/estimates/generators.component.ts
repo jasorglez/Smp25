@@ -39,6 +39,10 @@ export class GeneratorsComponent implements OnChanges {
   treeData: any[] = [];
   selectedNodeType: 'generator' | 'item' | null = null;
   selectedParentId: number | null = null;
+  
+  // Propiedades para controlar las vistas
+  viewMode: 'master' | 'detail' = 'master'; // Controla qué vista mostrar
+  selectedGeneratorForDetail: any = null; // Generador seleccionado para mostrar detalle
 
   // Propiedades legacy para Master-Detail (aún referenciadas)
   selectedGeneratorId: number | null = null;
@@ -69,118 +73,157 @@ export class GeneratorsComponent implements OnChanges {
       .getGenerators(this.idEstimacion)
       .subscribe(async (generators: any) => {
         console.log('Generators data:', generators);
-        // Construir estructura de árbol
-        await this.buildTreeStructure(generators);
+        
+        if (this.viewMode === 'master') {
+          // Vista Maestro: Solo mostrar generadores
+          this.treeData = generators.map(generator => ({
+            ...generator,
+            nodeType: 'generator'
+          }));
+        } else {
+          // Vista Detalle: Construir estructura de árbol con items
+          await this.buildTreeStructure(generators);
+        }
       }, (error) => {
         console.error('Error al cargar generators:', error);
         this.treeData = [];
       });
   }
 
-  // Configuración del grid para Tree Data
-  public gridOptions: any = {
-    headerHeight: 30,
-    rowHeight: 30,
-    treeData: true,
-    animateRows: true,
-    groupDefaultExpanded: -1, // Expandir todos los nodos por defecto
-    getDataPath: (data: any) => data.orgHierarchy,
-    autoGroupColumnDef: {
-      headerName: 'Generadores / Items',
-      minWidth: 250,
-      cellRendererParams: {
-        suppressCount: true,
-        innerRenderer: (params: any) => {
-          if (params.data) {
-            if (params.data.nodeType === 'generator') {
-              const dias = this.calculateDays(params.data.dateStart, params.data.dateEnd);
-              return `📁 ${params.data.numero} (${this.formatDate(params.data.dateStart)} - ${this.formatDate(params.data.dateEnd)}) - ${dias} días`;
-            } else {
-              return `📄 Recurso ${params.data.idResource} - Cantidad: ${params.data.quantity}`;
+  // Configuración del grid dinámico
+  get gridOptions(): any {
+    const baseOptions = {
+      headerHeight: 30,
+      rowHeight: 30,
+      animateRows: true,
+      onRowSelected: (event) => {
+        if (event.node.isSelected()) {
+          this.onRowSelected(event);
+        }
+      },
+    };
+
+    if (this.viewMode === 'master') {
+      // Vista Maestro: Grid simple sin Tree Data
+      return {
+        ...baseOptions,
+        treeData: false,
+        onRowDoubleClicked: (event) => {
+          this.openDetailView(event.data);
+        }
+      };
+    } else {
+      // Vista Detalle: Grid con Tree Data
+      return {
+        ...baseOptions,
+        treeData: true,
+        groupDefaultExpanded: -1,
+        getDataPath: (data: any) => data.orgHierarchy,
+        autoGroupColumnDef: {
+          headerName: 'Items del Generador',
+          minWidth: 200,
+          cellRendererParams: {
+            suppressCount: true,
+            innerRenderer: (params: any) => {
+              if (params.data) {
+                if (params.data.nodeType === 'generator') {
+                  return `📁 ${params.data.numero}`;
+                } else {
+                  return `📄 Recurso: ${params.data.idResource || 0}`;
+                }
+              }
+              return '';
             }
           }
-          return '';
         }
-      }
-    },
-    onRowSelected: (event) => {
-      if (event.node.isSelected()) {
-        this.onTreeNodeSelected(event);
-      }
-    },
-  };
+      };
+    }
+  }
 
-  // Definición de columnas dinámicas
+  // Definición de columnas según la vista
   get columnDefs(): ColDef[] {
-    return [
-      {
-        field: 'dateStart',
-        headerName: 'Fecha Inicio',
-        editable: (params) => params.data?.nodeType === 'generator',
-        flex: 1,
-        cellDataType: 'dateString',
-        valueFormatter: (params) => {
-          if (params.value) {
-            return params.value.split('T')[0];
-          }
-          return '';
+    if (this.viewMode === 'master') {
+      // Vista Maestro: Solo columnas de generadores
+      return [
+        {
+          field: 'numero',
+          headerName: 'Número Generador',
+          editable: true,
+          flex: 1
         },
-        cellStyle: (params) => {
-          return params.data?.nodeType === 'item' ? { display: 'none' } : {};
-        }
-      },
-      {
-        field: 'dateEnd',
-        headerName: 'Fecha Final',
-        editable: (params) => params.data?.nodeType === 'generator',
-        flex: 1,
-        cellDataType: 'dateString',
-        valueFormatter: (params) => {
-          if (params.value) {
-            return params.value.split('T')[0];
+        {
+          field: 'dateStart',
+          headerName: 'Fecha Inicio',
+          editable: true,
+          flex: 1,
+          cellDataType: 'dateString',
+          valueFormatter: (params) => {
+            if (params.value) {
+              return params.value.split('T')[0];
+            }
+            return '';
           }
-          return '';
         },
-        cellStyle: (params) => {
-          return params.data?.nodeType === 'item' ? { display: 'none' } : {};
+        {
+          field: 'dateEnd',
+          headerName: 'Fecha Final',
+          editable: true,
+          flex: 1,
+          cellDataType: 'dateString',
+          valueFormatter: (params) => {
+            if (params.value) {
+              return params.value.split('T')[0];
+            }
+            return '';
+          }
+        },
+        {
+          field: 'comment',
+          headerName: 'Comentarios',
+          editable: true,
+          flex: 2
         }
-      },
-      {
-        field: 'idResource',
-        headerName: 'ID Recurso',
-        editable: (params) => params.data?.nodeType === 'item',
-        flex: 1,
-        cellStyle: (params) => {
-          return params.data?.nodeType === 'generator' ? { display: 'none' } : {};
+      ];
+    } else {
+      // Vista Detalle: Solo columnas de items
+      return [
+        {
+          field: 'idResource',
+          headerName: 'ID Recurso',
+          editable: (params) => params.data?.nodeType === 'item',
+          flex: 1,
+          cellStyle: (params) => {
+            return params.data?.nodeType === 'generator' ? { display: 'none' } : {};
+          }
+        },
+        {
+          field: 'quantity',
+          headerName: 'Cantidad',
+          editable: (params) => params.data?.nodeType === 'item',
+          flex: 1,
+          cellDataType: 'number',
+          cellStyle: (params) => {
+            return params.data?.nodeType === 'generator' ? { display: 'none' } : {};
+          }
+        },
+        {
+          field: 'accumulate',
+          headerName: 'Acumulado',
+          editable: (params) => params.data?.nodeType === 'item',
+          flex: 1,
+          cellDataType: 'number',
+          cellStyle: (params) => {
+            return params.data?.nodeType === 'generator' ? { display: 'none' } : {};
+          }
+        },
+        {
+          field: 'comment',
+          headerName: 'Comentarios',
+          editable: true,
+          flex: 2
         }
-      },
-      {
-        field: 'quantity',
-        headerName: 'Cantidad',
-        editable: (params) => params.data?.nodeType === 'item',
-        flex: 1,
-        cellDataType: 'number',
-        cellStyle: (params) => {
-          return params.data?.nodeType === 'generator' ? { display: 'none' } : {};
-        }
-      },
-      {
-        field: 'accumulate',
-        headerName: 'Acumulado',
-        editable: (params) => params.data?.nodeType === 'item',
-        flex: 1,
-        cellDataType: 'number',
-        cellStyle: (params) => {
-          return params.data?.nodeType === 'generator' ? { display: 'none' } : {};
-        }
-      },
-      {
-        field: 'comment',
-        headerName: 'Comentarios',
-        editable: true,
-        flex: 2
-      }
-    ];
+      ];
+    }
   }
 
   // Función para calcular días
@@ -211,17 +254,23 @@ export class GeneratorsComponent implements OnChanges {
   async buildTreeStructure(generators: any[]) {
     this.treeData = [];
     
-    for (const generator of generators) {
-      // Nodo padre (generador)
-      const generatorNode = {
-        ...generator,
-        nodeType: 'generator',
-        orgHierarchy: [generator.numero],
-        id: `gen_${generator.id}`,
-        originalId: generator.id
-      };
-
-      this.treeData.push(generatorNode);
+    // En vista detalle, solo procesar el generador seleccionado
+    const generatorsToProcess = this.viewMode === 'detail' && this.selectedGeneratorForDetail 
+      ? [this.selectedGeneratorForDetail] 
+      : generators;
+    
+    for (const generator of generatorsToProcess) {
+      // Nodo padre (generador) - solo en vista detalle
+      if (this.viewMode === 'detail') {
+        const generatorNode = {
+          ...generator,
+          nodeType: 'generator',
+          orgHierarchy: [generator.numero],
+          id: `gen_${generator.id}`,
+          originalId: generator.id
+        };
+        this.treeData.push(generatorNode);
+      }
 
       // Cargar items del generador si no es temporal
       if (!generator.id.toString().startsWith('temp_')) {
@@ -245,18 +294,19 @@ export class GeneratorsComponent implements OnChanges {
       }
     }
 
-    console.log('Tree structure built:', this.treeData);
+    console.log('Tree structure built for', this.viewMode, ':', this.treeData);
   }
 
-  onTreeNodeSelected(event: any) {
+  // Manejo unificado de selección de filas
+  onRowSelected(event: any) {
     this.selectedRowData = event.data;
     
     if (event.data) {
-      this.selectedNodeType = event.data.nodeType;
+      this.selectedNodeType = event.data.nodeType || 'generator';
       
-      if (event.data.nodeType === 'generator') {
-        this.selectedParentId = event.data.originalId;
-      } else if (event.data.nodeType === 'item') {
+      if (this.selectedNodeType === 'generator') {
+        this.selectedParentId = event.data.originalId || event.data.id;
+      } else if (this.selectedNodeType === 'item') {
         this.selectedParentId = event.data.parentGeneratorId;
       }
     } else {
@@ -264,7 +314,26 @@ export class GeneratorsComponent implements OnChanges {
       this.selectedParentId = null;
     }
 
-    console.log('Selected node:', this.selectedNodeType, this.selectedRowData);
+    console.log('Selected row:', this.selectedNodeType, this.selectedRowData);
+  }
+
+  // Función para abrir vista detalle (doble-click en generador)
+  openDetailView(generatorData: any) {
+    this.selectedGeneratorForDetail = generatorData;
+    this.viewMode = 'detail';
+    this.obtenerDatos(); // Recargar datos en modo detalle
+  }
+
+  // Función para volver a vista maestro
+  backToMasterView() {
+    this.viewMode = 'master';
+    this.selectedGeneratorForDetail = null;
+    this.obtenerDatos(); // Recargar datos en modo maestro
+  }
+
+  onTreeNodeSelected(event: any) {
+    // Esta función ahora delega a onRowSelected
+    this.onRowSelected(event);
   }
 
   onCellValueChanged(event: any) {
