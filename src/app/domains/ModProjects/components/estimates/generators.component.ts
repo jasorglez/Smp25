@@ -35,6 +35,12 @@ export class GeneratorsComponent implements OnChanges {
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
 
+  // Propiedades para Master-Detail
+  detailRowData: any[] = [];
+  selectedGeneratorId: number | null = null;
+  showDetailGrid: boolean = false;
+  private detailGridApi: GridApi;
+
   constructor() { }
 
   ngOnInit() {
@@ -130,20 +136,20 @@ export class GeneratorsComponent implements OnChanges {
         editable: false,
         flex: 1,
         valueGetter: (params) => {
-          return this.calculateDays(params.data.fechaInicio, params.data.fechaFinal);
+          return this.calculateDays(params.data.dateStart, params.data.dateEnd);
         }
       }
     ];
   }
 
   // Función para calcular días
-  calculateDays(fechaInicio: string, fechaFinal: string): number {
-    if (!fechaInicio || !fechaFinal) {
+  calculateDays(dateStart: string, dateEnd: string): number {
+    if (!dateStart || !dateEnd) {
       return 0;
     }
     
-    const inicio = new Date(fechaInicio);
-    const final = new Date(fechaFinal);
+    const inicio = new Date(dateStart);
+    const final = new Date(dateEnd);
     
     // Calcular la diferencia en milisegundos
     const diffTime = final.getTime() - inicio.getTime();
@@ -158,8 +164,14 @@ export class GeneratorsComponent implements OnChanges {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
+      this.selectedGeneratorId = selectedNodes[0].data.id;
+      // Cargar detalle automáticamente
+      this.loadDetailData();
     } else {
       this.selectedRowData = null;
+      this.selectedGeneratorId = null;
+      this.showDetailGrid = false;
+      this.detailRowData = [];
     }
   }
 
@@ -169,7 +181,7 @@ export class GeneratorsComponent implements OnChanges {
     this.notSavedChanges = true;
     
     // Recalcular días si cambió alguna fecha
-    if (event.colDef.field === 'fechaInicio' || event.colDef.field === 'fechaFinal') {
+    if (event.colDef.field === 'dateStart' || event.colDef.field === 'dateEnd') {
       this.gridApi.refreshCells({
         rowNodes: [event.node],
         columns: ['dias']
@@ -185,11 +197,11 @@ export class GeneratorsComponent implements OnChanges {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      numeroGenerador: '',
+      numero: '',
       idEstimacion: this.idEstimacion,
-      fechaInicio: '',
-      fechaFinal: '',
-      dias: 0,
+      dateStart: '',
+      dateEnd: '',
+      aplicaIsometrico: false,
       active: true,
       __isNew: true,
     };
@@ -203,14 +215,14 @@ export class GeneratorsComponent implements OnChanges {
       const newRowIndex = this.rowData.findIndex((row) => row.id === tempId);
       this.gridApi.startEditingCell({
         rowIndex: newRowIndex,
-        colKey: 'numeroGenerador',
+        colKey: 'numero',
       });
     }, 50);
   }
 
   async saveChanges() {
     // Validar que todos los campos requeridos estén llenos
-    const isValid = this.rowData.every((item) => item.numeroGenerador && item.fechaInicio && item.fechaFinal);
+    const isValid = this.rowData.every((item) => item.numero && item.dateStart && item.dateEnd);
     if (!isValid) {
       alerts.basicAlert(
         'Guardar Cambios',
@@ -306,6 +318,205 @@ export class GeneratorsComponent implements OnChanges {
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
     delete cleanedData.dias; // Los días se calculan, no se envían al servidor
+    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
+      delete cleanedData.id;
+    }
+    return cleanedData;
+  }
+
+  // ==================== FUNCIONES MASTER-DETAIL ====================
+
+  loadDetailData() {
+    if (!this.selectedGeneratorId || this.selectedGeneratorId.toString().startsWith('temp_')) {
+      this.showDetailGrid = false;
+      this.detailRowData = [];
+      return;
+    }
+
+    this.generatorsService
+      .getItemsGeneradores(this.selectedGeneratorId)
+      .subscribe((data: any) => {
+        this.detailRowData = data;
+        this.showDetailGrid = true;
+        console.log('Detail data loaded:', data);
+      }, (error) => {
+        console.error('Error al cargar detalle:', error);
+        this.detailRowData = [];
+        this.showDetailGrid = false;
+      });
+  }
+
+  // Definición de columnas para el detalle
+  get detailColumnDefs(): ColDef[] {
+    return [
+      {
+        field: 'idResource',
+        headerName: 'ID Recurso',
+        editable: true,
+        flex: 1
+      },
+      {
+        field: 'quantity',
+        headerName: 'Cantidad',
+        editable: true,
+        flex: 1,
+        cellDataType: 'number',
+        cellEditor: 'agNumberCellEditor'
+      },
+      {
+        field: 'accumulate',
+        headerName: 'Acumulado',
+        editable: true,
+        flex: 1,
+        cellDataType: 'number',
+        cellEditor: 'agNumberCellEditor'
+      },
+      {
+        field: 'comment',
+        headerName: 'Comentarios',
+        editable: true,
+        flex: 2
+      }
+    ];
+  }
+
+  onDetailGridReady(params: GridReadyEvent) {
+    this.detailGridApi = params.api;
+  }
+
+  onDetailSelectionChanged(event: any) {
+    // Manejar selección en el grid detalle
+  }
+
+  onDetailCellValueChanged(event: any) {
+    console.log('Detalle cambiado:', event.data);
+    event.data.__modified = true;
+    this.notSavedChanges = true;
+  }
+
+  // ==================== FUNCIONES CRUD DETALLE ====================
+
+  addDetailRow() {
+    if (!this.selectedGeneratorId || this.selectedGeneratorId.toString().startsWith('temp_')) {
+      alerts.basicAlert(
+        'Agregar Item',
+        'Primero debe guardar el generador antes de agregar items.',
+        'warning'
+      );
+      return;
+    }
+
+    const tempId = `temp_detail_${this.tempIdCounter++}`;
+    const newDetailItem = {
+      id: tempId,
+      idType: this.selectedGeneratorId,
+      idResource: 0,
+      quantity: 1,
+      accumulate: 0,
+      type: 'GENERADOR',
+      comment: '',
+      active: true,
+      __isNew: true,
+    };
+
+    this.detailRowData = [newDetailItem, ...this.detailRowData];
+    this.notSavedChanges = true;
+
+    // Auto-editar primera celda
+    setTimeout(() => {
+      if (this.detailGridApi) {
+        const newRowIndex = this.detailRowData.findIndex((row) => row.id === tempId);
+        this.detailGridApi.startEditingCell({
+          rowIndex: newRowIndex,
+          colKey: 'idResource',
+        });
+      }
+    }, 50);
+  }
+
+  async saveDetailChanges() {
+    const newRows = this.detailRowData.filter((row) => row.__isNew);
+    const modifiedRows = this.detailRowData.filter(
+      (row) => row.__modified && !row.__isNew
+    );
+
+    const addObservables = newRows.map((row) => {
+      const cleanedData = this.cleanDetailDataForServer(row);
+      return this.generatorsService.addItemGenerador(cleanedData);
+    });
+
+    const updateObservables = modifiedRows.map((row) => {
+      const cleanedData = this.cleanDetailDataForServer(row);
+      return this.generatorsService.updateItemGenerador(row.id, cleanedData);
+    });
+
+    try {
+      const responses = await lastValueFrom(
+        concat(...addObservables, ...updateObservables).pipe(toArray())
+      );
+      alerts.basicAlert(
+        'Items actualizados',
+        'Los items del generador se han guardado correctamente.',
+        'success'
+      );
+      this.loadDetailData(); // Refrescar detalle
+    } catch (error) {
+      console.error(error);
+      alerts.basicAlert(
+        'Error',
+        'Ocurrió un error al guardar los items. Por favor, intente nuevamente.',
+        'error'
+      );
+    }
+  }
+
+  async deleteDetailEntry() {
+    const selectedNodes = this.detailGridApi?.getSelectedNodes();
+    if (!selectedNodes || selectedNodes.length === 0) {
+      alerts.basicAlert(
+        'Eliminar Item',
+        'Por favor, seleccione un item para eliminar.',
+        'error'
+      );
+      return;
+    }
+
+    const selectedData = selectedNodes[0].data;
+    const id = selectedData.id;
+
+    if (id.toString().startsWith('temp_')) {
+      // Eliminar localmente si es temporal
+      this.detailRowData = this.detailRowData.filter(item => item.id !== id);
+      return;
+    }
+
+    this.generatorsService.deleteItemGenerador(id).pipe(
+      catchError((error) => {
+        alerts.basicAlert(
+          'Eliminar Item',
+          'Error al eliminar el item del generador.',
+          'error'
+        );
+        console.error(error);
+        return EMPTY;
+      })
+    )
+      .subscribe(
+        () => {
+          alerts.basicAlert(
+            'Eliminar Item',
+            'Item eliminado satisfactoriamente.',
+            'success'
+          );
+          this.loadDetailData();
+        }
+      );
+  }
+
+  private cleanDetailDataForServer(data: any): any {
+    const cleanedData = { ...data };
+    delete cleanedData.__isNew;
+    delete cleanedData.__modified;
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }
