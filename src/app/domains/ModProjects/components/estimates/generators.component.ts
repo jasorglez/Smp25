@@ -51,7 +51,7 @@ export class GeneratorsComponent implements OnChanges {
   
   // Lista de actividades para el dropdown de recursos
   activitiesOptions: any[] = [];
-  private contract = this.signalsService.getContractSelectedBySidebar()();
+  private project = this.signalsService.getProjectSelectedBySidebar()();
 
   // Propiedades legacy para Master-Detail (aún referenciadas)
   selectedGeneratorId: number | null = null;
@@ -101,12 +101,12 @@ export class GeneratorsComponent implements OnChanges {
   }
 
   loadActivities() {
-    if (!this.contract) {
-      console.warn('No hay contrato seleccionado');
+    if (!this.project) {
+      console.warn('No hay proyecto seleccionado');
       return;
     }
 
-    this.workprogramsService.getActivities(this.contract)
+    this.workprogramsService.getActivities(this.project)
       .subscribe((activities: any[]) => {
         this.activitiesOptions = activities;
         console.log('Activities loaded:', activities);
