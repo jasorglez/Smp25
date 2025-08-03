@@ -5,6 +5,8 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { GeneratorsService } from 'app/services/generators.service';
+import { WorkprogramsService } from 'app/services/workprograms.service';
+import { SignalsService } from 'app/services/signals.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 
 @Component({
@@ -19,6 +21,8 @@ export class GeneratorsComponent implements OnChanges {
   @Input() idEstimacion: number = 0;
 
   private generatorsService = inject(GeneratorsService);
+  private workprogramsService = inject(WorkprogramsService);
+  private signalsService = inject(SignalsService);
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
@@ -43,6 +47,10 @@ export class GeneratorsComponent implements OnChanges {
   // Propiedades para controlar las vistas
   viewMode: 'master' | 'detail' = 'master'; // Controla qué vista mostrar
   selectedGeneratorForDetail: any = null; // Generador seleccionado para mostrar detalle
+  
+  // Lista de actividades para el dropdown de recursos
+  activitiesOptions: any[] = [];
+  private contract = this.signalsService.getContractSelectedBySidebar()();
 
   // Propiedades legacy para Master-Detail (aún referenciadas)
   selectedGeneratorId: number | null = null;
@@ -54,6 +62,7 @@ export class GeneratorsComponent implements OnChanges {
 
   ngOnInit() {
     this.obtenerDatos();
+    this.loadActivities();
   }
 
   ngOnChanges(changes: SimpleChanges) {
@@ -87,6 +96,22 @@ export class GeneratorsComponent implements OnChanges {
       }, (error) => {
         console.error('Error al cargar generators:', error);
         this.treeData = [];
+      });
+  }
+
+  loadActivities() {
+    if (!this.contract) {
+      console.warn('No hay contrato seleccionado');
+      return;
+    }
+
+    this.workprogramsService.getAtivities(this.contract)
+      .subscribe((activities: any[]) => {
+        this.activitiesOptions = activities;
+        console.log('Activities loaded:', activities);
+      }, (error) => {
+        console.error('Error al cargar actividades:', error);
+        this.activitiesOptions = [];
       });
   }
 
@@ -129,7 +154,10 @@ export class GeneratorsComponent implements OnChanges {
                 if (params.data.nodeType === 'generator') {
                   return `📁 ${params.data.numero}`;
                 } else {
-                  return `📄 Recurso: ${params.data.idResource || 0}`;
+                  // Mostrar el nombre de la actividad en lugar del ID
+                  const activity = this.activitiesOptions.find(act => act.id === params.data.idResource);
+                  const resourceName = activity ? activity.actandNom : `ID: ${params.data.idResource || 0}`;
+                  return `📄 ${resourceName}`;
                 }
               }
               return '';
@@ -189,9 +217,20 @@ export class GeneratorsComponent implements OnChanges {
       return [
         {
           field: 'idResource',
-          headerName: 'ID Recurso',
+          headerName: 'Recurso',
           editable: (params) => params.data?.nodeType === 'item',
-          flex: 1,
+          flex: 2,
+          cellEditor: 'agSelectCellEditor',
+          cellEditorParams: {
+            values: this.activitiesOptions.map(activity => activity.id),
+            valueListGap: 0,
+            valueListMaxHeight: 200
+          },
+          valueFormatter: (params) => {
+            // Mostrar el actandNom en lugar del ID
+            const activity = this.activitiesOptions.find(act => act.id === params.value);
+            return activity ? activity.actandNom : params.value;
+          },
           cellStyle: (params) => {
             return params.data?.nodeType === 'generator' ? { display: 'none' } : {};
           }
