@@ -134,7 +134,7 @@ export class EstimatesComponent {
       },
       {
         field: 'amountMX',
-        headerName: 'Monto MXN',
+        headerName: 'MXN',
         cellDataType: 'number',
         editable: true,
         flex: 1,
@@ -144,7 +144,7 @@ export class EstimatesComponent {
       },
       {
         field: 'amountDLL',
-        headerName: 'Monto DLL',
+        headerName: 'DLL',
         cellDataType: 'number',
         editable: true,
         flex: 1,
