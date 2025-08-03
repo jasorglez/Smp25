@@ -416,51 +416,161 @@ export class GeneratorsComponent implements OnChanges {
     return cleanedData;
   }
 
-  // ==================== FUNCIONES TREE DATA CRUD ====================
+  // ==================== FUNCIONES MAESTRO-DETALLE SEPARADAS ====================
 
-  addTreeNode() {
+  addGenerator() {
     const tempId = `temp_${this.tempIdCounter++}`;
     
-    if (!this.selectedRowData || this.selectedNodeType === 'generator') {
-      // Agregar nuevo generador (nodo padre)
-      const newGenerator = {
-        id: tempId,
-        numero: '',
-        idEstimacion: this.idEstimacion,
-        dateStart: '',
-        dateEnd: '',
-        aplicaIsometrico: false,
-        active: true,
-        nodeType: 'generator',
-        orgHierarchy: [`Generador_${tempId}`],
-        originalId: tempId,
-        __isNew: true,
-      };
-      
-      this.treeData = [newGenerator, ...this.treeData];
-    } else if (this.selectedNodeType === 'item') {
-      // Agregar nuevo item al generador padre del item seleccionado
-      const parentGeneratorNumber = this.selectedRowData.orgHierarchy[0];
-      const newItem = {
-        id: tempId,
-        idType: this.selectedParentId,
-        idResource: 0,
-        quantity: 1,
-        accumulate: 0,
-        type: 'GENERADOR',
-        comment: '',
-        active: true,
-        nodeType: 'item',
-        orgHierarchy: [parentGeneratorNumber, `Item_${tempId}`],
-        originalId: tempId,
-        parentGeneratorId: this.selectedParentId,
-        __isNew: true,
-      };
-      
-      this.treeData = [...this.treeData, newItem];
-    }
+    // Agregar nuevo generador (maestro)
+    const newGenerator = {
+      id: tempId,
+      numero: '',
+      idEstimacion: this.idEstimacion,
+      dateStart: '',
+      dateEnd: '',
+      aplicaIsometrico: false,
+      active: true,
+      nodeType: 'generator',
+      orgHierarchy: [`Generador_${tempId}`],
+      originalId: tempId,
+      __isNew: true,
+    };
     
+    this.treeData = [newGenerator, ...this.treeData];
     this.notSavedChanges = true;
+    
+    // Auto-seleccionar y editar el nuevo generador
+    setTimeout(() => {
+      const newRowIndex = this.treeData.findIndex((row) => row.id === tempId);
+      if (newRowIndex >= 0 && this.gridApi) {
+        this.gridApi.startEditingCell({
+          rowIndex: newRowIndex,
+          colKey: 'numero',
+        });
+      }
+    }, 50);
+  }
+
+  addItem() {
+    if (!this.selectedRowData || this.selectedNodeType !== 'generator') {
+      alerts.basicAlert(
+        'Agregar Item',
+        'Primero debe seleccionar un generador para agregar items.',
+        'warning'
+      );
+      return;
+    }
+
+    const tempId = `temp_${this.tempIdCounter++}`;
+    const selectedGenerator = this.selectedRowData;
+    
+    // Agregar nuevo item al generador seleccionado
+    const newItem = {
+      id: tempId,
+      idType: selectedGenerator.originalId,
+      idResource: 0,
+      quantity: 1,
+      accumulate: 0,
+      type: 'GENERADOR',
+      comment: '',
+      active: true,
+      nodeType: 'item',
+      orgHierarchy: [selectedGenerator.numero, `Item_${tempId}`],
+      originalId: tempId,
+      parentGeneratorId: selectedGenerator.originalId,
+      __isNew: true,
+    };
+    
+    this.treeData = [...this.treeData, newItem];
+    this.notSavedChanges = true;
+
+    // Auto-editar el nuevo item
+    setTimeout(() => {
+      const newRowIndex = this.treeData.findIndex((row) => row.id === tempId);
+      if (newRowIndex >= 0 && this.gridApi) {
+        this.gridApi.startEditingCell({
+          rowIndex: newRowIndex,
+          colKey: 'idResource',
+        });
+      }
+    }, 50);
+  }
+
+  deleteGenerator() {
+    if (!this.selectedRowData || this.selectedNodeType !== 'generator') {
+      alerts.basicAlert(
+        'Eliminar Generador',
+        'Por favor, seleccione un generador para eliminar.',
+        'error'
+      );
+      return;
+    }
+
+    this.deleteTreeNode();
+  }
+
+  deleteItem() {
+    if (!this.selectedRowData || this.selectedNodeType !== 'item') {
+      alerts.basicAlert(
+        'Eliminar Item',
+        'Por favor, seleccione un item para eliminar.',
+        'error'
+      );
+      return;
+    }
+
+    this.deleteTreeNode();
+  }
+
+  saveItems() {
+    // Guardar solo los items modificados/nuevos
+    const items = this.treeData.filter(item => item.nodeType === 'item');
+    const itemsToSave = items.filter(item => item.__isNew || item.__modified);
+    
+    if (itemsToSave.length === 0) {
+      alerts.basicAlert(
+        'Guardar Items',
+        'No hay cambios en items para guardar.',
+        'info'
+      );
+      return;
+    }
+
+    this.saveTreeChanges();
+  }
+
+  hasItemChanges(): boolean {
+    const items = this.treeData.filter(item => item.nodeType === 'item');
+    return items.some(item => item.__isNew || item.__modified);
+  }
+
+  getSelectedGeneratorName(): string {
+    if (this.selectedNodeType === 'generator') {
+      return this.selectedRowData?.numero || 'Generador';
+    } else if (this.selectedNodeType === 'item') {
+      // Buscar el generador padre
+      const parentId = this.selectedRowData?.parentGeneratorId;
+      const parentGenerator = this.treeData.find(item => 
+        item.nodeType === 'generator' && item.originalId === parentId
+      );
+      return parentGenerator?.numero || 'Generador';
+    }
+    return '';
+  }
+
+  isItemSelected(): boolean {
+    return this.selectedNodeType === 'item';
+  }
+
+  // ==================== FUNCIONES TREE DATA CRUD (LEGACY) ====================
+
+  addTreeNode() {
+    // Esta función ahora delega a las funciones específicas
+    if (!this.selectedRowData || this.selectedNodeType === 'generator') {
+      this.addGenerator();
+    } else if (this.selectedNodeType === 'item') {
+      this.addItem();
+    }
   }
 
   async saveTreeChanges() {
