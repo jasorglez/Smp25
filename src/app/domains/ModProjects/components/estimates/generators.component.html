@@ -1,10 +1,13 @@
 <div class="row p-3">
     <div class="col-12">
         <div class="row mb-3">
+            <!-- Botones MAESTRO (Generadores) - Lado Izquierdo -->
             <nav class="col-auto d-flex flex-column align-items-start">
-                <!-- Botones contextuales según selección -->
-                <button type="button" class="btn btn-primary me-1 mb-2" (click)="addTreeNode()" 
-                        [title]="getAddButtonTitle()">
+                <div class="mb-2 small text-primary fw-bold">
+                    <i class="bi bi-folder2"></i> GENERADORES
+                </div>
+                <button type="button" class="btn btn-primary me-1 mb-2" (click)="addGenerator()" 
+                        title="Agregar nuevo generador">
                     <i class="bi bi-plus-lg"></i>
                 </button>
                 <button type="button" class="btn btn-success position-relative mb-2" (click)="saveTreeChanges()">
@@ -18,15 +21,15 @@
                 <button type="button" class="btn btn-warning mb-2" (click)="revert()">
                     <i class="bi bi-arrow-clockwise"></i>
                 </button>
-                <button type="button" class="btn btn-danger mb-2" (click)="deleteTreeNode()" 
-                        [disabled]="!selectedRowData">
+                <button type="button" class="btn btn-danger mb-2" (click)="deleteGenerator()" 
+                        [disabled]="!selectedRowData || selectedNodeType !== 'generator'">
                     <i class="bi bi-trash"></i>
                 </button>
                 
-                <!-- Indicador del tipo de nodo seleccionado -->
-                <div class="mt-2 small text-muted" *ngIf="selectedNodeType">
-                    <i class="bi" [ngClass]="selectedNodeType === 'generator' ? 'bi-folder2' : 'bi-file-text'"></i>
-                    {{ selectedNodeType === 'generator' ? 'Generador' : 'Item' }} seleccionado
+                <!-- Indicador del generador seleccionado -->
+                <div class="mt-2 small text-muted" *ngIf="selectedNodeType === 'generator'">
+                    <i class="bi bi-folder2"></i>
+                    {{ selectedRowData?.numero || 'Generador' }} seleccionado
                 </div>
             </nav>
             <div class="col">
@@ -42,6 +45,35 @@
                     rowSelection="single">
                 </ag-grid-angular>
             </div>
+            
+            <!-- Botones DETALLE (Items) - Lado Derecho -->
+            <nav class="col-auto d-flex flex-column align-items-end" 
+                 *ngIf="selectedNodeType === 'generator' && selectedRowData">
+                <div class="mb-2 small text-success fw-bold">
+                    <i class="bi bi-file-text"></i> ITEMS
+                </div>
+                <button type="button" class="btn btn-outline-primary mb-2" (click)="addItem()" 
+                        title="Agregar item al generador: {{ selectedRowData?.numero }}">
+                    <i class="bi bi-plus-lg"></i>
+                </button>
+                <button type="button" class="btn btn-outline-success mb-2" (click)="saveItems()"
+                        [disabled]="!hasItemChanges()">
+                    <i class="bi bi-floppy"></i>
+                </button>
+                <button type="button" class="btn btn-outline-danger mb-2" (click)="deleteItem()" 
+                        [disabled]="!isItemSelected()">
+                    <i class="bi bi-trash"></i>
+                </button>
+                
+                <!-- Indicador del item seleccionado -->
+                <div class="mt-2 small text-muted text-end" *ngIf="isItemSelected()">
+                    <i class="bi bi-file-text"></i>
+                    Item {{ selectedRowData?.idResource || 'seleccionado' }}
+                </div>
+                <div class="mt-1 small text-success text-end">
+                    Para: {{ getSelectedGeneratorName() }}
+                </div>
+            </nav>
         </div>
     </div>
 </div>
