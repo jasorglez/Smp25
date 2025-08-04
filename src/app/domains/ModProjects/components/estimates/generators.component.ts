@@ -94,6 +94,14 @@ export class GeneratorsComponent implements OnChanges {
           // Vista Detalle: Construir estructura de árbol con items
           await this.buildTreeStructure(generators);
         }
+
+        // Forzar refresh del grid después de cargar datos
+        setTimeout(() => {
+          if (this.gridApi) {
+            this.gridApi.setGridOption('rowData', this.treeData);
+            this.gridApi.redrawRows();
+          }
+        }, 50);
       }, (error) => {
         console.error('Error al cargar generators:', error);
         this.treeData = [];
@@ -359,6 +367,14 @@ export class GeneratorsComponent implements OnChanges {
     this.selectedGeneratorForDetail = generatorData;
     this.viewMode = 'detail';
     this.obtenerDatos(); // Recargar datos en modo detalle
+    
+    // Forzar refresh completo del grid después de cambiar de vista
+    setTimeout(() => {
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', this.treeData);
+        this.gridApi.redrawRows();
+      }
+    }, 200);
   }
 
   // Función para ver detalle del generador seleccionado
@@ -380,6 +396,14 @@ export class GeneratorsComponent implements OnChanges {
     this.viewMode = 'master';
     this.selectedGeneratorForDetail = null;
     this.obtenerDatos(); // Recargar datos en modo maestro
+    
+    // Forzar refresh del grid después de volver al maestro
+    setTimeout(() => {
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', this.treeData);
+        this.gridApi.redrawRows();
+      }
+    }, 200);
   }
 
   onTreeNodeSelected(event: any) {
