@@ -75,6 +75,13 @@ export class DailyReportService {
     });
   }
 
+  // Suma de Conceptos X PDF
+  SumaReporte(resource: number, fecha1, fecha2 : string): Observable<any> {
+    return this.http.get(`${environment.urlSmp}/DailyReport/resource-total?idResource=${resource}&startDate=${fecha1}&endDate=${fecha2}`, { 
+      headers: this.trackingService.getHeaders()   });
+  }
+
+
   // Exportar múltiples reportes a PDF
   exportReportsToPdf(reportIds: number[]): Observable<any> {
     return this.http.post(`${environment.urlSmp}/DailyReport/export/pdf`, 
