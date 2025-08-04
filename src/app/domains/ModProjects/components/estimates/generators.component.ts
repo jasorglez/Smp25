@@ -212,10 +212,13 @@ export class GeneratorsComponent implements OnChanges {
           }
         },
         {
-          field: 'comment',
-          headerName: 'aplicaIsometrico',
+          field: 'aplicaIsometrico',
+          headerName: 'Aplica Isométrico',
           editable: true,
-          flex: 2
+          flex: 1,
+          cellDataType: 'boolean',
+          cellRenderer: 'agCheckboxCellRenderer',
+          cellEditor: 'agCheckboxCellEditor'
         }
       ];
     } else {
