@@ -232,13 +232,14 @@ export class ContractsComponent {
   initForm() {
     this.addContract = new FormGroup({
       id: new FormControl(),
+      idBranch: new FormControl(this.idBranch),
       numberContract: new FormControl('', Validators.required),
       description: new FormControl('', Validators.required),
       descripSmall: new FormControl('', Validators.required),
       resident: new FormControl(''),
       supervisor: new FormControl(''),
-      amountMx: new FormControl(''),
-      amountDll: new FormControl(''),
+      amountMx: new FormControl(0),
+      amountDll: new FormControl(0),
       speciality: new FormControl('Seleccione una especialidad'),
       idProvider: new FormControl('Seleccione un contratista'),
       dateStar: new FormControl('', Validators.required),
@@ -247,6 +248,7 @@ export class ContractsComponent {
       term: new FormControl(),
       idBussines: new FormControl(1),
       consecutive: new FormControl(0),
+      active: new FormControl(1)
     }, { validators: dateRangeValidator() });
   }
 
@@ -436,7 +438,10 @@ export class ContractsComponent {
       this.formData = this.prepareFormData();
 
       if (this.isEditing && this.selectedRowData) {
-        console.log('Updating contract with data:', this.formData);
+        console.log('🔄 UPDATING CONTRACT');
+        console.log('📋 Contract ID:', this.selectedRowData.id);
+        console.log('📦 Data being sent to UPDATE endpoint:', this.formData);
+        console.log('🔗 Full object structure:', JSON.stringify(this.formData, null, 2));
         this.followprojectsService.updateContract(this.selectedRowData.id, this.formData).pipe(
           catchError((error) => {
             alerts.basicAlert(
@@ -458,6 +463,9 @@ export class ContractsComponent {
           this.resetForm();
         });
       } else {
+        console.log('➕ ADDING NEW CONTRACT');
+        console.log('📦 Data being sent to ADD endpoint:', this.formData);
+        console.log('🔗 Full object structure:', JSON.stringify(this.formData, null, 2));
         this.followprojectsService.addContract(this.formData).pipe(
           catchError((error) => {
             alerts.basicAlert(
@@ -490,12 +498,18 @@ export class ContractsComponent {
 
   prepareFormData(): any {
     const formValue = this.addContract.value;
-    return {
+    console.log('🛠️ PREPARING FORM DATA');
+    console.log('📝 Raw form values:', formValue);
+    
+    const preparedData = {
       ...formValue,
       dateStar: this.formatDateForBackend(formValue.dateStar),
       dateEnd: this.formatDateForBackend(formValue.dateEnd),
       stateContract: formValue.stateContract
     };
+    
+    console.log('✅ Prepared data for API:', preparedData);
+    return preparedData;
   }
 
 
