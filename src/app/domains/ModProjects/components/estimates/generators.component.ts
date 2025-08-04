@@ -113,7 +113,7 @@ export class GeneratorsComponent implements OnChanges {
       console.warn('No hay proyecto seleccionado');
       return;
     }
-
+    console.log('Cargando actividades para el proyecto:', this.project);
     this.workprogramsService.getActivities(this.project)
       .subscribe((activities: any[]) => {
         this.activitiesOptions = activities;
@@ -213,7 +213,7 @@ export class GeneratorsComponent implements OnChanges {
         },
         {
           field: 'comment',
-          headerName: 'Comentarios',
+          headerName: 'aplicaIsometrico',
           editable: true,
           flex: 2
         }

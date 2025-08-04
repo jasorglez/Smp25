@@ -33,7 +33,7 @@ export class WorkprogramsService {
   }
 
   getActivities(id: number): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.urlSmp}/Workprogram/onlyactivities?idProject=${id}}`, { headers: this.trackingService.getHeaders() });
+    return this.http.get<any[]>(`${environment.urlSmp}/Workprogram/onlyactivities?idProject=${id}`, { headers: this.trackingService.getHeaders() });
   }
 
 }
