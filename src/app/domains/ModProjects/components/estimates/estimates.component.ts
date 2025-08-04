@@ -1,5 +1,5 @@
 import { Component, effect, HostListener, inject } from '@angular/core';
-import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { ColDef, GridApi, GridReadyEvent, CellDoubleClickedEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule } from 'ag-grid-angular';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
@@ -8,12 +8,13 @@ import { FormsModule } from '@angular/forms';
 import { EstimatesService } from 'app/services/estimates.service';
 import { SignalsService } from 'app/services/signals.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
+import { GeneratorsComponent } from './generators.component';
 
 @Component({
   selector: 'app-estimates',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
-  templateUrl: '../oil-provider-project.html'
+  imports: [CommonModule, FormsModule, AgGridModule, GeneratorsComponent],
+  templateUrl: './estimates.component.html'
 })
 export class EstimatesComponent {
 
@@ -52,6 +53,11 @@ export class EstimatesComponent {
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
   private contract = this.signalsService.getContractSelectedBySidebar()();
+  
+  // Propiedades para el comportamiento del toggle
+  gridHeight: string = '500px';
+  showGeneratorsTab: boolean = false;
+  isOpen: boolean = false;
 
   obtenerDatos() {
     this.estimatesService
@@ -65,46 +71,71 @@ export class EstimatesComponent {
       });
   }
 
-  // Column Definitions: Defines the columns to be displayed.
-  public gridOptions: any = {
-    headerHeight: 30,
-    rowHeight: 30,
-    rowClass: (params) => {
-      // Verificar si la fila está seleccionada
-      if (params.node.isSelected()) {
-        return 'selected-row';
-      }
-      return '';
-    },
-    onRowClicked: (event) => {
-      // Seleccionar la fila al hacer clic en cualquier celda
-      event.node.setSelected(true);
-    },
-    onRowSelected: (event) => {
-      // Deseleccionar otras filas cuando se selecciona una nueva
-      if (event.node.isSelected()) {
-        this.gridApi.forEachNode((node) => {
-          if (node.id !== event.node.id) {
-            node.setSelected(false);
-          }
-        });
-      }
-    },
-  };
+
+  // 1. Modificar gridOptions para el comportamiento deseado
+public gridOptions: any = {
+  headerHeight: 30,
+  rowHeight: 30,
+  suppressClickEdit: true, // Fuerza doble click para editar
+  rowClass: (params) => params.node.isSelected() ? 'selected-row' : '',
+  
+  onRowClicked: (event) => {
+    // Selección con un click
+    event.node.setSelected(true);
+    
+    // Mostrar generadores (sin marcar cambios)
+    this.selectedRowData = event.data;
+    this.id = event.data.id;
+    
+    // Filtrado para mostrar solo la fila seleccionada
+    this.gridApi.setFilterModel({
+      id: { type: 'equals', filter: this.id }
+    });
+    this.gridApi.onFilterChanged();
+    
+    // Activar generadores
+    this.activateGeneratorsTab();
+  },
+
+  onRowSelected: (event) => {
+    // Deseleccionar otras filas
+    if (event.node.isSelected()) {
+      this.gridApi.forEachNode((node) => {
+        if (node.id !== event.node.id) {
+          node.setSelected(false);
+        }
+      });
+    }
+  }
+};
+
 
   get columnDefs(): ColDef[] {
     return [
       {
         field: 'number',
-        headerName: 'Número Estimación',
+        headerName: 'Estimación',
         editable: true,
-        flex: 1
+        flex: 1.4
       },
+
+      {
+        field: 'typeMoney',
+        headerName: 'Tipo Moneda',
+        editable: true,
+        flex: 1.6,      
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: ['MX', 'USD'],
+        }
+
+      },
+
       {
         field: 'dateStart',
         headerName: 'Fecha inicial',
         editable: true,
-        flex: 1,
+        flex: 1.5,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
           if (params.value) {
@@ -117,7 +148,7 @@ export class EstimatesComponent {
         field: 'dateEnd',
         headerName: 'Fecha final',
         editable: true,
-        flex: 1,
+        flex: 1.4,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
           if (params.value) {
@@ -134,17 +165,17 @@ export class EstimatesComponent {
       },
       {
         field: 'amountMX',
-        headerName: 'Monto MXN',
+        headerName: 'MXN',
         cellDataType: 'number',
         editable: true,
-        flex: 1,
+        flex: 1.3,
         valueFormatter: (params) => {
           return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
         }
       },
       {
         field: 'amountDLL',
-        headerName: 'Monto DLL',
+        headerName: 'DLL',
         cellDataType: 'number',
         editable: true,
         flex: 1,
@@ -157,7 +188,7 @@ export class EstimatesComponent {
         headerName: 'Acumulado MXN',
         cellDataType: 'number',
         editable: false,
-        flex: 1,
+        flex: 1.9,
         valueFormatter: (params) => {
           return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
         }
@@ -167,7 +198,7 @@ export class EstimatesComponent {
         headerName: 'Acumulado DLL',
         cellDataType: 'number',
         editable: false,
-        flex: 1,
+        flex: 1.8,
         valueFormatter: (params) => {
           return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(params.value);
         }
@@ -176,7 +207,7 @@ export class EstimatesComponent {
         field: 'type',
         headerName: 'Tipo',
         editable: true,
-        flex: 1,
+        flex: 1.3,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: ['NORMAL', 'ADICIONAL', 'EXTRAORDIN'],
@@ -186,13 +217,13 @@ export class EstimatesComponent {
         field: 'authorizeUser',
         headerName: 'Autoriza',
         editable: false,
-        flex: 1
+        flex: 1.6
       },
       {
         field: 'comment',
         headerName: 'Comentarios',
         editable: true,
-        flex: 3
+        flex: 2
       }
     ];
   }
@@ -202,15 +233,7 @@ export class EstimatesComponent {
     this.id = event.data.id;
   }
 
-  onSelectionChanged(event: any) {
-    console.log(event)
-    const selectedNodes = event.api.getSelectedNodes();
-    if (selectedNodes.length > 0) {
-      this.selectedRowData = selectedNodes[0].data;
-    } else {
-      this.selectedRowData = null;
-    }
-  }
+
 
   onCellValueChanged(event: any) {
     console.log('Dato cambiado:', event.data);
@@ -228,6 +251,7 @@ export class EstimatesComponent {
       id: tempId,
       number: '',
       idContract: this.contract,
+      typeMoney: 'MX',
       dateStart: '',
       dateEnd: '',
       amountMX: 0,
@@ -281,6 +305,8 @@ export class EstimatesComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      console.log('Datos limpiados para el servidor:', cleanedData);
+      // Asignar el ID temporal al campo idEstimacion
       return this.estimatesService.addEstimate(cleanedData);
     });
 
@@ -370,6 +396,32 @@ export class EstimatesComponent {
       delete cleanedData.id;
     }
     return cleanedData;
+  }
+
+
+
+  async activateGeneratorsTab() {
+    if (!this.isOpen) {
+      await this.adjustGridSize();
+      this.showGeneratorsTab = true;
+      this.isOpen = true;
+    } else {
+      await this.resetGridSize();
+      this.isOpen = false;
+    }
+  }
+
+  async adjustGridSize() {
+    this.gridHeight = '250px'; // Reducir tamaño del grid
+  }
+
+  resetGridSize() {
+    this.gridHeight = '500px'; // Restaurar tamaño original
+    this.showGeneratorsTab = false;
+    if (this.gridApi) {
+      this.gridApi.setFilterModel(null);
+      this.gridApi.onFilterChanged();
+    }
   }
 
 }

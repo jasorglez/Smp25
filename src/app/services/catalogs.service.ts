@@ -39,6 +39,10 @@ export class CatalogsService {
   getUnits(id: number): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/getCatalogs?idCompany=${id}&type=Units`, { headers: this.trackingService.getHeaders() });
   }
+  
+  getTypeEquipment(id: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/getCatalogs?idCompany=${id}&type=TYPEEQUIPMENT`, { headers: this.trackingService.getHeaders() });
+  }
 
   getPhases(id: number): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/getCatalogs?idCompany=${id}&type=Fase`, { headers: this.trackingService.getHeaders() });

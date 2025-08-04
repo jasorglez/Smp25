@@ -1,0 +1,52 @@
+<div class="row p-3">
+    <div class="col-12">
+        <div class="row mb-3">
+            <nav class="col-auto d-flex flex-column align-items-start">
+                <button type="button" class="btn btn-primary me-1 mb-2" (click)="addRow()"><i
+                        class="bi bi-plus-lg"></i></button>
+                <button type="button" class="btn btn-success position-relative mb-2" (click)="saveChanges()">
+                    <i class="bi bi-floppy"></i>
+                    <span
+                        class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+                        *ngIf="notSavedChanges"><span class="visually-hidden">Hay cambios sin guardar</span>
+                    </span>
+                </button>
+                <button type="button" class="btn btn-warning mb-2" (click)="revert()"><i
+                        class="bi bi-arrow-clockwise"></i></button>
+                <button type="button" class="btn btn-danger mb-2" (click)="deleteEntry()"><i class="bi bi-trash"
+                       ></i></button>
+            </nav>
+            <div class="col">
+                <ag-grid-angular 
+                   style="width: 100%;" [ngStyle]="{ height: gridHeight }" 
+                    class="ag-theme-quartz small-text-ag-grid" [rowData]="rowData"
+                    [columnDefs]="columnDefs"                    
+                    [gridOptions]="gridOptions"
+                    (cellValueChanged)="onCellValueChanged($event)" 
+                    (rowSelected)="onSelectedRow($event)"
+                    (gridReady)="onGridReady($event)" 
+                    rowSelection="single" [components]="components">
+                </ag-grid-angular>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sección del componente Generators -->
+<div class="row" *ngIf="showGeneratorsTab">
+    <div class="col-12">
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-gear-fill me-2"></i>Generadores de Estimaciones
+                    <button type="button" class="btn btn-sm btn-outline-secondary float-end" (click)="resetGridSize()">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </h5>
+            </div>
+            <div class="card-body">
+                <app-generators [idEstimacion]="selectedRowData?.id"></app-generators>
+            </div>
+        </div>
+    </div>
+</div>
