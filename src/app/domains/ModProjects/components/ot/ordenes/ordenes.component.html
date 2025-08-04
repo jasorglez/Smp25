@@ -253,13 +253,13 @@
                       <div class="col-2">
                         <nav class="col-auto d-flex flex-column align-items-start">
                           <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addNota()"><i class="bi bi-plus-lg"></i></button>
-                          <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveNotasChanges()"><i class="bi bi-floppy"></i></button>
+                          <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveNotasChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedNoteChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
                           <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertNotas()"><i class="bi bi-arrow-clockwise"></i></button>
                           <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteNota()"><i class="bi bi-trash"></i></button>
                         </nav>
                       </div>
                       <div class="col-10 overflow-auto" style="height: 60vh;">
-                        <ag-grid-angular class="ag-theme-quartz small-text-ag-grid" [rowData]="notas" [columnDefs]="notasColumnDefs" [gridOptions]="tabGridOptions"></ag-grid-angular>
+                        <ag-grid-angular class="ag-theme-quartz small-text-ag-grid" [rowData]="notas" [columnDefs]="notasColumnDefs" [gridOptions]="notasGridOptions" (cellDoubleClicked)="onCellDoubleClicked($event)" (gridReady)="onNotasGridReady($event)" (cellValueChanged)="onCellValueChangedNota($event)"></ag-grid-angular>
                       </div>
                     </div>
                   </div>

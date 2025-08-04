@@ -2,7 +2,7 @@ import { Component, effect, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { AgGridModule } from 'ag-grid-angular';
-import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { ColDef, GridApi, GridReadyEvent ,CellDoubleClickedEvent, ICellRendererParams,} from 'ag-grid-enterprise';
 import { Router } from '@angular/router';
 import { OtService } from 'app/services/ot.service';
 import { DailyReportService } from 'app/services/daily-report.service';
@@ -21,6 +21,7 @@ import { MaterialsService } from 'app/services/materials.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { EquipmentService } from 'app/services/equipment.service';
+import { ModalService } from 'app/services/modal.service';
 
 @Pipe({
   name: 'safe',
@@ -126,6 +127,7 @@ export class OrdenesComponent {
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
   private imageHandlerService = inject(ImageHandlerService);
+  private modalServiceTable = inject(ModalService);
   private router = inject(Router);
   private sanitizer = inject(DomSanitizer);
   private pdfGeneratorService = inject(PdfGeneratorService);
@@ -142,6 +144,7 @@ export class OrdenesComponent {
   public catalogEquipos      : any[] = [];
   private catalogDepartamentos: any[] = [];
   private unitsCatalog: any[] = [];
+  private typeNotesCatalog: any[] = [];
     public conceptos  : any[] = [];
   public notas        : any[] = [];
 
@@ -169,6 +172,7 @@ export class OrdenesComponent {
   public notSavedMaterialChanges: boolean = false;
   public notSavedEquipoChanges: boolean = false;
   public notSavedFotografiaChanges: boolean = false;
+  public notSavedNoteChanges: boolean = false;
 
   private tempIdCounter: number = 1;
   private tempPersonalIdCounter: number = 1;
@@ -490,7 +494,86 @@ export class OrdenesComponent {
   ];
 
  public notasColumnDefs: ColDef[] = [
+  {
+    field: 'idResource',
+    headerName: 'Equipo',
+    flex: 2,
+    editable: true,
+    cellEditor: 'agSelectCellEditor',
+    cellEditorParams: (params: any) => ({
+      values: this.typeNotesCatalog?.map((item) => item.description) || [],
+    }),
+    // Muestra la descripción del equipo en la celda
+    valueFormatter: (params) => {
+      const equipoId = params.data?.idResource;
+      if (!equipoId) return '';
+
+      const foundItem = this.typeNotesCatalog?.find(item => item.id == equipoId);
+      return foundItem ? foundItem.description : `ID: ${equipoId}`;
+    },
+    // Muestra la descripción del equipo cuando se lee el valor actual
+    valueGetter: (params) => {
+      const equipoId = params.data?.idResource;
+      if (!equipoId) return '';
+
+      const foundItem = this.typeNotesCatalog?.find(item => item.id == equipoId);
+      return foundItem ? foundItem.description : '';
+    },
+    // Convierte la descripción seleccionada de vuelta al ID
+    valueSetter: (params) => {
+      console.log('=== VALUE SETTER EQUIPOS ===');
+      console.log('Nuevo valor (descripción):', params.newValue);
+      console.log('Valor anterior:', params.oldValue);
+      console.log('Data antes:', params.data.idResource);
+
+      if (!params.newValue) {
+        params.data.idResource = null;
+        console.log('Data después (null):', params.data.idResource);
+        return true;
+      }
+
+      const foundItem = this.typeNotesCatalog?.find(item => item.description === params.newValue);
+      if (foundItem) {
+        params.data.idResource = foundItem.id;
+        console.log('Data después:', params.data.idResource);
+        return true;
+      } else {
+        console.warn('Descripción no válida:', params.newValue);
+        return false;
+      }
+    }
+  },
+ {
+  field: 'description',
+  headerName: 'Descripción',
+  flex: 1,
+  editable: true,
+  cellEditor: 'agLargeTextCellEditor', // este sí existe
+  cellEditorParams: {
+    maxLength: 250,
+    cols: 50,
+    rows: 3,
+    suppressScroll: true,
+  },
+  cellRenderer: (params: ICellRendererParams) => {
+    console.log('=== CELL RENDERER NOTAS ===');
+    console.log('Params:', params);
+    return params.value ? params.value.toUpperCase() : '';
+  },
+}
+
+
  ]
+ onCellDoubleClicked(event: CellDoubleClickedEvent) {
+  if (!event.node.group) {
+    this.modalServiceTable.showModal({
+      params: event,
+      value: event.value,
+    });
+  }
+}
+
+
 
   public conceptosColumnDefs: ColDef[] = [
   ]
@@ -804,6 +887,23 @@ export class OrdenesComponent {
   public materialesGridApi!: GridApi;
 
   public fotografiaGridApi!: GridApi;
+
+  public notasGridApi!: GridApi;
+
+  // Grid options específico para notas
+  public notasGridOptions: any = {
+    headerHeight: 35,
+    rowHeight: 30,
+    suppressDragLeaveHidesColumns: true,
+    suppressHorizontalScroll: false,
+    animateRows: true,
+    pagination: false,
+    domLayout: 'autoHeight',
+    stopEditingWhenCellsLoseFocus: true,
+    rowSelection: 'single',
+    onCellValueChanged: (event: any) => this.onCellValueChangedNota(event),
+    onGridReady: (params: any) => this.onNotasGridReady(params)
+  };
   
   // Variables para el grid de equipos
   public equiposGridApi!: GridApi;
@@ -913,6 +1013,7 @@ export class OrdenesComponent {
       this.idcompany = this.signalsService.getRootSelectedBySidebar()();
       this.catalogoMateriales();
       this.catalogoEquipo();
+      this.obtenerTypeNotes();
       this.obtenerDatos();
       this.loadEmployees();
       this.getDeptoandPosition();
@@ -1032,6 +1133,7 @@ export class OrdenesComponent {
     this.obtenerEquipos(this.selectedReporteId);
     this.obtenerPersonal(this.selectedReporteId);
     this.obtenerFotografias(this.selectedReporteId);
+    this.obtenerNotas(this.selectedReporteId);
 
     // Resetear vista previa del PDF cuando se selecciona nueva fecha
     this.showPdfEmbed = false;
@@ -1838,7 +1940,7 @@ async saveChangesEquipos() {
     }
     
     // Si hay idResource pero no Description, agregar la descripción del equipo
-    if (cleanedData.idResource && !cleanedData.Description) {
+    /*if (cleanedData.idResource && !cleanedData.Description) {
       const foundEquipo = this.catalogEquipos?.find(item => item.id == cleanedData.idResource);
       if (foundEquipo) {
         cleanedData.Description = foundEquipo.description;
@@ -1846,12 +1948,12 @@ async saveChangesEquipos() {
         // Si no se encuentra el equipo, usar un valor por defecto
         cleanedData.Description = `Equipo ID: ${cleanedData.idResource}`;
       }
-    }
+    }*/
     
     // Si no hay Description y es un nuevo registro, poner un valor por defecto
-    if (!cleanedData.Description) {
+    /*if (!cleanedData.Description) {
       cleanedData.Description = 'Sin descripción';
-    }
+    }*/
     
     return cleanedData;
   }
@@ -2410,6 +2512,16 @@ async saveChangesEquipos() {
     );
   }
 
+  obtenerNotas(selectedReporteId: any) {
+    this.logbookService.getInfoByReporte(selectedReporteId, "NOTE").subscribe(
+      (data: any) => {
+        this.notas = data.data;
+      },
+      (error) => console.error('Error fetching data:', error)
+    );
+  }
+
+
   catalogoMateriales(){
     return this.materialsService.getMaterials(this.idcompany, 'CONSUMABLE').subscribe(
       (data: any) => {
@@ -2461,6 +2573,15 @@ async saveChangesEquipos() {
         console.log('Catálogo de unidades obtenido:', this.unitsCatalog);
       },
       (error) => console.error('Error fetching units:', error)
+    );
+  }
+  obtenerTypeNotes(){
+    return this.catalogService.getTypeNote(this.idcompany).subscribe(
+      (data: any) => {
+        this.typeNotesCatalog = data;
+        console.log('Catálogo de tipos de nota obtenido:', this.typeNotesCatalog);
+      },
+      (error) => console.error('Error fetching type notes:', error)
     );
   }
 
@@ -2676,20 +2797,230 @@ async saveChangesEquipos() {
 
   // -- Métodos para Notas --
   addNota() {
-    // Tu lógica para añadir una nueva nota
-    console.log('Invocando addNota...');
+    if (!this.selectedOt) {
+      alerts.basicAlert('Error', 'Debe seleccionar una OT primero', 'error');
+      return;
+    }
+
+    if (!this.selectedReporteFecha) {
+      alerts.basicAlert('Error', 'Debe seleccionar una fecha de reporte primero', 'error');
+      return;
+    }
+
+    const newNota = {
+      idOt: parseInt(this.selectedOt.id),
+      idReporte: this.selectedReporteId,
+      idResource: '', // Inicializar como string vacío para consistencia
+      quantity: 1,
+      unidad: '', // Inicializar campo unidad explícitamente
+      start: this.selectedReporteHoraInicio + ':00',
+      end: this.selectedReporteHoraTermino + ':00',
+      date: this.selectedReporteFecha,
+      typeNote: 'NOTE',
+      orden: 1,
+      __isNew: true
+    };
+
+    this.notas = [newNota, ...this.notas];
+    this.notSavedNoteChanges = true;
+
+    setTimeout(() => {
+      if (this.notasGridApi) {
+        this.notasGridApi.setGridOption('rowData', this.notas);
+        setTimeout(() => {
+          this.notasGridApi.startEditingCell({
+            rowIndex: 0,
+            colKey: 'idResource'
+          });
+        }, 100);
+      }
+    }, 0);
   }
-  saveNotasChanges() {
-    // Tu lógica para guardar cambios de notas
-    console.log('Invocando saveNotasChanges...');
+  async saveNotasChanges() {
+     const newRows = this.notas.filter(row => row.__isNew);
+    const modifiedRows = this.notas.filter(row => row.__modified && !row.__isNew);
+  /*const invalidNewRows = newRows.filter(item => !item.date || !item.supervisor);
+  
+  if (invalidNewRows.length > 0) {
+    alerts.basicAlert('Añadir entrada', 'Debe introducir la fecha y supervisor antes de guardar.', 'error');
+    return;
+  }*/
+
+  if (newRows.length === 0 && modifiedRows.length === 0) {
+    alerts.basicAlert('Info', 'No hay cambios para guardar', 'info');
+    return;
+  }
+
+  try {
+    const addRequests = newRows.map((row, index) => {
+      console.log(`=== FILA ORIGINAL ${index + 1} ===`, row);
+      const cleanedData = this.cleanDataForServer(row);
+      console.log(`=== DATOS LIMPIADOS ${index + 1} ===`, cleanedData);
+      console.log(`JSON.stringify:`, JSON.stringify(cleanedData, null, 2));
+      return this.logbookService.addDataForOt(cleanedData).toPromise();
+    });
+
+    const updateRequests = modifiedRows.map((row, index) => {
+      const cleanedData = this.cleanDataForServer(row);
+      console.log(`Datos limpiados para fila modificada ${index + 1}:`, cleanedData);
+      return this.logbookService.updateDataForOt(Number(row.id), cleanedData).toPromise();
+    });
+
+    console.log(`Ejecutando ${addRequests.length} requests de creación`);
+    console.log(`Ejecutando ${updateRequests.length} requests de actualización`);
+
+    const responses = await Promise.all([...addRequests, ...updateRequests]);
+    
+    console.log('=== RESPUESTAS RECIBIDAS ===');
+    console.log('Número de respuestas:', responses.length);
+    responses.forEach((response, index) => {
+      console.log(`Respuesta ${index + 1}:`, response);
+      
+      // Verificar estructura de la respuesta
+      if (response && typeof response === 'object') {
+        console.log(`- success: ${response.success}`);
+        console.log(`- message: ${response.message}`);
+        console.log(`- data: ${response.data ? 'SÍ' : 'NO'}`);
+        
+        if (response.data) {
+          console.log(`- data.id: ${response.data.id}`);
+        }
+      }
+    });
+
+    // Verificar si las respuestas son exitosas
+    const failedResponses = responses.filter(response => 
+      !response || 
+      (response.hasOwnProperty('success') && !response.success) ||
+      (response.status && response.status >= 400)
+    );
+
+    if (failedResponses.length > 0) {
+      console.error('Respuestas fallidas:', failedResponses);
+      throw new Error(`${failedResponses.length} requests fallaron`);
+    }
+
+    console.log('=== GUARDADO EXITOSO ===');
+    alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
+
+    this.notSavedNoteChanges = false;
+    
+    // Recargar datos desde el servidor
+    console.log('Recargando datos desde el servidor...');
+    await this.loadDailyReports();
+    console.log('Datos recargados exitosamente');
+
+  } catch (error: any) {
+    console.error('=== ERROR DETALLADO ===');
+    console.error('Error completo:', error);
+    
+    // Log específico para errores de validación
+    if (error.status === 400 && error.error && error.error.errors) {
+      console.error('Errores de validación específicos:', error.error.errors);
+    }
+    
+    let errorMessage = 'Ocurrió un error al actualizar los datos.';
+    
+    if (error.status === 400) {
+      errorMessage = 'Datos inválidos. Verifique que todos los campos estén correctos.';
+      
+      // Mostrar errores específicos si están disponibles
+      if (error.error && error.error.errors) {
+        const validationErrors = Object.keys(error.error.errors).map(key => 
+          `${key}: ${error.error.errors[key].join(', ')}`
+        ).join('\n');
+        errorMessage += '\n\nErrores específicos:\n' + validationErrors;
+      }
+    } else if (error.status === 401) {
+      errorMessage = 'No autorizado. Por favor, vuelva a iniciar sesión.';
+    } else if (error.status === 403) {
+      errorMessage = 'No tiene permisos para realizar esta operación.';
+    } else if (error.status === 404) {
+      errorMessage = 'Recurso no encontrado. Verifique la URL del servicio.';
+    } else if (error.status === 500) {
+      errorMessage = 'Error interno del servidor. Contacte al administrador.';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    alerts.basicAlert('Error', errorMessage, 'error');
+  }
   }
   revertNotas() {
-    // Tu lógica para revertir cambios de notas
-    console.log('Invocando revertNotas...');
+    this.obtenerNotas(this.selectedReporteId);
+    this.notSavedNoteChanges = false;
   }
+
+  onNotasGridReady(params: any) {
+    this.notasGridApi = params.api;
+    console.log('Notes grid ready');
+  }
+
+  onCellValueChangedNota(event: any) {
+    console.log('Cell value changed in notas:', event);
+    event.data.__modified = true;
+    this.notSavedNoteChanges = true;
+  }
+
   deleteNota() {
-    // Tu lógica para eliminar una nota
-    console.log('Invocando deleteNota...');
+    if (!this.notasGridApi) {
+      alerts.basicAlert('Error', 'Grid no disponible', 'error');
+      return;
+    }
+
+    const selectedNodes = this.notasGridApi.getSelectedNodes();
+    if (selectedNodes.length === 0) {
+      alerts.basicAlert('Error', 'Seleccione una entrada de nota para eliminar', 'error');
+      return;
+    }
+
+    const selectedData = selectedNodes[0].data;
+    const id = selectedData.id;
+
+    console.log('=== INTENTANDO ELIMINAR EQUIPO ===');
+    console.log('Registro seleccionado para eliminar:', selectedData);
+    console.log('ID a eliminar:', id);
+    
+    alerts.confirmAlert(
+      'Eliminar nota',
+      '¿Está seguro que desea eliminar este registro de nota?',
+      'warning',
+      'Sí, eliminar'
+    ).then((value) => {
+      if (value.isConfirmed) {
+        console.log('=== CONFIRMACIÓN DE ELIMINACIÓN ===');
+        
+        if (selectedData.__isNew) {
+          console.log('Eliminando registro nuevo (solo local)');
+          this.notas = this.notas.filter(m => m.id !== id);
+          this.notSavedNoteChanges = this.notas.some(m => m.__isNew);
+          console.log('Notas después de eliminación local:', this.notas);
+          alerts.basicAlert('Éxito', 'Nota eliminada correctamente', 'success');
+        } else {
+          console.log('Eliminando registro existente usando endpoint DELETE');
+          console.log('Enviando DELETE para ID:', id);
+          
+          this.logbookService.deleteDataForOt(Number(id)).subscribe({
+            next: (response) => {
+              console.log('Respuesta del DELETE:', response);
+              this.notas = this.notas.filter(m => m.id !== id);
+              console.log('Notas después de eliminación del servidor:', this.notas);
+              alerts.basicAlert('Éxito', 'Nota eliminada correctamente del servidor', 'success');
+            },
+            error: (error) => {
+              console.error('Error al eliminar nota del servidor:', error);
+              let errorMessage = 'Error al eliminar el registro de nota';
+              if (error.status === 404) {
+                errorMessage = 'El registro ya no existe en el servidor';
+              } else if (error.status === 401) {
+                errorMessage = 'No autorizado para eliminar este registro';
+              }
+              alerts.basicAlert('Error', errorMessage, 'error');
+            }
+          });
+        }
+      }
+    });
   }
 
 
