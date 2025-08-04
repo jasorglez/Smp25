@@ -233,7 +233,7 @@ export class GeneratorsComponent implements OnChanges {
           field: 'aplicaIsometrico',
           headerName: 'Aplica Isométrico',
           editable: true,
-          flex: 1.5,
+          flex: 1,
           cellDataType: 'boolean',
           cellRenderer: 'agCheckboxCellRenderer',
           cellEditor: 'agCheckboxCellEditor'
