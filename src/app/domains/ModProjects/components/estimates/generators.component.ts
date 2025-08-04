@@ -227,10 +227,10 @@ export class GeneratorsComponent implements OnChanges {
           }
         },
         {
-          field: 'fase', headerName: 'Fase', editable: true, flex: 1.5,
+          field: 'fase', headerName: 'Area', editable: true, flex: 1.5,
           cellEditor: 'agSelectCellEditor',
           cellEditorParams: {
-            values: this.fases.map(fase => fase.name || fase.descripcion || fase.fase)
+            values: this.fases.map(fase => fase.name || fase.text || fase.fase)
           }
         },
         { field: 'aplicaIsometrico', headerName: 'Aplica Isométrico', editable: true, flex: 1, cellRenderer: 'agCheckboxCellRenderer', cellEditor: 'agCheckboxCellEditor' },
