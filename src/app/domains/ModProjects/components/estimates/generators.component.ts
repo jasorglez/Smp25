@@ -553,23 +553,22 @@ export class GeneratorsComponent implements OnChanges {
   }
 
   private cleanDataForServer(data: any): any {
-    const cleanedData = { ...data };
-    delete cleanedData.__isNew;
-    delete cleanedData.__modified;
-    delete cleanedData.dias; // Los días se calculan, no se envían al servidor
+    // SOLO campos del MAESTRO (generators)
+    const cleanedData = {
+      numero: data.numero,
+      idEstimacion: data.idEstimacion,
+      dateStart: data.dateStart,
+      dateEnd: data.dateEnd,
+      aplicaIsometrico: data.aplicaIsometrico,
+      active: data.active
+    };
     
-    // Remover propiedades específicas del Tree Data y vista
-    delete cleanedData.nodeType;
-    delete cleanedData.orgHierarchy;
-    delete cleanedData.originalId;
-    delete cleanedData.parentGeneratorId;
-    
-    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
-      delete cleanedData.id;
+    // Solo incluir ID si no es temporal
+    if (data.id && !data.id.toString().startsWith('temp_')) {
+      cleanedData.id = data.id;
     }
     
-    // Debug log para ver qué datos se están enviando
-    console.log('Datos limpiados para el servidor:', cleanedData);
+    console.log('Datos MAESTRO limpiados para el servidor:', cleanedData);
     
     return cleanedData;
   }
@@ -1096,12 +1095,24 @@ export class GeneratorsComponent implements OnChanges {
   }
 
   private cleanDetailDataForServer(data: any): any {
-    const cleanedData = { ...data };
-    delete cleanedData.__isNew;
-    delete cleanedData.__modified;
-    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
-      delete cleanedData.id;
+    // SOLO campos del DETALLE (items)
+    const cleanedData = {
+      idType: data.idType,
+      idResource: data.idResource,
+      quantity: data.quantity,
+      accumulate: data.accumulate,
+      type: data.type || 'GENERADOR',
+      comment: data.comment,
+      active: data.active
+    };
+    
+    // Solo incluir ID si no es temporal
+    if (data.id && !data.id.toString().startsWith('temp_')) {
+      cleanedData.id = data.id;
     }
+    
+    console.log('Datos DETALLE limpiados para el servidor:', cleanedData);
+    
     return cleanedData;
   }
 
