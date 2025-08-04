@@ -807,14 +807,21 @@ export class GeneratorsComponent implements OnChanges {
         generator.__modified = false;
       }
 
-      // Guardar items nuevos
-      for (const item of newItems) {
-        const cleanedData = this.cleanDetailDataForServer(item);
-        const response = await lastValueFrom(this.generatorsService.addItemGenerador(cleanedData));
-        item.id = response.id;
-        item.originalId = response.id;
-        item.__isNew = false;
-      }
+    // Guardar items nuevos
+for (const item of newItems) {
+  const cleanedData = this.cleanDetailDataForServer(item);
+  // La llamada al servicio puede resolver con 'null' si la API no devuelve un cuerpo.
+  const response = await lastValueFrom(this.generatorsService.addItemGenerador(cleanedData));
+ 
+  if (response && response.id) {
+    // Si el servidor SÍ devuelve el objeto, actualizamos el ID localmente.
+    item.id = response.id;
+    item.originalId = response.id;
+  }
+ 
+  item.__isNew = false; // Marcamos como que ya no es nuevo para evitar que se guarde otra vez.
+  // --- FIN DE LA CORRECCIÓN ---
+}
 
       // Actualizar items modificados
       for (const item of modifiedItems) {
