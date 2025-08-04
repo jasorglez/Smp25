@@ -579,7 +579,7 @@ export class GeneratorsComponent implements OnChanges {
 
   private cleanDataForServer(data: any): any {
     // SOLO campos del MAESTRO (generators)
-    const cleanedData = {
+    const cleanedData: any = {
       numero: data.numero,
       idEstimacion: data.idEstimacion,
       dateStart: data.dateStart,
