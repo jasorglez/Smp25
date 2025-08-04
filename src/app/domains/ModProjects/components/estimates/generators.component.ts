@@ -455,14 +455,9 @@ export class GeneratorsComponent implements OnChanges {
   // ===== SECCIÓN DE ELIMINACIÓN CORREGIDA Y FUNCIONAL ===================
   // ======================================================================
 
-  private confirmAction(title: string, message: string): Promise<boolean> {
-    return new Promise((resolve) => {
-      if (confirm(`${title}: ${message}`)) {
-        resolve(true);
-      } else {
-        resolve(false);
-      }
-    });
+  private async confirmAction(title: string, message: string): Promise<boolean> {
+    const result = await alerts.confirmAlert(title, message, 'warning', 'Sí, eliminar');
+    return result.isConfirmed;
   }
 
   deleteGenerator() {

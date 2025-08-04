@@ -347,12 +347,26 @@ public gridOptions: any = {
     }
 
     const selectedData = selectedNodes[0].data;
+    const estimationNumber = selectedData.number || 'la estimación seleccionada';
+    
+    // Confirmación antes de eliminar
+    const result = await alerts.confirmAlert(
+      'Confirmar eliminación',
+      `¿Está seguro de que desea eliminar ${estimationNumber}? Esta acción no se puede deshacer.`,
+      'warning',
+      'Sí, eliminar'
+    );
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
     const id = selectedData.id;
     selectedData.active = 0;
     this.estimatesService.deleteEstimate(id).pipe(
       catchError((error) => {
         alerts.basicAlert(
-          'Eliminar entrada',
+          'Error al eliminar',
           'Error al eliminar la entrada.',
           'error'
         );
@@ -363,17 +377,11 @@ public gridOptions: any = {
       .subscribe(
         () => {
           alerts.basicAlert(
-            'Eliminar entrada',
+            'Eliminado',
             'Entrada eliminada satisfactoriamente.',
             'success'
           );
           this.obtenerDatos();
-
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
           this.notSavedChanges = false;
           this.selectedRowData = null;
         }
