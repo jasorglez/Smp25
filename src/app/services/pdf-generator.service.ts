@@ -37,6 +37,8 @@ export class PdfGeneratorService {
   catalogMateriales: any[] = [];
   unitsCatalog: any[] = [];
   catalogEquipos: any[] = [];
+  notasData: any[] = [];
+  typeNotesCatalog: any[] = [];
 
   constructor(
     private datos: ReceivedataService,
@@ -66,7 +68,9 @@ export class PdfGeneratorService {
     materialesData?: any[];
     equiposData?: any[];
     fotografiasData?: any[];
+    notasData?: any[];
     idReport?: number;
+    typeNotesCatalog?: any[];
   }) {
     console.log('Input data for PDF generation:', inputData);
     this.id = inputData.id;
@@ -86,6 +90,12 @@ export class PdfGeneratorService {
     if (inputData.equiposData) {
       this.equiposData = inputData.equiposData;
     }
+    if (inputData.notasData) {
+      this.notasData = inputData.notasData;
+    }
+    if (inputData.typeNotesCatalog) {
+      this.typeNotesCatalog = inputData.typeNotesCatalog;
+    }
     
     // Si se proporcionan fotografías desde Ordenes, procesarlas directamente
     if (inputData.fotografiasData && inputData.fotografiasData.length > 0) {
@@ -99,8 +109,11 @@ export class PdfGeneratorService {
 
   private async conseguirDatos() {
     try {
-      // Si se proporciona idReport, usar el nuevo método para obtener todas las notas
-      if (this.idReport) {
+      // Priorizar notasData si está disponible
+      if (this.notasData && this.notasData.length > 0) {
+        this.processNotasDataLocally();
+      } else if (this.idReport) {
+        // Si se proporciona idReport, usar el nuevo método para obtener todas las notas
         await this.obtenerTodasLasNotas();
       } else {
         // Fallback al método original
@@ -168,18 +181,22 @@ export class PdfGeneratorService {
 
   private async obtenerTodasLasNotas() {
     try {
-      // Obtener notas de TRABAJO ANTECEDENTES (orden 1)
-      const notasAntecedentes = await this.obtenerNotasFromReport('TRABAJO ANTECEDENTES');
+      const todasLasNotas = [];
       
-      // Obtener notas de ACTIVIDADES RELEVANTES (orden 2)
-      const notasActividades = await this.obtenerNotasFromReport('ACTIVIDADES RELEVANTES');
+      if (this.typeNotesCatalog && this.typeNotesCatalog.length > 0) {
+        // Obtener notas dinámicamente basado en el catálogo
+        for (const tipo of this.typeNotesCatalog) {
+          const notasTipo = await this.obtenerNotasFromReport(tipo.description);
+          todasLasNotas.push(...notasTipo);
+        }
+      } else {
+        // Fallback a los tipos hardcodeados
+        const notasAntecedentes = await this.obtenerNotasFromReport('TRABAJO ANTECEDENTES');
+        const notasActividades = await this.obtenerNotasFromReport('ACTIVIDADES RELEVANTES');
+        todasLasNotas.push(...notasAntecedentes, ...notasActividades);
+      }
       
-      // Combinar todas las notas
-      this.entrada = [
-        ...notasAntecedentes,
-        ...notasActividades
-      ];
-      
+      this.entrada = todasLasNotas;
       this.numItems = this.entrada.length;
       
     } catch (error) {
@@ -204,11 +221,13 @@ export class PdfGeneratorService {
       });
       this.numPhotos = this.photos.length;
       
-      // Si tenemos idReport, obtener todas las notas
-      if (this.idReport) {
+      // Priorizar notasData si está disponible, sino usar idReport
+      if (this.notasData && this.notasData.length > 0) {
+        this.processNotasDataLocally();
+      } else if (this.idReport) {
         await this.obtenerTodasLasNotas();
       } else {
-        // Para fotografías desde Ordenes sin idReport, omitir los datos de notas
+        // Para fotografías desde Ordenes sin idReport ni notasData, omitir los datos de notas
         this.entrada = [];
         this.numItems = 0;
       }
@@ -232,15 +251,17 @@ export class PdfGeneratorService {
 
     // Procesar notas usando typeNote en lugar de orden
     if (this.entrada) {
-      const secciones = [
-        { typeNote: 'TRABAJO ANTECEDENTES', titulo: '1.- TRABAJO ANTECEDENTES' },
-        { typeNote: 'ACTIVIDADES RELEVANTES', titulo: '2.- ACTIVIDADES RELEVANTES' }
-      ];
+      const secciones = this.generateSecciones();
 
       secciones.forEach(seccion => {
-        const correspondingNotes = this.entrada.filter(
-          (note) => note.typeNote === seccion.typeNote
-        );
+        const correspondingNotes = this.entrada.filter((note) => {
+          // Si tenemos typeNoteId en la sección, usarlo para matching
+          if (seccion.typeNoteId !== null && note.typeNoteId) {
+            return note.typeNoteId === seccion.typeNoteId;
+          }
+          // Fallback a comparación por descripción
+          return note.typeNote === seccion.typeNote;
+        });
 
         if (correspondingNotes.length > 0) {
           this.gestionarDatos.push({
@@ -250,7 +271,10 @@ export class PdfGeneratorService {
 
           const listItems = correspondingNotes.map((note) => {
             return {
-              text: this.splitTextByEmoji(note.description),
+              text: [
+                { text: '• ', font: 'Montserrat' }, // Agregar bullet point
+                ...this.splitTextByEmoji(note.description)
+              ],
               margin: [15, 0, 0, 0],
             };
           });
@@ -296,6 +320,51 @@ export class PdfGeneratorService {
     });
   }
 
+  private generateSecciones() {
+    if (!this.typeNotesCatalog || this.typeNotesCatalog.length === 0) {
+      // Fallback a las secciones hardcodeadas si no hay catálogo
+      return [
+        { typeNoteId: null, typeNote: 'TRABAJO ANTECEDENTES', titulo: '1.- TRABAJO ANTECEDENTES' },
+        { typeNoteId: null, typeNote: 'ACTIVIDADES RELEVANTES', titulo: '2.- ACTIVIDADES RELEVANTES' }
+      ];
+    }
+
+    // Generar secciones dinámicamente desde el catálogo usando IDs
+    return this.typeNotesCatalog.map((tipo, index) => ({
+      typeNoteId: tipo.id, // ID del tipo de nota para matching
+      typeNote: tipo.description, // Descripción para compatibilidad
+      titulo: `${index + 1}.- ${tipo.description}`
+    }));
+  }
+
+  private processNotasDataLocally() {
+    if (!this.notasData || this.notasData.length === 0) {
+      console.log('No hay notasData para procesar');
+      this.entrada = [];
+      this.numItems = 0;
+      return;
+    }
+
+    console.log('Procesando notasData localmente:', this.notasData);
+    console.log('typeNotesCatalog disponible:', this.typeNotesCatalog);
+
+    // Mapear las notas locales al formato esperado
+    this.entrada = this.notasData.map((nota: any) => {
+      // Buscar el tipo de nota en el catálogo para obtener la descripción
+      const tipoNota = this.typeNotesCatalog?.find(tipo => tipo.id === nota.idResource);
+      
+      return {
+        description: nota.description || '',
+        typeNote: tipoNota ? tipoNota.description : 'SIN TIPO', // Usar descripción del catálogo
+        typeNoteId: nota.idResource, // ID del tipo de nota
+        orden: nota.orden || 1
+      };
+    });
+
+    this.numItems = this.entrada.length;
+    console.log('Notas procesadas para PDF:', this.entrada);
+  }
+
   private async bucleDatos() {
     this.gestionarDatos = [];
     this.gestionarFotos = [];
@@ -317,15 +386,17 @@ export class PdfGeneratorService {
     
     if (tieneTypeNote) {
       // Usar el nuevo método basado en typeNote
-      const secciones = [
-        { typeNote: 'TRABAJO ANTECEDENTES', titulo: '1.- TRABAJO ANTECEDENTES' },
-        { typeNote: 'ACTIVIDADES RELEVANTES', titulo: '2.- ACTIVIDADES RELEVANTES' }
-      ];
+      const secciones = this.generateSecciones();
 
       secciones.forEach(seccion => {
-        const correspondingNotes = this.entrada.filter(
-          (note) => note.typeNote === seccion.typeNote
-        );
+        const correspondingNotes = this.entrada.filter((note) => {
+          // Si tenemos typeNoteId en la sección, usarlo para matching
+          if (seccion.typeNoteId !== null && note.typeNoteId) {
+            return note.typeNoteId === seccion.typeNoteId;
+          }
+          // Fallback a comparación por descripción
+          return note.typeNote === seccion.typeNote;
+        });
 
         if (correspondingNotes.length > 0) {
           this.gestionarDatos.push({
@@ -335,7 +406,10 @@ export class PdfGeneratorService {
 
           const listItems = correspondingNotes.map((note) => {
             return {
-              text: this.splitTextByEmoji(note.description),
+              text: [
+                { text: '• ', font: 'Montserrat' }, // Agregar bullet point
+                ...this.splitTextByEmoji(note.description)
+              ],
               margin: [15, 0, 0, 0],
             };
           });
@@ -373,7 +447,10 @@ export class PdfGeneratorService {
 
           const listItems = correspondingNotes.map((note) => {
             return {
-              text: this.splitTextByEmoji(note.description),
+              text: [
+                { text: '• ', font: 'Montserrat' }, // Agregar bullet point
+                ...this.splitTextByEmoji(note.description)
+              ],
               margin: [15, 0, 0, 0],
             };
           });
@@ -447,7 +524,6 @@ export class PdfGeneratorService {
 
     return result;
   }
-
   private processPersonalData() {
     if (!this.personalData || this.personalData.length === 0) {
       return [
@@ -477,6 +553,36 @@ export class PdfGeneratorService {
     });
 
     return tableData;
+  }
+  private processNotasData() {
+    /*if (!this.notasData || this.notasData.length === 0) {
+      return [
+        ['Nota', 'Descripción'],
+        ['No hay datos de notas', '0']
+      ];
+    }
+
+    // Agrupar por cargo y sumar cantidades
+    const cargoMap = new Map<string, number>();
+    
+    this.personalData.forEach(person => {
+      const cargo = person.position || 'Sin cargo';
+      const cantidad = parseInt(person.quantity) || 1;
+      
+      if (cargoMap.has(cargo)) {
+        cargoMap.set(cargo, cargoMap.get(cargo)! + cantidad);
+      } else {
+        cargoMap.set(cargo, cantidad);
+      }
+    });
+
+    // Convertir a array para la tabla
+    const tableData = [['Cargo', 'Can.']];
+    cargoMap.forEach((cantidad, cargo) => {
+      tableData.push([cargo, cantidad.toString()]);
+    });
+
+    return tableData;*/
   }
 
 private processMaterialesData(): string[][] {
@@ -892,6 +998,15 @@ private processMaterialesData(): string[][] {
         this.unitsCatalog = data;
       },
       (error) => console.error('Error fetching units:', error)
+    );
+  }
+  obtenerTypeNotes(){
+    return this.catalogsService.getTypeNote(this.idcompany).subscribe(
+      (data: any) => {
+        this.typeNotesCatalog = data;
+        console.log('Catálogo de tipos de nota obtenido:', this.typeNotesCatalog);
+      },
+      (error) => console.error('Error fetching type notes:', error)
     );
   }
 }

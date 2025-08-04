@@ -855,7 +855,7 @@ export class OrdenesComponent {
     },
     { 
       field: 'type', 
-      headerName: 'Tipo', 
+      headerName: 'Area', 
       width: 90, 
       editable: true,
       cellEditor: 'agSelectCellEditor',
@@ -863,15 +863,21 @@ export class OrdenesComponent {
         values: ['SUSPENSION', 'HUNDIMIENT']
       }
     },
-    { 
+    /*{ 
       field: 'supervisor', 
       headerName: 'Supervisor', 
       width: 120,
       editable: true
-    },
+    },*/
     { 
       field: 'description', 
-      headerName: 'Descripción', 
+      headerName: 'Comentario', 
+      editable: true,
+      width: 120,
+    },
+    { 
+      field: '', 
+      headerName: 'Cerrado', 
       editable: true,
       width: 120,
     }
@@ -1782,8 +1788,13 @@ async saveChangesEquipos() {
         materialesData: this.materiales,
         equiposData: this.equipos,
         fotografiasData: this.fotografias, // Agregar fotografías de la pestaña
-        idReport: typeof this.selectedReporteId === 'string' ? parseInt(this.selectedReporteId) : this.selectedReporteId // Agregar idReport para obtener notas de TRABAJO ANTECEDENTES
+        notasData: this.notas, // Agregar notas de la pestaña
+        idReport: typeof this.selectedReporteId === 'string' ? parseInt(this.selectedReporteId) : this.selectedReporteId, // Agregar idReport para obtener notas de TRABAJO ANTECEDENTES
+        typeNotesCatalog: this.typeNotesCatalog // Agregar catálogo de tipos de notas
       };
+
+      // Asignar a la propiedad de la clase para uso posterior
+      this.inputData = inputData;
 
 
       // Generar la definición del documento
@@ -2546,6 +2557,7 @@ async saveChangesEquipos() {
         if (this.equiposGridApi) {
           this.equiposGridApi.refreshCells();
           console.log('Grid de equipos   actualizado con catálogo');
+          
         }
       },
       (error) => console.error('Error fetching data:', error)
