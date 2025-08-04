@@ -7,7 +7,7 @@ import { alerts } from 'app/helpers/alerts';
 import { GeneratorsService } from 'app/services/generators.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { SignalsService } from 'app/services/signals.service';
-import { lastValueFrom } from 'rxjs';
+import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 
 @Component({
   selector: 'app-generators',
@@ -79,7 +79,7 @@ export class GeneratorsComponent implements OnChanges {
         }
       }, (error) => {
         console.error('Error al cargar generators:', error);
-        this.treeData = [];
+        this.treeData = []; // Limpia los datos si hay un error (ej. 404 Not Found)
       });
   }
 
@@ -127,8 +127,8 @@ export class GeneratorsComponent implements OnChanges {
     if (this.viewMode === 'master') {
       return [
         { field: 'numero', headerName: 'Número Generador', editable: true, flex: 1.5 },
-        { field: 'dateStart', headerName: 'Fecha Inicio', editable: true, flex: 1.5, valueFormatter: (p) => p.value ? new Date(p.value).toLocaleDateString() : '' },
-        { field: 'dateEnd', headerName: 'Fecha Final', editable: true, flex: 1.5, valueFormatter: (p) => p.value ? new Date(p.value).toLocaleDateString() : '' },
+        { field: 'dateStart', headerName: 'Fecha Inicio', editable: true, flex: 1.5, valueFormatter: (p) => p.value ? p.value.split('T')[0] : '' },
+        { field: 'dateEnd', headerName: 'Fecha Final', editable: true, flex: 1.5, valueFormatter: (p) => p.value ? p.value.split('T')[0] : '' },
         { field: '', headerName: 'Creado Por', editable: true, flex: 2 },
         { field: '', headerName: 'Revisado Por', editable: true, flex: 2 },
         { field: '', headerName: 'Autorizado Por', editable: true, flex: 2 },
@@ -151,7 +151,9 @@ export class GeneratorsComponent implements OnChanges {
 
   async buildTreeStructure(generators: any[]) {
     this.treeData = [];
-    const generatorsToProcess = this.viewMode === 'detail' && this.selectedGeneratorForDetail ? [this.selectedGeneratorForDetail] : generators;
+    const generatorsToProcess = this.viewMode === 'detail' && this.selectedGeneratorForDetail 
+      ? [this.selectedGeneratorForDetail] 
+      : generators;
     for (const generator of generatorsToProcess) {
       if (this.viewMode === 'detail') {
         this.treeData.push({ ...generator, nodeType: 'generator', orgHierarchy: [generator.numero], id: `gen_${generator.id}`, originalId: generator.id });
@@ -169,7 +171,11 @@ export class GeneratorsComponent implements OnChanges {
 
   onRowSelected(event: any) {
     this.selectedRowData = event.data;
-    this.selectedNodeType = event.data?.nodeType || null;
+    if (event.data) {
+      this.selectedNodeType = event.data.nodeType || 'generator';
+    } else {
+      this.selectedNodeType = null;
+    }
   }
 
   viewGeneratorDetail() {
@@ -199,51 +205,14 @@ export class GeneratorsComponent implements OnChanges {
     this.notSavedChanges = false;
   }
 
-  // ======================================================================
-  // ===== SECCIÓN DE AGREGAR CORREGIDA Y FUNCIONAL =======================
-  // ======================================================================
-
   addGenerator() {
     const tempId = `temp_${this.tempIdCounter++}`;
-    
-    // --- CORRECCIÓN 3: FECHAS AUTOMÁTICAS ---
-    const startDate = new Date();
-    const endDate = new Date();
-    endDate.setDate(startDate.getDate() + 7);
-
-    const newGenerator = {
-      id: tempId,
-      numero: '',
-      idEstimacion: this.idEstimacion,
-      // Usar toISOString() para que sea un formato estándar
-      dateStart: startDate.toISOString(),
-      dateEnd: endDate.toISOString(),
-      aplicaIsometrico: false,
-      active: true,
-      nodeType: 'generator',
-      originalId: tempId,
-      __isNew: true,
-    };
-
-    // --- CORRECCIÓN 2: ACTUALIZACIÓN CORRECTA DEL GRID ---
-    this.treeData = [newGenerator, ...this.treeData];
-    // Se debe notificar explícitamente al grid sobre el nuevo set de datos
-    if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', this.treeData);
-    }
+    this.treeData = [{
+      id: tempId, numero: '', idEstimacion: this.idEstimacion, dateStart: '', dateEnd: '',
+      aplicaIsometrico: false, active: true, nodeType: 'generator',
+      orgHierarchy: [`Generador_${tempId}`], originalId: tempId, __isNew: true,
+    }, ...this.treeData];
     this.notSavedChanges = true;
-
-    // --- CORRECCIÓN 3: AUTO-FOCO EN LA CELDA ---
-    // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
-    setTimeout(() => {
-        if (this.gridApi) {
-            this.gridApi.ensureIndexVisible(0); // Asegura que la fila 0 sea visible
-            this.gridApi.startEditingCell({
-                rowIndex: 0, // La nueva fila está en el índice 0
-                colKey: 'numero' // La columna a editar
-            });
-        }
-    }, 100);
   }
 
   addItem() {
@@ -253,21 +222,24 @@ export class GeneratorsComponent implements OnChanges {
     }
     const tempId = `temp_${this.tempIdCounter++}`;
     const parent = this.selectedRowData;
-    const newItem = {
+    this.treeData = [...this.treeData, {
       id: tempId, idType: parent.originalId, idResource: 0, quantity: 1, accumulate: 0, type: 'GENERADOR',
       comment: '', active: true, nodeType: 'item', orgHierarchy: [parent.numero, `Item_${tempId}`],
       originalId: tempId, parentGeneratorId: parent.originalId, __isNew: true,
-    };
-    this.treeData = [...this.treeData, newItem];
-    if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', this.treeData);
-    }
+    }];
     this.notSavedChanges = true;
   }
 
-  // ======================================================================
-  // ===== SECCIÓN DE GUARDADO CORREGIDA Y FUNCIONAL ======================
-  // ======================================================================
+  saveItems() {
+    if (!this.hasItemChanges()) {
+      alerts.basicAlert('Guardar Items', 'No hay cambios en items para guardar.', 'info');
+      return;
+    }
+    this.saveTreeChanges();
+  }
+
+  hasItemChanges = () => this.treeData.some(item => item.nodeType === 'item' && (item.__isNew || item.__modified));
+  isItemSelected = () => this.selectedNodeType === 'item';
 
   async saveTreeChanges() {
     const isValid = this.treeData.every(item => 
@@ -282,28 +254,35 @@ export class GeneratorsComponent implements OnChanges {
     const modifiedItems = this.treeData.filter(i => i.nodeType === 'item' && i.__modified && !i.__isNew);
 
     try {
+      // Guardar Generadores Nuevos
       for (const generator of newGenerators) {
         const tempId = generator.originalId;
         const response = await lastValueFrom(this.generatorsService.addGenerator(this.cleanDataForServer(generator)));
+        
+        // CORRECCIÓN: Manejar respuesta nula
         if (response && response.id) {
           const newId = response.id;
-          generator.id = newId; generator.originalId = newId;
+          generator.id = newId; 
+          generator.originalId = newId;
           this.treeData.forEach(item => { if (item.parentGeneratorId === tempId) { item.parentGeneratorId = newId; item.idType = newId; } });
         }
         generator.__isNew = false;
       }
 
+      // Guardar Generadores Modificados
       for (const generator of modifiedGenerators) {
         await lastValueFrom(this.generatorsService.updateGenerator(generator.originalId, this.cleanDataForServer(generator)));
         generator.__modified = false;
       }
 
+      // Guardar Items Nuevos
       for (const item of newItems) {
         const response = await lastValueFrom(this.generatorsService.addItemGenerador(this.cleanDetailDataForServer(item)));
         if (response && response.id) { item.id = response.id; item.originalId = response.id; }
         item.__isNew = false;
       }
 
+      // Guardar Items Modificados
       for (const item of modifiedItems) {
         await lastValueFrom(this.generatorsService.updateItemGenerador(item.originalId, this.cleanDetailDataForServer(item)));
         item.__modified = false;
@@ -335,9 +314,9 @@ export class GeneratorsComponent implements OnChanges {
   private async confirmAction(title: string, message: string): Promise<boolean> {
     try {
       await alerts.basicAlert(title, message, 'question');
-      return true; // El usuario confirmó.
+      return true; // El usuario confirmó
     } catch (error) {
-      return false; // El usuario canceló.
+      return false; // El usuario canceló
     }
   }
 
@@ -368,18 +347,15 @@ export class GeneratorsComponent implements OnChanges {
       ? `el generador "${this.selectedRowData.numero}" y todos sus items asociados`
       : `el item seleccionado`;
 
-    // 1. PREGUNTAR AL USUARIO ANTES DE CONTINUAR
     const confirmed = await this.confirmAction(
       'Confirmar Eliminación',
       `¿Está seguro de que desea eliminar ${nodeName}? Esta acción no se puede deshacer.`
     );
 
-    // 2. Si el usuario presiona "Cancelar", la función se detiene aquí.
     if (!confirmed) {
       return;
     }
 
-    // 3. Si el usuario confirma, el resto del código se ejecuta.
     const nodeId = this.selectedRowData.originalId;
 
     if (nodeId.toString().startsWith('temp_')) {
@@ -391,25 +367,27 @@ export class GeneratorsComponent implements OnChanges {
       } else {
         this.treeData = this.treeData.filter(item => item.id !== this.selectedRowData.id);
       }
-    } else {
-        try {
-          if (nodeType === 'generator') {
-            await lastValueFrom(this.generatorsService.deleteGenerator(nodeId));
-            alerts.basicAlert('Eliminado', 'Generador y sus items eliminados satisfactoriamente.', 'success');
-          } else {
-            await lastValueFrom(this.generatorsService.deleteItemGenerador(nodeId));
-            alerts.basicAlert('Eliminado', 'Item eliminado satisfactoriamente.', 'success');
-          }
-        } catch (error) {
-          console.error(error);
-          alerts.basicAlert('Error', `Error al eliminar el ${nodeType === 'generator' ? 'generador' : 'item'}.`, 'error');
-          return; // Detener si la eliminación falla
-        }
+      this.selectedRowData = null;
+      this.selectedNodeType = null;
+      return;
     }
-    
-    // Al final, ya sea que se eliminó localmente o de la API, se actualiza el estado.
-    this.selectedRowData = null;
-    this.selectedNodeType = null;
-    this.obtenerDatos(); // Recargar los datos para asegurar la consistencia.
+
+    try {
+      if (nodeType === 'generator') {
+        await lastValueFrom(this.generatorsService.deleteGenerator(nodeId));
+        alerts.basicAlert('Eliminado', 'Generador y sus items eliminados satisfactoriamente.', 'success');
+      } else {
+        await lastValueFrom(this.generatorsService.deleteItemGenerador(nodeId));
+        alerts.basicAlert('Eliminado', 'Item eliminado satisfactoriamente.', 'success');
+      }
+
+      this.obtenerDatos();
+      this.notSavedChanges = false;
+      this.selectedRowData = null;
+      this.selectedNodeType = null;
+    } catch (error) {
+      console.error(error);
+      alerts.basicAlert('Error', `Error al eliminar el ${nodeType === 'generator' ? 'generador' : 'item'}.`, 'error');
+    }
   }
 }
