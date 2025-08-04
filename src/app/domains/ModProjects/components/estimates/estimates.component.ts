@@ -95,23 +95,35 @@ export class EstimatesComponent {
           }
         });
       }
-    },
-    onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
+    },    
   };
 
   get columnDefs(): ColDef[] {
     return [
       {
         field: 'number',
-        headerName: 'Número Estimación',
+        headerName: 'Estimación',
         editable: true,
-        flex: 1
+        flex: 1.4
       },
+
+      {
+        field: 'typeMoney',
+        headerName: 'Tipo Moneda',
+        editable: true,
+        flex: 1.6,      
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: ['MX', 'USD'],
+        }
+
+      },
+
       {
         field: 'dateStart',
         headerName: 'Fecha inicial',
         editable: true,
-        flex: 1,
+        flex: 1.5,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
           if (params.value) {
@@ -124,7 +136,7 @@ export class EstimatesComponent {
         field: 'dateEnd',
         headerName: 'Fecha final',
         editable: true,
-        flex: 1,
+        flex: 1.4,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
           if (params.value) {
@@ -144,7 +156,7 @@ export class EstimatesComponent {
         headerName: 'MXN',
         cellDataType: 'number',
         editable: true,
-        flex: 1,
+        flex: 1.3,
         valueFormatter: (params) => {
           return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
         }
@@ -164,7 +176,7 @@ export class EstimatesComponent {
         headerName: 'Acumulado MXN',
         cellDataType: 'number',
         editable: false,
-        flex: 1,
+        flex: 1.9,
         valueFormatter: (params) => {
           return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
         }
@@ -174,7 +186,7 @@ export class EstimatesComponent {
         headerName: 'Acumulado DLL',
         cellDataType: 'number',
         editable: false,
-        flex: 1,
+        flex: 1.8,
         valueFormatter: (params) => {
           return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(params.value);
         }
@@ -183,7 +195,7 @@ export class EstimatesComponent {
         field: 'type',
         headerName: 'Tipo',
         editable: true,
-        flex: 1,
+        flex: 1.3,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: ['NORMAL', 'ADICIONAL', 'EXTRAORDIN'],
@@ -193,13 +205,13 @@ export class EstimatesComponent {
         field: 'authorizeUser',
         headerName: 'Autoriza',
         editable: false,
-        flex: 1
+        flex: 1.6
       },
       {
         field: 'comment',
         headerName: 'Comentarios',
         editable: true,
-        flex: 3
+        flex: 2
       }
     ];
   }
@@ -209,15 +221,30 @@ export class EstimatesComponent {
     this.id = event.data.id;
   }
 
-  onSelectionChanged(event: any) {
-    console.log(event)
-    const selectedNodes = event.api.getSelectedNodes();
-    if (selectedNodes.length > 0) {
-      this.selectedRowData = selectedNodes[0].data;
-    } else {
-      this.selectedRowData = null;
-    }
+onSelectionChanged(event: any) {
+  const selectedNodes = event.api.getSelectedNodes();
+  if (selectedNodes.length > 0) {
+    this.selectedRowData = selectedNodes[0].data;
+    this.id = this.selectedRowData.id;
+    this.notSavedChanges = true;
+
+    // Filtrar el grid para mostrar solo el registro seleccionado
+    const filterModel = {
+      id: {
+        type: 'equals',
+        filter: this.id,
+      },
+    };
+    this.gridApi.setFilterModel(filterModel);
+    this.gridApi.onFilterChanged();
+
+    // Activar la pestaña de generators
+    this.activateGeneratorsTab();
+  } else {
+    this.selectedRowData = null;
+    this.resetGridSize();
   }
+}
 
   onCellValueChanged(event: any) {
     console.log('Dato cambiado:', event.data);
@@ -235,6 +262,7 @@ export class EstimatesComponent {
       id: tempId,
       number: '',
       idContract: this.contract,
+      typeMoney: 'MX',
       dateStart: '',
       dateEnd: '',
       amountMX: 0,
@@ -288,6 +316,8 @@ export class EstimatesComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      console.log('Datos limpiados para el servidor:', cleanedData);
+      // Asignar el ID temporal al campo idEstimacion
       return this.estimatesService.addEstimate(cleanedData);
     });
 
@@ -379,38 +409,7 @@ export class EstimatesComponent {
     return cleanedData;
   }
 
-  async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
-    // Verificar que event.data esté disponible antes de acceder a sus propiedades
-    if (!event.data) {
-      console.warn('No hay datos en la fila seleccionada');
-      return;
-    }
 
-    const selectedRowData = event.data;
-    const selectedId = selectedRowData.id;
-
-    this.notSavedChanges = true;
-    this.selectedRowData = selectedRowData;
-
-    // Filtrar el grid para mostrar solo el registro con el ID seleccionado
-    if (this.gridApi) {
-      const filterModel = {
-        id: {
-          type: 'equals',
-          filter: selectedId,
-        },
-      };
-      this.gridApi.setFilterModel(filterModel);
-      this.gridApi.onFilterChanged();
-    }
-
-    // Activar la pestaña de generators
-    try {
-      await this.activateGeneratorsTab();
-    } catch (error) {
-      console.error('Error activando la pestaña de generators:', error);
-    }
-  }
 
   async activateGeneratorsTab() {
     if (!this.isOpen) {
