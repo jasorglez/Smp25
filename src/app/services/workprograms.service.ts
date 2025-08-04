@@ -36,4 +36,9 @@ export class WorkprogramsService {
     return this.http.get<any[]>(`${environment.urlSmp}/Workprogram/onlyactivities?idProject=${id}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getFathers(id: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlSmp}/Workprogram/onlyfathers?idProject=${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+
 }
