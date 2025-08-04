@@ -88,7 +88,8 @@ export class GeneratorsComponent implements OnChanges {
           // Vista Maestro: Solo mostrar generadores
           this.treeData = generators.map(generator => ({
             ...generator,
-            nodeType: 'generator'
+            nodeType: 'generator',
+              originalId: generator.id 
           }));
         } else {
           // Vista Detalle: Construir estructura de árbol con items
@@ -587,12 +588,7 @@ export class GeneratorsComponent implements OnChanges {
       aplicaIsometrico: data.aplicaIsometrico,
       active: data.active
     };
-    
-    // Solo incluir ID si no es temporal
-    if (data.id && !data.id.toString().startsWith('temp_')) {
-      cleanedData.idEstimacion.idType = data.id;
-    }
-    
+           
     console.log('Datos MAESTRO limpiados para el servidor:', cleanedData);
     
     return cleanedData;
@@ -811,14 +807,21 @@ export class GeneratorsComponent implements OnChanges {
         generator.__modified = false;
       }
 
-      // Guardar items nuevos
-      for (const item of newItems) {
-        const cleanedData = this.cleanDetailDataForServer(item);
-        const response = await lastValueFrom(this.generatorsService.addItemGenerador(cleanedData));
-        item.id = response.id;
-        item.originalId = response.id;
-        item.__isNew = false;
-      }
+    // Guardar items nuevos
+for (const item of newItems) {
+  const cleanedData = this.cleanDetailDataForServer(item);
+  // La llamada al servicio puede resolver con 'null' si la API no devuelve un cuerpo.
+  const response = await lastValueFrom(this.generatorsService.addItemGenerador(cleanedData));
+ 
+  if (response && response.id) {
+    // Si el servidor SÍ devuelve el objeto, actualizamos el ID localmente.
+    item.id = response.id;
+    item.originalId = response.id;
+  }
+ 
+  item.__isNew = false; // Marcamos como que ya no es nuevo para evitar que se guarde otra vez.
+  // --- FIN DE LA CORRECCIÓN ---
+}
 
       // Actualizar items modificados
       for (const item of modifiedItems) {
@@ -1121,25 +1124,31 @@ export class GeneratorsComponent implements OnChanges {
   }
 
   private cleanDetailDataForServer(data: any): any {
-    // SOLO campos del DETALLE (items)
-    const cleanedData = {
-      idType: data.idType,
-      idResource: data.idResource,
-      quantity: data.quantity,
-      accumulate: data.accumulate,
-      type: data.type || 'GENERADOR',
-      comment: data.comment,
-      active: data.active
-    };
-    
-    // Solo incluir ID si no es temporal
-    if (data.id && !data.id.toString().startsWith('temp_')) {
-      cleanedData.idType = data.id;
-    }
-    
-    console.log('Datos DETALLE limpiados para el servidor:', cleanedData);
-    
-    return cleanedData;
-  }
+  // El ID del generador padre está en 'parentGeneratorId' para nodos nuevos/modificados
+  // o en 'idType' para datos que ya venían del servidor.
+  // 'parentGeneratorId' es la fuente más fiable en el contexto del árbol.
+  const generatorId = data.parentGeneratorId || data.idType;
+
+  // SOLO campos del DETALLE (items)
+  const cleanedData = {
+    // Usamos la variable 'generatorId' para asegurar que siempre sea el ID numérico correcto.
+    idType: generatorId,
+    idResource: data.idResource,
+    quantity: data.quantity,
+    accumulate: data.accumulate,
+    type: data.type || 'GENERADOR',
+    comment: data.comment,
+    active: data.active
+  };
+  
+  // La lógica anterior que causaba el error ha sido eliminada.
+  // El 'id' del item (ej: 'item_1') ya no se mezcla con el 'idType'.
+  
+  console.log('Datos DETALLE limpiados para el servidor (CORREGIDO):', cleanedData);
+  
+  return cleanedData;
+}
 
 }
+
+
