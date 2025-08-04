@@ -7,6 +7,8 @@ import { alerts } from 'app/helpers/alerts';
 import { GeneratorsService } from 'app/services/generators.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { SignalsService } from 'app/services/signals.service';
+import { EmployeesService } from 'app/services/employees.service';
+import { DailyReportService } from 'app/services/daily-report.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 
 @Component({
@@ -23,6 +25,8 @@ export class GeneratorsComponent implements OnChanges {
   private generatorsService = inject(GeneratorsService);
   private workprogramsService = inject(WorkprogramsService);
   private signalsService = inject(SignalsService);
+  private employeesService = inject(EmployeesService);
+  private dailyReportService = inject(DailyReportService);
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
@@ -43,6 +47,8 @@ export class GeneratorsComponent implements OnChanges {
   selectedGeneratorForDetail: any = null;
   
   activitiesOptions: any[] = [];
+  employees: any[] = [];
+  fases: any[] = [];
   private project = this.signalsService.getProjectSelectedBySidebar()();
 
   constructor() { }
@@ -50,6 +56,8 @@ export class GeneratorsComponent implements OnChanges {
   ngOnInit() {
     this.obtenerDatos();
     this.loadActivities();
+    this.loadEmployees();
+    this.loadFases();
   }
 
   ngOnChanges(changes: SimpleChanges) {
@@ -94,6 +102,44 @@ export class GeneratorsComponent implements OnChanges {
       });
   }
 
+  loadEmployees() {
+    const idRoot = this.signalsService.getRootSelectedBySidebar()();
+    const idBranch = -idRoot; // Convertir a negativo como se solicita
+
+    this.employeesService.getEmployees(idBranch).subscribe({
+      next: (response: any) => {
+        if (response && Array.isArray(response)) {
+          // El endpoint devuelve directamente un array de empleados
+          this.employees = response;
+          console.log('Empleados cargados:', this.employees);
+        } else if (response && response.data && Array.isArray(response.data)) {
+          // Por si acaso viene encapsulado en un objeto con propiedad data
+          this.employees = response.data;
+          console.log('Empleados cargados (desde data):', this.employees);
+        } else {
+          this.employees = [];
+          console.log('No se encontraron empleados o formato inesperado:', response);
+        }
+      },
+      error: (error) => {
+        console.error('Error al cargar empleados:', error);
+        this.employees = [];
+      }
+    });
+  }
+
+  loadFases() {
+    if (!this.project) return;
+    this.workprogramsService.getFathers(this.project)
+      .subscribe((fases: any[]) => {
+        this.fases = fases;
+        console.log('Fases cargadas:', this.fases);
+      }, (error) => {
+        console.error('Error al cargar fases:', error);
+        this.fases = [];
+      });
+  }
+
   get gridOptions(): any {
     const baseOptions = {
       headerHeight: 30, rowHeight: 30, animateRows: true,
@@ -127,13 +173,70 @@ export class GeneratorsComponent implements OnChanges {
     if (this.viewMode === 'master') {
       return [
         { field: 'numero', headerName: 'Número Generador', editable: true, flex: 1.5 },
-        { field: 'dateStart', headerName: 'Fecha Inicio', editable: true, flex: 1.5, valueFormatter: (p) => p.value ? p.value.split('T')[0] : '' },
-        { field: 'dateEnd', headerName: 'Fecha Final', editable: true, flex: 1.5, valueFormatter: (p) => p.value ? p.value.split('T')[0] : '' },
-        { field: '', headerName: 'Creado Por', editable: true, flex: 2 },
-        { field: '', headerName: 'Revisado Por', editable: true, flex: 2 },
-        { field: '', headerName: 'Autorizado Por', editable: true, flex: 2 },
-        { field: 'aplicaIsometrico', headerName: 'Aplica Isométrico', editable: true, flex: 1, cellRenderer: 'agCheckboxCellRenderer' },
-        { field: '', headerName: 'Comentarios', editable: true, flex: 2 },
+        { 
+          field: 'dateStart', headerName: 'Fecha Inicio', editable: true, flex: 1.5,
+          cellDataType: 'dateString',
+          valueFormatter: (params) => {
+            if (params.value) {
+              const date = new Date(params.value);
+              return date.toLocaleDateString('es-ES');
+            }
+            return '';
+          }
+        },
+        { 
+          field: 'dateEnd', headerName: 'Fecha Final', editable: true, flex: 1.5,
+          cellDataType: 'dateString',
+          valueFormatter: (params) => {
+            if (params.value) {
+              const date = new Date(params.value);
+              return date.toLocaleDateString('es-ES');
+            }
+            return '';
+          }
+        },
+        {
+          field: 'creado', headerName: 'Creado Por', editable: true, flex: 2,
+          cellEditor: 'agSelectCellEditor',
+          cellEditorParams: {
+            values: this.employees.map(emp => emp.id)
+          },
+          valueFormatter: (params) => {
+            const employee = this.employees.find(emp => emp.id === params.value);
+            return employee ? employee.name : '';
+          }
+        },
+        {
+          field: 'revisado', headerName: 'Revisado Por', editable: true, flex: 2,
+          cellEditor: 'agSelectCellEditor',
+          cellEditorParams: {
+            values: this.employees.map(emp => emp.id)
+          },
+          valueFormatter: (params) => {
+            const employee = this.employees.find(emp => emp.id === params.value);
+            return employee ? employee.name : '';
+          }
+        },
+        {
+          field: 'autorizado', headerName: 'Autorizado Por', editable: true, flex: 2,
+          cellEditor: 'agSelectCellEditor',
+          cellEditorParams: {
+            values: this.employees.map(emp => emp.id)
+          },
+          valueFormatter: (params) => {
+            const employee = this.employees.find(emp => emp.id === params.value);
+            return employee ? employee.name : '';
+          }
+        },
+        {
+          field: 'fase', headerName: 'Area', editable: true, flex: 1.5,
+          cellEditor: 'agSelectCellEditor',
+          cellEditorParams: {
+            values: this.fases.map(fase => fase.name || fase.text || fase.fase)
+          }
+        },
+        { field: 'aplicaIsometrico', headerName: 'Aplica Isométrico', editable: true, flex: 1, cellRenderer: 'agCheckboxCellRenderer', cellEditor: 'agCheckboxCellEditor' },
+        { field: 'comment', headerName: 'Comentarios', editable: true, flex: 2 },
       ];
     } else {
       return [
@@ -194,6 +297,91 @@ export class GeneratorsComponent implements OnChanges {
   onCellValueChanged(event: any) {
     event.data.__modified = true;
     this.notSavedChanges = true;
+    
+    // Calcular acumulado cuando se selecciona un recurso en items
+    if (event.colDef.field === 'idResource' && event.data.nodeType === 'item') {
+      this.calculateAccumulate(event);
+    }
+  }
+
+  private calculateAccumulate(event: any) {
+    const item = event.data;
+    const selectedResourceId = event.newValue;
+    
+    // Validar que se haya seleccionado un recurso válido
+    if (!selectedResourceId || selectedResourceId === 0) {
+      item.accumulate = 0;
+      return;
+    }
+    
+    // Encontrar el generador padre para obtener las fechas
+    const parentGenerator = this.findParentGenerator(item);
+    if (!parentGenerator || !parentGenerator.dateStart || !parentGenerator.dateEnd) {
+      console.warn('No se encontró generador padre o fechas válidas');
+      item.accumulate = 0;
+      return;
+    }
+    
+    // Convertir fechas a formato YYYY-MM-DD
+    const startDate = this.formatDateForApi(parentGenerator.dateStart);
+    const endDate = this.formatDateForApi(parentGenerator.dateEnd);
+    
+    if (!startDate || !endDate) {
+      console.warn('Fechas inválidas en el generador padre');
+      item.accumulate = 0;
+      return;
+    }
+    
+    // Llamar al servicio para obtener el acumulado
+    this.dailyReportService.SumaReporte(selectedResourceId, startDate, endDate)
+      .subscribe({
+        next: (result) => {
+          item.accumulate = result.Total || 0;
+          console.log(`Acumulado calculado para recurso ${selectedResourceId}: ${item.accumulate}`);
+          
+          // Actualizar el grid para mostrar el nuevo valor
+          if (this.gridApi) {
+            this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['accumulate'] });
+          }
+        },
+        error: (error) => {
+          console.error('Error al calcular acumulado:', error);
+          item.accumulate = 0;
+          
+          // Actualizar el grid para mostrar 0
+          if (this.gridApi) {
+            this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['accumulate'] });
+          }
+        }
+      });
+  }
+  
+  private findParentGenerator(item: any): any {
+    if (this.viewMode === 'detail' && this.selectedGeneratorForDetail) {
+      return this.selectedGeneratorForDetail;
+    }
+    
+    // Buscar en treeData el generador padre
+    const parentId = item.parentGeneratorId;
+    return this.treeData.find(node => 
+      node.nodeType === 'generator' && 
+      (node.originalId === parentId || node.id === parentId)
+    );
+  }
+  
+  private formatDateForApi(dateString: string): string {
+    if (!dateString) return '';
+    
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      
+      // Formato YYYY-MM-DD
+      return date.toISOString().split('T')[0];
+    } catch (error) {
+      console.error('Error al formatear fecha:', error);
+      return '';
+    }
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -207,12 +395,46 @@ export class GeneratorsComponent implements OnChanges {
 
   addGenerator() {
     const tempId = `temp_${this.tempIdCounter++}`;
-    this.treeData = [{
-      id: tempId, numero: '', idEstimacion: this.idEstimacion, dateStart: '', dateEnd: '',
-      aplicaIsometrico: false, active: true, nodeType: 'generator',
-      orgHierarchy: [`Generador_${tempId}`], originalId: tempId, __isNew: true,
-    }, ...this.treeData];
+    
+    // Calcular fechas: hoy y hoy + 7 días adicionales
+    const today = new Date();
+    const dateStart = today.toISOString();
+    const futureDate = new Date(today);
+    futureDate.setDate(today.getDate() + 7); // 7 días adicionales
+    const dateEnd = futureDate.toISOString();
+    
+    const newGenerator = {
+      id: tempId, 
+      numero: '', 
+      idEstimacion: this.idEstimacion, 
+      dateStart: dateStart, 
+      dateEnd: dateEnd,
+      creado: 0,
+      revisado: 0,
+      autorizado: 0,
+      comment: '',
+      fase: '',
+      aplicaIsometrico: false, 
+      active: true, 
+      nodeType: 'generator',
+      orgHierarchy: [`Generador_${tempId}`], 
+      originalId: tempId, 
+      __isNew: true,
+    };
+    
+    this.treeData = [newGenerator, ...this.treeData];
     this.notSavedChanges = true;
+    
+    // Auto-seleccionar y editar campo número
+    setTimeout(() => {
+      const newRowIndex = this.treeData.findIndex((row) => row.id === tempId);
+      if (newRowIndex >= 0 && this.gridApi) {
+        this.gridApi.startEditingCell({
+          rowIndex: newRowIndex,
+          colKey: 'numero',
+        });
+      }
+    }, 50);
   }
 
   addItem() {
@@ -298,8 +520,17 @@ export class GeneratorsComponent implements OnChanges {
   }
 
   private cleanDataForServer = (data: any) => ({
-    numero: data.numero, idEstimacion: data.idEstimacion, dateStart: data.dateStart,
-    dateEnd: data.dateEnd, aplicaIsometrico: data.aplicaIsometrico, active: data.active
+    numero: data.numero, 
+    idEstimacion: data.idEstimacion, 
+    dateStart: data.dateStart,
+    dateEnd: data.dateEnd, 
+    creado: data.creado || 0,
+    revisado: data.revisado || 0,
+    autorizado: data.autorizado || 0,
+    comment: data.comment || '',
+    fase: data.fase || '',
+    aplicaIsometrico: data.aplicaIsometrico, 
+    active: data.active
   });
 
   private cleanDetailDataForServer = (data: any) => ({
@@ -312,12 +543,8 @@ export class GeneratorsComponent implements OnChanges {
   // ======================================================================
 
   private async confirmAction(title: string, message: string): Promise<boolean> {
-    try {
-      await alerts.basicAlert(title, message, 'question');
-      return true; // El usuario confirmó
-    } catch (error) {
-      return false; // El usuario canceló
-    }
+    const result = await alerts.confirmAlert(title, message, 'warning', 'Sí, eliminar');
+    return result.isConfirmed;
   }
 
   deleteGenerator() {

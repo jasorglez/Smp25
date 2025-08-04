@@ -82,21 +82,10 @@ public gridOptions: any = {
   rowClass: (params) => params.node.isSelected() ? 'selected-row' : '',
   
   onRowClicked: (event) => {
-    // Selección con un click
+    // Solo selección con un click
     event.node.setSelected(true);
-    
-    // Mostrar generadores (sin marcar cambios)
     this.selectedRowData = event.data;
     this.id = event.data.id;
-    
-    // Filtrado para mostrar solo la fila seleccionada
-    this.gridApi.setFilterModel({
-      id: { type: 'equals', filter: this.id }
-    });
-    this.gridApi.onFilterChanged();
-    
-    // Activar generadores
-    this.activateGeneratorsTab();
   },
 
   onRowSelected: (event) => {
@@ -235,6 +224,14 @@ public gridOptions: any = {
     this.id = event.data.id;
   }
 
+  // Función para ver detalles de la estimación seleccionada
+  viewEstimateDetails() {
+    if (!this.selectedRowData) {
+      return;
+    }
+    this.filterBySelectedEstimate();
+  }
+
 
 
   onCellValueChanged(event: any) {
@@ -352,12 +349,26 @@ public gridOptions: any = {
     }
 
     const selectedData = selectedNodes[0].data;
+    const estimationNumber = selectedData.number || 'la estimación seleccionada';
+    
+    // Confirmación antes de eliminar
+    const result = await alerts.confirmAlert(
+      'Confirmar eliminación',
+      `¿Está seguro de que desea eliminar ${estimationNumber}? Esta acción no se puede deshacer.`,
+      'warning',
+      'Sí, eliminar'
+    );
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
     const id = selectedData.id;
     selectedData.active = 0;
     this.estimatesService.deleteEstimate(id).pipe(
       catchError((error) => {
         alerts.basicAlert(
-          'Eliminar entrada',
+          'Error al eliminar',
           'Error al eliminar la entrada.',
           'error'
         );
@@ -368,17 +379,11 @@ public gridOptions: any = {
       .subscribe(
         () => {
           alerts.basicAlert(
-            'Eliminar entrada',
+            'Eliminado',
             'Entrada eliminada satisfactoriamente.',
             'success'
           );
           this.obtenerDatos();
-
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
           this.notSavedChanges = false;
           this.selectedRowData = null;
         }
@@ -398,6 +403,35 @@ public gridOptions: any = {
       delete cleanedData.id;
     }
     return cleanedData;
+  }
+
+  // Función separada para filtrar por estimación seleccionada
+  filterBySelectedEstimate() {
+    if (!this.selectedRowData || !this.id) {
+      return;
+    }
+    
+    // No aplicar filtros si hay filas temporales (nuevas)
+    const hasNewRows = this.rowData.some(row => row.id && row.id.toString().startsWith('temp_'));
+    if (hasNewRows) {
+      return;
+    }
+
+    this.gridApi.setFilterModel({
+      id: { type: 'equals', filter: this.id }
+    });
+    this.gridApi.onFilterChanged();
+    
+    // Activar generadores después del filtrado
+    this.activateGeneratorsTab();
+  }
+
+  // Función para limpiar filtros
+  clearFilters() {
+    if (this.gridApi) {
+      this.gridApi.setFilterModel(null);
+      this.gridApi.onFilterChanged();
+    }
   }
 
 
