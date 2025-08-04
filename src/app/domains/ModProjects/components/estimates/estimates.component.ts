@@ -9,6 +9,7 @@ import { EstimatesService } from 'app/services/estimates.service';
 import { SignalsService } from 'app/services/signals.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { GeneratorsComponent } from './generators.component';
+import { PdfEstimatesService } from 'app/services/pdf-estimates.service';
 
 @Component({
   selector: 'app-estimates',
@@ -20,6 +21,7 @@ export class EstimatesComponent {
 
   private estimatesService = inject(EstimatesService);
   private signalsService = inject(SignalsService);
+  private pdfEstimatesService = inject(PdfEstimatesService);
 
   constructor() {
     effect(() => {
@@ -422,6 +424,16 @@ public gridOptions: any = {
       this.gridApi.setFilterModel(null);
       this.gridApi.onFilterChanged();
     }
+  }
+
+  generateSamplePdf() {
+    const sampleData = this.pdfEstimatesService.createSampleEstimate();
+    this.pdfEstimatesService.generateEstimatePdf(sampleData);
+  }
+
+  downloadSamplePdf() {
+    const sampleData = this.pdfEstimatesService.createSampleEstimate();
+    this.pdfEstimatesService.downloadEstimatePdf(sampleData, 'Estimacion_Plaza_Corala_13R.pdf');
   }
 
 }
