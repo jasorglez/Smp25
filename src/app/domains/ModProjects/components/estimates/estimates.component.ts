@@ -71,32 +71,44 @@ export class EstimatesComponent {
       });
   }
 
-  // Column Definitions: Defines the columns to be displayed.
-  public gridOptions: any = {
-    headerHeight: 30,
-    rowHeight: 30,
-    rowClass: (params) => {
-      // Verificar si la fila está seleccionada
-      if (params.node.isSelected()) {
-        return 'selected-row';
-      }
-      return '';
-    },
-    onRowClicked: (event) => {
-      // Seleccionar la fila al hacer clic en cualquier celda
-      event.node.setSelected(true);
-    },
-    onRowSelected: (event) => {
-      // Deseleccionar otras filas cuando se selecciona una nueva
-      if (event.node.isSelected()) {
-        this.gridApi.forEachNode((node) => {
-          if (node.id !== event.node.id) {
-            node.setSelected(false);
-          }
-        });
-      }
-    },    
-  };
+
+  // 1. Modificar gridOptions para el comportamiento deseado
+public gridOptions: any = {
+  headerHeight: 30,
+  rowHeight: 30,
+  suppressClickEdit: true, // Fuerza doble click para editar
+  rowClass: (params) => params.node.isSelected() ? 'selected-row' : '',
+  
+  onRowClicked: (event) => {
+    // Selección con un click
+    event.node.setSelected(true);
+    
+    // Mostrar generadores (sin marcar cambios)
+    this.selectedRowData = event.data;
+    this.id = event.data.id;
+    
+    // Filtrado para mostrar solo la fila seleccionada
+    this.gridApi.setFilterModel({
+      id: { type: 'equals', filter: this.id }
+    });
+    this.gridApi.onFilterChanged();
+    
+    // Activar generadores
+    this.activateGeneratorsTab();
+  },
+
+  onRowSelected: (event) => {
+    // Deseleccionar otras filas
+    if (event.node.isSelected()) {
+      this.gridApi.forEachNode((node) => {
+        if (node.id !== event.node.id) {
+          node.setSelected(false);
+        }
+      });
+    }
+  }
+};
+
 
   get columnDefs(): ColDef[] {
     return [
@@ -221,30 +233,7 @@ export class EstimatesComponent {
     this.id = event.data.id;
   }
 
-onSelectionChanged(event: any) {
-  const selectedNodes = event.api.getSelectedNodes();
-  if (selectedNodes.length > 0) {
-    this.selectedRowData = selectedNodes[0].data;
-    this.id = this.selectedRowData.id;
-    this.notSavedChanges = true;
 
-    // Filtrar el grid para mostrar solo el registro seleccionado
-    const filterModel = {
-      id: {
-        type: 'equals',
-        filter: this.id,
-      },
-    };
-    this.gridApi.setFilterModel(filterModel);
-    this.gridApi.onFilterChanged();
-
-    // Activar la pestaña de generators
-    this.activateGeneratorsTab();
-  } else {
-    this.selectedRowData = null;
-    this.resetGridSize();
-  }
-}
 
   onCellValueChanged(event: any) {
     console.log('Dato cambiado:', event.data);
