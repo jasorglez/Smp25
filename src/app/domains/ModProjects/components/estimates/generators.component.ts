@@ -557,9 +557,20 @@ export class GeneratorsComponent implements OnChanges {
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
     delete cleanedData.dias; // Los días se calculan, no se envían al servidor
+    
+    // Remover propiedades específicas del Tree Data y vista
+    delete cleanedData.nodeType;
+    delete cleanedData.orgHierarchy;
+    delete cleanedData.originalId;
+    delete cleanedData.parentGeneratorId;
+    
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }
+    
+    // Debug log para ver qué datos se están enviando
+    console.log('Datos limpiados para el servidor:', cleanedData);
+    
     return cleanedData;
   }
 
@@ -752,6 +763,7 @@ export class GeneratorsComponent implements OnChanges {
       // Primero guardar generadores nuevos
       for (const generator of newGenerators) {
         const cleanedData = this.cleanDataForServer(generator);
+        console.log('Creando nuevo generador con datos:', cleanedData);
         const response = await lastValueFrom(this.generatorsService.addGenerator(cleanedData));
         // Actualizar el ID temporal con el real
         generator.id = response.id;
@@ -770,6 +782,7 @@ export class GeneratorsComponent implements OnChanges {
       // Actualizar generadores modificados
       for (const generator of modifiedGenerators) {
         const cleanedData = this.cleanDataForServer(generator);
+        console.log('Actualizando generador ID:', generator.originalId, 'con datos:', cleanedData);
         await lastValueFrom(this.generatorsService.updateGenerator(generator.originalId, cleanedData));
         generator.__modified = false;
       }
@@ -798,10 +811,25 @@ export class GeneratorsComponent implements OnChanges {
       this.notSavedChanges = false;
       this.obtenerDatos(); // Refrescar los datos
     } catch (error) {
-      console.error(error);
+      console.error('Error completo al guardar:', error);
+      
+      // Extraer mensaje de error más específico
+      let errorMessage = 'Ocurrió un error al guardar los datos. Por favor, intente nuevamente.';
+      if (error && error.error) {
+        if (typeof error.error === 'string') {
+          errorMessage = error.error;
+        } else if (error.error.message) {
+          errorMessage = error.error.message;
+        } else if (error.error.title) {
+          errorMessage = error.error.title;
+        }
+      } else if (error && error.message) {
+        errorMessage = error.message;
+      }
+      
       alerts.basicAlert(
         'Error',
-        'Ocurrió un error al guardar los datos. Por favor, intente nuevamente.',
+        errorMessage,
         'error'
       );
     }
