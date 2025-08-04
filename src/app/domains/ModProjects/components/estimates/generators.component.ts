@@ -183,13 +183,13 @@ export class GeneratorsComponent implements OnChanges {
           field: 'numero',
           headerName: 'Número Generador',
           editable: true,
-          flex: 1
+          flex: 1.5
         },
         {
           field: 'dateStart',
           headerName: 'Fecha Inicio',
           editable: true,
-          flex: 1,
+          flex: 1.5,
           cellDataType: 'dateString',
           valueFormatter: (params) => {
             if (params.value) {
@@ -202,7 +202,7 @@ export class GeneratorsComponent implements OnChanges {
           field: 'dateEnd',
           headerName: 'Fecha Final',
           editable: true,
-          flex: 1,
+          flex: 1.5,
           cellDataType: 'dateString',
           valueFormatter: (params) => {
             if (params.value) {
@@ -212,14 +212,39 @@ export class GeneratorsComponent implements OnChanges {
           }
         },
         {
+          field: '',
+          headerName: 'Creado Por',
+          editable: true,
+          flex: 2
+        },
+        {
+          field: '',
+          headerName: 'Revisado Por',
+          editable: true,
+          flex: 2
+        },
+         {
+          field: '',
+          headerName: 'Autorizado Por',
+          editable: true,
+          flex: 2
+        },
+        {
           field: 'aplicaIsometrico',
           headerName: 'Aplica Isométrico',
           editable: true,
-          flex: 1,
+          flex: 1.5,
           cellDataType: 'boolean',
           cellRenderer: 'agCheckboxCellRenderer',
           cellEditor: 'agCheckboxCellEditor'
-        }
+        },
+        {
+          field: '',
+          headerName: 'Comentarios',
+          editable: true,
+          flex: 2
+        },
+
       ];
     } else {
       // Vista Detalle: Solo columnas de items
@@ -565,7 +590,7 @@ export class GeneratorsComponent implements OnChanges {
     
     // Solo incluir ID si no es temporal
     if (data.id && !data.id.toString().startsWith('temp_')) {
-      cleanedData.id = data.id;
+      cleanedData.idEstimacion.idType = data.id;
     }
     
     console.log('Datos MAESTRO limpiados para el servidor:', cleanedData);
@@ -798,6 +823,7 @@ export class GeneratorsComponent implements OnChanges {
       // Actualizar items modificados
       for (const item of modifiedItems) {
         const cleanedData = this.cleanDetailDataForServer(item);
+        console.log('Actualizando item ID:', item.originalId, 'con datos:', cleanedData);
         await lastValueFrom(this.generatorsService.updateItemGenerador(item.originalId, cleanedData));
         item.__modified = false;
       }
@@ -1108,7 +1134,7 @@ export class GeneratorsComponent implements OnChanges {
     
     // Solo incluir ID si no es temporal
     if (data.id && !data.id.toString().startsWith('temp_')) {
-      cleanedData.id = data.id;
+      cleanedData.idType = data.id;
     }
     
     console.log('Datos DETALLE limpiados para el servidor:', cleanedData);
