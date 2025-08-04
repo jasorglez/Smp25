@@ -15,6 +15,14 @@
                         class="bi bi-arrow-clockwise"></i></button>
                 <button type="button" class="btn btn-danger mb-2" (click)="deleteEntry()"><i class="bi bi-trash"
                        ></i></button>
+                <button type="button" class="btn btn-info mb-2" (click)="viewEstimateDetails()" 
+                        [disabled]="!selectedRowData" title="Ver detalles de estimación">
+                    <i class="bi bi-eye"></i>
+                </button>
+                <button type="button" class="btn btn-secondary mb-2" (click)="clearFilters()" 
+                        title="Limpiar filtros">
+                    <i class="bi bi-funnel"></i>
+                </button>
             </nav>
             <div class="col">
                 <ag-grid-angular 
