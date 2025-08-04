@@ -9,6 +9,7 @@ import { WorkprogramsService } from 'app/services/workprograms.service';
 import { SignalsService } from 'app/services/signals.service';
 import { EmployeesService } from 'app/services/employees.service';
 import { DailyReportService } from 'app/services/daily-report.service';
+import { TrackingService } from 'app/services/tracking.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 
 @Component({
@@ -27,6 +28,7 @@ export class GeneratorsComponent implements OnChanges {
   private signalsService = inject(SignalsService);
   private employeesService = inject(EmployeesService);
   private dailyReportService = inject(DailyReportService);
+  private trackingService = inject(TrackingService);
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
@@ -54,6 +56,13 @@ export class GeneratorsComponent implements OnChanges {
   constructor() { }
 
   ngOnInit() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Acceso a Generadores',
+      'Modulo Proyectos - Generadores',
+      this.trackingService.getEmail()
+    );
+    
     this.obtenerDatos();
     this.loadActivities();
     this.loadEmployees();
@@ -394,6 +403,13 @@ export class GeneratorsComponent implements OnChanges {
   }
 
   addGenerator() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Agregar Generador',
+      'Modulo Proyectos - Generadores',
+      this.trackingService.getEmail()
+    );
+    
     const tempId = `temp_${this.tempIdCounter++}`;
     
     // Calcular fechas: hoy y hoy + 7 días adicionales
@@ -438,6 +454,13 @@ export class GeneratorsComponent implements OnChanges {
   }
 
   addItem() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Agregar Item Generador',
+      'Modulo Proyectos - Items Generadores',
+      this.trackingService.getEmail()
+    );
+    
     if (!this.selectedRowData || this.selectedNodeType !== 'generator') {
       alerts.basicAlert('Agregar Item', 'Primero debe seleccionar un generador.', 'warning');
       return;
@@ -464,6 +487,13 @@ export class GeneratorsComponent implements OnChanges {
   isItemSelected = () => this.selectedNodeType === 'item';
 
   async saveTreeChanges() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Guardar Cambios Generadores',
+      'Modulo Proyectos - Generadores',
+      this.trackingService.getEmail()
+    );
+    
     const isValid = this.treeData.every(item => 
       (item.nodeType === 'generator' && item.numero && item.dateStart && item.dateEnd) ||
       (item.nodeType === 'item' && item.idResource !== undefined && item.quantity !== undefined)
