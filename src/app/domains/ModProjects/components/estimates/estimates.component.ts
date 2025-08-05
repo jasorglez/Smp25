@@ -9,6 +9,8 @@ import { EstimatesService } from 'app/services/estimates.service';
 import { SignalsService } from 'app/services/signals.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { GeneratorsComponent } from './generators.component';
+import { PdfEstimatesService } from 'app/services/pdf-estimates.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-estimates',
@@ -20,6 +22,8 @@ export class EstimatesComponent {
 
   private estimatesService = inject(EstimatesService);
   private signalsService = inject(SignalsService);
+  private pdfEstimatesService = inject(PdfEstimatesService);
+  private trackingService = inject(TrackingService);
 
   constructor() {
     effect(() => {
@@ -29,6 +33,13 @@ export class EstimatesComponent {
   }
 
   ngOnInit() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Acceso a Estimaciones',
+      'Modulo Proyectos - Estimaciones',
+      this.trackingService.getEmail()
+    );
+    
     this.obtenerDatos();
   }
 
@@ -243,6 +254,13 @@ public gridOptions: any = {
   }
 
   addRow() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Agregar Estimación',
+      'Modulo Proyectos - Estimaciones',
+      this.trackingService.getEmail()
+    );
+    
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
@@ -285,6 +303,13 @@ public gridOptions: any = {
   }
 
   async saveChanges() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Guardar Cambios Estimaciones',
+      'Modulo Proyectos - Estimaciones',
+      this.trackingService.getEmail()
+    );
+    
     const isValid = this.rowData.every((item) => item.number);
     if (!isValid) {
       alerts.basicAlert(
@@ -336,6 +361,13 @@ public gridOptions: any = {
   }
 
   async deleteEntry() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Eliminar Estimación',
+      'Modulo Proyectos - Estimaciones',
+      this.trackingService.getEmail()
+    );
+    
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert(
@@ -456,6 +488,16 @@ public gridOptions: any = {
       this.gridApi.setFilterModel(null);
       this.gridApi.onFilterChanged();
     }
+  }
+
+  generateSamplePdf() {
+    const sampleData = this.pdfEstimatesService.createSampleEstimate();
+    this.pdfEstimatesService.generateEstimatePdf(sampleData);
+  }
+
+  downloadSamplePdf() {
+    const sampleData = this.pdfEstimatesService.createSampleEstimate();
+    this.pdfEstimatesService.downloadEstimatePdf(sampleData, 'Estimacion_Plaza_Corala_13R.pdf');
   }
 
 }

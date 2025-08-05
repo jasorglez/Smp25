@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { environment } from '@env/environment';
-import { Observable } from 'rxjs';
+import { catchError, Observable, throwError } from 'rxjs';
 import { TrackingService } from './tracking.service';
 
 @Injectable({
@@ -74,6 +74,26 @@ export class DailyReportService {
       responseType: 'blob'
     });
   }
+
+  // Suma de Conceptos X PDF
+SumaReporte(
+    resource: number,
+    fecha1: string, // Formato: 'YYYY-MM-DD'
+    fecha2: string
+  ): Observable<{ Total: number }> {
+    const url = `${environment.urlSmp}/DailyReport/resource-total?idResource=${resource}&startDate=${fecha1}&endDate=${fecha2}`;
+    
+    return this.http.get<{ Total: number }>(url, {
+      headers: this.trackingService.getHeaders()
+    }).pipe(
+      catchError(error => {
+        console.error('Error en SumaReporte:', error);
+        return throwError(() => new Error('Error al obtener total del recurso'));
+      })
+    );
+  }
+
+
 
   // Exportar múltiples reportes a PDF
   exportReportsToPdf(reportIds: number[]): Observable<any> {

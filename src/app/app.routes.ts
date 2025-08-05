@@ -373,8 +373,39 @@ export const routes: Routes = [
             path: 'estimates',
             loadComponent: () =>
               import(
-                './domains/ModProjects/components/estimates/estimates.component'
-              ).then((r) => r.EstimatesComponent),
+                './domains/ModProjects/pages/procestimates/procestimates.component'
+              ).then((r) => r.ProcesstimatesComponent),
+            children: [
+              { path: '', redirectTo: 'estimates', pathMatch: 'full' },
+              {
+                path: 'estimates',
+                loadComponent: () =>
+                  import(
+                    './domains/ModProjects/components/estimates/estimates.component'
+                  ).then((r) => r.EstimatesComponent),
+              },
+              {
+                path: 'reportes-estimaciones',
+                loadComponent: () =>
+                  import(
+                    './domains/ModProjects/components/estimates/reportes-estimaciones/reportes-estimaciones.component'
+                  ).then((r) => r.ReportesEstimacionesComponent),
+              },
+              {
+                path: 'reportes-generadores',
+                loadComponent: () =>
+                  import(
+                    './domains/ModProjects/components/estimates/reportes-generadores/reportes-generadores.component'
+                  ).then((r) => r.ReportesGeneradoresComponent),
+              },
+              {
+                path: 'diarios-semanales',
+                loadComponent: () =>
+                  import(
+                    './domains/ModProjects/components/estimates/diarios-semanales/diarios-semanales.component'
+                  ).then((r) => r.DiariosSemánalesComponent),
+              },
+            ],
           },
           {
             path: 'ot',

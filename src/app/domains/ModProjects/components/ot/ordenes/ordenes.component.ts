@@ -635,6 +635,12 @@ export class OrdenesComponent {
   ]
 
   addFotografia(){
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Agregar Fotografía OT',
+      'Modulo Proyectos - Ordenes de Trabajo - Fotografías',
+      this.trackingService.getEmail()
+    );
     
     if (!this.selectedOt) {
       alerts.basicAlert('Error', 'Debe seleccionar una OT primero', 'error');
@@ -679,6 +685,13 @@ export class OrdenesComponent {
   }
 
   async saveFotografiasChanges() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Guardar Cambios Fotografías OT',
+      'Modulo Proyectos - Ordenes de Trabajo - Fotografías',
+      this.trackingService.getEmail()
+    );
+    
     const newRows = this.fotografias.filter(row => row.__isNew);
     const modifiedRows = this.fotografias.filter(row => row.__modified && !row.__isNew);
 
@@ -774,6 +787,13 @@ export class OrdenesComponent {
   }
 
   deleteFotografia(){
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Eliminar Fotografía OT',
+      'Modulo Proyectos - Ordenes de Trabajo - Fotografías',
+      this.trackingService.getEmail()
+    );
+    
     if (!this.fotografiaGridApi) {
       alerts.basicAlert('Error', 'Grid no disponible', 'error');
       return;
@@ -1072,6 +1092,14 @@ export class OrdenesComponent {
   public rowData: OrdenesData[] = [];
 
   constructor() {
+    // Log de acceso al componente
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Acceso a Ordenes de Trabajo',
+      'Modulo Proyectos - Ordenes de Trabajo',
+      this.trackingService.getEmail()
+    );
+    
     effect(() => {
       this.idProject =this.signalsService.getProjectSelectedBySidebar()();
       this.idcompany = this.signalsService.getRootSelectedBySidebar()();
@@ -1351,6 +1379,13 @@ export class OrdenesComponent {
 
   // Método addReporte siguiendo exactamente el patrón de usuarios
   addReporte() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Agregar Reporte Diario OT',
+      'Modulo Proyectos - Ordenes de Trabajo - Reportes',
+      this.trackingService.getEmail()
+    );
+    
     if (!this.selectedOt) {
       alerts.basicAlert('Error', 'Debe seleccionar una OT primero', 'error');
       return;
@@ -1387,6 +1422,13 @@ export class OrdenesComponent {
 
 
 async saveChanges() {
+  this.trackingService.addLog(
+    this.trackingService.getnameComp(),
+    'Guardar Cambios Reportes Diarios OT',
+    'Modulo Proyectos - Ordenes de Trabajo - Reportes',
+    this.trackingService.getEmail()
+  );
+  
   console.log('=== INICIO DEBUG SAVE CHANGES ===');
   
   const newRows = this.reportesDiarios.filter(row => row.__isNew);
@@ -1492,6 +1534,13 @@ async saveChanges() {
 }
 
 async saveChangesMaterial() {
+  this.trackingService.addLog(
+    this.trackingService.getnameComp(),
+    'Guardar Cambios Materiales OT',
+    'Modulo Proyectos - Ordenes de Trabajo - Materiales',
+    this.trackingService.getEmail()
+  );
+  
   const newRows = this.materiales.filter(row => row.__isNew);
   const modifiedRows = this.materiales.filter(row => row.__modified && !row.__isNew);
   /*const invalidNewRows = newRows.filter(item => !item.date || !item.supervisor);
@@ -1588,6 +1637,13 @@ async saveChangesMaterial() {
 }
 
 async saveChangesEquipos() {
+  this.trackingService.addLog(
+    this.trackingService.getnameComp(),
+    'Guardar Cambios Equipos OT',
+    'Modulo Proyectos - Ordenes de Trabajo - Equipos',
+    this.trackingService.getEmail()
+  );
+  
   const newRows = this.equipos.filter(row => row.__isNew);
   const modifiedRows = this.equipos.filter(row => row.__modified && !row.__isNew);
   /*const invalidNewRows = newRows.filter(item => !item.date || !item.supervisor);
@@ -1820,6 +1876,13 @@ async saveChangesEquipos() {
   }
 
   async generatePdfPreview() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Generar Vista Previa PDF OT',
+      'Modulo Proyectos - Ordenes de Trabajo - PDF',
+      this.trackingService.getEmail()
+    );
+    
     if (!this.selectedOt) {
       alerts.basicAlert('Error', 'Debe seleccionar una OT primero', 'error');
       return;
@@ -2062,6 +2125,13 @@ async saveChangesEquipos() {
 
   // Método para eliminar reporte siguiendo patrón de usuarios
   async deleteReporte() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Eliminar Reporte Diario OT',
+      'Modulo Proyectos - Ordenes de Trabajo - Reportes',
+      this.trackingService.getEmail()
+    );
+    
     if (!this.reportesGridApi) {
       alerts.basicAlert('Error', 'Grid no disponible', 'error');
       return;
@@ -2220,6 +2290,13 @@ async saveChangesEquipos() {
 
   // Métodos CRUD para Personal
   addPersonal() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Agregar Personal OT',
+      'Modulo Proyectos - Ordenes de Trabajo - Personal',
+      this.trackingService.getEmail()
+    );
+    
     //console.log('=== AGREGANDO NUEVO PERSONAL ===');
     //console.log('OT seleccionada:', this.selectedOt);
     //console.log('Fecha de reporte seleccionada:', this.selectedReporteFecha);
@@ -2267,7 +2344,14 @@ async saveChangesEquipos() {
     }, 0);
   }
 
-  addMaterial() {    
+  addMaterial() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Agregar Material OT',
+      'Modulo Proyectos - Ordenes de Trabajo - Materiales',
+      this.trackingService.getEmail()
+    );
+    
     if (!this.selectedOt) {
       alerts.basicAlert('Error', 'Debe seleccionar una OT primero', 'error');
       return;
@@ -2311,7 +2395,14 @@ async saveChangesEquipos() {
     }, 0);
   }
 
-  addEquipos() {    
+  addEquipos() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Agregar Equipo OT',
+      'Modulo Proyectos - Ordenes de Trabajo - Equipos',
+      this.trackingService.getEmail()
+    );
+    
     if (!this.selectedOt) {
       alerts.basicAlert('Error', 'Debe seleccionar una OT primero', 'error');
       return;
@@ -2356,6 +2447,12 @@ async saveChangesEquipos() {
   }
 
   async savePersonalChanges() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Guardar Cambios Personal OT',
+      'Modulo Proyectos - Ordenes de Trabajo - Personal',
+      this.trackingService.getEmail()
+    );
     
     const newRows = this.personal.filter(row => row.__isNew);
     const modifiedRows = this.personal.filter(row => row.__modified && !row.__isNew);
@@ -2453,6 +2550,13 @@ async saveChangesEquipos() {
   }
 
   async deletePersonal() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Eliminar Personal OT',
+      'Modulo Proyectos - Ordenes de Trabajo - Personal',
+      this.trackingService.getEmail()
+    );
+    
     if (!this.personalGridApi) {
       alerts.basicAlert('Error', 'Grid no disponible', 'error');
       return;
@@ -2745,6 +2849,13 @@ async saveChangesEquipos() {
   }
 
    async deleteMaterial() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Eliminar Material OT',
+      'Modulo Proyectos - Ordenes de Trabajo - Materiales',
+      this.trackingService.getEmail()
+    );
+    
     if (!this.materialesGridApi) {
       alerts.basicAlert('Error', 'Grid no disponible', 'error');
       return;
@@ -3031,6 +3142,13 @@ async saveChangesEquipos() {
 
   // -- Métodos para Notas --
   addNota() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Agregar Nota OT',
+      'Modulo Proyectos - Ordenes de Trabajo - Notas',
+      this.trackingService.getEmail()
+    );
+    
     if (!this.selectedOt) {
       alerts.basicAlert('Error', 'Debe seleccionar una OT primero', 'error');
       return;
@@ -3071,7 +3189,14 @@ async saveChangesEquipos() {
     }, 0);
   }
   async saveNotasChanges() {
-     const newRows = this.notas.filter(row => row.__isNew);
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Guardar Cambios Notas OT',
+      'Modulo Proyectos - Ordenes de Trabajo - Notas',
+      this.trackingService.getEmail()
+    );
+    
+    const newRows = this.notas.filter(row => row.__isNew);
     const modifiedRows = this.notas.filter(row => row.__modified && !row.__isNew);
   /*const invalidNewRows = newRows.filter(item => !item.date || !item.supervisor);
   
@@ -3197,6 +3322,13 @@ async saveChangesEquipos() {
   }
 
   deleteNota() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Eliminar Nota OT',
+      'Modulo Proyectos - Ordenes de Trabajo - Notas',
+      this.trackingService.getEmail()
+    );
+    
     if (!this.notasGridApi) {
       alerts.basicAlert('Error', 'Grid no disponible', 'error');
       return;

@@ -8,6 +8,8 @@ import { GeneratorsService } from 'app/services/generators.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { SignalsService } from 'app/services/signals.service';
 import { EmployeesService } from 'app/services/employees.service';
+import { DailyReportService } from 'app/services/daily-report.service';
+import { TrackingService } from 'app/services/tracking.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 
 @Component({
@@ -25,6 +27,8 @@ export class GeneratorsComponent implements OnChanges {
   private workprogramsService = inject(WorkprogramsService);
   private signalsService = inject(SignalsService);
   private employeesService = inject(EmployeesService);
+  private dailyReportService = inject(DailyReportService);
+  private trackingService = inject(TrackingService);
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
@@ -52,6 +56,13 @@ export class GeneratorsComponent implements OnChanges {
   constructor() { }
 
   ngOnInit() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Acceso a Generadores',
+      'Modulo Proyectos - Generadores',
+      this.trackingService.getEmail()
+    );
+    
     this.obtenerDatos();
     this.loadActivities();
     this.loadEmployees();
@@ -295,6 +306,91 @@ export class GeneratorsComponent implements OnChanges {
   onCellValueChanged(event: any) {
     event.data.__modified = true;
     this.notSavedChanges = true;
+    
+    // Calcular acumulado cuando se selecciona un recurso en items
+    if (event.colDef.field === 'idResource' && event.data.nodeType === 'item') {
+      this.calculateAccumulate(event);
+    }
+  }
+
+  private calculateAccumulate(event: any) {
+    const item = event.data;
+    const selectedResourceId = event.newValue;
+    
+    // Validar que se haya seleccionado un recurso válido
+    if (!selectedResourceId || selectedResourceId === 0) {
+      item.accumulate = 0;
+      return;
+    }
+    
+    // Encontrar el generador padre para obtener las fechas
+    const parentGenerator = this.findParentGenerator(item);
+    if (!parentGenerator || !parentGenerator.dateStart || !parentGenerator.dateEnd) {
+      console.warn('No se encontró generador padre o fechas válidas');
+      item.accumulate = 0;
+      return;
+    }
+    
+    // Convertir fechas a formato YYYY-MM-DD
+    const startDate = this.formatDateForApi(parentGenerator.dateStart);
+    const endDate = this.formatDateForApi(parentGenerator.dateEnd);
+    
+    if (!startDate || !endDate) {
+      console.warn('Fechas inválidas en el generador padre');
+      item.accumulate = 0;
+      return;
+    }
+    
+    // Llamar al servicio para obtener el acumulado
+    this.dailyReportService.SumaReporte(selectedResourceId, startDate, endDate)
+      .subscribe({
+        next: (result) => {
+          item.accumulate = result.Total || 0;
+          console.log(`Acumulado calculado para recurso ${selectedResourceId}: ${item.accumulate}`);
+          
+          // Actualizar el grid para mostrar el nuevo valor
+          if (this.gridApi) {
+            this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['accumulate'] });
+          }
+        },
+        error: (error) => {
+          console.error('Error al calcular acumulado:', error);
+          item.accumulate = 0;
+          
+          // Actualizar el grid para mostrar 0
+          if (this.gridApi) {
+            this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['accumulate'] });
+          }
+        }
+      });
+  }
+  
+  private findParentGenerator(item: any): any {
+    if (this.viewMode === 'detail' && this.selectedGeneratorForDetail) {
+      return this.selectedGeneratorForDetail;
+    }
+    
+    // Buscar en treeData el generador padre
+    const parentId = item.parentGeneratorId;
+    return this.treeData.find(node => 
+      node.nodeType === 'generator' && 
+      (node.originalId === parentId || node.id === parentId)
+    );
+  }
+  
+  private formatDateForApi(dateString: string): string {
+    if (!dateString) return '';
+    
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      
+      // Formato YYYY-MM-DD
+      return date.toISOString().split('T')[0];
+    } catch (error) {
+      console.error('Error al formatear fecha:', error);
+      return '';
+    }
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -307,6 +403,13 @@ export class GeneratorsComponent implements OnChanges {
   }
 
   addGenerator() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Agregar Generador',
+      'Modulo Proyectos - Generadores',
+      this.trackingService.getEmail()
+    );
+    
     const tempId = `temp_${this.tempIdCounter++}`;
     
     // Calcular fechas: hoy y hoy + 7 días adicionales
@@ -351,6 +454,13 @@ export class GeneratorsComponent implements OnChanges {
   }
 
   addItem() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Agregar Item Generador',
+      'Modulo Proyectos - Items Generadores',
+      this.trackingService.getEmail()
+    );
+    
     if (!this.selectedRowData || this.selectedNodeType !== 'generator') {
       alerts.basicAlert('Agregar Item', 'Primero debe seleccionar un generador.', 'warning');
       return;
@@ -377,6 +487,13 @@ export class GeneratorsComponent implements OnChanges {
   isItemSelected = () => this.selectedNodeType === 'item';
 
   async saveTreeChanges() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Guardar Cambios Generadores',
+      'Modulo Proyectos - Generadores',
+      this.trackingService.getEmail()
+    );
+    
     const isValid = this.treeData.every(item => 
       (item.nodeType === 'generator' && item.numero && item.dateStart && item.dateEnd) ||
       (item.nodeType === 'item' && item.idResource !== undefined && item.quantity !== undefined)
