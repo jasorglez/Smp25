@@ -952,7 +952,7 @@ export class OrdenesComponent {
       width: 120,
     },
     { 
-      field: '', 
+      field: 'close', 
       headerName: 'Cerrado', 
       editable: true,
       width: 120,
