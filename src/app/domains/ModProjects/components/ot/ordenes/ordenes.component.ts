@@ -1,4 +1,4 @@
-import { Component, effect, inject, OnInit } from '@angular/core';
+import { Component, effect, inject, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { AgGridModule } from 'ag-grid-angular';
@@ -121,7 +121,7 @@ interface Fotografia {
   templateUrl: './ordenes.component.html',
   styleUrl: './ordenes.component.scss',
 })
-export class OrdenesComponent {
+export class OrdenesComponent implements OnDestroy {
   private otService = inject(OtService);
   private equipmentService = inject(EquipmentService);
   private dailyReportService = inject(DailyReportService);
@@ -3560,7 +3560,19 @@ async saveChangesEquipos() {
     });
   }
 
-
-
-
+  ngOnDestroy() {
+    // Limpiar el estado del modal cuando se destruye el componente
+    // para evitar que aparezca en otros componentes
+    try {
+      if (this.modalServiceTable) {
+        // Ocultar el modal y limpiar los datos
+        this.modalServiceTable.hideModal();
+        this.modalServiceTable.updateData(null);
+      }
+    } catch (error) {
+      console.log('Error al limpiar modal state:', error);
+    }
+    
+    console.log('OrdenesComponent destruido - modal state limpiado');
+  }
 }
