@@ -22,6 +22,7 @@ import { CatalogsService } from 'app/services/catalogs.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { EquipmentService } from 'app/services/equipment.service';
 import { ModalService } from 'app/services/modal.service';
+import { WorkprogramsService } from 'app/services/workprograms.service';
 
 @Pipe({
   name: 'safe',
@@ -127,6 +128,7 @@ export class OrdenesComponent {
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
   private imageHandlerService = inject(ImageHandlerService);
+  private workprogramsService = inject(WorkprogramsService);
   private modalServiceTable = inject(ModalService);
   private router = inject(Router);
   private sanitizer = inject(DomSanitizer);
@@ -143,6 +145,7 @@ export class OrdenesComponent {
   private catalogMateriales   : any[] = [];
   public catalogEquipos      : any[] = [];
   private catalogDepartamentos: any[] = [];
+  private catalogConcepto: any[] = [];
   private unitsCatalog: any[] = [];
   private typeNotesCatalog: any[] = [];
     public conceptos  : any[] = [];
@@ -157,6 +160,7 @@ export class OrdenesComponent {
   public selectedReporteHoraTermino: string = '';
   public selectedReporteId: number | string | null = null;
   public selectedFotografia: Fotografia | null = null;
+  
 
   // Variables para columnas ajustables
   public leftColumnSize: number = 8;
@@ -173,6 +177,7 @@ export class OrdenesComponent {
   public notSavedEquipoChanges: boolean = false;
   public notSavedFotografiaChanges: boolean = false;
   public notSavedNoteChanges: boolean = false;
+  public notSavedConceptoChanges: boolean = false;
 
   private tempIdCounter: number = 1;
   private tempPersonalIdCounter: number = 1;
@@ -202,6 +207,7 @@ export class OrdenesComponent {
   pdfUrl: SafeResourceUrl | null = null;
   private originalUrl: string | null = null;
   showPdfEmbed: boolean = false;
+  projet: number = 0;
 
   public  materiales: any[] = [];
   public equipos: any[] = [];
@@ -550,7 +556,7 @@ export class OrdenesComponent {
   editable: true,
   cellEditor: 'agLargeTextCellEditor', // este sí existe
   cellEditorParams: {
-    maxLength: 250,
+    maxLength: 1000,
     cols: 50,
     rows: 3,
     suppressScroll: true,
@@ -576,6 +582,56 @@ export class OrdenesComponent {
 
 
   public conceptosColumnDefs: ColDef[] = [
+    {
+    field: 'idResource',
+    headerName: 'Equipo',
+    flex: 2,
+    editable: true,
+    cellEditor: 'agSelectCellEditor',
+    cellEditorParams: (params: any) => ({
+      values: this.catalogConcepto?.map((item) => item.actandNom) || [],
+    }),
+    // Muestra la descripción del equipo en la celda
+    valueFormatter: (params) => {
+      const equipoId = params.data?.idResource;
+      if (!equipoId) return '';
+
+      const foundItem = this.catalogConcepto?.find(item => item.id == equipoId);
+      return foundItem ? foundItem.actandNom : `ID: ${equipoId}`;
+    },
+    // Muestra la descripción del equipo cuando se lee el valor actual
+    valueGetter: (params) => {
+      const equipoId = params.data?.idResource;
+      if (!equipoId) return '';
+
+      const foundItem = this.catalogConcepto?.find(item => item.id == equipoId);
+      return foundItem ? foundItem.actandNom : '';
+    },
+    // Convierte la descripción seleccionada de vuelta al ID
+    valueSetter: (params) => {
+      console.log('=== VALUE SETTER EQUIPOS ===');
+      console.log('Nuevo valor (descripción):', params.newValue);
+      console.log('Valor anterior:', params.oldValue);
+      console.log('Data antes:', params.data.idResource);
+
+      if (!params.newValue) {
+        params.data.idResource = null;
+        console.log('Data después (null):', params.data.idResource);
+        return true;
+      }
+
+      const foundItem = this.catalogConcepto?.find(item => item.actandNom === params.newValue);
+      if (foundItem) {
+        params.data.idResource = foundItem.id;
+        console.log('Data después:', params.data.idResource);
+        return true;
+      } else {
+        console.warn('Descripción no válida:', params.newValue);
+        return false;
+      }
+    }
+  },
+  { field: 'quantity', headerName: 'Cantidad', flex: 1, editable: true },
   ]
 
   addFotografia(){
@@ -914,6 +970,8 @@ export class OrdenesComponent {
   // Variables para el grid de equipos
   public equiposGridApi!: GridApi;
 
+  public conceptosGridApi!: GridApi;
+
   // Configuración del grid principal
   public gridApi!: GridApi;
   public gridOptions: any = {
@@ -1020,6 +1078,7 @@ export class OrdenesComponent {
       this.catalogoMateriales();
       this.catalogoEquipo();
       this.obtenerTypeNotes();
+      this.obtenerConceptos();
       this.obtenerDatos();
       this.loadEmployees();
       this.getDeptoandPosition();
@@ -1140,6 +1199,7 @@ export class OrdenesComponent {
     this.obtenerPersonal(this.selectedReporteId);
     this.obtenerFotografias(this.selectedReporteId);
     this.obtenerNotas(this.selectedReporteId);
+    this.obtenerConcep(this.selectedReporteId);
 
     // Resetear vista previa del PDF cuando se selecciona nueva fecha
     this.showPdfEmbed = false;
@@ -2532,6 +2592,15 @@ async saveChangesEquipos() {
     );
   }
 
+  obtenerConcep(selectedReporteId: any) {
+    this.logbookService.getInfoByReporte(selectedReporteId, "CONCEPT").subscribe(
+      (data: any) => {
+        this.conceptos = data.data;
+      },
+      (error) => console.error('Error fetching data:', error)
+    );
+  }
+
 
   catalogoMateriales(){
     return this.materialsService.getMaterials(this.idcompany, 'CONSUMABLE').subscribe(
@@ -2594,6 +2663,15 @@ async saveChangesEquipos() {
         console.log('Catálogo de tipos de nota obtenido:', this.typeNotesCatalog);
       },
       (error) => console.error('Error fetching type notes:', error)
+    );
+  }
+  obtenerConceptos(){
+    return this.workprogramsService.getActivities(this.idProject).subscribe(
+      (data: any) => {
+        this.catalogConcepto = data;
+        console.log('Catálogo de conceptos obtenido:', this.catalogConcepto);
+      },
+      (error) => console.error('Error fetching conceptos:', error)
     );
   }
 
@@ -2791,16 +2869,160 @@ async saveChangesEquipos() {
 
  // -- Métodos para Conceptos --
   addConcepto() {
-    // Tu lógica para añadir un nuevo concepto
-    console.log('Invocando addConcepto...');
+    if (!this.selectedOt) {
+      alerts.basicAlert('Error', 'Debe seleccionar una OT primero', 'error');
+      return;
+    }
+
+    if (!this.selectedReporteFecha) {
+      alerts.basicAlert('Error', 'Debe seleccionar una fecha de reporte primero', 'error');
+      return;
+    }
+
+    const newEquipo = {
+      id: 0,
+      idOt: parseInt(this.selectedOt.id),
+      idReporte: this.selectedReporteId,
+      idResource: null, // Se almacenará el ID del equipo
+      position: '', 
+      quantity: 1,
+      start: this.selectedReporteHoraInicio + ':00',
+      end: this.selectedReporteHoraTermino + ':00',
+      date: this.selectedReporteFecha,
+      typeNote: 'CONCEPT',
+      description: '',
+      orden: 1,
+      __isNew: true
+    };
+
+    this.conceptos = [newEquipo, ...this.conceptos];
+    this.notSavedConceptoChanges = true;
+    
+    setTimeout(() => {
+      if (this.conceptosGridApi) {
+        this.conceptosGridApi.setGridOption('rowData', this.conceptos);
+        setTimeout(() => {
+          this.conceptosGridApi.startEditingCell({
+            rowIndex: 0,
+            colKey: 'description'
+          });
+        }, 100);
+      }
+    }, 0);
   }
-  saveConceptosChanges() {
-    // Tu lógica para guardar cambios de conceptos
-    console.log('Invocando saveConceptosChanges...');
+  async saveConceptosChanges() {
+    const newRows = this.conceptos.filter(row => row.__isNew);
+  const modifiedRows = this.conceptos.filter(row => row.__modified && !row.__isNew);
+  /*const invalidNewRows = newRows.filter(item => !item.date || !item.supervisor);
+  
+  if (invalidNewRows.length > 0) {
+    alerts.basicAlert('Añadir entrada', 'Debe introducir la fecha y supervisor antes de guardar.', 'error');
+    return;
+  }*/
+
+  if (newRows.length === 0 && modifiedRows.length === 0) {
+    alerts.basicAlert('Info', 'No hay cambios para guardar', 'info');
+    return;
+  }
+
+  try {
+    const addRequests = newRows.map((row, index) => {
+      console.log(`=== FILA ORIGINAL ${index + 1} ===`, row);
+      const cleanedData = this.cleanDataForServer(row);
+      console.log(`=== DATOS LIMPIADOS ${index + 1} ===`, cleanedData);
+      console.log(`JSON.stringify:`, JSON.stringify(cleanedData, null, 2));
+      return this.logbookService.addDataForOt(cleanedData).toPromise();
+    });
+
+    const updateRequests = modifiedRows.map((row, index) => {
+      const cleanedData = this.cleanDataForServer(row);
+      console.log(`Datos limpiados para fila modificada ${index + 1}:`, cleanedData);
+      return this.logbookService.updateDataForOt(Number(row.id), cleanedData).toPromise();
+    });
+
+    console.log(`Ejecutando ${addRequests.length} requests de creación`);
+    console.log(`Ejecutando ${updateRequests.length} requests de actualización`);
+
+    const responses = await Promise.all([...addRequests, ...updateRequests]);
+    
+    console.log('=== RESPUESTAS RECIBIDAS ===');
+    console.log('Número de respuestas:', responses.length);
+    responses.forEach((response, index) => {
+      console.log(`Respuesta ${index + 1}:`, response);
+      
+      // Verificar estructura de la respuesta
+      if (response && typeof response === 'object') {
+        console.log(`- success: ${response.success}`);
+        console.log(`- message: ${response.message}`);
+        console.log(`- data: ${response.data ? 'SÍ' : 'NO'}`);
+        
+        if (response.data) {
+          console.log(`- data.id: ${response.data.id}`);
+        }
+      }
+    });
+
+    // Verificar si las respuestas son exitosas
+    const failedResponses = responses.filter(response => 
+      !response || 
+      (response.hasOwnProperty('success') && !response.success) ||
+      (response.status && response.status >= 400)
+    );
+
+    if (failedResponses.length > 0) {
+      console.error('Respuestas fallidas:', failedResponses);
+      throw new Error(`${failedResponses.length} requests fallaron`);
+    }
+
+    console.log('=== GUARDADO EXITOSO ===');
+    alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
+
+    this.notSavedConceptoChanges = false;
+    
+    // Recargar datos desde el servidor
+    console.log('Recargando datos desde el servidor...');
+    await this.loadDailyReports();
+    console.log('Datos recargados exitosamente');
+
+  } catch (error: any) {
+    console.error('=== ERROR DETALLADO ===');
+    console.error('Error completo:', error);
+    
+    // Log específico para errores de validación
+    if (error.status === 400 && error.error && error.error.errors) {
+      console.error('Errores de validación específicos:', error.error.errors);
+    }
+    
+    let errorMessage = 'Ocurrió un error al actualizar los datos.';
+    
+    if (error.status === 400) {
+      errorMessage = 'Datos inválidos. Verifique que todos los campos estén correctos.';
+      
+      // Mostrar errores específicos si están disponibles
+      if (error.error && error.error.errors) {
+        const validationErrors = Object.keys(error.error.errors).map(key => 
+          `${key}: ${error.error.errors[key].join(', ')}`
+        ).join('\n');
+        errorMessage += '\n\nErrores específicos:\n' + validationErrors;
+      }
+    } else if (error.status === 401) {
+      errorMessage = 'No autorizado. Por favor, vuelva a iniciar sesión.';
+    } else if (error.status === 403) {
+      errorMessage = 'No tiene permisos para realizar esta operación.';
+    } else if (error.status === 404) {
+      errorMessage = 'Recurso no encontrado. Verifique la URL del servicio.';
+    } else if (error.status === 500) {
+      errorMessage = 'Error interno del servidor. Contacte al administrador.';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    alerts.basicAlert('Error', errorMessage, 'error');
+  }
   }
   revertConceptos() {
-    // Tu lógica para revertir cambios de conceptos
-    console.log('Invocando revertConceptos...');
+   this.obtenerConcep(this.selectedReporteId);
+  this.notSavedConceptoChanges = false;
   }
   deleteConcepto() {
     // Tu lógica para eliminar un concepto
