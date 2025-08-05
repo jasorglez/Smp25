@@ -472,7 +472,7 @@ export class GeneratorsComponent implements OnChanges {
     const tempId = `temp_${this.tempIdCounter++}`;
     const parent = this.selectedRowData;
     this.treeData = [...this.treeData, {
-      id: tempId, idType: parent.originalId, idResource: 0, quantity: 1, accumulate: 0, type: 'GENERADOR',
+      id: tempId, idType: parent.originalId, idResource: 0, quantity: 0, accumulate: 0, type: 'GENERADOR',
       comment: '', active: true, nodeType: 'item', orgHierarchy: [parent.numero, `Item_${tempId}`],
       originalId: tempId, parentGeneratorId: parent.originalId, __isNew: true,
     }];
