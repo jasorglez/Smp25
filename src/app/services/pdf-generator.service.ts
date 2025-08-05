@@ -39,6 +39,8 @@ export class PdfGeneratorService {
   catalogEquipos: any[] = [];
   notasData: any[] = [];
   typeNotesCatalog: any[] = [];
+  conceptosData: any[] = [];
+  conceptosCatalog: any[] = [];
 
   constructor(
     private datos: ReceivedataService,
@@ -71,6 +73,8 @@ export class PdfGeneratorService {
     notasData?: any[];
     idReport?: number;
     typeNotesCatalog?: any[];
+    conceptosData?: any[];
+    conceptosCatalog?: any[];
   }) {
     console.log('Input data for PDF generation:', inputData);
     this.id = inputData.id;
@@ -96,7 +100,13 @@ export class PdfGeneratorService {
     if (inputData.typeNotesCatalog) {
       this.typeNotesCatalog = inputData.typeNotesCatalog;
     }
-    
+    if (inputData.conceptosData) {
+      this.conceptosData = inputData.conceptosData;
+    }
+    if (inputData.conceptosCatalog) {
+      this.conceptosCatalog = inputData.conceptosCatalog;
+    }
+
     // Si se proporcionan fotografías desde Ordenes, procesarlas directamente
     if (inputData.fotografiasData && inputData.fotografiasData.length > 0) {
       await this.processFotografiasFromOrdenes(inputData.fotografiasData);
@@ -441,7 +451,7 @@ export class PdfGeneratorService {
 
         if (correspondingNotes.length > 0) {
           this.gestionarDatos.push({
-            text: i + '.- ' + titles[i],
+            text: (i) + '.- ' + titles[i],
             style: 'puntosATratar',
           });
 
@@ -458,7 +468,7 @@ export class PdfGeneratorService {
           this.gestionarDatos.push(listItems);
         } else {
           this.gestionarDatos.push({
-            text: i + '.- ' + titles[i],
+            text: (i) + '.- ' + titles[i],
             style: 'puntosATratar',
           });
 
@@ -633,26 +643,61 @@ private processMaterialesData(): string[][] {
         ['No hay datos de equipos', '0']
       ];
     }
-
-    // Agrupar por nombre de equipo y sumar Can.
     const equipoMap = new Map<string, number>();
-    
     this.equiposData.forEach(equipo => {
       const equipoSeleccionado = this.catalogEquipos.find(e => e.id === equipo.idResource);
       const nombre = equipoSeleccionado ? equipoSeleccionado.description : 'Sin nombre';
       const Cantidad = equipo.quantity ?? 0;;
-
       if (equipoMap.has(nombre)) {
         equipoMap.set(nombre, equipoMap.get(nombre)! + Cantidad);
       } else {
         equipoMap.set(nombre, Cantidad);
       }
     });
-
     // Convertir a array para la tabla
     const tableData = [['Equipo', 'Can.']];
     equipoMap.forEach((Cantidad, nombre) => {
       tableData.push([nombre, Cantidad.toString()]);
+    });
+
+    return tableData;
+  }
+
+  private processConceptosData(): string[][] {
+    if (!this.conceptosData || this.conceptosData.length === 0) {
+      return [
+        ['Conc.', 'Descripción', 'Can.'],
+        ['No hay datos de conceptos', 'Sin descripción disponible', '0']
+      ];
+    }
+
+    // Agrupar por concepto y sumar cantidades
+    const conceptoMap = new Map<string, { activity: string, description: string, cantidad: number }>();
+    
+    this.conceptosData.forEach(conceptos => {
+      const conceptosSeleccionado = this.conceptosCatalog.find(e => e.id === conceptos.idResource);
+      const activity = conceptosSeleccionado ? conceptosSeleccionado.activity : 'Sin nombre';
+      const description = conceptosSeleccionado ? conceptosSeleccionado.text : 'Sin descripción';
+      const cantidad = conceptos.quantity ?? 0;
+      
+      const key = `${conceptos.idResource}-${activity}`;
+      
+      if (conceptoMap.has(key)) {
+        const existing = conceptoMap.get(key)!;
+        conceptoMap.set(key, {
+          activity: existing.activity,
+          description: existing.description,
+          cantidad: existing.cantidad + cantidad
+        });
+      } else {
+        conceptoMap.set(key, { activity, description, cantidad });
+      }
+    });
+    
+    // Convertir a array para la tabla
+    const tableData = [['Conc.', 'Descripción', 'Can.']];
+    conceptoMap.forEach(data => {
+      tableData.push([data.activity, data.description, data.cantidad.toString()]);
     });
 
     return tableData;
@@ -877,21 +922,36 @@ private processMaterialesData(): string[][] {
           layout: 'noBorders',
         },
         { text: 'Reporte de Bitácora', style: 'title' },
-        ...this.gestionarDatos,
-        { text: '', pageBreak: 'after' },
         {
-          text: '3.- REPORTE FOTOGRAFICO',
+          columns: [
+            {
+              width: '100%',
+              table: {
+                headerRows: 1,
+                widths: ['auto', '*', 'auto'],
+                body: this.processConceptosData()
+              },
+              layout: {
+                fillColor: function (rowIndex) {
+                  return (rowIndex === 0) ? '#CCCCCC' : null;
+                }
+              },
+              style: 'tableContent'
+            },
+            {
+              width: '100%',
+              text: ''
+            }
+          ],
+          columnGap: 10
+        },
+        ...this.gestionarDatos,
+        {
+          text: '3.- LISTADO DE CONTROL',
           pageBreak: (currentPage, pageSize, currentNode, nodesOnPage) => {
             return nodesOnPage.length > 0 ? 'before' : '';
           },
           style: 'puntosATratar',
-        },
-        ...contenido,
-        { text: '', pageBreak: 'after' },
-        {
-          text: '4.- CONTROL DE RECURSOS',
-          style: 'puntosATratar',
-          margin: [0, 20, 0, 10]
         },
         {
           columns: [
@@ -966,7 +1026,17 @@ private processMaterialesData(): string[][] {
             }
           ],
           columnGap: 10
-        }
+        },
+        { text: '', pageBreak: 'after' },
+        {
+          text: '4.- REPORTE FOTOGRAFICO',
+          pageBreak: (currentPage, pageSize, currentNode, nodesOnPage) => {
+            return nodesOnPage.length > 0 ? 'before' : '';
+          },
+          style: 'puntosATratar',
+        },
+        ...contenido,
+        
       ],
       images: {
         zheader: this.trackingService.getPictureComp2(),

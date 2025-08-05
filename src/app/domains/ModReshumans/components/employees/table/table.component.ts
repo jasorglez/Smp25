@@ -777,14 +777,15 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             }
           },
         },
-        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-          if (!event.node.group) {
-            this.modalServiceTable.showModal({
-              params: event,
-              value: event.value,
-            });
-          }
-        },
+        // Modal deshabilitado para evitar conflictos entre componentes
+        // onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+        //   if (!event.node.group) {
+        //     this.modalServiceTable.showModal({
+        //       params: event,
+        //       value: event.value,
+        //     });
+        //   }
+        // },
         cellRenderer: (params: ICellRendererParams) => {
           if (params.node.group) {
             return params.value.toUpperCase();

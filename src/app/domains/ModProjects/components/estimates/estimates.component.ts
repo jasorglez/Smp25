@@ -460,7 +460,8 @@ public gridOptions: any = {
   clearFilters() {
     if (this.gridApi) {
       this.gridApi.setFilterModel(null);
-      this.gridApi.onFilterChanged();
+      // Removido onFilterChanged() para evitar conflictos con controles de fecha
+      // El grid se actualizará automáticamente
     }
   }
 

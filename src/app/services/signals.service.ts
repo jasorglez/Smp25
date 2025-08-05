@@ -742,6 +742,7 @@ getMasterUpdateTrigger() {
   private fechaFinNomina = signal<string>(null);
   private initSaving = signal<boolean>(false);
   private closedPayroll = signal<boolean>(false);
+  private closedReport = signal<boolean>(false);
 
   setIdCatalogFamily(id: number){
     this.idCatalogFamily.set(id);
@@ -793,5 +794,11 @@ getMasterUpdateTrigger() {
   getClosedPayroll() {
     return this.closedPayroll;
   }
-
+  
+  setClosedReport(value: boolean) {
+    this.closedReport.set(value);
+  }
+  getClosedReport() {
+    return this.closedReport;
+  }
 }

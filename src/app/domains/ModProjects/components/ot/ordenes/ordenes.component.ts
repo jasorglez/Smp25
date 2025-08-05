@@ -1,4 +1,4 @@
-import { Component, effect, inject, OnInit } from '@angular/core';
+import { Component, effect, inject, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { AgGridModule } from 'ag-grid-angular';
@@ -56,6 +56,7 @@ interface ReporteDiario {
   supervisor: string;
   type: string; // "PROCESO"
   description: string | null;
+  close: boolean;
   active: boolean;
   
   // Propiedades computadas para el grid (compatibilidad)
@@ -120,12 +121,12 @@ interface Fotografia {
   templateUrl: './ordenes.component.html',
   styleUrl: './ordenes.component.scss',
 })
-export class OrdenesComponent {
+export class OrdenesComponent implements OnDestroy {
   private otService = inject(OtService);
   private equipmentService = inject(EquipmentService);
   private dailyReportService = inject(DailyReportService);
   private logbookService = inject(LogbookService);
-  private signalsService = inject(SignalsService);
+  public signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
   private imageHandlerService = inject(ImageHandlerService);
   private workprogramsService = inject(WorkprogramsService);
@@ -160,6 +161,7 @@ export class OrdenesComponent {
   public selectedReporteHoraTermino: string = '';
   public selectedReporteId: number | string | null = null;
   public selectedFotografia: Fotografia | null = null;
+  public selectedStatusReport: boolean = false;
   
 
   // Variables para columnas ajustables
@@ -292,7 +294,7 @@ export class OrdenesComponent {
   field: 'idResource',
   headerName: 'Material',
   flex: 2,
-  editable: true,
+  editable: () => !this.signalsService.getClosedReport()(),
   cellEditor: 'agSelectCellEditor',
   cellEditorParams: {
     values: this.catalogMateriales?.map((item) => item.description) || [],
@@ -341,7 +343,7 @@ export class OrdenesComponent {
     field: 'quantity',
     headerName: 'Cantidad',
     width: 100,
-    editable: true
+    editable: this.signalsService.getClosedReport()()? false : true
   },
 
   {
@@ -373,7 +375,7 @@ export class OrdenesComponent {
     field: 'idResource',
     headerName: 'Equipo',
     flex: 2,
-    editable: true,
+   editable: () => !this.signalsService.getClosedReport()(),
     cellEditor: 'agSelectCellEditor',
     cellEditorParams: (params: any) => ({
       values: this.catalogEquipos?.map((item) => item.description) || [],
@@ -418,8 +420,8 @@ export class OrdenesComponent {
       }
     }
   },
-    { field: 'quantity', headerName: 'Cantidad', flex: 1, editable: true },
-    //{ field: 'quantity', headerName: 'Horas', width: 100, editable: true },
+    { field: 'quantity', headerName: 'Cantidad', flex: 1, editable: this.signalsService.getClosedReport()()? false : true },
+    //{ field: 'quantity', headerName: 'Horas', width: 100, editable: !this.signalsService.getClosedReport() },
     //{ field: 'fechaUso', headerName: 'Fecha', width: 120 }
   ];
   
@@ -429,7 +431,7 @@ export class OrdenesComponent {
       field: 'idResource',
       headerName: 'Nombre',
       flex: 1,
-      editable: true,
+      editable: () => !this.signalsService.getClosedReport()(),
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: (params: any) => {
         return {
@@ -472,13 +474,13 @@ export class OrdenesComponent {
     { 
       field: 'cuadrilla', 
       headerName: 'Cuadrilla', 
-      flex: 1, editable: true , 
+      flex: 1, editable:() => !this.signalsService.getClosedReport()(), 
       valueGetter: (params) => {
         return params.data.cuadrilla || 'Cuadrilla ';
       }
     },
-    /*{ field: 'start', headerName: 'Inicio', width: 100, editable: true },
-    { field: 'end', headerName: 'Fin', width: 100, editable: true },
+    /*{ field: 'start', headerName: 'Inicio', width: 100, editable: !this.signalsService.getClosedReport() },
+    { field: 'end', headerName: 'Fin', width: 100, editable: !this.signalsService.getClosedReport() },
     { field: 'date', headerName: 'Fecha', width: 120 }*/
   ];
 
@@ -495,7 +497,7 @@ export class OrdenesComponent {
         },
         editable: false,
      },
-    { field: 'description', headerName: 'Descripción', flex: 1, editable: true },
+    { field: 'description', headerName: 'Descripción', flex: 1, editable: this.signalsService.getClosedReport()()? false : true },
     //{ field: 'fecha', headerName: 'Fecha', width: 120 }
   ];
 
@@ -504,7 +506,7 @@ export class OrdenesComponent {
     field: 'idResource',
     headerName: 'Equipo',
     flex: 2,
-    editable: true,
+    editable: () => !this.signalsService.getClosedReport()(),
     cellEditor: 'agSelectCellEditor',
     cellEditorParams: (params: any) => ({
       values: this.typeNotesCatalog?.map((item) => item.description) || [],
@@ -549,24 +551,32 @@ export class OrdenesComponent {
       }
     }
   },
- {
-  field: 'description',
-  headerName: 'Descripción',
-  flex: 1,
-  editable: true,
-  cellEditor: 'agLargeTextCellEditor', // este sí existe
-  cellEditorParams: {
-    maxLength: 1000,
-    cols: 50,
-    rows: 3,
-    suppressScroll: true,
-  },
-  cellRenderer: (params: ICellRendererParams) => {
-    console.log('=== CELL RENDERER NOTAS ===');
-    console.log('Params:', params);
-    return params.value ? params.value.toUpperCase() : '';
-  },
-}
+  {
+    field: 'description',
+    headerName: 'Descripción',
+    flex: 1,
+    editable: () => !this.signalsService.getClosedReport()(),
+    cellEditor: 'agPopupTextCellEditor',
+    cellEditorParams: {
+      maxLength: 1000,
+      cols: 50,
+      rows: 5,
+      onKeyDown: (event: KeyboardEvent) => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+          event.stopPropagation();
+        }
+      },
+    },
+    onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+      this.openDescriptionModal(event);
+    },
+    cellRenderer: (params: ICellRendererParams) => {
+      if (params.node.group) {
+        return params.value ? params.value.toUpperCase() : '';
+      }
+      return params.value ? params.value.toUpperCase() : '';
+    },
+  }
 
 
  ]
@@ -579,6 +589,57 @@ export class OrdenesComponent {
   }
 }
 
+openDescriptionModal(event: CellDoubleClickedEvent) {
+  if (event.node.group) return;
+  
+  const currentValue = event.value || '';
+  const fieldName = event.colDef.field;
+  
+  // Usar SweetAlert2 como modal para editar la descripción
+  alerts.inputAlert(
+    'Editar Descripción',
+    'Ingrese la descripción:',
+    'textarea',
+    currentValue,
+    {
+      inputAttributes: {
+        maxlength: '1000',
+        rows: '8',
+        cols: '80',
+        style: 'min-height: 200px; min-width: 400px; resize: both;',
+        placeholder: 'Escriba aquí la descripción...'
+      },
+      showCancelButton: true,
+      confirmButtonText: 'Guardar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#28a745',
+      cancelButtonColor: '#6c757d'
+    }
+  ).then((result) => {
+    if (result.isConfirmed && result.value !== undefined) {
+      // Actualizar el valor en el grid
+      event.node.setDataValue(fieldName, result.value);
+      
+      // Marcar como modificado para trackear cambios
+      if (event.data) {
+        event.data.__modified = true;
+        // Actualizar el flag de cambios no guardados dependiendo de qué grid sea
+        if (fieldName === 'description') {
+          this.notSavedNoteChanges = true;
+        }
+      }
+      
+      // Log para tracking
+      this.trackingService.addLog(
+        this.trackingService.getnameComp(),
+        `Descripción editada via modal - Campo: ${fieldName}`,
+        'Orden de Trabajo - Edición Modal',
+        this.trackingService.getEmail()
+      );
+    }
+  });
+}
+
 
 
   public conceptosColumnDefs: ColDef[] = [
@@ -586,7 +647,7 @@ export class OrdenesComponent {
     field: 'idResource',
     headerName: 'Equipo',
     flex: 2,
-    editable: true,
+    editable: () => !this.signalsService.getClosedReport()(),
     cellEditor: 'agSelectCellEditor',
     cellEditorParams: (params: any) => ({
       values: this.catalogConcepto?.map((item) => item.actandNom) || [],
@@ -631,7 +692,7 @@ export class OrdenesComponent {
       }
     }
   },
-  { field: 'quantity', headerName: 'Cantidad', flex: 1, editable: true },
+  { field: 'quantity', headerName: 'Cantidad', flex: 1, editable: this.signalsService.getClosedReport()()? false : true },
   ]
 
   addFotografia(){
@@ -851,7 +912,7 @@ export class OrdenesComponent {
       field: 'date', 
       headerName: 'Fecha', 
       width: 90, 
-      editable: true,
+      editable: () => !this.signalsService.getClosedReport()(),
       cellEditor: 'agDateCellEditor',
       cellEditorParams: {
         min: '2020-01-01',
@@ -913,7 +974,7 @@ export class OrdenesComponent {
       field: 'startTime', 
       headerName: 'Inicio', 
       width: 85, 
-      editable: true,
+      editable: () => !this.signalsService.getClosedReport()(),
       cellEditor: 'timeEditor',
       valueFormatter: (params) => {
         return params.value ? params.value.substring(0, 5) : '';
@@ -923,7 +984,7 @@ export class OrdenesComponent {
       field: 'endTime', 
       headerName: 'Término', 
       width: 105, 
-      editable: true,
+      editable: () => !this.signalsService.getClosedReport()(),
       cellEditor: 'timeEditor',
       valueFormatter: (params) => {
         return params.value ? params.value.substring(0, 5) : '';
@@ -933,7 +994,7 @@ export class OrdenesComponent {
       field: 'type', 
       headerName: 'Area', 
       width: 90, 
-      editable: true,
+      editable: () => !this.signalsService.getClosedReport()(),
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: {
         values: ['CORTES', 'RECONEXIONES', 'MEDIDORES', 'INSPECCIONES']
@@ -948,13 +1009,13 @@ export class OrdenesComponent {
     { 
       field: 'description', 
       headerName: 'Comentario', 
-      editable: true,
+      editable: () => !this.signalsService.getClosedReport()(),
       width: 120,
     },
     { 
-      field: '', 
+      field: 'close', 
       headerName: 'Cerrado', 
-      editable: true,
+      editable: () => !this.signalsService.getClosedReport()(),
       width: 120,
     }
   ];
@@ -1013,7 +1074,11 @@ export class OrdenesComponent {
     suppressHorizontalScroll: false,
     animateRows: true,
     pagination: false,
-    domLayout: 'autoHeight'
+    domLayout: 'autoHeight',
+    stopEditingWhenCellsLoseFocus: true,
+    rowSelection: 'single',
+    onCellValueChanged: (event: any) => this.onCellValueChangedConcepto(event),
+    onGridReady: (params: any) => this.onConceptosGridReady(params)
   };
 
   // Configuración específica para el grid de personal con edición
@@ -1103,6 +1168,8 @@ export class OrdenesComponent {
     effect(() => {
       this.idProject =this.signalsService.getProjectSelectedBySidebar()();
       this.idcompany = this.signalsService.getRootSelectedBySidebar()();
+      //alert(this.signalsService.getClosedReport()())
+      //this.selectedStatusReport = this.signalsService.getClosedReport()();
       this.catalogoMateriales();
       this.catalogoEquipo();
       this.obtenerTypeNotes();
@@ -1222,6 +1289,7 @@ export class OrdenesComponent {
     this.selectedReporteHoraInicio = reporte.horaInicio || reporte.startTime.substring(0, 5);
     this.selectedReporteHoraTermino = reporte.horaTermino || reporte.endTime.substring(0, 5);
     this.selectedReporteId = reporte.id;
+    this.signalsService.setClosedReport(reporte.close)
     this.obtenerMateriales(this.selectedReporteId);
     this.obtenerEquipos(this.selectedReporteId);
     this.obtenerPersonal(this.selectedReporteId);
@@ -1403,6 +1471,7 @@ export class OrdenesComponent {
       description: 'SIN DESCRIPCIÓN',
       result: 'SIN RESULTADO',
       active: true,
+      close: false,
       __isNew: true
     };
 
@@ -1913,7 +1982,9 @@ async saveChangesEquipos() {
         fotografiasData: this.fotografias, // Agregar fotografías de la pestaña
         notasData: this.notas, // Agregar notas de la pestaña
         idReport: typeof this.selectedReporteId === 'string' ? parseInt(this.selectedReporteId) : this.selectedReporteId, // Agregar idReport para obtener notas de TRABAJO ANTECEDENTES
-        typeNotesCatalog: this.typeNotesCatalog // Agregar catálogo de tipos de notas
+        typeNotesCatalog: this.typeNotesCatalog, // Agregar catálogo de tipos de notas
+        conceptosData: this.conceptos,
+        conceptosCatalog: this.catalogConcepto,
       };
 
       // Asignar a la propiedad de la clase para uso posterior
@@ -2272,6 +2343,15 @@ async saveChangesEquipos() {
     }
   }
 
+  onCellValueChangedConcepto(event: any) {
+
+    this.notSavedConceptoChanges = true;
+
+    if (!event.data.__isNew) {
+      event.data.__modified = true;
+    }
+  }
+
   // Método para manejar cambios en el grid de materiales
   onMaterialCellValueChanged(event: any) {
     console.log('=== CAMBIO EN GRID DE MATERIALES ===');
@@ -2314,12 +2394,17 @@ async saveChangesEquipos() {
     this.equiposGridApi = params.api;
   }
 
+  onConceptosGridReady(params: any) {
+    this.conceptosGridApi = params.api;
+  }
+
   onFotografiasGridReady(params: any) {
     this.fotografiaGridApi = params.api;
   }
 
   // Métodos CRUD para Personal
   addPersonal() {
+    //alert(typeof(!this.signalsService.getClosedReport()))
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Agregar Personal OT',
@@ -3166,8 +3251,64 @@ async saveChangesEquipos() {
   this.notSavedConceptoChanges = false;
   }
   deleteConcepto() {
-    // Tu lógica para eliminar un concepto
-    console.log('Invocando deleteConcepto...');
+    if (!this.conceptosGridApi) {
+      alerts.basicAlert('Error', 'Grid no disponible', 'error');
+      return;
+    }
+
+    const selectedNodes = this.conceptosGridApi.getSelectedNodes();
+    if (selectedNodes.length === 0) {
+      alerts.basicAlert('Error', 'Seleccione una entrada de concepto para eliminar', 'error');
+      return;
+    }
+
+    const selectedData = selectedNodes[0].data;
+    const id = selectedData.id;
+
+    console.log('=== INTENTANDO ELIMINAR CONECEPTO ===');
+    console.log('Registro seleccionado para eliminar:', selectedData);
+    console.log('ID a eliminar:', id);
+    
+    alerts.confirmAlert(
+      'Eliminar concepto',
+      '¿Está seguro que desea eliminar este registro de concepto?',
+      'warning',
+      'Sí, eliminar'
+    ).then((value) => {
+      if (value.isConfirmed) {
+        console.log('=== CONFIRMACIÓN DE ELIMINACIÓN ===');
+        
+        if (selectedData.__isNew) {
+          console.log('Eliminando registro nuevo (solo local)');
+          this.conceptos = this.conceptos.filter(m => m.id !== id);
+          this.notSavedConceptoChanges = this.conceptos.some(m => m.__isNew);
+          console.log('Concepto después de eliminación local:', this.conceptos);
+          alerts.basicAlert('Éxito', 'Concepto eliminado correctamente', 'success');
+        } else {
+          console.log('Eliminando registro existente usando endpoint DELETE');
+          console.log('Enviando DELETE para ID:', id);
+          
+          this.logbookService.deleteDataForOt(Number(id)).subscribe({
+            next: (response) => {
+              console.log('Respuesta del DELETE:', response);
+              this.conceptos = this.conceptos.filter(m => m.id !== id);
+              console.log('Concepto después de eliminación del servidor:', this.conceptos);
+              alerts.basicAlert('Éxito', 'Concepto eliminado correctamente del servidor', 'success');
+            },
+            error: (error) => {
+              console.error('Error al eliminar concepto del servidor:', error);
+              let errorMessage = 'Error al eliminar el registro de concepto';
+              if (error.status === 404) {
+                errorMessage = 'El registro ya no existe en el servidor';
+              } else if (error.status === 401) {
+                errorMessage = 'No autorizado para eliminar este registro';
+              }
+              alerts.basicAlert('Error', errorMessage, 'error');
+            }
+          });
+        }
+      }
+    });
   }
 
   // -- Métodos para Notas --
@@ -3419,7 +3560,19 @@ async saveChangesEquipos() {
     });
   }
 
-
-
-
+  ngOnDestroy() {
+    // Limpiar el estado del modal cuando se destruye el componente
+    // para evitar que aparezca en otros componentes
+    try {
+      if (this.modalServiceTable) {
+        // Ocultar el modal y limpiar los datos
+        this.modalServiceTable.hideModal();
+        this.modalServiceTable.updateData(null);
+      }
+    } catch (error) {
+      console.log('Error al limpiar modal state:', error);
+    }
+    
+    console.log('OrdenesComponent destruido - modal state limpiado');
+  }
 }
