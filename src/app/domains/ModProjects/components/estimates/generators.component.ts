@@ -342,11 +342,15 @@ export class GeneratorsComponent implements OnChanges {
     }
     
     // Llamar al servicio para obtener el acumulado
+    console.log('Llamando SumaReporte con:', {
+      selectedResourceId, startDate,  endDate
+    });
+    
     this.dailyReportService.SumaReporte(selectedResourceId, startDate, endDate)
       .subscribe({
         next: (result) => {
           item.accumulate = result.Total || 0;
-          console.log(`Acumulado calculado para recurso ${selectedResourceId}: ${item.accumulate}`);
+          console.log(`Acumulado calculado para recurso, fecha ${startDate},  ${endDate}, ${selectedResourceId}: ${item.accumulate}`);
           
           // Actualizar el grid para mostrar el nuevo valor
           if (this.gridApi) {
