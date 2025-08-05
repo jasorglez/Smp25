@@ -812,6 +812,7 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
 
       console.log('=== GUARDADO EXITOSO ===');
       alerts.basicAlert('Éxito', 'Cambios de fotografías guardados correctamente', 'success');
+      this.autoUpdatePdf()
       this.notSavedFotografiaChanges = false;
       
       // Limpiar flags de control
@@ -1179,6 +1180,9 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
       this.getDeptoandPosition();
       this.obtenerUnidades();
     });
+
+    // Effect para auto-actualizar PDF cuando se guarden cambio
+
     this.loadColumnSizes();
   }
 
@@ -1673,7 +1677,7 @@ async saveChangesMaterial() {
 
     console.log('=== GUARDADO EXITOSO ===');
     alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
-
+    this.autoUpdatePdf()
     this.notSavedMaterialChanges = false;
     
     // Recargar datos desde el servidor
@@ -1778,7 +1782,7 @@ async saveChangesEquipos() {
 
     console.log('=== GUARDADO EXITOSO ===');
     alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
-
+    this.autoUpdatePdf()
     this.notSavedEquipoChanges = false;
     
     // Recargar datos desde el servidor
@@ -2628,6 +2632,7 @@ async saveChangesEquipos() {
 
       console.log('=== GUARDADO EXITOSO ===');
       alerts.basicAlert('Éxito', 'Cambios de personal guardados correctamente', 'success');
+      this.autoUpdatePdf()
       this.notSavedPersonalChanges = false;
       
       // Limpiar flags de control
@@ -3202,7 +3207,7 @@ async saveChangesEquipos() {
 
     console.log('=== GUARDADO EXITOSO ===');
     alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
-
+    this.autoUpdatePdf()
     this.notSavedConceptoChanges = false;
     
     // Recargar datos desde el servidor
@@ -3432,7 +3437,7 @@ async saveChangesEquipos() {
 
     console.log('=== GUARDADO EXITOSO ===');
     alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
-
+    this.autoUpdatePdf()
     this.notSavedNoteChanges = false;
     
     // Recargar datos desde el servidor
@@ -3560,7 +3565,26 @@ async saveChangesEquipos() {
     });
   }
 
+  private autoUpdatePdf() {
+    // Debounce para evitar múltiples llamadas
+    if (this.autoUpdateTimeout) {
+      clearTimeout(this.autoUpdateTimeout);
+    }
+    
+    this.autoUpdateTimeout = setTimeout(() => {
+      console.log('Auto-actualizando PDF tras cambios guardados...');
+      this.generatePdfPreview();
+    }, 500); // Esperar 500ms antes de regenerar
+  }
+
+  private autoUpdateTimeout: any;
+
   ngOnDestroy() {
+    // Limpiar el timeout si existe
+    if (this.autoUpdateTimeout) {
+      clearTimeout(this.autoUpdateTimeout);
+    }
+    
     // Limpiar el estado del modal cuando se destruye el componente
     // para evitar que aparezca en otros componentes
     try {

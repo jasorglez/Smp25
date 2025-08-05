@@ -266,20 +266,29 @@ export class PdfEstimatesService {
           { text: item.clave, style: 'tableContent', border: [false, false, false, false] },
           { text: item.concepto, style: 'tableContent', border: [false, false, false, false] },
           { text: item.unidad, style: ['tableContent', 'centerAlign'], border: [false, false, false, false] },
-          { text: this.formatNumber(item.cantidad), style: ['tableContent', 'rightAlign'], border: [false, false, false, false] },
+          { text: this.formatNumber(item.cantidad || 0), style: ['tableContent', 'rightAlign'], border: [false, false, false, false] },
           { text: this.formatCurrency(item.precioUnitario), style: ['tableContent', 'rightAlign'], border: [false, false, false, false] },
           { text: this.formatCurrency(item.importe), style: ['tableContent', 'rightAlign'], border: [false, false, false, false] },
-          { text: item.precioUnitario ? this.formatCurrency(item.precioUnitario) : '', style: ['tableContent', 'rightAlign'] },
-          { text: item.cantidadEjecutada ? this.formatNumber(item.cantidadEjecutada) : '', style: ['tableContent', 'rightAlign'] },
-          { text: item.importeEjecutado ? this.formatCurrency(item.importeEjecutado) : '', style: ['tableContent', 'rightAlign'] }
+          { text: this.formatCurrency(item.precioUnitario || 0), style: ['tableContent', 'rightAlign'] },
+          { text: this.formatNumber(item.cantidadEjecutada || 0), style: ['tableContent', 'rightAlign'] },
+          { text: this.formatCurrency((item.precioUnitario || 0) * (item.cantidadEjecutada || 0)), style: ['tableContent', 'rightAlign'] }
         ]);
       });
     });
 
-    // Final total row
+    // First total row - for general total
     body.push([
       { text: 'TOTAL', style: ['totalRow', 'centerAlign'], colSpan: 5 }, {}, {}, {}, {},
       { text: this.formatCurrency(data.totalGeneral), style: ['totalRow', 'rightAlign'] },
+      { text: '', style: 'totalRow' },
+      { text: '', style: 'totalRow' },
+      { text: '', style: 'totalRow' }
+    ]);
+
+    // Second total row - for executed total
+    body.push([
+      { text: 'TOTAL', style: ['totalRow', 'centerAlign'], colSpan: 5 }, {}, {}, {}, {},
+      { text: '', style: 'totalRow' },
       { text: '', style: 'totalRow' },
       { text: '', style: 'totalRow' },
       { text: this.formatCurrency(data.totalEjecutado), style: ['totalRow', 'rightAlign'] }
@@ -306,78 +315,15 @@ export class PdfEstimatesService {
   // Method to create sample data for testing
   createSampleEstimate(): EstimateData {
     return {
-      proyecto: 'PLAZA CORALA',
-      estimacion: '13R',
-      fechaInicio: '18 de noviembre de 2024',
-      fechaFin: '23 de noviembre de 2024',
-      totalGeneral: 11025337.41,
-      totalEjecutado: 353335.51,
+      proyecto: 'PROYECTO DE EJEMPLO',
+      estimacion: '1',
+      fechaInicio: '1 de enero de 2024',
+      fechaFin: '31 de enero de 2024',
+      totalGeneral: 0,
+      totalEjecutado: 0,
       pagina: 1,
-      totalPaginas: 26,
-      categorias: [
-        {
-          nombre: 'PRELIMINARES',
-          total: 96058.84,
-          items: [
-            {
-              clave: 'PRE-04',
-              concepto: 'LIMPIEZA MANUAL DEL TERRENO, DE MALEZA Y BASURA.',
-              unidad: 'JOR',
-              cantidad: 48.00,
-              precioUnitario: 450.00,
-              importe: 21600.00,
-              cantidadEjecutada: 12.00,
-              importeEjecutado: 5400.00
-            }
-          ]
-        },
-        {
-          nombre: 'CIMENTACION',
-          total: 10929278.56,
-          items: [
-            {
-              clave: 'CIM-POL-05',
-              concepto: 'COLOCACIÓN DE POLIETILENO',
-              unidad: 'M2',
-              cantidad: 6346.95,
-              precioUnitario: 16.32,
-              importe: 103582.22,
-              cantidadEjecutada: 308.79,
-              importeEjecutado: 5039.45
-            },
-            {
-              clave: 'CIM-05',
-              concepto: 'PLANTILLA DE CONCRETO FC=100 KG/CM2 DE 5 CM DE ESPESOR HECHO EN OBRA, INCLUYE:MATERIAL, MANO DE OBRA, COMPACTACIÓN DEL FONDO Y CURADO.(P.U.O.T.)',
-              unidad: 'M2',
-              cantidad: 6346.95,
-              precioUnitario: 32.00,
-              importe: 203102.40,
-              cantidadEjecutada: 308.79,
-              importeEjecutado: 9881.28
-            },
-            {
-              clave: 'CIM-08',
-              concepto: 'Habilitado de acero #5',
-              unidad: 'kg',
-              cantidad: 144092.22,
-              precioUnitario: 6.48,
-              importe: 933717.60,
-              cantidadEjecutada: 10832.59,
-              importeEjecutado: 70195.17
-            },
-            {
-              clave: 'CIM-09',
-              concepto: 'Habilitado de acero #6',
-              unidad: 'kg',
-              cantidad: 161988.50,
-              precioUnitario: 6.48,
-              importe: 1049685.47,
-              cantidadEjecutada: 20052.73,
-              importeEjecutado: 129941.71
-            }
-          ]
-        }
-      ]
+      totalPaginas: 1,
+      categorias: []
     };
   }
 }

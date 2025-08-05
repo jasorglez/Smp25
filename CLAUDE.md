@@ -95,3 +95,9 @@ The application is organized into distinct business domains under `src/app/domai
 ### Development Workflow
 
 The application supports hot reloading in development mode and includes comprehensive build optimization for production. The codebase appears to be a comprehensive business management system with modules for HR, sales, projects, warehousing, and administrative functions.
+
+## Project Memories
+
+- Hasta aaqui funciona relativamente bien
+- hasta aqui todo bien
+- Se ha añadido estimados
