@@ -922,22 +922,6 @@ private processMaterialesData(): string[][] {
           layout: 'noBorders',
         },
         { text: 'Reporte de Bitácora', style: 'title' },
-        ...this.gestionarDatos,
-        { text: '', pageBreak: 'after' },
-        {
-          text: '3.- REPORTE FOTOGRAFICO',
-          pageBreak: (currentPage, pageSize, currentNode, nodesOnPage) => {
-            return nodesOnPage.length > 0 ? 'before' : '';
-          },
-          style: 'puntosATratar',
-        },
-        ...contenido,
-        { text: '', pageBreak: 'after' },
-        {
-          text: '4.- CONTROL DE RECURSOS',
-          style: 'puntosATratar',
-          margin: [0, 20, 0, 10]
-        },
         {
           columns: [
             {
@@ -1039,7 +1023,18 @@ private processMaterialesData(): string[][] {
             }
           ],
           columnGap: 10
-        }
+        },
+        ...this.gestionarDatos,
+        { text: '', pageBreak: 'after' },
+        {
+          text: '2.- REPORTE FOTOGRAFICO',
+          pageBreak: (currentPage, pageSize, currentNode, nodesOnPage) => {
+            return nodesOnPage.length > 0 ? 'before' : '';
+          },
+          style: 'puntosATratar',
+        },
+        ...contenido,
+        
       ],
       images: {
         zheader: this.trackingService.getPictureComp2(),
