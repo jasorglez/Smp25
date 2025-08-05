@@ -1913,7 +1913,9 @@ async saveChangesEquipos() {
         fotografiasData: this.fotografias, // Agregar fotografías de la pestaña
         notasData: this.notas, // Agregar notas de la pestaña
         idReport: typeof this.selectedReporteId === 'string' ? parseInt(this.selectedReporteId) : this.selectedReporteId, // Agregar idReport para obtener notas de TRABAJO ANTECEDENTES
-        typeNotesCatalog: this.typeNotesCatalog // Agregar catálogo de tipos de notas
+        typeNotesCatalog: this.typeNotesCatalog, // Agregar catálogo de tipos de notas
+        conceptosData: this.conceptos,
+        conceptosCatalog: this.catalogConcepto,
       };
 
       // Asignar a la propiedad de la clase para uso posterior
