@@ -16,6 +16,10 @@ export class EstimatesService {
     return this.http.get<any[]>(`${environment.urlSmp}/Estimates?idContract=${id}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getEstimateById(id: number): Observable<any> {
+    return this.http.get<any>(`${environment.urlSmp}/Estimates/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
   addEstimate(data: any): Observable<any> {
     return this.http.post(`${environment.urlSmp}/Estimates`, data, { headers: this.trackingService.getHeaders() });
   }

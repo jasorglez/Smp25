@@ -936,7 +936,7 @@ export class OrdenesComponent {
       editable: true,
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: {
-        values: ['SUSPENSION', 'HUNDIMIENT']
+        values: ['CORTES', 'RECONEXIONES', 'MEDIDORES', 'INSPECCIONES']
       }
     },
     /*{ 
