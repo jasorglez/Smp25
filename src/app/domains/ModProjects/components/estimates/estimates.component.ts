@@ -11,6 +11,7 @@ import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/auto
 import { GeneratorsComponent } from './generators.component';
 import { PdfEstimatesService } from 'app/services/pdf-estimates.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { WorkprogramsService } from 'app/services/workprograms.service';
 
 @Component({
   selector: 'app-estimates',
@@ -24,6 +25,7 @@ export class EstimatesComponent {
   private signalsService = inject(SignalsService);
   private pdfEstimatesService = inject(PdfEstimatesService);
   private trackingService = inject(TrackingService);
+  private workprogramsService = inject(WorkprogramsService);
 
   constructor() {
     effect(() => {
@@ -456,14 +458,6 @@ public gridOptions: any = {
     this.activateGeneratorsTab();
   }
 
-  // Función para limpiar filtros
-  clearFilters() {
-    if (this.gridApi) {
-      this.gridApi.setFilterModel(null);
-      // Removido onFilterChanged() para evitar conflictos con controles de fecha
-      // El grid se actualizará automáticamente
-    }
-  }
 
 
 
@@ -501,20 +495,7 @@ public gridOptions: any = {
       return;
     }
 
-    this.estimatesService.getEstimateById(this.selectedRowData.id).subscribe({
-      next: (estimateData) => {
-        const pdfData = this.createEstimateDataFromResponse(estimateData);
-        this.pdfEstimatesService.generateEstimatePdf(pdfData);
-      },
-      error: (error) => {
-        console.error('Error obteniendo datos de estimación:', error);
-        alerts.basicAlert(
-          'Error',
-          'Error al obtener los datos de la estimación.',
-          'error'
-        );
-      }
-    });
+    this.generatePdfWithRealData(this.selectedRowData.id, false);
   }
 
   downloadSamplePdf() {
@@ -527,52 +508,143 @@ public gridOptions: any = {
       return;
     }
 
-    this.estimatesService.getEstimateById(this.selectedRowData.id).subscribe({
-      next: (estimateData) => {
-        const pdfData = this.createEstimateDataFromResponse(estimateData);
-        const fileName = `Estimacion_${estimateData.number}_${new Date().getTime()}.pdf`;
-        this.pdfEstimatesService.downloadEstimatePdf(pdfData, fileName);
-      },
-      error: (error) => {
-        console.error('Error obteniendo datos de estimación:', error);
-        alerts.basicAlert(
-          'Error',
-          'Error al obtener los datos de la estimación.',
-          'error'
-        );
-      }
-    });
+    this.generatePdfWithRealData(this.selectedRowData.id, true);
   }
 
-  private createEstimateDataFromResponse(estimateData: any) {
+  private async generatePdfWithRealData(estimateId: number, download: boolean = false) {
+    try {
+      // Obtener datos de la estimación
+      const estimateData = await lastValueFrom(this.estimatesService.getEstimateById(estimateId));
+      
+      // Obtener items de la estimación
+      const estimateItems = await lastValueFrom(this.estimatesService.getItemsFromEstimate(estimateId));
+      
+      // Obtener conceptos para cada item
+      const conceptPromises = estimateItems.map(item => 
+        lastValueFrom(this.workprogramsService.getWorkProgramsWithoutType(item.idResource))
+      );
+      
+      const conceptsResults = await Promise.all(conceptPromises);
+      
+      // Crear estructura de datos para el PDF
+      const pdfData = await this.createEstimateDataFromServices(estimateData, estimateItems, conceptsResults);
+      
+      if (download) {
+        const fileName = `Estimacion_${estimateData.number}_${new Date().getTime()}.pdf`;
+        this.pdfEstimatesService.downloadEstimatePdf(pdfData, fileName);
+      } else {
+        this.pdfEstimatesService.generateEstimatePdf(pdfData);
+      }
+      
+    } catch (error) {
+      console.error('Error generando PDF:', error);
+      alerts.basicAlert(
+        'Error',
+        'Error al generar el PDF. Por favor, intente nuevamente.',
+        'error'
+      );
+    }
+  }
+
+  private async createEstimateDataFromServices(estimateData: any, estimateItems: any[], conceptsResults: any[][]) {
+    // Procesar items y agrupar por categorías si es necesario
+    const items = estimateItems.map((item, index) => {
+      const concept = conceptsResults[index] && conceptsResults[index].length > 0 
+        ? conceptsResults[index][0] 
+        : null;
+      
+      return {
+        clave: concept?.id || item.idResource,
+        concepto: concept?.text || `Concepto ${item.idResource}`,
+        unidad: concept?.measure || 'PZA',
+        cantidad: concept?.quantity || item.quantity || 0,
+        precioUnitario: concept?.costMX || 0,
+        importe: (concept?.quantity || item.quantity || 0) * (concept?.costMX || 0),
+        cantidadEjecutada: item.accumulate || 0,
+        importeEjecutado: (item.accumulate || 0) * (concept?.costMX || 0),
+        comment: item.comment
+      };
+    });
+
+    // Agrupar por fases o categorías (usando la fase del concepto si está disponible)
+    const categorias = this.groupItemsByCategory(items, conceptsResults);
+
+    // Calcular el total general sumando solo los totales de las categorías (filas grises)
+    const totalGeneral = categorias.reduce((sum, categoria) => sum + categoria.total, 0);
+    
+    // Calcular el total ejecutado sumando los importes ejecutados de las categorías
+    const totalEjecutado = categorias.reduce((sum, categoria) => {
+      const totalEjecutadoCategoria = categoria.items.reduce((catSum, item) => catSum + (item.importeEjecutado || 0), 0);
+      return sum + totalEjecutadoCategoria;
+    }, 0);
+
     return {
-      proyecto: 'PLAZA CORALA', // Esto podría venir de otro servicio o configuración
+      proyecto: conceptsResults[0]?.[0]?.text || 'PROYECTO', // Usar el primer concepto como referencia del proyecto
       estimacion: estimateData.number,
       fechaInicio: this.formatDateForPdf(estimateData.dateStart),
       fechaFin: this.formatDateForPdf(estimateData.dateEnd),
-      totalGeneral: estimateData.amountMX || 0,
-      totalEjecutado: estimateData.acumulateMX || 0,
+      totalGeneral: totalGeneral, // Suma de totales de categorías (filas grises)
+      totalEjecutado: totalEjecutado, // Suma de importes ejecutados
       pagina: 1,
       totalPaginas: 1,
-      categorias: [
-        {
-          nombre: 'PRELIMINARES',
-          total: 96058.84,
-          items: [
-            {
-              clave: 'PRE-04',
-              concepto: 'LIMPIEZA MANUAL DEL TERRENO, DE MALEZA Y BASURA.',
-              unidad: 'JOR',
-              cantidad: 48.00,
-              precioUnitario: 450.00,
-              importe: 21600.00,
-              cantidadEjecutada: 12.00,
-              importeEjecutado: 5400.00
-            }
-          ]
-        }
-      ]
+      categorias: categorias
     };
+  }
+
+  private groupItemsByCategory(items: any[], conceptsResults: any[][]) {
+    const categoriesMap = new Map();
+    const parentItems = [];
+
+    // Primero, identificar los items Parent y crear categorías para ellos
+    items.forEach((item, index) => {
+      const concept = conceptsResults[index] && conceptsResults[index].length > 0 
+        ? conceptsResults[index][0] 
+        : null;
+      
+      if (concept?.typeActivity === 'Parent') {
+        const categoryName = concept?.text || item.concepto;
+        parentItems.push({ item, concept, categoryName });
+        
+        if (!categoriesMap.has(categoryName)) {
+          categoriesMap.set(categoryName, {
+            nombre: categoryName,
+            total: item.importe || 0,
+            items: []
+          });
+        }
+      }
+    });
+
+    // Luego, procesar todos los items (incluyendo los de phase)
+    items.forEach((item, index) => {
+      const concept = conceptsResults[index] && conceptsResults[index].length > 0 
+        ? conceptsResults[index][0] 
+        : null;
+      
+      // Skip items que ya son categorías Parent
+      if (concept?.typeActivity === 'Parent') {
+        return;
+      }
+      
+      const categoryName = concept?.phase;
+      
+      // Solo procesar si tiene categoryName válido
+      if (categoryName) {
+        if (!categoriesMap.has(categoryName)) {
+          categoriesMap.set(categoryName, {
+            nombre: categoryName,
+            total: 0,
+            items: []
+          });
+        }
+        
+        const category = categoriesMap.get(categoryName);
+        category.items.push(item);
+        category.total += item.importe;
+      }
+    });
+
+    return Array.from(categoriesMap.values());
   }
 
   private formatDateForPdf(dateString: string): string {
