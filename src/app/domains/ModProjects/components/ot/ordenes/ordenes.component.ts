@@ -1149,8 +1149,8 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     domLayout: 'autoHeight',
     stopEditingWhenCellsLoseFocus: true,
     rowSelection: 'single',
-    onCellValueChanged: (event: any) => this.onMaterialCellValueChanged(event),
-    onGridReady: (params: any) => this.onMaterialesGridReady(params)
+    onCellValueChanged: (event: any) => this.onCellValueChangedEquipo(event),
+    onGridReady: (params: any) => this.onEquiposGridReady(params)
   };
 
 
