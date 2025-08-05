@@ -451,7 +451,7 @@ export class PdfGeneratorService {
 
         if (correspondingNotes.length > 0) {
           this.gestionarDatos.push({
-            text: i + '.- ' + titles[i],
+            text: (i) + '.- ' + titles[i],
             style: 'puntosATratar',
           });
 
@@ -468,7 +468,7 @@ export class PdfGeneratorService {
           this.gestionarDatos.push(listItems);
         } else {
           this.gestionarDatos.push({
-            text: i + '.- ' + titles[i],
+            text: (i) + '.- ' + titles[i],
             style: 'puntosATratar',
           });
 
@@ -925,6 +925,37 @@ private processMaterialesData(): string[][] {
         {
           columns: [
             {
+              width: '100%',
+              table: {
+                headerRows: 1,
+                widths: ['auto', '*', 'auto'],
+                body: this.processConceptosData()
+              },
+              layout: {
+                fillColor: function (rowIndex) {
+                  return (rowIndex === 0) ? '#CCCCCC' : null;
+                }
+              },
+              style: 'tableContent'
+            },
+            {
+              width: '100%',
+              text: ''
+            }
+          ],
+          columnGap: 10
+        },
+        ...this.gestionarDatos,
+        {
+          text: '3.- LISTADO DE CONTROL',
+          pageBreak: (currentPage, pageSize, currentNode, nodesOnPage) => {
+            return nodesOnPage.length > 0 ? 'before' : '';
+          },
+          style: 'puntosATratar',
+        },
+        {
+          columns: [
+            {
               width: '33%',
               stack: [
                 {
@@ -996,38 +1027,9 @@ private processMaterialesData(): string[][] {
           ],
           columnGap: 10
         },
-        {
-          text: 'LISTADO DE CONCEPTOS',
-          style: 'tableHeader',
-          margin: [0, 20, 0, 10]
-        },
-        {
-          columns: [
-            {
-              width: '100%',
-              table: {
-                headerRows: 1,
-                widths: ['auto', '*', 'auto'],
-                body: this.processConceptosData()
-              },
-              layout: {
-                fillColor: function (rowIndex) {
-                  return (rowIndex === 0) ? '#CCCCCC' : null;
-                }
-              },
-              style: 'tableContent'
-            },
-            {
-              width: '100%',
-              text: ''
-            }
-          ],
-          columnGap: 10
-        },
-        ...this.gestionarDatos,
         { text: '', pageBreak: 'after' },
         {
-          text: '3.- REPORTE FOTOGRAFICO',
+          text: '4.- REPORTE FOTOGRAFICO',
           pageBreak: (currentPage, pageSize, currentNode, nodesOnPage) => {
             return nodesOnPage.length > 0 ? 'before' : '';
           },
