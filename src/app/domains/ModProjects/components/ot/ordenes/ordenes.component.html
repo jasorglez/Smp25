@@ -14,7 +14,7 @@
                     <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addReporte()">
                       <i class="bi bi-plus-lg"></i>
                     </button>
-                    <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revert()">
+                    <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revert()" [disabled]="signalsService.getClosedReport()()">
                       <i class="bi bi-arrow-clockwise"></i>
                     </button>
                     <button type="button" class="btn btn-info ms-1 me-1 mb-2" (click)="fileInput.click()" [disabled]="isUploading">
@@ -120,10 +120,10 @@
                     <h6><i class="bi bi-people"></i> Personal Asignado <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
                     <div class="row">
                       <nav class="col-auto d-flex flex-column align-items-start">
-                        <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addPersonal()"><i class="bi bi-plus-lg"></i></button>
+                        <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addPersonal()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
                         <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="savePersonalChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedPersonalChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
-                        <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertPersonal()"><i class="bi bi-arrow-clockwise"></i></button>
-                        <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deletePersonal()"><i class="bi bi-trash"></i></button>
+                        <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertPersonal()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
+                        <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deletePersonal()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
                       </nav>
                       <div class="col overflow-auto" style="height: 60vh;">
                         <ag-grid-angular 
@@ -147,10 +147,10 @@
                       <!-- Columna de Botones (Ajustada para flexibilidad) -->
                       <div class="col-auto">
                         <nav class="d-flex flex-column align-items-start">
-                          <button type="button" class="btn btn-primary  mb-2" (click)="addFotografia()"><i class="bi bi-plus-lg"></i></button>
+                          <button type="button" class="btn btn-primary  mb-2" (click)="addFotografia()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
                           <button type="button" class="btn btn-success  position-relative mb-2" (click)="saveFotografiasChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedFotografiaChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
-                          <button type="button" class="btn btn-warning  mb-2" (click)="revertFotografias()"><i class="bi bi-arrow-clockwise"></i></button>
-                          <button type="button" class="btn btn-danger  mb-2" (click)="deleteFotografia()"><i class="bi bi-trash"></i></button>
+                          <button type="button" class="btn btn-warning  mb-2" (click)="revertFotografias()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
+                          <button type="button" class="btn btn-danger  mb-2" (click)="deleteFotografia()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
                         </nav>
                       </div>
 
@@ -198,10 +198,10 @@
                     <div class="row">
                       <div class="col-2">
                         <nav class="col-auto d-flex flex-column align-items-start">
-                          <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addMaterial()"><i class="bi bi-plus-lg"></i></button>
+                          <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addMaterial()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
                           <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChangesMaterial()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedMaterialChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
-                          <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertMaterial()"><i class="bi bi-arrow-clockwise"></i></button>
-                          <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteMaterial()"><i class="bi bi-trash"></i></button>
+                          <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertMaterial()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
+                          <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteMaterial()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
                         </nav>
                       </div>
                       <div class="col-10 overflow-auto agridWH">
@@ -216,10 +216,10 @@
                     <div class="row">
                       <div class="col-2">
                         <nav class="col-auto d-flex flex-column align-items-start">
-                          <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addEquipos()"><i class="bi bi-plus-lg"></i></button>
+                          <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addEquipos()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
                           <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChangesEquipos()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedEquipoChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
-                          <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertEquipos()"><i class="bi bi-arrow-clockwise"></i></button>
-                          <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteEquipo()"><i class="bi bi-trash"></i></button>
+                          <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertEquipos()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
+                          <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteEquipo()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
                         </nav>
                       </div>
                       <div class="col-10 overflow-auto agridWH">
@@ -234,10 +234,10 @@
                     <div class="row">
                       <div class="col-2">
                         <nav class="col-auto d-flex flex-column align-items-start">
-                          <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addConcepto()"><i class="bi bi-plus-lg"></i></button>
+                          <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addConcepto()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
                           <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveConceptosChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedConceptoChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
-                          <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertConceptos()"><i class="bi bi-arrow-clockwise"></i></button>
-                          <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteConcepto()"><i class="bi bi-trash"></i></button>
+                          <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertConceptos()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
+                          <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteConcepto()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
                         </nav>
                       </div>
                       <div class="col-10 overflow-auto" style="height: 60vh;">
@@ -252,10 +252,10 @@
                     <div class="row">
                       <div class="col-2">
                         <nav class="col-auto d-flex flex-column align-items-start">
-                          <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addNota()"><i class="bi bi-plus-lg"></i></button>
+                          <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addNota()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
                           <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveNotasChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedNoteChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
-                          <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertNotas()"><i class="bi bi-arrow-clockwise"></i></button>
-                          <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteNota()"><i class="bi bi-trash"></i></button>
+                          <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertNotas()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
+                          <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteNota()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
                         </nav>
                       </div>
                       <div class="col-10 overflow-auto" style="height: 60vh;">

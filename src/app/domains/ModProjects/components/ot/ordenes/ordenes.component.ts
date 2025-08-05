@@ -56,6 +56,7 @@ interface ReporteDiario {
   supervisor: string;
   type: string; // "PROCESO"
   description: string | null;
+  close: boolean;
   active: boolean;
   
   // Propiedades computadas para el grid (compatibilidad)
@@ -125,7 +126,7 @@ export class OrdenesComponent {
   private equipmentService = inject(EquipmentService);
   private dailyReportService = inject(DailyReportService);
   private logbookService = inject(LogbookService);
-  private signalsService = inject(SignalsService);
+  public signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
   private imageHandlerService = inject(ImageHandlerService);
   private workprogramsService = inject(WorkprogramsService);
@@ -160,6 +161,7 @@ export class OrdenesComponent {
   public selectedReporteHoraTermino: string = '';
   public selectedReporteId: number | string | null = null;
   public selectedFotografia: Fotografia | null = null;
+  public selectedStatusReport: boolean = false;
   
 
   // Variables para columnas ajustables
@@ -292,7 +294,7 @@ export class OrdenesComponent {
   field: 'idResource',
   headerName: 'Material',
   flex: 2,
-  editable: true,
+  editable: () => !this.signalsService.getClosedReport()(),
   cellEditor: 'agSelectCellEditor',
   cellEditorParams: {
     values: this.catalogMateriales?.map((item) => item.description) || [],
@@ -341,7 +343,7 @@ export class OrdenesComponent {
     field: 'quantity',
     headerName: 'Cantidad',
     width: 100,
-    editable: true
+    editable: this.signalsService.getClosedReport()()? false : true
   },
 
   {
@@ -373,7 +375,7 @@ export class OrdenesComponent {
     field: 'idResource',
     headerName: 'Equipo',
     flex: 2,
-    editable: true,
+   editable: () => !this.signalsService.getClosedReport()(),
     cellEditor: 'agSelectCellEditor',
     cellEditorParams: (params: any) => ({
       values: this.catalogEquipos?.map((item) => item.description) || [],
@@ -418,8 +420,8 @@ export class OrdenesComponent {
       }
     }
   },
-    { field: 'quantity', headerName: 'Cantidad', flex: 1, editable: true },
-    //{ field: 'quantity', headerName: 'Horas', width: 100, editable: true },
+    { field: 'quantity', headerName: 'Cantidad', flex: 1, editable: this.signalsService.getClosedReport()()? false : true },
+    //{ field: 'quantity', headerName: 'Horas', width: 100, editable: !this.signalsService.getClosedReport() },
     //{ field: 'fechaUso', headerName: 'Fecha', width: 120 }
   ];
   
@@ -429,7 +431,7 @@ export class OrdenesComponent {
       field: 'idResource',
       headerName: 'Nombre',
       flex: 1,
-      editable: true,
+      editable: () => !this.signalsService.getClosedReport()(),
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: (params: any) => {
         return {
@@ -472,13 +474,13 @@ export class OrdenesComponent {
     { 
       field: 'cuadrilla', 
       headerName: 'Cuadrilla', 
-      flex: 1, editable: true , 
+      flex: 1, editable:() => !this.signalsService.getClosedReport()(), 
       valueGetter: (params) => {
         return params.data.cuadrilla || 'Cuadrilla ';
       }
     },
-    /*{ field: 'start', headerName: 'Inicio', width: 100, editable: true },
-    { field: 'end', headerName: 'Fin', width: 100, editable: true },
+    /*{ field: 'start', headerName: 'Inicio', width: 100, editable: !this.signalsService.getClosedReport() },
+    { field: 'end', headerName: 'Fin', width: 100, editable: !this.signalsService.getClosedReport() },
     { field: 'date', headerName: 'Fecha', width: 120 }*/
   ];
 
@@ -495,7 +497,7 @@ export class OrdenesComponent {
         },
         editable: false,
      },
-    { field: 'description', headerName: 'Descripción', flex: 1, editable: true },
+    { field: 'description', headerName: 'Descripción', flex: 1, editable: this.signalsService.getClosedReport()()? false : true },
     //{ field: 'fecha', headerName: 'Fecha', width: 120 }
   ];
 
@@ -504,7 +506,7 @@ export class OrdenesComponent {
     field: 'idResource',
     headerName: 'Equipo',
     flex: 2,
-    editable: true,
+    editable: () => !this.signalsService.getClosedReport()(),
     cellEditor: 'agSelectCellEditor',
     cellEditorParams: (params: any) => ({
       values: this.typeNotesCatalog?.map((item) => item.description) || [],
@@ -553,7 +555,7 @@ export class OrdenesComponent {
   field: 'description',
   headerName: 'Descripción',
   flex: 1,
-  editable: true,
+  editable: () => !this.signalsService.getClosedReport()(),
   cellEditor: 'agLargeTextCellEditor', // este sí existe
   cellEditorParams: {
     maxLength: 1000,
@@ -586,7 +588,7 @@ export class OrdenesComponent {
     field: 'idResource',
     headerName: 'Equipo',
     flex: 2,
-    editable: true,
+    editable: () => !this.signalsService.getClosedReport()(),
     cellEditor: 'agSelectCellEditor',
     cellEditorParams: (params: any) => ({
       values: this.catalogConcepto?.map((item) => item.actandNom) || [],
@@ -631,7 +633,7 @@ export class OrdenesComponent {
       }
     }
   },
-  { field: 'quantity', headerName: 'Cantidad', flex: 1, editable: true },
+  { field: 'quantity', headerName: 'Cantidad', flex: 1, editable: this.signalsService.getClosedReport()()? false : true },
   ]
 
   addFotografia(){
@@ -851,7 +853,7 @@ export class OrdenesComponent {
       field: 'date', 
       headerName: 'Fecha', 
       width: 90, 
-      editable: true,
+      editable: () => !this.signalsService.getClosedReport()(),
       cellEditor: 'agDateCellEditor',
       cellEditorParams: {
         min: '2020-01-01',
@@ -913,7 +915,7 @@ export class OrdenesComponent {
       field: 'startTime', 
       headerName: 'Inicio', 
       width: 85, 
-      editable: true,
+      editable: () => !this.signalsService.getClosedReport()(),
       cellEditor: 'timeEditor',
       valueFormatter: (params) => {
         return params.value ? params.value.substring(0, 5) : '';
@@ -923,7 +925,7 @@ export class OrdenesComponent {
       field: 'endTime', 
       headerName: 'Término', 
       width: 105, 
-      editable: true,
+      editable: () => !this.signalsService.getClosedReport()(),
       cellEditor: 'timeEditor',
       valueFormatter: (params) => {
         return params.value ? params.value.substring(0, 5) : '';
@@ -933,7 +935,7 @@ export class OrdenesComponent {
       field: 'type', 
       headerName: 'Area', 
       width: 90, 
-      editable: true,
+      editable: () => !this.signalsService.getClosedReport()(),
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: {
         values: ['CORTES', 'RECONEXIONES', 'MEDIDORES', 'INSPECCIONES']
@@ -948,13 +950,13 @@ export class OrdenesComponent {
     { 
       field: 'description', 
       headerName: 'Comentario', 
-      editable: true,
+      editable: () => !this.signalsService.getClosedReport()(),
       width: 120,
     },
     { 
       field: 'close', 
       headerName: 'Cerrado', 
-      editable: true,
+      editable: () => !this.signalsService.getClosedReport()(),
       width: 120,
     }
   ];
@@ -1107,6 +1109,8 @@ export class OrdenesComponent {
     effect(() => {
       this.idProject =this.signalsService.getProjectSelectedBySidebar()();
       this.idcompany = this.signalsService.getRootSelectedBySidebar()();
+      //alert(this.signalsService.getClosedReport()())
+      //this.selectedStatusReport = this.signalsService.getClosedReport()();
       this.catalogoMateriales();
       this.catalogoEquipo();
       this.obtenerTypeNotes();
@@ -1226,6 +1230,7 @@ export class OrdenesComponent {
     this.selectedReporteHoraInicio = reporte.horaInicio || reporte.startTime.substring(0, 5);
     this.selectedReporteHoraTermino = reporte.horaTermino || reporte.endTime.substring(0, 5);
     this.selectedReporteId = reporte.id;
+    this.signalsService.setClosedReport(reporte.close)
     this.obtenerMateriales(this.selectedReporteId);
     this.obtenerEquipos(this.selectedReporteId);
     this.obtenerPersonal(this.selectedReporteId);
@@ -1407,6 +1412,7 @@ export class OrdenesComponent {
       description: 'SIN DESCRIPCIÓN',
       result: 'SIN RESULTADO',
       active: true,
+      close: false,
       __isNew: true
     };
 
@@ -2339,6 +2345,7 @@ async saveChangesEquipos() {
 
   // Métodos CRUD para Personal
   addPersonal() {
+    //alert(typeof(!this.signalsService.getClosedReport()))
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Agregar Personal OT',
