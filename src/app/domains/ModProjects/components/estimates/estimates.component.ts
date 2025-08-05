@@ -461,13 +461,101 @@ public gridOptions: any = {
   }
 
   generateSamplePdf() {
-    const sampleData = this.pdfEstimatesService.createSampleEstimate();
-    this.pdfEstimatesService.generateEstimatePdf(sampleData);
+    if (!this.selectedRowData) {
+      alerts.basicAlert(
+        'Generar PDF',
+        'Por favor, seleccione una estimación para generar el PDF.',
+        'warning'
+      );
+      return;
+    }
+
+    this.estimatesService.getEstimateById(this.selectedRowData.id).subscribe({
+      next: (estimateData) => {
+        const pdfData = this.createEstimateDataFromResponse(estimateData);
+        this.pdfEstimatesService.generateEstimatePdf(pdfData);
+      },
+      error: (error) => {
+        console.error('Error obteniendo datos de estimación:', error);
+        alerts.basicAlert(
+          'Error',
+          'Error al obtener los datos de la estimación.',
+          'error'
+        );
+      }
+    });
   }
 
   downloadSamplePdf() {
-    const sampleData = this.pdfEstimatesService.createSampleEstimate();
-    this.pdfEstimatesService.downloadEstimatePdf(sampleData, 'Estimacion_Plaza_Corala_13R.pdf');
+    if (!this.selectedRowData) {
+      alerts.basicAlert(
+        'Descargar PDF',
+        'Por favor, seleccione una estimación para descargar el PDF.',
+        'warning'
+      );
+      return;
+    }
+
+    this.estimatesService.getEstimateById(this.selectedRowData.id).subscribe({
+      next: (estimateData) => {
+        const pdfData = this.createEstimateDataFromResponse(estimateData);
+        const fileName = `Estimacion_${estimateData.number}_${new Date().getTime()}.pdf`;
+        this.pdfEstimatesService.downloadEstimatePdf(pdfData, fileName);
+      },
+      error: (error) => {
+        console.error('Error obteniendo datos de estimación:', error);
+        alerts.basicAlert(
+          'Error',
+          'Error al obtener los datos de la estimación.',
+          'error'
+        );
+      }
+    });
+  }
+
+  private createEstimateDataFromResponse(estimateData: any) {
+    return {
+      proyecto: 'PLAZA CORALA', // Esto podría venir de otro servicio o configuración
+      estimacion: estimateData.number,
+      fechaInicio: this.formatDateForPdf(estimateData.dateStart),
+      fechaFin: this.formatDateForPdf(estimateData.dateEnd),
+      totalGeneral: estimateData.amountMX || 0,
+      totalEjecutado: estimateData.acumulateMX || 0,
+      pagina: 1,
+      totalPaginas: 1,
+      categorias: [
+        {
+          nombre: 'PRELIMINARES',
+          total: 96058.84,
+          items: [
+            {
+              clave: 'PRE-04',
+              concepto: 'LIMPIEZA MANUAL DEL TERRENO, DE MALEZA Y BASURA.',
+              unidad: 'JOR',
+              cantidad: 48.00,
+              precioUnitario: 450.00,
+              importe: 21600.00,
+              cantidadEjecutada: 12.00,
+              importeEjecutado: 5400.00
+            }
+          ]
+        }
+      ]
+    };
+  }
+
+  private formatDateForPdf(dateString: string): string {
+    const date = new Date(dateString);
+    const monthsOfYear = [
+      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+    ];
+
+    const day = date.getDate();
+    const monthName = monthsOfYear[date.getMonth()];
+    const year = date.getFullYear();
+
+    return `${day} de ${monthName} de ${year}`;
   }
 
 }

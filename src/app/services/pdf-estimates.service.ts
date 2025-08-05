@@ -1,6 +1,8 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
+import { TrackingService } from './tracking.service';
+import { auto } from '@popperjs/core';
 
 (pdfMake as any).vfs = pdfFonts.pdfMake.vfs;
 
@@ -37,6 +39,7 @@ export interface EstimateData {
   providedIn: 'root'
 })
 export class PdfEstimatesService {
+  private trackingService = inject(TrackingService);
 
   constructor() {}
 
@@ -87,34 +90,24 @@ export class PdfEstimatesService {
           fontSize: 9,
           bold: true,
           fillColor: '#E8E8E8',
-          margin: [2, 2, 2, 2]
-        },
-        categoryHeaderNoFill: {
-          fontSize: 9,
-          bold: true,
-          margin: [2, 2, 2, 2]
+          margin: [1, 1, 1, 1]
         },
         tableHeader: {
           fontSize: 10,
           bold: true,
           alignment: 'center',
           fillColor: '#D0D0D0',
-          margin: [2, 2, 2, 2]
+          margin: [1, 1, 1, 1]
         },
         tableContent: {
           fontSize: 9,
-          margin: [2, 2, 2, 2]
+          margin: [1, 1, 1, 1]
         },
         totalRow: {
           fontSize: 10,
           bold: true,
           fillColor: '#F0F0F0',
-          margin: [2, 2, 2, 2]
-        },
-        totalRowNoFill: {
-          fontSize: 10,
-          bold: true,
-          margin: [2, 2, 2, 2]
+          margin: [1, 1, 1, 1]
         },
         rightAlign: {
           alignment: 'right'
@@ -124,7 +117,7 @@ export class PdfEstimatesService {
         }
       },
       header: {
-        text: data.proyecto.toUpperCase(),
+        text: 'PLAZA CORALA',
         style: 'header',
         margin: [40, 20, 40, 0]
       },
@@ -135,6 +128,14 @@ export class PdfEstimatesService {
         margin: [0, 10, 0, 20]
       }),
       content: [
+        // Logo en la esquina superior derecha
+        {
+          image: 'header',
+          fit: [80, 40],
+          alignment: 'right',
+          margin: [0, 0, 0, 10]
+        },
+        
         // Información del proyecto y fechas
         {
           table: {
@@ -153,7 +154,7 @@ export class PdfEstimatesService {
                 }
               ],
               [
-                { text: 'FORMATO DE ESTIMACION', style: 'projectInfo', border: [true, true, true, true] },
+                { text: ' FORMATO DE ESTIMACION', style: 'projectInfo', border: [true, true, true, true] },
                 {
                   table: {
                     widths: ['30%', '*'],
@@ -182,14 +183,29 @@ export class PdfEstimatesService {
             hLineColor: '#000000',
             vLineColor: '#000000',
             fillColor: (rowIndex: number, node: any, columnIndex: number) => {
-              // Header rows (first two rows)
-              if (rowIndex === 0 || rowIndex === 1) return '#D0D0D0';
-              // All other rows should have no background
+              // Header row
+              if (rowIndex === 0) return '#D0D0D0';
+              // Category headers
+              if (node.table.body[rowIndex] && node.table.body[rowIndex][0] && 
+                  typeof node.table.body[rowIndex][0].text === 'string' && 
+                  node.table.body[rowIndex][1].text === '' && 
+                  node.table.body[rowIndex][2].text === '') {
+                return '#E8E8E8';
+              }
+              // Total rows
+              if (node.table.body[rowIndex] && node.table.body[rowIndex][0] && 
+                  typeof node.table.body[rowIndex][0].text === 'string' && 
+                  node.table.body[rowIndex][0].text.includes('TOTAL')) {
+                return '#F0F0F0';
+              }
               return null;
             }
           }
         }
-      ]
+      ],
+      images: {
+        header: this.trackingService.getPictureComp2()
+      }
     };
   }
 
@@ -224,24 +240,24 @@ export class PdfEstimatesService {
 
     // Project total row
     body.push([
-      { text: '', style: 'categoryHeaderNoFill', border: [false, false, false, false] },
-      { text: data.proyecto.toUpperCase(), style: 'categoryHeaderNoFill', colSpan: 4, border: [false, false, false, false] }, {}, {}, {},
-      { text: this.formatCurrency(data.totalGeneral), style: ['categoryHeaderNoFill', 'rightAlign'], border: [false, false, false, false] },
-      { text: '', style: 'categoryHeaderNoFill' },
-      { text: '', style: 'categoryHeaderNoFill' },
-      { text: '', style: 'categoryHeaderNoFill' }
+      { text: '', style: 'categoryHeader', border: [false, false, false, false] },
+      { text: data.proyecto.toUpperCase(), style: 'categoryHeader', colSpan: 4, border: [false, false, false, false] }, {}, {}, {},
+      { text: this.formatCurrency(data.totalGeneral), style: ['categoryHeader', 'rightAlign'], border: [false, false, false, false] },
+      { text: '', style: 'categoryHeader' },
+      { text: '', style: 'categoryHeader' },
+      { text: this.formatCurrency(data.totalEjecutado), style: ['categoryHeader', 'rightAlign'] }
     ]);
 
     // Categories and items
     data.categorias.forEach(category => {
       // Category header
       body.push([
-        { text: '', style: 'categoryHeaderNoFill', border: [false, false, false, false] },
-        { text: category.nombre.toUpperCase(), style: 'categoryHeaderNoFill', colSpan: 4, border: [false, false, false, false] }, {}, {}, {},
-        { text: this.formatCurrency(category.total), style: ['categoryHeaderNoFill', 'rightAlign'], border: [false, false, false, false] },
-        { text: '', style: 'categoryHeaderNoFill' },
-        { text: '', style: 'categoryHeaderNoFill' },
-        { text: '', style: 'categoryHeaderNoFill' }
+        { text: '', style: 'categoryHeader', border: [false, false, false, false] },
+        { text: category.nombre.toUpperCase(), style: 'categoryHeader', colSpan: 4, border: [false, false, false, false] }, {}, {}, {},
+        { text: this.formatCurrency(category.total), style: ['categoryHeader', 'rightAlign'], border: [false, false, false, false] },
+        { text: '', style: 'categoryHeader' },
+        { text: '', style: 'categoryHeader' },
+        { text: '', style: 'categoryHeader' }
       ]);
 
       // Category items
@@ -260,22 +276,13 @@ export class PdfEstimatesService {
       });
     });
 
-    // Final total rows - first row with first total
+    // Final total row
     body.push([
-      { text: 'TOTAL', style: ['totalRowNoFill', 'centerAlign'], colSpan: 5 }, {}, {}, {}, {},
-      { text: this.formatCurrency(data.totalGeneral), style: ['totalRowNoFill', 'rightAlign'] },
-      { text: '', style: 'totalRowNoFill' },
-      { text: '', style: 'totalRowNoFill' },
-      { text: '', style: 'totalRowNoFill' }
-    ]);
-
-    // Second total row with second total
-    body.push([
-      { text: 'TOTAL', style: ['totalRowNoFill', 'centerAlign'], colSpan: 5 }, {}, {}, {}, {},
-      { text: '', style: 'totalRowNoFill' },
-      { text: '', style: 'totalRowNoFill' },
-      { text: '', style: 'totalRowNoFill' },
-      { text: this.formatCurrency(data.totalEjecutado), style: ['totalRowNoFill', 'rightAlign'] }
+      { text: 'TOTAL', style: ['totalRow', 'centerAlign'], colSpan: 5 }, {}, {}, {}, {},
+      { text: this.formatCurrency(data.totalGeneral), style: ['totalRow', 'rightAlign'] },
+      { text: '', style: 'totalRow' },
+      { text: '', style: 'totalRow' },
+      { text: this.formatCurrency(data.totalEjecutado), style: ['totalRow', 'rightAlign'] }
     ]);
 
     return body;
