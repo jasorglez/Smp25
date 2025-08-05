@@ -31,4 +31,8 @@ export class EstimatesService {
   deleteEstimate(id: number): Observable<any> {
     return this.http.delete(`${environment.urlSmp}/Estimates/${id}`, { headers: this.trackingService.getHeaders() });
   }
+
+  getItemsFromEstimate(id: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlSmp}/ItemsGeneradoresEstimates?idType=${id}&Type=ESTIMACION`, { headers: this.trackingService.getHeaders() });
+  }
 }
