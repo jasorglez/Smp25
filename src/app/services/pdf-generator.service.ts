@@ -1027,7 +1027,7 @@ private processMaterialesData(): string[][] {
         ...this.gestionarDatos,
         { text: '', pageBreak: 'after' },
         {
-          text: '2.- REPORTE FOTOGRAFICO',
+          text: '3.- REPORTE FOTOGRAFICO',
           pageBreak: (currentPage, pageSize, currentNode, nodesOnPage) => {
             return nodesOnPage.length > 0 ? 'before' : '';
           },

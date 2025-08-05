@@ -241,7 +241,7 @@
                         </nav>
                       </div>
                       <div class="col-10 overflow-auto" style="height: 60vh;">
-                        <ag-grid-angular class="ag-theme-quartz small-text-ag-grid" [rowData]="conceptos" [columnDefs]="conceptosColumnDefs" [gridOptions]="tabGridOptions"></ag-grid-angular>
+                        <ag-grid-angular class="ag-theme-quartz small-text-ag-grid" [rowData]="conceptos" [columnDefs]="conceptosColumnDefs" [gridOptions]="tabGridOptions" (cellValueChanged)="onCellValueChangedConcepto($event)" (gridReady)="onConceptosGridReady($event)"></ag-grid-angular>
                       </div>
                     </div>
                   </div>

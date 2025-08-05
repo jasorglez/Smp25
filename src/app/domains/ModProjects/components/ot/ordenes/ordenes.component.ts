@@ -1013,7 +1013,11 @@ export class OrdenesComponent {
     suppressHorizontalScroll: false,
     animateRows: true,
     pagination: false,
-    domLayout: 'autoHeight'
+    domLayout: 'autoHeight',
+    stopEditingWhenCellsLoseFocus: true,
+    rowSelection: 'single',
+    onCellValueChanged: (event: any) => this.onCellValueChangedConcepto(event),
+    onGridReady: (params: any) => this.onConceptosGridReady(params)
   };
 
   // Configuración específica para el grid de personal con edición
@@ -2274,6 +2278,15 @@ async saveChangesEquipos() {
     }
   }
 
+  onCellValueChangedConcepto(event: any) {
+
+    this.notSavedConceptoChanges = true;
+
+    if (!event.data.__isNew) {
+      event.data.__modified = true;
+    }
+  }
+
   // Método para manejar cambios en el grid de materiales
   onMaterialCellValueChanged(event: any) {
     console.log('=== CAMBIO EN GRID DE MATERIALES ===');
@@ -2314,6 +2327,10 @@ async saveChangesEquipos() {
   // Grid ready para equipos
   onEquiposGridReady(params: any) {
     this.equiposGridApi = params.api;
+  }
+
+  onConceptosGridReady(params: any) {
+    this.conceptosGridApi = params.api;
   }
 
   onFotografiasGridReady(params: any) {
@@ -3168,8 +3185,64 @@ async saveChangesEquipos() {
   this.notSavedConceptoChanges = false;
   }
   deleteConcepto() {
-    // Tu lógica para eliminar un concepto
-    console.log('Invocando deleteConcepto...');
+    if (!this.conceptosGridApi) {
+      alerts.basicAlert('Error', 'Grid no disponible', 'error');
+      return;
+    }
+
+    const selectedNodes = this.conceptosGridApi.getSelectedNodes();
+    if (selectedNodes.length === 0) {
+      alerts.basicAlert('Error', 'Seleccione una entrada de concepto para eliminar', 'error');
+      return;
+    }
+
+    const selectedData = selectedNodes[0].data;
+    const id = selectedData.id;
+
+    console.log('=== INTENTANDO ELIMINAR CONECEPTO ===');
+    console.log('Registro seleccionado para eliminar:', selectedData);
+    console.log('ID a eliminar:', id);
+    
+    alerts.confirmAlert(
+      'Eliminar concepto',
+      '¿Está seguro que desea eliminar este registro de concepto?',
+      'warning',
+      'Sí, eliminar'
+    ).then((value) => {
+      if (value.isConfirmed) {
+        console.log('=== CONFIRMACIÓN DE ELIMINACIÓN ===');
+        
+        if (selectedData.__isNew) {
+          console.log('Eliminando registro nuevo (solo local)');
+          this.conceptos = this.conceptos.filter(m => m.id !== id);
+          this.notSavedConceptoChanges = this.conceptos.some(m => m.__isNew);
+          console.log('Concepto después de eliminación local:', this.conceptos);
+          alerts.basicAlert('Éxito', 'Concepto eliminado correctamente', 'success');
+        } else {
+          console.log('Eliminando registro existente usando endpoint DELETE');
+          console.log('Enviando DELETE para ID:', id);
+          
+          this.logbookService.deleteDataForOt(Number(id)).subscribe({
+            next: (response) => {
+              console.log('Respuesta del DELETE:', response);
+              this.conceptos = this.conceptos.filter(m => m.id !== id);
+              console.log('Concepto después de eliminación del servidor:', this.conceptos);
+              alerts.basicAlert('Éxito', 'Concepto eliminado correctamente del servidor', 'success');
+            },
+            error: (error) => {
+              console.error('Error al eliminar concepto del servidor:', error);
+              let errorMessage = 'Error al eliminar el registro de concepto';
+              if (error.status === 404) {
+                errorMessage = 'El registro ya no existe en el servidor';
+              } else if (error.status === 401) {
+                errorMessage = 'No autorizado para eliminar este registro';
+              }
+              alerts.basicAlert('Error', errorMessage, 'error');
+            }
+          });
+        }
+      }
+    });
   }
 
   // -- Métodos para Notas --
