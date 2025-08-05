@@ -551,24 +551,32 @@ export class OrdenesComponent {
       }
     }
   },
- {
-  field: 'description',
-  headerName: 'Descripción',
-  flex: 1,
-  editable: () => !this.signalsService.getClosedReport()(),
-  cellEditor: 'agLargeTextCellEditor', // este sí existe
-  cellEditorParams: {
-    maxLength: 1000,
-    cols: 50,
-    rows: 3,
-    suppressScroll: true,
-  },
-  cellRenderer: (params: ICellRendererParams) => {
-    console.log('=== CELL RENDERER NOTAS ===');
-    console.log('Params:', params);
-    return params.value ? params.value.toUpperCase() : '';
-  },
-}
+  {
+    field: 'description',
+    headerName: 'Descripción',
+    flex: 1,
+    editable: () => !this.signalsService.getClosedReport()(),
+    cellEditor: 'agPopupTextCellEditor',
+    cellEditorParams: {
+      maxLength: 1000,
+      cols: 50,
+      rows: 5,
+      onKeyDown: (event: KeyboardEvent) => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+          event.stopPropagation();
+        }
+      },
+    },
+    onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+      this.openDescriptionModal(event);
+    },
+    cellRenderer: (params: ICellRendererParams) => {
+      if (params.node.group) {
+        return params.value ? params.value.toUpperCase() : '';
+      }
+      return params.value ? params.value.toUpperCase() : '';
+    },
+  }
 
 
  ]
@@ -579,6 +587,57 @@ export class OrdenesComponent {
       value: event.value,
     });
   }
+}
+
+openDescriptionModal(event: CellDoubleClickedEvent) {
+  if (event.node.group) return;
+  
+  const currentValue = event.value || '';
+  const fieldName = event.colDef.field;
+  
+  // Usar SweetAlert2 como modal para editar la descripción
+  alerts.inputAlert(
+    'Editar Descripción',
+    'Ingrese la descripción:',
+    'textarea',
+    currentValue,
+    {
+      inputAttributes: {
+        maxlength: '1000',
+        rows: '8',
+        cols: '80',
+        style: 'min-height: 200px; min-width: 400px; resize: both;',
+        placeholder: 'Escriba aquí la descripción...'
+      },
+      showCancelButton: true,
+      confirmButtonText: 'Guardar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#28a745',
+      cancelButtonColor: '#6c757d'
+    }
+  ).then((result) => {
+    if (result.isConfirmed && result.value !== undefined) {
+      // Actualizar el valor en el grid
+      event.node.setDataValue(fieldName, result.value);
+      
+      // Marcar como modificado para trackear cambios
+      if (event.data) {
+        event.data.__modified = true;
+        // Actualizar el flag de cambios no guardados dependiendo de qué grid sea
+        if (fieldName === 'description') {
+          this.notSavedNoteChanges = true;
+        }
+      }
+      
+      // Log para tracking
+      this.trackingService.addLog(
+        this.trackingService.getnameComp(),
+        `Descripción editada via modal - Campo: ${fieldName}`,
+        'Orden de Trabajo - Edición Modal',
+        this.trackingService.getEmail()
+      );
+    }
+  });
 }
 
 
