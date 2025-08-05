@@ -456,14 +456,6 @@ public gridOptions: any = {
     this.activateGeneratorsTab();
   }
 
-  // Función para limpiar filtros
-  clearFilters() {
-    if (this.gridApi) {
-      this.gridApi.setFilterModel(null);
-      // Removido onFilterChanged() para evitar conflictos con controles de fecha
-      // El grid se actualizará automáticamente
-    }
-  }
 
 
 
