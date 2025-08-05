@@ -1557,13 +1557,13 @@ async saveChangesMaterial() {
 
   try {
     const addRequests = newRows.map((row, index) => {
-      const cleanedData = this.cleanDataForServer(row);
+      const cleanedData = this.cleanDataSinDescripcion(row);
       console.log(`Datos limpiados para nueva fila ${index + 1}:`, cleanedData);
       return this.logbookService.addDataForOt(cleanedData).toPromise();
     });
 
     const updateRequests = modifiedRows.map((row, index) => {
-      const cleanedData = this.cleanDataForServer(row);
+      const cleanedData = this.cleanDataSinDescripcion(row);
       console.log(`Datos limpiados para fila modificada ${index + 1}:`, cleanedData);
       return this.logbookService.updateDataForOt(Number(row.id), cleanedData).toPromise();
     });
@@ -1661,14 +1661,14 @@ async saveChangesEquipos() {
   try {
     const addRequests = newRows.map((row, index) => {
       console.log(`=== FILA ORIGINAL ${index + 1} ===`, row);
-      const cleanedData = this.cleanDataForServer(row);
+      const cleanedData = this.cleanDataSinDescripcion(row);
       console.log(`=== DATOS LIMPIADOS ${index + 1} ===`, cleanedData);
       console.log(`JSON.stringify:`, JSON.stringify(cleanedData, null, 2));
       return this.logbookService.addDataForOt(cleanedData).toPromise();
     });
 
     const updateRequests = modifiedRows.map((row, index) => {
-      const cleanedData = this.cleanDataForServer(row);
+      const cleanedData = this.cleanDataSinDescripcion(row);
       console.log(`Datos limpiados para fila modificada ${index + 1}:`, cleanedData);
       return this.logbookService.updateDataForOt(Number(row.id), cleanedData).toPromise();
     });
@@ -2082,12 +2082,42 @@ async saveChangesEquipos() {
         // Si no se encuentra el equipo, usar un valor por defecto
         cleanedData.Description = `Equipo ID: ${cleanedData.idResource}`;
       }
+    }
+    
+    // Si no hay Description y es un nuevo registro, poner un valor por defecto
+    if (!cleanedData.Description) {
+      cleanedData.Description = 'Sin descripción';
+    }*/
+    
+    return cleanedData;
+  }
+  private cleanDataSinDescripcion(data: any): any {
+    const cleanedData = { ...data };
+    
+    // Eliminar propiedades temporales de control
+    delete cleanedData.__isNew;
+    delete cleanedData.__modified;
+    
+    // Solo incluir ID si no es temporal
+    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
+      delete cleanedData.id;
+    }
+    
+    // Si hay idResource pero no Description, agregar la descripción del equipo
+    /*if (cleanedData.idResource && !cleanedData.Description) {
+      const foundEquipo = this.catalogEquipos?.find(item => item.id == cleanedData.idResource);
+      if (foundEquipo) {
+        cleanedData.Description = foundEquipo.description;
+      } else {
+        // Si no se encuentra el equipo, usar un valor por defecto
+        cleanedData.Description = `Equipo ID: ${cleanedData.idResource}`;
+      }
     }*/
     
     // Si no hay Description y es un nuevo registro, poner un valor por defecto
-    /*if (!cleanedData.Description) {
+    if (!cleanedData.Description) {
       cleanedData.Description = 'Sin descripción';
-    }*/
+    }
     
     return cleanedData;
   }
@@ -3001,7 +3031,7 @@ async saveChangesEquipos() {
       end: this.selectedReporteHoraTermino + ':00',
       date: this.selectedReporteFecha,
       typeNote: 'CONCEPT',
-      description: '',
+      description: 'NOTAS',
       orden: 1,
       __isNew: true
     };
@@ -3039,14 +3069,14 @@ async saveChangesEquipos() {
   try {
     const addRequests = newRows.map((row, index) => {
       console.log(`=== FILA ORIGINAL ${index + 1} ===`, row);
-      const cleanedData = this.cleanDataForServer(row);
+      const cleanedData = this.cleanDataSinDescripcion(row);
       console.log(`=== DATOS LIMPIADOS ${index + 1} ===`, cleanedData);
       console.log(`JSON.stringify:`, JSON.stringify(cleanedData, null, 2));
       return this.logbookService.addDataForOt(cleanedData).toPromise();
     });
 
     const updateRequests = modifiedRows.map((row, index) => {
-      const cleanedData = this.cleanDataForServer(row);
+      const cleanedData = this.cleanDataSinDescripcion(row);
       console.log(`Datos limpiados para fila modificada ${index + 1}:`, cleanedData);
       return this.logbookService.updateDataForOt(Number(row.id), cleanedData).toPromise();
     });
