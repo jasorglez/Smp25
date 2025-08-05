@@ -1020,10 +1020,10 @@ private processMaterialesData(): string[][] {
         {
           columns: [
             {
-              width: '50%',
+              width: '100%',
               table: {
                 headerRows: 1,
-                widths: ['*', '*', 'auto'],
+                widths: ['auto', '*', 'auto'],
                 body: this.processConceptosData()
               },
               layout: {
@@ -1034,7 +1034,7 @@ private processMaterialesData(): string[][] {
               style: 'tableContent'
             },
             {
-              width: '50%',
+              width: '100%',
               text: ''
             }
           ],
