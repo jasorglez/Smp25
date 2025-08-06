@@ -61,16 +61,14 @@ export class EstimatesComponent {
   rowData: any;
   contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
-  selectedRowData: any = null;
+  selectedEstimate: any = null; // Variable única como Income
   id: string;
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
   private contract = this.signalsService.getContractSelectedBySidebar()();
   
-  // Propiedades para el comportamiento del toggle
+  // Propiedades simplificadas
   gridHeight: string = '500px';
-  showGeneratorsTab: boolean = false;
-  isOpen: boolean = false;
 
   obtenerDatos() {
     this.estimatesService
@@ -85,22 +83,24 @@ export class EstimatesComponent {
   }
 
 
-  // 1. Modificar gridOptions para el comportamiento deseado
+  // GridOptions simplificado como Income
 public gridOptions: any = {
   headerHeight: 30,
   rowHeight: 30,
-  suppressClickEdit: true, // Fuerza doble click para editar
-  rowClass: (params) => params.node.isSelected() ? 'selected-row' : '',
-  
-  onRowClicked: (event) => {
-    // Solo selección con un click
-    event.node.setSelected(true);
-    this.selectedRowData = event.data;
-    this.id = event.data.id;
+  suppressClickEdit: true,
+  getRowClass: (params) => {
+    // Verificar si la fila está seleccionada
+    if (params.node.isSelected()) {
+      return 'selected-row';
+    }
+    return '';
   },
-
+  onRowClicked: (event) => {
+    // Seleccionar la fila al hacer clic en cualquier celda
+    event.node.setSelected(true);
+  },
   onRowSelected: (event) => {
-    // Deseleccionar otras filas
+    // Deseleccionar otras filas cuando se selecciona una nueva
     if (event.node.isSelected()) {
       this.gridApi.forEachNode((node) => {
         if (node.id !== event.node.id) {
@@ -230,20 +230,53 @@ public gridOptions: any = {
     ];
   }
 
-  onSelectedRow(event: any) {
-    console.log(event)
-    this.id = event.data.id;
+  // Método limpio de selección como Income
+  onSelectionChanged(event: any) {
+    const selectedNodes = event.api.getSelectedNodes();
+    if (selectedNodes.length > 0) {
+      this.selectedEstimate = selectedNodes[0].data;
+      this.id = this.selectedEstimate.id;
+      
+      // Mostrar detalle automáticamente al seleccionar
+      this.showEstimateDetail();
+    } else {
+      this.selectedEstimate = null;
+      this.id = null;
+      this.hideEstimateDetail();
+    }
   }
 
-  // Función para ver detalles de la estimación seleccionada
-  viewEstimateDetails() {
-    if (!this.selectedRowData) {
+  // Método para mostrar detalle automáticamente
+  private showEstimateDetail() {
+    if (!this.selectedEstimate || !this.id) {
       return;
     }
-    this.filterBySelectedEstimate();
+    
+    // No aplicar filtros si hay filas temporales (nuevas)
+    const hasNewRows = this.rowData.some(row => row.id && row.id.toString().startsWith('temp_'));
+    if (hasNewRows) {
+      return;
+    }
+
+    this.gridApi.setFilterModel({
+      id: { type: 'equals', filter: this.id }
+    });
+    this.gridApi.onFilterChanged();
+    
+    // Activar generadores después del filtrado
+    this.activateGeneratorsTab();
   }
 
+  // Método para ocultar detalle
+  private hideEstimateDetail() {
+    this.resetGridSize();
+  }
 
+  // Función para ver detalles de la estimación seleccionada (sin funcionalidad)
+  viewEstimateDetails() {
+    // Botón mantenido visible pero sin funcionalidad para uso futuro
+    return;
+  }
 
   onCellValueChanged(event: any) {
     console.log('Dato cambiado:', event.data);
@@ -417,7 +450,7 @@ public gridOptions: any = {
           );
           this.obtenerDatos();
           this.notSavedChanges = false;
-          this.selectedRowData = null;
+          this.selectedEstimate = null;
         }
       );
   }
@@ -437,39 +470,17 @@ public gridOptions: any = {
     return cleanedData;
   }
 
-  // Función separada para filtrar por estimación seleccionada
+  // Función separada para filtrar por estimación seleccionada (obsoleta)
   filterBySelectedEstimate() {
-    if (!this.selectedRowData || !this.id) {
-      return;
-    }
-    
-    // No aplicar filtros si hay filas temporales (nuevas)
-    const hasNewRows = this.rowData.some(row => row.id && row.id.toString().startsWith('temp_'));
-    if (hasNewRows) {
-      return;
-    }
-
-    this.gridApi.setFilterModel({
-      id: { type: 'equals', filter: this.id }
-    });
-    this.gridApi.onFilterChanged();
-    
-    // Activar generadores después del filtrado
-    this.activateGeneratorsTab();
+    // Funcionalidad movida a showEstimateDetail()
+    return;
   }
 
 
 
 
   async activateGeneratorsTab() {
-    if (!this.isOpen) {
-      await this.adjustGridSize();
-      this.showGeneratorsTab = true;
-      this.isOpen = true;
-    } else {
-      await this.resetGridSize();
-      this.isOpen = false;
-    }
+    await this.adjustGridSize();
   }
 
   async adjustGridSize() {
@@ -478,7 +489,6 @@ public gridOptions: any = {
 
   resetGridSize() {
     this.gridHeight = '500px'; // Restaurar tamaño original
-    this.showGeneratorsTab = false;
     if (this.gridApi) {
       this.gridApi.setFilterModel(null);
       this.gridApi.onFilterChanged();
@@ -486,7 +496,7 @@ public gridOptions: any = {
   }
 
   generateSamplePdf() {
-    if (!this.selectedRowData) {
+    if (!this.selectedEstimate) {
       alerts.basicAlert(
         'Generar PDF',
         'Por favor, seleccione una estimación para generar el PDF.',
@@ -495,11 +505,11 @@ public gridOptions: any = {
       return;
     }
 
-    this.generatePdfWithRealData(this.selectedRowData.id, false);
+    this.generatePdfWithRealData(this.selectedEstimate.id, false);
   }
 
   downloadSamplePdf() {
-    if (!this.selectedRowData) {
+    if (!this.selectedEstimate) {
       alerts.basicAlert(
         'Descargar PDF',
         'Por favor, seleccione una estimación para descargar el PDF.',
@@ -508,7 +518,7 @@ public gridOptions: any = {
       return;
     }
 
-    this.generatePdfWithRealData(this.selectedRowData.id, true);
+    this.generatePdfWithRealData(this.selectedEstimate.id, true);
   }
 
   private async generatePdfWithRealData(estimateId: number, download: boolean = false) {

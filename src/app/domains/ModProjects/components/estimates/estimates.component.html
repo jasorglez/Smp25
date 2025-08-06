@@ -16,7 +16,7 @@
                 <button type="button" class="btn btn-danger mb-2" (click)="deleteEntry()"><i class="bi bi-trash"
                        ></i></button>
                 <button type="button" class="btn btn-info mb-2" (click)="viewEstimateDetails()" 
-                        [disabled]="!selectedRowData" title="Ver detalles de estimación">
+                        [disabled]="!selectedEstimate" title="Ver detalles de estimación">
                     <i class="bi bi-eye"></i>
                 </button>
                 
@@ -27,12 +27,12 @@
             </nav>
             <div class="col">
                 <ag-grid-angular 
-                   style="width: 100%;" [ngStyle]="{ height: gridHeight }" 
+                   style="width: 100%;" [ngStyle]="selectedEstimate ? { height: '250px' } : { height: '500px' }" 
                     class="ag-theme-quartz small-text-ag-grid" [rowData]="rowData"
                     [columnDefs]="columnDefs"                    
                     [gridOptions]="gridOptions"
                     (cellValueChanged)="onCellValueChanged($event)" 
-                    (rowSelected)="onSelectedRow($event)"
+                    (selectionChanged)="onSelectionChanged($event)"
                     (gridReady)="onGridReady($event)" 
                     rowSelection="single" [components]="components">
                 </ag-grid-angular>
@@ -42,7 +42,7 @@
 </div>
 
 <!-- Sección del componente Generators -->
-<div class="row mt-n2" *ngIf="showGeneratorsTab">
+<div class="row mt-n2" *ngIf="selectedEstimate">
     <div class="col-12">
         <div class="card">
             <div class="card-header">
@@ -54,7 +54,7 @@
                 </h5>
             </div>
             <div class="card-body">
-                <app-generators [idEstimacion]="selectedRowData?.id"></app-generators>
+                <app-generators [idEstimacion]="selectedEstimate?.id"></app-generators>
             </div>
         </div>
     </div>
