@@ -83,11 +83,10 @@ export class EstimatesComponent {
   }
 
 
-  // GridOptions simplificado como Income
+  // GridOptions idéntico a Income para permitir edición por doble click
 public gridOptions: any = {
   headerHeight: 30,
   rowHeight: 30,
-  suppressClickEdit: true,
   getRowClass: (params) => {
     // Verificar si la fila está seleccionada
     if (params.node.isSelected()) {
