@@ -213,7 +213,7 @@ export class PayrollComponent {
       const mes1 = String(fecha.getMonth() + 1).padStart(2, '0'); // ¡Ojo! Los mes1es van de 0 a 11
       const anio1 = fecha.getFullYear();
       const fechaInicioFormateada = `${dia1}-${mes1}-${anio1}`;
-      const inicio = new Date(fechaInicio);
+      const inicio = new Date(fecha);
       inicio.setDate(inicio.getDate() + values.payrollPeriod - 1);
       const dia2 = String(inicio.getDate()).padStart(2, '0');
       const mes2 = String(inicio.getMonth() + 1).padStart(2, '0'); // ¡Ojo! Los meses van de 0 a 11
