@@ -10,6 +10,7 @@ import { HRService } from 'app/services/hr.service';
 import { NominaData } from '../../setup/models/payroll-data.module';
 import { AdministrationService } from 'app/services/administration.service';
 import { BranchsService } from 'app/services/branchs.service';
+import { IdBlockPeriodsService } from 'app/services/IdBlockPeriods.service';
 import * as XLSX from 'xlsx';
 
 interface Bank {
@@ -38,6 +39,7 @@ export class PayrollComponent {
   private trackingService = inject(TrackingService);
   private hrService = inject(HRService);
   private branchsService = inject(BranchsService);
+  private idBlockPeriodsService = inject(IdBlockPeriodsService);
 
   formBuilder = inject(FormBuilder);
   isLoading: boolean = false;
@@ -50,6 +52,7 @@ export class PayrollComponent {
   newData: any = {};
   isNew: boolean = false;
   banks: Bank[] = [];
+  hoy = new Date();
   selectedBankId: number | null = null;
   archivo: File;
   formData = new FormData();
@@ -65,6 +68,17 @@ export class PayrollComponent {
     'Sábado',
     'Domingo'
   ];
+   dias:any[] = [
+    {id: 1 , dia: 'Lunes'},
+    {id: 2 , dia: 'Martes'},
+    {id: 3 , dia: 'Miércoles'},
+    {id: 4 , dia: 'Jueves'},
+    {id: 5 , dia: 'Viernes'},
+    {id: 6 , dia: 'Sábado'},
+    {id: 7 , dia: 'Domingo'},
+
+  ]
+  idDia: any ;
 
   constructor(private payrollService: PayrollService, private administrationService: AdministrationService) {
       effect(() => {
@@ -81,6 +95,7 @@ export class PayrollComponent {
     overtimePay: ['', [Validators.required, Validators.minLength(1)], []],
     discount: ['', [Validators.required, Validators.minLength(1)], []],
     specialOvertimePay: ['', [Validators.required, Validators.minLength(1)], []],
+    identificationBlockPeriod: ['', [Validators.required]]
   })
   
   getNameBranch() {
@@ -104,7 +119,8 @@ export class PayrollComponent {
           startDay: this.hrData.startDay,
           discount: this.hrData.discount,
           overtimePay: this.hrData.overtimePay,
-          specialOvertimePay: this.hrData.specialOvertimePay
+          specialOvertimePay: this.hrData.specialOvertimePay,
+          identificationBlockPeriod: this.hrData.identificationBlockPeriod,
         });
         this.isNew = false;
       },
@@ -115,8 +131,8 @@ export class PayrollComponent {
             startDay: null,
             discount: null,
             overtimePay: null,
-            specialOvertimePay: null
-            
+            specialOvertimePay: null,
+            identificationBlockPeriod: null
           });
           this.isNew = true
         } else {
@@ -125,14 +141,19 @@ export class PayrollComponent {
       }
     });
   }
-  onSubmit() {
+  async onSubmit() {
     if (this.myForm.invalid) {
       alerts.basicAlert("Error", "Faltan datos por llenar", "error");
       return;
     }
   
     const values = this.myForm.value;
-  
+    if(this.hrData.payrollPeriod != values.payrollPeriod || this.hrData.startDay != values.startDay  || this.hrData.identificationBlockPeriod != values.identificationBlockPeriod ){
+      const confirmarGuardado = await this.calcularFechas(values);
+      if (!confirmarGuardado) {
+        return; // No guardar si el usuario cancela
+      }
+    }
     this.hrData = {
       ...this.hrData, // conserva id u otros campos
       ...values       // actualiza con valores nuevos
@@ -159,6 +180,7 @@ export class PayrollComponent {
         payrollPeriod: values.payrollPeriod,
         specialOvertimePay: values.specialOvertimePay,
         startDay: values.startDay,
+        identificationBlockPeriod: values.identificationBlockPeriod,
       };
       console.log(payload)
     
@@ -177,7 +199,50 @@ export class PayrollComponent {
     // Insertar nuevos datos
     
   }
-  
+  calcularFechas(values: any): Promise<boolean> {
+      const diaEncontrado = this.dias.find(d => d.dia === values.startDay);
+      this.idDia = diaEncontrado ? diaEncontrado.id : 1;
+      const diaObjetivo = this.idDia % 7;
+      this.hoy.setHours(0, 0, 0, 0);
+      const fecha = new Date(this.hoy);
+      const diaActual = fecha.getDay();
+      const diferencia = (diaActual - diaObjetivo + 7) % 7;
+      fecha.setDate(fecha.getDate() - diferencia);
+      const fechaInicio = fecha.toISOString().split('T')[0];
+      const dia1 = String(fecha.getDate()).padStart(2, '0');
+      const mes1 = String(fecha.getMonth() + 1).padStart(2, '0'); // ¡Ojo! Los mes1es van de 0 a 11
+      const anio1 = fecha.getFullYear();
+      const fechaInicioFormateada = `${dia1}-${mes1}-${anio1}`;
+      const inicio = new Date(fecha);
+      inicio.setDate(inicio.getDate() + values.payrollPeriod - 1);
+      const dia2 = String(inicio.getDate()).padStart(2, '0');
+      const mes2 = String(inicio.getMonth() + 1).padStart(2, '0'); // ¡Ojo! Los meses van de 0 a 11
+      const anio2 = inicio.getFullYear();
+      const fechaFinFormateada = `${dia2}-${mes2}-${anio2}`;
+      const fechaFin = inicio.toISOString().split('T')[0];
+      const bloque = values.identificationBlockPeriod.toUpperCase() +"-"+ inicio.getFullYear().toString().slice(-2) + '001';
+
+      const mensaje = `Descripción del Bloque: ${bloque} Fecha Inicio: ${fechaInicioFormateada} Fecha Fin: ${fechaFinFormateada} ¿Desea guardar estos cambios?`;
+      
+      return alerts.confirmAlert("Confirmar Cambios", mensaje, "question", "Sí, guardar cambios").then(async (result) => {
+        if(result.isConfirmed){
+          try {
+            await this.idBlockPeriodsService.createIdBlockPeriods(this.idBranch, bloque, fechaInicio, fechaFin).toPromise();
+            console.log('Período de bloque creado exitosamente');
+            return true;
+          } catch (err: any) {
+            alerts.basicAlert(
+              'Error al crear período de bloque',
+              err?.error?.message || 'Ocurrió un error inesperado.',
+              'error'
+            );
+            this.getData();
+            return false;
+          }
+        }
+        return result.isConfirmed;
+      });
+  }
   
   revertChanges() {
     this.getData();

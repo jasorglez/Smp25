@@ -36,9 +36,18 @@ export class CatalogsService {
   getMeasures(): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog?type=Measure`, { headers: this.trackingService.getHeaders() });
   }
+  getUnits(id: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/getCatalogs?idCompany=${id}&type=Units`, { headers: this.trackingService.getHeaders() });
+  }
+  getTypeNote(id: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/getCatalogs?idCompany=${id}&type=TYPENOTE`, { headers: this.trackingService.getHeaders() });
+  }
+  getTypeEquipment(id: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/getCatalogs?idCompany=${id}&type=TYPEEQUIPMENT`, { headers: this.trackingService.getHeaders() });
+  }
 
-  getPhases(): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog?type=Fase`, { headers: this.trackingService.getHeaders() });
+  getPhases(id: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/getCatalogs?idCompany=${id}&type=Fase`, { headers: this.trackingService.getHeaders() });
   }
 
   getFamilies(): Observable<any[]> {

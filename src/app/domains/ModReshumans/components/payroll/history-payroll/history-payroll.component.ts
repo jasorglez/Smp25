@@ -47,7 +47,7 @@ export class HistoryPayrollComponent {
 
   public showPayrollDetailTab = signal(false);
 
-  public rowData: HistoryPayrollResponse[];
+  public rowData: HistoryPayrollResponse[] = [];
 
   public employeeData = signal<PayrollEmployee[]>([]);
 
@@ -95,41 +95,21 @@ export class HistoryPayrollComponent {
   }
 
   // MIO
-  obtenerDatos() {
-    // console.log('id branch en obtener datos: ', this.idBranch);
-
-    if (this.idBranch === null || this.idBranch > 0) {
-      return this.getHistoryPayrollByBranch(this.idBranch);
+   obtenerDatos() {
+      this.historyPayrollService.getHistoryPayrollsByBranch(this.idBranch).subscribe(
+        (data) => {
+          this.rowData = Array.isArray(data) ? data : [data];
+          this.isLoading.set(false);
+          console.log('Datos extraidos de history-payroll', data);
+        },
+        (error) => {
+          this.rowData = [];
+        }
+      );
     }
 
-    return this.getHistoryPayrollWithoutBranch();
-  }
 
-  getHistoryPayrollWithoutBranch() {
-    this.historyPayrollService.getALlHistoryPayroll().subscribe(
-      (data) => {
-        this.rowData = data;
-        this.isLoading.set(false);
-        // console.log('Datos extraidos de history-payroll', data);
-      },
-      (error) => {
-        this.rowData = [];
-      }
-    );
-  }
-
-  getHistoryPayrollByBranch(idBranch: number) {
-    this.historyPayrollService.getHistoryPayrollsByBranch(idBranch).subscribe(
-      (data) => {
-        this.rowData = data;
-        this.isLoading.set(false);
-        // console.log('Datos extraidos de history-payroll', data);
-      },
-      (error) => {
-        this.rowData = [];
-      }
-    );
-  }
+ 
 
   adjustGridSize() {
     this.gridHeight.set('20vh'); // Adjust as needed

@@ -29,11 +29,9 @@ export class ClockComponent {
   }
 
   myForm: FormGroup = this.formBuilder.group({
-    clockTolerance: ['', [Validators.required, Validators.min(120)]],
     delay1: ['', [Validators.required, Validators.min(0), Validators.max(60)]],
-    delay2: ['', [Validators.required, Validators.min(60), Validators.max(120)]],
+    delay2: ['', [Validators.required, Validators.min(0), Validators.max(60)]],
     settingToleranceTime: ['', [Validators.required]],
-    identificationBlockPeriod: ['', [Validators.required]]
   });
 
   getData() {
@@ -41,18 +39,16 @@ export class ClockComponent {
       next: (data: any) => {
         this.hrData = data[0] || {};
         this.myForm.patchValue({
-          clockTolerance: this.hrData.clockTolerance,
           delay1: this.hrData.delay1,
           delay2: this.hrData.delay2,
           settingToleranceTime: this.hrData.settingToleranceTime,
-          identificationBlockPeriod: this.hrData.identificationBlockPeriod,
+          
         });
         this.isNew = false;
       },
       error: (err) => {
         if (err.status === 404) {
           this.myForm.patchValue({
-            clockTolerance: null,
             delay1: null,
             delay2: null,
           });
@@ -72,12 +68,8 @@ export class ClockComponent {
       alerts.basicAlert("Error", "El valor de 'delay1' debe estar entre 0 y 60 minutos.", "error");
       return;
     }
-    if (values.delay2 < 60 || values.delay2 > 120) {
-      alerts.basicAlert("Error", "El valor de 'delay2' debe estar entre 60 y 120 minutos.", "error");
-      return;
-    }
-    if (values.clockTolerance < 120) {
-      alerts.basicAlert("Error", "El valor de 'clockTolerance' debe ser igual o mayor a 120 minutos.", "error");
+    if (values.delay2 < 0 || values.delay2 > 60) {
+      alerts.basicAlert("Error", "El valor de 'delay2' debe estar entre 0 y 60 minutos.", "error");
       return;
     }
     if (this.myForm.invalid) {
@@ -108,11 +100,10 @@ export class ClockComponent {
     const payload = {
       active: true,
       startDay: "",
-      clockTolerance: values.clockTolerance,
       delay1: values.delay1,
       delay2: values.delay2,
       idBranch: this.idBranch,
-      identificationBlockPeriod: values.identificationBlockPeriod,
+      
     };
     console.log(payload)
 

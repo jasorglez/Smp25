@@ -7,25 +7,23 @@
                     <div class="col-6">
                        
                         <div class="py-1">
-                            <label for="delay1" class="form-label">Tiempo de tolerancia de retardo antes de primer
-                                descuento
+                            <label for="delay1" class="form-label">Tiempo de tolerancia antes de retardo (entrada)
                                 (minutos) <span class="text-danger">*</span></label>
                             <input type="number" class="form-control" id="delay1" placeholder="Consecutivo" formControlName="delay1" min="0" max="60">
                         </div>
                         <div class="py-1">
-                            <label for="delay2" class="form-label">Tiempo de tolerancia de retardo antes de segundo
-                                descuento
+                            <label for="delay2" class="form-label">Tiempo de tolerancia antes de checar horario de salida 
                                 (minutos) <span class="text-danger">*</span></label>
-                            <input type="number" class="form-control" id="delay2" placeholder="Consecutivo" formControlName="delay2" min="60" max="120">
+                            <input type="number" class="form-control" id="delay2" placeholder="Consecutivo" formControlName="delay2" min="0" max="60">
                         </div>
                         
                     </div>
                     <div class="col-6">
-                        <div class="py-1">
+                        <!--<div class="py-1">
                             <label for="clockTolerance" class="form-label">Tiempo de tolerancia antes de marcar falta
                                 (minutos) <span class="text-danger">*</span></label>
                             <input type="number" class="form-control" id="clockTolerance" placeholder="Consecutivo" formControlName="clockTolerance" min="120">
-                        </div>
+                        </div>-->
                         <div class="py-1">
                             <label for="settingToleranceTime" class="form-label">Tiempo de tolerancia de ajuste del checador
                                  <span class="text-danger">*</span></label>
@@ -34,9 +32,7 @@
 
                     </div>
                     <div class="col-6 py-1">
-                            <label for="identificationBlockPeriod" class="form-label">Identificardor del Bloque del periodo
-                                 <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control text-uppercase" id="identificationBlockPeriod" placeholder="Idendificador" formControlName="identificationBlockPeriod">
+                           
                     </div>
 
                 </div>

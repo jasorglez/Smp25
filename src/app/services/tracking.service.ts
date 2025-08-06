@@ -13,6 +13,8 @@ export class TrackingService {
   private emailser        : string = '';
   private namecomp        : string = '';
   private picturecomp     : string = '';
+  private picturecomp2    : string = '';
+  private picturecomp3    : string = '';
   private fri             : string = '';
   private nameuser        : string = '';
   private pictureuser     : string = '';
@@ -77,9 +79,26 @@ export class TrackingService {
     this.picturecomp = picturecomp;
   }
 
+  setPictureComp2(picturecomp2: string): void {
+    this.picturecomp2 = picturecomp2;
+  }
+
+  setPictureComp3(picturecomp3: string): void {
+    this.picturecomp3 = picturecomp3;
+  }
+
   getpictureComp(): string {
     return this.picturecomp;
   }
+
+  getPictureComp2(): string {
+    return this.picturecomp2;
+  }
+
+  getPictureComp3(): string {
+    return this.picturecomp3;
+  }
+
   // TERMINO DE LA CIA
 
   setformatrepint(fri: string): void {

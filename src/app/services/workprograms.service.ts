@@ -16,6 +16,10 @@ export class WorkprogramsService {
     return this.http.get<any[]>(`${environment.urlSmp}/Workprogram/${id}/${type}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getWorkProgramsWithoutType(id: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlSmp}/Workprogram/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
   getWorkPrograms2Fields(id: number): Observable<any> {
     return this.http.get<any>(`${environment.urlSmp}/Workprogram/2fields?idProject=${id}`, { headers: this.trackingService.getHeaders() });
   }
@@ -31,4 +35,14 @@ export class WorkprogramsService {
   deleteWorkProgram(id: number): Observable<any> {
     return this.http.delete(`${environment.urlSmp}/Workprogram/${id}`, { headers: this.trackingService.getHeaders() });
   }
+
+  getActivities(id: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlSmp}/Workprogram/onlyactivities?idProject=${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getFathers(id: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlSmp}/Workprogram/onlyfathers?idProject=${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+
 }

@@ -42,11 +42,13 @@ export class WorkprogramsComponent {
   typeWorkProgram: string = 'Project';
   measures: any;
   notSavedChanges: boolean = false;
+  idcompany: number = null;
 
   constructor() {
     effect(() => {
       this.idContract = this.signalsService.getContractSelectedBySidebar()();
       this.idProject = this.signalsService.getProjectSelectedBySidebar()();
+      this.idcompany = this.signalsService.getRootSelectedBySidebar()();
       
       // Si idProject es null, significa que solo se ha elegido Contract en general sin un Project específico
       // Pero si idProject tiene un valor, significa que se ha elegido un Project
@@ -78,6 +80,12 @@ export class WorkprogramsComponent {
     gantt.config.open_tree_initially = true;
     gantt.config.multiselect = true;
     gantt.i18n.setLocale("es");
+
+    // Configurar vista mensual
+    gantt.config.scales = [
+      { unit: "year", step: 1, format: "%Y" },
+      { unit: "month", step: 1, format: "%M" }
+    ];
 
     // Aquí monitoreamos que hubo cambios en el Gantt
     gantt.attachEvent("onAfterTaskAdd", () => this.notSavedChanges = true);
@@ -169,6 +177,69 @@ export class WorkprogramsComponent {
       export_api: true,
       multiselect: true
     });
+
+    // Definir escalas de zoom disponibles
+    const zoomConfig = {
+      levels: [
+        {
+          name: "day",
+          scale_height: 60,
+          min_column_width: 30,
+          scales: [
+            { unit: "day", step: 1, format: "%d %M" },
+            { unit: "hour", step: 1, format: "%H" }
+          ]
+        },
+        {
+          name: "week", 
+          scale_height: 60,
+          min_column_width: 50,
+          scales: [
+            { unit: "week", step: 1, format: function (date) {
+              var dateToStr = gantt.date.date_to_str("%d %M");
+              var endDate = gantt.date.add(gantt.date.add(date, 1, "week"), -1, "day");
+              return dateToStr(date) + " - " + dateToStr(endDate);
+            }},
+            { unit: "day", step: 1, format: "%j" }
+          ]
+        },
+        {
+          name: "month",
+          scale_height: 60,
+          min_column_width: 120,
+          scales: [
+            { unit: "year", step: 1, format: "%Y" },
+            { unit: "month", step: 1, format: "%M" }
+          ]
+        },
+        {
+          name: "quarter",
+          height: 60,
+          min_column_width: 90,
+          scales: [
+            { unit: "year", step: 1, format: "%Y" },
+            {
+              unit: "quarter", step: 1, format: function (date) {
+                var dateToStr = gantt.date.date_to_str("%M");
+                var endDate = gantt.date.add(gantt.date.add(date, 3, "month"), -1, "day");
+                return dateToStr(date) + " - " + dateToStr(endDate);
+              }
+            }
+          ]
+        },
+        {
+          name: "year",
+          scale_height: 50,
+          min_column_width: 30,
+          scales: [
+            { unit: "year", step: 1, format: "%Y" }
+          ]
+        }
+      ]
+    };
+
+    gantt.ext.zoom.init(zoomConfig);
+    gantt.ext.zoom.setLevel("month"); // Establecer vista mensual por defecto
 
     gantt.config.lightbox.sections = [
       { name: "description", height: 70, map_to: "text", type: "textarea", focus: true },
@@ -410,7 +481,7 @@ export class WorkprogramsComponent {
 
   async getMeasures() {
     try {
-      const measures = await this.catalogsService.getMeasures().toPromise();
+      const measures = await this.catalogsService.getUnits(this.idcompany).toPromise();
       this.measures = measures.map(measure => ({
         key: measure.description.toString(),
         label: measure.description.toString()
@@ -423,7 +494,7 @@ export class WorkprogramsComponent {
 
   async getPhases() {
     try {
-      const phases = await this.catalogsService.getPhases().toPromise();
+      const phases = await this.catalogsService.getPhases(this.idcompany).toPromise();
       this.phases = phases.map(phase => ({
         key: phase.description.toString(),
         label: phase.description.toString()
@@ -494,5 +565,26 @@ export class WorkprogramsComponent {
         alerts.basicAlert('Eliminado', 'Las tareas seleccionadas han sido eliminadas', 'success');
       }
     });
+  }
+
+  // Métodos para controlar el zoom
+  zoomToYear() {
+    gantt.ext.zoom.setLevel("year");
+  }
+
+  zoomToQuarter() {
+    gantt.ext.zoom.setLevel("quarter");
+  }
+
+  zoomToMonth() {
+    gantt.ext.zoom.setLevel("month");
+  }
+
+  zoomToWeek() {
+    gantt.ext.zoom.setLevel("week");
+  }
+
+  zoomToDay() {
+    gantt.ext.zoom.setLevel("day");
   }
 }

@@ -1,0 +1,169 @@
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h4><i class="bi bi-graph-up"></i> Reportes de Generadores</h4>
+        </div>
+        <div class="card-body">
+          <!-- Filtros -->
+          <div class="row mb-3">
+            <div class="col-md-3">
+              <label class="form-label">Estimación:</label>
+              <select class="form-control" [(ngModel)]="estimacionSeleccionada" (change)="onEstimacionChange()">
+                <option value="">Seleccionar estimación...</option>
+                <option *ngFor="let est of estimaciones" [value]="est.id">
+                  {{ est.number }} - {{ est.dateStart | date:'dd/MM/yyyy' }}
+                </option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Fecha Inicio:</label>
+              <input type="date" class="form-control" [(ngModel)]="fechaInicio">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Fecha Fin:</label>
+              <input type="date" class="form-control" [(ngModel)]="fechaFin">
+            </div>
+            <div class="col-md-3">
+              <button class="btn btn-primary mt-4" (click)="generarReporte()">
+                <i class="bi bi-search"></i> Generar Reporte
+              </button>
+            </div>
+          </div>
+
+          <!-- Botones de exportación -->
+          <div class="row mb-3">
+            <div class="col-12">
+              <button class="btn btn-success me-2" (click)="exportarExcel()">
+                <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+              </button>
+              <button class="btn btn-danger me-2" (click)="exportarPDF()">
+                <i class="bi bi-file-earmark-pdf"></i> Exportar PDF
+              </button>
+              <button class="btn btn-info" (click)="verGraficos()">
+                <i class="bi bi-bar-chart"></i> Ver Gráficos
+              </button>
+            </div>
+          </div>
+
+          <!-- Tabs para diferentes vistas -->
+          <ul class="nav nav-tabs mb-3">
+            <li class="nav-item">
+              <a class="nav-link" [class.active]="activeTab === 'generadores'" (click)="activeTab = 'generadores'">
+                <i class="bi bi-cpu"></i> Generadores
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" [class.active]="activeTab === 'items'" (click)="activeTab = 'items'">
+                <i class="bi bi-list-ul"></i> Items Detallados
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" [class.active]="activeTab === 'resumen'" (click)="activeTab = 'resumen'">
+                <i class="bi bi-clipboard-data"></i> Resumen
+              </a>
+            </li>
+          </ul>
+
+          <!-- Vista de Generadores -->
+          <div *ngIf="activeTab === 'generadores'">
+            <ag-grid-angular
+              class="ag-theme-alpine"
+              style="height: 400px; width: 100%;"
+              [rowData]="generadoresData"
+              [columnDefs]="generadoresColumnDefs"
+              [defaultColDef]="defaultColDef"
+              [animateRows]="true"
+              [pagination]="true"
+              [paginationPageSize]="20"
+              (gridReady)="onGeneradoresGridReady($event)">
+            </ag-grid-angular>
+          </div>
+
+          <!-- Vista de Items Detallados -->
+          <div *ngIf="activeTab === 'items'">
+            <ag-grid-angular
+              class="ag-theme-alpine"
+              style="height: 400px; width: 100%;"
+              [rowData]="itemsData"
+              [columnDefs]="itemsColumnDefs"
+              [defaultColDef]="defaultColDef"
+              [animateRows]="true"
+              [pagination]="true"
+              [paginationPageSize]="20"
+              [treeData]="true"
+              [groupDefaultExpanded]="1"
+              [getDataPath]="getDataPath"
+              (gridReady)="onItemsGridReady($event)">
+            </ag-grid-angular>
+          </div>
+
+          <!-- Vista de Resumen -->
+          <div *ngIf="activeTab === 'resumen'" class="row">
+            <div class="col-md-6">
+              <div class="card">
+                <div class="card-header">
+                  <h5>Estadísticas Generales</h5>
+                </div>
+                <div class="card-body">
+                  <div class="row mb-2">
+                    <div class="col-6"><strong>Total Generadores:</strong></div>
+                    <div class="col-6">{{ resumenData.totalGeneradores }}</div>
+                  </div>
+                  <div class="row mb-2">
+                    <div class="col-6"><strong>Total Items:</strong></div>
+                    <div class="col-6">{{ resumenData.totalItems }}</div>
+                  </div>
+                  <div class="row mb-2">
+                    <div class="col-6"><strong>Promedio Items/Generador:</strong></div>
+                    <div class="col-6">{{ resumenData.promedioItems | number:'1.1-1' }}</div>
+                  </div>
+                  <div class="row mb-2">
+                    <div class="col-6"><strong>Rango de Fechas:</strong></div>
+                    <div class="col-6">{{ resumenData.rangoFechas }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="card">
+                <div class="card-header">
+                  <h5>Por Área/Fase</h5>
+                </div>
+                <div class="card-body">
+                  <div *ngFor="let area of resumenData.porArea" class="row mb-2">
+                    <div class="col-6"><strong>{{ area.fase || 'Sin Área' }}:</strong></div>
+                    <div class="col-6">{{ area.cantidad }} generadores</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Modal para gráficos -->
+          <div class="modal fade" id="graficosModal" tabindex="-1" *ngIf="showGraficos">
+            <div class="modal-dialog modal-xl">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title">Gráficos de Generadores</h5>
+                  <button type="button" class="btn-close" (click)="cerrarGraficos()"></button>
+                </div>
+                <div class="modal-body">
+                  <div class="row">
+                    <div class="col-12">
+                      <p class="text-center text-muted">
+                        <i class="bi bi-info-circle"></i> 
+                        Funcionalidad de gráficos próximamente disponible
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

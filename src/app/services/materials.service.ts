@@ -26,6 +26,7 @@ export class MaterialsService {
   }
 
   updateMaterial(id: string, data: any): Observable<any> {
+    console.log('Updating material with ID:', id, 'and data:', data);
     return this.http.put<any[]>(
       `${environment.urlWarehouse}/Material/${id}`,
       data,

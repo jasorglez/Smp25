@@ -47,14 +47,27 @@ export class UsersxbranchesComponent {
       const rootId = await this.signalsService.getRootSelectedBySidebar()();
 
       // Priorizar companyId si existe, de lo contrario usar rootId
-      this.idRoot = companyId || rootId;
+      const newIdRoot = companyId || rootId;
+      
+      console.log('🏢 Company ID from permissions:', companyId);
+      console.log('🏠 Root ID from sidebar:', rootId);
+      console.log('✅ Selected idRoot for branches:', newIdRoot);
 
-      if (!this.idRoot) {
-        this.rowData = [];
-        this.branchs = [];
-        alerts.basicAlert('Sucursales', 'Debe elegir una empresa primero para poder ver sus sucursales.', 'error');
-      } else {
-        this.obtenerDatos();
+      if (this.idRoot !== newIdRoot) {
+        this.idRoot = newIdRoot;
+        
+        if (!this.idRoot) {
+          this.rowData = [];
+          this.branchs = [];
+          alerts.basicAlert('Sucursales', 'Debe elegir una empresa primero para poder ver sus sucursales.', 'error');
+        } else {
+          console.log('🔄 idRoot changed, reloading data...');
+          // Load branches FIRST, then data
+          this.getBranches(); // ✅ IMPORTANTE: Recargar branches cuando cambie la empresa
+          setTimeout(() => {
+            this.obtenerDatos();
+          }, 300); // Delay to ensure branches load first
+        }
       }
     });
   }
@@ -67,9 +80,12 @@ export class UsersxbranchesComponent {
     if (this.signalsService.getemailChoose() !== environment.root) {
        this.idRoot = this.signalsService.getRootSelectedBySidebar()()
     }
-    //alert('id Root ' + this.idRoot);   
-    this.obtenerDatos();
+    //alert('id Root ' + this.idRoot);
+    // Load branches FIRST, then data
     this.getBranches();
+    setTimeout(() => {
+      this.obtenerDatos();
+    }, 300); // Delay to ensure branches load first
     
   }
 
@@ -82,36 +98,49 @@ export class UsersxbranchesComponent {
   }
 
 
-  obtenerDatos() {        
+  obtenerDatos() {
+    console.log('📊 Loading user branches data for user:', this.idUser, 'company:', this.idRoot);
     this.branchesService.getBranchesByUserAndCompany(this.idUser, this.idRoot).subscribe(
       (data: any) => {
-        this.rowData = data.project; // Extract the array from the response     
-        console.log(data);
+        this.rowData = data.project; // Extract the array from the response
+        console.log('✅ User branches data loaded:', this.rowData);
+        console.log('📊 Branches available for formatting:', this.branchs.length);
         this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Usuarios por Sucursal', 'Menu Administracion Usuarios por Sucursal',  this.trackingService.getEmail());
+        
+        // Force refresh cells after data is loaded to show branch names
+        setTimeout(() => {
+          if (this.gridApi && this.branchs.length > 0) {
+            console.log('🔄 Refreshing cells to show branch names');
+            this.gridApi.refreshCells();
+          }
+        }, 100);
       },
       (error) => {
         if (error.status == 404) this.rowData = [];
-        console.error('Error fetching data:', error);
+        console.error('Error fetching branches data:', error);
       }
     );
   }
 
   getBranches(){
-     //  alert('id User ' + this.idUser);
-     //  alert('id Root ' + this.idRoot);
-    this.usersxbranchesService.getDataUsersxPermissionsbranch(this.idRoot, this.idUser).subscribe(
+    console.log('🔄 Loading branches for idRoot (company):', this.idRoot);
+    this.branchesService.getBranches(this.idRoot).subscribe(
       (data: any) => {
-        this.id      = data.id ;
-        console.log('this.id', this.id)  
-        this.branchs = data 
-        console.log(this.branchs)     
+        this.branchs = data;
+        console.log('✅ Branches loaded successfully:', this.branchs);
+        console.log('📊 Number of branches:', this.branchs.length);
+        if (this.branchs.length > 0) {
+          console.log('🏢 Available branches:', this.branchs.map(b => `${b.id}: ${b.name}`));
+        }
       },
       (error) => {
-        if (error.status == 404) this.branchs = [];
-        console.error('Error fetching data:', error);
+        if (error.status == 404) {
+          this.branchs = [];
+          console.log('⚠️ No branches found for company (404)');
+        }
+        console.error('❌ Error fetching branches:', error);
       }
     );
-
   }
 
 
@@ -131,14 +160,52 @@ export class UsersxbranchesComponent {
         width: 330,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => {
+          console.log('🏢 Branches available for dropdown:', this.branchs);
+          // En agSelectCellEditor, values debe contener los nombres que se mostrarán
           return {
-            values: this.branchs ? this.branchs.map((item) => item.id) : []
+            values: this.branchs ? this.branchs.map((item) => item.name) : []
           };
         },
         valueFormatter: (params) => {
-          if (!params.value) return '';
-          const foundBranch = this.branchs.find((item) => item.id === params.value);
-          return foundBranch ? foundBranch.name : params.value;
+          console.log('🏢 Branch data for formatting:', {
+            value: params.value,
+            fullData: params.data,
+            hasName: !!params.data?.name,
+            hasIdPermission: !!params.data?.idPermission
+          });
+          
+          // Si ya viene el name en los datos, usarlo directamente
+          if (params.data?.name) {
+            console.log(`✅ Using existing name: ${params.data.name}`);
+            return params.data.name;
+          }
+          
+          // Si no, buscar por idPermission en la lista de branches
+          if (params.data?.idPermission) {
+            const foundBranch = this.branchs.find((item) => item.id === params.data.idPermission);
+            const branchName = foundBranch ? foundBranch.name : `ID: ${params.data.idPermission}`;
+            console.log(`🔍 Found branch by idPermission ${params.data.idPermission} -> ${branchName}`);
+            return branchName;
+          }
+          
+          console.log('⚠️ No branch name found');
+          return params.value || '';
+        },
+        valueSetter: (params) => {
+          console.log('🔄 Setting branch value:', params.newValue);
+          // Cuando se selecciona un nombre del dropdown, buscar la branch por nombre
+          if (params.newValue && this.branchs) {
+            const selectedBranch = this.branchs.find(b => b.name === params.newValue);
+            if (selectedBranch) {
+              // Solo actualizar idPermission (que es lo que soporta el endpoint)
+              // El name se mostrará via valueFormatter
+              params.data.idPermission = selectedBranch.id;
+              params.data[params.colDef.field] = params.newValue; // Establecer el name para mostrar
+              console.log(`✅ Set branch: ${selectedBranch.name} (ID: ${selectedBranch.id})`);
+              return true;
+            }
+          }
+          return false;
         },
       },
     ];
@@ -174,26 +241,32 @@ public gridOptions: any = {
 
   onSelectedRow(event: any) {
     this.id = event.data.id;
-    console.log('this.id', this.id)
   }
 
   onSelectionChanged(event: any) {
     const selectedNodes = event.api.getSelectedNodes();
+    
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
-      this.signalsService.setBranchFromPermissions(this.selectedRowData.idPermission);
+      const branchId = this.selectedRowData.id;
+      
+      if (branchId) {
+        this.signalsService.setBranchFromPermissions(branchId);
+      }
     } else {
       this.selectedRowData = null;
     }
   }
 
   onCellValueChanged(event: any) {    
-      console.log('Dato cambiado:', event.data);
+      console.log('📝 Cell value changed:', event.data);
+      console.log('🔄 Field changed:', event.colDef.field, 'New value:', event.newValue);
       
       // When the name field (which contains the branch selection) changes
       if (event.colDef.field === 'name') {
-        // The event.newValue contains the selected branch ID from the dropdown
-        event.data.idPermission = event.newValue;                     
+        // The valueSetter already handled setting both name and idPermission
+        console.log('🏢 Branch name changed to:', event.newValue);
+        console.log('🆔 Corresponding idPermission:', event.data.idPermission);
       }
             
       event.data.__modified = true;
@@ -222,9 +295,15 @@ public gridOptions: any = {
   }
 
   addRow() {
-    const tempId = `temp_${this.tempIdCounter++}`;    
-    // Get first branch ID if available, otherwise empty
+    const tempId = `temp_${this.tempIdCounter++}`;
+    
+    console.log('➕ Adding new row. Available branches:', this.branchs.length);
+    
+    // Get first branch ID if available, otherwise 0
     const defaultBranchId = this.branchs.length > 0 ? this.branchs[0].id : 0;
+    
+    console.log('🏢 Default branch ID for new row:', defaultBranchId);
+    
     const newItem = {
       id: tempId,
       idUser: this.idUser,
@@ -233,11 +312,20 @@ public gridOptions: any = {
       active: 1,
       __isNew: true,
     };
+    
+    console.log('📝 New item created:', newItem);
 
     this.rowData = [newItem, ...this.rowData];
     this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Usuarios por Sucursal', 'Menu Administracion Usuarios por Sucursal',  this.trackingService.getEmail());
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
+    
+    // Force grid refresh to ensure dropdown works
+    setTimeout(() => {
+      if (this.gridApi) {
+        this.gridApi.refreshCells();
+      }
+    }, 100);
   }
 
   async saveChanges() {
@@ -342,9 +430,12 @@ public gridOptions: any = {
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
+    // Eliminar el campo name ya que el endpoint no lo soporta
+    delete cleanedData.name;
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }
+    console.log('🧹 Cleaned data for server:', cleanedData);
     return cleanedData;
   }
 }

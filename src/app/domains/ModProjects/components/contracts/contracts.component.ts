@@ -15,6 +15,7 @@ import { CompanysService } from 'app/services/companys.service';
 import { SignalsService } from 'app/services/signals.service';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ContractDetailsComponent } from './contract-details/contract-details.component';
+import { ProvidersService } from 'app/services/providers.service';
 
 // Esta funcion valida que dateStar sea siempre menor a dateEnd
 export function dateRangeValidator(): ValidatorFn {
@@ -51,6 +52,7 @@ export function noDefaultValueValidator(): ValidatorFn {
 export class ContractsComponent {
   constructor() {
     effect(() => {
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.getContracts();
     });
@@ -76,6 +78,7 @@ export class ContractsComponent {
   idContract: number | null = null;
 
   idBranch: number;
+  idRoot: number;
 
   screenSizeSM = false;
   notSavedChanges: boolean = false;
@@ -89,6 +92,8 @@ export class ContractsComponent {
   private modalService = inject(NgbModal);
   private companysService = inject(CompanysService);
   private signalsService = inject(SignalsService);
+  private providersService = inject(ProvidersService);
+
 
   public contract: Icontract[] = [];
   private gridApi!: GridApi<Icontract>;
@@ -227,21 +232,23 @@ export class ContractsComponent {
   initForm() {
     this.addContract = new FormGroup({
       id: new FormControl(),
+      idBranch: new FormControl(this.idBranch),
       numberContract: new FormControl('', Validators.required),
       description: new FormControl('', Validators.required),
       descripSmall: new FormControl('', Validators.required),
-      resident: new FormControl('', Validators.required),
-      supervisor: new FormControl('', Validators.required),
-      amountMx: new FormControl('', Validators.required),
-      amountDll: new FormControl('', Validators.required),
-      speciality: new FormControl('Seleccione una especialidad', [Validators.required, noDefaultValueValidator()]),
-      idProvider: new FormControl('Seleccione un contratista', [Validators.required, noDefaultValueValidator()]),
+      resident: new FormControl(''),
+      supervisor: new FormControl(''),
+      amountMx: new FormControl(0),
+      amountDll: new FormControl(0),
+      speciality: new FormControl('Seleccione una especialidad'),
+      idProvider: new FormControl('Seleccione un contratista'),
       dateStar: new FormControl('', Validators.required),
       dateEnd: new FormControl('', Validators.required),
-      stateContract: new FormControl('Seleccione un estado', [Validators.required, noDefaultValueValidator()]),
+      stateContract: new FormControl('Seleccione un estado'),
       term: new FormControl(),
       idBussines: new FormControl(1),
       consecutive: new FormControl(0),
+      active: new FormControl(1)
     }, { validators: dateRangeValidator() });
   }
 
@@ -367,19 +374,31 @@ export class ContractsComponent {
   }
 
   openModal() {
-    this.companysService.Companys().subscribe({
+    // Abrir el modal independientemente de si hay proveedores
+    const modalOptions: NgbModalOptions = {
+      size: 'xl',
+      centered: true
+    };
+    
+    // Intentar cargar proveedores
+    this.providersService.getProviders(this.idRoot).subscribe({
       next: (resp) => {
         this.providers = resp;
-        const modalOptions: NgbModalOptions = {
-          size: 'xl',
-          centered: true
-        };
-        this.modalService.open(this.content, modalOptions);
       },
       error: (error) => {
         console.error('Error fetching providers', error);
+        this.providers = []; // Lista vacía si no hay proveedores
+        // Opcional: mostrar alerta informativa
+        alerts.basicAlert(
+          'Proveedores',
+          'No se pudieron cargar los proveedores. Podrá continuar pero deberá seleccionar un contratista manualmente.',
+          'warning'
+        );
       }
     });
+    
+    // Abrir el modal siempre
+    this.modalService.open(this.content, modalOptions);
   }
 
   deleteContract() {
@@ -419,7 +438,10 @@ export class ContractsComponent {
       this.formData = this.prepareFormData();
 
       if (this.isEditing && this.selectedRowData) {
-        console.log('Updating contract with data:', this.formData);
+        console.log('🔄 UPDATING CONTRACT');
+        console.log('📋 Contract ID:', this.selectedRowData.id);
+        console.log('📦 Data being sent to UPDATE endpoint:', this.formData);
+        console.log('🔗 Full object structure:', JSON.stringify(this.formData, null, 2));
         this.followprojectsService.updateContract(this.selectedRowData.id, this.formData).pipe(
           catchError((error) => {
             alerts.basicAlert(
@@ -441,6 +463,9 @@ export class ContractsComponent {
           this.resetForm();
         });
       } else {
+        console.log('➕ ADDING NEW CONTRACT');
+        console.log('📦 Data being sent to ADD endpoint:', this.formData);
+        console.log('🔗 Full object structure:', JSON.stringify(this.formData, null, 2));
         this.followprojectsService.addContract(this.formData).pipe(
           catchError((error) => {
             alerts.basicAlert(
@@ -473,12 +498,18 @@ export class ContractsComponent {
 
   prepareFormData(): any {
     const formValue = this.addContract.value;
-    return {
+    console.log('🛠️ PREPARING FORM DATA');
+    console.log('📝 Raw form values:', formValue);
+    
+    const preparedData = {
       ...formValue,
       dateStar: this.formatDateForBackend(formValue.dateStar),
       dateEnd: this.formatDateForBackend(formValue.dateEnd),
       stateContract: formValue.stateContract
     };
+    
+    console.log('✅ Prepared data for API:', preparedData);
+    return preparedData;
   }
 
 

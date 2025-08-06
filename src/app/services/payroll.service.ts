@@ -65,6 +65,18 @@ export class PayrollService {
   getDetailsForNormalPayrolls(idPayroll: number): Observable<any> {
     return this.http.get<any>(`${environment.urlAdministration}/NormalPayrolls/employees/${idPayroll}`, { headers: this.trackingService.getHeaders() });
   }
+  getPayrollsByRange(startDate: Date, endDate: Date, idBranch: number): Observable<any> {
+  const newStart = startDate.toString()
+  const newEnd = endDate.toString()
+  const params = {
+    startDate: newStart.split("T")[0],
+    endDate: newEnd.split("T")[0],
+    idBranch: idBranch
+  };
+  console.log(params)
+  return this.http.get(`${environment.urlAdministration}/payroll/GetPayrollsByRange`, { params: params, headers: this.trackingService.getHeaders() });
+}
+
 
   downloadPayrollExcel(idBranch: number, startDate: Date, endDate: Date): Observable<Blob> {
     return this.http.get(`${environment.urlAdministration}/NormalPayrolls/download-excel/${idBranch}`, {

@@ -13,18 +13,11 @@ export class HistoryPayrollService {
 
   private trackingService = inject(TrackingService);
 
-  getALlHistoryPayroll(): Observable<HistoryPayrollResponse[]> {
-    return this.http.get<HistoryPayrollResponse[]>(
-      `${environment.urlAdministration}/payroll`,
-      { headers: this.trackingService.getHeaders() }
-    );
-  }
-
   getHistoryPayrollsByBranch(
     idBranch: number
   ): Observable<HistoryPayrollResponse[]> {
     return this.http.get<HistoryPayrollResponse[]>(
-      `${environment.urlAdministration}/payroll?idBranch=${idBranch}`,
+      `${environment.urlAdministration}/payroll/branch/${idBranch}`,
       { headers: this.trackingService.getHeaders() }
     );
   }

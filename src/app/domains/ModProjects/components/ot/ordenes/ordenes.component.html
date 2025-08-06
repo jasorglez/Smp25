@@ -2,44 +2,321 @@
   <div class="row">
     <div class="col-12">
       <div class="card">
-        <div class="card-header">
-          <h3 class="card-title">
-            <i class="bi bi-file-earmark-text"></i> 
-            {{'work_orders' | translate}}
-          </h3>
-        </div>
         <div class="card-body">
-          <!-- Botones CRUD y AG-Grid -->
-          <div class="row">
-            <!-- Botones de acciones -->
-            <nav class="col-auto d-flex flex-column align-items-start">
-              <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addRow()">
-                <i class="bi bi-plus-lg"></i>
-              </button>
-              <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revert()">
-                <i class="bi bi-arrow-clockwise"></i>
-              </button>
-              <button type="button" class="btn btn-info ms-1 me-1 mb-2" (click)="fileInput.click()" [disabled]="isUploading">
-                <i class="bi bi-file-earmark-pdf" *ngIf="!isUploading"></i>
-                <div class="spinner-border spinner-border-sm" role="status" *ngIf="isUploading">
-                  <span class="visually-hidden">Subiendo...</span>
+          <!-- SECCIÓN PRINCIPAL: Grid de OTs y Vista previa en columnas -->
+          <div class="row mb-2" style="position: relative;">
+            <div [class]="'col-12 col-md-' + leftColumnSize + ' border-end'" style="position: relative;">
+              <!-- Sección superior: Botones y Lista de OTs lado a lado -->
+              <div class="row mb-3">
+                <!-- Botones de acciones -->
+                <div class="col-auto">
+                  <nav class="d-flex flex-column align-items-start">
+                    <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addReporte()">
+                      <i class="bi bi-plus-lg"></i>
+                    </button>
+                    <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revert()" [disabled]="signalsService.getClosedReport()()">
+                      <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                    <button type="button" class="btn btn-info ms-1 me-1 mb-2" (click)="fileInput.click()" [disabled]="isUploading">
+                      <i class="bi bi-file-earmark-pdf" *ngIf="!isUploading"></i>
+                      <div class="spinner-border spinner-border-sm" role="status" *ngIf="isUploading">
+                        <span class="visually-hidden">Subiendo...</span>
+                      </div>
+                    </button>
+                    <input #fileInput type="file" accept=".pdf" style="display: none" (change)="onFileSelected($event)">
+                  </nav>
                 </div>
-              </button>
-              <input #fileInput type="file" accept=".pdf" style="display: none" (change)="onFileSelected($event)">
-            </nav>
-            
-            <!-- AG-Grid para mostrar datos de órdenes -->
-            <div class="col">
-              <ag-grid-angular style="width: 100%; height: 700px;"
-                class="ag-theme-quartz small-text-ag-grid"
-                [rowData]="rowData"
-                [columnDefs]="columnDefs"
-                [gridOptions]="gridOptions"
-                (selectionChanged)="onSelectionChanged($event)"
-                (gridReady)="onGridReady($event)"
-                [rowSelection]="'single'"
-                [stopEditingWhenCellsLoseFocus]="true">
-              </ag-grid-angular>
+                
+                <!-- Lista de OTs -->
+                <div class="col overflow-auto" style="height: 25vh;">
+                  <ag-grid-angular 
+                    [ngStyle]="{ height: gridHeight, width: gridWidth }"
+                    class="ag-theme-quartz small-text-ag-grid"
+                    [rowData]="rowData"
+                    [columnDefs]="oTcolumnDefs"
+                    [gridOptions]="gridOptions"
+                    (selectionChanged)="onSelectionChanged($event)"
+                    (gridReady)="onGridReady($event)"
+                    [rowSelection]="'single'"
+                    [stopEditingWhenCellsLoseFocus]="true">
+                  </ag-grid-angular>
+                </div>
+              </div>
+
+              <!-- Información detallada con pestañas -->
+              <div *ngIf="selectedOt">
+                <!-- Label con información de la OT seleccionada -->
+                <div class="alert alert-info mb-2 py-2">
+                  <small>
+                    <strong><i class="bi bi-info-circle"></i> OT:</strong> {{selectedOt.otNumber}} - {{selectedOt.description}}
+                    <span class="float-end">
+                      <span *ngIf="selectedReporteFecha; else soloOT">
+                        <strong>Fecha:</strong> {{selectedReporteFecha | date:'dd-MM-yyyy'}} 
+                        <strong>{{selectedReporteHoraInicio}}-{{selectedReporteHoraTermino}}</strong>
+                        <span class="badge bg-primary">{{selectedReporteTipo}}</span>
+                      </span>
+                      <ng-template #soloOT>
+                        <strong>Registro:</strong> {{selectedOt.registerDate | date:'dd-MM-yyyy'}}
+                      </ng-template>
+                    </span>
+                  </small>
+                </div>
+
+                <!-- Pestañas de navegación -->
+                <ul class="nav nav-tabs mb-3">
+                  <li class="nav-item">
+                    <a class="nav-link" [class.active]="activeTab === 'reportes'" (click)="setActiveTab('reportes')" style="cursor: pointer;"><i class="bi bi-calendar3"></i> Reportes Diarios</a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-link" [class.active]="activeTab === 'personal'" (click)="setActiveTab('personal')" style="cursor: pointer;"><i class="bi bi-people"></i> Personal</a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-link" [class.active]="activeTab === 'fotos'" (click)="setActiveTab('fotos')" style="cursor: pointer;"><i class="bi bi-images"></i> Fotografías</a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-link" [class.active]="activeTab === 'material'" (click)="setActiveTab('material')" style="cursor: pointer;"><i class="bi bi-box-seam"></i> Material</a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-link" [class.active]="activeTab === 'equipos'" (click)="setActiveTab('equipos')" style="cursor: pointer;"><i class="bi bi-tools"></i> Equipos</a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-link" [class.active]="activeTab === 'conceptos'" (click)="setActiveTab('conceptos')" style="cursor: pointer;"><i class="bi bi-lightbulb"></i> Conceptos</a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-link" [class.active]="activeTab === 'notas'" (click)="setActiveTab('notas')" style="cursor: pointer;"><i class="bi bi-journal-text"></i> Notas</a>
+                  </li>
+                </ul>
+
+                <!-- Contenido de las Pestañas -->
+                <div class="tab-content tab-content-custom p-1">
+                  
+                  <!-- Pestaña Reportes Diarios -->
+                  <div class="tab-pane" [class.show]="activeTab === 'reportes'" [class.active]="activeTab === 'reportes'">
+                    <div class="row h-100">
+                      <nav class="col-auto d-flex flex-column align-items-start">
+                        <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addReporte()"><i class="bi bi-plus-lg"></i></button>
+                        <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
+                        <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertReportes()"><i class="bi bi-arrow-clockwise"></i></button>
+                        <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteReporte()"><i class="bi bi-trash"></i></button>
+                      </nav>
+                      <div class="col overflow-auto" style="height: 60vh;">
+                        <ag-grid-angular 
+                           [ngStyle]="{ height: gridHeight}" 
+                           class="ag-theme-quartz small-text-ag-grid" 
+                           [rowData]="reportesDiarios" 
+                           [columnDefs]="reportesColumnDefs" 
+                           [gridOptions]="reportesGridOptions" 
+                           [components]="components" 
+                           [rowSelection]="'single'" 
+                           (rowClicked)="selectReporte($event.data)" 
+                           [getRowClass]="getReporteRowClass">
+                        </ag-grid-angular>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Pestaña Personal -->
+                  <div class="tab-pane" [class.show]="activeTab === 'personal'" [class.active]="activeTab === 'personal'">
+                    <h6><i class="bi bi-people"></i> Personal Asignado <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
+                    <div class="row">
+                      <nav class="col-auto d-flex flex-column align-items-start">
+                        <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addPersonal()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
+                        <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="savePersonalChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedPersonalChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
+                        <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertPersonal()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
+                        <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deletePersonal()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
+                      </nav>
+                      <div class="col overflow-auto" style="height: 60vh;">
+                        <ag-grid-angular 
+                         [ngStyle]="{ height: gridHeight, width: gridWidthDetail }" 
+                         class="ag-theme-quartz small-text-ag-grid" 
+                         [rowData]="personal" 
+                         [columnDefs]="personalColumnDefs" 
+                         [gridOptions]="personalGridOptions" 
+                         (gridReady)="onPersonalGridReady($event)">
+                      </ag-grid-angular>
+                      </div>
+                    </div>
+                  </div>
+
+       
+                  <!-- Pestaña Fotografías -->
+                  <div class="tab-pane" [class.show]="activeTab === 'fotos'" [class.active]="activeTab === 'fotos'">
+                    <h6><i class="bi bi-images"></i> Fotografías del Trabajo <span *ngIf="selectedReporteFecha" class="badge bg-secondary ">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
+                    <div class="row">
+                      
+                      <!-- Columna de Botones (Ajustada para flexibilidad) -->
+                      <div class="col-auto">
+                        <nav class="d-flex flex-column align-items-start">
+                          <button type="button" class="btn btn-primary  mb-2" (click)="addFotografia()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
+                          <button type="button" class="btn btn-success  position-relative mb-2" (click)="saveFotografiasChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedFotografiaChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
+                          <button type="button" class="btn btn-warning  mb-2" (click)="revertFotografias()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
+                          <button type="button" class="btn btn-danger  mb-2" (click)="deleteFotografia()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
+                        </nav>
+                      </div>
+
+                      <!-- Columna del Grid de Fotos -->
+                      <div class="col">
+                        <div class="overflow-auto" style="height: 60vh;"> <!-- LEY MAESTRA -->
+                           <ag-grid-angular                           
+                             [ngStyle]="{ height: '100%', width: '100%' }"
+                             class="ag-theme-quartz small-text-ag-grid" 
+                             [rowData]="fotografias" 
+                             [columnDefs]="fotografiasColumnDefs" 
+                             [gridOptions]="fotografiasGridOptions" 
+                             (rowClicked)="selectFotografia($event.data)">
+                           </ag-grid-angular>
+                        </div>
+                      </div>
+                      
+                      <!-- Columna de la Vista Previa -->
+                      <div class="col-5">
+                        <!-- ===== INICIO DEL EDICTO DE PODER ===== -->
+                        <!-- Se impone la misma ley de altura y se usan clases d-flex para centrar el contenido verticalmente -->
+                        <div class="border rounded p-3 d-flex flex-column" style="height: 30vh; background-color: #f8f9fa;">
+                          <div *ngIf="selectedFotografia; else noFotoSelection" class="flex-grow-1 text-center d-flex flex-column justify-content-center">
+                            <img [src]="selectedFotografia.url" [alt]="selectedFotografia.descripcion" class="img-fluid rounded" style="max-height: 50%; object-fit: contain;">
+                          </div>
+                          <ng-template #noFotoSelection>
+                            <div class="flex-grow-1 h-100 d-flex align-items-center justify-content-center">
+                              <div class="text-center text-muted">
+                                <i class="bi bi-camera-reels display-4"></i>
+                                <p class="mt-2">Selecciona una foto para ver la vista previa</p>
+                              </div>
+                            </div>
+                          </ng-template>
+                        </div>
+                        <!-- ===== FIN DEL EDICTO DE PODER ===== -->
+                      </div>
+
+                    </div>
+                  </div>
+
+
+                  <!-- Pestaña Material -->
+                  <div class="tab-pane" [class.show]="activeTab === 'material'" [class.active]="activeTab === 'material'">
+                    <h6><i class="bi bi-box-seam"></i> Material Utilizado <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
+                    <div class="row">
+                      <div class="col-2">
+                        <nav class="col-auto d-flex flex-column align-items-start">
+                          <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addMaterial()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
+                          <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChangesMaterial()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedMaterialChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
+                          <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertMaterial()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
+                          <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteMaterial()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
+                        </nav>
+                      </div>
+                      <div class="col-10 overflow-auto agridWH">
+                        <ag-grid-angular [ngStyle]="{ height: gridHeight, width: gridWidthDetail }" class="ag-theme-quartz small-text-ag-grid" [rowData]="materiales" [columnDefs]="materialesColumnDefs" (cellValueChanged)="onCellValueChangedMaterial($event)" [gridOptions]="materialesGridOptions" (gridReady)="onMaterialesGridReady($event)"></ag-grid-angular>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Pestaña Equipos -->
+                  <div class="tab-pane" [class.show]="activeTab === 'equipos'" [class.active]="activeTab === 'equipos'">
+                    <h6><i class="bi bi-tools"></i> Equipos Utilizados <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
+                    <div class="row">
+                      <div class="col-2">
+                        <nav class="col-auto d-flex flex-column align-items-start">
+                          <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addEquipos()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
+                          <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChangesEquipos()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedEquipoChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
+                          <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertEquipos()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
+                          <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteEquipo()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
+                        </nav>
+                      </div>
+                      <div class="col-10 overflow-auto agridWH">
+                        <ag-grid-angular [ngStyle]="{ height: gridHeight, width: gridWidthDetail }" class="ag-theme-quartz small-text-ag-grid" [rowData]="equipos" [columnDefs]="equiposColumnDefs" (cellValueChanged)="onCellValueChangedEquipo($event)" [gridOptions]="equiposGridOptions" (gridReady)="onEquiposGridReady($event)"></ag-grid-angular>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Pestaña Conceptos -->
+                  <div class="tab-pane" [class.show]="activeTab === 'conceptos'" [class.active]="activeTab === 'conceptos'">
+                    <h6><i class="bi bi-lightbulb"></i> Conceptos del Reporte <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
+                    <div class="row">
+                      <div class="col-2">
+                        <nav class="col-auto d-flex flex-column align-items-start">
+                          <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addConcepto()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
+                          <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveConceptosChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedConceptoChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
+                          <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertConceptos()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
+                          <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteConcepto()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
+                        </nav>
+                      </div>
+                      <div class="col-10 overflow-auto" style="height: 60vh;">
+                        <ag-grid-angular class="ag-theme-quartz small-text-ag-grid" [rowData]="conceptos" [columnDefs]="conceptosColumnDefs" [gridOptions]="tabGridOptions" (cellValueChanged)="onCellValueChangedConcepto($event)" (gridReady)="onConceptosGridReady($event)"></ag-grid-angular>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Pestaña Notas -->
+                  <div class="tab-pane" [class.show]="activeTab === 'notas'" [class.active]="activeTab === 'notas'">
+                    <h6><i class="bi bi-journal-text"></i> Notas del Reporte <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
+                    <div class="row">
+                      <div class="col-2">
+                        <nav class="col-auto d-flex flex-column align-items-start">
+                          <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addNota()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
+                          <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveNotasChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedNoteChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
+                          <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertNotas()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
+                          <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteNota()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
+                        </nav>
+                      </div>
+                      <div class="col-10 overflow-auto" style="height: 60vh;">
+                        <ag-grid-angular class="ag-theme-quartz small-text-ag-grid" [rowData]="notas" [columnDefs]="notasColumnDefs" [gridOptions]="notasGridOptions" (cellDoubleClicked)="onCellDoubleClicked($event)" (gridReady)="onNotasGridReady($event)" (cellValueChanged)="onCellValueChangedNota($event)"></ag-grid-angular>
+                      </div>
+                    </div>
+                  </div>
+
+                </div> <!-- Fin de tab-content -->
+              </div> <!-- Fin de ngIf selectedOt -->
+            </div> <!-- Fin de columna izquierda -->
+
+            <!-- COLUMNA 2: Vista previa del reporte PDF -->
+            <div [class]="'col-12 col-md-' + rightColumnSize" style="position: relative;">
+              <!-- Resizer drag handle -->
+              <div class="column-resizer" (mousedown)="onResizerMouseDown($event)" [class.resizing]="isResizing" title="Arrastra para redimensionar columnas">
+                <div class="resizer-handle"></div>
+              </div>
+              <h6><i class="bi bi-file-earmark-pdf"></i> Vista Previa del Reporte</h6>
+              <div class="border rounded p-3 pdf-preview-container" style="height: 650px; background-color: #f8f9fa;">
+                <!-- PDF Embed cuando está generado -->
+                <div *ngIf="showPdfEmbed && pdfUrl" class="h-100">
+                  <iframe [src]="pdfUrl" width="100%" height="100%" style="border: none; border-radius: 6px;"></iframe>
+                </div>
+                <!-- Estado generando PDF -->
+                <div *ngIf="isGeneratingPdf" class="h-100 d-flex align-items-center justify-content-center">
+                  <div class="text-center">
+                    <div class="spinner-border text-primary mb-3" role="status"><span class="visually-hidden">Generando PDF...</span></div>
+                    <h6>Generando PDF...</h6>
+                    <p class="text-muted small">Por favor espere</p>
+                  </div>
+                </div>
+                <!-- Estado inicial con OT seleccionada -->
+                <div *ngIf="selectedOt && !showPdfEmbed && !isGeneratingPdf" class="h-100">
+                  <div class="text-center mt-5">
+                    <i class="bi bi-file-earmark-pdf display-4 text-muted"></i>
+                    <h6 class="mt-2">Reporte Diario - OT: {{selectedOt.otNumber}}</h6>
+                    <p class="text-muted small">{{selectedOt.description}}</p>
+                    <div *ngIf="selectedReporteId && selectedReporteFecha" class="mt-3">
+                      <div class="alert alert-light border p-2">
+                        <small>
+                          <strong>Fecha:</strong> {{selectedReporteFecha | date:'dd/MM/yyyy'}}<br>
+                          <strong>Tipo:</strong> {{selectedReporteTipo}}<br>
+                          <strong>Horario:</strong> {{selectedReporteHoraInicio}} - {{selectedReporteHoraTermino}}
+                        </small>
+                      </div>
+                      <button class="btn btn-primary btn-sm" (click)="generatePdfPreview()"><i class="bi bi-eye"></i> Generar Vista Previa</button>
+                    </div>
+                    <div *ngIf="!selectedReporteId || !selectedReporteFecha" class="mt-4">
+                      <p class="text-muted small"><i class="bi bi-arrow-left"></i> Selecciona un reporte diario en la pestaña "Reportes Diarios" para generar el PDF</p>
+                    </div>
+                  </div>
+                </div>
+                <!-- Estado sin OT seleccionada -->
+                <div *ngIf="!selectedOt" class="h-100 d-flex align-items-center justify-content-center">
+                  <div class="text-center text-muted">
+                    <i class="bi bi-arrow-left display-3"></i>
+                    <p class="mt-2 small">Selecciona una OT para ver el reporte</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
