@@ -12,6 +12,7 @@ import { GeneratorsComponent } from './generators.component';
 import { PdfEstimatesService } from 'app/services/pdf-estimates.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
+import { GeneratorsService } from 'app/services/generators.service';
 
 @Component({
   selector: 'app-estimates',
@@ -26,6 +27,7 @@ export class EstimatesComponent {
   private pdfEstimatesService = inject(PdfEstimatesService);
   private trackingService = inject(TrackingService);
   private workprogramsService = inject(WorkprogramsService);
+  private generatorsService = inject(GeneratorsService);
 
   constructor() {
     effect(() => {
@@ -69,6 +71,11 @@ export class EstimatesComponent {
   
   // Propiedades simplificadas
   gridHeight: string = '500px';
+  
+  // Propiedades para vista detalle de items
+  viewMode: 'master' | 'detail' = 'master';
+  selectedEstimateForDetail: any = null;
+  estimateItems: any[] = [];
 
   obtenerDatos() {
     this.estimatesService
@@ -110,6 +117,44 @@ public gridOptions: any = {
   }
 };
 
+
+  // Columnas para la vista de items de estimación
+  getItemsColumnDefs(): ColDef[] {
+    return [
+      {
+        field: 'idResource',
+        headerName: 'ID Recurso',
+        editable: false,
+        flex: 1
+      },
+      {
+        field: 'quantity',
+        headerName: 'Cantidad',
+        editable: false,
+        flex: 1,
+        cellDataType: 'number'
+      },
+      {
+        field: 'accumulate',
+        headerName: 'Acumulado',
+        editable: false,
+        flex: 1,
+        cellDataType: 'number'
+      },
+      {
+        field: 'comment',
+        headerName: 'Comentarios',
+        editable: false,
+        flex: 2
+      },
+      {
+        field: 'type',
+        headerName: 'Tipo',
+        editable: false,
+        flex: 1
+      }
+    ];
+  }
 
   get columnDefs(): ColDef[] {
     return [
@@ -271,10 +316,59 @@ public gridOptions: any = {
     this.resetGridSize();
   }
 
-  // Función para ver detalles de la estimación seleccionada (sin funcionalidad)
+  // Función para ver detalles de la estimación seleccionada
   viewEstimateDetails() {
-    // Botón mantenido visible pero sin funcionalidad para uso futuro
-    return;
+    if (!this.selectedEstimate) {
+      alerts.basicAlert(
+        'Ver Detalle',
+        'Por favor, seleccione una estimación.',
+        'warning'
+      );
+      return;
+    }
+    
+    this.selectedEstimateForDetail = this.selectedEstimate;
+    this.viewMode = 'detail';
+    this.loadEstimateItems();
+    
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Ver Detalle Items Estimación',
+      'Modulo Proyectos - Estimaciones Detalle',
+      this.trackingService.getEmail()
+    );
+  }
+
+  // Función para volver a la vista maestro
+  backToMasterView() {
+    this.viewMode = 'master';
+    this.selectedEstimateForDetail = null;
+    this.estimateItems = [];
+  }
+
+  // Cargar items de la estimación seleccionada
+  private loadEstimateItems() {
+    if (!this.selectedEstimateForDetail?.id) {
+      this.estimateItems = [];
+      return;
+    }
+
+    this.generatorsService.getItemsEstimaciones(this.selectedEstimateForDetail.id)
+      .subscribe({
+        next: (items: any[]) => {
+          this.estimateItems = items || [];
+          console.log('Items de estimación cargados:', this.estimateItems);
+        },
+        error: (error) => {
+          console.error('Error al cargar items de estimación:', error);
+          this.estimateItems = [];
+          alerts.basicAlert(
+            'Error',
+            'Error al cargar los items de la estimación.',
+            'error'
+          );
+        }
+      });
   }
 
   onCellValueChanged(event: any) {

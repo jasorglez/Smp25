@@ -1,7 +1,28 @@
 <div class="row p-2">
     <div class="col-12">
+        <!-- Indicador de Vista Detalle -->
+        <div class="row mb-2" *ngIf="viewMode === 'detail'">
+            <div class="col-12">
+                <div class="alert alert-info d-flex justify-content-between align-items-center py-2">
+                    <div>
+                        <h6 class="mb-0">
+                            <i class="bi bi-file-earmark-text"></i> 
+                            Estimación: {{ selectedEstimateForDetail?.number || 'N/A' }} - Vista Items
+                        </h6>
+                        <small class="text-muted">
+                            Mostrando items de la estimación seleccionada
+                        </small>
+                    </div>
+                    <button class="btn btn-outline-secondary btn-sm" 
+                            (click)="backToMasterView()">
+                        <i class="bi bi-arrow-left"></i> Volver a Lista
+                    </button>
+                </div>
+            </div>
+        </div>
+        
         <div class="row">
-            <nav class="col-auto d-flex flex-column align-items-start">
+            <nav class="col-auto d-flex flex-column align-items-start" *ngIf="viewMode === 'master'">
                 <button type="button" class="btn btn-primary me-1 mb-2" (click)="addRow()"><i
                         class="bi bi-plus-lg"></i></button>
                 <button type="button" class="btn btn-success position-relative mb-2" (click)="saveChanges()">
@@ -19,14 +40,26 @@
                         [disabled]="!selectedEstimate" title="Ver detalles de estimación">
                     <i class="bi bi-eye"></i>
                 </button>
-                
+                <button type="button" class="btn btn-secondary mb-2" (click)="clearFilters()" 
+                        title="Limpiar filtros">
+                    <i class="bi bi-funnel"></i>
+                </button>
                 <button type="button" class="btn btn-outline-primary mb-2" (click)="generateSamplePdf()" 
                         title="Generar PDF de estimación">
                     <i class="bi bi-file-earmark-pdf"></i>
                 </button>
+                
+                <!-- Indicador de la estimación seleccionada (compacto) -->
+                <div class="mt-2 small text-muted" *ngIf="selectedEstimate" style="max-width: 120px;">
+                    <i class="bi bi-file-earmark-text"></i>
+                    <div class="text-truncate">{{ selectedEstimate?.number || 'Est.' }}</div>
+                    <div class="text-muted" style="font-size: 0.75rem;">seleccionada</div>
+                </div>
             </nav>
             <div class="col">
+                <!-- Grid Principal - Vista Master -->
                 <ag-grid-angular 
+                   *ngIf="viewMode === 'master'"
                    style="width: 100%;" [ngStyle]="selectedEstimate ? { height: '250px' } : { height: '500px' }" 
                     class="ag-theme-quartz small-text-ag-grid" [rowData]="rowData"
                     [columnDefs]="columnDefs"                    
@@ -35,6 +68,17 @@
                     (selectionChanged)="onSelectionChanged($event)"
                     (gridReady)="onGridReady($event)" 
                     rowSelection="single" [components]="components">
+                </ag-grid-angular>
+                
+                <!-- Grid Items - Vista Detail -->
+                <ag-grid-angular 
+                   *ngIf="viewMode === 'detail'"
+                   style="width: 100%; height: 500px;" 
+                    class="ag-theme-quartz small-text-ag-grid" 
+                    [rowData]="estimateItems"
+                    [columnDefs]="getItemsColumnDefs()"
+                    (gridReady)="onGridReady($event)" 
+                    rowSelection="single">
                 </ag-grid-angular>
             </div>
         </div>
