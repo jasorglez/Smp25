@@ -45,6 +45,7 @@ export class EstimatesComponent {
     );
     
     this.obtenerDatos();
+    this.loadActivities();
   }
 
   components = {
@@ -76,6 +77,13 @@ export class EstimatesComponent {
   viewMode: 'master' | 'detail' = 'master';
   selectedEstimateForDetail: any = null;
   estimateItems: any[] = [];
+  treeData: any[] = [];
+  selectedRowData: any = null;
+  selectedNodeType: 'estimate' | 'item' | null = null;
+  
+  // Conceptos/actividades para dropdown
+  activitiesOptions: any[] = [];
+  private project = this.signalsService.getProjectSelectedBySidebar()();
 
   obtenerDatos() {
     this.estimatesService
@@ -89,69 +97,115 @@ export class EstimatesComponent {
       });
   }
 
-
-  // GridOptions idéntico a Income para permitir edición por doble click
-public gridOptions: any = {
-  headerHeight: 30,
-  rowHeight: 30,
-  getRowClass: (params) => {
-    // Verificar si la fila está seleccionada
-    if (params.node.isSelected()) {
-      return 'selected-row';
-    }
-    return '';
-  },
-  onRowClicked: (event) => {
-    // Seleccionar la fila al hacer clic en cualquier celda
-    event.node.setSelected(true);
-  },
-  onRowSelected: (event) => {
-    // Deseleccionar otras filas cuando se selecciona una nueva
-    if (event.node.isSelected()) {
-      this.gridApi.forEachNode((node) => {
-        if (node.id !== event.node.id) {
-          node.setSelected(false);
-        }
+  loadActivities() {
+    if (!this.project) return;
+    this.workprogramsService.getActivities(this.project)
+      .subscribe((activities: any[]) => {
+        this.activitiesOptions = activities;
+        console.log('Actividades cargadas:', this.activitiesOptions);
+      }, (error) => {
+        console.error('Error al cargar actividades:', error);
+        this.activitiesOptions = [];
       });
+  }
+
+
+  // GridOptions con soporte para tree structure como generators
+  get gridOptions(): any {
+    const baseOptions = {
+      headerHeight: 30, 
+      rowHeight: 30, 
+      animateRows: true,
+      onRowSelected: (event: any) => { 
+        if (event.node.isSelected()) this.onRowSelected(event); 
+      },
+    };
+    
+    if (this.viewMode === 'master') {
+      return { 
+        ...baseOptions, 
+        treeData: false,
+        getRowClass: (params) => {
+          if (params.node.isSelected()) {
+            return 'selected-row';
+          }
+          return '';
+        },
+        onRowClicked: (event) => {
+          event.node.setSelected(true);
+        },
+        onRowSelected: (event) => {
+          if (event.node.isSelected()) {
+            this.gridApi.forEachNode((node) => {
+              if (node.id !== event.node.id) {
+                node.setSelected(false);
+              }
+            });
+          }
+        }
+      };
+    } else {
+      return {
+        ...baseOptions, 
+        treeData: true, 
+        groupDefaultExpanded: -1,
+        getDataPath: (data: any) => data.orgHierarchy,
+        autoGroupColumnDef: {
+          headerName: 'Items de la Estimación', 
+          minWidth: 200,
+          cellRendererParams: {
+            suppressCount: true,
+            innerRenderer: (params: any) => {
+              if (params.data) {
+                if (params.data.nodeType === 'estimate') return `📁 ${params.data.number}`;
+                const activity = this.activitiesOptions.find(act => act.id === params.data.idResource);
+                return `📄 ${activity ? activity.actandNom : ''}`;
+              }
+              return '';
+            }
+          }
+        }
+      };
     }
   }
-};
 
 
-  // Columnas para la vista de items de estimación
+  // Columnas para la vista de items de estimación (exactas a generators sin columna Tipo)
   getItemsColumnDefs(): ColDef[] {
     return [
-      {
-        field: 'idResource',
-        headerName: 'ID Recurso',
-        editable: false,
-        flex: 1
+      { 
+        field: 'idResource', 
+        headerName: 'Recurso', 
+        editable: (p) => p.data?.nodeType === 'item', 
+        flex: 2,
+        cellEditor: 'agSelectCellEditor', 
+        cellEditorParams: { 
+          values: this.activitiesOptions.map(a => a.id) 
+        },
+        valueFormatter: (p) => this.activitiesOptions.find(a => a.id === p.value)?.actandNom || '',
+        cellStyle: (p) => p.data?.nodeType === 'estimate' ? { display: 'none' } : {}
       },
-      {
-        field: 'quantity',
-        headerName: 'Cantidad',
-        editable: false,
-        flex: 1,
-        cellDataType: 'number'
+      { 
+        field: 'quantity', 
+        headerName: 'Cantidad', 
+        editable: (p) => p.data?.nodeType === 'item', 
+        flex: 1, 
+        cellDataType: 'number', 
+        cellStyle: (p) => p.data?.nodeType === 'estimate' ? { display: 'none' } : {} 
       },
-      {
-        field: 'accumulate',
-        headerName: 'Acumulado',
-        editable: false,
-        flex: 1,
-        cellDataType: 'number'
+      { 
+        field: 'accumulate', 
+        headerName: 'Acumulado', 
+        editable: (p) => p.data?.nodeType === 'item', 
+        flex: 1, 
+        cellDataType: 'number', 
+        cellStyle: (p) => p.data?.nodeType === 'estimate' ? { display: 'none' } : {} 
       },
-      {
-        field: 'comment',
-        headerName: 'Comentarios',
-        editable: false,
-        flex: 2
-      },
-      {
-        field: 'type',
-        headerName: 'Tipo',
-        editable: false,
-        flex: 1
+      { 
+        field: 'comment', 
+        headerName: 'Comentarios', 
+        editable: true, 
+        flex: 2 
       }
     ];
   }
@@ -346,29 +400,62 @@ public gridOptions: any = {
     this.estimateItems = [];
   }
 
-  // Cargar items de la estimación seleccionada
-  private loadEstimateItems() {
+  // Cargar items de la estimación seleccionada con estructura tree
+  private async loadEstimateItems() {
     if (!this.selectedEstimateForDetail?.id) {
-      this.estimateItems = [];
+      this.treeData = [];
       return;
     }
 
-    this.generatorsService.getItemsEstimaciones(this.selectedEstimateForDetail.id)
-      .subscribe({
-        next: (items: any[]) => {
-          this.estimateItems = items || [];
-          console.log('Items de estimación cargados:', this.estimateItems);
-        },
-        error: (error) => {
-          console.error('Error al cargar items de estimación:', error);
-          this.estimateItems = [];
-          alerts.basicAlert(
-            'Error',
-            'Error al cargar los items de la estimación.',
-            'error'
-          );
+    await this.buildTreeStructure([this.selectedEstimateForDetail]);
+  }
+
+  // Construir estructura tree como generators
+  async buildTreeStructure(estimates: any[]) {
+    this.treeData = [];
+    const estimatesToProcess = this.viewMode === 'detail' && this.selectedEstimateForDetail 
+      ? [this.selectedEstimateForDetail] 
+      : estimates;
+      
+    for (const estimate of estimatesToProcess) {
+      if (this.viewMode === 'detail') {
+        this.treeData.push({ 
+          ...estimate, 
+          nodeType: 'estimate', 
+          orgHierarchy: [estimate.number], 
+          id: `est_${estimate.id}`, 
+          originalId: estimate.id 
+        });
+      }
+      
+      if (!estimate.id.toString().startsWith('temp_')) {
+        try {
+          const items = await lastValueFrom(this.generatorsService.getItemsEstimaciones(estimate.id));
+          for (const item of items) {
+            this.treeData.push({ 
+              ...item, 
+              nodeType: 'item', 
+              orgHierarchy: [estimate.number, `Item_${item.id}`], 
+              id: `item_${item.id}`, 
+              originalId: item.id, 
+              parentEstimateId: estimate.id 
+            });
+          }
+        } catch (error) { 
+          console.error(`Error cargando items para estimación ${estimate.id}:`, error); 
         }
-      });
+      }
+    }
+  }
+
+  // Método para manejar selección de filas
+  onRowSelected(event: any) {
+    this.selectedRowData = event.data;
+    if (event.data) {
+      this.selectedNodeType = event.data.nodeType || 'estimate';
+    } else {
+      this.selectedNodeType = null;
+    }
   }
 
   onCellValueChanged(event: any) {
