@@ -6,6 +6,7 @@ import { OtService } from 'app/services/ot.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SignalsService } from 'app/services/signals.service';
+import { CatalogsService } from 'app/services/catalogs.service';
 import { alerts } from 'app/helpers/alerts';
 
 export interface OtDetails {
@@ -52,6 +53,9 @@ export class DetailsComponent implements OnInit {
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
+  private catalogService = inject(CatalogsService);
+  idcompany: number = 0;
+  catalogArea: any [] = [];
   
   public otForm: FormGroup;
   public isEditMode: boolean = false;
@@ -63,6 +67,8 @@ export class DetailsComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.idcompany = this.signalsService.getRootSelectedBySidebar()();
+    this.obternerArea();
     this.route.params.subscribe(params => {
       if (params['id']) {
         this.otId = +params['id'];
@@ -73,7 +79,14 @@ export class DetailsComponent implements OnInit {
       }
     });
   }
-
+  obternerArea(){
+    return this.catalogService.getPhases(this.idcompany).subscribe(
+      (data: any )=> {
+        this.catalogArea = data
+        console.log(this.catalogArea)
+      },
+      (error) => console.error('Error fetching conceptos:', error))
+  }
   private createForm(): FormGroup {
     return this.fb.group({
       registerDate: [new Date().toISOString().split('T')[0], [Validators.required]],
@@ -99,6 +112,7 @@ export class DetailsComponent implements OnInit {
       lectureWater: ['', [Validators.maxLength(50)]],
       observations: ['', [Validators.maxLength(1000)]],
       results: ['', [Validators.maxLength(1000)]],
+      area: ['', Validators.required],
       active: [true]
     });
   }
@@ -198,6 +212,7 @@ export class DetailsComponent implements OnInit {
       lectureWater: actualData.lectureWater !== undefined ? actualData.lectureWater : '',
       observations: actualData.observations !== undefined ? actualData.observations : '',
       results: actualData.results !== undefined ? actualData.results : '',
+      area: actualData.area !==  undefined ? actualData.area : '',
       active: actualData.active !== undefined ? actualData.active : true
     };
 
@@ -209,7 +224,7 @@ export class DetailsComponent implements OnInit {
     if (this.otForm.valid) {
       this.isLoading = true;
       const formData = this.prepareFormData();
-
+      console.log(formData)
       if (this.isEditMode && this.otId) {
         this.updateOt(formData);
       } else {
@@ -256,6 +271,7 @@ export class DetailsComponent implements OnInit {
       lectureWater: formValue.lectureWater,
       observations: formValue.observations,
       results: formValue.results,
+      area: formValue.area,
       active: formValue.active
     } as any;
   }
