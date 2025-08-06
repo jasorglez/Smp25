@@ -30,4 +30,29 @@ export class alerts{
 
 	}
 
+	/*=============================================
+	Función para modal de input/textarea
+	=============================================*/
+
+	static inputAlert(title: string, text: string, inputType: 'text' | 'textarea', inputValue: string = '', options: any = {}) {
+		return Swal.fire({
+			title: title,
+			text: text,
+			input: inputType,
+			inputValue: inputValue,
+			inputAttributes: options.inputAttributes || {},
+			showCancelButton: options.showCancelButton || true,
+			confirmButtonText: options.confirmButtonText || 'Guardar',
+			cancelButtonText: options.cancelButtonText || 'Cancelar',
+			confirmButtonColor: options.confirmButtonColor || '#3085d6',
+			cancelButtonColor: options.cancelButtonColor || '#d33',
+			inputValidator: (value) => {
+				if (!value && options.required !== false) {
+					return 'Este campo es requerido';
+				}
+				return null;
+			}
+		});
+	}
+
 }

@@ -286,9 +286,20 @@ export default class DetailClock2Component implements OnInit {
         },
         rowGroup: true,
       },
-      {
+       {
         field: 'checkTime',
         headerName: 'Hora de Registro',
+        editable: true,
+        cellEditor: 'timeEditor',
+        width: 200,
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          return params.value.split('.')[0];
+        },
+      },
+      {
+        field: 'realHourBySystem',
+        headerName: 'Hora de Registro de Sistema',
         editable: true,
         cellEditor: 'timeEditor',
         width: 200,
@@ -331,36 +342,123 @@ export default class DetailClock2Component implements OnInit {
             let totalDiscountHours = 0;
             let lastInTime = null;
 
+            // DEBUG: Log para ver los datos de entrada
+            const dateGroup = params.node.key;
+            console.log(`=== CALCULANDO HORAS PARA FECHA: ${dateGroup} ===`);
+            
+            // Mostrar todos los registros sin filtrar
+            console.log('Registros originales:', groupData.map(node => ({
+              id: node.data.id,
+              type: node.data.type,
+              checkTime: node.data.checkTime,
+              realHourBySystem: node.data.realHourBySystem,
+              valid: node.data.valid,
+              holiday: node.data.holiday,
+              minuteDiscount: node.data.minuteDiscount
+            })));
+
+            // Filtrar y ordenar registros válidos
             const validRecords = [...groupData]
-              .filter(node =>
-                (node.data.realHourBySystem || node.data.checkTime)
-              )
+              .filter(node => {
+                const record = node.data;
+                // Incluir registros válidos O festivos que tengan hora
+                const hasValidTime = record.realHourBySystem || record.checkTime;
+                const isValidRecord = record.valid === true || record.holiday === true;
+                const shouldInclude = hasValidTime && isValidRecord;
+                
+                console.log(`Registro ${record.id}: hasValidTime=${hasValidTime}, isValidRecord=${isValidRecord}, incluir=${shouldInclude}`);
+                return shouldInclude;
+              })
               .sort((a, b) => {
-                const timeA = a.data.realHourBySystem ?? a.data.checkTime;
-                const timeB = b.data.realHourBySystem ?? b.data.checkTime;
-                return timeA.localeCompare(timeB);
+                // Priorizar realHourBySystem sobre checkTime para el ordenamiento
+                const timeA = a.data.realHourBySystem || a.data.checkTime;
+                const timeB = b.data.realHourBySystem || b.data.checkTime;
+                
+                // Convertir a formato comparable si es necesario
+                if (!timeA || !timeB) return 0;
+                
+                // Normalizar formato de tiempo (remover milisegundos si existen)
+                const normalizeTime = (time) => time.split('.')[0];
+                return normalizeTime(timeA).localeCompare(normalizeTime(timeB));
               });
 
-            for (const node of validRecords) {
-              const record = node.data;
+            console.log('Registros después del filtro y ordenamiento:', validRecords.map(node => ({
+              id: node.data.id,
+              type: node.data.type,
+              hora: node.data.realHourBySystem || node.data.checkTime,
+              valid: node.data.valid,
+              holiday: node.data.holiday
+            })));
 
-              // ⛔️ Excluir registros inválidos y no festivos
-              if (record.valid !== true && record.holiday !== true) continue;
+            // Calcular horas trabajadas con lógica mejorada para pares IN/OUT
+            const usedRecords = new Set();
+            
+            for (let i = 0; i < validRecords.length; i++) {
+              const record = validRecords[i].data;
+              
+              // Skip si ya usamos este registro
+              if (usedRecords.has(record.id)) continue;
+              
+              const hora = record.realHourBySystem || record.checkTime;
+              if (!hora) continue;
 
-              const hora = record.realHourBySystem ?? record.checkTime;
+              console.log(`Procesando registro ${record.id}: ${record.type} a las ${hora}`);
 
               if (record.type === 'IN') {
-                lastInTime = hora;
-              } else if (record.type === 'OUT' && lastInTime) {
-                totalHours += this.calculateTimeDifference(lastInTime, hora);
-                lastInTime = null;
+                // Buscar el próximo OUT que no haya sido usado
+                for (let j = i + 1; j < validRecords.length; j++) {
+                  const outRecord = validRecords[j].data;
+                  
+                  if (usedRecords.has(outRecord.id)) continue;
+                  
+                  if (outRecord.type === 'OUT') {
+                    const outHora = outRecord.realHourBySystem || outRecord.checkTime;
+                    if (outHora) {
+                      const hoursWorked = this.calculateTimeDifference(hora, outHora);
+                      totalHours += hoursWorked;
+                      console.log(`  -> Par encontrado: IN ${hora} - OUT ${outHora} = ${hoursWorked} horas (total acumulado: ${totalHours})`);
+                      
+                      // Marcar ambos registros como usados
+                      usedRecords.add(record.id);
+                      usedRecords.add(outRecord.id);
+                      break;
+                    }
+                  }
+                }
+                
+                // Si no encontramos OUT para este IN
+                if (!usedRecords.has(record.id)) {
+                  console.log(`  -> IN sin OUT correspondiente: ${hora}`);
+                }
+              } else if (record.type === 'OUT' && !usedRecords.has(record.id)) {
+                // OUT sin IN previo - buscar hacia atrás
+                console.log(`  -> OUT sin IN previo: ${hora}, buscando hacia atrás...`);
+                for (let j = i - 1; j >= 0; j--) {
+                  const inRecord = validRecords[j].data;
+                  
+                  if (usedRecords.has(inRecord.id)) continue;
+                  
+                  if (inRecord.type === 'IN') {
+                    const inHora = inRecord.realHourBySystem || inRecord.checkTime;
+                    if (inHora) {
+                      const hoursWorked = this.calculateTimeDifference(inHora, hora);
+                      totalHours += hoursWorked;
+                      console.log(`  -> IN anterior encontrado: ${inHora} - OUT ${hora} = ${hoursWorked} horas (total acumulado: ${totalHours})`);
+                      
+                      // Marcar ambos registros como usados
+                      usedRecords.add(record.id);
+                      usedRecords.add(inRecord.id);
+                      break;
+                    }
+                  }
+                }
               }
             }
 
+            // Calcular descuentos por minutos
             const discountMinutes = validRecords.reduce((sum, node) => {
               const record = node.data;
               if (
-                (record.valid === true || record.holiday === true) &&
                 record.minuteDiscount !== null &&
                 record.minuteDiscount !== undefined &&
                 !isNaN(record.minuteDiscount)
@@ -371,9 +469,12 @@ export default class DetailClock2Component implements OnInit {
             }, 0);
 
             totalDiscountHours = discountMinutes / 60;
-            const netHours = totalHours - totalDiscountHours;
+            const netHours = Math.max(totalDiscountHours);
 
-            return this.formatHours(netHours);
+            console.log(`RESUMEN - Total horas: ${totalHours}, Descuentos: ${totalDiscountHours}, Neto: ${netHours}`);
+            console.log(`=== FIN CÁLCULO PARA FECHA: ${dateGroup} ===`);
+
+            return this.formatHours(totalHours);
           }
           return null;
         },
@@ -807,48 +908,57 @@ export default class DetailClock2Component implements OnInit {
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Revertir Registro en Detalle de Checador', 'Menu Recursos Humanos Detalle de Checador', this.trackingService.getEmail());
   }
 
-  private cleanDataForServer(data: any): any {
-    const cleanedData = { ...data };
-    delete cleanedData.employeeName;
-    delete cleanedData.__isNew;
-    delete cleanedData.__modified;
-    delete cleanedData.idBranch;
-    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
-      delete cleanedData.id;
-    }
+private cleanDataForServer(data: any): any {
+  const cleanedData = { ...data };
 
-    // Añadir timeStamp como concatenación de date y checkTime
-    if (cleanedData.date && cleanedData.checkTime) {
-      // Asegurarse de que date sea una cadena de texto y extraer solo la parte de la fecha
-      let dateStr = typeof cleanedData.date === 'string' ? cleanedData.date : new Date(cleanedData.date).toISOString();
-      dateStr = dateStr.split('T')[0]; // Solo tomar la parte de la fecha
+  // Eliminar campos basura
+  delete cleanedData.employeeName;
+  delete cleanedData.__isNew;
+  delete cleanedData.__modified;
+  delete cleanedData.idBranch;
 
-      // Asegurarse de que checkTime tenga el formato correcto (HH:MM:SS)
-      const formattedCheckTime = cleanedData.checkTime.includes('.')
-        ? cleanedData.checkTime.split('.')[0]
-        : cleanedData.checkTime;
-
-      cleanedData.timeStamp = `${dateStr}T${formattedCheckTime}`;
-    }
-
-    // Añadir modifiedTimeStamp como concatenación de date y modifiedCheckTime
-    if (cleanedData.date && cleanedData.modifiedCheckTime) {
-      // Asegurarse de que date sea una cadena de texto y extraer solo la parte de la fecha
-      let dateStr = typeof cleanedData.date === 'string' ? cleanedData.date : new Date(cleanedData.date).toISOString();
-      dateStr = dateStr.split('T')[0]; // Solo tomar la parte de la fecha
-
-      // Asegurarse de que modifiedCheckTime tenga el formato correcto (HH:MM:SS)
-      const formattedModifiedCheckTime = cleanedData.modifiedCheckTime.includes('.')
-        ? cleanedData.modifiedCheckTime.split('.')[0]
-        : cleanedData.modifiedCheckTime;
-
-      cleanedData.timeStampBackup = `${dateStr}T${formattedModifiedCheckTime}`;
-    }
-    delete cleanedData.date;
-    delete cleanedData.checkTime;
-    delete cleanedData.modifiedCheckTime;
-    return cleanedData;
+  if (cleanedData.id?.toString().startsWith('temp_')) {
+    delete cleanedData.id;
   }
+
+  // Preparar la fecha como YYYY-MM-DD
+  const dateStr = cleanedData.date
+    ? (typeof cleanedData.date === 'string'
+        ? cleanedData.date
+        : new Date(cleanedData.date).toISOString()
+      ).split('T')[0]
+    : null;
+
+  // Generar timeStamp y adjustedTimeBySystem si hay checkTime
+  if (dateStr && cleanedData.checkTime) {
+    const formattedCheckTime = cleanedData.checkTime.includes('.')
+      ? cleanedData.checkTime.split('.')[0]
+      : cleanedData.checkTime;
+
+    cleanedData.timeStamp = `${dateStr}T${formattedCheckTime}`;
+    cleanedData.adjustedTimeBySystem = `${dateStr}T${formattedCheckTime}`;
+  }
+
+  // Si hay modifiedCheckTime, se sobrescribe adjustedTimeBySystem
+  if (dateStr && cleanedData.modifiedCheckTime) {
+    const formattedModified = cleanedData.modifiedCheckTime.includes('.')
+      ? cleanedData.modifiedCheckTime.split('.')[0]
+      : cleanedData.modifiedCheckTime;
+
+    cleanedData.timeStampBackup = `${dateStr}T${formattedModified}`;
+    cleanedData.adjustedTimeBySystem = `${dateStr}T${cleanedData.checkTime}`;
+    cleanedData.realHourBySystem = null;
+  }
+
+  // Limpiar campos originales
+  delete cleanedData.date;
+  delete cleanedData.checkTime;
+  delete cleanedData.modifiedCheckTime;
+
+  return cleanedData;
+}
+
+
 
   // Agregar esta función auxiliar para calcular diferencia horaria
   private calculateTimeDifference(start: string, end: string): number {

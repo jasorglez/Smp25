@@ -1,5 +1,5 @@
 import { Component, effect, HostListener, inject } from '@angular/core';
-import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { ColDef, GridApi, GridReadyEvent, CellDoubleClickedEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule } from 'ag-grid-angular';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
@@ -8,17 +8,24 @@ import { FormsModule } from '@angular/forms';
 import { EstimatesService } from 'app/services/estimates.service';
 import { SignalsService } from 'app/services/signals.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
+import { GeneratorsComponent } from './generators.component';
+import { PdfEstimatesService } from 'app/services/pdf-estimates.service';
+import { TrackingService } from 'app/services/tracking.service';
+import { WorkprogramsService } from 'app/services/workprograms.service';
 
 @Component({
   selector: 'app-estimates',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
-  templateUrl: '../oil-provider-project.html'
+  imports: [CommonModule, FormsModule, AgGridModule, GeneratorsComponent],
+  templateUrl: './estimates.component.html'
 })
 export class EstimatesComponent {
 
   private estimatesService = inject(EstimatesService);
   private signalsService = inject(SignalsService);
+  private pdfEstimatesService = inject(PdfEstimatesService);
+  private trackingService = inject(TrackingService);
+  private workprogramsService = inject(WorkprogramsService);
 
   constructor() {
     effect(() => {
@@ -28,6 +35,13 @@ export class EstimatesComponent {
   }
 
   ngOnInit() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Acceso a Estimaciones',
+      'Modulo Proyectos - Estimaciones',
+      this.trackingService.getEmail()
+    );
+    
     this.obtenerDatos();
   }
 
@@ -52,6 +66,11 @@ export class EstimatesComponent {
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
   private contract = this.signalsService.getContractSelectedBySidebar()();
+  
+  // Propiedades para el comportamiento del toggle
+  gridHeight: string = '500px';
+  showGeneratorsTab: boolean = false;
+  isOpen: boolean = false;
 
   obtenerDatos() {
     this.estimatesService
@@ -65,46 +84,60 @@ export class EstimatesComponent {
       });
   }
 
-  // Column Definitions: Defines the columns to be displayed.
-  public gridOptions: any = {
-    headerHeight: 30,
-    rowHeight: 30,
-    rowClass: (params) => {
-      // Verificar si la fila está seleccionada
-      if (params.node.isSelected()) {
-        return 'selected-row';
-      }
-      return '';
-    },
-    onRowClicked: (event) => {
-      // Seleccionar la fila al hacer clic en cualquier celda
-      event.node.setSelected(true);
-    },
-    onRowSelected: (event) => {
-      // Deseleccionar otras filas cuando se selecciona una nueva
-      if (event.node.isSelected()) {
-        this.gridApi.forEachNode((node) => {
-          if (node.id !== event.node.id) {
-            node.setSelected(false);
-          }
-        });
-      }
-    },
-  };
+
+  // 1. Modificar gridOptions para el comportamiento deseado
+public gridOptions: any = {
+  headerHeight: 30,
+  rowHeight: 30,
+  suppressClickEdit: true, // Fuerza doble click para editar
+  rowClass: (params) => params.node.isSelected() ? 'selected-row' : '',
+  
+  onRowClicked: (event) => {
+    // Solo selección con un click
+    event.node.setSelected(true);
+    this.selectedRowData = event.data;
+    this.id = event.data.id;
+  },
+
+  onRowSelected: (event) => {
+    // Deseleccionar otras filas
+    if (event.node.isSelected()) {
+      this.gridApi.forEachNode((node) => {
+        if (node.id !== event.node.id) {
+          node.setSelected(false);
+        }
+      });
+    }
+  }
+};
+
 
   get columnDefs(): ColDef[] {
     return [
       {
         field: 'number',
-        headerName: 'Número Estimación',
+        headerName: 'Estimación',
         editable: true,
-        flex: 1
+        flex: 1.4
       },
+
+      {
+        field: 'typeMoney',
+        headerName: 'Tipo Moneda',
+        editable: true,
+        flex: 1.6,      
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: ['MX', 'USD'],
+        }
+
+      },
+
       {
         field: 'dateStart',
         headerName: 'Fecha inicial',
         editable: true,
-        flex: 1,
+        flex: 1.5,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
           if (params.value) {
@@ -117,7 +150,7 @@ export class EstimatesComponent {
         field: 'dateEnd',
         headerName: 'Fecha final',
         editable: true,
-        flex: 1,
+        flex: 1.4,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
           if (params.value) {
@@ -134,17 +167,17 @@ export class EstimatesComponent {
       },
       {
         field: 'amountMX',
-        headerName: 'Monto MXN',
+        headerName: 'MXN',
         cellDataType: 'number',
         editable: true,
-        flex: 1,
+        flex: 1.3,
         valueFormatter: (params) => {
           return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
         }
       },
       {
         field: 'amountDLL',
-        headerName: 'Monto DLL',
+        headerName: 'DLL',
         cellDataType: 'number',
         editable: true,
         flex: 1,
@@ -157,7 +190,7 @@ export class EstimatesComponent {
         headerName: 'Acumulado MXN',
         cellDataType: 'number',
         editable: false,
-        flex: 1,
+        flex: 1.9,
         valueFormatter: (params) => {
           return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
         }
@@ -167,7 +200,7 @@ export class EstimatesComponent {
         headerName: 'Acumulado DLL',
         cellDataType: 'number',
         editable: false,
-        flex: 1,
+        flex: 1.8,
         valueFormatter: (params) => {
           return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(params.value);
         }
@@ -176,7 +209,7 @@ export class EstimatesComponent {
         field: 'type',
         headerName: 'Tipo',
         editable: true,
-        flex: 1,
+        flex: 1.3,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: ['NORMAL', 'ADICIONAL', 'EXTRAORDIN'],
@@ -186,13 +219,13 @@ export class EstimatesComponent {
         field: 'authorizeUser',
         headerName: 'Autoriza',
         editable: false,
-        flex: 1
+        flex: 1.6
       },
       {
         field: 'comment',
         headerName: 'Comentarios',
         editable: true,
-        flex: 3
+        flex: 2
       }
     ];
   }
@@ -202,15 +235,15 @@ export class EstimatesComponent {
     this.id = event.data.id;
   }
 
-  onSelectionChanged(event: any) {
-    console.log(event)
-    const selectedNodes = event.api.getSelectedNodes();
-    if (selectedNodes.length > 0) {
-      this.selectedRowData = selectedNodes[0].data;
-    } else {
-      this.selectedRowData = null;
+  // Función para ver detalles de la estimación seleccionada
+  viewEstimateDetails() {
+    if (!this.selectedRowData) {
+      return;
     }
+    this.filterBySelectedEstimate();
   }
+
+
 
   onCellValueChanged(event: any) {
     console.log('Dato cambiado:', event.data);
@@ -223,11 +256,19 @@ export class EstimatesComponent {
   }
 
   addRow() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Agregar Estimación',
+      'Modulo Proyectos - Estimaciones',
+      this.trackingService.getEmail()
+    );
+    
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
       number: '',
       idContract: this.contract,
+      typeMoney: 'MX',
       dateStart: '',
       dateEnd: '',
       amountMX: 0,
@@ -264,6 +305,13 @@ export class EstimatesComponent {
   }
 
   async saveChanges() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Guardar Cambios Estimaciones',
+      'Modulo Proyectos - Estimaciones',
+      this.trackingService.getEmail()
+    );
+    
     const isValid = this.rowData.every((item) => item.number);
     if (!isValid) {
       alerts.basicAlert(
@@ -281,6 +329,8 @@ export class EstimatesComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      console.log('Datos limpiados para el servidor:', cleanedData);
+      // Asignar el ID temporal al campo idEstimacion
       return this.estimatesService.addEstimate(cleanedData);
     });
 
@@ -313,6 +363,13 @@ export class EstimatesComponent {
   }
 
   async deleteEntry() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Eliminar Estimación',
+      'Modulo Proyectos - Estimaciones',
+      this.trackingService.getEmail()
+    );
+    
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert(
@@ -324,12 +381,26 @@ export class EstimatesComponent {
     }
 
     const selectedData = selectedNodes[0].data;
+    const estimationNumber = selectedData.number || 'la estimación seleccionada';
+    
+    // Confirmación antes de eliminar
+    const result = await alerts.confirmAlert(
+      'Confirmar eliminación',
+      `¿Está seguro de que desea eliminar ${estimationNumber}? Esta acción no se puede deshacer.`,
+      'warning',
+      'Sí, eliminar'
+    );
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
     const id = selectedData.id;
     selectedData.active = 0;
     this.estimatesService.deleteEstimate(id).pipe(
       catchError((error) => {
         alerts.basicAlert(
-          'Eliminar entrada',
+          'Error al eliminar',
           'Error al eliminar la entrada.',
           'error'
         );
@@ -340,17 +411,11 @@ export class EstimatesComponent {
       .subscribe(
         () => {
           alerts.basicAlert(
-            'Eliminar entrada',
+            'Eliminado',
             'Entrada eliminada satisfactoriamente.',
             'success'
           );
           this.obtenerDatos();
-
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
           this.notSavedChanges = false;
           this.selectedRowData = null;
         }
@@ -370,6 +435,230 @@ export class EstimatesComponent {
       delete cleanedData.id;
     }
     return cleanedData;
+  }
+
+  // Función separada para filtrar por estimación seleccionada
+  filterBySelectedEstimate() {
+    if (!this.selectedRowData || !this.id) {
+      return;
+    }
+    
+    // No aplicar filtros si hay filas temporales (nuevas)
+    const hasNewRows = this.rowData.some(row => row.id && row.id.toString().startsWith('temp_'));
+    if (hasNewRows) {
+      return;
+    }
+
+    this.gridApi.setFilterModel({
+      id: { type: 'equals', filter: this.id }
+    });
+    this.gridApi.onFilterChanged();
+    
+    // Activar generadores después del filtrado
+    this.activateGeneratorsTab();
+  }
+
+
+
+
+  async activateGeneratorsTab() {
+    if (!this.isOpen) {
+      await this.adjustGridSize();
+      this.showGeneratorsTab = true;
+      this.isOpen = true;
+    } else {
+      await this.resetGridSize();
+      this.isOpen = false;
+    }
+  }
+
+  async adjustGridSize() {
+    this.gridHeight = '250px'; // Reducir tamaño del grid
+  }
+
+  resetGridSize() {
+    this.gridHeight = '500px'; // Restaurar tamaño original
+    this.showGeneratorsTab = false;
+    if (this.gridApi) {
+      this.gridApi.setFilterModel(null);
+      this.gridApi.onFilterChanged();
+    }
+  }
+
+  generateSamplePdf() {
+    if (!this.selectedRowData) {
+      alerts.basicAlert(
+        'Generar PDF',
+        'Por favor, seleccione una estimación para generar el PDF.',
+        'warning'
+      );
+      return;
+    }
+
+    this.generatePdfWithRealData(this.selectedRowData.id, false);
+  }
+
+  downloadSamplePdf() {
+    if (!this.selectedRowData) {
+      alerts.basicAlert(
+        'Descargar PDF',
+        'Por favor, seleccione una estimación para descargar el PDF.',
+        'warning'
+      );
+      return;
+    }
+
+    this.generatePdfWithRealData(this.selectedRowData.id, true);
+  }
+
+  private async generatePdfWithRealData(estimateId: number, download: boolean = false) {
+    try {
+      // Obtener datos de la estimación
+      const estimateData = await lastValueFrom(this.estimatesService.getEstimateById(estimateId));
+      
+      // Obtener items de la estimación
+      const estimateItems = await lastValueFrom(this.estimatesService.getItemsFromEstimate(estimateId));
+      
+      // Obtener conceptos para cada item
+      const conceptPromises = estimateItems.map(item => 
+        lastValueFrom(this.workprogramsService.getWorkProgramsWithoutType(item.idResource))
+      );
+      
+      const conceptsResults = await Promise.all(conceptPromises);
+      
+      // Crear estructura de datos para el PDF
+      const pdfData = await this.createEstimateDataFromServices(estimateData, estimateItems, conceptsResults);
+      
+      if (download) {
+        const fileName = `Estimacion_${estimateData.number}_${new Date().getTime()}.pdf`;
+        this.pdfEstimatesService.downloadEstimatePdf(pdfData, fileName);
+      } else {
+        this.pdfEstimatesService.generateEstimatePdf(pdfData);
+      }
+      
+    } catch (error) {
+      console.error('Error generando PDF:', error);
+      alerts.basicAlert(
+        'Error',
+        'Error al generar el PDF. Por favor, intente nuevamente.',
+        'error'
+      );
+    }
+  }
+
+  private async createEstimateDataFromServices(estimateData: any, estimateItems: any[], conceptsResults: any[][]) {
+    // Procesar items y agrupar por categorías si es necesario
+    const items = estimateItems.map((item, index) => {
+      const concept = conceptsResults[index] && conceptsResults[index].length > 0 
+        ? conceptsResults[index][0] 
+        : null;
+      
+      return {
+        clave: concept?.id || item.idResource,
+        concepto: concept?.text || `Concepto ${item.idResource}`,
+        unidad: concept?.measure || 'PZA',
+        cantidad: concept?.quantity || item.quantity || 0,
+        precioUnitario: concept?.costMX || 0,
+        importe: (concept?.quantity || item.quantity || 0) * (concept?.costMX || 0),
+        cantidadEjecutada: item.accumulate || 0,
+        importeEjecutado: (item.accumulate || 0) * (concept?.costMX || 0),
+        comment: item.comment
+      };
+    });
+
+    // Agrupar por fases o categorías (usando la fase del concepto si está disponible)
+    const categorias = this.groupItemsByCategory(items, conceptsResults);
+
+    // Calcular el total general sumando solo los totales de las categorías (filas grises)
+    const totalGeneral = categorias.reduce((sum, categoria) => sum + categoria.total, 0);
+    
+    // Calcular el total ejecutado sumando los importes ejecutados de las categorías
+    const totalEjecutado = categorias.reduce((sum, categoria) => {
+      const totalEjecutadoCategoria = categoria.items.reduce((catSum, item) => catSum + (item.importeEjecutado || 0), 0);
+      return sum + totalEjecutadoCategoria;
+    }, 0);
+
+    return {
+      proyecto: conceptsResults[0]?.[0]?.text || 'PROYECTO', // Usar el primer concepto como referencia del proyecto
+      estimacion: estimateData.number,
+      fechaInicio: this.formatDateForPdf(estimateData.dateStart),
+      fechaFin: this.formatDateForPdf(estimateData.dateEnd),
+      totalGeneral: totalGeneral, // Suma de totales de categorías (filas grises)
+      totalEjecutado: totalEjecutado, // Suma de importes ejecutados
+      pagina: 1,
+      totalPaginas: 1,
+      categorias: categorias
+    };
+  }
+
+  private groupItemsByCategory(items: any[], conceptsResults: any[][]) {
+    const categoriesMap = new Map();
+    const parentItems = [];
+
+    // Primero, identificar los items Parent y crear categorías para ellos
+    items.forEach((item, index) => {
+      const concept = conceptsResults[index] && conceptsResults[index].length > 0 
+        ? conceptsResults[index][0] 
+        : null;
+      
+      if (concept?.typeActivity === 'Parent') {
+        const categoryName = concept?.text || item.concepto;
+        parentItems.push({ item, concept, categoryName });
+        
+        if (!categoriesMap.has(categoryName)) {
+          categoriesMap.set(categoryName, {
+            nombre: categoryName,
+            total: item.importe || 0,
+            items: []
+          });
+        }
+      }
+    });
+
+    // Luego, procesar todos los items (incluyendo los de phase)
+    items.forEach((item, index) => {
+      const concept = conceptsResults[index] && conceptsResults[index].length > 0 
+        ? conceptsResults[index][0] 
+        : null;
+      
+      // Skip items que ya son categorías Parent
+      if (concept?.typeActivity === 'Parent') {
+        return;
+      }
+      
+      const categoryName = concept?.phase;
+      
+      // Solo procesar si tiene categoryName válido
+      if (categoryName) {
+        if (!categoriesMap.has(categoryName)) {
+          categoriesMap.set(categoryName, {
+            nombre: categoryName,
+            total: 0,
+            items: []
+          });
+        }
+        
+        const category = categoriesMap.get(categoryName);
+        category.items.push(item);
+        category.total += item.importe;
+      }
+    });
+
+    return Array.from(categoriesMap.values());
+  }
+
+  private formatDateForPdf(dateString: string): string {
+    const date = new Date(dateString);
+    const monthsOfYear = [
+      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+    ];
+
+    const day = date.getDate();
+    const monthName = monthsOfYear[date.getMonth()];
+    const year = date.getFullYear();
+
+    return `${day} de ${monthName} de ${year}`;
   }
 
 }

@@ -1,4 +1,4 @@
-import { Component, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject } from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule } from 'ag-grid-angular';
@@ -8,6 +8,7 @@ import { FormsModule } from '@angular/forms';
 import { ProvidersService } from 'app/services/providers.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
+import { SignalsService } from 'app/services/signals.service';
 
 @Component({
   selector: 'app-providers',
@@ -19,9 +20,19 @@ export class ProvidersComponent {
 
   private providersService = inject(ProvidersService);
   private imageHandlerService = inject(ImageHandlerService);
+  private signalsService = inject(SignalsService);
+
 
   ngOnInit() {
     this.obtenerDatos();
+  }
+
+  constructor() {
+    effect(() => {
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+      this.obtenerDatos();
+    }
+  )
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -38,12 +49,13 @@ export class ProvidersComponent {
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
   id: string;
+  idRoot: number;
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
 
   obtenerDatos() {
     this.providersService
-      .getProviders()
+      .getProviders(this.idRoot)
       .subscribe((data: any) => {
         this.rowData = data;
         // console.log(data)

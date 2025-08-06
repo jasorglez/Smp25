@@ -1,0 +1,427 @@
+// Removemos el import problemático por ahora - los estilos ya están en el componente
+
+// Variables de colores
+:root {
+  --primary-color: #2563eb;
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --danger-color: #ef4444;
+  --info-color: #3b82f6;
+  --light-bg: #f8fafc;
+  --border-color: #e2e8f0;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+// Header Section
+.service-header {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border-radius: 16px;
+  padding: 1.5rem;
+  border: 1px solid var(--border-color);
+  margin-bottom: 1.5rem;
+  
+  .page-title {
+    color: var(--text-primary);
+    font-weight: 700;
+    font-size: 1.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0;
+    
+    .title-icon {
+      color: var(--primary-color);
+      font-size: 2rem;
+    }
+  }
+  
+  .service-stats {
+    .stat-card {
+      background: white;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      text-align: center;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border-color);
+      min-width: 80px;
+      transition: all 0.2s ease;
+      
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+      }
+      
+      .stat-number {
+        font-size: 1.5rem;
+        font-weight: 700;
+        line-height: 1;
+      }
+      
+      .stat-label {
+        font-size: 0.75rem;
+        font-weight: 500;
+        margin-top: 0.25rem;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+      }
+    }
+  }
+}
+
+// Action Toolbar
+.action-toolbar {
+  background: white;
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  
+  .btn-action {
+    height: 42px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    position: relative;
+    
+    &:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+    
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    
+    mat-icon {
+      font-size: 1.25rem;
+      
+      &.spinner {
+        animation: spin 1s linear infinite;
+      }
+    }
+    
+    .changes-indicator {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      width: 12px;
+      height: 12px;
+      background: var(--danger-color);
+      border: 2px solid white;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+  }
+  
+  .search-field,
+  .filter-field {
+    width: 200px;
+    
+    ::ng-deep {
+      .mat-mdc-form-field-subscript-wrapper {
+        display: none;
+      }
+      
+      .mat-mdc-text-field-wrapper {
+        height: 42px;
+      }
+    }
+  }
+}
+
+// Data Status Alert
+.data-status {
+  .alert {
+    border-radius: 8px;
+    border: none;
+    background: linear-gradient(90deg, #dbeafe 0%, #e0e7ff 100%);
+    color: var(--info-color);
+    
+    mat-icon {
+      &.spinner {
+        animation: spin 1s linear infinite;
+      }
+    }
+  }
+}
+
+// Grid Container
+.grid-container {
+  background: white;
+  border-radius: 12px;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  
+  .grid-wrapper {
+    height: 600px;
+    border-radius: 8px;
+    overflow: hidden;
+    
+    .modern-grid {
+      --ag-header-height: 48px;
+      --ag-row-height: 44px;
+      --ag-font-size: 14px;
+      --ag-header-background-color: #f1f5f9;
+      --ag-header-foreground-color: var(--text-primary);
+      --ag-border-color: var(--border-color);
+      --ag-row-hover-color: #f8fafc;
+      --ag-selected-row-background-color: #dbeafe;
+      --ag-cell-horizontal-padding: 16px;
+      
+      ::ng-deep {
+        .ag-header {
+          font-weight: 600;
+          border-bottom: 2px solid var(--border-color);
+        }
+        
+        .ag-header-cell {
+          border-right: 1px solid var(--border-color);
+        }
+        
+        .ag-row {
+          border-bottom: 1px solid #f1f5f9;
+          transition: background-color 0.2s ease;
+        }
+        
+        .ag-cell {
+          border-right: 1px solid #f8fafc;
+          display: flex;
+          align-items: center;
+        }
+        
+        .ag-row-selected {
+          background-color: var(--ag-selected-row-background-color) !important;
+          border-color: var(--primary-color);
+        }
+        
+        .ag-cell-focus {
+          border: 2px solid var(--primary-color) !important;
+        }
+        
+        .ag-paging-panel {
+          border-top: 2px solid var(--border-color);
+          background: #f8fafc;
+          height: 48px;
+          
+          .ag-paging-page-summary-panel {
+            font-weight: 500;
+          }
+        }
+      }
+    }
+  }
+}
+
+// Loading Overlay
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  border-radius: 12px;
+  
+  .loading-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    
+    p {
+      margin: 0;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+  }
+}
+
+// Animations
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+// Responsive Design
+@media (max-width: 768px) {
+  .service-header {
+    .d-flex {
+      flex-direction: column;
+      gap: 1rem;
+    }
+    
+    .service-stats {
+      justify-content: center;
+    }
+  }
+  
+  .action-toolbar {
+    .d-flex {
+      flex-direction: column;
+      gap: 1rem;
+    }
+    
+    .search-controls {
+      width: 100%;
+      
+      .search-field,
+      .filter-field {
+        width: 100%;
+      }
+    }
+  }
+  
+  .grid-container {
+    padding: 0.5rem;
+    
+    .grid-wrapper {
+      height: 500px;
+    }
+  }
+}
+
+@media (max-width: 576px) {
+  .service-header {
+    padding: 1rem;
+    
+    .page-title {
+      font-size: 1.5rem;
+    }
+  }
+  
+  .action-toolbar {
+    padding: 1rem;
+    
+    .action-buttons {
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+  }
+  
+  .grid-container {
+    .grid-wrapper {
+      height: 400px;
+    }
+  }
+}
+
+// Dark mode support (optional)
+@media (prefers-color-scheme: dark) {
+  :root {
+    --light-bg: #1e293b;
+    --border-color: #334155;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+  }
+}
+
+// Estilos específicos para celdas de prioridad
+::ng-deep .priority-high { 
+  background-color: #fee2e2 !important; 
+  color: #991b1b !important;
+  font-weight: 600;
+}
+
+::ng-deep .priority-medium { 
+  background-color: #fef3c7 !important; 
+  color: #92400e !important;
+  font-weight: 600;
+}
+
+::ng-deep .priority-normal { 
+  background-color: #dcfce7 !important; 
+  color: #166534 !important;
+  font-weight: 600;
+}
+
+::ng-deep .priority-low { 
+  background-color: #dbeafe !important; 
+  color: #1e40af !important;
+  font-weight: 600;
+}
+
+::ng-deep .priority-cell {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.25rem !important;
+}
+
+// Estilos adicionales para tooltips - Agregar al final del archivo SCSS
+
+// Tooltip personalizado para AG-Grid
+::ng-deep .ag-tooltip {
+  background: #1f2937 !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 12px 16px !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+  max-width: 320px !important;
+  white-space: pre-line !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
+  z-index: 9999 !important;
+  
+  // Arrow del tooltip
+  &::before {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 5px solid #1f2937;
+  }
+}
+
+// Estilo especial para celdas con tooltip
+::ng-deep .priority-cell {
+  cursor: help !important;
+  position: relative;
+  
+  &:hover {
+    background-color: rgba(59, 130, 246, 0.1) !important;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+  }
+}
+
+// Indicador visual de que hay tooltip disponible
+::ng-deep .ag-cell[col-id="prioridad"] {
+  position: relative;
+  
+  &::after {
+    content: 'ℹ️';
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    font-size: 10px;
+    opacity: 0.6;
+    pointer-events: none;
+  }
+  
+  &:hover::after {
+    opacity: 1;
+  }
+}

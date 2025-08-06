@@ -189,12 +189,14 @@ export default class HolidaysComponent {
               const dataIn = {
                 ...baseData,
                 timeStamp: `${fechaStr}T${item.entry1}`,
+                adjustedTimeBySystem: `${fechaStr}T${item.entry1}`,
                 type: 'IN'
               };
 
               const dataOut = {
                 ...baseData,
                 timeStamp: `${fechaStr}T${horaSalida}`,
+                adjustedTimeBySystem: `${fechaStr}T${horaSalida}`,
                 type: 'OUT'
               };
               console.log(dataIn)

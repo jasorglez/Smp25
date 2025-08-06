@@ -226,7 +226,8 @@ obtenerEmpleado(): Promise<any> {
       idBranch: this.infoEmpelado[0].idBranch,
       idEmployee: this.infoEmpelado[0].id,
       employeeName: this.infoEmpelado[0].name,
-      incidenceDate: '',//this.fechaFin,
+      incidenceDate: this.signalsService.getFechaNomina().fechaFin ? this.signalsService.getFechaNomina().fechaFin : '',
+      fromPayroll: true,
       bonus: '',
       quantity: '',
       valid: true,
@@ -242,7 +243,7 @@ obtenerEmpleado(): Promise<any> {
 
       this.gridApi.startEditingCell({
         rowIndex: firstRowIndex,
-        colKey: 'incidenceDate'
+        colKey: 'idBonus'
       });
     }, 200);
   }

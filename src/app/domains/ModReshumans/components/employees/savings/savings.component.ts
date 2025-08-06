@@ -373,6 +373,7 @@ export class EmployeesxSavingsComponent {
         idEmpleado: this.idEmployee,
         date: this.modal? this.signalsService.getFechaNomina().fechaFin : timeData.dateObj,
         type: 'AHORRO',
+        fromPayroll: this.modal,
         monto: 0,
         payments: 0,
         __isNew: true,

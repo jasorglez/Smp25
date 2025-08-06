@@ -1,0 +1,87 @@
+.card {
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.card-header {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.card-header h4, .card-header h5 {
+  margin: 0;
+  color: #495057;
+}
+
+.btn {
+  margin-right: 5px;
+}
+
+.form-label {
+  font-weight: 600;
+  color: #495057;
+}
+
+.ag-theme-alpine {
+  --ag-header-background-color: #f8f9fa;
+  --ag-header-foreground-color: #495057;
+  --ag-border-color: #dee2e6;
+}
+
+// Estilos para las tabs
+.nav-tabs .nav-link {
+  color: #6c757d;
+  
+  &.active {
+    color: #495057;
+    background-color: #fff;
+    border-color: #dee2e6 #dee2e6 #fff;
+  }
+  
+  &:hover {
+    border-color: #e9ecef #e9ecef #dee2e6;
+  }
+}
+
+.nav-tabs .nav-link i {
+  margin-right: 5px;
+}
+
+// Estilos para el resumen
+.card .card-body .row {
+  align-items: center;
+}
+
+.card .card-body strong {
+  color: #495057;
+}
+
+// Modal
+.modal-xl {
+  max-width: 90%;
+}
+
+.text-muted {
+  font-size: 1.1rem;
+  padding: 2rem;
+}
+
+// Responsive
+@media (max-width: 768px) {
+  .col-md-3, .col-md-6 {
+    margin-bottom: 10px;
+  }
+  
+  .btn {
+    width: 100%;
+    margin-bottom: 5px;
+  }
+  
+  .nav-tabs {
+    flex-wrap: wrap;
+  }
+  
+  .nav-tabs .nav-link {
+    font-size: 0.9rem;
+    padding: 0.5rem 0.75rem;
+  }
+}

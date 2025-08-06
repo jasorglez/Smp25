@@ -312,7 +312,7 @@ export const routes: Routes = [
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'projects' } },
         children: [
-          { path: '', redirectTo: 'ModProjects', pathMatch: 'full' },
+          { path: '', redirectTo: 'ot', pathMatch: 'full' },
           ...SharedModule.getRoutes(),
           {
             path: 'providers',
@@ -327,6 +327,33 @@ export const routes: Routes = [
               import(
                 './domains/ModProjects/components/contracts/contracts.component'
               ).then((c) => c.ContractsComponent),
+          },
+          {
+            path: 'catalogs',
+            loadComponent: () =>
+              import('./domains/SMP/Components/catalogs/catalogs.component')
+                .then((s) => s.CatalogsComponent),
+            canDeactivate: [UnsavedChangesGuard],
+            children: [
+              {
+                path: ':section',
+                loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(p => p.CatalogsComponent)
+              },
+            ],
+          },
+          {
+            path: 'materials',
+            loadComponent: () =>
+              import(
+                './domains/ModProjects/components/ot/materials/materials.component'
+              ).then((c) => c.MaterialsComponent),
+          },
+          {
+            path: 'equipment',
+            loadComponent: () =>
+              import(
+                './domains/ModProjects/components/ot/equipment/equipment.component'
+              ).then((c) => c.EquipmentComponent),
           },
           {
             path: 'projects',
@@ -346,8 +373,39 @@ export const routes: Routes = [
             path: 'estimates',
             loadComponent: () =>
               import(
-                './domains/ModProjects/components/estimates/estimates.component'
-              ).then((r) => r.EstimatesComponent),
+                './domains/ModProjects/pages/procestimates/procestimates.component'
+              ).then((r) => r.ProcesstimatesComponent),
+            children: [
+              { path: '', redirectTo: 'estimates', pathMatch: 'full' },
+              {
+                path: 'estimates',
+                loadComponent: () =>
+                  import(
+                    './domains/ModProjects/components/estimates/estimates.component'
+                  ).then((r) => r.EstimatesComponent),
+              },
+              {
+                path: 'reportes-estimaciones',
+                loadComponent: () =>
+                  import(
+                    './domains/ModProjects/components/estimates/reportes-estimaciones/reportes-estimaciones.component'
+                  ).then((r) => r.ReportesEstimacionesComponent),
+              },
+              {
+                path: 'reportes-generadores',
+                loadComponent: () =>
+                  import(
+                    './domains/ModProjects/components/estimates/reportes-generadores/reportes-generadores.component'
+                  ).then((r) => r.ReportesGeneradoresComponent),
+              },
+              {
+                path: 'diarios-semanales',
+                loadComponent: () =>
+                  import(
+                    './domains/ModProjects/components/estimates/diarios-semanales/diarios-semanales.component'
+                  ).then((r) => r.DiariosSemánalesComponent),
+              },
+            ],
           },
           {
             path: 'ot',
@@ -355,6 +413,14 @@ export const routes: Routes = [
               import(
                 './domains/ModProjects/pages/procot/procot.component'
               ).then((o) => o.ProcotComponent),
+              canActivate: [MasterPermissionsGuard],
+            data: {
+              permissions:
+              {
+                master: 'projects',
+                detailed: 'ot'
+              }
+            },
             children: [
               { path: '', redirectTo: 'ordenes', pathMatch: 'full' },
               ...SharedModule.getRoutes(),

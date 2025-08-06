@@ -15,8 +15,8 @@ export class ProvidersService {
   private trackingService = inject(TrackingService);
 
 
-  getProviders() {
-    return this.http.get(`${environment.urlSmp}/Providers`, { headers: this.trackingService.getHeaders() });
+  getProviders(idRoot: number) {
+    return this.http.get(`${environment.urlSmp}/Providers?idRoot=${idRoot}`, { headers: this.trackingService.getHeaders() });
   }
 
   getProviderById(id: number) {
