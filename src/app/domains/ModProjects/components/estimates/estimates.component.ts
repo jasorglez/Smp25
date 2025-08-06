@@ -569,6 +569,14 @@ public gridOptions: any = {
     return;
   }
 
+  // Función para limpiar filtros
+  clearFilters() {
+    if (this.gridApi) {
+      this.gridApi.setFilterModel(null);
+      // El grid se actualizará automáticamente
+    }
+  }
+
 
 
 
