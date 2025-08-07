@@ -1,0 +1,227 @@
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <!-- Header -->
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">Cortes y Reconexiones</h2>
+        <button type="button" class="btn btn-danger btn-sm">
+          Cerrar Sesión
+        </button>
+      </div>
+
+      <!-- Formulario -->
+      <div class="row g-3">
+        
+        <!-- Selección OT -->
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body">
+              <label class="form-label mb-2">Seleccione OT:</label>
+              <select class="form-select" [(ngModel)]="selectedOT" (change)="onOTSelected()">
+                <option value="">Seleccionar OT...</option>
+                <option *ngFor="let ot of otOptions" [value]="ot.value">{{ot.label}}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Selección Empleado -->
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body">
+              <label class="form-label mb-2">Seleccione Empleado:</label>
+              <div class="input-group">
+                <select class="form-select" [(ngModel)]="selectedEmployee">
+                  <option value="">Seleccionar empleado...</option>
+                  <option *ngFor="let emp of employeeOptions" [value]="emp.value">{{emp.label}}</option>
+                </select>
+                <button 
+                  type="button" 
+                  class="btn btn-primary"
+                  (click)="onEmployeeSelected()"
+                  [disabled]="!selectedEmployee">
+                  Agregar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empleados Asistentes -->
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body">
+              <label class="form-label mb-3">Empleados Asistentes:</label>
+              <div *ngIf="assistantEmployees.length === 0" class="text-muted fst-italic">
+                No hay empleados asistentes registrados
+              </div>
+              <div *ngFor="let assistant of assistantEmployees" class="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded">
+                <span>{{assistant.name}}</span>
+                <button 
+                  type="button" 
+                  class="btn btn-outline-danger"
+                  (click)="removeAssistantEmployee(assistant.id)">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Datos de Servicio -->
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body">
+              <label class="form-label mb-3">Datos de Servicio</label>
+              <div>
+                <p>Descripción del servicio solicitante:</p>
+                <div class="fw-bold">{{selectedOTDescription || 'Seleccione una OT para ver la descripción'}}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Datos Catastrales -->
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body">
+              <h6 class="card-title mb-3">Datos Catastrales</h6>
+              
+              <div class="row g-3">
+                <!-- Primera Columna -->
+                <div class="col-6">
+                  <!-- Consumidor -->
+                  <div class="mb-3">
+                    <label class="form-label">Consumidor</label>
+                    <div>{{selectedOTData?.nameConsumer || '-'}}</div>
+                  </div>
+
+                  <!-- Dirección -->
+                  <div class="mb-3">
+                    <label class="form-label">Dirección</label>
+                    <div>{{selectedOTData?.address || '-'}}</div>
+                  </div>
+
+                  <!-- Barrio -->
+                  <div class="mb-3">
+                    <label class="form-label">Barrio</label>
+                    <div>{{selectedOTData?.neighborhood || '-'}}</div>
+                  </div>
+
+                  <!-- Fase de Cobro -->
+                  <div class="mb-3">
+                    <label class="form-label">Fase de Cobro</label>
+                    <div>{{selectedOTData?.chargePhase || '-'}}</div>
+                  </div>
+
+                  <!-- Hidrómetro -->
+                  <div class="mb-3">
+                    <label class="form-label">Hidrómetro</label>
+                    <div>{{selectedOTData?.hydrometerNumber || '-'}}</div>
+                  </div>
+                </div>
+
+                <!-- Segunda Columna -->
+                <div class="col-6">
+                  <!-- Teléfono -->
+                  <div class="mb-3">
+                    <label class="form-label">Teléfono</label>
+                    <div>{{selectedOTData?.phoneConsumer || '-'}}</div>
+                  </div>
+
+                  <!-- Nr. Nr. Antiguo -->
+                  <div class="mb-3">
+                    <label class="form-label">Nr. Nr. Antiguo</label>
+                    <div>{{selectedOTData?.oldAddressNumber || '-'}}</div>
+                  </div>
+
+                  <!-- Complemento de la calle -->
+                  <div class="mb-3">
+                    <label class="form-label">Complemento de la calle</label>
+                    <div>{{selectedOTData?.addressCrossings || '-'}}</div>
+                  </div>
+
+                  <!-- CDC -->
+                  <div class="mb-3">
+                    <label class="form-label">CDC</label>
+                    <div>{{selectedOTData?.cdc || '-'}}</div>
+                  </div>
+
+                  <!-- Lectura -->
+                  <div class="mb-3">
+                    <label class="form-label">Lectura</label>
+                    <div>{{selectedOTData?.lectureWater || '-'}}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Observaciones -->
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body">
+              <label class="form-label mb-2">Observaciones:</label>
+              <div>{{selectedOTData?.observations || 'No hay observaciones registradas'}}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tipo de Resultado -->
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body">
+              <label class="form-label mb-2">Tipo de Resultado:</label>
+              <select class="form-select" [(ngModel)]="selectedResultType">
+                <option value="">Seleccionar tipo...</option>
+                <option *ngFor="let type of resultTypeOptions" [value]="type.value">{{type.label}}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tipos de Resultado Realizados -->
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body">
+              <h6 class="card-title mb-3">Tipos de Resultado Realizados:</h6>
+              <div *ngIf="resultTypesCompleted.length === 0" class="text-muted fst-italic">
+                No hay tipos de resultado registrados
+              </div>
+              <div *ngFor="let result of resultTypesCompleted" class="mb-2">
+                {{result.type}} - {{result.description}}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Resultados -->
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body">
+              <label class="form-label mb-2">Resultados:</label>
+              <textarea 
+                class="form-control" 
+                rows="5" 
+                placeholder="Ingrese los resultados..."
+                [(ngModel)]="results">
+              </textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botón Agregar Evidencia -->
+        <div class="col-12 mt-4">
+          <button 
+            type="button" 
+            class="btn btn-warning w-100 py-3 fw-bold"
+            (click)="onAddEvidence()">
+            Agregar nueva evidencia
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
