@@ -148,14 +148,17 @@ export class MaterialesMaestroComponent {
       treeData: true,
       groupDefaultExpanded: 1, // Expandir primer nivel por defecto
       getDataPath: (data: any) => data.orgHierarchy,
-      singleClickEdit: true,
+      singleClickEdit: false, // Deshabilitar single click edit
       stopEditingWhenGridLosesFocus: false,
+      suppressClickEdit: false, // Permitir edición por click
+      editType: 'fullRow', // Edición de fila completa
       autoGroupColumnDef: {
         headerName: 'Jerarquía',
         minWidth: 250,
         editable: false,
         cellRendererParams: {
           suppressCount: true,
+          suppressDoubleClickExpansion: true, // Prevenir expansión en doble click
           innerRenderer: (params: any) => {
             if (params.data) {
               const level = params.data.nodeLevel;
@@ -182,6 +185,17 @@ export class MaterialesMaestroComponent {
       },
       onCellValueChanged: (event: any) => {
         this.onCellValueChanged(event);
+      },
+      onCellDoubleClicked: (event: any) => {
+        // Permitir doble click en descripción para editar
+        if (event.colDef.field === 'description') {
+          setTimeout(() => {
+            this.gridApi.startEditingCell({
+              rowIndex: event.rowIndex,
+              colKey: 'description'
+            });
+          }, 0);
+        }
       }
     };
   }
@@ -192,7 +206,10 @@ export class MaterialesMaestroComponent {
       { 
         field: 'description', 
         headerName: 'Descripción', 
-        editable: true, 
+        editable: (params) => {
+          // Solo permitir edición si hay datos válidos
+          return params.data != null;
+        },
         flex: 2,
         cellEditor: 'agTextCellEditor',
         cellEditorParams: {
@@ -206,10 +223,19 @@ export class MaterialesMaestroComponent {
           return '';
         },
         cellRenderer: (params: any) => {
-          if (params.data && params.data.__isNew && (!params.value || params.value === '')) {
+          if (!params.data) return '';
+          
+          if (params.data.__isNew && (!params.value || params.value === '')) {
             return '<span class="placeholder-text">Escriba aquí...</span>';
           }
           return params.value || '';
+        },
+        onCellValueChanged: (params: any) => {
+          // Actualizar orgHierarchy cuando cambie la descripción
+          if (params.data && params.newValue !== params.oldValue) {
+            this.updateHierarchyPath(params.data, params.newValue);
+            this.notSavedChanges = true;
+          }
         }
       },
       { 
@@ -576,18 +602,46 @@ export class MaterialesMaestroComponent {
   private startEditingCell(rowId: string) {
     if (!this.gridApi) return;
 
-    // Encontrar el nodo en el grid y activar edición
-    this.gridApi.forEachNode((node) => {
-      if (node.data && node.data.originalId === rowId) {
-        // Seleccionar la fila
-        node.setSelected(true);
-        // Iniciar edición automática en la celda descripción
-        this.gridApi.startEditingCell({
-          rowIndex: node.rowIndex,
-          colKey: 'description'
-        });
-      }
-    });
+    // Pequeño delay para asegurar que el DOM esté actualizado
+    setTimeout(() => {
+      this.gridApi.forEachNode((node) => {
+        if (node.data && node.data.originalId === rowId) {
+          // Seleccionar la fila
+          node.setSelected(true);
+          
+          // Forzar refresh del nodo para actualizar el renderer
+          this.gridApi.refreshCells({ rowNodes: [node], force: true });
+          
+          // Iniciar edición automática en la celda descripción
+          setTimeout(() => {
+            this.gridApi.startEditingCell({
+              rowIndex: node.rowIndex,
+              colKey: 'description'
+            });
+          }, 50);
+        }
+      });
+    }, 150);
+  }
+
+  // Actualizar ruta de jerarquía cuando cambia la descripción
+  private updateHierarchyPath(data: any, newDescription: string) {
+    if (!data || !newDescription) return;
+
+    data.description = newDescription;
+    
+    // Actualizar orgHierarchy según el nivel
+    switch (data.nodeLevel) {
+      case 'category':
+        data.orgHierarchy = [newDescription];
+        break;
+      case 'family':
+        data.orgHierarchy = [data.orgHierarchy[0], newDescription];
+        break;
+      case 'subfamily':
+        data.orgHierarchy = [data.orgHierarchy[0], data.orgHierarchy[1], newDescription];
+        break;
+    }
   }
 
   // Limpiar datos para servidor
