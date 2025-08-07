@@ -66,12 +66,12 @@
                     rowSelection="single" [components]="components">
                 </ag-grid-angular>
                 
-                <!-- Grid Items - Vista Detail Tree Structure -->
+                <!-- Grid Items - Vista Detail Simple -->
                 <ag-grid-angular 
                    *ngIf="viewMode === 'detail'"
                    style="width: 100%; height: 500px;" 
                     class="ag-theme-quartz small-text-ag-grid" 
-                    [rowData]="treeData"
+                    [rowData]="estimateItems"
                     [columnDefs]="getItemsColumnDefs()"
                     [gridOptions]="gridOptions"
                     (gridReady)="onGridReady($event)" 
