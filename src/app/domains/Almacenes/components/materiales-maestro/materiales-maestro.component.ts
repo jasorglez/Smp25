@@ -50,6 +50,8 @@ export class MaterialesMaestroComponent {
   notSavedChanges: boolean = false;
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
+  isInlineEditing: boolean = false;
+  currentEditingRowId: string | null = null;
   
   // Datos del catálogo jerárquico
   treeData: any[] = [];
@@ -148,9 +150,12 @@ export class MaterialesMaestroComponent {
       treeData: true,
       groupDefaultExpanded: 1, // Expandir primer nivel por defecto
       getDataPath: (data: any) => data.orgHierarchy,
+      singleClickEdit: true,
+      stopEditingWhenGridLosesFocus: false,
       autoGroupColumnDef: {
         headerName: 'Catálogo de Categorías',
         minWidth: 300,
+        editable: true,
         cellRendererParams: {
           suppressCount: true,
           innerRenderer: (params: any) => {
@@ -161,15 +166,39 @@ export class MaterialesMaestroComponent {
                 family: '📂', 
                 subfamily: '📄'
               };
-              return `${icons[level] || '📄'} ${params.data.description}`;
+              const editingClass = params.data.__isInlineEditing ? 'editing-row' : '';
+              return `<span class="${editingClass}">${icons[level] || '📄'} ${params.data.description || 'Nueva descripción'}</span>`;
             }
             return '';
           }
+        },
+        cellEditor: 'agTextCellEditor',
+        cellEditorParams: {
+          maxLength: 100
+        },
+        valueSetter: (params: any) => {
+          if (params.data) {
+            params.data.description = params.newValue;
+            return true;
+          }
+          return false;
+        },
+        valueGetter: (params: any) => {
+          return params.data ? params.data.description : '';
         }
       },
       onRowSelected: (event: any) => {
         if (event.node.isSelected()) {
           this.onRowSelected(event);
+        }
+      },
+      onCellKeyPress: (event: any) => {
+        this.onCellKeyPress(event);
+      },
+      onCellValueChanged: (event: any) => {
+        if (this.isInlineEditing && event.data.__isInlineEditing) {
+          // Actualizar la descripción en tiempo real
+          event.data.description = event.newValue;
         }
       }
     };
@@ -221,17 +250,32 @@ export class MaterialesMaestroComponent {
 
   // Agregar nuevo elemento según nivel seleccionado
   addCatalogItem() {
+    // Colapsar todo el grid para vista limpia
+    if (this.gridApi) {
+      this.gridApi.collapseAll();
+    }
+
+    // Verificar si ya hay una edición en curso
+    if (this.isInlineEditing) {
+      alerts.basicAlert(
+        'Edición en curso',
+        'Complete la edición actual antes de agregar un nuevo elemento.',
+        'warning'
+      );
+      return;
+    }
+
     if (!this.selectedRowData) {
-      this.addCategory(); // Si no hay selección, agregar categoría
+      this.addCategoryInline(); // Si no hay selección, agregar categoría
       return;
     }
 
     switch (this.selectedNodeLevel) {
       case 'category':
-        this.addFamily();
+        this.addFamilyInline();
         break;
       case 'family':
-        this.addSubfamily();
+        this.addSubfamilyInline();
         break;
       case 'subfamily':
         alerts.basicAlert(
@@ -241,15 +285,15 @@ export class MaterialesMaestroComponent {
         );
         break;
       default:
-        this.addCategory();
+        this.addCategoryInline();
     }
   }
 
-  // Agregar categoría (nivel 1)
-  private addCategory() {
+  // Agregar categoría inline (nivel 1)
+  private addCategoryInline() {
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
-      'Agregar Categoría',
+      'Agregar Categoría Inline',
       'Almacenes - Materiales Maestro',
       this.trackingService.getEmail()
     );
@@ -269,23 +313,35 @@ export class MaterialesMaestroComponent {
       price: 0,
       active: 1,
       nodeLevel: 'category',
-      orgHierarchy: ['Nueva Categoría'],
+      orgHierarchy: [''],
       originalId: tempId,
       children: [],
-      __isNew: true
+      __isNew: true,
+      __isInlineEditing: true
     };
 
     this.treeData = [newCategory, ...this.treeData];
     this.notSavedChanges = true;
+    this.isInlineEditing = true;
+    this.currentEditingRowId = tempId;
     
-    // Refrescar grid
+    // Refrescar grid y activar edición
     if (this.gridApi) {
       this.gridApi.setGridOption('rowData', this.flattenTreeData());
+      // Activar edición después de un pequeño delay para que el DOM se actualice
+      setTimeout(() => {
+        this.startInlineEditing(tempId);
+      }, 100);
     }
   }
 
-  // Agregar familia (nivel 2)
-  private addFamily() {
+  // Agregar categoría (nivel 1) - método original mantenido para compatibilidad
+  private addCategory() {
+    this.addCategoryInline();
+  }
+
+  // Agregar familia inline (nivel 2)
+  private addFamilyInline() {
     if (!this.selectedRowData || this.selectedNodeLevel !== 'category') {
       alerts.basicAlert('Error', 'Seleccione una categoría para agregar una familia.', 'warning');
       return;
@@ -293,7 +349,7 @@ export class MaterialesMaestroComponent {
 
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
-      'Agregar Familia',
+      'Agregar Familia Inline',
       'Almacenes - Materiales Maestro',
       this.trackingService.getEmail()
     );
@@ -315,11 +371,12 @@ export class MaterialesMaestroComponent {
       price: 0,
       active: 1,
       nodeLevel: 'family',
-      orgHierarchy: [parentCategory.description, 'Nueva Familia'],
+      orgHierarchy: [parentCategory.description, ''],
       originalId: tempId,
       parentCategoryId: parentCategory.originalId,
       children: [],
-      __isNew: true
+      __isNew: true,
+      __isInlineEditing: true
     };
 
     // Agregar a la categoría padre
@@ -329,15 +386,25 @@ export class MaterialesMaestroComponent {
     }
 
     this.notSavedChanges = true;
+    this.isInlineEditing = true;
+    this.currentEditingRowId = tempId;
     
-    // Refrescar grid
+    // Refrescar grid y activar edición
     if (this.gridApi) {
       this.gridApi.setGridOption('rowData', this.flattenTreeData());
+      setTimeout(() => {
+        this.startInlineEditing(tempId);
+      }, 100);
     }
   }
 
-  // Agregar subfamilia (nivel 3)
-  private addSubfamily() {
+  // Agregar familia (nivel 2) - método original mantenido para compatibilidad
+  private addFamily() {
+    this.addFamilyInline();
+  }
+
+  // Agregar subfamilia inline (nivel 3)
+  private addSubfamilyInline() {
     if (!this.selectedRowData || this.selectedNodeLevel !== 'family') {
       alerts.basicAlert('Error', 'Seleccione una familia para agregar una subfamilia.', 'warning');
       return;
@@ -345,7 +412,7 @@ export class MaterialesMaestroComponent {
 
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
-      'Agregar Subfamilia',
+      'Agregar Subfamilia Inline',
       'Almacenes - Materiales Maestro',
       this.trackingService.getEmail()
     );
@@ -370,12 +437,13 @@ export class MaterialesMaestroComponent {
       orgHierarchy: [
         parentFamily.orgHierarchy[0], 
         parentFamily.description, 
-        'Nueva Subfamilia'
+        ''
       ],
       originalId: tempId,
       parentCategoryId: parentFamily.parentCategoryId,
       parentFamilyId: parentFamily.originalId,
-      __isNew: true
+      __isNew: true,
+      __isInlineEditing: true
     };
 
     // Agregar a la familia padre
@@ -385,11 +453,21 @@ export class MaterialesMaestroComponent {
     }
 
     this.notSavedChanges = true;
+    this.isInlineEditing = true;
+    this.currentEditingRowId = tempId;
     
-    // Refrescar grid
+    // Refrescar grid y activar edición
     if (this.gridApi) {
       this.gridApi.setGridOption('rowData', this.flattenTreeData());
+      setTimeout(() => {
+        this.startInlineEditing(tempId);
+      }, 100);
     }
+  }
+
+  // Agregar subfamilia (nivel 3) - método original mantenido para compatibilidad
+  private addSubfamily() {
+    this.addSubfamilyInline();
   }
 
   // Método auxiliar para encontrar categoría en el árbol
@@ -528,6 +606,166 @@ export class MaterialesMaestroComponent {
     this.notSavedChanges = false;
     this.selectedRowData = null;
     this.selectedNodeLevel = null;
+  }
+
+  // Iniciar edición inline
+  private startInlineEditing(rowId: string) {
+    if (!this.gridApi) return;
+
+    // Encontrar el nodo en el grid
+    this.gridApi.forEachNode((node) => {
+      if (node.data && node.data.originalId === rowId) {
+        // Seleccionar la fila
+        node.setSelected(true);
+        // Iniciar edición en la columna 'description' que está oculta, pero el autoGroupColumn maneja la descripción
+        this.gridApi.startEditingCell({
+          rowIndex: node.rowIndex,
+          colKey: 'ag-Grid-AutoColumn' // AG-Grid AutoColumn para tree data
+        });
+      }
+    });
+  }
+
+  // Manejar eventos de teclado en edición
+  onCellKeyPress(event: any) {
+    if (!this.isInlineEditing) return;
+
+    const keyCode = event.event.keyCode || event.event.which;
+    
+    // Enter (13) - Guardar
+    if (keyCode === 13) {
+      event.event.preventDefault();
+      this.saveInlineEditing();
+    }
+    
+    // Escape (27) - Cancelar
+    if (keyCode === 27) {
+      event.event.preventDefault();
+      this.cancelInlineEditing();
+    }
+  }
+
+  // Guardar edición inline
+  private async saveInlineEditing() {
+    if (!this.isInlineEditing || !this.currentEditingRowId) return;
+
+    const editingRow = this.findRowById(this.currentEditingRowId);
+    if (!editingRow) return;
+
+    // Validar descripción
+    if (!editingRow.description || editingRow.description.trim() === '') {
+      alerts.basicAlert(
+        'Campo requerido',
+        'La descripción es obligatoria.',
+        'warning'
+      );
+      return;
+    }
+
+    // Actualizar la jerarquía con la nueva descripción
+    this.updateRowHierarchy(editingRow);
+
+    try {
+      // Guardar en servidor
+      const cleanedData = this.cleanDataForServer(editingRow);
+      const response = await lastValueFrom(this.catalogsService.addCatalog(cleanedData));
+      
+      if (response && response.id) {
+        editingRow.id = response.id;
+        editingRow.originalId = response.id;
+      }
+      
+      editingRow.__isNew = false;
+      editingRow.__isInlineEditing = false;
+      
+      alerts.basicAlert(
+        'Elemento agregado',
+        'El elemento se ha guardado correctamente.',
+        'success'
+      );
+
+      // Finalizar edición
+      this.finishInlineEditing();
+      
+      // Recargar datos completos
+      this.loadCatalogData();
+      
+    } catch (error) {
+      console.error('Error al guardar elemento:', error);
+      alerts.basicAlert(
+        'Error',
+        'Ocurrió un error al guardar el elemento.',
+        'error'
+      );
+    }
+  }
+
+  // Cancelar edición inline
+  private cancelInlineEditing() {
+    if (!this.isInlineEditing || !this.currentEditingRowId) return;
+
+    // Remover el elemento temporal
+    this.removeRowById(this.currentEditingRowId);
+    
+    // Finalizar edición
+    this.finishInlineEditing();
+    
+    // Refrescar grid
+    if (this.gridApi) {
+      this.gridApi.setGridOption('rowData', this.flattenTreeData());
+    }
+  }
+
+  // Finalizar edición inline
+  private finishInlineEditing() {
+    this.isInlineEditing = false;
+    this.currentEditingRowId = null;
+    
+    // Detener cualquier edición activa
+    if (this.gridApi) {
+      this.gridApi.stopEditing();
+    }
+  }
+
+  // Encontrar fila por ID
+  private findRowById(rowId: string): any {
+    const flatData = this.flattenTreeData();
+    return flatData.find(row => row.originalId === rowId);
+  }
+
+  // Remover fila por ID
+  private removeRowById(rowId: string) {
+    // Remover de categorías de primer nivel
+    this.treeData = this.treeData.filter(item => item.originalId !== rowId);
+    
+    // Remover de categorías hijas
+    this.treeData.forEach(category => {
+      if (category.children) {
+        category.children = category.children.filter(family => family.originalId !== rowId);
+        
+        // Remover de subfamilias
+        category.children.forEach(family => {
+          if (family.children) {
+            family.children = family.children.filter(subfamily => subfamily.originalId !== rowId);
+          }
+        });
+      }
+    });
+  }
+
+  // Actualizar jerarquía de la fila
+  private updateRowHierarchy(row: any) {
+    switch (row.nodeLevel) {
+      case 'category':
+        row.orgHierarchy = [row.description];
+        break;
+      case 'family':
+        row.orgHierarchy = [row.orgHierarchy[0], row.description];
+        break;
+      case 'subfamily':
+        row.orgHierarchy = [row.orgHierarchy[0], row.orgHierarchy[1], row.description];
+        break;
+    }
   }
 
   // Limpiar datos para servidor
