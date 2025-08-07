@@ -186,26 +186,6 @@ export class MaterialesMaestroComponent {
         hide: true // Oculta porque se muestra en el autoGroupColumn
       },
       { 
-        field: 'valueAddition', 
-        headerName: 'Vis. Materia Prima', 
-        editable: true, 
-        flex: 1.5,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: ['SI', 'NO', 'NA']
-        }
-      },
-      { 
-        field: 'valueAddition2', 
-        headerName: 'Vis. Requisiciones', 
-        editable: true, 
-        flex: 1.5,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: ['SI', 'NO', 'NA']
-        }
-      },
-      { 
         field: 'active', 
         headerName: 'Activo', 
         editable: true, 
