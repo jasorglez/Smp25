@@ -68,10 +68,40 @@
                     [rowData]="estimateItems"
                     [columnDefs]="getItemsColumnDefs()"
                     [gridOptions]="gridOptions"
+                    (cellValueChanged)="onEstimateItemValueChanged($event)"
+                    (selectionChanged)="onEstimateItemSelectionChanged($event)"
                     (gridReady)="onGridReady($event)" 
                     rowSelection="single">
                 </ag-grid-angular>
             </div>
+            
+            <!-- Botones DETALLE - Solo en Vista Detalle de Items -->
+            <nav class="col-auto d-flex flex-column align-items-end" *ngIf="viewMode === 'detail'">
+                <div class="mb-2 small text-success fw-bold">
+                    <i class="bi bi-file-text"></i> ITEMS
+                </div>
+                <button type="button" class="btn btn-outline-primary mb-2" (click)="addEstimateItem()" 
+                        title="Agregar item a la estimación: {{ selectedEstimateForDetail?.number }}">
+                    <i class="bi bi-plus-lg"></i>
+                </button>
+                <button type="button" class="btn btn-outline-success mb-2" (click)="saveEstimateItems()"
+                        [disabled]="!hasEstimateItemChanges()">
+                    <i class="bi bi-floppy"></i>
+                </button>
+                <button type="button" class="btn btn-outline-danger mb-2" (click)="deleteEstimateItem()" 
+                        [disabled]="!selectedEstimateItem">
+                    <i class="bi bi-trash"></i>
+                </button>
+                
+                <!-- Indicador del item seleccionado -->
+                <div class="mt-2 small text-muted text-end" *ngIf="selectedEstimateItem">
+                    <i class="bi bi-file-text"></i>
+                    Item {{ selectedEstimateItem?.idResource || 'seleccionado' }}
+                </div>
+                <div class="mt-1 small text-success text-end">
+                    Estimación: {{ selectedEstimateForDetail?.number }}
+                </div>
+            </nav>
         </div>
     </div>
 </div>

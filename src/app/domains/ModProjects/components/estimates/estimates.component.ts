@@ -77,6 +77,7 @@ export class EstimatesComponent {
   viewMode: 'master' | 'detail' = 'master';
   selectedEstimateForDetail: any = null;
   estimateItems: any[] = [];
+  selectedEstimateItem: any = null;
   
   // Conceptos/actividades para dropdown
   activitiesOptions: any[] = [];
@@ -359,6 +360,7 @@ export class EstimatesComponent {
     this.viewMode = 'master';
     this.selectedEstimateForDetail = null;
     this.estimateItems = [];
+    this.selectedEstimateItem = null;
   }
 
   // Cargar items de la estimación seleccionada (lista simple como generators)
@@ -785,6 +787,196 @@ export class EstimatesComponent {
     const year = date.getFullYear();
 
     return `${day} de ${monthName} de ${year}`;
+  }
+
+  // ======================================================================
+  // ===== MÉTODOS PARA MANEJO DE ITEMS DE ESTIMACIÓN ===================
+  // ======================================================================
+
+  // Selección de items de estimación
+  onEstimateItemSelectionChanged(event: any) {
+    const selectedNodes = event.api.getSelectedNodes();
+    this.selectedEstimateItem = selectedNodes.length > 0 ? selectedNodes[0].data : null;
+  }
+
+  // Cambio de valores en items de estimación
+  onEstimateItemValueChanged(event: any) {
+    console.log('Item de estimación cambiado:', event.data);
+    event.data.__modified = true;
+    this.notSavedChanges = true;
+  }
+
+  // Agregar nuevo item de estimación
+  addEstimateItem() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Agregar Item Estimación',
+      'Modulo Proyectos - Items Estimaciones',
+      this.trackingService.getEmail()
+    );
+
+    if (!this.selectedEstimateForDetail) {
+      alerts.basicAlert('Agregar Item', 'No hay estimación seleccionada.', 'warning');
+      return;
+    }
+
+    const tempId = `temp_${Date.now()}`;
+    const newItem = {
+      id: tempId,
+      idType: this.selectedEstimateForDetail.id,
+      idResource: 0,
+      quantity: 0,
+      accumulate: 0,
+      type: 'ESTIMACION',
+      comment: '',
+      active: true,
+      __isNew: true
+    };
+
+    this.estimateItems = [newItem, ...this.estimateItems];
+    this.notSavedChanges = true;
+
+    // Auto-seleccionar y editar primer campo editable
+    setTimeout(() => {
+      const newRowIndex = this.estimateItems.findIndex((row) => row.id === tempId);
+      if (newRowIndex >= 0 && this.gridApi) {
+        this.gridApi.startEditingCell({
+          rowIndex: newRowIndex,
+          colKey: 'idResource'
+        });
+      }
+    }, 50);
+  }
+
+  // Verificar si hay cambios en items de estimación
+  hasEstimateItemChanges(): boolean {
+    return this.estimateItems.some(item => item.__isNew || item.__modified);
+  }
+
+  // Guardar cambios en items de estimación
+  async saveEstimateItems() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Guardar Items Estimación',
+      'Modulo Proyectos - Items Estimaciones',
+      this.trackingService.getEmail()
+    );
+
+    const isValid = this.estimateItems.every((item) => 
+      item.idResource !== undefined && item.quantity !== undefined
+    );
+    
+    if (!isValid) {
+      alerts.basicAlert(
+        'Guardar Items',
+        'Debe llenar todos los campos requeridos antes de guardar.',
+        'error'
+      );
+      return;
+    }
+
+    const newItems = this.estimateItems.filter((item) => item.__isNew);
+    const modifiedItems = this.estimateItems.filter((item) => item.__modified && !item.__isNew);
+
+    try {
+      // Guardar Items Nuevos
+      for (const item of newItems) {
+        const cleanedData = this.cleanEstimateItemDataForServer(item);
+        const response = await lastValueFrom(this.generatorsService.addItemGenerador(cleanedData));
+        if (response && response.id) {
+          item.id = response.id;
+          item.originalId = response.id;
+        }
+        item.__isNew = false;
+      }
+
+      // Guardar Items Modificados
+      for (const item of modifiedItems) {
+        const cleanedData = this.cleanEstimateItemDataForServer(item);
+        await lastValueFrom(this.generatorsService.updateItemGenerador(item.id, cleanedData));
+        item.__modified = false;
+      }
+
+      alerts.basicAlert(
+        'Datos actualizados',
+        'Los items se han guardado correctamente.',
+        'success'
+      );
+      this.notSavedChanges = false;
+      this.loadEstimateItems(); // Recargar items
+    } catch (error) {
+      console.error('Error al guardar items:', error);
+      alerts.basicAlert(
+        'Error',
+        'Ocurrió un error al guardar los items. Por favor, intente nuevamente.',
+        'error'
+      );
+    }
+  }
+
+  // Eliminar item de estimación
+  async deleteEstimateItem() {
+    if (!this.selectedEstimateItem) {
+      alerts.basicAlert(
+        'Eliminar Item',
+        'Por favor, seleccione un item para eliminar.',
+        'error'
+      );
+      return;
+    }
+
+    const itemName = `el item de recurso ${this.selectedEstimateItem.idResource || 'seleccionado'}`;
+    
+    const result = await alerts.confirmAlert(
+      'Confirmar eliminación',
+      `¿Está seguro de que desea eliminar ${itemName}? Esta acción no se puede deshacer.`,
+      'warning',
+      'Sí, eliminar'
+    );
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
+    const itemId = this.selectedEstimateItem.id;
+
+    // Si es un item temporal, solo eliminarlo de la lista
+    if (itemId.toString().startsWith('temp_')) {
+      this.estimateItems = this.estimateItems.filter(item => item.id !== itemId);
+      this.selectedEstimateItem = null;
+      return;
+    }
+
+    try {
+      await lastValueFrom(this.generatorsService.deleteItemGenerador(itemId));
+      alerts.basicAlert(
+        'Eliminado',
+        'Item eliminado satisfactoriamente.',
+        'success'
+      );
+      this.loadEstimateItems(); // Recargar items
+      this.selectedEstimateItem = null;
+    } catch (error) {
+      console.error('Error al eliminar item:', error);
+      alerts.basicAlert(
+        'Error',
+        'Error al eliminar el item.',
+        'error'
+      );
+    }
+  }
+
+  // Limpiar datos de item para servidor
+  private cleanEstimateItemDataForServer(data: any): any {
+    return {
+      idType: data.idType,
+      idResource: data.idResource,
+      quantity: data.quantity,
+      accumulate: data.accumulate,
+      type: data.type || 'ESTIMACION',
+      comment: data.comment || '',
+      active: data.active !== false
+    };
   }
 
 }
