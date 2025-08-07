@@ -26,7 +26,6 @@
           type="button" 
           class="btn btn-primary me-1 mb-2" 
           (click)="addCatalogItem()"
-          [disabled]="isInlineEditing"
           title="Agregar elemento según selección">
           <i class="bi bi-plus-lg"></i>
         </button>
@@ -35,7 +34,7 @@
           type="button" 
           class="btn btn-success position-relative mb-2" 
           (click)="saveChanges()"
-          [disabled]="!notSavedChanges || isInlineEditing">
+          [disabled]="!notSavedChanges">
           <i class="bi bi-floppy"></i>
           <span
             class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
@@ -47,8 +46,7 @@
         <button 
           type="button" 
           class="btn btn-warning mb-2" 
-          (click)="revert()"
-          [disabled]="isInlineEditing">
+          (click)="revert()">
           <i class="bi bi-arrow-clockwise"></i>
         </button>
         
@@ -56,21 +54,9 @@
           type="button" 
           class="btn btn-danger mb-2" 
           (click)="deleteSelectedItem()"
-          [disabled]="!selectedRowData || isInlineEditing">
+          [disabled]="!selectedRowData">
           <i class="bi bi-trash"></i>
         </button>
-
-        <!-- Indicador de edición activa -->
-        <div class="mt-3" *ngIf="isInlineEditing">
-          <div class="inline-editing-indicator text-center">
-            <i class="bi bi-pencil-square"></i><br>
-            EDITANDO
-          </div>
-          <div class="text-center mt-2 small">
-            <strong>Enter:</strong> Guardar<br>
-            <strong>Escape:</strong> Cancelar
-          </div>
-        </div>
 
         <!-- Indicador de selección -->
         <div class="mt-3 small text-muted" *ngIf="selectedRowData" style="max-width: 120px;">
@@ -94,12 +80,14 @@
         <!-- Ayuda contextual -->
         <div class="mt-4 small text-muted" style="max-width: 140px;">
           <div class="mb-2">
-            <strong>💡 Ayuda:</strong>
+            <strong>💡 Flujo simple:</strong>
           </div>
           <div style="font-size: 0.7rem;">
-            • Selecciona <span class="badge bg-primary">Categoría</span> → Agrega Familia<br>
-            • Selecciona <span class="badge bg-info">Familia</span> → Agrega Subfamilia<br>
-            • Sin selección → Agrega Categoría
+            1. Selecciona nivel<br>
+            2. Click <span class="badge bg-primary">+</span><br>
+            3. Escribe descripción<br>
+            4. Enter → Guardar<br>
+            5. ¡Listo!
           </div>
         </div>
       </nav>

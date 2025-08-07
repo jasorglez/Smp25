@@ -50,8 +50,6 @@ export class MaterialesMaestroComponent {
   notSavedChanges: boolean = false;
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
-  isInlineEditing: boolean = false;
-  currentEditingRowId: string | null = null;
   
   // Datos del catálogo jerárquico
   treeData: any[] = [];
@@ -166,13 +164,12 @@ export class MaterialesMaestroComponent {
                 family: '<i class="bi bi-collection-fill text-info"></i>', 
                 subfamily: '<i class="bi bi-file-earmark-fill text-secondary"></i>'
               };
-              const editingClass = params.data.__isInlineEditing ? 'editing-row' : '';
               const levelNames = {
                 category: 'Categoría',
                 family: 'Familia',
                 subfamily: 'Subfamilia'
               };
-              return `<span class="${editingClass}">${icons[level] || icons.subfamily} ${levelNames[level] || 'Elemento'}</span>`;
+              return `${icons[level] || icons.subfamily} ${levelNames[level] || 'Elemento'}`;
             }
             return '';
           }
@@ -183,18 +180,8 @@ export class MaterialesMaestroComponent {
           this.onRowSelected(event);
         }
       },
-      onCellKeyPress: (event: any) => {
-        this.onCellKeyPress(event);
-      },
       onCellValueChanged: (event: any) => {
-        // Solo procesar cambios en la columna description durante edición inline
-        if (this.isInlineEditing && event.data.__isInlineEditing && event.colDef.field === 'description') {
-          event.data.description = event.newValue;
-          // No marcar como cambios guardables aún, solo cuando se confirme con Enter
-        } else if (!this.isInlineEditing) {
-          // Cambios normales fuera de edición inline
-          this.onCellValueChanged(event);
-        }
+        this.onCellValueChanged(event);
       }
     };
   }
@@ -207,14 +194,20 @@ export class MaterialesMaestroComponent {
         headerName: 'Descripción', 
         editable: true, 
         flex: 2,
-        hide: false, // Hacer visible para permitir edición
         cellEditor: 'agTextCellEditor',
         cellEditorParams: {
           maxLength: 100
         },
+        cellClass: (params: any) => {
+          // Aplicar clase especial a celdas de elementos nuevos
+          if (params.data && params.data.__isNew) {
+            return 'new-cell-editing';
+          }
+          return '';
+        },
         cellRenderer: (params: any) => {
-          if (params.data && params.data.__isInlineEditing) {
-            return params.value || 'Escriba aquí...';
+          if (params.data && params.data.__isNew && (!params.value || params.value === '')) {
+            return '<span class="placeholder-text">Escriba aquí...</span>';
           }
           return params.value || '';
         }
@@ -260,27 +253,17 @@ export class MaterialesMaestroComponent {
       this.gridApi.collapseAll();
     }
 
-    // Verificar si ya hay una edición en curso
-    if (this.isInlineEditing) {
-      alerts.basicAlert(
-        'Edición en curso',
-        'Complete la edición actual antes de agregar un nuevo elemento.',
-        'warning'
-      );
-      return;
-    }
-
     if (!this.selectedRowData) {
-      this.addCategoryInline(); // Si no hay selección, agregar categoría
+      this.addCategory(); // Si no hay selección, agregar categoría
       return;
     }
 
     switch (this.selectedNodeLevel) {
       case 'category':
-        this.addFamilyInline();
+        this.addFamily();
         break;
       case 'family':
-        this.addSubfamilyInline();
+        this.addSubfamily();
         break;
       case 'subfamily':
         alerts.basicAlert(
@@ -290,15 +273,15 @@ export class MaterialesMaestroComponent {
         );
         break;
       default:
-        this.addCategoryInline();
+        this.addCategory();
     }
   }
 
-  // Agregar categoría inline (nivel 1)
-  private addCategoryInline() {
+  // Agregar categoría (nivel 1)
+  private addCategory() {
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
-      'Agregar Categoría Inline',
+      'Agregar Categoría',
       'Almacenes - Materiales Maestro',
       this.trackingService.getEmail()
     );
@@ -321,32 +304,24 @@ export class MaterialesMaestroComponent {
       orgHierarchy: [''],
       originalId: tempId,
       children: [],
-      __isNew: true,
-      __isInlineEditing: true
+      __isNew: true
     };
 
     this.treeData = [newCategory, ...this.treeData];
     this.notSavedChanges = true;
-    this.isInlineEditing = true;
-    this.currentEditingRowId = tempId;
     
-    // Refrescar grid y activar edición
+    // Refrescar grid y activar edición automática
     if (this.gridApi) {
       this.gridApi.setGridOption('rowData', this.flattenTreeData());
-      // Activar edición después de un pequeño delay para que el DOM se actualice
+      // Activar edición inmediata en la celda descripción
       setTimeout(() => {
-        this.startInlineEditing(tempId);
+        this.startEditingCell(tempId);
       }, 100);
     }
   }
 
-  // Agregar categoría (nivel 1) - método original mantenido para compatibilidad
-  private addCategory() {
-    this.addCategoryInline();
-  }
-
-  // Agregar familia inline (nivel 2)
-  private addFamilyInline() {
+  // Agregar familia (nivel 2)
+  private addFamily() {
     if (!this.selectedRowData || this.selectedNodeLevel !== 'category') {
       alerts.basicAlert('Error', 'Seleccione una categoría para agregar una familia.', 'warning');
       return;
@@ -354,7 +329,7 @@ export class MaterialesMaestroComponent {
 
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
-      'Agregar Familia Inline',
+      'Agregar Familia',
       'Almacenes - Materiales Maestro',
       this.trackingService.getEmail()
     );
@@ -380,8 +355,7 @@ export class MaterialesMaestroComponent {
       originalId: tempId,
       parentCategoryId: parentCategory.originalId,
       children: [],
-      __isNew: true,
-      __isInlineEditing: true
+      __isNew: true
     };
 
     // Agregar a la categoría padre
@@ -391,25 +365,18 @@ export class MaterialesMaestroComponent {
     }
 
     this.notSavedChanges = true;
-    this.isInlineEditing = true;
-    this.currentEditingRowId = tempId;
     
     // Refrescar grid y activar edición
     if (this.gridApi) {
       this.gridApi.setGridOption('rowData', this.flattenTreeData());
       setTimeout(() => {
-        this.startInlineEditing(tempId);
+        this.startEditingCell(tempId);
       }, 100);
     }
   }
 
-  // Agregar familia (nivel 2) - método original mantenido para compatibilidad
-  private addFamily() {
-    this.addFamilyInline();
-  }
-
-  // Agregar subfamilia inline (nivel 3)
-  private addSubfamilyInline() {
+  // Agregar subfamilia (nivel 3)
+  private addSubfamily() {
     if (!this.selectedRowData || this.selectedNodeLevel !== 'family') {
       alerts.basicAlert('Error', 'Seleccione una familia para agregar una subfamilia.', 'warning');
       return;
@@ -417,7 +384,7 @@ export class MaterialesMaestroComponent {
 
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
-      'Agregar Subfamilia Inline',
+      'Agregar Subfamilia',
       'Almacenes - Materiales Maestro',
       this.trackingService.getEmail()
     );
@@ -447,8 +414,7 @@ export class MaterialesMaestroComponent {
       originalId: tempId,
       parentCategoryId: parentFamily.parentCategoryId,
       parentFamilyId: parentFamily.originalId,
-      __isNew: true,
-      __isInlineEditing: true
+      __isNew: true
     };
 
     // Agregar a la familia padre
@@ -458,21 +424,14 @@ export class MaterialesMaestroComponent {
     }
 
     this.notSavedChanges = true;
-    this.isInlineEditing = true;
-    this.currentEditingRowId = tempId;
     
     // Refrescar grid y activar edición
     if (this.gridApi) {
       this.gridApi.setGridOption('rowData', this.flattenTreeData());
       setTimeout(() => {
-        this.startInlineEditing(tempId);
+        this.startEditingCell(tempId);
       }, 100);
     }
-  }
-
-  // Agregar subfamilia (nivel 3) - método original mantenido para compatibilidad
-  private addSubfamily() {
-    this.addSubfamilyInline();
   }
 
   // Método auxiliar para encontrar categoría en el árbol
@@ -613,164 +572,22 @@ export class MaterialesMaestroComponent {
     this.selectedNodeLevel = null;
   }
 
-  // Iniciar edición inline
-  private startInlineEditing(rowId: string) {
+  // Iniciar edición simple en celda
+  private startEditingCell(rowId: string) {
     if (!this.gridApi) return;
 
-    // Encontrar el nodo en el grid
+    // Encontrar el nodo en el grid y activar edición
     this.gridApi.forEachNode((node) => {
       if (node.data && node.data.originalId === rowId) {
         // Seleccionar la fila
         node.setSelected(true);
-        // Iniciar edición en la columna de descripción
+        // Iniciar edición automática en la celda descripción
         this.gridApi.startEditingCell({
           rowIndex: node.rowIndex,
-          colKey: 'description' // Usar la columna description directamente
+          colKey: 'description'
         });
       }
     });
-  }
-
-  // Manejar eventos de teclado en edición
-  onCellKeyPress(event: any) {
-    if (!this.isInlineEditing) return;
-
-    const keyCode = event.event.keyCode || event.event.which;
-    
-    // Enter (13) - Guardar
-    if (keyCode === 13) {
-      event.event.preventDefault();
-      this.saveInlineEditing();
-    }
-    
-    // Escape (27) - Cancelar
-    if (keyCode === 27) {
-      event.event.preventDefault();
-      this.cancelInlineEditing();
-    }
-  }
-
-  // Guardar edición inline
-  private async saveInlineEditing() {
-    if (!this.isInlineEditing || !this.currentEditingRowId) return;
-
-    const editingRow = this.findRowById(this.currentEditingRowId);
-    if (!editingRow) return;
-
-    // Validar descripción
-    if (!editingRow.description || editingRow.description.trim() === '') {
-      alerts.basicAlert(
-        'Campo requerido',
-        'La descripción es obligatoria.',
-        'warning'
-      );
-      return;
-    }
-
-    // Actualizar la jerarquía con la nueva descripción
-    this.updateRowHierarchy(editingRow);
-
-    try {
-      // Guardar en servidor
-      const cleanedData = this.cleanDataForServer(editingRow);
-      const response = await lastValueFrom(this.catalogsService.addCatalog(cleanedData));
-      
-      if (response && response.id) {
-        editingRow.id = response.id;
-        editingRow.originalId = response.id;
-      }
-      
-      editingRow.__isNew = false;
-      editingRow.__isInlineEditing = false;
-      
-      alerts.basicAlert(
-        'Elemento agregado',
-        'El elemento se ha guardado correctamente.',
-        'success'
-      );
-
-      // Finalizar edición
-      this.finishInlineEditing();
-      
-      // Recargar datos completos
-      this.loadCatalogData();
-      
-    } catch (error) {
-      console.error('Error al guardar elemento:', error);
-      alerts.basicAlert(
-        'Error',
-        'Ocurrió un error al guardar el elemento.',
-        'error'
-      );
-    }
-  }
-
-  // Cancelar edición inline
-  private cancelInlineEditing() {
-    if (!this.isInlineEditing || !this.currentEditingRowId) return;
-
-    // Remover el elemento temporal
-    this.removeRowById(this.currentEditingRowId);
-    
-    // Finalizar edición
-    this.finishInlineEditing();
-    
-    // Refrescar grid
-    if (this.gridApi) {
-      this.gridApi.setGridOption('rowData', this.flattenTreeData());
-    }
-  }
-
-  // Finalizar edición inline
-  private finishInlineEditing() {
-    this.isInlineEditing = false;
-    this.currentEditingRowId = null;
-    
-    // Detener cualquier edición activa
-    if (this.gridApi) {
-      this.gridApi.stopEditing();
-    }
-  }
-
-  // Encontrar fila por ID
-  private findRowById(rowId: string): any {
-    const flatData = this.flattenTreeData();
-    return flatData.find(row => row.originalId === rowId);
-  }
-
-  // Remover fila por ID
-  private removeRowById(rowId: string) {
-    // Remover de categorías de primer nivel
-    this.treeData = this.treeData.filter(item => item.originalId !== rowId);
-    
-    // Remover de categorías hijas
-    this.treeData.forEach(category => {
-      if (category.children) {
-        category.children = category.children.filter(family => family.originalId !== rowId);
-        
-        // Remover de subfamilias
-        category.children.forEach(family => {
-          if (family.children) {
-            family.children = family.children.filter(subfamily => subfamily.originalId !== rowId);
-          }
-        });
-      }
-    });
-  }
-
-  // Actualizar jerarquía de la fila
-  private updateRowHierarchy(row: any) {
-    switch (row.nodeLevel) {
-      case 'category':
-        row.orgHierarchy = [row.description];
-        break;
-      case 'family':
-        row.orgHierarchy = [row.orgHierarchy[0], row.description];
-        break;
-      case 'subfamily':
-        row.orgHierarchy = [row.orgHierarchy[0], row.orgHierarchy[1], row.description];
-        break;
-    }
   }
 
   // Limpiar datos para servidor

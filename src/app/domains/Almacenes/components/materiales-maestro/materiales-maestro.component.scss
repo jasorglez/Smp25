@@ -103,40 +103,28 @@
   line-height: 1.3;
 }
 
-// Estilos para edición inline
+// Estilos para edición simple
 .catalog-grid {
   ::ng-deep {
-    // Fila en edición
-    .ag-row[data-inline-editing="true"] {
+    // Celda nueva con fondo amarillo
+    .new-cell-editing {
       background-color: #fff3cd !important;
       border: 2px solid #ffc107 !important;
-      box-shadow: 0 4px 8px rgba(255, 193, 7, 0.3) !important;
     }
 
-    // Celda en edición
+    // Input de celda en edición con fondo amarillo y cursor parpadeando
     .ag-cell-edit-input {
-      background-color: #ffffff !important;
-      border: 1px solid #28a745 !important;
-      font-weight: 600;
+      background-color: #fff3cd !important;
+      border: 1px solid #ffc107 !important;
+      font-weight: 500;
+      color: #856404;
     }
 
-    // Indicador de fila en edición
-    .editing-row {
-      color: #856404 !important;
-      font-weight: 600 !important;
-    }
-
-    // Placeholder para nuevas filas
-    .ag-cell-value:empty::before {
-      content: "Escriba aquí la descripción...";
+    // Placeholder text styling
+    .placeholder-text {
       color: #6c757d;
       font-style: italic;
-    }
-
-    // Estilos específicos para filas en edición
-    .ag-row-editing {
-      background-color: #fff3cd !important;
-      border: 2px solid #ffc107 !important;
+      font-size: 0.9rem;
     }
 
     // Mejorar visibilidad de iconos
@@ -153,6 +141,11 @@
     .bi-file-earmark-fill {
       font-size: 1.1rem;
       margin-right: 5px;
+    }
+
+    // Efecto focus en celdas editables
+    .ag-cell-focus {
+      border: 2px solid #007bff !important;
     }
   }
 }
