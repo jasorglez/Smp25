@@ -12,6 +12,7 @@ import { GeneratorsComponent } from './generators.component';
 import { PdfEstimatesService } from 'app/services/pdf-estimates.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
+import { GeneratorsService } from 'app/services/generators.service';
 
 @Component({
   selector: 'app-estimates',
@@ -26,6 +27,7 @@ export class EstimatesComponent {
   private pdfEstimatesService = inject(PdfEstimatesService);
   private trackingService = inject(TrackingService);
   private workprogramsService = inject(WorkprogramsService);
+  private generatorsService = inject(GeneratorsService);
 
   constructor() {
     effect(() => {
@@ -43,6 +45,7 @@ export class EstimatesComponent {
     );
     
     this.obtenerDatos();
+    this.loadActivities();
   }
 
   components = {
@@ -61,16 +64,24 @@ export class EstimatesComponent {
   rowData: any;
   contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
-  selectedRowData: any = null;
+  selectedEstimate: any = null; // Variable única como Income
   id: string;
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
   private contract = this.signalsService.getContractSelectedBySidebar()();
   
-  // Propiedades para el comportamiento del toggle
+  // Propiedades simplificadas
   gridHeight: string = '500px';
-  showGeneratorsTab: boolean = false;
-  isOpen: boolean = false;
+  
+  // Propiedades para vista detalle de items
+  viewMode: 'master' | 'detail' = 'master';
+  selectedEstimateForDetail: any = null;
+  estimateItems: any[] = [];
+  selectedEstimateItem: any = null;
+  
+  // Conceptos/actividades para dropdown
+  activitiesOptions: any[] = [];
+  private project = this.signalsService.getProjectSelectedBySidebar()();
 
   obtenerDatos() {
     this.estimatesService
@@ -84,33 +95,82 @@ export class EstimatesComponent {
       });
   }
 
-
-  // 1. Modificar gridOptions para el comportamiento deseado
-public gridOptions: any = {
-  headerHeight: 30,
-  rowHeight: 30,
-  suppressClickEdit: true, // Fuerza doble click para editar
-  rowClass: (params) => params.node.isSelected() ? 'selected-row' : '',
-  
-  onRowClicked: (event) => {
-    // Solo selección con un click
-    event.node.setSelected(true);
-    this.selectedRowData = event.data;
-    this.id = event.data.id;
-  },
-
-  onRowSelected: (event) => {
-    // Deseleccionar otras filas
-    if (event.node.isSelected()) {
-      this.gridApi.forEachNode((node) => {
-        if (node.id !== event.node.id) {
-          node.setSelected(false);
-        }
+  loadActivities() {
+    if (!this.project) return;
+    this.workprogramsService.getActivities(this.project)
+      .subscribe((activities: any[]) => {
+        this.activitiesOptions = activities;
+        console.log('Actividades cargadas:', this.activitiesOptions);
+      }, (error) => {
+        console.error('Error al cargar actividades:', error);
+        this.activitiesOptions = [];
       });
-    }
   }
-};
 
+
+  // GridOptions simple para ambas vistas
+  get gridOptions(): any {
+    return {
+      headerHeight: 30,
+      rowHeight: 30,
+      getRowClass: (params) => {
+        if (params.node.isSelected()) {
+          return 'selected-row';
+        }
+        return '';
+      },
+      onRowClicked: (event) => {
+        event.node.setSelected(true);
+      },
+      onRowSelected: (event) => {
+        if (event.node.isSelected()) {
+          this.gridApi.forEachNode((node) => {
+            if (node.id !== event.node.id) {
+              node.setSelected(false);
+            }
+          });
+        }
+      }
+    };
+  }
+
+
+  // Columnas para la vista de items de estimación (exactas a generators)
+  getItemsColumnDefs(): ColDef[] {
+    return [
+      { 
+        field: 'idResource', 
+        headerName: 'Recurso', 
+        editable: true, 
+        flex: 2,
+        cellEditor: 'agSelectCellEditor', 
+        cellEditorParams: { 
+          values: this.activitiesOptions.map(a => a.id) 
+        },
+        valueFormatter: (p) => this.activitiesOptions.find(a => a.id === p.value)?.actandNom || ''
+      },
+      { 
+        field: 'quantity', 
+        headerName: 'Cantidad', 
+        editable: true, 
+        flex: 1, 
+        cellDataType: 'number'
+      },
+      { 
+        field: 'accumulate', 
+        headerName: 'Acumulado', 
+        editable: true, 
+        flex: 1, 
+        cellDataType: 'number'
+      },
+      { 
+        field: 'comment', 
+        headerName: 'Comentarios', 
+        editable: true, 
+        flex: 2 
+      }
+    ];
+  }
 
   get columnDefs(): ColDef[] {
     return [
@@ -230,20 +290,103 @@ public gridOptions: any = {
     ];
   }
 
-  onSelectedRow(event: any) {
-    console.log(event)
-    this.id = event.data.id;
+  // Método limpio de selección como Income
+  onSelectionChanged(event: any) {
+    const selectedNodes = event.api.getSelectedNodes();
+    if (selectedNodes.length > 0) {
+      this.selectedEstimate = selectedNodes[0].data;
+      this.id = this.selectedEstimate.id;
+      
+      // Mostrar detalle automáticamente al seleccionar
+      this.showEstimateDetail();
+    } else {
+      this.selectedEstimate = null;
+      this.id = null;
+      this.hideEstimateDetail();
+    }
+  }
+
+  // Método para mostrar detalle automáticamente
+  private showEstimateDetail() {
+    if (!this.selectedEstimate || !this.id) {
+      return;
+    }
+    
+    // No aplicar filtros si hay filas temporales (nuevas)
+    const hasNewRows = this.rowData.some(row => row.id && row.id.toString().startsWith('temp_'));
+    if (hasNewRows) {
+      return;
+    }
+
+    this.gridApi.setFilterModel({
+      id: { type: 'equals', filter: this.id }
+    });
+    this.gridApi.onFilterChanged();
+    
+    // Activar generadores después del filtrado
+    this.activateGeneratorsTab();
+  }
+
+  // Método para ocultar detalle
+  private hideEstimateDetail() {
+    this.resetGridSize();
   }
 
   // Función para ver detalles de la estimación seleccionada
   viewEstimateDetails() {
-    if (!this.selectedRowData) {
+    if (!this.selectedEstimate) {
+      alerts.basicAlert(
+        'Ver Detalle',
+        'Por favor, seleccione una estimación.',
+        'warning'
+      );
       return;
     }
-    this.filterBySelectedEstimate();
+    
+    this.selectedEstimateForDetail = this.selectedEstimate;
+    this.viewMode = 'detail';
+    this.loadEstimateItems();
+    
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Ver Detalle Items Estimación',
+      'Modulo Proyectos - Estimaciones Detalle',
+      this.trackingService.getEmail()
+    );
   }
 
+  // Función para volver a la vista maestro
+  backToMasterView() {
+    this.viewMode = 'master';
+    this.selectedEstimateForDetail = null;
+    this.estimateItems = [];
+    this.selectedEstimateItem = null;
+  }
 
+  // Cargar items de la estimación seleccionada (lista simple como generators)
+  private loadEstimateItems() {
+    if (!this.selectedEstimateForDetail?.id) {
+      this.estimateItems = [];
+      return;
+    }
+
+    this.generatorsService.getItemsEstimaciones(this.selectedEstimateForDetail.id)
+      .subscribe({
+        next: (items: any[]) => {
+          this.estimateItems = items || [];
+          console.log('Items de estimación cargados:', this.estimateItems);
+        },
+        error: (error) => {
+          console.error('Error al cargar items de estimación:', error);
+          this.estimateItems = [];
+          alerts.basicAlert(
+            'Error',
+            'Error al cargar los items de la estimación.',
+            'error'
+          );
+        }
+      });
+  }
 
   onCellValueChanged(event: any) {
     console.log('Dato cambiado:', event.data);
@@ -417,7 +560,7 @@ public gridOptions: any = {
           );
           this.obtenerDatos();
           this.notSavedChanges = false;
-          this.selectedRowData = null;
+          this.selectedEstimate = null;
         }
       );
   }
@@ -437,39 +580,25 @@ public gridOptions: any = {
     return cleanedData;
   }
 
-  // Función separada para filtrar por estimación seleccionada
+  // Función separada para filtrar por estimación seleccionada (obsoleta)
   filterBySelectedEstimate() {
-    if (!this.selectedRowData || !this.id) {
-      return;
-    }
-    
-    // No aplicar filtros si hay filas temporales (nuevas)
-    const hasNewRows = this.rowData.some(row => row.id && row.id.toString().startsWith('temp_'));
-    if (hasNewRows) {
-      return;
-    }
+    // Funcionalidad movida a showEstimateDetail()
+    return;
+  }
 
-    this.gridApi.setFilterModel({
-      id: { type: 'equals', filter: this.id }
-    });
-    this.gridApi.onFilterChanged();
-    
-    // Activar generadores después del filtrado
-    this.activateGeneratorsTab();
+  // Función para limpiar filtros
+  clearFilters() {
+    if (this.gridApi) {
+      this.gridApi.setFilterModel(null);
+      // El grid se actualizará automáticamente
+    }
   }
 
 
 
 
   async activateGeneratorsTab() {
-    if (!this.isOpen) {
-      await this.adjustGridSize();
-      this.showGeneratorsTab = true;
-      this.isOpen = true;
-    } else {
-      await this.resetGridSize();
-      this.isOpen = false;
-    }
+    await this.adjustGridSize();
   }
 
   async adjustGridSize() {
@@ -478,7 +607,6 @@ public gridOptions: any = {
 
   resetGridSize() {
     this.gridHeight = '500px'; // Restaurar tamaño original
-    this.showGeneratorsTab = false;
     if (this.gridApi) {
       this.gridApi.setFilterModel(null);
       this.gridApi.onFilterChanged();
@@ -486,7 +614,7 @@ public gridOptions: any = {
   }
 
   generateSamplePdf() {
-    if (!this.selectedRowData) {
+    if (!this.selectedEstimate) {
       alerts.basicAlert(
         'Generar PDF',
         'Por favor, seleccione una estimación para generar el PDF.',
@@ -495,11 +623,11 @@ public gridOptions: any = {
       return;
     }
 
-    this.generatePdfWithRealData(this.selectedRowData.id, false);
+    this.generatePdfWithRealData(this.selectedEstimate.id, false);
   }
 
   downloadSamplePdf() {
-    if (!this.selectedRowData) {
+    if (!this.selectedEstimate) {
       alerts.basicAlert(
         'Descargar PDF',
         'Por favor, seleccione una estimación para descargar el PDF.',
@@ -508,7 +636,7 @@ public gridOptions: any = {
       return;
     }
 
-    this.generatePdfWithRealData(this.selectedRowData.id, true);
+    this.generatePdfWithRealData(this.selectedEstimate.id, true);
   }
 
   private async generatePdfWithRealData(estimateId: number, download: boolean = false) {
@@ -659,6 +787,196 @@ public gridOptions: any = {
     const year = date.getFullYear();
 
     return `${day} de ${monthName} de ${year}`;
+  }
+
+  // ======================================================================
+  // ===== MÉTODOS PARA MANEJO DE ITEMS DE ESTIMACIÓN ===================
+  // ======================================================================
+
+  // Selección de items de estimación
+  onEstimateItemSelectionChanged(event: any) {
+    const selectedNodes = event.api.getSelectedNodes();
+    this.selectedEstimateItem = selectedNodes.length > 0 ? selectedNodes[0].data : null;
+  }
+
+  // Cambio de valores en items de estimación
+  onEstimateItemValueChanged(event: any) {
+    console.log('Item de estimación cambiado:', event.data);
+    event.data.__modified = true;
+    this.notSavedChanges = true;
+  }
+
+  // Agregar nuevo item de estimación
+  addEstimateItem() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Agregar Item Estimación',
+      'Modulo Proyectos - Items Estimaciones',
+      this.trackingService.getEmail()
+    );
+
+    if (!this.selectedEstimateForDetail) {
+      alerts.basicAlert('Agregar Item', 'No hay estimación seleccionada.', 'warning');
+      return;
+    }
+
+    const tempId = `temp_${Date.now()}`;
+    const newItem = {
+      id: tempId,
+      idType: this.selectedEstimateForDetail.id,
+      idResource: 0,
+      quantity: 0,
+      accumulate: 0,
+      type: 'ESTIMACION',
+      comment: '',
+      active: true,
+      __isNew: true
+    };
+
+    this.estimateItems = [newItem, ...this.estimateItems];
+    this.notSavedChanges = true;
+
+    // Auto-seleccionar y editar primer campo editable
+    setTimeout(() => {
+      const newRowIndex = this.estimateItems.findIndex((row) => row.id === tempId);
+      if (newRowIndex >= 0 && this.gridApi) {
+        this.gridApi.startEditingCell({
+          rowIndex: newRowIndex,
+          colKey: 'idResource'
+        });
+      }
+    }, 50);
+  }
+
+  // Verificar si hay cambios en items de estimación
+  hasEstimateItemChanges(): boolean {
+    return this.estimateItems.some(item => item.__isNew || item.__modified);
+  }
+
+  // Guardar cambios en items de estimación
+  async saveEstimateItems() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Guardar Items Estimación',
+      'Modulo Proyectos - Items Estimaciones',
+      this.trackingService.getEmail()
+    );
+
+    const isValid = this.estimateItems.every((item) => 
+      item.idResource !== undefined && item.quantity !== undefined
+    );
+    
+    if (!isValid) {
+      alerts.basicAlert(
+        'Guardar Items',
+        'Debe llenar todos los campos requeridos antes de guardar.',
+        'error'
+      );
+      return;
+    }
+
+    const newItems = this.estimateItems.filter((item) => item.__isNew);
+    const modifiedItems = this.estimateItems.filter((item) => item.__modified && !item.__isNew);
+
+    try {
+      // Guardar Items Nuevos
+      for (const item of newItems) {
+        const cleanedData = this.cleanEstimateItemDataForServer(item);
+        const response = await lastValueFrom(this.generatorsService.addItemGenerador(cleanedData));
+        if (response && response.id) {
+          item.id = response.id;
+          item.originalId = response.id;
+        }
+        item.__isNew = false;
+      }
+
+      // Guardar Items Modificados
+      for (const item of modifiedItems) {
+        const cleanedData = this.cleanEstimateItemDataForServer(item);
+        await lastValueFrom(this.generatorsService.updateItemGenerador(item.id, cleanedData));
+        item.__modified = false;
+      }
+
+      alerts.basicAlert(
+        'Datos actualizados',
+        'Los items se han guardado correctamente.',
+        'success'
+      );
+      this.notSavedChanges = false;
+      this.loadEstimateItems(); // Recargar items
+    } catch (error) {
+      console.error('Error al guardar items:', error);
+      alerts.basicAlert(
+        'Error',
+        'Ocurrió un error al guardar los items. Por favor, intente nuevamente.',
+        'error'
+      );
+    }
+  }
+
+  // Eliminar item de estimación
+  async deleteEstimateItem() {
+    if (!this.selectedEstimateItem) {
+      alerts.basicAlert(
+        'Eliminar Item',
+        'Por favor, seleccione un item para eliminar.',
+        'error'
+      );
+      return;
+    }
+
+    const itemName = `el item de recurso ${this.selectedEstimateItem.idResource || 'seleccionado'}`;
+    
+    const result = await alerts.confirmAlert(
+      'Confirmar eliminación',
+      `¿Está seguro de que desea eliminar ${itemName}? Esta acción no se puede deshacer.`,
+      'warning',
+      'Sí, eliminar'
+    );
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
+    const itemId = this.selectedEstimateItem.id;
+
+    // Si es un item temporal, solo eliminarlo de la lista
+    if (itemId.toString().startsWith('temp_')) {
+      this.estimateItems = this.estimateItems.filter(item => item.id !== itemId);
+      this.selectedEstimateItem = null;
+      return;
+    }
+
+    try {
+      await lastValueFrom(this.generatorsService.deleteItemGenerador(itemId));
+      alerts.basicAlert(
+        'Eliminado',
+        'Item eliminado satisfactoriamente.',
+        'success'
+      );
+      this.loadEstimateItems(); // Recargar items
+      this.selectedEstimateItem = null;
+    } catch (error) {
+      console.error('Error al eliminar item:', error);
+      alerts.basicAlert(
+        'Error',
+        'Error al eliminar el item.',
+        'error'
+      );
+    }
+  }
+
+  // Limpiar datos de item para servidor
+  private cleanEstimateItemDataForServer(data: any): any {
+    return {
+      idType: data.idType,
+      idResource: data.idResource,
+      quantity: data.quantity,
+      accumulate: data.accumulate,
+      type: data.type || 'ESTIMACION',
+      comment: data.comment || '',
+      active: data.active !== false
+    };
   }
 
 }
