@@ -132,6 +132,28 @@
       color: #6c757d;
       font-style: italic;
     }
+
+    // Estilos específicos para filas en edición
+    .ag-row-editing {
+      background-color: #fff3cd !important;
+      border: 2px solid #ffc107 !important;
+    }
+
+    // Mejorar visibilidad de iconos
+    .bi-folder-fill {
+      font-size: 1.1rem;
+      margin-right: 5px;
+    }
+
+    .bi-collection-fill {
+      font-size: 1.1rem;
+      margin-right: 5px;
+    }
+
+    .bi-file-earmark-fill {
+      font-size: 1.1rem;
+      margin-right: 5px;
+    }
   }
 }
 

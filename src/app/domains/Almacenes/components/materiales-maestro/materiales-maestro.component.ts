@@ -153,38 +153,29 @@ export class MaterialesMaestroComponent {
       singleClickEdit: true,
       stopEditingWhenGridLosesFocus: false,
       autoGroupColumnDef: {
-        headerName: 'Catálogo de Categorías',
-        minWidth: 300,
-        editable: true,
+        headerName: 'Jerarquía',
+        minWidth: 250,
+        editable: false,
         cellRendererParams: {
           suppressCount: true,
           innerRenderer: (params: any) => {
             if (params.data) {
               const level = params.data.nodeLevel;
               const icons = {
-                category: '📁',
-                family: '📂', 
-                subfamily: '📄'
+                category: '<i class="bi bi-folder-fill text-primary"></i>',
+                family: '<i class="bi bi-collection-fill text-info"></i>', 
+                subfamily: '<i class="bi bi-file-earmark-fill text-secondary"></i>'
               };
               const editingClass = params.data.__isInlineEditing ? 'editing-row' : '';
-              return `<span class="${editingClass}">${icons[level] || '📄'} ${params.data.description || 'Nueva descripción'}</span>`;
+              const levelNames = {
+                category: 'Categoría',
+                family: 'Familia',
+                subfamily: 'Subfamilia'
+              };
+              return `<span class="${editingClass}">${icons[level] || icons.subfamily} ${levelNames[level] || 'Elemento'}</span>`;
             }
             return '';
           }
-        },
-        cellEditor: 'agTextCellEditor',
-        cellEditorParams: {
-          maxLength: 100
-        },
-        valueSetter: (params: any) => {
-          if (params.data) {
-            params.data.description = params.newValue;
-            return true;
-          }
-          return false;
-        },
-        valueGetter: (params: any) => {
-          return params.data ? params.data.description : '';
         }
       },
       onRowSelected: (event: any) => {
@@ -196,9 +187,13 @@ export class MaterialesMaestroComponent {
         this.onCellKeyPress(event);
       },
       onCellValueChanged: (event: any) => {
-        if (this.isInlineEditing && event.data.__isInlineEditing) {
-          // Actualizar la descripción en tiempo real
+        // Solo procesar cambios en la columna description durante edición inline
+        if (this.isInlineEditing && event.data.__isInlineEditing && event.colDef.field === 'description') {
           event.data.description = event.newValue;
+          // No marcar como cambios guardables aún, solo cuando se confirme con Enter
+        } else if (!this.isInlineEditing) {
+          // Cambios normales fuera de edición inline
+          this.onCellValueChanged(event);
         }
       }
     };
@@ -212,7 +207,17 @@ export class MaterialesMaestroComponent {
         headerName: 'Descripción', 
         editable: true, 
         flex: 2,
-        hide: true // Oculta porque se muestra en el autoGroupColumn
+        hide: false, // Hacer visible para permitir edición
+        cellEditor: 'agTextCellEditor',
+        cellEditorParams: {
+          maxLength: 100
+        },
+        cellRenderer: (params: any) => {
+          if (params.data && params.data.__isInlineEditing) {
+            return params.value || 'Escriba aquí...';
+          }
+          return params.value || '';
+        }
       },
       { 
         field: 'active', 
@@ -617,10 +622,10 @@ export class MaterialesMaestroComponent {
       if (node.data && node.data.originalId === rowId) {
         // Seleccionar la fila
         node.setSelected(true);
-        // Iniciar edición en la columna 'description' que está oculta, pero el autoGroupColumn maneja la descripción
+        // Iniciar edición en la columna de descripción
         this.gridApi.startEditingCell({
           rowIndex: node.rowIndex,
-          colKey: 'ag-Grid-AutoColumn' // AG-Grid AutoColumn para tree data
+          colKey: 'description' // Usar la columna description directamente
         });
       }
     });
