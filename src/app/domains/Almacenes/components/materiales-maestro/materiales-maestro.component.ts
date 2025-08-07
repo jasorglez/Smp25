@@ -427,7 +427,7 @@ export class MaterialesMaestroComponent {
   }
 
   // Aplanar datos del árbol para AG-Grid
-  private flattenTreeData(): any[] {
+  flattenTreeData(): any[] {
     const flattened = [];
     
     const flatten = (items: any[]) => {
@@ -551,7 +551,7 @@ export class MaterialesMaestroComponent {
   }
 
   // Limpiar datos para servidor
-  private cleanDataForServer(data: any): any {
+  cleanDataForServer(data: any): any {
     return {
       idCompany: data.idCompany || this.idRoot,
       description: data.description,
