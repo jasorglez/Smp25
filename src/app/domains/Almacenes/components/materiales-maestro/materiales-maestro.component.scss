@@ -1,0 +1,104 @@
+// Estilos para el grid del catálogo jerárquico
+.catalog-grid {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  
+  ::ng-deep {
+    // Estilos para diferentes niveles de la jerarquía
+    .ag-row[row-id*="category"] {
+      background-color: #e3f2fd !important;
+      font-weight: 600;
+      border-left: 4px solid #2196f3;
+    }
+    
+    .ag-row[row-id*="family"] {
+      background-color: #f3e5f5 !important;
+      font-weight: 500;
+      border-left: 4px solid #9c27b0;
+      margin-left: 20px;
+    }
+    
+    .ag-row[row-id*="subfamily"] {
+      background-color: #fff3e0 !important;
+      border-left: 4px solid #ff9800;
+      margin-left: 40px;
+    }
+    
+    // Hover states
+    .ag-row:hover {
+      background-color: #f5f5f5 !important;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .ag-row-selected {
+      background-color: #bbdefb !important;
+      border: 2px solid #2196f3 !important;
+    }
+    
+    // Header personalizado
+    .ag-header-cell {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      font-weight: 600;
+    }
+    
+    .ag-header-cell-text {
+      color: white !important;
+    }
+    
+    // Iconos en la columna de agrupación
+    .ag-group-expanded .ag-icon {
+      color: #2196f3;
+    }
+    
+    .ag-group-contracted .ag-icon {
+      color: #757575;
+    }
+    
+    // Checkboxes más grandes
+    .ag-checkbox-input {
+      transform: scale(1.2);
+    }
+    
+    // Selectores más amigables
+    .ag-cell-editor select {
+      padding: 5px;
+      border-radius: 4px;
+      border: 2px solid #2196f3;
+    }
+  }
+}
+
+// Botones de acción
+.btn {
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  }
+}
+
+// Badges de nivel
+.badge {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 12px;
+}
+
+// Alert de información
+.alert-info {
+  background: linear-gradient(135deg, #e1f5fe 0%, #b3e5fc 100%);
+  border-left: 4px solid #03a9f4;
+  
+  .bi-info-circle {
+    color: #0277bd;
+    font-size: 1.2rem;
+  }
+}
+
+// Ayuda contextual
+.text-muted {
+  line-height: 1.3;
+}

@@ -493,6 +493,15 @@ export class SideBarComponent {
   warehouseproc() {
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
+      'Eleccion del menu Compras',
+      'Menu Side Bar',
+      ''
+    );
+  }
+
+  almacenesproc() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
       'Eleccion del menu Almacenes',
       'Menu Side Bar',
       ''

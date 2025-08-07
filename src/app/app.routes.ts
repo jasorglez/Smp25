@@ -171,6 +171,115 @@ export const routes: Routes = [
         ],
       },
       {
+        path: 'almacenes',
+        loadComponent: () =>
+          import(
+            './domains/Almacenes/pages/procalmacenes/procalmacenes.component'
+          ).then((a) => a.ProcalmacenesComponent),
+        canActivate: [MasterPermissionsGuard],
+        data: { permissions: { master: 'warehouses' } },
+        children: [
+          { path: '', redirectTo: 'materia-prima', pathMatch: 'full' },
+          {
+            path: 'proveedores',
+            loadComponent: () =>
+              import(
+                './domains/Warehouse/components/providers/providers.component'
+              ).then((p) => p.ProvidersComponent),
+            data: { type: 'PROVIDERS' },
+            canDeactivate: [UnsavedChangesGuard],
+          },
+          {
+            path: 'materia-prima',
+            loadComponent: () =>
+              import(
+                './domains/Almacenes/pages/materia-prima/materia-prima.component'
+              ).then((m) => m.MateriaPrimaComponent),
+            children: [
+              { path: '', redirectTo: 'materiales-maestro', pathMatch: 'full' },
+              {
+                path: 'materiales-maestro',
+                loadComponent: () =>
+                  import(
+                    './domains/Almacenes/components/materiales-maestro/materiales-maestro.component'
+                  ).then((m) => m.MaterialesMaestroComponent),
+                canDeactivate: [UnsavedChangesGuard],
+              },
+              {
+                path: 'primera-fase',
+                loadComponent: () =>
+                  import(
+                    './domains/Warehouse/components/materials/materials.component'
+                  ).then((m) => m.MaterialsComponent),
+                data: { type: 'PRIMERA_FASE' },
+                canDeactivate: [UnsavedChangesGuard],
+              },
+              {
+                path: 'primera-fase-historico',
+                loadComponent: () =>
+                  import(
+                    './domains/Warehouse/components/materials/materials.component'
+                  ).then((m) => m.MaterialsComponent),
+                data: { type: 'PRIMERA_FASE_HISTORICO' },
+              },
+              {
+                path: 'segunda-fase',
+                loadComponent: () =>
+                  import(
+                    './domains/Warehouse/components/materials/materials.component'
+                  ).then((m) => m.MaterialsComponent),
+                data: { type: 'SEGUNDA_FASE' },
+                canDeactivate: [UnsavedChangesGuard],
+              },
+              {
+                path: 'segunda-fase-historico',
+                loadComponent: () =>
+                  import(
+                    './domains/Warehouse/components/materials/materials.component'
+                  ).then((m) => m.MaterialsComponent),
+                data: { type: 'SEGUNDA_FASE_HISTORICO' },
+              },
+            ],
+          },
+          {
+            path: 'requisiciones',
+            loadComponent: () =>
+              import(
+                './domains/Warehouse/components/requisitions/requisitions.component'
+              ).then((r) => r.RequisitionsComponent),
+            canDeactivate: [UnsavedChangesGuard],
+          },
+          {
+            path: 'ordenes-compra',
+            loadComponent: () =>
+              import(
+                './domains/Warehouse/components/purchaseorder/purchaseorder.component'
+              ).then((p) => p.PurchaseOrderComponent),
+            canDeactivate: [UnsavedChangesGuard],
+          },
+          {
+            path: 'catalogo',
+            loadComponent: () =>
+              import('./domains/SMP/Components/catalogs/catalogs.component')
+                .then((s) => s.CatalogsComponent),
+            canDeactivate: [UnsavedChangesGuard],
+            children: [
+              {
+                path: ':section',
+                loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(p => p.CatalogsComponent)
+              },
+            ],
+          },
+          {
+            path: 'configuracion',
+            loadComponent: () =>
+              import(
+                './domains/Warehouse/components/configwarehouse/configwarehouse.component'
+              ).then((c) => c.ConfigwarehouseComponent),
+          },
+        ],
+      },
+      {
         path: 'dashboardgrales',
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'dashboard' } },
