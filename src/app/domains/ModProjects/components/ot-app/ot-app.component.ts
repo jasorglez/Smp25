@@ -5,6 +5,7 @@ import { TranslateModule } from '@ngx-translate/core';
 import { OtService } from 'app/services/ot.service';
 import { SignalsService } from 'app/services/signals.service';
 import { EmployeesService } from 'app/services/employees.service';
+import { EvidenceCaptureService, EvidenceFile } from 'app/services/evidence-capture.service';
 
 @Component({
   selector: 'app-ot-app',
@@ -17,6 +18,7 @@ export class OtAppComponent {
   private otService = inject(OtService);
   private signalsService = inject(SignalsService);
   private employeesService = inject(EmployeesService);
+  private evidenceCaptureService = inject(EvidenceCaptureService);
 
   selectedOT: string = '';
   selectedEmployee: string = '';
@@ -38,6 +40,7 @@ export class OtAppComponent {
   
   assistantEmployees: any[] = [];
   resultTypesCompleted: any[] = [];
+  evidenceFiles: EvidenceFile[] = [];
 
   constructor() {
     effect(() => {
@@ -132,7 +135,26 @@ export class OtAppComponent {
     }
   }
 
-  onAddEvidence() {
-    console.log('Agregar nueva evidencia');
+  async onAddEvidence() {
+    await this.evidenceCaptureService.presentImageSourceOptions();
+    this.updateEvidenceFiles();
+  }
+
+  updateEvidenceFiles() {
+    this.evidenceFiles = this.evidenceCaptureService.getEvidenceFiles();
+  }
+
+  removeEvidence(id: string) {
+    this.evidenceCaptureService.removeEvidenceFile(id);
+    this.updateEvidenceFiles();
+  }
+
+  clearAllEvidence() {
+    this.evidenceCaptureService.clearAllEvidence();
+    this.updateEvidenceFiles();
+  }
+
+  getEvidenceCount(): number {
+    return this.evidenceCaptureService.getEvidenceCount();
   }
 }

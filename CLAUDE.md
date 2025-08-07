@@ -101,3 +101,6 @@ The application supports hot reloading in development mode and includes comprehe
 - Hasta aaqui funciona relativamente bien
 - hasta aqui todo bien
 - Se ha añadido estimados
+- Portando app a Angular
+- Añadiendo @capacitor/angular al proyecto
+- Interfaz para OT añadida, con Capacitor
