@@ -166,7 +166,7 @@ export class MaterialesMaestroComponent {
       // Grid en modo solo lectura - sin edición inline
       suppressClickEdit: true,
       singleClickEdit: false,
-      stopEditingWhenGridLosesFocus: true
+      stopEditingWhenGridLosesFocus: true,
       autoGroupColumnDef: {
         headerName: 'Jerarquía',
         minWidth: 250,
