@@ -110,7 +110,7 @@ export class MaterialesMaestroComponent {
         ...category,
         nodeLevel: 'category',
         orgHierarchy: [category.description],
-        originalId: category.id,
+        originalId: category.id, // ID real del servidor
         children: []
       };
       
@@ -122,7 +122,7 @@ export class MaterialesMaestroComponent {
           ...family,
           nodeLevel: 'family',
           orgHierarchy: [category.description, family.description],
-          originalId: family.id,
+          originalId: family.id, // ID real del servidor
           parentCategoryId: category.id,
           children: []
         };
@@ -137,7 +137,7 @@ export class MaterialesMaestroComponent {
             ...subfamily,
             nodeLevel: 'subfamily',
             orgHierarchy: [category.description, family.description, subfamily.description],
-            originalId: subfamily.id,
+            originalId: subfamily.id, // ID real del servidor
             parentCategoryId: category.id,
             parentFamilyId: family.id
           };
@@ -152,6 +152,11 @@ export class MaterialesMaestroComponent {
     });
 
     console.log('Estructura jerárquica construida:', this.treeData);
+    console.log('IDs encontrados:', {
+      categories: categories.map(c => c.id),
+      families: families.map(f => f.id),
+      subfamilies: subfamilies.map(s => s.id)
+    });
   }
 
   // Configuración del grid
@@ -322,6 +327,11 @@ export class MaterialesMaestroComponent {
       return;
     }
 
+    if (!this.selectedRowData.originalId) {
+      alerts.basicAlert('Error', 'No se puede identificar el registro a eliminar.', 'error');
+      return;
+    }
+
     const result = await alerts.confirmAlert(
       'Confirmar eliminación',
       `¿Está seguro de que desea eliminar "${this.selectedRowData.description}"? Esta acción no se puede deshacer.`,
@@ -332,9 +342,9 @@ export class MaterialesMaestroComponent {
     if (!result.isConfirmed) return;
 
     try {
-      if (!this.selectedRowData.originalId.toString().startsWith('temp_')) {
-        await lastValueFrom(this.catalogsService.deleteCatalog(this.selectedRowData.originalId));
-      }
+      console.log('Eliminando registro ID:', this.selectedRowData.originalId);
+      const response = await lastValueFrom(this.catalogsService.deleteCatalog(this.selectedRowData.originalId));
+      console.log('Respuesta del servidor (eliminación):', response);
 
       alerts.basicAlert(
         'Eliminado',
@@ -346,11 +356,12 @@ export class MaterialesMaestroComponent {
       this.selectedRowData = null;
       this.selectedNodeLevel = null;
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al eliminar:', error);
+      const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
       alerts.basicAlert(
         'Error',
-        'Error al eliminar el elemento.',
+        `Error al eliminar el elemento: ${errorMsg}`,
         'error'
       );
     }
@@ -427,28 +438,22 @@ export class MaterialesMaestroComponent {
       return;
     }
     
-    const newCategory = {
-      idCompany: this.idRoot,
-      description: this.modalForm.description.trim(),
-      valueAddition: 'NA',
-      valueAddition2: 'NA',
-      valueAdditionBit: false,
-      vigente: true,
+    const newCategory = this.cleanDataForServer({
+      description: this.modalForm.description,
       type: 'CATEGORY',
-      parentId: 0,
-      subParentId: 0,
-      price: 0,
       active: this.modalForm.active ? 1 : 0
-    };
+    });
     
     try {
-      await lastValueFrom(this.catalogsService.addCatalog(newCategory));
+      const response = await lastValueFrom(this.catalogsService.addCatalog(newCategory));
+      console.log('Respuesta del servidor (nueva categoría):', response);
       alerts.basicAlert('Éxito', 'Categoría creada correctamente.', 'success');
       this.closeModals();
       this.loadCatalogData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al crear categoría:', error);
-      alerts.basicAlert('Error', 'Error al crear la categoría.', 'error');
+      const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
+      alerts.basicAlert('Error', `Error al crear la categoría: ${errorMsg}`, 'error');
     }
   }
   
@@ -459,28 +464,23 @@ export class MaterialesMaestroComponent {
       return;
     }
     
-    const newFamily = {
-      idCompany: this.idRoot,
-      description: this.modalForm.description.trim(),
-      valueAddition: 'NA',
-      valueAddition2: 'NA',
-      valueAdditionBit: false,
-      vigente: true,
+    const newFamily = this.cleanDataForServer({
+      description: this.modalForm.description,
       type: 'FAM-CAT',
       parentId: this.selectedRowData.originalId,
-      subParentId: 0,
-      price: 0,
       active: this.modalForm.active ? 1 : 0
-    };
+    });
     
     try {
-      await lastValueFrom(this.catalogsService.addCatalog(newFamily));
+      const response = await lastValueFrom(this.catalogsService.addCatalog(newFamily));
+      console.log('Respuesta del servidor (nueva familia):', response);
       alerts.basicAlert('Éxito', 'Familia creada correctamente.', 'success');
       this.closeModals();
       this.loadCatalogData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al crear familia:', error);
-      alerts.basicAlert('Error', 'Error al crear la familia.', 'error');
+      const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
+      alerts.basicAlert('Error', `Error al crear la familia: ${errorMsg}`, 'error');
     }
   }
   
@@ -491,28 +491,24 @@ export class MaterialesMaestroComponent {
       return;
     }
     
-    const newSubfamily = {
-      idCompany: this.idRoot,
-      description: this.modalForm.description.trim(),
-      valueAddition: 'NA',
-      valueAddition2: 'NA',
-      valueAdditionBit: false,
-      vigente: true,
+    const newSubfamily = this.cleanDataForServer({
+      description: this.modalForm.description,
       type: 'SUB-FAM',
       parentId: this.selectedRowData.parentCategoryId,
       subParentId: this.selectedRowData.originalId,
-      price: 0,
       active: this.modalForm.active ? 1 : 0
-    };
+    });
     
     try {
-      await lastValueFrom(this.catalogsService.addCatalog(newSubfamily));
+      const response = await lastValueFrom(this.catalogsService.addCatalog(newSubfamily));
+      console.log('Respuesta del servidor (nueva subfamilia):', response);
       alerts.basicAlert('Éxito', 'Subfamilia creada correctamente.', 'success');
       this.closeModals();
       this.loadCatalogData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al crear subfamilia:', error);
-      alerts.basicAlert('Error', 'Error al crear la subfamilia.', 'error');
+      const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
+      alerts.basicAlert('Error', `Error al crear la subfamilia: ${errorMsg}`, 'error');
     }
   }
   
@@ -523,45 +519,55 @@ export class MaterialesMaestroComponent {
       return;
     }
     
-    const updatedData = {
-      idCompany: this.editingItem.idCompany || this.idRoot,
-      description: this.modalForm.description.trim(),
-      valueAddition: this.editingItem.valueAddition || 'NA',
-      valueAddition2: this.editingItem.valueAddition2 || 'NA',
-      valueAdditionBit: this.editingItem.valueAdditionBit || false,
-      vigente: this.editingItem.vigente !== false,
+    if (!this.editingItem?.originalId) {
+      alerts.basicAlert('Error', 'No se puede identificar el registro a actualizar.', 'error');
+      return;
+    }
+    
+    const updatedData = this.cleanDataForServer({
+      description: this.modalForm.description,
+      valueAddition: this.editingItem.valueAddition,
+      valueAddition2: this.editingItem.valueAddition2,
+      valueAdditionBit: this.editingItem.valueAdditionBit,
+      vigente: this.editingItem.vigente,
       type: this.editingItem.type,
-      parentId: this.editingItem.parentId || 0,
-      subParentId: this.editingItem.subParentId || 0,
-      price: this.editingItem.price || 0,
+      parentId: this.editingItem.parentId,
+      subParentId: this.editingItem.subParentId,
+      price: this.editingItem.price,
       active: this.modalForm.active ? 1 : 0
-    };
+    });
     
     try {
-      await lastValueFrom(this.catalogsService.updateCatalog(this.editingItem.originalId, updatedData));
+      console.log('Actualizando registro ID:', this.editingItem.originalId);
+      const response = await lastValueFrom(this.catalogsService.updateCatalog(this.editingItem.originalId, updatedData));
+      console.log('Respuesta del servidor (actualización):', response);
       alerts.basicAlert('Éxito', 'Registro actualizado correctamente.', 'success');
       this.closeModals();
       this.loadCatalogData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al actualizar:', error);
-      alerts.basicAlert('Error', 'Error al actualizar el registro.', 'error');
+      const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
+      alerts.basicAlert('Error', `Error al actualizar el registro: ${errorMsg}`, 'error');
     }
   }
 
   // Limpiar datos para servidor
-  cleanDataForServer(data: any): any {
-    return {
-      idCompany: data.idCompany || this.idRoot,
-      description: data.description,
-      valueAddition: data.valueAddition || 'NA',
-      valueAddition2: data.valueAddition2 || 'NA',
-      valueAdditionBit: data.valueAdditionBit || false,
-      vigente: data.vigente !== false,
-      type: data.type,
-      parentId: data.parentId || 0,
-      subParentId: data.subParentId || 0,
-      price: data.price || 0,
-      active: data.active || 1
+  private cleanDataForServer(data: any): any {
+    const cleanData = {
+      idCompany: Number(this.idRoot),
+      description: String(data.description || '').trim(),
+      valueAddition: String(data.valueAddition || 'NA'),
+      valueAddition2: String(data.valueAddition2 || 'NA'),
+      valueAdditionBit: Boolean(data.valueAdditionBit || false),
+      vigente: Boolean(data.vigente !== false),
+      type: String(data.type),
+      parentId: Number(data.parentId || 0),
+      subParentId: Number(data.subParentId || 0),
+      price: Number(data.price || 0),
+      active: Number(data.active || 1)
     };
+    
+    console.log('Datos enviados al servidor:', cleanData);
+    return cleanData;
   }
 }
