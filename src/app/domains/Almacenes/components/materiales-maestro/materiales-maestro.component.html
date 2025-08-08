@@ -30,18 +30,6 @@
           <i class="bi bi-plus-lg"></i>
         </button>
         
-        <button 
-          type="button" 
-          class="btn btn-success position-relative mb-2" 
-          (click)="saveChanges()"
-          [disabled]="!notSavedChanges">
-          <i class="bi bi-floppy"></i>
-          <span
-            class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-            *ngIf="notSavedChanges">
-            <span class="visually-hidden">Hay cambios sin guardar</span>
-          </span>
-        </button>
         
         <button 
           type="button" 
@@ -80,14 +68,17 @@
         <!-- Ayuda contextual -->
         <div class="mt-4 small text-muted" style="max-width: 140px;">
           <div class="mb-2">
-            <strong>💡 Flujo simple:</strong>
+            <strong>💡 Flujo con modales:</strong>
           </div>
           <div style="font-size: 0.7rem;">
+            <strong>Agregar:</strong><br>
             1. Selecciona nivel<br>
             2. Click <span class="badge bg-primary">+</span><br>
-            3. Escribe descripción<br>
-            4. Enter → Guardar<br>
-            5. ¡Listo!
+            3. Modal → Escribir<br>
+            4. Guardar<br>
+            <br>
+            <strong>Editar:</strong><br>
+            Doble-click → Modal
           </div>
         </div>
       </nav>
@@ -108,3 +99,263 @@
     </div>
   </div>
 </div>
+
+<!-- ========== MODALES ========== -->
+
+<!-- Modal Nueva Categoría -->
+<div class="modal fade" [class.show]="showAddCategoryModal" [style.display]="showAddCategoryModal ? 'block' : 'none'" 
+     tabindex="-1" *ngIf="showAddCategoryModal">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-folder-plus"></i> Nueva Categoría
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeModals()"></button>
+      </div>
+      <div class="modal-body">
+        <form (ngSubmit)="saveNewCategory()">
+          <div class="mb-3">
+            <label for="categoryDescription" class="form-label">
+              <i class="bi bi-pencil"></i> Descripción de la Categoría
+            </label>
+            <input 
+              type="text" 
+              class="form-control" 
+              id="categoryDescription"
+              [(ngModel)]="modalForm.description"
+              name="description"
+              placeholder="Ingrese la descripción de la categoría..."
+              maxlength="100"
+              required
+              #descriptionInput>
+          </div>
+          
+          <div class="form-check">
+            <input 
+              class="form-check-input" 
+              type="checkbox" 
+              id="categoryActive"
+              [(ngModel)]="modalForm.active"
+              name="active">
+            <label class="form-check-label" for="categoryActive">
+              Activo
+            </label>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeModals()">
+          <i class="bi bi-x-circle"></i> Cancelar
+        </button>
+        <button type="button" class="btn btn-primary" (click)="saveNewCategory()"
+                [disabled]="!modalForm.description.trim()">
+          <i class="bi bi-check-circle"></i> Guardar Categoría
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Nueva Familia -->
+<div class="modal fade" [class.show]="showAddFamilyModal" [style.display]="showAddFamilyModal ? 'block' : 'none'" 
+     tabindex="-1" *ngIf="showAddFamilyModal">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-collection-plus"></i> Nueva Familia
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeModals()"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Mostrar categoría padre -->
+        <div class="alert alert-info mb-3" *ngIf="selectedRowData">
+          <strong>Categoría padre:</strong> 
+          <span class="badge bg-primary ms-2">{{ selectedRowData.description }}</span>
+        </div>
+        
+        <form (ngSubmit)="saveNewFamily()">
+          <div class="mb-3">
+            <label for="familyDescription" class="form-label">
+              <i class="bi bi-pencil"></i> Descripción de la Familia
+            </label>
+            <input 
+              type="text" 
+              class="form-control" 
+              id="familyDescription"
+              [(ngModel)]="modalForm.description"
+              name="description"
+              placeholder="Ingrese la descripción de la familia..."
+              maxlength="100"
+              required>
+          </div>
+          
+          <div class="form-check">
+            <input 
+              class="form-check-input" 
+              type="checkbox" 
+              id="familyActive"
+              [(ngModel)]="modalForm.active"
+              name="active">
+            <label class="form-check-label" for="familyActive">
+              Activo
+            </label>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeModals()">
+          <i class="bi bi-x-circle"></i> Cancelar
+        </button>
+        <button type="button" class="btn btn-info" (click)="saveNewFamily()"
+                [disabled]="!modalForm.description.trim()">
+          <i class="bi bi-check-circle"></i> Guardar Familia
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Nueva Subfamilia -->
+<div class="modal fade" [class.show]="showAddSubfamilyModal" [style.display]="showAddSubfamilyModal ? 'block' : 'none'" 
+     tabindex="-1" *ngIf="showAddSubfamilyModal">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-secondary text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-file-earmark-plus"></i> Nueva Subfamilia
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeModals()"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Mostrar jerarquía padre -->
+        <div class="alert alert-secondary mb-3" *ngIf="selectedRowData">
+          <strong>Jerarquía:</strong><br>
+          <span class="badge bg-primary me-1">{{ selectedRowData.orgHierarchy[0] }}</span> 
+          →
+          <span class="badge bg-info ms-1">{{ selectedRowData.description }}</span>
+        </div>
+        
+        <form (ngSubmit)="saveNewSubfamily()">
+          <div class="mb-3">
+            <label for="subfamilyDescription" class="form-label">
+              <i class="bi bi-pencil"></i> Descripción de la Subfamilia
+            </label>
+            <input 
+              type="text" 
+              class="form-control" 
+              id="subfamilyDescription"
+              [(ngModel)]="modalForm.description"
+              name="description"
+              placeholder="Ingrese la descripción de la subfamilia..."
+              maxlength="100"
+              required>
+          </div>
+          
+          <div class="form-check">
+            <input 
+              class="form-check-input" 
+              type="checkbox" 
+              id="subfamilyActive"
+              [(ngModel)]="modalForm.active"
+              name="active">
+            <label class="form-check-label" for="subfamilyActive">
+              Activo
+            </label>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeModals()">
+          <i class="bi bi-x-circle"></i> Cancelar
+        </button>
+        <button type="button" class="btn btn-secondary" (click)="saveNewSubfamily()"
+                [disabled]="!modalForm.description.trim()">
+          <i class="bi bi-check-circle"></i> Guardar Subfamilia
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Edición -->
+<div class="modal fade" [class.show]="showEditModal" [style.display]="showEditModal ? 'block' : 'none'" 
+     tabindex="-1" *ngIf="showEditModal">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title">
+          <i class="bi bi-pencil-square"></i> Editar {{ editingItem?.nodeLevel === 'category' ? 'Categoría' : 
+                                                         editingItem?.nodeLevel === 'family' ? 'Familia' : 'Subfamilia' }}
+        </h5>
+        <button type="button" class="btn-close" (click)="closeModals()"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Mostrar jerarquía actual -->
+        <div class="alert alert-light mb-3" *ngIf="editingItem">
+          <strong>Tipo:</strong> 
+          <span class="badge" 
+                [ngClass]="{'bg-primary': editingItem.nodeLevel === 'category', 
+                           'bg-info': editingItem.nodeLevel === 'family',
+                           'bg-secondary': editingItem.nodeLevel === 'subfamily'}">
+            {{ editingItem.nodeLevel === 'category' ? 'Categoría' : 
+               editingItem.nodeLevel === 'family' ? 'Familia' : 'Subfamilia' }}
+          </span>
+          
+          <!-- Mostrar jerarquía si es familia o subfamilia -->
+          <div class="mt-2" *ngIf="editingItem.nodeLevel !== 'category'">
+            <strong>Ubicación:</strong>
+            <span *ngFor="let item of editingItem.orgHierarchy; let i = index" class="me-1">
+              <span class="badge bg-light text-dark">{{ item }}</span>
+              <i class="bi bi-arrow-right" *ngIf="i < editingItem.orgHierarchy.length - 1"></i>
+            </span>
+          </div>
+        </div>
+        
+        <form (ngSubmit)="saveEditChanges()">
+          <div class="mb-3">
+            <label for="editDescription" class="form-label">
+              <i class="bi bi-pencil"></i> Descripción
+            </label>
+            <input 
+              type="text" 
+              class="form-control" 
+              id="editDescription"
+              [(ngModel)]="modalForm.description"
+              name="description"
+              placeholder="Ingrese la nueva descripción..."
+              maxlength="100"
+              required>
+          </div>
+          
+          <div class="form-check">
+            <input 
+              class="form-check-input" 
+              type="checkbox" 
+              id="editActive"
+              [(ngModel)]="modalForm.active"
+              name="active">
+            <label class="form-check-label" for="editActive">
+              Activo
+            </label>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeModals()">
+          <i class="bi bi-x-circle"></i> Cancelar
+        </button>
+        <button type="button" class="btn btn-warning" (click)="saveEditChanges()"
+                [disabled]="!modalForm.description.trim()">
+          <i class="bi bi-check-circle"></i> Guardar Cambios
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Backdrop para modales -->
+<div class="modal-backdrop fade show" 
+     *ngIf="showAddCategoryModal || showAddFamilyModal || showAddSubfamilyModal || showEditModal"
+     (click)="closeModals()"></div>

@@ -50,6 +50,21 @@ export class MaterialesMaestroComponent {
   notSavedChanges: boolean = false;
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
+
+  // Propiedades para modales
+  showAddCategoryModal = false;
+  showAddFamilyModal = false;
+  showAddSubfamilyModal = false;
+  showEditModal = false;
+  
+  // Datos del formulario modal
+  modalForm = {
+    description: '',
+    active: true
+  };
+  
+  // Datos para edición
+  editingItem: any = null;
   
   // Datos del catálogo jerárquico
   treeData: any[] = [];
@@ -148,10 +163,10 @@ export class MaterialesMaestroComponent {
       treeData: true,
       groupDefaultExpanded: 1, // Expandir primer nivel por defecto
       getDataPath: (data: any) => data.orgHierarchy,
-      singleClickEdit: false, // Deshabilitar single click edit
-      stopEditingWhenGridLosesFocus: false,
-      suppressClickEdit: false, // Permitir edición por click
-      editType: 'fullRow', // Edición de fila completa
+      // Grid en modo solo lectura - sin edición inline
+      suppressClickEdit: true,
+      singleClickEdit: false,
+      stopEditingWhenGridLosesFocus: true
       autoGroupColumnDef: {
         headerName: 'Jerarquía',
         minWidth: 250,
@@ -187,14 +202,9 @@ export class MaterialesMaestroComponent {
         this.onCellValueChanged(event);
       },
       onCellDoubleClicked: (event: any) => {
-        // Permitir doble click en descripción para editar
-        if (event.colDef.field === 'description') {
-          setTimeout(() => {
-            this.gridApi.startEditingCell({
-              rowIndex: event.rowIndex,
-              colKey: 'description'
-            });
-          }, 0);
+        // Abrir modal de edición en doble click
+        if (event.data && event.colDef.field === 'description') {
+          this.openEditModal(event.data);
         }
       }
     };
@@ -206,42 +216,22 @@ export class MaterialesMaestroComponent {
       { 
         field: 'description', 
         headerName: 'Descripción', 
-        editable: (params) => {
-          // Solo permitir edición si hay datos válidos
-          return params.data != null;
-        },
+        editable: false, // Desactivar edición inline
         flex: 2,
         cellEditor: 'agTextCellEditor',
         cellEditorParams: {
           maxLength: 100
         },
-        cellClass: (params: any) => {
-          // Aplicar clase especial a celdas de elementos nuevos
-          if (params.data && params.data.__isNew) {
-            return 'new-cell-editing';
-          }
-          return '';
-        },
+        cellClass: 'readonly-cell',
         cellRenderer: (params: any) => {
           if (!params.data) return '';
-          
-          if (params.data.__isNew && (!params.value || params.value === '')) {
-            return '<span class="placeholder-text">Escriba aquí...</span>';
-          }
-          return params.value || '';
+          return params.value || '<span class="text-muted fst-italic">Sin descripción</span>';
         },
-        onCellValueChanged: (params: any) => {
-          // Actualizar orgHierarchy cuando cambie la descripción
-          if (params.data && params.newValue !== params.oldValue) {
-            this.updateHierarchyPath(params.data, params.newValue);
-            this.notSavedChanges = true;
-          }
-        }
       },
       { 
         field: 'active', 
         headerName: 'Activo', 
-        editable: true, 
+        editable: false, // Desactivar edición inline 
         flex: 1,
         cellRenderer: 'agCheckboxCellRenderer',
         cellEditor: 'agCheckboxCellEditor',
@@ -272,24 +262,19 @@ export class MaterialesMaestroComponent {
     this.gridApi = params.api;
   }
 
-  // Agregar nuevo elemento según nivel seleccionado
+  // Agregar nuevo elemento según nivel seleccionado - Usar modales
   addCatalogItem() {
-    // Colapsar todo el grid para vista limpia
-    if (this.gridApi) {
-      this.gridApi.collapseAll();
-    }
-
     if (!this.selectedRowData) {
-      this.addCategory(); // Si no hay selección, agregar categoría
+      this.openAddCategoryModal(); // Si no hay selección, agregar categoría
       return;
     }
 
     switch (this.selectedNodeLevel) {
       case 'category':
-        this.addFamily();
+        this.openAddFamilyModal();
         break;
       case 'family':
-        this.addSubfamily();
+        this.openAddSubfamilyModal();
         break;
       case 'subfamily':
         alerts.basicAlert(
@@ -299,180 +284,14 @@ export class MaterialesMaestroComponent {
         );
         break;
       default:
-        this.addCategory();
+        this.openAddCategoryModal();
     }
   }
 
-  // Agregar categoría (nivel 1)
-  private addCategory() {
-    this.trackingService.addLog(
-      this.trackingService.getnameComp(),
-      'Agregar Categoría',
-      'Almacenes - Materiales Maestro',
-      this.trackingService.getEmail()
-    );
 
-    const tempId = `temp_category_${this.tempIdCounter++}`;
-    const newCategory = {
-      id: tempId,
-      idCompany: this.idRoot,
-      description: '',
-      valueAddition: 'NA',
-      valueAddition2: 'NA',
-      valueAdditionBit: false,
-      vigente: true,
-      type: 'CATEGORY',
-      parentId: 0,
-      subParentId: 0,
-      price: 0,
-      active: 1,
-      nodeLevel: 'category',
-      orgHierarchy: [''],
-      originalId: tempId,
-      children: [],
-      __isNew: true
-    };
 
-    this.treeData = [newCategory, ...this.treeData];
-    this.notSavedChanges = true;
-    
-    // Refrescar grid y activar edición automática
-    if (this.gridApi) {
-      this.gridApi.setGridOption('rowData', this.flattenTreeData());
-      // Activar edición inmediata en la celda descripción
-      setTimeout(() => {
-        this.startEditingCell(tempId);
-      }, 100);
-    }
-  }
 
-  // Agregar familia (nivel 2)
-  private addFamily() {
-    if (!this.selectedRowData || this.selectedNodeLevel !== 'category') {
-      alerts.basicAlert('Error', 'Seleccione una categoría para agregar una familia.', 'warning');
-      return;
-    }
 
-    this.trackingService.addLog(
-      this.trackingService.getnameComp(),
-      'Agregar Familia',
-      'Almacenes - Materiales Maestro',
-      this.trackingService.getEmail()
-    );
-
-    const tempId = `temp_family_${this.tempIdCounter++}`;
-    const parentCategory = this.selectedRowData;
-    
-    const newFamily = {
-      id: tempId,
-      idCompany: this.idRoot,
-      description: '',
-      valueAddition: 'NA',
-      valueAddition2: 'NA',
-      valueAdditionBit: false,
-      vigente: true,
-      type: 'FAM-CAT',
-      parentId: parentCategory.originalId,
-      subParentId: 0,
-      price: 0,
-      active: 1,
-      nodeLevel: 'family',
-      orgHierarchy: [parentCategory.description, ''],
-      originalId: tempId,
-      parentCategoryId: parentCategory.originalId,
-      children: [],
-      __isNew: true
-    };
-
-    // Agregar a la categoría padre
-    const category = this.findCategoryInTree(parentCategory.originalId);
-    if (category) {
-      category.children.push(newFamily);
-    }
-
-    this.notSavedChanges = true;
-    
-    // Refrescar grid y activar edición
-    if (this.gridApi) {
-      this.gridApi.setGridOption('rowData', this.flattenTreeData());
-      setTimeout(() => {
-        this.startEditingCell(tempId);
-      }, 100);
-    }
-  }
-
-  // Agregar subfamilia (nivel 3)
-  private addSubfamily() {
-    if (!this.selectedRowData || this.selectedNodeLevel !== 'family') {
-      alerts.basicAlert('Error', 'Seleccione una familia para agregar una subfamilia.', 'warning');
-      return;
-    }
-
-    this.trackingService.addLog(
-      this.trackingService.getnameComp(),
-      'Agregar Subfamilia',
-      'Almacenes - Materiales Maestro',
-      this.trackingService.getEmail()
-    );
-
-    const tempId = `temp_subfamily_${this.tempIdCounter++}`;
-    const parentFamily = this.selectedRowData;
-    
-    const newSubfamily = {
-      id: tempId,
-      idCompany: this.idRoot,
-      description: '',
-      valueAddition: 'NA',
-      valueAddition2: 'NA',
-      valueAdditionBit: false,
-      vigente: true,
-      type: 'SUB-FAM',
-      parentId: parentFamily.parentCategoryId,
-      subParentId: parentFamily.originalId,
-      price: 0,
-      active: 1,
-      nodeLevel: 'subfamily',
-      orgHierarchy: [
-        parentFamily.orgHierarchy[0], 
-        parentFamily.description, 
-        ''
-      ],
-      originalId: tempId,
-      parentCategoryId: parentFamily.parentCategoryId,
-      parentFamilyId: parentFamily.originalId,
-      __isNew: true
-    };
-
-    // Agregar a la familia padre
-    const family = this.findFamilyInTree(parentFamily.originalId);
-    if (family) {
-      family.children.push(newSubfamily);
-    }
-
-    this.notSavedChanges = true;
-    
-    // Refrescar grid y activar edición
-    if (this.gridApi) {
-      this.gridApi.setGridOption('rowData', this.flattenTreeData());
-      setTimeout(() => {
-        this.startEditingCell(tempId);
-      }, 100);
-    }
-  }
-
-  // Método auxiliar para encontrar categoría en el árbol
-  private findCategoryInTree(categoryId: string | number): any {
-    return this.treeData.find(cat => cat.originalId === categoryId);
-  }
-
-  // Método auxiliar para encontrar familia en el árbol
-  private findFamilyInTree(familyId: string | number): any {
-    for (const category of this.treeData) {
-      const family = category.children.find(fam => fam.originalId === familyId);
-      if (family) return family;
-    }
-    return null;
-  }
 
   // Aplanar datos del árbol para AG-Grid
   flattenTreeData(): any[] {
@@ -491,59 +310,6 @@ export class MaterialesMaestroComponent {
     return flattened;
   }
 
-  // Guardar cambios
-  async saveChanges() {
-    this.trackingService.addLog(
-      this.trackingService.getnameComp(),
-      'Guardar Cambios Catálogo',
-      'Almacenes - Materiales Maestro',
-      this.trackingService.getEmail()
-    );
-
-    // Obtener datos aplanados
-    const flatData = this.flattenTreeData();
-    
-    // Filtrar elementos nuevos y modificados
-    const newItems = flatData.filter(item => item.__isNew);
-    const modifiedItems = flatData.filter(item => item.__modified && !item.__isNew);
-
-    try {
-      // Guardar elementos nuevos
-      for (const item of newItems) {
-        const cleanedData = this.cleanDataForServer(item);
-        const response = await lastValueFrom(this.catalogsService.addCatalog(cleanedData));
-        if (response && response.id) {
-          item.id = response.id;
-          item.originalId = response.id;
-        }
-        item.__isNew = false;
-      }
-
-      // Guardar elementos modificados
-      for (const item of modifiedItems) {
-        const cleanedData = this.cleanDataForServer(item);
-        await lastValueFrom(this.catalogsService.updateCatalog(item.originalId, cleanedData));
-        item.__modified = false;
-      }
-
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Los cambios se han guardado correctamente.',
-        'success'
-      );
-      
-      this.notSavedChanges = false;
-      this.loadCatalogData(); // Recargar datos
-      
-    } catch (error) {
-      console.error('Error al guardar:', error);
-      alerts.basicAlert(
-        'Error',
-        'Ocurrió un error al guardar los datos. Por favor, intente nuevamente.',
-        'error'
-      );
-    }
-  }
 
   // Eliminar elemento seleccionado
   async deleteSelectedItem() {
@@ -598,49 +364,187 @@ export class MaterialesMaestroComponent {
     this.selectedNodeLevel = null;
   }
 
-  // Iniciar edición simple en celda
-  private startEditingCell(rowId: string) {
-    if (!this.gridApi) return;
 
-    // Pequeño delay para asegurar que el DOM esté actualizado
-    setTimeout(() => {
-      this.gridApi.forEachNode((node) => {
-        if (node.data && node.data.originalId === rowId) {
-          // Seleccionar la fila
-          node.setSelected(true);
-          
-          // Forzar refresh del nodo para actualizar el renderer
-          this.gridApi.refreshCells({ rowNodes: [node], force: true });
-          
-          // Iniciar edición automática en la celda descripción
-          setTimeout(() => {
-            this.gridApi.startEditingCell({
-              rowIndex: node.rowIndex,
-              colKey: 'description'
-            });
-          }, 50);
-        }
-      });
-    }, 150);
+
+  // ========== MÉTODOS PARA MODALES ==========
+  
+  // Abrir modal para nueva categoría
+  openAddCategoryModal() {
+    this.resetModalForm();
+    this.showAddCategoryModal = true;
   }
-
-  // Actualizar ruta de jerarquía cuando cambia la descripción
-  private updateHierarchyPath(data: any, newDescription: string) {
-    if (!data || !newDescription) return;
-
-    data.description = newDescription;
+  
+  // Abrir modal para nueva familia
+  openAddFamilyModal() {
+    if (!this.selectedRowData || this.selectedNodeLevel !== 'category') {
+      alerts.basicAlert('Error', 'Seleccione una categoría para agregar una familia.', 'warning');
+      return;
+    }
+    this.resetModalForm();
+    this.showAddFamilyModal = true;
+  }
+  
+  // Abrir modal para nueva subfamilia
+  openAddSubfamilyModal() {
+    if (!this.selectedRowData || this.selectedNodeLevel !== 'family') {
+      alerts.basicAlert('Error', 'Seleccione una familia para agregar una subfamilia.', 'warning');
+      return;
+    }
+    this.resetModalForm();
+    this.showAddSubfamilyModal = true;
+  }
+  
+  // Abrir modal de edición
+  openEditModal(item: any) {
+    this.editingItem = { ...item };
+    this.modalForm.description = item.description || '';
+    this.modalForm.active = item.active === 1;
+    this.showEditModal = true;
+  }
+  
+  // Cerrar todos los modales
+  closeModals() {
+    this.showAddCategoryModal = false;
+    this.showAddFamilyModal = false;
+    this.showAddSubfamilyModal = false;
+    this.showEditModal = false;
+    this.resetModalForm();
+    this.editingItem = null;
+  }
+  
+  // Resetear formulario modal
+  private resetModalForm() {
+    this.modalForm = {
+      description: '',
+      active: true
+    };
+  }
+  
+  // Guardar nueva categoría
+  async saveNewCategory() {
+    if (!this.modalForm.description.trim()) {
+      alerts.basicAlert('Error', 'La descripción es obligatoria.', 'warning');
+      return;
+    }
     
-    // Actualizar orgHierarchy según el nivel
-    switch (data.nodeLevel) {
-      case 'category':
-        data.orgHierarchy = [newDescription];
-        break;
-      case 'family':
-        data.orgHierarchy = [data.orgHierarchy[0], newDescription];
-        break;
-      case 'subfamily':
-        data.orgHierarchy = [data.orgHierarchy[0], data.orgHierarchy[1], newDescription];
-        break;
+    const newCategory = {
+      idCompany: this.idRoot,
+      description: this.modalForm.description.trim(),
+      valueAddition: 'NA',
+      valueAddition2: 'NA',
+      valueAdditionBit: false,
+      vigente: true,
+      type: 'CATEGORY',
+      parentId: 0,
+      subParentId: 0,
+      price: 0,
+      active: this.modalForm.active ? 1 : 0
+    };
+    
+    try {
+      await lastValueFrom(this.catalogsService.addCatalog(newCategory));
+      alerts.basicAlert('Éxito', 'Categoría creada correctamente.', 'success');
+      this.closeModals();
+      this.loadCatalogData();
+    } catch (error) {
+      console.error('Error al crear categoría:', error);
+      alerts.basicAlert('Error', 'Error al crear la categoría.', 'error');
+    }
+  }
+  
+  // Guardar nueva familia
+  async saveNewFamily() {
+    if (!this.modalForm.description.trim()) {
+      alerts.basicAlert('Error', 'La descripción es obligatoria.', 'warning');
+      return;
+    }
+    
+    const newFamily = {
+      idCompany: this.idRoot,
+      description: this.modalForm.description.trim(),
+      valueAddition: 'NA',
+      valueAddition2: 'NA',
+      valueAdditionBit: false,
+      vigente: true,
+      type: 'FAM-CAT',
+      parentId: this.selectedRowData.originalId,
+      subParentId: 0,
+      price: 0,
+      active: this.modalForm.active ? 1 : 0
+    };
+    
+    try {
+      await lastValueFrom(this.catalogsService.addCatalog(newFamily));
+      alerts.basicAlert('Éxito', 'Familia creada correctamente.', 'success');
+      this.closeModals();
+      this.loadCatalogData();
+    } catch (error) {
+      console.error('Error al crear familia:', error);
+      alerts.basicAlert('Error', 'Error al crear la familia.', 'error');
+    }
+  }
+  
+  // Guardar nueva subfamilia
+  async saveNewSubfamily() {
+    if (!this.modalForm.description.trim()) {
+      alerts.basicAlert('Error', 'La descripción es obligatoria.', 'warning');
+      return;
+    }
+    
+    const newSubfamily = {
+      idCompany: this.idRoot,
+      description: this.modalForm.description.trim(),
+      valueAddition: 'NA',
+      valueAddition2: 'NA',
+      valueAdditionBit: false,
+      vigente: true,
+      type: 'SUB-FAM',
+      parentId: this.selectedRowData.parentCategoryId,
+      subParentId: this.selectedRowData.originalId,
+      price: 0,
+      active: this.modalForm.active ? 1 : 0
+    };
+    
+    try {
+      await lastValueFrom(this.catalogsService.addCatalog(newSubfamily));
+      alerts.basicAlert('Éxito', 'Subfamilia creada correctamente.', 'success');
+      this.closeModals();
+      this.loadCatalogData();
+    } catch (error) {
+      console.error('Error al crear subfamilia:', error);
+      alerts.basicAlert('Error', 'Error al crear la subfamilia.', 'error');
+    }
+  }
+  
+  // Guardar cambios en edición
+  async saveEditChanges() {
+    if (!this.modalForm.description.trim()) {
+      alerts.basicAlert('Error', 'La descripción es obligatoria.', 'warning');
+      return;
+    }
+    
+    const updatedData = {
+      idCompany: this.editingItem.idCompany || this.idRoot,
+      description: this.modalForm.description.trim(),
+      valueAddition: this.editingItem.valueAddition || 'NA',
+      valueAddition2: this.editingItem.valueAddition2 || 'NA',
+      valueAdditionBit: this.editingItem.valueAdditionBit || false,
+      vigente: this.editingItem.vigente !== false,
+      type: this.editingItem.type,
+      parentId: this.editingItem.parentId || 0,
+      subParentId: this.editingItem.subParentId || 0,
+      price: this.editingItem.price || 0,
+      active: this.modalForm.active ? 1 : 0
+    };
+    
+    try {
+      await lastValueFrom(this.catalogsService.updateCatalog(this.editingItem.originalId, updatedData));
+      alerts.basicAlert('Éxito', 'Registro actualizado correctamente.', 'success');
+      this.closeModals();
+      this.loadCatalogData();
+    } catch (error) {
+      console.error('Error al actualizar:', error);
+      alerts.basicAlert('Error', 'Error al actualizar el registro.', 'error');
     }
   }
 
