@@ -237,23 +237,50 @@
               
               <div class="row g-3">
                 <div class="col-6 col-md-4 col-lg-3" *ngFor="let evidence of evidenceFiles">
-                  <div class="card">
+                  <div class="card evidence-card" (click)="previewEvidence(evidence)" style="cursor: pointer;">
                     <div class="position-relative">
-                      <img 
-                        [src]="evidence.dataUrl" 
-                        class="card-img-top" 
-                        [alt]="evidence.filename"
-                        style="height: 150px; object-fit: cover;">
+                      <!-- Imagen -->
+                      <div *ngIf="evidence.type === 'image'" class="evidence-thumbnail">
+                        <img 
+                          [src]="evidence.dataUrl" 
+                          class="card-img-top" 
+                          [alt]="evidence.filename"
+                          style="height: 150px; object-fit: cover;">
+                      </div>
+                      
+                      <!-- Video -->
+                      <div *ngIf="evidence.type === 'video'" class="evidence-thumbnail video-thumbnail">
+                        <video 
+                          [src]="evidence.dataUrl" 
+                          class="card-img-top" 
+                          style="height: 150px; object-fit: cover;"
+                          muted>
+                        </video>
+                        <div class="play-overlay position-absolute top-50 start-50 translate-middle">
+                          <div class="play-icon bg-dark bg-opacity-75 rounded-circle p-3">
+                            <i class="bi bi-play-fill text-white" style="font-size: 2rem; margin-left: 4px;"></i>
+                          </div>
+                        </div>
+                        <div class="video-badge position-absolute bottom-0 start-0 m-2">
+                          <span class="badge bg-primary">
+                            <i class="bi bi-camera-video-fill me-1"></i>Video
+                          </span>
+                        </div>
+                      </div>
+                      
                       <button 
                         type="button" 
                         class="btn btn-danger btn-sm position-absolute top-0 end-0 m-1"
-                        (click)="removeEvidence(evidence.id)"
-                        style="z-index: 10;">
+                        (click)="removeEvidence(evidence.id); $event.stopPropagation()"
+                        style="z-index: 20;">
                         <i class="bi bi-x-lg"></i>
                       </button>
                     </div>
                     <div class="card-body p-2">
-                      <small class="text-muted">{{evidence.filename}}</small>
+                      <small class="text-muted d-flex align-items-center">
+                        <i class="bi" [class]="evidence.type === 'video' ? 'bi-camera-video-fill me-1' : 'bi-camera-fill me-1'"></i>
+                        {{evidence.filename}}
+                      </small>
                       <br>
                       <small class="text-muted">{{evidence.timestamp | date:'dd/MM/yyyy HH:mm'}}</small>
                     </div>

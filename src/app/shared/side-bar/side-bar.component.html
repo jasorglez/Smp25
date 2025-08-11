@@ -133,6 +133,20 @@
 
       <li
         class="nav-item"
+        *ngIf="authService.hasMasterPermission('warehouses')"
+      >
+        <a
+          class="nav-link d-flex align-items-center"
+          [routerLink]="['/almacenes']"
+          routerLinkActive="active-link"
+          (click)="almacenesproc()"
+        >
+          <mat-icon>inventory_2</mat-icon> Almacenes
+        </a>
+      </li>
+
+      <li
+        class="nav-item"
         *ngIf="authService.hasMasterPermission('maintenance')"
       >
         <a

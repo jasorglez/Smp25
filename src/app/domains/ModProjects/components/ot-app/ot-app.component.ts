@@ -157,4 +157,8 @@ export class OtAppComponent {
   getEvidenceCount(): number {
     return this.evidenceCaptureService.getEvidenceCount();
   }
+
+  async previewEvidence(evidence: EvidenceFile) {
+    await this.evidenceCaptureService.previewEvidence(evidence);
+  }
 }
