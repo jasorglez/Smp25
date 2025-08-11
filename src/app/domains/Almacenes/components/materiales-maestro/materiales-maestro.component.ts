@@ -233,6 +233,25 @@ export class MaterialesMaestroComponent {
           return params.value || '<span class="text-muted fst-italic">Sin descripción</span>';
         },
       },
+            { 
+        field: 'valueAdditionBit', 
+        headerName: 'Materia Prima', 
+        editable: false, // Desactivar edición inline 
+        flex: 1,
+        cellRenderer: 'agCheckboxCellRenderer',
+        cellEditor: 'agCheckboxCellEditor',
+        valueFormatter: (params) => params.value === 1 ? 'Sí' : 'No'
+      },
+            { 
+        field: 'valueAdditionBit2', 
+        headerName: 'Requisiciones Familia', 
+        editable: false, // Desactivar edición inline 
+        flex: 1,
+        cellRenderer: 'agCheckboxCellRenderer',
+        cellEditor: 'agCheckboxCellEditor',
+        valueFormatter: (params) => params.value === 1 ? 'Sí' : 'No'
+      },
+
       { 
         field: 'active', 
         headerName: 'Activo', 
