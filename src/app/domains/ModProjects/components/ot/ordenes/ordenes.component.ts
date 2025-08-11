@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent ,CellDoubleClickedEvent, ICellRendererParams,} from 'ag-grid-enterprise';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormControl } from '@angular/forms';
 import { Router } from '@angular/router';
 import { OtService } from 'app/services/ot.service';
 import { DailyReportService } from 'app/services/daily-report.service';
@@ -23,6 +24,8 @@ import { ImageHandlerService } from 'app/services/image-handler.service';
 import { EquipmentService } from 'app/services/equipment.service';
 import { ModalService } from 'app/services/modal.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
+import { UpdateExcelService } from 'app/services/updateExcel.service';
+import * as bootstrap from 'bootstrap';
 
 @Pipe({
   name: 'safe',
@@ -117,7 +120,7 @@ interface Fotografia {
 @Component({
   selector: 'app-ordenes',
   standalone: true,
-  imports: [CommonModule, TranslateModule, AgGridModule],
+  imports: [CommonModule, TranslateModule, AgGridModule, ReactiveFormsModule],
   templateUrl: './ordenes.component.html',
   styleUrl: './ordenes.component.scss',
 })
@@ -131,6 +134,7 @@ export class OrdenesComponent implements OnDestroy {
   private imageHandlerService = inject(ImageHandlerService);
   private workprogramsService = inject(WorkprogramsService);
   private modalServiceTable = inject(ModalService);
+  private updateExcelService = inject(UpdateExcelService)
   private router = inject(Router);
   private sanitizer = inject(DomSanitizer);
   private pdfGeneratorService = inject(PdfGeneratorService);
@@ -209,7 +213,12 @@ export class OrdenesComponent implements OnDestroy {
   pdfUrl: SafeResourceUrl | null = null;
   private originalUrl: string | null = null;
   showPdfEmbed: boolean = false;
+  fechaInicio: string = '';
+  fechaFin: string = '';
   projet: number = 0;
+  myForm;
+  isGeneratingReport: boolean = false;
+  private modalInstance: any = null;
 
   public  materiales: any[] = [];
   public equipos: any[] = [];
@@ -237,6 +246,77 @@ export class OrdenesComponent implements OnDestroy {
   get fotografiasFiltradas(): Fotografia[] {
     if (!this.selectedReporteFecha) return this.fotografias;
     return this.fotografias.filter(f => f.fecha === this.selectedReporteFecha);
+  }
+  excel() {
+    // Reset form to initial state
+    this.myForm.reset();
+    this.fechaInicio = '';
+    this.fechaFin = '';
+    this.isGeneratingReport = false;
+    
+    // Initialize and show modal
+    const modalElement = document.getElementById('modal');
+    if (modalElement) {
+      this.modalInstance = new bootstrap.Modal(modalElement, {
+        backdrop: 'static',
+        keyboard: false
+      });
+      this.modalInstance.show();
+    }
+  }
+  onSubmit() {
+    if (this.myForm.invalid) {
+      alerts.basicAlert('Info', 'Por favor, completa todos los campos requeridos.','info' );
+      return;
+    }
+
+    const formValues = this.myForm.value;
+    this.fechaInicio = formValues.fechaInicio;
+    this.fechaFin = formValues.fechaFin;
+
+    if (this.fechaInicio > this.fechaFin) {
+      alert('La fecha de inicio no puede ser mayor que la fecha de fin.');
+      return;
+    }
+
+    // Set loading state
+    this.isGeneratingReport = true;
+
+    this.updateExcelService.processAndDownload(this.fechaInicio, this.fechaFin).subscribe({
+      next: (blob: Blob) => {
+        this.isGeneratingReport = false;
+        
+        // Create download link
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `FORMATO_GENERADOR_${new Date().getTime()}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        console.log('Excel generado y descargado exitosamente');
+        alerts.basicAlert('Éxito',`Excel generado desde ${this.fechaInicio} hasta ${this.fechaFin}`, 'success');
+        this.closeModal();
+      },
+      error: (error) => {
+        this.isGeneratingReport = false;
+        console.error('Error al generar Excel:', error);
+        alerts.basicAlert('Error','Error al generar el Excel. Inténtalo de nuevo.', 'error');
+      }
+    });
+  }
+
+  cancelar() {
+    this.fechaInicio = '';
+    this.fechaFin = '';
+  }
+
+  closeModal() {
+    if (this.modalInstance) {
+      this.modalInstance.hide();
+    }
   }
 
   // Configuraciones de columnas para AG-Grid
@@ -810,6 +890,8 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
 }
 
 
+
+
   addFotografia(){
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
@@ -1022,6 +1104,7 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     });
   }
 
+ 
 
   // Variables para el grid de reportes
   public reportesGridApi!: GridApi;
@@ -1159,7 +1242,13 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
   // Datos del grid obtenidos del servicio
   public rowData: OrdenesData[] = [];
 
-  constructor() {
+  constructor(private formBuilder: FormBuilder) {
+    // Initialize form immediately in constructor
+    this.myForm = this.formBuilder.group({
+      fechaInicio: ['', Validators.required],
+      fechaFin: ['', Validators.required]
+    });
+
     // Log de acceso al componente
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
@@ -1295,6 +1384,8 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     this.selectedReporteHoraInicio = reporte.horaInicio || reporte.startTime.substring(0, 5);
     this.selectedReporteHoraTermino = reporte.horaTermino || reporte.endTime.substring(0, 5);
     this.selectedReporteId = reporte.id;
+    const id: number = Number(this.selectedReporteId);
+    //this.updateExcelService.UpdateOT(id)
     this.signalsService.setClosedReport(reporte.close)
     this.obtenerMateriales(this.selectedReporteId);
     this.obtenerEquipos(this.selectedReporteId);
@@ -2776,7 +2867,6 @@ async saveChangesEquipos() {
     this.logbookService.getInfoByReporte(selectedReporteId, "MATERIAL").subscribe(
       (data: any) => {
         this.materiales = data.data;
-        console.log('Datos de materiales obtenidos:', this.materiales);
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -2787,7 +2877,6 @@ async saveChangesEquipos() {
     this.logbookService.getInfoByReporte(selectedReporteId, "EQUIPMENT").subscribe(
       (data: any) => {
         this.equipos = data.data;
-        console.log('Datos de equipos obtenidos:', this.equipos);
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -2796,6 +2885,8 @@ async saveChangesEquipos() {
     this.logbookService.getInfoByReporte(selectedReporteId, "PERSONAL").subscribe(
       (data: any) => {
         this.personal = data.data;
+        //console.log(this.personal)
+        //this.updateExcelService.dataPersonal(this.personal)
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -2822,6 +2913,7 @@ async saveChangesEquipos() {
     this.logbookService.getInfoByReporte(selectedReporteId, "CONCEPT").subscribe(
       (data: any) => {
         this.conceptos = data.data;
+        
       },
       (error) => console.error('Error fetching data:', error)
     );

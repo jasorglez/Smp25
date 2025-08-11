@@ -14,8 +14,11 @@
                     <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addReporte()">
                       <i class="bi bi-plus-lg"></i>
                     </button>
-                    <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revert()" [disabled]="signalsService.getClosedReport()()">
+                    <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revert()">
                       <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                     <button type="button" class="btn btn-success ms-1 me-1 mb-2" (click)="excel()">
+                      <img src='./assets/img/excel.png' width="17" height="17"> 
                     </button>
                     <button type="button" class="btn btn-info ms-1 me-1 mb-2" (click)="fileInput.click()" [disabled]="isUploading">
                       <i class="bi bi-file-earmark-pdf" *ngIf="!isUploading"></i>
@@ -80,7 +83,7 @@
                     <a class="nav-link" [class.active]="activeTab === 'equipos'" (click)="setActiveTab('equipos')" style="cursor: pointer;"><i class="bi bi-tools"></i> Equipos</a>
                   </li>
                   <li class="nav-item">
-                    <a class="nav-link" [class.active]="activeTab === 'conceptos'" (click)="setActiveTab('conceptos')" style="cursor: pointer;"><i class="bi bi-lightbulb"></i> Conceptos</a>
+                    <a class="nav-link" [class.active]="activeTab === 'conceptos'" (click)="setActiveTab('conceptos')" style="cursor: pointer;"><i class="bi bi-lightbulb"></i> Trabajo realizado</a>
                   </li>
                   <li class="nav-item">
                     <a class="nav-link" [class.active]="activeTab === 'notas'" (click)="setActiveTab('notas')" style="cursor: pointer;"><i class="bi bi-journal-text"></i> Notas</a>
@@ -320,6 +323,46 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modal" tabindex="-1" aria-labelledby="ModalBonosLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
+      <div class="modal-body">
+        <form [formGroup]="myForm" (ngSubmit)="onSubmit()">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="fecha1" class="form-label">Fecha inicio</label>
+              <input type="date"
+                     class="form-control"
+                     id="fecha1"
+                     [max]="myForm.get('fechaFin')?.value"
+                     formControlName="fechaInicio">
+            </div>
+
+            <div class="col-md-6">
+              <label for="fecha2" class="form-label">Fecha fin</label>
+              <input type="date"
+                     class="form-control"
+                     id="fecha2"
+                     [min]="myForm.get('fechaInicio')?.value"
+                     formControlName="fechaFin">
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end mt-4">
+            <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal" (click)="cancelar()">
+              Cancelar
+            </button>
+            <button type="submit" class="btn btn-primary" [disabled]="myForm.invalid || isGeneratingReport">
+              <span *ngIf="isGeneratingReport" class="spinner-border spinner-border-sm me-2" role="status"></span>
+              {{ isGeneratingReport ? 'Generando...' : 'Generar' }}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>

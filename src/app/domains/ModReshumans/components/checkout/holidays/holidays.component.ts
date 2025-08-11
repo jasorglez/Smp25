@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, effect, Component, inject } from '@angular/cor
 import { alerts } from 'app/helpers/alerts';
 import { forkJoin } from 'rxjs';
 import { EmployeeClockData } from 'app/interface/EmpleyeeClock';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormControl } from '@angular/forms';
+  import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormControl } from '@angular/forms';
 import { SignalsService } from 'app/services/signals.service';
 import { ClockService } from 'app/services/clock.service';
 import { CommonModule } from '@angular/common';
