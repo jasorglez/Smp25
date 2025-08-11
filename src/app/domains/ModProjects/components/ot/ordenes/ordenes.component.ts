@@ -580,6 +580,175 @@ export class OrdenesComponent implements OnDestroy {
 
 
  ]
+
+  public conceptosColumnDefs: ColDef[] = [
+    {
+    field: 'idResource',
+    headerName: 'Equipo',
+    flex: 2,
+    editable: () => !this.signalsService.getClosedReport()(),
+    cellEditor: 'agSelectCellEditor',
+    cellEditorParams: (params: any) => ({
+      values: this.catalogConcepto?.map((item) => item.actandNom) || [],
+    }),
+    // Muestra la descripción del equipo en la celda
+    valueFormatter: (params) => {
+      const equipoId = params.data?.idResource;
+      if (!equipoId) return '';
+
+      const foundItem = this.catalogConcepto?.find(item => item.id == equipoId);
+      return foundItem ? foundItem.actandNom : `ID: ${equipoId}`;
+    },
+    // Muestra la descripción del equipo cuando se lee el valor actual
+    valueGetter: (params) => {
+      const equipoId = params.data?.idResource;
+      if (!equipoId) return '';
+
+      const foundItem = this.catalogConcepto?.find(item => item.id == equipoId);
+      return foundItem ? foundItem.actandNom : '';
+    },
+    // Convierte la descripción seleccionada de vuelta al ID
+    valueSetter: (params) => {
+      console.log('=== VALUE SETTER EQUIPOS ===');
+      console.log('Nuevo valor (descripción):', params.newValue);
+      console.log('Valor anterior:', params.oldValue);
+      console.log('Data antes:', params.data.idResource);
+
+      if (!params.newValue) {
+        params.data.idResource = null;
+        console.log('Data después (null):', params.data.idResource);
+        return true;
+      }
+
+      const foundItem = this.catalogConcepto?.find(item => item.actandNom === params.newValue);
+      if (foundItem) {
+        params.data.idResource = foundItem.id;
+        console.log('Data después:', params.data.idResource);
+        return true;
+      } else {
+        console.warn('Descripción no válida:', params.newValue);
+        return false;
+      }
+    }
+  },
+  { field: 'quantity', headerName: 'Cantidad', flex: 1, editable: this.signalsService.getClosedReport()()? false : true },
+  ]
+
+  // Configuración de columnas para reportes diarios con edición inline
+  public reportesColumnDefs: ColDef[] = [
+    { 
+      field: 'date', 
+      headerName: 'Fecha', 
+      width: 90, 
+      editable: () => !this.signalsService.getClosedReport()(),
+      cellEditor: 'agDateCellEditor',
+      cellEditorParams: {
+        min: '2020-01-01',
+        max: '2030-12-31'
+      },
+      valueFormatter: (params) => {
+        if (!params.value) return '';
+        // Convertir YYYY-MM-DD a DD/MM/YYYY para mostrar
+        const dateValue = params.value.split('T')[0];
+        const [year, month, day] = dateValue.split('-');
+        return `${day}/${month}/${year}`;
+      },
+      valueParser: (params) => {
+        // Convertir DD/MM/YYYY a YYYY-MM-DD para guardar
+        if (!params.newValue) return '';
+        
+        // Si ya viene en formato YYYY-MM-DD (del date picker), usar así
+        if (params.newValue.includes('-')) {
+          return params.newValue.split('T')[0];
+        }
+        
+        // Si viene en formato DD/MM/YYYY, convertir
+        const [day, month, year] = params.newValue.split('/');
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      },
+      valueSetter: (params) => {
+        if (params.newValue) {
+          let dateValue;
+          
+          // Si es un objeto Date (del date picker)
+          if (params.newValue instanceof Date) {
+            const year = params.newValue.getFullYear();
+            const month = String(params.newValue.getMonth() + 1).padStart(2, '0');
+            const day = String(params.newValue.getDate()).padStart(2, '0');
+            dateValue = `${year}-${month}-${day}`;
+          }
+          // Si es string y contiene guiones (formato YYYY-MM-DD)
+          else if (typeof params.newValue === 'string' && params.newValue.includes('-')) {
+            dateValue = params.newValue.split('T')[0];
+          }
+          // Si es string y contiene barras (formato DD/MM/YYYY)
+          else if (typeof params.newValue === 'string' && params.newValue.includes('/')) {
+            const [day, month, year] = params.newValue.split('/');
+            dateValue = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+          }
+          // Si es otro tipo de string, intentar parsearlo
+          else if (typeof params.newValue === 'string') {
+            dateValue = params.newValue;
+          }
+          
+          params.data[params.colDef.field] = dateValue;
+        } else {
+          params.data[params.colDef.field] = '';
+        }
+        return true;
+      }
+    },
+    { 
+      field: 'startTime', 
+      headerName: 'Inicio', 
+      width: 85, 
+      editable: () => !this.signalsService.getClosedReport()(),
+      cellEditor: 'timeEditor',
+      valueFormatter: (params) => {
+        return params.value ? params.value.substring(0, 5) : '';
+      }
+    },
+    { 
+      field: 'endTime', 
+      headerName: 'Término', 
+      width: 105, 
+      editable: () => !this.signalsService.getClosedReport()(),
+      cellEditor: 'timeEditor',
+      valueFormatter: (params) => {
+        return params.value ? params.value.substring(0, 5) : '';
+      }
+    },
+    { 
+      field: 'type', 
+      headerName: 'Area', 
+      width: 90, 
+      editable: () => !this.signalsService.getClosedReport()(),
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: ['CORTES', 'RECONEXIONES', 'MEDIDORES', 'INSPECCIONES']
+      }
+    },
+    /*{ 
+      field: 'supervisor', 
+      headerName: 'Supervisor', 
+      width: 120,
+      editable: true
+    },*/
+    { 
+      field: 'description', 
+      headerName: 'Comentario', 
+      editable: () => !this.signalsService.getClosedReport()(),
+      width: 120,
+    },
+    { 
+      field: 'close', 
+      headerName: 'Cerrado', 
+      editable: () => !this.signalsService.getClosedReport()(),
+      width: 120,
+    }
+  ];
+
+
  onCellDoubleClicked(event: CellDoubleClickedEvent) {
   if (!event.node.group) {
     this.modalServiceTable.showModal({
@@ -640,60 +809,6 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
   });
 }
 
-
-
-  public conceptosColumnDefs: ColDef[] = [
-    {
-    field: 'idResource',
-    headerName: 'Equipo',
-    flex: 2,
-    editable: () => !this.signalsService.getClosedReport()(),
-    cellEditor: 'agSelectCellEditor',
-    cellEditorParams: (params: any) => ({
-      values: this.catalogConcepto?.map((item) => item.actandNom) || [],
-    }),
-    // Muestra la descripción del equipo en la celda
-    valueFormatter: (params) => {
-      const equipoId = params.data?.idResource;
-      if (!equipoId) return '';
-
-      const foundItem = this.catalogConcepto?.find(item => item.id == equipoId);
-      return foundItem ? foundItem.actandNom : `ID: ${equipoId}`;
-    },
-    // Muestra la descripción del equipo cuando se lee el valor actual
-    valueGetter: (params) => {
-      const equipoId = params.data?.idResource;
-      if (!equipoId) return '';
-
-      const foundItem = this.catalogConcepto?.find(item => item.id == equipoId);
-      return foundItem ? foundItem.actandNom : '';
-    },
-    // Convierte la descripción seleccionada de vuelta al ID
-    valueSetter: (params) => {
-      console.log('=== VALUE SETTER EQUIPOS ===');
-      console.log('Nuevo valor (descripción):', params.newValue);
-      console.log('Valor anterior:', params.oldValue);
-      console.log('Data antes:', params.data.idResource);
-
-      if (!params.newValue) {
-        params.data.idResource = null;
-        console.log('Data después (null):', params.data.idResource);
-        return true;
-      }
-
-      const foundItem = this.catalogConcepto?.find(item => item.actandNom === params.newValue);
-      if (foundItem) {
-        params.data.idResource = foundItem.id;
-        console.log('Data después:', params.data.idResource);
-        return true;
-      } else {
-        console.warn('Descripción no válida:', params.newValue);
-        return false;
-      }
-    }
-  },
-  { field: 'quantity', headerName: 'Cantidad', flex: 1, editable: this.signalsService.getClosedReport()()? false : true },
-  ]
 
   addFotografia(){
     this.trackingService.addLog(
@@ -907,119 +1022,6 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     });
   }
 
-  // Configuración de columnas para reportes diarios con edición inline
-  public reportesColumnDefs: ColDef[] = [
-    { 
-      field: 'date', 
-      headerName: 'Fecha', 
-      width: 90, 
-      editable: () => !this.signalsService.getClosedReport()(),
-      cellEditor: 'agDateCellEditor',
-      cellEditorParams: {
-        min: '2020-01-01',
-        max: '2030-12-31'
-      },
-      valueFormatter: (params) => {
-        if (!params.value) return '';
-        // Convertir YYYY-MM-DD a DD/MM/YYYY para mostrar
-        const dateValue = params.value.split('T')[0];
-        const [year, month, day] = dateValue.split('-');
-        return `${day}/${month}/${year}`;
-      },
-      valueParser: (params) => {
-        // Convertir DD/MM/YYYY a YYYY-MM-DD para guardar
-        if (!params.newValue) return '';
-        
-        // Si ya viene en formato YYYY-MM-DD (del date picker), usar así
-        if (params.newValue.includes('-')) {
-          return params.newValue.split('T')[0];
-        }
-        
-        // Si viene en formato DD/MM/YYYY, convertir
-        const [day, month, year] = params.newValue.split('/');
-        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-      },
-      valueSetter: (params) => {
-        if (params.newValue) {
-          let dateValue;
-          
-          // Si es un objeto Date (del date picker)
-          if (params.newValue instanceof Date) {
-            const year = params.newValue.getFullYear();
-            const month = String(params.newValue.getMonth() + 1).padStart(2, '0');
-            const day = String(params.newValue.getDate()).padStart(2, '0');
-            dateValue = `${year}-${month}-${day}`;
-          }
-          // Si es string y contiene guiones (formato YYYY-MM-DD)
-          else if (typeof params.newValue === 'string' && params.newValue.includes('-')) {
-            dateValue = params.newValue.split('T')[0];
-          }
-          // Si es string y contiene barras (formato DD/MM/YYYY)
-          else if (typeof params.newValue === 'string' && params.newValue.includes('/')) {
-            const [day, month, year] = params.newValue.split('/');
-            dateValue = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-          }
-          // Si es otro tipo de string, intentar parsearlo
-          else if (typeof params.newValue === 'string') {
-            dateValue = params.newValue;
-          }
-          
-          params.data[params.colDef.field] = dateValue;
-        } else {
-          params.data[params.colDef.field] = '';
-        }
-        return true;
-      }
-    },
-    { 
-      field: 'startTime', 
-      headerName: 'Inicio', 
-      width: 85, 
-      editable: () => !this.signalsService.getClosedReport()(),
-      cellEditor: 'timeEditor',
-      valueFormatter: (params) => {
-        return params.value ? params.value.substring(0, 5) : '';
-      }
-    },
-    { 
-      field: 'endTime', 
-      headerName: 'Término', 
-      width: 105, 
-      editable: () => !this.signalsService.getClosedReport()(),
-      cellEditor: 'timeEditor',
-      valueFormatter: (params) => {
-        return params.value ? params.value.substring(0, 5) : '';
-      }
-    },
-    { 
-      field: 'type', 
-      headerName: 'Area', 
-      width: 90, 
-      editable: () => !this.signalsService.getClosedReport()(),
-      cellEditor: 'agSelectCellEditor',
-      cellEditorParams: {
-        values: ['CORTES', 'RECONEXIONES', 'MEDIDORES', 'INSPECCIONES']
-      }
-    },
-    /*{ 
-      field: 'supervisor', 
-      headerName: 'Supervisor', 
-      width: 120,
-      editable: true
-    },*/
-    { 
-      field: 'description', 
-      headerName: 'Comentario', 
-      editable: () => !this.signalsService.getClosedReport()(),
-      width: 120,
-    },
-    { 
-      field: 'close', 
-      headerName: 'Cerrado', 
-      editable: () => !this.signalsService.getClosedReport()(),
-      width: 120,
-    }
-  ];
 
   // Variables para el grid de reportes
   public reportesGridApi!: GridApi;
