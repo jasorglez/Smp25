@@ -529,7 +529,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       }
     }
   },
-    { field: 'quantity', headerName: 'Cantidad', flex: 1, editable: this.signalsService.getClosedReport()()? false : true },
+    { field: 'quantity', headerName: 'Cantidad', flex: 1, editable: () => !this.signalsService.getClosedReport()()},
     //{ field: 'quantity', headerName: 'Horas', width: 100, editable: !this.signalsService.getClosedReport() },
     //{ field: 'fechaUso', headerName: 'Fecha', width: 120 }
   ];
@@ -627,7 +627,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         },
         editable: false,
      },
-    { field: 'description', headerName: 'Descripción', flex: 1, editable: this.signalsService.getClosedReport()()? false : true },
+    { field: 'description', headerName: 'Descripción', flex: 1, editable: () => !this.signalsService.getClosedReport()()},
     //{ field: 'fecha', headerName: 'Fecha', width: 120 }
   ];
 
@@ -776,7 +776,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       }
     }
   },
-  { field: 'quantity', headerName: 'Cantidad', flex: 1, editable: this.signalsService.getClosedReport()()? false : true },
+  { field: 'quantity', headerName: 'Cantidad', flex: 1, editable: () => !this.signalsService.getClosedReport()()},
   ]
 
   // Configuración de columnas para reportes diarios con edición inline
