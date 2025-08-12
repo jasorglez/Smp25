@@ -124,7 +124,7 @@ interface Fotografia {
   templateUrl: './ordenes.component.html',
   styleUrl: './ordenes.component.scss',
 })
-export class OrdenesComponent implements OnDestroy {
+export class OrdenesComponent implements OnInit, OnDestroy {
   private otService = inject(OtService);
   private equipmentService = inject(EquipmentService);
   private dailyReportService = inject(DailyReportService);
@@ -249,9 +249,9 @@ export class OrdenesComponent implements OnDestroy {
   }
   excel() {
     // Reset form to initial state
-    this.myForm.reset();
+    /*this.myForm.reset();
     this.fechaInicio = '';
-    this.fechaFin = '';
+    this.fechaFin = '';*/
     this.isGeneratingReport = false;
     
     // Initialize and show modal
@@ -720,7 +720,8 @@ export class OrdenesComponent implements OnDestroy {
       field: 'date', 
       headerName: 'Fecha', 
       width: 90, 
-      editable: () => !this.signalsService.getClosedReport()(),
+      //editable: () => !this.signalsService.getClosedReport()(),
+      editable: true,
       cellEditor: 'agDateCellEditor',
       cellEditorParams: {
         min: '2020-01-01',
@@ -782,7 +783,8 @@ export class OrdenesComponent implements OnDestroy {
       field: 'startTime', 
       headerName: 'Inicio', 
       width: 85, 
-      editable: () => !this.signalsService.getClosedReport()(),
+      //editable: () => !this.signalsService.getClosedReport()(),
+      editable: true,
       cellEditor: 'timeEditor',
       valueFormatter: (params) => {
         return params.value ? params.value.substring(0, 5) : '';
@@ -792,23 +794,25 @@ export class OrdenesComponent implements OnDestroy {
       field: 'endTime', 
       headerName: 'Término', 
       width: 105, 
-      editable: () => !this.signalsService.getClosedReport()(),
+      //editable: () => !this.signalsService.getClosedReport()(),
+      editable: true,
       cellEditor: 'timeEditor',
       valueFormatter: (params) => {
         return params.value ? params.value.substring(0, 5) : '';
       }
     },
-    { 
+    /*{ 
       field: 'type', 
       headerName: 'Area', 
       width: 90, 
-      editable: () => !this.signalsService.getClosedReport()(),
+      //editable: () => !this.signalsService.getClosedReport()(),
+      editable: true,
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: {
         values: ['CORTES', 'RECONEXIONES', 'MEDIDORES', 'INSPECCIONES']
       }
     },
-    /*{ 
+    { 
       field: 'supervisor', 
       headerName: 'Supervisor', 
       width: 120,
@@ -817,13 +821,15 @@ export class OrdenesComponent implements OnDestroy {
     { 
       field: 'description', 
       headerName: 'Comentario', 
-      editable: () => !this.signalsService.getClosedReport()(),
+      //editable: () => !this.signalsService.getClosedReport()(),
+      editable: true,
       width: 120,
     },
     { 
       field: 'close', 
       headerName: 'Cerrado', 
-      editable: () => !this.signalsService.getClosedReport()(),
+      //editable: () => !this.signalsService.getClosedReport()(),
+      editable: true,
       width: 120,
     }
   ];
@@ -1244,11 +1250,8 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
 
   constructor(private formBuilder: FormBuilder) {
     // Initialize form immediately in constructor
-    this.myForm = this.formBuilder.group({
-      fechaInicio: ['', Validators.required],
-      fechaFin: ['', Validators.required]
-    });
-
+    
+    
     // Log de acceso al componente
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
@@ -1275,6 +1278,19 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     // Effect para auto-actualizar PDF cuando se guarden cambio
 
     this.loadColumnSizes();
+  }
+
+  ngOnInit(): void {
+    const hoy = new Date();
+    const hace7Dias = new Date();
+    hace7Dias.setDate(hoy.getDate() - 7);
+    const hoyStr = hoy.toISOString().split('T')[0];
+    const hace7DiasStr = hace7Dias.toISOString().split('T')[0];
+    console.log("fechas", hoyStr, hace7DiasStr)
+    this.myForm = this.formBuilder.group({
+      fechaInicio: [hace7DiasStr, Validators.required],
+      fechaFin: [hoyStr, Validators.required]
+    });
   }
 
   loadEmployees() {
