@@ -33,7 +33,7 @@ export const environment = {
  //urlSecurity     : 'http://localhost:5260/api',
 
  urlSmp            : 'https://bi2.com.mx/smp/api', // 5004
- //urlSmp          : 'http://localhost:5183/api',
+//urlSmp          : 'http://localhost:5183/api',
 
  urlBpi            : 'https://bi2.com.mx/bpi/api', // 5005
 
@@ -65,7 +65,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.23.14 (6 Agosto 2025 12:22)'
+  version: '2.23.14 (6 Agosto 2025 21:42)'
 
 };
 
