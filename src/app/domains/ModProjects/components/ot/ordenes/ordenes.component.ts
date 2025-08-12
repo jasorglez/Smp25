@@ -584,7 +584,7 @@ export class OrdenesComponent implements OnDestroy {
  public notasColumnDefs: ColDef[] = [
   {
     field: 'idResource',
-    headerName: 'Equipo',
+    headerName: 'Notas',
     flex: 2,
     editable: () => !this.signalsService.getClosedReport()(),
     cellEditor: 'agSelectCellEditor',
@@ -664,7 +664,7 @@ export class OrdenesComponent implements OnDestroy {
   public conceptosColumnDefs: ColDef[] = [
     {
     field: 'idResource',
-    headerName: 'Equipo',
+    headerName: 'Trabajo realizado',
     flex: 2,
     editable: () => !this.signalsService.getClosedReport()(),
     cellEditor: 'agSelectCellEditor',
