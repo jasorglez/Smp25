@@ -376,8 +376,14 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   flex: 2,
   editable: () => !this.signalsService.getClosedReport()(),
   cellEditor: 'agSelectCellEditor',
-  cellEditorParams: {
-    values: this.catalogMateriales?.map((item) => item.description) || [],
+  cellEditorParams: (params: any) => {
+    return {
+         values: this.catalogMateriales.map(emp => emp.description),
+         filterList: this.catalogMateriales.map(emp => emp.description),
+         filterKey: 'idResource',
+         placeholder: 'Buscar empleado...',
+         minLength: 1,
+       };
   },
   // Muestra la descripción del material
   valueFormatter: (params) => {
@@ -396,11 +402,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   },
   // Convierte la descripción seleccionada de vuelta al ID
   valueSetter: (params) => {
-    console.log('=== VALUE SETTER MATERIALES ===');
-    console.log('Nuevo valor (descripción):', params.newValue);
-    console.log('Valor anterior:', params.oldValue);
-    console.log('Data antes:', params.data.idResource);
-    
+   
     if (!params.newValue) {
       params.data.idResource = null;
       return true;
@@ -408,9 +410,21 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     
     const foundItem = this.catalogMateriales?.find(item => item.description === params.newValue);
     if (foundItem) {
-      console.log('Material encontrado, asignando ID:', foundItem.id);
+       const duplicateExists = this.materiales.some(
+          (row, index) =>
+            index !== params.node.rowIndex &&
+            row.idResource === foundItem.id
+        );
+      
+        if (duplicateExists) {
+          alerts.basicAlert(
+            'Duplicado',
+            'Este material ya está asignado.',
+            'error'
+          );
+          return false;
+        }
       params.data.idResource = foundItem.id;
-      console.log('Data después:', params.data.idResource);
       return true;
     } else {
       console.log('Material no encontrado para:', params.newValue);
@@ -457,9 +471,15 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     flex: 2,
    editable: () => !this.signalsService.getClosedReport()(),
     cellEditor: 'agSelectCellEditor',
-    cellEditorParams: (params: any) => ({
-      values: this.catalogEquipos?.map((item) => item.description) || [],
-    }),
+    cellEditorParams: (params: any) => {
+      return {
+         values: this.catalogEquipos.map(emp => emp.description),
+         filterList: this.catalogEquipos.map(emp => emp.description),
+         filterKey: 'idResource',
+         placeholder: 'Buscar empleado...',
+         minLength: 1,
+       };
+    },
     // Muestra la descripción del equipo en la celda
     valueFormatter: (params) => {
       const equipoId = params.data?.idResource;
@@ -478,10 +498,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     },
     // Convierte la descripción seleccionada de vuelta al ID
     valueSetter: (params) => {
-      console.log('=== VALUE SETTER EQUIPOS ===');
-      console.log('Nuevo valor (descripción):', params.newValue);
-      console.log('Valor anterior:', params.oldValue);
-      console.log('Data antes:', params.data.idResource);
 
       if (!params.newValue) {
         params.data.idResource = null;
@@ -491,8 +507,21 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
       const foundItem = this.catalogEquipos?.find(item => item.description === params.newValue);
       if (foundItem) {
+        const duplicateExists = this.equipos.some(
+          (row, index) =>
+            index !== params.node.rowIndex &&
+            row.idResource === foundItem.id
+        );
+      
+        if (duplicateExists) {
+          alerts.basicAlert(
+            'Duplicado',
+            'Este equipo ya está asignado.',
+            'error'
+          );
+          return false;
+        }
         params.data.idResource = foundItem.id;
-        console.log('Data después:', params.data.idResource);
         return true;
       } else {
         console.warn('Descripción no válida:', params.newValue);
@@ -515,9 +544,14 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: (params: any) => {
         return {
-          values: this.employees.map(emp => emp.name)
+          values: this.employees.map(emp => emp.name),
+          filterList: this.employees.map(emp => emp.name),
+          filterKey: 'idResource',
+          placeholder: 'Buscar empleado...',
+          minLength: 1,
         };
       },
+      
       valueFormatter: (params: any) => {
         if (params.value && params.value !== '0') {
           const employee = this.employees.find(emp => emp.id.toString() === params.value.toString());
@@ -526,16 +560,32 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         return '';
       },
       valueSetter: (params: any) => {
+        console.log(params)
         if (params.newValue) {
           const employee = this.employees.find(emp => emp.name === params.newValue);
           if (employee) {
+            // Verificar si el empleado ya está en la lista
+            const duplicateExists = this.personal.some(
+              (row, index) =>
+                index !== params.node.rowIndex &&
+                row.idResource === employee.id
+            );
+          
+            if (duplicateExists) {
+              alerts.basicAlert(
+                'Duplicado',
+                'Este empleado ya está asignado.',
+                'error'
+              );
+              return false;
+            }
+
             // Establecer el ID del empleado
             params.data[params.colDef.field] = employee.id.toString();
             const depto = this.catalogDepartamentos.find(d => d.id === +employee.idPosition);
           
-            // 🟢 Establecer automáticamente la posición (o cualquier otro campo que quieras)
-            params.data['position'] = depto ? depto.description : ''; // o employee.position si tienes ese campo
-            //params.data['cuadrilla'] = 'Cuadrilla'; // si quieres poner un valor por defecto también
+            // Establecer automáticamente la posición
+            params.data['position'] = depto ? depto.description : '';
           
             console.log('Empleado seleccionado:', employee);
             return true;
@@ -668,9 +718,15 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     flex: 2,
     editable: () => !this.signalsService.getClosedReport()(),
     cellEditor: 'agSelectCellEditor',
-    cellEditorParams: (params: any) => ({
-      values: this.catalogConcepto?.map((item) => item.actandNom) || [],
-    }),
+    cellEditorParams: (params: any) => {
+      return {
+          values: this.catalogConcepto.map(emp => emp.actandNom),
+          filterList: this.catalogConcepto.map(emp => emp.actandNom),
+          filterKey: 'idResource',
+          placeholder: 'Buscar empleado...',
+          minLength: 1,
+        };
+    },
     // Muestra la descripción del equipo en la celda
     valueFormatter: (params) => {
       const equipoId = params.data?.idResource;
@@ -689,19 +745,28 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     },
     // Convierte la descripción seleccionada de vuelta al ID
     valueSetter: (params) => {
-      console.log('=== VALUE SETTER EQUIPOS ===');
-      console.log('Nuevo valor (descripción):', params.newValue);
-      console.log('Valor anterior:', params.oldValue);
-      console.log('Data antes:', params.data.idResource);
 
       if (!params.newValue) {
         params.data.idResource = null;
-        console.log('Data después (null):', params.data.idResource);
         return true;
       }
 
       const foundItem = this.catalogConcepto?.find(item => item.actandNom === params.newValue);
       if (foundItem) {
+        const duplicateExists = this.conceptos.some(
+          (row, index) =>
+            index !== params.node.rowIndex &&
+            row.idResource === foundItem.id
+        );
+      
+        if (duplicateExists) {
+          alerts.basicAlert(
+            'Duplicado',
+            'Este trabajo ya está asignado.',
+            'error'
+          );
+          return false;
+        }
         params.data.idResource = foundItem.id;
         console.log('Data después:', params.data.idResource);
         return true;
@@ -2901,7 +2966,7 @@ async saveChangesEquipos() {
     this.logbookService.getInfoByReporte(selectedReporteId, "PERSONAL").subscribe(
       (data: any) => {
         this.personal = data.data;
-        //console.log(this.personal)
+        console.log(this.personal)
         //this.updateExcelService.dataPersonal(this.personal)
       },
       (error) => console.error('Error fetching data:', error)
