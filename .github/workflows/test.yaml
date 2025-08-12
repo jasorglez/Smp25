@@ -3,7 +3,7 @@ name: Build on Push
 # Ahora se ejecuta en develop Y main
 on:
   push:
-    branches: [ develop ]
+    branches: [ develop, main ]
 
 jobs:
   build:
