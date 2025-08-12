@@ -33,6 +33,11 @@ export class GeneratorsService {
     return this.http.get<any[]>(`${environment.urlSmp}/ItemsGeneradoresEstimates?idType=${idType}&Type=GENERADOR`, { headers: this.trackingService.getHeaders() });
   }
 
+  getItemsEstimaciones(idType: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlSmp}/ItemsGeneradoresEstimates?idType=${idType}&Type=ESTIMACION`, { headers: this.trackingService.getHeaders() });
+  }
+
+
   addItemGenerador(data: any): Observable<any> {
     return this.http.post(`${environment.urlSmp}/ItemsGeneradoresEstimates`, data, { headers: this.trackingService.getHeaders() });
   }

@@ -33,7 +33,22 @@
                 <hr>
               </div>
             </div>
-
+            <div class=" mb-3">
+             <label class="form-label required">{{ 'Área' | translate }}</label>
+              <select
+                class="form-select"
+                formControlName="area"
+                [class.is-invalid]="isFieldInvalid('area')"
+              >
+                <option value="null" disabled selected hidden>Seleccione un área</option>
+                <option *ngFor="let area of catalogArea" [value]="area.description">
+                  {{ area.description }}
+                </option>
+              </select>
+              <div class="invalid-feedback" *ngIf="isFieldInvalid('area')">
+                {{ getFieldError('area') }}
+              </div>
+            </div>
             <div class="row mb-3">
               <div class="col-md-4">
                 <label class="form-label required">{{ 'Fecha de Registro' | translate }}</label>
