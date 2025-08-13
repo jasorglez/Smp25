@@ -163,6 +163,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   public selectedReporteTipo: string = '';
   public selectedReporteHoraInicio: string = '';
   public selectedReporteHoraTermino: string = '';
+  public selectedReporteArea: string = '';
   public selectedReporteId: number | string | null = null;
   public selectedFotografia: Fotografia | null = null;
   public selectedStatusReport: boolean = false;
@@ -1424,6 +1425,7 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
       this.selectedReporteTipo = '';
       this.selectedReporteHoraInicio = '';
       this.selectedReporteHoraTermino = '';
+      this.selectedReporteArea = selectedRows[0].area
       this.selectedReporteId = null;
       
       // Resetear vista previa del PDF
@@ -1645,7 +1647,7 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
       startTime: '',
       endTime: '',
       supervisor: 'SIN SUPERVISOR',
-      type: 'SUSPENSION',
+      type: this.selectedReporteArea,
       description: 'SIN DESCRIPCIÓN',
       result: 'SIN RESULTADO',
       active: true,
