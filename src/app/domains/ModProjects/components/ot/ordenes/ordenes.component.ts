@@ -47,6 +47,7 @@ interface OrdenesData {
   assignedTo: string;
   description: string;
   nameConsumer: string;
+  area: string;
 }
 
 // Interfaces para la data de las pestañas
@@ -124,7 +125,7 @@ interface Fotografia {
   templateUrl: './ordenes.component.html',
   styleUrl: './ordenes.component.scss',
 })
-export class OrdenesComponent implements OnDestroy {
+export class OrdenesComponent implements OnInit, OnDestroy {
   private otService = inject(OtService);
   private equipmentService = inject(EquipmentService);
   private dailyReportService = inject(DailyReportService);
@@ -163,6 +164,7 @@ export class OrdenesComponent implements OnDestroy {
   public selectedReporteTipo: string = '';
   public selectedReporteHoraInicio: string = '';
   public selectedReporteHoraTermino: string = '';
+  public selectedReporteArea: string = '';
   public selectedReporteId: number | string | null = null;
   public selectedFotografia: Fotografia | null = null;
   public selectedStatusReport: boolean = false;
@@ -249,9 +251,9 @@ export class OrdenesComponent implements OnDestroy {
   }
   excel() {
     // Reset form to initial state
-    this.myForm.reset();
+    /*this.myForm.reset();
     this.fechaInicio = '';
-    this.fechaFin = '';
+    this.fechaFin = '';*/
     this.isGeneratingReport = false;
     
     // Initialize and show modal
@@ -376,8 +378,14 @@ export class OrdenesComponent implements OnDestroy {
   flex: 2,
   editable: () => !this.signalsService.getClosedReport()(),
   cellEditor: 'agSelectCellEditor',
-  cellEditorParams: {
-    values: this.catalogMateriales?.map((item) => item.description) || [],
+  cellEditorParams: (params: any) => {
+    return {
+         values: this.catalogMateriales.map(emp => emp.description),
+         filterList: this.catalogMateriales.map(emp => emp.description),
+         filterKey: 'idResource',
+         placeholder: 'Buscar empleado...',
+         minLength: 1,
+       };
   },
   // Muestra la descripción del material
   valueFormatter: (params) => {
@@ -396,11 +404,7 @@ export class OrdenesComponent implements OnDestroy {
   },
   // Convierte la descripción seleccionada de vuelta al ID
   valueSetter: (params) => {
-    console.log('=== VALUE SETTER MATERIALES ===');
-    console.log('Nuevo valor (descripción):', params.newValue);
-    console.log('Valor anterior:', params.oldValue);
-    console.log('Data antes:', params.data.idResource);
-    
+   
     if (!params.newValue) {
       params.data.idResource = null;
       return true;
@@ -408,9 +412,21 @@ export class OrdenesComponent implements OnDestroy {
     
     const foundItem = this.catalogMateriales?.find(item => item.description === params.newValue);
     if (foundItem) {
-      console.log('Material encontrado, asignando ID:', foundItem.id);
+       const duplicateExists = this.materiales.some(
+          (row, index) =>
+            index !== params.node.rowIndex &&
+            row.idResource === foundItem.id
+        );
+      
+        if (duplicateExists) {
+          alerts.basicAlert(
+            'Duplicado',
+            'Este material ya está asignado.',
+            'error'
+          );
+          return false;
+        }
       params.data.idResource = foundItem.id;
-      console.log('Data después:', params.data.idResource);
       return true;
     } else {
       console.log('Material no encontrado para:', params.newValue);
@@ -457,9 +473,15 @@ export class OrdenesComponent implements OnDestroy {
     flex: 2,
    editable: () => !this.signalsService.getClosedReport()(),
     cellEditor: 'agSelectCellEditor',
-    cellEditorParams: (params: any) => ({
-      values: this.catalogEquipos?.map((item) => item.description) || [],
-    }),
+    cellEditorParams: (params: any) => {
+      return {
+         values: this.catalogEquipos.map(emp => emp.description),
+         filterList: this.catalogEquipos.map(emp => emp.description),
+         filterKey: 'idResource',
+         placeholder: 'Buscar empleado...',
+         minLength: 1,
+       };
+    },
     // Muestra la descripción del equipo en la celda
     valueFormatter: (params) => {
       const equipoId = params.data?.idResource;
@@ -478,10 +500,6 @@ export class OrdenesComponent implements OnDestroy {
     },
     // Convierte la descripción seleccionada de vuelta al ID
     valueSetter: (params) => {
-      console.log('=== VALUE SETTER EQUIPOS ===');
-      console.log('Nuevo valor (descripción):', params.newValue);
-      console.log('Valor anterior:', params.oldValue);
-      console.log('Data antes:', params.data.idResource);
 
       if (!params.newValue) {
         params.data.idResource = null;
@@ -491,8 +509,21 @@ export class OrdenesComponent implements OnDestroy {
 
       const foundItem = this.catalogEquipos?.find(item => item.description === params.newValue);
       if (foundItem) {
+        const duplicateExists = this.equipos.some(
+          (row, index) =>
+            index !== params.node.rowIndex &&
+            row.idResource === foundItem.id
+        );
+      
+        if (duplicateExists) {
+          alerts.basicAlert(
+            'Duplicado',
+            'Este equipo ya está asignado.',
+            'error'
+          );
+          return false;
+        }
         params.data.idResource = foundItem.id;
-        console.log('Data después:', params.data.idResource);
         return true;
       } else {
         console.warn('Descripción no válida:', params.newValue);
@@ -500,7 +531,7 @@ export class OrdenesComponent implements OnDestroy {
       }
     }
   },
-    { field: 'quantity', headerName: 'Cantidad', flex: 1, editable: this.signalsService.getClosedReport()()? false : true },
+    { field: 'quantity', headerName: 'Cantidad', flex: 1, editable: () => !this.signalsService.getClosedReport()()},
     //{ field: 'quantity', headerName: 'Horas', width: 100, editable: !this.signalsService.getClosedReport() },
     //{ field: 'fechaUso', headerName: 'Fecha', width: 120 }
   ];
@@ -515,9 +546,14 @@ export class OrdenesComponent implements OnDestroy {
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: (params: any) => {
         return {
-          values: this.employees.map(emp => emp.name)
+          values: this.employees.map(emp => emp.name),
+          filterList: this.employees.map(emp => emp.name),
+          filterKey: 'idResource',
+          placeholder: 'Buscar empleado...',
+          minLength: 1,
         };
       },
+      
       valueFormatter: (params: any) => {
         if (params.value && params.value !== '0') {
           const employee = this.employees.find(emp => emp.id.toString() === params.value.toString());
@@ -526,16 +562,32 @@ export class OrdenesComponent implements OnDestroy {
         return '';
       },
       valueSetter: (params: any) => {
+        console.log(params)
         if (params.newValue) {
           const employee = this.employees.find(emp => emp.name === params.newValue);
           if (employee) {
+            // Verificar si el empleado ya está en la lista
+            const duplicateExists = this.personal.some(
+              (row, index) =>
+                index !== params.node.rowIndex &&
+                row.idResource === employee.id
+            );
+          
+            if (duplicateExists) {
+              alerts.basicAlert(
+                'Duplicado',
+                'Este empleado ya está asignado.',
+                'error'
+              );
+              return false;
+            }
+
             // Establecer el ID del empleado
             params.data[params.colDef.field] = employee.id.toString();
             const depto = this.catalogDepartamentos.find(d => d.id === +employee.idPosition);
           
-            // 🟢 Establecer automáticamente la posición (o cualquier otro campo que quieras)
-            params.data['position'] = depto ? depto.description : ''; // o employee.position si tienes ese campo
-            //params.data['cuadrilla'] = 'Cuadrilla'; // si quieres poner un valor por defecto también
+            // Establecer automáticamente la posición
+            params.data['position'] = depto ? depto.description : '';
           
             console.log('Empleado seleccionado:', employee);
             return true;
@@ -577,14 +629,14 @@ export class OrdenesComponent implements OnDestroy {
         },
         editable: false,
      },
-    { field: 'description', headerName: 'Descripción', flex: 1, editable: this.signalsService.getClosedReport()()? false : true },
+    { field: 'description', headerName: 'Descripción', flex: 1, editable: () => !this.signalsService.getClosedReport()()},
     //{ field: 'fecha', headerName: 'Fecha', width: 120 }
   ];
 
  public notasColumnDefs: ColDef[] = [
   {
     field: 'idResource',
-    headerName: 'Equipo',
+    headerName: 'Notas',
     flex: 2,
     editable: () => !this.signalsService.getClosedReport()(),
     cellEditor: 'agSelectCellEditor',
@@ -664,13 +716,19 @@ export class OrdenesComponent implements OnDestroy {
   public conceptosColumnDefs: ColDef[] = [
     {
     field: 'idResource',
-    headerName: 'Equipo',
+    headerName: 'Trabajo realizado',
     flex: 2,
     editable: () => !this.signalsService.getClosedReport()(),
     cellEditor: 'agSelectCellEditor',
-    cellEditorParams: (params: any) => ({
-      values: this.catalogConcepto?.map((item) => item.actandNom) || [],
-    }),
+    cellEditorParams: (params: any) => {
+      return {
+          values: this.catalogConcepto.map(emp => emp.actandNom),
+          filterList: this.catalogConcepto.map(emp => emp.actandNom),
+          filterKey: 'idResource',
+          placeholder: 'Buscar empleado...',
+          minLength: 1,
+        };
+    },
     // Muestra la descripción del equipo en la celda
     valueFormatter: (params) => {
       const equipoId = params.data?.idResource;
@@ -689,19 +747,28 @@ export class OrdenesComponent implements OnDestroy {
     },
     // Convierte la descripción seleccionada de vuelta al ID
     valueSetter: (params) => {
-      console.log('=== VALUE SETTER EQUIPOS ===');
-      console.log('Nuevo valor (descripción):', params.newValue);
-      console.log('Valor anterior:', params.oldValue);
-      console.log('Data antes:', params.data.idResource);
 
       if (!params.newValue) {
         params.data.idResource = null;
-        console.log('Data después (null):', params.data.idResource);
         return true;
       }
 
       const foundItem = this.catalogConcepto?.find(item => item.actandNom === params.newValue);
       if (foundItem) {
+        const duplicateExists = this.conceptos.some(
+          (row, index) =>
+            index !== params.node.rowIndex &&
+            row.idResource === foundItem.id
+        );
+      
+        if (duplicateExists) {
+          alerts.basicAlert(
+            'Duplicado',
+            'Este trabajo ya está asignado.',
+            'error'
+          );
+          return false;
+        }
         params.data.idResource = foundItem.id;
         console.log('Data después:', params.data.idResource);
         return true;
@@ -711,7 +778,7 @@ export class OrdenesComponent implements OnDestroy {
       }
     }
   },
-  { field: 'quantity', headerName: 'Cantidad', flex: 1, editable: this.signalsService.getClosedReport()()? false : true },
+  { field: 'quantity', headerName: 'Cantidad', flex: 1, editable: () => !this.signalsService.getClosedReport()()},
   ]
 
   // Configuración de columnas para reportes diarios con edición inline
@@ -720,7 +787,8 @@ export class OrdenesComponent implements OnDestroy {
       field: 'date', 
       headerName: 'Fecha', 
       width: 90, 
-      editable: () => !this.signalsService.getClosedReport()(),
+      //editable: () => !this.signalsService.getClosedReport()(),
+      editable: true,
       cellEditor: 'agDateCellEditor',
       cellEditorParams: {
         min: '2020-01-01',
@@ -782,7 +850,8 @@ export class OrdenesComponent implements OnDestroy {
       field: 'startTime', 
       headerName: 'Inicio', 
       width: 85, 
-      editable: () => !this.signalsService.getClosedReport()(),
+      //editable: () => !this.signalsService.getClosedReport()(),
+      editable: true,
       cellEditor: 'timeEditor',
       valueFormatter: (params) => {
         return params.value ? params.value.substring(0, 5) : '';
@@ -792,23 +861,25 @@ export class OrdenesComponent implements OnDestroy {
       field: 'endTime', 
       headerName: 'Término', 
       width: 105, 
-      editable: () => !this.signalsService.getClosedReport()(),
+      //editable: () => !this.signalsService.getClosedReport()(),
+      editable: true,
       cellEditor: 'timeEditor',
       valueFormatter: (params) => {
         return params.value ? params.value.substring(0, 5) : '';
       }
     },
-    { 
+    /*{ 
       field: 'type', 
       headerName: 'Area', 
       width: 90, 
-      editable: () => !this.signalsService.getClosedReport()(),
+      //editable: () => !this.signalsService.getClosedReport()(),
+      editable: true,
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: {
         values: ['CORTES', 'RECONEXIONES', 'MEDIDORES', 'INSPECCIONES']
       }
     },
-    /*{ 
+    { 
       field: 'supervisor', 
       headerName: 'Supervisor', 
       width: 120,
@@ -817,13 +888,15 @@ export class OrdenesComponent implements OnDestroy {
     { 
       field: 'description', 
       headerName: 'Comentario', 
-      editable: () => !this.signalsService.getClosedReport()(),
+      //editable: () => !this.signalsService.getClosedReport()(),
+      editable: true,
       width: 120,
     },
     { 
       field: 'close', 
       headerName: 'Cerrado', 
-      editable: () => !this.signalsService.getClosedReport()(),
+      //editable: () => !this.signalsService.getClosedReport()(),
+      editable: true,
       width: 120,
     }
   ];
@@ -1244,11 +1317,8 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
 
   constructor(private formBuilder: FormBuilder) {
     // Initialize form immediately in constructor
-    this.myForm = this.formBuilder.group({
-      fechaInicio: ['', Validators.required],
-      fechaFin: ['', Validators.required]
-    });
-
+    
+    
     // Log de acceso al componente
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
@@ -1275,6 +1345,19 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     // Effect para auto-actualizar PDF cuando se guarden cambio
 
     this.loadColumnSizes();
+  }
+
+  ngOnInit(): void {
+    const hoy = new Date();
+    const hace7Dias = new Date();
+    hace7Dias.setDate(hoy.getDate() - 7);
+    const hoyStr = hoy.toISOString().split('T')[0];
+    const hace7DiasStr = hace7Dias.toISOString().split('T')[0];
+    console.log("fechas", hoyStr, hace7DiasStr)
+    this.myForm = this.formBuilder.group({
+      fechaInicio: [hace7DiasStr, Validators.required],
+      fechaFin: [hoyStr, Validators.required]
+    });
   }
 
   loadEmployees() {
@@ -1343,6 +1426,7 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
       this.selectedReporteTipo = '';
       this.selectedReporteHoraInicio = '';
       this.selectedReporteHoraTermino = '';
+      this.selectedReporteArea = selectedRows[0].area
       this.selectedReporteId = null;
       
       // Resetear vista previa del PDF
@@ -1560,11 +1644,11 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     const newReporte = {
       id: tempId,
       idOt: parseInt(this.selectedOt.id),
-      date: '',
-      startTime: '',
-      endTime: '',
+      date: new Date().toISOString().split('T')[0] + 'T00:00:00',
+      startTime: '08:00:00',
+      endTime: '19:00:00',
       supervisor: 'SIN SUPERVISOR',
-      type: 'SUSPENSION',
+      type: this.selectedReporteArea,
       description: 'SIN DESCRIPCIÓN',
       result: 'SIN RESULTADO',
       active: true,
@@ -1576,14 +1660,14 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     this.reportesDiarios = [newReporte, ...this.reportesDiarios];
     this.notSavedChanges = true;
     
-    setTimeout(() => {
+   /* setTimeout(() => {
       if (this.reportesGridApi) {
         this.reportesGridApi.startEditingCell({
           rowIndex: 0,
           colKey: 'date'
         });
       }
-    }, 0);
+    }, 0);*/
   }
 
 
@@ -1709,12 +1793,14 @@ async saveChangesMaterial() {
   
   const newRows = this.materiales.filter(row => row.__isNew);
   const modifiedRows = this.materiales.filter(row => row.__modified && !row.__isNew);
-  /*const invalidNewRows = newRows.filter(item => !item.date || !item.supervisor);
   
-  if (invalidNewRows.length > 0) {
-    alerts.basicAlert('Añadir entrada', 'Debe introducir la fecha y supervisor antes de guardar.', 'error');
+  // Validación básica para materiales
+  const invalidRows = newRows.filter(item => !item.idResource || !item.quantity);
+  
+  if (invalidRows.length > 0) {
+    alerts.basicAlert('Error', 'Debe completar material y cantidad antes de guardar.', 'error');
     return;
-  }*/
+  }
 
   if (newRows.length === 0 && modifiedRows.length === 0) {
     alerts.basicAlert('Info', 'No hay cambios para guardar', 'info');
@@ -1777,6 +1863,11 @@ async saveChangesMaterial() {
     console.log('Recargando datos desde el servidor...');
     await this.loadDailyReports();
     console.log('Datos recargados exitosamente');
+    this.materiales.forEach(item => {
+        delete item.__isNew;
+        delete item.__modified;
+      });
+
 
   } catch (error: any) {
     console.error('=== ERROR DETALLADO ===');
@@ -1878,7 +1969,12 @@ async saveChangesEquipos() {
     this.autoUpdatePdf()
     this.notSavedEquipoChanges = false;
     
-    // Recargar datos desde el servidor
+    // Recargar datos desde el servidor 
+    this.equipos.forEach(item => {
+        delete item.__isNew;
+        delete item.__modified;
+      });
+
     console.log('Recargando datos desde el servidor...');
     await this.loadDailyReports();
     console.log('Datos recargados exitosamente');
@@ -2526,7 +2622,7 @@ async saveChangesEquipos() {
     const tempId = `temp_personal_${this.tempPersonalIdCounter++}`;
    
     const newPersonal = {
-      id: tempId,
+      //id: tempId,
       idOt: parseInt(this.selectedOt.id),
       idReporte: this.selectedReporteId,
       idResource: null, // Se almacenará el ID del empleado
@@ -2576,7 +2672,7 @@ async saveChangesEquipos() {
 
     const tempId = `temp_material_${this.tempPersonalIdCounter++}`;
     const newMaterial = {
-      id: 0,
+      //id: tempId,
       idOt: parseInt(this.selectedOt.id),
       idReporte: this.selectedReporteId,
       idResource: '', // Inicializar como string vacío para consistencia
@@ -2596,13 +2692,10 @@ async saveChangesEquipos() {
 
     setTimeout(() => {
       if (this.materialesGridApi) {
-        this.materialesGridApi.setGridOption('rowData', this.materiales);
-        setTimeout(() => {
           this.materialesGridApi.startEditingCell({
             rowIndex: 0,
-            colKey: 'idResource'
-          });
-        }, 100);
+          colKey: 'idResource'
+        });
       }
     }, 0);
   }
@@ -2627,7 +2720,7 @@ async saveChangesEquipos() {
 
     const tempId = `temp_equipo_${this.tempPersonalIdCounter++}`;
     const newEquipo = {
-      id: 0,
+      //id: tempId,
       idOt: parseInt(this.selectedOt.id),
       idReporte: this.selectedReporteId,
       idResource: null, // Se almacenará el ID del equipo
@@ -2647,13 +2740,10 @@ async saveChangesEquipos() {
     
     setTimeout(() => {
       if (this.equiposGridApi) {
-        this.equiposGridApi.setGridOption('rowData', this.equipos);
-        setTimeout(() => {
           this.equiposGridApi.startEditingCell({
-            rowIndex: 0,
-            colKey: 'description'
-          });
-        }, 100);
+           rowIndex: 0,
+          colKey: 'idResource'
+        });
       }
     }, 0);
   }
@@ -2866,7 +2956,16 @@ async saveChangesEquipos() {
     console.log('Obteniendo materiales para reporte ID:', selectedReporteId);
     this.logbookService.getInfoByReporte(selectedReporteId, "MATERIAL").subscribe(
       (data: any) => {
-        this.materiales = data.data;
+        // Procesar los datos del servidor para evitar duplicaciones
+        this.materiales = data.data.map((material: any, index: number) => ({
+          ...material,
+          // Generar ID único si viene con 0 o no tiene ID válido
+          id: material.id && material.id !== 0 ? material.id : `server_material_${selectedReporteId}_${index}_${Date.now()}`,
+          // Marcar como existente del servidor (no nuevo)
+          __isNew: false,
+          __modified: false
+        }));
+        console.log('Materiales procesados desde servidor:', this.materiales);
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -2876,7 +2975,16 @@ async saveChangesEquipos() {
     console.log('Obteniendo equipos para reporte ID:', selectedReporteId);
     this.logbookService.getInfoByReporte(selectedReporteId, "EQUIPMENT").subscribe(
       (data: any) => {
-        this.equipos = data.data;
+        // Procesar los datos del servidor para evitar duplicaciones
+        this.equipos = data.data.map((equipo: any, index: number) => ({
+          ...equipo,
+          // Generar ID único si viene con 0 o no tiene ID válido
+          id: equipo.id && equipo.id !== 0 ? equipo.id : `server_equipo_${selectedReporteId}_${index}_${Date.now()}`,
+          // Marcar como existente del servidor (no nuevo)
+          __isNew: false,
+          __modified: false
+        }));
+        console.log('Equipos procesados desde servidor:', this.equipos);
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -2884,8 +2992,16 @@ async saveChangesEquipos() {
    obtenerPersonal(selectedReporteId: any) {
     this.logbookService.getInfoByReporte(selectedReporteId, "PERSONAL").subscribe(
       (data: any) => {
-        this.personal = data.data;
-        //console.log(this.personal)
+        // Procesar los datos del servidor para evitar duplicaciones
+        this.personal = data.data.map((persona: any, index: number) => ({
+          ...persona,
+          // Generar ID único si viene con 0 o no tiene ID válido
+          id: persona.id && persona.id !== 0 ? persona.id : `server_personal_${selectedReporteId}_${index}_${Date.now()}`,
+          // Marcar como existente del servidor (no nuevo)
+          __isNew: false,
+          __modified: false
+        }));
+        console.log('Personal procesado desde servidor:', this.personal);
         //this.updateExcelService.dataPersonal(this.personal)
       },
       (error) => console.error('Error fetching data:', error)
@@ -2903,7 +3019,16 @@ async saveChangesEquipos() {
   obtenerNotas(selectedReporteId: any) {
     this.logbookService.getInfoByReporte(selectedReporteId, "NOTE").subscribe(
       (data: any) => {
-        this.notas = data.data;
+        // Procesar los datos del servidor para evitar duplicaciones
+        this.notas = data.data.map((nota: any, index: number) => ({
+          ...nota,
+          // Generar ID único si viene con 0 o no tiene ID válido
+          id: nota.id && nota.id !== 0 ? nota.id : `server_nota_${selectedReporteId}_${index}_${Date.now()}`,
+          // Marcar como existente del servidor (no nuevo)
+          __isNew: false,
+          __modified: false
+        }));
+        console.log('Notas procesadas desde servidor:', this.notas);
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -2912,8 +3037,16 @@ async saveChangesEquipos() {
   obtenerConcep(selectedReporteId: any) {
     this.logbookService.getInfoByReporte(selectedReporteId, "CONCEPT").subscribe(
       (data: any) => {
-        this.conceptos = data.data;
-        
+        // Procesar los datos del servidor para evitar duplicaciones
+        this.conceptos = data.data.map((concepto: any, index: number) => ({
+          ...concepto,
+          // Generar ID único si viene con 0 o no tiene ID válido
+          id: concepto.id && concepto.id !== 0 ? concepto.id : `server_concepto_${selectedReporteId}_${index}_${Date.now()}`,
+          // Marcar como existente del servidor (no nuevo)
+          __isNew: false,
+          __modified: false
+        }));
+        console.log('Conceptos procesados desde servidor:', this.conceptos);
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -3204,28 +3337,36 @@ async saveChangesEquipos() {
       return;
     }
 
-    const newEquipo = {
-      id: 0,
+    // Generar un ID temporal único
+    const tempId = Date.now() + Math.random();
+    
+    // Calcular el siguiente orden basado en conceptos existentes
+    const maxOrden = this.conceptos.length > 0 
+      ? Math.max(...this.conceptos.map(c => c.orden || 0)) 
+      : 0;
+
+    const newConcepto = {
+      id: tempId,
       idOt: parseInt(this.selectedOt.id),
       idReporte: this.selectedReporteId,
-      idResource: null, // Se almacenará el ID del equipo
+      idResource: null, // Se almacenará el ID del concepto
       position: '', 
       quantity: 1,
       start: this.selectedReporteHoraInicio + ':00',
       end: this.selectedReporteHoraTermino + ':00',
       date: this.selectedReporteFecha,
       typeNote: 'CONCEPT',
-      description: 'NOTAS',
-      orden: 1,
+      description: 'SIN DESCRIPCIÓN',
+      orden: maxOrden + 1,
       __isNew: true
     };
 
-    this.conceptos = [newEquipo, ...this.conceptos];
+    this.conceptos = [newConcepto, ...this.conceptos];
     this.notSavedConceptoChanges = true;
     
     setTimeout(() => {
       if (this.conceptosGridApi) {
-        this.conceptosGridApi.setGridOption('rowData', this.conceptos);
+        //this.conceptosGridApi.setGridOption('rowData', this.conceptos);
         setTimeout(() => {
           this.conceptosGridApi.startEditingCell({
             rowIndex: 0,
@@ -3303,7 +3444,11 @@ async saveChangesEquipos() {
     alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
     this.autoUpdatePdf()
     this.notSavedConceptoChanges = false;
-    
+    this.conceptos.forEach(item => {
+        delete item.__isNew;
+        delete item.__modified;
+      });
+
     // Recargar datos desde el servidor
     console.log('Recargando datos desde el servidor...');
     await this.loadDailyReports();
@@ -3448,7 +3593,7 @@ async saveChangesEquipos() {
 
     setTimeout(() => {
       if (this.notasGridApi) {
-        this.notasGridApi.setGridOption('rowData', this.notas);
+        //this.notasGridApi.setGridOption('rowData', this.notas);
         setTimeout(() => {
           this.notasGridApi.startEditingCell({
             rowIndex: 0,
@@ -3533,7 +3678,11 @@ async saveChangesEquipos() {
     alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
     this.autoUpdatePdf()
     this.notSavedNoteChanges = false;
-    
+    this.notas.forEach(item => {
+        delete item.__isNew;
+        delete item.__modified;
+      });
+
     // Recargar datos desde el servidor
     console.log('Recargando datos desde el servidor...');
     await this.loadDailyReports();

@@ -597,14 +597,7 @@ export const routes: Routes = [
                   ).then((d) => d.DetailsComponent),
               },
             ],
-          },
-          {
-            path: 'ot-app',
-            loadComponent: () =>
-              import(
-                './domains/ModProjects/components/ot-app/ot-app.component'
-              ).then((c) => c.OtAppComponent),
-          },
+          }
         ],
       },
       {
