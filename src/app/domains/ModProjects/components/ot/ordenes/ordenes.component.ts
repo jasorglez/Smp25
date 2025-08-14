@@ -1643,9 +1643,9 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     const newReporte = {
       id: tempId,
       idOt: parseInt(this.selectedOt.id),
-      date: '',
-      startTime: '',
-      endTime: '',
+      date: new Date().toISOString().split('T')[0] + 'T00:00:00',
+      startTime: '08:00:00',
+      endTime: '19:00:00',
       supervisor: 'SIN SUPERVISOR',
       type: this.selectedReporteArea,
       description: 'SIN DESCRIPCIÓN',
@@ -1659,14 +1659,14 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     this.reportesDiarios = [newReporte, ...this.reportesDiarios];
     this.notSavedChanges = true;
     
-    setTimeout(() => {
+   /* setTimeout(() => {
       if (this.reportesGridApi) {
         this.reportesGridApi.startEditingCell({
           rowIndex: 0,
           colKey: 'date'
         });
       }
-    }, 0);
+    }, 0);*/
   }
 
 
