@@ -165,39 +165,10 @@ export class MaterialesMaestroComponent {
       headerHeight: 35,
       rowHeight: 35,
       animateRows: true,
-      treeData: true,
-      groupDefaultExpanded: 1, // Expandir primer nivel por defecto
-      getDataPath: (data: any) => data.orgHierarchy,
-      // Grid en modo solo lectura - sin edición inline
+      // Grid en modo solo lectura - sin edición inline - SIN treeData
       suppressClickEdit: true,
       singleClickEdit: false,
       stopEditingWhenGridLosesFocus: true,
-      autoGroupColumnDef: {
-        headerName: 'Jerarquía',
-        minWidth: 250,
-        editable: false,
-        cellRendererParams: {
-          suppressCount: true,
-          suppressDoubleClickExpansion: true, // Prevenir expansión en doble click
-          innerRenderer: (params: any) => {
-            if (params.data) {
-              const level = params.data.nodeLevel;
-              const icons = {
-                category: '<i class="bi bi-folder-fill text-primary"></i>',
-                family: '<i class="bi bi-collection-fill text-info"></i>', 
-                subfamily: '<i class="bi bi-file-earmark-fill text-secondary"></i>'
-              };
-              const levelNames = {
-                category: 'Categoría',
-                family: 'Familia',
-                subfamily: 'Subfamilia'
-              };
-              return `${icons[level] || icons.subfamily} ${levelNames[level] || 'Elemento'}`;
-            }
-            return '';
-          }
-        }
-      },
       onRowSelected: (event: any) => {
         if (event.node.isSelected()) {
           this.onRowSelected(event);
@@ -237,35 +208,44 @@ export class MaterialesMaestroComponent {
         field: 'categoryDisplay', 
         headerName: 'Categoría', 
         editable: false,
-        flex: 1.5,
+        flex: 2,
         cellClass: 'readonly-cell',
         cellRenderer: (params: any) => {
-          if (!params.data || params.data.nodeLevel !== 'category') return '';
-          const familyCount = this.getFamilyCountForCategory(params.data.originalId);
-          return `${params.data.description} (${familyCount})`;
+          if (!params.data) return '';
+          if (params.data.nodeLevel === 'category') {
+            const familyCount = this.getFamilyCountForCategory(params.data.originalId);
+            return `<i class="bi bi-folder-fill text-primary me-2"></i>${params.data.description} (${familyCount})`;
+          }
+          return '';
         }
       },
       { 
         field: 'familyDisplay', 
         headerName: 'Familia', 
         editable: false,
-        flex: 1.5,
+        flex: 2,
         cellClass: 'readonly-cell',
         cellRenderer: (params: any) => {
-          if (!params.data || params.data.nodeLevel !== 'family') return '';
-          const subfamilyCount = this.getSubfamilyCountForFamily(params.data.originalId);
-          return `${params.data.description} (${subfamilyCount})`;
+          if (!params.data) return '';
+          if (params.data.nodeLevel === 'family') {
+            const subfamilyCount = this.getSubfamilyCountForFamily(params.data.originalId);
+            return `<i class="bi bi-collection-fill text-info me-2"></i>${params.data.description} (${subfamilyCount})`;
+          }
+          return '';
         }
       },
       { 
         field: 'subfamilyDisplay', 
         headerName: 'Sub Familia', 
         editable: false,
-        flex: 1.5,
+        flex: 2,
         cellClass: 'readonly-cell',
         cellRenderer: (params: any) => {
-          if (!params.data || params.data.nodeLevel !== 'subfamily') return '';
-          return params.data.description || '';
+          if (!params.data) return '';
+          if (params.data.nodeLevel === 'subfamily') {
+            return `<i class="bi bi-file-earmark-fill text-secondary me-2"></i>${params.data.description}`;
+          }
+          return '';
         }
       },
             { 
@@ -352,20 +332,29 @@ export class MaterialesMaestroComponent {
 
 
 
-  // Aplanar datos del árbol para AG-Grid
+  // Aplanar datos del árbol para AG-Grid - Vista plana simple
   flattenTreeData(): any[] {
-    const flattened = [];
+    const flattened: any[] = [];
     
-    const flatten = (items: any[]) => {
-      items.forEach(item => {
-        flattened.push(item);
-        if (item.children && item.children.length > 0) {
-          flatten(item.children);
-        }
-      });
-    };
+    // Recorrer categorías
+    this.treeData.forEach(category => {
+      flattened.push(category);
+      
+      // Recorrer familias de la categoría
+      if (category.children && category.children.length > 0) {
+        category.children.forEach(family => {
+          flattened.push(family);
+          
+          // Recorrer subfamilias de la familia
+          if (family.children && family.children.length > 0) {
+            family.children.forEach(subfamily => {
+              flattened.push(subfamily);
+            });
+          }
+        });
+      }
+    });
     
-    flatten(this.treeData);
     return flattened;
   }
 
