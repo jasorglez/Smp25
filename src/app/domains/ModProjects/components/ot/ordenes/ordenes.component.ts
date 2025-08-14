@@ -47,6 +47,7 @@ interface OrdenesData {
   assignedTo: string;
   description: string;
   nameConsumer: string;
+  area: string;
 }
 
 // Interfaces para la data de las pestañas
