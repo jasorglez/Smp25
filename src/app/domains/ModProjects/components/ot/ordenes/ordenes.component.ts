@@ -1793,12 +1793,14 @@ async saveChangesMaterial() {
   
   const newRows = this.materiales.filter(row => row.__isNew);
   const modifiedRows = this.materiales.filter(row => row.__modified && !row.__isNew);
-  /*const invalidNewRows = newRows.filter(item => !item.date || !item.supervisor);
   
-  if (invalidNewRows.length > 0) {
-    alerts.basicAlert('Añadir entrada', 'Debe introducir la fecha y supervisor antes de guardar.', 'error');
+  // Validación básica para materiales
+  const invalidRows = newRows.filter(item => !item.idResource || !item.quantity);
+  
+  if (invalidRows.length > 0) {
+    alerts.basicAlert('Error', 'Debe completar material y cantidad antes de guardar.', 'error');
     return;
-  }*/
+  }
 
   if (newRows.length === 0 && modifiedRows.length === 0) {
     alerts.basicAlert('Info', 'No hay cambios para guardar', 'info');
@@ -1861,6 +1863,11 @@ async saveChangesMaterial() {
     console.log('Recargando datos desde el servidor...');
     await this.loadDailyReports();
     console.log('Datos recargados exitosamente');
+    this.materiales.forEach(item => {
+        delete item.__isNew;
+        delete item.__modified;
+      });
+
 
   } catch (error: any) {
     console.error('=== ERROR DETALLADO ===');
@@ -1962,7 +1969,12 @@ async saveChangesEquipos() {
     this.autoUpdatePdf()
     this.notSavedEquipoChanges = false;
     
-    // Recargar datos desde el servidor
+    // Recargar datos desde el servidor 
+    this.equipos.forEach(item => {
+        delete item.__isNew;
+        delete item.__modified;
+      });
+
     console.log('Recargando datos desde el servidor...');
     await this.loadDailyReports();
     console.log('Datos recargados exitosamente');
@@ -2610,7 +2622,7 @@ async saveChangesEquipos() {
     const tempId = `temp_personal_${this.tempPersonalIdCounter++}`;
    
     const newPersonal = {
-      id: tempId,
+      //id: tempId,
       idOt: parseInt(this.selectedOt.id),
       idReporte: this.selectedReporteId,
       idResource: null, // Se almacenará el ID del empleado
@@ -2660,7 +2672,7 @@ async saveChangesEquipos() {
 
     const tempId = `temp_material_${this.tempPersonalIdCounter++}`;
     const newMaterial = {
-      id: 0,
+      //id: tempId,
       idOt: parseInt(this.selectedOt.id),
       idReporte: this.selectedReporteId,
       idResource: '', // Inicializar como string vacío para consistencia
@@ -2680,13 +2692,10 @@ async saveChangesEquipos() {
 
     setTimeout(() => {
       if (this.materialesGridApi) {
-        this.materialesGridApi.setGridOption('rowData', this.materiales);
-        setTimeout(() => {
           this.materialesGridApi.startEditingCell({
             rowIndex: 0,
-            colKey: 'idResource'
-          });
-        }, 100);
+          colKey: 'idResource'
+        });
       }
     }, 0);
   }
@@ -2711,7 +2720,7 @@ async saveChangesEquipos() {
 
     const tempId = `temp_equipo_${this.tempPersonalIdCounter++}`;
     const newEquipo = {
-      id: 0,
+      //id: tempId,
       idOt: parseInt(this.selectedOt.id),
       idReporte: this.selectedReporteId,
       idResource: null, // Se almacenará el ID del equipo
@@ -2731,13 +2740,10 @@ async saveChangesEquipos() {
     
     setTimeout(() => {
       if (this.equiposGridApi) {
-        this.equiposGridApi.setGridOption('rowData', this.equipos);
-        setTimeout(() => {
           this.equiposGridApi.startEditingCell({
-            rowIndex: 0,
-            colKey: 'description'
-          });
-        }, 100);
+           rowIndex: 0,
+          colKey: 'idResource'
+        });
       }
     }, 0);
   }
@@ -2950,7 +2956,16 @@ async saveChangesEquipos() {
     console.log('Obteniendo materiales para reporte ID:', selectedReporteId);
     this.logbookService.getInfoByReporte(selectedReporteId, "MATERIAL").subscribe(
       (data: any) => {
-        this.materiales = data.data;
+        // Procesar los datos del servidor para evitar duplicaciones
+        this.materiales = data.data.map((material: any, index: number) => ({
+          ...material,
+          // Generar ID único si viene con 0 o no tiene ID válido
+          id: material.id && material.id !== 0 ? material.id : `server_material_${selectedReporteId}_${index}_${Date.now()}`,
+          // Marcar como existente del servidor (no nuevo)
+          __isNew: false,
+          __modified: false
+        }));
+        console.log('Materiales procesados desde servidor:', this.materiales);
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -2960,7 +2975,16 @@ async saveChangesEquipos() {
     console.log('Obteniendo equipos para reporte ID:', selectedReporteId);
     this.logbookService.getInfoByReporte(selectedReporteId, "EQUIPMENT").subscribe(
       (data: any) => {
-        this.equipos = data.data;
+        // Procesar los datos del servidor para evitar duplicaciones
+        this.equipos = data.data.map((equipo: any, index: number) => ({
+          ...equipo,
+          // Generar ID único si viene con 0 o no tiene ID válido
+          id: equipo.id && equipo.id !== 0 ? equipo.id : `server_equipo_${selectedReporteId}_${index}_${Date.now()}`,
+          // Marcar como existente del servidor (no nuevo)
+          __isNew: false,
+          __modified: false
+        }));
+        console.log('Equipos procesados desde servidor:', this.equipos);
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -2968,8 +2992,16 @@ async saveChangesEquipos() {
    obtenerPersonal(selectedReporteId: any) {
     this.logbookService.getInfoByReporte(selectedReporteId, "PERSONAL").subscribe(
       (data: any) => {
-        this.personal = data.data;
-        console.log(this.personal)
+        // Procesar los datos del servidor para evitar duplicaciones
+        this.personal = data.data.map((persona: any, index: number) => ({
+          ...persona,
+          // Generar ID único si viene con 0 o no tiene ID válido
+          id: persona.id && persona.id !== 0 ? persona.id : `server_personal_${selectedReporteId}_${index}_${Date.now()}`,
+          // Marcar como existente del servidor (no nuevo)
+          __isNew: false,
+          __modified: false
+        }));
+        console.log('Personal procesado desde servidor:', this.personal);
         //this.updateExcelService.dataPersonal(this.personal)
       },
       (error) => console.error('Error fetching data:', error)
@@ -2987,7 +3019,16 @@ async saveChangesEquipos() {
   obtenerNotas(selectedReporteId: any) {
     this.logbookService.getInfoByReporte(selectedReporteId, "NOTE").subscribe(
       (data: any) => {
-        this.notas = data.data;
+        // Procesar los datos del servidor para evitar duplicaciones
+        this.notas = data.data.map((nota: any, index: number) => ({
+          ...nota,
+          // Generar ID único si viene con 0 o no tiene ID válido
+          id: nota.id && nota.id !== 0 ? nota.id : `server_nota_${selectedReporteId}_${index}_${Date.now()}`,
+          // Marcar como existente del servidor (no nuevo)
+          __isNew: false,
+          __modified: false
+        }));
+        console.log('Notas procesadas desde servidor:', this.notas);
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -2996,8 +3037,16 @@ async saveChangesEquipos() {
   obtenerConcep(selectedReporteId: any) {
     this.logbookService.getInfoByReporte(selectedReporteId, "CONCEPT").subscribe(
       (data: any) => {
-        this.conceptos = data.data;
-        
+        // Procesar los datos del servidor para evitar duplicaciones
+        this.conceptos = data.data.map((concepto: any, index: number) => ({
+          ...concepto,
+          // Generar ID único si viene con 0 o no tiene ID válido
+          id: concepto.id && concepto.id !== 0 ? concepto.id : `server_concepto_${selectedReporteId}_${index}_${Date.now()}`,
+          // Marcar como existente del servidor (no nuevo)
+          __isNew: false,
+          __modified: false
+        }));
+        console.log('Conceptos procesados desde servidor:', this.conceptos);
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -3288,28 +3337,36 @@ async saveChangesEquipos() {
       return;
     }
 
-    const newEquipo = {
-      id: 0,
+    // Generar un ID temporal único
+    const tempId = Date.now() + Math.random();
+    
+    // Calcular el siguiente orden basado en conceptos existentes
+    const maxOrden = this.conceptos.length > 0 
+      ? Math.max(...this.conceptos.map(c => c.orden || 0)) 
+      : 0;
+
+    const newConcepto = {
+      id: tempId,
       idOt: parseInt(this.selectedOt.id),
       idReporte: this.selectedReporteId,
-      idResource: null, // Se almacenará el ID del equipo
+      idResource: null, // Se almacenará el ID del concepto
       position: '', 
       quantity: 1,
       start: this.selectedReporteHoraInicio + ':00',
       end: this.selectedReporteHoraTermino + ':00',
       date: this.selectedReporteFecha,
       typeNote: 'CONCEPT',
-      description: 'NOTAS',
-      orden: 1,
+      description: 'SIN DESCRIPCIÓN',
+      orden: maxOrden + 1,
       __isNew: true
     };
 
-    this.conceptos = [newEquipo, ...this.conceptos];
+    this.conceptos = [newConcepto, ...this.conceptos];
     this.notSavedConceptoChanges = true;
     
     setTimeout(() => {
       if (this.conceptosGridApi) {
-        this.conceptosGridApi.setGridOption('rowData', this.conceptos);
+        //this.conceptosGridApi.setGridOption('rowData', this.conceptos);
         setTimeout(() => {
           this.conceptosGridApi.startEditingCell({
             rowIndex: 0,
@@ -3387,7 +3444,11 @@ async saveChangesEquipos() {
     alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
     this.autoUpdatePdf()
     this.notSavedConceptoChanges = false;
-    
+    this.conceptos.forEach(item => {
+        delete item.__isNew;
+        delete item.__modified;
+      });
+
     // Recargar datos desde el servidor
     console.log('Recargando datos desde el servidor...');
     await this.loadDailyReports();
@@ -3532,7 +3593,7 @@ async saveChangesEquipos() {
 
     setTimeout(() => {
       if (this.notasGridApi) {
-        this.notasGridApi.setGridOption('rowData', this.notas);
+        //this.notasGridApi.setGridOption('rowData', this.notas);
         setTimeout(() => {
           this.notasGridApi.startEditingCell({
             rowIndex: 0,
@@ -3617,7 +3678,11 @@ async saveChangesEquipos() {
     alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
     this.autoUpdatePdf()
     this.notSavedNoteChanges = false;
-    
+    this.notas.forEach(item => {
+        delete item.__isNew;
+        delete item.__modified;
+      });
+
     // Recargar datos desde el servidor
     console.log('Recargando datos desde el servidor...');
     await this.loadDailyReports();
