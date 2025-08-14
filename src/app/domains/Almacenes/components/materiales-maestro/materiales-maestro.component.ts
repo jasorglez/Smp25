@@ -190,21 +190,6 @@ export class MaterialesMaestroComponent {
   get columnDefs(): ColDef[] {
     return [
       { 
-        field: 'description', 
-        headerName: 'Descripción', 
-        editable: false, // Desactivar edición inline
-        flex: 2,
-        cellEditor: 'agTextCellEditor',
-        cellEditorParams: {
-          maxLength: 100
-        },
-        cellClass: 'readonly-cell',
-        cellRenderer: (params: any) => {
-          if (!params.data) return '';
-          return params.value || '<span class="text-muted fst-italic">Sin descripción</span>';
-        },
-      },
-      { 
         field: 'categoryDisplay', 
         headerName: 'Categoría', 
         editable: false,
