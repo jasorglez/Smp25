@@ -233,6 +233,41 @@ export class MaterialesMaestroComponent {
           return params.value || '<span class="text-muted fst-italic">Sin descripción</span>';
         },
       },
+      { 
+        field: 'categoryDisplay', 
+        headerName: 'Categoría', 
+        editable: false,
+        flex: 1.5,
+        cellClass: 'readonly-cell',
+        cellRenderer: (params: any) => {
+          if (!params.data || params.data.nodeLevel !== 'category') return '';
+          const familyCount = this.getFamilyCountForCategory(params.data.originalId);
+          return `${params.data.description} (${familyCount})`;
+        }
+      },
+      { 
+        field: 'familyDisplay', 
+        headerName: 'Familia', 
+        editable: false,
+        flex: 1.5,
+        cellClass: 'readonly-cell',
+        cellRenderer: (params: any) => {
+          if (!params.data || params.data.nodeLevel !== 'family') return '';
+          const subfamilyCount = this.getSubfamilyCountForFamily(params.data.originalId);
+          return `${params.data.description} (${subfamilyCount})`;
+        }
+      },
+      { 
+        field: 'subfamilyDisplay', 
+        headerName: 'Sub Familia', 
+        editable: false,
+        flex: 1.5,
+        cellClass: 'readonly-cell',
+        cellRenderer: (params: any) => {
+          if (!params.data || params.data.nodeLevel !== 'subfamily') return '';
+          return params.data.description || '';
+        }
+      },
             { 
         field: 'valueAdditionBit', 
         headerName: 'Materia Prima', 
@@ -395,6 +430,31 @@ export class MaterialesMaestroComponent {
   }
 
 
+
+  // ========== MÉTODOS HELPER PARA CONTADORES ==========
+  
+  // Contar familias de una categoría
+  private getFamilyCountForCategory(categoryId: string | number): number {
+    if (!this.treeData || !categoryId) return 0;
+    
+    const category = this.treeData.find(cat => cat.originalId === categoryId);
+    return category?.children?.length || 0;
+  }
+  
+  // Contar subfamilias de una familia
+  private getSubfamilyCountForFamily(familyId: string | number): number {
+    if (!this.treeData || !familyId) return 0;
+    
+    for (const category of this.treeData) {
+      if (category.children) {
+        const family = category.children.find(fam => fam.originalId === familyId);
+        if (family) {
+          return family.children?.length || 0;
+        }
+      }
+    }
+    return 0;
+  }
 
   // ========== MÉTODOS PARA MODALES ==========
   
