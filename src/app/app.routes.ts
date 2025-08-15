@@ -196,13 +196,13 @@ export const routes: Routes = [
                 './domains/Almacenes/pages/materia-prima/materia-prima.component'
               ).then((m) => m.MateriaPrimaComponent),
             children: [
-              { path: '', redirectTo: 'materiales-maestro', pathMatch: 'full' },
+              { path: '', redirectTo: 'cat-fam-sub', pathMatch: 'full' },
               {
-                path: 'materiales-maestro',
+                path: 'cat-fam-sub',
                 loadComponent: () =>
                   import(
-                    './domains/Almacenes/components/materiales-maestro/materiales-maestro.component'
-                  ).then((m) => m.MaterialesMaestroComponent),
+                    './domains/Almacenes/components/cat-fam-sub/cat-fam-sub.component'
+                  ).then((m) => m.CatFamSubComponent),
                 canDeactivate: [UnsavedChangesGuard],
               },
               {

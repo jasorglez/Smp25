@@ -100,19 +100,20 @@ export class CatFamSubComponent {
     }
   }
 
-  // Construir estructura de árbol de 3 niveles
+  // Construir estructura plana para 3 columnas con control de expansión
   private buildTreeStructure(categories: any[], families: any[], subfamilies: any[]) {
     this.treeData = [];
     
-    // Agregar categorías (nivel 1)
+    // Agregar categorías (nivel 1) - siempre visibles
     categories.forEach(category => {
       const categoryNode = {
         ...category,
         nodeLevel: 'category',
-        orgHierarchy: [category.description],
-        originalId: category.id, // ID real del servidor
-        children: []
+        originalId: category.id,
+        isExpanded: true, // Por defecto expandido
+        isVisible: true
       };
+      this.treeData.push(categoryNode);
       
       // Buscar familias de esta categoría (nivel 2)
       const categoryFamilies = families.filter(family => family.parentId === category.id);
@@ -121,11 +122,12 @@ export class CatFamSubComponent {
         const familyNode = {
           ...family,
           nodeLevel: 'family',
-          orgHierarchy: [category.description, family.description],
-          originalId: family.id, // ID real del servidor
+          originalId: family.id,
           parentCategoryId: category.id,
-          children: []
+          isExpanded: true, // Por defecto expandido
+          isVisible: true
         };
+        this.treeData.push(familyNode);
         
         // Buscar subfamilias de esta familia (nivel 3)
         const familySubfamilies = subfamilies.filter(subfamily => 
@@ -136,27 +138,17 @@ export class CatFamSubComponent {
           const subfamilyNode = {
             ...subfamily,
             nodeLevel: 'subfamily',
-            orgHierarchy: [category.description, family.description, subfamily.description],
-            originalId: subfamily.id, // ID real del servidor
+            originalId: subfamily.id,
             parentCategoryId: category.id,
-            parentFamilyId: family.id
+            parentFamilyId: family.id,
+            isVisible: true
           };
-          
-          familyNode.children.push(subfamilyNode);
+          this.treeData.push(subfamilyNode);
         });
-        
-        categoryNode.children.push(familyNode);
       });
-      
-      this.treeData.push(categoryNode);
     });
 
-    console.log('Estructura jerárquica construida:', this.treeData);
-    console.log('IDs encontrados:', {
-      categories: categories.map(c => c.id),
-      families: families.map(f => f.id),
-      subfamilies: subfamilies.map(s => s.id)
-    });
+    console.log('Estructura plana construida:', this.treeData);
   }
 
   // Configuración del grid
@@ -165,16 +157,7 @@ export class CatFamSubComponent {
       headerHeight: 35,
       rowHeight: 35,
       animateRows: true,
-      treeData: true,
-      groupDefaultExpanded: -1, // Expandir todos los niveles por defecto
-      getDataPath: (data: any) => data.orgHierarchy,
-      // Usar solo la columna automática de AG-Grid para jerarquía
-      autoGroupColumnDef: {
-        headerName: 'Categorías / Familias / Sub-Familias',
-        field: 'description',
-        flex: 1,
-        cellRenderer: 'agGroupCellRenderer'
-      },
+      treeData: false, // Cambiar a false para usar 3 columnas separadas
       // Grid en modo solo lectura - sin edición inline
       suppressClickEdit: true,
       singleClickEdit: false,
@@ -196,10 +179,61 @@ export class CatFamSubComponent {
     };
   }
 
-  // Definición de columnas - Sin columnas adicionales, solo usar autoGroupColumnDef
+  // Definición de 3 columnas separadas con chevrons funcionales
   get columnDefs(): ColDef[] {
     return [
-      // No definir columnas adicionales - AG-Grid usará solo autoGroupColumnDef
+      {
+        headerName: 'Categoría',
+        field: 'categoryDisplay',
+        width: 300,
+        cellRenderer: (params: any) => {
+          if (params.data.nodeLevel === 'category') {
+            const childCount = this.getFamilyCountForCategory(params.data.originalId);
+            const isExpanded = params.data.isExpanded || false;
+            const chevron = isExpanded ? '▼' : '▶';
+            return `<span class="chevron-icon" data-action="toggle" style="cursor: pointer; margin-right: 5px;">${chevron}</span> ${params.data.description} (${childCount})`;
+          }
+          return '';
+        },
+        onCellClicked: (event: any) => {
+          if (event.event.target.classList.contains('chevron-icon') || 
+              event.event.target.getAttribute('data-action') === 'toggle') {
+            this.toggleCategoryExpansion(event.data);
+          }
+        }
+      },
+      {
+        headerName: 'Familia',
+        field: 'familyDisplay',
+        width: 300,
+        cellRenderer: (params: any) => {
+          if (params.data.nodeLevel === 'family') {
+            const childCount = this.getSubfamilyCountForFamily(params.data.originalId);
+            const isExpanded = params.data.isExpanded || false;
+            const chevron = childCount > 0 ? (isExpanded ? '▼' : '▶') : '';
+            const chevronHtml = chevron ? `<span class="chevron-icon" data-action="toggle" style="cursor: pointer; margin-right: 5px;">${chevron}</span>` : '<span style="margin-right: 15px;"></span>';
+            return `${chevronHtml} ${params.data.description} ${childCount > 0 ? '(' + childCount + ')' : ''}`;
+          }
+          return '';
+        },
+        onCellClicked: (event: any) => {
+          if (event.event.target.classList.contains('chevron-icon') || 
+              event.event.target.getAttribute('data-action') === 'toggle') {
+            this.toggleFamilyExpansion(event.data);
+          }
+        }
+      },
+      {
+        headerName: 'Sub Familia',
+        field: 'subfamilyDisplay',
+        width: 300,
+        cellRenderer: (params: any) => {
+          if (params.data.nodeLevel === 'subfamily') {
+            return `<span style="margin-right: 15px;"></span> ${params.data.description}`;
+          }
+          return '';
+        }
+      }
     ];
   }
 
@@ -256,10 +290,72 @@ export class CatFamSubComponent {
 
 
 
-  // Retornar datos en estructura de árbol para AG-Grid
+  // Retornar datos filtrados por visibilidad para AG-Grid
   flattenTreeData(): any[] {
-    // Para treeData, AG-Grid necesita la estructura jerárquica completa
-    return this.treeData;
+    return this.treeData.filter(item => item.isVisible);
+  }
+
+  // Métodos para manejar expand/collapse
+  toggleCategoryExpansion(categoryData: any) {
+    const category = this.treeData.find(item => 
+      item.nodeLevel === 'category' && item.originalId === categoryData.originalId
+    );
+    
+    if (category) {
+      category.isExpanded = !category.isExpanded;
+      
+      // Mostrar/ocultar familias de esta categoría
+      this.treeData.forEach(item => {
+        if (item.nodeLevel === 'family' && item.parentCategoryId === category.originalId) {
+          item.isVisible = category.isExpanded;
+          
+          // Si ocultamos la familia, también ocultar sus subfamilias
+          if (!category.isExpanded) {
+            this.treeData.forEach(subItem => {
+              if (subItem.nodeLevel === 'subfamily' && subItem.parentFamilyId === item.originalId) {
+                subItem.isVisible = false;
+              }
+            });
+          } else {
+            // Si mostramos la familia, mostrar subfamilias solo si la familia está expandida
+            if (item.isExpanded) {
+              this.treeData.forEach(subItem => {
+                if (subItem.nodeLevel === 'subfamily' && subItem.parentFamilyId === item.originalId) {
+                  subItem.isVisible = true;
+                }
+              });
+            }
+          }
+        }
+      });
+      
+      // Refrescar el grid
+      if (this.gridApi) {
+        this.gridApi.setRowData(this.flattenTreeData());
+      }
+    }
+  }
+
+  toggleFamilyExpansion(familyData: any) {
+    const family = this.treeData.find(item => 
+      item.nodeLevel === 'family' && item.originalId === familyData.originalId
+    );
+    
+    if (family) {
+      family.isExpanded = !family.isExpanded;
+      
+      // Mostrar/ocultar subfamilias de esta familia
+      this.treeData.forEach(item => {
+        if (item.nodeLevel === 'subfamily' && item.parentFamilyId === family.originalId) {
+          item.isVisible = family.isExpanded;
+        }
+      });
+      
+      // Refrescar el grid
+      if (this.gridApi) {
+        this.gridApi.setRowData(this.flattenTreeData());
+      }
+    }
   }
 
 
