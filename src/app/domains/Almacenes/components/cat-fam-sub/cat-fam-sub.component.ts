@@ -210,9 +210,8 @@ export class CatFamSubComponent {
           if (params.data.nodeLevel === 'family') {
             const childCount = this.getSubfamilyCountForFamily(params.data.originalId);
             const isExpanded = params.data.isExpanded || false;
-            const chevron = childCount > 0 ? (isExpanded ? '▼' : '▶') : '';
-            const chevronHtml = chevron ? `<span class="chevron-icon" data-action="toggle" style="cursor: pointer; margin-right: 5px;">${chevron}</span>` : '<span style="margin-right: 15px;"></span>';
-            return `${chevronHtml} ${params.data.description} ${childCount > 0 ? '(' + childCount + ')' : ''}`;
+            const chevron = isExpanded ? '▼' : '▶';
+            return `<span class="chevron-icon" data-action="toggle" style="cursor: pointer; margin-right: 5px;">${chevron}</span> ${params.data.description} (${childCount})`;
           }
           return '';
         },
