@@ -168,7 +168,13 @@ export class CatFamSubComponent {
       treeData: true,
       groupDefaultExpanded: -1, // Expandir todos los niveles por defecto
       getDataPath: (data: any) => data.orgHierarchy,
-      suppressAutoGroupColumn: true, // Ocultar columna de agrupación automática
+      // Usar solo la columna automática de AG-Grid para jerarquía
+      autoGroupColumnDef: {
+        headerName: 'Categorías / Familias / Sub-Familias',
+        field: 'description',
+        flex: 1,
+        cellRenderer: 'agGroupCellRenderer'
+      },
       // Grid en modo solo lectura - sin edición inline
       suppressClickEdit: true,
       singleClickEdit: false,
@@ -190,80 +196,10 @@ export class CatFamSubComponent {
     };
   }
 
-  // Definición de columnas
+  // Definición de columnas - Sin columnas adicionales, solo usar autoGroupColumnDef
   get columnDefs(): ColDef[] {
     return [
-      { 
-        field: 'categoryDisplay', 
-        headerName: 'Categoría', 
-        editable: false,
-        flex: 2,
-        cellClass: 'readonly-cell',
-        cellRenderer: (params: any) => {
-          if (!params.data) return '';
-          if (params.data.nodeLevel === 'category') {
-            const familyCount = this.getFamilyCountForCategory(params.data.originalId);
-            return `<i class="bi bi-folder-fill text-primary me-2"></i>${params.data.description} (${familyCount})`;
-          }
-          return '';
-        }
-      },
-      { 
-        field: 'familyDisplay', 
-        headerName: 'Familia', 
-        editable: false,
-        flex: 2,
-        cellClass: 'readonly-cell',
-        cellRenderer: (params: any) => {
-          if (!params.data) return '';
-          if (params.data.nodeLevel === 'family') {
-            const subfamilyCount = this.getSubfamilyCountForFamily(params.data.originalId);
-            return `<i class="bi bi-collection-fill text-info me-2"></i>${params.data.description} (${subfamilyCount})`;
-          }
-          return '';
-        }
-      },
-      { 
-        field: 'subfamilyDisplay', 
-        headerName: 'Sub Familia', 
-        editable: false,
-        flex: 2,
-        cellClass: 'readonly-cell',
-        cellRenderer: (params: any) => {
-          if (!params.data) return '';
-          if (params.data.nodeLevel === 'subfamily') {
-            return `<i class="bi bi-file-earmark-fill text-secondary me-2"></i>${params.data.description}`;
-          }
-          return '';
-        }
-      },
-      { 
-        field: 'valueAdditionBit', 
-        headerName: 'Materia Prima', 
-        editable: false,
-        flex: 1,
-        cellRenderer: 'agCheckboxCellRenderer',
-        cellEditor: 'agCheckboxCellEditor',
-        valueFormatter: (params) => params.value === 1 ? 'Sí' : 'No'
-      },
-      { 
-        field: 'valueAdditionBit2', 
-        headerName: 'Requisiciones Familia', 
-        editable: false,
-        flex: 1,
-        cellRenderer: 'agCheckboxCellRenderer',
-        cellEditor: 'agCheckboxCellEditor',
-        valueFormatter: (params) => params.value === 1 ? 'Sí' : 'No'
-      },
-      { 
-        field: 'active', 
-        headerName: 'Activo', 
-        editable: false,
-        flex: 1,
-        cellRenderer: 'agCheckboxCellRenderer',
-        cellEditor: 'agCheckboxCellEditor',
-        valueFormatter: (params) => params.value === 1 ? 'Sí' : 'No'
-      }
+      // No definir columnas adicionales - AG-Grid usará solo autoGroupColumnDef
     ];
   }
 
