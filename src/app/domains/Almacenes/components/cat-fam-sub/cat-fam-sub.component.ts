@@ -424,23 +424,20 @@ export class CatFamSubComponent {
   private getFamilyCountForCategory(categoryId: string | number): number {
     if (!this.treeData || !categoryId) return 0;
     
-    const category = this.treeData.find(cat => cat.originalId === categoryId);
-    return category?.children?.length || 0;
+    // Contar cuántas familias tienen parentCategoryId igual al categoryId
+    return this.treeData.filter(item => 
+      item.nodeLevel === 'family' && item.parentCategoryId === categoryId
+    ).length;
   }
   
   // Contar subfamilias de una familia
   private getSubfamilyCountForFamily(familyId: string | number): number {
     if (!this.treeData || !familyId) return 0;
     
-    for (const category of this.treeData) {
-      if (category.children) {
-        const family = category.children.find(fam => fam.originalId === familyId);
-        if (family) {
-          return family.children?.length || 0;
-        }
-      }
-    }
-    return 0;
+    // Contar cuántas subfamilias tienen parentFamilyId igual al familyId
+    return this.treeData.filter(item => 
+      item.nodeLevel === 'subfamily' && item.parentFamilyId === familyId
+    ).length;
   }
 
   // ========== MÉTODOS PARA MODALES ==========
