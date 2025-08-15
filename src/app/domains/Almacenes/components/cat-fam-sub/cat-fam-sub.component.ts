@@ -190,7 +190,14 @@ export class CatFamSubComponent {
           if (params.data.nodeLevel === 'category') {
             const isExpanded = params.data.isExpanded || false;
             const chevron = isExpanded ? '▼' : '▶';
-            return `<span class="chevron-icon" data-action="toggle" style="cursor: pointer; margin-right: 5px;">${chevron}</span> ${params.data.description}`;
+            const description = params.data.description;
+            
+            // Si la descripción ya tiene contador (contiene paréntesis), usarla tal como está
+            // Si no tiene contador, agregar el contador calculado
+            const hasCounter = description.includes('(') && description.includes(')');
+            const displayText = hasCounter ? description : `${description} (${this.getFamilyCountForCategory(params.data.originalId)})`;
+            
+            return `<span class="chevron-icon" data-action="toggle" style="cursor: pointer; margin-right: 5px;">${chevron}</span> ${displayText}`;
           }
           return '';
         },
