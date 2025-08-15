@@ -168,11 +168,11 @@ export class MaterialesMaestroComponent {
       treeData: true,
       groupDefaultExpanded: 1, // Expandir primer nivel por defecto
       getDataPath: (data: any) => data.orgHierarchy,
+      suppressAutoGroupColumn: true, // Ocultar columna de agrupación automática
       // Grid en modo solo lectura - sin edición inline
       suppressClickEdit: true,
       singleClickEdit: false,
-      stopEditingWhenCellsLoseFocus: true, // Corregido: era stopEditingWhenGridLosesFocus
-      autoGroupColumnDef: null, // Corregido: usar null en lugar de suppressAutoGroupColumn
+      stopEditingWhenCellsLoseFocus: true,
       onRowSelected: (event: any) => {
         if (event.node.isSelected()) {
           this.onRowSelected(event);
