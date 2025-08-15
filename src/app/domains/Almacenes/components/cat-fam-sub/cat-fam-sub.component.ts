@@ -331,7 +331,7 @@ export class CatFamSubComponent {
       
       // Refrescar el grid
       if (this.gridApi) {
-        this.gridApi.setRowData(this.flattenTreeData());
+        this.gridApi.setGridOption('rowData', this.flattenTreeData());
       }
     }
   }
@@ -353,7 +353,7 @@ export class CatFamSubComponent {
       
       // Refrescar el grid
       if (this.gridApi) {
-        this.gridApi.setRowData(this.flattenTreeData());
+        this.gridApi.setGridOption('rowData', this.flattenTreeData());
       }
     }
   }
