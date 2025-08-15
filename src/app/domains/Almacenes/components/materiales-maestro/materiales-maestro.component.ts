@@ -172,27 +172,7 @@ export class MaterialesMaestroComponent {
       suppressClickEdit: true,
       singleClickEdit: false,
       stopEditingWhenGridLosesFocus: true,
-      autoGroupColumnDef: {
-        headerName: 'Estructura',
-        minWidth: 250,
-        editable: false,
-        cellRendererParams: {
-          suppressCount: true,
-          suppressDoubleClickExpansion: true, // Prevenir expansión en doble click
-          innerRenderer: (params: any) => {
-            if (params.data) {
-              const level = params.data.nodeLevel;
-              const icons = {
-                category: '<i class="bi bi-folder-fill text-primary"></i>',
-                family: '<i class="bi bi-collection-fill text-info"></i>', 
-                subfamily: '<i class="bi bi-file-earmark-fill text-secondary"></i>'
-              };
-              return `${icons[level] || icons.subfamily}`;
-            }
-            return '';
-          }
-        }
-      },
+      suppressAutoGroupColumn: true, // No mostrar columna de agrupación automática
       onRowSelected: (event: any) => {
         if (event.node.isSelected()) {
           this.onRowSelected(event);
@@ -201,9 +181,16 @@ export class MaterialesMaestroComponent {
       onCellValueChanged: (event: any) => {
         this.onCellValueChanged(event);
       },
+      onCellClicked: (event: any) => {
+        // Manejar click en iconos de expand/collapse
+        if (event.event.target && event.event.target.classList.contains('expand-icon')) {
+          event.node.setExpanded(!event.node.expanded);
+          event.api.refreshCells({ rowNodes: [event.node], force: true });
+        }
+      },
       onCellDoubleClicked: (event: any) => {
-        // Abrir modal de edición en doble click en cualquier columna excepto la de estructura
-        if (event.data && event.colDef.field !== 'ag-Grid-AutoColumn') {
+        // Abrir modal de edición en doble click 
+        if (event.data && !event.event.target.classList.contains('expand-icon')) {
           this.openEditModal(event.data);
         }
       }
@@ -223,7 +210,17 @@ export class MaterialesMaestroComponent {
           if (!params.data) return '';
           if (params.data.nodeLevel === 'category') {
             const familyCount = this.getFamilyCountForCategory(params.data.originalId);
-            return `<i class="bi bi-folder-fill text-primary me-2"></i>${params.data.description} (${familyCount})`;
+            const hasChildren = familyCount > 0;
+            const isExpanded = params.node.expanded;
+            
+            let expandIcon = '';
+            if (hasChildren) {
+              expandIcon = isExpanded 
+                ? '<i class="bi bi-chevron-down me-1 expand-icon" style="cursor: pointer;"></i>'
+                : '<i class="bi bi-chevron-right me-1 expand-icon" style="cursor: pointer;"></i>';
+            }
+            
+            return `${expandIcon}<i class="bi bi-folder-fill text-primary me-2"></i>${params.data.description} (${familyCount})`;
           }
           return '';
         }
@@ -238,7 +235,17 @@ export class MaterialesMaestroComponent {
           if (!params.data) return '';
           if (params.data.nodeLevel === 'family') {
             const subfamilyCount = this.getSubfamilyCountForFamily(params.data.originalId);
-            return `<i class="bi bi-collection-fill text-info me-2"></i>${params.data.description} (${subfamilyCount})`;
+            const hasChildren = subfamilyCount > 0;
+            const isExpanded = params.node.expanded;
+            
+            let expandIcon = '';
+            if (hasChildren) {
+              expandIcon = isExpanded 
+                ? '<i class="bi bi-chevron-down me-1 expand-icon" style="cursor: pointer;"></i>'
+                : '<i class="bi bi-chevron-right me-1 expand-icon" style="cursor: pointer;"></i>';
+            }
+            
+            return `${expandIcon}<i class="bi bi-collection-fill text-info me-2"></i>${params.data.description} (${subfamilyCount})`;
           }
           return '';
         }
