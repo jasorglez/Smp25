@@ -188,10 +188,9 @@ export class CatFamSubComponent {
         width: 300,
         cellRenderer: (params: any) => {
           if (params.data.nodeLevel === 'category') {
-            const childCount = this.getFamilyCountForCategory(params.data.originalId);
             const isExpanded = params.data.isExpanded || false;
             const chevron = isExpanded ? '▼' : '▶';
-            return `<span class="chevron-icon" data-action="toggle" style="cursor: pointer; margin-right: 5px;">${chevron}</span> ${params.data.description} (${childCount})`;
+            return `<span class="chevron-icon" data-action="toggle" style="cursor: pointer; margin-right: 5px;">${chevron}</span> ${params.data.description}`;
           }
           return '';
         },
@@ -208,10 +207,9 @@ export class CatFamSubComponent {
         width: 300,
         cellRenderer: (params: any) => {
           if (params.data.nodeLevel === 'family') {
-            const childCount = this.getSubfamilyCountForFamily(params.data.originalId);
             const isExpanded = params.data.isExpanded || false;
             const chevron = isExpanded ? '▼' : '▶';
-            return `<span class="chevron-icon" data-action="toggle" style="cursor: pointer; margin-right: 5px;">${chevron}</span> ${params.data.description} (${childCount})`;
+            return `<span class="chevron-icon" data-action="toggle" style="cursor: pointer; margin-right: 5px;">${chevron}</span> ${params.data.description}`;
           }
           return '';
         },
