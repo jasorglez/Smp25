@@ -166,7 +166,7 @@ export class MaterialesMaestroComponent {
       rowHeight: 35,
       animateRows: true,
       treeData: true,
-      groupDefaultExpanded: 1, // Expandir primer nivel por defecto
+      groupDefaultExpanded: -1, // Expandir todos los niveles por defecto
       getDataPath: (data: any) => data.orgHierarchy,
       suppressAutoGroupColumn: true, // Ocultar columna de agrupación automática
       // Grid en modo solo lectura - sin edición inline
@@ -181,16 +181,9 @@ export class MaterialesMaestroComponent {
       onCellValueChanged: (event: any) => {
         this.onCellValueChanged(event);
       },
-      onCellClicked: (event: any) => {
-        // Manejar click en iconos de expand/collapse
-        if (event.event.target && event.event.target.classList.contains('expand-icon')) {
-          event.node.setExpanded(!event.node.expanded);
-          event.api.refreshCells({ rowNodes: [event.node], force: true });
-        }
-      },
       onCellDoubleClicked: (event: any) => {
         // Abrir modal de edición en doble click 
-        if (event.data && !event.event.target.classList.contains('expand-icon')) {
+        if (event.data) {
           this.openEditModal(event.data);
         }
       }
@@ -201,52 +194,75 @@ export class MaterialesMaestroComponent {
   get columnDefs(): ColDef[] {
     return [
       { 
-        field: 'description', 
-        headerName: 'Descripción', 
+        field: 'categoryDisplay', 
+        headerName: 'Categoría', 
         editable: false,
-        flex: 1,
+        flex: 2,
         cellClass: 'readonly-cell',
         cellRenderer: (params: any) => {
           if (!params.data) return '';
-          
-          const nodeLevel = params.data.nodeLevel;
-          let expandIcon = '';
-          let icon = '';
-          let text = params.data.description;
-          let count = '';
-          
-          if (nodeLevel === 'category') {
+          if (params.data.nodeLevel === 'category') {
             const familyCount = this.getFamilyCountForCategory(params.data.originalId);
-            const hasChildren = familyCount > 0;
-            const isExpanded = params.node.expanded;
-            
-            if (hasChildren) {
-              expandIcon = isExpanded 
-                ? '<i class="bi bi-chevron-down me-1 expand-icon" style="cursor: pointer;"></i>'
-                : '<i class="bi bi-chevron-right me-1 expand-icon" style="cursor: pointer;"></i>';
-            }
-            
-            icon = '<i class="bi bi-folder-fill text-primary me-2"></i>';
-            count = ` (${familyCount})`;
-          } else if (nodeLevel === 'family') {
-            const subfamilyCount = this.getSubfamilyCountForFamily(params.data.originalId);
-            const hasChildren = subfamilyCount > 0;
-            const isExpanded = params.node.expanded;
-            
-            if (hasChildren) {
-              expandIcon = isExpanded 
-                ? '<i class="bi bi-chevron-down me-1 expand-icon" style="cursor: pointer;"></i>'
-                : '<i class="bi bi-chevron-right me-1 expand-icon" style="cursor: pointer;"></i>';
-            }
-            
-            icon = '<i class="bi bi-collection-fill text-info me-2"></i>';
-            count = ` (${subfamilyCount})`;
-          } else if (nodeLevel === 'subfamily') {
-            icon = '<i class="bi bi-file-earmark-fill text-secondary me-2"></i>';
+            return `<i class="bi bi-folder-fill text-primary me-2"></i>${params.data.description} (${familyCount})`;
           }
-          
-          return `${expandIcon}${icon}${text}${count}`;
+          return '';
         }
+      },
+      { 
+        field: 'familyDisplay', 
+        headerName: 'Familia', 
+        editable: false,
+        flex: 2,
+        cellClass: 'readonly-cell',
+        cellRenderer: (params: any) => {
+          if (!params.data) return '';
+          if (params.data.nodeLevel === 'family') {
+            const subfamilyCount = this.getSubfamilyCountForFamily(params.data.originalId);
+            return `<i class="bi bi-collection-fill text-info me-2"></i>${params.data.description} (${subfamilyCount})`;
+          }
+          return '';
+        }
+      },
+      { 
+        field: 'subfamilyDisplay', 
+        headerName: 'Sub Familia', 
+        editable: false,
+        flex: 2,
+        cellClass: 'readonly-cell',
+        cellRenderer: (params: any) => {
+          if (!params.data) return '';
+          if (params.data.nodeLevel === 'subfamily') {
+            return `<i class="bi bi-file-earmark-fill text-secondary me-2"></i>${params.data.description}`;
+          }
+          return '';
+        }
+      },
+      { 
+        field: 'valueAdditionBit', 
+        headerName: 'Materia Prima', 
+        editable: false,
+        flex: 1,
+        cellRenderer: 'agCheckboxCellRenderer',
+        cellEditor: 'agCheckboxCellEditor',
+        valueFormatter: (params) => params.value === 1 ? 'Sí' : 'No'
+      },
+      { 
+        field: 'valueAdditionBit2', 
+        headerName: 'Requisiciones Familia', 
+        editable: false,
+        flex: 1,
+        cellRenderer: 'agCheckboxCellRenderer',
+        cellEditor: 'agCheckboxCellEditor',
+        valueFormatter: (params) => params.value === 1 ? 'Sí' : 'No'
+      },
+      { 
+        field: 'active', 
+        headerName: 'Activo', 
+        editable: false,
+        flex: 1,
+        cellRenderer: 'agCheckboxCellRenderer',
+        cellEditor: 'agCheckboxCellEditor',
+        valueFormatter: (params) => params.value === 1 ? 'Sí' : 'No'
       }
     ];
   }
