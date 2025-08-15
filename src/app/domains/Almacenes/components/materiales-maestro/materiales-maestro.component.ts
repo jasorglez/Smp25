@@ -165,10 +165,34 @@ export class MaterialesMaestroComponent {
       headerHeight: 35,
       rowHeight: 35,
       animateRows: true,
-      // Grid en modo solo lectura - sin edición inline - SIN treeData
+      treeData: true,
+      groupDefaultExpanded: 1, // Expandir primer nivel por defecto
+      getDataPath: (data: any) => data.orgHierarchy,
+      // Grid en modo solo lectura - sin edición inline
       suppressClickEdit: true,
       singleClickEdit: false,
       stopEditingWhenGridLosesFocus: true,
+      autoGroupColumnDef: {
+        headerName: 'Estructura',
+        minWidth: 250,
+        editable: false,
+        cellRendererParams: {
+          suppressCount: true,
+          suppressDoubleClickExpansion: true, // Prevenir expansión en doble click
+          innerRenderer: (params: any) => {
+            if (params.data) {
+              const level = params.data.nodeLevel;
+              const icons = {
+                category: '<i class="bi bi-folder-fill text-primary"></i>',
+                family: '<i class="bi bi-collection-fill text-info"></i>', 
+                subfamily: '<i class="bi bi-file-earmark-fill text-secondary"></i>'
+              };
+              return `${icons[level] || icons.subfamily}`;
+            }
+            return '';
+          }
+        }
+      },
       onRowSelected: (event: any) => {
         if (event.node.isSelected()) {
           this.onRowSelected(event);
@@ -178,8 +202,8 @@ export class MaterialesMaestroComponent {
         this.onCellValueChanged(event);
       },
       onCellDoubleClicked: (event: any) => {
-        // Abrir modal de edición en doble click
-        if (event.data && event.colDef.field === 'description') {
+        // Abrir modal de edición en doble click en cualquier columna excepto la de estructura
+        if (event.data && event.colDef.field !== 'ag-Grid-AutoColumn') {
           this.openEditModal(event.data);
         }
       }
@@ -317,30 +341,10 @@ export class MaterialesMaestroComponent {
 
 
 
-  // Aplanar datos del árbol para AG-Grid - Vista plana simple
+  // Retornar datos en estructura de árbol para AG-Grid
   flattenTreeData(): any[] {
-    const flattened: any[] = [];
-    
-    // Recorrer categorías
-    this.treeData.forEach(category => {
-      flattened.push(category);
-      
-      // Recorrer familias de la categoría
-      if (category.children && category.children.length > 0) {
-        category.children.forEach(family => {
-          flattened.push(family);
-          
-          // Recorrer subfamilias de la familia
-          if (family.children && family.children.length > 0) {
-            family.children.forEach(subfamily => {
-              flattened.push(subfamily);
-            });
-          }
-        });
-      }
-    });
-    
-    return flattened;
+    // Para treeData, AG-Grid necesita la estructura jerárquica completa
+    return this.treeData;
   }
 
 
