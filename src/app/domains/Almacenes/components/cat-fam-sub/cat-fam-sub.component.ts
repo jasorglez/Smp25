@@ -238,6 +238,36 @@ export class CatFamSubComponent {
           }
           return '';
         }
+      },
+      {
+        headerName: 'Materia Prima',
+        field: 'materiaPrima',
+        width: 120,
+        cellRenderer: (params: any) => {
+          const value = params.data.materiaPrima || false;
+          const checked = value ? 'checked' : '';
+          return `<input type="checkbox" ${checked} disabled style="cursor: pointer;">`;
+        }
+      },
+      {
+        headerName: 'Requisiciones',
+        field: 'requisiciones',
+        width: 120,
+        cellRenderer: (params: any) => {
+          const value = params.data.requisiciones || false;
+          const checked = value ? 'checked' : '';
+          return `<input type="checkbox" ${checked} disabled style="cursor: pointer;">`;
+        }
+      },
+      {
+        headerName: 'Activo',
+        field: 'activo',
+        width: 100,
+        cellRenderer: (params: any) => {
+          const value = params.data.active === 1 || params.data.activo;
+          const checked = value ? 'checked' : '';
+          return `<input type="checkbox" ${checked} disabled style="cursor: pointer;">`;
+        }
       }
     ];
   }
