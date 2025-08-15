@@ -21,11 +21,20 @@ export class MateriaPrimaComponent {
   selectedTab: string = '';
 
   constructor() {
-    this.selectedTab = 'cat-fam-sub';
+    this.selectedTab = 'materiales-maestro';
   }
 
   onTabSelected(tabName: string) {
     this.selectedTab = tabName;
+
+    if (tabName === 'materiales-maestro') {
+      this.trackingService.addLog(
+        this.trackingService.getnameComp(),
+        'Click en la Pestaña Materiales Maestro',
+        'Almacenes - Materia Prima',
+        this.trackingService.getEmail()
+      );
+    }
 
     if (tabName === 'cat-fam-sub') {
       this.trackingService.addLog(
