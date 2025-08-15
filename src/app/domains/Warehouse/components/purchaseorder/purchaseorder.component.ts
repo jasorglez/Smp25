@@ -78,6 +78,18 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   selectedNodeLevel: 'order' | 'detail' | null = null;
   newlyAddedRows: string[] = [];
 
+  // Legacy variables (mantener para compatibilidad temporal)
+  masterRowData: any[] = [];
+  detailsRowData: any[] = [];
+  masterSelectedRowData: any = null;
+  detailsSelectedRowData: any = null;
+  masterNotSavedChanges: boolean = false;
+  detailsNotSavedChanges: boolean = false;
+  newlyAddedMasterRows: string[] = [];
+  newlyAddedDetailRows: string[] = [];
+  masterGridApi: any = null;
+  detailsGridApi: any = null;
+
   // Catálogos para combos
   requisiciones: any[] = [];
   proveedores: any[] = [];
@@ -294,7 +306,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       ]);
 
       // Construir estructura jerárquica
-      this.buildHierarchicalStructure(orders, allDetails);
+      this.buildHierarchicalStructure(orders as any[], allDetails);
       
     } catch (error) {
       console.error('Error al cargar datos jerárquicos:', error);
@@ -313,7 +325,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       // Obtenemos todas las órdenes primero para obtener los detalles
       const orders = await lastValueFrom(
         this.requisitionsService.getOcAndReqs(this.typeReference, this.idReference, 'OC')
-      );
+      ) as any[];
       
       const allDetailsPromises = orders.map(order => 
         lastValueFrom(this.requisitionsService.getReqItems(order.id))
@@ -1245,27 +1257,30 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   }
 
   onDetailsSelectionChanged(event: any) {
+    // Legacy method - now handled by onRowSelected
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
-      this.detailsSelectedRowData = selectedNodes[0].data;
+      this.selectedRowData = selectedNodes[0].data;
     } else {
-      this.detailsSelectedRowData = null;
+      this.selectedRowData = null;
     }
   }
 
   onDetailsCellValueChanged(event: any) {
+    // Legacy method - now handled by onCellValueChanged
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
-      this.detailsSelectedRowData = selectedNodes[0].data;
+      this.selectedRowData = selectedNodes[0].data;
       event.data.__modified = true;
-      this.detailsNotSavedChanges = true;
+      this.notSavedChanges = true;
     } else {
-      this.detailsSelectedRowData = null;
+      this.selectedRowData = null;
     }
   }
 
   onDetailsGridReady(params: GridReadyEvent) {
-    this.detailsGridApi = params.api;
+    // Legacy method - now handled by onGridReady
+    // No specific action needed for details grid since we use unified grid
   }
 
   onDetailsRowSelected(event: any) {
