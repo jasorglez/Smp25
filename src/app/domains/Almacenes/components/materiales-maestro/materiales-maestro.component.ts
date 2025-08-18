@@ -59,6 +59,10 @@ export class MaterialesMaestroComponent {
   materialesData: any[] = [];
   selectedRowData: any = null;
   
+  // Variables para manejar subconsultas en cascada
+  currentSelectedCategory: any = null;
+  currentSelectedFamily: any = null;
+  
   // ID de la empresa actual
   private idRoot = this.signalsService.getRootSelectedBySidebar()();
 
@@ -67,37 +71,69 @@ export class MaterialesMaestroComponent {
     if (!this.idRoot) return;
     
     try {
-      // Cargar los 3 tipos de datos en paralelo
-      const [categories, families, subfamilies] = await Promise.all([
-        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'CATEGORY')),
-        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'FAM-CAT')),
-        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'SUB-FAM'))
-      ]);
-
-      // Guardar datos para combos
+      // Cargar solo categorías inicialmente
+      const categories = await lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'CATEGORY'));
       this.categories = categories;
-      this.families = families;
-      this.subfamilies = subfamilies;
-
-      console.log('Datos cargados para combos:', {
-        categories: this.categories.length,
-        families: this.families.length,
-        subfamilies: this.subfamilies.length
-      });
       
-      // Cargar datos del grid maestro (por ahora datos de prueba)
+      console.log('Categorías cargadas:', this.categories.length);
+      
+      // Limpiar familias y subfamilias hasta que se seleccione una categoría
+      this.families = [];
+      this.subfamilies = [];
+      
+      // Cargar datos del grid maestro
       this.loadMaterialesData();
       
     } catch (error) {
-      console.error('Error al cargar datos del catálogo:', error);
+      console.error('Error al cargar categorías:', error);
       this.categories = [];
       this.families = [];
       this.subfamilies = [];
       alerts.basicAlert(
         'Error',
-        'Error al cargar los datos del catálogo.',
+        'Error al cargar las categorías.',
         'error'
       );
+    }
+  }
+
+  // Cargar familias cuando se selecciona una categoría
+  async loadFamiliesByCategory(categoryId: number) {
+    if (!this.idRoot || !categoryId) return;
+    
+    try {
+      const families = await lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'FAM-CAT'));
+      // Filtrar familias por categoría (asumiendo que tienen idParent o similar)
+      this.families = families.filter((family: any) => family.idParent === categoryId);
+      
+      // Limpiar subfamilias
+      this.subfamilies = [];
+      this.currentSelectedCategory = this.categories.find(cat => cat.id === categoryId);
+      
+      console.log('Familias cargadas para categoría:', this.families.length);
+      
+    } catch (error) {
+      console.error('Error al cargar familias:', error);
+      this.families = [];
+    }
+  }
+
+  // Cargar subfamilias cuando se selecciona una familia
+  async loadSubfamiliesByFamily(familyId: number) {
+    if (!this.idRoot || !familyId) return;
+    
+    try {
+      const subfamilies = await lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'SUB-FAM'));
+      // Filtrar subfamilias por familia
+      this.subfamilies = subfamilies.filter((subfamily: any) => subfamily.idParent === familyId);
+      
+      this.currentSelectedFamily = this.families.find(fam => fam.id === familyId);
+      
+      console.log('Subfamilias cargadas para familia:', this.subfamilies.length);
+      
+    } catch (error) {
+      console.error('Error al cargar subfamilias:', error);
+      this.subfamilies = [];
     }
   }
 
@@ -151,19 +187,27 @@ export class MaterialesMaestroComponent {
     };
   }
 
-  // Definición de columnas del grid maestro
+  // Definición de columnas del grid maestro (Columna por columna)
   get columnDefs(): ColDef[] {
     return [
+      // COLUMNA 1: Activo (checkbox)
       {
         headerName: 'Activo',
         field: 'activo',
         width: 80,
         cellRenderer: (params: any) => {
           const checked = params.value ? 'checked' : '';
-          return `<input type="checkbox" ${checked} style="cursor: pointer;">`;
+          return `<input type="checkbox" ${checked} style="cursor: pointer;" disabled>`;
         },
-        editable: true
+        cellEditor: 'agCheckboxCellEditor',
+        editable: true,
+        onCellValueChanged: (event: any) => {
+          console.log('Activo cambiado:', event.data.activo);
+          this.onCellValueChanged(event);
+        }
       },
+      
+      // COLUMNA 2: Categoría (combo con endpoint)
       {
         headerName: 'Categoría',
         field: 'categoria',
@@ -172,8 +216,30 @@ export class MaterialesMaestroComponent {
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.categories.map(cat => cat.description)
+        },
+        onCellValueChanged: async (event: any) => {
+          console.log('Categoría seleccionada:', event.newValue);
+          
+          // Buscar el ID de la categoría seleccionada
+          const selectedCategory = this.categories.find(cat => cat.description === event.newValue);
+          if (selectedCategory) {
+            // Cargar familias para esta categoría
+            await this.loadFamiliesByCategory(selectedCategory.id);
+            
+            // Limpiar familia y subfamilia de la fila actual
+            event.data.familia = '';
+            event.data.subFamilia = '';
+            
+            // Refrescar el grid para actualizar las opciones
+            if (this.gridApi) {
+              this.gridApi.refreshCells();
+            }
+          }
+          this.onCellValueChanged(event);
         }
       },
+      
+      // COLUMNA 3: Familia (combo con subconsulta)
       {
         headerName: 'Familia',
         field: 'familia',
@@ -182,8 +248,29 @@ export class MaterialesMaestroComponent {
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.families.map(fam => fam.description)
+        },
+        onCellValueChanged: async (event: any) => {
+          console.log('Familia seleccionada:', event.newValue);
+          
+          // Buscar el ID de la familia seleccionada
+          const selectedFamily = this.families.find(fam => fam.description === event.newValue);
+          if (selectedFamily) {
+            // Cargar subfamilias para esta familia
+            await this.loadSubfamiliesByFamily(selectedFamily.id);
+            
+            // Limpiar subfamilia de la fila actual
+            event.data.subFamilia = '';
+            
+            // Refrescar el grid para actualizar las opciones
+            if (this.gridApi) {
+              this.gridApi.refreshCells();
+            }
+          }
+          this.onCellValueChanged(event);
         }
       },
+      
+      // COLUMNA 4: Subfamilia (combo con subconsulta)
       {
         headerName: 'Sub Familia',
         field: 'subFamilia',
@@ -192,8 +279,14 @@ export class MaterialesMaestroComponent {
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.subfamilies.map(sub => sub.description)
+        },
+        onCellValueChanged: (event: any) => {
+          console.log('Subfamilia seleccionada:', event.newValue);
+          this.onCellValueChanged(event);
         }
       },
+      
+      // COLUMNA 5: Artículo (texto)
       {
         headerName: 'Artículo',
         field: 'articulo',
