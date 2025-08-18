@@ -28,6 +28,8 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.obtenerDatos();
       this.obtenerCategorias();
+      this.obtenerFamilias();
+      this.obtenerSubfamilias();
     });
   }
 
@@ -44,6 +46,8 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
   private tempIdCounter: number = 0;
   
   categories: any[] = [];
+  familias: any[] = [];
+  subfamilias: any[] = [];
   rowData: any[] = [];
   selectedRowData: any = null;
   newlyAddedRows: string[] = [];
@@ -86,6 +90,28 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
         this.categories = data || [];
       },
       (error) => console.error('Error fetching categories:', error)
+    );
+  }
+
+  obtenerFamilias() {
+    if (!this.idRoot) return;
+    
+    this.catalogsService.getFamilyById(this.idRoot).subscribe(
+      (data: any[]) => {
+        this.familias = data || [];
+      },
+      (error) => console.error('Error fetching families:', error)
+    );
+  }
+
+  obtenerSubfamilias() {
+    if (!this.idRoot) return;
+    
+    this.catalogsService.getCatalogs(this.idRoot, 'SUBFAMILY').subscribe(
+      (data: any[]) => {
+        this.subfamilias = data || [];
+      },
+      (error) => console.error('Error fetching subfamilies:', error)
     );
   }
 
@@ -140,6 +166,12 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.categories ? this.categories.map(item => item.description) : []
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.categories
+            ? this.categories.find((item) => item.description === params.value)
+            : null;
+          return foundItem ? foundItem.description : params.value;
         }
       },
       {
@@ -147,14 +179,45 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
         headerName: 'Familia',
         editable: true,
         width: 150,
-        filter: true
+        filter: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.familias ? this.familias.map(item => item.description) : []
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.familias
+            ? this.familias.find((item) => item.description === params.value)
+            : null;
+          return foundItem ? foundItem.description : params.value;
+        }
       },
       {
         field: 'subFamilia',
         headerName: 'Sub Familia',
         editable: true,
         width: 150,
-        filter: true
+        filter: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: (params) => {
+          // Obtener el idFamilia de la fila actual
+          const familiaName = params.data.familia;
+          const familia = this.familias.find(f => f.description === familiaName);
+          
+          // Filtrar subfamilias por parentId
+          const subfamiliasFiltradas = familia 
+            ? this.subfamilias.filter(item => item.parentId === familia.id)
+            : this.subfamilias;
+
+          return {
+            values: subfamiliasFiltradas.map(item => item.description)
+          };
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.subfamilias
+            ? this.subfamilias.find((item) => item.description === params.value)
+            : null;
+          return foundItem ? foundItem.description : params.value;
+        }
       },
       {
         field: 'articulo',
@@ -182,6 +245,15 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
   onCellValueChanged(event: any) {
     event.data.__modified = true;
     this.notSavedChanges = true;
+    
+    // Si cambió la familia, limpiar la subfamilia
+    if (event.colDef.field === 'familia') {
+      event.data.subFamilia = '';
+      this.gridApi.refreshCells({
+        rowNodes: [event.node],
+        columns: ['subFamilia']
+      });
+    }
   }
 
   onGridReady(params: GridReadyEvent) {
