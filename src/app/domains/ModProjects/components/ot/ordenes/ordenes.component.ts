@@ -26,6 +26,8 @@ import { ModalService } from 'app/services/modal.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { UpdateExcelService } from 'app/services/updateExcel.service';
 import * as bootstrap from 'bootstrap';
+import { firstValueFrom, lastValueFrom } from 'rxjs';
+
 
 @Pipe({
   name: 'safe',
@@ -2251,6 +2253,8 @@ async saveChangesEquipos() {
         );
         return;
       }
+      console.log('File MIME type:', file.type);
+
 
       this.uploadPdf(file);
     }
@@ -2259,70 +2263,69 @@ async saveChangesEquipos() {
     input.value = '';
   }
 
-  uploadPdf(file: File) {
-    this.isUploading = true;
+  async uploadPdf(file: File) {
+  this.isUploading = true;
+  
+  //console.log('=== PDF Upload Process Started ===');
+  /*console.log('File details:', {
+    name: file.name,
+    size: file.size,
+    type: file.type,
+    lastModified: new Date(file.lastModified),
+  });
+  console.log('Project ID being sent:', 760);
+  console.log('Calling OtService.addOtViaPdf with parameters:', {
+    projectId: 760,
+    file: file,
+  });*/
 
-    console.log('=== PDF Upload Process Started ===');
-    console.log('File details:', {
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      lastModified: new Date(file.lastModified),
-    });
-    console.log('Project ID being sent:', 760);
-    console.log('Calling OtService.addOtViaPdf with parameters:', {
-      projectId: 760,
-      file: file,
-    });
+  try {
+    const response: any = await lastValueFrom(this.otService.addOtViaPdf(760, file));
 
-    this.otService.addOtViaPdf(760, file).subscribe({
-      next: (response: any) => {
-        console.log('=== PDF Upload Success ===');
-        console.log('Response received:', response);
+    //console.log('=== PDF Upload Success ===');
+    //console.log('Response received:', response);
 
-        this.isUploading = false;
+    
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      `Upload PDF OT - ID: ${response.otId}`,
+      'Menu Proyectos Ordenes de Trabajo',
+      this.trackingService.getEmail()
+    );
 
-        this.trackingService.addLog(
-          this.trackingService.getnameComp(),
-          `Upload PDF OT - ID: ${response.otId}`,
-          'Menu Proyectos Ordenes de Trabajo',
-          this.trackingService.getEmail()
-        );
+    alerts.basicAlert(
+      'PDF Procesado Exitosamente',
+      `El PDF ha sido cargado y se han obtenido algunos datos. Será redirigido al formulario de OT para que corrobore los datos.\n\nNúmero OT: ${response.otNumber}`,
+      'success'
+    );
+      this.obtenerDatos();
 
-        // Mostrar alerta de éxito personalizada
-        alerts.basicAlert(
-          'PDF Procesado Exitosamente',
-          `El PDF ha sido cargado y se han obtenido algunos datos. Será redirigido al formulario de OT para que corrobore los datos.\n\nNúmero OT: ${response.otNumber}`,
-          'success'
-        );
+    // Redirigir después de un breve delay
+    /*console.log('Navigating to details page with otId:', response.otId);
+    setTimeout(() => {
+      this.router.navigate(['/projects/ot/details', response.otId]);
+    }, 2000);*/
+  } catch (error: any) {
+    console.log('=== PDF Upload Error ===');
+    console.error('Complete error object:', error);
+    console.error('Error status:', error.status);
+    console.error('Error statusText:', error.statusText);
+    console.error('Error headers:', error.headers);
+    console.error('Error body:', error.error);
 
-        // Redirigir a la página de detalles después de un breve delay
-        console.log('Navigating to details page with otId:', response.otId);
-        setTimeout(() => {
-          this.router.navigate(['/projects/ot/details', response.otId]);
-        }, 2000);
-      },
-      error: (error) => {
-        console.log('=== PDF Upload Error ===');
-        console.error('Complete error object:', error);
-        console.error('Error status:', error.status);
-        console.error('Error statusText:', error.statusText);
-        console.error('Error headers:', error.headers);
-        console.error('Error body:', error.error);
+    let errorMessage = 'Error al procesar el archivo PDF.';
+    if (error?.error?.message) {
+      errorMessage = error.error.message;
+    } else if (error?.message) {
+      errorMessage = error.message;
+    }
 
-        this.isUploading = false;
-
-        let errorMessage = 'Error al procesar el archivo PDF.';
-        if (error.error?.message) {
-          errorMessage = error.error.message;
-        } else if (error.message) {
-          errorMessage = error.message;
-        }
-
-        alert(errorMessage);
-      },
-    });
+    alert(errorMessage);
+  } finally {
+    this.isUploading = false;
   }
+}
+
 
   // Método para limpiar datos antes de enviar al servidor
   private cleanDataForServer(data: any): any {

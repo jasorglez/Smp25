@@ -14,6 +14,7 @@
                 <option value="diario">Diario</option>
                 <option value="semanal">Semanal</option>
                 <option value="mensual">Mensual</option>
+                <option value="personalizado">Personalizado</option>
               </select>
             </div>
             <div class="col-md-3" *ngIf="tipoReporte === 'diario'">
@@ -28,7 +29,14 @@
               <label class="form-label">Mes:</label>
               <input type="month" class="form-control" [(ngModel)]="mesSeleccionado">
             </div>
-            <div class="col-md-2">
+            <div class="col-md-6" *ngIf="tipoReporte === 'personalizado'">
+              <label class="form-label">Fechas:</label>
+              <div class="d-flex gap-2">
+                <input type="date" class="form-control" [(ngModel)]="fechaSeleccionada">
+                <input type="date" class="form-control" [(ngModel)]="fechaSeleccionada">
+              </div>
+            </div>
+            <!--<div class="col-md-2">
               <label class="form-label">Estimación:</label>
               <select class="form-control" [(ngModel)]="estimacionSeleccionada">
                 <option value="">Todas</option>
@@ -36,7 +44,7 @@
                   {{ est.number }}
                 </option>
               </select>
-            </div>
+            </div>-->
             <div class="col-md-2">
               <button class="btn btn-primary mt-4" (click)="generarReporte()">
                 <i class="bi bi-search"></i> Generar
@@ -44,31 +52,31 @@
             </div>
           </div>
 
+            
           <!-- Filtros adicionales -->
           <div class="row mb-3">
             <div class="col-md-3">
               <label class="form-label">Área/Fase:</label>
               <select class="form-control" [(ngModel)]="areaFiltro">
                 <option value="">Todas las áreas</option>
-                <option *ngFor="let area of areasDisponibles" [value]="area">{{ area }}</option>
+                <option *ngFor="let area of areasDisponibles" [value]="area.description">{{ area.description }}</option>
               </select>
             </div>
             <div class="col-md-3">
               <label class="form-label">Estado:</label>
               <select class="form-control" [(ngModel)]="estadoFiltro">
                 <option value="">Todos los estados</option>
-                <option value="activo">Activo</option>
-                <option value="completado">Completado</option>
-                <option value="pendiente">Pendiente</option>
+                <option value="0">Pendiente</option>
+                <option value="1">Cerrado</option>
               </select>
             </div>
-            <div class="col-md-3">
+            <!--<div class="col-md-3">
               <label class="form-label">Empleado:</label>
               <select class="form-control" [(ngModel)]="empleadoFiltro">
                 <option value="">Todos los empleados</option>
                 <option *ngFor="let emp of empleados" [value]="emp.id">{{ emp.name }}</option>
               </select>
-            </div>
+            </div>-->
             <div class="col-md-3">
               <button class="btn btn-secondary mt-4 me-2" (click)="limpiarFiltros()">
                 <i class="bi bi-arrow-clockwise"></i> Limpiar

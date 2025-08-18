@@ -9,6 +9,7 @@ import { EmployeesService } from 'app/services/employees.service';
 import { DailyReportService } from 'app/services/daily-report.service';
 import { SignalsService } from 'app/services/signals.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { CatalogsService } from 'app/services/catalogs.service';
 import { alerts } from 'app/helpers/alerts';
 
 @Component({
@@ -26,6 +27,7 @@ export class DiariosSemánalesComponent {
   private dailyReportService = inject(DailyReportService);
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
+  private catalogService = inject(CatalogsService);
 
   // Variables del componente
   tipoReporte: string = 'diario';
@@ -37,10 +39,10 @@ export class DiariosSemánalesComponent {
   estadoFiltro: string = '';
   empleadoFiltro: string = '';
   activeTab: string = 'resumen';
-  
+  idcompany: number = 0;
   estimaciones: any[] = [];
   empleados: any[] = [];
-  areasDisponibles: string[] = [];
+  areasDisponibles: any [] = [];  
   
   resumenData: any[] = [];
   detalladoData: any[] = [];
@@ -190,9 +192,11 @@ export class DiariosSemánalesComponent {
     // Effect para cargar datos cuando cambie el contrato
     effect(() => {
       const contractId = this.signalsService.getContractSelectedBySidebar()();
+      this.idcompany = this.signalsService.getRootSelectedBySidebar()();
       if (contractId) {
         this.contract = contractId;
         this.cargarDatosIniciales();
+        this.obternerArea();
       }
     });
 
@@ -251,6 +255,14 @@ export class DiariosSemánalesComponent {
       }
     });
   }
+  obternerArea(){
+    return this.catalogService.getPhases(this.idcompany).subscribe(
+      (data: any )=> {
+        this.areasDisponibles = data
+        console.log(this.areasDisponibles)
+      },
+      (error) => console.error('Error fetching conceptos:', error))
+  }
 
   private cargarAreasDisponibles() {
     // Obtener áreas únicas de las estimaciones cargadas
@@ -265,7 +277,7 @@ export class DiariosSemánalesComponent {
               areas.add(gen.fase);
             }
           });
-          this.areasDisponibles = Array.from(areas).sort();
+          //this.areasDisponibles = Array.from(areas).sort();
         },
         error: (error) => {
           console.error('Error al cargar generadores:', error);
