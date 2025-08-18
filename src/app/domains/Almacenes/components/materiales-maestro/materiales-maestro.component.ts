@@ -1,13 +1,15 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, HostListener } from '@angular/core';
+import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule } from 'ag-grid-angular';
-import { lastValueFrom } from 'rxjs';
+import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SignalsService } from 'app/services/signals.service';
-import { TrackingService } from 'app/services/tracking.service';
 import { CatalogsService } from 'app/services/catalogs.service';
+import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
+import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 
 @Component({
   selector: 'app-materiales-maestro',
@@ -16,141 +18,169 @@ import { CatalogsService } from 'app/services/catalogs.service';
   templateUrl: './materiales-maestro.component.html',
   styleUrl: './materiales-maestro.component.scss'
 })
-export class MaterialesMaestroComponent {
+export class MaterialesMaestroComponent implements CanComponentDeactivate {
 
   private catalogsService = inject(CatalogsService);
   private signalsService = inject(SignalsService);
-  private trackingService = inject(TrackingService);
 
   constructor() {
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      this.loadCatalogData();
+      this.obtenerDatos();
+      this.obtenerCategorias();
     });
   }
 
-  ngOnInit() {
-    this.loadCatalogData();
-    this.loadMaterialesData();
-  }
-
-  // Variables básicas
-  notSavedChanges: boolean = false;
-  private gridApi: GridApi;
-  private idRoot = this.signalsService.getRootSelectedBySidebar()();
-  
-  // Datos para combos
-  categories: any[] = [];
-  
-  // Datos del grid
-  materialesData: any[] = [];
-  selectedRowData: any = null;
-
-  // Cargar categorías
-  async loadCatalogData() {
-    if (!this.idRoot) return;
-    
-    try {
-      const categories = await lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'CATEGORY'));
-      this.categories = categories || [];
-      console.log('Categorías cargadas:', this.categories.length);
-      
-    } catch (error) {
-      console.error('Error al cargar categorías:', error);
-      this.categories = [];
+  @HostListener('window:beforeunload', ['$event'])
+  unloadNotification($event: any): void {
+    if (this.notSavedChanges) {
+      $event.returnValue = 'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
     }
   }
 
-  // Cargar datos del grid 
-  loadMaterialesData() {
-    this.materialesData = [
+  notSavedChanges: boolean = false;
+  private gridApi: GridApi;
+  private idRoot = this.signalsService.getRootSelectedBySidebar()();
+  private tempIdCounter: number = 0;
+  
+  categories: any[] = [];
+  rowData: any[] = [];
+  selectedRowData: any = null;
+  newlyAddedRows: string[] = [];
+  gridHeight: string = '80vh';
+  
+  public rowSelection: 'single' | 'multiple' = 'single';
+  public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
+  public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
+  public paginationPageSize = 15;
+  public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
+  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+
+  obtenerDatos() {
+    // Datos de prueba mientras no hay servicio específico
+    this.rowData = [
       {
         id: 1,
         activo: true,
-        categoria: '',
-        familia: '',
-        subFamilia: '',
+        categoria: 'Categoría 1',
+        familia: 'Familia 1',
+        subFamilia: 'SubFamilia 1',
         articulo: 'Material de prueba 1'
       },
       {
         id: 2,
         activo: false,
-        categoria: '',
-        familia: '',
-        subFamilia: '',
+        categoria: 'Categoría 2',
+        familia: 'Familia 2',
+        subFamilia: 'SubFamilia 2',
         articulo: 'Material de prueba 2'
       }
     ];
   }
 
-  // Grid config
-  get gridOptions(): any {
-    return {
-      headerHeight: 35,
-      rowHeight: 35,
-      animateRows: true,
-      singleClickEdit: true,
-      suppressClickEdit: false,
-      stopEditingWhenCellsLoseFocus: true,
-      onRowSelected: (event: any) => {
-        if (event.node.isSelected()) {
-          this.onRowSelected(event);
-        }
+  obtenerCategorias() {
+    if (!this.idRoot) return;
+    
+    this.catalogsService.getCatalogs(this.idRoot, 'CATEGORY').subscribe(
+      (data: any[]) => {
+        this.categories = data || [];
       },
-      onCellValueChanged: (event: any) => {
-        this.onCellValueChanged(event);
-      }
-    };
+      (error) => console.error('Error fetching categories:', error)
+    );
   }
 
-  // Solo 5 columnas básicas
-  get columnDefs(): ColDef[] {
+  public gridOptions: any = {
+    headerHeight: 25,
+    rowHeight: 20,
+    rowClass: (params) => {
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onRowClicked: (event) => {
+      event.node.setSelected(true);
+    },
+    onRowSelected: (event) => {
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    }
+  };
+
+  get colMaster(): ColDef[] {
     return [
       {
-        headerName: 'Activo',
         field: 'activo',
-        width: 80,
-        cellEditor: 'agCheckboxCellEditor',
-        editable: true
+        headerName: 'Activo',
+        editable: true,
+        width: 100,
+        cellEditor: 'agCheckboxCellEditor'
       },
       {
-        headerName: 'Categoría',
-        field: 'categoria',
-        width: 150,
-        editable: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.categories.map(cat => cat.description || '')
+        field: 'id',
+        editable: false,
+        width: 70,
+        hide: true,
+        filter: 'agNumberColumnFilter',
+        filterParams: {
+          filterOptions: ['equals']
         }
       },
       {
-        headerName: 'Familia',
+        field: 'categoria',
+        headerName: 'Categoría',
+        editable: true,
+        width: 150,
+        filter: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.categories ? this.categories.map(item => item.description) : []
+        }
+      },
+      {
         field: 'familia',
+        headerName: 'Familia',
+        editable: true,
         width: 150,
-        editable: true
+        filter: true
       },
       {
-        headerName: 'Sub Familia',
         field: 'subFamilia',
+        headerName: 'Sub Familia',
+        editable: true,
         width: 150,
-        editable: true
+        filter: true
       },
       {
-        headerName: 'Artículo',
         field: 'articulo',
+        headerName: 'Artículo',
+        editable: true,
         width: 200,
-        editable: true
+        filter: true
       }
     ];
   }
 
-  // Eventos del grid
-  onRowSelected(event: any) {
+  onSelectedRow(event: any) {
     this.selectedRowData = event.data;
   }
 
+  onSelectionChanged(event: any) {
+    const selectedNodes = event.api.getSelectedNodes();
+    if (selectedNodes.length > 0) {
+      this.selectedRowData = selectedNodes[0].data;
+    } else {
+      this.selectedRowData = null;
+    }
+  }
+
   onCellValueChanged(event: any) {
-    console.log('Celda cambiada:', event.data);
+    event.data.__modified = true;
     this.notSavedChanges = true;
   }
 
@@ -158,60 +188,98 @@ export class MaterialesMaestroComponent {
     this.gridApi = params.api;
   }
 
-  // CRUD Methods
-  addNewMaterial() {
-    const newId = Math.max(...this.materialesData.map(m => m.id), 0) + 1;
-    const newMaterial = {
-      id: newId,
+  addRow() {
+    const tempId = `temp_${this.tempIdCounter++}`;
+    const newItem = {
+      id: tempId,
       activo: true,
       categoria: '',
       familia: '',
       subFamilia: '',
-      articulo: ''
+      articulo: '',
+      __isNew: true
     };
-    
-    this.materialesData = [newMaterial, ...this.materialesData];
+
+    this.rowData = [newItem, ...this.rowData];
+    this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
-    
-    if (this.gridApi) {
-      this.gridApi.setGridOption('rowData', this.materialesData);
-    }
-    
-    alerts.basicAlert('Éxito', 'Nuevo material agregado', 'success');
+    this.gridApi.setGridOption('rowData', this.rowData);
+
+    setTimeout(() => {
+      const firstRowIndex = 0;
+      this.gridApi.ensureIndexVisible(firstRowIndex);
+      this.gridApi.startEditingCell({
+        rowIndex: firstRowIndex,
+        colKey: 'categoria'
+      });
+    }, 0);
   }
 
-  deleteSelectedMaterial() {
-    if (!this.selectedRowData) {
-      alerts.basicAlert('Error', 'Seleccione un material para eliminar', 'warning');
+  async saveChanges() {
+    const isValid = this.rowData.every(
+      (item) => item.categoria && item.articulo
+    );
+    if (!isValid) {
+      alerts.basicAlert(
+        'Campos requeridos',
+        'Debe llenar categoría y artículo antes de guardar.',
+        'error'
+      );
       return;
     }
+
+    // Simular guardado por ahora
+    this.rowData = this.rowData.map(row => {
+      const cleanRow = { ...row };
+      delete cleanRow.__isNew;
+      delete cleanRow.__modified;
+      return cleanRow;
+    });
     
-    this.materialesData = this.materialesData.filter(m => m.id !== this.selectedRowData.id);
-    this.selectedRowData = null;
-    this.notSavedChanges = true;
-    
-    if (this.gridApi) {
-      this.gridApi.setGridOption('rowData', this.materialesData);
-    }
-    
-    alerts.basicAlert('Éxito', 'Material eliminado', 'success');
+    alerts.basicAlert(
+      'Datos actualizados',
+      'Se han actualizado los datos correctamente.',
+      'success'
+    );
+    this.notSavedChanges = false;
+    this.newlyAddedRows = [];
   }
 
-  saveChanges() {
-    // Simular guardado
-    this.notSavedChanges = false;
-    alerts.basicAlert('Éxito', 'Cambios guardados correctamente', 'success');
+  async deleteEntry() {
+    const selectedNodes = this.gridApi.getSelectedNodes();
+    if (selectedNodes.length === 0) {
+      alerts.basicAlert(
+        'Eliminar entrada',
+        'Por favor, seleccione una entrada para eliminar.',
+        'error'
+      );
+      return;
+    }
+
+    const selectedData = selectedNodes[0].data;
+    this.rowData = this.rowData.filter(item => item.id !== selectedData.id);
+    this.selectedRowData = null;
+    this.notSavedChanges = true;
+    this.gridApi.setGridOption('rowData', this.rowData);
+    
+    alerts.basicAlert(
+      'Eliminar entrada',
+      'Entrada eliminada satisfactoriamente.',
+      'success'
+    );
   }
 
   revert() {
-    this.loadMaterialesData();
+    this.obtenerDatos();
     this.notSavedChanges = false;
     this.selectedRowData = null;
-    
+    this.newlyAddedRows = [];
     if (this.gridApi) {
-      this.gridApi.setGridOption('rowData', this.materialesData);
+      this.gridApi.setGridOption('rowData', this.rowData);
     }
-    
-    alerts.basicAlert('Información', 'Cambios revertidos', 'info');
+  }
+
+  async canDeactivate(): Promise<boolean> {
+    return confirmExitIfUnsaved(this.notSavedChanges);
   }
 }
