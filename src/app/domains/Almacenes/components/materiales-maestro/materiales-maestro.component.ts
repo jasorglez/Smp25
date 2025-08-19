@@ -1,13 +1,15 @@
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, inject, HostListener } from '@angular/core';
+import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule } from 'ag-grid-angular';
-import { catchError, EMPTY, lastValueFrom } from 'rxjs';
+import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SignalsService } from 'app/services/signals.service';
-import { TrackingService } from 'app/services/tracking.service';
 import { CatalogsService } from 'app/services/catalogs.service';
+import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
+import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 
 @Component({
   selector: 'app-materiales-maestro',
@@ -16,16 +18,18 @@ import { CatalogsService } from 'app/services/catalogs.service';
   templateUrl: './materiales-maestro.component.html',
   styleUrl: './materiales-maestro.component.scss'
 })
-export class MaterialesMaestroComponent {
+export class MaterialesMaestroComponent implements CanComponentDeactivate {
 
   private catalogsService = inject(CatalogsService);
   private signalsService = inject(SignalsService);
-  private trackingService = inject(TrackingService);
 
   constructor() {
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      this.loadCatalogData();
+      this.obtenerDatos();
+      this.obtenerCategorias();
+      this.obtenerFamilias();
+      this.obtenerSubfamilias();
     });
   }
 
@@ -36,359 +40,318 @@ export class MaterialesMaestroComponent {
     }
   }
 
-  ngOnInit() {
-    this.trackingService.addLog(
-      this.trackingService.getnameComp(),
-      'Acceso a Materiales Maestro',
-      'Almacenes - Materiales Maestro',
-      this.trackingService.getEmail()
-    );
-    
-    this.loadCatalogData();
-  }
-
   notSavedChanges: boolean = false;
   private gridApi: GridApi;
-
-  // Datos para combos
-  categories: any[] = [];
-  families: any[] = [];
-  subfamilies: any[] = [];
-  
-  // Datos del grid maestro
-  materialesData: any[] = [];
-  selectedRowData: any = null;
-  
-  // ID de la empresa actual
   private idRoot = this.signalsService.getRootSelectedBySidebar()();
+  private tempIdCounter: number = 0;
+  
+  categories: any[] = [];
+  familias: any[] = [];
+  subfamilias: any[] = [];
+  rowData: any[] = [];
+  selectedRowData: any = null;
+  newlyAddedRows: string[] = [];
+  gridHeight: string = '80vh';
+  
+  public rowSelection: 'single' | 'multiple' = 'single';
+  public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
+  public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
+  public paginationPageSize = 15;
+  public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
+  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
-  // Cargar datos del catálogo para combos
-  async loadCatalogData() {
-    if (!this.idRoot) return;
-    
-    try {
-      // Cargar los 3 tipos de datos en paralelo
-      const [categories, families, subfamilies] = await Promise.all([
-        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'CATEGORY')),
-        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'FAM-CAT')),
-        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'SUB-FAM'))
-      ]);
-
-      // Guardar datos para combos
-      this.categories = categories;
-      this.families = families;
-      this.subfamilies = subfamilies;
-
-      console.log('Datos cargados para combos:', {
-        categories: this.categories.length,
-        families: this.families.length,
-        subfamilies: this.subfamilies.length
-      });
-      
-      // Cargar datos del grid maestro (por ahora datos de prueba)
-      this.loadMaterialesData();
-      
-    } catch (error) {
-      console.error('Error al cargar datos del catálogo:', error);
-      this.categories = [];
-      this.families = [];
-      this.subfamilies = [];
-      alerts.basicAlert(
-        'Error',
-        'Error al cargar los datos del catálogo.',
-        'error'
-      );
-    }
-  }
-
-  // Cargar datos del grid maestro de materiales
-  loadMaterialesData() {
-    // Por ahora datos de prueba - después se conectará con el servicio real
-    this.materialesData = [
+  obtenerDatos() {
+    // Datos de prueba mientras no hay servicio específico
+    this.rowData = [
       {
         id: 1,
         activo: true,
-        categoria: 'Materia prima',
-        familia: 'Básica',
-        subFamilia: 'refresco',
-        articulo: 'Cola concentrada',
-        precioProveedor: 125.50,
-        descripcionEtiquetado: 'Cola concentrada 500ml',
-        numeroPiezasPorPaquete: 24,
-        numeroMaterial: 'MAT-001',
-        medidas: '500ml',
-        pesosVolumenes: '0.5kg',
-        caducidadGarantia: 12,
-        imagen: null,
-        sucursal: 'Principal',
-        fechaAlta: new Date(),
-        stockMinimo: 100,
-        resumirDe: '',
-        capacidadMaxAlmacen: 1000,
-        tiempoEntregaSemanas: 2
+        categoria: 'Categoría 1',
+        familia: 'Familia 1',
+        subFamilia: 'SubFamilia 1',
+        articulo: 'Material de prueba 1'
+      },
+      {
+        id: 2,
+        activo: false,
+        categoria: 'Categoría 2',
+        familia: 'Familia 2',
+        subFamilia: 'SubFamilia 2',
+        articulo: 'Material de prueba 2'
       }
     ];
   }
 
-  // Configuración del grid
-  get gridOptions(): any {
-    return {
-      headerHeight: 35,
-      rowHeight: 35,
-      animateRows: true,
-      // Grid editable
-      singleClickEdit: true,
-      suppressClickEdit: false,
-      stopEditingWhenCellsLoseFocus: true,
-      onRowSelected: (event: any) => {
-        if (event.node.isSelected()) {
-          this.onRowSelected(event);
-        }
+  obtenerCategorias() {
+    if (!this.idRoot) return;
+    
+    this.catalogsService.getCatalogs(this.idRoot, 'CATEGORY').subscribe(
+      (data: any[]) => {
+        this.categories = data || [];
       },
-      onCellValueChanged: (event: any) => {
-        this.onCellValueChanged(event);
-      }
-    };
+      (error) => console.error('Error fetching categories:', error)
+    );
   }
 
-  // Definición de columnas del grid maestro
-  get columnDefs(): ColDef[] {
+  obtenerFamilias() {
+    if (!this.idRoot) return;
+    
+    this.catalogsService.getFamilyById(this.idRoot).subscribe(
+      (data: any[]) => {
+        this.familias = data || [];
+      },
+      (error) => console.error('Error fetching families:', error)
+    );
+  }
+
+  obtenerSubfamilias() {
+    if (!this.idRoot) return;
+    
+    this.catalogsService.getCatalogs(this.idRoot, 'SUBFAMILY').subscribe(
+      (data: any[]) => {
+        this.subfamilias = data || [];
+      },
+      (error) => console.error('Error fetching subfamilies:', error)
+    );
+  }
+
+  public gridOptions: any = {
+    headerHeight: 25,
+    rowHeight: 20,
+    rowClass: (params) => {
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onRowClicked: (event) => {
+      event.node.setSelected(true);
+    },
+    onRowSelected: (event) => {
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    }
+  };
+
+  get colMaster(): ColDef[] {
     return [
       {
-        headerName: 'Activo',
         field: 'activo',
-        width: 80,
-        cellRenderer: (params: any) => {
-          const checked = params.value ? 'checked' : '';
-          return `<input type="checkbox" ${checked} style="cursor: pointer;">`;
-        },
-        editable: true
-      },
-      {
-        headerName: 'Categoría',
-        field: 'categoria',
-        width: 150,
+        headerName: 'Activo',
         editable: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.categories.map(cat => cat.description)
-        }
-      },
-      {
-        headerName: 'Familia',
-        field: 'familia',
-        width: 150,
-        editable: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.families.map(fam => fam.description)
-        }
-      },
-      {
-        headerName: 'Sub Familia',
-        field: 'subFamilia',
-        width: 150,
-        editable: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.subfamilies.map(sub => sub.description)
-        }
-      },
-      {
-        headerName: 'Artículo',
-        field: 'articulo',
-        width: 200,
-        editable: true
-      },
-      {
-        headerName: 'Precio Proveedor (0 Kg)',
-        field: 'precioProveedor',
-        width: 180,
-        editable: true,
-        cellEditor: 'agNumberCellEditor'
-      },
-      {
-        headerName: 'Descripción de Etiquetado',
-        field: 'descripcionEtiquetado',
-        width: 250,
-        editable: true
-      },
-      {
-        headerName: 'Número de Piezas por Paquete',
-        field: 'numeroPiezasPorPaquete',
-        width: 200,
-        editable: true,
-        cellEditor: 'agNumberCellEditor'
-      },
-      {
-        headerName: 'Número de Material',
-        field: 'numeroMaterial',
-        width: 150,
-        editable: true
-      },
-      {
-        headerName: 'Medidas',
-        field: 'medidas',
-        width: 120,
-        editable: true
-      },
-      {
-        headerName: 'Pesos o Volúmenes en Kg o Lts',
-        field: 'pesosVolumenes',
-        width: 200,
-        editable: true
-      },
-      {
-        headerName: 'Caducidad o Garantía en Meses',
-        field: 'caducidadGarantia',
-        width: 200,
-        editable: true,
-        cellEditor: 'agNumberCellEditor'
-      },
-      {
-        headerName: 'Imagen',
-        field: 'imagen',
         width: 100,
+        cellEditor: 'agCheckboxCellEditor'
+      },
+      {
+        field: 'id',
         editable: false,
-        cellRenderer: (params: any) => {
-          return `<button class="btn btn-sm btn-outline-primary">📷</button>`;
+        width: 70,
+        hide: true,
+        filter: 'agNumberColumnFilter',
+        filterParams: {
+          filterOptions: ['equals']
         }
       },
       {
-        headerName: 'Sucursal',
-        field: 'sucursal',
-        width: 120,
+        field: 'categoria',
+        headerName: 'Categoría',
         editable: true,
+        width: 150,
+        filter: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: ['Principal', 'Sucursal 1', 'Sucursal 2'] // Después se cargará dinámicamente
+          values: this.categories ? this.categories.map(item => item.description) : []
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.categories
+            ? this.categories.find((item) => item.description === params.value)
+            : null;
+          return foundItem ? foundItem.description : params.value;
         }
       },
       {
-        headerName: 'Fecha de Alta',
-        field: 'fechaAlta',
-        width: 120,
+        field: 'familia',
+        headerName: 'Familia',
         editable: true,
-        cellEditor: 'agDateCellEditor'
-      },
-      {
-        headerName: 'Stock Mínimo',
-        field: 'stockMinimo',
-        width: 120,
-        editable: true,
-        cellEditor: 'agNumberCellEditor'
-      },
-      {
-        headerName: 'Resumir de',
-        field: 'resumirDe',
         width: 150,
-        editable: true
+        filter: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.familias ? this.familias.map(item => item.description) : []
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.familias
+            ? this.familias.find((item) => item.description === params.value)
+            : null;
+          return foundItem ? foundItem.description : params.value;
+        }
       },
       {
-        headerName: 'Capacidad Máx Almacén',
-        field: 'capacidadMaxAlmacen',
-        width: 180,
+        field: 'subFamilia',
+        headerName: 'Sub Familia',
         editable: true,
-        cellEditor: 'agNumberCellEditor'
+        width: 150,
+        filter: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: (params) => {
+          // Obtener el idFamilia de la fila actual
+          const familiaName = params.data.familia;
+          const familia = this.familias.find(f => f.description === familiaName);
+          
+          // Filtrar subfamilias por parentId
+          const subfamiliasFiltradas = familia 
+            ? this.subfamilias.filter(item => item.parentId === familia.id)
+            : this.subfamilias;
+
+          return {
+            values: subfamiliasFiltradas.map(item => item.description)
+          };
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.subfamilias
+            ? this.subfamilias.find((item) => item.description === params.value)
+            : null;
+          return foundItem ? foundItem.description : params.value;
+        }
       },
       {
-        headerName: 'Tiempo Entrega en Semanas',
-        field: 'tiempoEntregaSemanas',
+        field: 'articulo',
+        headerName: 'Artículo',
+        editable: true,
         width: 200,
-        editable: true,
-        cellEditor: 'agNumberCellEditor'
+        filter: true
       }
     ];
   }
 
-  // Selección de filas
-  onRowSelected(event: any) {
+  onSelectedRow(event: any) {
     this.selectedRowData = event.data;
   }
 
-  // Cambios en celdas
-  onCellValueChanged(event: any) {
-    console.log('Material modificado:', event.data);
-    event.data.__modified = true;
-    this.notSavedChanges = true;
+  onSelectionChanged(event: any) {
+    const selectedNodes = event.api.getSelectedNodes();
+    if (selectedNodes.length > 0) {
+      this.selectedRowData = selectedNodes[0].data;
+    } else {
+      this.selectedRowData = null;
+    }
   }
 
-  // Grid listo
+  onCellValueChanged(event: any) {
+    event.data.__modified = true;
+    this.notSavedChanges = true;
+    
+    // Si cambió la familia, limpiar la subfamilia
+    if (event.colDef.field === 'familia') {
+      event.data.subFamilia = '';
+      this.gridApi.refreshCells({
+        rowNodes: [event.node],
+        columns: ['subFamilia']
+      });
+    }
+  }
+
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
   }
 
-  // Agregar nuevo material
-  addNewMaterial() {
-    const newMaterial = {
-      id: Date.now(), // ID temporal
+  addRow() {
+    const tempId = `temp_${this.tempIdCounter++}`;
+    const newItem = {
+      id: tempId,
       activo: true,
       categoria: '',
       familia: '',
       subFamilia: '',
       articulo: '',
-      precioProveedor: 0,
-      descripcionEtiquetado: '',
-      numeroPiezasPorPaquete: 1,
-      numeroMaterial: '',
-      medidas: '',
-      pesosVolumenes: '',
-      caducidadGarantia: 12,
-      imagen: null,
-      sucursal: 'Principal',
-      fechaAlta: new Date(),
-      stockMinimo: 0,
-      resumirDe: '',
-      capacidadMaxAlmacen: 0,
-      tiempoEntregaSemanas: 1,
       __isNew: true
     };
 
-    this.materialesData = [newMaterial, ...this.materialesData];
+    this.rowData = [newItem, ...this.rowData];
+    this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
+    this.gridApi.setGridOption('rowData', this.rowData);
 
-    if (this.gridApi) {
-      this.gridApi.setGridOption('rowData', this.materialesData);
-    }
+    setTimeout(() => {
+      const firstRowIndex = 0;
+      this.gridApi.ensureIndexVisible(firstRowIndex);
+      this.gridApi.startEditingCell({
+        rowIndex: firstRowIndex,
+        colKey: 'categoria'
+      });
+    }, 0);
   }
 
-  // Eliminar material seleccionado
-  deleteSelectedMaterial() {
-    if (!this.selectedRowData) {
+  async saveChanges() {
+    const isValid = this.rowData.every(
+      (item) => item.categoria && item.articulo
+    );
+    if (!isValid) {
       alerts.basicAlert(
-        'Eliminar',
-        'Por favor, seleccione un material para eliminar.',
+        'Campos requeridos',
+        'Debe llenar categoría y artículo antes de guardar.',
         'error'
       );
       return;
     }
 
-    const index = this.materialesData.findIndex(item => item.id === this.selectedRowData.id);
-    if (index > -1) {
-      this.materialesData.splice(index, 1);
-      this.notSavedChanges = true;
-      
-      if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', this.materialesData);
-      }
-    }
-  }
-
-  // Guardar cambios
-  saveChanges() {
-    // Por ahora solo mostrar mensaje - después se conectará con el servicio
+    // Simular guardado por ahora
+    this.rowData = this.rowData.map(row => {
+      const cleanRow = { ...row };
+      delete cleanRow.__isNew;
+      delete cleanRow.__modified;
+      return cleanRow;
+    });
+    
     alerts.basicAlert(
-      'Guardado',
-      'Cambios guardados correctamente.',
+      'Datos actualizados',
+      'Se han actualizado los datos correctamente.',
       'success'
     );
     this.notSavedChanges = false;
+    this.newlyAddedRows = [];
   }
 
-  // Revertir cambios
+  async deleteEntry() {
+    const selectedNodes = this.gridApi.getSelectedNodes();
+    if (selectedNodes.length === 0) {
+      alerts.basicAlert(
+        'Eliminar entrada',
+        'Por favor, seleccione una entrada para eliminar.',
+        'error'
+      );
+      return;
+    }
+
+    const selectedData = selectedNodes[0].data;
+    this.rowData = this.rowData.filter(item => item.id !== selectedData.id);
+    this.selectedRowData = null;
+    this.notSavedChanges = true;
+    this.gridApi.setGridOption('rowData', this.rowData);
+    
+    alerts.basicAlert(
+      'Eliminar entrada',
+      'Entrada eliminada satisfactoriamente.',
+      'success'
+    );
+  }
+
   revert() {
-    this.loadMaterialesData();
+    this.obtenerDatos();
     this.notSavedChanges = false;
     this.selectedRowData = null;
+    this.newlyAddedRows = [];
+    if (this.gridApi) {
+      this.gridApi.setGridOption('rowData', this.rowData);
+    }
+  }
+
+  async canDeactivate(): Promise<boolean> {
+    return confirmExitIfUnsaved(this.notSavedChanges);
   }
 }
