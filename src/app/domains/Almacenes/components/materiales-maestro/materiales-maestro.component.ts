@@ -114,9 +114,9 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
 
 
   filtrarSubfamilias(categoriaId: number, familiaId: number) {
-    // Filtrar subfamilias que tengan parentId=categoriaId y subparentId=familiaId
+    // Filtrar subfamilias que tengan parentId=categoriaId y subParentId=familiaId (igual que CAT-Fam-Sub)
     return this.todasSubfamilias.filter(subfamilia => 
-      subfamilia.parentId === categoriaId && subfamilia.subparentId === familiaId
+      subfamilia.parentId === categoriaId && subfamilia.subParentId === familiaId
     );
   }
 
