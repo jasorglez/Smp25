@@ -84,21 +84,19 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
     if (!this.idRoot) return;
 
     try {
-      // Cargar los 3 tipos de datos en paralelo
-      const [categories, families, subfamilies] = await Promise.all([
+      // Cargar solo categorías y familias al inicio
+      const [categories, families] = await Promise.all([
         lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'CATEGORY')),
-        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'FAM-CAT')),
-        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'SUB-FAM'))
+        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'FAM-CAT'))
       ]);
 
       this.categories = categories || [];
       this.familias = families || [];
-      this.subfamilias = subfamilies || [];
+      this.subfamilias = []; // Se cargarán dinámicamente
 
       console.log('Catálogos cargados:', {
         categories: this.categories.length,
-        families: this.familias.length, 
-        subfamilies: this.subfamilias.length
+        families: this.familias.length
       });
 
     } catch (error) {
@@ -106,6 +104,23 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
       this.categories = [];
       this.familias = [];
       this.subfamilias = [];
+    }
+  }
+
+  async obtenerSubfamilias(categoriaId: number, familiaId: number) {
+    if (!this.idRoot || !categoriaId || !familiaId) return [];
+
+    try {
+      const subfamilias = await lastValueFrom(
+        this.catalogsService.getCatalogs(this.idRoot, 'SUB-FAM', categoriaId, familiaId)
+      );
+      
+      console.log(`Subfamilias cargadas para categoria ${categoriaId} y familia ${familiaId}:`, subfamilias?.length || 0);
+      return subfamilias || [];
+
+    } catch (error) {
+      console.error('Error fetching subfamilies:', error);
+      return [];
     }
   }
 
@@ -211,17 +226,17 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
         filter: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: (params) => {
-          // Obtener el idFamilia de la fila actual
+          // Solo mostrar subfamilias si ya se seleccionaron categoría y familia
+          const categoriaName = params.data.categoria;
           const familiaName = params.data.familia;
-          const familia = this.familias.find(f => f.description === familiaName);
           
-          // Filtrar subfamilias por parentId
-          const subfamiliasFiltradas = familia 
-            ? this.subfamilias.filter(item => item.parentId === familia.id)
-            : this.subfamilias;
-
+          if (!categoriaName || !familiaName) {
+            return { values: [] }; // No hay subfamilias disponibles sin categoría+familia
+          }
+          
+          // Usar las subfamilias cargadas dinámicamente
           return {
-            values: subfamiliasFiltradas.map(item => item.description)
+            values: this.subfamilias.map(item => item.description)
           };
         },
         valueFormatter: (params) => {
@@ -247,7 +262,7 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
     }
   }
 
-  onCellValueChanged(event: any) {
+  async onCellValueChanged(event: any) {
     event.data.__modified = true;
     this.notSavedChanges = true;
     
@@ -261,9 +276,27 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
       });
     }
     
-    // Si cambió la familia, limpiar la subfamilia
+    // Si cambió la familia, limpiar subfamilia y cargar nuevas subfamilias
     if (event.colDef.field === 'familia') {
       event.data.subFamilia = '';
+      
+      // Obtener IDs de categoría y familia
+      const categoriaName = event.data.categoria;
+      const familiaName = event.data.familia;
+      
+      if (categoriaName && familiaName) {
+        const categoria = this.categories.find(c => c.description === categoriaName);
+        const familia = this.familias.find(f => f.description === familiaName);
+        
+        if (categoria && familia) {
+          // Cargar subfamilias específicas para esta categoría+familia
+          const subfamiliasEspecificas = await this.obtenerSubfamilias(categoria.id, familia.id);
+          
+          // Actualizar subfamilias globales para esta combinación
+          this.subfamilias = subfamiliasEspecificas;
+        }
+      }
+      
       this.gridApi.refreshCells({
         rowNodes: [event.node],
         columns: ['subFamilia']
