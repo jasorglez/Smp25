@@ -27,9 +27,7 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.obtenerDatos();
-      this.obtenerCategorias();
-      this.obtenerFamilias();
-      this.obtenerSubfamilias();
+      this.obtenerCatalogos();
     });
   }
 
@@ -66,53 +64,49 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
       {
         id: 1,
         activo: true,
+        articulo: 'Material de prueba 1',
         categoria: 'Categoría 1',
         familia: 'Familia 1',
-        subFamilia: 'SubFamilia 1',
-        articulo: 'Material de prueba 1'
+        subFamilia: 'SubFamilia 1'
       },
       {
         id: 2,
         activo: false,
+        articulo: 'Material de prueba 2',
         categoria: 'Categoría 2',
         familia: 'Familia 2',
-        subFamilia: 'SubFamilia 2',
-        articulo: 'Material de prueba 2'
+        subFamilia: 'SubFamilia 2'
       }
     ];
   }
 
-  obtenerCategorias() {
+  async obtenerCatalogos() {
     if (!this.idRoot) return;
-    
-    this.catalogsService.getCatalogs(this.idRoot, 'CATEGORY').subscribe(
-      (data: any[]) => {
-        this.categories = data || [];
-      },
-      (error) => console.error('Error fetching categories:', error)
-    );
-  }
 
-  obtenerFamilias() {
-    if (!this.idRoot) return;
-    
-    this.catalogsService.getFamilyById(this.idRoot).subscribe(
-      (data: any[]) => {
-        this.familias = data || [];
-      },
-      (error) => console.error('Error fetching families:', error)
-    );
-  }
+    try {
+      // Cargar los 3 tipos de datos en paralelo
+      const [categories, families, subfamilies] = await Promise.all([
+        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'CATEGORY')),
+        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'FAM-CAT')),
+        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'SUB-FAM'))
+      ]);
 
-  obtenerSubfamilias() {
-    if (!this.idRoot) return;
-    
-    this.catalogsService.getCatalogs(this.idRoot, 'SUBFAMILY').subscribe(
-      (data: any[]) => {
-        this.subfamilias = data || [];
-      },
-      (error) => console.error('Error fetching subfamilies:', error)
-    );
+      this.categories = categories || [];
+      this.familias = families || [];
+      this.subfamilias = subfamilies || [];
+
+      console.log('Catálogos cargados:', {
+        categories: this.categories.length,
+        families: this.familias.length, 
+        subfamilies: this.subfamilias.length
+      });
+
+    } catch (error) {
+      console.error('Error fetching catalogs:', error);
+      this.categories = [];
+      this.familias = [];
+      this.subfamilias = [];
+    }
   }
 
   public gridOptions: any = {
@@ -156,6 +150,13 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
         filterParams: {
           filterOptions: ['equals']
         }
+      },
+      {
+        field: 'articulo',
+        headerName: 'Artículo',
+        editable: true,
+        width: 200,
+        filter: true
       },
       {
         field: 'categoria',
@@ -229,13 +230,6 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
             : null;
           return foundItem ? foundItem.description : params.value;
         }
-      },
-      {
-        field: 'articulo',
-        headerName: 'Artículo',
-        editable: true,
-        width: 200,
-        filter: true
       }
     ];
   }
@@ -286,10 +280,10 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
     const newItem = {
       id: tempId,
       activo: true,
+      articulo: '',
       categoria: '',
       familia: '',
       subFamilia: '',
-      articulo: '',
       __isNew: true
     };
 
@@ -303,19 +297,19 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
       this.gridApi.ensureIndexVisible(firstRowIndex);
       this.gridApi.startEditingCell({
         rowIndex: firstRowIndex,
-        colKey: 'categoria'
+        colKey: 'articulo'
       });
     }, 0);
   }
 
   async saveChanges() {
     const isValid = this.rowData.every(
-      (item) => item.categoria && item.articulo
+      (item) => item.articulo && item.categoria
     );
     if (!isValid) {
       alerts.basicAlert(
         'Campos requeridos',
-        'Debe llenar categoría y artículo antes de guardar.',
+        'Debe llenar artículo y categoría antes de guardar.',
         'error'
       );
       return;
