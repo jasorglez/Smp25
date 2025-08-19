@@ -45,7 +45,8 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
   
   categories: any[] = [];
   familias: any[] = [];
-  subfamilias: any[] = [];
+  subfamilias: any[] = []; // Subfamilias filtradas para la fila actual
+  todasSubfamilias: any[] = []; // Todas las subfamilias disponibles
   rowData: any[] = [];
   selectedRowData: any = null;
   newlyAddedRows: string[] = [];
@@ -84,44 +85,39 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
     if (!this.idRoot) return;
 
     try {
-      // Cargar solo categorías y familias al inicio
-      const [categories, families] = await Promise.all([
+      // Cargar categorías, familias y todas las subfamilias
+      const [categories, families, subfamilies] = await Promise.all([
         lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'CATEGORY')),
-        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'FAM-CAT'))
+        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'FAM-CAT')),
+        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'SUB-FAM'))
       ]);
 
       this.categories = categories || [];
       this.familias = families || [];
-      this.subfamilias = []; // Se cargarán dinámicamente
+      this.todasSubfamilias = subfamilies || [];
+      this.subfamilias = []; // Se filtrarán dinámicamente
 
       console.log('Catálogos cargados:', {
         categories: this.categories.length,
-        families: this.familias.length
+        families: this.familias.length,
+        subfamilies: this.todasSubfamilias.length
       });
 
     } catch (error) {
       console.error('Error fetching catalogs:', error);
       this.categories = [];
       this.familias = [];
+      this.todasSubfamilias = [];
       this.subfamilias = [];
     }
   }
 
-  async obtenerSubfamilias(categoriaId: number, familiaId: number) {
-    if (!this.idRoot || !categoriaId || !familiaId) return [];
 
-    try {
-      const subfamilias = await lastValueFrom(
-        this.catalogsService.getCatalogs(this.idRoot, 'SUB-FAM', categoriaId, familiaId)
-      );
-      
-      console.log(`Subfamilias cargadas para categoria ${categoriaId} y familia ${familiaId}:`, subfamilias?.length || 0);
-      return subfamilias || [];
-
-    } catch (error) {
-      console.error('Error fetching subfamilies:', error);
-      return [];
-    }
+  filtrarSubfamilias(categoriaId: number, familiaId: number) {
+    // Filtrar subfamilias que tengan parentId=categoriaId y subparentId=familiaId
+    return this.todasSubfamilias.filter(subfamilia => 
+      subfamilia.parentId === categoriaId && subfamilia.subparentId === familiaId
+    );
   }
 
   public gridOptions: any = {
@@ -276,7 +272,7 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
       });
     }
     
-    // Si cambió la familia, limpiar subfamilia y cargar nuevas subfamilias
+    // Si cambió la familia, limpiar subfamilia y filtrar nuevas subfamilias
     if (event.colDef.field === 'familia') {
       event.data.subFamilia = '';
       
@@ -289,11 +285,9 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
         const familia = this.familias.find(f => f.description === familiaName);
         
         if (categoria && familia) {
-          // Cargar subfamilias específicas para esta categoría+familia
-          const subfamiliasEspecificas = await this.obtenerSubfamilias(categoria.id, familia.id);
-          
-          // Actualizar subfamilias globales para esta combinación
-          this.subfamilias = subfamiliasEspecificas;
+          // Filtrar subfamilias específicas para esta categoría+familia
+          this.subfamilias = this.filtrarSubfamilias(categoria.id, familia.id);
+          console.log(`Subfamilias filtradas para categoria ${categoria.id} y familia ${familia.id}:`, this.subfamilias.length);
         }
       }
       
