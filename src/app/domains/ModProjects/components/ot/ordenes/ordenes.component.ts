@@ -2280,7 +2280,7 @@ async saveChangesEquipos() {
   });*/
 
   try {
-    const response: any = await lastValueFrom(this.otService.addOtViaPdf(760, file));
+    const response: any = await lastValueFrom(this.otService.addOtViaPdf(this.idProject, file));
 
     //console.log('=== PDF Upload Success ===');
     //console.log('Response received:', response);
