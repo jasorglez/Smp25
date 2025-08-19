@@ -181,8 +181,19 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
         width: 150,
         filter: true,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.familias ? this.familias.map(item => item.description) : []
+        cellEditorParams: (params) => {
+          // Obtener la categoría de la fila actual
+          const categoriaName = params.data.categoria;
+          const categoria = this.categories.find(c => c.description === categoriaName);
+          
+          // Filtrar familias por parentId (idCategoria)
+          const familiasFiltradas = categoria 
+            ? this.familias.filter(item => item.parentId === categoria.id)
+            : [];
+
+          return {
+            values: familiasFiltradas.map(item => item.description)
+          };
         },
         valueFormatter: (params) => {
           const foundItem = this.familias
@@ -245,6 +256,16 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
   onCellValueChanged(event: any) {
     event.data.__modified = true;
     this.notSavedChanges = true;
+    
+    // Si cambió la categoría, limpiar familia y subfamilia
+    if (event.colDef.field === 'categoria') {
+      event.data.familia = '';
+      event.data.subFamilia = '';
+      this.gridApi.refreshCells({
+        rowNodes: [event.node],
+        columns: ['familia', 'subFamilia']
+      });
+    }
     
     // Si cambió la familia, limpiar la subfamilia
     if (event.colDef.field === 'familia') {
