@@ -59,6 +59,7 @@ export class CatalogsService {
   }
 
   getSubfamilies(): Observable<any[]> {
+    
     return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog?type=Subfamily`, { headers: this.trackingService.getHeaders() });
   }
 

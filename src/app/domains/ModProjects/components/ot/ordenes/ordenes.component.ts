@@ -433,23 +433,6 @@ obtenerAnoMes(fecha) {
       resizable: true,
       width: 77,
     }, 
-        {
-      field: 'description',
-      headerName: 'Descripción del Servicio',
-      sortable: true,
-      filter: true,
-      resizable: true,
-      width: 1,
-      hide: true
-    },
-    {
-      field: 'address',
-      headerName: 'Dirección',
-      sortable: true,
-      filter: true,
-      resizable: true,
-      flex: 2,
-    },
    */
     {
       field: 'idProject',
@@ -460,7 +443,7 @@ obtenerAnoMes(fecha) {
         excelMode: 'mac'
       },
       resizable: true,
-      flex: 4,
+      flex: 3,
       hide: !this.authService.hasDetailedPermission('projects', 'get-all-ot'),
       editable: true,
       rowGroup: this.authService.hasDetailedPermission('projects', 'get-all-ot'),
@@ -484,6 +467,14 @@ obtenerAnoMes(fecha) {
         this.onProjectChangedWithConfirmation(params);
       }
     },
+        {
+      field: 'cdc',
+      headerName: 'CDC',
+      sortable: true,
+      filter: true,
+      resizable: true,
+      flex: 3,
+    },
     {
       field: 'otNumber',
       headerName: 'OT',
@@ -493,9 +484,9 @@ obtenerAnoMes(fecha) {
         excelMode: 'mac'
       },
       resizable: true,
-      flex: 2
+      flex: 3,    
     },
-     {
+     /*{
       field: 'results',
       headerName: 'Resultados',
       sortable: true,
@@ -505,7 +496,7 @@ obtenerAnoMes(fecha) {
       onCellDoubleClicked: (params: any) => {
         this.onOTCellDoubleClicked(params);
       }
-    },
+    },*/
     {
       field: 'closed',
       headerName: 'Cerrado',
