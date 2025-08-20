@@ -197,14 +197,29 @@ export class UpdateExcelService {
   );
 }
 
-  processAndDownload(dateStart: string, dateEnd: string): Observable<Blob> {
+  processAndDownloadOt(dateStart: string, dateEnd: string): Observable<Blob> {
     const dateRange = {
       dateStart: dateStart,
       dateEnd: dateEnd
     };
 
     return this.http.post(
-      `${environment.urlSmp}/UpdateExcel/process-and-download`,
+      `${environment.urlSmp}/UpdateExcel/process-and-download-ot`,
+      dateRange,
+      { 
+        headers: this.trackingService.getHeaders(),
+        responseType: 'blob'
+      }
+    );
+  }
+  processAndDownloadCuadInter(dateStart: string, dateEnd: string): Observable<Blob> {
+    const dateRange = {
+      dateStart: dateStart,
+      dateEnd: dateEnd
+    };
+
+    return this.http.post(
+      `${environment.urlSmp}/UpdateExcel/process-and-download-cuadinter`,
       dateRange,
       { 
         headers: this.trackingService.getHeaders(),
