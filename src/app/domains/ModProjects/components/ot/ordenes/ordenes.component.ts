@@ -433,23 +433,6 @@ obtenerAnoMes(fecha) {
       resizable: true,
       width: 77,
     }, 
-        {
-      field: 'description',
-      headerName: 'Descripción del Servicio',
-      sortable: true,
-      filter: true,
-      resizable: true,
-      width: 1,
-      hide: true
-    },
-    {
-      field: 'address',
-      headerName: 'Dirección',
-      sortable: true,
-      filter: true,
-      resizable: true,
-      flex: 2,
-    },
    */
     {
       field: 'idProject',
@@ -484,6 +467,14 @@ obtenerAnoMes(fecha) {
         this.onProjectChangedWithConfirmation(params);
       }
     },
+        {
+      field: 'cdc',
+      headerName: 'CDC',
+      sortable: true,
+      filter: true,
+      resizable: true,
+      flex: 3,
+    },
     {
       field: 'otNumber',
       headerName: 'OT',
@@ -493,9 +484,9 @@ obtenerAnoMes(fecha) {
         excelMode: 'mac'
       },
       resizable: true,
-      flex: 2
+      flex: 3,    
     },
-     {
+     /*{
       field: 'results',
       headerName: 'Resultados',
       sortable: true,
@@ -505,14 +496,14 @@ obtenerAnoMes(fecha) {
       onCellDoubleClicked: (params: any) => {
         this.onOTCellDoubleClicked(params);
       }
-    },
+    },*/
     {
       field: 'closed',
       headerName: 'Cerrado',
       sortable: true,
       filter: true,
       resizable: true,
-      flex: 1,
+      flex: 4,
       editable: false
     }
 
@@ -1374,7 +1365,7 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     autoGroupColumnDef: {
       headerName: 'Grupo',
       field: 'ag-Grid-AutoColumn',
-      width: 200,
+      width: 150,
       cellRendererParams: {
         suppressCount: false
       }

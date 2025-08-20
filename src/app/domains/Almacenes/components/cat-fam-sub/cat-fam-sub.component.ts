@@ -71,6 +71,9 @@ export class CatFamSubComponent {
   selectedRowData: any = null;
   selectedNodeLevel: 'category' | 'family' | 'subfamily' | null = null;
   
+
+
+  
   // ID de la empresa actual
   private idRoot = this.signalsService.getRootSelectedBySidebar()();
 
