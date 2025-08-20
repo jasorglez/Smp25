@@ -7,6 +7,7 @@ import { TrackingService } from 'app/services/tracking.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SignalsService } from 'app/services/signals.service';
 import { CatalogsService } from 'app/services/catalogs.service';
+import { AuthService } from 'app/services/auth.service';
 import { alerts } from 'app/helpers/alerts';
 
 export interface OtDetails {
@@ -34,6 +35,7 @@ export interface OtDetails {
   lectureWater?: string;
   observations?: string;
   results?: string;
+  idCompany?: number;
   active: boolean;
 }
 
@@ -54,6 +56,7 @@ export class DetailsComponent implements OnInit {
   private cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private catalogService = inject(CatalogsService);
+  private authService = inject(AuthService);
   idcompany: number = 0;
   catalogArea: any [] = [];
   
@@ -375,6 +378,21 @@ export class DetailsComponent implements OnInit {
   }
 
   private checkProjectAuthorization(otData: any): boolean {
+    // Si el usuario tiene permisos para ver todas las OTs, verificar por empresa
+    if (this.authService.hasDetailedPermission('projects', 'get-all-ot')) {
+      console.log('Usuario tiene permisos get-all-ot, verificando por empresa');
+      
+      const otCompanyId = otData.idCompany || (Array.isArray(otData) ? otData[0]?.idCompany : otData.data?.idCompany);
+      
+      if (!otCompanyId || this.idcompany !== otCompanyId) {
+        console.warn(`Empresa no autorizada. Seleccionada: ${this.idcompany}, OT pertenece a: ${otCompanyId}`);
+        return false;
+      }
+      
+      return true;
+    }
+    
+    // Si no tiene permisos especiales, verificar por proyecto como antes
     const selectedProject = this.signalsService.getProjectSelectedBySidebar();
     
     if (!selectedProject) {

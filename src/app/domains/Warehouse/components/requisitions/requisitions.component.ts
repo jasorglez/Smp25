@@ -225,19 +225,12 @@ export class RequisitionsComponent implements CanComponentDeactivate {
           return '';
         },
       },
-      {
-        field: 'delivery',
-        headerName: 'Entrega',
-        editable: true,
-        filter: true,
-        width: 150,
-      },
-
+  
       {
         field: 'idDepartament',
         headerName: 'Departamento Solicita',
         editable: true,
-        width: 180,
+        width: 190,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.departamentos
@@ -253,70 +246,30 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       },
       {
         field: 'solicit',
-        headerName: 'Encargado de Cotizaciones',
+        headerName: 'Solicitante',
         editable: true,
-        width: 150,
-      },
-      {
-        field: 'dateSupply',
-        headerName: 'Fecha Cotizaciones',
-        editable: true,
-        width: 150,
-        cellDataType: 'dateString',
-        valueFormatter: (params) => {
-          if (params.value) {
-            return params.value.split('T')[0];
-          }
-          return '';
-        },
+        width: 190,
       },
       {
         field: 'deliveryTime',
         headerName: 'Tiempo Entrega',
         editable: true,
         filter: true,
-        width: 150,
+        width: 200,
       },
-      {
-        field: 'dateSupply',
-        headerName: 'Fecha OC',
-        editable: true,
-        width: 150,
-        cellDataType: 'dateString',
-        valueFormatter: (params) => {
-          if (params.value) {
-            return params.value.split('T')[0];
-          }
-          return '';
-        },
-      },
-      {
-        field: 'idCurrency',
-        headerName: 'Moneda',
-        editable: true,
-        width: 150,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.monedas ? this.monedas.map((item) => item.id) : [],
-        },
-        valueFormatter: (params) => {
-          const foundItem = this.monedas
-            ? this.monedas.find((item) => item.id === params.value)
-            : null;
-          return foundItem ? `${foundItem.description}` : params.value;
-        },
-      },
-      {
-        field: 'conditions',
-        headerName: 'Condición',
-        editable: true,
-        width: 150,
-      },
+ 
       {
         field: 'priority',
         headerName: 'Prioridad',
         editable: true,
-        width: 150,
+        width: 160,
+      },
+
+       {
+        field: 'close',
+        headerName: 'Cerrado',
+        editable: true,
+        width: 120,
       },
 
       {

@@ -60,37 +60,27 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
 
   // Variables compartidas
 
-  notSavedChanges: boolean = false;
+  masterNotSavedChanges: boolean = false;
+  detailsNotSavedChanges: boolean = false;
   id: string = null;
   idBranch: number = null;
   idProject: number = null;
   idReference: number = null;
   private tempIdCounter: number = 0;
   idRequisition: number = null;
+  private masterGridApi: GridApi;
+  private detailsGridApi: GridApi;
   private gridApi: GridApi;
   idRoot: number = null;
   projectOrBranch: boolean = null; // True = Project, False = Branch
   typeReference: string = null; // project or branch
 
-  // Variables para grid jerárquico unificado
-  hierarchicalData: any[] = [];
-  selectedRowData: any = null;
-  selectedNodeLevel: 'order' | 'detail' | null = null;
-  newlyAddedRows: string[] = [];
-
-  // Legacy variables (mantener para compatibilidad temporal)
+  // Variables Master
   masterRowData: any[] = [];
-  detailsRowData: any[] = [];
   masterSelectedRowData: any = null;
-  detailsSelectedRowData: any = null;
-  masterNotSavedChanges: boolean = false;
-  detailsNotSavedChanges: boolean = false;
   newlyAddedMasterRows: string[] = [];
-  newlyAddedDetailRows: string[] = [];
-  masterGridApi: any = null;
-  detailsGridApi: any = null;
 
-  // Catálogos para combos
+  // Catálogos Master
   requisiciones: any[] = [];
   proveedores: any[] = [];
   departamentos: any[] = [];
@@ -98,6 +88,11 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   monedas: any[] = [];
   usuarios: any[] = [];
   tipoPago: any[] = [];
+
+  // Variables Details
+  detailsRowData: any[] = [];
+  detailsSelectedRowData: any = null;
+  newlyAddedDetailRows: string[] = [];
 
   // Catálogos Details
   productos: any[] = [];
@@ -118,14 +113,20 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       this.getSetupData();
       this.idReference = this.projectOrBranch ? this.idProject : this.idBranch;
 
-      this.loadHierarchicalData();
+      this.obtenerDatos();
+      this.obtenerRequisiciones();
+      this.obtenerProductos();
+
+      if (this.idRequisition != null) {
+        this.obtenerDetalles();
+      }
     });
   }
 
   ngOnInit() {
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
     this.signalsService.deleteRequisitionData();
-    this.loadHierarchicalData();
+    this.obtenerDatos();
     this.obtenerDepartamentos();
     this.obtenerUbicaciones();
     this.obtenerMonedas();
@@ -138,39 +139,37 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
-    if (this.notSavedChanges) {
+    if (this.masterNotSavedChanges || this.detailsNotSavedChanges) {
       $event.returnValue =
         'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
     }
   }
 
-  // Configuración del grid jerárquico
-  get gridOptions(): any {
-    return {
-      headerHeight: 35,
-      rowHeight: 35,
-      animateRows: true,
-      treeData: false, // Usar estructura plana con niveles
-      // Grid en modo solo lectura - sin edición inline
-      suppressClickEdit: true,
-      singleClickEdit: false,
-      stopEditingWhenCellsLoseFocus: true,
-      onRowSelected: (event: any) => {
-        if (event.node.isSelected()) {
-          this.onRowSelected(event);
-        }
-      },
-      onCellValueChanged: (event: any) => {
-        this.onCellValueChanged(event);
-      },
-      onCellDoubleClicked: (event: any) => {
-        // Abrir modal de edición en doble click 
-        if (event.data) {
-          this.openEditModal(event.data);
-        }
+  public gridOptions: any = {
+    headerHeight: 25,
+    rowHeight: 20,
+    rowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
       }
-    };
-  }
+      return '';
+    },
+    onRowClicked: (event) => {
+      // Seleccionar la fila al hacer clic en cualquier celda
+      event.node.setSelected(true);
+    },
+    onRowSelected: (event) => {
+      // Corregir usando el api del evento y verificando existencia
+      if (event.node.isSelected() && event.api) {
+        event.api.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    },
+  };
 
   getSetupData() {
     this.setupService.getWarehouseSetup(this.idRoot).subscribe({
@@ -194,528 +193,327 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
 
   nameRequisition = this.signalsService.getRequisitionName();
 
-  // Definición de columnas jerárquicas
-  get columnDefs(): ColDef[] {
+  // Column Definitions: Defines the columns to be displayed.
+  public masterGridOptions: any = {
+    headerHeight: 30,
+    rowHeight: 30,
+    rowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onRowClicked: (event) => {
+      // Seleccionar la fila al hacer clic en cualquier celda
+      event.node.setSelected(true);
+    },
+    onRowSelected: (event) => {
+      // Corregir usando el api del evento y verificando existencia
+      if (event.node.isSelected() && event.api) {
+        event.api.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    },
+  };
+
+  get colMaster(): ColDef[] {
     return [
       {
-        headerName: 'Orden de Compra',
-        field: 'orderDisplay',
-        width: 300,
-        cellRenderer: (params: any) => {
-          if (params.data.nodeLevel === 'order') {
-            const childCount = this.getDetailCountForOrder(params.data.originalId);
-            const isExpanded = params.data.isExpanded || false;
-            const chevron = isExpanded ? '▼' : '▶';
-            return `<span class="chevron-icon" data-action="toggle" style="cursor: pointer; margin-right: 5px;">${chevron}</span> ${params.data.folio} (${childCount})`;
+        field: 'folio',
+        headerName: 'Orden de compra',
+        editable: true,
+        filter: true,
+        width: 150,
+      },
+      {
+        field: 'dateCreate',
+        headerName: 'Fecha Solicitud',
+        editable: true,
+        width: 150,
+        cellDataType: 'dateString',
+        valueFormatter: (params) => {
+          if (params.value) {
+            return params.value.split('T')[0];
           }
           return '';
         },
-        onCellClicked: (event: any) => {
-          if (event.event.target.classList.contains('chevron-icon') || 
-              event.event.target.getAttribute('data-action') === 'toggle') {
-            this.toggleOrderExpansion(event.data);
-          }
-        }
       },
       {
-        headerName: 'Producto/Detalle',
-        field: 'productDisplay',
-        width: 300,
-        cellRenderer: (params: any) => {
-          if (params.data.nodeLevel === 'detail') {
-            const productName = this.productos.find(p => p.id === params.data.idSupplie)?.description || 'Sin producto';
-            return `<span style="margin-right: 15px;"></span> ${productName}`;
-          }
-          return '';
-        }
-      },
-      {
-        headerName: 'Proveedor',
-        field: 'providerDisplay',
-        width: 200,
-        cellRenderer: (params: any) => {
-          if (params.data.nodeLevel === 'order') {
-            const provider = this.proveedores.find(p => p.id === params.data.idProvider);
-            return provider ? provider.name : '';
-          }
-          return '';
-        }
-      },
-      {
-        headerName: 'Fecha',
-        field: 'dateDisplay',
+        field: 'dateSupply',
+        headerName: 'Fecha envío',
+        editable: true,
         width: 150,
-        cellRenderer: (params: any) => {
-          if (params.data.nodeLevel === 'order') {
-            return params.data.dateCreate ? params.data.dateCreate.split('T')[0] : '';
+        cellDataType: 'dateString',
+        valueFormatter: (params) => {
+          if (params.value) {
+            return params.value.split('T')[0];
           }
           return '';
-        }
+        },
       },
       {
-        headerName: 'Cantidad',
-        field: 'quantityDisplay',
-        width: 100,
-        cellRenderer: (params: any) => {
-          if (params.data.nodeLevel === 'detail') {
-            return params.data.quantity || '';
-          }
-          return '';
-        }
+        field: 'idReq',
+        headerName: 'Requisición',
+        editable: true,
+        filter: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.requisiciones
+            ? this.requisiciones.map((item) => item.id)
+            : [],
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.requisiciones
+            ? this.requisiciones.find((item) => item.id === params.value)
+            : null;
+          return foundItem ? `${foundItem.folio}` : params.value;
+        },
       },
       {
-        headerName: 'Precio',
-        field: 'priceDisplay',
-        width: 120,
-        cellRenderer: (params: any) => {
-          if (params.data.nodeLevel === 'detail') {
-            return params.data.price ? `$${params.data.price.toFixed(2)}` : '';
-          }
-          return '';
-        }
+        field: 'idProvider',
+        headerName: 'Proveedor',
+        editable: true,
+        filter: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.proveedores
+            ? this.proveedores.map((item) => item.id)
+            : [],
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.proveedores
+            ? this.proveedores.find((item) => item.id === params.value)
+            : null;
+          return foundItem ? `${foundItem.name}` : params.value;
+        },
       },
       {
-        headerName: 'Total',
-        field: 'totalDisplay',
-        width: 120,
-        cellRenderer: (params: any) => {
-          if (params.data.nodeLevel === 'detail') {
-            return params.data.total ? `$${params.data.total.toFixed(2)}` : '';
-          } else if (params.data.nodeLevel === 'order') {
-            // Calcular total de la orden
-            const orderTotal = this.calculateOrderTotal(params.data.originalId);
-            return orderTotal ? `$${orderTotal.toFixed(2)}` : '';
+        field: 'delivery',
+        headerName: 'Entrega',
+        editable: true,
+        filter: true,
+        width: 150,
+      },
+      {
+        field: 'deliveryTime',
+        headerName: 'Tiempo de entrega',
+        editable: true,
+        filter: true,
+        width: 150,
+      },
+      {
+        field: 'idCurrency',
+        headerName: 'Moneda',
+        editable: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.monedas ? this.monedas.map((item) => item.id) : [],
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.monedas
+            ? this.monedas.find((item) => item.id === params.value)
+            : null;
+          return foundItem ? `${foundItem.description}` : params.value;
+        },
+      },
+      {
+        field: 'idPayment',
+        headerName: 'Forma de pago',
+        editable: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.tipoPago ? this.tipoPago.map((item) => item.id) : [],
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.tipoPago
+            ? this.tipoPago.find((item) => item.id === params.value)
+            : null;
+          return foundItem ? `${foundItem.description}` : params.value;
+        },
+      },
+      {
+        field: 'discount',
+        headerName: 'Descuento',
+        editable: true,
+        width: 150,
+      },
+      {
+        field: 'ivaRetention',
+        headerName: 'Retención IVA',
+        editable: true,
+        width: 150,
+      },
+      {
+        field: 'conditions',
+        headerName: 'Condición',
+        editable: true,
+        width: 150,
+      },
+      {
+        field: 'comments',
+        headerName: 'Comentario',
+        editable: false,
+        width: 150,
+        cellEditor: 'agPopupTextCellEditor',
+        cellEditorParams: {
+          maxLength: 100,
+          cols: 50,
+          rows: 3,
+          onKeyDown: (event: KeyboardEvent) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.stopPropagation();
+            }
+          },
+        },
+        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+          if (!event.node.group) {
+            this.modalServiceTable.showModal({
+              params: event,
+              value: event.value,
+            });
           }
-          return '';
-        }
-      }
+        },
+        cellRenderer: (params: ICellRendererParams) => {
+          if (params.node.group) {
+            return params.value;
+          }
+          return params.value;
+        },
+      },
+      {
+        field: 'address',
+        headerName: 'Dirección',
+        editable: false,
+        width: 150,
+        cellEditor: 'agPopupTextCellEditor',
+        cellEditorParams: {
+          maxLength: 100,
+          cols: 50,
+          rows: 3,
+          onKeyDown: (event: KeyboardEvent) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.stopPropagation();
+            }
+          },
+        },
+        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+          if (!event.node.group) {
+            this.modalServiceTable.showModal({
+              params: event,
+              value: event.value,
+            });
+          }
+        },
+        cellRenderer: (params: ICellRendererParams) => {
+          if (params.node.group) {
+            return params.value;
+          }
+          return params.value;
+        },
+      },
+      {
+        field: 'city',
+        headerName: 'Ciudad',
+        editable: false,
+        width: 150,
+        cellEditor: 'agPopupTextCellEditor',
+        cellEditorParams: {
+          maxLength: 100,
+          cols: 50,
+          rows: 3,
+          onKeyDown: (event: KeyboardEvent) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.stopPropagation();
+            }
+          },
+        },
+        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+          if (!event.node.group) {
+            this.modalServiceTable.showModal({
+              params: event,
+              value: event.value,
+            });
+          }
+        },
+        cellRenderer: (params: ICellRendererParams) => {
+          if (params.node.group) {
+            return params.value;
+          }
+          return params.value;
+        },
+      },
+      {
+        field: 'phone',
+        headerName: 'Teléfono',
+        editable: false,
+        width: 150,
+        cellEditor: 'agPopupTextCellEditor',
+        cellEditorParams: {
+          maxLength: 100,
+          cols: 50,
+          rows: 3,
+          onKeyDown: (event: KeyboardEvent) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.stopPropagation();
+            }
+          },
+        },
+        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+          if (!event.node.group) {
+            this.modalServiceTable.showModal({
+              params: event,
+              value: event.value,
+            });
+          }
+        },
+        cellRenderer: (params: ICellRendererParams) => {
+          if (params.node.group) {
+            return params.value;
+          }
+          return params.value;
+        },
+      },
+      {
+        field: 'idSolicit',
+        headerName: 'Solicita',
+        editable: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.usuarios ? this.usuarios.map((item) => item.id) : [],
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.usuarios
+            ? this.usuarios.find((item) => item.id === params.value)
+            : null;
+          return foundItem ? `${foundItem.displayName}` : params.value;
+        },
+      },
+      {
+        field: 'idAuthorize',
+        headerName: 'Autoriza',
+        editable: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.usuarios ? this.usuarios.map((item) => item.id) : [],
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.usuarios
+            ? this.usuarios.find((item) => item.id === params.value)
+            : null;
+          return foundItem ? `${foundItem.displayName}` : params.value;
+        },
+      },
     ];
-  }
-
-  // ========== MÉTODOS PARA ESTRUCTURA JERÁRQUICA ==========
-  
-  // Cargar datos jerárquicos unificados
-  async loadHierarchicalData() {
-    if (!this.idRoot) return;
-    
-    try {
-      // Cargar órdenes y detalles en paralelo
-      const [orders, allDetails] = await Promise.all([
-        lastValueFrom(this.requisitionsService.getOcAndReqs(this.typeReference, this.idReference, 'OC')),
-        this.getAllOrderDetails()
-      ]);
-
-      // Construir estructura jerárquica
-      this.buildHierarchicalStructure(orders as any[], allDetails);
-      
-    } catch (error) {
-      console.error('Error al cargar datos jerárquicos:', error);
-      this.hierarchicalData = [];
-      alerts.basicAlert(
-        'Error',
-        'Error al cargar los datos de órdenes de compra.',
-        'error'
-      );
-    }
-  }
-
-  // Obtener todos los detalles de todas las órdenes
-  private async getAllOrderDetails(): Promise<any[]> {
-    try {
-      // Obtenemos todas las órdenes primero para obtener los detalles
-      const orders = await lastValueFrom(
-        this.requisitionsService.getOcAndReqs(this.typeReference, this.idReference, 'OC')
-      ) as any[];
-      
-      const allDetailsPromises = orders.map(order => 
-        lastValueFrom(this.requisitionsService.getReqItems(order.id))
-      );
-      
-      const allDetailsArrays = await Promise.all(allDetailsPromises);
-      return allDetailsArrays.flat();
-      
-    } catch (error) {
-      console.error('Error al cargar detalles:', error);
-      return [];
-    }
-  }
-
-  // Construir estructura plana para 2 niveles con control de expansión
-  private buildHierarchicalStructure(orders: any[], allDetails: any[]) {
-    this.hierarchicalData = [];
-    
-    // Agregar órdenes (nivel 1) - siempre visibles
-    orders.forEach(order => {
-      const orderNode = {
-        ...order,
-        nodeLevel: 'order',
-        originalId: order.id,
-        isExpanded: true, // Por defecto expandido
-        isVisible: true
-      };
-      this.hierarchicalData.push(orderNode);
-      
-      // Buscar detalles de esta orden (nivel 2)
-      const orderDetails = allDetails.filter(detail => detail.idMovement === order.id);
-      
-      orderDetails.forEach(detail => {
-        const detailNode = {
-          ...detail,
-          nodeLevel: 'detail',
-          originalId: detail.id,
-          parentOrderId: order.id,
-          isVisible: true
-        };
-        this.hierarchicalData.push(detailNode);
-      });
-    });
-
-    console.log('Estructura jerárquica construida:', this.hierarchicalData);
-  }
-
-  // Retornar datos filtrados por visibilidad para AG-Grid
-  flattenHierarchicalData(): any[] {
-    return this.hierarchicalData.filter(item => item.isVisible);
-  }
-
-  // Métodos para manejar expand/collapse
-  toggleOrderExpansion(orderData: any) {
-    const order = this.hierarchicalData.find(item => 
-      item.nodeLevel === 'order' && item.originalId === orderData.originalId
-    );
-    
-    if (order) {
-      order.isExpanded = !order.isExpanded;
-      
-      // Mostrar/ocultar detalles de esta orden
-      this.hierarchicalData.forEach(item => {
-        if (item.nodeLevel === 'detail' && item.parentOrderId === order.originalId) {
-          item.isVisible = order.isExpanded;
-        }
-      });
-      
-      // Refrescar el grid
-      if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', this.flattenHierarchicalData());
-      }
-    }
-  }
-
-  // ========== MÉTODOS HELPER PARA CONTADORES ==========
-  
-  // Contar detalles de una orden
-  private getDetailCountForOrder(orderId: string | number): number {
-    if (!this.hierarchicalData || !orderId) return 0;
-    
-    return this.hierarchicalData.filter(item => 
-      item.nodeLevel === 'detail' && item.parentOrderId === orderId
-    ).length;
-  }
-  
-  // Calcular total de una orden
-  calculateOrderTotal(orderId: string | number): number {
-    if (!this.hierarchicalData || !orderId) return 0;
-    
-    return this.hierarchicalData
-      .filter(item => item.nodeLevel === 'detail' && item.parentOrderId === orderId)
-      .reduce((total, detail) => total + (detail.total || 0), 0);
-  }
-
-  // Obtener nombre del proveedor
-  getProviderName(providerId: number): string {
-    if (!providerId || !this.proveedores) return 'Sin proveedor';
-    const provider = this.proveedores.find(p => p.id === providerId);
-    return provider ? provider.name : 'Sin proveedor';
-  }
-
-  // Obtener nombre del producto
-  getProductName(productId: number): string {
-    if (!productId || !this.productos) return 'Sin producto';
-    const product = this.productos.find(p => p.id === productId);
-    return product ? product.description : 'Sin producto';
-  }
-
-  // Selección de filas
-  onRowSelected(event: any) {
-    this.selectedRowData = event.data;
-    if (event.data) {
-      this.selectedNodeLevel = event.data.nodeLevel || 'order';
-    } else {
-      this.selectedNodeLevel = null;
-    }
-  }
-
-  // Cambios en celdas
-  onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
-    event.data.__modified = true;
-    this.notSavedChanges = true;
-  }
-
-  // Grid listo
-  onGridReady(params: GridReadyEvent) {
-    this.gridApi = params.api;
-  }
-
-  // ========== MÉTODOS PARA MODALES ==========
-  
-  // Agregar nuevo elemento según nivel seleccionado
-  addItem() {
-    if (!this.selectedRowData) {
-      this.openAddOrderModal(); // Si no hay selección, agregar orden
-      return;
-    }
-
-    switch (this.selectedNodeLevel) {
-      case 'order':
-        this.openAddDetailModal();
-        break;
-      case 'detail':
-        this.openAddDetailModal();
-        break;
-      default:
-        this.openAddOrderModal();
-    }
-  }
-
-  // Abrir modal para nueva orden
-  openAddOrderModal() {
-    const tempId = `temp_${this.tempIdCounter++}`;
-    const newOrder = {
-      id: tempId,
-      folio: '',
-      idProject: this.idProject,
-      dateCreate: new Date().toISOString(),
-      idProvider: 0,
-      idDepartament: 0,
-      delivery: '',
-      deliveryTime: '',
-      dateSupply: '',
-      idPayment: 0,
-      idCurrency: 0,
-      conditions: '',
-      IdAuthorize: 0,
-      priority: '',
-      solicit: this.signalsService.getDisplayName()(),
-      type: 'OC',
-      comments: '',
-      typeOc: 'INSUMOS',
-      idSolicit: 0,
-      idRequisition: 0,
-      address: '',
-      city: '',
-      phone: '',
-      ivaRetention: 0,
-      discount: 0,
-      active: true,
-      nodeLevel: 'order',
-      originalId: tempId,
-      isExpanded: true,
-      isVisible: true,
-      __isNew: true,
-    };
-
-    this.hierarchicalData.unshift(newOrder);
-    this.newlyAddedRows.push(tempId);
-    this.notSavedChanges = true;
-
-    if (this.gridApi) {
-      this.gridApi.setGridOption('rowData', this.flattenHierarchicalData());
-    }
-
-    alerts.basicAlert('Éxito', 'Nueva orden agregada. Complete la información y guarde.', 'success');
-  }
-  
-  // Abrir modal para nuevo detalle
-  openAddDetailModal() {
-    if (!this.selectedRowData || this.selectedNodeLevel !== 'order') {
-      alerts.basicAlert('Error', 'Seleccione una orden para agregar un detalle.', 'warning');
-      return;
-    }
-
-    const tempId = `temp_${this.tempIdCounter++}`;
-    const newDetail = {
-      id: tempId,
-      idMovement: this.selectedRowData.originalId,
-      idSupplie: 0,
-      quantity: 0,
-      price: 0,
-      total: 0,
-      type: 'OC',
-      comment: 'Ninguno.',
-      dateuse: new Date().toISOString(),
-      active: true,
-      nodeLevel: 'detail',
-      originalId: tempId,
-      parentOrderId: this.selectedRowData.originalId,
-      isVisible: true,
-      __isNew: true,
-    };
-
-    // Buscar el índice de la orden padre para insertar el detalle después
-    const orderIndex = this.hierarchicalData.findIndex(item => 
-      item.nodeLevel === 'order' && item.originalId === this.selectedRowData.originalId
-    );
-
-    if (orderIndex !== -1) {
-      this.hierarchicalData.splice(orderIndex + 1, 0, newDetail);
-    } else {
-      this.hierarchicalData.push(newDetail);
-    }
-
-    this.newlyAddedRows.push(tempId);
-    this.notSavedChanges = true;
-
-    if (this.gridApi) {
-      this.gridApi.setGridOption('rowData', this.flattenHierarchicalData());
-    }
-
-    alerts.basicAlert('Éxito', 'Nuevo detalle agregado. Complete la información y guarde.', 'success');
-  }
-  
-  // Abrir modal de edición
-  openEditModal(item: any) {
-    if (!item) return;
-
-    if (item.nodeLevel === 'order') {
-      // Editar orden - marcar como modificada
-      item.__modified = true;
-      this.notSavedChanges = true;
-      alerts.basicAlert('Información', 'Orden seleccionada para edición. Modifique los datos en formularios externos.', 'info');
-    } else if (item.nodeLevel === 'detail') {
-      // Editar detalle - marcar como modificado
-      item.__modified = true;
-      this.notSavedChanges = true;
-      alerts.basicAlert('Información', 'Detalle seleccionado para edición. Modifique los datos en formularios externos.', 'info');
-    }
-  }
-
-  // ========== MÉTODOS CRUD PRINCIPALES ==========
-
-  // Guardar cambios
-  async saveChanges() {
-    const newOrders = this.hierarchicalData.filter(item => 
-      item.nodeLevel === 'order' && item.__isNew
-    );
-    const modifiedOrders = this.hierarchicalData.filter(item => 
-      item.nodeLevel === 'order' && item.__modified && !item.__isNew
-    );
-    const newDetails = this.hierarchicalData.filter(item => 
-      item.nodeLevel === 'detail' && item.__isNew
-    );
-    const modifiedDetails = this.hierarchicalData.filter(item => 
-      item.nodeLevel === 'detail' && item.__modified && !item.__isNew
-    );
-
-    try {
-      // Guardar órdenes nuevas
-      for (const order of newOrders) {
-        const cleanedData = this.cleanDataForServer(order);
-        await lastValueFrom(this.requisitionsService.addOcAndReq(cleanedData));
-      }
-
-      // Actualizar órdenes modificadas
-      for (const order of modifiedOrders) {
-        const cleanedData = this.cleanDataForServer(order);
-        await lastValueFrom(this.requisitionsService.updateOcAndReq(order.originalId, cleanedData));
-      }
-
-      // Guardar detalles nuevos
-      for (const detail of newDetails) {
-        const cleanedData = this.cleanDataForServer(detail);
-        await lastValueFrom(this.requisitionsService.addReqItem(cleanedData));
-      }
-
-      // Actualizar detalles modificados
-      for (const detail of modifiedDetails) {
-        const cleanedData = this.cleanDataForServer(detail);
-        await lastValueFrom(this.requisitionsService.updateReqItem(detail.originalId, cleanedData));
-      }
-
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
-
-      this.notSavedChanges = false;
-      this.newlyAddedRows = [];
-      await this.loadHierarchicalData();
-
-    } catch (error) {
-      console.error('Error al guardar:', error);
-      alerts.basicAlert(
-        'Error',
-        'Ocurrió un error al guardar los datos. Por favor, intente nuevamente.',
-        'error'
-      );
-    }
-  }
-
-  // Revertir cambios
-  revertChanges() {
-    this.loadHierarchicalData();
-    this.notSavedChanges = false;
-    this.newlyAddedRows = [];
-    this.selectedRowData = null;
-    this.selectedNodeLevel = null;
-    alerts.basicAlert('Cambios revertidos', 'Se han revertido todos los cambios.', 'info');
-  }
-
-  // Eliminar elemento seleccionado
-  async deleteSelectedItem() {
-    if (!this.selectedRowData) {
-      alerts.basicAlert(
-        'Error',
-        'Por favor, seleccione un elemento para eliminar.',
-        'warning'
-      );
-      return;
-    }
-
-    try {
-      if (this.selectedRowData.nodeLevel === 'order') {
-        // Eliminar orden y todos sus detalles
-        await lastValueFrom(this.requisitionsService.deleteOcAndReq(this.selectedRowData.originalId));
-        
-        // Remover de los datos locales
-        this.hierarchicalData = this.hierarchicalData.filter(item => 
-          !(item.nodeLevel === 'order' && item.originalId === this.selectedRowData.originalId) &&
-          !(item.nodeLevel === 'detail' && item.parentOrderId === this.selectedRowData.originalId)
-        );
-
-      } else if (this.selectedRowData.nodeLevel === 'detail') {
-        // Eliminar solo el detalle
-        await lastValueFrom(this.requisitionsService.deleteReqItem(this.selectedRowData.originalId));
-        
-        // Remover de los datos locales
-        this.hierarchicalData = this.hierarchicalData.filter(item => 
-          !(item.nodeLevel === 'detail' && item.originalId === this.selectedRowData.originalId)
-        );
-      }
-
-      // Actualizar grid
-      if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', this.flattenHierarchicalData());
-      }
-
-      this.selectedRowData = null;
-      this.selectedNodeLevel = null;
-
-      alerts.basicAlert(
-        'Elemento eliminado',
-        'El elemento se ha eliminado correctamente.',
-        'success'
-      );
-
-    } catch (error) {
-      console.error('Error al eliminar:', error);
-      alerts.basicAlert(
-        'Error',
-        'Ocurrió un error al eliminar el elemento.',
-        'error'
-      );
-    }
   }
 
   // Column Definitions: Defines the columns to be displayed.
@@ -813,11 +611,17 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     ];
   }
 
-  // ==================== LEGACY METHODS (mantener por compatibilidad) ====================
+  // ==================== MASTER METHODS ====================
 
   obtenerDatos() {
-    // Método legacy - ahora usa loadHierarchicalData()
-    this.loadHierarchicalData();
+    this.requisitionsService
+      .getOcAndReqs(this.typeReference, this.idReference, 'OC')
+      .subscribe(
+        (data: any) => {
+          this.masterRowData = data;
+        },
+        (error) => console.error('Error fetching data:', error)
+      );
   }
 
   obtenerRequisiciones() {
@@ -1257,30 +1061,27 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   }
 
   onDetailsSelectionChanged(event: any) {
-    // Legacy method - now handled by onRowSelected
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
-      this.selectedRowData = selectedNodes[0].data;
+      this.detailsSelectedRowData = selectedNodes[0].data;
     } else {
-      this.selectedRowData = null;
+      this.detailsSelectedRowData = null;
     }
   }
 
   onDetailsCellValueChanged(event: any) {
-    // Legacy method - now handled by onCellValueChanged
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
-      this.selectedRowData = selectedNodes[0].data;
+      this.detailsSelectedRowData = selectedNodes[0].data;
       event.data.__modified = true;
-      this.notSavedChanges = true;
+      this.detailsNotSavedChanges = true;
     } else {
-      this.selectedRowData = null;
+      this.detailsSelectedRowData = null;
     }
   }
 
   onDetailsGridReady(params: GridReadyEvent) {
-    // Legacy method - now handled by onGridReady
-    // No specific action needed for details grid since we use unified grid
+    this.detailsGridApi = params.api;
   }
 
   onDetailsRowSelected(event: any) {
@@ -1302,6 +1103,6 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   // ==================== GUARD ALERT UNSAVED CHANGES ====================
 
   async canDeactivate(): Promise<boolean> {
-    return confirmExitIfUnsaved(this.notSavedChanges);
+    return confirmExitIfUnsaved(this.masterNotSavedChanges);
   }
 }
