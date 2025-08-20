@@ -224,6 +224,10 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   showPdfEmbed: boolean = false;
   fechaInicio: string = '';
   fechaFin: string = '';
+  tipoReporte: string = 'personalizado';
+  opcionSeleccionada: string = 'seleccionar';
+  opcionesNumericas = [6, 4, 8, 9];
+  seleccionados: number[] = [];
   projet: number = 0;
   myForm;
   isGeneratingReport: boolean = false;
@@ -273,53 +277,143 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       this.modalInstance.show();
     }
   }
-  onSubmit() {
-    if (this.myForm.invalid) {
-      alerts.basicAlert('Info', 'Por favor, completa todos los campos requeridos.','info' );
-      return;
-    }
-
-    const formValues = this.myForm.value;
-    this.fechaInicio = formValues.fechaInicio;
-    this.fechaFin = formValues.fechaFin;
-
-    if (this.fechaInicio > this.fechaFin) {
-      alert('La fecha de inicio no puede ser mayor que la fecha de fin.');
-      return;
-    }
-
-    // Set loading state
-    this.isGeneratingReport = true;
-
-    this.updateExcelService.processAndDownload(this.fechaInicio, this.fechaFin).subscribe({
-      next: (blob: Blob) => {
-        this.isGeneratingReport = false;
-        
-        // Create download link
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `FORMATO_GENERADOR_${new Date().getTime()}.xlsx`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-        
-        console.log('Excel generado y descargado exitosamente');
-        alerts.basicAlert('Éxito',`Excel generado desde ${this.fechaInicio} hasta ${this.fechaFin}`, 'success');
-        this.closeModal();
-      },
-      error: (error) => {
-        this.isGeneratingReport = false;
-        console.error('Error al generar Excel:', error);
-        alerts.basicAlert('Error','Error al generar el Excel. Inténtalo de nuevo.', 'error');
-      }
-    });
+  onTipoReporteChange() {
+    const selectElement = document.getElementById('tipeReporte') as HTMLSelectElement;
+      this.tipoReporte = selectElement.value;
+      this.filtrarTipoReporte(this.tipoReporte);
   }
+  onOpcionSeleccionadaChange() {
+    const selectElement = document.getElementById('opcion') as HTMLSelectElement;
+      this.opcionSeleccionada = selectElement.value;
+  }
+  toggleSeleccion(valor: number) {
+  const index = this.seleccionados.indexOf(valor);
+  if (index > -1) {
+    // ya está seleccionado, lo quitamos
+    this.seleccionados.splice(index, 1);
+  } else {
+    // no está, lo agregamos
+    this.seleccionados.push(valor);
+  }
+}
+obtenerNumeroSemana(fecha) {
+  const tempFecha = new Date(fecha.getTime());
+  tempFecha.setHours(0, 0, 0, 0);
+  // Jueves en la semana actual determina el año ISO
+  tempFecha.setDate(tempFecha.getDate() + 3 - ((tempFecha.getDay() + 6) % 7));
+  const jueves = new Date(tempFecha.getFullYear(), 0, 4);
+  const semana = 1 + Math.round(
+    ((tempFecha.getTime() - jueves.getTime()) / 86400000 - 3 + ((jueves.getDay() + 6) % 7)) / 7
+  );
+  const año = tempFecha.getFullYear();
+  return `${año}-W${String(semana).padStart(2, '0')}`;
+}
+obtenerAnoMes(fecha) {
+  const año = fecha.getFullYear();
+  const mes = String(fecha.getMonth() + 1).padStart(2, '0'); // +1 porque enero es 0
+  return `${año}-${mes}`;
+}
+  onSubmit() {
+  if (this.myForm.invalid) {
+    alerts.basicAlert('Info', 'Por favor, completa todos los campos requeridos.', 'info');
+    return;
+  }
+
+  const formValues = this.myForm.value;
+  /*this.fechaInicio = formValues.fechaInicio;
+  this.fechaFin = formValues.fechaFin;*/
+
+  if (this.fechaInicio > this.fechaFin) {
+    alert('La fecha de inicio no puede ser mayor que la fecha de fin.');
+    return;
+  }
+
+  console.log(formValues);
+  this.isGeneratingReport = true;
+
+  switch (this.opcionSeleccionada) {
+    case 'ot':
+      this.updateExcelService.processAndDownloadOt(this.fechaInicio, this.fechaFin).subscribe({
+        next: (blob: Blob) => {
+          this.isGeneratingReport = false;
+
+          // Crear link de descarga
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `FORMATO_GENERADOR_${new Date().getTime()}.xlsx`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+
+          console.log('Excel generado y descargado exitosamente');
+          alerts.basicAlert('Éxito', `Excel generado desde ${this.fechaInicio} hasta ${this.fechaFin}`, 'success');
+          this.closeModal();
+        },
+        error: (error) => {
+          this.isGeneratingReport = false;
+          console.error('Error al generar Excel:', error);
+          alerts.basicAlert('Error', 'Error al generar el Excel. Inténtalo de nuevo.', 'error');
+        }
+      });
+      break;
+
+    case 'cuadrilla-interna':
+      this.isGeneratingReport = false;
+      this.updateExcelService.processAndDownloadCuadInter(this.fechaInicio, this.fechaFin).subscribe({
+        next: (blob: Blob) => {
+          this.isGeneratingReport = false;
+
+          // Crear link de descarga
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `FORMATO_GENERADOR_${new Date().getTime()}.xlsx`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+
+          console.log('Excel generado y descargado exitosamente');
+          alerts.basicAlert('Éxito', `Excel generado desde ${this.fechaInicio} hasta ${this.fechaFin}`, 'success');
+          this.closeModal();
+        },
+        error: (error) => {
+          this.isGeneratingReport = false;
+          console.error('Error al generar Excel:', error);
+          alerts.basicAlert('Error', 'Error al generar el Excel. Inténtalo de nuevo.', 'error');
+        }
+      });
+      break;
+
+    case 'cuadrilla-externa':
+      this.isGeneratingReport = false;
+      if (this.seleccionados.length === 0) {
+        alerts.basicAlert('Advertencia', 'Seleccione una cuadrilla', 'warning');
+      } else {
+        alert(`Filtrado por fechas personalizadas: ${this.fechaInicio} a ${this.fechaFin}`);
+      }
+      break;
+
+    default:
+      this.isGeneratingReport = false;
+      alerts.basicAlert('Advertencia', 'Opción no válida.', 'warning');
+      break;
+  }
+}
+
 
   cancelar() {
     this.fechaInicio = '';
     this.fechaFin = '';
+    this.tipoReporte = 'personalizado';
+    this.myForm.patchValue(
+      {
+        opcionSeleccionada: '',
+        tipoReporte: 'personalizado'
+      }
+    );
   }
 
   closeModal() {
@@ -1393,6 +1487,7 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     effect(() => {
       this.idProject =this.signalsService.getProjectSelectedBySidebar()();
       this.idcompany = this.signalsService.getRootSelectedBySidebar()();
+      
       //alert(this.signalsService.getClosedReport()())
       //this.selectedStatusReport = this.signalsService.getClosedReport()();
       this.catalogoMateriales();
@@ -1403,6 +1498,7 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
       this.loadEmployees();
       this.getDeptoandPosition();
       this.obtenerUnidades();
+      this.filtrarTipoReporte(this.tipoReporte);
     });
 
     // Effect para auto-actualizar PDF cuando se guarden cambio
@@ -1416,12 +1512,94 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     hace7Dias.setDate(hoy.getDate() - 7);
     const hoyStr = hoy.toISOString().split('T')[0];
     const hace7DiasStr = hace7Dias.toISOString().split('T')[0];
+    const semana = this.obtenerNumeroSemana(hoy);
+    const mes = this.obtenerAnoMes(hoy);
     console.log("fechas", hoyStr, hace7DiasStr)
     this.myForm = this.formBuilder.group({
+      opcionSeleccionada: ['', Validators.required],
+      seleccionNumerica: this.formBuilder.array([]),
+      tipoReporte: [this.tipoReporte, Validators.required],
       fechaInicio: [hace7DiasStr, Validators.required],
+      semanaSelect: [semana],
+      mesSelect: [mes],
       fechaFin: [hoyStr, Validators.required]
     });
+     this.myForm.get('semanaSelect')?.valueChanges.subscribe(value => {
+    if (this.tipoReporte === 'semanal') {
+      this.filtrarTipoReporte('semanal');
+    }
+  });
+
+  this.myForm.get('mesSelect')?.valueChanges.subscribe(value => {
+    if (this.tipoReporte === 'mensual') {
+      this.filtrarTipoReporte('mensual');
+    }
+  });
+
+  this.myForm.get('fechaInicio')?.valueChanges.subscribe(() => {
+    if (this.tipoReporte === 'personalizado') {
+      this.filtrarTipoReporte('personalizado');
+    }
+  });
+
+  this.myForm.get('fechaFin')?.valueChanges.subscribe(() => {
+    if (this.tipoReporte === 'personalizado') {
+      this.filtrarTipoReporte('personalizado');
+    }
+  });
   }
+  filtrarTipoReporte(type: string) {
+  const fechaInicio = this.myForm.get('fechaInicio')?.value;
+  const fechaFin = this.myForm.get('fechaFin')?.value;
+  const semana = this.myForm.get('semanaSelect')?.value;
+  const mes = this.myForm.get('mesSelect')?.value;
+
+  if (type === 'personalizado') {
+    this.fechaInicio = fechaInicio;
+    this.fechaFin = fechaFin;
+    //alert(`Filtrado por fechas personalizadas: ${this.fechaInicio} a ${this.fechaFin}`);
+  }
+
+  if (type === 'semanal' && semana) {
+    const [añoStr, semanaIsoStr] = semana.split('-W');
+    const año = parseInt(añoStr, 10);
+    const numSemana = parseInt(semanaIsoStr, 10);
+
+    // ISO 8601: semana empieza en lunes
+    const simple = new Date(año, 0, 1 + (numSemana - 1) * 7);
+    const dia = simple.getDay();
+    const ISOsemanaInicio = new Date(simple);
+
+    // Ajustar al lunes (ISO)
+    const diferenciaLunes = (dia <= 4 ? dia - 1 : dia - 8); 
+    ISOsemanaInicio.setDate(simple.getDate() - diferenciaLunes);
+
+    const ISOsemanaFin = new Date(ISOsemanaInicio);
+    ISOsemanaFin.setDate(ISOsemanaInicio.getDate() + 6);
+
+    this.fechaInicio = ISOsemanaInicio.toISOString().slice(0, 10); // YYYY-MM-DD
+    this.fechaFin = ISOsemanaFin.toISOString().slice(0, 10);       // YYYY-MM-DD
+    //alert(`Filtrado por fechas personalizadas: ${this.fechaInicio} a ${this.fechaFin}`);
+  }
+
+  if (type === 'mensual' && mes) {
+    // mes es algo como "2025-08"
+    const [añoStr, mesStr] = mes.split('-');
+    const año = parseInt(añoStr, 10);
+    const mesNum = parseInt(mesStr, 10);
+
+    // Fecha inicio = primer día del mes
+    const inicio = new Date(año, mesNum - 1, 1);
+
+    // Fecha fin = último día del mes
+    const fin = new Date(año, mesNum, 0); // día 0 del mes siguiente = último del actual
+
+    this.fechaInicio = inicio.toISOString().slice(0, 10); // YYYY-MM-DD
+    this.fechaFin = fin.toISOString().slice(0, 10);       // YYYY-MM-DD
+    //alert(`Filtrado por fechas personalizadas: ${this.fechaInicio} a ${this.fechaFin}`);
+  }
+}
+
 
   loadEmployees() {
     const idRoot = this.signalsService.getRootSelectedBySidebar()();
