@@ -363,7 +363,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       sortable: true,
       filter: true,
       resizable: true,
-      flex: 1,
+      flex: 2,
       hide: !this.authService.hasDetailedPermission('projects', 'get-all-ot'),
       editable: true,
       rowGroup: this.authService.hasDetailedPermission('projects', 'get-all-ot'),
@@ -401,7 +401,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       sortable: true,
       filter: true,
       resizable: true,
-      flex: 2,
+      flex: 1,
       onCellDoubleClicked: (params: any) => {
         this.onOTCellDoubleClicked(params);
       }
@@ -1385,7 +1385,6 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
       this.obtenerTypeNotes();
       this.obtenerConceptos();
       this.obtenerProyectos();
-      this.obtenerDatos();
       this.loadEmployees();
       this.getDeptoandPosition();
       this.obtenerUnidades();
@@ -3338,6 +3337,8 @@ async saveChangesEquipos() {
       (data: any) => {
         this.projectsList = data;
         console.log('Lista de proyectos obtenida:', this.projectsList);
+        // Llamar obtenerDatos después de cargar la lista de proyectos
+        this.obtenerDatos();
       },
       (error) => console.error('Error fetching projects:', error)
     );
