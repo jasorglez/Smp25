@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent ,CellDoubleClickedEvent, ICellRendererParams,} from 'ag-grid-enterprise';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormControl } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormControl, FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { OtService } from 'app/services/ot.service';
 import { DailyReportService } from 'app/services/daily-report.service';
@@ -125,7 +125,7 @@ interface Fotografia {
 @Component({
   selector: 'app-ordenes',
   standalone: true,
-  imports: [CommonModule, TranslateModule, AgGridModule, ReactiveFormsModule],
+  imports: [CommonModule, TranslateModule, AgGridModule, ReactiveFormsModule, FormsModule],
   templateUrl: './ordenes.component.html',
   styleUrl: './ordenes.component.scss',
 })
@@ -147,7 +147,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   private catalogService = inject(CatalogsService);
   private materialsService = inject(MaterialsService);
   private projectsService = inject(ProjectsService);
-  private authService = inject(AuthService);
+  public authService = inject(AuthService);
   gestionarDatos: any[] = [];
 
   // Variables de control
@@ -175,6 +175,15 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   public selectedReporteId: number | string | null = null;
   public selectedFotografia: Fotografia | null = null;
   public selectedStatusReport: boolean = false;
+  
+  // Variables para cambio de proyecto
+  public selectedNewProject: string = '';
+  public isChangingProject: boolean = false;
+  
+  // Getter para verificar permisos de selección múltiple
+  public get hasMultiSelectPermission(): boolean {
+    return this.authService.hasDetailedPermission('projects', 'get-all-ot');
+  }
   
 
   // Variables para columnas ajustables
@@ -424,7 +433,21 @@ obtenerAnoMes(fecha) {
 
   // Configuraciones de columnas para AG-Grid
   // Definición de columnas
-  public oTcolumnDefs: ColDef[] = [
+  public get oTcolumnDefs(): ColDef[] {
+    const hasPermission = this.authService.hasDetailedPermission('projects', 'get-all-ot');
+    return [
+      {
+        headerName: '',
+        checkboxSelection: hasPermission,
+        headerCheckboxSelection: hasPermission,
+        width: 50,
+        pinned: 'left',
+        suppressMenu: true,
+        sortable: false,
+        filter: false,
+        resizable: false,
+        hide: !hasPermission
+      },
     /*   {
       field: 'id',
       headerName: 'ID',
@@ -506,8 +529,9 @@ obtenerAnoMes(fecha) {
       flex: 4,
       editable: false
     }
-
-  ];
+    
+    ];
+  }
 
  public get materialesColumnDefs(): ColDef[] {
   return [
@@ -1707,9 +1731,10 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
 
   onSelectionChanged(event: any) {
     const selectedRows = this.gridApi.getSelectedRows();
-    console.log('Fila seleccionada:', selectedRows);
+    console.log('Filas seleccionadas:', selectedRows);
     
     // Actualizar la OT seleccionada para mostrar en la vista previa
+    // Si hay múltiples selecciones, usar la primera para la vista previa
     if (selectedRows.length > 0) {
       this.selectedOt = selectedRows[0];
       this.activeTab = 'reportes'; // Resetear a la primera pestaña
@@ -1730,7 +1755,8 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
         this.originalUrl = null;
       }
       
-      console.log('OT seleccionada:', this.selectedOt);
+      console.log('OT seleccionada para vista previa:', this.selectedOt);
+      console.log('Total OTs seleccionadas:', selectedRows.length);
       
       // Cargar reportes diarios para esta OT
       this.loadDailyReports();
@@ -1739,6 +1765,78 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
       this.loadPersonalData();
     } else {
       this.selectedOt = null;
+    }
+  }
+
+  getSelectedOTs(): any[] {
+    return this.gridApi ? this.gridApi.getSelectedRows() : [];
+  }
+
+  openChangeProjectModal() {
+    if (!this.hasMultiSelectPermission) {
+      alerts.basicAlert('Error', 'No tiene permisos para realizar esta acción.', 'error');
+      return;
+    }
+
+    const selectedOTs = this.getSelectedOTs();
+    if (selectedOTs.length === 0) {
+      alerts.basicAlert('Error', 'Debe seleccionar al menos una OT para cambiar de proyecto.', 'error');
+      return;
+    }
+    
+    this.selectedNewProject = '';
+    const modal = new bootstrap.Modal(document.getElementById('changeProjectModal')!);
+    modal.show();
+  }
+
+  async changeProjectForSelectedOTs() {
+    if (!this.selectedNewProject) {
+      alerts.basicAlert('Error', 'Debe seleccionar un proyecto.', 'error');
+      return;
+    }
+
+    const selectedOTs = this.getSelectedOTs();
+    if (selectedOTs.length === 0) {
+      alerts.basicAlert('Error', 'No hay OTs seleccionadas.', 'error');
+      return;
+    }
+
+    this.isChangingProject = true;
+
+    try {      
+      const confirmResult = await alerts.confirmAlert(
+        '¿Confirmar cambio?',
+        `¿Está seguro de cambiar ${selectedOTs.length} OT(s) de proyecto? Esta acción no se puede deshacer.`,
+        'warning',
+        'Confirmar'
+      );
+
+      if (!confirmResult.isConfirmed) {
+        this.isChangingProject = false;
+        return;
+      }
+
+      for (const ot of selectedOTs) {
+        await firstValueFrom(this.otService.updateOt(ot.id, {
+          ...ot,
+          idProject: this.selectedNewProject
+        }));
+      }
+
+      // Cerrar modal
+      const modal = bootstrap.Modal.getInstance(document.getElementById('changeProjectModal')!);
+      modal?.hide();
+
+      // Recargar datos
+      this.obtenerDatos();
+      
+      alerts.basicAlert('Éxito', `Se cambiaron ${selectedOTs.length} OT(s) de proyecto exitosamente.`, 'success');
+      
+    } catch (error) {
+      console.error('Error al cambiar proyecto:', error);
+      alerts.basicAlert('Error', 'Error al cambiar el proyecto de las OTs.', 'error');
+    } finally {
+      this.isChangingProject = false;
     }
   }
 
