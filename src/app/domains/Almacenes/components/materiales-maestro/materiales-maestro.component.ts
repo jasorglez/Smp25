@@ -28,6 +28,8 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.obtenerDatos();
       this.obtenerCatalogos();
+      this.obtenerMedidas();
+      this.cargarDatosMock();
     });
   }
 
@@ -45,7 +47,11 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
   
   categories: any[] = [];
   familias: any[] = [];
-  subfamilias: any[] = [];
+  subfamilias: any[] = []; // Subfamilias filtradas para la fila actual
+  todasSubfamilias: any[] = []; // Todas las subfamilias disponibles
+  medidas: any[] = []; // Unidades de medida
+  proveedores: any[] = []; // Proveedores (datos mock)
+  sucursales: any[] = []; // Sucursales (datos mock)
   rowData: any[] = [];
   selectedRowData: any = null;
   newlyAddedRows: string[] = [];
@@ -59,23 +65,73 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   obtenerDatos() {
-    // Datos de prueba mientras no hay servicio específico
+    // Datos de prueba mientras no hay servicio específico - incluye todas las 19 columnas
     this.rowData = [
       {
         id: 1,
         activo: true,
-        articulo: 'Material de prueba 1',
-        categoria: 'Categoría 1',
-        familia: 'Familia 1',
-        subFamilia: 'SubFamilia 1'
+        articulo: 'Tornillo hexagonal M10x30',
+        categoria: 'FERRETERIA',
+        familia: 'TORNILLERIA',
+        subFamilia: 'HEXAGONALES',
+        proveedor: 'Proveedor A',
+        descripcionEmpaquetado: 'Caja de cartón con separadores',
+        numeroPiezasPaquete: 100,
+        numeroMaterial: 'MAT-001-2024',
+        medidas: 'PIEZAS',
+        pesosVolumenes: 2.5,
+        caducidadMeses: 60,
+        imagen: null,
+        sucursal: 'Sucursal Centro',
+        fechaAlta: '2024-08-15T00:00:00',
+        stockMinimo: 50,
+        resurtido: 200,
+        capacidadMaxAlmacenar: 1000,
+        tiempoEntregaSemanas: 2.0
       },
       {
         id: 2,
         activo: false,
-        articulo: 'Material de prueba 2',
-        categoria: 'Categoría 2',
-        familia: 'Familia 2',
-        subFamilia: 'SubFamilia 2'
+        articulo: 'Aceite hidráulico ISO 68',
+        categoria: 'LUBRICANTES',
+        familia: 'HIDRAULICOS',
+        subFamilia: 'ALTO_RENDIMIENTO',
+        proveedor: 'Proveedor B',
+        descripcionEmpaquetado: 'Tambor metálico de 200L',
+        numeroPiezasPaquete: 1,
+        numeroMaterial: 'MAT-002-2024',
+        medidas: 'LITROS',
+        pesosVolumenes: 180.0,
+        caducidadMeses: 36,
+        imagen: 'aceite_hidraulico.jpg',
+        sucursal: 'Sucursal Norte',
+        fechaAlta: '2024-07-20T00:00:00',
+        stockMinimo: 5,
+        resurtido: 20,
+        capacidadMaxAlmacenar: 100,
+        tiempoEntregaSemanas: 1.5
+      },
+      {
+        id: 3,
+        activo: true,
+        articulo: 'Cable eléctrico 12 AWG',
+        categoria: 'ELECTRICO',
+        familia: 'CABLES',
+        subFamilia: 'POTENCIA',
+        proveedor: 'Proveedor C',
+        descripcionEmpaquetado: 'Rollo de 100 metros',
+        numeroPiezasPaquete: 1,
+        numeroMaterial: 'MAT-003-2024',
+        medidas: 'METROS',
+        pesosVolumenes: 15.8,
+        caducidadMeses: 120,
+        imagen: null,
+        sucursal: 'Sucursal Sur',
+        fechaAlta: '2024-08-01T00:00:00',
+        stockMinimo: 10,
+        resurtido: 50,
+        capacidadMaxAlmacenar: 200,
+        tiempoEntregaSemanas: 3.0
       }
     ];
   }
@@ -84,7 +140,7 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
     if (!this.idRoot) return;
 
     try {
-      // Cargar los 3 tipos de datos en paralelo
+      // Cargar categorías, familias y todas las subfamilias
       const [categories, families, subfamilies] = await Promise.all([
         lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'CATEGORY')),
         lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'FAM-CAT')),
@@ -93,20 +149,57 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
 
       this.categories = categories || [];
       this.familias = families || [];
-      this.subfamilias = subfamilies || [];
+      this.todasSubfamilias = subfamilies || [];
+      this.subfamilias = []; // Se filtrarán dinámicamente
 
       console.log('Catálogos cargados:', {
         categories: this.categories.length,
-        families: this.familias.length, 
-        subfamilies: this.subfamilias.length
+        families: this.familias.length,
+        subfamilies: this.todasSubfamilias.length
       });
 
     } catch (error) {
       console.error('Error fetching catalogs:', error);
       this.categories = [];
       this.familias = [];
+      this.todasSubfamilias = [];
       this.subfamilias = [];
     }
+  }
+
+
+  filtrarSubfamilias(categoriaId: number, familiaId: number) {
+    // Filtrar subfamilias que tengan parentId=categoriaId y subParentId=familiaId (igual que CAT-Fam-Sub)
+    return this.todasSubfamilias.filter(subfamilia => 
+      subfamilia.parentId === categoriaId && subfamilia.subParentId === familiaId
+    );
+  }
+
+  obtenerMedidas() {
+    if (!this.idRoot) return;
+    
+    this.catalogsService.getCatalogs(this.idRoot, 'MEASURE').subscribe(
+      (data: any[]) => {
+        this.medidas = data || [];
+      },
+      (error) => console.error('Error fetching measures:', error)
+    );
+  }
+
+  cargarDatosMock() {
+    // Datos mock para proveedores
+    this.proveedores = [
+      { id: 1, description: 'Proveedor A' },
+      { id: 2, description: 'Proveedor B' },
+      { id: 3, description: 'Proveedor C' }
+    ];
+
+    // Datos mock para sucursales
+    this.sucursales = [
+      { id: 1, description: 'Sucursal Centro' },
+      { id: 2, description: 'Sucursal Norte' },
+      { id: 3, description: 'Sucursal Sur' }
+    ];
   }
 
   public gridOptions: any = {
@@ -211,17 +304,17 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
         filter: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: (params) => {
-          // Obtener el idFamilia de la fila actual
+          // Solo mostrar subfamilias si ya se seleccionaron categoría y familia
+          const categoriaName = params.data.categoria;
           const familiaName = params.data.familia;
-          const familia = this.familias.find(f => f.description === familiaName);
           
-          // Filtrar subfamilias por parentId
-          const subfamiliasFiltradas = familia 
-            ? this.subfamilias.filter(item => item.parentId === familia.id)
-            : this.subfamilias;
-
+          if (!categoriaName || !familiaName) {
+            return { values: [] }; // No hay subfamilias disponibles sin categoría+familia
+          }
+          
+          // Usar las subfamilias cargadas dinámicamente
           return {
-            values: subfamiliasFiltradas.map(item => item.description)
+            values: this.subfamilias.map(item => item.description)
           };
         },
         valueFormatter: (params) => {
@@ -230,6 +323,132 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
             : null;
           return foundItem ? foundItem.description : params.value;
         }
+      },
+      // === COLUMNAS ADICIONALES ===
+      {
+        field: 'proveedor',
+        headerName: 'Proveedor',
+        editable: true,
+        width: 150,
+        filter: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.proveedores ? this.proveedores.map(item => item.description) : []
+        }
+      },
+      {
+        field: 'descripcionEmpaquetado',
+        headerName: 'Descripción Empaquetado',
+        editable: true,
+        width: 200,
+        filter: true
+      },
+      {
+        field: 'numeroPiezasPaquete',
+        headerName: 'Núm. Piezas por Paquete',
+        editable: true,
+        width: 180,
+        cellDataType: 'number',
+        cellEditorParams: { min: 1 }
+      },
+      {
+        field: 'numeroMaterial',
+        headerName: 'Número de Material',
+        editable: true,
+        width: 150,
+        filter: true
+      },
+      {
+        field: 'medidas',
+        headerName: 'Medidas',
+        editable: true,
+        width: 120,
+        filter: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.medidas ? this.medidas.map(item => item.description) : []
+        }
+      },
+      {
+        field: 'pesosVolumenes',
+        headerName: 'Pesos o Volúmenes (Kgrs)',
+        editable: true,
+        width: 180,
+        cellDataType: 'number',
+        cellEditorParams: { min: 0, step: 0.01 }
+      },
+      {
+        field: 'caducidadMeses',
+        headerName: 'Caducidad/Garantía (Meses)',
+        editable: true,
+        width: 200,
+        cellDataType: 'number',
+        cellEditorParams: { min: 0 }
+      },
+      {
+        field: 'imagen',
+        headerName: 'Imagen',
+        editable: false,
+        width: 100,
+        cellRenderer: (params) => {
+          return params.value ? '📷 Imagen' : '📷 Subir';
+        }
+      },
+      {
+        field: 'sucursal',
+        headerName: 'Sucursal',
+        editable: true,
+        width: 150,
+        filter: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.sucursales ? this.sucursales.map(item => item.description) : []
+        }
+      },
+      {
+        field: 'fechaAlta',
+        headerName: 'Fecha Alta',
+        editable: true,
+        width: 120,
+        cellDataType: 'dateString',
+        valueFormatter: (params) => {
+          if (params.value) {
+            return params.value.split('T')[0];
+          }
+          return '';
+        }
+      },
+      {
+        field: 'stockMinimo',
+        headerName: 'Stock Mínimo',
+        editable: true,
+        width: 120,
+        cellDataType: 'number',
+        cellEditorParams: { min: 0 }
+      },
+      {
+        field: 'resurtido',
+        headerName: 'Resurtido',
+        editable: true,
+        width: 100,
+        cellDataType: 'number',
+        cellEditorParams: { min: 0 }
+      },
+      {
+        field: 'capacidadMaxAlmacenar',
+        headerName: 'Capacidad Máx Almacenar',
+        editable: true,
+        width: 180,
+        cellDataType: 'number',
+        cellEditorParams: { min: 0 }
+      },
+      {
+        field: 'tiempoEntregaSemanas',
+        headerName: 'Tiempo Entrega (Semanas)',
+        editable: true,
+        width: 180,
+        cellDataType: 'number',
+        cellEditorParams: { min: 0, step: 0.1 }
       }
     ];
   }
@@ -247,7 +466,7 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
     }
   }
 
-  onCellValueChanged(event: any) {
+  async onCellValueChanged(event: any) {
     event.data.__modified = true;
     this.notSavedChanges = true;
     
@@ -261,9 +480,25 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
       });
     }
     
-    // Si cambió la familia, limpiar la subfamilia
+    // Si cambió la familia, limpiar subfamilia y filtrar nuevas subfamilias
     if (event.colDef.field === 'familia') {
       event.data.subFamilia = '';
+      
+      // Obtener IDs de categoría y familia
+      const categoriaName = event.data.categoria;
+      const familiaName = event.data.familia;
+      
+      if (categoriaName && familiaName) {
+        const categoria = this.categories.find(c => c.description === categoriaName);
+        const familia = this.familias.find(f => f.description === familiaName);
+        
+        if (categoria && familia) {
+          // Filtrar subfamilias específicas para esta categoría+familia
+          this.subfamilias = this.filtrarSubfamilias(categoria.id, familia.id);
+          console.log(`Subfamilias filtradas para categoria ${categoria.id} y familia ${familia.id}:`, this.subfamilias.length);
+        }
+      }
+      
       this.gridApi.refreshCells({
         rowNodes: [event.node],
         columns: ['subFamilia']
