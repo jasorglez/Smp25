@@ -2,12 +2,14 @@ import { Component, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
+import { firstValueFrom } from 'rxjs';
 import { OtService } from 'app/services/ot.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SignalsService } from 'app/services/signals.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { AuthService } from 'app/services/auth.service';
+import { TimeService } from 'app/services/time.service';
 import { alerts } from 'app/helpers/alerts';
 
 export interface OtDetails {
@@ -36,6 +38,8 @@ export interface OtDetails {
   observations?: string;
   results?: string;
   idCompany?: number;
+  closed: boolean;
+  closedAt?: string;
   active: boolean;
 }
 
@@ -57,6 +61,7 @@ export class DetailsComponent implements OnInit {
   private signalsService = inject(SignalsService);
   private catalogService = inject(CatalogsService);
   private authService = inject(AuthService);
+  private timeService = inject(TimeService);
   idcompany: number = 0;
   catalogArea: any [] = [];
   
@@ -116,6 +121,7 @@ export class DetailsComponent implements OnInit {
       observations: ['', [Validators.maxLength(1000)]],
       results: ['', [Validators.maxLength(1000)]],
       area: ['', Validators.required],
+      closed: [false],
       active: [true]
     });
   }
@@ -127,6 +133,7 @@ export class DetailsComponent implements OnInit {
     this.otForm.patchValue({
       registerDate: new Date().toISOString().split('T')[0],
       idProject: selectedProject ? selectedProject() : 0,
+      closed: false,
       active: true
     });
   }
@@ -216,6 +223,7 @@ export class DetailsComponent implements OnInit {
       observations: actualData.observations !== undefined ? actualData.observations : '',
       results: actualData.results !== undefined ? actualData.results : '',
       area: actualData.area !==  undefined ? actualData.area : '',
+      closed: actualData.closed !== undefined ? actualData.closed : false,
       active: actualData.active !== undefined ? actualData.active : true
     };
 
@@ -223,10 +231,10 @@ export class DetailsComponent implements OnInit {
     this.otForm.updateValueAndValidity();
   }
 
-  onSubmit() {
+  async onSubmit() {
     if (this.otForm.valid) {
       this.isLoading = true;
-      const formData = this.prepareFormData();
+      const formData = await this.prepareFormData();
       console.log(formData)
       if (this.isEditMode && this.otId) {
         this.updateOt(formData);
@@ -239,7 +247,7 @@ export class DetailsComponent implements OnInit {
     }
   }
 
-  private prepareFormData(): OtDetails {
+  private async prepareFormData(): Promise<OtDetails> {
     const formValue = this.otForm.value;
     
     // Para nuevas OTs, asegurar que el idProject siempre sea el del signal
@@ -247,6 +255,21 @@ export class DetailsComponent implements OnInit {
     if (!this.isEditMode) {
       const selectedProject = this.signalsService.getProjectSelectedBySidebar();
       idProject = selectedProject ? selectedProject() : 0;
+    }
+    
+    // Manejar la lógica de closedAt basado en el estado de closed
+    let closedAt: string | null = null;
+    if (formValue.closed) {
+      try {
+        // Si se marca como cerrado, obtener la fecha y hora actual del timeService
+        const timeData = await firstValueFrom(this.timeService.getTime());
+        closedAt = timeData.localTime;
+        console.log('Tiempo obtenido del servicio:', timeData);
+      } catch (error) {
+        console.error('Error obteniendo tiempo del servicio:', error);
+        // Fallback a fecha local si el servicio falla
+        closedAt = new Date().toISOString();
+      }
     }
     
     return {
@@ -275,6 +298,8 @@ export class DetailsComponent implements OnInit {
       observations: formValue.observations,
       results: formValue.results,
       area: formValue.area,
+      closed: formValue.closed,
+      closedAt: closedAt,
       active: formValue.active
     } as any;
   }

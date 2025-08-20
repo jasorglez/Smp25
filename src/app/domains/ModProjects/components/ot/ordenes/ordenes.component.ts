@@ -362,8 +362,11 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       headerName: 'Proyecto',
       sortable: true,
       filter: true,
+      filterParams: {
+        excelMode: 'mac'
+      },
       resizable: true,
-      flex: 2,
+      flex: 4,
       hide: !this.authService.hasDetailedPermission('projects', 'get-all-ot'),
       editable: true,
       rowGroup: this.authService.hasDetailedPermission('projects', 'get-all-ot'),
@@ -392,8 +395,11 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       headerName: 'OT',
       sortable: true,
       filter: true,
+      filterParams: {
+        excelMode: 'mac'
+      },
       resizable: true,
-      flex: 1
+      flex: 2
     },
      {
       field: 'results',
@@ -401,11 +407,20 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       sortable: true,
       filter: true,
       resizable: true,
-      flex: 1,
+      flex: 2,
       onCellDoubleClicked: (params: any) => {
         this.onOTCellDoubleClicked(params);
       }
     },
+    {
+      field: 'closed',
+      headerName: 'Cerrado',
+      sortable: true,
+      filter: true,
+      resizable: true,
+      flex: 1,
+      editable: false
+    }
 
   ];
 
