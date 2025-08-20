@@ -443,7 +443,7 @@ obtenerAnoMes(fecha) {
         excelMode: 'mac'
       },
       resizable: true,
-      flex: 3,
+      flex: 4,
       hide: !this.authService.hasDetailedPermission('projects', 'get-all-ot'),
       editable: true,
       rowGroup: this.authService.hasDetailedPermission('projects', 'get-all-ot'),
@@ -503,7 +503,7 @@ obtenerAnoMes(fecha) {
       sortable: true,
       filter: true,
       resizable: true,
-      flex: 1,
+      flex: 4,
       editable: false
     }
 
@@ -1365,7 +1365,7 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     autoGroupColumnDef: {
       headerName: 'Grupo',
       field: 'ag-Grid-AutoColumn',
-      width: 200,
+      width: 150,
       cellRendererParams: {
         suppressCount: false
       }
