@@ -313,6 +313,36 @@
               </div>
             </div>
 
+            <!-- Estado de la OT -->
+            <div class="row mb-4">
+              <div class="col-12">
+                <h5 class="section-title">
+                  <i class="bi bi-check-circle me-2"></i>
+                  {{ 'Estado de la OT' | translate }}
+                </h5>
+                <hr>
+              </div>
+            </div>
+
+            <div class="row mb-4">
+              <div class="col-md-6">
+                <div class="form-check">
+                  <input 
+                    class="form-check-input" 
+                    type="checkbox" 
+                    id="closedCheckbox"
+                    formControlName="closed">
+                  <label class="form-check-label fw-bold" for="closedCheckbox">
+                    <i class="bi bi-check-circle-fill me-1 text-success"></i>
+                    {{ 'Cerrado' | translate }}
+                  </label>
+                  <div class="form-text">
+                    {{ 'Marque esta casilla cuando la OT esté completada' | translate }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- Campos ocultos -->
             <input type="hidden" formControlName="idProject">
             <input type="hidden" formControlName="active">

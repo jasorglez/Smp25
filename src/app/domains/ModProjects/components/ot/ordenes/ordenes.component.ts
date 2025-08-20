@@ -25,7 +25,11 @@ import { EquipmentService } from 'app/services/equipment.service';
 import { ModalService } from 'app/services/modal.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { UpdateExcelService } from 'app/services/updateExcel.service';
+import { ProjectsService } from 'app/services/projects.service';
+import { AuthService } from 'app/services/auth.service';
 import * as bootstrap from 'bootstrap';
+import { firstValueFrom, lastValueFrom } from 'rxjs';
+
 
 @Pipe({
   name: 'safe',
@@ -142,6 +146,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   private employeesService = inject(EmployeesService);
   private catalogService = inject(CatalogsService);
   private materialsService = inject(MaterialsService);
+  private projectsService = inject(ProjectsService);
+  private authService = inject(AuthService);
   gestionarDatos: any[] = [];
 
   // Variables de control
@@ -154,6 +160,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   private catalogConcepto: any[] = [];
   private unitsCatalog: any[] = [];
   private typeNotesCatalog: any[] = [];
+  public projectsList: any[] = [];
     public conceptos  : any[] = [];
   public notas        : any[] = [];
 
@@ -217,6 +224,10 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   showPdfEmbed: boolean = false;
   fechaInicio: string = '';
   fechaFin: string = '';
+  tipoReporte: string = 'personalizado';
+  opcionSeleccionada: string = 'seleccionar';
+  opcionesNumericas = [6, 4, 8, 9];
+  seleccionados: number[] = [];
   projet: number = 0;
   myForm;
   isGeneratingReport: boolean = false;
@@ -266,53 +277,143 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       this.modalInstance.show();
     }
   }
-  onSubmit() {
-    if (this.myForm.invalid) {
-      alerts.basicAlert('Info', 'Por favor, completa todos los campos requeridos.','info' );
-      return;
-    }
-
-    const formValues = this.myForm.value;
-    this.fechaInicio = formValues.fechaInicio;
-    this.fechaFin = formValues.fechaFin;
-
-    if (this.fechaInicio > this.fechaFin) {
-      alert('La fecha de inicio no puede ser mayor que la fecha de fin.');
-      return;
-    }
-
-    // Set loading state
-    this.isGeneratingReport = true;
-
-    this.updateExcelService.processAndDownload(this.fechaInicio, this.fechaFin).subscribe({
-      next: (blob: Blob) => {
-        this.isGeneratingReport = false;
-        
-        // Create download link
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `FORMATO_GENERADOR_${new Date().getTime()}.xlsx`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-        
-        console.log('Excel generado y descargado exitosamente');
-        alerts.basicAlert('Éxito',`Excel generado desde ${this.fechaInicio} hasta ${this.fechaFin}`, 'success');
-        this.closeModal();
-      },
-      error: (error) => {
-        this.isGeneratingReport = false;
-        console.error('Error al generar Excel:', error);
-        alerts.basicAlert('Error','Error al generar el Excel. Inténtalo de nuevo.', 'error');
-      }
-    });
+  onTipoReporteChange() {
+    const selectElement = document.getElementById('tipeReporte') as HTMLSelectElement;
+      this.tipoReporte = selectElement.value;
+      this.filtrarTipoReporte(this.tipoReporte);
   }
+  onOpcionSeleccionadaChange() {
+    const selectElement = document.getElementById('opcion') as HTMLSelectElement;
+      this.opcionSeleccionada = selectElement.value;
+  }
+  toggleSeleccion(valor: number) {
+  const index = this.seleccionados.indexOf(valor);
+  if (index > -1) {
+    // ya está seleccionado, lo quitamos
+    this.seleccionados.splice(index, 1);
+  } else {
+    // no está, lo agregamos
+    this.seleccionados.push(valor);
+  }
+}
+obtenerNumeroSemana(fecha) {
+  const tempFecha = new Date(fecha.getTime());
+  tempFecha.setHours(0, 0, 0, 0);
+  // Jueves en la semana actual determina el año ISO
+  tempFecha.setDate(tempFecha.getDate() + 3 - ((tempFecha.getDay() + 6) % 7));
+  const jueves = new Date(tempFecha.getFullYear(), 0, 4);
+  const semana = 1 + Math.round(
+    ((tempFecha.getTime() - jueves.getTime()) / 86400000 - 3 + ((jueves.getDay() + 6) % 7)) / 7
+  );
+  const año = tempFecha.getFullYear();
+  return `${año}-W${String(semana).padStart(2, '0')}`;
+}
+obtenerAnoMes(fecha) {
+  const año = fecha.getFullYear();
+  const mes = String(fecha.getMonth() + 1).padStart(2, '0'); // +1 porque enero es 0
+  return `${año}-${mes}`;
+}
+  onSubmit() {
+  if (this.myForm.invalid) {
+    alerts.basicAlert('Info', 'Por favor, completa todos los campos requeridos.', 'info');
+    return;
+  }
+
+  const formValues = this.myForm.value;
+  /*this.fechaInicio = formValues.fechaInicio;
+  this.fechaFin = formValues.fechaFin;*/
+
+  if (this.fechaInicio > this.fechaFin) {
+    alert('La fecha de inicio no puede ser mayor que la fecha de fin.');
+    return;
+  }
+
+  console.log(formValues);
+  this.isGeneratingReport = true;
+
+  switch (this.opcionSeleccionada) {
+    case 'ot':
+      this.updateExcelService.processAndDownloadOt(this.fechaInicio, this.fechaFin).subscribe({
+        next: (blob: Blob) => {
+          this.isGeneratingReport = false;
+
+          // Crear link de descarga
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `FORMATO_GENERADOR_${new Date().getTime()}.xlsx`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+
+          console.log('Excel generado y descargado exitosamente');
+          alerts.basicAlert('Éxito', `Excel generado desde ${this.fechaInicio} hasta ${this.fechaFin}`, 'success');
+          this.closeModal();
+        },
+        error: (error) => {
+          this.isGeneratingReport = false;
+          console.error('Error al generar Excel:', error);
+          alerts.basicAlert('Error', 'Error al generar el Excel. Inténtalo de nuevo.', 'error');
+        }
+      });
+      break;
+
+    case 'cuadrilla-interna':
+      this.isGeneratingReport = false;
+      this.updateExcelService.processAndDownloadCuadInter(this.fechaInicio, this.fechaFin).subscribe({
+        next: (blob: Blob) => {
+          this.isGeneratingReport = false;
+
+          // Crear link de descarga
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `FORMATO_GENERADOR_${new Date().getTime()}.xlsx`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+
+          console.log('Excel generado y descargado exitosamente');
+          alerts.basicAlert('Éxito', `Excel generado desde ${this.fechaInicio} hasta ${this.fechaFin}`, 'success');
+          this.closeModal();
+        },
+        error: (error) => {
+          this.isGeneratingReport = false;
+          console.error('Error al generar Excel:', error);
+          alerts.basicAlert('Error', 'Error al generar el Excel. Inténtalo de nuevo.', 'error');
+        }
+      });
+      break;
+
+    case 'cuadrilla-externa':
+      this.isGeneratingReport = false;
+      if (this.seleccionados.length === 0) {
+        alerts.basicAlert('Advertencia', 'Seleccione una cuadrilla', 'warning');
+      } else {
+        alert(`Filtrado por fechas personalizadas: ${this.fechaInicio} a ${this.fechaFin}`);
+      }
+      break;
+
+    default:
+      this.isGeneratingReport = false;
+      alerts.basicAlert('Advertencia', 'Opción no válida.', 'warning');
+      break;
+  }
+}
+
 
   cancelar() {
     this.fechaInicio = '';
     this.fechaFin = '';
+    this.tipoReporte = 'personalizado';
+    this.myForm.patchValue(
+      {
+        opcionSeleccionada: '',
+        tipoReporte: 'personalizado'
+      }
+    );
   }
 
   closeModal() {
@@ -350,14 +451,49 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       flex: 2,
     },
    */
-
+    {
+      field: 'idProject',
+      headerName: 'Proyecto',
+      sortable: true,
+      filter: true,
+      filterParams: {
+        excelMode: 'mac'
+      },
+      resizable: true,
+      flex: 4,
+      hide: !this.authService.hasDetailedPermission('projects', 'get-all-ot'),
+      editable: true,
+      rowGroup: this.authService.hasDetailedPermission('projects', 'get-all-ot'),
+      cellEditor: 'agRichSelectCellEditor',
+      cellEditorParams: {
+        values: () => this.projectsList.map(p => p.id),
+        formatValue: (value: any) => {
+          const project = this.projectsList.find(p => p.id === value);
+          return project ? project.name : value;
+        }
+      },
+      valueFormatter: (params: any) => {
+        const project = this.projectsList.find(p => p.id === params.value);
+        return project ? project.name : params.value;
+      },
+      filterValueGetter: (params: any) => {
+        const project = this.projectsList.find(p => p.id === params.data.idProject);
+        return project ? project.name : params.data.idProject;
+      },
+      onCellValueChanged: (params: any) => {
+        this.onProjectChangedWithConfirmation(params);
+      }
+    },
     {
       field: 'otNumber',
       headerName: 'OT',
       sortable: true,
       filter: true,
+      filterParams: {
+        excelMode: 'mac'
+      },
       resizable: true,
-      flex: 1
+      flex: 2
     },
      {
       field: 'results',
@@ -366,7 +502,19 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       filter: true,
       resizable: true,
       flex: 2,
+      onCellDoubleClicked: (params: any) => {
+        this.onOTCellDoubleClicked(params);
+      }
     },
+    {
+      field: 'closed',
+      headerName: 'Cerrado',
+      sortable: true,
+      filter: true,
+      resizable: true,
+      flex: 1,
+      editable: false
+    }
 
   ];
 
@@ -1222,7 +1370,16 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     animateRows: true,
     pagination: false,
     domLayout: 'normal',
-    onRowDoubleClicked: (event: any) => this.onRowDoubleClicked(event),
+    groupDefaultExpanded: 1,
+    autoGroupColumnDef: {
+      headerName: 'Grupo',
+      field: 'ag-Grid-AutoColumn',
+      width: 200,
+      cellRendererParams: {
+        suppressCount: false
+      }
+    },
+    onCellDoubleClicked: (event: any) => this.onOTCellDoubleClicked(event),
   };
 
   // Configuraciones de grid para las pestañas
@@ -1330,16 +1487,18 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     effect(() => {
       this.idProject =this.signalsService.getProjectSelectedBySidebar()();
       this.idcompany = this.signalsService.getRootSelectedBySidebar()();
+      
       //alert(this.signalsService.getClosedReport()())
       //this.selectedStatusReport = this.signalsService.getClosedReport()();
       this.catalogoMateriales();
       this.catalogoEquipo();
       this.obtenerTypeNotes();
       this.obtenerConceptos();
-      this.obtenerDatos();
+      this.obtenerProyectos();
       this.loadEmployees();
       this.getDeptoandPosition();
       this.obtenerUnidades();
+      this.filtrarTipoReporte(this.tipoReporte);
     });
 
     // Effect para auto-actualizar PDF cuando se guarden cambio
@@ -1353,12 +1512,94 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     hace7Dias.setDate(hoy.getDate() - 7);
     const hoyStr = hoy.toISOString().split('T')[0];
     const hace7DiasStr = hace7Dias.toISOString().split('T')[0];
+    const semana = this.obtenerNumeroSemana(hoy);
+    const mes = this.obtenerAnoMes(hoy);
     console.log("fechas", hoyStr, hace7DiasStr)
     this.myForm = this.formBuilder.group({
+      opcionSeleccionada: ['', Validators.required],
+      seleccionNumerica: this.formBuilder.array([]),
+      tipoReporte: [this.tipoReporte, Validators.required],
       fechaInicio: [hace7DiasStr, Validators.required],
+      semanaSelect: [semana],
+      mesSelect: [mes],
       fechaFin: [hoyStr, Validators.required]
     });
+     this.myForm.get('semanaSelect')?.valueChanges.subscribe(value => {
+    if (this.tipoReporte === 'semanal') {
+      this.filtrarTipoReporte('semanal');
+    }
+  });
+
+  this.myForm.get('mesSelect')?.valueChanges.subscribe(value => {
+    if (this.tipoReporte === 'mensual') {
+      this.filtrarTipoReporte('mensual');
+    }
+  });
+
+  this.myForm.get('fechaInicio')?.valueChanges.subscribe(() => {
+    if (this.tipoReporte === 'personalizado') {
+      this.filtrarTipoReporte('personalizado');
+    }
+  });
+
+  this.myForm.get('fechaFin')?.valueChanges.subscribe(() => {
+    if (this.tipoReporte === 'personalizado') {
+      this.filtrarTipoReporte('personalizado');
+    }
+  });
   }
+  filtrarTipoReporte(type: string) {
+  const fechaInicio = this.myForm.get('fechaInicio')?.value;
+  const fechaFin = this.myForm.get('fechaFin')?.value;
+  const semana = this.myForm.get('semanaSelect')?.value;
+  const mes = this.myForm.get('mesSelect')?.value;
+
+  if (type === 'personalizado') {
+    this.fechaInicio = fechaInicio;
+    this.fechaFin = fechaFin;
+    //alert(`Filtrado por fechas personalizadas: ${this.fechaInicio} a ${this.fechaFin}`);
+  }
+
+  if (type === 'semanal' && semana) {
+    const [añoStr, semanaIsoStr] = semana.split('-W');
+    const año = parseInt(añoStr, 10);
+    const numSemana = parseInt(semanaIsoStr, 10);
+
+    // ISO 8601: semana empieza en lunes
+    const simple = new Date(año, 0, 1 + (numSemana - 1) * 7);
+    const dia = simple.getDay();
+    const ISOsemanaInicio = new Date(simple);
+
+    // Ajustar al lunes (ISO)
+    const diferenciaLunes = (dia <= 4 ? dia - 1 : dia - 8); 
+    ISOsemanaInicio.setDate(simple.getDate() - diferenciaLunes);
+
+    const ISOsemanaFin = new Date(ISOsemanaInicio);
+    ISOsemanaFin.setDate(ISOsemanaInicio.getDate() + 6);
+
+    this.fechaInicio = ISOsemanaInicio.toISOString().slice(0, 10); // YYYY-MM-DD
+    this.fechaFin = ISOsemanaFin.toISOString().slice(0, 10);       // YYYY-MM-DD
+    //alert(`Filtrado por fechas personalizadas: ${this.fechaInicio} a ${this.fechaFin}`);
+  }
+
+  if (type === 'mensual' && mes) {
+    // mes es algo como "2025-08"
+    const [añoStr, mesStr] = mes.split('-');
+    const año = parseInt(añoStr, 10);
+    const mesNum = parseInt(mesStr, 10);
+
+    // Fecha inicio = primer día del mes
+    const inicio = new Date(año, mesNum - 1, 1);
+
+    // Fecha fin = último día del mes
+    const fin = new Date(año, mesNum, 0); // día 0 del mes siguiente = último del actual
+
+    this.fechaInicio = inicio.toISOString().slice(0, 10); // YYYY-MM-DD
+    this.fechaFin = fin.toISOString().slice(0, 10);       // YYYY-MM-DD
+    //alert(`Filtrado por fechas personalizadas: ${this.fechaInicio} a ${this.fechaFin}`);
+  }
+}
+
 
   loadEmployees() {
     const idRoot = this.signalsService.getRootSelectedBySidebar()();
@@ -1387,22 +1628,83 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
   }
 
   obtenerDatos() {
+    // Verificar si el usuario tiene permisos para ver todas las OTs de todos los proyectos
+    if (this.authService.hasDetailedPermission('projects', 'get-all-ot')) {
+      console.log('Usuario tiene permisos para ver todas las OTs de todos los proyectos');
+      this.obtenerTodasLasOTs();
+    } else {
+      console.log('Usuario solo puede ver OTs del proyecto actual');
+      this.obtenerOTsDelProyectoActual();
+    }
+  }
+
+  obtenerOTsDelProyectoActual() {
     this.otService.getOtListByProject(this.idProject).subscribe({
       next: (data: any) => {
-        console.log('Datos obtenidos del servicio OT:', data);
+        console.log('Datos obtenidos del servicio OT para proyecto actual:', data);
         this.rowData = data;
         this.trackingService.addLog(
           this.trackingService.getnameComp(),
-          'Get Lista de OT',
+          'Get Lista de OT - Proyecto Actual',
           'Menu Proyectos Ordenes de Trabajo',
           this.trackingService.getEmail()
         );
       },
       error: (error) => {
-        console.error('Error al obtener datos de OT:', error);
+        console.error('Error al obtener datos de OT del proyecto actual:', error);
         this.rowData = [];
       },
     });
+  }
+
+  async obtenerTodasLasOTs() {
+    try {
+      console.log('Obteniendo OTs de todos los proyectos...');
+      const allOTs: any[] = [];
+      
+      // Usar la lista de proyectos que ya tenemos cargada
+      if (this.projectsList && this.projectsList.length > 0) {
+        console.log(`Procesando ${this.projectsList.length} proyectos:`, this.projectsList);
+        
+        // Crear un array de promesas para obtener las OTs de cada proyecto
+        const otPromises = this.projectsList.map(project => 
+          firstValueFrom(this.otService.getOtListByProject(project.id))
+            .then((ots: any[]) => {
+              console.log(`Proyecto ${project.name} (ID: ${project.id}): ${ots.length} OTs`);
+              return ots || [];
+            })
+            .catch((error) => {
+              console.error(`Error obteniendo OTs del proyecto ${project.name}:`, error);
+              return [];
+            })
+        );
+        
+        // Ejecutar todas las peticiones en paralelo
+        const allProjectOTs = await Promise.all(otPromises);
+        
+        // Combinar todos los resultados
+        allProjectOTs.forEach(projectOTs => {
+          allOTs.push(...projectOTs);
+        });
+        
+        console.log(`Total de OTs obtenidas de todos los proyectos: ${allOTs.length}`);
+        this.rowData = allOTs;
+        
+        this.trackingService.addLog(
+          this.trackingService.getnameComp(),
+          'Get Lista de OT - Todos los Proyectos',
+          'Menu Proyectos Ordenes de Trabajo',
+          this.trackingService.getEmail()
+        );
+      } else {
+        console.log('No hay proyectos disponibles, obteniendo del proyecto actual');
+        this.obtenerOTsDelProyectoActual();
+      }
+    } catch (error) {
+      console.error('Error al obtener todas las OTs:', error);
+      // Fallback al método original
+      this.obtenerOTsDelProyectoActual();
+    }
   }
 
   // Métodos del grid
@@ -1449,11 +1751,107 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     }
   }
 
-  onRowDoubleClicked(event: any) {
+  onOTCellDoubleClicked(event: any) {
+    console.log('Cell double click event:', event);
+    console.log('Column:', event.column);
+    console.log('Column field:', event.column?.colDef?.field);
+    console.log('Row data:', event.data);
+    
     const rowData = event.data;
-    if (rowData && rowData.id) {
-      this.router.navigate(['/projects/ot/details', rowData.id]);
+    const column = event.column;
+    
+    // Navegar si el doble click es en la columna "OT" o "Resultados"
+    if (column && column.colDef && (column.colDef.field === 'otNumber' || column.colDef.field === 'results')) {
+      console.log(`Navigating to OT details from ${column.colDef.field} column...`);
+      if (rowData && rowData.id) {
+        console.log('Navigating with ID:', rowData.id);
+        this.router.navigate(['/projects/ot/details', rowData.id]);
+      } else {
+        console.log('No ID found in row data');
+      }
+    } else {
+      console.log('Not clicking on navigation column, field is:', column?.colDef?.field);
     }
+  }
+
+  onProjectChangedWithConfirmation(params: any) {
+    console.log('Project change requested for OT:', params.data);
+    console.log('New project ID:', params.newValue);
+    console.log('Old project ID:', params.oldValue);
+    
+    if (params.newValue !== params.oldValue) {
+      const oldProject = this.projectsList.find(p => p.id === params.oldValue);
+      const newProject = this.projectsList.find(p => p.id === params.newValue);
+      
+      const oldProjectName = oldProject ? oldProject.name : params.oldValue;
+      const newProjectName = newProject ? newProject.name : params.newValue;
+      
+      alerts.confirmAlert(
+        'Cambiar Proyecto de OT',
+        `¿Está seguro que desea cambiar esta orden de trabajo del proyecto "${oldProjectName}" al proyecto "${newProjectName}"?`,
+        'question',
+        'Sí, cambiar proyecto'
+      ).then((result) => {
+        if (result.isConfirmed) {
+          // Usuario confirmó el cambio
+          this.onProjectChanged(params);
+        } else {
+          // Usuario canceló, revertir el cambio
+          console.log('Cambio de proyecto cancelado por el usuario');
+          params.data.idProject = params.oldValue;
+          params.api.refreshCells({ rowNodes: [params.node], force: true });
+        }
+      });
+    }
+  }
+
+  onProjectChanged(params: any) {
+    console.log('Project changed for OT:', params.data);
+    console.log('New project ID:', params.newValue);
+    console.log('Old project ID:', params.oldValue);
+    
+    const otId = params.data.id;
+    const updatedOtData = { ...params.data };
+    
+    console.log('Updating OT with ID:', otId);
+    console.log('Updated data:', updatedOtData);
+    
+    this.otService.updateOt(otId, updatedOtData).subscribe({
+      next: (response: any) => {
+        console.log('OT updated successfully:', response);
+        const oldProject = this.projectsList.find(p => p.id === params.oldValue);
+        const newProject = this.projectsList.find(p => p.id === params.newValue);
+        const oldProjectName = oldProject ? oldProject.name : params.oldValue;
+        const newProjectName = newProject ? newProject.name : params.newValue;
+        
+        this.trackingService.addLog(
+          this.trackingService.getnameComp(),
+          `Proyecto cambiado de ${oldProjectName} a ${newProjectName} para OT ${params.data.otNumber}`,
+          'Menu Proyectos Ordenes de Trabajo',
+          this.trackingService.getEmail()
+        );
+
+        alerts.basicAlert(
+          'Proyecto Actualizado',
+          `La orden de trabajo ${params.data.otNumber} ha sido movida exitosamente al proyecto ${newProjectName}.`,
+          'success'
+        );
+
+        // Refrescar la tabla para mostrar los cambios
+        this.obtenerDatos();
+      },
+      error: (error: any) => {
+        console.error('Error updating OT:', error);
+        alerts.basicAlert(
+          'Error al Cambiar Proyecto',
+          'Ocurrió un error al intentar cambiar el proyecto de la orden de trabajo. Por favor, inténtelo nuevamente.',
+          'error'
+        );
+        // Revertir el cambio en caso de error
+        params.data.idProject = params.oldValue;
+        params.api.refreshCells({ rowNodes: [params.node], force: true });
+      }
+    });
   }
 
   // Métodos para pestañas y vista previa
@@ -1793,12 +2191,14 @@ async saveChangesMaterial() {
   
   const newRows = this.materiales.filter(row => row.__isNew);
   const modifiedRows = this.materiales.filter(row => row.__modified && !row.__isNew);
-  /*const invalidNewRows = newRows.filter(item => !item.date || !item.supervisor);
   
-  if (invalidNewRows.length > 0) {
-    alerts.basicAlert('Añadir entrada', 'Debe introducir la fecha y supervisor antes de guardar.', 'error');
+  // Validación básica para materiales
+  const invalidRows = newRows.filter(item => !item.idResource || !item.quantity);
+  
+  if (invalidRows.length > 0) {
+    alerts.basicAlert('Error', 'Debe completar material y cantidad antes de guardar.', 'error');
     return;
-  }*/
+  }
 
   if (newRows.length === 0 && modifiedRows.length === 0) {
     alerts.basicAlert('Info', 'No hay cambios para guardar', 'info');
@@ -1861,6 +2261,11 @@ async saveChangesMaterial() {
     console.log('Recargando datos desde el servidor...');
     await this.loadDailyReports();
     console.log('Datos recargados exitosamente');
+    this.materiales.forEach(item => {
+        delete item.__isNew;
+        delete item.__modified;
+      });
+
 
   } catch (error: any) {
     console.error('=== ERROR DETALLADO ===');
@@ -1962,7 +2367,12 @@ async saveChangesEquipos() {
     this.autoUpdatePdf()
     this.notSavedEquipoChanges = false;
     
-    // Recargar datos desde el servidor
+    // Recargar datos desde el servidor 
+    this.equipos.forEach(item => {
+        delete item.__isNew;
+        delete item.__modified;
+      });
+
     console.log('Recargando datos desde el servidor...');
     await this.loadDailyReports();
     console.log('Datos recargados exitosamente');
@@ -2239,6 +2649,8 @@ async saveChangesEquipos() {
         );
         return;
       }
+      console.log('File MIME type:', file.type);
+
 
       this.uploadPdf(file);
     }
@@ -2247,70 +2659,69 @@ async saveChangesEquipos() {
     input.value = '';
   }
 
-  uploadPdf(file: File) {
-    this.isUploading = true;
+  async uploadPdf(file: File) {
+  this.isUploading = true;
+  
+  //console.log('=== PDF Upload Process Started ===');
+  /*console.log('File details:', {
+    name: file.name,
+    size: file.size,
+    type: file.type,
+    lastModified: new Date(file.lastModified),
+  });
+  console.log('Project ID being sent:', 760);
+  console.log('Calling OtService.addOtViaPdf with parameters:', {
+    projectId: 760,
+    file: file,
+  });*/
 
-    console.log('=== PDF Upload Process Started ===');
-    console.log('File details:', {
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      lastModified: new Date(file.lastModified),
-    });
-    console.log('Project ID being sent:', 760);
-    console.log('Calling OtService.addOtViaPdf with parameters:', {
-      projectId: 760,
-      file: file,
-    });
+  try {
+    const response: any = await lastValueFrom(this.otService.addOtViaPdf(this.idProject, file));
 
-    this.otService.addOtViaPdf(760, file).subscribe({
-      next: (response: any) => {
-        console.log('=== PDF Upload Success ===');
-        console.log('Response received:', response);
+    //console.log('=== PDF Upload Success ===');
+    //console.log('Response received:', response);
 
-        this.isUploading = false;
+    
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      `Upload PDF OT - ID: ${response.otId}`,
+      'Menu Proyectos Ordenes de Trabajo',
+      this.trackingService.getEmail()
+    );
 
-        this.trackingService.addLog(
-          this.trackingService.getnameComp(),
-          `Upload PDF OT - ID: ${response.otId}`,
-          'Menu Proyectos Ordenes de Trabajo',
-          this.trackingService.getEmail()
-        );
+    alerts.basicAlert(
+      'PDF Procesado Exitosamente',
+      `El PDF ha sido cargado y se han obtenido algunos datos. Será redirigido al formulario de OT para que corrobore los datos.\n\nNúmero OT: ${response.otNumber}`,
+      'success'
+    );
+      this.obtenerDatos();
 
-        // Mostrar alerta de éxito personalizada
-        alerts.basicAlert(
-          'PDF Procesado Exitosamente',
-          `El PDF ha sido cargado y se han obtenido algunos datos. Será redirigido al formulario de OT para que corrobore los datos.\n\nNúmero OT: ${response.otNumber}`,
-          'success'
-        );
+    // Redirigir después de un breve delay
+    /*console.log('Navigating to details page with otId:', response.otId);
+    setTimeout(() => {
+      this.router.navigate(['/projects/ot/details', response.otId]);
+    }, 2000);*/
+  } catch (error: any) {
+    console.log('=== PDF Upload Error ===');
+    console.error('Complete error object:', error);
+    console.error('Error status:', error.status);
+    console.error('Error statusText:', error.statusText);
+    console.error('Error headers:', error.headers);
+    console.error('Error body:', error.error);
 
-        // Redirigir a la página de detalles después de un breve delay
-        console.log('Navigating to details page with otId:', response.otId);
-        setTimeout(() => {
-          this.router.navigate(['/projects/ot/details', response.otId]);
-        }, 2000);
-      },
-      error: (error) => {
-        console.log('=== PDF Upload Error ===');
-        console.error('Complete error object:', error);
-        console.error('Error status:', error.status);
-        console.error('Error statusText:', error.statusText);
-        console.error('Error headers:', error.headers);
-        console.error('Error body:', error.error);
+    let errorMessage = 'Error al procesar el archivo PDF.';
+    if (error?.error?.message) {
+      errorMessage = error.error.message;
+    } else if (error?.message) {
+      errorMessage = error.message;
+    }
 
-        this.isUploading = false;
-
-        let errorMessage = 'Error al procesar el archivo PDF.';
-        if (error.error?.message) {
-          errorMessage = error.error.message;
-        } else if (error.message) {
-          errorMessage = error.message;
-        }
-
-        alert(errorMessage);
-      },
-    });
+    alert(errorMessage);
+  } finally {
+    this.isUploading = false;
   }
+}
+
 
   // Método para limpiar datos antes de enviar al servidor
   private cleanDataForServer(data: any): any {
@@ -2610,7 +3021,7 @@ async saveChangesEquipos() {
     const tempId = `temp_personal_${this.tempPersonalIdCounter++}`;
    
     const newPersonal = {
-      id: tempId,
+      //id: tempId,
       idOt: parseInt(this.selectedOt.id),
       idReporte: this.selectedReporteId,
       idResource: null, // Se almacenará el ID del empleado
@@ -2660,7 +3071,7 @@ async saveChangesEquipos() {
 
     const tempId = `temp_material_${this.tempPersonalIdCounter++}`;
     const newMaterial = {
-      id: 0,
+      //id: tempId,
       idOt: parseInt(this.selectedOt.id),
       idReporte: this.selectedReporteId,
       idResource: '', // Inicializar como string vacío para consistencia
@@ -2680,13 +3091,10 @@ async saveChangesEquipos() {
 
     setTimeout(() => {
       if (this.materialesGridApi) {
-        this.materialesGridApi.setGridOption('rowData', this.materiales);
-        setTimeout(() => {
           this.materialesGridApi.startEditingCell({
             rowIndex: 0,
-            colKey: 'idResource'
-          });
-        }, 100);
+          colKey: 'idResource'
+        });
       }
     }, 0);
   }
@@ -2711,7 +3119,7 @@ async saveChangesEquipos() {
 
     const tempId = `temp_equipo_${this.tempPersonalIdCounter++}`;
     const newEquipo = {
-      id: 0,
+      //id: tempId,
       idOt: parseInt(this.selectedOt.id),
       idReporte: this.selectedReporteId,
       idResource: null, // Se almacenará el ID del equipo
@@ -2731,13 +3139,10 @@ async saveChangesEquipos() {
     
     setTimeout(() => {
       if (this.equiposGridApi) {
-        this.equiposGridApi.setGridOption('rowData', this.equipos);
-        setTimeout(() => {
           this.equiposGridApi.startEditingCell({
-            rowIndex: 0,
-            colKey: 'description'
-          });
-        }, 100);
+           rowIndex: 0,
+          colKey: 'idResource'
+        });
       }
     }, 0);
   }
@@ -2950,7 +3355,16 @@ async saveChangesEquipos() {
     console.log('Obteniendo materiales para reporte ID:', selectedReporteId);
     this.logbookService.getInfoByReporte(selectedReporteId, "MATERIAL").subscribe(
       (data: any) => {
-        this.materiales = data.data;
+        // Procesar los datos del servidor para evitar duplicaciones
+        this.materiales = data.data.map((material: any, index: number) => ({
+          ...material,
+          // Generar ID único si viene con 0 o no tiene ID válido
+          id: material.id && material.id !== 0 ? material.id : `server_material_${selectedReporteId}_${index}_${Date.now()}`,
+          // Marcar como existente del servidor (no nuevo)
+          __isNew: false,
+          __modified: false
+        }));
+        console.log('Materiales procesados desde servidor:', this.materiales);
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -2960,7 +3374,16 @@ async saveChangesEquipos() {
     console.log('Obteniendo equipos para reporte ID:', selectedReporteId);
     this.logbookService.getInfoByReporte(selectedReporteId, "EQUIPMENT").subscribe(
       (data: any) => {
-        this.equipos = data.data;
+        // Procesar los datos del servidor para evitar duplicaciones
+        this.equipos = data.data.map((equipo: any, index: number) => ({
+          ...equipo,
+          // Generar ID único si viene con 0 o no tiene ID válido
+          id: equipo.id && equipo.id !== 0 ? equipo.id : `server_equipo_${selectedReporteId}_${index}_${Date.now()}`,
+          // Marcar como existente del servidor (no nuevo)
+          __isNew: false,
+          __modified: false
+        }));
+        console.log('Equipos procesados desde servidor:', this.equipos);
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -2968,8 +3391,16 @@ async saveChangesEquipos() {
    obtenerPersonal(selectedReporteId: any) {
     this.logbookService.getInfoByReporte(selectedReporteId, "PERSONAL").subscribe(
       (data: any) => {
-        this.personal = data.data;
-        console.log(this.personal)
+        // Procesar los datos del servidor para evitar duplicaciones
+        this.personal = data.data.map((persona: any, index: number) => ({
+          ...persona,
+          // Generar ID único si viene con 0 o no tiene ID válido
+          id: persona.id && persona.id !== 0 ? persona.id : `server_personal_${selectedReporteId}_${index}_${Date.now()}`,
+          // Marcar como existente del servidor (no nuevo)
+          __isNew: false,
+          __modified: false
+        }));
+        console.log('Personal procesado desde servidor:', this.personal);
         //this.updateExcelService.dataPersonal(this.personal)
       },
       (error) => console.error('Error fetching data:', error)
@@ -2987,7 +3418,16 @@ async saveChangesEquipos() {
   obtenerNotas(selectedReporteId: any) {
     this.logbookService.getInfoByReporte(selectedReporteId, "NOTE").subscribe(
       (data: any) => {
-        this.notas = data.data;
+        // Procesar los datos del servidor para evitar duplicaciones
+        this.notas = data.data.map((nota: any, index: number) => ({
+          ...nota,
+          // Generar ID único si viene con 0 o no tiene ID válido
+          id: nota.id && nota.id !== 0 ? nota.id : `server_nota_${selectedReporteId}_${index}_${Date.now()}`,
+          // Marcar como existente del servidor (no nuevo)
+          __isNew: false,
+          __modified: false
+        }));
+        console.log('Notas procesadas desde servidor:', this.notas);
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -2996,8 +3436,16 @@ async saveChangesEquipos() {
   obtenerConcep(selectedReporteId: any) {
     this.logbookService.getInfoByReporte(selectedReporteId, "CONCEPT").subscribe(
       (data: any) => {
-        this.conceptos = data.data;
-        
+        // Procesar los datos del servidor para evitar duplicaciones
+        this.conceptos = data.data.map((concepto: any, index: number) => ({
+          ...concepto,
+          // Generar ID único si viene con 0 o no tiene ID válido
+          id: concepto.id && concepto.id !== 0 ? concepto.id : `server_concepto_${selectedReporteId}_${index}_${Date.now()}`,
+          // Marcar como existente del servidor (no nuevo)
+          __isNew: false,
+          __modified: false
+        }));
+        console.log('Conceptos procesados desde servidor:', this.conceptos);
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -3074,6 +3522,18 @@ async saveChangesEquipos() {
         console.log('Catálogo de conceptos obtenido:', this.catalogConcepto);
       },
       (error) => console.error('Error fetching conceptos:', error)
+    );
+  }
+
+  obtenerProyectos(){
+    return this.projectsService.getProjectListByCompany(this.idcompany).subscribe(
+      (data: any) => {
+        this.projectsList = data;
+        console.log('Lista de proyectos obtenida:', this.projectsList);
+        // Llamar obtenerDatos después de cargar la lista de proyectos
+        this.obtenerDatos();
+      },
+      (error) => console.error('Error fetching projects:', error)
     );
   }
 
@@ -3288,28 +3748,36 @@ async saveChangesEquipos() {
       return;
     }
 
-    const newEquipo = {
-      id: 0,
+    // Generar un ID temporal único
+    const tempId = Date.now() + Math.random();
+    
+    // Calcular el siguiente orden basado en conceptos existentes
+    const maxOrden = this.conceptos.length > 0 
+      ? Math.max(...this.conceptos.map(c => c.orden || 0)) 
+      : 0;
+
+    const newConcepto = {
+      id: tempId,
       idOt: parseInt(this.selectedOt.id),
       idReporte: this.selectedReporteId,
-      idResource: null, // Se almacenará el ID del equipo
+      idResource: null, // Se almacenará el ID del concepto
       position: '', 
       quantity: 1,
       start: this.selectedReporteHoraInicio + ':00',
       end: this.selectedReporteHoraTermino + ':00',
       date: this.selectedReporteFecha,
       typeNote: 'CONCEPT',
-      description: 'NOTAS',
-      orden: 1,
+      description: 'SIN DESCRIPCIÓN',
+      orden: maxOrden + 1,
       __isNew: true
     };
 
-    this.conceptos = [newEquipo, ...this.conceptos];
+    this.conceptos = [newConcepto, ...this.conceptos];
     this.notSavedConceptoChanges = true;
     
     setTimeout(() => {
       if (this.conceptosGridApi) {
-        this.conceptosGridApi.setGridOption('rowData', this.conceptos);
+        //this.conceptosGridApi.setGridOption('rowData', this.conceptos);
         setTimeout(() => {
           this.conceptosGridApi.startEditingCell({
             rowIndex: 0,
@@ -3387,7 +3855,11 @@ async saveChangesEquipos() {
     alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
     this.autoUpdatePdf()
     this.notSavedConceptoChanges = false;
-    
+    this.conceptos.forEach(item => {
+        delete item.__isNew;
+        delete item.__modified;
+      });
+
     // Recargar datos desde el servidor
     console.log('Recargando datos desde el servidor...');
     await this.loadDailyReports();
@@ -3532,7 +4004,7 @@ async saveChangesEquipos() {
 
     setTimeout(() => {
       if (this.notasGridApi) {
-        this.notasGridApi.setGridOption('rowData', this.notas);
+        //this.notasGridApi.setGridOption('rowData', this.notas);
         setTimeout(() => {
           this.notasGridApi.startEditingCell({
             rowIndex: 0,
@@ -3617,7 +4089,11 @@ async saveChangesEquipos() {
     alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
     this.autoUpdatePdf()
     this.notSavedNoteChanges = false;
-    
+    this.notas.forEach(item => {
+        delete item.__isNew;
+        delete item.__modified;
+      });
+
     // Recargar datos desde el servidor
     console.log('Recargando datos desde el servidor...');
     await this.loadDailyReports();

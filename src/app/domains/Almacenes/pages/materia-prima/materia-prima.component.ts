@@ -36,6 +36,15 @@ export class MateriaPrimaComponent {
       );
     }
 
+    if (tabName === 'cat-fam-sub') {
+      this.trackingService.addLog(
+        this.trackingService.getnameComp(),
+        'Click en la Pestaña Cat-Fam-Sub',
+        'Almacenes - Materia Prima',
+        this.trackingService.getEmail()
+      );
+    }
+
     if (tabName === 'primera-fase') {
       this.trackingService.addLog(
         this.trackingService.getnameComp(),

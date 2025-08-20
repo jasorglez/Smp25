@@ -1,276 +1,148 @@
-// Estilos para el grid del catálogo jerárquico
-.catalog-grid {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+// Estilos para el grid de materiales maestro
+.container-fluid {
+  padding: 1rem;
+}
+
+// Estilos para el grid AG-Grid
+.ag-theme-alpine {
+  --ag-header-height: 35px;
+  --ag-row-height: 35px;
+  --ag-font-size: 13px;
   
-  ::ng-deep {
-    // Estilos para diferentes niveles de la jerarquía
-    .ag-row[row-id*="category"] {
-      background-color: #e3f2fd !important;
+  // Colores de filas alternativas como en la imagen maestro.png
+  .ag-row-even {
+    background-color: #fff3cd; // Amarillo claro
+  }
+  
+  .ag-row-odd {
+    background-color: #ffeaa7; // Amarillo más intenso
+  }
+  
+  // Resaltar fila seleccionada
+  .ag-row-selected {
+    background-color: #cce5ff !important;
+    border: 2px solid #007bff;
+  }
+  
+  // Estilos para celdas editables
+  .ag-cell-editable {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+  }
+  
+  // Celdas modificadas
+  .ag-cell-data-changed {
+    background-color: #d1ecf1 !important;
+    animation: flash 1s;
+  }
+  
+  @keyframes flash {
+    0% { background-color: #b3d9ff; }
+    100% { background-color: #d1ecf1; }
+  }
+  
+  // Estilos para checkboxes
+  input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+  }
+  
+  // Estilos para botones dentro del grid
+  .btn {
+    padding: 2px 6px;
+    font-size: 12px;
+  }
+}
+
+// Botones de la barra de herramientas
+.btn-group .btn {
+  font-size: 14px;
+  padding: 6px 12px;
+}
+
+// Alertas
+.alert {
+  font-size: 14px;
+  
+  &.alert-info {
+    background-color: #e7f3ff;
+    border-color: #b3d9ff;
+    color: #055160;
+  }
+  
+  &.alert-warning {
+    background-color: #fff3cd;
+    border-color: #ffda6a;
+    color: #664d03;
+  }
+}
+
+// Card de información del registro seleccionado
+.card {
+  font-size: 14px;
+  
+  .card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    padding: 8px 12px;
+    
+    h6 {
+      color: #495057;
       font-weight: 600;
-      border-left: 4px solid #2196f3;
-    }
-    
-    .ag-row[row-id*="family"] {
-      background-color: #f3e5f5 !important;
-      font-weight: 500;
-      border-left: 4px solid #9c27b0;
-      margin-left: 20px;
-    }
-    
-    .ag-row[row-id*="subfamily"] {
-      background-color: #fff3e0 !important;
-      border-left: 4px solid #ff9800;
-      margin-left: 40px;
-    }
-    
-    // Hover states
-    .ag-row:hover {
-      background-color: #f5f5f5 !important;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    .ag-row-selected {
-      background-color: #bbdefb !important;
-      border: 2px solid #2196f3 !important;
-    }
-    
-    // Header personalizado
-    .ag-header-cell {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      font-weight: 600;
-    }
-    
-    .ag-header-cell-text {
-      color: white !important;
-    }
-    
-    // Iconos en la columna de agrupación
-    .ag-group-expanded .ag-icon {
-      color: #2196f3;
-    }
-    
-    .ag-group-contracted .ag-icon {
-      color: #757575;
-    }
-    
-    // Checkboxes más grandes
-    .ag-checkbox-input {
-      transform: scale(1.2);
-    }
-    
-    // Selectores más amigables
-    .ag-cell-editor select {
-      padding: 5px;
-      border-radius: 4px;
-      border: 2px solid #2196f3;
     }
   }
-}
-
-// Botones de acción
-.btn {
-  border-radius: 8px;
-  font-weight: 500;
-  transition: all 0.3s ease;
   
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-  }
-}
-
-// Badges de nivel
-.badge {
-  font-size: 0.75rem;
-  padding: 4px 8px;
-  border-radius: 12px;
-}
-
-// Alert de información
-.alert-info {
-  background: linear-gradient(135deg, #e1f5fe 0%, #b3e5fc 100%);
-  border-left: 4px solid #03a9f4;
-  
-  .bi-info-circle {
-    color: #0277bd;
-    font-size: 1.2rem;
-  }
-}
-
-// Ayuda contextual
-.text-muted {
-  line-height: 1.3;
-}
-
-// Estilos para grid de solo lectura
-.catalog-grid {
-  ::ng-deep {
-    // Celdas de solo lectura
-    .readonly-cell {
-      cursor: pointer !important;
-      transition: background-color 0.2s ease;
-      
-      &:hover {
-        background-color: #f8f9fa !important;
-      }
+  .card-body {
+    padding: 12px;
+    
+    .text-muted {
+      font-size: 12px;
+      color: #6c757d !important;
     }
-
-    // Mejorar visibilidad de iconos
-    .bi-folder-fill {
-      font-size: 1.1rem;
-      margin-right: 5px;
-    }
-
-    .bi-collection-fill {
-      font-size: 1.1rem;
-      margin-right: 5px;
-    }
-
-    .bi-file-earmark-fill {
-      font-size: 1.1rem;
-      margin-right: 5px;
+    
+    strong {
+      color: #495057;
+      font-size: 13px;
     }
   }
 }
 
-// Estado deshabilitado para botones durante edición
+// Leyenda de ayuda
+.list-unstyled {
+  li {
+    margin-bottom: 4px;
+    
+    i {
+      width: 16px;
+      display: inline-block;
+    }
+  }
+}
+
+// Estados de botones deshabilitados
 .btn:disabled {
-  opacity: 0.5;
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
-// Indicador de edición activa
-.inline-editing-indicator {
-  background: linear-gradient(45deg, #ffc107, #ff8f00);
-  color: white;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.7; }
-  100% { opacity: 1; }
-}
-
-// ========== ESTILOS PARA MODALES ==========
-
-// Modales Bootstrap personalizados
-.modal {
-  z-index: 1060;
-}
-
-.modal-backdrop {
-  z-index: 1055;
-  background-color: rgba(0, 0, 0, 0.6);
-}
-
-.modal-dialog {
-  max-width: 600px;
-}
-
-.modal-content {
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-}
-
-.modal-header {
-  border-radius: 12px 12px 0 0;
-  padding: 1rem 1.5rem;
-  
-  .modal-title {
-    font-weight: 600;
-    font-size: 1.1rem;
+// Responsividad
+@media (max-width: 768px) {
+  .container-fluid {
+    padding: 0.5rem;
   }
-}
-
-.modal-body {
-  padding: 1.5rem;
   
-  .form-control {
-    border-radius: 8px;
-    border: 2px solid #e9ecef;
-    padding: 0.75rem;
-    font-size: 0.95rem;
-    transition: all 0.3s ease;
+  .btn-group {
+    flex-direction: column;
+    width: 100%;
     
-    &:focus {
-      border-color: #007bff;
-      box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    .btn {
+      margin-bottom: 4px;
     }
   }
   
-  .form-label {
-    font-weight: 600;
-    color: #495057;
-    margin-bottom: 0.5rem;
-  }
-  
-  .form-check {
-    margin-top: 1rem;
-    
-    .form-check-input {
-      transform: scale(1.1);
-    }
-    
-    .form-check-label {
-      font-weight: 500;
-      color: #495057;
-    }
-  }
-  
-  .alert {
-    border-radius: 8px;
-    border: none;
-    font-size: 0.9rem;
-    
-    .badge {
-      font-size: 0.75rem;
-    }
-  }
-}
-
-.modal-footer {
-  padding: 1rem 1.5rem;
-  border-top: 1px solid #e9ecef;
-  
-  .btn {
-    border-radius: 8px;
-    font-weight: 500;
-    padding: 0.5rem 1.5rem;
-    transition: all 0.3s ease;
-    
-    &:hover:not(:disabled) {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-    
-    &:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-  }
-}
-
-// Animaciones para modales
-.modal.fade .modal-dialog {
-  transform: translate(0, -50px);
-  transition: transform 0.3s ease-out;
-}
-
-.modal.show .modal-dialog {
-  transform: none;
-}
-
-// Hover effects para badges en alertas
-.alert .badge {
-  transition: all 0.2s ease;
-  
-  &:hover {
-    transform: scale(1.05);
+  .ag-theme-alpine {
+    height: 400px !important;
+    font-size: 12px;
   }
 }

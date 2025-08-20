@@ -206,6 +206,14 @@ export const routes: Routes = [
                 canDeactivate: [UnsavedChangesGuard],
               },
               {
+                path: 'cat-fam-sub',
+                loadComponent: () =>
+                  import(
+                    './domains/Almacenes/components/cat-fam-sub/cat-fam-sub.component'
+                  ).then((m) => m.CatFamSubComponent),
+                canDeactivate: [UnsavedChangesGuard],
+              },
+              {
                 path: 'primera-fase',
                 loadComponent: () =>
                   import(
@@ -245,16 +253,16 @@ export const routes: Routes = [
             path: 'requisiciones',
             loadComponent: () =>
               import(
-                './domains/Warehouse/components/requisitions/requisitions.component'
-              ).then((r) => r.RequisitionsComponent),
+                './domains/Warehouse/components/requisitionsdelison/requisitionsdelison.component'
+              ).then((r) => r.RequisitionsDelisonComponent),
             canDeactivate: [UnsavedChangesGuard],
           },
           {
             path: 'ordenes-compra',
             loadComponent: () =>
               import(
-                './domains/Warehouse/components/purchaseorder/purchaseorder.component'
-              ).then((p) => p.PurchaseOrderComponent),
+                './domains/Warehouse/components/purchaseorderdelison/purchaseorderdelison.component'
+              ).then((p) => p.PurchaseOrderDelisonComponent),
             canDeactivate: [UnsavedChangesGuard],
           },
           {

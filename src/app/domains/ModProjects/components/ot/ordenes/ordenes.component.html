@@ -31,7 +31,7 @@
                 </div>
                 
                 <!-- Lista de OTs -->
-                <div class="col overflow-auto" style="height: 25vh;">
+                <div class="col overflow-auto">
                   <ag-grid-angular 
                     [ngStyle]="{ height: gridHeight, width: gridWidth }"
                     class="ag-theme-quartz small-text-ag-grid"
@@ -208,7 +208,7 @@
                         </nav>
                       </div>
                       <div class="col-10 overflow-auto agridWH">
-                        <ag-grid-angular [ngStyle]="{ height: gridHeight, width: gridWidthDetail }" class="ag-theme-quartz small-text-ag-grid" [rowData]="materiales" [columnDefs]="materialesColumnDefs" (cellValueChanged)="onCellValueChangedMaterial($event)" [gridOptions]="materialesGridOptions" (gridReady)="onMaterialesGridReady($event)"></ag-grid-angular>
+                        <ag-grid-angular [ngStyle]="{ height: gridHeight, width: gridWidthDetail }" class="ag-theme-quartz small-text-ag-grid" [rowData]="materiales" [columnDefs]="materialesColumnDefs" [gridOptions]="materialesGridOptions" (gridReady)="onMaterialesGridReady($event)"></ag-grid-angular>
                       </div>
                     </div>
                   </div>
@@ -226,7 +226,7 @@
                         </nav>
                       </div>
                       <div class="col-10 overflow-auto agridWH">
-                        <ag-grid-angular [ngStyle]="{ height: gridHeight, width: gridWidthDetail }" class="ag-theme-quartz small-text-ag-grid" [rowData]="equipos" [columnDefs]="equiposColumnDefs" (cellValueChanged)="onCellValueChangedEquipo($event)" [gridOptions]="equiposGridOptions" (gridReady)="onEquiposGridReady($event)"></ag-grid-angular>
+                        <ag-grid-angular [ngStyle]="{ height: gridHeight, width: gridWidthDetail }" class="ag-theme-quartz small-text-ag-grid" [rowData]="equipos" [columnDefs]="equiposColumnDefs" [gridOptions]="equiposGridOptions" (gridReady)="onEquiposGridReady($event)"></ag-grid-angular>
                       </div>
                     </div>
                   </div>
@@ -244,7 +244,7 @@
                         </nav>
                       </div>
                       <div class="col-10 overflow-auto" style="height: 60vh;">
-                        <ag-grid-angular class="ag-theme-quartz small-text-ag-grid" [rowData]="conceptos" [columnDefs]="conceptosColumnDefs" [gridOptions]="tabGridOptions" (cellValueChanged)="onCellValueChangedConcepto($event)" (gridReady)="onConceptosGridReady($event)"></ag-grid-angular>
+                        <ag-grid-angular class="ag-theme-quartz small-text-ag-grid" [rowData]="conceptos" [columnDefs]="conceptosColumnDefs" [gridOptions]="tabGridOptions" (gridReady)="onConceptosGridReady($event)"></ag-grid-angular>
                       </div>
                     </div>
                   </div>
@@ -262,7 +262,7 @@
                         </nav>
                       </div>
                       <div class="col-10 overflow-auto" style="height: 60vh;">
-                        <ag-grid-angular class="ag-theme-quartz small-text-ag-grid" [rowData]="notas" [columnDefs]="notasColumnDefs" [gridOptions]="notasGridOptions" (cellDoubleClicked)="onCellDoubleClicked($event)" (gridReady)="onNotasGridReady($event)" (cellValueChanged)="onCellValueChangedNota($event)"></ag-grid-angular>
+                        <ag-grid-angular class="ag-theme-quartz small-text-ag-grid" [rowData]="notas" [columnDefs]="notasColumnDefs" [gridOptions]="notasGridOptions" (cellDoubleClicked)="onCellDoubleClicked($event)" (gridReady)="onNotasGridReady($event)"></ag-grid-angular>
                       </div>
                     </div>
                   </div>
@@ -346,34 +346,88 @@
               <i class="bi bi-calendar-range me-2"></i>
               Selecciona el rango de fechas para el reporte
             </h6>
-            
+            <div class="form-group g-3">
+              <label for="opcion" class="form-label">Selecciona una opción</label>
+              <select class="form-control form-control-lg" id="opcion" formControlName="opcionSeleccionada" (change)="onOpcionSeleccionadaChange()">
+               <option value="" disabled>Seleccionar</option>
+                <option value="ot">Generador de OT</option>
+                <option value="cuadrilla-interna">Cálculo de pago a cuadrilla interna</option>
+                <option value="cuadrilla-externa">Cálculo de pago a cuadrilla externa</option>
+              </select>
+            </div>
+            <div class="row" *ngIf="opcionSeleccionada === 'cuadrilla-externa'">
+              <div class="col-md-3" *ngFor="let item of opcionesNumericas">
+                <button 
+                  type="button" 
+                  class="btn btn-outline-primary w-100 mb-2"
+                  [class.active]="seleccionados.includes(item)"
+                  (click)="toggleSeleccion(item)">
+                  {{ item }}
+                </button>
+              </div>
+            </div>
             <div class="row g-3">
-              <div class="col-md-6">
+              <div class="col-md-5">
                 <label for="fecha1" class="form-label fw-semibold">
                   <i class="bi bi-calendar-check me-1"></i>
-                  Fecha inicio
+                  Tipo de consulta
                 </label>
-                <input type="date"
-                       class="form-control form-control-lg"
-                       id="fecha1"
-                       [max]="myForm.get('fechaFin')?.value"
-                       formControlName="fechaInicio">
+                <select class="form-control form-control-lg" id="tipeReporte" formControlName="tipoReporte" (change)="onTipoReporteChange()">
+                <option value="personalizado">Personalizado</option>
+                <option value="semanal">Semanal</option>
+                <option value="mensual">Mensual</option>
+              </select>
               </div>
-            
-              <div class="col-md-6">
-                <label for="fecha2" class="form-label fw-semibold">
-                  <i class="bi bi-calendar-x me-1"></i>
-                  Fecha fin
-                </label>
-                <input type="date"
-                       class="form-control form-control-lg"
-                       id="fecha2"
-                       [min]="myForm.get('fechaInicio')?.value"
-                       formControlName="fechaFin">
+              <div class="col-md-5" *ngIf="tipoReporte === 'personalizado'">
+                 <div class="row g-3">
+                  <div class="col-md-6">
+                    <label for="fecha1" class="form-label fw-semibold">
+                      <i class="bi bi-calendar-check me-1"></i>
+                      Fecha inicio
+                    </label>
+                    <input type="date"
+                           class="form-control form-control-lg"
+                           id="fecha1"
+                           [max]="myForm.get('fechaFin')?.value"
+                           formControlName="fechaInicio">
+                  </div>
+                
+                  <div class="col-md-6">
+                    <label for="fecha2" class="form-label fw-semibold">
+                      <i class="bi bi-calendar-x me-1"></i>
+                      Fecha fin
+                    </label>
+                    <input type="date"
+                           class="form-control form-control-lg"
+                           id="fecha2"
+                           [min]="myForm.get('fechaInicio')?.value"
+                           formControlName="fechaFin">
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-5" *ngIf="tipoReporte === 'semanal'">
+                <label for="semanaSelect" class="form-label fw-semibold">
+                    <i class="bi bi-calendar-x me-1"></i>
+                    Seleccionar semana
+                  </label>
+                  <input type="week"
+                         class="form-control form-control-lg"
+                         id="semanaSelect"
+                         formControlName="semanaSelect">
+
+              </div>
+              <div class="col-md-5" *ngIf="tipoReporte === 'mensual'">
+                <label for="mesSelect" class="form-label fw-semibold">
+                    <i class="bi bi-calendar-x me-1"></i>
+                    Seleccionar mes
+                  </label>
+                  <input type="month"
+                         class="form-control form-control-lg"
+                         id="mesSelect"
+                         formControlName="mesSelect">
               </div>
             </div>
           </div>
-
           <div class="alert alert-info d-flex align-items-center" role="alert">
             <i class="bi bi-info-circle-fill me-2"></i>
             <div>
