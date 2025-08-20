@@ -27,6 +27,13 @@
                       </div>
                     </button>
                     <input #fileInput type="file" accept=".pdf" style="display: none" (change)="onFileSelected($event)">
+                    <button type="button" class="btn btn-secondary ms-1 me-1 mb-2" 
+                            (click)="openChangeProjectModal()" 
+                            [disabled]="getSelectedOTs().length === 0"
+                            title="Cambiar proyecto de las OTs seleccionadas"
+                            *ngIf="hasMultiSelectPermission">
+                      <i class="bi bi-arrow-repeat"></i>
+                    </button>
                   </nav>
                 </div>
                 
@@ -40,7 +47,7 @@
                     [gridOptions]="gridOptions"
                     (selectionChanged)="onSelectionChanged($event)"
                     (gridReady)="onGridReady($event)"
-                    [rowSelection]="'single'"
+                    [rowSelection]="hasMultiSelectPermission ? 'multiple' : 'single'"
                     [stopEditingWhenCellsLoseFocus]="true">
                   </ag-grid-angular>
                 </div>
@@ -446,6 +453,66 @@
           <span *ngIf="isGeneratingReport" class="spinner-border spinner-border-sm me-2" role="status"></span>
           <i *ngIf="!isGeneratingReport" class="bi bi-download me-1"></i>
           {{ isGeneratingReport ? 'Generando...' : 'Descargar Excel' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para cambiar proyecto de OTs seleccionadas -->
+<div class="modal fade" id="changeProjectModal" tabindex="-1" aria-labelledby="changeProjectModalLabel" aria-hidden="true" *ngIf="hasMultiSelectPermission">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="changeProjectModalLabel">
+          <i class="bi bi-arrow-repeat me-2"></i>
+          Cambiar Proyecto
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      
+      <div class="modal-body">
+        <div class="mb-3">
+          <p class="text-muted">
+            <i class="bi bi-info-circle me-1"></i>
+            Se cambiarán <strong>{{ getSelectedOTs().length }}</strong> órdenes de trabajo al proyecto seleccionado:
+          </p>
+          
+          <div class="alert alert-light">
+            <ul class="mb-0">
+              <li *ngFor="let ot of getSelectedOTs()" class="small">
+                OT {{ ot.otNumber }} - {{ ot.description }}
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label for="newProjectSelect" class="form-label">
+            <i class="bi bi-folder me-1"></i>
+            Nuevo Proyecto:
+          </label>
+          <select class="form-select" id="newProjectSelect" [(ngModel)]="selectedNewProject">
+            <option value="">Seleccione un proyecto...</option>
+            <option *ngFor="let project of projectsList" [value]="project.id">
+              {{ project.name }}
+            </option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle me-1"></i>
+          Cancelar
+        </button>
+        <button type="button" 
+                class="btn btn-primary" 
+                [disabled]="!selectedNewProject || isChangingProject"
+                (click)="changeProjectForSelectedOTs()">
+          <span *ngIf="isChangingProject" class="spinner-border spinner-border-sm me-2" role="status"></span>
+          <i *ngIf="!isChangingProject" class="bi bi-check-lg me-1"></i>
+          {{ isChangingProject ? 'Cambiando...' : 'Cambiar Proyecto' }}
         </button>
       </div>
     </div>
