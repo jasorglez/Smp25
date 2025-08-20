@@ -25,6 +25,8 @@ import { EquipmentService } from 'app/services/equipment.service';
 import { ModalService } from 'app/services/modal.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { UpdateExcelService } from 'app/services/updateExcel.service';
+import { ProjectsService } from 'app/services/projects.service';
+import { AuthService } from 'app/services/auth.service';
 import * as bootstrap from 'bootstrap';
 import { firstValueFrom, lastValueFrom } from 'rxjs';
 
@@ -144,6 +146,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   private employeesService = inject(EmployeesService);
   private catalogService = inject(CatalogsService);
   private materialsService = inject(MaterialsService);
+  private projectsService = inject(ProjectsService);
+  private authService = inject(AuthService);
   gestionarDatos: any[] = [];
 
   // Variables de control
@@ -156,6 +160,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   private catalogConcepto: any[] = [];
   private unitsCatalog: any[] = [];
   private typeNotesCatalog: any[] = [];
+  public projectsList: any[] = [];
     public conceptos  : any[] = [];
   public notas        : any[] = [];
 
@@ -352,7 +357,36 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       flex: 2,
     },
    */
-
+    {
+      field: 'idProject',
+      headerName: 'Proyecto',
+      sortable: true,
+      filter: true,
+      resizable: true,
+      flex: 1,
+      hide: !this.authService.hasDetailedPermission('projects', 'get-all-ot'),
+      editable: true,
+      rowGroup: this.authService.hasDetailedPermission('projects', 'get-all-ot'),
+      cellEditor: 'agRichSelectCellEditor',
+      cellEditorParams: {
+        values: () => this.projectsList.map(p => p.id),
+        formatValue: (value: any) => {
+          const project = this.projectsList.find(p => p.id === value);
+          return project ? project.name : value;
+        }
+      },
+      valueFormatter: (params: any) => {
+        const project = this.projectsList.find(p => p.id === params.value);
+        return project ? project.name : params.value;
+      },
+      filterValueGetter: (params: any) => {
+        const project = this.projectsList.find(p => p.id === params.data.idProject);
+        return project ? project.name : params.data.idProject;
+      },
+      onCellValueChanged: (params: any) => {
+        this.onProjectChangedWithConfirmation(params);
+      }
+    },
     {
       field: 'otNumber',
       headerName: 'OT',
@@ -368,6 +402,9 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       filter: true,
       resizable: true,
       flex: 2,
+      onCellDoubleClicked: (params: any) => {
+        this.onOTCellDoubleClicked(params);
+      }
     },
 
   ];
@@ -1224,7 +1261,16 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     animateRows: true,
     pagination: false,
     domLayout: 'normal',
-    onRowDoubleClicked: (event: any) => this.onRowDoubleClicked(event),
+    groupDefaultExpanded: 1,
+    autoGroupColumnDef: {
+      headerName: 'Grupo',
+      field: 'ag-Grid-AutoColumn',
+      width: 200,
+      cellRendererParams: {
+        suppressCount: false
+      }
+    },
+    onCellDoubleClicked: (event: any) => this.onOTCellDoubleClicked(event),
   };
 
   // Configuraciones de grid para las pestañas
@@ -1338,6 +1384,7 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
       this.catalogoEquipo();
       this.obtenerTypeNotes();
       this.obtenerConceptos();
+      this.obtenerProyectos();
       this.obtenerDatos();
       this.loadEmployees();
       this.getDeptoandPosition();
@@ -1389,22 +1436,83 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
   }
 
   obtenerDatos() {
+    // Verificar si el usuario tiene permisos para ver todas las OTs de todos los proyectos
+    if (this.authService.hasDetailedPermission('projects', 'get-all-ot')) {
+      console.log('Usuario tiene permisos para ver todas las OTs de todos los proyectos');
+      this.obtenerTodasLasOTs();
+    } else {
+      console.log('Usuario solo puede ver OTs del proyecto actual');
+      this.obtenerOTsDelProyectoActual();
+    }
+  }
+
+  obtenerOTsDelProyectoActual() {
     this.otService.getOtListByProject(this.idProject).subscribe({
       next: (data: any) => {
-        console.log('Datos obtenidos del servicio OT:', data);
+        console.log('Datos obtenidos del servicio OT para proyecto actual:', data);
         this.rowData = data;
         this.trackingService.addLog(
           this.trackingService.getnameComp(),
-          'Get Lista de OT',
+          'Get Lista de OT - Proyecto Actual',
           'Menu Proyectos Ordenes de Trabajo',
           this.trackingService.getEmail()
         );
       },
       error: (error) => {
-        console.error('Error al obtener datos de OT:', error);
+        console.error('Error al obtener datos de OT del proyecto actual:', error);
         this.rowData = [];
       },
     });
+  }
+
+  async obtenerTodasLasOTs() {
+    try {
+      console.log('Obteniendo OTs de todos los proyectos...');
+      const allOTs: any[] = [];
+      
+      // Usar la lista de proyectos que ya tenemos cargada
+      if (this.projectsList && this.projectsList.length > 0) {
+        console.log(`Procesando ${this.projectsList.length} proyectos:`, this.projectsList);
+        
+        // Crear un array de promesas para obtener las OTs de cada proyecto
+        const otPromises = this.projectsList.map(project => 
+          firstValueFrom(this.otService.getOtListByProject(project.id))
+            .then((ots: any[]) => {
+              console.log(`Proyecto ${project.name} (ID: ${project.id}): ${ots.length} OTs`);
+              return ots || [];
+            })
+            .catch((error) => {
+              console.error(`Error obteniendo OTs del proyecto ${project.name}:`, error);
+              return [];
+            })
+        );
+        
+        // Ejecutar todas las peticiones en paralelo
+        const allProjectOTs = await Promise.all(otPromises);
+        
+        // Combinar todos los resultados
+        allProjectOTs.forEach(projectOTs => {
+          allOTs.push(...projectOTs);
+        });
+        
+        console.log(`Total de OTs obtenidas de todos los proyectos: ${allOTs.length}`);
+        this.rowData = allOTs;
+        
+        this.trackingService.addLog(
+          this.trackingService.getnameComp(),
+          'Get Lista de OT - Todos los Proyectos',
+          'Menu Proyectos Ordenes de Trabajo',
+          this.trackingService.getEmail()
+        );
+      } else {
+        console.log('No hay proyectos disponibles, obteniendo del proyecto actual');
+        this.obtenerOTsDelProyectoActual();
+      }
+    } catch (error) {
+      console.error('Error al obtener todas las OTs:', error);
+      // Fallback al método original
+      this.obtenerOTsDelProyectoActual();
+    }
   }
 
   // Métodos del grid
@@ -1451,11 +1559,107 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     }
   }
 
-  onRowDoubleClicked(event: any) {
+  onOTCellDoubleClicked(event: any) {
+    console.log('Cell double click event:', event);
+    console.log('Column:', event.column);
+    console.log('Column field:', event.column?.colDef?.field);
+    console.log('Row data:', event.data);
+    
     const rowData = event.data;
-    if (rowData && rowData.id) {
-      this.router.navigate(['/projects/ot/details', rowData.id]);
+    const column = event.column;
+    
+    // Navegar si el doble click es en la columna "OT" o "Resultados"
+    if (column && column.colDef && (column.colDef.field === 'otNumber' || column.colDef.field === 'results')) {
+      console.log(`Navigating to OT details from ${column.colDef.field} column...`);
+      if (rowData && rowData.id) {
+        console.log('Navigating with ID:', rowData.id);
+        this.router.navigate(['/projects/ot/details', rowData.id]);
+      } else {
+        console.log('No ID found in row data');
+      }
+    } else {
+      console.log('Not clicking on navigation column, field is:', column?.colDef?.field);
     }
+  }
+
+  onProjectChangedWithConfirmation(params: any) {
+    console.log('Project change requested for OT:', params.data);
+    console.log('New project ID:', params.newValue);
+    console.log('Old project ID:', params.oldValue);
+    
+    if (params.newValue !== params.oldValue) {
+      const oldProject = this.projectsList.find(p => p.id === params.oldValue);
+      const newProject = this.projectsList.find(p => p.id === params.newValue);
+      
+      const oldProjectName = oldProject ? oldProject.name : params.oldValue;
+      const newProjectName = newProject ? newProject.name : params.newValue;
+      
+      alerts.confirmAlert(
+        'Cambiar Proyecto de OT',
+        `¿Está seguro que desea cambiar esta orden de trabajo del proyecto "${oldProjectName}" al proyecto "${newProjectName}"?`,
+        'question',
+        'Sí, cambiar proyecto'
+      ).then((result) => {
+        if (result.isConfirmed) {
+          // Usuario confirmó el cambio
+          this.onProjectChanged(params);
+        } else {
+          // Usuario canceló, revertir el cambio
+          console.log('Cambio de proyecto cancelado por el usuario');
+          params.data.idProject = params.oldValue;
+          params.api.refreshCells({ rowNodes: [params.node], force: true });
+        }
+      });
+    }
+  }
+
+  onProjectChanged(params: any) {
+    console.log('Project changed for OT:', params.data);
+    console.log('New project ID:', params.newValue);
+    console.log('Old project ID:', params.oldValue);
+    
+    const otId = params.data.id;
+    const updatedOtData = { ...params.data };
+    
+    console.log('Updating OT with ID:', otId);
+    console.log('Updated data:', updatedOtData);
+    
+    this.otService.updateOt(otId, updatedOtData).subscribe({
+      next: (response: any) => {
+        console.log('OT updated successfully:', response);
+        const oldProject = this.projectsList.find(p => p.id === params.oldValue);
+        const newProject = this.projectsList.find(p => p.id === params.newValue);
+        const oldProjectName = oldProject ? oldProject.name : params.oldValue;
+        const newProjectName = newProject ? newProject.name : params.newValue;
+        
+        this.trackingService.addLog(
+          this.trackingService.getnameComp(),
+          `Proyecto cambiado de ${oldProjectName} a ${newProjectName} para OT ${params.data.otNumber}`,
+          'Menu Proyectos Ordenes de Trabajo',
+          this.trackingService.getEmail()
+        );
+
+        alerts.basicAlert(
+          'Proyecto Actualizado',
+          `La orden de trabajo ${params.data.otNumber} ha sido movida exitosamente al proyecto ${newProjectName}.`,
+          'success'
+        );
+
+        // Refrescar la tabla para mostrar los cambios
+        this.obtenerDatos();
+      },
+      error: (error: any) => {
+        console.error('Error updating OT:', error);
+        alerts.basicAlert(
+          'Error al Cambiar Proyecto',
+          'Ocurrió un error al intentar cambiar el proyecto de la orden de trabajo. Por favor, inténtelo nuevamente.',
+          'error'
+        );
+        // Revertir el cambio en caso de error
+        params.data.idProject = params.oldValue;
+        params.api.refreshCells({ rowNodes: [params.node], force: true });
+      }
+    });
   }
 
   // Métodos para pestañas y vista previa
@@ -3126,6 +3330,16 @@ async saveChangesEquipos() {
         console.log('Catálogo de conceptos obtenido:', this.catalogConcepto);
       },
       (error) => console.error('Error fetching conceptos:', error)
+    );
+  }
+
+  obtenerProyectos(){
+    return this.projectsService.getProjectListByCompany(this.idcompany).subscribe(
+      (data: any) => {
+        this.projectsList = data;
+        console.log('Lista de proyectos obtenida:', this.projectsList);
+      },
+      (error) => console.error('Error fetching projects:', error)
     );
   }
 
