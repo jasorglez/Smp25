@@ -28,7 +28,7 @@ import { UpdateExcelService } from 'app/services/updateExcel.service';
 import { ProjectsService } from 'app/services/projects.service';
 import { AuthService } from 'app/services/auth.service';
 import * as bootstrap from 'bootstrap';
-import { firstValueFrom, lastValueFrom } from 'rxjs';
+import { firstValueFrom, lastValueFrom, EMPTY } from 'rxjs';
 
 
 @Pipe({
@@ -4012,7 +4012,7 @@ async saveChangesEquipos() {
       
       if (detectedProject) {
         console.log('Proyecto detectado automáticamente:', detectedProject);
-        this.idProject = detectedProject;
+        this.idProject = parseInt(detectedProject.toString());
       } else {
         // Si no se puede detectar, mostrar mensaje al usuario
         alerts.basicAlert(
@@ -4020,7 +4020,7 @@ async saveChangesEquipos() {
           'Por favor seleccione un proyecto en el menú lateral para cargar los conceptos correctamente.',
           'warning'
         );
-        return;
+        return EMPTY;
       }
     }
     
@@ -4040,28 +4040,29 @@ async saveChangesEquipos() {
   }
 
   // Método para detectar proyecto automáticamente desde los datos
-  private detectProjectFromData(): string | null {
+  private detectProjectFromData(): number | null {
     try {
-      // Opción 1: Desde OT seleccionada
-      if (this.selectedOt?.idProject) {
-        console.log('Proyecto detectado desde OT seleccionada:', this.selectedOt.idProject);
-        return this.selectedOt.idProject;
+      // Opción 1: Desde OT seleccionada (usando projectId en lugar de idProject)
+      if (this.selectedOt && (this.selectedOt as any).projectId) {
+        const projectId = (this.selectedOt as any).projectId;
+        console.log('Proyecto detectado desde OT seleccionada:', projectId);
+        return parseInt(projectId.toString());
       }
       
       // Opción 2: Desde cualquier OT en la lista
       if (this.rowData && this.rowData.length > 0) {
-        const firstOtWithProject = this.rowData.find(ot => ot.idProject);
+        const firstOtWithProject = this.rowData.find(ot => (ot as any).projectId);
         if (firstOtWithProject) {
-          console.log('Proyecto detectado desde lista de OTs:', firstOtWithProject.idProject);
-          return firstOtWithProject.idProject;
+          const projectId = (firstOtWithProject as any).projectId;
+          console.log('Proyecto detectado desde lista de OTs:', projectId);
+          return parseInt(projectId.toString());
         }
       }
       
       // Opción 3: Desde datos de conceptos existentes (si hay relación con proyecto)
       if (this.conceptos && this.conceptos.length > 0) {
         // Buscar en la lista de proyectos cargada
-        const conceptoConProyecto = this.conceptos[0];
-        if (conceptoConProyecto && this.projectsList) {
+        if (this.projectsList && this.projectsList.length > 0) {
           // Intentar correlacionar con proyectos disponibles
           const matchedProject = this.projectsList.find(project => 
             // Buscar coincidencias por nombre o algún identificador
@@ -4069,7 +4070,7 @@ async saveChangesEquipos() {
           );
           if (matchedProject) {
             console.log('Proyecto detectado por correlación:', matchedProject.id);
-            return matchedProject.id;
+            return parseInt(matchedProject.id.toString());
           }
         }
       }
