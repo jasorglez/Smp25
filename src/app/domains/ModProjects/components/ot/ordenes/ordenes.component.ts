@@ -2109,17 +2109,20 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
       console.log('OT seleccionada para vista previa:', this.selectedOt);
       console.log('Total OTs seleccionadas:', selectedRows.length);
       
-      // Verificar si hay proyecto seleccionado/detectado
-      const detectedProject = this.detectProjectFromData();
-      if (!detectedProject) {
-        alerts.basicAlert(
-          'Proyecto Requerido', 
-          'Por favor selecciona un proyecto en el sidebar izquierdo antes de trabajar con las OTs. Esto es necesario para cargar correctamente los catálogos de conceptos y materiales.', 
-          'warning'
-        );
-        console.log('⚠️ No hay proyecto seleccionado. Se requiere seleccionar proyecto en sidebar.');
-      } else {
-        console.log('✅ Proyecto detectado:', detectedProject);
+      // Verificar si hay proyecto seleccionado/detectado solo si hay OTs seleccionadas
+      if (selectedRows.length > 0) {
+        const detectedProject = this.detectProjectFromData();
+        if (!detectedProject) {
+          console.log('⚠️ No hay proyecto seleccionado. Se requiere seleccionar proyecto en sidebar.');
+          // Solo mostrar alerta si se está intentando trabajar con conceptos o materiales
+          // alerts.basicAlert(
+          //   'Proyecto Requerido', 
+          //   'Por favor selecciona un proyecto en el sidebar izquierdo antes de trabajar con las OTs. Esto es necesario para cargar correctamente los catálogos de conceptos y materiales.', 
+          //   'warning'
+          // );
+        } else {
+          console.log('✅ Proyecto detectado:', detectedProject);
+        }
       }
       
       // Cargar reportes diarios para esta OT
@@ -3045,8 +3048,6 @@ async saveChangesEquipos() {
       isGeneratingPdf: this.isGeneratingPdf
     });
     
-    // Debug temporal para verificar si el método se ejecuta
-    alerts.basicAlert('Debug', 'Método generatePdfPreview ejecutado', 'info');
     
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
@@ -4113,13 +4114,16 @@ async saveChangesEquipos() {
         console.log('Proyecto detectado automáticamente:', detectedProject);
         this.idProject = parseInt(detectedProject.toString());
       } else {
-        // Si no se puede detectar, mostrar mensaje al usuario
-        alerts.basicAlert(
-          'Proyecto requerido',
-          'Por favor seleccione un proyecto en el menú lateral para cargar los conceptos correctamente.',
-          'warning'
-        );
-        return EMPTY;
+        // Si no se puede detectar, solo loggear el warning
+        console.warn('⚠️ No se pudo detectar proyecto para cargar conceptos. Los conceptos se cargarán sin filtro por proyecto.');
+        // Solo mostrar alerta si es crítico para la funcionalidad
+        // alerts.basicAlert(
+        //   'Proyecto requerido',
+        //   'Por favor seleccione un proyecto en el menú lateral para cargar los conceptos correctamente.',
+        //   'warning'
+        // );
+        // En lugar de retornar EMPTY, intentar cargar conceptos sin filtro de proyecto
+        // return EMPTY;
       }
     }
     
@@ -4141,24 +4145,41 @@ async saveChangesEquipos() {
   // Método para detectar proyecto automáticamente desde los datos
   private detectProjectFromData(): number | null {
     try {
-      // Opción 1: Desde OT seleccionada (usando projectId en lugar de idProject)
-      if (this.selectedOt && (this.selectedOt as any).projectId) {
-        const projectId = (this.selectedOt as any).projectId;
-        console.log('Proyecto detectado desde OT seleccionada:', projectId);
-        return parseInt(projectId.toString());
+      // Opción 1: Desde sidebar (señales)
+      const sidebarProject = this.signalsService.getProjectSelectedBySidebar()();
+      if (sidebarProject && sidebarProject !== 0) {
+        console.log('Proyecto detectado desde sidebar:', sidebarProject);
+        return sidebarProject;
       }
       
-      // Opción 2: Desde cualquier OT en la lista
-      if (this.rowData && this.rowData.length > 0) {
-        const firstOtWithProject = this.rowData.find(ot => (ot as any).projectId);
-        if (firstOtWithProject) {
-          const projectId = (firstOtWithProject as any).projectId;
-          console.log('Proyecto detectado desde lista de OTs:', projectId);
-          return parseInt(projectId.toString());
+      // Opción 2: Desde OT seleccionada (probar diferentes nombres de campo)
+      if (this.selectedOt) {
+        const otData = this.selectedOt as any;
+        const possibleFields = ['projectId', 'idProject', 'project_id', 'idProyecto', 'proyectoId'];
+        
+        for (const field of possibleFields) {
+          if (otData[field] && otData[field] !== 0) {
+            console.log(`Proyecto detectado desde OT seleccionada (campo ${field}):`, otData[field]);
+            return parseInt(otData[field].toString());
+          }
         }
       }
       
-      // Opción 3: Desde datos de conceptos existentes (si hay relación con proyecto)
+      // Opción 3: Desde cualquier OT en la lista
+      if (this.rowData && this.rowData.length > 0) {
+        const possibleFields = ['projectId', 'idProject', 'project_id', 'idProyecto', 'proyectoId'];
+        
+        for (const field of possibleFields) {
+          const firstOtWithProject = this.rowData.find(ot => (ot as any)[field] && (ot as any)[field] !== 0);
+          if (firstOtWithProject) {
+            const projectId = (firstOtWithProject as any)[field];
+            console.log(`Proyecto detectado desde lista de OTs (campo ${field}):`, projectId);
+            return parseInt(projectId.toString());
+          }
+        }
+      }
+      
+      // Opción 4: Desde datos de conceptos existentes (si hay relación con proyecto)
       if (this.conceptos && this.conceptos.length > 0) {
         // Buscar en la lista de proyectos cargada
         if (this.projectsList && this.projectsList.length > 0) {
