@@ -3966,6 +3966,7 @@ async saveChangesEquipos() {
             url: video.url,
             videoUrl: video.videoUrl
           });
+          console.log('TODOS los campos del video:', video);
           
           // Buscar la URL de Firebase Storage en todos los campos posibles
           const videoUrl = 
