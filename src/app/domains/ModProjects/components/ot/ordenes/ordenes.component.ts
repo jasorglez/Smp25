@@ -122,6 +122,14 @@ interface Fotografia {
   url: string;
 }
 
+interface Video {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  fecha: string;
+  url: string;
+}
+
 @Component({
   selector: 'app-ordenes',
   standalone: true,
@@ -174,6 +182,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   public selectedReporteArea: string = '';
   public selectedReporteId: number | string | null = null;
   public selectedFotografia: Fotografia | null = null;
+  public selectedVideo: Video | null = null;
   public selectedStatusReport: boolean = false;
   
   // Variables para cambio de proyecto
@@ -200,6 +209,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   public notSavedMaterialChanges: boolean = false;
   public notSavedEquipoChanges: boolean = false;
   public notSavedFotografiaChanges: boolean = false;
+  public notSavedVideoChanges: boolean = false;
   public notSavedNoteChanges: boolean = false;
   public notSavedConceptoChanges: boolean = false;
 
@@ -246,6 +256,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   public equipos: any[] = [];
   public personal: any[] = [];
   public fotografias: any[] = [];
+  public videos: any[] = [];
 
   
   // Propiedades computadas para filtrar datos
@@ -268,6 +279,11 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   get fotografiasFiltradas(): Fotografia[] {
     if (!this.selectedReporteFecha) return this.fotografias;
     return this.fotografias.filter(f => f.fecha === this.selectedReporteFecha);
+  }
+
+  get videosFiltrados(): Video[] {
+    if (!this.selectedReporteFecha) return this.videos;
+    return this.videos.filter(v => v.fecha === this.selectedReporteFecha);
   }
   excel() {
     // Reset form to initial state
@@ -796,6 +812,31 @@ obtenerAnoMes(fecha) {
     //{ field: 'fecha', headerName: 'Fecha', width: 120 }
   ];
 
+  public videosColumnDefs: ColDef[] = [
+    //{ field: 'id', headerName: 'ID', width: 80 },
+    { 
+      field: 'videoUrl', 
+      headerName: 'Video', 
+      flex: 1,
+      cellRenderer: (params: any) => {
+        if (params.value) {
+          return `<div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="bi bi-play-circle-fill text-primary" style="font-size: 20px;"></i>
+                    <span>Video disponible</span>
+                  </div>`;
+        } else {
+          return `<div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="bi bi-upload text-muted" style="font-size: 20px;"></i>
+                    <span class="text-muted">Subir video</span>
+                  </div>`;
+        }
+      },
+      editable: false,
+    },
+    { field: 'description', headerName: 'Descripción', flex: 1, editable: () => !this.signalsService.getClosedReport()()},
+    //{ field: 'fecha', headerName: 'Fecha', width: 120 }
+  ];
+
  public notasColumnDefs: ColDef[] = [
   {
     field: 'idResource',
@@ -1178,6 +1219,56 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     }, 0);
   }
 
+  addVideo(){
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Agregar Video OT',
+      'Modulo Proyectos - Ordenes de Trabajo - Videos',
+      this.trackingService.getEmail()
+    );
+    
+    if (!this.selectedOt) {
+      alerts.basicAlert('Error', 'Debe seleccionar una OT primero', 'error');
+      return;
+    }
+
+    if (!this.selectedReporteFecha) {
+      alerts.basicAlert('Error', 'Debe seleccionar una fecha de reporte primero', 'error');
+      return;
+    }
+
+    const tempId = `temp_video_${this.tempPersonalIdCounter++}`;
+   
+    const newVideo = {
+      id: tempId,
+      idOt: parseInt(this.selectedOt.id),
+      idReporte: this.selectedReporteId,
+      idResource: null,
+      position: '', 
+      quantity: 1,
+      start: this.selectedReporteHoraInicio + ':00',
+      end: this.selectedReporteHoraTermino + ':00',
+      azureUrl: 'NO FILE',
+      date: this.selectedReporteFecha,
+      typeNote: 'Video',
+      videoUrl: 'NO FILE',
+      orden: 1,
+      __isNew: true
+    };
+
+    this.videos = [newVideo, ...this.videos];
+    this.notSavedVideoChanges = true;
+
+    setTimeout(() => {
+      if (this.videoGridApi) {
+        this.videoGridApi.startEditingCell({
+          rowIndex: 0,
+          colKey: 'videoUrl'
+        });
+      }
+    }, 0);
+  }
+
   async saveFotografiasChanges() {
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
@@ -1276,9 +1367,109 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     }
   }
 
+  async saveVideosChanges() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Guardar Cambios Videos OT',
+      'Modulo Proyectos - Ordenes de Trabajo - Videos',
+      this.trackingService.getEmail()
+    );
+    
+    const newRows = this.videos.filter(row => row.__isNew);
+    const modifiedRows = this.videos.filter(row => row.__modified && !row.__isNew);
+
+    // Validación básica
+    const invalidRows = newRows.filter(item => item.videoUrl && item.descripcion);
+    
+    if (invalidRows.length > 0) {
+      alerts.basicAlert('Error', 'Debe completar el video y la descripción antes de guardar.', 'error');
+      return;
+    }
+
+    if (newRows.length === 0 && modifiedRows.length === 0) {
+      alerts.basicAlert('Info', 'No hay cambios para guardar', 'info');
+      return;
+    }
+
+    try {
+      console.log('=== USANDO ENDPOINTS DE LOGBOOK SERVICE PARA VIDEOS ===');
+      
+      // Preparar requests para nuevos registros
+      const addRequests = newRows.map((row, index) => {
+        const cleanedData = this.cleanPersonalDataForServer(row);
+        console.log(`Datos para POST video ${index + 1}:`, cleanedData);
+        return this.logbookService.addDataForOt(cleanedData).toPromise();
+      });
+
+      // Preparar requests para registros modificados
+      const updateRequests = modifiedRows.map((row, index) => {
+        const cleanedData = this.cleanPersonalDataForServer(row);
+        console.log(`Datos para PUT video ${index + 1} (ID: ${row.id}):`, cleanedData);
+        return this.logbookService.updateDataForOt(Number(row.id), cleanedData).toPromise();
+      });
+
+      console.log(`Ejecutando ${addRequests.length} requests de creación de videos`);
+      console.log(`Ejecutando ${updateRequests.length} requests de actualización de videos`);
+
+      // Ejecutar todos los requests
+      const responses = await Promise.all([...addRequests, ...updateRequests]);
+      
+      console.log('=== RESPUESTAS RECIBIDAS PARA VIDEOS ===');
+      console.log('Número de respuestas:', responses.length);
+      responses.forEach((response, index) => {
+        console.log(`Respuesta video ${index + 1}:`, response);
+      });
+
+      // Verificar si las respuestas son exitosas
+      const failedResponses = responses.filter(response => 
+        !response || 
+        (response.hasOwnProperty('success') && !response.success) ||
+        (response.status && response.status >= 400)
+      );
+
+      if (failedResponses.length > 0) {
+        console.error('Respuestas fallidas:', failedResponses);
+        throw new Error(`${failedResponses.length} requests fallaron`);
+      }
+
+      console.log('=== GUARDADO EXITOSO DE VIDEOS ===');
+      alerts.basicAlert('Éxito', 'Cambios de videos guardados correctamente', 'success');
+      this.autoUpdatePdf()
+      this.notSavedVideoChanges = false;
+      
+      // Limpiar flags de control
+      this.videos.forEach(item => {
+        delete item.__isNew;
+        delete item.__modified;
+      });
+
+    } catch (error: any) {
+      console.error('=== ERROR AL GUARDAR VIDEOS ===');
+      console.error('Error completo:', error);
+
+      let errorMessage = 'Error al guardar cambios de videos';
+      if (error.status === 400) {
+        errorMessage = 'Datos inválidos. Verifique que todos los campos estén correctos.';
+      } else if (error.status === 501) {
+        errorMessage = 'No autorizado. Por favor, vuelva a iniciar sesión.';
+      } else if (error.status === 500) {
+        errorMessage = 'Error interno del servidor. Contacte al administrador.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      alerts.basicAlert('Error', errorMessage, 'error');
+    }
+  }
+
   revertFotografias() {
     this.obtenerFotografias(this.selectedReporteId);
     this.notSavedFotografiaChanges = false;
+  }
+
+  revertVideos() {
+    this.obtenerVideos(this.selectedReporteId);
+    this.notSavedVideoChanges = false;
   }
 
   deleteFotografia(){
@@ -1340,7 +1531,64 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     });
   }
 
- 
+  deleteVideo(){
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Eliminar Video OT',
+      'Modulo Proyectos - Ordenes de Trabajo - Videos',
+      this.trackingService.getEmail()
+    );
+    
+    if (!this.videoGridApi) {
+      alerts.basicAlert('Error', 'Grid no disponible', 'error');
+      return;
+    }
+
+    const selectedNodes = this.videoGridApi.getSelectedNodes();
+    if (selectedNodes.length === 0) {
+      alerts.basicAlert('Error', 'Seleccione una entrada de video para eliminar', 'error');
+      return;
+    }
+
+    const selectedData = selectedNodes[0].data;
+    const id = selectedData.id;
+
+    console.log('=== INTENTANDO ELIMINAR VIDEO ===');
+    console.log('Registro seleccionado para eliminar:', selectedData);
+    console.log('ID a eliminar:', id);
+    
+    alerts.confirmAlert(
+      'Eliminar video',
+      '¿Está seguro que desea eliminar este registro de video?',
+      'warning',
+      'Sí, eliminar'
+    ).then((value) => {
+      if (value.isConfirmed) {
+        if (selectedData.__isNew) {
+          this.videos = this.videos.filter(v => v.id !== id);
+          this.notSavedVideoChanges = this.videos.some(v => v.__isNew);
+          alerts.basicAlert('Éxito', 'Video eliminado correctamente', 'success');
+        } else {
+          this.logbookService.deleteDataForOt(Number(id)).subscribe({
+            next: (response) => {
+              this.videos = this.videos.filter(v => v.id !== id);
+              alerts.basicAlert('Éxito', 'Video eliminado correctamente del servidor', 'success');
+            },
+            error: (error) => {
+              console.error('Error al eliminar video del servidor:', error);
+              let errorMessage = 'Error al eliminar el registro de video';
+              if (error.status === 404) {
+                errorMessage = 'El registro ya no existe en el servidor';
+              } else if (error.status === 401) {
+                errorMessage = 'No autorizado para eliminar este registro';
+              }
+              alerts.basicAlert('Error', errorMessage, 'error');
+            }
+          });
+        }
+      }
+    });
+  }
 
   // Variables para el grid de reportes
   public reportesGridApi!: GridApi;
@@ -1352,6 +1600,8 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
   public materialesGridApi!: GridApi;
 
   public fotografiaGridApi!: GridApi;
+
+  public videoGridApi!: GridApi;
 
   public notasGridApi!: GridApi;
 
@@ -1440,6 +1690,21 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     onCellValueChanged: (event: any) => this.onCellValueChangedFotografia(event),
     onGridReady: (params: any) => this.onFotografiasGridReady(params)
   };
+
+  public videosGridOptions: any = {
+    headerHeight: 35,
+    rowHeight: 30,
+    suppressDragLeaveHidesColumns: true,
+    suppressHorizontalScroll: false,
+    animateRows: true,
+    pagination: false,
+    domLayout: 'autoHeight',
+    stopEditingWhenCellsLoseFocus: true,
+    rowSelection: 'single',
+    onCellValueChanged: (event: any) => this.onCellValueChangedVideo(event),
+    onGridReady: (params: any) => this.onVideosGridReady(params)
+  };
+
   // Configuración específica para el grid de reportes con edición inline
   public reportesGridOptions: any = {
     headerHeight: 30,
@@ -1962,6 +2227,7 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     this.obtenerEquipos(this.selectedReporteId);
     this.obtenerPersonal(this.selectedReporteId);
     this.obtenerFotografias(this.selectedReporteId);
+    this.obtenerVideos(this.selectedReporteId);
     this.obtenerNotas(this.selectedReporteId);
     this.obtenerConcep(this.selectedReporteId);
 
@@ -2003,6 +2269,18 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
       url: fotografia.imageUrl || fotografia.url || '' // Use imageUrl from grid or fallback to url
     };
     console.log('Fotografía seleccionada:', this.selectedFotografia);
+  }
+
+  selectVideo(video: any) {
+    // Map the data from the grid to the expected Video interface
+    this.selectedVideo = {
+      id: video.id,
+      nombre: video.nombre || '',
+      descripcion: video.descripcion || '',
+      fecha: video.fecha || '',
+      url: video.videoUrl || video.url || '' // Use videoUrl from grid or fallback to url
+    };
+    console.log('Video seleccionado:', this.selectedVideo);
   }
 
   // Función helper para convertir tiempo a ticks de .NET
@@ -3083,6 +3361,18 @@ async saveChangesEquipos() {
     this.fotografiaGridApi = params.api;
   }
 
+  onVideosGridReady(params: any) {
+    this.videoGridApi = params.api;
+  }
+
+  onCellValueChangedVideo(event: any) {
+    this.notSavedVideoChanges = true;
+
+    if (!event.data.__isNew) {
+      event.data.__modified = true;
+    }
+  }
+
   // Métodos CRUD para Personal
   addPersonal() {
     //alert(typeof(!this.signalsService.getClosedReport()))
@@ -3499,6 +3789,15 @@ async saveChangesEquipos() {
     this.logbookService.getInfoByReporte(selectedReporteId, "Photo").subscribe(
       (data: any) => {
         this.fotografias = data.data;
+      },
+      (error) => console.error('Error fetching data:', error)
+    );
+  }
+
+  obtenerVideos(selectedReporteId: any) {
+    this.logbookService.getInfoByReporte(selectedReporteId, "Video").subscribe(
+      (data: any) => {
+        this.videos = data.data;
       },
       (error) => console.error('Error fetching data:', error)
     );
