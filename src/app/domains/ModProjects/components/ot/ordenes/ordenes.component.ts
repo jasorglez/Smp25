@@ -3040,13 +3040,6 @@ async saveChangesEquipos() {
   }
 
   async generatePdfPreview() {
-    console.log('🔄 Iniciando generación de vista previa PDF...');
-    console.log('📊 Estado actual:', {
-      selectedOt: this.selectedOt,
-      selectedReporteId: this.selectedReporteId,
-      selectedReporteFecha: this.selectedReporteFecha,
-      isGeneratingPdf: this.isGeneratingPdf
-    });
     
     
     this.trackingService.addLog(
