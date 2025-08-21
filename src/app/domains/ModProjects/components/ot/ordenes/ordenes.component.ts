@@ -28,7 +28,7 @@ import { UpdateExcelService } from 'app/services/updateExcel.service';
 import { ProjectsService } from 'app/services/projects.service';
 import { AuthService } from 'app/services/auth.service';
 import * as bootstrap from 'bootstrap';
-import { firstValueFrom, lastValueFrom } from 'rxjs';
+import { firstValueFrom, lastValueFrom, EMPTY } from 'rxjs';
 
 
 @Pipe({
@@ -814,7 +814,17 @@ obtenerAnoMes(fecha) {
       field: 'position',
       headerName: 'Cargo',
       flex: 1,
-      editable: false
+      editable: false,
+      valueFormatter: (params: any) => {
+        if (params.data?.idResource) {
+          const employee = this.employees.find(emp => emp.id.toString() === params.data.idResource.toString());
+          if (employee) {
+            const depto = this.catalogDepartamentos.find(d => d.id === +employee.idPosition);
+            return depto ? depto.description : '';
+          }
+        }
+        return params.value || '';
+      }
     },
 
     { 
@@ -1988,6 +1998,12 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
       next: (data: any) => {
         console.log('Datos obtenidos del servicio OT para proyecto actual:', data);
         this.rowData = data;
+        
+        // Actualizar catálogo de conceptos después de cargar los datos
+        if (this.idProject) {
+          this.obtenerConceptos();
+        }
+        
         this.trackingService.addLog(
           this.trackingService.getnameComp(),
           'Get Lista de OT - Proyecto Actual',
@@ -2034,6 +2050,11 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
         
         console.log(`Total de OTs obtenidas de todos los proyectos: ${allOTs.length}`);
         this.rowData = allOTs;
+        
+        // Actualizar catálogo de conceptos después de cargar los datos
+        if (this.idProject) {
+          this.obtenerConceptos();
+        }
         
         this.trackingService.addLog(
           this.trackingService.getnameComp(),
@@ -2087,6 +2108,19 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
       
       console.log('OT seleccionada para vista previa:', this.selectedOt);
       console.log('Total OTs seleccionadas:', selectedRows.length);
+      
+      // Verificar si hay proyecto seleccionado/detectado
+      const detectedProject = this.detectProjectFromData();
+      if (!detectedProject) {
+        alerts.basicAlert(
+          'Proyecto Requerido', 
+          'Por favor selecciona un proyecto en el sidebar izquierdo antes de trabajar con las OTs. Esto es necesario para cargar correctamente los catálogos de conceptos y materiales.', 
+          'warning'
+        );
+        console.log('⚠️ No hay proyecto seleccionado. Se requiere seleccionar proyecto en sidebar.');
+      } else {
+        console.log('✅ Proyecto detectado:', detectedProject);
+      }
       
       // Cargar reportes diarios para esta OT
       this.loadDailyReports();
@@ -2285,6 +2319,7 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     this.selectedReporteHoraInicio = reporte.horaInicio || reporte.startTime.substring(0, 5);
     this.selectedReporteHoraTermino = reporte.horaTermino || reporte.endTime.substring(0, 5);
     this.selectedReporteId = reporte.id;
+    
     const id: number = Number(this.selectedReporteId);
     //this.updateExcelService.UpdateOT(id)
     this.signalsService.setClosedReport(reporte.close)
@@ -2295,6 +2330,25 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     this.obtenerVideos(this.selectedReporteId);
     this.obtenerNotas(this.selectedReporteId);
     this.obtenerConcep(this.selectedReporteId);
+    
+    // Actualizar selección visual en el grid
+    if (this.reportesGridApi) {
+      // Encontrar el índice del reporte seleccionado
+      const reporteIndex = this.reportesDiarios.findIndex(r => r.id === reporte.id);
+      
+      if (reporteIndex >= 0) {
+        // Limpiar selecciones anteriores
+        this.reportesGridApi.deselectAll();
+        // Seleccionar la fila correspondiente
+        const rowNode = this.reportesGridApi.getDisplayedRowAtIndex(reporteIndex);
+        
+        if (rowNode) {
+          rowNode.setSelected(true);
+          // Asegurar que la fila sea visible
+          this.reportesGridApi.ensureIndexVisible(reporteIndex);
+        }
+      }
+    }
 
     // Resetear vista previa del PDF cuando se selecciona nueva fecha
     this.showPdfEmbed = false;
@@ -2338,14 +2392,31 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
 
   selectVideo(video: any) {
     // Map the data from the grid to the expected Video interface
+    // Buscar la URL de Firebase Storage en todos los campos posibles
+    const videoUrl = 
+      // Primero verificar imageazure (para Firebase Storage)
+      (video.imageazure && video.imageazure !== 'NO FILE' && video.imageazure.includes('firebasestorage.googleapis.com')) ? video.imageazure :
+      // Luego verificar image
+      (video.image && video.image !== 'NO FILE' && video.image.includes('firebasestorage.googleapis.com')) ? video.image :
+      // Después verificar otros campos que ya tenemos mapeados
+      (video.videoUrl || video.url || video.azureUrl || '');
+    
     this.selectedVideo = {
       id: video.id,
       nombre: video.nombre || '',
       descripcion: video.descripcion || '',
       fecha: video.fecha || '',
-      url: video.videoUrl || video.url || '' // Use videoUrl from grid or fallback to url
+      url: videoUrl
     };
+    
     console.log('Video seleccionado:', this.selectedVideo);
+    console.log('URL del video:', videoUrl);
+    console.log('Es URL de Firebase:', videoUrl.includes('firebasestorage.googleapis.com'));
+    
+    // Verificar si la URL es válida
+    if (!videoUrl || videoUrl === 'NO FILE') {
+      console.warn('⚠️ Video sin URL válida:', video);
+    }
   }
 
   // Función helper para convertir tiempo a ticks de .NET
@@ -2955,6 +3026,16 @@ async saveChangesEquipos() {
             this.reportesDiarios = response.data.map((item: any) => {
               return { ...item };
             });
+            
+            // Seleccionar automáticamente el primer reporte si existe
+            if (this.reportesDiarios.length > 0) {
+              const firstReport = this.reportesDiarios[0];
+              
+              // Esperar un poco para asegurar que el grid esté completamente renderizado
+              setTimeout(() => {
+                this.selectReporte(firstReport);
+              }, 200);
+            }
           } else {
             this.reportesDiarios = [];
           }
@@ -2995,18 +3076,51 @@ async saveChangesEquipos() {
     try {
       // Preparar los datos para el generador de PDF
       console.log('Fotografías disponibles para PDF:', this.fotografias);
+      
+      // Procesar datos de personal para resolver nombres y cargos automáticamente
+      const processedPersonalData = this.personal.map(person => {
+        const processedPerson = { ...person };
+        
+        // Resolver nombre del empleado
+        if (person.idResource) {
+          const employee = this.employees.find(emp => emp.id.toString() === person.idResource.toString());
+          if (employee) {
+            processedPerson.employeeName = employee.name;
+            
+            // Resolver cargo del empleado
+            const depto = this.catalogDepartamentos.find(d => d.id === +employee.idPosition);
+            processedPerson.position = depto ? depto.description : '';
+          }
+        }
+        
+        return processedPerson;
+      });
+      
+      // Procesar datos de conceptos para resolver nombres automáticamente
+      const processedConceptosData = this.conceptos.map(concepto => {
+        const processedConcepto = { ...concepto };
+        
+        // Resolver nombre del concepto
+        if (concepto.idResource) {
+          const foundItem = this.catalogConcepto?.find(item => item.id == concepto.idResource);
+          processedConcepto.conceptName = foundItem ? foundItem.actandNom : `ID: ${concepto.idResource}`;
+        }
+        
+        return processedConcepto;
+      });
+      
       const inputData = {
         id: parseInt(this.selectedOt.id),
         date: this.selectedReporteFecha,
         description: this.selectedOt.description,
-        personalData: this.personal, // Usar directamente this.personal ya que está filtrado por idReporte
+        personalData: processedPersonalData, // Usar datos procesados con nombres y cargos resueltos
         materialesData: this.materiales,
         equiposData: this.equipos,
         fotografiasData: this.fotografias, // Agregar fotografías de la pestaña
         notasData: this.notas, // Agregar notas de la pestaña
         idReport: typeof this.selectedReporteId === 'string' ? parseInt(this.selectedReporteId) : this.selectedReporteId, // Agregar idReport para obtener notas de TRABAJO ANTECEDENTES
         typeNotesCatalog: this.typeNotesCatalog, // Agregar catálogo de tipos de notas
-        conceptosData: this.conceptos,
+        conceptosData: processedConceptosData, // Usar datos procesados con nombres de conceptos resueltos
         conceptosCatalog: this.catalogConcepto,
       };
 
@@ -3866,7 +3980,38 @@ async saveChangesEquipos() {
   obtenerVideos(selectedReporteId: any) {
     this.logbookService.getInfoByReporte(selectedReporteId, "Video").subscribe(
       (data: any) => {
-        this.videos = data.data;
+        console.log('Videos cargados desde servidor:', data.data);
+        this.videos = data.data.map((video: any) => {
+          console.log('Video individual:', video);
+          console.log('Campos de URL disponibles:', {
+            image: video.image,
+            imageazure: video.imageazure,
+            azureUrl: video.azureUrl,
+            url: video.url,
+            videoUrl: video.videoUrl
+          });
+          console.log('TODOS los campos del video:', video);
+          
+          // Buscar la URL de Firebase Storage en todos los campos posibles
+          const videoUrl = 
+            // Primero verificar imageazure (para Firebase Storage)
+            (video.imageazure && video.imageazure !== 'NO FILE' && video.imageazure.includes('firebasestorage.googleapis.com')) ? video.imageazure :
+            // Luego verificar image
+            (video.image && video.image !== 'NO FILE' && video.image.includes('firebasestorage.googleapis.com')) ? video.image :
+            // Después verificar azureUrl
+            (video.azureUrl && video.azureUrl !== 'NO FILE') ? video.azureUrl :
+            // Finalmente otros campos
+            (video.videoUrl || video.url || '');
+          
+          console.log('URL final del video:', videoUrl);
+          
+          return {
+            ...video,
+            url: videoUrl,
+            videoUrl: videoUrl
+          };
+        });
+        console.log('Videos procesados:', this.videos);
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -3973,13 +4118,84 @@ async saveChangesEquipos() {
     );
   }
   obtenerConceptos(){
+    // Verificar si hay proyecto seleccionado
+    if (!this.idProject) {
+      console.warn('No hay proyecto seleccionado, intentando detectar automáticamente...');
+      
+      // Intentar detectar proyecto automáticamente desde los datos cargados
+      const detectedProject = this.detectProjectFromData();
+      
+      if (detectedProject) {
+        console.log('Proyecto detectado automáticamente:', detectedProject);
+        this.idProject = parseInt(detectedProject.toString());
+      } else {
+        // Si no se puede detectar, mostrar mensaje al usuario
+        alerts.basicAlert(
+          'Proyecto requerido',
+          'Por favor seleccione un proyecto en el menú lateral para cargar los conceptos correctamente.',
+          'warning'
+        );
+        return EMPTY;
+      }
+    }
+    
     return this.workprogramsService.getActivities(this.idProject).subscribe(
       (data: any) => {
         this.catalogConcepto = data;
         console.log('Catálogo de conceptos obtenido:', this.catalogConcepto);
+        
+        // Refrescar el grid de conceptos después de cargar el catálogo
+        if (this.conceptosGridApi) {
+          this.conceptosGridApi.refreshCells();
+          console.log('Grid de conceptos actualizado con catálogo');
+        }
       },
       (error) => console.error('Error fetching conceptos:', error)
     );
+  }
+
+  // Método para detectar proyecto automáticamente desde los datos
+  private detectProjectFromData(): number | null {
+    try {
+      // Opción 1: Desde OT seleccionada (usando projectId en lugar de idProject)
+      if (this.selectedOt && (this.selectedOt as any).projectId) {
+        const projectId = (this.selectedOt as any).projectId;
+        console.log('Proyecto detectado desde OT seleccionada:', projectId);
+        return parseInt(projectId.toString());
+      }
+      
+      // Opción 2: Desde cualquier OT en la lista
+      if (this.rowData && this.rowData.length > 0) {
+        const firstOtWithProject = this.rowData.find(ot => (ot as any).projectId);
+        if (firstOtWithProject) {
+          const projectId = (firstOtWithProject as any).projectId;
+          console.log('Proyecto detectado desde lista de OTs:', projectId);
+          return parseInt(projectId.toString());
+        }
+      }
+      
+      // Opción 3: Desde datos de conceptos existentes (si hay relación con proyecto)
+      if (this.conceptos && this.conceptos.length > 0) {
+        // Buscar en la lista de proyectos cargada
+        if (this.projectsList && this.projectsList.length > 0) {
+          // Intentar correlacionar con proyectos disponibles
+          const matchedProject = this.projectsList.find(project => 
+            // Buscar coincidencias por nombre o algún identificador
+            project.name && project.name.includes('CUADR')
+          );
+          if (matchedProject) {
+            console.log('Proyecto detectado por correlación:', matchedProject.id);
+            return parseInt(matchedProject.id.toString());
+          }
+        }
+      }
+      
+      console.warn('No se pudo detectar proyecto automáticamente');
+      return null;
+    } catch (error) {
+      console.error('Error detectando proyecto:', error);
+      return null;
+    }
   }
 
   obtenerProyectos(){
@@ -4245,6 +4461,8 @@ async saveChangesEquipos() {
       }
     }, 0);
   }
+
+  
   async saveConceptosChanges() {
     const newRows = this.conceptos.filter(row => row.__isNew);
   const modifiedRows = this.conceptos.filter(row => row.__modified && !row.__isNew);

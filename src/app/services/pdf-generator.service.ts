@@ -675,9 +675,21 @@ private processMaterialesData(): string[][] {
     const conceptoMap = new Map<string, { activity: string, description: string, cantidad: number }>();
     
     this.conceptosData.forEach(conceptos => {
-      const conceptosSeleccionado = this.conceptosCatalog.find(e => e.id === conceptos.idResource);
-      const activity = conceptosSeleccionado ? conceptosSeleccionado.activity : 'Sin nombre';
-      const description = conceptosSeleccionado ? conceptosSeleccionado.text : 'Sin descripción';
+      // Usar el conceptName procesado si está disponible, sino buscar en el catálogo
+      let activity: string;
+      let description: string;
+      
+      if (conceptos.conceptName) {
+        // Usar el nombre ya procesado desde el componente
+        activity = conceptos.conceptName;
+        description = conceptos.conceptName;
+      } else {
+        // Fallback al método original si no está procesado
+        const conceptosSeleccionado = this.conceptosCatalog.find(e => e.id === conceptos.idResource);
+        activity = conceptosSeleccionado ? conceptosSeleccionado.activity : 'Sin nombre';
+        description = conceptosSeleccionado ? conceptosSeleccionado.text : 'Sin descripción';
+      }
+      
       const cantidad = conceptos.quantity ?? 0;
       
       const key = `${conceptos.idResource}-${activity}`;
