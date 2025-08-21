@@ -2368,14 +2368,23 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
 
   selectVideo(video: any) {
     // Map the data from the grid to the expected Video interface
+    const videoUrl = video.azureUrl || video.videoUrl || video.url || '';
+    
     this.selectedVideo = {
       id: video.id,
       nombre: video.nombre || '',
       descripcion: video.descripcion || '',
       fecha: video.fecha || '',
-      url: video.videoUrl || video.url || '' // Use videoUrl from grid or fallback to url
+      url: videoUrl
     };
+    
     console.log('Video seleccionado:', this.selectedVideo);
+    console.log('URL del video:', videoUrl);
+    
+    // Verificar si la URL es válida
+    if (!videoUrl || videoUrl === 'NO FILE') {
+      console.warn('⚠️ Video sin URL válida:', video);
+    }
   }
 
   // Función helper para convertir tiempo a ticks de .NET
@@ -3939,7 +3948,16 @@ async saveChangesEquipos() {
   obtenerVideos(selectedReporteId: any) {
     this.logbookService.getInfoByReporte(selectedReporteId, "Video").subscribe(
       (data: any) => {
-        this.videos = data.data;
+        console.log('Videos cargados desde servidor:', data.data);
+        this.videos = data.data.map((video: any) => {
+          console.log('Video individual:', video);
+          // Asegurar que tenemos la URL correcta del video
+          return {
+            ...video,
+            url: video.azureUrl || video.url || video.videoUrl || '',
+            videoUrl: video.azureUrl || video.url || video.videoUrl || ''
+          };
+        });
       },
       (error) => console.error('Error fetching data:', error)
     );
