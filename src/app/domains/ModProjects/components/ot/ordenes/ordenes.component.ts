@@ -3037,6 +3037,17 @@ async saveChangesEquipos() {
   }
 
   async generatePdfPreview() {
+    console.log('🔄 Iniciando generación de vista previa PDF...');
+    console.log('📊 Estado actual:', {
+      selectedOt: this.selectedOt,
+      selectedReporteId: this.selectedReporteId,
+      selectedReporteFecha: this.selectedReporteFecha,
+      isGeneratingPdf: this.isGeneratingPdf
+    });
+    
+    // Debug temporal para verificar si el método se ejecuta
+    alerts.basicAlert('Debug', 'Método generatePdfPreview ejecutado', 'info');
+    
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Generar Vista Previa PDF OT',
@@ -3045,11 +3056,14 @@ async saveChangesEquipos() {
     );
     
     if (!this.selectedOt) {
+      console.error('❌ Error: No hay OT seleccionada');
       alerts.basicAlert('Error', 'Debe seleccionar una OT primero', 'error');
       return;
     }
 
     if (!this.selectedReporteId || !this.selectedReporteFecha) {
+      console.error('❌ Error: No hay reporte seleccionado');
+      console.log('Detalles:', { selectedReporteId: this.selectedReporteId, selectedReporteFecha: this.selectedReporteFecha });
       alerts.basicAlert('Error', 'Debe seleccionar un reporte diario primero', 'error');
       return;
     }
@@ -3132,18 +3146,22 @@ async saveChangesEquipos() {
         this.showPdfEmbed = true;
         this.isGeneratingPdf = false;
 
-        console.log('PDF generado exitosamente para vista previa');
+        console.log('✅ PDF generado exitosamente para vista previa');
+        console.log('📄 URL del PDF:', url);
+        console.log('🖥️ Estado de visualización:', { showPdfEmbed: this.showPdfEmbed, pdfUrl: !!this.pdfUrl });
         
         //alerts.basicAlert('Éxito', 'PDF generado correctamente', 'success');
       });
 
     } catch (error) {
-      console.error('Error al generar PDF:', error);
+      console.error('❌ Error al generar PDF:', error);
+      console.error('📊 Stack trace:', error);
       this.isGeneratingPdf = false;
       
       let errorMessage = 'No se pudo generar el PDF del reporte';
       if (error instanceof Error) {
         errorMessage = error.message;
+        console.error('💥 Mensaje de error:', errorMessage);
       }
       
       alerts.basicAlert('Error', errorMessage, 'error');
