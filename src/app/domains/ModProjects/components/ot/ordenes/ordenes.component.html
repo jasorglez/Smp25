@@ -213,6 +213,7 @@
                       <div class="col-auto">
                         <nav class="d-flex flex-column align-items-start">
                           <button type="button" class="btn btn-primary  mb-2" (click)="addVideo()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
+                          <input #videoFileInput type="file" accept="video/*" style="display: none" (change)="onVideoFileSelected($event)">
                           <button type="button" class="btn btn-success  position-relative mb-2" (click)="saveVideosChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedVideoChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
                           <button type="button" class="btn btn-warning  mb-2" (click)="revertVideos()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
                           <button type="button" class="btn btn-danger  mb-2" (click)="deleteVideo()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
