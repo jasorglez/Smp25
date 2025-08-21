@@ -2983,8 +2983,10 @@ async saveChangesEquipos() {
 
   // Método para cargar reportes diarios desde el servidor
   loadDailyReports() {
+    console.log('🚀 loadDailyReports() llamado');
     if (this.selectedOt) {
       const otId = parseInt(this.selectedOt.id);
+      console.log('🚀 Cargando reportes para OT ID:', otId);
       
       this.dailyReportService.getDailyReportsByOt(otId).subscribe({
         next: (response) => {
@@ -3009,14 +3011,18 @@ async saveChangesEquipos() {
               console.log('🟡 No hay reportes para seleccionar automáticamente');
             }
           } else {
+            console.log('🚀 Response success es false o no hay data');
             this.reportesDiarios = [];
           }
         },
         error: (error) => {
+          console.log('🚀 Error al cargar reportes:', error);
           this.reportesDiarios = [];
           alerts.basicAlert('Error', 'No se pudieron cargar los reportes diarios', 'error');
         }
       });
+    } else {
+      console.log('🚀 No hay OT seleccionada para cargar reportes');
     }
   }
 
