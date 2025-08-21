@@ -2368,14 +2368,8 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
 
   selectVideo(video: any) {
     // Map the data from the grid to the expected Video interface
-    // Buscar la URL de Firebase Storage en todos los campos posibles
-    const videoUrl = 
-      // Primero verificar imageazure (para Firebase Storage)
-      (video.imageazure && video.imageazure !== 'NO FILE' && video.imageazure.includes('firebasestorage.googleapis.com')) ? video.imageazure :
-      // Luego verificar image
-      (video.image && video.image !== 'NO FILE' && video.image.includes('firebasestorage.googleapis.com')) ? video.image :
-      // Después verificar otros campos que ya tenemos mapeados
-      (video.videoUrl || video.url || video.azureUrl || '');
+    // La URL del video está en el campo 'imageUrl'
+    const videoUrl = video.imageUrl || video.videoUrl || video.url || '';
     
     this.selectedVideo = {
       id: video.id,
@@ -2387,12 +2381,6 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     
     console.log('Video seleccionado:', this.selectedVideo);
     console.log('URL del video:', videoUrl);
-    console.log('Es URL de Firebase:', videoUrl.includes('firebasestorage.googleapis.com'));
-    
-    // Verificar si la URL es válida
-    if (!videoUrl || videoUrl === 'NO FILE') {
-      console.warn('⚠️ Video sin URL válida:', video);
-    }
   }
 
   // Función helper para convertir tiempo a ticks de .NET
@@ -3956,30 +3944,9 @@ async saveChangesEquipos() {
   obtenerVideos(selectedReporteId: any) {
     this.logbookService.getInfoByReporte(selectedReporteId, "Video").subscribe(
       (data: any) => {
-        console.log('Videos cargados desde servidor:', data.data);
         this.videos = data.data.map((video: any) => {
-          console.log('Video individual:', video);
-          console.log('Campos de URL disponibles:', {
-            image: video.image,
-            imageazure: video.imageazure,
-            azureUrl: video.azureUrl,
-            url: video.url,
-            videoUrl: video.videoUrl
-          });
-          console.log('TODOS los campos del video:', video);
-          
-          // Buscar la URL de Firebase Storage en todos los campos posibles
-          const videoUrl = 
-            // Primero verificar imageazure (para Firebase Storage)
-            (video.imageazure && video.imageazure !== 'NO FILE' && video.imageazure.includes('firebasestorage.googleapis.com')) ? video.imageazure :
-            // Luego verificar image
-            (video.image && video.image !== 'NO FILE' && video.image.includes('firebasestorage.googleapis.com')) ? video.image :
-            // Después verificar azureUrl
-            (video.azureUrl && video.azureUrl !== 'NO FILE') ? video.azureUrl :
-            // Finalmente otros campos
-            (video.videoUrl || video.url || '');
-          
-          console.log('URL final del video:', videoUrl);
+          // La URL del video está en el campo 'imageUrl'
+          const videoUrl = video.imageUrl || video.videoUrl || video.url || '';
           
           return {
             ...video,
@@ -3987,7 +3954,6 @@ async saveChangesEquipos() {
             videoUrl: videoUrl
           };
         });
-        console.log('Videos procesados:', this.videos);
       },
       (error) => console.error('Error fetching data:', error)
     );
