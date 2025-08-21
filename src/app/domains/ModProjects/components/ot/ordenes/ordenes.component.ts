@@ -2321,6 +2321,16 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     this.selectedFotografia = null;
     this.selectedVideo = null;
     
+    // Verificar si hay proyecto seleccionado al elegir un reporte
+    const detectedProject = this.detectProjectFromData();
+    if (!detectedProject) {
+      alerts.basicAlert(
+        'Proyecto Requerido', 
+        'Por favor selecciona un proyecto en el sidebar izquierdo antes de trabajar con los reportes. Esto es necesario para cargar correctamente los catálogos de conceptos y materiales.', 
+        'warning'
+      );
+    }
+    
     this.selectedReporteFecha = reporte.fecha || reporte.date.split('T')[0];
     this.selectedReporteTipo = reporte.tipoNota || reporte.type;
     this.selectedReporteHoraInicio = reporte.horaInicio || reporte.startTime.substring(0, 5);
