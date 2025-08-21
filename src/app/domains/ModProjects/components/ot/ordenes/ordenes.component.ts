@@ -710,7 +710,18 @@ obtenerAnoMes(fecha) {
       }
     }
   },
-    { field: 'quantity', headerName: 'Cantidad', flex: 1, editable: () => !this.signalsService.getClosedReport()()},
+    { 
+      field: 'quantity', 
+      headerName: 'Cantidad', 
+      flex: 1, 
+      editable: () => !this.signalsService.getClosedReport()(),
+      cellDataType: 'number',
+      cellEditorParams: {
+        min: 0,
+        step: 0.01,
+        precision: 2
+      }
+    },
     //{ field: 'quantity', headerName: 'Horas', width: 100, editable: !this.signalsService.getClosedReport() },
     //{ field: 'fechaUso', headerName: 'Fecha', width: 120 }
   ];
