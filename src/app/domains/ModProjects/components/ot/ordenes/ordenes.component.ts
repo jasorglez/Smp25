@@ -2085,6 +2085,19 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
       console.log('OT seleccionada para vista previa:', this.selectedOt);
       console.log('Total OTs seleccionadas:', selectedRows.length);
       
+      // Verificar si hay proyecto seleccionado/detectado
+      const detectedProject = this.detectProjectFromData();
+      if (!detectedProject) {
+        alerts.basicAlert(
+          'Proyecto Requerido', 
+          'Por favor selecciona un proyecto en el sidebar izquierdo antes de trabajar con las OTs. Esto es necesario para cargar correctamente los catálogos de conceptos y materiales.', 
+          'warning'
+        );
+        console.log('⚠️ No hay proyecto seleccionado. Se requiere seleccionar proyecto en sidebar.');
+      } else {
+        console.log('✅ Proyecto detectado:', detectedProject);
+      }
+      
       // Cargar reportes diarios para esta OT
       this.loadDailyReports();
       
@@ -2277,21 +2290,11 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
   }
 
   selectReporte(reporte: ReporteDiario) {
-    console.log('🔵 selectReporte llamado con:', reporte);
-    
     this.selectedReporteFecha = reporte.fecha || reporte.date.split('T')[0];
     this.selectedReporteTipo = reporte.tipoNota || reporte.type;
     this.selectedReporteHoraInicio = reporte.horaInicio || reporte.startTime.substring(0, 5);
     this.selectedReporteHoraTermino = reporte.horaTermino || reporte.endTime.substring(0, 5);
     this.selectedReporteId = reporte.id;
-    
-    console.log('🔵 Datos del reporte seleccionado:', {
-      fecha: this.selectedReporteFecha,
-      tipo: this.selectedReporteTipo,
-      horaInicio: this.selectedReporteHoraInicio,
-      horaTermino: this.selectedReporteHoraTermino,
-      id: this.selectedReporteId
-    });
     
     const id: number = Number(this.selectedReporteId);
     //this.updateExcelService.UpdateOT(id)
@@ -2305,32 +2308,22 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     this.obtenerConcep(this.selectedReporteId);
     
     // Actualizar selección visual en el grid
-    console.log('🔵 Intentando actualizar selección visual. API disponible:', !!this.reportesGridApi);
     if (this.reportesGridApi) {
       // Encontrar el índice del reporte seleccionado
       const reporteIndex = this.reportesDiarios.findIndex(r => r.id === reporte.id);
-      console.log('🔵 Índice del reporte encontrado:', reporteIndex, 'de', this.reportesDiarios.length, 'reportes');
       
       if (reporteIndex >= 0) {
         // Limpiar selecciones anteriores
         this.reportesGridApi.deselectAll();
         // Seleccionar la fila correspondiente
         const rowNode = this.reportesGridApi.getDisplayedRowAtIndex(reporteIndex);
-        console.log('🔵 RowNode obtenido:', !!rowNode);
         
         if (rowNode) {
           rowNode.setSelected(true);
           // Asegurar que la fila sea visible
           this.reportesGridApi.ensureIndexVisible(reporteIndex);
-          console.log('✅ Reporte seleccionado visualmente en el grid en índice:', reporteIndex);
-        } else {
-          console.log('❌ No se pudo obtener el rowNode para el índice:', reporteIndex);
         }
-      } else {
-        console.log('❌ No se encontró el índice del reporte en la lista');
       }
-    } else {
-      console.log('❌ reportesGridApi no está disponible');
     }
 
     // Resetear vista previa del PDF cuando se selecciona nueva fecha
@@ -2400,7 +2393,6 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
   // Grid ready para reportes
   onReportesGridReady(params: any) {
     this.reportesGridApi = params.api;
-    console.log('🟢 Grid de reportes listo:', this.reportesGridApi);
     // Remover sizeColumnsToFit para respetar flex
     // params.api.sizeColumnsToFit();
   }
@@ -2983,10 +2975,8 @@ async saveChangesEquipos() {
 
   // Método para cargar reportes diarios desde el servidor
   loadDailyReports() {
-    console.log('🚀 loadDailyReports() llamado');
     if (this.selectedOt) {
       const otId = parseInt(this.selectedOt.id);
-      console.log('🚀 Cargando reportes para OT ID:', otId);
       
       this.dailyReportService.getDailyReportsByOt(otId).subscribe({
         next: (response) => {
@@ -2997,32 +2987,23 @@ async saveChangesEquipos() {
             });
             
             // Seleccionar automáticamente el primer reporte si existe
-            console.log('🟡 Reportes cargados:', this.reportesDiarios.length);
             if (this.reportesDiarios.length > 0) {
               const firstReport = this.reportesDiarios[0];
-              console.log('🟡 Seleccionando automáticamente el primer reporte:', firstReport);
               
               // Esperar un poco para asegurar que el grid esté completamente renderizado
               setTimeout(() => {
-                console.log('🟡 Ejecutando selectReporte después de timeout');
                 this.selectReporte(firstReport);
               }, 200);
-            } else {
-              console.log('🟡 No hay reportes para seleccionar automáticamente');
             }
           } else {
-            console.log('🚀 Response success es false o no hay data');
             this.reportesDiarios = [];
           }
         },
         error: (error) => {
-          console.log('🚀 Error al cargar reportes:', error);
           this.reportesDiarios = [];
           alerts.basicAlert('Error', 'No se pudieron cargar los reportes diarios', 'error');
         }
       });
-    } else {
-      console.log('🚀 No hay OT seleccionada para cargar reportes');
     }
   }
 
