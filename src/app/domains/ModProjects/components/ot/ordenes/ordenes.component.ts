@@ -1237,36 +1237,66 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
       return;
     }
 
-    const tempId = `temp_video_${this.tempPersonalIdCounter++}`;
-   
-    const newVideo = {
-      id: tempId,
-      idOt: parseInt(this.selectedOt.id),
-      idReporte: this.selectedReporteId,
-      idResource: null,
-      position: '', 
-      quantity: 1,
-      start: this.selectedReporteHoraInicio + ':00',
-      end: this.selectedReporteHoraTermino + ':00',
-      azureUrl: 'NO FILE',
-      date: this.selectedReporteFecha,
-      typeNote: 'Video',
-      videoUrl: 'NO FILE',
-      orden: 1,
-      __isNew: true
-    };
+    // Abrir el explorador de archivos para seleccionar video
+    const videoFileInput = document.querySelector('input[type="file"][accept="video/*"]') as HTMLInputElement;
+    if (videoFileInput) {
+      videoFileInput.click();
+    }
+  }
 
-    this.videos = [newVideo, ...this.videos];
-    this.notSavedVideoChanges = true;
-
-    setTimeout(() => {
-      if (this.videoGridApi) {
-        this.videoGridApi.startEditingCell({
-          rowIndex: 0,
-          colKey: 'videoUrl'
-        });
+  onVideoFileSelected(event: any) {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      const file = input.files[0];
+      
+      // Validar que sea un archivo de video
+      if (!file.type.startsWith('video/')) {
+        alerts.basicAlert('Error', 'Por favor seleccione un archivo de video válido.', 'error');
+        return;
       }
-    }, 0);
+
+      // Validar tamaño del archivo (ejemplo: máximo 100MB)
+      const maxSize = 100 * 1024 * 1024; // 100MB en bytes
+      if (file.size > maxSize) {
+        alerts.basicAlert('Error', 'El archivo es demasiado grande. Tamaño máximo: 100MB', 'error');
+        return;
+      }
+
+      console.log('Video seleccionado:', file);
+      
+      // Crear nuevo registro de video con el archivo seleccionado
+      const tempId = `temp_video_${this.tempPersonalIdCounter++}`;
+      
+      const newVideo = {
+        id: tempId,
+        idOt: parseInt(this.selectedOt.id),
+        idReporte: this.selectedReporteId,
+        idResource: null,
+        position: '', 
+        quantity: 1,
+        start: this.selectedReporteHoraInicio + ':00',
+        end: this.selectedReporteHoraTermino + ':00',
+        azureUrl: 'NO FILE',
+        date: this.selectedReporteFecha,
+        typeNote: 'Video',
+        videoUrl: URL.createObjectURL(file), // URL temporal para vista previa
+        description: file.name.split('.')[0], // Nombre del archivo sin extensión como descripción
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type,
+        selectedFile: file, // Guardamos el archivo para subirlo después
+        orden: 1,
+        __isNew: true
+      };
+
+      this.videos = [newVideo, ...this.videos];
+      this.notSavedVideoChanges = true;
+
+      alerts.basicAlert('Éxito', `Video "${file.name}" seleccionado. Recuerde guardar los cambios.`, 'success');
+      
+      // Limpiar el input para permitir seleccionar el mismo archivo nuevamente
+      input.value = '';
+    }
   }
 
   async saveFotografiasChanges() {
