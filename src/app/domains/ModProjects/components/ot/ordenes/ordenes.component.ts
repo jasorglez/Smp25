@@ -2368,7 +2368,14 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
 
   selectVideo(video: any) {
     // Map the data from the grid to the expected Video interface
-    const videoUrl = video.azureUrl || video.videoUrl || video.url || '';
+    // Buscar la URL de Firebase Storage en todos los campos posibles
+    const videoUrl = 
+      // Primero verificar imageazure (para Firebase Storage)
+      (video.imageazure && video.imageazure !== 'NO FILE' && video.imageazure.includes('firebasestorage.googleapis.com')) ? video.imageazure :
+      // Luego verificar image
+      (video.image && video.image !== 'NO FILE' && video.image.includes('firebasestorage.googleapis.com')) ? video.image :
+      // Después verificar otros campos que ya tenemos mapeados
+      (video.videoUrl || video.url || video.azureUrl || '');
     
     this.selectedVideo = {
       id: video.id,
@@ -2380,6 +2387,7 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     
     console.log('Video seleccionado:', this.selectedVideo);
     console.log('URL del video:', videoUrl);
+    console.log('Es URL de Firebase:', videoUrl.includes('firebasestorage.googleapis.com'));
     
     // Verificar si la URL es válida
     if (!videoUrl || videoUrl === 'NO FILE') {
@@ -3951,13 +3959,34 @@ async saveChangesEquipos() {
         console.log('Videos cargados desde servidor:', data.data);
         this.videos = data.data.map((video: any) => {
           console.log('Video individual:', video);
-          // Asegurar que tenemos la URL correcta del video
+          console.log('Campos de URL disponibles:', {
+            image: video.image,
+            imageazure: video.imageazure,
+            azureUrl: video.azureUrl,
+            url: video.url,
+            videoUrl: video.videoUrl
+          });
+          
+          // Buscar la URL de Firebase Storage en todos los campos posibles
+          const videoUrl = 
+            // Primero verificar imageazure (para Firebase Storage)
+            (video.imageazure && video.imageazure !== 'NO FILE' && video.imageazure.includes('firebasestorage.googleapis.com')) ? video.imageazure :
+            // Luego verificar image
+            (video.image && video.image !== 'NO FILE' && video.image.includes('firebasestorage.googleapis.com')) ? video.image :
+            // Después verificar azureUrl
+            (video.azureUrl && video.azureUrl !== 'NO FILE') ? video.azureUrl :
+            // Finalmente otros campos
+            (video.videoUrl || video.url || '');
+          
+          console.log('URL final del video:', videoUrl);
+          
           return {
             ...video,
-            url: video.azureUrl || video.url || video.videoUrl || '',
-            videoUrl: video.azureUrl || video.url || video.videoUrl || ''
+            url: videoUrl,
+            videoUrl: videoUrl
           };
         });
+        console.log('Videos procesados:', this.videos);
       },
       (error) => console.error('Error fetching data:', error)
     );
