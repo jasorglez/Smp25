@@ -4003,13 +4003,83 @@ async saveChangesEquipos() {
     );
   }
   obtenerConceptos(){
+    // Verificar si hay proyecto seleccionado
+    if (!this.idProject) {
+      console.warn('No hay proyecto seleccionado, intentando detectar automáticamente...');
+      
+      // Intentar detectar proyecto automáticamente desde los datos cargados
+      const detectedProject = this.detectProjectFromData();
+      
+      if (detectedProject) {
+        console.log('Proyecto detectado automáticamente:', detectedProject);
+        this.idProject = detectedProject;
+      } else {
+        // Si no se puede detectar, mostrar mensaje al usuario
+        alerts.basicAlert(
+          'Proyecto requerido',
+          'Por favor seleccione un proyecto en el menú lateral para cargar los conceptos correctamente.',
+          'warning'
+        );
+        return;
+      }
+    }
+    
     return this.workprogramsService.getActivities(this.idProject).subscribe(
       (data: any) => {
         this.catalogConcepto = data;
         console.log('Catálogo de conceptos obtenido:', this.catalogConcepto);
+        
+        // Refrescar el grid de conceptos después de cargar el catálogo
+        if (this.conceptosGridApi) {
+          this.conceptosGridApi.refreshCells();
+          console.log('Grid de conceptos actualizado con catálogo');
+        }
       },
       (error) => console.error('Error fetching conceptos:', error)
     );
+  }
+
+  // Método para detectar proyecto automáticamente desde los datos
+  private detectProjectFromData(): string | null {
+    try {
+      // Opción 1: Desde OT seleccionada
+      if (this.selectedOt?.idProject) {
+        console.log('Proyecto detectado desde OT seleccionada:', this.selectedOt.idProject);
+        return this.selectedOt.idProject;
+      }
+      
+      // Opción 2: Desde cualquier OT en la lista
+      if (this.rowData && this.rowData.length > 0) {
+        const firstOtWithProject = this.rowData.find(ot => ot.idProject);
+        if (firstOtWithProject) {
+          console.log('Proyecto detectado desde lista de OTs:', firstOtWithProject.idProject);
+          return firstOtWithProject.idProject;
+        }
+      }
+      
+      // Opción 3: Desde datos de conceptos existentes (si hay relación con proyecto)
+      if (this.conceptos && this.conceptos.length > 0) {
+        // Buscar en la lista de proyectos cargada
+        const conceptoConProyecto = this.conceptos[0];
+        if (conceptoConProyecto && this.projectsList) {
+          // Intentar correlacionar con proyectos disponibles
+          const matchedProject = this.projectsList.find(project => 
+            // Buscar coincidencias por nombre o algún identificador
+            project.name && project.name.includes('CUADR')
+          );
+          if (matchedProject) {
+            console.log('Proyecto detectado por correlación:', matchedProject.id);
+            return matchedProject.id;
+          }
+        }
+      }
+      
+      console.warn('No se pudo detectar proyecto automáticamente');
+      return null;
+    } catch (error) {
+      console.error('Error detectando proyecto:', error);
+      return null;
+    }
   }
 
   obtenerProyectos(){
