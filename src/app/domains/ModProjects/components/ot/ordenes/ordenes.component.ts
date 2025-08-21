@@ -1959,11 +1959,6 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
   }
 
   obtenerDatos() {
-    // Asegurar que el catálogo de conceptos esté actualizado
-    if (this.idProject) {
-      this.obtenerConceptos();
-    }
-    
     // Verificar si el usuario tiene permisos para ver todas las OTs de todos los proyectos
     if (this.authService.hasDetailedPermission('projects', 'get-all-ot')) {
       console.log('Usuario tiene permisos para ver todas las OTs de todos los proyectos');
@@ -1979,6 +1974,12 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
       next: (data: any) => {
         console.log('Datos obtenidos del servicio OT para proyecto actual:', data);
         this.rowData = data;
+        
+        // Actualizar catálogo de conceptos después de cargar los datos
+        if (this.idProject) {
+          this.obtenerConceptos();
+        }
+        
         this.trackingService.addLog(
           this.trackingService.getnameComp(),
           'Get Lista de OT - Proyecto Actual',
@@ -2025,6 +2026,11 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
         
         console.log(`Total de OTs obtenidas de todos los proyectos: ${allOTs.length}`);
         this.rowData = allOTs;
+        
+        // Actualizar catálogo de conceptos después de cargar los datos
+        if (this.idProject) {
+          this.obtenerConceptos();
+        }
         
         this.trackingService.addLog(
           this.trackingService.getnameComp(),
