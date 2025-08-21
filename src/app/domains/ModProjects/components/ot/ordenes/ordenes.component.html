@@ -27,6 +27,13 @@
                       </div>
                     </button>
                     <input #fileInput type="file" accept=".pdf" style="display: none" (change)="onFileSelected($event)">
+                    <button type="button" class="btn btn-secondary ms-1 me-1 mb-2" 
+                            (click)="openChangeProjectModal()" 
+                            [disabled]="getSelectedOTs().length === 0"
+                            title="Cambiar proyecto de las OTs seleccionadas"
+                            *ngIf="hasMultiSelectPermission">
+                      <i class="bi bi-arrow-repeat"></i>
+                    </button>
                   </nav>
                 </div>
                 
@@ -40,7 +47,7 @@
                     [gridOptions]="gridOptions"
                     (selectionChanged)="onSelectionChanged($event)"
                     (gridReady)="onGridReady($event)"
-                    [rowSelection]="'single'"
+                    [rowSelection]="hasMultiSelectPermission ? 'multiple' : 'single'"
                     [stopEditingWhenCellsLoseFocus]="true">
                   </ag-grid-angular>
                 </div>
@@ -75,6 +82,9 @@
                   </li>
                   <li class="nav-item">
                     <a class="nav-link" [class.active]="activeTab === 'fotos'" (click)="setActiveTab('fotos')" style="cursor: pointer;"><i class="bi bi-images"></i> Fotografías</a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-link" [class.active]="activeTab === 'videos'" (click)="setActiveTab('videos')" style="cursor: pointer;"><i class="bi bi-play-circle"></i> Videos</a>
                   </li>
                   <li class="nav-item">
                     <a class="nav-link" [class.active]="activeTab === 'material'" (click)="setActiveTab('material')" style="cursor: pointer;"><i class="bi bi-box-seam"></i> Material</a>
@@ -194,6 +204,68 @@
                     </div>
                   </div>
 
+                  <!-- Pestaña Videos -->
+                  <div class="tab-pane" [class.show]="activeTab === 'videos'" [class.active]="activeTab === 'videos'">
+                    <h6><i class="bi bi-play-circle"></i> Videos del Trabajo <span *ngIf="selectedReporteFecha" class="badge bg-secondary ">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
+                    <div class="row">
+                      
+                      <!-- Columna de Botones (Ajustada para flexibilidad) -->
+                      <div class="col-auto">
+                        <nav class="d-flex flex-column align-items-start">
+                          <button type="button" class="btn btn-primary  mb-2" (click)="addVideo()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
+                          <input #videoFileInput type="file" accept="video/*" style="display: none" (change)="onVideoFileSelected($event)">
+                          <button type="button" class="btn btn-success  position-relative mb-2" (click)="saveVideosChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedVideoChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
+                          <button type="button" class="btn btn-warning  mb-2" (click)="revertVideos()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
+                          <button type="button" class="btn btn-danger  mb-2" (click)="deleteVideo()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
+                        </nav>
+                      </div>
+
+                      <!-- Columna del Grid de Videos -->
+                      <div class="col">
+                        <div class="overflow-auto" style="height: 60vh;"> <!-- LEY MAESTRA -->
+                           <ag-grid-angular                           
+                             [ngStyle]="{ height: '100%', width: '100%' }"
+                             class="ag-theme-quartz small-text-ag-grid" 
+                             [rowData]="videos" 
+                             [columnDefs]="videosColumnDefs" 
+                             [gridOptions]="videosGridOptions" 
+                             (rowClicked)="selectVideo($event.data)">
+                           </ag-grid-angular>
+                        </div>
+                      </div>
+                      
+                      <!-- Columna de la Vista Previa de Video -->
+                      <div class="col-5">
+                        <!-- ===== INICIO DEL EDICTO DE PODER PARA VIDEOS ===== -->
+                        <!-- Se impone la misma ley de altura y se usan clases d-flex para centrar el contenido verticalmente -->
+                        <div class="border rounded p-3 d-flex flex-column" style="height: 60vh; background-color: #f8f9fa;">
+                          <div *ngIf="selectedVideo; else noVideoSelection" class="flex-grow-1 text-center d-flex flex-column justify-content-center">
+                            <video 
+                              [src]="selectedVideo.url" 
+                              controls 
+                              class="w-100 h-100 rounded" 
+                              style="max-height: 80%; object-fit: contain;"
+                              preload="metadata">
+                              Su navegador no soporta el elemento de video.
+                            </video>
+                            <div class="mt-2">
+                              <small class="text-muted">{{selectedVideo.descripcion}}</small>
+                            </div>
+                          </div>
+                          <ng-template #noVideoSelection>
+                            <div class="flex-grow-1 h-100 d-flex align-items-center justify-content-center">
+                              <div class="text-center text-muted">
+                                <i class="bi bi-play-circle display-4"></i>
+                                <p class="mt-2">Selecciona un video para ver la vista previa</p>
+                              </div>
+                            </div>
+                          </ng-template>
+                        </div>
+                        <!-- ===== FIN DEL EDICTO DE PODER PARA VIDEOS ===== -->
+                      </div>
+
+                    </div>
+                  </div>
 
                   <!-- Pestaña Material -->
                   <div class="tab-pane" [class.show]="activeTab === 'material'" [class.active]="activeTab === 'material'">
@@ -446,6 +518,66 @@
           <span *ngIf="isGeneratingReport" class="spinner-border spinner-border-sm me-2" role="status"></span>
           <i *ngIf="!isGeneratingReport" class="bi bi-download me-1"></i>
           {{ isGeneratingReport ? 'Generando...' : 'Descargar Excel' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para cambiar proyecto de OTs seleccionadas -->
+<div class="modal fade" id="changeProjectModal" tabindex="-1" aria-labelledby="changeProjectModalLabel" aria-hidden="true" *ngIf="hasMultiSelectPermission">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="changeProjectModalLabel">
+          <i class="bi bi-arrow-repeat me-2"></i>
+          Cambiar Proyecto
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      
+      <div class="modal-body">
+        <div class="mb-3">
+          <p class="text-muted">
+            <i class="bi bi-info-circle me-1"></i>
+            Se cambiarán <strong>{{ getSelectedOTs().length }}</strong> órdenes de trabajo al proyecto seleccionado:
+          </p>
+          
+          <div class="alert alert-light">
+            <ul class="mb-0">
+              <li *ngFor="let ot of getSelectedOTs()" class="small">
+                OT {{ ot.otNumber }} - {{ ot.description }}
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label for="newProjectSelect" class="form-label">
+            <i class="bi bi-folder me-1"></i>
+            Nuevo Proyecto:
+          </label>
+          <select class="form-select" id="newProjectSelect" [(ngModel)]="selectedNewProject">
+            <option value="">Seleccione un proyecto...</option>
+            <option *ngFor="let project of projectsList" [value]="project.id">
+              {{ project.name }}
+            </option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle me-1"></i>
+          Cancelar
+        </button>
+        <button type="button" 
+                class="btn btn-primary" 
+                [disabled]="!selectedNewProject || isChangingProject"
+                (click)="changeProjectForSelectedOTs()">
+          <span *ngIf="isChangingProject" class="spinner-border spinner-border-sm me-2" role="status"></span>
+          <i *ngIf="!isChangingProject" class="bi bi-check-lg me-1"></i>
+          {{ isChangingProject ? 'Cambiando...' : 'Cambiar Proyecto' }}
         </button>
       </div>
     </div>

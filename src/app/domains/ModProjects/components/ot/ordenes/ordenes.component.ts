@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent ,CellDoubleClickedEvent, ICellRendererParams,} from 'ag-grid-enterprise';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormControl } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormControl, FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { OtService } from 'app/services/ot.service';
 import { DailyReportService } from 'app/services/daily-report.service';
@@ -122,10 +122,18 @@ interface Fotografia {
   url: string;
 }
 
+interface Video {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  fecha: string;
+  url: string;
+}
+
 @Component({
   selector: 'app-ordenes',
   standalone: true,
-  imports: [CommonModule, TranslateModule, AgGridModule, ReactiveFormsModule],
+  imports: [CommonModule, TranslateModule, AgGridModule, ReactiveFormsModule, FormsModule],
   templateUrl: './ordenes.component.html',
   styleUrl: './ordenes.component.scss',
 })
@@ -147,7 +155,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   private catalogService = inject(CatalogsService);
   private materialsService = inject(MaterialsService);
   private projectsService = inject(ProjectsService);
-  private authService = inject(AuthService);
+  public authService = inject(AuthService);
   gestionarDatos: any[] = [];
 
   // Variables de control
@@ -174,7 +182,17 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   public selectedReporteArea: string = '';
   public selectedReporteId: number | string | null = null;
   public selectedFotografia: Fotografia | null = null;
+  public selectedVideo: Video | null = null;
   public selectedStatusReport: boolean = false;
+  
+  // Variables para cambio de proyecto
+  public selectedNewProject: string = '';
+  public isChangingProject: boolean = false;
+  
+  // Getter para verificar permisos de selección múltiple
+  public get hasMultiSelectPermission(): boolean {
+    return this.authService.hasDetailedPermission('projects', 'get-all-ot');
+  }
   
 
   // Variables para columnas ajustables
@@ -191,6 +209,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   public notSavedMaterialChanges: boolean = false;
   public notSavedEquipoChanges: boolean = false;
   public notSavedFotografiaChanges: boolean = false;
+  public notSavedVideoChanges: boolean = false;
   public notSavedNoteChanges: boolean = false;
   public notSavedConceptoChanges: boolean = false;
 
@@ -237,6 +256,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   public equipos: any[] = [];
   public personal: any[] = [];
   public fotografias: any[] = [];
+  public videos: any[] = [];
 
   
   // Propiedades computadas para filtrar datos
@@ -259,6 +279,11 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   get fotografiasFiltradas(): Fotografia[] {
     if (!this.selectedReporteFecha) return this.fotografias;
     return this.fotografias.filter(f => f.fecha === this.selectedReporteFecha);
+  }
+
+  get videosFiltrados(): Video[] {
+    if (!this.selectedReporteFecha) return this.videos;
+    return this.videos.filter(v => v.fecha === this.selectedReporteFecha);
   }
   excel() {
     // Reset form to initial state
@@ -424,7 +449,21 @@ obtenerAnoMes(fecha) {
 
   // Configuraciones de columnas para AG-Grid
   // Definición de columnas
-  public oTcolumnDefs: ColDef[] = [
+  public get oTcolumnDefs(): ColDef[] {
+    const hasPermission = this.authService.hasDetailedPermission('projects', 'get-all-ot');
+    return [
+      {
+        headerName: '',
+        checkboxSelection: hasPermission,
+        headerCheckboxSelection: hasPermission,
+        width: 50,
+        pinned: 'left',
+        suppressMenu: true,
+        sortable: false,
+        filter: false,
+        resizable: false,
+        hide: !hasPermission
+      },
     /*   {
       field: 'id',
       headerName: 'ID',
@@ -506,8 +545,9 @@ obtenerAnoMes(fecha) {
       flex: 4,
       editable: false
     }
-
-  ];
+    
+    ];
+  }
 
  public get materialesColumnDefs(): ColDef[] {
   return [
@@ -670,7 +710,18 @@ obtenerAnoMes(fecha) {
       }
     }
   },
-    { field: 'quantity', headerName: 'Cantidad', flex: 1, editable: () => !this.signalsService.getClosedReport()()},
+    { 
+      field: 'quantity', 
+      headerName: 'Cantidad', 
+      flex: 1, 
+      editable: () => !this.signalsService.getClosedReport()(),
+      cellDataType: 'number',
+      cellEditorParams: {
+        min: 0,
+        step: 0.01,
+        precision: 2
+      }
+    },
     //{ field: 'quantity', headerName: 'Horas', width: 100, editable: !this.signalsService.getClosedReport() },
     //{ field: 'fechaUso', headerName: 'Fecha', width: 120 }
   ];
@@ -739,7 +790,17 @@ obtenerAnoMes(fecha) {
       field: 'position',
       headerName: 'Cargo',
       flex: 1,
-      editable: false
+      editable: false,
+      valueFormatter: (params: any) => {
+        if (params.data?.idResource) {
+          const employee = this.employees.find(emp => emp.id.toString() === params.data.idResource.toString());
+          if (employee) {
+            const depto = this.catalogDepartamentos.find(d => d.id === +employee.idPosition);
+            return depto ? depto.description : '';
+          }
+        }
+        return params.value || '';
+      }
     },
 
     { 
@@ -768,6 +829,31 @@ obtenerAnoMes(fecha) {
         },
         editable: false,
      },
+    { field: 'description', headerName: 'Descripción', flex: 1, editable: () => !this.signalsService.getClosedReport()()},
+    //{ field: 'fecha', headerName: 'Fecha', width: 120 }
+  ];
+
+  public videosColumnDefs: ColDef[] = [
+    //{ field: 'id', headerName: 'ID', width: 80 },
+    { 
+      field: 'videoUrl', 
+      headerName: 'Video', 
+      flex: 1,
+      cellRenderer: (params: any) => {
+        if (params.value) {
+          return `<div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="bi bi-play-circle-fill text-primary" style="font-size: 20px;"></i>
+                    <span>Video disponible</span>
+                  </div>`;
+        } else {
+          return `<div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="bi bi-upload text-muted" style="font-size: 20px;"></i>
+                    <span class="text-muted">Subir video</span>
+                  </div>`;
+        }
+      },
+      editable: false,
+    },
     { field: 'description', headerName: 'Descripción', flex: 1, editable: () => !this.signalsService.getClosedReport()()},
     //{ field: 'fecha', headerName: 'Fecha', width: 120 }
   ];
@@ -1154,6 +1240,86 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     }, 0);
   }
 
+  addVideo(){
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Agregar Video OT',
+      'Modulo Proyectos - Ordenes de Trabajo - Videos',
+      this.trackingService.getEmail()
+    );
+    
+    if (!this.selectedOt) {
+      alerts.basicAlert('Error', 'Debe seleccionar una OT primero', 'error');
+      return;
+    }
+
+    if (!this.selectedReporteFecha) {
+      alerts.basicAlert('Error', 'Debe seleccionar una fecha de reporte primero', 'error');
+      return;
+    }
+
+    // Abrir el explorador de archivos para seleccionar video
+    const videoFileInput = document.querySelector('input[type="file"][accept="video/*"]') as HTMLInputElement;
+    if (videoFileInput) {
+      videoFileInput.click();
+    }
+  }
+
+  onVideoFileSelected(event: any) {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      const file = input.files[0];
+      
+      // Validar que sea un archivo de video
+      if (!file.type.startsWith('video/')) {
+        alerts.basicAlert('Error', 'Por favor seleccione un archivo de video válido.', 'error');
+        return;
+      }
+
+      // Validar tamaño del archivo (ejemplo: máximo 100MB)
+      const maxSize = 100 * 1024 * 1024; // 100MB en bytes
+      if (file.size > maxSize) {
+        alerts.basicAlert('Error', 'El archivo es demasiado grande. Tamaño máximo: 100MB', 'error');
+        return;
+      }
+
+      console.log('Video seleccionado:', file);
+      
+      // Crear nuevo registro de video con el archivo seleccionado
+      const tempId = `temp_video_${this.tempPersonalIdCounter++}`;
+      
+      const newVideo = {
+        id: tempId,
+        idOt: parseInt(this.selectedOt.id),
+        idReporte: this.selectedReporteId,
+        idResource: null,
+        position: '', 
+        quantity: 1,
+        start: this.selectedReporteHoraInicio + ':00',
+        end: this.selectedReporteHoraTermino + ':00',
+        azureUrl: 'NO FILE',
+        date: this.selectedReporteFecha,
+        typeNote: 'Video',
+        videoUrl: URL.createObjectURL(file), // URL temporal para vista previa
+        description: file.name.split('.')[0], // Nombre del archivo sin extensión como descripción
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type,
+        selectedFile: file, // Guardamos el archivo para subirlo después
+        orden: 1,
+        __isNew: true
+      };
+
+      this.videos = [newVideo, ...this.videos];
+      this.notSavedVideoChanges = true;
+
+      alerts.basicAlert('Éxito', `Video "${file.name}" seleccionado. Recuerde guardar los cambios.`, 'success');
+      
+      // Limpiar el input para permitir seleccionar el mismo archivo nuevamente
+      input.value = '';
+    }
+  }
+
   async saveFotografiasChanges() {
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
@@ -1252,9 +1418,109 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     }
   }
 
+  async saveVideosChanges() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Guardar Cambios Videos OT',
+      'Modulo Proyectos - Ordenes de Trabajo - Videos',
+      this.trackingService.getEmail()
+    );
+    
+    const newRows = this.videos.filter(row => row.__isNew);
+    const modifiedRows = this.videos.filter(row => row.__modified && !row.__isNew);
+
+    // Validación básica
+    const invalidRows = newRows.filter(item => item.videoUrl && item.descripcion);
+    
+    if (invalidRows.length > 0) {
+      alerts.basicAlert('Error', 'Debe completar el video y la descripción antes de guardar.', 'error');
+      return;
+    }
+
+    if (newRows.length === 0 && modifiedRows.length === 0) {
+      alerts.basicAlert('Info', 'No hay cambios para guardar', 'info');
+      return;
+    }
+
+    try {
+      console.log('=== USANDO ENDPOINTS DE LOGBOOK SERVICE PARA VIDEOS ===');
+      
+      // Preparar requests para nuevos registros
+      const addRequests = newRows.map((row, index) => {
+        const cleanedData = this.cleanPersonalDataForServer(row);
+        console.log(`Datos para POST video ${index + 1}:`, cleanedData);
+        return this.logbookService.addDataForOt(cleanedData).toPromise();
+      });
+
+      // Preparar requests para registros modificados
+      const updateRequests = modifiedRows.map((row, index) => {
+        const cleanedData = this.cleanPersonalDataForServer(row);
+        console.log(`Datos para PUT video ${index + 1} (ID: ${row.id}):`, cleanedData);
+        return this.logbookService.updateDataForOt(Number(row.id), cleanedData).toPromise();
+      });
+
+      console.log(`Ejecutando ${addRequests.length} requests de creación de videos`);
+      console.log(`Ejecutando ${updateRequests.length} requests de actualización de videos`);
+
+      // Ejecutar todos los requests
+      const responses = await Promise.all([...addRequests, ...updateRequests]);
+      
+      console.log('=== RESPUESTAS RECIBIDAS PARA VIDEOS ===');
+      console.log('Número de respuestas:', responses.length);
+      responses.forEach((response, index) => {
+        console.log(`Respuesta video ${index + 1}:`, response);
+      });
+
+      // Verificar si las respuestas son exitosas
+      const failedResponses = responses.filter(response => 
+        !response || 
+        (response.hasOwnProperty('success') && !response.success) ||
+        (response.status && response.status >= 400)
+      );
+
+      if (failedResponses.length > 0) {
+        console.error('Respuestas fallidas:', failedResponses);
+        throw new Error(`${failedResponses.length} requests fallaron`);
+      }
+
+      console.log('=== GUARDADO EXITOSO DE VIDEOS ===');
+      alerts.basicAlert('Éxito', 'Cambios de videos guardados correctamente', 'success');
+      this.autoUpdatePdf()
+      this.notSavedVideoChanges = false;
+      
+      // Limpiar flags de control
+      this.videos.forEach(item => {
+        delete item.__isNew;
+        delete item.__modified;
+      });
+
+    } catch (error: any) {
+      console.error('=== ERROR AL GUARDAR VIDEOS ===');
+      console.error('Error completo:', error);
+
+      let errorMessage = 'Error al guardar cambios de videos';
+      if (error.status === 400) {
+        errorMessage = 'Datos inválidos. Verifique que todos los campos estén correctos.';
+      } else if (error.status === 501) {
+        errorMessage = 'No autorizado. Por favor, vuelva a iniciar sesión.';
+      } else if (error.status === 500) {
+        errorMessage = 'Error interno del servidor. Contacte al administrador.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      alerts.basicAlert('Error', errorMessage, 'error');
+    }
+  }
+
   revertFotografias() {
     this.obtenerFotografias(this.selectedReporteId);
     this.notSavedFotografiaChanges = false;
+  }
+
+  revertVideos() {
+    this.obtenerVideos(this.selectedReporteId);
+    this.notSavedVideoChanges = false;
   }
 
   deleteFotografia(){
@@ -1316,7 +1582,64 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     });
   }
 
- 
+  deleteVideo(){
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Eliminar Video OT',
+      'Modulo Proyectos - Ordenes de Trabajo - Videos',
+      this.trackingService.getEmail()
+    );
+    
+    if (!this.videoGridApi) {
+      alerts.basicAlert('Error', 'Grid no disponible', 'error');
+      return;
+    }
+
+    const selectedNodes = this.videoGridApi.getSelectedNodes();
+    if (selectedNodes.length === 0) {
+      alerts.basicAlert('Error', 'Seleccione una entrada de video para eliminar', 'error');
+      return;
+    }
+
+    const selectedData = selectedNodes[0].data;
+    const id = selectedData.id;
+
+    console.log('=== INTENTANDO ELIMINAR VIDEO ===');
+    console.log('Registro seleccionado para eliminar:', selectedData);
+    console.log('ID a eliminar:', id);
+    
+    alerts.confirmAlert(
+      'Eliminar video',
+      '¿Está seguro que desea eliminar este registro de video?',
+      'warning',
+      'Sí, eliminar'
+    ).then((value) => {
+      if (value.isConfirmed) {
+        if (selectedData.__isNew) {
+          this.videos = this.videos.filter(v => v.id !== id);
+          this.notSavedVideoChanges = this.videos.some(v => v.__isNew);
+          alerts.basicAlert('Éxito', 'Video eliminado correctamente', 'success');
+        } else {
+          this.logbookService.deleteDataForOt(Number(id)).subscribe({
+            next: (response) => {
+              this.videos = this.videos.filter(v => v.id !== id);
+              alerts.basicAlert('Éxito', 'Video eliminado correctamente del servidor', 'success');
+            },
+            error: (error) => {
+              console.error('Error al eliminar video del servidor:', error);
+              let errorMessage = 'Error al eliminar el registro de video';
+              if (error.status === 404) {
+                errorMessage = 'El registro ya no existe en el servidor';
+              } else if (error.status === 401) {
+                errorMessage = 'No autorizado para eliminar este registro';
+              }
+              alerts.basicAlert('Error', errorMessage, 'error');
+            }
+          });
+        }
+      }
+    });
+  }
 
   // Variables para el grid de reportes
   public reportesGridApi!: GridApi;
@@ -1328,6 +1651,8 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
   public materialesGridApi!: GridApi;
 
   public fotografiaGridApi!: GridApi;
+
+  public videoGridApi!: GridApi;
 
   public notasGridApi!: GridApi;
 
@@ -1416,6 +1741,21 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     onCellValueChanged: (event: any) => this.onCellValueChangedFotografia(event),
     onGridReady: (params: any) => this.onFotografiasGridReady(params)
   };
+
+  public videosGridOptions: any = {
+    headerHeight: 35,
+    rowHeight: 30,
+    suppressDragLeaveHidesColumns: true,
+    suppressHorizontalScroll: false,
+    animateRows: true,
+    pagination: false,
+    domLayout: 'autoHeight',
+    stopEditingWhenCellsLoseFocus: true,
+    rowSelection: 'single',
+    onCellValueChanged: (event: any) => this.onCellValueChangedVideo(event),
+    onGridReady: (params: any) => this.onVideosGridReady(params)
+  };
+
   // Configuración específica para el grid de reportes con edición inline
   public reportesGridOptions: any = {
     headerHeight: 30,
@@ -1634,6 +1974,12 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
       next: (data: any) => {
         console.log('Datos obtenidos del servicio OT para proyecto actual:', data);
         this.rowData = data;
+        
+        // Actualizar catálogo de conceptos después de cargar los datos
+        if (this.idProject) {
+          this.obtenerConceptos();
+        }
+        
         this.trackingService.addLog(
           this.trackingService.getnameComp(),
           'Get Lista de OT - Proyecto Actual',
@@ -1681,6 +2027,11 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
         console.log(`Total de OTs obtenidas de todos los proyectos: ${allOTs.length}`);
         this.rowData = allOTs;
         
+        // Actualizar catálogo de conceptos después de cargar los datos
+        if (this.idProject) {
+          this.obtenerConceptos();
+        }
+        
         this.trackingService.addLog(
           this.trackingService.getnameComp(),
           'Get Lista de OT - Todos los Proyectos',
@@ -1707,9 +2058,10 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
 
   onSelectionChanged(event: any) {
     const selectedRows = this.gridApi.getSelectedRows();
-    console.log('Fila seleccionada:', selectedRows);
+    console.log('Filas seleccionadas:', selectedRows);
     
     // Actualizar la OT seleccionada para mostrar en la vista previa
+    // Si hay múltiples selecciones, usar la primera para la vista previa
     if (selectedRows.length > 0) {
       this.selectedOt = selectedRows[0];
       this.activeTab = 'reportes'; // Resetear a la primera pestaña
@@ -1730,7 +2082,8 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
         this.originalUrl = null;
       }
       
-      console.log('OT seleccionada:', this.selectedOt);
+      console.log('OT seleccionada para vista previa:', this.selectedOt);
+      console.log('Total OTs seleccionadas:', selectedRows.length);
       
       // Cargar reportes diarios para esta OT
       this.loadDailyReports();
@@ -1739,6 +2092,78 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
       this.loadPersonalData();
     } else {
       this.selectedOt = null;
+    }
+  }
+
+  getSelectedOTs(): any[] {
+    return this.gridApi ? this.gridApi.getSelectedRows() : [];
+  }
+
+  openChangeProjectModal() {
+    if (!this.hasMultiSelectPermission) {
+      alerts.basicAlert('Error', 'No tiene permisos para realizar esta acción.', 'error');
+      return;
+    }
+
+    const selectedOTs = this.getSelectedOTs();
+    if (selectedOTs.length === 0) {
+      alerts.basicAlert('Error', 'Debe seleccionar al menos una OT para cambiar de proyecto.', 'error');
+      return;
+    }
+    
+    this.selectedNewProject = '';
+    const modal = new bootstrap.Modal(document.getElementById('changeProjectModal')!);
+    modal.show();
+  }
+
+  async changeProjectForSelectedOTs() {
+    if (!this.selectedNewProject) {
+      alerts.basicAlert('Error', 'Debe seleccionar un proyecto.', 'error');
+      return;
+    }
+
+    const selectedOTs = this.getSelectedOTs();
+    if (selectedOTs.length === 0) {
+      alerts.basicAlert('Error', 'No hay OTs seleccionadas.', 'error');
+      return;
+    }
+
+    this.isChangingProject = true;
+
+    try {      
+      const confirmResult = await alerts.confirmAlert(
+        '¿Confirmar cambio?',
+        `¿Está seguro de cambiar ${selectedOTs.length} OT(s) de proyecto? Esta acción no se puede deshacer.`,
+        'warning',
+        'Confirmar'
+      );
+
+      if (!confirmResult.isConfirmed) {
+        this.isChangingProject = false;
+        return;
+      }
+
+      for (const ot of selectedOTs) {
+        await firstValueFrom(this.otService.updateOt(ot.id, {
+          ...ot,
+          idProject: this.selectedNewProject
+        }));
+      }
+
+      // Cerrar modal
+      const modal = bootstrap.Modal.getInstance(document.getElementById('changeProjectModal')!);
+      modal?.hide();
+
+      // Recargar datos
+      this.obtenerDatos();
+      
+      alerts.basicAlert('Éxito', `Se cambiaron ${selectedOTs.length} OT(s) de proyecto exitosamente.`, 'success');
+      
+    } catch (error) {
+      console.error('Error al cambiar proyecto:', error);
+      alerts.basicAlert('Error', 'Error al cambiar el proyecto de las OTs.', 'error');
+    } finally {
+      this.isChangingProject = false;
     }
   }
 
@@ -1864,6 +2289,7 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     this.obtenerEquipos(this.selectedReporteId);
     this.obtenerPersonal(this.selectedReporteId);
     this.obtenerFotografias(this.selectedReporteId);
+    this.obtenerVideos(this.selectedReporteId);
     this.obtenerNotas(this.selectedReporteId);
     this.obtenerConcep(this.selectedReporteId);
 
@@ -1905,6 +2331,18 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
       url: fotografia.imageUrl || fotografia.url || '' // Use imageUrl from grid or fallback to url
     };
     console.log('Fotografía seleccionada:', this.selectedFotografia);
+  }
+
+  selectVideo(video: any) {
+    // Map the data from the grid to the expected Video interface
+    this.selectedVideo = {
+      id: video.id,
+      nombre: video.nombre || '',
+      descripcion: video.descripcion || '',
+      fecha: video.fecha || '',
+      url: video.videoUrl || video.url || '' // Use videoUrl from grid or fallback to url
+    };
+    console.log('Video seleccionado:', this.selectedVideo);
   }
 
   // Función helper para convertir tiempo a ticks de .NET
@@ -2554,18 +2992,51 @@ async saveChangesEquipos() {
     try {
       // Preparar los datos para el generador de PDF
       console.log('Fotografías disponibles para PDF:', this.fotografias);
+      
+      // Procesar datos de personal para resolver nombres y cargos automáticamente
+      const processedPersonalData = this.personal.map(person => {
+        const processedPerson = { ...person };
+        
+        // Resolver nombre del empleado
+        if (person.idResource) {
+          const employee = this.employees.find(emp => emp.id.toString() === person.idResource.toString());
+          if (employee) {
+            processedPerson.employeeName = employee.name;
+            
+            // Resolver cargo del empleado
+            const depto = this.catalogDepartamentos.find(d => d.id === +employee.idPosition);
+            processedPerson.position = depto ? depto.description : '';
+          }
+        }
+        
+        return processedPerson;
+      });
+      
+      // Procesar datos de conceptos para resolver nombres automáticamente
+      const processedConceptosData = this.conceptos.map(concepto => {
+        const processedConcepto = { ...concepto };
+        
+        // Resolver nombre del concepto
+        if (concepto.idResource) {
+          const foundItem = this.catalogConcepto?.find(item => item.id == concepto.idResource);
+          processedConcepto.conceptName = foundItem ? foundItem.actandNom : `ID: ${concepto.idResource}`;
+        }
+        
+        return processedConcepto;
+      });
+      
       const inputData = {
         id: parseInt(this.selectedOt.id),
         date: this.selectedReporteFecha,
         description: this.selectedOt.description,
-        personalData: this.personal, // Usar directamente this.personal ya que está filtrado por idReporte
+        personalData: processedPersonalData, // Usar datos procesados con nombres y cargos resueltos
         materialesData: this.materiales,
         equiposData: this.equipos,
         fotografiasData: this.fotografias, // Agregar fotografías de la pestaña
         notasData: this.notas, // Agregar notas de la pestaña
         idReport: typeof this.selectedReporteId === 'string' ? parseInt(this.selectedReporteId) : this.selectedReporteId, // Agregar idReport para obtener notas de TRABAJO ANTECEDENTES
         typeNotesCatalog: this.typeNotesCatalog, // Agregar catálogo de tipos de notas
-        conceptosData: this.conceptos,
+        conceptosData: processedConceptosData, // Usar datos procesados con nombres de conceptos resueltos
         conceptosCatalog: this.catalogConcepto,
       };
 
@@ -2757,16 +3228,20 @@ async saveChangesEquipos() {
       delete cleanedData.id;
     }
     
-    // Si hay idResource pero no Description, agregar la descripción del equipo
-    /*if (cleanedData.idResource && !cleanedData.Description) {
-      const foundEquipo = this.catalogEquipos?.find(item => item.id == cleanedData.idResource);
-      if (foundEquipo) {
-        cleanedData.Description = foundEquipo.description;
+    // AGREGAR CAMPO REQUEST REQUERIDO POR BACKEND - SIEMPRE
+    cleanedData.request = cleanedData.request || 'DEFAULT_REQUEST';
+    
+    // MANTENER QUANTITY COMO DECIMAL - Backend acepta decimales
+    if (cleanedData.quantity !== undefined && cleanedData.quantity !== null) {
+      const quantityValue = Number(cleanedData.quantity);
+      // Verificar que la conversión sea válida
+      if (!isNaN(quantityValue)) {
+        cleanedData.quantity = quantityValue;
       } else {
-        // Si no se encuentra el equipo, usar un valor por defecto
-        cleanedData.Description = `Equipo ID: ${cleanedData.idResource}`;
+        console.error('Quantity no es un número válido:', cleanedData.quantity);
+        cleanedData.quantity = 1.0; // Valor por defecto
       }
-    }*/
+    }
     
     // Si no hay Description y es un nuevo registro, poner un valor por defecto
     if (!cleanedData.Description) {
@@ -2983,6 +3458,18 @@ async saveChangesEquipos() {
 
   onFotografiasGridReady(params: any) {
     this.fotografiaGridApi = params.api;
+  }
+
+  onVideosGridReady(params: any) {
+    this.videoGridApi = params.api;
+  }
+
+  onCellValueChangedVideo(event: any) {
+    this.notSavedVideoChanges = true;
+
+    if (!event.data.__isNew) {
+      event.data.__modified = true;
+    }
   }
 
   // Métodos CRUD para Personal
@@ -3406,6 +3893,15 @@ async saveChangesEquipos() {
     );
   }
 
+  obtenerVideos(selectedReporteId: any) {
+    this.logbookService.getInfoByReporte(selectedReporteId, "Video").subscribe(
+      (data: any) => {
+        this.videos = data.data;
+      },
+      (error) => console.error('Error fetching data:', error)
+    );
+  }
+
   obtenerNotas(selectedReporteId: any) {
     this.logbookService.getInfoByReporte(selectedReporteId, "NOTE").subscribe(
       (data: any) => {
@@ -3507,13 +4003,83 @@ async saveChangesEquipos() {
     );
   }
   obtenerConceptos(){
+    // Verificar si hay proyecto seleccionado
+    if (!this.idProject) {
+      console.warn('No hay proyecto seleccionado, intentando detectar automáticamente...');
+      
+      // Intentar detectar proyecto automáticamente desde los datos cargados
+      const detectedProject = this.detectProjectFromData();
+      
+      if (detectedProject) {
+        console.log('Proyecto detectado automáticamente:', detectedProject);
+        this.idProject = detectedProject;
+      } else {
+        // Si no se puede detectar, mostrar mensaje al usuario
+        alerts.basicAlert(
+          'Proyecto requerido',
+          'Por favor seleccione un proyecto en el menú lateral para cargar los conceptos correctamente.',
+          'warning'
+        );
+        return;
+      }
+    }
+    
     return this.workprogramsService.getActivities(this.idProject).subscribe(
       (data: any) => {
         this.catalogConcepto = data;
         console.log('Catálogo de conceptos obtenido:', this.catalogConcepto);
+        
+        // Refrescar el grid de conceptos después de cargar el catálogo
+        if (this.conceptosGridApi) {
+          this.conceptosGridApi.refreshCells();
+          console.log('Grid de conceptos actualizado con catálogo');
+        }
       },
       (error) => console.error('Error fetching conceptos:', error)
     );
+  }
+
+  // Método para detectar proyecto automáticamente desde los datos
+  private detectProjectFromData(): string | null {
+    try {
+      // Opción 1: Desde OT seleccionada
+      if (this.selectedOt?.idProject) {
+        console.log('Proyecto detectado desde OT seleccionada:', this.selectedOt.idProject);
+        return this.selectedOt.idProject;
+      }
+      
+      // Opción 2: Desde cualquier OT en la lista
+      if (this.rowData && this.rowData.length > 0) {
+        const firstOtWithProject = this.rowData.find(ot => ot.idProject);
+        if (firstOtWithProject) {
+          console.log('Proyecto detectado desde lista de OTs:', firstOtWithProject.idProject);
+          return firstOtWithProject.idProject;
+        }
+      }
+      
+      // Opción 3: Desde datos de conceptos existentes (si hay relación con proyecto)
+      if (this.conceptos && this.conceptos.length > 0) {
+        // Buscar en la lista de proyectos cargada
+        const conceptoConProyecto = this.conceptos[0];
+        if (conceptoConProyecto && this.projectsList) {
+          // Intentar correlacionar con proyectos disponibles
+          const matchedProject = this.projectsList.find(project => 
+            // Buscar coincidencias por nombre o algún identificador
+            project.name && project.name.includes('CUADR')
+          );
+          if (matchedProject) {
+            console.log('Proyecto detectado por correlación:', matchedProject.id);
+            return matchedProject.id;
+          }
+        }
+      }
+      
+      console.warn('No se pudo detectar proyecto automáticamente');
+      return null;
+    } catch (error) {
+      console.error('Error detectando proyecto:', error);
+      return null;
+    }
   }
 
   obtenerProyectos(){
@@ -3753,12 +4319,13 @@ async saveChangesEquipos() {
       idReporte: this.selectedReporteId,
       idResource: null, // Se almacenará el ID del concepto
       position: '', 
-      quantity: 1,
+      quantity: 1.0,
       start: this.selectedReporteHoraInicio + ':00',
       end: this.selectedReporteHoraTermino + ':00',
       date: this.selectedReporteFecha,
       typeNote: 'CONCEPT',
       description: 'SIN DESCRIPCIÓN',
+      request: 'DEFAULT_REQUEST', // Campo requerido por backend
       orden: maxOrden + 1,
       __isNew: true
     };
@@ -3778,6 +4345,8 @@ async saveChangesEquipos() {
       }
     }, 0);
   }
+
+  
   async saveConceptosChanges() {
     const newRows = this.conceptos.filter(row => row.__isNew);
   const modifiedRows = this.conceptos.filter(row => row.__modified && !row.__isNew);
