@@ -84,6 +84,9 @@
                     <a class="nav-link" [class.active]="activeTab === 'fotos'" (click)="setActiveTab('fotos')" style="cursor: pointer;"><i class="bi bi-images"></i> Fotografías</a>
                   </li>
                   <li class="nav-item">
+                    <a class="nav-link" [class.active]="activeTab === 'videos'" (click)="setActiveTab('videos')" style="cursor: pointer;"><i class="bi bi-play-circle"></i> Videos</a>
+                  </li>
+                  <li class="nav-item">
                     <a class="nav-link" [class.active]="activeTab === 'material'" (click)="setActiveTab('material')" style="cursor: pointer;"><i class="bi bi-box-seam"></i> Material</a>
                   </li>
                   <li class="nav-item">
@@ -201,6 +204,67 @@
                     </div>
                   </div>
 
+                  <!-- Pestaña Videos -->
+                  <div class="tab-pane" [class.show]="activeTab === 'videos'" [class.active]="activeTab === 'videos'">
+                    <h6><i class="bi bi-play-circle"></i> Videos del Trabajo <span *ngIf="selectedReporteFecha" class="badge bg-secondary ">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
+                    <div class="row">
+                      
+                      <!-- Columna de Botones (Ajustada para flexibilidad) -->
+                      <div class="col-auto">
+                        <nav class="d-flex flex-column align-items-start">
+                          <button type="button" class="btn btn-primary  mb-2" (click)="addVideo()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
+                          <button type="button" class="btn btn-success  position-relative mb-2" (click)="saveVideosChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedVideoChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
+                          <button type="button" class="btn btn-warning  mb-2" (click)="revertVideos()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
+                          <button type="button" class="btn btn-danger  mb-2" (click)="deleteVideo()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
+                        </nav>
+                      </div>
+
+                      <!-- Columna del Grid de Videos -->
+                      <div class="col">
+                        <div class="overflow-auto" style="height: 60vh;"> <!-- LEY MAESTRA -->
+                           <ag-grid-angular                           
+                             [ngStyle]="{ height: '100%', width: '100%' }"
+                             class="ag-theme-quartz small-text-ag-grid" 
+                             [rowData]="videos" 
+                             [columnDefs]="videosColumnDefs" 
+                             [gridOptions]="videosGridOptions" 
+                             (rowClicked)="selectVideo($event.data)">
+                           </ag-grid-angular>
+                        </div>
+                      </div>
+                      
+                      <!-- Columna de la Vista Previa de Video -->
+                      <div class="col-5">
+                        <!-- ===== INICIO DEL EDICTO DE PODER PARA VIDEOS ===== -->
+                        <!-- Se impone la misma ley de altura y se usan clases d-flex para centrar el contenido verticalmente -->
+                        <div class="border rounded p-3 d-flex flex-column" style="height: 60vh; background-color: #f8f9fa;">
+                          <div *ngIf="selectedVideo; else noVideoSelection" class="flex-grow-1 text-center d-flex flex-column justify-content-center">
+                            <video 
+                              [src]="selectedVideo.url" 
+                              controls 
+                              class="w-100 h-100 rounded" 
+                              style="max-height: 80%; object-fit: contain;"
+                              preload="metadata">
+                              Su navegador no soporta el elemento de video.
+                            </video>
+                            <div class="mt-2">
+                              <small class="text-muted">{{selectedVideo.descripcion}}</small>
+                            </div>
+                          </div>
+                          <ng-template #noVideoSelection>
+                            <div class="flex-grow-1 h-100 d-flex align-items-center justify-content-center">
+                              <div class="text-center text-muted">
+                                <i class="bi bi-play-circle display-4"></i>
+                                <p class="mt-2">Selecciona un video para ver la vista previa</p>
+                              </div>
+                            </div>
+                          </ng-template>
+                        </div>
+                        <!-- ===== FIN DEL EDICTO DE PODER PARA VIDEOS ===== -->
+                      </div>
+
+                    </div>
+                  </div>
 
                   <!-- Pestaña Material -->
                   <div class="tab-pane" [class.show]="activeTab === 'material'" [class.active]="activeTab === 'material'">
