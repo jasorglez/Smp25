@@ -790,7 +790,17 @@ obtenerAnoMes(fecha) {
       field: 'position',
       headerName: 'Cargo',
       flex: 1,
-      editable: false
+      editable: false,
+      valueFormatter: (params: any) => {
+        if (params.data?.idResource) {
+          const employee = this.employees.find(emp => emp.id.toString() === params.data.idResource.toString());
+          if (employee) {
+            const depto = this.catalogDepartamentos.find(d => d.id === +employee.idPosition);
+            return depto ? depto.description : '';
+          }
+        }
+        return params.value || '';
+      }
     },
 
     { 
@@ -1949,6 +1959,11 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
   }
 
   obtenerDatos() {
+    // Asegurar que el catálogo de conceptos esté actualizado
+    if (this.idProject) {
+      this.obtenerConceptos();
+    }
+    
     // Verificar si el usuario tiene permisos para ver todas las OTs de todos los proyectos
     if (this.authService.hasDetailedPermission('projects', 'get-all-ot')) {
       console.log('Usuario tiene permisos para ver todas las OTs de todos los proyectos');
