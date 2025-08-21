@@ -3876,6 +3876,8 @@ async saveChangesEquipos() {
       }
     }, 0);
   }
+
+  
   async saveConceptosChanges() {
     const newRows = this.conceptos.filter(row => row.__isNew);
   const modifiedRows = this.conceptos.filter(row => row.__modified && !row.__isNew);
