@@ -3174,14 +3174,19 @@ async saveChangesEquipos() {
       delete cleanedData.id;
     }
     
-    // AGREGAR CAMPO REQUEST REQUERIDO POR BACKEND
-    if (!cleanedData.request) {
-      cleanedData.request = 'DEFAULT_REQUEST';
-    }
+    // AGREGAR CAMPO REQUEST REQUERIDO POR BACKEND - SIEMPRE
+    cleanedData.request = cleanedData.request || 'DEFAULT_REQUEST';
     
     // MANTENER QUANTITY COMO DECIMAL - Backend acepta decimales
     if (cleanedData.quantity !== undefined && cleanedData.quantity !== null) {
-      cleanedData.quantity = Number(cleanedData.quantity);
+      const quantityValue = Number(cleanedData.quantity);
+      // Verificar que la conversión sea válida
+      if (!isNaN(quantityValue)) {
+        cleanedData.quantity = quantityValue;
+      } else {
+        console.error('Quantity no es un número válido:', cleanedData.quantity);
+        cleanedData.quantity = 1.0; // Valor por defecto
+      }
     }
     
     // Si no hay Description y es un nuevo registro, poner un valor por defecto
