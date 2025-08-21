@@ -352,9 +352,9 @@ obtenerAnoMes(fecha) {
     alert('La fecha de inicio no puede ser mayor que la fecha de fin.');
     return;
   }
-
-  console.log(formValues);
   this.isGeneratingReport = true;
+  console.log(formValues);
+  
 
   switch (this.opcionSeleccionada) {
     case 'ot':
@@ -385,7 +385,6 @@ obtenerAnoMes(fecha) {
       break;
 
     case 'cuadrilla-interna':
-      this.isGeneratingReport = false;
       this.updateExcelService.processAndDownloadCuadInter(this.fechaInicio, this.fechaFin).subscribe({
         next: (blob: Blob) => {
           this.isGeneratingReport = false;
@@ -394,7 +393,7 @@ obtenerAnoMes(fecha) {
           const url = window.URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = `FORMATO_GENERADOR_${new Date().getTime()}.xlsx`;
+          a.download = `CALCULO_DE_PAGO_A_CUADRILLA_INTERNAS_${new Date().getTime()}.xlsx`;
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
@@ -413,11 +412,34 @@ obtenerAnoMes(fecha) {
       break;
 
     case 'cuadrilla-externa':
-      this.isGeneratingReport = false;
       if (this.seleccionados.length === 0) {
         alerts.basicAlert('Advertencia', 'Seleccione una cuadrilla', 'warning');
+        this.isGeneratingReport = false;
       } else {
-        alert(`Filtrado por fechas personalizadas: ${this.fechaInicio} a ${this.fechaFin}`);
+        this.updateExcelService.processAndDownloadCuadExter(this.fechaInicio, this.fechaFin, this.seleccionados).subscribe({
+          next: (blob: Blob) => {
+            this.isGeneratingReport = false;
+
+          // Crear link de descarga
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `CALCULO_DE_PAGO_A_CUADRILLA_EXTERNAS_${new Date().getTime()}.xlsx`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+
+          console.log('Excel generado y descargado exitosamente');
+          alerts.basicAlert('Éxito', `Excel generado desde ${this.fechaInicio} hasta ${this.fechaFin}`, 'success');
+          this.closeModal();
+        },
+        error: (error) => {
+          this.isGeneratingReport = false;
+          console.error('Error al generar Excel:', error);
+          alerts.basicAlert('Error', 'Error al generar el Excel. Inténtalo de nuevo.', 'error');
+        }
+      });
       }
       break;
 
@@ -433,6 +455,8 @@ obtenerAnoMes(fecha) {
     this.fechaInicio = '';
     this.fechaFin = '';
     this.tipoReporte = 'personalizado';
+    this.seleccionados = []; // <-- Limpia la selección de cuadrillas
+    this.opcionSeleccionada = ''; // <-- Opcional: limpia la opción seleccionada
     this.myForm.patchValue(
       {
         opcionSeleccionada: '',
@@ -1011,7 +1035,7 @@ obtenerAnoMes(fecha) {
     { 
       field: 'date', 
       headerName: 'Fecha', 
-      width: 90, 
+      width: 120, 
       //editable: () => !this.signalsService.getClosedReport()(),
       editable: true,
       cellEditor: 'agDateCellEditor',
@@ -1074,7 +1098,7 @@ obtenerAnoMes(fecha) {
     { 
       field: 'startTime', 
       headerName: 'Inicio', 
-      width: 85, 
+      width: 105, 
       //editable: () => !this.signalsService.getClosedReport()(),
       editable: true,
       cellEditor: 'timeEditor',
@@ -1115,14 +1139,14 @@ obtenerAnoMes(fecha) {
       headerName: 'Comentario', 
       //editable: () => !this.signalsService.getClosedReport()(),
       editable: true,
-      width: 120,
+      width: 180,
     },
     { 
       field: 'close', 
       headerName: 'Cerrado', 
       //editable: () => !this.signalsService.getClosedReport()(),
       editable: true,
-      width: 120,
+      width: 100,
     }
   ];
 
