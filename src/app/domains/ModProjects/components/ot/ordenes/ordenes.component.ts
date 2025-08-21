@@ -1142,6 +1142,13 @@ obtenerAnoMes(fecha) {
       width: 180,
     },
     { 
+      field: 'paid', 
+      headerName: 'Pagado', 
+      //editable: () => !this.signalsService.getClosedReport()(),
+      editable: true,
+      width: 120,
+    },
+    { 
       field: 'close', 
       headerName: 'Cerrado', 
       //editable: () => !this.signalsService.getClosedReport()(),
@@ -2559,6 +2566,7 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
       description: 'SIN DESCRIPCIÓN',
       result: 'SIN RESULTADO',
       active: true,
+      paid: true,
       close: false,
       __isNew: true
     };
