@@ -3174,16 +3174,15 @@ async saveChangesEquipos() {
       delete cleanedData.id;
     }
     
-    // Si hay idResource pero no Description, agregar la descripción del equipo
-    /*if (cleanedData.idResource && !cleanedData.Description) {
-      const foundEquipo = this.catalogEquipos?.find(item => item.id == cleanedData.idResource);
-      if (foundEquipo) {
-        cleanedData.Description = foundEquipo.description;
-      } else {
-        // Si no se encuentra el equipo, usar un valor por defecto
-        cleanedData.Description = `Equipo ID: ${cleanedData.idResource}`;
-      }
-    }*/
+    // AGREGAR CAMPO REQUEST REQUERIDO POR BACKEND
+    if (!cleanedData.request) {
+      cleanedData.request = 'DEFAULT_REQUEST';
+    }
+    
+    // MANTENER QUANTITY COMO DECIMAL - Backend acepta decimales
+    if (cleanedData.quantity !== undefined && cleanedData.quantity !== null) {
+      cleanedData.quantity = Number(cleanedData.quantity);
+    }
     
     // Si no hay Description y es un nuevo registro, poner un valor por defecto
     if (!cleanedData.Description) {
@@ -4191,12 +4190,13 @@ async saveChangesEquipos() {
       idReporte: this.selectedReporteId,
       idResource: null, // Se almacenará el ID del concepto
       position: '', 
-      quantity: 1,
+      quantity: 1.0,
       start: this.selectedReporteHoraInicio + ':00',
       end: this.selectedReporteHoraTermino + ':00',
       date: this.selectedReporteFecha,
       typeNote: 'CONCEPT',
       description: 'SIN DESCRIPCIÓN',
+      request: 'DEFAULT_REQUEST', // Campo requerido por backend
       orden: maxOrden + 1,
       __isNew: true
     };
