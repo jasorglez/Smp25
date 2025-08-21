@@ -2407,6 +2407,7 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     };
     
     console.log('Video seleccionado:', this.selectedVideo);
+    console.log('Video original (con imageUrl):', video);
     console.log('URL del video:', videoUrl);
   }
 
