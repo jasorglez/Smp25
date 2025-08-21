@@ -2292,6 +2292,21 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     this.obtenerVideos(this.selectedReporteId);
     this.obtenerNotas(this.selectedReporteId);
     this.obtenerConcep(this.selectedReporteId);
+    
+    // Actualizar selección visual en el grid
+    if (this.reportesGridApi) {
+      // Encontrar el índice del reporte seleccionado
+      const reporteIndex = this.reportesDiarios.findIndex(r => r.id === reporte.id);
+      if (reporteIndex >= 0) {
+        // Limpiar selecciones anteriores
+        this.reportesGridApi.deselectAll();
+        // Seleccionar la fila correspondiente
+        this.reportesGridApi.getDisplayedRowAtIndex(reporteIndex)?.setSelected(true);
+        // Asegurar que la fila sea visible
+        this.reportesGridApi.ensureIndexVisible(reporteIndex);
+        console.log('Reporte seleccionado visualmente en el grid:', reporte);
+      }
+    }
 
     // Resetear vista previa del PDF cuando se selecciona nueva fecha
     this.showPdfEmbed = false;
@@ -2956,23 +2971,10 @@ async saveChangesEquipos() {
             // Seleccionar automáticamente el primer reporte si existe
             if (this.reportesDiarios.length > 0) {
               const firstReport = this.reportesDiarios[0];
-              this.selectedReporteId = firstReport.id;
-              this.selectedReporteFecha = firstReport.date;
-              this.selectedReporteTipo = firstReport.type;
-              this.selectedReporteHoraInicio = firstReport.startTime;
-              this.selectedReporteHoraTermino = firstReport.endTime;
+              console.log('Seleccionando automáticamente el primer reporte:', firstReport);
               
-              console.log('Primer reporte seleccionado automáticamente:', firstReport);
-              
-              // Actualizar grid para mostrar la selección
-              setTimeout(() => {
-                if (this.reportesGridApi) {
-                  // Seleccionar la primera fila en el grid
-                  this.reportesGridApi.getRowNode('0')?.setSelected(true);
-                  this.reportesGridApi.ensureIndexVisible(0);
-                  console.log('Primera fila del grid de reportes seleccionada');
-                }
-              }, 100);
+              // Llamar directamente al método selectReporte para simular un clic
+              this.selectReporte(firstReport);
             }
           } else {
             this.reportesDiarios = [];
