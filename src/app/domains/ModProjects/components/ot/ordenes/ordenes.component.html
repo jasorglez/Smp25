@@ -121,7 +121,6 @@
                            [gridOptions]="reportesGridOptions" 
                            [components]="components" 
                            [rowSelection]="'single'" 
-                           (gridReady)="onReportesGridReady($event)"
                            (rowClicked)="selectReporte($event.data)" 
                            [getRowClass]="getReporteRowClass">
                         </ag-grid-angular>
