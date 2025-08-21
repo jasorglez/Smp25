@@ -2317,6 +2317,10 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
   }
 
   selectReporte(reporte: ReporteDiario) {
+    // Limpiar selecciones previas
+    this.selectedFotografia = null;
+    this.selectedVideo = null;
+    
     this.selectedReporteFecha = reporte.fecha || reporte.date.split('T')[0];
     this.selectedReporteTipo = reporte.tipoNota || reporte.type;
     this.selectedReporteHoraInicio = reporte.horaInicio || reporte.startTime.substring(0, 5);
