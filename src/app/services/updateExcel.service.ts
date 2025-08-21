@@ -227,4 +227,21 @@ export class UpdateExcelService {
       }
     );
   }
+  processAndDownloadCuadExter(dateStart: string, dateEnd: string, seleccionados: any[]): Observable<Blob> {
+    const dateRange = {
+      dateStart: dateStart,
+      dateEnd: dateEnd,
+      seleccionados: seleccionados.map(String) 
+    };
+    console.log('Datos enviados a processAndDownloadCuadExter:', dateRange);
+
+    return this.http.post(
+      `${environment.urlSmp}/UpdateExcel/process-and-download-cuadexter`,
+      dateRange,
+      { 
+        headers: this.trackingService.getHeaders(),
+        responseType: 'blob'
+      }
+    );
+  }
 }
