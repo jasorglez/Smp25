@@ -2992,18 +2992,51 @@ async saveChangesEquipos() {
     try {
       // Preparar los datos para el generador de PDF
       console.log('Fotografías disponibles para PDF:', this.fotografias);
+      
+      // Procesar datos de personal para resolver nombres y cargos automáticamente
+      const processedPersonalData = this.personal.map(person => {
+        const processedPerson = { ...person };
+        
+        // Resolver nombre del empleado
+        if (person.idResource) {
+          const employee = this.employees.find(emp => emp.id.toString() === person.idResource.toString());
+          if (employee) {
+            processedPerson.employeeName = employee.name;
+            
+            // Resolver cargo del empleado
+            const depto = this.catalogDepartamentos.find(d => d.id === +employee.idPosition);
+            processedPerson.position = depto ? depto.description : '';
+          }
+        }
+        
+        return processedPerson;
+      });
+      
+      // Procesar datos de conceptos para resolver nombres automáticamente
+      const processedConceptosData = this.conceptos.map(concepto => {
+        const processedConcepto = { ...concepto };
+        
+        // Resolver nombre del concepto
+        if (concepto.idResource) {
+          const foundItem = this.catalogConcepto?.find(item => item.id == concepto.idResource);
+          processedConcepto.conceptName = foundItem ? foundItem.actandNom : `ID: ${concepto.idResource}`;
+        }
+        
+        return processedConcepto;
+      });
+      
       const inputData = {
         id: parseInt(this.selectedOt.id),
         date: this.selectedReporteFecha,
         description: this.selectedOt.description,
-        personalData: this.personal, // Usar directamente this.personal ya que está filtrado por idReporte
+        personalData: processedPersonalData, // Usar datos procesados con nombres y cargos resueltos
         materialesData: this.materiales,
         equiposData: this.equipos,
         fotografiasData: this.fotografias, // Agregar fotografías de la pestaña
         notasData: this.notas, // Agregar notas de la pestaña
         idReport: typeof this.selectedReporteId === 'string' ? parseInt(this.selectedReporteId) : this.selectedReporteId, // Agregar idReport para obtener notas de TRABAJO ANTECEDENTES
         typeNotesCatalog: this.typeNotesCatalog, // Agregar catálogo de tipos de notas
-        conceptosData: this.conceptos,
+        conceptosData: processedConceptosData, // Usar datos procesados con nombres de conceptos resueltos
         conceptosCatalog: this.catalogConcepto,
       };
 
