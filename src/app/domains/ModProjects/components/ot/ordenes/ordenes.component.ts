@@ -1011,7 +1011,7 @@ obtenerAnoMes(fecha) {
     { 
       field: 'date', 
       headerName: 'Fecha', 
-      width: 90, 
+      width: 120, 
       //editable: () => !this.signalsService.getClosedReport()(),
       editable: true,
       cellEditor: 'agDateCellEditor',
@@ -1074,7 +1074,7 @@ obtenerAnoMes(fecha) {
     { 
       field: 'startTime', 
       headerName: 'Inicio', 
-      width: 85, 
+      width: 105, 
       //editable: () => !this.signalsService.getClosedReport()(),
       editable: true,
       cellEditor: 'timeEditor',
@@ -1115,14 +1115,14 @@ obtenerAnoMes(fecha) {
       headerName: 'Comentario', 
       //editable: () => !this.signalsService.getClosedReport()(),
       editable: true,
-      width: 120,
+      width: 180,
     },
     { 
       field: 'close', 
       headerName: 'Cerrado', 
       //editable: () => !this.signalsService.getClosedReport()(),
       editable: true,
-      width: 120,
+      width: 100,
     }
   ];
 
