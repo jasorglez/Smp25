@@ -2952,6 +2952,28 @@ async saveChangesEquipos() {
             this.reportesDiarios = response.data.map((item: any) => {
               return { ...item };
             });
+            
+            // Seleccionar automáticamente el primer reporte si existe
+            if (this.reportesDiarios.length > 0) {
+              const firstReport = this.reportesDiarios[0];
+              this.selectedReporteId = firstReport.id;
+              this.selectedReporteFecha = firstReport.date;
+              this.selectedReporteTipo = firstReport.type;
+              this.selectedReporteHoraInicio = firstReport.startTime;
+              this.selectedReporteHoraTermino = firstReport.endTime;
+              
+              console.log('Primer reporte seleccionado automáticamente:', firstReport);
+              
+              // Actualizar grid para mostrar la selección
+              setTimeout(() => {
+                if (this.reportesGridApi) {
+                  // Seleccionar la primera fila en el grid
+                  this.reportesGridApi.getRowNode('0')?.setSelected(true);
+                  this.reportesGridApi.ensureIndexVisible(0);
+                  console.log('Primera fila del grid de reportes seleccionada');
+                }
+              }, 100);
+            }
           } else {
             this.reportesDiarios = [];
           }
