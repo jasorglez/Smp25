@@ -2337,24 +2337,24 @@ addVideo(){
     this.selectedFotografia = null;
     this.selectedVideo = null;
     
-    // Debug: Ver estructura de datos para comparación
+    // Verificar que el proyecto del sidebar coincida con el proyecto de la OT
     const sidebarProject = this.signalsService.getProjectSelectedBySidebar()();
-    console.log('🔍 Proyecto del sidebar:', sidebarProject);
-    console.log('🔍 Estructura completa de selectedOt:', this.selectedOt);
-    console.log('🔍 Detectando proyecto de la OT...');
+    const otProject = this.selectedOt?.project;
     
-    // Verificar si hay proyecto seleccionado al elegir un reporte
-    const detectedProject = this.detectProjectFromData();
-    console.log('🔍 Verificando proyecto al seleccionar reporte:', detectedProject);
-    if (!detectedProject) {
-      console.log('⚠️ No hay proyecto detectado, mostrando alerta');
+    console.log('🔍 Comparando proyectos:');
+    console.log('  - Sidebar:', sidebarProject);
+    console.log('  - OT:', otProject);
+    
+    // Validar que ambos proyectos coincidan
+    if (!sidebarProject || sidebarProject !== otProject) {
+      console.log('⚠️ Los proyectos no coinciden, mostrando alerta');
       alerts.basicAlert(
         'Proyecto Requerido', 
-        'Por favor selecciona un proyecto en el sidebar izquierdo antes de trabajar con los reportes. Esto es necesario para cargar correctamente los catálogos de conceptos y materiales.', 
+        `El proyecto seleccionado en el sidebar (${sidebarProject || 'ninguno'}) debe coincidir con el proyecto de la OT (${otProject}). Por favor selecciona el proyecto correcto en el sidebar izquierdo.`, 
         'warning'
       );
     } else {
-      console.log('✅ Proyecto detectado, no se muestra alerta');
+      console.log('✅ Los proyectos coinciden correctamente');
     }
     
     this.selectedReporteFecha = reporte.fecha || reporte.date.split('T')[0];
