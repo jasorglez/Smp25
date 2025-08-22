@@ -2339,18 +2339,25 @@ addVideo(){
     
     // Verificar que el proyecto del sidebar coincida con el proyecto de la OT
     const sidebarProject = this.signalsService.getProjectSelectedBySidebar()();
-    const otProject = this.selectedOt?.project;
+    
+    // Obtener el nombre del proyecto de la OT usando idProject
+    let otProjectName = '';
+    if (this.selectedOt?.idProject) {
+      const project = this.projectsList.find(p => p.id === this.selectedOt.idProject);
+      otProjectName = project ? project.name : '';
+    }
     
     console.log('🔍 Comparando proyectos:');
     console.log('  - Sidebar:', sidebarProject);
-    console.log('  - OT:', otProject);
+    console.log('  - OT ID:', this.selectedOt?.idProject);
+    console.log('  - OT Name:', otProjectName);
     
     // Validar que ambos proyectos coincidan
-    if (!sidebarProject || sidebarProject !== otProject) {
+    if (!sidebarProject || sidebarProject !== otProjectName) {
       console.log('⚠️ Los proyectos no coinciden, mostrando alerta');
       alerts.basicAlert(
         'Proyecto Requerido', 
-        `El proyecto seleccionado en el sidebar (${sidebarProject || 'ninguno'}) debe coincidir con el proyecto de la OT (${otProject}). Por favor selecciona el proyecto correcto en el sidebar izquierdo.`, 
+        `El proyecto seleccionado en el sidebar (${sidebarProject || 'ninguno'}) debe coincidir con el proyecto de la OT (${otProjectName}). Por favor selecciona el proyecto correcto en el sidebar izquierdo.`, 
         'warning'
       );
     } else {
