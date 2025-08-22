@@ -52,6 +52,8 @@ interface OrdenesData {
   description: string;
   nameConsumer: string;
   area: string;
+  projectName?: string;
+  idProject?: number;
 }
 
 // Interfaces para la data de las pestañas
@@ -352,9 +354,9 @@ obtenerAnoMes(fecha) {
     alert('La fecha de inicio no puede ser mayor que la fecha de fin.');
     return;
   }
-
-  console.log(formValues);
   this.isGeneratingReport = true;
+  console.log(formValues);
+  
 
   switch (this.opcionSeleccionada) {
     case 'ot':
@@ -385,7 +387,6 @@ obtenerAnoMes(fecha) {
       break;
 
     case 'cuadrilla-interna':
-      this.isGeneratingReport = false;
       this.updateExcelService.processAndDownloadCuadInter(this.fechaInicio, this.fechaFin).subscribe({
         next: (blob: Blob) => {
           this.isGeneratingReport = false;
@@ -394,7 +395,7 @@ obtenerAnoMes(fecha) {
           const url = window.URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = `FORMATO_GENERADOR_${new Date().getTime()}.xlsx`;
+          a.download = `CALCULO_DE_PAGO_A_CUADRILLA_INTERNAS_${new Date().getTime()}.xlsx`;
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
@@ -413,11 +414,34 @@ obtenerAnoMes(fecha) {
       break;
 
     case 'cuadrilla-externa':
-      this.isGeneratingReport = false;
       if (this.seleccionados.length === 0) {
         alerts.basicAlert('Advertencia', 'Seleccione una cuadrilla', 'warning');
+        this.isGeneratingReport = false;
       } else {
-        alert(`Filtrado por fechas personalizadas: ${this.fechaInicio} a ${this.fechaFin}`);
+        this.updateExcelService.processAndDownloadCuadExter(this.fechaInicio, this.fechaFin, this.seleccionados).subscribe({
+          next: (blob: Blob) => {
+            this.isGeneratingReport = false;
+
+          // Crear link de descarga
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `CALCULO_DE_PAGO_A_CUADRILLA_EXTERNAS_${new Date().getTime()}.xlsx`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+
+          console.log('Excel generado y descargado exitosamente');
+          alerts.basicAlert('Éxito', `Excel generado desde ${this.fechaInicio} hasta ${this.fechaFin}`, 'success');
+          this.closeModal();
+        },
+        error: (error) => {
+          this.isGeneratingReport = false;
+          console.error('Error al generar Excel:', error);
+          alerts.basicAlert('Error', 'Error al generar el Excel. Inténtalo de nuevo.', 'error');
+        }
+      });
       }
       break;
 
@@ -433,6 +457,8 @@ obtenerAnoMes(fecha) {
     this.fechaInicio = '';
     this.fechaFin = '';
     this.tipoReporte = 'personalizado';
+    this.seleccionados = []; // <-- Limpia la selección de cuadrillas
+    this.opcionSeleccionada = ''; // <-- Opcional: limpia la opción seleccionada
     this.myForm.patchValue(
       {
         opcionSeleccionada: '',
@@ -833,30 +859,69 @@ obtenerAnoMes(fecha) {
     //{ field: 'fecha', headerName: 'Fecha', width: 120 }
   ];
 
-  public videosColumnDefs: ColDef[] = [
-    //{ field: 'id', headerName: 'ID', width: 80 },
-    { 
-      field: 'videoUrl', 
-      headerName: 'Video', 
-      flex: 1,
-      cellRenderer: (params: any) => {
-        if (params.value) {
-          return `<div style="display: flex; align-items: center; gap: 8px;">
-                    <i class="bi bi-play-circle-fill text-primary" style="font-size: 20px;"></i>
-                    <span>Video disponible</span>
-                  </div>`;
-        } else {
-          return `<div style="display: flex; align-items: center; gap: 8px;">
-                    <i class="bi bi-upload text-muted" style="font-size: 20px;"></i>
-                    <span class="text-muted">Subir video</span>
-                  </div>`;
-        }
-      },
-      editable: false,
+
+
+public videosColumnDefs: ColDef[] = [
+  { 
+    field: 'videoUrl', 
+    headerName: 'Video', 
+    flex: 1,
+    cellRenderer: (params: any) => {
+      const cellContainer = document.createElement('div');
+      cellContainer.style.width = '100%';
+      cellContainer.style.height = '100%';
+      cellContainer.style.display = 'flex';
+      cellContainer.style.alignItems = 'center';
+      cellContainer.style.justifyContent = 'center';
+      cellContainer.style.cursor = 'pointer';
+      cellContainer.style.gap = '8px';
+
+      if (params.data.imageUrl && params.data.imageUrl !== 'NO FILE') {
+        // Video ya subido
+        const icon = document.createElement('i');
+        icon.className = 'bi bi-play-circle-fill text-success';
+        icon.style.fontSize = '20px';
+        
+        const text = document.createElement('span');
+        text.textContent = 'Video subido - Click para cambiar';
+        
+        cellContainer.appendChild(icon);
+        cellContainer.appendChild(text);
+      } else {
+        // No hay video
+        const icon = document.createElement('i');
+        icon.className = 'bi bi-cloud-upload text-primary';
+        icon.style.fontSize = '20px';
+        
+        const text = document.createElement('span');
+        text.textContent = 'Click para subir video';
+        
+        cellContainer.appendChild(icon);
+        cellContainer.appendChild(text);
+      }
+
+      // Agregar evento click directamente al container
+      cellContainer.addEventListener('click', () => {
+        // Crear objeto con estructura correcta para el servicio
+        const mockParams = {
+          node: params.node,
+          data: params.data,
+          colDef: {
+            cellRendererParams: {
+              field: 'imageUrl'
+            }
+          }
+        };
+        this.imageHandlerService.onVideoCellClicked(mockParams as any);
+      });
+
+      return cellContainer;
     },
-    { field: 'description', headerName: 'Descripción', flex: 1, editable: () => !this.signalsService.getClosedReport()()},
-    //{ field: 'fecha', headerName: 'Fecha', width: 120 }
-  ];
+    editable: false,
+  },
+  { field: 'description', headerName: 'Descripción', flex: 1, editable: () => !this.signalsService.getClosedReport()()},
+];
+
 
  public notasColumnDefs: ColDef[] = [
   {
@@ -936,7 +1001,7 @@ obtenerAnoMes(fecha) {
   }
 
 
- ]
+  ]
 
   public conceptosColumnDefs: ColDef[] = [
     {
@@ -1011,7 +1076,7 @@ obtenerAnoMes(fecha) {
     { 
       field: 'date', 
       headerName: 'Fecha', 
-      width: 90, 
+      width: 120, 
       //editable: () => !this.signalsService.getClosedReport()(),
       editable: true,
       cellEditor: 'agDateCellEditor',
@@ -1074,7 +1139,7 @@ obtenerAnoMes(fecha) {
     { 
       field: 'startTime', 
       headerName: 'Inicio', 
-      width: 85, 
+      width: 105, 
       //editable: () => !this.signalsService.getClosedReport()(),
       editable: true,
       cellEditor: 'timeEditor',
@@ -1115,6 +1180,13 @@ obtenerAnoMes(fecha) {
       headerName: 'Comentario', 
       //editable: () => !this.signalsService.getClosedReport()(),
       editable: true,
+      width: 180,
+    },
+    { 
+      field: 'paid', 
+      headerName: 'Pagado', 
+      //editable: () => !this.signalsService.getClosedReport()(),
+      editable: true,
       width: 120,
     },
     { 
@@ -1122,7 +1194,7 @@ obtenerAnoMes(fecha) {
       headerName: 'Cerrado', 
       //editable: () => !this.signalsService.getClosedReport()(),
       editable: true,
-      width: 120,
+      width: 100,
     }
   ];
 
@@ -1187,9 +1259,6 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
   });
 }
 
-
-
-
   addFotografia(){
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
@@ -1240,7 +1309,7 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     }, 0);
   }
 
-  addVideo(){
+addVideo(){
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Agregar Video OT',
@@ -1258,67 +1327,40 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
       return;
     }
 
-    // Abrir el explorador de archivos para seleccionar video
-    const videoFileInput = document.querySelector('input[type="file"][accept="video/*"]') as HTMLInputElement;
-    if (videoFileInput) {
-      videoFileInput.click();
-    }
-  }
+    const tempId = `temp_video_${this.tempPersonalIdCounter++}`;
+   
+    const newVideo = {
+      id: tempId,
+      idOt: parseInt(this.selectedOt.id),
+      idReporte: this.selectedReporteId,
+      idResource: null,
+      position: '', 
+      quantity: 1,
+      start: this.selectedReporteHoraInicio + ':00',
+      end: this.selectedReporteHoraTermino + ':00',
+      azureUrl: 'NO FILE',
+      date: this.selectedReporteFecha,
+      typeNote: 'Video',
+      imageUrl: 'NO FILE',        // ← Campo donde Firebase guarda la URL
+      description: '',
+      orden: 1,
+      __isNew: true
+    };
 
-  onVideoFileSelected(event: any) {
-    const input = event.target as HTMLInputElement;
-    if (input.files && input.files.length > 0) {
-      const file = input.files[0];
-      
-      // Validar que sea un archivo de video
-      if (!file.type.startsWith('video/')) {
-        alerts.basicAlert('Error', 'Por favor seleccione un archivo de video válido.', 'error');
-        return;
+    this.videos = [newVideo, ...this.videos];
+    this.notSavedVideoChanges = true;
+
+    setTimeout(() => {
+      if (this.videoGridApi) {
+        this.videoGridApi.startEditingCell({
+          rowIndex: 0,
+          colKey: 'videoUrl'
+        });
       }
+    }, 0);
+}
 
-      // Validar tamaño del archivo (ejemplo: máximo 100MB)
-      const maxSize = 100 * 1024 * 1024; // 100MB en bytes
-      if (file.size > maxSize) {
-        alerts.basicAlert('Error', 'El archivo es demasiado grande. Tamaño máximo: 100MB', 'error');
-        return;
-      }
 
-      console.log('Video seleccionado:', file);
-      
-      // Crear nuevo registro de video con el archivo seleccionado
-      const tempId = `temp_video_${this.tempPersonalIdCounter++}`;
-      
-      const newVideo = {
-        id: tempId,
-        idOt: parseInt(this.selectedOt.id),
-        idReporte: this.selectedReporteId,
-        idResource: null,
-        position: '', 
-        quantity: 1,
-        start: this.selectedReporteHoraInicio + ':00',
-        end: this.selectedReporteHoraTermino + ':00',
-        azureUrl: 'NO FILE',
-        date: this.selectedReporteFecha,
-        typeNote: 'Video',
-        videoUrl: URL.createObjectURL(file), // URL temporal para vista previa
-        description: file.name.split('.')[0], // Nombre del archivo sin extensión como descripción
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type,
-        selectedFile: file, // Guardamos el archivo para subirlo después
-        orden: 1,
-        __isNew: true
-      };
-
-      this.videos = [newVideo, ...this.videos];
-      this.notSavedVideoChanges = true;
-
-      alerts.basicAlert('Éxito', `Video "${file.name}" seleccionado. Recuerde guardar los cambios.`, 'success');
-      
-      // Limpiar el input para permitir seleccionar el mismo archivo nuevamente
-      input.value = '';
-    }
-  }
 
   async saveFotografiasChanges() {
     this.trackingService.addLog(
@@ -2085,6 +2127,22 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
       console.log('OT seleccionada para vista previa:', this.selectedOt);
       console.log('Total OTs seleccionadas:', selectedRows.length);
       
+      // Verificar si hay proyecto seleccionado/detectado solo si hay OTs seleccionadas
+      if (selectedRows.length > 0) {
+        const detectedProject = this.detectProjectFromData();
+        if (!detectedProject) {
+          console.log('⚠️ No hay proyecto seleccionado. Se requiere seleccionar proyecto en sidebar.');
+          // Solo mostrar alerta si se está intentando trabajar con conceptos o materiales
+          // alerts.basicAlert(
+          //   'Proyecto Requerido', 
+          //   'Por favor selecciona un proyecto en el sidebar izquierdo antes de trabajar con las OTs. Esto es necesario para cargar correctamente los catálogos de conceptos y materiales.', 
+          //   'warning'
+          // );
+        } else {
+          console.log('✅ Proyecto detectado:', detectedProject);
+        }
+      }
+      
       // Cargar reportes diarios para esta OT
       this.loadDailyReports();
       
@@ -2277,11 +2335,46 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
   }
 
   selectReporte(reporte: ReporteDiario) {
+    // Limpiar selecciones previas
+    this.selectedFotografia = null;
+    this.selectedVideo = null;
+    
+    // Verificar que el proyecto del sidebar coincida con el proyecto de la OT
+    const sidebarProjectId = this.signalsService.getProjectSelectedBySidebar()();
+    const otProjectId = this.selectedOt?.idProject;
+    
+    console.log('🔍 Comparando proyectos:');
+    console.log('  - Sidebar Project ID:', sidebarProjectId);
+    console.log('  - OT Project ID:', otProjectId);
+    
+    // Obtener nombres de proyectos usando projectsList
+    const sidebarProject = this.projectsList.find(p => p.id === sidebarProjectId);
+    const otProject = this.projectsList.find(p => p.id === otProjectId);
+    
+    const sidebarProjectName = sidebarProject?.name || '';
+    const otProjectName = otProject?.name || '';
+    
+    console.log('  - Sidebar Project Name:', sidebarProjectName);
+    console.log('  - OT Project Name:', otProjectName);
+    
+    // Validar que ambos proyectos coincidan
+    if (!sidebarProjectName || sidebarProjectName !== otProjectName) {
+      console.log('⚠️ Los proyectos no coinciden, mostrando alerta');
+      alerts.basicAlert(
+        'Proyecto Requerido', 
+        `El proyecto seleccionado en el sidebar (${sidebarProjectName || 'ninguno'}) debe coincidir con el proyecto de la OT (${otProjectName}). Por favor selecciona el proyecto correcto en el sidebar izquierdo.`, 
+        'warning'
+      );
+    } else {
+      console.log('✅ Los proyectos coinciden correctamente');
+    }
+    
     this.selectedReporteFecha = reporte.fecha || reporte.date.split('T')[0];
     this.selectedReporteTipo = reporte.tipoNota || reporte.type;
     this.selectedReporteHoraInicio = reporte.horaInicio || reporte.startTime.substring(0, 5);
     this.selectedReporteHoraTermino = reporte.horaTermino || reporte.endTime.substring(0, 5);
     this.selectedReporteId = reporte.id;
+    
     const id: number = Number(this.selectedReporteId);
     //this.updateExcelService.UpdateOT(id)
     this.signalsService.setClosedReport(reporte.close)
@@ -2292,6 +2385,25 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     this.obtenerVideos(this.selectedReporteId);
     this.obtenerNotas(this.selectedReporteId);
     this.obtenerConcep(this.selectedReporteId);
+    
+    // Actualizar selección visual en el grid
+    if (this.reportesGridApi) {
+      // Encontrar el índice del reporte seleccionado
+      const reporteIndex = this.reportesDiarios.findIndex(r => r.id === reporte.id);
+      
+      if (reporteIndex >= 0) {
+        // Limpiar selecciones anteriores
+        this.reportesGridApi.deselectAll();
+        // Seleccionar la fila correspondiente
+        const rowNode = this.reportesGridApi.getDisplayedRowAtIndex(reporteIndex);
+        
+        if (rowNode) {
+          rowNode.setSelected(true);
+          // Asegurar que la fila sea visible
+          this.reportesGridApi.ensureIndexVisible(reporteIndex);
+        }
+      }
+    }
 
     // Resetear vista previa del PDF cuando se selecciona nueva fecha
     this.showPdfEmbed = false;
@@ -2335,14 +2447,20 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
 
   selectVideo(video: any) {
     // Map the data from the grid to the expected Video interface
+    // La URL del video está en el campo 'imageUrl'
+    const videoUrl = video.imageUrl || video.videoUrl || video.url || '';
+    
     this.selectedVideo = {
       id: video.id,
       nombre: video.nombre || '',
       descripcion: video.descripcion || '',
       fecha: video.fecha || '',
-      url: video.videoUrl || video.url || '' // Use videoUrl from grid or fallback to url
+      url: videoUrl
     };
+    
     console.log('Video seleccionado:', this.selectedVideo);
+    console.log('Video original (con imageUrl):', video);
+    console.log('URL del video:', videoUrl);
   }
 
   // Función helper para convertir tiempo a ticks de .NET
@@ -2479,6 +2597,7 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
       description: 'SIN DESCRIPCIÓN',
       result: 'SIN RESULTADO',
       active: true,
+      paid: true,
       close: false,
       __isNew: true
     };
@@ -2952,6 +3071,16 @@ async saveChangesEquipos() {
             this.reportesDiarios = response.data.map((item: any) => {
               return { ...item };
             });
+            
+            // Seleccionar automáticamente el primer reporte si existe
+            if (this.reportesDiarios.length > 0) {
+              const firstReport = this.reportesDiarios[0];
+              
+              // Esperar un poco para asegurar que el grid esté completamente renderizado
+              setTimeout(() => {
+                this.selectReporte(firstReport);
+              }, 200);
+            }
           } else {
             this.reportesDiarios = [];
           }
@@ -2965,6 +3094,8 @@ async saveChangesEquipos() {
   }
 
   async generatePdfPreview() {
+    
+    
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Generar Vista Previa PDF OT',
@@ -2973,11 +3104,14 @@ async saveChangesEquipos() {
     );
     
     if (!this.selectedOt) {
+      console.error('❌ Error: No hay OT seleccionada');
       alerts.basicAlert('Error', 'Debe seleccionar una OT primero', 'error');
       return;
     }
 
     if (!this.selectedReporteId || !this.selectedReporteFecha) {
+      console.error('❌ Error: No hay reporte seleccionado');
+      console.log('Detalles:', { selectedReporteId: this.selectedReporteId, selectedReporteFecha: this.selectedReporteFecha });
       alerts.basicAlert('Error', 'Debe seleccionar un reporte diario primero', 'error');
       return;
     }
@@ -3060,18 +3194,22 @@ async saveChangesEquipos() {
         this.showPdfEmbed = true;
         this.isGeneratingPdf = false;
 
-        console.log('PDF generado exitosamente para vista previa');
+        console.log('✅ PDF generado exitosamente para vista previa');
+        console.log('📄 URL del PDF:', url);
+        console.log('🖥️ Estado de visualización:', { showPdfEmbed: this.showPdfEmbed, pdfUrl: !!this.pdfUrl });
         
         //alerts.basicAlert('Éxito', 'PDF generado correctamente', 'success');
       });
 
     } catch (error) {
-      console.error('Error al generar PDF:', error);
+      console.error('❌ Error al generar PDF:', error);
+      console.error('📊 Stack trace:', error);
       this.isGeneratingPdf = false;
       
       let errorMessage = 'No se pudo generar el PDF del reporte';
       if (error instanceof Error) {
         errorMessage = error.message;
+        console.error('💥 Mensaje de error:', errorMessage);
       }
       
       alerts.basicAlert('Error', errorMessage, 'error');
@@ -3896,7 +4034,16 @@ async saveChangesEquipos() {
   obtenerVideos(selectedReporteId: any) {
     this.logbookService.getInfoByReporte(selectedReporteId, "Video").subscribe(
       (data: any) => {
-        this.videos = data.data;
+        this.videos = data.data.map((video: any) => {
+          // La URL del video está en el campo 'imageUrl'
+          const videoUrl = video.imageUrl || video.videoUrl || video.url || '';
+          
+          return {
+            ...video,
+            url: videoUrl,
+            videoUrl: videoUrl
+          };
+        });
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -4014,13 +4161,16 @@ async saveChangesEquipos() {
         console.log('Proyecto detectado automáticamente:', detectedProject);
         this.idProject = parseInt(detectedProject.toString());
       } else {
-        // Si no se puede detectar, mostrar mensaje al usuario
-        alerts.basicAlert(
-          'Proyecto requerido',
-          'Por favor seleccione un proyecto en el menú lateral para cargar los conceptos correctamente.',
-          'warning'
-        );
-        return EMPTY;
+        // Si no se puede detectar, solo loggear el warning
+        console.warn('⚠️ No se pudo detectar proyecto para cargar conceptos. Los conceptos se cargarán sin filtro por proyecto.');
+        // Solo mostrar alerta si es crítico para la funcionalidad
+        // alerts.basicAlert(
+        //   'Proyecto requerido',
+        //   'Por favor seleccione un proyecto en el menú lateral para cargar los conceptos correctamente.',
+        //   'warning'
+        // );
+        // En lugar de retornar EMPTY, intentar cargar conceptos sin filtro de proyecto
+        // return EMPTY;
       }
     }
     
@@ -4042,24 +4192,41 @@ async saveChangesEquipos() {
   // Método para detectar proyecto automáticamente desde los datos
   private detectProjectFromData(): number | null {
     try {
-      // Opción 1: Desde OT seleccionada (usando projectId en lugar de idProject)
-      if (this.selectedOt && (this.selectedOt as any).projectId) {
-        const projectId = (this.selectedOt as any).projectId;
-        console.log('Proyecto detectado desde OT seleccionada:', projectId);
-        return parseInt(projectId.toString());
+      // Opción 1: Desde sidebar (señales)
+      const sidebarProject = this.signalsService.getProjectSelectedBySidebar()();
+      if (sidebarProject && sidebarProject !== 0) {
+        console.log('Proyecto detectado desde sidebar:', sidebarProject);
+        return sidebarProject;
       }
       
-      // Opción 2: Desde cualquier OT en la lista
-      if (this.rowData && this.rowData.length > 0) {
-        const firstOtWithProject = this.rowData.find(ot => (ot as any).projectId);
-        if (firstOtWithProject) {
-          const projectId = (firstOtWithProject as any).projectId;
-          console.log('Proyecto detectado desde lista de OTs:', projectId);
-          return parseInt(projectId.toString());
+      // Opción 2: Desde OT seleccionada (probar diferentes nombres de campo)
+      if (this.selectedOt) {
+        const otData = this.selectedOt as any;
+        const possibleFields = ['projectId', 'idProject', 'project_id', 'idProyecto', 'proyectoId'];
+        
+        for (const field of possibleFields) {
+          if (otData[field] && otData[field] !== 0) {
+            console.log(`Proyecto detectado desde OT seleccionada (campo ${field}):`, otData[field]);
+            return parseInt(otData[field].toString());
+          }
         }
       }
       
-      // Opción 3: Desde datos de conceptos existentes (si hay relación con proyecto)
+      // Opción 3: Desde cualquier OT en la lista
+      if (this.rowData && this.rowData.length > 0) {
+        const possibleFields = ['projectId', 'idProject', 'project_id', 'idProyecto', 'proyectoId'];
+        
+        for (const field of possibleFields) {
+          const firstOtWithProject = this.rowData.find(ot => (ot as any)[field] && (ot as any)[field] !== 0);
+          if (firstOtWithProject) {
+            const projectId = (firstOtWithProject as any)[field];
+            console.log(`Proyecto detectado desde lista de OTs (campo ${field}):`, projectId);
+            return parseInt(projectId.toString());
+          }
+        }
+      }
+      
+      // Opción 4: Desde datos de conceptos existentes (si hay relación con proyecto)
       if (this.conceptos && this.conceptos.length > 0) {
         // Buscar en la lista de proyectos cargada
         if (this.projectsList && this.projectsList.length > 0) {
