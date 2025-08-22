@@ -2339,24 +2339,39 @@ addVideo(){
     this.selectedVideo = null;
     
     // Verificar que el proyecto del sidebar coincida con el proyecto de la OT
-    const sidebarProject = this.signalsService.getProjectSelectedBySidebar()();
+    const sidebarProjectId = this.signalsService.getProjectSelectedBySidebar()();
     const otProjectName = this.selectedOt?.projectName || '';
     
     console.log('🔍 Comparando proyectos:');
-    console.log('  - Sidebar:', sidebarProject);
+    console.log('  - Sidebar Project ID:', sidebarProjectId);
     console.log('  - OT projectName:', otProjectName);
     
-    // Validar que ambos proyectos coincidan
-    if (!sidebarProject || sidebarProject !== otProjectName) {
-      console.log('⚠️ Los proyectos no coinciden, mostrando alerta');
-      alerts.basicAlert(
-        'Proyecto Requerido', 
-        `El proyecto seleccionado en el sidebar (${sidebarProject || 'ninguno'}) debe coincidir con el proyecto de la OT (${otProjectName}). Por favor selecciona el proyecto correcto en el sidebar izquierdo.`, 
-        'warning'
-      );
-    } else {
-      console.log('✅ Los proyectos coinciden correctamente');
-    }
+    // Obtener el nombre del proyecto del sidebar usando el ID
+    this.projectsService.getProjectsByContract(this.signalsService.idUser(), this.signalsService.getContractSelectedBySidebar()() || 0)
+      .subscribe({
+        next: (projectsData: any) => {
+          const projects = Object.values(projectsData) as any[];
+          const sidebarProject = projects.find((p: any) => p.idProject === sidebarProjectId);
+          const sidebarProjectName = sidebarProject?.projectName || '';
+          
+          console.log('  - Sidebar Project Name:', sidebarProjectName);
+          
+          // Validar que ambos proyectos coincidan
+          if (!sidebarProjectName || sidebarProjectName !== otProjectName) {
+            console.log('⚠️ Los proyectos no coinciden, mostrando alerta');
+            alerts.basicAlert(
+              'Proyecto Requerido', 
+              `El proyecto seleccionado en el sidebar (${sidebarProjectName || 'ninguno'}) debe coincidir con el proyecto de la OT (${otProjectName}). Por favor selecciona el proyecto correcto en el sidebar izquierdo.`, 
+              'warning'
+            );
+          } else {
+            console.log('✅ Los proyectos coinciden correctamente');
+          }
+        },
+        error: (error) => {
+          console.error('Error al obtener proyectos:', error);
+        }
+      });
     
     this.selectedReporteFecha = reporte.fecha || reporte.date.split('T')[0];
     this.selectedReporteTipo = reporte.tipoNota || reporte.type;
