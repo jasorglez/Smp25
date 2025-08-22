@@ -2328,6 +2328,12 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     this.selectedFotografia = null;
     this.selectedVideo = null;
     
+    // Debug: Ver estructura de datos para comparación
+    const sidebarProject = this.signalsService.getProjectSelectedBySidebar()();
+    console.log('🔍 Proyecto del sidebar:', sidebarProject);
+    console.log('🔍 Estructura completa de selectedOt:', this.selectedOt);
+    console.log('🔍 Detectando proyecto de la OT...');
+    
     // Verificar si hay proyecto seleccionado al elegir un reporte
     const detectedProject = this.detectProjectFromData();
     console.log('🔍 Verificando proyecto al seleccionar reporte:', detectedProject);
