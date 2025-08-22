@@ -52,6 +52,7 @@ interface OrdenesData {
   description: string;
   nameConsumer: string;
   area: string;
+  projectName?: string;
 }
 
 // Interfaces para la data de las pestañas
