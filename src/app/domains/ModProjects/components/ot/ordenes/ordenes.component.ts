@@ -247,6 +247,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   fechaFin: string = '';
   tipoReporte: string = 'personalizado';
   opcionSeleccionada: string = 'seleccionar';
+  cuadrillaSelect: string = '';
   opcionesNumericas = [6, 4, 8, 9];
   seleccionados: number[] = [];
   projet: number = 0;
@@ -834,7 +835,7 @@ obtenerAnoMes(fecha) {
       headerName: 'Cuadrilla', 
       flex: 1, editable:() => !this.signalsService.getClosedReport()(), 
       valueGetter: (params) => {
-        return params.data.cuadrilla || 'Cuadrilla ';
+        return params.data.cuadrilla || `Cuadrilla ${this.cuadrillaSelect}`;
       }
     },
     /*{ field: 'start', headerName: 'Inicio', width: 100, editable: !this.signalsService.getClosedReport() },
@@ -2101,7 +2102,17 @@ addVideo(){
   onSelectionChanged(event: any) {
     const selectedRows = this.gridApi.getSelectedRows();
     console.log('Filas seleccionadas:', selectedRows);
-    
+    const cuadrilla = this.projectsList.find(p => p.id === selectedRows[0].idProject);
+    console.log('Cuadrilla seleccionada:', cuadrilla.name);
+    if(cuadrilla.name == "ADMON TD"){
+      this.cuadrillaSelect = "";
+    }else{
+      console.log('Cuadrilla seleccionada:', cuadrilla.name);
+      const select = cuadrilla.name.split('-');
+      const numero = parseInt(select[1], 10);
+      this.cuadrillaSelect = `${numero}`;
+    }
+    console.log('Cuadrilla seleccionada:', this.cuadrillaSelect);
     // Actualizar la OT seleccionada para mostrar en la vista previa
     // Si hay múltiples selecciones, usar la primera para la vista previa
     if (selectedRows.length > 0) {
@@ -2374,7 +2385,7 @@ addVideo(){
     this.selectedReporteHoraInicio = reporte.horaInicio || reporte.startTime.substring(0, 5);
     this.selectedReporteHoraTermino = reporte.horaTermino || reporte.endTime.substring(0, 5);
     this.selectedReporteId = reporte.id;
-    
+    console.log(reporte)
     const id: number = Number(this.selectedReporteId);
     //this.updateExcelService.UpdateOT(id)
     this.signalsService.setClosedReport(reporte.close)
