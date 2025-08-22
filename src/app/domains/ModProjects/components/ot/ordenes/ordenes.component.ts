@@ -2339,18 +2339,11 @@ addVideo(){
     
     // Verificar que el proyecto del sidebar coincida con el proyecto de la OT
     const sidebarProject = this.signalsService.getProjectSelectedBySidebar()();
-    
-    // Obtener el nombre del proyecto de la OT usando idProject
-    let otProjectName = '';
-    if (this.selectedOt?.idProject) {
-      const project = this.projectsList.find(p => p.id === this.selectedOt.idProject);
-      otProjectName = project ? project.name : '';
-    }
+    const otProjectName = this.selectedOt?.projectName || '';
     
     console.log('🔍 Comparando proyectos:');
     console.log('  - Sidebar:', sidebarProject);
-    console.log('  - OT ID:', this.selectedOt?.idProject);
-    console.log('  - OT Name:', otProjectName);
+    console.log('  - OT projectName:', otProjectName);
     
     // Validar que ambos proyectos coincidan
     if (!sidebarProject || sidebarProject !== otProjectName) {
