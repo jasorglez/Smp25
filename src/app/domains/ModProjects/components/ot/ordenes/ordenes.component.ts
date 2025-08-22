@@ -857,30 +857,69 @@ obtenerAnoMes(fecha) {
     //{ field: 'fecha', headerName: 'Fecha', width: 120 }
   ];
 
-  public videosColumnDefs: ColDef[] = [
-    //{ field: 'id', headerName: 'ID', width: 80 },
-    { 
-      field: 'videoUrl', 
-      headerName: 'Video', 
-      flex: 1,
-      cellRenderer: (params: any) => {
-        if (params.value) {
-          return `<div style="display: flex; align-items: center; gap: 8px;">
-                    <i class="bi bi-play-circle-fill text-primary" style="font-size: 20px;"></i>
-                    <span>Video disponible</span>
-                  </div>`;
-        } else {
-          return `<div style="display: flex; align-items: center; gap: 8px;">
-                    <i class="bi bi-upload text-muted" style="font-size: 20px;"></i>
-                    <span class="text-muted">Subir video</span>
-                  </div>`;
-        }
-      },
-      editable: false,
+
+
+public videosColumnDefs: ColDef[] = [
+  { 
+    field: 'videoUrl', 
+    headerName: 'Video', 
+    flex: 1,
+    cellRenderer: (params: any) => {
+      const cellContainer = document.createElement('div');
+      cellContainer.style.width = '100%';
+      cellContainer.style.height = '100%';
+      cellContainer.style.display = 'flex';
+      cellContainer.style.alignItems = 'center';
+      cellContainer.style.justifyContent = 'center';
+      cellContainer.style.cursor = 'pointer';
+      cellContainer.style.gap = '8px';
+
+      if (params.data.imageUrl && params.data.imageUrl !== 'NO FILE') {
+        // Video ya subido
+        const icon = document.createElement('i');
+        icon.className = 'bi bi-play-circle-fill text-success';
+        icon.style.fontSize = '20px';
+        
+        const text = document.createElement('span');
+        text.textContent = 'Video subido - Click para cambiar';
+        
+        cellContainer.appendChild(icon);
+        cellContainer.appendChild(text);
+      } else {
+        // No hay video
+        const icon = document.createElement('i');
+        icon.className = 'bi bi-cloud-upload text-primary';
+        icon.style.fontSize = '20px';
+        
+        const text = document.createElement('span');
+        text.textContent = 'Click para subir video';
+        
+        cellContainer.appendChild(icon);
+        cellContainer.appendChild(text);
+      }
+
+      // Agregar evento click directamente al container
+      cellContainer.addEventListener('click', () => {
+        // Crear objeto con estructura correcta para el servicio
+        const mockParams = {
+          node: params.node,
+          data: params.data,
+          colDef: {
+            cellRendererParams: {
+              field: 'imageUrl'
+            }
+          }
+        };
+        this.imageHandlerService.onVideoCellClicked(mockParams as any);
+      });
+
+      return cellContainer;
     },
-    { field: 'description', headerName: 'Descripción', flex: 1, editable: () => !this.signalsService.getClosedReport()()},
-    //{ field: 'fecha', headerName: 'Fecha', width: 120 }
-  ];
+    editable: false,
+  },
+  { field: 'description', headerName: 'Descripción', flex: 1, editable: () => !this.signalsService.getClosedReport()()},
+];
+
 
  public notasColumnDefs: ColDef[] = [
   {
@@ -960,7 +999,7 @@ obtenerAnoMes(fecha) {
   }
 
 
- ]
+  ]
 
   public conceptosColumnDefs: ColDef[] = [
     {
@@ -1268,7 +1307,7 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
     }, 0);
   }
 
-  addVideo(){
+addVideo(){
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Agregar Video OT',
@@ -1286,67 +1325,40 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
       return;
     }
 
-    // Abrir el explorador de archivos para seleccionar video
-    const videoFileInput = document.querySelector('input[type="file"][accept="video/*"]') as HTMLInputElement;
-    if (videoFileInput) {
-      videoFileInput.click();
-    }
-  }
+    const tempId = `temp_video_${this.tempPersonalIdCounter++}`;
+   
+    const newVideo = {
+      id: tempId,
+      idOt: parseInt(this.selectedOt.id),
+      idReporte: this.selectedReporteId,
+      idResource: null,
+      position: '', 
+      quantity: 1,
+      start: this.selectedReporteHoraInicio + ':00',
+      end: this.selectedReporteHoraTermino + ':00',
+      azureUrl: 'NO FILE',
+      date: this.selectedReporteFecha,
+      typeNote: 'Video',
+      imageUrl: 'NO FILE',        // ← Campo donde Firebase guarda la URL
+      description: '',
+      orden: 1,
+      __isNew: true
+    };
 
-  onVideoFileSelected(event: any) {
-    const input = event.target as HTMLInputElement;
-    if (input.files && input.files.length > 0) {
-      const file = input.files[0];
-      
-      // Validar que sea un archivo de video
-      if (!file.type.startsWith('video/')) {
-        alerts.basicAlert('Error', 'Por favor seleccione un archivo de video válido.', 'error');
-        return;
+    this.videos = [newVideo, ...this.videos];
+    this.notSavedVideoChanges = true;
+
+    setTimeout(() => {
+      if (this.videoGridApi) {
+        this.videoGridApi.startEditingCell({
+          rowIndex: 0,
+          colKey: 'videoUrl'
+        });
       }
+    }, 0);
+}
 
-      // Validar tamaño del archivo (ejemplo: máximo 100MB)
-      const maxSize = 100 * 1024 * 1024; // 100MB en bytes
-      if (file.size > maxSize) {
-        alerts.basicAlert('Error', 'El archivo es demasiado grande. Tamaño máximo: 100MB', 'error');
-        return;
-      }
 
-      console.log('Video seleccionado:', file);
-      
-      // Crear nuevo registro de video con el archivo seleccionado
-      const tempId = `temp_video_${this.tempPersonalIdCounter++}`;
-      
-      const newVideo = {
-        id: tempId,
-        idOt: parseInt(this.selectedOt.id),
-        idReporte: this.selectedReporteId,
-        idResource: null,
-        position: '', 
-        quantity: 1,
-        start: this.selectedReporteHoraInicio + ':00',
-        end: this.selectedReporteHoraTermino + ':00',
-        azureUrl: 'NO FILE',
-        date: this.selectedReporteFecha,
-        typeNote: 'Video',
-        videoUrl: URL.createObjectURL(file), // URL temporal para vista previa
-        description: file.name.split('.')[0], // Nombre del archivo sin extensión como descripción
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type,
-        selectedFile: file, // Guardamos el archivo para subirlo después
-        orden: 1,
-        __isNew: true
-      };
-
-      this.videos = [newVideo, ...this.videos];
-      this.notSavedVideoChanges = true;
-
-      alerts.basicAlert('Éxito', `Video "${file.name}" seleccionado. Recuerde guardar los cambios.`, 'success');
-      
-      // Limpiar el input para permitir seleccionar el mismo archivo nuevamente
-      input.value = '';
-    }
-  }
 
   async saveFotografiasChanges() {
     this.trackingService.addLog(
