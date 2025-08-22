@@ -2353,12 +2353,12 @@ addVideo(){
     
     const sidebarProjectName = sidebarProject?.name || '';
     const otProjectName = otProject?.name || '';
-    
+    const hasPermission = this.authService.hasDetailedPermission('projects', 'get-all-ot');
     console.log('  - Sidebar Project Name:', sidebarProjectName);
     console.log('  - OT Project Name:', otProjectName);
     
     // Validar que ambos proyectos coincidan
-    if (!sidebarProjectName || sidebarProjectName !== otProjectName) {
+    if (!hasPermission) {
       console.log('⚠️ Los proyectos no coinciden, mostrando alerta');
       alerts.basicAlert(
         'Proyecto Requerido', 
