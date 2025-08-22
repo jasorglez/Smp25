@@ -290,6 +290,13 @@ export default class MasterClockComponent implements OnInit {
       {
         field: 'baseHours',
         headerName: 'Horas base',
+        cellStyle: (params) => {
+          // Solo aplicar estilo si hay un valor numérico válido
+          if (params.value !== null && params.value !== undefined && params.value !== '') {
+            return { backgroundColor: '#d4edda' };
+          }
+          return null;
+        },
         editable: false,
         valueFormatter: (params) => {
         const value = params.value;
@@ -320,6 +327,13 @@ export default class MasterClockComponent implements OnInit {
       {
         field: 'specialExtraHours',
         headerName: 'Horas extra especiales',
+        cellStyle: (params) => {
+          // Solo aplicar estilo si hay un valor numérico válido
+          if (params.value !== null && params.value !== undefined && params.value !== '') {
+            return { backgroundColor: '#d4edda' };
+          }
+          return null;
+        },
         editable: false
       },
       {

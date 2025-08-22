@@ -522,6 +522,7 @@ export class MasterPayrollComponent implements OnInit {
         field: 'totalBaseWorkingHours',
         headerName: 'Total Horas Trabajadas',
         width: 170,
+        cellStyle: { backgroundColor: '#d4edda' },
         valueFormatter: (params) => {
         const value = params.value;
         if (typeof value !== 'number' || isNaN(value)) return '';
