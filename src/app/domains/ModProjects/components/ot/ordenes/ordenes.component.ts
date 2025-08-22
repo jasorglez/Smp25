@@ -1218,9 +1218,6 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
   });
 }
 
-
-
-
   addFotografia(){
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
