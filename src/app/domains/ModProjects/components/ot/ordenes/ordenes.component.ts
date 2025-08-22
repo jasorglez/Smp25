@@ -3661,6 +3661,7 @@ async saveChangesEquipos() {
       typeNote: 'PERSONAL',
       description: 'NOTAS',
       imageazure: 'NO FILE',
+      cuadrilla: `Cuadrilla ${this.cuadrillaSelect}`,
       orden: 1,
       __isNew: true
     };
