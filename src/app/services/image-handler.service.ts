@@ -91,8 +91,7 @@ export class ImageHandlerService {
     input.click();
   }
 
-  // NUEVO MÉTODO para subir videos
-// MÉTODO MODIFICADO para subir videos
+// MÉTODO CORREGIDO para subir videos
 uploadVideo(event: any, params: any) {
   const file = event.target.files[0];
   if (!file) return;
@@ -110,13 +109,21 @@ uploadVideo(event: any, params: any) {
     return;
   }
 
-  // Usar campo fijo en lugar de intentar obtenerlo de params
-  const field = 'imageUrl';
   const path = `videos/${this.storagesService.generateRandom()}${file.name}`;
 
   this.storagesService.uploadFile(file, path)
     .then(url => {
-      params.node.setDataValue(field, url);
+      // Actualizar directamente los datos en lugar de usar setDataValue
+      params.data.imageUrl = url;
+      
+      // Marcar como modificado para que se guarde
+      params.data.__modified = true;
+      
+      // Refrescar la celda para mostrar el cambio
+      if (params.node && params.node.gridApi) {
+        params.node.gridApi.refreshCells({ rowNodes: [params.node] });
+      }
+      
       alerts.basicAlert('Subir video', 'Video subido exitosamente.', 'success');
     })
     .catch(error => {
