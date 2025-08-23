@@ -1295,7 +1295,7 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
       date: this.selectedReporteFecha,
       typeNote: 'Photo',
       imageazure: 'NO FILE',
-      orden: 1,
+      orden: 4,
       __isNew: true
     };
 
@@ -3525,6 +3525,43 @@ async saveChangesEquipos() {
     cleanedData.typeNote = cleanedData.typeNote || 'PERSONAL';
     cleanedData.description = cleanedData.description || 'NOTAS';
     cleanedData.orden = cleanedData.orden || 1;
+    
+    return cleanedData;
+  }
+
+  // Método específico para limpiar datos de fotografías
+  private cleanPhotoDataForServer(data: any): any {
+    const cleanedData = { ...data };
+    
+    console.log('🖼️ Limpiando datos de fotografía:', cleanedData);
+    
+    // Eliminar propiedades temporales de control
+    delete cleanedData.__isNew;
+    delete cleanedData.__modified;
+    
+    // Solo incluir ID si no es temporal
+    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
+      delete cleanedData.id;
+    }
+    
+    // Asegurar que los campos requeridos están presentes
+    if (!cleanedData.idOt) {
+      cleanedData.idOt = this.selectedOt?.id;
+    }
+    if (!cleanedData.idReporte) {
+      cleanedData.idReporte = this.selectedReporteId;
+    }
+    
+    // ✅ CONFIGURACIÓN CORRECTA PARA SIGNALR PHOTOUPDATE
+    cleanedData.typeNote = 'Photo';  // Requerido por backend para ReceivePhotoUpdate
+    cleanedData.orden = 4;           // Requerido por backend para ReceivePhotoUpdate
+    
+    // Mapear campos de fotografía a formato esperado por backend
+    cleanedData.description = cleanedData.descripcion || cleanedData.description || 'Sin descripción';
+    cleanedData.imageUrl = cleanedData.imageUrl || '';
+    cleanedData.imageAzure = cleanedData.imageazure || cleanedData.imageAzure || 'NO FILE';
+    
+    console.log('🖼️ Datos de fotografía limpiados:', cleanedData);
     
     return cleanedData;
   }
