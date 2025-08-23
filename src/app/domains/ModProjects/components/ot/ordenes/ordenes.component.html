@@ -54,9 +54,9 @@
               </div>
 
               <!-- Información detallada con pestañas -->
-              <div *ngIf="selectedOt" style="flex-grow: 1; display: flex; flex-direction: column;">
+              <div style="flex-grow: 1; display: flex; flex-direction: column;">
                 <!-- Label con información de la OT seleccionada -->
-                <div class="alert alert-info mb-1 py-1">
+                <div class="alert alert-info mb-1 py-1" *ngIf="selectedOt">
                   <small>
                     <strong><i class="bi bi-info-circle"></i> OT:</strong> {{selectedOt.otNumber}} - {{selectedOt.description}}
                     <span class="float-end">
@@ -69,6 +69,11 @@
                         <strong>Registro:</strong> {{selectedOt.registerDate | date:'dd-MM-yyyy'}}
                       </ng-template>
                     </span>
+                  </small>
+                </div>
+                <div class="alert alert-warning mb-1 py-1" *ngIf="!selectedOt">
+                  <small>
+                    <strong><i class="bi bi-info-circle"></i></strong> Selecciona una OT para ver los detalles del reporte
                   </small>
                 </div>
 
@@ -105,7 +110,7 @@
                   
                   <!-- Pestaña Reportes Diarios -->
                   <div class="tab-pane" [class.show]="activeTab === 'reportes'" [class.active]="activeTab === 'reportes'">
-                    <div class="row h-100">
+                    <div *ngIf="selectedOt; else noOtSelected" class="row h-100">
                       <nav class="col-auto d-flex flex-column align-items-start">
                         <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addReporte()"><i class="bi bi-plus-lg"></i></button>
                         <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
@@ -114,7 +119,7 @@
                       </nav>
                       <div class="col overflow-auto" style="height: calc(100vh - 250px);">
                         <ag-grid-angular 
-                           [ngStyle]="{ height: gridHeight}" 
+                           style="height: 100%; width: 100%;" 
                            class="ag-theme-quartz small-text-ag-grid" 
                            [rowData]="reportesDiarios" 
                            [columnDefs]="reportesColumnDefs" 
@@ -126,36 +131,57 @@
                         </ag-grid-angular>
                       </div>
                     </div>
+                    <ng-template #noOtSelected>
+                      <div class="h-100 d-flex align-items-center justify-content-center">
+                        <div class="text-center text-muted">
+                          <i class="bi bi-calendar3 display-4"></i>
+                          <h6 class="mt-3">Reportes Diarios</h6>
+                          <p class="mt-2"><i class="bi bi-arrow-left"></i> Selecciona una OT para ver los reportes diarios</p>
+                        </div>
+                      </div>
+                    </ng-template>
                   </div>
 
                   <!-- Pestaña Personal -->
                   <div class="tab-pane" [class.show]="activeTab === 'personal'" [class.active]="activeTab === 'personal'">
-                    <h6><i class="bi bi-people"></i> Personal Asignado <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
-                    <div class="row">
-                      <nav class="col-auto d-flex flex-column align-items-start">
-                        <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addPersonal()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
-                        <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="savePersonalChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedPersonalChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
-                        <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertPersonal()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
-                        <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deletePersonal()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
-                      </nav>
-                      <div class="col overflow-auto" style="height: calc(100vh - 250px);">
-                        <ag-grid-angular 
-                         [ngStyle]="{ height: gridHeight, width: gridWidthDetail }" 
-                         class="ag-theme-quartz small-text-ag-grid" 
-                         [rowData]="personal" 
-                         [columnDefs]="personalColumnDefs" 
-                         [gridOptions]="personalGridOptions" 
-                         (gridReady)="onPersonalGridReady($event)">
-                      </ag-grid-angular>
+                    <div *ngIf="selectedOt; else noOtSelectedPersonal">
+                      <h6><i class="bi bi-people"></i> Personal Asignado <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
+                      <div class="row">
+                        <nav class="col-auto d-flex flex-column align-items-start">
+                          <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addPersonal()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
+                          <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="savePersonalChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedPersonalChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
+                          <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertPersonal()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
+                          <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deletePersonal()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
+                        </nav>
+                        <div class="col overflow-auto" style="height: calc(100vh - 250px);">
+                          <ag-grid-angular 
+                           style="height: 100%; width: 100%;" 
+                           class="ag-theme-quartz small-text-ag-grid" 
+                           [rowData]="personal" 
+                           [columnDefs]="personalColumnDefs" 
+                           [gridOptions]="personalGridOptions" 
+                           (gridReady)="onPersonalGridReady($event)">
+                        </ag-grid-angular>
+                        </div>
                       </div>
                     </div>
+                    <ng-template #noOtSelectedPersonal>
+                      <div class="h-100 d-flex align-items-center justify-content-center">
+                        <div class="text-center text-muted">
+                          <i class="bi bi-people display-4"></i>
+                          <h6 class="mt-3">Personal Asignado</h6>
+                          <p class="mt-2"><i class="bi bi-arrow-left"></i> Selecciona una OT para ver el personal asignado</p>
+                        </div>
+                      </div>
+                    </ng-template>
                   </div>
 
        
                   <!-- Pestaña Fotografías -->
                   <div class="tab-pane" [class.show]="activeTab === 'fotos'" [class.active]="activeTab === 'fotos'">
-                    <h6><i class="bi bi-images"></i> Fotografías del Trabajo <span *ngIf="selectedReporteFecha" class="badge bg-secondary ">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
-                    <div class="row">
+                    <div *ngIf="selectedOt; else noOtSelectedFotos">
+                      <h6><i class="bi bi-images"></i> Fotografías del Trabajo <span *ngIf="selectedReporteFecha" class="badge bg-secondary ">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
+                      <div class="row">
                       
                       <!-- Columna de Botones (Ajustada para flexibilidad) -->
                       <div class="col-auto">
@@ -201,13 +227,24 @@
                         <!-- ===== FIN DEL EDICTO DE PODER ===== -->
                       </div>
 
+                      </div>
                     </div>
+                    <ng-template #noOtSelectedFotos>
+                      <div class="h-100 d-flex align-items-center justify-content-center">
+                        <div class="text-center text-muted">
+                          <i class="bi bi-images display-4"></i>
+                          <h6 class="mt-3">Fotografías del Trabajo</h6>
+                          <p class="mt-2"><i class="bi bi-arrow-left"></i> Selecciona una OT para ver las fotografías</p>
+                        </div>
+                      </div>
+                    </ng-template>
                   </div>
 
                   <!-- Pestaña Videos -->
                   <div class="tab-pane" [class.show]="activeTab === 'videos'" [class.active]="activeTab === 'videos'">
-                    <h6><i class="bi bi-play-circle"></i> Videos del Trabajo <span *ngIf="selectedReporteFecha" class="badge bg-secondary ">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
-                    <div class="row">
+                    <div *ngIf="selectedOt; else noOtSelectedVideos">
+                      <h6><i class="bi bi-play-circle"></i> Videos del Trabajo <span *ngIf="selectedReporteFecha" class="badge bg-secondary ">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
+                      <div class="row">
                       
                       <!-- Columna de Botones (Ajustada para flexibilidad) -->
                       <div class="col-auto">
@@ -264,79 +301,133 @@
                         <!-- ===== FIN DEL EDICTO DE PODER PARA VIDEOS ===== -->
                       </div>
 
+                      </div>
                     </div>
+                    <ng-template #noOtSelectedVideos>
+                      <div class="h-100 d-flex align-items-center justify-content-center">
+                        <div class="text-center text-muted">
+                          <i class="bi bi-play-circle display-4"></i>
+                          <h6 class="mt-3">Videos del Trabajo</h6>
+                          <p class="mt-2"><i class="bi bi-arrow-left"></i> Selecciona una OT para ver los videos</p>
+                        </div>
+                      </div>
+                    </ng-template>
                   </div>
 
                   <!-- Pestaña Material -->
                   <div class="tab-pane" [class.show]="activeTab === 'material'" [class.active]="activeTab === 'material'">
-                    <h6><i class="bi bi-box-seam"></i> Material Utilizado <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
-                    <div class="row">
-                      <div class="col-2">
-                        <nav class="col-auto d-flex flex-column align-items-start">
-                          <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addMaterial()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
-                          <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChangesMaterial()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedMaterialChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
-                          <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertMaterial()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
-                          <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteMaterial()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
-                        </nav>
-                      </div>
-                      <div class="col-10 overflow-auto agridWH">
-                        <ag-grid-angular [ngStyle]="{ height: gridHeight, width: gridWidthDetail }" class="ag-theme-quartz small-text-ag-grid" [rowData]="materiales" [columnDefs]="materialesColumnDefs" [gridOptions]="materialesGridOptions" (gridReady)="onMaterialesGridReady($event)"></ag-grid-angular>
+                    <div *ngIf="selectedOt; else noOtSelectedMaterial">
+                      <h6><i class="bi bi-box-seam"></i> Material Utilizado <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
+                      <div class="row">
+                        <div class="col-2">
+                          <nav class="col-auto d-flex flex-column align-items-start">
+                            <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addMaterial()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
+                            <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChangesMaterial()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedMaterialChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
+                            <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertMaterial()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
+                            <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteMaterial()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
+                          </nav>
+                        </div>
+                        <div class="col-10 overflow-auto" style="height: calc(100vh - 250px);">
+                          <ag-grid-angular style="height: 100%; width: 100%;" class="ag-theme-quartz small-text-ag-grid" [rowData]="materiales" [columnDefs]="materialesColumnDefs" [gridOptions]="materialesGridOptions" (gridReady)="onMaterialesGridReady($event)"></ag-grid-angular>
+                        </div>
                       </div>
                     </div>
+                    <ng-template #noOtSelectedMaterial>
+                      <div class="h-100 d-flex align-items-center justify-content-center">
+                        <div class="text-center text-muted">
+                          <i class="bi bi-box-seam display-4"></i>
+                          <h6 class="mt-3">Material Utilizado</h6>
+                          <p class="mt-2"><i class="bi bi-arrow-left"></i> Selecciona una OT para ver el material utilizado</p>
+                        </div>
+                      </div>
+                    </ng-template>
                   </div>
                   
                   <!-- Pestaña Equipos -->
                   <div class="tab-pane" [class.show]="activeTab === 'equipos'" [class.active]="activeTab === 'equipos'">
-                    <h6><i class="bi bi-tools"></i> Equipos Utilizados <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
-                    <div class="row">
-                      <div class="col-2">
-                        <nav class="col-auto d-flex flex-column align-items-start">
-                          <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addEquipos()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
-                          <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChangesEquipos()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedEquipoChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
-                          <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertEquipos()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
-                          <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteEquipo()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
-                        </nav>
-                      </div>
-                      <div class="col-10 overflow-auto agridWH">
-                        <ag-grid-angular [ngStyle]="{ height: gridHeight, width: gridWidthDetail }" class="ag-theme-quartz small-text-ag-grid" [rowData]="equipos" [columnDefs]="equiposColumnDefs" [gridOptions]="equiposGridOptions" (gridReady)="onEquiposGridReady($event)"></ag-grid-angular>
+                    <div *ngIf="selectedOt; else noOtSelectedEquipos">
+                      <h6><i class="bi bi-tools"></i> Equipos Utilizados <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
+                      <div class="row">
+                        <div class="col-2">
+                          <nav class="col-auto d-flex flex-column align-items-start">
+                            <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addEquipos()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
+                            <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChangesEquipos()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedEquipoChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
+                            <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertEquipos()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
+                            <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteEquipo()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
+                          </nav>
+                        </div>
+                        <div class="col-10 overflow-auto" style="height: calc(100vh - 250px);">
+                          <ag-grid-angular style="height: 100%; width: 100%;" class="ag-theme-quartz small-text-ag-grid" [rowData]="equipos" [columnDefs]="equiposColumnDefs" [gridOptions]="equiposGridOptions" (gridReady)="onEquiposGridReady($event)"></ag-grid-angular>
+                        </div>
                       </div>
                     </div>
+                    <ng-template #noOtSelectedEquipos>
+                      <div class="h-100 d-flex align-items-center justify-content-center">
+                        <div class="text-center text-muted">
+                          <i class="bi bi-tools display-4"></i>
+                          <h6 class="mt-3">Equipos Utilizados</h6>
+                          <p class="mt-2"><i class="bi bi-arrow-left"></i> Selecciona una OT para ver los equipos utilizados</p>
+                        </div>
+                      </div>
+                    </ng-template>
                   </div>
 
                   <!-- Pestaña Conceptos -->
                   <div class="tab-pane" [class.show]="activeTab === 'conceptos'" [class.active]="activeTab === 'conceptos'">
-                    <h6><i class="bi bi-lightbulb"></i> Conceptos del Reporte <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
-                    <div class="row">
-                      <div class="col-2">
-                        <nav class="col-auto d-flex flex-column align-items-start">
-                          <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addConcepto()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
-                          <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveConceptosChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedConceptoChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
-                          <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertConceptos()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
-                          <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteConcepto()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
-                        </nav>
-                      </div>
-                      <div class="col-10 overflow-auto" style="height: calc(100vh - 250px);">
-                        <ag-grid-angular class="ag-theme-quartz small-text-ag-grid" [rowData]="conceptos" [columnDefs]="conceptosColumnDefs" [gridOptions]="tabGridOptions" (gridReady)="onConceptosGridReady($event)"></ag-grid-angular>
+                    <div *ngIf="selectedOt; else noOtSelectedConceptos">
+                      <h6><i class="bi bi-lightbulb"></i> Conceptos del Reporte <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
+                      <div class="row">
+                        <div class="col-2">
+                          <nav class="col-auto d-flex flex-column align-items-start">
+                            <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addConcepto()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
+                            <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveConceptosChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedConceptoChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
+                            <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertConceptos()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
+                            <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteConcepto()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
+                          </nav>
+                        </div>
+                        <div class="col-10 overflow-auto" style="height: calc(100vh - 250px);">
+                          <ag-grid-angular style="height: 100%; width: 100%;" class="ag-theme-quartz small-text-ag-grid" [rowData]="conceptos" [columnDefs]="conceptosColumnDefs" [gridOptions]="tabGridOptions" (gridReady)="onConceptosGridReady($event)"></ag-grid-angular>
+                        </div>
                       </div>
                     </div>
+                    <ng-template #noOtSelectedConceptos>
+                      <div class="h-100 d-flex align-items-center justify-content-center">
+                        <div class="text-center text-muted">
+                          <i class="bi bi-lightbulb display-4"></i>
+                          <h6 class="mt-3">Trabajo Realizado</h6>
+                          <p class="mt-2"><i class="bi bi-arrow-left"></i> Selecciona una OT para ver el trabajo realizado</p>
+                        </div>
+                      </div>
+                    </ng-template>
                   </div>
 
                   <!-- Pestaña Notas -->
                   <div class="tab-pane" [class.show]="activeTab === 'notas'" [class.active]="activeTab === 'notas'">
-                    <h6><i class="bi bi-journal-text"></i> Notas del Reporte <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
-                    <div class="row">
-                      <div class="col-2">
-                        <nav class="col-auto d-flex flex-column align-items-start">
-                          <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addNota()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
-                          <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveNotasChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedNoteChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
-                          <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertNotas()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
-                          <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteNota()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
-                        </nav>
-                      </div>
-                      <div class="col-10 overflow-auto" style="height: calc(100vh - 250px);">
-                        <ag-grid-angular class="ag-theme-quartz small-text-ag-grid" [rowData]="notas" [columnDefs]="notasColumnDefs" [gridOptions]="notasGridOptions" (cellDoubleClicked)="onCellDoubleClicked($event)" (gridReady)="onNotasGridReady($event)"></ag-grid-angular>
+                    <div *ngIf="selectedOt; else noOtSelectedNotas">
+                      <h6><i class="bi bi-journal-text"></i> Notas del Reporte <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
+                      <div class="row">
+                        <div class="col-2">
+                          <nav class="col-auto d-flex flex-column align-items-start">
+                            <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addNota()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
+                            <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveNotasChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedNoteChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
+                            <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertNotas()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
+                            <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteNota()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
+                          </nav>
+                        </div>
+                        <div class="col-10 overflow-auto" style="height: calc(100vh - 250px);">
+                          <ag-grid-angular style="height: 100%; width: 100%;" class="ag-theme-quartz small-text-ag-grid" [rowData]="notas" [columnDefs]="notasColumnDefs" [gridOptions]="notasGridOptions" (cellDoubleClicked)="onCellDoubleClicked($event)" (gridReady)="onNotasGridReady($event)"></ag-grid-angular>
+                        </div>
                       </div>
                     </div>
+                    <ng-template #noOtSelectedNotas>
+                      <div class="h-100 d-flex align-items-center justify-content-center">
+                        <div class="text-center text-muted">
+                          <i class="bi bi-journal-text display-4"></i>
+                          <h6 class="mt-3">Notas del Reporte</h6>
+                          <p class="mt-2"><i class="bi bi-arrow-left"></i> Selecciona una OT para ver las notas</p>
+                        </div>
+                      </div>
+                    </ng-template>
                   </div>
 
                 </div> <!-- Fin de tab-content -->
