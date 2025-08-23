@@ -117,7 +117,7 @@
                         <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertReportes()"><i class="bi bi-arrow-clockwise"></i></button>
                         <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteReporte()"><i class="bi bi-trash"></i></button>
                       </nav>
-                      <div class="col overflow-auto" style="height: calc(100vh - 390px);">
+                      <div class="col overflow-auto" style="height: calc(100vh - 450px);">
                         <ag-grid-angular 
                            style="height: 100%; width: 100%;" 
                            class="ag-theme-quartz small-text-ag-grid" 
@@ -153,7 +153,7 @@
                           <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertPersonal()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
                           <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deletePersonal()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
                         </nav>
-                        <div class="col overflow-auto" style="height: calc(100vh - 390px);">
+                        <div class="col overflow-auto" style="height: calc(100vh - 450px);">
                           <ag-grid-angular 
                            style="height: 100%; width: 100%;" 
                            class="ag-theme-quartz small-text-ag-grid" 
@@ -195,7 +195,7 @@
 
                       <!-- Columna del Grid de Fotos -->
                       <div class="col">
-                        <div class="overflow-auto" style="height: calc(100vh - 390px);"> <!-- LEY MAESTRA -->
+                        <div class="overflow-auto" style="height: calc(100vh - 450px);"> <!-- LEY MAESTRA -->
                            <ag-grid-angular                           
                              [ngStyle]="{ height: '100%', width: '100%' }"
                              class="ag-theme-quartz small-text-ag-grid" 
@@ -259,7 +259,7 @@
 
                       <!-- Columna del Grid de Videos -->
                       <div class="col">
-                        <div class="overflow-auto" style="height: calc(100vh - 390px);"> <!-- LEY MAESTRA -->
+                        <div class="overflow-auto" style="height: calc(100vh - 450px);"> <!-- LEY MAESTRA -->
                            <ag-grid-angular                           
                              [ngStyle]="{ height: '100%', width: '100%' }"
                              class="ag-theme-quartz small-text-ag-grid" 
@@ -327,7 +327,7 @@
                             <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteMaterial()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
                           </nav>
                         </div>
-                        <div class="col-10 overflow-auto" style="height: calc(100vh - 390px);">
+                        <div class="col-10 overflow-auto" style="height: calc(100vh - 450px);">
                           <ag-grid-angular style="height: 100%; width: 100%;" class="ag-theme-quartz small-text-ag-grid" [rowData]="materiales" [columnDefs]="materialesColumnDefs" [gridOptions]="materialesGridOptions" (gridReady)="onMaterialesGridReady($event)"></ag-grid-angular>
                         </div>
                       </div>
@@ -356,7 +356,7 @@
                             <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteEquipo()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
                           </nav>
                         </div>
-                        <div class="col-10 overflow-auto" style="height: calc(100vh - 390px);">
+                        <div class="col-10 overflow-auto" style="height: calc(100vh - 450px);">
                           <ag-grid-angular style="height: 100%; width: 100%;" class="ag-theme-quartz small-text-ag-grid" [rowData]="equipos" [columnDefs]="equiposColumnDefs" [gridOptions]="equiposGridOptions" (gridReady)="onEquiposGridReady($event)"></ag-grid-angular>
                         </div>
                       </div>
@@ -385,7 +385,7 @@
                             <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteConcepto()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
                           </nav>
                         </div>
-                        <div class="col-10 overflow-auto" style="height: calc(100vh - 390px);">
+                        <div class="col-10 overflow-auto" style="height: calc(100vh - 450px);">
                           <ag-grid-angular style="height: 100%; width: 100%;" class="ag-theme-quartz small-text-ag-grid" [rowData]="conceptos" [columnDefs]="conceptosColumnDefs" [gridOptions]="tabGridOptions" (gridReady)="onConceptosGridReady($event)"></ag-grid-angular>
                         </div>
                       </div>
@@ -414,7 +414,7 @@
                             <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteNota()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
                           </nav>
                         </div>
-                        <div class="col-10 overflow-auto" style="height: calc(100vh - 390px);">
+                        <div class="col-10 overflow-auto" style="height: calc(100vh - 450px);">
                           <ag-grid-angular style="height: 100%; width: 100%;" class="ag-theme-quartz small-text-ag-grid" [rowData]="notas" [columnDefs]="notasColumnDefs" [gridOptions]="notasGridOptions" (cellDoubleClicked)="onCellDoubleClicked($event)" (gridReady)="onNotasGridReady($event)"></ag-grid-angular>
                         </div>
                       </div>
