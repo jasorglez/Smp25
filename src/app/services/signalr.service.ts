@@ -21,17 +21,15 @@ export class SignalrService {
 
   constructor() { }
 
-  // Método para iniciar conexión CON JWT
+  // Método para iniciar conexión SIN JWT
   public startConnection(hubEndpoint: string = 'storageHub'): void {
-    // Obtener el token JWT
-    
-    
+
     console.log('🔄 Iniciando conexión SignalR...');
-    console.log('📡 URL:', `https://bi2.com.mx/SMP/storageHub`);
-    
+    console.log('📡 URL:', `${environment.urlSmp}/${hubEndpoint}`);
+    console.log('🔓 Conectando sin token JWT');
 
     this.hubConnection = new signalR.HubConnectionBuilder()
-      .withUrl('https://bi2.com.mx/SMP/storageHub')            
+      .withUrl('https://bi2.com.mx/SMP/storageHub')      
       .build();
 
     this.hubConnection
@@ -141,7 +139,7 @@ export class SignalrService {
       isConnected: this.isConnected(),
       state: this.hubConnection?.state,
       url: this.hubConnection?.baseUrl || 'No connection',
-      hasToken: !!localStorage.getItem('token')
+      authMode: 'No JWT required'
     };
   }
 
