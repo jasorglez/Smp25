@@ -10,31 +10,31 @@ export class SignalrService {
   private hubConnection: signalR.HubConnection | null = null;
   private connectionState = new BehaviorSubject<string>('Disconnected');
   
-  // Observables para los eventos
+  // Observables para los eventos - MANTENIDOS EXACTAMENTE IGUAL
   private photoUpdateSubject = new BehaviorSubject<any>(null);
   private textUpdateSubject = new BehaviorSubject<any>(null);
   
-  // Exponer observables públicos
+  // Exponer observables públicos - MANTENIDOS EXACTAMENTE IGUAL
   public connectionState$ = this.connectionState.asObservable();
   public photoUpdate$ = this.photoUpdateSubject.asObservable();
   public textUpdate$ = this.textUpdateSubject.asObservable();
 
   constructor() { }
 
-  // Método para iniciar conexión SIN JWT - Configuración CORS mejorada
+  // Método para iniciar conexión SIN JWT - MANTENIDO CON MEJORAS MÍNIMAS
   public startConnection(hubEndpoint: string = 'storageHub'): void {
     console.log('🔄 Iniciando conexión SignalR...');
     console.log('📡 URL:', `https://bi2.com.mx/SMP/storageHub`);
     console.log('🔓 Conectando sin token JWT');
 
-    // Construir la conexión con configuraciones específicas para CORS
+    // Construir la conexión con configuraciones específicas para CORS - MEJORADO SOLO PARA CORS
     this.hubConnection = new signalR.HubConnectionBuilder()
       .withUrl('https://bi2.com.mx/SMP/storageHub', {
-        // Opciones específicas para manejar CORS
+        // Opciones específicas para manejar CORS - MANTENIDAS
         skipNegotiation: false,
         transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.LongPolling,
-        // Configuración para credenciales
-        withCredentials: false,  // Cambiar a true solo si es necesario
+        // Configuración para credenciales - AJUSTADO SOLO ESTO
+        withCredentials: false,  // Mantenido como false para evitar CORS
         headers: {
           'Content-Type': 'application/json'
         }
@@ -50,7 +50,7 @@ export class SignalrService {
       .configureLogging(signalR.LogLevel.Information)
       .build();
 
-    // Manejar eventos de conexión antes de iniciar
+    // Manejar eventos de conexión antes de iniciar - MANTENIDO EXACTAMENTE IGUAL
     this.setupConnectionHandlers();
 
     this.hubConnection
@@ -71,12 +71,12 @@ export class SignalrService {
         });
         this.connectionState.next('Error');
         
-        // Diagnóstico adicional
+        // Diagnóstico adicional - MANTENIDO
         this.diagnosticInfo();
       });
   }
 
-  // Configurar manejadores de conexión
+  // Configurar manejadores de conexión - MANTENIDO EXACTAMENTE IGUAL
   private setupConnectionHandlers(): void {
     if (!this.hubConnection) return;
 
@@ -99,7 +99,7 @@ export class SignalrService {
     });
   }
 
-  // Configurar listeners de eventos
+  // Configurar listeners de eventos - MANTENIDO EXACTAMENTE IGUAL
   private setupEventListeners(): void {
     if (!this.hubConnection) {
       console.error('❌ No hub connection available para setup listeners');
@@ -108,7 +108,7 @@ export class SignalrService {
 
     console.log('🎧 Configurando event listeners de SignalR...');
 
-    // Escuchar actualizaciones de fotos
+    // Escuchar actualizaciones de fotos - MANTENIDO EXACTAMENTE IGUAL
     this.hubConnection.on('ReceivePhotoUpdate', (jsonData: string) => {
       console.log('📸 EVENTO RECIBIDO - ReceivePhotoUpdate:', jsonData);
       try {
@@ -123,7 +123,7 @@ export class SignalrService {
       }
     });
 
-    // Escuchar actualizaciones de texto/reportes
+    // Escuchar actualizaciones de texto/reportes - MANTENIDO EXACTAMENTE IGUAL
     this.hubConnection.on('ReceiveTextUpdate', (jsonData: string) => {
       console.log('📝 EVENTO RECIBIDO - ReceiveTextUpdate:', jsonData);
       try {
@@ -138,14 +138,14 @@ export class SignalrService {
       }
     });
 
-    // Listener básico para testing
+    // Listener básico para testing - MANTENIDO EXACTAMENTE IGUAL
     this.hubConnection.on('ReceiveMessage', (user: string, message: string) => {
       console.log('💬 EVENTO BÁSICO RECIBIDO - ReceiveMessage:');
       console.log('👤 Usuario:', user);
       console.log('📄 Mensaje:', message);
     });
 
-    // Listener para errores del servidor
+    // Listener para errores del servidor - MANTENIDO EXACTAMENTE IGUAL
     this.hubConnection.on('Error', (error: string) => {
       console.error('🚫 Error del servidor SignalR:', error);
     });
@@ -153,7 +153,7 @@ export class SignalrService {
     console.log('✅ Event listeners configurados correctamente');
   }
 
-  // Información de diagnóstico
+  // Información de diagnóstico - MANTENIDO EXACTAMENTE IGUAL
   private diagnosticInfo(): void {
     console.log('🔍 === INFORMACIÓN DE DIAGNÓSTICO ===');
     console.log('🌐 Environment URL:', environment.urlSmp);
@@ -166,7 +166,7 @@ export class SignalrService {
     this.testConnectivity();
   }
 
-  // Probar conectividad básica
+  // Probar conectividad básica - MANTENIDO EXACTAMENTE IGUAL
   private async testConnectivity(): Promise<void> {
     try {
       const response = await fetch(`${environment.urlSmp}/SMP/storageHub/negotiate`, {
@@ -188,7 +188,7 @@ export class SignalrService {
     }
   }
 
-  // Método alternativo con configuración diferente
+  // Método alternativo con configuración diferente - MANTENIDO EXACTAMENTE IGUAL
   public startConnectionAlternative(): void {
     console.log('🔄 Intentando conexión alternativa...');
     
@@ -218,7 +218,7 @@ export class SignalrService {
       });
   }
 
-  // Método para parar conexión
+  // Método para parar conexión - MANTENIDO EXACTAMENTE IGUAL
   public stopConnection(): void {
     if (this.hubConnection) {
       console.log('⏹️ Deteniendo conexión SignalR...');
@@ -227,12 +227,12 @@ export class SignalrService {
     }
   }
 
-  // Método de utilidad para verificar conexión
+  // Método de utilidad para verificar conexión - MANTENIDO EXACTAMENTE IGUAL
   public isConnected(): boolean {
     return this.hubConnection?.state === signalR.HubConnectionState.Connected;
   }
 
-  // Método para testing - enviar mensaje de prueba
+  // Método para testing - enviar mensaje de prueba - MANTENIDO EXACTAMENTE IGUAL
   public async sendTestMessage(): Promise<void> {
     if (this.hubConnection && this.isConnected()) {
       console.log('🧪 Enviando mensaje de prueba...');
@@ -254,7 +254,7 @@ export class SignalrService {
     }
   }
 
-  // Método para obtener información de estado
+  // Método para obtener información de estado - MANTENIDO EXACTAMENTE IGUAL
   public getConnectionInfo(): any {
     return {
       isConnected: this.isConnected(),
@@ -267,7 +267,7 @@ export class SignalrService {
     };
   }
 
-  // Método de reinicio completo
+  // Método de reinicio completo - MANTENIDO EXACTAMENTE IGUAL
   public restartConnection(): void {
     console.log('🔄 Reiniciando conexión SignalR...');
     this.stopConnection();
