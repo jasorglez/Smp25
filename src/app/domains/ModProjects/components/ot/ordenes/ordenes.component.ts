@@ -2013,21 +2013,31 @@ addVideo(){
   
   // Configurar listeners de SignalR para sistema reactivo multi-usuario
   private setupSignalRListeners(): void {
+    console.log('🎧 Configurando listeners del componente ordenes...');
+
     // Escuchar actualizaciones de texto/reportes
     this.signalrService.textUpdate$.subscribe(logbookData => {
+      console.log('📝 COMPONENTE RECIBIÓ textUpdate$:', logbookData);
       if (logbookData && this.shouldUpdateForLogbook(logbookData)) {
         console.log('📝 Nuevo reporte recibido para esta OT:', logbookData);
         this.handleReportUpdate(logbookData);
+      } else if (logbookData) {
+        console.log('📝 Reporte recibido pero no es para la OT actual. IdOt del evento:', logbookData.IdOt || logbookData.idOt, 'OT actual:', this.selectedOt?.id);
       }
     });
 
     // Escuchar actualizaciones de fotos
     this.signalrService.photoUpdate$.subscribe(photoData => {
+      console.log('📸 COMPONENTE RECIBIÓ photoUpdate$:', photoData);
       if (photoData && this.shouldUpdateForLogbook(photoData)) {
         console.log('📸 Nueva foto recibida para esta OT:', photoData);
         this.handlePhotoUpdate(photoData);
+      } else if (photoData) {
+        console.log('📸 Foto recibida pero no es para la OT actual. IdOt del evento:', photoData.IdOt || photoData.idOt, 'OT actual:', this.selectedOt?.id);
       }
     });
+
+    console.log('✅ Listeners del componente configurados correctamente');
   }
 
   // Verificar si el update es relevante para la OT actual
@@ -2064,6 +2074,27 @@ addVideo(){
     
     // También recargar reportes por si cambió algo en el grid
     this.loadDailyReports();
+  }
+
+  // ========================= SignalR Debug Methods =========================
+  
+  // Método público para debugging - llamar desde consola del navegador
+  public debugSignalR(): void {
+    console.log('🐛 === DEBUG SIGNALR ===');
+    const info = this.signalrService.getConnectionInfo();
+    console.log('📊 Info de conexión:', info);
+    console.log('📍 OT seleccionada:', this.selectedOt?.id);
+    console.log('🧪 Enviando mensaje de prueba...');
+    this.signalrService.sendTestMessage();
+  }
+
+  // Método para forzar reconexión
+  public reconnectSignalR(): void {
+    console.log('🔄 Forzando reconexión SignalR...');
+    this.signalrService.stopConnection();
+    setTimeout(() => {
+      this.signalrService.startConnection();
+    }, 1000);
   }
 
   // ========================= End SignalR Methods =========================
