@@ -22,12 +22,12 @@ export class SignalrService {
   constructor() { }
 
   // Método para iniciar conexión CON JWT
-  public startConnection(): void {
+  public startConnection(hubEndpoint: string = 'storageHub'): void {
     // Obtener el token JWT
     const token = localStorage.getItem('token');
     
     console.log('🔄 Iniciando conexión SignalR...');
-    console.log('📡 URL:', `${environment.urlSmp}/storageHub`);
+    console.log('📡 URL:', `${environment.urlSmp}/${hubEndpoint}`);
     console.log('🔑 Token presente:', !!token);
     
     if (!token) {
@@ -37,7 +37,7 @@ export class SignalrService {
     }
 
     this.hubConnection = new signalR.HubConnectionBuilder()
-      .withUrl(`${environment.urlSmp}/storageHub`, {
+      .withUrl(`${environment.urlSmp}/${hubEndpoint}`, {
         accessTokenFactory: () => {
           console.log('🔑 Proporcionando token para autenticación');
           return token;
@@ -152,8 +152,42 @@ export class SignalrService {
     return {
       isConnected: this.isConnected(),
       state: this.hubConnection?.state,
-      url: `${environment.urlSmp}/storageHub`,
+      url: this.hubConnection?.baseUrl || 'No connection',
       hasToken: !!localStorage.getItem('token')
     };
+  }
+
+  // Método para probar diferentes endpoints
+  public testHubEndpoints(): void {
+    const commonEndpoints = [
+      'storageHub',
+      'storage', 
+      'hub',
+      'hub/storage',
+      'signalr',
+      'signalr/storage'
+    ];
+
+    console.log('🔍 Probando endpoints comunes de SignalR...');
+    console.log('Base URL:', environment.urlSmp);
+    
+    commonEndpoints.forEach(endpoint => {
+      console.log(`🧪 Endpoint a probar: ${environment.urlSmp}/${endpoint}`);
+    });
+
+    console.log('💡 Para probar manualmente, usa:');
+    console.log('signalrService.tryEndpoint("storage")');
+  }
+
+  // Método para probar un endpoint específico
+  public tryEndpoint(endpoint: string): void {
+    console.log(`🔄 Intentando conectar a: ${environment.urlSmp}/${endpoint}`);
+    
+    // Cerrar conexión actual si existe
+    if (this.hubConnection) {
+      this.hubConnection.stop();
+    }
+    
+    this.startConnection(endpoint);
   }
 }
