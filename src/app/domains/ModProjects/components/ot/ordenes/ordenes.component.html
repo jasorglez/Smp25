@@ -7,7 +7,7 @@
           <div class="row mb-2" style="position: relative;">
             <div [class]="'col-12 col-md-' + leftColumnSize + ' border-end'" style="position: relative;">
               <!-- Sección superior: Botones y Lista de OTs lado a lado -->
-              <div class="row mb-3">
+              <div class="row mb-2">
                 <!-- Botones de acciones -->
                 <div class="col-auto">
                   <nav class="d-flex flex-column align-items-start">
@@ -56,7 +56,7 @@
               <!-- Información detallada con pestañas -->
               <div *ngIf="selectedOt">
                 <!-- Label con información de la OT seleccionada -->
-                <div class="alert alert-info mb-2 py-2">
+                <div class="alert alert-info mb-1 py-1">
                   <small>
                     <strong><i class="bi bi-info-circle"></i> OT:</strong> {{selectedOt.otNumber}} - {{selectedOt.description}}
                     <span class="float-end">
@@ -73,7 +73,7 @@
                 </div>
 
                 <!-- Pestañas de navegación -->
-                <ul class="nav nav-tabs mb-3">
+                <ul class="nav nav-tabs mb-2">
                   <li class="nav-item">
                     <a class="nav-link" [class.active]="activeTab === 'reportes'" (click)="setActiveTab('reportes')" style="cursor: pointer;"><i class="bi bi-calendar3"></i> Reportes Diarios</a>
                   </li>

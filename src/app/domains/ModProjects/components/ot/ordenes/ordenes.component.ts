@@ -237,7 +237,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
   // PDF
   inputData: any;
-  gridHeight = '50vh';
+  gridHeight = '30vh';
   gridWidth = '100%';
   gridWidthDetail = '100%'; 
   isGeneratingPdf: boolean = false;
@@ -1299,6 +1299,11 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
       __isNew: true
     };
 
+    console.log('📸 === NUEVA FOTOGRAFÍA CREADA ===');
+    console.log('📸 newFotografia.typeNote:', newFotografia.typeNote);
+    console.log('📸 newFotografia.orden:', newFotografia.orden);
+    console.log('📸 newFotografia completa:', newFotografia);
+
     this.fotografias = [newFotografia, ...this.fotografias];
     this.notSavedFotografiaChanges = true;
 
@@ -1376,6 +1381,10 @@ addVideo(){
     const newRows = this.fotografias.filter(row => row.__isNew);
     const modifiedRows = this.fotografias.filter(row => row.__modified && !row.__isNew);
 
+    console.log('📸 === DEBUGGING FOTOGRAFÍAS ===');
+    console.log('📸 newRows:', newRows);
+    console.log('📸 modifiedRows:', modifiedRows);
+
     // Validación básica
     const invalidRows = newRows.filter(item => item.imageUrl && item.descripcion);
     
@@ -1390,12 +1399,25 @@ addVideo(){
     }
 
     try {
-      console.log('=== USANDO ENDPOINTS DE LOGBOOK SERVICE ===');
+      console.log('📸 === USANDO ENDPOINTS DE LOGBOOK SERVICE PARA FOTOGRAFÍAS ===');
       
       // Preparar requests para nuevos registros
       const addRequests = newRows.map((row, index) => {
+        console.log(`📸 === FOTO DATOS ORIGINALES ${index + 1} ===`);
+        console.log(`📸 row.typeNote:`, row.typeNote);
+        console.log(`📸 row.orden:`, row.orden);
+        console.log(`📸 row completo:`, row);
+        
         const cleanedData = this.cleanPersonalDataForServer(row);
-        console.log(`Datos para POST ${index + 1}:`, cleanedData);
+        
+        console.log(`📸 === FOTO DATOS LIMPIADOS ${index + 1} ===`);
+        console.log(`📸 cleanedData.typeNote:`, cleanedData.typeNote);
+        console.log(`📸 cleanedData.orden:`, cleanedData.orden);
+        console.log(`📸 cleanedData.TypeNote:`, cleanedData.TypeNote);
+        console.log(`📸 cleanedData.Orden:`, cleanedData.Orden);
+        console.log(`📸 cleanedData completo:`, cleanedData);
+        console.log(`📸 JSON.stringify:`, JSON.stringify(cleanedData, null, 2));
+        
         return this.logbookService.addDataForOt(cleanedData).toPromise();
       });
 
