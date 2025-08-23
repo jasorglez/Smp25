@@ -10,6 +10,7 @@ import { DailyReportService } from 'app/services/daily-report.service';
 import { LogbookService } from 'app/services/logbook.service';
 import pdfMake from 'pdfmake/build/pdfmake';
 import { SignalsService } from 'app/services/signals.service';
+import { SignalrService } from 'app/services/signalr.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { PdfGeneratorService } from 'app/services/pdf-generator.service';
 import { EmployeesService } from 'app/services/employees.service';
@@ -158,6 +159,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   private materialsService = inject(MaterialsService);
   private projectsService = inject(ProjectsService);
   public authService = inject(AuthService);
+  private signalrService = inject(SignalrService);
   gestionarDatos: any[] = [];
 
   // Variables de control
@@ -1921,6 +1923,12 @@ addVideo(){
       this.filtrarTipoReporte('personalizado');
     }
   });
+
+    // Iniciar SignalR connection para sistema reactivo
+    this.signalrService.startConnection();
+    
+    // Configurar listeners para updates en tiempo real
+    this.setupSignalRListeners();
   }
   filtrarTipoReporte(type: string) {
   const fechaInicio = this.myForm.get('fechaInicio')?.value;
@@ -2000,6 +2008,65 @@ addVideo(){
       }
     });
   }
+
+  // ========================= SignalR Methods =========================
+  
+  // Configurar listeners de SignalR para sistema reactivo multi-usuario
+  private setupSignalRListeners(): void {
+    // Escuchar actualizaciones de texto/reportes
+    this.signalrService.textUpdate$.subscribe(logbookData => {
+      if (logbookData && this.shouldUpdateForLogbook(logbookData)) {
+        console.log('📝 Nuevo reporte recibido para esta OT:', logbookData);
+        this.handleReportUpdate(logbookData);
+      }
+    });
+
+    // Escuchar actualizaciones de fotos
+    this.signalrService.photoUpdate$.subscribe(photoData => {
+      if (photoData && this.shouldUpdateForLogbook(photoData)) {
+        console.log('📸 Nueva foto recibida para esta OT:', photoData);
+        this.handlePhotoUpdate(photoData);
+      }
+    });
+  }
+
+  // Verificar si el update es relevante para la OT actual
+  private shouldUpdateForLogbook(logbookData: any): boolean {
+    // Verificar si hay OT seleccionada
+    if (!this.selectedOt) return false;
+    
+    // Verificar si el update es para la OT actual
+    const currentOtId = parseInt(this.selectedOt.id);
+    const logbookOtId = logbookData.IdOt || logbookData.idOt;
+    
+    return currentOtId === logbookOtId;
+  }
+
+  // Manejar actualizaciones de reportes en tiempo real
+  private handleReportUpdate(logbookData: any): void {
+    console.log('✅ Actualizando reportes por SignalR...');
+    
+    // Recargar reportes diarios para mostrar el nuevo reporte
+    this.loadDailyReports();
+    
+    // Mostrar notificación opcional (descomentarla si quieres notificaciones visuales)
+    // alerts.basicAlert('Nuevo Reporte', 'Se agregó un nuevo reporte a esta OT', 'info');
+  }
+
+  // Manejar actualizaciones de fotos en tiempo real
+  private handlePhotoUpdate(photoData: any): void {
+    console.log('✅ Actualizando fotos por SignalR...');
+    
+    // Si hay un reporte seleccionado, recargar sus fotos
+    if (this.selectedReporteId) {
+      this.obtenerFotografias(this.selectedReporteId);
+    }
+    
+    // También recargar reportes por si cambió algo en el grid
+    this.loadDailyReports();
+  }
+
+  // ========================= End SignalR Methods =========================
 
   obtenerDatos() {
     // Verificar si el usuario tiene permisos para ver todas las OTs de todos los proyectos
@@ -4990,6 +5057,9 @@ async saveChangesEquipos() {
     } catch (error) {
       console.log('Error al limpiar modal state:', error);
     }
+    
+    // Cerrar conexión SignalR al destruir el componente
+    this.signalrService.stopConnection();
     
     console.log('OrdenesComponent destruido - modal state limpiado');
   }
