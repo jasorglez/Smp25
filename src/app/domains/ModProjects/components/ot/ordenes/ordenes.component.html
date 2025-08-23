@@ -5,7 +5,7 @@
         <div class="card-body p-1">
           <!-- SECCIÓN PRINCIPAL: Grid de OTs y Vista previa en columnas -->
           <div class="row" style="position: relative; height: calc(100vh - 200px);">
-            <div [class]="'col-12 col-md-' + leftColumnSize + ' border-end'" style="position: relative; height: 100%; display: flex; flex-direction: column;">
+            <div class="col-12 col-md-9 border-end" style="position: relative; height: 100%; display: flex; flex-direction: column;">
               <!-- Sección superior: Botones y Lista de OTs lado a lado -->
               <div class="row mb-1">
                 <!-- Botones de acciones -->
@@ -78,30 +78,30 @@
                 </div>
 
                 <!-- Pestañas de navegación -->
-                <ul class="nav nav-tabs mb-2">
-                  <li class="nav-item">
-                    <a class="nav-link" [class.active]="activeTab === 'reportes'" (click)="setActiveTab('reportes')" style="cursor: pointer;"><i class="bi bi-calendar3"></i> Reportes Diarios</a>
+                <ul class="nav nav-tabs mb-2" style="flex-wrap: nowrap; overflow-x: auto; white-space: nowrap;">
+                  <li class="nav-item" style="flex: 0 0 auto;">
+                    <a class="nav-link" [class.active]="activeTab === 'reportes'" (click)="setActiveTab('reportes')" style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.8rem;"><i class="bi bi-calendar3" style="font-size: 0.8rem;"></i> Reportes</a>
                   </li>
-                  <li class="nav-item">
-                    <a class="nav-link" [class.active]="activeTab === 'personal'" (click)="setActiveTab('personal')" style="cursor: pointer;"><i class="bi bi-people"></i> Personal</a>
+                  <li class="nav-item" style="flex: 0 0 auto;">
+                    <a class="nav-link" [class.active]="activeTab === 'personal'" (click)="setActiveTab('personal')" style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.8rem;"><i class="bi bi-people" style="font-size: 0.8rem;"></i> Personal</a>
                   </li>
-                  <li class="nav-item">
-                    <a class="nav-link" [class.active]="activeTab === 'fotos'" (click)="setActiveTab('fotos')" style="cursor: pointer;"><i class="bi bi-images"></i> Fotografías</a>
+                  <li class="nav-item" style="flex: 0 0 auto;">
+                    <a class="nav-link" [class.active]="activeTab === 'fotos'" (click)="setActiveTab('fotos')" style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.8rem;"><i class="bi bi-images" style="font-size: 0.8rem;"></i> Fotos</a>
                   </li>
-                  <li class="nav-item">
-                    <a class="nav-link" [class.active]="activeTab === 'videos'" (click)="setActiveTab('videos')" style="cursor: pointer;"><i class="bi bi-play-circle"></i> Videos</a>
+                  <li class="nav-item" style="flex: 0 0 auto;">
+                    <a class="nav-link" [class.active]="activeTab === 'videos'" (click)="setActiveTab('videos')" style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.8rem;"><i class="bi bi-play-circle" style="font-size: 0.8rem;"></i> Videos</a>
                   </li>
-                  <li class="nav-item">
-                    <a class="nav-link" [class.active]="activeTab === 'material'" (click)="setActiveTab('material')" style="cursor: pointer;"><i class="bi bi-box-seam"></i> Material</a>
+                  <li class="nav-item" style="flex: 0 0 auto;">
+                    <a class="nav-link" [class.active]="activeTab === 'material'" (click)="setActiveTab('material')" style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.8rem;"><i class="bi bi-box-seam" style="font-size: 0.8rem;"></i> Material</a>
                   </li>
-                  <li class="nav-item">
-                    <a class="nav-link" [class.active]="activeTab === 'equipos'" (click)="setActiveTab('equipos')" style="cursor: pointer;"><i class="bi bi-tools"></i> Equipos</a>
+                  <li class="nav-item" style="flex: 0 0 auto;">
+                    <a class="nav-link" [class.active]="activeTab === 'equipos'" (click)="setActiveTab('equipos')" style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.8rem;"><i class="bi bi-tools" style="font-size: 0.8rem;"></i> Equipos</a>
                   </li>
-                  <li class="nav-item">
-                    <a class="nav-link" [class.active]="activeTab === 'conceptos'" (click)="setActiveTab('conceptos')" style="cursor: pointer;"><i class="bi bi-lightbulb"></i> Trabajo realizado</a>
+                  <li class="nav-item" style="flex: 0 0 auto;">
+                    <a class="nav-link" [class.active]="activeTab === 'conceptos'" (click)="setActiveTab('conceptos')" style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.8rem;"><i class="bi bi-lightbulb" style="font-size: 0.8rem;"></i> Trabajo</a>
                   </li>
-                  <li class="nav-item">
-                    <a class="nav-link" [class.active]="activeTab === 'notas'" (click)="setActiveTab('notas')" style="cursor: pointer;"><i class="bi bi-journal-text"></i> Notas</a>
+                  <li class="nav-item" style="flex: 0 0 auto;">
+                    <a class="nav-link" [class.active]="activeTab === 'notas'" (click)="setActiveTab('notas')" style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.8rem;"><i class="bi bi-journal-text" style="font-size: 0.8rem;"></i> Notas</a>
                   </li>
                 </ul>
 
@@ -434,7 +434,7 @@
             </div> <!-- Fin de columna izquierda -->
 
             <!-- COLUMNA 2: Vista previa del reporte PDF -->
-            <div [class]="'col- col-md-' + rightColumnSize" style="position: relative; height: 150%; display: flex; flex-direction: column;">
+            <div class="col-12 col-md-3" style="position: relative; height: 150%; display: flex; flex-direction: column;">
               <!-- Resizer drag handle -->
               <div class="column-resizer" (mousedown)="onResizerMouseDown($event)" [class.resizing]="isResizing" title="Arrastra para redimensionar columnas">
                 <div class="resizer-handle"></div>
