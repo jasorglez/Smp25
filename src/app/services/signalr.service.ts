@@ -24,26 +24,14 @@ export class SignalrService {
   // Método para iniciar conexión CON JWT
   public startConnection(hubEndpoint: string = 'storageHub'): void {
     // Obtener el token JWT
-    const token = localStorage.getItem('token');
+    
     
     console.log('🔄 Iniciando conexión SignalR...');
-    console.log('📡 URL:', `${environment.urlSmp}/${hubEndpoint}`);
-    console.log('🔑 Token presente:', !!token);
+    console.log('📡 URL:', `https://bi2.com.mx/SMP/storageHub`);
     
-    if (!token) {
-      console.error('❌ No JWT token found en localStorage');
-      this.connectionState.next('Error');
-      return;
-    }
 
     this.hubConnection = new signalR.HubConnectionBuilder()
-      .withUrl(`${environment.urlSmp}/${hubEndpoint}`, {
-        accessTokenFactory: () => {
-          console.log('🔑 Proporcionando token para autenticación');
-          return token;
-        }
-      })
-      .withAutomaticReconnect()
+      .withUrl('https://bi2.com.mx/SMP/storageHub')            
       .build();
 
     this.hubConnection
