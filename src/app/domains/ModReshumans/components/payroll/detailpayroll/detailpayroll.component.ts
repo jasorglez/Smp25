@@ -158,6 +158,7 @@ export class DetailpayrollComponent implements OnInit{
       headerName: 'Bonos',
       width: 100,
       field: 'bonus',
+      cellStyle: { backgroundColor: '#d4edda' },
       valueFormatter: (params) => {
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
       },
@@ -177,6 +178,7 @@ export class DetailpayrollComponent implements OnInit{
       width: 150,
       editable: () => this.signalsService.getClosedPayroll()(),
       field: 'realDiscount',
+      cellStyle: { backgroundColor: '#d4edda' },
       valueFormatter: (params) => {
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
       },
@@ -186,6 +188,7 @@ export class DetailpayrollComponent implements OnInit{
       headerName: 'Ahorros',
       width: 100,
       field: 'savings',
+      cellStyle: { backgroundColor: '#d4edda' },
       valueFormatter: (params) => {
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
       }
