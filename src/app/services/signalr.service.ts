@@ -21,28 +21,14 @@ export class SignalrService {
 
   constructor() { }
 
-  // Método para iniciar conexión CON JWT
+  // Método para iniciar conexión SIN JWT
   public startConnection(hubEndpoint: string = 'storageHub'): void {
-    // Obtener el token JWT
-    const token = localStorage.getItem('token');
-    
     console.log('🔄 Iniciando conexión SignalR...');
     console.log('📡 URL:', `${environment.urlSmp}/${hubEndpoint}`);
-    console.log('🔑 Token presente:', !!token);
-    
-    if (!token) {
-      console.error('❌ No JWT token found en localStorage');
-      this.connectionState.next('Error');
-      return;
-    }
+    console.log('🔓 Conectando sin token JWT');
 
     this.hubConnection = new signalR.HubConnectionBuilder()
-      .withUrl(`${environment.urlSmp}/${hubEndpoint}`, {
-        accessTokenFactory: () => {
-          console.log('🔑 Proporcionando token para autenticación');
-          return token;
-        }
-      })
+      .withUrl(`${environment.urlSmp}/${hubEndpoint}`)
       .withAutomaticReconnect()
       .build();
 
@@ -153,7 +139,7 @@ export class SignalrService {
       isConnected: this.isConnected(),
       state: this.hubConnection?.state,
       url: this.hubConnection?.baseUrl || 'No connection',
-      hasToken: !!localStorage.getItem('token')
+      authMode: 'No JWT required'
     };
   }
 
