@@ -1171,7 +1171,7 @@ public videosColumnDefs: ColDef[] = [
   {
       field: 'totalEjecutado', 
       headerName: 'Total $ Ejecutado', 
-      width: 151,
+      width: 150,
       editable: true,
       cellRenderer: (params) => {
         const value = params.value || 0;
