@@ -1947,7 +1947,11 @@ addVideo(){
   });
 
     // Iniciar SignalR connection para sistema reactivo
-    this.signalrService.startConnection();
+    const token = this.trackingService.getAuthToken();
+    console.log('Iniciando conexión SignalR con token:', token);
+    this.signalrService.startConnection('storageHub', token);
+
+    console.log('SignalR connection info:', this.signalrService.getConnectionInfo());
     
     // Configurar listeners para updates en tiempo real
     this.setupSignalRListeners();
@@ -2033,71 +2037,95 @@ addVideo(){
 
   // ========================= SignalR Methods =========================
   
-  // Configurar listeners de SignalR para sistema reactivo multi-usuario
-  private setupSignalRListeners(): void {
-    console.log('🎧 Configurando listeners del componente ordenes...');
+      // Configurar listeners de SignalR para sistema reactivo multi-usuario
+    private setupSignalRListeners(): void {
+        console.log('🎧 Configurando listeners del componente ordenes...');
 
-    // Escuchar actualizaciones de texto/reportes
-    this.signalrService.textUpdate$.subscribe(logbookData => {
-      console.log('📝 COMPONENTE RECIBIÓ textUpdate$:', logbookData);
-      if (logbookData && this.shouldUpdateForLogbook(logbookData)) {
-        console.log('📝 Nuevo reporte recibido para esta OT:', logbookData);
-        this.handleReportUpdate(logbookData);
-      } else if (logbookData) {
-        console.log('📝 Reporte recibido pero no es para la OT actual. IdOt del evento:', logbookData.IdOt || logbookData.idOt, 'OT actual:', this.selectedOt?.id);
+        // Escuchar actualizaciones de texto/reportes
+        this.signalrService.textUpdate$.subscribe(logbookData => {
+          console.log('📝 COMPONENTE RECIBIÓ textUpdate$:', logbookData);
+          if (logbookData && this.shouldUpdateForLogbook(logbookData)) {
+            console.log('📝 Nuevo reporte recibido para esta OT:', logbookData);
+            this.handleDailyReportUpdate(logbookData);
+          } else if (logbookData) {
+            console.log('📝 Reporte recibido pero no es para la OT actual. IdOt del evento:', logbookData.IdOt || logbookData.idOt, 'OT actual:', this.selectedOt?.id);
+          }
+        });
+
+        // Escuchar actualizaciones de fotos
+        this.signalrService.photoUpdate$.subscribe(photoData => {
+          console.log('📸 COMPONENTE RECIBIÓ photoUpdate$:', photoData);
+          if (photoData && this.shouldUpdateForLogbook(photoData)) {
+            console.log('📸 Nueva foto recibida para esta OT:', photoData);
+            this.handlePhotoUpdate(photoData);
+          } else if (photoData) {
+            console.log('📸 Foto recibida pero no es para la OT actual. IdOt del evento:', photoData.IdOt || photoData.idOt, 'OT actual:', this.selectedOt?.id);
+          }
+        });
+
+          // Escuchar nuevos reportes diarios
+      this.signalrService.newDailyReport$.subscribe(reportData => {
+        console.log('📊 COMPONENTE RECIBIÓ newDailyReport$:', reportData);
+        if (reportData && this.shouldUpdateForDailyReport(reportData)) {
+          console.log('📊 Nuevo reporte diario recibido para esta OT:', reportData);
+          this.handleDailyReportUpdate(reportData);
+        } else if (reportData) {
+          console.log('📊 Reporte diario recibido pero no es para la OT actual. IdOt del evento:', reportData.IdOt || reportData.idOt, 'OT actual:', this.selectedOt?.id);
+        }
+      });
+
+        console.log('✅ Listeners del componente configurados correctamente');
+
+    }
+
+    // Verificar si el update es relevante para la OT actual
+    private shouldUpdateForLogbook(logbookData: any): boolean {
+      // Verificar si hay OT seleccionada
+      if (!this.selectedOt) return false;
+      
+      // Verificar si el update es para la OT actual
+      const currentOtId = parseInt(this.selectedOt.id);
+      const logbookOtId = logbookData.IdOt || logbookData.idOt;
+      
+      return currentOtId === logbookOtId;
+    }
+
+    // Manejar actualizaciones de fotos en tiempo real
+    private handlePhotoUpdate(photoData: any): void {
+      console.log('✅ Actualizando fotos por SignalR...');
+      
+      // Si hay un reporte seleccionado, recargar sus fotos
+      if (this.selectedReporteId) {
+        this.obtenerFotografias(this.selectedReporteId);
       }
-    });
+      
+      // También recargar reportes por si cambió algo en el grid
+      this.loadDailyReports();
+    }
 
-    // Escuchar actualizaciones de fotos
-    this.signalrService.photoUpdate$.subscribe(photoData => {
-      console.log('📸 COMPONENTE RECIBIÓ photoUpdate$:', photoData);
-      if (photoData && this.shouldUpdateForLogbook(photoData)) {
-        console.log('📸 Nueva foto recibida para esta OT:', photoData);
-        this.handlePhotoUpdate(photoData);
-      } else if (photoData) {
-        console.log('📸 Foto recibida pero no es para la OT actual. IdOt del evento:', photoData.IdOt || photoData.idOt, 'OT actual:', this.selectedOt?.id);
-      }
-    });
-
-    console.log('✅ Listeners del componente configurados correctamente');
-  }
-
-  // Verificar si el update es relevante para la OT actual
-  private shouldUpdateForLogbook(logbookData: any): boolean {
+    // Verificar si el update de reporte diario es relevante para la OT actual
+    private shouldUpdateForDailyReport(reportData: any): boolean {
     // Verificar si hay OT seleccionada
     if (!this.selectedOt) return false;
     
     // Verificar si el update es para la OT actual
     const currentOtId = parseInt(this.selectedOt.id);
-    const logbookOtId = logbookData.IdOt || logbookData.idOt;
+    const reportOtId = reportData.IdOt || reportData.idOt;
     
-    return currentOtId === logbookOtId;
-  }
+    return currentOtId === reportOtId;
+    }
 
-  // Manejar actualizaciones de reportes en tiempo real
-  private handleReportUpdate(logbookData: any): void {
-    console.log('✅ Actualizando reportes por SignalR...');
-    
-    // Recargar reportes diarios para mostrar el nuevo reporte
-    this.loadDailyReports();
-    
-    // Mostrar notificación opcional (descomentarla si quieres notificaciones visuales)
-    // alerts.basicAlert('Nuevo Reporte', 'Se agregó un nuevo reporte a esta OT', 'info');
-  }
-
-  // Manejar actualizaciones de fotos en tiempo real
-  private handlePhotoUpdate(photoData: any): void {
-    console.log('✅ Actualizando fotos por SignalR...');
-    
-    // Si hay un reporte seleccionado, recargar sus fotos
-    if (this.selectedReporteId) {
-      this.obtenerFotografias(this.selectedReporteId);
+    // Manejar actualizaciones de reportes diarios en tiempo real
+    private handleDailyReportUpdate(reportData: any): void {
+      console.log('✅ Actualizando reportes diarios por SignalR...');
+      
+      // Recargar reportes diarios para mostrar el nuevo reporte
+      this.loadDailyReports();
+      
+      // Mostrar notificación opcional (descomentarla si quieres notificaciones visuales)
+      // alerts.basicAlert('Nuevo Reporte Diario', 'Se creó un nuevo reporte diario para esta OT', 'info');
     }
     
-    // También recargar reportes por si cambió algo en el grid
-    this.loadDailyReports();
-  }
-
   // ========================= SignalR Debug Methods =========================
   
   // Método público para debugging - llamar desde consola del navegador

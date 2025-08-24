@@ -13,68 +13,71 @@ export class SignalrService {
   // Observables para los eventos - MANTENIDOS EXACTAMENTE IGUAL
   private photoUpdateSubject = new BehaviorSubject<any>(null);
   private textUpdateSubject = new BehaviorSubject<any>(null);
+
+    // **NUEVO: Observable para nuevos reportes diarios**
+  private newDailyReportSubject = new BehaviorSubject<any>(null);
   
   // Exponer observables públicos - MANTENIDOS EXACTAMENTE IGUAL
   public connectionState$ = this.connectionState.asObservable();
   public photoUpdate$ = this.photoUpdateSubject.asObservable();
   public textUpdate$ = this.textUpdateSubject.asObservable();
 
+    // **NUEVO: Observable público para nuevos reportes**
+  public newDailyReport$ = this.newDailyReportSubject.asObservable();
+
   constructor() { }
 
-  // Método para iniciar conexión SIN JWT - MANTENIDO CON MEJORAS MÍNIMAS
-  public startConnection(hubEndpoint: string = 'storageHub'): void {
-    console.log('🔄 Iniciando conexión SignalR...');
-    console.log('📡 URL:', `https://bi2.com.mx/SMP/storageHub`);
-    console.log('🔓 Conectando sin token JWT');
+  // Método para iniciar conexión SIN JWT - CORREGIDA LA URL ESPECÍFICA
+public startConnection(hubEndpoint: string = 'storageHub', token?: string): void {
 
-    // Construir la conexión con configuraciones específicas para CORS - MEJORADO SOLO PARA CORS
-    this.hubConnection = new signalR.HubConnectionBuilder()
-      .withUrl('https://bi2.com.mx/SMP/storageHub', {
-        // Opciones específicas para manejar CORS - MANTENIDAS
-        skipNegotiation: false,
-        transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.LongPolling,
-        // Configuración para credenciales - AJUSTADO SOLO ESTO
-        withCredentials: false,  // Mantenido como false para evitar CORS
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
-      .withAutomaticReconnect({
-        nextRetryDelayInMilliseconds: retryContext => {
-          if (retryContext.previousRetryCount === 0) {
-            return 0;
-          }
-          return Math.min(1000 * Math.pow(2, retryContext.previousRetryCount), 30000);
-        }
-      })
-      .configureLogging(signalR.LogLevel.Information)
-      .build();
+  const hubUrl = `https://bi2.com.mx/smp/${hubEndpoint}`;
+ console.log('🔄 Iniciando conexión SignalR...');
+ console.log('📡 URL:', hubUrl);
 
-    // Manejar eventos de conexión antes de iniciar - MANTENIDO EXACTAMENTE IGUAL
-    this.setupConnectionHandlers();
+ // Construir la conexión con token
+ this.hubConnection = new signalR.HubConnectionBuilder()
+   .withUrl(hubUrl, {
+     accessTokenFactory: () => token || '', // 👈 AQUÍ PASA EL TOKEN
+     skipNegotiation: false,
+     transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.LongPolling,
+     withCredentials: false
+   })
+   .withAutomaticReconnect({
+     nextRetryDelayInMilliseconds: retryContext => {
+       if (retryContext.previousRetryCount === 0) {
+         return 0;
+       }
+       return Math.min(1000 * Math.pow(2, retryContext.previousRetryCount), 30000);
+     }
+   })
+   .configureLogging(signalR.LogLevel.Information)
+   .build();
 
-    this.hubConnection
-      .start()
-      .then(() => {
-        console.log('✅ SignalR Connection establecida exitosamente');
-        console.log('🎯 Estado de conexión:', this.hubConnection?.state);
-        console.log('🔗 Connection ID:', (this.hubConnection as any)?.connectionId);
-        this.connectionState.next('Connected');
-        this.setupEventListeners();
-      })
-      .catch(err => {
-        console.error('❌ Error while starting SignalR connection: ', err);
-        console.error('📋 Detalles del error:', {
-          message: err.message,
-          statusCode: err.statusCode,
-          url: err.url || 'No URL available'
-        });
-        this.connectionState.next('Error');
-        
-        // Diagnóstico adicional - MANTENIDO
-        this.diagnosticInfo();
-      });
-  }
+ // Manejar eventos de conexión antes de iniciar
+ this.setupConnectionHandlers();
+
+ this.hubConnection
+   .start()
+   .then(() => {
+     console.log('✅ SignalR Connection establecida exitosamente');
+     console.log('🎯 Estado de conexión:', this.hubConnection?.state);
+     console.log('🔗 Connection ID:', (this.hubConnection as any)?.connectionId);
+     this.connectionState.next('Connected');
+     this.setupEventListeners();
+   })
+   .catch(err => {
+     console.error('❌ Error while starting SignalR connection: ', err);
+     console.error('📋 Detalles del error:', {
+       message: err.message,
+       statusCode: err.statusCode,
+       url: err.url || 'No URL available'
+     });
+     this.connectionState.next('Error');
+     
+     // Diagnóstico adicional
+     this.diagnosticInfo();
+   });
+}
 
   // Configurar manejadores de conexión - MANTENIDO EXACTAMENTE IGUAL
   private setupConnectionHandlers(): void {
@@ -106,8 +109,6 @@ export class SignalrService {
       return;
     }
 
-    console.log('🎧 Configurando event listeners de SignalR...');
-
     // Escuchar actualizaciones de fotos - MANTENIDO EXACTAMENTE IGUAL
     this.hubConnection.on('ReceivePhotoUpdate', (jsonData: string) => {
       console.log('📸 EVENTO RECIBIDO - ReceivePhotoUpdate:', jsonData);
@@ -138,6 +139,20 @@ export class SignalrService {
       }
     });
 
+     // **NUEVO: Listener para nuevos reportes diarios**
+  this.hubConnection.on('ReceiveNewDailyReport', (reportData: any) => {
+    console.log('📊 EVENTO RECIBIDO - ReceiveNewDailyReport:', reportData);
+    try {
+      const parsedData = typeof reportData === 'string' ? JSON.parse(reportData) : reportData;
+      console.log('📊 Datos de nuevo reporte parseados:', parsedData);
+      this.newDailyReportSubject.next(parsedData);
+      console.log('📊 New daily report enviado a subscribers');
+    } catch (error) {
+      console.error('❌ Error parsing daily report data:', error);
+      this.newDailyReportSubject.next(reportData);
+    }
+  });
+
     // Listener básico para testing - MANTENIDO EXACTAMENTE IGUAL
     this.hubConnection.on('ReceiveMessage', (user: string, message: string) => {
       console.log('💬 EVENTO BÁSICO RECIBIDO - ReceiveMessage:');
@@ -153,11 +168,11 @@ export class SignalrService {
     console.log('✅ Event listeners configurados correctamente');
   }
 
-  // Información de diagnóstico - MANTENIDO EXACTAMENTE IGUAL
+  // Información de diagnóstico - CORREGIDA LA URL ESPECÍFICA
   private diagnosticInfo(): void {
     console.log('🔍 === INFORMACIÓN DE DIAGNÓSTICO ===');
     console.log('🌐 Environment URL:', environment.urlSmp);
-    console.log('🎯 Target URL:', `${environment.urlSmp}/SMP/storageHub`);
+    console.log('🎯 Target URL (hardcoded):', 'https://bi2.com.mx/storageHub');
     console.log('🔒 Origin:', window.location.origin);
     console.log('📍 Current URL:', window.location.href);
     console.log('🚀 User Agent:', navigator.userAgent);
@@ -166,10 +181,13 @@ export class SignalrService {
     this.testConnectivity();
   }
 
-  // Probar conectividad básica - MANTENIDO EXACTAMENTE IGUAL
+  // Probar conectividad básica - CORREGIDA LA URL ESPECÍFICA
   private async testConnectivity(): Promise<void> {
     try {
-      const response = await fetch(`${environment.urlSmp}/SMP/storageHub/negotiate`, {
+      const hubUrl = 'https://bi2.com.mx/storageHub';
+      console.log('🧪 Testing connectivity to:', hubUrl);
+      
+      const response = await fetch(`${hubUrl}/negotiate?negotiateVersion=1`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -254,14 +272,14 @@ export class SignalrService {
     }
   }
 
-  // Método para obtener información de estado - MANTENIDO EXACTAMENTE IGUAL
+  // Método para obtener información de estado - CORREGIDA LA URL ESPECÍFICA
   public getConnectionInfo(): any {
     return {
       isConnected: this.isConnected(),
       state: this.hubConnection?.state,
       connectionId: (this.hubConnection as any)?.connectionId || 'Unknown',
       baseUrl: (this.hubConnection as any)?.baseUrl || 'No connection',
-      url: `${environment.urlSmp}/SMP/storageHub`,
+      url: 'https://bi2.com.mx/storageHub',
       authMode: 'No JWT required',
       transport: 'WebSockets + LongPolling'
     };
