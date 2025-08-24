@@ -1378,9 +1378,7 @@ addVideo(){
         });
       }
     }, 0);
-}
-
-
+  }
 
   async saveFotografiasChanges() {
     this.trackingService.addLog(
@@ -1757,6 +1755,7 @@ addVideo(){
 
   // Configuración del grid principal
   public gridApi!: GridApi;
+
   public gridOptions: any = {
     headerHeight: 35,
     rowHeight: 25,
@@ -2767,6 +2766,7 @@ addVideo(){
       type: this.selectedReporteArea,
       description: 'SIN DESCRIPCIÓN',
       result: 'SIN RESULTADO',
+      totalPay : 0,
       active: true,
       paid: true,
       close: false,
