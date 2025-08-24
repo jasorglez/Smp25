@@ -21,6 +21,10 @@ export class DailyReportService {
     return this.http.get(`${environment.urlSmp}/DailyReport/xot/${idOt}`, { headers: this.trackingService.getHeaders() });
   }
 
+    getReportxCost(idReport: number): Observable<any> {
+    return this.http.get(`${environment.urlSmp}/DailyReport/cost?idReport=${idReport}`, { headers: this.trackingService.getHeaders() });
+  }
+  
   // Obtener detalles de un reporte diario específico
   getDailyReportDetails(idReport: number): Observable<any> {
     return this.http.get(`${environment.urlSmp}/DailyReport/${idReport}`, { headers: this.trackingService.getHeaders() });

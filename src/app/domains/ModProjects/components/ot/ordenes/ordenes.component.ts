@@ -1161,36 +1161,42 @@ public videosColumnDefs: ColDef[] = [
         return params.value ? params.value.substring(0, 5) : '';
       }
     },
-    /*{ 
-      field: 'type', 
-      headerName: 'Area', 
-      width: 90, 
-      //editable: () => !this.signalsService.getClosedReport()(),
-      editable: true,
-      cellEditor: 'agSelectCellEditor',
-      cellEditorParams: {
-        values: ['CORTES', 'RECONEXIONES', 'MEDIDORES', 'INSPECCIONES']
-      }
-    },
-    { 
-      field: 'supervisor', 
-      headerName: 'Supervisor', 
-      width: 120,
-      editable: true
-    },*/
-    { 
-      field: 'description', 
-      headerName: 'Comentario', 
-      //editable: () => !this.signalsService.getClosedReport()(),
-      editable: true,
-      width: 180,
-    },
     { 
       field: 'paid', 
       headerName: 'Pagado', 
       //editable: () => !this.signalsService.getClosedReport()(),
       editable: true,
-      width: 120,
+      width: 110,
+    },
+  {
+      field: 'totalEjecutado', 
+      headerName: 'Total $ Ejecutado', 
+      width: 150,
+      editable: true,
+      cellRenderer: (params) => {
+        const value = params.value || 0;
+        const formatted = new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD'
+        }).format(value);
+        
+        return `
+          <div style="
+            text-align: center; 
+            width: 100%; 
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          ">${formatted}</div>
+        `;
+      },
+      cellStyle: { 
+        textAlign: 'center',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }
     },
     { 
       field: 'close', 
@@ -1198,9 +1204,15 @@ public videosColumnDefs: ColDef[] = [
       //editable: () => !this.signalsService.getClosedReport()(),
       editable: true,
       width: 100,
+    },
+     { 
+      field: 'description', 
+      headerName: 'Comentario', 
+      //editable: () => !this.signalsService.getClosedReport()(),
+      editable: true,
+      width: 180,
     }
   ];
-
 
  onCellDoubleClicked(event: CellDoubleClickedEvent) {
   if (!event.node.group) {
@@ -2125,7 +2137,7 @@ addVideo(){
       // Mostrar notificación opcional (descomentarla si quieres notificaciones visuales)
       // alerts.basicAlert('Nuevo Reporte Diario', 'Se creó un nuevo reporte diario para esta OT', 'info');
     }
-    
+
   // ========================= SignalR Debug Methods =========================
   
   // Método público para debugging - llamar desde consola del navegador
