@@ -375,16 +375,16 @@
                   <div class="tab-pane" [class.show]="activeTab === 'conceptos'" [class.active]="activeTab === 'conceptos'">
                     <div *ngIf="selectedOt; else noOtSelectedConceptos">
                       <h6><i class="bi bi-lightbulb"></i> Conceptos del Reporte <span *ngIf="selectedReporteFecha" class="badge bg-secondary ms-2">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
-                      <div class="row">
-                        <div class="col-2">
-                          <nav class="col-auto d-flex flex-column align-items-start">
-                            <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addConcepto()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
-                            <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveConceptosChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedConceptoChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
-                            <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertConceptos()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
-                            <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteConcepto()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
+                      <div class="row g-1">
+                        <div class="col-auto">
+                          <nav class="d-flex flex-column align-items-start">
+                            <button type="button" class="btn btn-primary mb-2" (click)="addConcepto()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
+                            <button type="button" class="btn btn-success position-relative mb-2" (click)="saveConceptosChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedConceptoChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
+                            <button type="button" class="btn btn-warning mb-2" (click)="revertConceptos()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
+                            <button type="button" class="btn btn-danger mb-2" (click)="deleteConcepto()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
                           </nav>
                         </div>
-                        <div class="col-10 overflow-auto" style="height: calc(85vh - 480px);">
+                        <div class="col overflow-auto" style="height: calc(85vh - 480px);">
                           <ag-grid-angular style="height: 100%; width: 100%;" class="ag-theme-quartz small-text-ag-grid" [rowData]="conceptos" [columnDefs]="conceptosColumnDefs" [gridOptions]="tabGridOptions" (gridReady)="onConceptosGridReady($event)"></ag-grid-angular>
                         </div>
                       </div>
