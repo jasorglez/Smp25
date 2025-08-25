@@ -1763,7 +1763,7 @@ addVideo(){
     animateRows: true,
     pagination: false,
     domLayout: 'normal',
-    groupDefaultExpanded: 1,
+    groupDefaultExpanded: -1,
     autoGroupColumnDef: {
       headerName: 'Grupo',
       field: 'ag-Grid-AutoColumn',
@@ -1910,6 +1910,12 @@ addVideo(){
     });
 
     // Effect para auto-actualizar PDF cuando se guarden cambio
+
+    // Effect para manejar expansión/colapso de grupos por proyecto
+    effect(() => {
+      const selectedProjectId = this.signalsService.getProjectSelectedBySidebar()();
+      this.handleProjectGroupExpansion(selectedProjectId);
+    });
 
     this.loadColumnSizes();
   }
@@ -2176,6 +2182,12 @@ addVideo(){
         console.log('Datos obtenidos del servicio OT para proyecto actual:', data);
         this.rowData = data;
         
+        // Aplicar lógica de agrupación después de cargar datos
+        setTimeout(() => {
+          const selectedProjectId = this.signalsService.getProjectSelectedBySidebar()();
+          this.handleProjectGroupExpansion(selectedProjectId);
+        }, 200);
+        
         // Actualizar catálogo de conceptos después de cargar los datos
         if (this.idProject) {
           this.obtenerConceptos();
@@ -2228,6 +2240,12 @@ addVideo(){
         console.log(`Total de OTs obtenidas de todos los proyectos: ${allOTs.length}`);
         this.rowData = allOTs;
         
+        // Aplicar lógica de agrupación después de cargar datos
+        setTimeout(() => {
+          const selectedProjectId = this.signalsService.getProjectSelectedBySidebar()();
+          this.handleProjectGroupExpansion(selectedProjectId);
+        }, 200);
+        
         // Actualizar catálogo de conceptos después de cargar los datos
         if (this.idProject) {
           this.obtenerConceptos();
@@ -2255,6 +2273,56 @@ addVideo(){
     this.gridApi = params.api;
     // Remover sizeColumnsToFit para que funcione el flex
     // params.api.sizeColumnsToFit();
+    
+    // Aplicar configuración inicial de grupos colapsados
+    setTimeout(() => {
+      const selectedProjectId = this.signalsService.getProjectSelectedBySidebar()();
+      this.handleProjectGroupExpansion(selectedProjectId);
+    }, 100);
+  }
+
+  // Método para manejar expansión/colapso de grupos por proyecto
+  private handleProjectGroupExpansion(selectedProjectId: number | null): void {
+    if (!this.gridApi) {
+      console.log('🔍 Grid API no disponible todavía para expansión de grupos');
+      return;
+    }
+
+    // Si no hay permisos para ver todos los proyectos, no aplicar grouping
+    if (!this.authService.hasDetailedPermission('projects', 'get-all-ot')) {
+      console.log('🔍 Usuario sin permisos para grouping por proyecto');
+      return;
+    }
+
+    console.log('🔍 Aplicando expansión de grupos para proyecto:', selectedProjectId);
+
+    // Primero colapsar todos los grupos
+    this.gridApi.collapseAll();
+
+    // Si hay un proyecto seleccionado, expandir solo ese grupo
+    if (selectedProjectId && selectedProjectId !== 0) {
+      // Obtener todos los nodos de grupo
+      const groupNodes: any[] = [];
+      this.gridApi.forEachNode(node => {
+        if (node.group) {
+          groupNodes.push(node);
+        }
+      });
+
+      // Encontrar y expandir el nodo del proyecto seleccionado
+      const projectNode = groupNodes.find(node => {
+        return node.key === selectedProjectId.toString();
+      });
+
+      if (projectNode) {
+        console.log('🔍 Expandiendo grupo del proyecto:', selectedProjectId);
+        this.gridApi.setRowNodeExpanded(projectNode, true);
+      } else {
+        console.log('🔍 No se encontró nodo de grupo para proyecto:', selectedProjectId);
+      }
+    } else {
+      console.log('🔍 Sin proyecto seleccionado - todos los grupos permanecen colapsados');
+    }
   }
 
   onSelectionChanged(event: any) {
