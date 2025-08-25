@@ -2186,7 +2186,18 @@ addVideo(){
         // Aplicar lógica de agrupación después de cargar datos
         setTimeout(() => {
           const selectedProjectId = this.signalsService.getProjectSelectedBySidebar()();
-          this.handleProjectGroupExpansion(selectedProjectId);
+          console.log('🔍 Datos cargados - Aplicando agrupación para proyecto:', selectedProjectId);
+          
+          // Forzar colapso inicial siempre
+          this.gridApi.collapseAll();
+          
+          // Luego aplicar la lógica específica
+          if (selectedProjectId && selectedProjectId !== 0) {
+            this.handleProjectGroupExpansion(selectedProjectId);
+          } else {
+            console.log('🔍 Sin proyecto seleccionado - manteniendo todo colapsado');
+            this.lastExpandedProjectId = null;
+          }
         }, 200);
         
         // Actualizar catálogo de conceptos después de cargar los datos
@@ -2244,7 +2255,18 @@ addVideo(){
         // Aplicar lógica de agrupación después de cargar datos
         setTimeout(() => {
           const selectedProjectId = this.signalsService.getProjectSelectedBySidebar()();
-          this.handleProjectGroupExpansion(selectedProjectId);
+          console.log('🔍 Datos cargados - Aplicando agrupación para proyecto:', selectedProjectId);
+          
+          // Forzar colapso inicial siempre
+          this.gridApi.collapseAll();
+          
+          // Luego aplicar la lógica específica
+          if (selectedProjectId && selectedProjectId !== 0) {
+            this.handleProjectGroupExpansion(selectedProjectId);
+          } else {
+            console.log('🔍 Sin proyecto seleccionado - manteniendo todo colapsado');
+            this.lastExpandedProjectId = null;
+          }
         }, 200);
         
         // Actualizar catálogo de conceptos después de cargar los datos
@@ -2278,8 +2300,17 @@ addVideo(){
     // Aplicar configuración inicial de grupos colapsados
     setTimeout(() => {
       const selectedProjectId = this.signalsService.getProjectSelectedBySidebar()();
-      this.handleProjectGroupExpansion(selectedProjectId);
-    }, 100);
+      console.log('🔍 Configuración inicial - Proyecto desde sidebar:', selectedProjectId);
+      
+      // Forzar colapso inicial si no hay proyecto seleccionado
+      if (!selectedProjectId || selectedProjectId === 0) {
+        console.log('🔍 Sin proyecto seleccionado - forzando colapso inicial');
+        this.gridApi.collapseAll();
+        this.lastExpandedProjectId = null;
+      } else {
+        this.handleProjectGroupExpansion(selectedProjectId);
+      }
+    }, 200);
   }
 
   // Método para manejar expansión/colapso de grupos por proyecto
@@ -2330,11 +2361,9 @@ addVideo(){
         console.log('🔍 No se encontró nodo de grupo para proyecto:', selectedProjectId);
       }
     } else {
-      // 3. Si no hay proyecto seleccionado, colapsar todo si había algo expandido
-      if (this.lastExpandedProjectId) {
-        console.log('🔍 Sin proyecto seleccionado - colapsando todos los grupos');
-        this.gridApi.collapseAll();
-      }
+      // 3. Si no hay proyecto seleccionado, colapsar todo
+      console.log('🔍 Sin proyecto seleccionado - colapsando todos los grupos');
+      this.gridApi.collapseAll();
       this.lastExpandedProjectId = null;
     }
   }
