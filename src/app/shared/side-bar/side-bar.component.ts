@@ -62,6 +62,25 @@ export class SideBarComponent {
           setTimeout(() => this.signalsService.resetSignalIncAndExp());
         }
     });
+
+    // 🔄 Effect para sincronización bidireccional Grid → Sidebar
+    effect(() => {
+      const selectedProjectFromSignal = this.signalsService.getProjectSelectedBySidebar()();
+      
+      // Actualizar el ComboBox visual solo si es diferente al valor actual
+      if (selectedProjectFromSignal && selectedProjectFromSignal.toString() !== this.selectedProjectId) {
+        console.log(`🔄 Sidebar ComboBox actualizado: ${this.selectedProjectId} → ${selectedProjectFromSignal}`);
+        this.selectedProjectId = selectedProjectFromSignal.toString();
+        
+        // Forzar actualización del DOM del select
+        setTimeout(() => {
+          const selectElement = document.getElementById('project') as HTMLSelectElement;
+          if (selectElement) {
+            selectElement.value = this.selectedProjectId;
+          }
+        }, 50);
+      }
+    });
   }
 
   async ngOnInit() {

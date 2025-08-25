@@ -1764,7 +1764,7 @@ addVideo(){
     animateRows: true,
     pagination: false,
     domLayout: 'normal',
-    groupDefaultExpanded: -1,
+    groupDefaultExpanded: 0,
     autoGroupColumnDef: {
       headerName: 'Grupo',
       field: 'ag-Grid-AutoColumn',
