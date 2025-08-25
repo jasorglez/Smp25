@@ -1006,8 +1006,8 @@ public videosColumnDefs: ColDef[] = [
 
   ]
 
-  public conceptosColumnDefs: ColDef[] = [
-    {
+public conceptosColumnDefs: ColDef[] = [
+  {
     field: 'idResource',
     headerName: 'Trabajo realizado',
     flex: 2,
@@ -1015,32 +1015,26 @@ public videosColumnDefs: ColDef[] = [
     cellEditor: 'agSelectCellEditor',
     cellEditorParams: (params: any) => {
       return {
-          values: this.catalogConcepto.map(emp => emp.actandNom),
-          filterList: this.catalogConcepto.map(emp => emp.actandNom),
-          filterKey: 'idResource',
-          placeholder: 'Buscar empleado...',
-          minLength: 1,
-        };
+        values: this.catalogConcepto.map(emp => emp.actandNom),
+        filterList: this.catalogConcepto.map(emp => emp.actandNom),
+        filterKey: 'idResource',
+        placeholder: 'Buscar empleado...',
+        minLength: 1,
+      };
     },
-    // Muestra la descripción del equipo en la celda
     valueFormatter: (params) => {
       const equipoId = params.data?.idResource;
       if (!equipoId) return '';
-
       const foundItem = this.catalogConcepto?.find(item => item.id == equipoId);
       return foundItem ? foundItem.actandNom : `ID: ${equipoId}`;
     },
-    // Muestra la descripción del equipo cuando se lee el valor actual
     valueGetter: (params) => {
       const equipoId = params.data?.idResource;
       if (!equipoId) return '';
-
       const foundItem = this.catalogConcepto?.find(item => item.id == equipoId);
       return foundItem ? foundItem.actandNom : '';
     },
-    // Convierte la descripción seleccionada de vuelta al ID
     valueSetter: (params) => {
-
       if (!params.newValue) {
         params.data.idResource = null;
         return true;
@@ -1053,7 +1047,7 @@ public videosColumnDefs: ColDef[] = [
             index !== params.node.rowIndex &&
             row.idResource === foundItem.id
         );
-      
+
         if (duplicateExists) {
           alerts.basicAlert(
             'Duplicado',
@@ -1062,8 +1056,13 @@ public videosColumnDefs: ColDef[] = [
           );
           return false;
         }
+
         params.data.idResource = foundItem.id;
-        console.log('Data después:', params.data.idResource);
+
+        // ⚠️ Ya no es necesario guardar `mont` en params.data
+
+        // Refresca la celda de "Monto"
+        params.api.refreshCells({ rowNodes: [params.node], columns: ['mont'] });
         return true;
       } else {
         console.warn('Descripción no válida:', params.newValue);
@@ -1071,8 +1070,41 @@ public videosColumnDefs: ColDef[] = [
       }
     }
   },
-  { field: 'quantity', headerName: 'Cantidad', flex: 1, editable: () => !this.signalsService.getClosedReport()()},
-  ]
+  {
+    field: 'quantity',
+    headerName: 'Cantidad',
+    flex: 1,
+    editable: () => !this.signalsService.getClosedReport()(),
+    valueSetter: (params) => {
+      params.data.quantity = params.newValue;
+      // Refresca la celda de "Monto"
+      params.api.refreshCells({ rowNodes: [params.node], columns: ['mont'] });
+      return true;
+    }
+  },
+  {
+    field: 'mont',
+    headerName: 'Monto',
+    editable: false,
+    // ✅ Se calcula en tiempo real sin necesidad de guardar el valor
+    valueGetter: (params) => {
+      const equipoId = params.data?.idResource;
+      const cantidad = Number(params.data?.quantity) || 0;
+
+      if (!equipoId || !cantidad) return 0;
+
+      const item = this.catalogConcepto?.find(i => i.id === equipoId);
+      const costo = item ? Number(item.costMX) : 0;
+
+      return costo * cantidad;
+    },
+    valueFormatter: (params) => {
+      const total = Number(params.value) || 0;
+      return `$${total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
+    }
+  }
+];
+
 
   // Configuración de columnas para reportes diarios con edición inline
   public reportesColumnDefs: ColDef[] = [
