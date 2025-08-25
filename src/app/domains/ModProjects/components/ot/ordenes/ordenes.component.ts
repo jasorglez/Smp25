@@ -4797,6 +4797,9 @@ async saveChangesEquipos() {
         delete item.__modified;
       });
 
+    // Actualizar automáticamente el totalPay del reporte diario
+    await this.updateTotalPayAfterConceptos();
+
     // Recargar datos desde el servidor
     console.log('Recargando datos desde el servidor...');
     await this.loadDailyReports();
@@ -4838,6 +4841,53 @@ async saveChangesEquipos() {
     alerts.basicAlert('Error', errorMessage, 'error');
   }
   }
+
+  // Método para actualizar totalPay después de guardar conceptos
+  private async updateTotalPayAfterConceptos(): Promise<void> {
+    if (!this.selectedReporteId) {
+      console.log('No hay reporte seleccionado para actualizar totalPay');
+      return;
+    }
+
+    try {
+      console.log('🧮 Calculando totalPay para reporte ID:', this.selectedReporteId);
+      
+      const costResponse = await this.dailyReportService.getReportxCost(this.selectedReporteId).toPromise();
+      console.log('💰 Respuesta de costo:', costResponse);
+
+      if (costResponse && costResponse.total && Array.isArray(costResponse.total) && costResponse.total.length > 0) {
+        const calculatedTotal = costResponse.total[0].total;
+        console.log('💵 Total calculado:', calculatedTotal);
+
+        // Buscar el reporte actual en el array de reportes diarios
+        const currentReport = this.reportesDiarios.find(r => r.id === this.selectedReporteId);
+        if (currentReport) {
+          // Actualizar el campo totalPay silenciosamente
+          currentReport.totalPay = calculatedTotal;
+          console.log('✅ TotalPay actualizado en memoria:', calculatedTotal);
+
+          // Actualizar en el servidor
+          const updateData = {
+            ...currentReport,
+            totalPay: calculatedTotal
+          };
+
+          await this.dailyReportService.updateDailyReport(this.selectedReporteId, updateData).toPromise();
+          console.log('✅ TotalPay actualizado en servidor exitosamente');
+          
+        } else {
+          console.warn('⚠️ No se encontró el reporte actual para actualizar totalPay');
+        }
+      } else {
+        console.log('ℹ️ No se encontraron totales en la respuesta de costos');
+      }
+
+    } catch (error) {
+      console.error('❌ Error al actualizar totalPay:', error);
+      // No mostrar error al usuario ya que debe ser silencioso
+    }
+  }
+
   revertConceptos() {
    this.obtenerConcep(this.selectedReporteId);
   this.notSavedConceptoChanges = false;
