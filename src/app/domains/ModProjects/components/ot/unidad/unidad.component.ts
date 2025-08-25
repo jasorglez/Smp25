@@ -63,9 +63,13 @@ export class UnidadComponent implements OnInit {
             total: {
               show: true,
               showAlways: true,
-              fontSize: '14px',
-              fontWeight: 600,
-              color: '#333'
+              fontSize: '10px',
+              fontWeight: 500,
+              color: '#666',
+              formatter: (w: any) => {
+                const total = w.globals.seriesTotals.reduce((a: number, b: number) => a + b, 0);
+                return '$' + (total / 1000).toFixed(0) + 'k';
+              }
             }
           }
         }
