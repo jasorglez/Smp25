@@ -666,18 +666,19 @@ private processMaterialesData(): string[][] {
   private processConceptosData(): string[][] {
     if (!this.conceptosData || this.conceptosData.length === 0) {
       return [
-        ['Conc.', 'Descripción', 'Can.'],
-        ['No hay datos de conceptos', 'Sin descripción disponible', '0']
+        ['Conc.', 'Descripción', 'Can.', 'P.U.', 'Monto'],
+        ['No hay datos de conceptos', 'Sin descripción disponible', '0', '$0.00', '$0.00']
       ];
     }
 
     // Agrupar por concepto y sumar cantidades
-    const conceptoMap = new Map<string, { activity: string, description: string, cantidad: number }>();
+    const conceptoMap = new Map<string, { activity: string, description: string, cantidad: number, precioUnitario: number, monto: number }>();
     
     this.conceptosData.forEach(conceptos => {
       // Usar el conceptName procesado si está disponible, sino buscar en el catálogo
       let activity: string;
       let description: string;
+      let precioUnitario = 0;
       
       if (conceptos.conceptName) {
         // Usar el nombre ya procesado desde el componente
@@ -689,8 +690,15 @@ private processMaterialesData(): string[][] {
         activity = conceptosSeleccionado ? conceptosSeleccionado.activity : 'Sin nombre';
         description = conceptosSeleccionado ? conceptosSeleccionado.text : 'Sin descripción';
       }
+
+      // Obtener el precio unitario del catálogo
+      const conceptosSeleccionado = this.conceptosCatalog.find(e => e.id === conceptos.idResource);
+      if (conceptosSeleccionado && conceptosSeleccionado.costMX) {
+        precioUnitario = Number(conceptosSeleccionado.costMX);
+      }
       
       const cantidad = conceptos.quantity ?? 0;
+      const monto = precioUnitario * cantidad;
       
       const key = `${conceptos.idResource}-${activity}`;
       
@@ -699,17 +707,21 @@ private processMaterialesData(): string[][] {
         conceptoMap.set(key, {
           activity: existing.activity,
           description: existing.description,
-          cantidad: existing.cantidad + cantidad
+          cantidad: existing.cantidad + cantidad,
+          precioUnitario: existing.precioUnitario, // El precio unitario no se suma
+          monto: existing.monto + monto
         });
       } else {
-        conceptoMap.set(key, { activity, description, cantidad });
+        conceptoMap.set(key, { activity, description, cantidad, precioUnitario, monto });
       }
     });
     
     // Convertir a array para la tabla
-    const tableData = [['Conc.', 'Descripción', 'Can.']];
+    const tableData = [['Conc.', 'Descripción', 'Can.', 'P.U.', 'Monto']];
     conceptoMap.forEach(data => {
-      tableData.push([data.activity, data.description, data.cantidad.toString()]);
+      const precioUnitarioFormatted = `$${data.precioUnitario.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
+      const montoFormatted = `$${data.monto.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
+      tableData.push([data.activity, data.description, data.cantidad.toString(), precioUnitarioFormatted, montoFormatted]);
     });
 
     return tableData;
@@ -940,7 +952,7 @@ private processMaterialesData(): string[][] {
               width: '100%',
               table: {
                 headerRows: 1,
-                widths: ['auto', '*', 'auto'],
+                widths: ['auto', '*', 'auto', 'auto', 'auto'],
                 body: this.processConceptosData()
               },
               layout: {
