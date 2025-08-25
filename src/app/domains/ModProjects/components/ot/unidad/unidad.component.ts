@@ -63,12 +63,13 @@ export class UnidadComponent implements OnInit {
             total: {
               show: true,
               showAlways: true,
-              fontSize: '10px',
-              fontWeight: 500,
-              color: '#666',
+              label: 'Total',
+              fontSize: '9px',
+              fontWeight: 700,
+              color: '#333',
               formatter: (w: any) => {
                 const total = w.globals.seriesTotals.reduce((a: number, b: number) => a + b, 0);
-                return '$' + (total / 1000).toFixed(0) + 'k';
+                return '$' + total.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
               }
             }
           }
