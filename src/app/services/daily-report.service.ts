@@ -21,10 +21,14 @@ export class DailyReportService {
     return this.http.get(`${environment.urlSmp}/DailyReport/xot/${idOt}`, { headers: this.trackingService.getHeaders() });
   }
 
-    getReportxCost(idReport: number): Observable<any> {
+  getReportxCost(idReport: number): Observable<any> {
     return this.http.get(`${environment.urlSmp}/DailyReport/cost?idReport=${idReport}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getTotalxCost(idRoot: number): Observable<any> {
+    return this.http.get(`${environment.urlSmp}/DailyReport/ot-project/${idReport}`, { headers: this.trackingService.getHeaders() });
+  }
+  
    // Actualizar solo el costo del reporte
   updateCostReport(idReport: number, data: any): Observable<any> {
     return this.http.put(`${environment.urlSmp}/DailyReport/${idReport}/totalconcepts`, data, { headers: this.trackingService.getHeaders() });
