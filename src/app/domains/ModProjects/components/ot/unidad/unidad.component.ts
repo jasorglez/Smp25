@@ -223,4 +223,10 @@ export class UnidadComponent implements OnInit {
   reloadData(): void {
     this.loadData();
   }
+
+  // Método para calcular total general
+  getTotalGeneral(): string {
+    const total = this.generalChartData.series.reduce((acc, curr) => acc + curr, 0);
+    return total.toLocaleString();
+  }
 }
