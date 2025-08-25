@@ -4852,7 +4852,8 @@ async saveChangesEquipos() {
     try {
       console.log('🧮 Calculando totalPay para reporte ID:', this.selectedReporteId);
       
-      const costResponse = await this.dailyReportService.getReportxCost(this.selectedReporteId).toPromise();
+      const reporteId = Number(this.selectedReporteId);
+      const costResponse = await this.dailyReportService.getReportxCost(reporteId).toPromise();
       console.log('💰 Respuesta de costo:', costResponse);
 
       if (costResponse && costResponse.total && Array.isArray(costResponse.total) && costResponse.total.length > 0) {
@@ -4862,17 +4863,17 @@ async saveChangesEquipos() {
         // Buscar el reporte actual en el array de reportes diarios
         const currentReport = this.reportesDiarios.find(r => r.id === this.selectedReporteId);
         if (currentReport) {
-          // Actualizar el campo totalPay silenciosamente
-          currentReport.totalPay = calculatedTotal;
+          // Actualizar el campo paid (que corresponde a totalPay) silenciosamente
+          (currentReport as any).paid = calculatedTotal;
           console.log('✅ TotalPay actualizado en memoria:', calculatedTotal);
 
           // Actualizar en el servidor
           const updateData = {
             ...currentReport,
-            totalPay: calculatedTotal
+            paid: calculatedTotal
           };
 
-          await this.dailyReportService.updateDailyReport(this.selectedReporteId, updateData).toPromise();
+          await this.dailyReportService.updateDailyReport(reporteId, updateData).toPromise();
           console.log('✅ TotalPay actualizado en servidor exitosamente');
           
         } else {
