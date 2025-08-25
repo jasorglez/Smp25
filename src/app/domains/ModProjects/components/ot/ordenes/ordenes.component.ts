@@ -2381,21 +2381,44 @@ addVideo(){
     }
 
     console.log('🔍 Buscando primer registro del proyecto:', projectId);
+    console.log('🔍 Total rowData disponible:', this.rowData.length);
+
+    // Debug: mostrar algunos registros para verificar estructura
+    if (this.rowData.length > 0) {
+      console.log('🔍 Estructura de primer registro:', this.rowData[0]);
+      console.log('🔍 Proyectos encontrados en datos:', [...new Set(this.rowData.map(r => r.idProject))]);
+    }
 
     // Obtener todos los nodos visibles (no grupos) del proyecto
     let firstRow: any = null;
+    let foundNodes: any[] = [];
+    
     this.gridApi.forEachNodeAfterFilterAndSort(node => {
-      if (!node.group && node.data && node.data.idProject === projectId) {
-        if (!firstRow) {
-          firstRow = node; // Tomar el primer registro encontrado
+      // Debug detallado
+      if (!node.group && node.data) {
+        foundNodes.push({
+          nodeIndex: node.rowIndex,
+          idProject: node.data.idProject,
+          otNumber: node.data.otNumber,
+          matchesProject: node.data.idProject === projectId
+        });
+        
+        if (node.data.idProject === projectId) {
+          if (!firstRow) {
+            firstRow = node; // Tomar el primer registro encontrado
+          }
         }
       }
     });
+
+    console.log('🔍 Nodos encontrados:', foundNodes.slice(0, 5)); // Solo mostrar primeros 5
+    console.log('🔍 Nodos que coinciden con proyecto', projectId, ':', foundNodes.filter(n => n.matchesProject));
 
     if (firstRow) {
       const rowIndex = firstRow.rowIndex;
       
       console.log(`🔍 Posicionándose en primer registro del proyecto ${projectId}: fila ${rowIndex}`);
+      console.log('🔍 Datos de la fila seleccionada:', firstRow.data);
       
       // Scroll hasta el primer registro y seleccionarlo
       this.gridApi.ensureIndexVisible(rowIndex, 'top');
@@ -2403,10 +2426,14 @@ addVideo(){
       // Seleccionar la fila para mayor claridad visual
       setTimeout(() => {
         firstRow.setSelected(true, true); // true para seleccionar, true para clear otras selecciones
+        console.log('🔍 Fila seleccionada exitosamente');
       }, 50);
       
     } else {
       console.log('🔍 No se encontraron registros visibles para el proyecto:', projectId);
+      console.log('🔍 Verificar si el proyecto tiene datos en rowData...');
+      const matchingData = this.rowData.filter(r => r.idProject === projectId);
+      console.log('🔍 Registros en rowData para este proyecto:', matchingData.length);
     }
   }
 
