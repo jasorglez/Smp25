@@ -166,6 +166,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   public isUploading: boolean = false;
   private idProject: number = 0;
   private idcompany: number = 0;
+  private lastExpandedProjectId: number | null = null;
   private catalogMateriales   : any[] = [];
   public catalogEquipos      : any[] = [];
   private catalogDepartamentos: any[] = [];
@@ -2294,34 +2295,47 @@ addVideo(){
       return;
     }
 
-    console.log('🔍 Aplicando expansión de grupos para proyecto:', selectedProjectId);
+    console.log('🔍 Aplicando expansión de grupos - Proyecto anterior:', this.lastExpandedProjectId, '→ Proyecto nuevo:', selectedProjectId);
 
-    // Primero colapsar todos los grupos
-    this.gridApi.collapseAll();
+    // Obtener todos los nodos de grupo de una sola vez
+    const groupNodes: any[] = [];
+    this.gridApi.forEachNode(node => {
+      if (node.group) {
+        groupNodes.push(node);
+      }
+    });
 
-    // Si hay un proyecto seleccionado, expandir solo ese grupo
+    // 1. Colapsar proyecto anterior si existe y es diferente al nuevo
+    if (this.lastExpandedProjectId && this.lastExpandedProjectId !== selectedProjectId) {
+      const previousProjectNode = groupNodes.find(node => 
+        node.key === this.lastExpandedProjectId!.toString()
+      );
+      if (previousProjectNode) {
+        console.log('🔍 Colapsando proyecto anterior:', this.lastExpandedProjectId);
+        this.gridApi.setRowNodeExpanded(previousProjectNode, false);
+      }
+    }
+
+    // 2. Expandir nuevo proyecto seleccionado
     if (selectedProjectId && selectedProjectId !== 0) {
-      // Obtener todos los nodos de grupo
-      const groupNodes: any[] = [];
-      this.gridApi.forEachNode(node => {
-        if (node.group) {
-          groupNodes.push(node);
-        }
-      });
+      const newProjectNode = groupNodes.find(node => 
+        node.key === selectedProjectId.toString()
+      );
 
-      // Encontrar y expandir el nodo del proyecto seleccionado
-      const projectNode = groupNodes.find(node => {
-        return node.key === selectedProjectId.toString();
-      });
-
-      if (projectNode) {
-        console.log('🔍 Expandiendo grupo del proyecto:', selectedProjectId);
-        this.gridApi.setRowNodeExpanded(projectNode, true);
+      if (newProjectNode) {
+        console.log('🔍 Expandiendo proyecto seleccionado:', selectedProjectId);
+        this.gridApi.setRowNodeExpanded(newProjectNode, true);
+        this.lastExpandedProjectId = selectedProjectId;
       } else {
         console.log('🔍 No se encontró nodo de grupo para proyecto:', selectedProjectId);
       }
     } else {
-      console.log('🔍 Sin proyecto seleccionado - todos los grupos permanecen colapsados');
+      // 3. Si no hay proyecto seleccionado, colapsar todo si había algo expandido
+      if (this.lastExpandedProjectId) {
+        console.log('🔍 Sin proyecto seleccionado - colapsando todos los grupos');
+        this.gridApi.collapseAll();
+      }
+      this.lastExpandedProjectId = null;
     }
   }
 
