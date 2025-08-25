@@ -44,19 +44,19 @@
   <div class="row" *ngIf="!isLoading && !error && cuadrillasGrouped.length > 0">
     
     <!-- Gráficas Individuales por Cuadrilla -->
-    <div class="col-12 col-md-6 col-lg-4 mb-4" *ngFor="let cuadrilla of cuadrillasGrouped">
+    <div class="col-12 col-md-6 col-lg-4 mb-4" *ngFor="let cuadrilla of cuadrillasGrouped; let i = index">
       <div class="card h-100">
         <div class="card-body">
           <apx-chart
-            [series]="getCuadrillaChartOptions(cuadrilla).series"
-            [chart]="getCuadrillaChartOptions(cuadrilla).chart"
-            [labels]="getCuadrillaChartOptions(cuadrilla).labels"
-            [title]="getCuadrillaChartOptions(cuadrilla).title"
-            [plotOptions]="getCuadrillaChartOptions(cuadrilla).plotOptions"
-            [dataLabels]="getCuadrillaChartOptions(cuadrilla).dataLabels"
-            [legend]="getCuadrillaChartOptions(cuadrilla).legend"
-            [tooltip]="getCuadrillaChartOptions(cuadrilla).tooltip"
-            [colors]="getCuadrillaChartOptions(cuadrilla).colors"
+            [series]="getCuadrillaChartOptions(cuadrilla, i).series"
+            [chart]="getCuadrillaChartOptions(cuadrilla, i).chart"
+            [labels]="getCuadrillaChartOptions(cuadrilla, i).labels"
+            [title]="getCuadrillaChartOptions(cuadrilla, i).title"
+            [plotOptions]="getCuadrillaChartOptions(cuadrilla, i).plotOptions"
+            [dataLabels]="getCuadrillaChartOptions(cuadrilla, i).dataLabels"
+            [legend]="getCuadrillaChartOptions(cuadrilla, i).legend"
+            [tooltip]="getCuadrillaChartOptions(cuadrilla, i).tooltip"
+            [colors]="getCuadrillaChartOptions(cuadrilla, i).colors"
           ></apx-chart>
           
           <!-- Info adicional de la cuadrilla -->

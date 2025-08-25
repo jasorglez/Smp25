@@ -102,10 +102,7 @@ export class UnidadComponent implements OnInit {
         }
       }
     },
-    colors: [
-      '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', 
-      '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'
-    ]
+    // Los colores se asignarán dinámicamente por gráfica
   };
 
   ngOnInit(): void {
@@ -184,12 +181,27 @@ export class UnidadComponent implements OnInit {
     });
   }
 
+  // Paleta de colores diferentes para cada gráfica
+  private chartColorPalettes = [
+    ['#FF4444', '#FF6B6B', '#FF8E8E', '#FFB1B1'], // Rojos
+    ['#4ECDC4', '#6ED4CC', '#8EDCD5', '#AEE4DE'], // Verdes agua
+    ['#45B7D1', '#67C5D9', '#89D3E1', '#ABE1E9'], // Azules
+    ['#96CEB4', '#A8D6C2', '#BADED0', '#CCE6DE'], // Verde menta
+    ['#FFEAA7', '#FFEFB8', '#FFF4C9', '#FFF9DA'], // Amarillos
+    ['#DDA0DD', '#E4B3E4', '#EBC6EB', '#F2D9F2'], // Lilas
+    ['#98D8C8', '#AAE0D0', '#BCE8D8', '#CEF0E0'], // Verde agua claro
+    ['#F7DC6F', '#F9E489', '#FBECA3', '#FDF4BD']  // Dorados
+  ];
+
   // Obtener configuración específica para cada cuadrilla
-  getCuadrillaChartOptions(cuadrilla: CuadrillaGroup): any {
+  getCuadrillaChartOptions(cuadrilla: CuadrillaGroup, index: number): any {
+    const colorPalette = this.chartColorPalettes[index % this.chartColorPalettes.length];
+    
     return {
       ...this.chartOptions,
       series: cuadrilla.ots.map(ot => ot.totalOt),
       labels: cuadrilla.ots.map(ot => ot.otNumber),
+      colors: colorPalette,
       title: {
         text: cuadrilla.projectName,
         align: 'center',
@@ -204,10 +216,14 @@ export class UnidadComponent implements OnInit {
 
   // Obtener configuración para gráfica general
   getGeneralChartOptions(): any {
+    // Para la gráfica general, usar el primer color de cada paleta
+    const generalColors = this.chartColorPalettes.map(palette => palette[0]);
+    
     return {
       ...this.chartOptions,
       series: this.generalChartData.series,
       labels: this.generalChartData.labels,
+      colors: generalColors,
       title: {
         text: 'Resumen General por Cuadrilla',
         align: 'center',
