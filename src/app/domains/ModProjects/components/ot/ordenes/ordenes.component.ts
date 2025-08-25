@@ -3431,6 +3431,9 @@ async saveChangesEquipos() {
     if (this.selectedOt) {
       const otId = parseInt(this.selectedOt.id);
       
+      // 🔍 Guardar el reporte actualmente seleccionado ANTES de recargar
+      const currentSelectedReporteId = this.selectedReporteId;
+      
       this.dailyReportService.getDailyReportsByOt(otId).subscribe({
         next: (response) => {
           if (response.success && response.data) {
@@ -3439,13 +3442,25 @@ async saveChangesEquipos() {
               return { ...item };
             });
             
-            // Seleccionar automáticamente el primer reporte si existe
+            // 🎯 PRESERVAR SELECCIÓN: Intentar mantener el reporte previamente seleccionado
             if (this.reportesDiarios.length > 0) {
-              const firstReport = this.reportesDiarios[0];
+              let reporteToSelect = null;
+              
+              // Si había un reporte seleccionado anteriormente, intentar encontrarlo
+              if (currentSelectedReporteId) {
+                reporteToSelect = this.reportesDiarios.find(r => r.id === currentSelectedReporteId);
+                console.log('🔄 Preservando selección del reporte ID:', currentSelectedReporteId);
+              }
+              
+              // Si no se encuentra el reporte anterior o no había selección, usar el primero
+              if (!reporteToSelect) {
+                reporteToSelect = this.reportesDiarios[0];
+                console.log('📋 Seleccionando primer reporte como fallback');
+              }
               
               // Esperar un poco para asegurar que el grid esté completamente renderizado
               setTimeout(() => {
-                this.selectReporte(firstReport);
+                this.selectReporte(reporteToSelect);
               }, 200);
             }
           } else {
