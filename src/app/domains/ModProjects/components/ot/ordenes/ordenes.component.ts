@@ -2357,6 +2357,11 @@ addVideo(){
         console.log('🔍 Expandiendo proyecto seleccionado:', selectedProjectId);
         this.gridApi.setRowNodeExpanded(newProjectNode, true);
         this.lastExpandedProjectId = selectedProjectId;
+        
+        // Posicionarse en el último registro del proyecto expandido
+        setTimeout(() => {
+          this.scrollToLastRecordOfProject(selectedProjectId);
+        }, 100);
       } else {
         console.log('🔍 No se encontró nodo de grupo para proyecto:', selectedProjectId);
       }
@@ -2365,6 +2370,43 @@ addVideo(){
       console.log('🔍 Sin proyecto seleccionado - colapsando todos los grupos');
       this.gridApi.collapseAll();
       this.lastExpandedProjectId = null;
+    }
+  }
+
+  // Método para posicionarse en el primer registro del proyecto seleccionado
+  private scrollToLastRecordOfProject(projectId: number): void {
+    if (!this.gridApi) {
+      console.log('🔍 Grid API no disponible para posicionamiento');
+      return;
+    }
+
+    console.log('🔍 Buscando primer registro del proyecto:', projectId);
+
+    // Obtener todos los nodos visibles (no grupos) del proyecto
+    let firstRow: any = null;
+    this.gridApi.forEachNodeAfterFilterAndSort(node => {
+      if (!node.group && node.data && node.data.idProject === projectId) {
+        if (!firstRow) {
+          firstRow = node; // Tomar el primer registro encontrado
+        }
+      }
+    });
+
+    if (firstRow) {
+      const rowIndex = firstRow.rowIndex;
+      
+      console.log(`🔍 Posicionándose en primer registro del proyecto ${projectId}: fila ${rowIndex}`);
+      
+      // Scroll hasta el primer registro y seleccionarlo
+      this.gridApi.ensureIndexVisible(rowIndex, 'top');
+      
+      // Seleccionar la fila para mayor claridad visual
+      setTimeout(() => {
+        firstRow.setSelected(true, true); // true para seleccionar, true para clear otras selecciones
+      }, 50);
+      
+    } else {
+      console.log('🔍 No se encontraron registros visibles para el proyecto:', projectId);
     }
   }
 
