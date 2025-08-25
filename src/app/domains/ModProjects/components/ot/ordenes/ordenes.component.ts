@@ -2457,6 +2457,23 @@ addVideo(){
       this.selectedOt = selectedRows[0];
       this.activeTab = 'reportes'; // Resetear a la primera pestaña
       
+      // 🔄 SINCRONIZACIÓN BIDIRECCIONAL: Grid → Sidebar
+      // Actualizar sidebar cuando se selecciona una fila en el grid
+      const selectedProjectId = selectedRows[0].idProject;
+      if (selectedProjectId && selectedProjectId !== 0) {
+        const currentSidebarProject = this.signalsService.getProjectSelectedBySidebar()();
+        
+        // Solo actualizar si el proyecto es diferente al actual del sidebar
+        if (currentSidebarProject !== selectedProjectId) {
+          console.log(`🔄 Sincronización Grid → Sidebar: ${currentSidebarProject} → ${selectedProjectId}`);
+          this.signalsService.setProjectSelectedBySidebar(selectedProjectId);
+          
+          // Log para debug
+          const project = this.projectsList.find(p => p.id === selectedProjectId);
+          console.log(`🔄 Sidebar actualizado al proyecto: ${project?.name || selectedProjectId}`);
+        }
+      }
+      
       // Limpiar selección de reporte anterior
       this.selectedReporteFecha = '';
       this.selectedReporteTipo = '';
