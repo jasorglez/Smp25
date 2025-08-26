@@ -78,6 +78,9 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
     }
 
     try {
+      // Asegurar que los catálogos estén cargados primero
+      await this.obtenerCatalogos();
+      
       console.log('Llamando al servicio de materiales con idRoot:', this.idRoot, 'type: CONSUMABLE');
       
       const materials = await lastValueFrom(
@@ -120,9 +123,9 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
       id: material.id,
       activo: material.active,
       articulo: material.description,
-      categoria: '',
-      familia: '',
-      subFamilia: '',
+      categoria: this.getCategoriaDescription(material.idCategory),
+      familia: this.getFamiliaDescription(material.idFamilia),
+      subFamilia: this.getSubfamiliaDescription(material.idSubfamilia),
       proveedor: '',
       costoMN: material.costoMN,
       descriptionPackage: material.descriptionPackage,
@@ -164,6 +167,26 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
     
     console.log('Materials loaded:', this.rowData.length);
   }
+
+  // Métodos helper para obtener descripciones de catálogos
+  private getCategoriaDescription(idCategory: number): string {
+    if (!idCategory || !this.categories) return '';
+    const categoria = this.categories.find(cat => cat.id === idCategory);
+    return categoria ? categoria.description : '';
+  }
+
+  private getFamiliaDescription(idFamilia: number): string {
+    if (!idFamilia || !this.familias) return '';
+    const familia = this.familias.find(fam => fam.id === idFamilia);
+    return familia ? familia.description : '';
+  }
+
+  private getSubfamiliaDescription(idSubfamilia: number): string {
+    if (!idSubfamilia || !this.todasSubfamilias) return '';
+    const subfamilia = this.todasSubfamilias.find(sub => sub.id === idSubfamilia);
+    return subfamilia ? subfamilia.description : '';
+  }
+
 
   async obtenerCatalogos() {
     if (!this.idRoot) return;
