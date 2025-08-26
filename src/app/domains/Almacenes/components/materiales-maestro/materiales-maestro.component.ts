@@ -119,11 +119,15 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
       return;
     }
     
-    this.rowData = materials.map(material => ({
-      id: material.id,
-      activo: material.active,
-      articulo: material.description,
-      categoria: this.getCategoriaDescription(material.idCategory),
+    this.rowData = materials.map(material => {
+      console.log('Procesando material:', material.id);
+      console.log('Campos del material:', Object.keys(material));
+      console.log('idCategory:', material.idCategory, 'existe:', 'idCategory' in material);
+      return {
+        id: material.id,
+        activo: material.active,
+        articulo: material.description,
+        categoria: this.getCategoriaDescription(material.idCategory),
       familia: this.getFamiliaDescription(material.idFamilia),
       subFamilia: this.getSubfamiliaDescription(material.idSubfamilia),
       proveedor: '',
@@ -153,7 +157,8 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
       date: material.date,
       stockMin: material.stockMin,
       stockMax: material.stockMax
-    }));
+      };
+    });
 
     console.log('Datos procesados para el grid:', this.rowData);
     console.log('Número de filas procesadas:', this.rowData.length);
