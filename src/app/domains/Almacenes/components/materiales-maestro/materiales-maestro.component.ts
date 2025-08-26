@@ -28,7 +28,9 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
 
   constructor() {
     effect(() => {
+      console.log('Effect ejecutado en constructor');
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+      console.log('idRoot actualizado a:', this.idRoot);
       this.obtenerDatos();
       this.obtenerCatalogos();
       this.obtenerMedidas();
@@ -68,26 +70,33 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   async obtenerDatos() {
+    console.log('obtenerDatos() llamado, idRoot:', this.idRoot);
+    
     if (!this.idRoot) {
       console.warn('No idRoot available');
       return;
     }
 
     try {
+      console.log('Llamando al servicio de materiales con idRoot:', this.idRoot, 'type: CONSUMABLE');
+      
       const materials = await lastValueFrom(
         this.materialsService.getMaterials(this.idRoot, 'CONSUMABLE')
           .pipe(
             catchError((error) => {
-              console.error('Error fetching materials:', error);
+              console.error('Error en el pipe catchError:', error);
               return EMPTY;
             })
           )
       );
       
+      console.log('Materiales recibidos del servicio:', materials);
+      console.log('Número de materiales:', materials?.length || 0);
+      
       this.procesarMateriales(materials);
       
     } catch (error) {
-      console.error('Error al cargar materiales:', error);
+      console.error('Error en try/catch al cargar materiales:', error);
       this.rowData = [];
       if (this.gridApi) {
         this.gridApi.setGridOption('rowData', this.rowData);
@@ -96,6 +105,17 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
   }
 
   private procesarMateriales(materials: MaterialsResponse[]) {
+    console.log('procesarMateriales() llamado con:', materials);
+    
+    if (!materials || materials.length === 0) {
+      console.warn('No hay materiales para procesar');
+      this.rowData = [];
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', this.rowData);
+      }
+      return;
+    }
+    
     this.rowData = materials.map(material => ({
       id: material.id,
       activo: material.active,
@@ -132,8 +152,14 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
       stockMax: material.stockMax
     }));
 
+    console.log('Datos procesados para el grid:', this.rowData);
+    console.log('Número de filas procesadas:', this.rowData.length);
+    
     if (this.gridApi) {
+      console.log('Actualizando grid con datos');
       this.gridApi.setGridOption('rowData', this.rowData);
+    } else {
+      console.warn('gridApi no está disponible aún');
     }
     
     console.log('Materials loaded:', this.rowData.length);
