@@ -170,20 +170,26 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
 
   // Métodos helper para obtener descripciones de catálogos
   private getCategoriaDescription(idCategory: number): string {
+    console.log('getCategoriaDescription - idCategory:', idCategory, 'categories:', this.categories?.length);
     if (!idCategory || !this.categories) return '';
     const categoria = this.categories.find(cat => cat.id === idCategory);
+    console.log('Categoria encontrada:', categoria);
     return categoria ? categoria.description : '';
   }
 
   private getFamiliaDescription(idFamilia: number): string {
+    console.log('getFamiliaDescription - idFamilia:', idFamilia, 'familias:', this.familias?.length);
     if (!idFamilia || !this.familias) return '';
     const familia = this.familias.find(fam => fam.id === idFamilia);
+    console.log('Familia encontrada:', familia);
     return familia ? familia.description : '';
   }
 
   private getSubfamiliaDescription(idSubfamilia: number): string {
+    console.log('getSubfamiliaDescription - idSubfamilia:', idSubfamilia, 'subfamilias:', this.todasSubfamilias?.length);
     if (!idSubfamilia || !this.todasSubfamilias) return '';
     const subfamilia = this.todasSubfamilias.find(sub => sub.id === idSubfamilia);
+    console.log('Subfamilia encontrada:', subfamilia);
     return subfamilia ? subfamilia.description : '';
   }
 
@@ -411,11 +417,7 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
         headerName: 'Medidas',
         editable: true,
         width: 100,
-        filter: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.medidas ? this.medidas.map(item => item.description) : []
-        }
+        filter: true
       },
       {
         field: 'weightOrVolumes',
@@ -541,32 +543,112 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
 
   async saveChanges() {
     const isValid = this.rowData.every(
-      (item) => item.articulo && item.categoria
+      (item) => item.articulo
     );
     if (!isValid) {
       alerts.basicAlert(
         'Campos requeridos',
-        'Debe llenar artículo y categoría antes de guardar.',
+        'Debe llenar la descripción del artículo antes de guardar.',
         'error'
       );
       return;
     }
 
-    // Simular guardado por ahora
-    this.rowData = this.rowData.map(row => {
-      const cleanRow = { ...row };
-      delete cleanRow.__isNew;
-      delete cleanRow.__modified;
-      return cleanRow;
-    });
+    try {
+      // Obtener solo los registros modificados
+      const modifiedRows = this.rowData.filter(row => row.__modified || row.__isNew);
+      console.log('Registros a guardar:', modifiedRows);
+
+      for (const row of modifiedRows) {
+        const materialData = this.prepareDataForSave(row);
+        
+        if (row.__isNew) {
+          console.log('Creando nuevo material:', materialData);
+          await lastValueFrom(this.materialsService.addMaterial(materialData));
+        } else {
+          console.log('Actualizando material ID:', row.id, materialData);
+          await lastValueFrom(this.materialsService.updateMaterial(row.id.toString(), materialData));
+        }
+      }
+      
+      // Limpiar marcas de modificación
+      this.rowData = this.rowData.map(row => {
+        const cleanRow = { ...row };
+        delete cleanRow.__isNew;
+        delete cleanRow.__modified;
+        return cleanRow;
+      });
+      
+      alerts.basicAlert(
+        'Datos actualizados',
+        'Se han actualizado los datos correctamente.',
+        'success'
+      );
+      this.notSavedChanges = false;
+      this.newlyAddedRows = [];
+      
+      // Recargar datos para obtener IDs actualizados
+      await this.obtenerDatos();
+      
+    } catch (error) {
+      console.error('Error al guardar:', error);
+      alerts.basicAlert(
+        'Error',
+        'Error al guardar los cambios.',
+        'error'
+      );
+    }
+  }
+
+  private prepareDataForSave(row: any): any {
+    // Obtener IDs de los catálogos
+    const categoriaId = this.getCategoriaId(row.categoria);
+    const familiaId = this.getFamiliaId(row.familia);  
+    const subfamiliaId = this.getSubfamiliaId(row.subFamilia);
     
-    alerts.basicAlert(
-      'Datos actualizados',
-      'Se han actualizado los datos correctamente.',
-      'success'
-    );
-    this.notSavedChanges = false;
-    this.newlyAddedRows = [];
+    return {
+      idCompany: Number(this.idRoot),
+      description: row.articulo,
+      insumo: row.insumo,
+      idCategory: categoriaId,
+      idFamilia: familiaId,
+      idSubfamilia: subfamiliaId,
+      costoMN: Number(row.costoMN) || 0,
+      descriptionPackage: row.descriptionPackage,
+      packageQuantity: Number(row.packageQuantity) || 1,
+      measure: row.medida,
+      weightOrVolumes: Number(row.weightOrVolumes) || 0,
+      expiration: Number(row.expiration) || 0,
+      picture: row.picture || '',
+      typeMaterial: 'CONSUMABLE',
+      active: Boolean(row.activo),
+      vigente: true,
+      stockMin: 0,
+      stockMax: 0,
+      costoDLL: 0,
+      ventaMN: 0,
+      ventaDLL: 0,
+      aplicaResg: false
+    };
+  }
+
+  // Métodos helper para obtener IDs de catálogos
+  private getCategoriaId(description: string): number {
+    if (!description || !this.categories) return 0;
+    const categoria = this.categories.find(cat => cat.description === description);
+    return categoria ? categoria.id : 0;
+  }
+
+  private getFamiliaId(description: string): number {
+    if (!description || !this.familias) return 0;
+    const familia = this.familias.find(fam => fam.description === description);
+    return familia ? familia.id : 0;
+  }
+
+  private getSubfamiliaId(description: string): number {
+    if (!description || !this.todasSubfamilias) return 0;
+    const subfamilia = this.todasSubfamilias.find(sub => sub.description === description);
+    return subfamilia ? subfamilia.id : 0;
   }
 
   async deleteEntry() {
