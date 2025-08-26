@@ -1061,8 +1061,8 @@ public conceptosColumnDefs: ColDef[] = [
 
         // ⚠️ Ya no es necesario guardar `mont` en params.data
 
-        // Refresca la celda de "Monto"
-        params.api.refreshCells({ rowNodes: [params.node], columns: ['mont'] });
+        // Refresca las celdas de "Precio Unitario" y "Monto"
+        params.api.refreshCells({ rowNodes: [params.node], columns: ['precioUnitario', 'mont'] });
         return true;
       } else {
         console.warn('Descripción no válida:', params.newValue);
@@ -1077,16 +1077,32 @@ public conceptosColumnDefs: ColDef[] = [
     editable: () => !this.signalsService.getClosedReport()(),
     valueSetter: (params) => {
       params.data.quantity = params.newValue;
-      // Refresca la celda de "Monto"
-      params.api.refreshCells({ rowNodes: [params.node], columns: ['mont'] });
+      // Refresca las celdas de "Precio Unitario" y "Monto"
+      params.api.refreshCells({ rowNodes: [params.node], columns: ['precioUnitario', 'mont'] });
       return true;
+    }
+  },
+  {
+    field: 'precioUnitario',
+    headerName: 'Precio Unitario',
+    flex: 1,
+    editable: false,
+    valueGetter: (params) => {
+      const equipoId = params.data?.idResource;
+      if (!equipoId) return 0;
+      const item = this.catalogConcepto?.find(i => i.id === equipoId);
+      return item ? Number(item.costMX) : 0;
+    },
+    valueFormatter: (params) => {
+      const precio = Number(params.value) || 0;
+      return `$${precio.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
     }
   },
   {
     field: 'mont',
     headerName: 'Monto',
+    flex: 1,
     editable: false,
-    // ✅ Se calcula en tiempo real sin necesidad de guardar el valor
     valueGetter: (params) => {
       const equipoId = params.data?.idResource;
       const cantidad = Number(params.data?.quantity) || 0;

@@ -8,6 +8,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SignalsService } from 'app/services/signals.service';
 import { CatalogsService } from 'app/services/catalogs.service';
+import { MaterialsService } from 'app/services/materials.service';
+import { MaterialsResponse } from 'app/interface/materials.interface';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 
@@ -22,6 +24,7 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
 
   private catalogsService = inject(CatalogsService);
   private signalsService = inject(SignalsService);
+  private materialsService = inject(MaterialsService);
 
   constructor() {
     effect(() => {
@@ -65,8 +68,62 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   obtenerDatos() {
-    // Datos de prueba mientras no hay servicio específico - incluye todas las 19 columnas
-   
+    if (!this.idRoot) {
+      console.warn('No idRoot available');
+      return;
+    }
+
+    this.materialsService.getMaterials(this.idRoot, 'CONSUMABLE')
+      .pipe(
+        catchError((error) => {
+          console.error('Error fetching materials:', error);
+          this.rowData = [];
+          return EMPTY;
+        })
+      )
+      .subscribe((materials: MaterialsResponse[]) => {
+        this.rowData = materials.map(material => ({
+          id: material.id,
+          activo: material.active,
+          articulo: material.description,
+          categoria: '',
+          familia: '',
+          subFamilia: '',
+          proveedor: '',
+          costoMN: material.costoMN,
+          descriptionPackage: material.descriptionPackage,
+          packageQuantity: material.packageQuantity,
+          insumo: material.insumo,
+          medida: material.measure,
+          weightOrVolumes: material.weightOrVolumes,
+          expiration: material.expiration,
+          picture: material.picture,
+          // Campos adicionales del API
+          idCompany: material.idCompany,
+          idBranch: material.idBranch,
+          idCustomer: material.idCustomer,
+          barCode: material.barCode,
+          idFamilia: material.idFamilia,
+          idSubfamilia: material.idSubfamilia,
+          idMedida: material.idMedida,
+          idUbication: material.idUbication,
+          aplicaResg: material.aplicaResg,
+          costoDLL: material.costoDLL,
+          ventaMN: material.ventaMN,
+          ventaDLL: material.ventaDLL,
+          vigente: material.vigente,
+          typeMaterial: material.typeMaterial,
+          date: material.date,
+          stockMin: material.stockMin,
+          stockMax: material.stockMax
+        }));
+
+        if (this.gridApi) {
+          this.gridApi.setGridOption('rowData', this.rowData);
+        }
+        
+        console.log('Materials loaded:', this.rowData.length);
+      });
   }
 
   async obtenerCatalogos() {
@@ -168,27 +225,17 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
         cellEditor: 'agCheckboxCellEditor'
       },
       {
-        field: 'id',
-        editable: false,
-        width: 70,
-        hide: true,
-        filter: 'agNumberColumnFilter',
-        filterParams: {
-          filterOptions: ['equals']
-        }
-      },
-      {
         field: 'articulo',
         headerName: 'Artículo',
         editable: true,
-        width: 200,
+        width: 150,
         filter: true
       },
       {
         field: 'categoria',
         headerName: 'Categoría',
         editable: true,
-        width: 150,
+        width: 130,
         filter: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
@@ -205,15 +252,13 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
         field: 'familia',
         headerName: 'Familia',
         editable: true,
-        width: 150,
+        width: 130,
         filter: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: (params) => {
-          // Obtener la categoría de la fila actual
           const categoriaName = params.data.categoria;
           const categoria = this.categories.find(c => c.description === categoriaName);
           
-          // Filtrar familias por parentId (idCategoria)
           const familiasFiltradas = categoria 
             ? this.familias.filter(item => item.parentId === categoria.id)
             : [];
@@ -231,21 +276,19 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
       },
       {
         field: 'subFamilia',
-        headerName: 'Sub Familia',
+        headerName: 'Subfamilia',
         editable: true,
-        width: 150,
+        width: 130,
         filter: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: (params) => {
-          // Solo mostrar subfamilias si ya se seleccionaron categoría y familia
           const categoriaName = params.data.categoria;
           const familiaName = params.data.familia;
           
           if (!categoriaName || !familiaName) {
-            return { values: [] }; // No hay subfamilias disponibles sin categoría+familia
+            return { values: [] };
           }
           
-          // Usar las subfamilias cargadas dinámicamente
           return {
             values: this.subfamilias.map(item => item.description)
           };
@@ -257,12 +300,11 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
           return foundItem ? foundItem.description : params.value;
         }
       },
-      // === COLUMNAS ADICIONALES ===
       {
         field: 'proveedor',
         headerName: 'Proveedor',
         editable: true,
-        width: 150,
+        width: 130,
         filter: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
@@ -270,32 +312,43 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
         }
       },
       {
-        field: 'descripcionEmpaquetado',
-        headerName: 'Descripción Empaquetado',
+        field: 'costoMN',
+        headerName: 'Precio unitario',
         editable: true,
-        width: 200,
+        width: 120,
+        cellDataType: 'number',
+        cellEditorParams: { min: 0, step: 0.01 },
+        valueFormatter: (params) => {
+          return params.value ? `$${params.value}` : '$0.00';
+        }
+      },
+      {
+        field: 'descriptionPackage',
+        headerName: 'Descripción empacado',
+        editable: true,
+        width: 180,
         filter: true
       },
       {
-        field: 'numeroPiezasPaquete',
-        headerName: 'Núm. Piezas por Paquete',
+        field: 'packageQuantity',
+        headerName: 'Núm piezas por paquete',
         editable: true,
-        width: 180,
+        width: 150,
         cellDataType: 'number',
         cellEditorParams: { min: 1 }
       },
       {
-        field: 'numeroMaterial',
-        headerName: 'Número de Material',
+        field: 'insumo',
+        headerName: 'Insumo',
         editable: true,
-        width: 150,
+        width: 140,
         filter: true
       },
       {
-        field: 'medidas',
+        field: 'medida',
         headerName: 'Medidas',
         editable: true,
-        width: 120,
+        width: 100,
         filter: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
@@ -303,85 +356,29 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
         }
       },
       {
-        field: 'pesosVolumenes',
-        headerName: 'Pesos o Volúmenes (Kgrs)',
+        field: 'weightOrVolumes',
+        headerName: 'Pesos o volúmenes en Kgr o lts',
         editable: true,
         width: 180,
         cellDataType: 'number',
         cellEditorParams: { min: 0, step: 0.01 }
       },
       {
-        field: 'caducidadMeses',
-        headerName: 'Caducidad/Garantía (Meses)',
+        field: 'expiration',
+        headerName: 'Caducidad o garantía en meses',
         editable: true,
-        width: 200,
+        width: 180,
         cellDataType: 'number',
         cellEditorParams: { min: 0 }
       },
       {
-        field: 'imagen',
+        field: 'picture',
         headerName: 'Imagen',
         editable: false,
         width: 100,
         cellRenderer: (params) => {
           return params.value ? '📷 Imagen' : '📷 Subir';
         }
-      },
-      {
-        field: 'sucursal',
-        headerName: 'Sucursal',
-        editable: true,
-        width: 150,
-        filter: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.sucursales ? this.sucursales.map(item => item.description) : []
-        }
-      },
-      {
-        field: 'fechaAlta',
-        headerName: 'Fecha Alta',
-        editable: true,
-        width: 120,
-        cellDataType: 'dateString',
-        valueFormatter: (params) => {
-          if (params.value) {
-            return params.value.split('T')[0];
-          }
-          return '';
-        }
-      },
-      {
-        field: 'stockMinimo',
-        headerName: 'Stock Mínimo',
-        editable: true,
-        width: 120,
-        cellDataType: 'number',
-        cellEditorParams: { min: 0 }
-      },
-      {
-        field: 'resurtido',
-        headerName: 'Resurtido',
-        editable: true,
-        width: 100,
-        cellDataType: 'number',
-        cellEditorParams: { min: 0 }
-      },
-      {
-        field: 'capacidadMaxAlmacenar',
-        headerName: 'Capacidad Máx Almacenar',
-        editable: true,
-        width: 180,
-        cellDataType: 'number',
-        cellEditorParams: { min: 0 }
-      },
-      {
-        field: 'tiempoEntregaSemanas',
-        headerName: 'Tiempo Entrega (Semanas)',
-        editable: true,
-        width: 180,
-        cellDataType: 'number',
-        cellEditorParams: { min: 0, step: 0.1 }
       }
     ];
   }
@@ -452,6 +449,15 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
       categoria: '',
       familia: '',
       subFamilia: '',
+      proveedor: '',
+      costoMN: 0,
+      descriptionPackage: '',
+      packageQuantity: 1,
+      insumo: '',
+      medida: '',
+      weightOrVolumes: 0,
+      expiration: 0,
+      picture: '',
       __isNew: true
     };
 
