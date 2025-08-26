@@ -67,63 +67,76 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
-  obtenerDatos() {
+  async obtenerDatos() {
     if (!this.idRoot) {
       console.warn('No idRoot available');
       return;
     }
 
-    this.materialsService.getMaterials(this.idRoot, 'CONSUMABLE')
-      .pipe(
-        catchError((error) => {
-          console.error('Error fetching materials:', error);
-          this.rowData = [];
-          return EMPTY;
-        })
-      )
-      .subscribe((materials: MaterialsResponse[]) => {
-        this.rowData = materials.map(material => ({
-          id: material.id,
-          activo: material.active,
-          articulo: material.description,
-          categoria: '',
-          familia: '',
-          subFamilia: '',
-          proveedor: '',
-          costoMN: material.costoMN,
-      //    descriptionPackage: material.descriptionPackage,
-      //    packageQuantity: material.packageQuantity,
-          insumo: material.insumo,
-       //   medida: material.measure,
-       //   weightOrVolumes: material.weightOrVolumes,
-       //   expiration: material.expiration,
-          picture: material.picture,
-          // Campos adicionales del API
-          idCompany: material.idCompany,
-      //    idBranch: material.idBranch,
-     //     idCustomer: material.idCustomer,
-          barCode: material.barCode,
-          idFamilia: material.idFamilia,
-          idSubfamilia: material.idSubfamilia,
-          idMedida: material.idMedida,
-          idUbication: material.idUbication,
-          aplicaResg: material.aplicaResg,
-          costoDLL: material.costoDLL,
-          ventaMN: material.ventaMN,
-          ventaDLL: material.ventaDLL,
-          vigente: material.vigente,
-          typeMaterial: material.typeMaterial,
-          date: material.date,
-          stockMin: material.stockMin,
-          stockMax: material.stockMax
-        }));
+    try {
+      const materials = await lastValueFrom(
+        this.materialsService.getMaterials(this.idRoot, 'CONSUMABLE')
+          .pipe(
+            catchError((error) => {
+              console.error('Error fetching materials:', error);
+              return EMPTY;
+            })
+          )
+      );
+      
+      this.procesarMateriales(materials);
+      
+    } catch (error) {
+      console.error('Error al cargar materiales:', error);
+      this.rowData = [];
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', this.rowData);
+      }
+    }
+  }
 
-        if (this.gridApi) {
-          this.gridApi.setGridOption('rowData', this.rowData);
-        }
-        
-        console.log('Materials loaded:', this.rowData.length);
-      });
+  private procesarMateriales(materials: MaterialsResponse[]) {
+    this.rowData = materials.map(material => ({
+      id: material.id,
+      activo: material.active,
+      articulo: material.description,
+      categoria: '',
+      familia: '',
+      subFamilia: '',
+      proveedor: '',
+      costoMN: material.costoMN,
+      descriptionPackage: material.descriptionPackage,
+      packageQuantity: material.packageQuantity,
+      insumo: material.insumo,
+      medida: material.measure,
+      weightOrVolumes: material.weightOrVolumes,
+      expiration: material.expiration,
+      picture: material.picture,
+      // Campos adicionales del API
+      idCompany: material.idCompany,
+      idBranch: material.idBranch,
+      idCustomer: material.idCustomer,
+      barCode: material.barCode,
+      idFamilia: material.idFamilia,
+      idSubfamilia: material.idSubfamilia,
+      idMedida: material.idMedida,
+      idUbication: material.idUbication,
+      aplicaResg: material.aplicaResg,
+      costoDLL: material.costoDLL,
+      ventaMN: material.ventaMN,
+      ventaDLL: material.ventaDLL,
+      vigente: material.vigente,
+      typeMaterial: material.typeMaterial,
+      date: material.date,
+      stockMin: material.stockMin,
+      stockMax: material.stockMax
+    }));
+
+    if (this.gridApi) {
+      this.gridApi.setGridOption('rowData', this.rowData);
+    }
+    
+    console.log('Materials loaded:', this.rowData.length);
   }
 
   async obtenerCatalogos() {
