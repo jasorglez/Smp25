@@ -469,6 +469,7 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
       insumo: '',
       medida: '',
       weightOrVolumes: 0,
+      typeMaterial: 'CONSUMABLE',
       expiration: 0,
       picture: '',
       __isNew: true
