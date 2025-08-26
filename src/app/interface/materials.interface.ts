@@ -1,15 +1,18 @@
 export interface MaterialsResponse {
   id: number;
   idCompany: number;
+  idBranch: number | null;
+  idCustomer: number | null;
   insumo: string;
   barCode: string;
   articulo: null;
+  idCategory: number;
   idFamilia: number;
   idSubfamilia: number;
   idMedida: number;
   idUbication: number;
   description: string;
-  date: Date;
+  date: string | Date;
   aplicaResg: boolean;
   costoMN: number;
   costoDLL: number;
@@ -20,8 +23,13 @@ export interface MaterialsResponse {
   picture: string;
   vigente: boolean;
   typeMaterial: string;
+  descriptionPackage: string | null;
+  packageQuantity: number;
+  measure: string | null;
+  weightOrVolumes: number;
+  expiration: number;
   active: boolean;
-  pricePresentations: PricePresentations[];
+  pricePresentations?: PricePresentations[];
 }
 
 export interface PricePresentations {
