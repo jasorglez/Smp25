@@ -577,6 +577,7 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
         const data = this.prepareDataForSave(row);
         
         if (row.__isNew) {
+          console.log('Guardando nuevo material XSDDDDD:', data);
           await lastValueFrom(this.materialsService.addMaterial(data));
         } else {
           await lastValueFrom(this.materialsService.updateMaterial(row.id.toString(), data));
