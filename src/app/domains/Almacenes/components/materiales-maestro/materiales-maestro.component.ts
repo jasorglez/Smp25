@@ -466,6 +466,7 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
   }
 
   async onCellValueChanged(event: any) {
+    console.log('Celda cambiada:', event.colDef.field, 'nuevo valor:', event.newValue, 'valor anterior:', event.oldValue);
     event.data.__modified = true;
     this.notSavedChanges = true;
     
@@ -582,7 +583,15 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
       console.log('Registros a guardar:', modifiedRows);
 
       for (const row of modifiedRows) {
+        console.log('Fila a procesar:', {
+          id: row.id,
+          articulo: row.articulo,
+          descriptionPackage: row.descriptionPackage,
+          packageQuantity: row.packageQuantity
+        });
+        
         const materialData = this.prepareDataForSave(row);
+        console.log('Datos completos a enviar al backend:', materialData);
         
         if (row.__isNew) {
           console.log('Creando nuevo material:', materialData);
@@ -634,7 +643,9 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
       familia: row.familia,
       familiaId: familiaId,
       subfamilia: row.subFamilia,
-      subfamiliaId: subfamiliaId
+      subfamiliaId: subfamiliaId,
+      descriptionPackage: row.descriptionPackage,
+      packageQuantity: row.packageQuantity
     });
     
     return {
