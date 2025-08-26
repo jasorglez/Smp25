@@ -19,6 +19,7 @@ export class MaterialsService {
   }
 
   addMaterial(data: any): Observable<any> {
+    console.log('Adding new material:', data);
     return this.http.post(`${environment.urlWarehouse}/Material`, data, {
       headers: this.trackingService.getHeaders(),
     });
