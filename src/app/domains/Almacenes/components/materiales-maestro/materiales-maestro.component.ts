@@ -525,9 +525,26 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
       insumo: '',
       medida: '',
       weightOrVolumes: 0,
-      typeMaterial: 'CONSUMABLE',
       expiration: 0,
       picture: '',
+      // Campos adicionales del API
+      idCompany: Number(this.idRoot),
+      idBranch: null,
+      idCustomer: null,
+      barCode: '',
+      idFamilia: 0,
+      idSubfamilia: 0,
+      idMedida: 0,
+      idUbication: 0,
+      aplicaResg: false,
+      costoDLL: 0,
+      ventaMN: 0,
+      ventaDLL: 0,
+      vigente: true,
+      typeMaterial: 'CONSUMABLE',
+      date: new Date().toISOString(),
+      stockMin: 0,
+      stockMax: 0,
       __isNew: true
     };
 
