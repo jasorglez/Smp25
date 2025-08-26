@@ -611,6 +611,15 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
     const familiaId = this.getFamiliaId(row.familia);  
     const subfamiliaId = this.getSubfamiliaId(row.subFamilia);
     
+    console.log('Preparando datos para guardar:', {
+      categoria: row.categoria,
+      categoriaId: categoriaId,
+      familia: row.familia,
+      familiaId: familiaId,
+      subfamilia: row.subFamilia,
+      subfamiliaId: subfamiliaId
+    });
+    
     return {
       idCompany: Number(this.idRoot),
       description: row.articulo,
@@ -633,14 +642,22 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
       costoDLL: 0,
       ventaMN: 0,
       ventaDLL: 0,
-      aplicaResg: false
+      aplicaResg: false,
+      barCode: row.barCode || '',
+      idBranch: null,
+      idCustomer: null,
+      idMedida: 0,
+      idUbication: 0,
+      date: new Date().toISOString()
     };
   }
 
   // Métodos helper para obtener IDs de catálogos
   private getCategoriaId(description: string): number {
+    console.log('getCategoriaId - buscando:', description, 'en', this.categories?.length, 'categorias');
     if (!description || !this.categories) return 0;
     const categoria = this.categories.find(cat => cat.description === description);
+    console.log('Categoria encontrada:', categoria);
     return categoria ? categoria.id : 0;
   }
 
