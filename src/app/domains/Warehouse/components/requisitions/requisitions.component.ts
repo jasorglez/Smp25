@@ -104,19 +104,36 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
   constructor() {
     effect(() => {
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      this.idProject = this.signalsService.getProjectSelectedBySidebar()();
-      this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-      this.idRequisition = this.signalsService.getIdRequisition()();
-      this.getSetupData();
-      this.obtenerDepartamentos();
-      this.idReference = this.projectOrBranch ? this.idProject : this.idBranch;
-      console.log(this.idReference);
-      this.obtenerDatos();
-      this.obtenerProductos();
-      this.obtenerMonedas();
-      if (this.idRequisition != null) {
-        this.obtenerDetalles();
+      const currentRoot = this.signalsService.getRootSelectedBySidebar()();
+      const currentProject = this.signalsService.getProjectSelectedBySidebar()();
+      const currentBranch = this.signalsService.getBranchSelectedBySidebar()();
+      const currentRequisition = this.signalsService.getIdRequisition()();
+
+      // Si cambió el root, limpiar datos
+      if (this.idRoot !== currentRoot) {
+        this.clearAllData();
+      }
+
+      this.idRoot = currentRoot;
+      this.idProject = currentProject;
+      this.idBranch = currentBranch;
+      this.idRequisition = currentRequisition;
+
+      if (this.idRoot) {
+        this.getSetupData().then(() => {
+          this.idReference = this.projectOrBranch ? this.idProject : this.idBranch;
+          
+          // Solo cargar datos si tenemos la referencia apropiada
+          if (this.idReference) {
+            this.obtenerDepartamentos();
+            this.obtenerDatos();
+            this.obtenerProductos();
+            this.obtenerMonedas();
+            if (this.idRequisition != null) {
+              this.obtenerDetalles();
+            }
+          }
+        });
       }
     });
   }
@@ -270,6 +287,8 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         headerName: 'Cerrado',
         editable: true,
         width: 120,
+        cellRenderer: 'agCheckboxCellRenderer',
+        cellEditor: 'agCheckboxCellEditor',
       },
 
       {
@@ -525,7 +544,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       dateCreate: new Date().toISOString(),
       idProveedor: 0,
       idDepartament: 0,
-      delivery: '',
+      delivery: 'A',
       deliveryTime: '',
       dateSupply: '',
       idPayment: 0,
@@ -577,11 +596,13 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      console.log('Master - Datos para agregar:', cleanedData);
       return this.requisitionsService.addOcAndReq(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      console.log('Master - Datos para actualizar (ID:', row.id, '):', cleanedData);
       return this.requisitionsService.updateOcAndReq(row.id, cleanedData);
     });
 
@@ -730,12 +751,13 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      console.log('Details - Datos para agregar:', cleanedData);
       return this.requisitionsService.addReqItem(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData);
+      console.log('Details - Datos para actualizar (ID:', row.id, '):', cleanedData);
       return this.requisitionsService.updateReqItem(row.id, cleanedData);
     });
 
@@ -842,12 +864,41 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
   // ==================== UTILITY METHODS ====================
 
+  private clearAllData() {
+    // Limpiar datos master
+    this.masterRowData = [];
+    this.masterSelectedRowData = null;
+    this.newlyAddedMasterRows = [];
+    this.masterNotSavedChanges = false;
+
+    // Limpiar datos details
+    this.detailsRowData = [];
+    this.detailsSelectedRowData = null;
+    this.newlyAddedDetailRows = [];
+    this.detailsNotSavedChanges = false;
+
+    // Limpiar catálogos
+    this.departamentos = [];
+    this.productos = [];
+    this.monedas = [];
+    
+    // Limpiar IDs
+    this.idReference = null;
+    this.idRequisition = null;
+    this.projectOrBranch = null;
+    this.typeReference = null;
+  }
+
   private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
+    }
+    // Si existe dateCreate, copiar su valor a dateSupply
+    if (cleanedData.dateCreate) {
+      cleanedData.dateSupply = cleanedData.dateCreate;
     }
     return cleanedData;
   }

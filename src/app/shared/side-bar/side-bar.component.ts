@@ -115,6 +115,9 @@ export class SideBarComponent {
     const target = event.target as HTMLSelectElement;
     this.selectedRoot = target.value;
     if (this.selectedRoot) {
+      // Limpiar selects de contracts y projects cuando cambia root
+      this.clearContractsAndProjects();
+      
       this.trackingService.setCompany(target.value);
       this.signalsService.setRootSelectedBySidebar(Number(this.selectedRoot));
       //    this.getpermissionxContracts(parseInt(this.selectedRoot));
@@ -297,6 +300,9 @@ export class SideBarComponent {
     const target = event.target as HTMLSelectElement;
     this.selectedBranchId = target.value;
     if (this.selectedBranchId) {
+      // Limpiar selects de contracts y projects cuando cambia branch
+      this.clearContractsAndProjects();
+      
       // Lógica para añadir la signal de branch
       this.signalsService.setBranchSelectedBySidebar(
         Number(this.selectedBranchId)
@@ -525,6 +531,32 @@ export class SideBarComponent {
       'Menu Side Bar',
       ''
     );
+  }
+
+  private clearContractsAndProjects() {
+    // Limpiar datos de contracts
+    this.contractData = [];
+    this.selectedContractId = '';
+    this.signalsService.setContractSelectedBySidebar(null);
+    
+    // Limpiar datos de projects
+    this.projectData = [];
+    this.selectedProjectId = '';
+    this.signalsService.setProjectSelectedBySidebar(null);
+    this.trackingService.setProject('');
+    
+    // Limpiar los selects en el DOM
+    setTimeout(() => {
+      const contractSelect = document.getElementById('contracts') as HTMLSelectElement;
+      if (contractSelect) {
+        contractSelect.value = '';
+      }
+      
+      const projectSelect = document.getElementById('project') as HTMLSelectElement;
+      if (projectSelect) {
+        projectSelect.value = '';
+      }
+    }, 50);
   }
 
   private loadPermissions() {
