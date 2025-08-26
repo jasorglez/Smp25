@@ -565,44 +565,24 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
   }
 
   async saveChanges() {
-    const isValid = this.rowData.every(
-      (item) => item.articulo
-    );
-    if (!isValid) {
-      alerts.basicAlert(
-        'Campos requeridos',
-        'Debe llenar la descripción del artículo antes de guardar.',
-        'error'
-      );
+    if (!this.rowData.every(item => item.articulo)) {
+      alerts.basicAlert('Error', 'Debe llenar la descripción del artículo.', 'error');
       return;
     }
 
     try {
-      // Obtener solo los registros modificados
       const modifiedRows = this.rowData.filter(row => row.__modified || row.__isNew);
-      console.log('Registros a guardar:', modifiedRows);
-
+      
       for (const row of modifiedRows) {
-        console.log('Fila a procesar:', {
-          id: row.id,
-          articulo: row.articulo,
-          descriptionPackage: row.descriptionPackage,
-          packageQuantity: row.packageQuantity
-        });
-        
-        const materialData = this.prepareDataForSave(row);
-        console.log('Datos completos a enviar al backend:', materialData);
+        const data = this.prepareDataForSave(row);
         
         if (row.__isNew) {
-          console.log('Creando nuevo material:', materialData);
-          await lastValueFrom(this.materialsService.addMaterial(materialData));
+          await lastValueFrom(this.materialsService.addMaterial(data));
         } else {
-          console.log('Actualizando material ID:', row.id, materialData);
-          await lastValueFrom(this.materialsService.updateMaterial(row.id.toString(), materialData));
+          await lastValueFrom(this.materialsService.updateMaterial(row.id.toString(), data));
         }
       }
       
-      // Limpiar marcas de modificación
       this.rowData = this.rowData.map(row => {
         const cleanRow = { ...row };
         delete cleanRow.__isNew;
@@ -610,55 +590,29 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
         return cleanRow;
       });
       
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
+      alerts.basicAlert('Éxito', 'Datos guardados correctamente.', 'success');
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
-      
-      // Recargar datos para obtener IDs actualizados
       await this.obtenerDatos();
       
     } catch (error) {
-      console.error('Error al guardar:', error);
-      alerts.basicAlert(
-        'Error',
-        'Error al guardar los cambios.',
-        'error'
-      );
+      console.error('Error:', error);
+      alerts.basicAlert('Error', 'Error al guardar.', 'error');
     }
   }
 
   private prepareDataForSave(row: any): any {
-    // Obtener IDs de los catálogos
-    const categoriaId = this.getCategoriaId(row.categoria);
-    const familiaId = this.getFamiliaId(row.familia);  
-    const subfamiliaId = this.getSubfamiliaId(row.subFamilia);
-    
-    console.log('Preparando datos para guardar:', {
-      categoria: row.categoria,
-      categoriaId: categoriaId,
-      familia: row.familia,
-      familiaId: familiaId,
-      subfamilia: row.subFamilia,
-      subfamiliaId: subfamiliaId,
-      descriptionPackage: row.descriptionPackage,
-      packageQuantity: row.packageQuantity
-    });
-    
     return {
       idCompany: Number(this.idRoot),
       description: row.articulo,
-      insumo: row.insumo,
-      idCategory: categoriaId,
-      idFamilia: familiaId,
-      idSubfamilia: subfamiliaId,
+      insumo: row.insumo || '',
+      idCategory: this.getCategoriaId(row.categoria),
+      idFamilia: this.getFamiliaId(row.familia),
+      idSubfamilia: this.getSubfamiliaId(row.subFamilia),
       costoMN: Number(row.costoMN) || 0,
-      descriptionPackage: row.descriptionPackage,
+      descriptionPackage: row.descriptionPackage || '',
       packageQuantity: Number(row.packageQuantity) || 1,
-      measure: row.medida,
+      measure: row.medida || '',
       weightOrVolumes: Number(row.weightOrVolumes) || 0,
       expiration: Number(row.expiration) || 0,
       picture: row.picture || '',
