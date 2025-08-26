@@ -66,74 +66,7 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
 
   obtenerDatos() {
     // Datos de prueba mientras no hay servicio específico - incluye todas las 19 columnas
-    this.rowData = [
-      {
-        id: 1,
-        activo: true,
-        articulo: 'Tornillo hexagonal M10x30',
-        categoria: 'FERRETERIA',
-        familia: 'TORNILLERIA',
-        subFamilia: 'HEXAGONALES',
-        proveedor: 'Proveedor A',
-        descripcionEmpaquetado: 'Caja de cartón con separadores',
-        numeroPiezasPaquete: 100,
-        numeroMaterial: 'MAT-001-2024',
-        medidas: 'PIEZAS',
-        pesosVolumenes: 2.5,
-        caducidadMeses: 60,
-        imagen: null,
-        sucursal: 'Sucursal Centro',
-        fechaAlta: '2024-08-15T00:00:00',
-        stockMinimo: 50,
-        resurtido: 200,
-        capacidadMaxAlmacenar: 1000,
-        tiempoEntregaSemanas: 2.0
-      },
-      {
-        id: 2,
-        activo: false,
-        articulo: 'Aceite hidráulico ISO 68',
-        categoria: 'LUBRICANTES',
-        familia: 'HIDRAULICOS',
-        subFamilia: 'ALTO_RENDIMIENTO',
-        proveedor: 'Proveedor B',
-        descripcionEmpaquetado: 'Tambor metálico de 200L',
-        numeroPiezasPaquete: 1,
-        numeroMaterial: 'MAT-002-2024',
-        medidas: 'LITROS',
-        pesosVolumenes: 180.0,
-        caducidadMeses: 36,
-        imagen: 'aceite_hidraulico.jpg',
-        sucursal: 'Sucursal Norte',
-        fechaAlta: '2024-07-20T00:00:00',
-        stockMinimo: 5,
-        resurtido: 20,
-        capacidadMaxAlmacenar: 100,
-        tiempoEntregaSemanas: 1.5
-      },
-      {
-        id: 3,
-        activo: true,
-        articulo: 'Cable eléctrico 12 AWG',
-        categoria: 'ELECTRICO',
-        familia: 'CABLES',
-        subFamilia: 'POTENCIA',
-        proveedor: 'Proveedor C',
-        descripcionEmpaquetado: 'Rollo de 100 metros',
-        numeroPiezasPaquete: 1,
-        numeroMaterial: 'MAT-003-2024',
-        medidas: 'METROS',
-        pesosVolumenes: 15.8,
-        caducidadMeses: 120,
-        imagen: null,
-        sucursal: 'Sucursal Sur',
-        fechaAlta: '2024-08-01T00:00:00',
-        stockMinimo: 10,
-        resurtido: 50,
-        capacidadMaxAlmacenar: 200,
-        tiempoEntregaSemanas: 3.0
-      }
-    ];
+   
   }
 
   async obtenerCatalogos() {

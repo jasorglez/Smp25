@@ -13,8 +13,7 @@ export class MaterialsService {
   private trackingService = inject(TrackingService);
 
   getMaterials(id: number, typemat: string): Observable<MaterialsResponse[]> {
-    return this.http.get<MaterialsResponse[]>(
-      `${environment.urlWarehouse}/Material/${id}?typematerial=${typemat}`,
+    return this.http.get<MaterialsResponse[]>(`${environment.urlWarehouse}/Material/${id}?typematerial=${typemat}`,
       { headers: this.trackingService.getHeaders() }
     );
   }
