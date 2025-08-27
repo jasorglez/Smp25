@@ -1,20 +1,79 @@
-<div class="container-fluid">
+<div class="container-fluid p-1">
   <div class="row">
     <div class="col-12">
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title">
+          <h5 class="card-title m-0">
             <i class="bi bi-map"></i> 
-            {{'cadastral' | translate}}
-          </h3>
+            Información Catastral
+          </h5>
         </div>
-        <div class="card-body">
-          <p>{{'cadastral_description' | translate}}</p>
-          
-          <!-- Aquí irá el contenido específico de catastrales -->
-          <div class="alert alert-info">
-            <i class="bi bi-info-circle"></i>
-            Módulo de Información Catastral en desarrollo
+        <div class="card-body p-1">
+          <!-- SECCIÓN PRINCIPAL: Botones CRUD y Grid -->
+          <div class="row" style="position: relative; height: calc(100vh - 200px);">
+            
+            <!-- Columna izquierda: Botones CRUD -->
+            <div class="col-auto border-end" style="position: relative; height: 100%;">
+              <nav class="d-flex flex-column align-items-start pt-2">
+                <button type="button" 
+                        class="btn btn-primary ms-1 me-1 mb-2" 
+                        (click)="addRow()" 
+                        title="Agregar nueva fila">
+                  <i class="bi bi-plus-lg"></i>
+                </button>
+                
+                <button type="button" 
+                        class="btn btn-success ms-1 me-1 mb-2" 
+                        (click)="saveChanges()" 
+                        [disabled]="!notSavedChanges"
+                        title="Guardar cambios">
+                  <i class="bi bi-floppy"></i>
+                </button>
+                
+                <button type="button" 
+                        class="btn btn-warning ms-1 me-1 mb-2" 
+                        (click)="revert()" 
+                        [disabled]="!notSavedChanges"
+                        title="Revertir cambios">
+                  <i class="bi bi-arrow-clockwise"></i>
+                </button>
+                
+                <button type="button" 
+                        class="btn btn-danger ms-1 me-1 mb-2" 
+                        (click)="deleteEntry()" 
+                        title="Eliminar fila seleccionada">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </nav>
+            </div>
+            
+            <!-- Columna derecha: Grid de datos catastrales -->
+            <div class="col overflow-hidden" style="position: relative; height: 100%; display: flex; flex-direction: column;">
+              <div class="flex-grow-1 overflow-auto">
+                <ag-grid-angular 
+                  style="height: 100%; width: 100%;"
+                  class="ag-theme-quartz small-text-ag-grid"
+                  [rowData]="rowData"
+                  [columnDefs]="columnDefs"
+                  [gridOptions]="gridOptions"
+                  (selectionChanged)="onSelectionChanged($event)"
+                  (gridReady)="onGridReady($event)"
+                  (cellValueChanged)="onCellValueChanged($event)"
+                  [rowSelection]="'single'"
+                  [stopEditingWhenCellsLoseFocus]="true"
+                  [singleClickEdit]="true">
+                </ag-grid-angular>
+              </div>
+              
+              <!-- Indicador de cambios no guardados -->
+              <div class="alert alert-warning mt-2 mb-0 py-1" *ngIf="notSavedChanges">
+                <small>
+                  <i class="bi bi-exclamation-triangle"></i>
+                  Hay cambios sin guardar
+                </small>
+              </div>
+            </div>
+            
           </div>
         </div>
       </div>
