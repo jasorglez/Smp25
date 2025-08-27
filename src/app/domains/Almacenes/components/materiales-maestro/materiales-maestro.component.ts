@@ -374,17 +374,6 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
         }
       },
       {
-        field: 'proveedor',
-        headerName: 'Proveedor',
-        editable: true,
-        width: 130,
-        filter: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.proveedores ? this.proveedores.map(item => item.description) : []
-        }
-      },
-      {
         field: 'costoMN',
         headerName: 'Precio unitario',
         editable: true,
@@ -412,7 +401,7 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
       },
       {
         field: 'insumo',
-        headerName: 'Insumo',
+        headerName: 'Numero Material',
         editable: true,
         width: 140,
         filter: true
@@ -448,7 +437,18 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
         cellRenderer: (params) => {
           return params.value ? '📷 Imagen' : '📷 Subir';
         }
-      }
+      },
+       {
+        field: 'proveedor',
+        headerName: 'Proveedor',
+        editable: true,
+        width: 130,
+        filter: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.proveedores ? this.proveedores.map(item => item.description) : []
+        }
+      },
     ];
   }
 

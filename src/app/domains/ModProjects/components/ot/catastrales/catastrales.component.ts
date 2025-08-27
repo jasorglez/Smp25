@@ -126,21 +126,7 @@ export class CatastralesComponent implements OnInit {
           rows: 3
         }
       },
-      {
-        field: 'observations',
-        headerName: 'Observaciones',
-        sortable: true,
-        filter: true,
-        resizable: true,
-        flex: 3,
-        editable: true,
-        cellEditor: 'agLargeTextCellEditor',
-        cellEditorParams: {
-          maxLength: 500,
-          rows: 3
-        }
-      },
-      {
+         {
         field: 'idArea',
         headerName: 'Área',
         sortable: true,
@@ -169,7 +155,22 @@ export class CatastralesComponent implements OnInit {
           }
           return false;
         }
+      },
+      {
+        field: 'observations',
+        headerName: 'Observaciones',
+        sortable: true,
+        filter: true,
+        resizable: true,
+        flex: 3,
+        editable: true,
+        cellEditor: 'agLargeTextCellEditor',
+        cellEditorParams: {
+          maxLength: 500,
+          rows: 3
+        }
       }
+   
     ];
   }
 
