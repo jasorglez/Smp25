@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { AgGridModule } from 'ag-grid-angular';
@@ -13,6 +13,7 @@ import { alerts } from 'app/helpers/alerts';
 interface CatastralData {
   id?: number;
   idProject: number;
+  projectName?: string; // Nombre del proyecto para mostrar
   otNumber: string;
   cdc: string;
   description: string;
@@ -70,24 +71,20 @@ export class CatastralesComponent implements OnInit {
         editable: false
       },
       {
-        field: 'idProject',
+        field: 'projectName',
         headerName: 'Proyecto',
         sortable: true,
         filter: true,
         resizable: true,
         flex: 2,
-        editable: true,
-        cellEditor: 'agRichSelectCellEditor',
-        cellEditorParams: {
-          values: () => this.projectsList.map(p => p.id),
-          formatValue: (value: any) => {
-            const project = this.projectsList.find(p => p.id === value);
-            return project ? project.name : value;
+        editable: false, // No editable porque todas las OTs pertenecen al proyecto seleccionado
+        valueGetter: (params: any) => {
+          // Si no tiene projectName, buscar en la lista usando idProject
+          if (params.data.projectName) {
+            return params.data.projectName;
           }
-        },
-        valueFormatter: (params: any) => {
-          const project = this.projectsList.find(p => p.id === params.value);
-          return project ? project.name : params.value;
+          const project = this.projectsList.find(p => p.id === params.data.idProject);
+          return project ? project.name : 'Proyecto no encontrado';
         }
       },
       {
@@ -114,8 +111,13 @@ export class CatastralesComponent implements OnInit {
         sortable: true,
         filter: true,
         resizable: true,
-        flex: 2,
-        editable: true
+        flex: 3,
+        editable: true,
+        cellEditor: 'agLargeTextCellEditor',
+        cellEditorParams: {
+          maxLength: 500,
+          rows: 3
+        }
       },
       {
         field: 'observations',
@@ -134,9 +136,22 @@ export class CatastralesComponent implements OnInit {
     ];
   }
 
+  constructor() {
+    // Escuchar cambios en el proyecto seleccionado del sidebar usando effects
+    effect(() => {
+      const projectId = this.signalsService.getProjectSelectedBySidebar()();
+      if (projectId) {
+        console.log('Proyecto seleccionado desde sidebar:', projectId);
+        this.loadData(projectId);
+      } else {
+        // Si no hay proyecto seleccionado, limpiar datos
+        this.loadData();
+      }
+    });
+  }
+
   ngOnInit(): void {
     this.loadProjects();
-    this.loadData();
   }
 
   // Cargar lista de proyectos
@@ -153,27 +168,40 @@ export class CatastralesComponent implements OnInit {
     });
   }
 
-  // Cargar datos catastrales (usando endpoint de ordenes como base)
-  loadData(): void {
-    // Por ahora usamos datos mock hasta definir el endpoint específico
-    this.rowData = [
-      {
-        id: 1,
-        idProject: 1,
-        otNumber: 'OT-2024-001',
-        cdc: 'CDC-001',
-        description: 'Descripción del trabajo catastral 1',
-        observations: 'Observación de prueba 1'
+  // Cargar datos catastrales usando getOtListByProject
+  loadData(idProject?: number): void {
+    // Si no hay proyecto seleccionado, limpiar datos
+    if (!idProject) {
+      this.rowData = [];
+      return;
+    }
+
+    // Cargar OTs del proyecto seleccionado
+    this.otService.getOtListByProject(idProject).subscribe({
+      next: (data: any) => {
+        console.log('OTs cargadas para proyecto', idProject, ':', data);
+        
+        // Obtener el nombre del proyecto actual
+        const currentProject = this.projectsList.find(p => p.id === idProject);
+        const projectName = currentProject ? currentProject.name : 'Proyecto no encontrado';
+        
+        // Mapear los datos del endpoint a nuestro formato
+        this.rowData = data.map((ot: any, index: number) => ({
+          id: ot.id || index + 1,
+          idProject: idProject, // ID del proyecto
+          projectName: projectName, // Nombre del proyecto para mostrar
+          otNumber: ot.otNumber || ot.number || ot.codigo || 'N/A',
+          cdc: ot.cdc || ot.costCenter || 'N/A',
+          description: ot.description || ot.descripcion || ot.name || 'Sin descripción',
+          observations: ot.observations || ot.observaciones || ''
+        }));
       },
-      {
-        id: 2,
-        idProject: 2,
-        otNumber: 'OT-2024-002',
-        cdc: 'CDC-002',
-        description: 'Descripción del trabajo catastral 2',
-        observations: 'Observación de prueba 2'
+      error: (error) => {
+        console.error('Error al cargar OTs:', error);
+        alerts.basicAlert('Error', 'No se pudieron cargar las OTs del proyecto', 'error');
+        this.rowData = [];
       }
-    ];
+    });
   }
 
   // Métodos del grid
@@ -209,9 +237,13 @@ export class CatastralesComponent implements OnInit {
   // Métodos CRUD
   addRow(): void {
     const tempId = `temp_${this.tempIdCounter++}`;
+    const currentProject = this.signalsService.getProjectSelectedBySidebar()();
+    const currentProjectData = this.projectsList.find(p => p.id === currentProject);
+    
     const newItem: CatastralData = {
       id: undefined,
-      idProject: 0,
+      idProject: currentProject || 0,
+      projectName: currentProjectData ? currentProjectData.name : 'Sin proyecto',
       otNumber: '',
       cdc: '',
       description: '',
@@ -240,13 +272,13 @@ export class CatastralesComponent implements OnInit {
 
     // Validar filas nuevas
     const invalidNewRows = newRows.filter(item => 
-      !item.idProject || !item.otNumber?.trim() || !item.cdc?.trim() || !item.description?.trim()
+      !item.otNumber?.trim() || !item.cdc?.trim() || !item.description?.trim()
     );
     
     if (invalidNewRows.length > 0) {
       alerts.basicAlert(
         'Validación', 
-        'Complete los campos: Proyecto, Número OT, CDC y Descripción antes de guardar.', 
+        'Complete los campos: Número OT, CDC y Descripción antes de guardar.', 
         'warning'
       );
       return;
@@ -275,7 +307,12 @@ export class CatastralesComponent implements OnInit {
   }
 
   revert(): void {
-    this.loadData();
+    const currentProject = this.signalsService.getProjectSelectedBySidebar()();
+    if (currentProject) {
+      this.loadData(currentProject);
+    } else {
+      this.loadData();
+    }
     this.notSavedChanges = false;
     alerts.basicAlert('Info', 'Cambios revertidos', 'info');
   }
