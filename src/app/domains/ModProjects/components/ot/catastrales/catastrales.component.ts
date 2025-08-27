@@ -20,8 +20,7 @@ interface CatastralData {
   cdc: string;
   description: string;
   observations: string;
-  idArea?: number; // ID del área seleccionada
-  areaName?: string; // Nombre del área para mostrar
+  area?: string; // Campo texto del área
   // Propiedades de control CRUD
   __isNew?: boolean;
   __modified?: boolean;
@@ -47,7 +46,7 @@ export class CatastralesComponent implements OnInit {
   public gridApi!: GridApi;
   public rowData: CatastralData[] = [];
   public projectsList: any[] = [];
-  public typeNotesCatalog: any[] = []; // Catálogo de áreas (tipos de nota)
+  public catalogArea: any[] = []; // Catálogo de áreas (fases)
 
   // Variables de control CRUD
   public notSavedChanges: boolean = false;
@@ -126,36 +125,6 @@ export class CatastralesComponent implements OnInit {
           rows: 3
         }
       },
-         {
-        field: 'idArea',
-        headerName: 'Área',
-        sortable: true,
-        filter: true,
-        resizable: true,
-        flex: 2,
-        editable: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: (params: any) => ({
-          values: this.typeNotesCatalog?.map((item) => item.description) || [],
-        }),
-        valueFormatter: (params) => {
-          const foundItem = this.typeNotesCatalog?.find(item => item.id == params.value);
-          return foundItem ? foundItem.description : params.value;
-        },
-        valueGetter: (params) => {
-          const foundItem = this.typeNotesCatalog?.find(item => item.id == params.data?.idArea);
-          return foundItem ? foundItem.description : '';
-        },
-        valueSetter: (params) => {
-          const foundItem = this.typeNotesCatalog?.find(item => item.description === params.newValue);
-          if (foundItem) {
-            params.data.idArea = foundItem.id;
-            params.data.areaName = foundItem.description;
-            return true;
-          }
-          return false;
-        }
-      },
       {
         field: 'observations',
         headerName: 'Observaciones',
@@ -169,8 +138,20 @@ export class CatastralesComponent implements OnInit {
           maxLength: 500,
           rows: 3
         }
+      },
+      {
+        field: 'area',
+        headerName: 'Área',
+        sortable: true,
+        filter: true,
+        resizable: true,
+        flex: 2,
+        editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: (params: any) => ({
+          values: this.catalogArea?.map((item) => item.description) || [],
+        })
       }
-   
     ];
   }
 
@@ -183,7 +164,7 @@ export class CatastralesComponent implements OnInit {
       // Si cambia la compañía, recargar el catálogo de áreas
       if (newIdcompany !== this.idcompany) {
         this.idcompany = newIdcompany;
-        this.obtenerTypeNotes();
+        this.obtenerArea();
       }
       
       if (projectId) {
@@ -198,7 +179,7 @@ export class CatastralesComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadProjects();
-    this.obtenerTypeNotes();
+    this.obtenerArea();
   }
 
   // Cargar lista de proyectos
@@ -215,17 +196,17 @@ export class CatastralesComponent implements OnInit {
     });
   }
 
-  // Cargar catálogo de áreas (tipos de nota)
-  obtenerTypeNotes(): void {
+  // Cargar catálogo de áreas (fases)
+  obtenerArea(): void {
     if (!this.idcompany) {
-      console.log('idcompany no disponible para cargar tipos de nota');
+      console.log('idcompany no disponible para cargar áreas');
       return;
     }
 
-    this.catalogsService.getTypeNote(this.idcompany).subscribe({
+    this.catalogsService.getPhases(this.idcompany).subscribe({
       next: (data: any) => {
-        this.typeNotesCatalog = data;
-        console.log('Catálogo de áreas cargado:', this.typeNotesCatalog);
+        this.catalogArea = data;
+        console.log('Catálogo de áreas cargado:', this.catalogArea);
       },
       error: (error) => {
         console.error('Error al cargar catálogo de áreas:', error);
@@ -260,8 +241,7 @@ export class CatastralesComponent implements OnInit {
           cdc: ot.cdc || ot.costCenter || 'N/A',
           description: ot.description || ot.descripcion || ot.name || 'Sin descripción',
           observations: ot.observations || ot.observaciones || '',
-          idArea: ot.idArea || null,
-          areaName: ot.areaName || this.getAreaName(ot.idArea) || ''
+          area: ot.area || ''
         }));
       },
       error: (error) => {
@@ -272,12 +252,6 @@ export class CatastralesComponent implements OnInit {
     });
   }
 
-  // Método helper para obtener el nombre del área por ID
-  private getAreaName(idArea: number | null): string {
-    if (!idArea || !this.typeNotesCatalog) return '';
-    const area = this.typeNotesCatalog.find(item => item.id === idArea);
-    return area ? area.description : '';
-  }
 
   // Métodos del grid
   onGridReady(params: GridReadyEvent): void {
@@ -329,8 +303,7 @@ export class CatastralesComponent implements OnInit {
       cdc: '',
       description: '',
       observations: '',
-      idArea: null,
-      areaName: ''
+      area: ''
     };
     
     // Agregar propiedades de control
@@ -395,7 +368,7 @@ export class CatastralesComponent implements OnInit {
         cdc: row.cdc,
         description: row.description,
         observations: row.observations,
-        idArea: row.idArea || null
+        area: row.area || ''
       };
 
       console.log('Enviando datos para crear OT:', newOtData);
@@ -443,7 +416,7 @@ export class CatastralesComponent implements OnInit {
         cdc: row.cdc,
         description: row.description,
         observations: row.observations,
-        idArea: row.idArea || null
+        area: row.area || ''
       };
 
       this.otService.updateOt(row.id, updateOtData).subscribe({
