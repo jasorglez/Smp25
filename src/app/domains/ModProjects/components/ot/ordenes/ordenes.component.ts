@@ -1,4 +1,4 @@
-import { Component, effect, inject, OnInit, OnDestroy } from '@angular/core';
+import { Component, effect, inject, OnInit, OnDestroy, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { AgGridModule } from 'ag-grid-angular';
@@ -43,7 +43,6 @@ export class SafePipe implements PipeTransform {
     return this.sanitizer.bypassSecurityTrustResourceUrl(url);
   }
 }
-
 
 interface OrdenesData {
   id: string;
@@ -141,6 +140,8 @@ interface Video {
   styleUrl: './ordenes.component.scss',
 })
 export class OrdenesComponent implements OnInit, OnDestroy {
+
+
   private otService = inject(OtService);
   private equipmentService = inject(EquipmentService);
   private dailyReportService = inject(DailyReportService);
@@ -222,6 +223,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   private tempPersonalIdCounter: number = 1;
   private currentEditingRow: number = -1;
   private currentEditingCol: string = '';
+  
   rowDataMaster: any[] = [];
   notSavedChangesMaster: boolean = false;
 
@@ -1931,8 +1933,7 @@ addVideo(){
 
   constructor(private formBuilder: FormBuilder) {
     // Initialize form immediately in constructor
-    
-    
+     
     // Log de acceso al componente
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
@@ -1970,6 +1971,8 @@ addVideo(){
   }
 
   ngOnInit(): void {
+    
+    console.log('User Root en OT:', this.signalsService.getrootChoose());
     const hoy = new Date();
     const hace7Dias = new Date();
     hace7Dias.setDate(hoy.getDate() - 7);
@@ -2226,7 +2229,7 @@ addVideo(){
   }
 
   obtenerOTsDelProyectoActual() {
-    this.otService.getOtListByProject(this.idProject).subscribe({
+    this.otService.getOtListByProject(this.idProject,false).subscribe({
       next: (data: any) => {
         console.log('Datos obtenidos del servicio OT para proyecto actual:', data);
         this.rowData = data;
@@ -2278,7 +2281,7 @@ addVideo(){
         
         // Crear un array de promesas para obtener las OTs de cada proyecto
         const otPromises = this.projectsList.map(project => 
-          firstValueFrom(this.otService.getOtListByProject(project.id))
+          firstValueFrom(this.otService.getOtListByProject(project.id, false))
             .then((ots: any[]) => {
               console.log(`Proyecto ${project.name} (ID: ${project.id}): ${ots.length} OTs`);
               return ots || [];

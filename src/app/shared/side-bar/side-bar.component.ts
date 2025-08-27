@@ -39,6 +39,8 @@ export class SideBarComponent {
   selectedBranchId: string = '';
   selectedCProcessId: number = 0;
   selectedPlatformId: number = 0;
+  userRoot: number = 0;
+
   usersData: any[];
 
   private rootAdministrator: number[] = [];
@@ -84,12 +86,15 @@ export class SideBarComponent {
   }
 
   async ngOnInit() {
+    this.userRoot = this.signalsService.getUserRoot()();
+    //console.log('User Root:', this.userRoot);
     if (this.signalsService.isidUserEmpty()) {
       this.userService.findEmail(localStorage.getItem('mail')).subscribe({
         next: (datauser: any) => {
           if (datauser) {
             this.trackingService.setId(datauser.id);
             this.signalsService.setidUser(datauser.id);
+              
 
             this.getpermissionxRoots();
           }

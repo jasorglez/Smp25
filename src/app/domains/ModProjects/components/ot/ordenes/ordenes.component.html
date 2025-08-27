@@ -11,22 +11,33 @@
                 <!-- Botones de acciones -->
                 <div class="col-auto">
                   <nav class="d-flex flex-column align-items-start">
+                    
                     <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addReporte()">
                       <i class="bi bi-plus-lg"></i>
                     </button>
+                    
                     <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revert()">
                       <i class="bi bi-arrow-clockwise"></i>
                     </button>
-                     <button type="button" class="btn btn-success ms-1 me-1 mb-2" (click)="excel()">
-                      <img src='./assets/img/excel.png' width="17" height="17"> 
-                    </button>
+                                       
+                    @if (signalsService.getrootChoose ()== true) {
+                          <button 
+                            type="button" 
+                            class="btn btn-success ms-1 me-1 mb-2" 
+                            (click)="excel()">
+                            <img src='./assets/img/excel.png' width="17" height="17">
+                          </button>
+                    }
+
                     <button type="button" class="btn btn-info ms-1 me-1 mb-2" (click)="fileInput.click()" [disabled]="isUploading">
                       <i class="bi bi-file-earmark-pdf" *ngIf="!isUploading"></i>
                       <div class="spinner-border spinner-border-sm" role="status" *ngIf="isUploading">
                         <span class="visually-hidden">Subiendo...</span>
                       </div>
                     </button>
+                    
                     <input #fileInput type="file" accept=".pdf" style="display: none" (change)="onFileSelected($event)">
+                    
                     <button type="button" class="btn btn-secondary ms-1 me-1 mb-2" 
                             (click)="openChangeProjectModal()" 
                             [disabled]="getSelectedOTs().length === 0"
@@ -34,6 +45,7 @@
                             *ngIf="hasMultiSelectPermission">
                       <i class="bi bi-arrow-repeat"></i>
                     </button>
+                  
                   </nav>
                 </div>
                 

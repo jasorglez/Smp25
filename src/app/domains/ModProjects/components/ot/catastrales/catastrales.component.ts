@@ -74,7 +74,7 @@ export class CatastralesComponent implements OnInit {
         sortable: true,
         filter: true,
         resizable: true,
-        width: 80,
+        width: 100,
         editable: false
       },
       {
@@ -100,7 +100,7 @@ export class CatastralesComponent implements OnInit {
         sortable: true,
         filter: true,
         resizable: true,
-        flex: 1,
+        flex: 2,
         editable: true
       },
       {
@@ -109,7 +109,7 @@ export class CatastralesComponent implements OnInit {
         sortable: true,
         filter: true,
         resizable: true,
-        flex: 1,
+        flex: 2,
         editable: true
       },
       {
@@ -145,7 +145,7 @@ export class CatastralesComponent implements OnInit {
         sortable: true,
         filter: true,
         resizable: true,
-        flex: 3,
+        flex: 2,
         editable: true,
         cellEditor: 'agLargeTextCellEditor',
         cellEditorParams: {
@@ -159,7 +159,7 @@ export class CatastralesComponent implements OnInit {
         sortable: true,
         filter: true,
         resizable: true,
-        width: 100,
+        width: 150,
         editable: true,
         cellRenderer: 'agCheckboxCellRenderer',
         cellEditor: 'agCheckboxCellEditor'
@@ -235,34 +235,67 @@ export class CatastralesComponent implements OnInit {
       return;
     }
 
-    // Cargar OTs del proyecto seleccionado
-    this.otService.getOtListByProject(idProject).subscribe({
-      next: (data: any) => {
-        console.log('OTs cargadas para proyecto', idProject, ':', data);
-        
-        // Obtener el nombre del proyecto actual
-        const currentProject = this.projectsList.find(p => p.id === idProject);
-        const projectName = currentProject ? currentProject.name : 'Proyecto no encontrado';
-        
-        // Mapear los datos del endpoint a nuestro formato
-        this.rowData = data.map((ot: any, index: number) => ({
-          id: ot.id || index + 1,
-          idProject: idProject, // ID del proyecto
-          projectName: projectName, // Nombre del proyecto para mostrar
-          otNumber: ot.otNumber || ot.number || ot.codigo || 'N/A',
-          cdc: ot.cdc || ot.costCenter || 'N/A',
-          description: ot.description || ot.descripcion || ot.name || 'Sin descripción',
-          observations: ot.observations || ot.observaciones || '',
-          area: ot.area || '',
-          closed: ot.closed || false
-        }));
-      },
-      error: (error) => {
-        console.error('Error al cargar OTs:', error);
-        alerts.basicAlert('Error', 'No se pudieron cargar las OTs del proyecto', 'error');
-        this.rowData = [];
-      }
-    });
+   // Cargar OTs del proyecto seleccionado
+this.otService.getOtListByProject(idProject, true).subscribe({
+  next: (data: any) => {
+    console.log('OTs cargadas para proyecto', idProject, ':', data);
+    
+    // Verificar si data es un array directamente o viene dentro de una respuesta
+    const otsArray = Array.isArray(data) ? data : (data.data || data.ots || []);
+    
+    // Obtener el nombre del proyecto actual
+    const currentProject = this.projectsList.find(p => p.id === idProject);
+    const projectName = currentProject ? currentProject.name : 'Proyecto no encontrado';
+    
+    // Verificar si hay datos
+    if (otsArray.length === 0) {
+      console.log('No se encontraron OTs cerradas para el proyecto', idProject);
+      this.rowData = [];
+      // Opcional: mostrar mensaje informativo en lugar de error
+      // alerts.basicAlert('Información', 'No se encontraron OTs cerradas para este proyecto', 'info');
+      return;
+    }
+    
+    // Mapear los datos del endpoint a nuestro formato
+    this.rowData = otsArray.map((ot: any, index: number) => ({
+      id: ot.id || index + 1,
+      idProject: idProject, // ID del proyecto
+      projectName: projectName, // Nombre del proyecto para mostrar
+      otNumber: ot.otNumber || ot.number || ot.codigo || 'N/A',
+      cdc: ot.cdc || ot.costCenter || 'N/A',
+      description: ot.description || ot.descripcion || ot.name || 'Sin descripción',
+      observations: ot.observations || ot.observaciones || '',
+      area: ot.area || '',
+      closed: ot.closed || false
+    }));
+    
+    console.log(`Se cargaron ${this.rowData.length} OTs cerradas para el proyecto ${projectName}`);
+  },
+  error: (error) => {
+    console.error('Error al cargar OTs:', error);
+    
+    // Manejo más específico de errores
+    if (error.status === 404) {
+      // El controlador anterior devolvía 404, pero el nuevo no debería
+      console.log('No se encontraron OTs cerradas (404)');
+      this.rowData = [];
+      // Opcional: mostrar mensaje informativo
+      // alerts.basicAlert('Información', 'No se encontraron OTs cerradas para este proyecto', 'info');
+    } else if (error.status === 500) {
+      console.error('Error interno del servidor:', error.error);
+      alerts.basicAlert('Error', 'Error interno del servidor al cargar las OTs', 'error');
+      this.rowData = [];
+    } else if (error.status === 0) {
+      console.error('Error de conexión');
+      alerts.basicAlert('Error', 'Error de conexión. Verifique su red.', 'error');
+      this.rowData = [];
+    } else {
+      console.error('Error desconocido:', error);
+      alerts.basicAlert('Error', 'No se pudieron cargar las OTs del proyecto', 'error');
+      this.rowData = [];
+    }
+  }
+});
   }
 
 

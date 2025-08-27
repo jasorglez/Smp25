@@ -107,6 +107,7 @@ export class ComploginComponent implements OnInit {
           next: (datauser: any) => {
             if (datauser) {
               // Definición de variables globales
+              
               this.trackingService.setnameUser(datauser.displayName);
               this.trackingService.setpictureUser(datauser.picture);
               this.trackingService.setabranch(datauser.applybranch);
@@ -116,6 +117,10 @@ export class ComploginComponent implements OnInit {
               this.signalsService.setidUser(datauser.id);
               //aqui atrapa la signal, y le doy el valor del email
               this.signalsService.setemailChoose(this.emailcapt) ;
+
+                            
+               this.signalsService.setrootChoose(datauser.userRoot) ;
+                  console.log('User Root en Login:', this.signalsService.getrootChoose());
 
               // Cargar permisos del usuario
               this.auth.getUserId(this.emailcapt).subscribe((userId) => {

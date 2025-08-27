@@ -87,6 +87,7 @@ export class DetailsComponent implements OnInit {
       }
     });
   }
+  
   obternerArea(){
     return this.catalogService.getPhases(this.idcompany).subscribe(
       (data: any )=> {
@@ -95,6 +96,7 @@ export class DetailsComponent implements OnInit {
       },
       (error) => console.error('Error fetching conceptos:', error))
   }
+
   private createForm(): FormGroup {
     return this.fb.group({
       registerDate: [new Date().toISOString().split('T')[0], [Validators.required]],

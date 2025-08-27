@@ -56,7 +56,7 @@ getMasterUpdateTrigger() {
 
   private emailChoose           = signal<string | null>(null);
 
-  private rootChoose            = signal<string | null>(null);
+  private rootChoose            = signal<boolean>(false);
   
   private catalogSelected       = signal<string | null>(null);
 
@@ -70,8 +70,8 @@ getMasterUpdateTrigger() {
     this.emailChoose.set(id);
   }
 
-  setrootChoose(id: string) {
-    this.catalogSelected.set(id);
+  setrootChoose(id: boolean) {
+    this.rootChoose.set(id);
   }
 
   setCatalogSelected(id: string) {
