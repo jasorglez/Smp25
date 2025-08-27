@@ -15,6 +15,7 @@ interface CatastralData {
   idProject: number;
   otNumber: string;
   cdc: string;
+  description: string;
   observations: string;
   // Propiedades de control CRUD
   __isNew?: boolean;
@@ -108,6 +109,15 @@ export class CatastralesComponent implements OnInit {
         editable: true
       },
       {
+        field: 'description',
+        headerName: 'Descripción',
+        sortable: true,
+        filter: true,
+        resizable: true,
+        flex: 2,
+        editable: true
+      },
+      {
         field: 'observations',
         headerName: 'Observaciones',
         sortable: true,
@@ -152,6 +162,7 @@ export class CatastralesComponent implements OnInit {
         idProject: 1,
         otNumber: 'OT-2024-001',
         cdc: 'CDC-001',
+        description: 'Descripción del trabajo catastral 1',
         observations: 'Observación de prueba 1'
       },
       {
@@ -159,6 +170,7 @@ export class CatastralesComponent implements OnInit {
         idProject: 2,
         otNumber: 'OT-2024-002',
         cdc: 'CDC-002',
+        description: 'Descripción del trabajo catastral 2',
         observations: 'Observación de prueba 2'
       }
     ];
@@ -202,6 +214,7 @@ export class CatastralesComponent implements OnInit {
       idProject: 0,
       otNumber: '',
       cdc: '',
+      description: '',
       observations: ''
     };
     
@@ -227,13 +240,13 @@ export class CatastralesComponent implements OnInit {
 
     // Validar filas nuevas
     const invalidNewRows = newRows.filter(item => 
-      !item.idProject || !item.otNumber?.trim() || !item.cdc?.trim()
+      !item.idProject || !item.otNumber?.trim() || !item.cdc?.trim() || !item.description?.trim()
     );
     
     if (invalidNewRows.length > 0) {
       alerts.basicAlert(
         'Validación', 
-        'Complete los campos: Proyecto, Número OT y CDC antes de guardar.', 
+        'Complete los campos: Proyecto, Número OT, CDC y Descripción antes de guardar.', 
         'warning'
       );
       return;
