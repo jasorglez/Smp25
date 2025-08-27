@@ -139,12 +139,12 @@ export class CatastralesComponent implements OnInit {
           values: this.typeNotesCatalog?.map((item) => item.description) || [],
         }),
         valueFormatter: (params) => {
-          if (!params.value) return '';
           const foundItem = this.typeNotesCatalog?.find(item => item.id == params.value);
-          return foundItem ? foundItem.description : `ID: ${params.value}`;
+          return foundItem ? foundItem.description : params.value;
         },
         valueGetter: (params) => {
-          return params.data?.idArea ?? '';
+          const foundItem = this.typeNotesCatalog?.find(item => item.id == params.data?.idArea);
+          return foundItem ? foundItem.description : '';
         },
         valueSetter: (params) => {
           const foundItem = this.typeNotesCatalog?.find(item => item.description === params.newValue);
