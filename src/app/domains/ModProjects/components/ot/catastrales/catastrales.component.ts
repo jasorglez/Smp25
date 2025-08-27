@@ -8,6 +8,7 @@ import { ProjectsService } from 'app/services/projects.service';
 import { SignalsService } from 'app/services/signals.service';
 import { AuthService } from 'app/services/auth.service';
 import { alerts } from 'app/helpers/alerts';
+import { environment } from '@env/environment';
 
 // Interface para los datos catastrales
 interface CatastralData {
@@ -240,9 +241,15 @@ export class CatastralesComponent implements OnInit {
     const currentProject = this.signalsService.getProjectSelectedBySidebar()();
     const currentProjectData = this.projectsList.find(p => p.id === currentProject);
     
+    // Validar que hay un proyecto seleccionado
+    if (!currentProject) {
+      alerts.basicAlert('Advertencia', 'Debe seleccionar un proyecto antes de agregar una OT', 'warning');
+      return;
+    }
+    
     const newItem: CatastralData = {
       id: undefined,
-      idProject: currentProject || 0,
+      idProject: currentProject,
       projectName: currentProjectData ? currentProjectData.name : 'Sin proyecto',
       otNumber: '',
       cdc: '',
@@ -257,11 +264,11 @@ export class CatastralesComponent implements OnInit {
     this.rowData = [newItem, ...this.rowData];
     this.notSavedChanges = true;
     
-    // Enfocar en la primera celda editable
+    // Enfocar en la primera celda editable (otNumber en lugar de idProject)
     setTimeout(() => {
       if (this.gridApi) {
-        this.gridApi.setFocusedCell(0, 'idProject');
-        this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'idProject' });
+        this.gridApi.setFocusedCell(0, 'otNumber');
+        this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'otNumber' });
       }
     }, 100);
   }
@@ -270,15 +277,27 @@ export class CatastralesComponent implements OnInit {
     const newRows = this.rowData.filter(row => row.__isNew);
     const modifiedRows = this.rowData.filter(row => row.__modified && !row.__isNew);
 
-    // Validar filas nuevas
+    // Validar filas nuevas - campos requeridos y proyecto válido
     const invalidNewRows = newRows.filter(item => 
-      !item.otNumber?.trim() || !item.cdc?.trim() || !item.description?.trim()
+      !item.otNumber?.trim() || !item.cdc?.trim() || !item.description?.trim() || !item.idProject
     );
     
     if (invalidNewRows.length > 0) {
       alerts.basicAlert(
         'Validación', 
-        'Complete los campos: Número OT, CDC y Descripción antes de guardar.', 
+        'Complete los campos: Número OT, CDC, Descripción y asegúrese de tener un proyecto seleccionado.', 
+        'warning'
+      );
+      return;
+    }
+
+    // Validar filas modificadas - proyecto válido
+    const invalidModifiedRows = modifiedRows.filter(item => !item.idProject);
+    
+    if (invalidModifiedRows.length > 0) {
+      alerts.basicAlert(
+        'Validación', 
+        'Hay registros sin proyecto asignado. Verifique los datos.', 
         'warning'
       );
       return;
@@ -289,21 +308,88 @@ export class CatastralesComponent implements OnInit {
       return;
     }
 
-    // TODO: Implementar llamadas al servicio cuando se definan los endpoints
-    console.log('Guardando cambios:', { newRows, modifiedRows });
-    
-    // Simular guardado exitoso
-    this.rowData.forEach(item => {
-      delete item.__isNew;
-      delete item.__modified;
-      if (!item.id && (item as any).tempId) {
-        item.id = Math.floor(Math.random() * 10000);
-        delete (item as any).tempId;
-      }
+    let completedOperations = 0;
+    const totalOperations = newRows.length + modifiedRows.length;
+
+    // Procesar filas nuevas - CREATE
+    newRows.forEach(row => {
+      const newOtData = {
+        idProject: row.idProject,
+        otNumber: row.otNumber,
+        cdc: row.cdc,
+        description: row.description,
+        observations: row.observations
+      };
+
+      console.log('Enviando datos para crear OT:', newOtData);
+      console.log('URL del endpoint:', `${environment.urlSmp}/OT`);
+
+      this.otService.addOt(newOtData).subscribe({
+        next: (response: any) => {
+          console.log('OT creada exitosamente:', response);
+          // Actualizar el ID de la fila con el ID devuelto por el servidor
+          row.id = response.id || response;
+          delete row.__isNew;
+          delete (row as any).tempId;
+          
+          completedOperations++;
+          if (completedOperations === totalOperations) {
+            this.notSavedChanges = false;
+            alerts.basicAlert('Éxito', 'Cambios guardados exitosamente', 'success');
+            // Recargar datos después de guardar exitosamente
+            const currentProject = this.signalsService.getProjectSelectedBySidebar()();
+            if (currentProject) {
+              this.loadData(currentProject);
+            }
+          }
+        },
+        error: (error) => {
+          console.error('Error al crear OT:', error);
+          console.error('Detalles del error:', error.error);
+          console.error('Estado HTTP:', error.status);
+          alerts.basicAlert('Error', `Error al crear OT: ${error.error?.message || error.message}`, 'error');
+        }
+      });
     });
-    
-    this.notSavedChanges = false;
-    alerts.basicAlert('Éxito', 'Cambios guardados exitosamente', 'success');
+
+    // Procesar filas modificadas - UPDATE
+    modifiedRows.forEach(row => {
+      if (!row.id) {
+        completedOperations++;
+        return;
+      }
+
+      const updateOtData = {
+        id: row.id,
+        idProject: row.idProject,
+        otNumber: row.otNumber,
+        cdc: row.cdc,
+        description: row.description,
+        observations: row.observations
+      };
+
+      this.otService.updateOt(row.id, updateOtData).subscribe({
+        next: (response: any) => {
+          console.log('OT actualizada exitosamente:', response);
+          delete row.__modified;
+          
+          completedOperations++;
+          if (completedOperations === totalOperations) {
+            this.notSavedChanges = false;
+            alerts.basicAlert('Éxito', 'Cambios guardados exitosamente', 'success');
+            // Recargar datos después de guardar exitosamente
+            const currentProject = this.signalsService.getProjectSelectedBySidebar()();
+            if (currentProject) {
+              this.loadData(currentProject);
+            }
+          }
+        },
+        error: (error) => {
+          console.error('Error al actualizar OT:', error);
+          alerts.basicAlert('Error', 'Error al actualizar una de las OTs', 'error');
+        }
+      });
+    });
   }
 
   revert(): void {
@@ -328,10 +414,34 @@ export class CatastralesComponent implements OnInit {
     const selectedData = selectedNodes[0].data;
     
     if (confirm('¿Está seguro de que desea eliminar este registro?')) {
-      // TODO: Implementar llamada al servicio para eliminar
-      this.rowData = this.rowData.filter(row => row !== selectedData);
-      this.notSavedChanges = true;
-      alerts.basicAlert('Éxito', 'Registro eliminado', 'success');
+      // Si es una fila nueva (no guardada), solo eliminarla del grid
+      if (selectedData.__isNew) {
+        this.rowData = this.rowData.filter(row => row !== selectedData);
+        this.notSavedChanges = this.rowData.some(row => row.__isNew || row.__modified);
+        alerts.basicAlert('Éxito', 'Registro eliminado', 'success');
+        return;
+      }
+
+      // Si tiene ID, llamar al endpoint para eliminar
+      if (selectedData.id) {
+        this.otService.deleteOt(selectedData.id).subscribe({
+          next: (response: any) => {
+            console.log('OT eliminada exitosamente:', response);
+            this.rowData = this.rowData.filter(row => row !== selectedData);
+            this.notSavedChanges = this.rowData.some(row => row.__isNew || row.__modified);
+            alerts.basicAlert('Éxito', 'OT eliminada exitosamente', 'success');
+          },
+          error: (error) => {
+            console.error('Error al eliminar OT:', error);
+            alerts.basicAlert('Error', 'Error al eliminar la OT', 'error');
+          }
+        });
+      } else {
+        // Fallback: eliminar del grid si no tiene ID
+        this.rowData = this.rowData.filter(row => row !== selectedData);
+        this.notSavedChanges = this.rowData.some(row => row.__isNew || row.__modified);
+        alerts.basicAlert('Éxito', 'Registro eliminado', 'success');
+      }
     }
   }
 }
