@@ -66,6 +66,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
   idReference: number = null;
   private tempIdCounter: number = 0;
   idRequisition: number = null;
+  private lastProcessedRequisition: number = null;
   private masterGridApi: GridApi;
   private detailsGridApi: GridApi;
   private gridApi: GridApi;
@@ -114,24 +115,45 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         this.clearAllData();
       }
 
+      // Detectar si solo cambió la requisición seleccionada (no root, project o branch)
+      const rootChanged = this.idRoot !== currentRoot;
+      const projectChanged = this.idProject !== currentProject;
+      const branchChanged = this.idBranch !== currentBranch;
+      const requisitionChanged = this.lastProcessedRequisition !== currentRequisition;
+      
+      // Solo considerar que cambió la requisición si había una anteriormente o si ahora hay una
+      const onlyRequisitionChanged = !rootChanged && !projectChanged && !branchChanged && 
+                                   requisitionChanged && 
+                                   (this.lastProcessedRequisition !== null || currentRequisition !== null);
+      
+
       this.idRoot = currentRoot;
       this.idProject = currentProject;
       this.idBranch = currentBranch;
       this.idRequisition = currentRequisition;
+      
+      // Actualizar el estado procesado después de la lógica
+      this.lastProcessedRequisition = currentRequisition;
 
       if (this.idRoot) {
         this.getSetupData().then(() => {
           this.idReference = this.projectOrBranch ? this.idProject : this.idBranch;
           
-          // Solo cargar datos si tenemos la referencia apropiada
-          if (this.idReference) {
+          // Solo cargar datos si tenemos la referencia apropiada Y no es solo cambio de requisición
+          if (this.idReference && !onlyRequisitionChanged) {
             this.obtenerDepartamentos();
             this.obtenerDatos();
-            this.obtenerProductos();
+            this.obtenerUbicaciones();
             this.obtenerMonedas();
-            if (this.idRequisition != null) {
-              this.obtenerDetalles();
-            }
+            this.obtenerUsuarios();
+            this.obtenerProveedores();
+            this.obtenerTipoPago();
+            this.obtenerProductos();
+          }
+          
+          // Cargar detalles independientemente si hay requisición
+          if (this.idRequisition != null) {
+            this.obtenerDetalles();
           }
         });
       }
@@ -139,24 +161,9 @@ export class RequisitionsComponent implements CanComponentDeactivate {
   }
 
   ngOnInit() {
-    this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-
+    // El effect() del constructor ya maneja toda la carga de datos
+    // Solo necesitamos inicializar algunos servicios básicos aquí
     this.signalsService.deleteRequisitionData();
-    this.idProject = this.signalsService.getProjectSelectedBySidebar()();
-    this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-    this.idRequisition = this.signalsService.getIdRequisition()();
-
-    this.getSetupData().then(() => {
-      this.idReference = this.projectOrBranch ? this.idProject : this.idBranch;
-      this.obtenerDatos();
-      this.obtenerDepartamentos();
-      this.obtenerUbicaciones();
-      this.obtenerMonedas();
-      this.obtenerUsuarios();
-      this.obtenerProveedores();
-      this.obtenerTipoPago();
-      this.obtenerProductos();
-    });
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -885,6 +892,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     // Limpiar IDs
     this.idReference = null;
     this.idRequisition = null;
+    this.lastProcessedRequisition = null;
     this.projectOrBranch = null;
     this.typeReference = null;
   }
