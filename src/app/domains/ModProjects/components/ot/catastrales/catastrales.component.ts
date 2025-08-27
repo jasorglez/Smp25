@@ -21,6 +21,7 @@ interface CatastralData {
   description: string;
   observations: string;
   area?: string; // Campo texto del área
+  closed?: boolean; // Campo cerrado (true/false)
   // Propiedades de control CRUD
   __isNew?: boolean;
   __modified?: boolean;
@@ -151,6 +152,17 @@ export class CatastralesComponent implements OnInit {
           maxLength: 500,
           rows: 3
         }
+      },
+      {
+        field: 'closed',
+        headerName: 'Cerrado',
+        sortable: true,
+        filter: true,
+        resizable: true,
+        width: 100,
+        editable: true,
+        cellRenderer: 'agCheckboxCellRenderer',
+        cellEditor: 'agCheckboxCellEditor'
       }
     ];
   }
@@ -241,7 +253,8 @@ export class CatastralesComponent implements OnInit {
           cdc: ot.cdc || ot.costCenter || 'N/A',
           description: ot.description || ot.descripcion || ot.name || 'Sin descripción',
           observations: ot.observations || ot.observaciones || '',
-          area: ot.area || ''
+          area: ot.area || '',
+          closed: ot.closed || false
         }));
       },
       error: (error) => {
@@ -303,7 +316,8 @@ export class CatastralesComponent implements OnInit {
       cdc: '',
       description: '',
       observations: '',
-      area: ''
+      area: '',
+      closed: false
     };
     
     // Agregar propiedades de control
@@ -368,7 +382,8 @@ export class CatastralesComponent implements OnInit {
         cdc: row.cdc,
         description: row.description,
         observations: row.observations,
-        area: row.area || ''
+        area: row.area || '',
+        closed: row.closed || false
       };
 
       console.log('Enviando datos para crear OT:', newOtData);
@@ -416,7 +431,8 @@ export class CatastralesComponent implements OnInit {
         cdc: row.cdc,
         description: row.description,
         observations: row.observations,
-        area: row.area || ''
+        area: row.area || '',
+        closed: row.closed || false
       };
 
       this.otService.updateOt(row.id, updateOtData).subscribe({
