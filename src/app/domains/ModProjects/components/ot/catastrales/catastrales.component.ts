@@ -112,6 +112,19 @@ export class CatastralesComponent implements OnInit {
         editable: true
       },
       {
+        field: 'area',
+        headerName: 'Área',
+        sortable: true,
+        filter: true,
+        resizable: true,
+        flex: 2,
+        editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: (params: any) => ({
+          values: this.catalogArea?.map((item) => item.description) || [],
+        })
+      },
+      {
         field: 'description',
         headerName: 'Descripción',
         sortable: true,
@@ -138,19 +151,6 @@ export class CatastralesComponent implements OnInit {
           maxLength: 500,
           rows: 3
         }
-      },
-      {
-        field: 'area',
-        headerName: 'Área',
-        sortable: true,
-        filter: true,
-        resizable: true,
-        flex: 2,
-        editable: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: (params: any) => ({
-          values: this.catalogArea?.map((item) => item.description) || [],
-        })
       }
     ];
   }
