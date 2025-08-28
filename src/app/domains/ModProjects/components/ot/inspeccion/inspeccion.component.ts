@@ -51,8 +51,8 @@ export class InspeccionComponent implements OnInit {
 
   // Configuración del grid
   public gridOptions: any = {
-    headerHeight: 40,
-    rowHeight: 35,
+    headerHeight: 35,
+    rowHeight: 28,
     suppressDragLeaveHidesColumns: true,
     suppressHorizontalScroll: false,
     animateRows: true,
