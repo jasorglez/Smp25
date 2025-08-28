@@ -11,8 +11,8 @@ import { CatalogsService } from 'app/services/catalogs.service';
 import { alerts } from 'app/helpers/alerts';
 import { environment } from '@env/environment';
 
-// Interface para los datos catastrales
-interface CatastralData {
+// Interface para los datos históricos de OT
+interface HistoricoOTData {
   id?: number;
   idProject: number;
   projectName?: string; // Nombre del proyecto para mostrar
@@ -29,13 +29,13 @@ interface CatastralData {
 }
 
 @Component({
-  selector: 'app-catastrales',
+  selector: 'app-historico-ot',
   standalone: true,
   imports: [CommonModule, TranslateModule, AgGridModule],
-  templateUrl: './catastrales.component.html',
-  styleUrl: './catastrales.component.scss'
+  templateUrl: './historicoOT.component.html',
+  styleUrl: './historicoOT.component.scss'
 })
-export class CatastralesComponent implements OnInit {
+export class HistoricoOTComponent implements OnInit {
 
   // Servicios
   private otService = inject(OtService);
@@ -46,7 +46,7 @@ export class CatastralesComponent implements OnInit {
 
   // Variables del grid
   public gridApi!: GridApi;
-  public rowData: CatastralData[] = [];
+  public rowData: HistoricoOTData[] = [];
   public projectsList: any[] = [];
   public catalogArea: any[] = []; // Catálogo de áreas (fases)
 
@@ -239,7 +239,7 @@ export class CatastralesComponent implements OnInit {
     });
   }
 
-  // Cargar datos catastrales usando getOtListByProject
+  // Cargar datos históricos de OT usando getOtListByProject
   loadData(idProject?: number): void {
     // Si no hay proyecto seleccionado, limpiar datos
     if (!idProject) {
@@ -329,16 +329,49 @@ this.otService.getOtListByProject(idProject, true).subscribe({
     const newValue = event.newValue;
     const oldValue = event.oldValue;
 
+    console.log(`onCellValueChanged - Campo: ${field}, Valor anterior: ${oldValue}, Valor nuevo: ${newValue}`);
+
     if (newValue !== oldValue) {
       if (data.__isNew) {
         // Para filas nuevas, solo marcar que hay cambios
         this.notSavedChanges = true;
+        console.log('Fila nueva modificada, notSavedChanges =', this.notSavedChanges);
       } else {
         // Para filas existentes, marcar como modificada
         data.__modified = true;
         this.notSavedChanges = true;
+        console.log('Fila existente modificada, notSavedChanges =', this.notSavedChanges);
       }
       console.log(`Campo ${field} cambiado de ${oldValue} a ${newValue}`);
+      
+      // Forzar detección de cambios
+      setTimeout(() => {
+        console.log('Estado final notSavedChanges:', this.notSavedChanges);
+      });
+    }
+  }
+
+  // Método adicional para detectar cambios en la edición de celdas
+  onCellEditingStarted(event: any): void {
+    console.log('Edición iniciada en celda:', event.colDef.field);
+  }
+
+  onCellEditingStopped(event: any): void {
+    console.log('Edición finalizada en celda:', event.colDef.field);
+    // Verificar si hay cambios pendientes después de cada edición
+    this.updateNotSavedChangesStatus();
+  }
+
+  // Método para actualizar el estado de cambios no guardados
+  updateNotSavedChangesStatus(): void {
+    const hasNewRows = this.rowData.some(row => row.__isNew);
+    const hasModifiedRows = this.rowData.some(row => row.__modified);
+    const previousState = this.notSavedChanges;
+    
+    this.notSavedChanges = hasNewRows || hasModifiedRows;
+    
+    if (previousState !== this.notSavedChanges) {
+      console.log('Estado de notSavedChanges actualizado:', this.notSavedChanges);
     }
   }
 
@@ -354,7 +387,7 @@ this.otService.getOtListByProject(idProject, true).subscribe({
       return;
     }
     
-    const newItem: CatastralData = {
+    const newItem: HistoricoOTData = {
       id: undefined,
       idProject: currentProject,
       projectName: currentProjectData ? currentProjectData.name : 'Sin proyecto',
@@ -372,7 +405,9 @@ this.otService.getOtListByProject(idProject, true).subscribe({
     (newItem as any).tempId = tempId;
     
     this.rowData = [newItem, ...this.rowData];
-    this.notSavedChanges = true;
+    this.updateNotSavedChangesStatus();
+    
+    console.log('Nueva fila agregada, notSavedChanges:', this.notSavedChanges);
     
     // Enfocar en la primera celda editable (otNumber en lugar de idProject)
     setTimeout(() => {
@@ -447,7 +482,7 @@ this.otService.getOtListByProject(idProject, true).subscribe({
           
           completedOperations++;
           if (completedOperations === totalOperations) {
-            this.notSavedChanges = false;
+            this.updateNotSavedChangesStatus();
             alerts.basicAlert('Éxito', 'Cambios guardados exitosamente', 'success');
             // Recargar datos después de guardar exitosamente
             const currentProject = this.signalsService.getProjectSelectedBySidebar()();
@@ -491,7 +526,7 @@ this.otService.getOtListByProject(idProject, true).subscribe({
           
           completedOperations++;
           if (completedOperations === totalOperations) {
-            this.notSavedChanges = false;
+            this.updateNotSavedChangesStatus();
             alerts.basicAlert('Éxito', 'Cambios guardados exitosamente', 'success');
             // Recargar datos después de guardar exitosamente
             const currentProject = this.signalsService.getProjectSelectedBySidebar()();
@@ -515,7 +550,7 @@ this.otService.getOtListByProject(idProject, true).subscribe({
     } else {
       this.loadData();
     }
-    this.notSavedChanges = false;
+    this.updateNotSavedChangesStatus();
     alerts.basicAlert('Info', 'Cambios revertidos', 'info');
   }
 
@@ -533,7 +568,7 @@ this.otService.getOtListByProject(idProject, true).subscribe({
       // Si es una fila nueva (no guardada), solo eliminarla del grid
       if (selectedData.__isNew) {
         this.rowData = this.rowData.filter(row => row !== selectedData);
-        this.notSavedChanges = this.rowData.some(row => row.__isNew || row.__modified);
+        this.updateNotSavedChangesStatus();
         alerts.basicAlert('Éxito', 'Registro eliminado', 'success');
         return;
       }
@@ -544,7 +579,7 @@ this.otService.getOtListByProject(idProject, true).subscribe({
           next: (response: any) => {
             console.log('OT eliminada exitosamente:', response);
             this.rowData = this.rowData.filter(row => row !== selectedData);
-            this.notSavedChanges = this.rowData.some(row => row.__isNew || row.__modified);
+            this.updateNotSavedChangesStatus();
             alerts.basicAlert('Éxito', 'OT eliminada exitosamente', 'success');
           },
           error: (error) => {
@@ -555,7 +590,7 @@ this.otService.getOtListByProject(idProject, true).subscribe({
       } else {
         // Fallback: eliminar del grid si no tiene ID
         this.rowData = this.rowData.filter(row => row !== selectedData);
-        this.notSavedChanges = this.rowData.some(row => row.__isNew || row.__modified);
+        this.updateNotSavedChangesStatus();
         alerts.basicAlert('Éxito', 'Registro eliminado', 'success');
       }
     }
