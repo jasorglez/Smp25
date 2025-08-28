@@ -11,8 +11,8 @@ import { CatalogsService } from 'app/services/catalogs.service';
 import { alerts } from 'app/helpers/alerts';
 import { environment } from '@env/environment';
 
-// Interface para los datos catastrales
-interface CatastralData {
+// Interface para los datos históricos de OT
+interface HistoricoOTData {
   id?: number;
   idProject: number;
   projectName?: string; // Nombre del proyecto para mostrar
@@ -22,19 +22,20 @@ interface CatastralData {
   observations: string;
   area?: string; // Campo texto del área
   closed?: boolean; // Campo cerrado (true/false)
-  // Propiedades de control CRUD
+  closedApp?: boolean; // Campo cerrado desde la app (true/false)
+    // Propiedades de control CRUD
   __isNew?: boolean;
   __modified?: boolean;
 }
 
 @Component({
-  selector: 'app-catastrales',
+  selector: 'app-historico-ot',
   standalone: true,
   imports: [CommonModule, TranslateModule, AgGridModule],
-  templateUrl: './catastrales.component.html',
-  styleUrl: './catastrales.component.scss'
+  templateUrl: './historicoOT.component.html',
+  styleUrl: './historicoOT.component.scss'
 })
-export class CatastralesComponent implements OnInit {
+export class HistoricoOTComponent implements OnInit {
 
   // Servicios
   private otService = inject(OtService);
@@ -45,7 +46,7 @@ export class CatastralesComponent implements OnInit {
 
   // Variables del grid
   public gridApi!: GridApi;
-  public rowData: CatastralData[] = [];
+  public rowData: HistoricoOTData[] = [];
   public projectsList: any[] = [];
   public catalogArea: any[] = []; // Catálogo de áreas (fases)
 
@@ -74,7 +75,7 @@ export class CatastralesComponent implements OnInit {
         sortable: true,
         filter: true,
         resizable: true,
-        width: 80,
+        width: 100,
         editable: false
       },
       {
@@ -100,7 +101,7 @@ export class CatastralesComponent implements OnInit {
         sortable: true,
         filter: true,
         resizable: true,
-        flex: 1,
+        flex: 2,
         editable: true
       },
       {
@@ -109,7 +110,7 @@ export class CatastralesComponent implements OnInit {
         sortable: true,
         filter: true,
         resizable: true,
-        flex: 1,
+        flex: 2,
         editable: true
       },
       {
@@ -145,7 +146,7 @@ export class CatastralesComponent implements OnInit {
         sortable: true,
         filter: true,
         resizable: true,
-        flex: 3,
+        flex: 2,
         editable: true,
         cellEditor: 'agLargeTextCellEditor',
         cellEditorParams: {
@@ -159,7 +160,18 @@ export class CatastralesComponent implements OnInit {
         sortable: true,
         filter: true,
         resizable: true,
-        width: 100,
+        width: 150,
+        editable: true,
+        cellRenderer: 'agCheckboxCellRenderer',
+        cellEditor: 'agCheckboxCellEditor'
+      },
+        {
+        field: 'closedApp',
+        headerName: 'Cerrado App',
+        sortable: true,
+        filter: true,
+        resizable: true,
+        width: 150,
         editable: true,
         cellRenderer: 'agCheckboxCellRenderer',
         cellEditor: 'agCheckboxCellEditor'
@@ -227,7 +239,7 @@ export class CatastralesComponent implements OnInit {
     });
   }
 
-  // Cargar datos catastrales usando getOtListByProject
+  // Cargar datos históricos de OT usando getOtListByProject
   loadData(idProject?: number): void {
     // Si no hay proyecto seleccionado, limpiar datos
     if (!idProject) {
@@ -235,34 +247,68 @@ export class CatastralesComponent implements OnInit {
       return;
     }
 
-    // Cargar OTs del proyecto seleccionado
-    this.otService.getOtListByProject(idProject).subscribe({
-      next: (data: any) => {
-        console.log('OTs cargadas para proyecto', idProject, ':', data);
-        
-        // Obtener el nombre del proyecto actual
-        const currentProject = this.projectsList.find(p => p.id === idProject);
-        const projectName = currentProject ? currentProject.name : 'Proyecto no encontrado';
-        
-        // Mapear los datos del endpoint a nuestro formato
-        this.rowData = data.map((ot: any, index: number) => ({
-          id: ot.id || index + 1,
-          idProject: idProject, // ID del proyecto
-          projectName: projectName, // Nombre del proyecto para mostrar
-          otNumber: ot.otNumber || ot.number || ot.codigo || 'N/A',
-          cdc: ot.cdc || ot.costCenter || 'N/A',
-          description: ot.description || ot.descripcion || ot.name || 'Sin descripción',
-          observations: ot.observations || ot.observaciones || '',
-          area: ot.area || '',
-          closed: ot.closed || false
-        }));
-      },
-      error: (error) => {
-        console.error('Error al cargar OTs:', error);
-        alerts.basicAlert('Error', 'No se pudieron cargar las OTs del proyecto', 'error');
-        this.rowData = [];
-      }
-    });
+   // Cargar OTs del proyecto seleccionado
+this.otService.getOtListByProject(idProject, true).subscribe({
+  next: (data: any) => {
+    console.log('OTs cargadas para proyecto', idProject, ':', data);
+    
+    // Verificar si data es un array directamente o viene dentro de una respuesta
+    const otsArray = Array.isArray(data) ? data : (data.data || data.ots || []);
+    
+    // Obtener el nombre del proyecto actual
+    const currentProject = this.projectsList.find(p => p.id === idProject);
+    const projectName = currentProject ? currentProject.name : 'Proyecto no encontrado';
+    
+    // Verificar si hay datos
+    if (otsArray.length === 0) {
+      console.log('No se encontraron OTs cerradas para el proyecto', idProject);
+      this.rowData = [];
+      // Opcional: mostrar mensaje informativo en lugar de error
+      // alerts.basicAlert('Información', 'No se encontraron OTs cerradas para este proyecto', 'info');
+      return;
+    }
+    
+    // Mapear los datos del endpoint a nuestro formato
+    this.rowData = otsArray.map((ot: any, index: number) => ({
+      id: ot.id || index + 1,
+      idProject: idProject, // ID del proyecto
+      projectName: projectName, // Nombre del proyecto para mostrar
+      otNumber: ot.otNumber || ot.number || ot.codigo || 'N/A',
+      cdc: ot.cdc || ot.costCenter || 'N/A',
+      description: ot.description || ot.descripcion || ot.name || 'Sin descripción',
+      observations: ot.observations || ot.observaciones || '',
+      area: ot.area || '',
+      closed: ot.closed || false,
+      closedApp: ot.closedApp || false
+    }));
+    
+    console.log(`Se cargaron ${this.rowData.length} OTs cerradas para el proyecto ${projectName}`);
+  },
+  error: (error) => {
+    console.error('Error al cargar OTs:', error);
+    
+    // Manejo más específico de errores
+    if (error.status === 404) {
+      // El controlador anterior devolvía 404, pero el nuevo no debería
+      console.log('No se encontraron OTs cerradas (404)');
+      this.rowData = [];
+      // Opcional: mostrar mensaje informativo
+      // alerts.basicAlert('Información', 'No se encontraron OTs cerradas para este proyecto', 'info');
+    } else if (error.status === 500) {
+      console.error('Error interno del servidor:', error.error);
+      alerts.basicAlert('Error', 'Error interno del servidor al cargar las OTs', 'error');
+      this.rowData = [];
+    } else if (error.status === 0) {
+      console.error('Error de conexión');
+      alerts.basicAlert('Error', 'Error de conexión. Verifique su red.', 'error');
+      this.rowData = [];
+    } else {
+      console.error('Error desconocido:', error);
+      alerts.basicAlert('Error', 'No se pudieron cargar las OTs del proyecto', 'error');
+      this.rowData = [];
+    }
+  }
+});
   }
 
 
@@ -283,16 +329,49 @@ export class CatastralesComponent implements OnInit {
     const newValue = event.newValue;
     const oldValue = event.oldValue;
 
+    console.log(`onCellValueChanged - Campo: ${field}, Valor anterior: ${oldValue}, Valor nuevo: ${newValue}`);
+
     if (newValue !== oldValue) {
       if (data.__isNew) {
         // Para filas nuevas, solo marcar que hay cambios
         this.notSavedChanges = true;
+        console.log('Fila nueva modificada, notSavedChanges =', this.notSavedChanges);
       } else {
         // Para filas existentes, marcar como modificada
         data.__modified = true;
         this.notSavedChanges = true;
+        console.log('Fila existente modificada, notSavedChanges =', this.notSavedChanges);
       }
       console.log(`Campo ${field} cambiado de ${oldValue} a ${newValue}`);
+      
+      // Forzar detección de cambios
+      setTimeout(() => {
+        console.log('Estado final notSavedChanges:', this.notSavedChanges);
+      });
+    }
+  }
+
+  // Método adicional para detectar cambios en la edición de celdas
+  onCellEditingStarted(event: any): void {
+    console.log('Edición iniciada en celda:', event.colDef.field);
+  }
+
+  onCellEditingStopped(event: any): void {
+    console.log('Edición finalizada en celda:', event.colDef.field);
+    // Verificar si hay cambios pendientes después de cada edición
+    this.updateNotSavedChangesStatus();
+  }
+
+  // Método para actualizar el estado de cambios no guardados
+  updateNotSavedChangesStatus(): void {
+    const hasNewRows = this.rowData.some(row => row.__isNew);
+    const hasModifiedRows = this.rowData.some(row => row.__modified);
+    const previousState = this.notSavedChanges;
+    
+    this.notSavedChanges = hasNewRows || hasModifiedRows;
+    
+    if (previousState !== this.notSavedChanges) {
+      console.log('Estado de notSavedChanges actualizado:', this.notSavedChanges);
     }
   }
 
@@ -308,7 +387,7 @@ export class CatastralesComponent implements OnInit {
       return;
     }
     
-    const newItem: CatastralData = {
+    const newItem: HistoricoOTData = {
       id: undefined,
       idProject: currentProject,
       projectName: currentProjectData ? currentProjectData.name : 'Sin proyecto',
@@ -317,7 +396,8 @@ export class CatastralesComponent implements OnInit {
       description: '',
       observations: '',
       area: '',
-      closed: false
+      closed: false,
+      closedApp: false
     };
     
     // Agregar propiedades de control
@@ -325,7 +405,9 @@ export class CatastralesComponent implements OnInit {
     (newItem as any).tempId = tempId;
     
     this.rowData = [newItem, ...this.rowData];
-    this.notSavedChanges = true;
+    this.updateNotSavedChangesStatus();
+    
+    console.log('Nueva fila agregada, notSavedChanges:', this.notSavedChanges);
     
     // Enfocar en la primera celda editable (otNumber en lugar de idProject)
     setTimeout(() => {
@@ -383,7 +465,8 @@ export class CatastralesComponent implements OnInit {
         description: row.description,
         observations: row.observations,
         area: row.area || '',
-        closed: row.closed || false
+        closed: row.closed || false,
+        closedApp: row.closedApp || false
       };
 
       console.log('Enviando datos para crear OT:', newOtData);
@@ -399,7 +482,7 @@ export class CatastralesComponent implements OnInit {
           
           completedOperations++;
           if (completedOperations === totalOperations) {
-            this.notSavedChanges = false;
+            this.updateNotSavedChangesStatus();
             alerts.basicAlert('Éxito', 'Cambios guardados exitosamente', 'success');
             // Recargar datos después de guardar exitosamente
             const currentProject = this.signalsService.getProjectSelectedBySidebar()();
@@ -432,7 +515,8 @@ export class CatastralesComponent implements OnInit {
         description: row.description,
         observations: row.observations,
         area: row.area || '',
-        closed: row.closed || false
+        closed: row.closed || false,
+        closedApp: row.closedApp || false
       };
 
       this.otService.updateOt(row.id, updateOtData).subscribe({
@@ -442,7 +526,7 @@ export class CatastralesComponent implements OnInit {
           
           completedOperations++;
           if (completedOperations === totalOperations) {
-            this.notSavedChanges = false;
+            this.updateNotSavedChangesStatus();
             alerts.basicAlert('Éxito', 'Cambios guardados exitosamente', 'success');
             // Recargar datos después de guardar exitosamente
             const currentProject = this.signalsService.getProjectSelectedBySidebar()();
@@ -466,7 +550,7 @@ export class CatastralesComponent implements OnInit {
     } else {
       this.loadData();
     }
-    this.notSavedChanges = false;
+    this.updateNotSavedChangesStatus();
     alerts.basicAlert('Info', 'Cambios revertidos', 'info');
   }
 
@@ -484,7 +568,7 @@ export class CatastralesComponent implements OnInit {
       // Si es una fila nueva (no guardada), solo eliminarla del grid
       if (selectedData.__isNew) {
         this.rowData = this.rowData.filter(row => row !== selectedData);
-        this.notSavedChanges = this.rowData.some(row => row.__isNew || row.__modified);
+        this.updateNotSavedChangesStatus();
         alerts.basicAlert('Éxito', 'Registro eliminado', 'success');
         return;
       }
@@ -495,7 +579,7 @@ export class CatastralesComponent implements OnInit {
           next: (response: any) => {
             console.log('OT eliminada exitosamente:', response);
             this.rowData = this.rowData.filter(row => row !== selectedData);
-            this.notSavedChanges = this.rowData.some(row => row.__isNew || row.__modified);
+            this.updateNotSavedChangesStatus();
             alerts.basicAlert('Éxito', 'OT eliminada exitosamente', 'success');
           },
           error: (error) => {
@@ -506,7 +590,7 @@ export class CatastralesComponent implements OnInit {
       } else {
         // Fallback: eliminar del grid si no tiene ID
         this.rowData = this.rowData.filter(row => row !== selectedData);
-        this.notSavedChanges = this.rowData.some(row => row.__isNew || row.__modified);
+        this.updateNotSavedChangesStatus();
         alerts.basicAlert('Éxito', 'Registro eliminado', 'success');
       }
     }

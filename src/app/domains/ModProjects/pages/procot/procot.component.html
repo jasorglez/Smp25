@@ -9,34 +9,29 @@
           </a>
         </li>
     
-    
+      @if (signalsService.getrootChoose ()== true) {
+        <li class="nav-item">
+          <a class="nav-link green-tab" routerLink="catastrales" routerLinkActive="active">
+            <i class="bi bi-wrench"></i> {{'OT' | translate}} {{'manuals' | translate}}
+          </a>
+        </li>
+      }
 
+      @if (signalsService.getrootChoose ()== true) {
         <li class="nav-item">
           <a class="nav-link green-tab" routerLink="unidad" routerLinkActive="active">
             <i class="bi bi-pie-chart-fill"></i> {{'graphs' | translate}}
           </a>
-        </li>
-        
+        </li>                
+      }
         <!--
-
-        <li class="nav-item">
-          <a class="nav-link green-tab" routerLink="unidad" routerLinkActive="active">
-            <i class="bi bi-cpu"></i> {{'unit' | translate}}
-          </a>
-        </li>
-
+        
         <li class="nav-item">
           <a class="nav-link green-tab" routerLink="servicio" routerLinkActive="active">
             <i class="bi bi-wrench"></i> {{'service' | translate}}
           </a>
         </li>
 
-        <li class="nav-item">
-          <a class="nav-link green-tab" routerLink="catastrales" routerLinkActive="active">
-            <i class="bi bi-map"></i> {{'cadastral' | translate}}
-          </a>
-        </li>
-        
         <li class="nav-item">
           <a class="nav-link green-tab" routerLink="generales" routerLinkActive="active">
             <i class="bi bi-gear"></i> {{'general' | translate}}

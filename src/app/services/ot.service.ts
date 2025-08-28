@@ -3,7 +3,6 @@ import { inject, Injectable } from '@angular/core';
 import { environment } from '@env/environment';
 import { Observable } from 'rxjs';
 import { TrackingService } from './tracking.service';
-import { SignalsService } from './signals.service';
 
 @Injectable({
   providedIn: 'root'
@@ -19,8 +18,8 @@ export class OtService {
       return this.http.get(`${environment.urlSmp}/OT`, { headers: this.trackingService.getHeaders() });
     }
 
-    getOtListByProject(idProject: number): Observable<any> {
-      return this.http.get(`${environment.urlSmp}/OT/project/${idProject}`, { headers: this.trackingService.getHeaders() });
+    getOtListByProject(idProject: number, close: boolean): Observable<any> {
+      return this.http.get(`${environment.urlSmp}/OT/projects/${idProject}?close=${close}`, { headers: this.trackingService.getHeaders() });
     }
 
     getOtDetails(idOt: number): Observable<any> {

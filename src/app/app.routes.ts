@@ -552,8 +552,8 @@ export const routes: Routes = [
                 path: 'catastrales',
                 loadComponent: () =>
                   import(
-                    './domains/ModProjects/components/ot/catastrales/catastrales.component'
-                  ).then((c) => c.CatastralesComponent),
+                    './domains/ModProjects/components/ot/historicoOT/historicoOT.component'
+                  ).then((c) => c.HistoricoOTComponent),
               },
               {
                 path: 'generales',

@@ -1,4 +1,4 @@
-import { Component, effect, inject, OnInit, OnDestroy } from '@angular/core';
+import { Component, effect, inject, OnInit, OnDestroy, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { AgGridModule } from 'ag-grid-angular';
@@ -43,7 +43,6 @@ export class SafePipe implements PipeTransform {
     return this.sanitizer.bypassSecurityTrustResourceUrl(url);
   }
 }
-
 
 interface OrdenesData {
   id: string;
@@ -141,6 +140,8 @@ interface Video {
   styleUrl: './ordenes.component.scss',
 })
 export class OrdenesComponent implements OnInit, OnDestroy {
+
+
   private otService = inject(OtService);
   private equipmentService = inject(EquipmentService);
   private dailyReportService = inject(DailyReportService);
@@ -199,7 +200,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     return this.authService.hasDetailedPermission('projects', 'get-all-ot');
   }
   
-
   // Variables para columnas ajustables
   public leftColumnSize: number = 8;
   public rightColumnSize: number = 4;
@@ -222,6 +222,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   private tempPersonalIdCounter: number = 1;
   private currentEditingRow: number = -1;
   private currentEditingCol: string = '';
+  
   rowDataMaster: any[] = [];
   notSavedChangesMaster: boolean = false;
 
@@ -568,9 +569,18 @@ obtenerAnoMes(fecha) {
         this.onOTCellDoubleClicked(params);
       }
     },*/
+     {
+      field: 'closedApp',
+      headerName: 'Cerrado APP',
+      sortable: true,
+      filter: true,
+      resizable: true,
+      flex: 4,
+      editable: false
+    },
     {
       field: 'closed',
-      headerName: 'Cerrado',
+      headerName: 'Cerrado Web',
       sortable: true,
       filter: true,
       resizable: true,
@@ -1361,11 +1371,7 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
       __isNew: true
     };
 
-    console.log('📸 === NUEVA FOTOGRAFÍA CREADA ===');
-    console.log('📸 newFotografia.typeNote:', newFotografia.typeNote);
-    console.log('📸 newFotografia.orden:', newFotografia.orden);
-    console.log('📸 newFotografia completa:', newFotografia);
-
+ 
     this.fotografias = [newFotografia, ...this.fotografias];
     this.notSavedFotografiaChanges = true;
 
@@ -1441,9 +1447,6 @@ addVideo(){
     const newRows = this.fotografias.filter(row => row.__isNew);
     const modifiedRows = this.fotografias.filter(row => row.__modified && !row.__isNew);
 
-    console.log('📸 === DEBUGGING FOTOGRAFÍAS ===');
-    console.log('📸 newRows:', newRows);
-    console.log('📸 modifiedRows:', modifiedRows);
 
     // Validación básica
     const invalidRows = newRows.filter(item => item.imageUrl && item.descripcion);
@@ -1933,8 +1936,7 @@ addVideo(){
 
   constructor(private formBuilder: FormBuilder) {
     // Initialize form immediately in constructor
-    
-    
+     
     // Log de acceso al componente
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
@@ -1972,6 +1974,8 @@ addVideo(){
   }
 
   ngOnInit(): void {
+    
+    console.log('User Root en OT:', this.signalsService.getrootChoose());
     const hoy = new Date();
     const hace7Dias = new Date();
     hace7Dias.setDate(hoy.getDate() - 7);
@@ -2228,7 +2232,7 @@ addVideo(){
   }
 
   obtenerOTsDelProyectoActual() {
-    this.otService.getOtListByProject(this.idProject).subscribe({
+    this.otService.getOtListByProject(this.idProject,false).subscribe({
       next: (data: any) => {
         console.log('Datos obtenidos del servicio OT para proyecto actual:', data);
         this.rowData = data;
@@ -2280,7 +2284,7 @@ addVideo(){
         
         // Crear un array de promesas para obtener las OTs de cada proyecto
         const otPromises = this.projectsList.map(project => 
-          firstValueFrom(this.otService.getOtListByProject(project.id))
+          firstValueFrom(this.otService.getOtListByProject(project.id, false))
             .then((ots: any[]) => {
               console.log(`Proyecto ${project.name} (ID: ${project.id}): ${ots.length} OTs`);
               return ots || [];
