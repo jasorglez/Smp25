@@ -112,6 +112,7 @@ export class InspeccionComponent implements OnInit {
       field: 'totalPay',
       headerName: 'Total $',
       width: 120,
+      aggFunc: 'sum',
       cellRenderer: (params) => {
         const value = params.value || 0;
         return new Intl.NumberFormat('en-US', {
@@ -161,7 +162,8 @@ export class InspeccionComponent implements OnInit {
       width: 80,
       sortable: true,
       filter: true,
-      sort: 'desc'
+      sort: 'desc',
+      hide: true
     },
     {
       field: 'otNumber',
