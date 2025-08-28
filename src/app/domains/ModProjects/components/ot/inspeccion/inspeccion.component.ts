@@ -88,6 +88,11 @@ export class InspeccionComponent implements OnInit {
       }
     },
     {
+      field: 'projectName',
+      headerName: 'Cuadrillas',
+      width: 120      
+    },
+    {
       field: 'startTime',
       headerName: 'Inicio',
       width: 100,
