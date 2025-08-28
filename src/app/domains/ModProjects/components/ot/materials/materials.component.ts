@@ -79,6 +79,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
     // Eliminar siempre estos campos internos
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
+    delete cleanedData.id;
     
     // Eliminar SIEMPRE el ID para updates (el servidor no lo necesita)
     
