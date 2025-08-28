@@ -65,5 +65,32 @@ export class OtService {
       
       return this.http.post(`${environment.urlSmp}/OT/upload?idProject=${idProject}`, formData, { headers });
     }
+    
+    addOtViaPdfCopy(idProject: number, pdfFile: File): Observable<any> {
+      const formData = new FormData();
+      formData.append('file', pdfFile, pdfFile.name);
+      
+      // Crear headers simples que coincidan con el curl
+      const baseHeaders = this.trackingService.getHeaders();
+      console.log('Base headers from trackingService:', baseHeaders);
+      
+      // Crear un objeto headers limpio
+      const headers: any = {
+        'accept': '*/*'
+      };
+      
+      // Extraer Authorization del HttpHeaders usando el método get()
+      const authToken = baseHeaders.get('Authorization') || baseHeaders.get('authorization');
+      if (authToken) {
+        headers['Authorization'] = authToken;
+      }
+      
+      console.log('Authorization token found:', authToken);
+      console.log('Final headers being sent:', headers);
+      console.log('FormData being sent:', formData);
+      console.log('Endpoint:', `${environment.urlSmp}/OT/uploadCopy?idProject=${idProject}`);
+      
+      return this.http.post(`${environment.urlSmp}/OT/uploadCopy?idProject=${idProject}`, formData, { headers });
+    }
 
   }
