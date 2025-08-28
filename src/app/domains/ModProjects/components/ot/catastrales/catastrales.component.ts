@@ -22,7 +22,8 @@ interface CatastralData {
   observations: string;
   area?: string; // Campo texto del área
   closed?: boolean; // Campo cerrado (true/false)
-  // Propiedades de control CRUD
+  closedApp?: boolean; // Campo cerrado desde la app (true/false)
+    // Propiedades de control CRUD
   __isNew?: boolean;
   __modified?: boolean;
 }
@@ -277,7 +278,8 @@ this.otService.getOtListByProject(idProject, true).subscribe({
       description: ot.description || ot.descripcion || ot.name || 'Sin descripción',
       observations: ot.observations || ot.observaciones || '',
       area: ot.area || '',
-      closed: ot.closed || false
+      closed: ot.closed || false,
+      closedApp: ot.closedApp || false
     }));
     
     console.log(`Se cargaron ${this.rowData.length} OTs cerradas para el proyecto ${projectName}`);
@@ -361,7 +363,8 @@ this.otService.getOtListByProject(idProject, true).subscribe({
       description: '',
       observations: '',
       area: '',
-      closed: false
+      closed: false,
+      closedApp: false
     };
     
     // Agregar propiedades de control
@@ -427,7 +430,8 @@ this.otService.getOtListByProject(idProject, true).subscribe({
         description: row.description,
         observations: row.observations,
         area: row.area || '',
-        closed: row.closed || false
+        closed: row.closed || false,
+        closedApp: row.closedApp || false
       };
 
       console.log('Enviando datos para crear OT:', newOtData);
@@ -476,7 +480,8 @@ this.otService.getOtListByProject(idProject, true).subscribe({
         description: row.description,
         observations: row.observations,
         area: row.area || '',
-        closed: row.closed || false
+        closed: row.closed || false,
+        closedApp: row.closedApp || false
       };
 
       this.otService.updateOt(row.id, updateOtData).subscribe({
