@@ -147,11 +147,21 @@ export class InspeccionComponent implements OnInit {
   // Columnas para todas las OTs
   public otsColumnDefs: ColDef[] = [
     {
+      headerName: '#',
+      width: 50,
+      cellRenderer: (params: any) => {
+        return params.node.rowIndex + 1;
+      },
+      sortable: false,
+      filter: false
+    },
+    {
       field: 'idOt',
       headerName: 'ID OT',
       width: 80,
       sortable: true,
-      filter: true
+      filter: true,
+      sort: 'desc'
     },
     {
       field: 'otNumber',
