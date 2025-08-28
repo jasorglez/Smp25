@@ -200,7 +200,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     return this.authService.hasDetailedPermission('projects', 'get-all-ot');
   }
   
-
   // Variables para columnas ajustables
   public leftColumnSize: number = 8;
   public rightColumnSize: number = 4;
@@ -1370,11 +1369,7 @@ openDescriptionModal(event: CellDoubleClickedEvent) {
       __isNew: true
     };
 
-    console.log('📸 === NUEVA FOTOGRAFÍA CREADA ===');
-    console.log('📸 newFotografia.typeNote:', newFotografia.typeNote);
-    console.log('📸 newFotografia.orden:', newFotografia.orden);
-    console.log('📸 newFotografia completa:', newFotografia);
-
+ 
     this.fotografias = [newFotografia, ...this.fotografias];
     this.notSavedFotografiaChanges = true;
 
@@ -1450,9 +1445,6 @@ addVideo(){
     const newRows = this.fotografias.filter(row => row.__isNew);
     const modifiedRows = this.fotografias.filter(row => row.__modified && !row.__isNew);
 
-    console.log('📸 === DEBUGGING FOTOGRAFÍAS ===');
-    console.log('📸 newRows:', newRows);
-    console.log('📸 modifiedRows:', modifiedRows);
 
     // Validación básica
     const invalidRows = newRows.filter(item => item.imageUrl && item.descripcion);
