@@ -9,6 +9,7 @@ import { alerts } from 'app/helpers/alerts';
 
 interface ReportData {
   id: number;
+  idOt: number;
   nameSmall: string;
   otNumber: string;
   cdc: string;
@@ -141,6 +142,13 @@ export class InspeccionComponent implements OnInit {
   // Columnas para todas las OTs
   public otsColumnDefs: ColDef[] = [
     {
+      field: 'idOt',
+      headerName: 'ID OT',
+      width: 80,
+      sortable: true,
+      filter: true
+    },
+    {
       field: 'otNumber',
       headerName: 'Número OT',
       width: 120,
@@ -253,6 +261,7 @@ export class InspeccionComponent implements OnInit {
       const otKey = report.otNumber;
       if (!uniqueOts.has(otKey)) {
         uniqueOts.set(otKey, {
+          idOt: report.idOt,
           otNumber: report.otNumber,
           cdc: report.cdc,
           area: report.area,
