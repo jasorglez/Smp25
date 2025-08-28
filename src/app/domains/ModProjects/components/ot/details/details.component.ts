@@ -234,6 +234,8 @@ export class DetailsComponent implements OnInit {
   }
 
   async onSubmit() {
+     console.log('Form valid:', this.otForm.valid);
+  console.log('Form errors:', this.getFormErrors());
     if (this.otForm.valid) {
       this.isLoading = true;
       const formData = await this.prepareFormData();
@@ -247,7 +249,20 @@ export class DetailsComponent implements OnInit {
       this.markFormGroupTouched();
       alerts.basicAlert('Formulario incompleto', 'Por favor complete todos los campos requeridos', 'warning');
     }
+    
   }
+
+  // Método helper para debuggear
+getFormErrors() {
+  let formErrors: any = {};
+  Object.keys(this.otForm.controls).forEach(key => {
+    const controlErrors = this.otForm.get(key)?.errors;
+    if (controlErrors) {
+      formErrors[key] = controlErrors;
+    }
+  });
+  return formErrors;
+}
 
   private async prepareFormData(): Promise<OtDetails> {
     const formValue = this.otForm.value;

@@ -120,7 +120,7 @@ export class ComploginComponent implements OnInit {
 
                             
                this.signalsService.setrootChoose(datauser.userRoot) ;
-                  console.log('User Root en Login:', this.signalsService.getrootChoose());
+                 // console.log('User Root en Login:', this.signalsService.getrootChoose());
 
               // Cargar permisos del usuario
               this.auth.getUserId(this.emailcapt).subscribe((userId) => {

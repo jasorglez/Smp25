@@ -163,6 +163,17 @@ export class CatastralesComponent implements OnInit {
         editable: true,
         cellRenderer: 'agCheckboxCellRenderer',
         cellEditor: 'agCheckboxCellEditor'
+      },
+        {
+        field: 'closedApp',
+        headerName: 'Cerrado App',
+        sortable: true,
+        filter: true,
+        resizable: true,
+        width: 150,
+        editable: true,
+        cellRenderer: 'agCheckboxCellRenderer',
+        cellEditor: 'agCheckboxCellEditor'
       }
     ];
   }

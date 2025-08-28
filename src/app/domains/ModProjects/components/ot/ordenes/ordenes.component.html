@@ -36,16 +36,15 @@
                       </div>
                     </button>
                     
-                    <input #fileInput type="file" accept=".pdf" style="display: none" (change)="onFileSelected($event)">
-                    
+                    <input #fileInput type="file" accept=".pdf" style="display: none" (change)="onFileSelected($event)">                    
+                 
                     <button type="button" class="btn btn-secondary ms-1 me-1 mb-2" 
                             (click)="openChangeProjectModal()" 
                             [disabled]="getSelectedOTs().length === 0"
-                            title="Cambiar proyecto de las OTs seleccionadas"
-                            *ngIf="hasMultiSelectPermission">
+                            title="Cambiar proyecto de las OTs seleccionadas">
                       <i class="bi bi-arrow-repeat"></i>
                     </button>
-                  
+                 
                   </nav>
                 </div>
                 

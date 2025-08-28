@@ -568,9 +568,18 @@ obtenerAnoMes(fecha) {
         this.onOTCellDoubleClicked(params);
       }
     },*/
+     {
+      field: 'closedApp',
+      headerName: 'Cerrado APP',
+      sortable: true,
+      filter: true,
+      resizable: true,
+      flex: 4,
+      editable: false
+    },
     {
       field: 'closed',
-      headerName: 'Cerrado',
+      headerName: 'Cerrado Web',
       sortable: true,
       filter: true,
       resizable: true,
