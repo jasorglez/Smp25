@@ -1,20 +1,108 @@
-<div class="container-fluid">
+<div class="container-fluid p-1">
   <div class="row">
     <div class="col-12">
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title">
+          <h5 class="card-title m-0">
             <i class="bi bi-search"></i> 
-            {{'inspection' | translate}}
-          </h3>
+            Inspección General de OT
+          </h5>
         </div>
-        <div class="card-body">
-          <p>{{'inspection_description' | translate}}</p>
-          
-          <!-- Aquí irá el contenido específico de inspección -->
-          <div class="alert alert-info">
-            <i class="bi bi-info-circle"></i>
-            Módulo de Inspección en desarrollo
+        <div class="card-body p-1">
+          <!-- SECCIÓN PRINCIPAL: Pestañas y Grids -->
+          <div class="row" style="position: relative; height: calc(100vh - 200px);">
+            <div class="col-12" style="position: relative; height: 100%; display: flex; flex-direction: column;">
+              
+              <!-- Pestañas de navegación -->
+              <ul class="nav nav-tabs mb-2" style="flex-wrap: nowrap; overflow-x: auto; white-space: nowrap;">
+                <li class="nav-item" style="flex: 0 0 auto;">
+                  <a class="nav-link" 
+                     [class.active]="activeTab === 'reportes'" 
+                     (click)="setActiveTab('reportes')" 
+                     style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.9rem;">
+                    <i class="bi bi-calendar3" style="font-size: 0.9rem;"></i> 
+                    Reportes Diarios
+                  </a>
+                </li>
+                <li class="nav-item" style="flex: 0 0 auto;">
+                  <a class="nav-link" 
+                     [class.active]="activeTab === 'ots'" 
+                     (click)="setActiveTab('ots')" 
+                     style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.9rem;">
+                    <i class="bi bi-list-task" style="font-size: 0.9rem;"></i> 
+                    Todas las OT
+                  </a>
+                </li>
+              </ul>
+
+              <!-- Contenido de las Pestañas -->
+              <div class="tab-content tab-content-custom p-1" style="flex-grow: 1;">
+                
+                <!-- Pestaña Reportes Diarios Agrupados -->
+                <div class="tab-pane" 
+                     [class.show]="activeTab === 'reportes'" 
+                     [class.active]="activeTab === 'reportes'"
+                     style="height: 100%;">
+                  <div class="h-100">
+                    <div class="alert alert-info mb-2 py-1">
+                      <small>
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Reportes Diarios por Fecha:</strong> 
+                        Vista agrupada de todos los reportes diarios de la empresa.
+                        <span class="float-end">
+                          <strong>Total registros:</strong> {{groupedReportsData.length}}
+                        </span>
+                      </small>
+                    </div>
+                    
+                    <div style="height: calc(100% - 50px);">
+                      <ag-grid-angular 
+                        style="height: 100%; width: 100%;"
+                        class="ag-theme-quartz small-text-ag-grid"
+                        [rowData]="groupedReportsData"
+                        [columnDefs]="reportesColumnDefs"
+                        [gridOptions]="groupedGridOptions"
+                        (gridReady)="onReportesGridReady($event)"
+                        [suppressRowClickSelection]="true"
+                        [groupDefaultExpanded]="1">
+                      </ag-grid-angular>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Pestaña Todas las OT -->
+                <div class="tab-pane" 
+                     [class.show]="activeTab === 'ots'" 
+                     [class.active]="activeTab === 'ots'"
+                     style="height: 100%;">
+                  <div class="h-100">
+                    <div class="alert alert-info mb-2 py-1">
+                      <small>
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Todas las OT:</strong> 
+                        Listado completo de órdenes de trabajo sin distinción de proyecto.
+                        <span class="float-end">
+                          <strong>Total OT:</strong> {{allOtsData.length}}
+                        </span>
+                      </small>
+                    </div>
+                    
+                    <div style="height: calc(100% - 50px);">
+                      <ag-grid-angular 
+                        style="height: 100%; width: 100%;"
+                        class="ag-theme-quartz small-text-ag-grid"
+                        [rowData]="allOtsData"
+                        [columnDefs]="otsColumnDefs"
+                        [gridOptions]="gridOptions"
+                        (gridReady)="onOtsGridReady($event)"
+                        [rowSelection]="'single'">
+                      </ag-grid-angular>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
           </div>
         </div>
       </div>

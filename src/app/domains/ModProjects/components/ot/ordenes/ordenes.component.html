@@ -19,8 +19,7 @@
                     <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revert()">
                       <i class="bi bi-arrow-clockwise"></i>
                     </button>
-                                       
-                    @if (signalsService.getrootChoose ()== true) {
+                     @if (signalsService.getrootChoose ()== true) {
                           <button 
                             type="button" 
                             class="btn btn-success ms-1 me-1 mb-2" 
@@ -28,23 +27,17 @@
                             <img src='./assets/img/excel.png' width="17" height="17">
                           </button>
                     }
+                    <button type="button"
+        class="btn btn-info ms-1 me-1 mb-2"
+        (click)="openUploadModal()"
+        [disabled]="isUploading">
+  <i class="bi bi-file-earmark-pdf" *ngIf="!isUploading"></i>
+  <div class="spinner-border spinner-border-sm" role="status" *ngIf="isUploading">
+    <span class="visually-hidden">Subiendo...</span>
+  </div>
+</button>
 
-                    <button type="button" class="btn btn-info ms-1 me-1 mb-2" (click)="fileInput.click()" [disabled]="isUploading">
-                      <i class="bi bi-file-earmark-pdf" *ngIf="!isUploading"></i>
-                      <div class="spinner-border spinner-border-sm" role="status" *ngIf="isUploading">
-                        <span class="visually-hidden">Subiendo...</span>
-                      </div>
-                    </button>
-                    
-                    <input #fileInput type="file" accept=".pdf" style="display: none" (change)="onFileSelected($event)">                    
-                 
-                    <button type="button" class="btn btn-secondary ms-1 me-1 mb-2" 
-                            (click)="openChangeProjectModal()" 
-                            [disabled]="getSelectedOTs().length === 0"
-                            title="Cambiar proyecto de las OTs seleccionadas">
-                      <i class="bi bi-arrow-repeat"></i>
-                    </button>
-                 
+
                   </nav>
                 </div>
                 
@@ -668,7 +661,7 @@
       </div>
       
       <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" >
           <i class="bi bi-x-circle me-1"></i>
           Cancelar
         </button>
@@ -684,3 +677,78 @@
     </div>
   </div>
 </div>
+
+<!-- Modal -->
+<div class="modal fade" id="optionModal" tabindex="-1" aria-labelledby="optionModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow-lg border-0 rounded-4">
+      <div class="modal-header bg-primary text-white rounded-top-4">
+        <h5 class="modal-title fw-semibold" id="optionModalLabel">Selecciona una opción</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+
+      <div class="modal-body text-center">
+        <p class="fs-5 mb-4">¿Qué tipo de archivo deseas subir?</p>
+
+        <!-- Botón: subir PDF con logo -->
+        <button
+          type="button"
+          class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2 w-100 mb-3"
+          (click)="fileInputLogo.click()"
+          [disabled]="isUploading"
+        >
+          <ng-container *ngIf="!isUploading; else uploadingLogo">
+            <i class="bi bi-file-earmark-pdf fs-5"></i>
+            <span>Subir PDF con logo</span>
+          </ng-container>
+          <ng-template #uploadingLogo>
+            <div class="spinner-border spinner-border-sm text-primary" role="status">
+              <span class="visually-hidden">Subiendo...</span>
+            </div>
+            <span>Subiendo...</span>
+          </ng-template>
+        </button>
+
+        <input
+          #fileInputLogo
+          type="file"
+          accept=".pdf"
+          style="display: none"
+          (change)="onFileSelected($event, 'conLogo')"
+        />
+
+        <!-- Botón: subir PDF sin logo -->
+        <button
+          type="button"
+          class="btn btn-outline-secondary d-flex align-items-center justify-content-center gap-2 w-100"
+          (click)="fileInputSinLogo.click()"
+          [disabled]="isUploading"
+        >
+          <ng-container *ngIf="!isUploading; else uploadingSinLogo">
+            <i class="bi bi-file-earmark-pdf fs-5"></i>
+            <span>Subir PDF sin logo</span>
+          </ng-container>
+          <ng-template #uploadingSinLogo>
+            <div class="spinner-border spinner-border-sm text-secondary" role="status">
+              <span class="visually-hidden">Subiendo...</span>
+            </div>
+            <span>Subiendo...</span>
+          </ng-template>
+        </button>
+
+        <input
+          #fileInputSinLogo
+          type="file"
+          accept=".pdf"
+          style="display: none"
+          (change)="onFileSelected($event, 'sinLogo')"
+        />
+      </div>
+
+      <div class="modal-footer border-0 justify-content-center">
+        <small class="text-muted">Puedes cambiar esta opción más adelante</small>
+      </div>
+    </div>
+  </div>
+</div>
+

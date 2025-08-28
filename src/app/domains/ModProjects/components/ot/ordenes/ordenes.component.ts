@@ -258,7 +258,9 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   myForm;
   isGeneratingReport: boolean = false;
   private modalInstance: any = null;
-
+  showUploadModal = false;
+  selectedFile1: File | null = null;
+  selectedFile2: File | null = null;
   public  materiales: any[] = [];
   public equipos: any[] = [];
   public personal: any[] = [];
@@ -3663,7 +3665,7 @@ async saveChangesEquipos() {
     );
   }
 
-  onFileSelected(event: Event) {
+  /*onFileSelected(event: Event) {
     const input = event.target as HTMLInputElement;
 
     if (input.files && input.files.length > 0) {
@@ -3691,7 +3693,7 @@ async saveChangesEquipos() {
 
     // Limpiar el input para permitir seleccionar el mismo archivo nuevamente
     input.value = '';
-  }
+  }*/
 
   async uploadPdf(file: File) {
   this.isUploading = true;
@@ -5506,4 +5508,92 @@ private async updateTotalPayAfterConceptos(): Promise<void> {
     
     console.log('OrdenesComponent destruido - modal state limpiado');
   }
+
+
+openUploadModal() {
+  this.showUploadModal = true;
+  const modal = new bootstrap.Modal(document.getElementById('optionModal')!);
+  modal.show();
+}
+closeUploadModal() {
+  this.showUploadModal = false;
+  this.selectedFile1 = null;
+  this.selectedFile2 = null;
+}
+
+
+async onFileSelected(event: Event, tipo: 'conLogo' | 'sinLogo'): Promise<void> {
+  this.isUploading = true;
+
+  const file = (event.target as HTMLInputElement).files?.[0];
+  if (!file) {
+    this.isUploading = false;
+    return;
+  }
+
+  //console.log('=== PDF Upload Process Started ===');
+  /*console.log('File details:', {
+    name: file.name,
+    size: file.size,
+    type: file.type,
+    lastModified: new Date(file.lastModified),
+  });
+  console.log('Project ID being sent:', 760);
+  console.log('Calling OtService.addOtViaPdf with parameters:', {
+    projectId: 760,
+    file: file,
+  });*/
+
+  try {
+    var response: any;
+    if(tipo === 'conLogo'){
+      response = await lastValueFrom(this.otService.addOtViaPdfCopy(this.idProject, file));
+    }else{
+      response = await lastValueFrom(this.otService.addOtViaPdf(this.idProject, file));
+    }
+    //console.log('=== PDF Upload Success ===');
+    //console.log('Response received:', response);
+
+    
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      `Upload PDF OT - ID: ${response.otId}`,
+      'Menu Proyectos Ordenes de Trabajo',
+      this.trackingService.getEmail()
+    );
+
+    alerts.basicAlert(
+      'PDF Procesado Exitosamente',
+      `El PDF ha sido cargado y se han obtenido algunos datos. Será redirigido al formulario de OT para que corrobore los datos.\n\nNúmero OT: ${response.otNumber}`,
+      'success'
+    );
+      this.obtenerDatos();
+
+    // Redirigir después de un breve delay
+    /*console.log('Navigating to details page with otId:', response.otId);
+    setTimeout(() => {
+      this.router.navigate(['/projects/ot/details', response.otId]);
+    }, 2000);*/
+  } catch (error: any) {
+    console.log('=== PDF Upload Error ===');
+    console.error('Complete error object:', error);
+    console.error('Error status:', error.status);
+    console.error('Error statusText:', error.statusText);
+    console.error('Error headers:', error.headers);
+    console.error('Error body:', error.error);
+
+    let errorMessage = 'Error al procesar el archivo PDF.';
+    if (error?.error?.message) {
+      errorMessage = error.error.message;
+    } else if (error?.message) {
+      errorMessage = error.message;
+    }
+
+    alert(errorMessage);
+  } finally {
+    this.isUploading = false;
+  }
+}
+
+
 }
