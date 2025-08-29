@@ -15,27 +15,39 @@
                     <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addReporte()">
                       <i class="bi bi-plus-lg"></i>
                     </button>
-                    
+                                
                     <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revert()">
                       <i class="bi bi-arrow-clockwise"></i>
                     </button>
+
+                   <button type="button"
+                      class="btn btn-info ms-1 me-1 mb-2"
+                      (click)="openUploadModal()"
+                      [disabled]="isUploading">
+                      <i class="bi bi-file-earmark-pdf" *ngIf="!isUploading"></i>
+                      <div class="spinner-border spinner-border-sm" role="status" *ngIf="isUploading">
+                        <span class="visually-hidden">Subiendo...</span>
+                      </div>
+                   </button>
+
+                    <button type="button" class="btn btn-secondary ms-1 me-1 mb-2" 
+                            (click)="openChangeProjectModal()" 
+                            [disabled]="getSelectedOTs().length === 0"
+                            title="Cambiar proyecto de las OTs seleccionadas"
+                            *ngIf="hasMultiSelectPermission">
+                      <i class="bi bi-arrow-repeat"></i>
+                    </button>     
+
                      @if (signalsService.getrootChoose ()== true) {
-                          <button 
+                       <button 
                             type="button" 
                             class="btn btn-success ms-1 me-1 mb-2" 
                             (click)="excel()">
                             <img src='./assets/img/excel.png' width="17" height="17">
-                          </button>
+                       </button>
                     }
-                    <button type="button"
-        class="btn btn-info ms-1 me-1 mb-2"
-        (click)="openUploadModal()"
-        [disabled]="isUploading">
-  <i class="bi bi-file-earmark-pdf" *ngIf="!isUploading"></i>
-  <div class="spinner-border spinner-border-sm" role="status" *ngIf="isUploading">
-    <span class="visually-hidden">Subiendo...</span>
-  </div>
-</button>
+
+                   
 
 
                   </nav>
