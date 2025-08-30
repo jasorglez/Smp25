@@ -40,6 +40,7 @@ export interface OtDetails {
   idCompany?: number;
   closed: boolean;
   closedAt?: string;
+  closedApp: boolean;
   active: boolean;
 }
 
@@ -69,6 +70,8 @@ export class DetailsComponent implements OnInit {
   public isEditMode: boolean = false;
   public isLoading: boolean = false;
   public otId: number | null = null;
+
+  datos: OtDetails | null = null;
 
   constructor() {
     this.otForm = this.createForm();
@@ -123,6 +126,7 @@ export class DetailsComponent implements OnInit {
       observations: ['', [Validators.maxLength(1000)]],
       results: ['', [Validators.maxLength(1000)]],
       area: ['', Validators.required],
+      closedApp: [false],
       closed: [false],
       active: [true]
     });
@@ -145,6 +149,8 @@ export class DetailsComponent implements OnInit {
     this.otService.getOtDetails(id).subscribe({
       next: (data: any) => {
         const otData = data.data || data;
+        console.log('Datos de OT recibidos:', otData);  
+        this.datos = otData;
         
         // Verificar autorización del proyecto
         if (!this.checkProjectAuthorization(otData)) {
@@ -226,6 +232,7 @@ export class DetailsComponent implements OnInit {
       results: actualData.results !== undefined ? actualData.results : '',
       area: actualData.area !==  undefined ? actualData.area : '',
       closed: actualData.closed !== undefined ? actualData.closed : false,
+      closedApp: actualData.closedApp !== undefined ? actualData.closedApp : false,
       active: actualData.active !== undefined ? actualData.active : true
     };
 
@@ -317,6 +324,7 @@ getFormErrors() {
       area: formValue.area,
       closed: formValue.closed,
       closedAt: closedAt,
+      closedApp: formValue.closedApp,
       active: formValue.active
     } as any;
   }
