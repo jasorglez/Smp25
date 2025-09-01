@@ -57,14 +57,14 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
   medidas: any[] = []; // Unidades de medida
   proveedores: any[] = []; // Proveedores (datos mock)
   sucursales: any[] = []; // Sucursales (datos mock)
-  rowData: any[] = [];
+  rawData: any[] = []; // Datos originales del API
+  treeData: any[] = []; // Datos estructurados en árbol
+  rowData: any[] = []; // Datos visibles en el grid
   selectedRowData: any = null;
   newlyAddedRows: string[] = [];
   gridHeight: string = '80vh';
   
   public rowSelection: 'single' | 'multiple' = 'single';
-  public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
-  public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
@@ -96,7 +96,9 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
       console.log('Materiales recibidos del servicio:', materials);
       console.log('Número de materiales:', materials?.length || 0);
       
-      this.procesarMateriales(materials);
+      this.rawData = materials;
+    this.buildTreeStructure();
+    this.updateGridData();
       
     } catch (error) {
       console.error('Error en try/catch al cargar materiales:', error);
@@ -107,73 +109,107 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
     }
   }
 
-  private procesarMateriales(materials: MaterialsResponse[]) {
-    console.log('procesarMateriales() llamado con:', materials);
+  // Construir estructura de árbol: Material -> Proveedor -> Items
+  private buildTreeStructure() {
+    console.log('Construyendo estructura de árbol con:', this.rawData.length, 'materiales');
     
-    if (!materials || materials.length === 0) {
-      console.warn('No hay materiales para procesar');
-      this.rowData = [];
-      if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', this.rowData);
-      }
+    if (!this.rawData || this.rawData.length === 0) {
+      this.treeData = [];
       return;
     }
     
-    this.rowData = materials.map(material => {
-      console.log('Procesando material:', material.id);
-      console.log('Campos del material:', Object.keys(material));
-      console.log('idCategory:', material.idCategory, 'existe:', 'idCategory' in material);
-      return {
-        id: material.id,
-        activo: material.vigente,
-        articulo: material.description,
-        categoria: this.getCategoriaDescription(material.idCategory),
-        familia: this.getFamiliaDescription(material.idFamilia),
-        subFamilia: this.getSubfamiliaDescription(material.idSubfamilia),
-        proveedor: material.company,
-        costoMN: material.costoMN,
-        descriptionPackage: material.descriptionPackage,
-        packageQuantity: material.packageQuantity,
-        insumo: material.insumo,
-        medida: material.measure,
-        weightOrVolumes: material.weightOrVolumes,
-        expiration: material.expiration,
-        picture: material.picture,
-        folioOcorReq: material.folioOcorReq,
-        inOrOutQuantity: material.inOrOutQuantity,
-        quantity: material.quantity,
-        // Campos adicionales del API
-        idCompany: material.idCompany,
-        idBranch: material.idBranch,
-        idCustomer: material.idCustomer,
-        barCode: material.barCode,
-        idFamilia: material.idFamilia,
-        idSubfamilia: material.idSubfamilia,
-        idMedida: material.idMedida,
-        idUbication: material.idUbication,
-        aplicaResg: material.aplicaResg,
-        costoDLL: material.costoDLL,
-        ventaMN: material.ventaMN,
-        ventaDLL: material.ventaDLL,
-        vigente: material.vigente,
-        typeMaterial: material.typeMaterial,
-        date: material.date,
-        stockMin: material.stockMin,
-        stockMax: material.stockMax
-      };
+    this.treeData = [];
+    const materialsMap = new Map();
+    const providersMap = new Map();
+    
+    // Procesar cada registro del API (cada uno es una orden de compra)
+    this.rawData.forEach(material => {
+      const materialKey = material.description;
+      const companyName = material.company === 'N/A' ? 'Sin Proveedor' : material.company;
+      const providerKey = `${materialKey}_${companyName}`;
+      
+      // Solo crear nodos si hay datos relevantes (no N/A en typeOcorReq)
+      const hasOrderData = material.typeOcorReq !== 'N/A' && material.folioOcorReq !== 'N/A';
+      
+      // Crear nodo de material si no existe
+      if (!materialsMap.has(materialKey)) {
+        const materialNode = {
+          id: `material_${materialKey}`,
+          nodeLevel: 'material',
+          description: material.description,
+          articulo: material.description,
+          isExpanded: true,
+          isVisible: true,
+          providerCount: 0,
+          totalCost: 0
+        };
+        materialsMap.set(materialKey, materialNode);
+        this.treeData.push(materialNode);
+      }
+      
+      // Solo procesar si tiene datos de orden de compra
+      if (hasOrderData) {
+        // Crear nodo de proveedor si no existe
+        if (!providersMap.has(providerKey)) {
+          const providerNode = {
+            id: `provider_${providerKey}`,
+            nodeLevel: 'provider', 
+            description: companyName,
+            proveedor: companyName,
+            parentMaterial: materialKey,
+            isExpanded: true,
+            isVisible: true,
+            orderCount: 0,
+            totalCost: 0
+          };
+          providersMap.set(providerKey, providerNode);
+          this.treeData.push(providerNode);
+          
+          // Incrementar contador de proveedores del material
+          materialsMap.get(materialKey).providerCount++;
+        }
+        
+        // Crear orden de compra individual
+        const totalOC = (material.price || 0) * (material.inOrOutQuantity || 0);
+        const orderNode = {
+          id: `order_${material.id}_${Date.now()}`,
+          nodeLevel: 'order',
+          parentMaterial: materialKey,
+          parentProvider: companyName,
+          isVisible: true,
+          // Datos de la orden de compra
+          folioOcorReq: material.folioOcorReq,
+          price: material.price,
+          inOrOutQuantity: material.inOrOutQuantity,
+          totalOC: totalOC,
+          fechaOc: material.fechaOc,
+          // Otros campos del material para referencia
+          insumo: material.insumo,
+          medida: material.measure,
+          quantity: material.quantity
+        };
+        
+        this.treeData.push(orderNode);
+        
+        // Actualizar contadores y totales
+        const materialNode = materialsMap.get(materialKey);
+        const providerNode = providersMap.get(providerKey);
+        
+        materialNode.totalCost += totalOC;
+        providerNode.orderCount++;
+        providerNode.totalCost += totalOC;
+      }
     });
-
-    console.log('Datos procesados para el grid:', this.rowData);
-    console.log('Número de filas procesadas:', this.rowData.length);
     
+    console.log('Estructura de árbol construida:', this.treeData.length, 'nodos');
+  }
+  
+  // Actualizar datos visibles del grid
+  private updateGridData() {
+    this.rowData = this.treeData.filter(item => item.isVisible);
     if (this.gridApi) {
-      console.log('Actualizando grid con datos');
       this.gridApi.setGridOption('rowData', this.rowData);
-    } else {
-      console.warn('gridApi no está disponible aún');
     }
-    
-    console.log('Materials loaded:', this.rowData.length);
   }
 
   // Métodos helper para obtener descripciones de catálogos
@@ -269,44 +305,78 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
   }
 
   public gridOptions: any = {
-    headerHeight: 25,
-    rowHeight: 20,
+    headerHeight: 35,
+    rowHeight: 35,
+    animateRows: true,
+    treeData: false,
+    suppressClickEdit: true,
+    singleClickEdit: false,
+    stopEditingWhenCellsLoseFocus: true,
     rowClass: (params) => {
-      if (params.node.isSelected()) {
-        return 'selected-row';
+      if (params.data.nodeLevel === 'material') {
+        return 'tree-material-row';
       }
-      return '';
+      if (params.data.nodeLevel === 'provider') {
+        return 'tree-provider-row';
+      }
+      return 'tree-item-row';
     },
     onRowClicked: (event) => {
       event.node.setSelected(true);
     },
     onRowSelected: (event) => {
       if (event.node.isSelected()) {
+        this.selectedRowData = event.data;
         this.gridApi.forEachNode((node) => {
           if (node.id !== event.node.id) {
             node.setSelected(false);
           }
         });
       }
+    },
+    onCellValueChanged: (event) => {
+      this.onCellValueChanged(event);
     }
   };
 
   get colMaster(): ColDef[] {
     return [
       {
+        field: 'articulo',
+        headerName: 'Material',
+        width: 200,
+        cellRenderer: (params: any) => {
+          if (params.data.nodeLevel === 'material') {
+            const isExpanded = params.data.isExpanded || false;
+            const chevron = isExpanded ? '▼' : '▶';
+            const providerCount = params.data.providerCount || 0;
+            const totalCost = params.data.totalCost || 0;
+            return `<span class="chevron-icon" data-action="toggle" style="cursor: pointer; margin-right: 5px;">${chevron}</span> <strong>${params.data.description}</strong> (${providerCount}) - $${totalCost.toFixed(2)}`;
+          }
+          return '';
+        },
+        onCellClicked: (event: any) => {
+          if (event.event.target.classList.contains('chevron-icon') || 
+              event.event.target.getAttribute('data-action') === 'toggle') {
+            if (event.data.nodeLevel === 'material') {
+              this.toggleMaterialExpansion(event.data);
+            }
+          }
+        }
+      },
+      {
         field: 'activo',
         headerName: 'Activo',
         editable: true,
         width: 100,
-        cellEditor: 'agCheckboxCellEditor'
-      },
-      {
-        field: 'articulo',
-        headerName: 'Artículo',
-        editable: true,
-        width: 150,
-        filter: true,
-        enableRowGroup: true
+        cellEditor: 'agCheckboxCellEditor',
+        cellRenderer: (params: any) => {
+          if (params.data.nodeLevel === 'item') {
+            const checked = params.data.activo ? 'checked' : '';
+            return `<input type="checkbox" ${checked} style="cursor: pointer;">`;
+          }
+          return '';
+        }
       },
       {
         field: 'categoria',
@@ -439,45 +509,75 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
         editable: false,
         width: 100,
         cellRenderer: (params) => {
-          return params.value ? '📷 Imagen' : '📷 Subir';
+          if (params.data.nodeLevel === 'order') {
+            return params.value ? '📷 Imagen' : '📷 Subir';
+          }
+          return '';
         }
       },
-       {
+      {
         field: 'proveedor',
         headerName: 'Proveedor',
-        editable: true,
-        width: 130,
-        filter: true,
-        enableRowGroup: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.proveedores ? this.proveedores.map(item => item.description) : []
+        width: 200,
+        cellRenderer: (params: any) => {
+          if (params.data.nodeLevel === 'provider') {
+            const isExpanded = params.data.isExpanded || false;
+            const chevron = isExpanded ? '▼' : '▶';
+            const orderCount = params.data.orderCount || 0;
+            const totalCost = params.data.totalCost || 0;
+            return `<span style="margin-left: 20px;"></span><span class="chevron-icon" data-action="toggle" style="cursor: pointer; margin-right: 5px;">${chevron}</span> ${params.data.description} (${orderCount}) - $${totalCost.toFixed(2)}`;
+          }
+          return '';
+        },
+        onCellClicked: (event: any) => {
+          if (event.event.target.classList.contains('chevron-icon') || 
+              event.event.target.getAttribute('data-action') === 'toggle') {
+            if (event.data.nodeLevel === 'provider') {
+              this.toggleProviderExpansion(event.data);
+            }
+          }
         }
       },
       {
         field: 'folioOcorReq',
-        headerName: 'Folio OC/Req',
-        editable: true,
+        headerName: 'Folio OC',
         width: 120,
-        filter: true
+        filter: true,
+        cellRenderer: (params: any) => {
+          return params.data.nodeLevel === 'order' ? params.value || '' : '';
+        }
+      },
+      {
+        field: 'price',
+        headerName: 'Precio',
+        width: 100,
+        cellRenderer: (params: any) => {
+          if (params.data.nodeLevel === 'order') {
+            const value = params.value || 0;
+            return `$${value.toFixed(2)}`;
+          }
+          return '';
+        }
       },
       {
         field: 'inOrOutQuantity',
-        headerName: 'Cantidad Ent/Sal',
-        editable: true,
-        width: 140,
-        cellDataType: 'number',
-        cellEditorParams: { min: 0 }
+        headerName: 'Cantidad',
+        width: 100,
+        cellRenderer: (params: any) => {
+          return params.data.nodeLevel === 'order' ? params.value || 0 : '';
+        }
       },
       {
-        field: 'quantity',
-        headerName: 'Existencias',
-        editable: true,
-        width: 100,
-        cellDataType: 'number',
-        cellEditorParams: { min: 0 },
-        enableRowGroup: true,
-        aggFunc: 'sum'
+        field: 'totalOC',
+        headerName: 'Total OC',
+        width: 120,
+        cellRenderer: (params: any) => {
+          if (params.data.nodeLevel === 'order') {
+            const value = params.value || 0;
+            return `$${value.toFixed(2)}`;
+          }
+          return '';
+        }
       },
     ];
   }
@@ -710,14 +810,69 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
     );
   }
 
+  // Métodos para manejar expand/collapse
+  toggleMaterialExpansion(materialData: any) {
+    const material = this.treeData.find(item => 
+      item.nodeLevel === 'material' && item.articulo === materialData.articulo
+    );
+    
+    if (material) {
+      material.isExpanded = !material.isExpanded;
+      
+      // Mostrar/ocultar proveedores de este material
+      this.treeData.forEach(item => {
+        if (item.nodeLevel === 'provider' && item.parentMaterial === material.articulo) {
+          item.isVisible = material.isExpanded;
+          
+          // Si ocultamos el proveedor, también ocultar sus órdenes
+          if (!material.isExpanded) {
+            this.treeData.forEach(subItem => {
+              if (subItem.nodeLevel === 'order' && subItem.parentProvider === item.proveedor && subItem.parentMaterial === material.articulo) {
+                subItem.isVisible = false;
+              }
+            });
+          } else {
+            // Si mostramos el proveedor, mostrar órdenes solo si el proveedor está expandido
+            if (item.isExpanded) {
+              this.treeData.forEach(subItem => {
+                if (subItem.nodeLevel === 'order' && subItem.parentProvider === item.proveedor && subItem.parentMaterial === material.articulo) {
+                  subItem.isVisible = true;
+                }
+              });
+            }
+          }
+        }
+      });
+      
+      this.updateGridData();
+    }
+  }
+
+  toggleProviderExpansion(providerData: any) {
+    const provider = this.treeData.find(item => 
+      item.nodeLevel === 'provider' && item.proveedor === providerData.proveedor && item.parentMaterial === providerData.parentMaterial
+    );
+    
+    if (provider) {
+      provider.isExpanded = !provider.isExpanded;
+      
+      // Mostrar/ocultar órdenes de este proveedor
+      this.treeData.forEach(item => {
+        if (item.nodeLevel === 'order' && item.parentProvider === provider.proveedor && item.parentMaterial === provider.parentMaterial) {
+          item.isVisible = provider.isExpanded;
+        }
+      });
+      
+      this.updateGridData();
+    }
+  }
+
+
   revert() {
     this.obtenerDatos();
     this.notSavedChanges = false;
     this.selectedRowData = null;
     this.newlyAddedRows = [];
-    if (this.gridApi) {
-      this.gridApi.setGridOption('rowData', this.rowData);
-    }
   }
 
   async canDeactivate(): Promise<boolean> {
