@@ -1260,7 +1260,7 @@ public conceptosColumnDefs: ColDef[] = [
     },
     { 
       field: 'close', 
-      headerName: 'Cerrado', 
+      headerName: 'Cerrado Web', 
       //editable: () => !this.signalsService.getClosedReport()(),
       editable: true,
       width: 100,

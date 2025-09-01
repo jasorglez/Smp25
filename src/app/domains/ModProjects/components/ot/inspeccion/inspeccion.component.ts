@@ -204,7 +204,7 @@ export class InspeccionComponent implements OnInit {
     },
     {
       field: 'closed',
-      headerName: 'Cerrado',
+      headerName: 'Cerrado Web',
       width: 100,
       cellRenderer: (params) => {
         return params.value ? 
