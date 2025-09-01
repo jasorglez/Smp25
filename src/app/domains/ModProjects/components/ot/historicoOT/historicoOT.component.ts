@@ -156,7 +156,7 @@ export class HistoricoOTComponent implements OnInit {
       },
       {
         field: 'closed',
-        headerName: 'Cerrado',
+        headerName: 'Cerrado Web',
         sortable: true,
         filter: true,
         resizable: true,
