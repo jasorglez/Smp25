@@ -876,6 +876,7 @@ export default class DetailClock2Component implements OnInit {
         'Se han actualizado los datos correctamente.',
         'success'
       );
+      this.signalsService.setRefreshClock(true);
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
 

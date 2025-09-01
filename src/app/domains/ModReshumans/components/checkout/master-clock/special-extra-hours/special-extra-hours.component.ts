@@ -517,6 +517,7 @@ maestroColumnDefs: ColDef[] = [
         'Se han actualizado los datos correctamente.',
         'success'
       );
+      this.signalsService.setRefreshClock(true);
       this.masterNotSavedChanges = false;
       await this.loadData(); // Refrescar los datos
       this.signalsService.triggerRefreshEmployees();
