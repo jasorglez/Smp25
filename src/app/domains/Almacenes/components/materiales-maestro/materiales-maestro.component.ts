@@ -84,7 +84,7 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
       console.log('Llamando al servicio de materiales con idRoot:', this.idRoot, 'type: CONSUMABLE');
       
       const materials = await lastValueFrom(
-        this.materialsService.getMaterials(this.idRoot, 'CONSUMABLE')
+        this.materialsService.getAllMaterialsxview(this.idRoot)
           .pipe(
             catchError((error) => {
               console.error('Error en el pipe catchError:', error);
@@ -125,38 +125,41 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
       console.log('idCategory:', material.idCategory, 'existe:', 'idCategory' in material);
       return {
         id: material.id,
-        activo: material.active,
+        activo: material.vigente,
         articulo: material.description,
         categoria: this.getCategoriaDescription(material.idCategory),
-      familia: this.getFamiliaDescription(material.idFamilia),
-      subFamilia: this.getSubfamiliaDescription(material.idSubfamilia),
-      proveedor: '',
-      costoMN: material.costoMN,
-      descriptionPackage: material.descriptionPackage,
-      packageQuantity: material.packageQuantity,
-      insumo: material.insumo,
-      medida: material.measure,
-      weightOrVolumes: material.weightOrVolumes,
-      expiration: material.expiration,
-      picture: material.picture,
-      // Campos adicionales del API
-      idCompany: material.idCompany,
-      idBranch: material.idBranch,
-      idCustomer: material.idCustomer,
-      barCode: material.barCode,
-      idFamilia: material.idFamilia,
-      idSubfamilia: material.idSubfamilia,
-      idMedida: material.idMedida,
-      idUbication: material.idUbication,
-      aplicaResg: material.aplicaResg,
-      costoDLL: material.costoDLL,
-      ventaMN: material.ventaMN,
-      ventaDLL: material.ventaDLL,
-      vigente: material.vigente,
-      typeMaterial: material.typeMaterial,
-      date: material.date,
-      stockMin: material.stockMin,
-      stockMax: material.stockMax
+        familia: this.getFamiliaDescription(material.idFamilia),
+        subFamilia: this.getSubfamiliaDescription(material.idSubfamilia),
+        proveedor: material.company,
+        costoMN: material.costoMN,
+        descriptionPackage: material.descriptionPackage,
+        packageQuantity: material.packageQuantity,
+        insumo: material.insumo,
+        medida: material.measure,
+        weightOrVolumes: material.weightOrVolumes,
+        expiration: material.expiration,
+        picture: material.picture,
+        folioOcorReq: material.folioOcorReq,
+        inOrOutQuantity: material.inOrOutQuantity,
+        quantity: material.quantity,
+        // Campos adicionales del API
+        idCompany: material.idCompany,
+        idBranch: material.idBranch,
+        idCustomer: material.idCustomer,
+        barCode: material.barCode,
+        idFamilia: material.idFamilia,
+        idSubfamilia: material.idSubfamilia,
+        idMedida: material.idMedida,
+        idUbication: material.idUbication,
+        aplicaResg: material.aplicaResg,
+        costoDLL: material.costoDLL,
+        ventaMN: material.ventaMN,
+        ventaDLL: material.ventaDLL,
+        vigente: material.vigente,
+        typeMaterial: material.typeMaterial,
+        date: material.date,
+        stockMin: material.stockMin,
+        stockMax: material.stockMax
       };
     });
 
@@ -302,7 +305,8 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
         headerName: 'Artículo',
         editable: true,
         width: 150,
-        filter: true
+        filter: true,
+        enableRowGroup: true
       },
       {
         field: 'categoria',
@@ -444,10 +448,36 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
         editable: true,
         width: 130,
         filter: true,
+        enableRowGroup: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.proveedores ? this.proveedores.map(item => item.description) : []
         }
+      },
+      {
+        field: 'folioOcorReq',
+        headerName: 'Folio OC/Req',
+        editable: true,
+        width: 120,
+        filter: true
+      },
+      {
+        field: 'inOrOutQuantity',
+        headerName: 'Cantidad Ent/Sal',
+        editable: true,
+        width: 140,
+        cellDataType: 'number',
+        cellEditorParams: { min: 0 }
+      },
+      {
+        field: 'quantity',
+        headerName: 'Existencias',
+        editable: true,
+        width: 100,
+        cellDataType: 'number',
+        cellEditorParams: { min: 0 },
+        enableRowGroup: true,
+        aggFunc: 'sum'
       },
     ];
   }

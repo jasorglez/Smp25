@@ -2,9 +2,12 @@ export interface MaterialsResponse {
   id: number;
   idCompany: number;
   idBranch: number | null;
+  typeOcorReq: string;
   idCustomer: number | null;
   insumo: string;
   barCode: string;
+  barcode: string;
+  company: string;
   articulo: null;
   idCategory: number;
   idFamilia: number;
@@ -12,6 +15,9 @@ export interface MaterialsResponse {
   idMedida: number;
   idUbication: number;
   description: string;
+  folio: string;
+  price: number;
+  quantity: number;
   date: string | Date;
   aplicaResg: boolean;
   costoMN: number;
@@ -28,6 +34,9 @@ export interface MaterialsResponse {
   measure: string | null;
   weightOrVolumes: number;
   expiration: number;
+  folioOcorReq: string;
+  inOrOutQuantity: number;
+  pending: number;
   active: boolean;
   pricePresentations?: PricePresentations[];
 }

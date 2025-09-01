@@ -47,6 +47,12 @@ export class MaterialsService {
     );
   }
 
+  getAllMaterialsxview(id: number): Observable<MaterialsResponse[]> {
+    return this.http.get<MaterialsResponse[]>(`${environment.urlWarehouse}/Material/materialsview/${id}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
   getMaterials2Fields(id: number) {
     return this.http.get(
       `${environment.urlWarehouse}/Material/2fields?idCompany=${id}`,
