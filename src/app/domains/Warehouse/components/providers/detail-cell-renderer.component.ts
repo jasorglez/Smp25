@@ -20,18 +20,25 @@ import { CommonModule } from '@angular/common';
             <i class="bi bi-person-plus"></i> Agregar
           </button>
           <button 
-            class="btn btn-sm btn-primary" 
+            class="btn btn-sm btn-primary me-2" 
             (click)="saveContacts()"
             [disabled]="!hasChanges">
             <i class="bi bi-floppy"></i> Guardar
           </button>
+          <button 
+            class="btn btn-sm btn-danger" 
+            (click)="deleteSelectedContact()"
+            [disabled]="!selectedContact">
+            <i class="bi bi-trash"></i> Borrar
+          </button>
         </div>
       </div>
       <ag-grid-angular
-        class="ag-theme-quartz"
-        style="height: 200px; width: 100%;"
+        class="ag-theme-quartz small-text-ag-grid"
+        style="height: 150px; width: 100%;"
         [columnDefs]="columnDefs"
         [rowData]="rowData"
+        [gridOptions]="detailGridOptions"
         (gridReady)="onDetailGridReady($event)"
         (cellValueChanged)="onCellValueChanged($event)"
         [components]="components">
@@ -46,51 +53,50 @@ export class DetailCellRendererComponent implements ICellRendererAngularComp {
   rowData: any[] = [];
   hasChanges: boolean = false;
   detailGridApi: any;
+  selectedContact: any = null;
   
+  detailGridOptions: any = {
+    headerHeight: 25,
+    rowHeight: 20,
+    suppressEnterWhenEditing: false,
+    rowSelection: 'single'
+  };
+
   columnDefs = [
     {
       field: 'campo2',
       headerName: 'Nombre',
       editable: true,
-      width: 200
+      width: 150,
+      flex: 1
     },
     {
       field: 'campo3', 
       headerName: 'Puesto',
       editable: true,
-      width: 150
+      width: 120,
+      flex: 1
     },
     {
       field: 'campo4',
       headerName: 'Teléfono', 
       editable: true,
-      width: 120
+      width: 100
     },
     {
       field: 'campo5',
       headerName: 'Email',
       editable: true,
-      width: 180
+      width: 140,
+      flex: 1
     },
     {
       field: 'active',
       headerName: 'Activo',
       editable: true,
-      width: 80,
+      width: 60,
       cellEditor: 'agCheckboxCellEditor'
     },
-    {
-      headerName: 'Acciones',
-      width: 100,
-      cellRenderer: (params: any) => {
-        const button = document.createElement('button');
-        button.className = 'btn btn-sm btn-danger';
-        button.innerHTML = '<i class="bi bi-trash"></i>';
-        button.onclick = () => this.deleteContact(params);
-        return button;
-      },
-      editable: false
-    }
   ];
 
   components = {};
@@ -111,6 +117,28 @@ export class DetailCellRendererComponent implements ICellRendererAngularComp {
   onDetailGridReady(params: any) {
     this.detailGridApi = params.api;
     params.api.sizeColumnsToFit();
+    
+    // Configurar selección
+    params.api.addEventListener('selectionChanged', () => {
+      const selectedNodes = params.api.getSelectedNodes();
+      this.selectedContact = selectedNodes.length > 0 ? selectedNodes[0].data : null;
+    });
+  }
+
+  deleteSelectedContact() {
+    if (!this.selectedContact) {
+      return;
+    }
+
+    if (this.params && this.params.context && this.params.context.deleteProviderContact) {
+      this.params.context.deleteProviderContact(
+        { data: this.selectedContact, api: this.detailGridApi }, 
+        () => {
+          this.loadContactData();
+          this.selectedContact = null;
+        }
+      );
+    }
   }
 
   onCellValueChanged(event: any) {
@@ -139,7 +167,7 @@ export class DetailCellRendererComponent implements ICellRendererAngularComp {
       campo5: '',
       campo6: 'NA',
       campo7: false,
-      type: this.params.context?.type || 'PROVIDERS',
+      type: 'CONTACT',
       active: true,
       __isNew: true
     };
@@ -163,11 +191,20 @@ export class DetailCellRendererComponent implements ICellRendererAngularComp {
     }
   }
 
-  deleteContact(params: any) {
+  deleteSelectedContact() {
+    if (!this.selectedContact) {
+      return;
+    }
+
     if (this.params && this.params.context && this.params.context.deleteProviderContact) {
-      this.params.context.deleteProviderContact(params, () => {
-        this.loadContactData();
-      });
+      this.params.context.deleteProviderContact(
+        { data: this.selectedContact, api: this.detailGridApi }, 
+        () => {
+          this.loadContactData();
+          this.selectedContact = null;
+        }
+      );
     }
   }
+
 }

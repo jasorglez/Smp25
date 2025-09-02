@@ -99,11 +99,12 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-      this.obtenerDatos();
-      this.obtenerBranchs();
-      this.getTypecop();
-      this.signalsService.deleteClientData();      
-    });
+      if (this.idBranch) {
+        this.obtenerDatos();
+        this.obtenerBranchs();
+        this.getTypecop();
+      }
+    }, { allowSignalWrites: true });
 
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
@@ -112,10 +113,12 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      this.obtenerDatos();
-      this.obtenerBranchs();
-      this.getTypecop();
-    });
+      if (this.idRoot) {
+        this.obtenerDatos();
+        this.obtenerBranchs();
+        this.getTypecop();
+      }
+    }, { allowSignalWrites: true });
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -188,6 +191,10 @@ export class ProvidersComponent implements CanComponentDeactivate {
     suppressEnterWhenEditing: false,
     rowBuffer: 20,
     masterDetail: true,
+    isRowMaster: (dataItem) => {
+      return true; // Todas las filas de proveedores son maestras
+    },
+    detailCellRenderer: 'detailCellRenderer',
     rowClass: (params) => {
       if (params.node.isSelected()) {
         return 'selected-row';
@@ -631,6 +638,11 @@ export class ProvidersComponent implements CanComponentDeactivate {
   }
 
   obtenerDatos() {
+    if (!this.idBranch) {
+      console.log('idBranch no está disponible aún');
+      return Promise.resolve(false);
+    }
+
     this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Proveedores`, 'Menu Administracion Proveedores ',
           this.trackingService.getEmail() );
 
@@ -757,7 +769,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
     this.gridApi = params.api;
     
     // Configurar master-detail después de que el grid esté listo
-    this.gridApi.setGridOption('detailCellRenderer', 'detailCellRenderer');
     this.gridApi.setGridOption('detailCellRendererParams', {
       context: {
         loadProviderContacts: (providerId: number, callback: any) => {
@@ -770,16 +781,18 @@ export class ProvidersComponent implements CanComponentDeactivate {
           this.deleteDetailRow(params);
           callback();
         },
-        type: this.type
+        type: 'CONTACT'
       }
     });
 
-    // Expandir todas las filas por defecto
-    this.gridApi.forEachNode((node) => {
-      if (node.master) {
-        node.setExpanded(true);
-      }
-    });
+    // Expandir todas las filas por defecto después de cargar datos
+    setTimeout(() => {
+      this.gridApi.forEachNode((node) => {
+        if (node.master) {
+          node.setExpanded(true);
+        }
+      });
+    }, 500);
   }
 
   addRow() {
@@ -1175,7 +1188,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
   }
 
   loadProviderXTableData(providerId: number, successCallback: any) {
-    this.providersService.getProvidersXTable(providerId, this.type).subscribe({
+    this.providersService.getProvidersXTable(providerId, 'CONTACT').subscribe({
       next: (data: any) => {
         this.providersXTableData[providerId] = data;
         successCallback(data);
