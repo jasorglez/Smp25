@@ -191,20 +191,4 @@ export class DetailCellRendererComponent implements ICellRendererAngularComp {
     }
   }
 
-  deleteSelectedContact() {
-    if (!this.selectedContact) {
-      return;
-    }
-
-    if (this.params && this.params.context && this.params.context.deleteProviderContact) {
-      this.params.context.deleteProviderContact(
-        { data: this.selectedContact, api: this.detailGridApi }, 
-        () => {
-          this.loadContactData();
-          this.selectedContact = null;
-        }
-      );
-    }
-  }
-
 }
