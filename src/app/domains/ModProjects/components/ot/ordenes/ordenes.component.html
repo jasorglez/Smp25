@@ -20,6 +20,16 @@
                       <i class="bi bi-arrow-clockwise"></i>
                     </button>
 
+                    <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveMasterChanges(OrdenesData())">
+                      <i class="bi bi-floppy"></i>
+                      <span
+                        class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+                        *ngIf="masterNotSavedChanges">
+                        <span class="visually-hidden">Hay cambios sin guardar</span>
+                      </span>
+                   </button>
+        
+
                    <button type="button"
                       class="btn btn-info ms-1 me-1 mb-2"
                       (click)="openUploadModal()"
@@ -195,7 +205,8 @@
                   <!-- Pestaña Fotografías -->
                   <div class="tab-pane" [class.show]="activeTab === 'fotos'" [class.active]="activeTab === 'fotos'">
                     <div *ngIf="selectedOt; else noOtSelectedFotos">
-                      <h6><i class="bi bi-images"></i> Fotografías del Trabajo <span *ngIf="selectedReporteFecha" class="badge bg-secondary ">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
+                      <h6><i class="bi bi-images"></i> Fotografías del Trabajo <span *ngIf="selectedReporteFecha" 
+                        class="badge bg-secondary ">Filtrado por: {{selectedReporteFecha | date:'dd-MM-yyyy'}}</span></h6>
                       <div class="row">
                       
                       <!-- Columna de Botones (Ajustada para flexibilidad) -->
@@ -210,9 +221,9 @@
 
                       <!-- Columna del Grid de Fotos -->
                       <div class="col">
-                        <div class="overflow-auto" style="height: calc(85vh - 480px);"> <!-- LEY MAESTRA -->
+                        <div class="overflow-auto" style="height: calc(65vh - 200px);"> <!-- LEY MAESTRA -->
                            <ag-grid-angular                           
-                             [ngStyle]="{ height: '100%', width: '100%' }"
+                             [ngStyle]="{ height: '70%', width: '100%' }"
                              class="ag-theme-quartz small-text-ag-grid" 
                              [rowData]="fotografias" 
                              [columnDefs]="fotografiasColumnDefs" 
@@ -226,14 +237,16 @@
                       <div class="col-5">
                         <!-- ===== INICIO DEL EDICTO DE PODER ===== -->
                         <!-- Se impone la misma ley de altura y se usan clases d-flex para centrar el contenido verticalmente -->
-                        <div class="border rounded p-3 d-flex flex-column" style="height: 25vh; background-color: #f8f9fa;">
-                          <div *ngIf="selectedFotografia; else noFotoSelection" class="flex-grow-1 text-center d-flex flex-column justify-content-center">
-                            <img [src]="selectedFotografia.url" [alt]="selectedFotografia.descripcion" class="img-fluid rounded" style="max-height: 50%; object-fit: contain;">
+                        <div class="border rounded p-1 d-flex flex-column" style="height: 1vh; background-color: #f8f9fa;">
+                          <div *ngIf="selectedFotografia; else noFotoSelection" 
+                               class="flex-grow text-center d-flex flex-column justify-content-center">
+                            <img [src]="selectedFotografia.url" [alt]="selectedFotografia.descripcion" class="img-fluid rounded" 
+                            style="max-height: 80%; object-fit: contain;">
                           </div>
                           <ng-template #noFotoSelection>
-                            <div class="flex-grow-1 h-100 d-flex align-items-center justify-content-center">
+                            <div class="flex-grow-1 h-85 d-flex align-items-center justify-content-center">
                               <div class="text-center text-muted">
-                                <i class="bi bi-camera-reels display-4"></i>
+                                <i class="bi bi-camera-reels display-2"></i>
                                 <p class="mt-2">Selecciona una foto para ver la vista previa</p>
                               </div>
                             </div>

@@ -46,6 +46,7 @@ export class SafePipe implements PipeTransform {
 
 interface OrdenesData {
   id: string;
+//  idTabla: number;
   registerDate: string;
   otNumber: string;
   assignedTo: string;
@@ -54,6 +55,9 @@ interface OrdenesData {
   area: string;
   projectName?: string;
   idProject?: number;
+  cdc?: string;
+  closed: boolean;
+  closedApp: boolean;
 }
 
 // Interfaces para la data de las pestañas
@@ -161,6 +165,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   private projectsService = inject(ProjectsService);
   public authService = inject(AuthService);
   private signalrService = inject(SignalrService);
+
   gestionarDatos: any[] = [];
 
   // Variables de control
@@ -168,6 +173,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   private idProject: number = 0;
   private idcompany: number = 0;
   private lastExpandedProjectId: number | null = null;
+
   private catalogMateriales   : any[] = [];
   public catalogEquipos      : any[] = [];
   private catalogDepartamentos: any[] = [];
@@ -175,8 +181,10 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   private unitsCatalog: any[] = [];
   private typeNotesCatalog: any[] = [];
   public projectsList: any[] = [];
-    public conceptos  : any[] = [];
+  public conceptos  : any[] = [];
   public notas        : any[] = [];
+
+    catalogArea: any [] = [];
 
   // Variables para el nuevo layout
   public selectedOt: OrdenesData | null = null;
@@ -190,6 +198,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   public selectedFotografia: Fotografia | null = null;
   public selectedVideo: Video | null = null;
   public selectedStatusReport: boolean = false;
+
+    masterNotSavedChanges: boolean = false;
   
   // Variables para cambio de proyecto
   public selectedNewProject: string = '';
@@ -294,6 +304,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     if (!this.selectedReporteFecha) return this.videos;
     return this.videos.filter(v => v.fecha === this.selectedReporteFecha);
   }
+
   excel() {
     // Reset form to initial state
     /*this.myForm.reset();
@@ -311,6 +322,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       this.modalInstance.show();
     }
   }
+
   onTipoReporteChange() {
     const selectElement = document.getElementById('tipeReporte') as HTMLSelectElement;
       this.tipoReporte = selectElement.value;
@@ -459,6 +471,26 @@ obtenerAnoMes(fecha) {
   }
 }
 
+  async saveMasterChanges(otData: OrdenesData) {
+    this.otService.updateOt(otData.id!, otData).subscribe({
+      next: (response) => {
+        
+        this.trackingService.addLog(
+          this.trackingService.getnameComp(),
+          `Actualizar OT ID: ${otData.id!}`,
+          'Menu Proyectos OT Detalles',
+          this.trackingService.getEmail()
+        );
+        
+      },
+      error: (error) => {
+        console.error('Error al actualizar OT:', error);        
+        alerts.basicAlert('Error', 'Error al actualizar la OT', 'error');
+      }
+    });        
+     
+  }
+
 
   cancelar() {
     this.fechaInicio = '';
@@ -569,6 +601,15 @@ obtenerAnoMes(fecha) {
         this.onOTCellDoubleClicked(params);
       }
     },*/
+    {
+      field: 'area',
+      headerName: 'Area',
+      sortable: true,
+      filter: true,
+      resizable: true,
+      flex: 4,
+      editable: false
+    },
      {
       field: 'closedApp',
       headerName: 'Cerrado APP',
@@ -2077,7 +2118,20 @@ addVideo(){
     this.fechaFin = fin.toISOString().slice(0, 10);       // YYYY-MM-DD
     //alert(`Filtrado por fechas personalizadas: ${this.fechaInicio} a ${this.fechaFin}`);
   }
+
+   this.obtenerArea();
+
 }
+
+
+  obtenerArea(){
+    return this.catalogService.getPhases(this.idcompany).subscribe(
+      (data: any )=> {
+        this.catalogArea = data
+        //console.log(this.catalogArea)
+      },
+      (error) => console.error('Error fetching conceptos:', error))
+  }
 
 
   loadEmployees() {
