@@ -743,6 +743,7 @@ getMasterUpdateTrigger() {
   private initSaving = signal<boolean>(false);
   private closedPayroll = signal<boolean>(false);
   private closedReport = signal<boolean>(false);
+  private refreshClock = signal<boolean>(false);
 
   setIdCatalogFamily(id: number){
     this.idCatalogFamily.set(id);
@@ -800,5 +801,12 @@ getMasterUpdateTrigger() {
   }
   getClosedReport() {
     return this.closedReport;
+  }
+
+  setRefreshClock(value: boolean) {
+    this.refreshClock.set(value);
+  }
+  getRefreshClock() {
+    return this.refreshClock;
   }
 }

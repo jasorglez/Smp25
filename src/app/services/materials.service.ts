@@ -18,11 +18,11 @@ export class MaterialsService {
     );
   }
 
-  /*getAllMaterialsxview(id: number): Observable<MaterialsResponse[]> {
+  getAllMaterialsxview(id: number): Observable<MaterialsResponse[]> {
     return this.http.get<MaterialsResponse[]>(`${environment.urlWarehouse}/Material/materialsview/${id}`,
       { headers: this.trackingService.getHeaders() }
     );
-  }*/
+  }
 
   addMaterial(data: any): Observable<any> {
     console.log('Adding new material:', data);
@@ -43,12 +43,6 @@ export class MaterialsService {
   deleteMaterial(id: number): Observable<any> {
     return this.http.delete<any[]>(
       `${environment.urlWarehouse}/Material/${id}`,
-      { headers: this.trackingService.getHeaders() }
-    );
-  }
-
-  getAllMaterialsxview(id: number): Observable<MaterialsResponse[]> {
-    return this.http.get<MaterialsResponse[]>(`${environment.urlWarehouse}/Material/materialsview/${id}`,
       { headers: this.trackingService.getHeaders() }
     );
   }
