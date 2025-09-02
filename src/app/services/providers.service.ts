@@ -15,6 +15,10 @@ export class ProvidersService {
   private trackingService = inject(TrackingService);
 
 
+    getProvidersXTable(idProvider: number, type: string ) {
+    return this.http.get(`${environment.urlWarehouse}/ProveedorXTabla?idProveedor=${idProvider}&Type=${type}`, { headers: this.trackingService.getHeaders() });
+  }
+  
   getProviders(idRoot: number) {
     return this.http.get(`${environment.urlSmp}/Providers?idRoot=${idRoot}`, { headers: this.trackingService.getHeaders() });
   }
