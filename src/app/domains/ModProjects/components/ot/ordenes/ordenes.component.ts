@@ -471,16 +471,40 @@ obtenerAnoMes(fecha) {
   }
 }
 
-  async saveMasterChanges(otData: OrdenesData) {
-    this.otService.updateOt(otData.id!, otData).subscribe({
+  async saveMasterChanges() {
+    console.log('💾 INICIANDO saveMasterChanges');
+    console.log('💾 selectedOt:', this.selectedOt);
+    
+    if (!this.selectedOt) {
+      console.log('💾 ERROR: No hay selectedOt');
+      return;
+    }
+    
+    const otDataToSave = {
+      ...this.selectedOt,
+      closed: this.selectedOt.closed || false,
+      closedApp: this.selectedOt.closedApp || false
+    };
+    
+    console.log('💾 Datos a guardar:', otDataToSave);
+    console.log('💾 Area a guardar:', otDataToSave.area);
+    console.log('💾 CDC a guardar:', otDataToSave.cdc);
+    console.log('💾 OT Number a guardar:', otDataToSave.otNumber);
+    console.log('💾 Closed a guardar:', otDataToSave.closed);
+    console.log('💾 ClosedApp a guardar:', otDataToSave.closedApp);
+    
+    this.otService.updateOt(Number(this.selectedOt.id), otDataToSave).subscribe({
       next: (response) => {
         
         this.trackingService.addLog(
           this.trackingService.getnameComp(),
-          `Actualizar OT ID: ${otData.id!}`,
+          `Actualizar OT ID: ${this.selectedOt.id}`,
           'Menu Proyectos OT Detalles',
           this.trackingService.getEmail()
         );
+        
+        this.masterNotSavedChanges = false;
+        alerts.basicAlert('Éxito', 'OT actualizada correctamente', 'success');
         
       },
       error: (error) => {
@@ -578,6 +602,12 @@ obtenerAnoMes(fecha) {
       filter: true,
       resizable: true,
       flex: 3,
+      editable: true,
+      onCellValueChanged: (params: any) => {
+        if (this.selectedOt && params.data.id === this.selectedOt.id) {
+          this.selectedOt.cdc = params.newValue;
+        }
+      }
     },
     {
       field: 'otNumber',
@@ -588,7 +618,13 @@ obtenerAnoMes(fecha) {
         excelMode: 'mac'
       },
       resizable: true,
-      flex: 3,    
+      flex: 3,
+      editable: true,
+      onCellValueChanged: (params: any) => {
+        if (this.selectedOt && params.data.id === this.selectedOt.id) {
+          this.selectedOt.otNumber = params.newValue;
+        }
+      }
     },
      /*{
       field: 'results',
@@ -608,7 +644,11 @@ obtenerAnoMes(fecha) {
       filter: true,
       resizable: true,
       flex: 4,
-      editable: false
+      editable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: this.catalogArea.map(area => area.description)
+      }
     },
      {
       field: 'closedApp',
@@ -617,7 +657,9 @@ obtenerAnoMes(fecha) {
       filter: true,
       resizable: true,
       flex: 4,
-      editable: false
+      editable: true,
+      cellRenderer: 'agCheckboxCellRenderer',
+      cellEditor: 'agCheckboxCellEditor'
     },
     {
       field: 'closed',
@@ -626,7 +668,9 @@ obtenerAnoMes(fecha) {
       filter: true,
       resizable: true,
       flex: 4,
-      editable: false
+      editable: true,
+      cellRenderer: 'agCheckboxCellRenderer',
+      cellEditor: 'agCheckboxCellEditor'
     }
     
     ];
@@ -1859,6 +1903,7 @@ addVideo(){
     pagination: false,
     domLayout: 'normal',
     groupDefaultExpanded: 0,
+    rowSelection: 'multiple',
     autoGroupColumnDef: {
       headerName: 'Grupo',
       field: 'ag-Grid-AutoColumn',
@@ -1868,6 +1913,9 @@ addVideo(){
       }
     },
     onCellDoubleClicked: (event: any) => this.onOTCellDoubleClicked(event),
+    onCellValueChanged: (event: any) => {
+      this.onMasterCellValueChanged(event);
+    }
   };
 
   // Configuraciones de grid para las pestañas
@@ -2125,12 +2173,16 @@ addVideo(){
 
 
   obtenerArea(){
+    console.log('🏢 OBTENIENDO AREAS - idcompany:', this.idcompany);
     return this.catalogService.getPhases(this.idcompany).subscribe(
       (data: any )=> {
         this.catalogArea = data
-        //console.log(this.catalogArea)
+        console.log('🏢 Areas obtenidas:', this.catalogArea);
+        console.log('🏢 Número de areas:', this.catalogArea?.length);
       },
-      (error) => console.error('Error fetching conceptos:', error))
+      (error) => {
+        console.error('🏢 Error fetching areas:', error);
+      })
   }
 
 
@@ -2547,22 +2599,33 @@ addVideo(){
 
   onSelectionChanged(event: any) {
     const selectedRows = this.gridApi.getSelectedRows();
-    console.log('Filas seleccionadas:', selectedRows);
-    const cuadrilla = this.projectsList.find(p => p.id === selectedRows[0].idProject);
-    console.log('Cuadrilla seleccionada:', cuadrilla.name);
-    if(cuadrilla.name == "ADMON TD"){
-      this.cuadrillaSelect = "";
-    }else{
-      console.log('Cuadrilla seleccionada:', cuadrilla.name);
-      const select = cuadrilla.name.split('-');
-      const numero = parseInt(select[1], 10);
-      this.cuadrillaSelect = `${numero}`;
-    }
-    console.log('Cuadrilla seleccionada:', this.cuadrillaSelect);
-    // Actualizar la OT seleccionada para mostrar en la vista previa
-    // Si hay múltiples selecciones, usar la primera para la vista previa
+    console.log('📋 SELECTION CHANGED EVENT');
+    console.log('📋 Filas seleccionadas:', selectedRows);
+    console.log('📋 Número de filas seleccionadas:', selectedRows.length);
+    
     if (selectedRows.length > 0) {
+      const cuadrilla = this.projectsList.find(p => p.id === selectedRows[0].idProject);
+      console.log('📋 Cuadrilla encontrada:', cuadrilla);
+      
+      if (cuadrilla) {
+        console.log('📋 Cuadrilla name:', cuadrilla.name);
+        if(cuadrilla.name == "ADMON TD"){
+          this.cuadrillaSelect = "";
+        }else{
+          console.log('📋 Procesando cuadrilla:', cuadrilla.name);
+          const select = cuadrilla.name.split('-');
+          const numero = parseInt(select[1], 10);
+          this.cuadrillaSelect = `${numero}`;
+        }
+        console.log('📋 CuadrillaSelect final:', this.cuadrillaSelect);
+      } else {
+        console.log('📋 WARNING: No se encontró cuadrilla para idProject:', selectedRows[0].idProject);
+      }
+      
+      // Actualizar la OT seleccionada para mostrar en la vista previa
+      // Si hay múltiples selecciones, usar la primera para la vista previa
       this.selectedOt = selectedRows[0];
+      console.log('📋 selectedOt actualizada a:', this.selectedOt);
       this.activeTab = 'reportes'; // Resetear a la primera pestaña
       
       // 🔄 SINCRONIZACIÓN BIDIRECCIONAL: Grid → Sidebar
@@ -2697,6 +2760,56 @@ addVideo(){
     } finally {
       this.isChangingProject = false;
     }
+  }
+
+  onMasterCellValueChanged(event: any) {
+    console.log('🔧 Master cell changed:', event.colDef.field, 'new value:', event.newValue, 'old value:', event.oldValue);
+    console.log('🔧 Event data:', event.data);
+    console.log('🔧 Current selectedOt:', this.selectedOt);
+    
+    // Manejar cambios específicos por campo
+    if (event.colDef.field === 'area') {
+      console.log('🔧 AREA cambió - Nuevo valor:', event.newValue);
+      if (this.selectedOt && event.data.id === this.selectedOt.id) {
+        this.selectedOt.area = event.newValue;
+        console.log('🔧 selectedOt.area actualizado a:', this.selectedOt.area);
+      }
+    }
+    
+    if (event.colDef.field === 'closed') {
+      console.log('🔧 CLOSED cambió - Nuevo valor:', event.newValue);
+      if (this.selectedOt && event.data.id === this.selectedOt.id) {
+        this.selectedOt.closed = event.newValue;
+        console.log('🔧 selectedOt.closed actualizado a:', this.selectedOt.closed);
+      }
+    }
+    
+    if (event.colDef.field === 'closedApp') {
+      console.log('🔧 CLOSED APP cambió - Nuevo valor:', event.newValue);
+      if (this.selectedOt && event.data.id === this.selectedOt.id) {
+        this.selectedOt.closedApp = event.newValue;
+        console.log('🔧 selectedOt.closedApp actualizado a:', this.selectedOt.closedApp);
+      }
+    }
+    
+    if (event.colDef.field === 'cdc') {
+      console.log('🔧 CDC cambió - Nuevo valor:', event.newValue);
+      if (this.selectedOt && event.data.id === this.selectedOt.id) {
+        this.selectedOt.cdc = event.newValue;
+        console.log('🔧 selectedOt.cdc actualizado a:', this.selectedOt.cdc);
+      }
+    }
+    
+    if (event.colDef.field === 'otNumber') {
+      console.log('🔧 OT NUMBER cambió - Nuevo valor:', event.newValue);
+      if (this.selectedOt && event.data.id === this.selectedOt.id) {
+        this.selectedOt.otNumber = event.newValue;
+        console.log('🔧 selectedOt.otNumber actualizado a:', this.selectedOt.otNumber);
+      }
+    }
+    
+    this.masterNotSavedChanges = true;
+    console.log('🔧 masterNotSavedChanges set to true');
   }
 
   onOTCellDoubleClicked(event: any) {

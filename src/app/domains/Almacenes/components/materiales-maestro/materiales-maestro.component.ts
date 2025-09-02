@@ -183,10 +183,19 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
           inOrOutQuantity: material.inOrOutQuantity,
           totalOC: totalOC,
           fechaOc: material.fechaOc,
-          // Otros campos del material para referencia
+          // Campos del material para mostrar en el grid
           insumo: material.insumo,
           medida: material.measure,
-          quantity: material.quantity
+          quantity: material.quantity,
+          categoria: this.getCategoriaDescription(material.idCategory),
+          familia: this.getFamiliaDescription(material.idFamilia),
+          subFamilia: this.getSubfamiliaDescription(material.idSubfamilia),
+          costoMN: material.costoMN,
+          descriptionPackage: material.descriptionPackage,
+          packageQuantity: material.packageQuantity,
+          weightOrVolumes: material.weightOrVolumes,
+          expiration: material.expiration,
+          activo: material.active
         };
         
         this.treeData.push(orderNode);
@@ -367,13 +376,11 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
       {
         field: 'activo',
         headerName: 'Activo',
-        editable: true,
         width: 100,
-        cellEditor: 'agCheckboxCellEditor',
         cellRenderer: (params: any) => {
-          if (params.data.nodeLevel === 'item') {
+          if (params.data.nodeLevel === 'order') {
             const checked = params.data.activo ? 'checked' : '';
-            return `<input type="checkbox" ${checked} style="cursor: pointer;">`;
+            return `<input type="checkbox" ${checked} disabled style="cursor: pointer;">`;
           }
           return '';
         }
@@ -381,127 +388,100 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
       {
         field: 'categoria',
         headerName: 'Categoría',
-        editable: true,
         width: 130,
         filter: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.categories ? this.categories.map(item => item.description) : []
-        },
-        valueFormatter: (params) => {
-          const foundItem = this.categories
-            ? this.categories.find((item) => item.description === params.value)
-            : null;
-          return foundItem ? foundItem.description : params.value;
+        cellRenderer: (params: any) => {
+          return params.data.nodeLevel === 'order' ? params.value || '' : '';
         }
       },
       {
         field: 'familia',
         headerName: 'Familia',
-        editable: true,
         width: 130,
         filter: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: (params) => {
-          const categoriaName = params.data.categoria;
-          const categoria = this.categories.find(c => c.description === categoriaName);
-          
-          const familiasFiltradas = categoria 
-            ? this.familias.filter(item => item.parentId === categoria.id)
-            : [];
-
-          return {
-            values: familiasFiltradas.map(item => item.description)
-          };
-        },
-        valueFormatter: (params) => {
-          const foundItem = this.familias
-            ? this.familias.find((item) => item.description === params.value)
-            : null;
-          return foundItem ? foundItem.description : params.value;
+        cellRenderer: (params: any) => {
+          return params.data.nodeLevel === 'order' ? params.value || '' : '';
         }
       },
       {
         field: 'subFamilia',
         headerName: 'Subfamilia',
-        editable: true,
         width: 130,
         filter: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: (params) => {
-          const categoriaName = params.data.categoria;
-          const familiaName = params.data.familia;
-          
-          if (!categoriaName || !familiaName) {
-            return { values: [] };
-          }
-          
-          return {
-            values: this.subfamilias.map(item => item.description)
-          };
-        },
-        valueFormatter: (params) => {
-          const foundItem = this.subfamilias
-            ? this.subfamilias.find((item) => item.description === params.value)
-            : null;
-          return foundItem ? foundItem.description : params.value;
+        cellRenderer: (params: any) => {
+          return params.data.nodeLevel === 'order' ? params.value || '' : '';
         }
       },
       {
         field: 'costoMN',
         headerName: 'Precio unitario',
-        editable: true,
         width: 120,
-        cellDataType: 'number',
-        cellEditorParams: { min: 0, step: 0.01 },
-        valueFormatter: (params) => {
-          return params.value ? `$${params.value}` : '$0.00';
+        cellRenderer: (params: any) => {
+          if (params.data.nodeLevel === 'order') {
+            const value = params.value || 0;
+            return `$${value.toFixed(2)}`;
+          }
+          return '';
         }
       },
       {
         field: 'descriptionPackage',
         headerName: 'Descripción empacado',
-        editable: true,
         width: 180,
-        filter: true
+        filter: true,
+        cellRenderer: (params: any) => {
+          return params.data.nodeLevel === 'order' ? params.value || '' : '';
+        }
       },
       {
         field: 'packageQuantity',
         headerName: 'Núm piezas por paquete',
-        editable: true,
         width: 150,
-        cellDataType: 'number',
-        cellEditorParams: { min: 1 }
+        cellRenderer: (params: any) => {
+          return params.data.nodeLevel === 'order' ? params.value || 0 : '';
+        }
       },
       {
         field: 'insumo',
         headerName: 'Numero Material',
-        editable: true,
         width: 140,
-        filter: true
+        filter: true,
+        cellRenderer: (params: any) => {
+          return params.data.nodeLevel === 'order' ? params.value || '' : '';
+        }
       },
       {
         field: 'medida',
         headerName: 'Medidas',
-        editable: true,
         width: 100,
-        filter: true
+        filter: true,
+        cellRenderer: (params: any) => {
+          return params.data.nodeLevel === 'order' ? params.value || '' : '';
+        }
       },
       {
         field: 'weightOrVolumes',
         headerName: 'Pesos o volúmenes en Kgr o lts',
-        editable: true,
         width: 180,
-        cellDataType: 'number',
-        cellEditorParams: { min: 0, step: 0.01 }
+        cellRenderer: (params: any) => {
+          if (params.data.nodeLevel === 'order') {
+            const value = params.value || 0;
+            return value.toString();
+          }
+          return '';
+        }
       },
       {
         field: 'expiration',
         headerName: 'Caducidad o garantía en meses',
-        editable: true,
         width: 180,
-        cellDataType: 'number',
-        cellEditorParams: { min: 0 }
+        cellRenderer: (params: any) => {
+          if (params.data.nodeLevel === 'order') {
+            const value = params.value || 0;
+            return value.toString();
+          }
+          return '';
+        }
       },
       {
         field: 'picture',
