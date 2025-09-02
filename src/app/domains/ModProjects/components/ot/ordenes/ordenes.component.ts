@@ -475,6 +475,46 @@ obtenerAnoMes(fecha) {
     console.log('💾 INICIANDO saveMasterChanges');
     console.log('💾 selectedOt:', this.selectedOt);
     
+    const selectedRows = this.gridApi?.getSelectedRows() || [];
+    console.log('💾 Selected rows count:', selectedRows.length);
+    
+    // Si hay múltiples filas seleccionadas, actualizar todas
+    if (selectedRows.length > 1) {
+      console.log('💾 Actualizando múltiples OTs:', selectedRows.map(ot => ot.id));
+      
+      try {
+        for (const ot of selectedRows) {
+          const otDataToSave = {
+            ...ot,
+            closed: ot.closed || false,
+            closedApp: ot.closedApp || false
+          };
+          
+          console.log('💾 Guardando OT:', ot.id, otDataToSave);
+          await firstValueFrom(this.otService.updateOt(Number(ot.id), otDataToSave));
+          
+          this.trackingService.addLog(
+            this.trackingService.getnameComp(),
+            `Actualizar OT ID: ${ot.id} (bulk update)`,
+            'Menu Proyectos OT Detalles',
+            this.trackingService.getEmail()
+          );
+        }
+        
+        alerts.basicAlert('Éxito', `Se actualizaron ${selectedRows.length} OTs correctamente.`, 'success');
+        this.masterNotSavedChanges = false;
+        console.log('💾 BULK UPDATE - Cambios guardados exitosamente');
+        this.obtenerDatos();
+        return;
+        
+      } catch (error) {
+        console.error('💾 ERROR en bulk update:', error);
+        alerts.basicAlert('Error', 'Error al actualizar las OTs. Verifique los datos.', 'error');
+        return;
+      }
+    }
+    
+    // Lógica original para una sola OT
     if (!this.selectedOt) {
       console.log('💾 ERROR: No hay selectedOt');
       return;
@@ -2767,7 +2807,51 @@ addVideo(){
     console.log('🔧 Event data:', event.data);
     console.log('🔧 Current selectedOt:', this.selectedOt);
     
-    // Manejar cambios específicos por campo
+    const selectedRows = this.gridApi?.getSelectedRows() || [];
+    console.log('🔧 Selected rows count:', selectedRows.length);
+    
+    // Si hay múltiples filas seleccionadas, aplicar el cambio a todas
+    if (selectedRows.length > 1) {
+      selectedRows.forEach(row => {
+        if (event.colDef.field === 'area') {
+          row.area = event.newValue;
+          console.log('🔧 Updated area for OT:', row.id, 'to:', event.newValue);
+        }
+        if (event.colDef.field === 'closed') {
+          row.closed = event.newValue;
+          console.log('🔧 Updated closed for OT:', row.id, 'to:', event.newValue);
+        }
+        if (event.colDef.field === 'closedApp') {
+          row.closedApp = event.newValue;
+          console.log('🔧 Updated closedApp for OT:', row.id, 'to:', event.newValue);
+        }
+        if (event.colDef.field === 'cdc') {
+          row.cdc = event.newValue;
+          console.log('🔧 Updated cdc for OT:', row.id, 'to:', event.newValue);
+        }
+        if (event.colDef.field === 'otNumber') {
+          row.otNumber = event.newValue;
+          console.log('🔧 Updated otNumber for OT:', row.id, 'to:', event.newValue);
+        }
+      });
+      
+      // Refrescar el grid para mostrar los cambios
+      this.gridApi?.refreshCells();
+      
+      // Actualizar selectedOt si está en la selección
+      const selectedOtInSelection = selectedRows.find(row => row.id === this.selectedOt?.id);
+      if (selectedOtInSelection) {
+        if (event.colDef.field === 'area') this.selectedOt.area = event.newValue;
+        if (event.colDef.field === 'closed') this.selectedOt.closed = event.newValue;
+        if (event.colDef.field === 'closedApp') this.selectedOt.closedApp = event.newValue;
+        if (event.colDef.field === 'cdc') this.selectedOt.cdc = event.newValue;
+        if (event.colDef.field === 'otNumber') this.selectedOt.otNumber = event.newValue;
+      }
+      
+      return;
+    }
+    
+    // Lógica original para una sola fila
     if (event.colDef.field === 'area') {
       console.log('🔧 AREA cambió - Nuevo valor:', event.newValue);
       if (this.selectedOt && event.data.id === this.selectedOt.id) {
