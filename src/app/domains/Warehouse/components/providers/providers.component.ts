@@ -25,9 +25,11 @@ import { ModalService } from 'app/services/modal.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { SignalsService } from 'app/services/signals.service';
 import { ProvidersPaymentsComponent } from './providers-payments.component';
+import { DetailCellRendererComponent } from './detail-cell-renderer.component';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { RadiusinfluenceComponent } from 'app/domains/ModAdmon/components/radiusinfluence/radiusinfluence.component';
 import { CustomersService } from 'app/services/customers.service';
+import { ProvidersService } from 'app/services/providers.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { InegiService } from 'app/services/inegi.service';
 import { BranchsService } from 'app/services/branchs.service';
@@ -49,6 +51,7 @@ import { TrackingService } from 'app/services/tracking.service';
     AgGridModule,
     MultiLineEditorComponent,
     ProvidersPaymentsComponent,
+    DetailCellRendererComponent,
   ],
   templateUrl: './providers.component.html',
   styleUrls: ['./providers.component.scss'],
@@ -57,6 +60,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
   
   private trackingService = inject(TrackingService);
   private customerService = inject(CustomersService);
+  private providersService = inject(ProvidersService);
   private modalServiceTable = inject(ModalService);
   private signalsService = inject(SignalsService);
   private modalService = inject(NgbModal);
@@ -140,6 +144,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
   rowData: any;
   contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
+  providersXTableData: { [key: number]: any[] } = {};
+  expandedProviders: Set<number> = new Set();
 
   id: string;
   idRoot: number;
@@ -170,6 +176,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
   components = {
     multiLineEditor: MultiLineEditorComponent,
     autocompleteEditor: AutocompleteEditorComponent,
+    detailCellRenderer: DetailCellRendererComponent,
   };
 
   idClient = this.signalsService.getIdClient();
@@ -180,6 +187,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
     rowHeight: 20,
     suppressEnterWhenEditing: false,
     rowBuffer: 20,
+    masterDetail: true,
     rowClass: (params) => {
       if (params.node.isSelected()) {
         return 'selected-row';
@@ -747,6 +755,31 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+    
+    // Configurar master-detail después de que el grid esté listo
+    this.gridApi.setGridOption('detailCellRenderer', 'detailCellRenderer');
+    this.gridApi.setGridOption('detailCellRendererParams', {
+      context: {
+        loadProviderContacts: (providerId: number, callback: any) => {
+          this.loadProviderXTableData(providerId, callback);
+        },
+        saveProviderContacts: (providerId: number, data: any[]) => {
+          this.saveProviderContactsById(providerId, data);
+        },
+        deleteProviderContact: (params: any, callback: any) => {
+          this.deleteDetailRow(params);
+          callback();
+        },
+        type: this.type
+      }
+    });
+
+    // Expandir todas las filas por defecto
+    this.gridApi.forEachNode((node) => {
+      if (node.master) {
+        node.setExpanded(true);
+      }
+    });
   }
 
   addRow() {
@@ -850,6 +883,9 @@ export class ProvidersComponent implements CanComponentDeactivate {
       } else if (newRows.length > 0) {
         this.lastEditedRowId = 'SELECT_MAX_ID';
       }
+
+      // Guardar también los cambios de ProviderXTable
+      await this.saveProviderXTableChanges();
 
       alerts.basicAlert(
         'Datos actualizados',
@@ -1052,6 +1088,238 @@ export class ProvidersComponent implements CanComponentDeactivate {
       },
       (error) => console.error('Error fetching measures:', error)
     );
+  }
+
+
+  getDetailColumnDefs(): ColDef[] {
+    return [
+      {
+        field: 'campo2',
+        headerName: 'Nombre',
+        editable: true,
+        width: 200,
+        valueSetter: (params) => {
+          params.data[params.colDef.field] = params.newValue.toUpperCase();
+          return true;
+        }
+      },
+      {
+        field: 'campo3',
+        headerName: 'Puesto',
+        editable: true,
+        width: 150,
+        valueSetter: (params) => {
+          params.data[params.colDef.field] = params.newValue.toUpperCase();
+          return true;
+        }
+      },
+      {
+        field: 'campo4',
+        headerName: 'Teléfono',
+        editable: true,
+        width: 120,
+        valueSetter: (params) => {
+          const phoneValue = params.newValue;
+          const isValidPhone = /^\d{10}$/.test(phoneValue);
+          if (!isValidPhone) {
+            alerts.basicAlert(
+              'Teléfono inválido',
+              'El teléfono debe contener exactamente 10 dígitos numéricos.',
+              'error'
+            );
+            return false;
+          }
+          params.data[params.colDef.field] = phoneValue;
+          return true;
+        }
+      },
+      {
+        field: 'campo5',
+        headerName: 'Email',
+        editable: true,
+        width: 180,
+        valueSetter: (params) => {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (params.newValue && !emailRegex.test(params.newValue)) {
+            alerts.basicAlert(
+              'Email inválido',
+              'Correo electrónico no válido.',
+              'error'
+            );
+            return false;
+          }
+          params.data[params.colDef.field] = params.newValue;
+          return true;
+        }
+      },
+      {
+        field: 'active',
+        headerName: 'Activo',
+        editable: true,
+        width: 80,
+        cellEditor: 'agCheckboxCellEditor'
+      },
+      {
+        headerName: 'Acciones',
+        width: 100,
+        cellRenderer: (params: any) => {
+          const button = document.createElement('button');
+          button.className = 'btn btn-sm btn-danger';
+          button.innerHTML = '<i class="bi bi-trash"></i>';
+          button.onclick = () => this.deleteDetailRow(params);
+          return button;
+        },
+        editable: false
+      }
+    ];
+  }
+
+  loadProviderXTableData(providerId: number, successCallback: any) {
+    this.providersService.getProvidersXTable(providerId, this.type).subscribe({
+      next: (data: any) => {
+        this.providersXTableData[providerId] = data;
+        successCallback(data);
+      },
+      error: (error) => {
+        console.error('Error loading provider details:', error);
+        successCallback([]);
+      }
+    });
+  }
+
+  onDetailCellValueChanged(event: any) {
+    event.data.__modified = true;
+    this.notSavedChanges = true;
+  }
+
+
+  async deleteDetailRow(params: any) {
+    const providerId = params.data.idTabla;
+    const detailId = params.data.id;
+    
+    if (params.data.__isNew) {
+      // Si es una fila nueva, solo removerla del array local
+      this.providersXTableData[providerId] = this.providersXTableData[providerId].filter(
+        item => item.id !== detailId
+      );
+      params.api.applyTransaction({ remove: [params.data] });
+      this.notSavedChanges = true;
+    } else {
+      // Si es una fila existente, eliminarla del servidor
+      try {
+        await lastValueFrom(this.providersService.deleteProviderXTable(detailId));
+        alerts.basicAlert(
+          'Contacto eliminado',
+          'El contacto se eliminó correctamente.',
+          'success'
+        );
+        
+        // Recargar los datos del detalle
+        this.loadProviderXTableData(providerId, (data) => {
+          this.providersXTableData[providerId] = data;
+          params.api.applyTransaction({ remove: [params.data] });
+        });
+      } catch (error) {
+        console.error('Error deleting detail row:', error);
+        alerts.basicAlert(
+          'Error',
+          'Error al eliminar el contacto.',
+          'error'
+        );
+      }
+    }
+  }
+
+  async saveProviderContactsById(providerId: number, data: any[]) {
+    const newDetails = data.filter((row: any) => row.__isNew);
+    const modifiedDetails = data.filter((row: any) => row.__modified && !row.__isNew);
+
+    try {
+      for (const row of newDetails) {
+        await lastValueFrom(this.providersService.addProviderXTable(this.cleanDataForServer(row)));
+      }
+
+      for (const row of modifiedDetails) {
+        await lastValueFrom(this.providersService.updateProviderXTable(row.id, this.cleanDataForServer(row)));
+      }
+
+      if (newDetails.length > 0 || modifiedDetails.length > 0) {
+        alerts.basicAlert(
+          'Contactos guardados',
+          'Se han guardado los contactos correctamente.',
+          'success'
+        );
+
+        // Recargar datos del proveedor específico
+        this.loadProviderXTableData(providerId, (refreshedData) => {
+          this.providersXTableData[providerId] = refreshedData;
+        });
+      }
+
+    } catch (error) {
+      console.error('Error saving contacts:', error);
+      alerts.basicAlert(
+        'Error',
+        'Error al guardar los contactos.',
+        'error'
+      );
+    }
+  }
+
+  async saveProviderXTableChanges() {
+    const allDetailChanges = [];
+    
+    for (const [providerId, details] of Object.entries(this.providersXTableData)) {
+      const newDetails = details.filter((row: any) => row.__isNew);
+      const modifiedDetails = details.filter((row: any) => row.__modified && !row.__isNew);
+
+      newDetails.forEach(row => {
+        allDetailChanges.push({
+          type: 'add',
+          data: this.cleanDataForServer(row)
+        });
+      });
+
+      modifiedDetails.forEach(row => {
+        allDetailChanges.push({
+          type: 'update',
+          id: row.id,
+          data: this.cleanDataForServer(row)
+        });
+      });
+    }
+
+    if (allDetailChanges.length === 0) return;
+
+    try {
+      for (const change of allDetailChanges) {
+        if (change.type === 'add') {
+          await lastValueFrom(this.providersService.addProviderXTable(change.data));
+        } else if (change.type === 'update') {
+          await lastValueFrom(this.providersService.updateProviderXTable(change.id, change.data));
+        }
+      }
+
+      alerts.basicAlert(
+        'Datos actualizados',
+        'Se han actualizado los contactos correctamente.',
+        'success'
+      );
+
+      for (const providerId of Object.keys(this.providersXTableData)) {
+        this.loadProviderXTableData(Number(providerId), (data) => {
+          this.providersXTableData[Number(providerId)] = data;
+        });
+      }
+
+    } catch (error) {
+      console.error('Error saving detail changes:', error);
+      alerts.basicAlert(
+        'Error',
+        'Error al guardar los cambios en contactos.',
+        'error'
+      );
+    }
   }
 
   // ==================== GUARD ALERT UNSAVED CHANGES ====================

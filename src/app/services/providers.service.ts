@@ -42,4 +42,16 @@ export class ProvidersService {
   getProviderByType(type: string) {
     return this.http.get(`${environment.urlSmp}/Providers/3fields?type=${type}`, { headers: this.trackingService.getHeaders() });
   }
+
+  addProviderXTable(data: any) {
+    return this.http.post(`${environment.urlWarehouse}/ProveedorXTabla`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateProviderXTable(id: number, data: any) {
+    return this.http.put(`${environment.urlWarehouse}/ProveedorXTabla/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteProviderXTable(id: number) {
+    return this.http.delete(`${environment.urlWarehouse}/ProveedorXTabla/${id}`, { headers: this.trackingService.getHeaders() });
+  }
 }
