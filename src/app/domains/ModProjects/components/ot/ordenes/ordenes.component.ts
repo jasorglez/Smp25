@@ -1336,10 +1336,12 @@ public conceptosColumnDefs: ColDef[] = [
       width: 110,
     },
   {
+     
       field: 'totalPay', 
       headerName: 'Total $ Ejecutado', 
       width: 150,
       editable: true,
+      hide: !this.signalsService.getrootChoose(), // ← Esto oculta toda la columna
       cellRenderer: (params) => {
         const value = params.value || 0;
         const formatted = new Intl.NumberFormat('en-US', {
