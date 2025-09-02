@@ -18,26 +18,29 @@
                 </a>
              </li>
 
-             <li class="nav-item">
-                <a class="nav-link modern-tab" routerLink="workprograms" routerLinkActive="active">
-                  <i class="bi bi-diagram-3"></i>
-                  <span>{{ 'program' | translate}} {{ 'work' | translate}}</span>
-                </a>
-             </li> 
-
-             <li class="nav-item">
-                <a class="nav-link modern-tab" routerLink="contracts" routerLinkActive="active">
-                  <i class="bi bi-file-earmark-text"></i>
-                  <span>{{ 'contract' | translate}}</span>
-                </a>
-             </li>
-
-             <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'ot')">
+                <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'ot')">
                 <a class="nav-link modern-tab" routerLink="ot" routerLinkActive="active">
                   <i class="bi bi-tools"></i>
                   <span>{{ 'work_orders' | translate}}</span>
                 </a>
              </li>
+
+           @if (signalsService.getrootChoose ()== true) {  
+             <li class="nav-item">
+              
+                <a class="nav-link modern-tab" routerLink="workprograms" routerLinkActive="active">
+                  <i class="bi bi-diagram-3"></i>
+                  <span>{{ 'program' | translate}} {{ 'work' | translate}}</span>
+                </a>               
+             </li> 
+
+             
+             <li class="nav-item">
+                <a class="nav-link modern-tab" routerLink="contracts" routerLinkActive="active">
+                  <i class="bi bi-file-earmark-text"></i>
+                  <span>{{ 'contract' | translate}}</span>
+                </a>
+             </li>        
 
              <li class="nav-item">
                 <a class="nav-link modern-tab" routerLink="providers" routerLinkActive="active">
@@ -84,6 +87,7 @@
                   <span>{{ 'estimate' | translate}}</span>
                 </a>
              </li>
+            }
 
             </ul>
           </div>

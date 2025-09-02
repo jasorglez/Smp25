@@ -15,7 +15,6 @@ import { TrackingService } from 'app/services/tracking.service';
 import { PdfGeneratorService } from 'app/services/pdf-generator.service';
 import { EmployeesService } from 'app/services/employees.service';
 import { alerts } from 'app/helpers/alerts';
-import { environment } from '@env/environment';
 import { TimeEditorComponent } from 'app/domains/Indicadores/components/ind01/timeinactives/time-editor.component';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Pipe, PipeTransform } from '@angular/core';
