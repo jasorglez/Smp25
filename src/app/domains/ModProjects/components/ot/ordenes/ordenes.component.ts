@@ -476,12 +476,9 @@ obtenerAnoMes(fecha) {
     console.log('💾 selectedOt:', this.selectedOt);
     
     const selectedRows = this.gridApi?.getSelectedRows() || [];
-    console.log('💾 Selected rows count:', selectedRows.length);
+    console.log('💾 Selected rows:', selectedRows.length);
     
-    // Si hay múltiples filas seleccionadas, actualizar todas
     if (selectedRows.length > 1) {
-      console.log('💾 Actualizando múltiples OTs:', selectedRows.map(ot => ot.id));
-      
       try {
         for (const ot of selectedRows) {
           const otDataToSave = {
@@ -490,31 +487,22 @@ obtenerAnoMes(fecha) {
             closedApp: ot.closedApp || false
           };
           
-          console.log('💾 Guardando OT:', ot.id, otDataToSave);
+          console.log('💾 Guardando OT:', ot.id);
           await firstValueFrom(this.otService.updateOt(Number(ot.id), otDataToSave));
-          
-          this.trackingService.addLog(
-            this.trackingService.getnameComp(),
-            `Actualizar OT ID: ${ot.id} (bulk update)`,
-            'Menu Proyectos OT Detalles',
-            this.trackingService.getEmail()
-          );
         }
         
-        alerts.basicAlert('Éxito', `Se actualizaron ${selectedRows.length} OTs correctamente.`, 'success');
         this.masterNotSavedChanges = false;
-        console.log('💾 BULK UPDATE - Cambios guardados exitosamente');
+        alerts.basicAlert('Éxito', `Se actualizaron ${selectedRows.length} OTs correctamente`, 'success');
         this.obtenerDatos();
         return;
         
       } catch (error) {
-        console.error('💾 ERROR en bulk update:', error);
-        alerts.basicAlert('Error', 'Error al actualizar las OTs. Verifique los datos.', 'error');
+        console.error('Error en bulk update:', error);
+        alerts.basicAlert('Error', 'Error al actualizar las OTs', 'error');
         return;
       }
     }
     
-    // Lógica original para una sola OT
     if (!this.selectedOt) {
       console.log('💾 ERROR: No hay selectedOt');
       return;
@@ -527,11 +515,6 @@ obtenerAnoMes(fecha) {
     };
     
     console.log('💾 Datos a guardar:', otDataToSave);
-    console.log('💾 Area a guardar:', otDataToSave.area);
-    console.log('💾 CDC a guardar:', otDataToSave.cdc);
-    console.log('💾 OT Number a guardar:', otDataToSave.otNumber);
-    console.log('💾 Closed a guardar:', otDataToSave.closed);
-    console.log('💾 ClosedApp a guardar:', otDataToSave.closedApp);
     
     this.otService.updateOt(Number(this.selectedOt.id), otDataToSave).subscribe({
       next: (response) => {
