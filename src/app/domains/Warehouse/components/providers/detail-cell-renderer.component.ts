@@ -10,39 +10,79 @@ import { CommonModule } from '@angular/common';
   imports: [AgGridModule, CommonModule],
   template: `
     <div style="padding: 10px; background-color: #f8f9fa;">
-      <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-        <strong>Contactos de: {{ providerName }}</strong>
-        <div>
-          <button 
-            class="btn btn-sm btn-success me-2" 
-            (click)="addContact()"
-            [disabled]="!detailGridApi">
-            <i class="bi bi-person-plus"></i> Agregar
-          </button>
-          <button 
-            class="btn btn-sm btn-primary me-2" 
-            (click)="saveContacts()"
-            [disabled]="!hasChanges">
-            <i class="bi bi-floppy"></i> Guardar
-          </button>
-          <button 
-            class="btn btn-sm btn-danger" 
-            (click)="deleteSelectedContact()"
-            [disabled]="!selectedContact">
-            <i class="bi bi-trash"></i> Borrar
-          </button>
+      <!-- CONTACT Grid -->
+      <div style="margin-bottom: 15px;">
+        <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+          <strong>Contactos de: {{ providerName }}</strong>
+          <div>
+            <button 
+              class="btn btn-sm btn-success me-2" 
+              (click)="addContact()"
+              [disabled]="!contactGridApi">
+              <i class="bi bi-person-plus"></i> Agregar
+            </button>
+            <button 
+              class="btn btn-sm btn-primary me-2" 
+              (click)="saveContacts()"
+              [disabled]="!hasContactChanges">
+              <i class="bi bi-floppy"></i> Guardar
+            </button>
+            <button 
+              class="btn btn-sm btn-danger" 
+              (click)="deleteSelectedContact()"
+              [disabled]="!selectedContact">
+              <i class="bi bi-trash"></i> Borrar
+            </button>
+          </div>
         </div>
+        <ag-grid-angular
+          class="ag-theme-quartz small-text-ag-grid"
+          style="height: 150px; width: 100%;"
+          [columnDefs]="contactColumnDefs"
+          [rowData]="contactRowData"
+          [gridOptions]="contactGridOptions"
+          (gridReady)="onContactGridReady($event)"
+          (cellValueChanged)="onContactCellValueChanged($event)"
+          [components]="components">
+        </ag-grid-angular>
       </div>
-      <ag-grid-angular
-        class="ag-theme-quartz small-text-ag-grid"
-        style="height: 150px; width: 100%;"
-        [columnDefs]="columnDefs"
-        [rowData]="rowData"
-        [gridOptions]="detailGridOptions"
-        (gridReady)="onDetailGridReady($event)"
-        (cellValueChanged)="onCellValueChanged($event)"
-        [components]="components">
-      </ag-grid-angular>
+
+      <!-- BANK Grid -->
+      <div style="margin-top: 20px;">
+        <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+          <strong>Bancos de: {{ providerName }}</strong>
+          <div>
+            <button 
+              class="btn btn-sm btn-success me-2" 
+              (click)="addBank()"
+              [disabled]="!bankGridApi">
+              <i class="bi bi-bank"></i> Agregar
+            </button>
+            <button 
+              class="btn btn-sm btn-primary me-2" 
+              (click)="saveBanks()"
+              [disabled]="!hasBankChanges">
+              <i class="bi bi-floppy"></i> Guardar
+            </button>
+            <button 
+              class="btn btn-sm btn-danger" 
+              (click)="deleteSelectedBank()"
+              [disabled]="!selectedBank">
+              <i class="bi bi-trash"></i> Borrar
+            </button>
+          </div>
+        </div>
+        <ag-grid-angular
+          class="ag-theme-quartz small-text-ag-grid"
+          style="height: 150px; width: 100%;"
+          [columnDefs]="bankColumnDefs"
+          [rowData]="bankRowData"
+          [gridOptions]="bankGridOptions"
+          (gridReady)="onBankGridReady($event)"
+          (cellValueChanged)="onBankCellValueChanged($event)"
+          [components]="components">
+        </ag-grid-angular>
+      </div>
     </div>
   `
 })
@@ -50,19 +90,34 @@ export class DetailCellRendererComponent implements ICellRendererAngularComp {
   params: any;
   providerId: number;
   providerName: string;
-  rowData: any[] = [];
-  hasChanges: boolean = false;
-  detailGridApi: any;
+  
+  // Contact grid properties
+  contactRowData: any[] = [];
+  hasContactChanges: boolean = false;
+  contactGridApi: any;
   selectedContact: any = null;
   
-  detailGridOptions: any = {
+  // Bank grid properties  
+  bankRowData: any[] = [];
+  hasBankChanges: boolean = false;
+  bankGridApi: any;
+  selectedBank: any = null;
+  
+  contactGridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
     suppressEnterWhenEditing: false,
     rowSelection: 'single'
   };
 
-  columnDefs = [
+  bankGridOptions: any = {
+    headerHeight: 25,
+    rowHeight: 20,
+    suppressEnterWhenEditing: false,
+    rowSelection: 'single'
+  };
+
+  contactColumnDefs = [
     {
       field: 'campo2',
       headerName: 'Nombre',
@@ -91,7 +146,45 @@ export class DetailCellRendererComponent implements ICellRendererAngularComp {
       flex: 1
     },
     {
-      field: 'active',
+      field: 'campo7',
+      headerName: 'Activo',
+      editable: true,
+      width: 60,
+      cellEditor: 'agCheckboxCellEditor'
+    },
+  ];
+
+  bankColumnDefs = [
+    {
+      field: 'campo2',
+      headerName: 'Nombre del Titular',
+      editable: true,
+      width: 150,
+      flex: 1
+    },
+    {
+      field: 'campo3', 
+      headerName: 'Numero de Cuenta',
+      editable: true,
+      width: 140,
+      flex: 1
+    },
+    {
+      field: 'campo4',
+      headerName: 'Clave Interbancaria', 
+      editable: true,
+      width: 150,
+      flex: 1
+    },
+    {
+      field: 'campo5',
+      headerName: 'Comentario',
+      editable: true,
+      width: 200,
+      flex: 1
+    },
+    {
+      field: 'campo7',
       headerName: 'Activo',
       editable: true,
       width: 60,
@@ -106,57 +199,46 @@ export class DetailCellRendererComponent implements ICellRendererAngularComp {
     this.providerId = params.data.id;
     this.providerName = params.data.company || params.data.nameContact;
     
-    // Cargar datos del detalle
+    // Cargar datos de ambos grids
     this.loadContactData();
+    this.loadBankData();
   }
 
   refresh(): boolean {
     return false;
   }
 
-  onDetailGridReady(params: any) {
-    this.detailGridApi = params.api;
+  // ========== CONTACT GRID METHODS ==========
+  onContactGridReady(params: any) {
+    this.contactGridApi = params.api;
     params.api.sizeColumnsToFit();
     
-    // Configurar selección
     params.api.addEventListener('selectionChanged', () => {
       const selectedNodes = params.api.getSelectedNodes();
       this.selectedContact = selectedNodes.length > 0 ? selectedNodes[0].data : null;
     });
   }
 
-  deleteSelectedContact() {
-    if (!this.selectedContact) {
-      return;
-    }
-
-    if (this.params && this.params.context && this.params.context.deleteProviderContact) {
-      this.params.context.deleteProviderContact(
-        { data: this.selectedContact, api: this.detailGridApi }, 
-        () => {
-          this.loadContactData();
-          this.selectedContact = null;
-        }
-      );
-    }
-  }
-
-  onCellValueChanged(event: any) {
+  onContactCellValueChanged(event: any) {
     event.data.__modified = true;
-    this.hasChanges = true;
+    this.hasContactChanges = true;
   }
 
   loadContactData() {
-    // Esta función será llamada por el componente padre
     if (this.params && this.params.context && this.params.context.loadProviderContacts) {
       this.params.context.loadProviderContacts(this.providerId, (data: any) => {
-        this.rowData = data;
+        this.contactRowData = data;
       });
     }
   }
 
   addContact() {
-    const tempId = `temp_detail_${Date.now()}`;
+    if (!this.contactGridApi) {
+      console.error('Contact grid API not ready');
+      return;
+    }
+
+    const tempId = `temp_contact_${Date.now()}`;
     const newContact = {
       id: tempId,
       idTabla: this.providerId,
@@ -166,18 +248,18 @@ export class DetailCellRendererComponent implements ICellRendererAngularComp {
       campo4: '',
       campo5: '',
       campo6: 'NA',
-      campo7: false,
+      campo7: true,
       type: 'CONTACT',
       active: true,
       __isNew: true
     };
 
-    this.rowData = [newContact, ...this.rowData];
-    this.detailGridApi.setRowData(this.rowData);
-    this.hasChanges = true;
+    this.contactRowData = [newContact, ...this.contactRowData];
+    this.contactGridApi.setRowData(this.contactRowData);
+    this.hasContactChanges = true;
 
     setTimeout(() => {
-      this.detailGridApi.startEditingCell({
+      this.contactGridApi.startEditingCell({
         rowIndex: 0,
         colKey: 'campo2'
       });
@@ -186,8 +268,111 @@ export class DetailCellRendererComponent implements ICellRendererAngularComp {
 
   saveContacts() {
     if (this.params && this.params.context && this.params.context.saveProviderContacts) {
-      this.params.context.saveProviderContacts(this.providerId, this.rowData);
-      this.hasChanges = false;
+      this.params.context.saveProviderContacts(this.providerId, this.contactRowData);
+      this.hasContactChanges = false;
+    }
+  }
+
+  deleteSelectedContact() {
+    if (!this.selectedContact) {
+      return;
+    }
+
+    if (this.params && this.params.context && this.params.context.deleteProviderContact) {
+      this.params.context.deleteProviderContact(
+        { data: this.selectedContact, api: this.contactGridApi }, 
+        () => {
+          this.loadContactData();
+          this.selectedContact = null;
+        }
+      );
+    }
+  }
+
+  // ========== BANK GRID METHODS ==========
+  onBankGridReady(params: any) {
+    this.bankGridApi = params.api;
+    params.api.sizeColumnsToFit();
+    
+    params.api.addEventListener('selectionChanged', () => {
+      const selectedNodes = params.api.getSelectedNodes();
+      this.selectedBank = selectedNodes.length > 0 ? selectedNodes[0].data : null;
+    });
+  }
+
+  onBankCellValueChanged(event: any) {
+    event.data.__modified = true;
+    this.hasBankChanges = true;
+  }
+
+  loadBankData() {
+    if (this.params && this.params.context && this.params.context.loadProviderBanks) {
+      this.params.context.loadProviderBanks(this.providerId, (data: any) => {
+        this.bankRowData = data;
+      });
+    }
+  }
+
+  addBank() {
+    console.log('Adding bank, grid API ready:', !!this.bankGridApi);
+    if (!this.bankGridApi) {
+      console.error('Bank grid API not ready');
+      return;
+    }
+
+    const tempId = `temp_bank_${Date.now()}`;
+    const newBank = {
+      id: tempId,
+      idTabla: this.providerId,
+      campo1: 0,
+      campo2: '',
+      campo3: '',
+      campo4: '',
+      campo5: '',
+      campo6: 'NA',
+      campo7: true,
+      type: 'BANK',
+      active: true,
+      __isNew: true
+    };
+
+    console.log('Adding new bank:', newBank);
+    this.bankRowData = [newBank, ...this.bankRowData];
+    this.bankGridApi.setRowData(this.bankRowData);
+    this.hasBankChanges = true;
+    console.log('Bank row data after add:', this.bankRowData);
+
+    setTimeout(() => {
+      this.bankGridApi.startEditingCell({
+        rowIndex: 0,
+        colKey: 'campo2'
+      });
+    }, 100);
+  }
+
+  saveBanks() {
+    console.log('Saving banks for provider:', this.providerId, this.bankRowData);
+    if (this.params && this.params.context && this.params.context.saveProviderBanks) {
+      this.params.context.saveProviderBanks(this.providerId, this.bankRowData);
+      this.hasBankChanges = false;
+    } else {
+      console.error('saveProviderBanks method not found in context');
+    }
+  }
+
+  deleteSelectedBank() {
+    if (!this.selectedBank) {
+      return;
+    }
+
+    if (this.params && this.params.context && this.params.context.deleteProviderBank) {
+      this.params.context.deleteProviderBank(
+        { data: this.selectedBank, api: this.bankGridApi }, 
+        () => {
+          this.loadBankData();
+          this.selectedBank = null;
+        }
+      );
     }
   }
 
