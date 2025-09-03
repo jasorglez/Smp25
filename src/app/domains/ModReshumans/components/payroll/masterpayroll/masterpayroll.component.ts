@@ -578,8 +578,8 @@ export class MasterPayrollComponent implements OnInit {
         headerName: 'Total de pendientes',
         width: 140,
         cellStyle: (params) => {
-          if (params.value !== 0) {
-            return { backgroundColor: '#FF4017' }; // Fondo verde claro
+          if (params.value !== 0 && params.value != null) {
+            return { backgroundColor: '#FF4017' }; // Fondo rojo
           }
           return null; // Sin estilos
         }
