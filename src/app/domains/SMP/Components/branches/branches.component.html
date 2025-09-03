@@ -34,8 +34,9 @@
           <ag-grid-angular style="width: 100%" [ngStyle]="{ height: gridHeight }"
             class="ag-theme-quartz small-text-ag-grid" [rowData]="masterRowData" [columnDefs]="colMaster"
             (selectionChanged)="onMasterSelectionChanged($event)" [gridOptions]="gridOptions"
-            (gridReady)="onMasterGridReady($event)" [rowSelection]="rowSelection"
-            [rowGroupPanelShow]="rowGroupPanelShow" [pivotPanelShow]="pivotPanelShow"
+            (gridReady)="onMasterGridReady($event)" 
+            [rowSelection]="rowSelection"
+ 
             [paginationPageSize]="paginationPageSize" [paginationPageSizeSelector]="paginationPageSizeSelector"
             [pagination]="false" [stopEditingWhenCellsLoseFocus]="true"
             (cellValueChanged)="onMasterCellValueChanged($event)">
