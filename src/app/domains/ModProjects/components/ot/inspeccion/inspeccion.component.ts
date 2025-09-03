@@ -111,6 +111,7 @@ export class InspeccionComponent implements OnInit {
     {
       field: 'totalPay',
       headerName: 'Total $',
+      hide: !this.signalsService.getrootChoose(), // ← Esto oculta toda la columna
       width: 120,
       aggFunc: 'sum',
       cellRenderer: (params) => {
