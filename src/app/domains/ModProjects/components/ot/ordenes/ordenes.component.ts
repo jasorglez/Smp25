@@ -527,7 +527,6 @@ obtenerAnoMes(fecha) {
         
         this.masterNotSavedChanges = false;
         alerts.basicAlert('Éxito', 'OT actualizada correctamente', 'success');
-        this.obtenerDatos();
         
       },
       error: (error) => {
@@ -2820,13 +2819,9 @@ addVideo(){
         }
       });
       
-      // Filtrar OTs cerradas después de marcar como cerradas
+      // Refrescar datos desde el endpoint cuando hay cambios en campos closed
       if (event.colDef.field === 'closed' || event.colDef.field === 'closedApp') {
-        this.rowDataMaster = this.rowDataMaster.filter(row => 
-          !((row.closed === true || row.closed === 'true') && 
-            (row.closedApp === true || row.closedApp === 'true'))
-        );
-        this.gridApi?.setRowData(this.rowDataMaster);
+        this.obtenerDatos();
       } else {
         // Refrescar el grid para mostrar los cambios
         this.gridApi?.refreshCells();
@@ -2886,16 +2881,9 @@ addVideo(){
       }
     }
     
-    // Filtrar OTs cerradas después de marcar como cerradas (caso de fila individual)
+    // Refrescar datos desde el endpoint cuando hay cambios en campos closed (caso de fila individual)
     if (event.colDef.field === 'closed' || event.colDef.field === 'closedApp') {
-      // Verificar si la OT actual está completamente cerrada
-      const currentRow = event.data;
-      if ((currentRow.closed === true || currentRow.closed === 'true') && 
-          (currentRow.closedApp === true || currentRow.closedApp === 'true')) {
-        // Remover la OT del grid
-        this.rowDataMaster = this.rowDataMaster.filter(row => row.id !== currentRow.id);
-        this.gridApi?.setRowData(this.rowDataMaster);
-      }
+      this.obtenerDatos();
     }
     
     this.masterNotSavedChanges = true;
