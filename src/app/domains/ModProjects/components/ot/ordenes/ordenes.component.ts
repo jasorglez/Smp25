@@ -2352,6 +2352,7 @@ addVideo(){
   // ========================= End SignalR Methods =========================
 
   obtenerDatos() {
+    console.log('🔄 OBTENER DATOS - REFRESH INICIADO');
     // Verificar si el usuario tiene permisos para ver todas las OTs de todos los proyectos
     if (this.authService.hasDetailedPermission('projects', 'get-all-ot')) {
       console.log('Usuario tiene permisos para ver todas las OTs de todos los proyectos');
