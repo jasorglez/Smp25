@@ -123,7 +123,7 @@ export class DetailpayrollComponent implements OnInit{
     },
 
     {
-      headerName: 'Retardos',
+      headerName: 'Salidas Pendientes',
       width: 110,
       field: 'delays',
      /*  valueFormatter: (params) => {

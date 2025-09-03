@@ -573,7 +573,7 @@ export default class DetailClock2Component implements OnInit {
       },
       {
         field: 'idReason',
-        headerName: 'Razón de justificación de falta',
+        headerName: 'Razón de motivo de falta',
         editable: true,
         width: 200,
         cellEditor: 'agSelectCellEditor',
@@ -1118,6 +1118,7 @@ private cleanDataForServer(data: any): any {
               // Continuar con el siguiente día
               current.setDate(current.getDate() + 1);
               procesarDia(current);
+              this.signalsService.setRefreshClock(true);
             },
             error: (err) => {
               console.error(`Error al obtener datos del empleado para ${nombreDia}`, err);

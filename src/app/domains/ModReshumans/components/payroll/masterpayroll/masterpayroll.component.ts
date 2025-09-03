@@ -568,6 +568,22 @@ export class MasterPayrollComponent implements OnInit {
         return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
         },
       },
+      { 
+        field: 'totalAbsence',
+        headerName: 'Total de faltas',
+        width: 140,
+      },
+       { 
+        field: 'totalDelays',
+        headerName: 'Total de pendientes',
+        width: 140,
+        cellStyle: (params) => {
+          if (params.value !== 0) {
+            return { backgroundColor: '#FF4017' }; // Fondo verde claro
+          }
+          return null; // Sin estilos
+        }
+      },
        { 
         field: 'totalBaseSalary',
         headerName: 'Total Salarios Base',
