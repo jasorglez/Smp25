@@ -2819,8 +2819,17 @@ addVideo(){
         }
       });
       
-      // Refrescar el grid para mostrar los cambios
-      this.gridApi?.refreshCells();
+      // Filtrar OTs cerradas después de marcar como cerradas
+      if (event.colDef.field === 'closed' || event.colDef.field === 'closedApp') {
+        this.rowDataMaster = this.rowDataMaster.filter(row => 
+          !((row.closed === true || row.closed === 'true') && 
+            (row.closedApp === true || row.closedApp === 'true'))
+        );
+        this.gridApi?.setRowData(this.rowDataMaster);
+      } else {
+        // Refrescar el grid para mostrar los cambios
+        this.gridApi?.refreshCells();
+      }
       
       // Actualizar selectedOt si está en la selección
       const selectedOtInSelection = selectedRows.find(row => row.id === this.selectedOt?.id);
@@ -2873,6 +2882,18 @@ addVideo(){
       if (this.selectedOt && event.data.id === this.selectedOt.id) {
         this.selectedOt.otNumber = event.newValue;
         console.log('🔧 selectedOt.otNumber actualizado a:', this.selectedOt.otNumber);
+      }
+    }
+    
+    // Filtrar OTs cerradas después de marcar como cerradas (caso de fila individual)
+    if (event.colDef.field === 'closed' || event.colDef.field === 'closedApp') {
+      // Verificar si la OT actual está completamente cerrada
+      const currentRow = event.data;
+      if ((currentRow.closed === true || currentRow.closed === 'true') && 
+          (currentRow.closedApp === true || currentRow.closedApp === 'true')) {
+        // Remover la OT del grid
+        this.rowDataMaster = this.rowDataMaster.filter(row => row.id !== currentRow.id);
+        this.gridApi?.setRowData(this.rowDataMaster);
       }
     }
     
@@ -3892,6 +3913,7 @@ async saveChangesEquipos() {
   revert() {
     // Recargar datos originales desde el servicio
     this.obtenerDatos();
+    this.masterNotSavedChanges = false;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Revertir Cambios en Lista de OT',
