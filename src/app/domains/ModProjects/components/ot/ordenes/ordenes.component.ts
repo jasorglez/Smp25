@@ -527,6 +527,7 @@ obtenerAnoMes(fecha) {
         
         this.masterNotSavedChanges = false;
         alerts.basicAlert('Éxito', 'OT actualizada correctamente', 'success');
+        this.obtenerDatos();
         
       },
       error: (error) => {
