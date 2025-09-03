@@ -679,7 +679,7 @@ obtenerAnoMes(fecha) {
       filter: true,
       resizable: true,
       flex: 4,
-      editable: true,
+      editable: (params: any) => true,
       cellRenderer: 'agCheckboxCellRenderer',
       cellEditor: 'agCheckboxCellEditor'
     },
@@ -690,7 +690,7 @@ obtenerAnoMes(fecha) {
       filter: true,
       resizable: true,
       flex: 4,
-      editable: true,
+      editable: (params: any) => true,
       cellRenderer: 'agCheckboxCellRenderer',
       cellEditor: 'agCheckboxCellEditor'
     }
