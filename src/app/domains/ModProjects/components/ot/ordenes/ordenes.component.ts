@@ -527,6 +527,7 @@ obtenerAnoMes(fecha) {
         
         this.masterNotSavedChanges = false;
         alerts.basicAlert('Éxito', 'OT actualizada correctamente', 'success');
+        this.obtenerDatos();
         
       },
       error: (error) => {
@@ -2819,13 +2820,8 @@ addVideo(){
         }
       });
       
-      // Refrescar datos desde el endpoint cuando hay cambios en campos closed
-      if (event.colDef.field === 'closed' || event.colDef.field === 'closedApp') {
-        this.obtenerDatos();
-      } else {
-        // Refrescar el grid para mostrar los cambios
-        this.gridApi?.refreshCells();
-      }
+      // Refrescar el grid para mostrar los cambios
+      this.gridApi?.refreshCells();
       
       // Actualizar selectedOt si está en la selección
       const selectedOtInSelection = selectedRows.find(row => row.id === this.selectedOt?.id);
@@ -2881,10 +2877,6 @@ addVideo(){
       }
     }
     
-    // Refrescar datos desde el endpoint cuando hay cambios en campos closed (caso de fila individual)
-    if (event.colDef.field === 'closed' || event.colDef.field === 'closedApp') {
-      this.obtenerDatos();
-    }
     
     this.masterNotSavedChanges = true;
     console.log('🔧 masterNotSavedChanges set to true');
