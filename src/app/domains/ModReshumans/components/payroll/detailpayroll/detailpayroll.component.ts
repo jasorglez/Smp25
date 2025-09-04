@@ -126,9 +126,12 @@ export class DetailpayrollComponent implements OnInit{
       headerName: 'Salidas Pendientes',
       width: 110,
       field: 'delays',
-     /*  valueFormatter: (params) => {
-        return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
-      } */
+      cellStyle: (params) => {
+           if (params.value !== 0 && params.value != null) {
+             return { backgroundColor: '#fbcccc' }; // Fondo rojo
+           }
+           return null; // Sin estilos
+         }
     },
     {
       headerName: 'Salario Base',

@@ -579,7 +579,7 @@ export class MasterPayrollComponent implements OnInit {
         width: 140,
         cellStyle: (params) => {
           if (params.value !== 0 && params.value != null) {
-            return { backgroundColor: '#FF4017' }; // Fondo rojo
+            return { backgroundColor: '#fbcccc' }; // Fondo rojo
           }
           return null; // Sin estilos
         }
@@ -1248,6 +1248,12 @@ formatDate(dateStr: string): string {
                 'success'
               );
               this.obtenerDatos();
+              this.gridHeight = '80vh'; // Reset to default height
+              this.showPayrollDetailTab = false; // Ocultar la pestaña de detalle
+              if (this.gridApi) {
+                this.gridApi.setFilterModel(null); // Limpiar filtros
+                this.gridApi.onFilterChanged(); // Aplicar cambios
+              }
               this.notSavedChanges = false;
               this.selectedRowData = null;
             });
