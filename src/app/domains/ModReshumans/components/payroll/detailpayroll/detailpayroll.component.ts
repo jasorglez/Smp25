@@ -62,7 +62,7 @@ export class DetailpayrollComponent implements OnInit{
   idPayroll: number;
 
   columnDefs: ColDef[] = [
-    { headerName: 'Nombre Empleado', field: 'employeeName', width: 300, filter: true,  filterParams: {defaultToNothingSelected: true,},},
+    { headerName: 'Nombre Empleado', field: 'employeeName', width: 300, filter: true, pinned: 'left',  filterParams: {defaultToNothingSelected: true,},},
     {
       headerName: 'Precio x Hora',
       width: 150,
