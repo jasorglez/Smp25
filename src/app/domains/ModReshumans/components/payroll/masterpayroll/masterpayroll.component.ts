@@ -286,6 +286,7 @@ export class MasterPayrollComponent implements OnInit {
         headerName: 'Sucursal',
         field: 'idBranch',
         headerClass: 'required-header',
+        pinned: 'left',
         hide:
           this.authService.hasDetailedPermission(
             'principal',
@@ -335,6 +336,7 @@ export class MasterPayrollComponent implements OnInit {
         field: 'idBlockPeriod',
         headerName: 'Bloque del Periodo',
         headerClass: 'required-header',
+        pinned: 'left',
         editable: true,
         suppressMovable: true,
         width: 120,
