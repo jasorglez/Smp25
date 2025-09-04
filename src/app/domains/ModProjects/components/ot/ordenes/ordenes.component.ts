@@ -1205,6 +1205,7 @@ public conceptosColumnDefs: ColDef[] = [
   {
     field: 'precioUnitario',
     headerName: 'Precio Unitario',
+    hide: !this.signalsService.getrootChoose(), // ← Esto oculta toda la columna
     flex: 1,
     editable: false,
     valueGetter: (params) => {
@@ -1221,6 +1222,7 @@ public conceptosColumnDefs: ColDef[] = [
   {
     field: 'mont',
     headerName: 'Monto',
+    hide: !this.signalsService.getrootChoose(), // ← Esto oculta toda la columna
     flex: 1,
     editable: false,
     valueGetter: (params) => {
@@ -3768,7 +3770,7 @@ async saveChangesEquipos() {
 
   async generatePdfPreview() {
     
-    
+      
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Generar Vista Previa PDF OT',

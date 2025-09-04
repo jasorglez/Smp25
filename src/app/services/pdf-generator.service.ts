@@ -663,7 +663,7 @@ private processMaterialesData(): string[][] {
     return tableData;
   }
 
-  private processConceptosData(): string[][] {
+   private processConceptosData(): string[][] {
     if (!this.conceptosData || this.conceptosData.length === 0) {
       return [
         ['Conc.', 'Descripción', 'Can.', 'P.U.', 'Monto'],
@@ -725,7 +725,7 @@ private processMaterialesData(): string[][] {
     });
 
     return tableData;
-  }
+  } 
 
   private generateDocDefinition() {
     this.limpiarPdfMakeKeys(this.imagenes);
