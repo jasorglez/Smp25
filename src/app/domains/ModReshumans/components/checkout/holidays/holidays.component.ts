@@ -154,7 +154,7 @@ export default class HolidaysComponent {
         if (current > fin) {
           forkJoin(allRequests).subscribe({
             next: (responses) => {
-              alert('Registros completados: ' + responses.length);
+              //alert('Registros completados: ' + responses.length);
               console.log('✅ Registros completados:', responses);
               alerts.basicAlert('Éxito', 'Se procesaron todos los registros.', 'success');
             },
