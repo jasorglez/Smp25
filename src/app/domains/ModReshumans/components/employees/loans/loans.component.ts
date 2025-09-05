@@ -133,6 +133,7 @@ export class EmployeesxLoansComponent {
       .getLoansByEmployee(this.idEmployee, 'PRESTAMO')
       .subscribe(
         (maestroRowData: any[]) => {
+          console.log('Datos de préstamos cargados:', maestroRowData);
           if (!maestroRowData || maestroRowData.length === 0) {
             this.maestroRowData = this.detalleRowData = [];
           } else {
@@ -196,7 +197,7 @@ export class EmployeesxLoansComponent {
     {
       headerName: 'ID',
       field: 'id',
-      flex: 1,
+      width: 50,
       editable: false,
       valueFormatter: (params) => {
         // Ocultar IDs temporales
@@ -209,6 +210,7 @@ export class EmployeesxLoansComponent {
     {
       headerName: 'Fecha',
       field: 'date',
+      width: 100,
       valueGetter: (params) =>
         params.data.date ? new Date(params.data.date) : null,
       cellRenderer: 'agDateCellRenderer',
@@ -223,13 +225,13 @@ export class EmployeesxLoansComponent {
         }
         return '';
       },
-      flex: 1,
       editable: (params) => params.data?.__isNew === true || this.authorizedPass,
     },
     {
       headerName: 'Préstamo *',
       headerClass: 'required-header',
       field: 'monto',
+      width: 100,
       valueFormatter: (params) => {
         if (params.value) {
           return new Intl.NumberFormat('es-MX', {
@@ -239,12 +241,12 @@ export class EmployeesxLoansComponent {
         }
         return '';
       },
-      flex: 1,
       editable: (params) => params.data?.__isNew === true || this.authorizedPass,
     },
     {
       headerName: 'Pagado',
       field: 'payments',
+      width: 100,
       valueFormatter: (params) => {
         if (params.value) {
           return new Intl.NumberFormat('es-MX', {
@@ -254,12 +256,12 @@ export class EmployeesxLoansComponent {
         }
         return '$0.00';
       },
-      flex: 1,
       editable: false,
     },
     {
       headerName: 'Restante',
       field: 'remain',
+      width: 100,
       valueFormatter: (params) => {
         if (params.value) {
           return new Intl.NumberFormat('es-MX', {
@@ -269,9 +271,14 @@ export class EmployeesxLoansComponent {
         }
         return '$0.00';
       },
-      flex: 1,
       editable: false,
     },
+    {
+      headerName: 'Comentario',
+      field: 'comments', 
+      width: 400,
+      editable: (params) => params.data?.__isNew === true || this.authorizedPass,
+    }
   ];
 
   detalleColumnDefs: ColDef[] = [
