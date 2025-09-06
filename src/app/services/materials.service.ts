@@ -13,19 +13,26 @@ export class MaterialsService {
   private trackingService = inject(TrackingService);
 
   getMaterials(id: number, typemat: string): Observable<MaterialsResponse[]> {
-    return this.http.get<MaterialsResponse[]>(
-      `${environment.urlWarehouse}/Material/${id}?typematerial=${typemat}`,
+    return this.http.get<MaterialsResponse[]>(`${environment.urlWarehouse}/Material/${id}?typematerial=${typemat}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  getAllMaterialsxview(id: number): Observable<MaterialsResponse[]> {
+    return this.http.get<MaterialsResponse[]>(`${environment.urlWarehouse}/Material/materialsview/${id}`,
       { headers: this.trackingService.getHeaders() }
     );
   }
 
   addMaterial(data: any): Observable<any> {
+    console.log('Adding new material:', data);
     return this.http.post(`${environment.urlWarehouse}/Material`, data, {
       headers: this.trackingService.getHeaders(),
     });
   }
 
   updateMaterial(id: string, data: any): Observable<any> {
+    console.log('Updating material with ID:', id, 'and data:', data);
     return this.http.put<any[]>(
       `${environment.urlWarehouse}/Material/${id}`,
       data,

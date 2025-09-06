@@ -286,9 +286,20 @@ export default class DetailClock2Component implements OnInit {
         },
         rowGroup: true,
       },
-      {
+       {
         field: 'checkTime',
         headerName: 'Hora de Registro',
+        editable: true,
+        cellEditor: 'timeEditor',
+        width: 200,
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          return params.value.split('.')[0];
+        },
+      },
+      {
+        field: 'realHourBySystem',
+        headerName: 'Hora de Registro de Sistema',
         editable: true,
         cellEditor: 'timeEditor',
         width: 200,
@@ -562,7 +573,7 @@ export default class DetailClock2Component implements OnInit {
       },
       {
         field: 'idReason',
-        headerName: 'Razón de justificación de falta',
+        headerName: 'Razón de motivo de falta',
         editable: true,
         width: 200,
         cellEditor: 'agSelectCellEditor',
@@ -865,6 +876,7 @@ export default class DetailClock2Component implements OnInit {
         'Se han actualizado los datos correctamente.',
         'success'
       );
+      this.signalsService.setRefreshClock(true);
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
 
@@ -897,48 +909,57 @@ export default class DetailClock2Component implements OnInit {
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Revertir Registro en Detalle de Checador', 'Menu Recursos Humanos Detalle de Checador', this.trackingService.getEmail());
   }
 
-  private cleanDataForServer(data: any): any {
-    const cleanedData = { ...data };
-    delete cleanedData.employeeName;
-    delete cleanedData.__isNew;
-    delete cleanedData.__modified;
-    delete cleanedData.idBranch;
-    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
-      delete cleanedData.id;
-    }
+private cleanDataForServer(data: any): any {
+  const cleanedData = { ...data };
 
-    // Añadir timeStamp como concatenación de date y checkTime
-    if (cleanedData.date && cleanedData.checkTime) {
-      // Asegurarse de que date sea una cadena de texto y extraer solo la parte de la fecha
-      let dateStr = typeof cleanedData.date === 'string' ? cleanedData.date : new Date(cleanedData.date).toISOString();
-      dateStr = dateStr.split('T')[0]; // Solo tomar la parte de la fecha
+  // Eliminar campos basura
+  delete cleanedData.employeeName;
+  delete cleanedData.__isNew;
+  delete cleanedData.__modified;
+  delete cleanedData.idBranch;
 
-      // Asegurarse de que checkTime tenga el formato correcto (HH:MM:SS)
-      const formattedCheckTime = cleanedData.checkTime.includes('.')
-        ? cleanedData.checkTime.split('.')[0]
-        : cleanedData.checkTime;
-
-      cleanedData.timeStamp = `${dateStr}T${formattedCheckTime}`;
-    }
-
-    // Añadir modifiedTimeStamp como concatenación de date y modifiedCheckTime
-    if (cleanedData.date && cleanedData.modifiedCheckTime) {
-      // Asegurarse de que date sea una cadena de texto y extraer solo la parte de la fecha
-      let dateStr = typeof cleanedData.date === 'string' ? cleanedData.date : new Date(cleanedData.date).toISOString();
-      dateStr = dateStr.split('T')[0]; // Solo tomar la parte de la fecha
-
-      // Asegurarse de que modifiedCheckTime tenga el formato correcto (HH:MM:SS)
-      const formattedModifiedCheckTime = cleanedData.modifiedCheckTime.includes('.')
-        ? cleanedData.modifiedCheckTime.split('.')[0]
-        : cleanedData.modifiedCheckTime;
-
-      cleanedData.timeStampBackup = `${dateStr}T${formattedModifiedCheckTime}`;
-    }
-    delete cleanedData.date;
-    delete cleanedData.checkTime;
-    delete cleanedData.modifiedCheckTime;
-    return cleanedData;
+  if (cleanedData.id?.toString().startsWith('temp_')) {
+    delete cleanedData.id;
   }
+
+  // Preparar la fecha como YYYY-MM-DD
+  const dateStr = cleanedData.date
+    ? (typeof cleanedData.date === 'string'
+        ? cleanedData.date
+        : new Date(cleanedData.date).toISOString()
+      ).split('T')[0]
+    : null;
+
+  // Generar timeStamp y adjustedTimeBySystem si hay checkTime
+  if (dateStr && cleanedData.checkTime) {
+    const formattedCheckTime = cleanedData.checkTime.includes('.')
+      ? cleanedData.checkTime.split('.')[0]
+      : cleanedData.checkTime;
+
+    cleanedData.timeStamp = `${dateStr}T${formattedCheckTime}`;
+    cleanedData.adjustedTimeBySystem = `${dateStr}T${formattedCheckTime}`;
+  }
+
+  // Si hay modifiedCheckTime, se sobrescribe adjustedTimeBySystem
+  if (dateStr && cleanedData.modifiedCheckTime) {
+    const formattedModified = cleanedData.modifiedCheckTime.includes('.')
+      ? cleanedData.modifiedCheckTime.split('.')[0]
+      : cleanedData.modifiedCheckTime;
+
+    cleanedData.timeStampBackup = `${dateStr}T${formattedModified}`;
+    cleanedData.adjustedTimeBySystem = `${dateStr}T${cleanedData.checkTime}`;
+    cleanedData.realHourBySystem = null;
+  }
+
+  // Limpiar campos originales
+  delete cleanedData.date;
+  delete cleanedData.checkTime;
+  delete cleanedData.modifiedCheckTime;
+
+  return cleanedData;
+}
+
+
 
   // Agregar esta función auxiliar para calcular diferencia horaria
   private calculateTimeDifference(start: string, end: string): number {
@@ -1097,6 +1118,7 @@ export default class DetailClock2Component implements OnInit {
               // Continuar con el siguiente día
               current.setDate(current.getDate() + 1);
               procesarDia(current);
+              this.signalsService.setRefreshClock(true);
             },
             error: (err) => {
               console.error(`Error al obtener datos del empleado para ${nombreDia}`, err);

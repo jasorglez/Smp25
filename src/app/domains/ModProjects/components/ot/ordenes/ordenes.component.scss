@@ -9,6 +9,81 @@
   color: #1976d2;
 }
 
+.agridWH {
+  height: 50vh;
+}
+
+
+// Mejoras visuales para el layout con Bootstrap Grid
+.border-end {
+  border-right: 1px solid #dee2e6 !important;
+}
+
+// Estilos para el resizer drag-and-drop
+.column-resizer {
+  position: absolute;
+  top: 0;
+  left: -5px;
+  bottom: 0;
+  width: 10px;
+  background: transparent;
+  cursor: col-resize;
+  z-index: 10;
+  user-select: none;
+  
+  &:hover .resizer-handle,
+  &.resizing .resizer-handle {
+    background-color: #007bff;
+    opacity: 1;
+  }
+  
+  .resizer-handle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 4px;
+    height: 60px;
+    background-color: #dee2e6;
+    border-radius: 2px;
+    opacity: 0;
+    transition: all 0.2s ease;
+    
+    &::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 2px;
+      height: 20px;
+      background-color: white;
+      border-radius: 1px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+  }
+}
+
+// Mostrar el handle cuando se hace hover en la columna derecha
+div[class*="col-md-"]:hover .column-resizer .resizer-handle {
+  opacity: 0.7;
+}
+
+.pdf-preview-container {
+  box-shadow: 0 0 0 1px rgba(13, 110, 253, 0.25);
+  transition: box-shadow 0.15s ease-in-out;
+  
+  &:hover {
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+  }
+}
+
+.tab-content-custom {
+  background-color: #ffffff;
+  border: 1px solid #dee2e6;
+  border-top: none;
+  border-radius: 0 0 0.375rem 0.375rem;
+}
 // Estilos para celdas editables en AG-Grid - Solo amarillo cuando está editando
 ::ng-deep .ag-theme-quartz {
   // Solo la celda actualmente en edición se pone amarilla
@@ -62,4 +137,274 @@
       box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.3);
     }
   }
+
+// Contenedor para la barra de navegación de pestañas
+.nav-tabs-container {
+  overflow-x: auto;  // Manifiesta el scroll horizontal si es necesario
+  overflow-y: hidden; // Oculta cualquier scroll vertical no deseado
+  
+  // Estilo para la barra de scroll (opcional pero recomendado)
+  &::-webkit-scrollbar {
+    height: 8px; // Altura de la barra
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: #adb5bd; // Color del manejador
+    border-radius: 4px;
+  }
+}
+
+// Conjuro para el pergamino infinito (scroll)
+.nav-tabs {
+  flex-wrap: nowrap; // Obliga a las pestañas a permanecer en una sola línea
+}
+
+// Decreto de uniformidad para la altura de los grids en las pestañas
+.tab-grid-container {
+  height: 60vh; // La misma altura imperial que tu grid de reportes
+}
+
+// Modal improvements
+.modal-content {
+  border: none;
+  border-radius: 1rem;
+  
+  .modal-header {
+    border-radius: 1rem 1rem 0 0;
+    padding: 1.5rem 2rem 1rem 2rem;
+    
+    .modal-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      
+      i {
+        margin-right: 0.5rem;
+        font-size: 1.1rem;
+      }
+    }
+  }
+  
+  .modal-body {
+    padding: 2rem;
+    
+    .form-label {
+      font-size: 0.95rem;
+      margin-bottom: 0.75rem;
+      color: #495057;
+      
+      i {
+        margin-right: 0.5rem;
+        color: #007bff;
+      }
+    }
+    
+    .form-control-lg {
+      font-size: 1rem;
+      padding: 0.875rem 1rem;
+      border-radius: 0.5rem;
+      border: 2px solid #e9ecef;
+      transition: all 0.2s ease;
+      
+      &:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+      }
+      
+      &.is-invalid {
+        border-color: #dc3545;
+        
+        &:focus {
+          border-color: #dc3545;
+          box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+        }
+      }
+    }
+    
+    .invalid-feedback {
+      font-size: 0.875rem;
+      margin-top: 0.5rem;
+    }
+    
+    .alert-info {
+      border-radius: 0.75rem;
+      border: none;
+      background: linear-gradient(135deg, #e3f2fd 0%, #f0f8ff 100%);
+      color: #1565c0;
+      font-size: 0.95rem;
+      
+      i {
+        color: #1976d2;
+        margin-right: 0.5rem;
+      }
+    }
+  }
+  
+  .modal-footer {
+    padding: 1.5rem 2rem 2rem 2rem;
+    
+    .btn {
+      padding: 0.75rem 1.5rem;
+      font-weight: 500;
+      border-radius: 0.5rem;
+      transition: all 0.2s ease;
+      
+      i {
+        margin-right: 0.5rem;
+      }
+      
+      &.btn-primary {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        border: none;
+        
+        &:hover {
+          background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+        }
+        
+        &:disabled {
+          background: #6c757d;
+          transform: none;
+          box-shadow: none;
+        }
+      }
+      
+      &.btn-outline-secondary {
+        &:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(108, 117, 125, 0.2);
+        }
+      }
+    }
+  }
+}
+
+// Loading spinner improvements
+.spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
+}
+
+// Improved button styling for the main interface
+.btn {
+  transition: all 0.2s ease;
+  
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+  
+  &.btn-primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    border: none;
+    
+    &:hover {
+      background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+    }
+  }
+  
+  &.btn-success {
+    background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+    border: none;
+    
+    &:hover {
+      background: linear-gradient(135deg, #1e7e34 0%, #155724 100%);
+    }
+  }
+  
+  &.btn-warning {
+    background: linear-gradient(135deg, #ffc107 0%, #d39e00 100%);
+    border: none;
+    color: #212529;
+    
+    &:hover {
+      background: linear-gradient(135deg, #d39e00 0%, #b38600 100%);
+      color: #212529;
+    }
+  }
+  
+  &.btn-danger {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    border: none;
+    
+    &:hover {
+      background: linear-gradient(135deg, #c82333 0%, #a71e2a 100%);
+    }
+  }
+  
+  &.btn-info {
+    background: linear-gradient(135deg, #17a2b8 0%, #117a8b 100%);
+    border: none;
+    
+    &:hover {
+      background: linear-gradient(135deg, #117a8b 0%, #0c5460 100%);
+    }
+  }
+}
+
+// Enhanced alert styling
+.alert {
+  border-radius: 0.75rem;
+  border: none;
+  font-size: 0.9rem;
+  
+  &.alert-info {
+    background: linear-gradient(135deg, #e3f2fd 0%, #f0f8ff 100%);
+    color: #1565c0;
+    border-left: 4px solid #1976d2;
+    
+    i {
+      color: #1976d2;
+    }
+  }
+}
+
+// Enhanced tab styling
+.nav-tabs {
+  border-bottom: 2px solid #dee2e6;
+  
+  .nav-link {
+    border: none;
+    color: #6c757d;
+    font-weight: 500;
+    padding: 1rem 1.5rem;
+    transition: all 0.2s ease;
+    border-radius: 0.75rem 0.75rem 0 0;
+    margin-bottom: -2px;
+    
+    i {
+      margin-right: 0.5rem;
+    }
+    
+    &:hover {
+      color: #007bff;
+      background-color: #f8f9fa;
+      transform: translateY(-2px);
+    }
+    
+    &.active {
+      color: #007bff;
+      background-color: #ffffff;
+      border-bottom: 2px solid #007bff;
+      font-weight: 600;
+    }
+  }
+}
+
+// Card improvements
+.card {
+  border-radius: 1rem;
+  border: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.2s ease;
+  
+  &:hover {
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+  }
+  
+  .card-body {
+    padding: 2rem;
+  }
+}
+
+>>>>>>> develop
 }

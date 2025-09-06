@@ -225,6 +225,13 @@ export class CatalogsComponent implements CanComponentDeactivate {
         },
       },
       {
+        field: 'valueAddition',
+        headerName: 'name',
+        editable: true,
+        width: 100,
+        hide: this.selectedCatalog !== 'TRABREALIZADO',
+      },
+      {
         field: 'description',
         headerName: 'Descripción',
         filterParams: {
@@ -316,9 +323,25 @@ export class CatalogsComponent implements CanComponentDeactivate {
         hide:this.selectedCatalog !== 'ABSENCES' && this.selectedCatalog !== 'REASON'
       },
       {
+        field: 'price',
+        headerName: 'Precio',
+        editable: true,
+        width: 100,
+        hide: this.selectedCatalog !== 'TRABREALIZADO',
+        valueFormatter: (params) => {
+          return params.value
+          ? `$${Number(params.value).toLocaleString('es-MX', {
+              minimumFractionDigits: 2,
+            })}`
+          : '';
+        return params.value
+        },
+      },
+      {
         field: 'vigente',
         headerName: 'Activo',
         editable: true,
+        hide: this.idRoot == 18, // Solo mostrar si idRoot es 18
         width: 100,
       },
     ];

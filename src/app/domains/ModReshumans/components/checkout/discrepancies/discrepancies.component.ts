@@ -197,13 +197,12 @@ export default class DiscrepanciesComponent implements OnInit {
         editable: false,
         width: 120,
         valueFormatter: (params) => {
-          if (!params.data?.dateStamp) return '';
-          const date = new Date(params.data.dateStamp);
-          return date.toLocaleDateString('es-ES', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric'
-          }).replace(/\//g, '-');
+          const rawDate = params.data?.dateStamp;
+          if (!rawDate) return '';
+                
+          // Si el formato es 'aaaa-mm-dd', lo partimos y reordenamos
+          const [year, month, day] = rawDate.split('-');
+          return `${day}-${month}-${year}`;
         }
       },
       {

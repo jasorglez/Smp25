@@ -1,5 +1,5 @@
 import { Component, effect, HostListener, inject } from '@angular/core';
-import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { ColDef, GridApi, GridReadyEvent, CellDoubleClickedEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule } from 'ag-grid-angular';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
@@ -8,17 +8,26 @@ import { FormsModule } from '@angular/forms';
 import { EstimatesService } from 'app/services/estimates.service';
 import { SignalsService } from 'app/services/signals.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
+import { GeneratorsComponent } from './generators.component';
+import { PdfEstimatesService } from 'app/services/pdf-estimates.service';
+import { TrackingService } from 'app/services/tracking.service';
+import { WorkprogramsService } from 'app/services/workprograms.service';
+import { GeneratorsService } from 'app/services/generators.service';
 
 @Component({
   selector: 'app-estimates',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
-  templateUrl: '../oil-provider-project.html'
+  imports: [CommonModule, FormsModule, AgGridModule, GeneratorsComponent],
+  templateUrl: './estimates.component.html'
 })
 export class EstimatesComponent {
 
   private estimatesService = inject(EstimatesService);
   private signalsService = inject(SignalsService);
+  private pdfEstimatesService = inject(PdfEstimatesService);
+  private trackingService = inject(TrackingService);
+  private workprogramsService = inject(WorkprogramsService);
+  private generatorsService = inject(GeneratorsService);
 
   constructor() {
     effect(() => {
@@ -28,7 +37,15 @@ export class EstimatesComponent {
   }
 
   ngOnInit() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Acceso a Estimaciones',
+      'Modulo Proyectos - Estimaciones',
+      this.trackingService.getEmail()
+    );
+    
     this.obtenerDatos();
+    this.loadActivities();
   }
 
   components = {
@@ -47,11 +64,24 @@ export class EstimatesComponent {
   rowData: any;
   contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
-  selectedRowData: any = null;
+  selectedEstimate: any = null; // Variable única como Income
   id: string;
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
   private contract = this.signalsService.getContractSelectedBySidebar()();
+  
+  // Propiedades simplificadas
+  gridHeight: string = '500px';
+  
+  // Propiedades para vista detalle de items
+  viewMode: 'master' | 'detail' = 'master';
+  selectedEstimateForDetail: any = null;
+  estimateItems: any[] = [];
+  selectedEstimateItem: any = null;
+  
+  // Conceptos/actividades para dropdown
+  activitiesOptions: any[] = [];
+  private project = this.signalsService.getProjectSelectedBySidebar()();
 
   obtenerDatos() {
     this.estimatesService
@@ -65,46 +95,109 @@ export class EstimatesComponent {
       });
   }
 
-  // Column Definitions: Defines the columns to be displayed.
-  public gridOptions: any = {
-    headerHeight: 30,
-    rowHeight: 30,
-    rowClass: (params) => {
-      // Verificar si la fila está seleccionada
-      if (params.node.isSelected()) {
-        return 'selected-row';
+  loadActivities() {
+    if (!this.project) return;
+    this.workprogramsService.getActivities(this.project)
+      .subscribe((activities: any[]) => {
+        this.activitiesOptions = activities;
+        console.log('Actividades cargadas:', this.activitiesOptions);
+      }, (error) => {
+        console.error('Error al cargar actividades:', error);
+        this.activitiesOptions = [];
+      });
+  }
+
+
+  // GridOptions simple para ambas vistas
+  get gridOptions(): any {
+    return {
+      headerHeight: 30,
+      rowHeight: 30,
+      getRowClass: (params) => {
+        if (params.node.isSelected()) {
+          return 'selected-row';
+        }
+        return '';
+      },
+      onRowClicked: (event) => {
+        event.node.setSelected(true);
+      },
+      onRowSelected: (event) => {
+        if (event.node.isSelected()) {
+          this.gridApi.forEachNode((node) => {
+            if (node.id !== event.node.id) {
+              node.setSelected(false);
+            }
+          });
+        }
       }
-      return '';
-    },
-    onRowClicked: (event) => {
-      // Seleccionar la fila al hacer clic en cualquier celda
-      event.node.setSelected(true);
-    },
-    onRowSelected: (event) => {
-      // Deseleccionar otras filas cuando se selecciona una nueva
-      if (event.node.isSelected()) {
-        this.gridApi.forEachNode((node) => {
-          if (node.id !== event.node.id) {
-            node.setSelected(false);
-          }
-        });
+    };
+  }
+
+
+  // Columnas para la vista de items de estimación (exactas a generators)
+  getItemsColumnDefs(): ColDef[] {
+    return [
+      { 
+        field: 'idResource', 
+        headerName: 'Recurso', 
+        editable: true, 
+        flex: 2,
+        cellEditor: 'agSelectCellEditor', 
+        cellEditorParams: { 
+          values: this.activitiesOptions.map(a => a.id) 
+        },
+        valueFormatter: (p) => this.activitiesOptions.find(a => a.id === p.value)?.actandNom || ''
+      },
+      { 
+        field: 'quantity', 
+        headerName: 'Cantidad', 
+        editable: true, 
+        flex: 1, 
+        cellDataType: 'number'
+      },
+      { 
+        field: 'accumulate', 
+        headerName: 'Acumulado', 
+        editable: true, 
+        flex: 1, 
+        cellDataType: 'number'
+      },
+      { 
+        field: 'comment', 
+        headerName: 'Comentarios', 
+        editable: true, 
+        flex: 2 
       }
-    },
-  };
+    ];
+  }
 
   get columnDefs(): ColDef[] {
     return [
       {
         field: 'number',
-        headerName: 'Número Estimación',
+        headerName: 'Estimación',
         editable: true,
-        flex: 1
+        flex: 1.4
       },
+
+      {
+        field: 'typeMoney',
+        headerName: 'Tipo Moneda',
+        editable: true,
+        flex: 1.6,      
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: ['MX', 'USD'],
+        }
+
+      },
+
       {
         field: 'dateStart',
         headerName: 'Fecha inicial',
         editable: true,
-        flex: 1,
+        flex: 1.5,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
           if (params.value) {
@@ -117,7 +210,7 @@ export class EstimatesComponent {
         field: 'dateEnd',
         headerName: 'Fecha final',
         editable: true,
-        flex: 1,
+        flex: 1.4,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
           if (params.value) {
@@ -134,17 +227,17 @@ export class EstimatesComponent {
       },
       {
         field: 'amountMX',
-        headerName: 'Monto MXN',
+        headerName: 'MXN',
         cellDataType: 'number',
         editable: true,
-        flex: 1,
+        flex: 1.3,
         valueFormatter: (params) => {
           return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
         }
       },
       {
         field: 'amountDLL',
-        headerName: 'Monto DLL',
+        headerName: 'DLL',
         cellDataType: 'number',
         editable: true,
         flex: 1,
@@ -157,7 +250,7 @@ export class EstimatesComponent {
         headerName: 'Acumulado MXN',
         cellDataType: 'number',
         editable: false,
-        flex: 1,
+        flex: 1.9,
         valueFormatter: (params) => {
           return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
         }
@@ -167,7 +260,7 @@ export class EstimatesComponent {
         headerName: 'Acumulado DLL',
         cellDataType: 'number',
         editable: false,
-        flex: 1,
+        flex: 1.8,
         valueFormatter: (params) => {
           return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(params.value);
         }
@@ -176,7 +269,7 @@ export class EstimatesComponent {
         field: 'type',
         headerName: 'Tipo',
         editable: true,
-        flex: 1,
+        flex: 1.3,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: ['NORMAL', 'ADICIONAL', 'EXTRAORDIN'],
@@ -186,30 +279,113 @@ export class EstimatesComponent {
         field: 'authorizeUser',
         headerName: 'Autoriza',
         editable: false,
-        flex: 1
+        flex: 1.6
       },
       {
         field: 'comment',
         headerName: 'Comentarios',
         editable: true,
-        flex: 3
+        flex: 2
       }
     ];
   }
 
-  onSelectedRow(event: any) {
-    console.log(event)
-    this.id = event.data.id;
-  }
-
+  // Método limpio de selección como Income
   onSelectionChanged(event: any) {
-    console.log(event)
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
-      this.selectedRowData = selectedNodes[0].data;
+      this.selectedEstimate = selectedNodes[0].data;
+      this.id = this.selectedEstimate.id;
+      
+      // Mostrar detalle automáticamente al seleccionar
+      this.showEstimateDetail();
     } else {
-      this.selectedRowData = null;
+      this.selectedEstimate = null;
+      this.id = null;
+      this.hideEstimateDetail();
     }
+  }
+
+  // Método para mostrar detalle automáticamente
+  private showEstimateDetail() {
+    if (!this.selectedEstimate || !this.id) {
+      return;
+    }
+    
+    // No aplicar filtros si hay filas temporales (nuevas)
+    const hasNewRows = this.rowData.some(row => row.id && row.id.toString().startsWith('temp_'));
+    if (hasNewRows) {
+      return;
+    }
+
+    this.gridApi.setFilterModel({
+      id: { type: 'equals', filter: this.id }
+    });
+    this.gridApi.onFilterChanged();
+    
+    // Activar generadores después del filtrado
+    this.activateGeneratorsTab();
+  }
+
+  // Método para ocultar detalle
+  private hideEstimateDetail() {
+    this.resetGridSize();
+  }
+
+  // Función para ver detalles de la estimación seleccionada
+  viewEstimateDetails() {
+    if (!this.selectedEstimate) {
+      alerts.basicAlert(
+        'Ver Detalle',
+        'Por favor, seleccione una estimación.',
+        'warning'
+      );
+      return;
+    }
+    
+    this.selectedEstimateForDetail = this.selectedEstimate;
+    this.viewMode = 'detail';
+    this.loadEstimateItems();
+    
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Ver Detalle Items Estimación',
+      'Modulo Proyectos - Estimaciones Detalle',
+      this.trackingService.getEmail()
+    );
+  }
+
+  // Función para volver a la vista maestro
+  backToMasterView() {
+    this.viewMode = 'master';
+    this.selectedEstimateForDetail = null;
+    this.estimateItems = [];
+    this.selectedEstimateItem = null;
+  }
+
+  // Cargar items de la estimación seleccionada (lista simple como generators)
+  private loadEstimateItems() {
+    if (!this.selectedEstimateForDetail?.id) {
+      this.estimateItems = [];
+      return;
+    }
+
+    this.generatorsService.getItemsEstimaciones(this.selectedEstimateForDetail.id)
+      .subscribe({
+        next: (items: any[]) => {
+          this.estimateItems = items || [];
+          console.log('Items de estimación cargados:', this.estimateItems);
+        },
+        error: (error) => {
+          console.error('Error al cargar items de estimación:', error);
+          this.estimateItems = [];
+          alerts.basicAlert(
+            'Error',
+            'Error al cargar los items de la estimación.',
+            'error'
+          );
+        }
+      });
   }
 
   onCellValueChanged(event: any) {
@@ -223,11 +399,19 @@ export class EstimatesComponent {
   }
 
   addRow() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Agregar Estimación',
+      'Modulo Proyectos - Estimaciones',
+      this.trackingService.getEmail()
+    );
+    
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
       number: '',
       idContract: this.contract,
+      typeMoney: 'MX',
       dateStart: '',
       dateEnd: '',
       amountMX: 0,
@@ -264,6 +448,13 @@ export class EstimatesComponent {
   }
 
   async saveChanges() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Guardar Cambios Estimaciones',
+      'Modulo Proyectos - Estimaciones',
+      this.trackingService.getEmail()
+    );
+    
     const isValid = this.rowData.every((item) => item.number);
     if (!isValid) {
       alerts.basicAlert(
@@ -281,6 +472,8 @@ export class EstimatesComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      console.log('Datos limpiados para el servidor:', cleanedData);
+      // Asignar el ID temporal al campo idEstimacion
       return this.estimatesService.addEstimate(cleanedData);
     });
 
@@ -313,6 +506,13 @@ export class EstimatesComponent {
   }
 
   async deleteEntry() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Eliminar Estimación',
+      'Modulo Proyectos - Estimaciones',
+      this.trackingService.getEmail()
+    );
+    
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert(
@@ -324,12 +524,26 @@ export class EstimatesComponent {
     }
 
     const selectedData = selectedNodes[0].data;
+    const estimationNumber = selectedData.number || 'la estimación seleccionada';
+    
+    // Confirmación antes de eliminar
+    const result = await alerts.confirmAlert(
+      'Confirmar eliminación',
+      `¿Está seguro de que desea eliminar ${estimationNumber}? Esta acción no se puede deshacer.`,
+      'warning',
+      'Sí, eliminar'
+    );
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
     const id = selectedData.id;
     selectedData.active = 0;
     this.estimatesService.deleteEstimate(id).pipe(
       catchError((error) => {
         alerts.basicAlert(
-          'Eliminar entrada',
+          'Error al eliminar',
           'Error al eliminar la entrada.',
           'error'
         );
@@ -340,19 +554,13 @@ export class EstimatesComponent {
       .subscribe(
         () => {
           alerts.basicAlert(
-            'Eliminar entrada',
+            'Eliminado',
             'Entrada eliminada satisfactoriamente.',
             'success'
           );
           this.obtenerDatos();
-
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
           this.notSavedChanges = false;
-          this.selectedRowData = null;
+          this.selectedEstimate = null;
         }
       );
   }
@@ -370,6 +578,405 @@ export class EstimatesComponent {
       delete cleanedData.id;
     }
     return cleanedData;
+  }
+
+  // Función separada para filtrar por estimación seleccionada (obsoleta)
+  filterBySelectedEstimate() {
+    // Funcionalidad movida a showEstimateDetail()
+    return;
+  }
+
+  // Función para limpiar filtros
+  clearFilters() {
+    if (this.gridApi) {
+      this.gridApi.setFilterModel(null);
+      // El grid se actualizará automáticamente
+    }
+  }
+
+
+
+
+  async activateGeneratorsTab() {
+    await this.adjustGridSize();
+  }
+
+  async adjustGridSize() {
+    this.gridHeight = '250px'; // Reducir tamaño del grid
+  }
+
+  resetGridSize() {
+    this.gridHeight = '500px'; // Restaurar tamaño original
+    if (this.gridApi) {
+      this.gridApi.setFilterModel(null);
+      this.gridApi.onFilterChanged();
+    }
+  }
+
+  generateSamplePdf() {
+    if (!this.selectedEstimate) {
+      alerts.basicAlert(
+        'Generar PDF',
+        'Por favor, seleccione una estimación para generar el PDF.',
+        'warning'
+      );
+      return;
+    }
+
+    this.generatePdfWithRealData(this.selectedEstimate.id, false);
+  }
+
+  downloadSamplePdf() {
+    if (!this.selectedEstimate) {
+      alerts.basicAlert(
+        'Descargar PDF',
+        'Por favor, seleccione una estimación para descargar el PDF.',
+        'warning'
+      );
+      return;
+    }
+
+    this.generatePdfWithRealData(this.selectedEstimate.id, true);
+  }
+
+  private async generatePdfWithRealData(estimateId: number, download: boolean = false) {
+    try {
+      // Obtener datos de la estimación
+      const estimateData = await lastValueFrom(this.estimatesService.getEstimateById(estimateId));
+      
+      // Obtener items de la estimación
+      const estimateItems = await lastValueFrom(this.estimatesService.getItemsFromEstimate(estimateId));
+      
+      // Obtener conceptos para cada item
+      const conceptPromises = estimateItems.map(item => 
+        lastValueFrom(this.workprogramsService.getWorkProgramsWithoutType(item.idResource))
+      );
+      
+      const conceptsResults = await Promise.all(conceptPromises);
+      
+      // Crear estructura de datos para el PDF
+      const pdfData = await this.createEstimateDataFromServices(estimateData, estimateItems, conceptsResults);
+      
+      if (download) {
+        const fileName = `Estimacion_${estimateData.number}_${new Date().getTime()}.pdf`;
+        this.pdfEstimatesService.downloadEstimatePdf(pdfData, fileName);
+      } else {
+        this.pdfEstimatesService.generateEstimatePdf(pdfData);
+      }
+      
+    } catch (error) {
+      console.error('Error generando PDF:', error);
+      alerts.basicAlert(
+        'Error',
+        'Error al generar el PDF. Por favor, intente nuevamente.',
+        'error'
+      );
+    }
+  }
+
+  private async createEstimateDataFromServices(estimateData: any, estimateItems: any[], conceptsResults: any[][]) {
+    // Procesar items y agrupar por categorías si es necesario
+    const items = estimateItems.map((item, index) => {
+      const concept = conceptsResults[index] && conceptsResults[index].length > 0 
+        ? conceptsResults[index][0] 
+        : null;
+      
+      return {
+        clave: concept?.id || item.idResource,
+        concepto: concept?.text || `Concepto ${item.idResource}`,
+        unidad: concept?.measure || 'PZA',
+        cantidad: concept?.quantity || item.quantity || 0,
+        precioUnitario: concept?.costMX || 0,
+        importe: (concept?.quantity || item.quantity || 0) * (concept?.costMX || 0),
+        cantidadEjecutada: item.accumulate || 0,
+        importeEjecutado: (item.accumulate || 0) * (concept?.costMX || 0),
+        comment: item.comment
+      };
+    });
+
+    // Agrupar por fases o categorías (usando la fase del concepto si está disponible)
+    const categorias = this.groupItemsByCategory(items, conceptsResults);
+
+    // Calcular el total general sumando solo los totales de las categorías (filas grises)
+    const totalGeneral = categorias.reduce((sum, categoria) => sum + categoria.total, 0);
+    
+    // Calcular el total ejecutado sumando los importes ejecutados de las categorías
+    const totalEjecutado = categorias.reduce((sum, categoria) => {
+      const totalEjecutadoCategoria = categoria.items.reduce((catSum, item) => catSum + (item.importeEjecutado || 0), 0);
+      return sum + totalEjecutadoCategoria;
+    }, 0);
+
+    return {
+      proyecto: conceptsResults[0]?.[0]?.text || 'PROYECTO', // Usar el primer concepto como referencia del proyecto
+      estimacion: estimateData.number,
+      fechaInicio: this.formatDateForPdf(estimateData.dateStart),
+      fechaFin: this.formatDateForPdf(estimateData.dateEnd),
+      totalGeneral: totalGeneral, // Suma de totales de categorías (filas grises)
+      totalEjecutado: totalEjecutado, // Suma de importes ejecutados
+      pagina: 1,
+      totalPaginas: 1,
+      categorias: categorias
+    };
+  }
+
+  private groupItemsByCategory(items: any[], conceptsResults: any[][]) {
+    const categoriesMap = new Map();
+    const parentItems = [];
+
+    // Primero, identificar los items Parent y crear categorías para ellos
+    items.forEach((item, index) => {
+      const concept = conceptsResults[index] && conceptsResults[index].length > 0 
+        ? conceptsResults[index][0] 
+        : null;
+      
+      if (concept?.typeActivity === 'Parent') {
+        const categoryName = concept?.text || item.concepto;
+        parentItems.push({ item, concept, categoryName });
+        
+        if (!categoriesMap.has(categoryName)) {
+          categoriesMap.set(categoryName, {
+            nombre: categoryName,
+            total: item.importe || 0,
+            items: []
+          });
+        }
+      }
+    });
+
+    // Luego, procesar todos los items (incluyendo los de phase)
+    items.forEach((item, index) => {
+      const concept = conceptsResults[index] && conceptsResults[index].length > 0 
+        ? conceptsResults[index][0] 
+        : null;
+      
+      // Skip items que ya son categorías Parent
+      if (concept?.typeActivity === 'Parent') {
+        return;
+      }
+      
+      const categoryName = concept?.phase;
+      
+      // Solo procesar si tiene categoryName válido
+      if (categoryName) {
+        if (!categoriesMap.has(categoryName)) {
+          categoriesMap.set(categoryName, {
+            nombre: categoryName,
+            total: 0,
+            items: []
+          });
+        }
+        
+        const category = categoriesMap.get(categoryName);
+        category.items.push(item);
+        category.total += item.importe;
+      }
+    });
+
+    return Array.from(categoriesMap.values());
+  }
+
+  private formatDateForPdf(dateString: string): string {
+    const date = new Date(dateString);
+    const monthsOfYear = [
+      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+    ];
+
+    const day = date.getDate();
+    const monthName = monthsOfYear[date.getMonth()];
+    const year = date.getFullYear();
+
+    return `${day} de ${monthName} de ${year}`;
+  }
+
+  // ======================================================================
+  // ===== MÉTODOS PARA MANEJO DE ITEMS DE ESTIMACIÓN ===================
+  // ======================================================================
+
+  // Selección de items de estimación
+  onEstimateItemSelectionChanged(event: any) {
+    const selectedNodes = event.api.getSelectedNodes();
+    this.selectedEstimateItem = selectedNodes.length > 0 ? selectedNodes[0].data : null;
+  }
+
+  // Cambio de valores en items de estimación
+  onEstimateItemValueChanged(event: any) {
+    console.log('Item de estimación cambiado:', event.data);
+    event.data.__modified = true;
+    this.notSavedChanges = true;
+  }
+
+  // Agregar nuevo item de estimación
+  addEstimateItem() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Agregar Item Estimación',
+      'Modulo Proyectos - Items Estimaciones',
+      this.trackingService.getEmail()
+    );
+
+    if (!this.selectedEstimateForDetail) {
+      alerts.basicAlert('Agregar Item', 'No hay estimación seleccionada.', 'warning');
+      return;
+    }
+
+    const tempId = `temp_${Date.now()}`;
+    const newItem = {
+      id: tempId,
+      idType: this.selectedEstimateForDetail.id,
+      idResource: 0,
+      quantity: 0,
+      accumulate: 0,
+      type: 'ESTIMACION',
+      comment: '',
+      active: true,
+      __isNew: true
+    };
+
+    this.estimateItems = [newItem, ...this.estimateItems];
+    this.notSavedChanges = true;
+
+    // Auto-seleccionar y editar primer campo editable
+    setTimeout(() => {
+      const newRowIndex = this.estimateItems.findIndex((row) => row.id === tempId);
+      if (newRowIndex >= 0 && this.gridApi) {
+        this.gridApi.startEditingCell({
+          rowIndex: newRowIndex,
+          colKey: 'idResource'
+        });
+      }
+    }, 50);
+  }
+
+  // Verificar si hay cambios en items de estimación
+  hasEstimateItemChanges(): boolean {
+    return this.estimateItems.some(item => item.__isNew || item.__modified);
+  }
+
+  // Guardar cambios en items de estimación
+  async saveEstimateItems() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Guardar Items Estimación',
+      'Modulo Proyectos - Items Estimaciones',
+      this.trackingService.getEmail()
+    );
+
+    const isValid = this.estimateItems.every((item) => 
+      item.idResource !== undefined && item.quantity !== undefined
+    );
+    
+    if (!isValid) {
+      alerts.basicAlert(
+        'Guardar Items',
+        'Debe llenar todos los campos requeridos antes de guardar.',
+        'error'
+      );
+      return;
+    }
+
+    const newItems = this.estimateItems.filter((item) => item.__isNew);
+    const modifiedItems = this.estimateItems.filter((item) => item.__modified && !item.__isNew);
+
+    try {
+      // Guardar Items Nuevos
+      for (const item of newItems) {
+        const cleanedData = this.cleanEstimateItemDataForServer(item);
+        const response = await lastValueFrom(this.generatorsService.addItemGenerador(cleanedData));
+        if (response && response.id) {
+          item.id = response.id;
+          item.originalId = response.id;
+        }
+        item.__isNew = false;
+      }
+
+      // Guardar Items Modificados
+      for (const item of modifiedItems) {
+        const cleanedData = this.cleanEstimateItemDataForServer(item);
+        await lastValueFrom(this.generatorsService.updateItemGenerador(item.id, cleanedData));
+        item.__modified = false;
+      }
+
+      alerts.basicAlert(
+        'Datos actualizados',
+        'Los items se han guardado correctamente.',
+        'success'
+      );
+      this.notSavedChanges = false;
+      this.loadEstimateItems(); // Recargar items
+    } catch (error) {
+      console.error('Error al guardar items:', error);
+      alerts.basicAlert(
+        'Error',
+        'Ocurrió un error al guardar los items. Por favor, intente nuevamente.',
+        'error'
+      );
+    }
+  }
+
+  // Eliminar item de estimación
+  async deleteEstimateItem() {
+    if (!this.selectedEstimateItem) {
+      alerts.basicAlert(
+        'Eliminar Item',
+        'Por favor, seleccione un item para eliminar.',
+        'error'
+      );
+      return;
+    }
+
+    const itemName = `el item de recurso ${this.selectedEstimateItem.idResource || 'seleccionado'}`;
+    
+    const result = await alerts.confirmAlert(
+      'Confirmar eliminación',
+      `¿Está seguro de que desea eliminar ${itemName}? Esta acción no se puede deshacer.`,
+      'warning',
+      'Sí, eliminar'
+    );
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
+    const itemId = this.selectedEstimateItem.id;
+
+    // Si es un item temporal, solo eliminarlo de la lista
+    if (itemId.toString().startsWith('temp_')) {
+      this.estimateItems = this.estimateItems.filter(item => item.id !== itemId);
+      this.selectedEstimateItem = null;
+      return;
+    }
+
+    try {
+      await lastValueFrom(this.generatorsService.deleteItemGenerador(itemId));
+      alerts.basicAlert(
+        'Eliminado',
+        'Item eliminado satisfactoriamente.',
+        'success'
+      );
+      this.loadEstimateItems(); // Recargar items
+      this.selectedEstimateItem = null;
+    } catch (error) {
+      console.error('Error al eliminar item:', error);
+      alerts.basicAlert(
+        'Error',
+        'Error al eliminar el item.',
+        'error'
+      );
+    }
+  }
+
+  // Limpiar datos de item para servidor
+  private cleanEstimateItemDataForServer(data: any): any {
+    return {
+      idType: data.idType,
+      idResource: data.idResource,
+      quantity: data.quantity,
+      accumulate: data.accumulate,
+      type: data.type || 'ESTIMACION',
+      comment: data.comment || '',
+      active: data.active !== false
+    };
   }
 
 }

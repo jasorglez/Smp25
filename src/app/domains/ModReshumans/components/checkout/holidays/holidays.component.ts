@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, effect, Component, inject } from '@angular/cor
 import { alerts } from 'app/helpers/alerts';
 import { forkJoin } from 'rxjs';
 import { EmployeeClockData } from 'app/interface/EmpleyeeClock';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormControl } from '@angular/forms';
+  import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormControl } from '@angular/forms';
 import { SignalsService } from 'app/services/signals.service';
 import { ClockService } from 'app/services/clock.service';
 import { CommonModule } from '@angular/common';
@@ -154,6 +154,7 @@ export default class HolidaysComponent {
         if (current > fin) {
           forkJoin(allRequests).subscribe({
             next: (responses) => {
+              //alert('Registros completados: ' + responses.length);
               console.log('✅ Registros completados:', responses);
               alerts.basicAlert('Éxito', 'Se procesaron todos los registros.', 'success');
             },
@@ -170,6 +171,10 @@ export default class HolidaysComponent {
 
         this.employeesService.getEmployeeClockByBranch(this.idBranch, nombreDia).subscribe({
           next: (empleados) => {
+            if (empleados.length === 0) {
+              alerts.basicAlert('Información', `No hay empleados para ${nombreDia} (${fechaStr})`, 'info');
+              return;
+            }
             empleados.forEach((item: any) => {
               const horaSalida = this.sumarHoras(item.entry1, item.hours);
 
@@ -189,12 +194,14 @@ export default class HolidaysComponent {
               const dataIn = {
                 ...baseData,
                 timeStamp: `${fechaStr}T${item.entry1}`,
+                adjustedTimeBySystem: `${fechaStr}T${item.entry1}`,
                 type: 'IN'
               };
 
               const dataOut = {
                 ...baseData,
                 timeStamp: `${fechaStr}T${horaSalida}`,
+                adjustedTimeBySystem: `${fechaStr}T${horaSalida}`,
                 type: 'OUT'
               };
               console.log(dataIn)

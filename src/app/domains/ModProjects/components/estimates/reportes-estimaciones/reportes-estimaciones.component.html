@@ -1,0 +1,96 @@
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h4><i class="bi bi-file-earmark-bar-graph"></i> Reportes de Estimaciones</h4>
+        </div>
+        <div class="card-body">
+          <div class="row mb-3">
+            <div class="col-md-3">
+              <label class="form-label">Fecha Inicio:</label>
+              <input type="date" class="form-control" [(ngModel)]="fechaInicio">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Fecha Fin:</label>
+              <input type="date" class="form-control" [(ngModel)]="fechaFin">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Estado:</label>
+              <select class="form-control" [(ngModel)]="estadoFiltro">
+                <option value="">Todos</option>
+                <option value="NORMAL">Normal</option>
+                <option value="ADICIONAL">Adicional</option>
+                <option value="EXTRAORDIN">Extraordinario</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <button class="btn btn-primary mt-4" (click)="generarReporte()">
+                <i class="bi bi-search"></i> Generar Reporte
+              </button>
+            </div>
+          </div>
+
+          <!-- Botones de exportación -->
+          <div class="row mb-3">
+            <div class="col-12">
+              <button class="btn btn-success me-2" (click)="exportarExcel()">
+                <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+              </button>
+              <button class="btn btn-danger me-2" (click)="exportarPDF()">
+                <i class="bi bi-file-earmark-pdf"></i> Exportar PDF
+              </button>
+              <button class="btn btn-info" (click)="imprimirReporte()">
+                <i class="bi bi-printer"></i> Imprimir
+              </button>
+            </div>
+          </div>
+
+          <!-- Grid de resultados -->
+          <div class="row">
+            <div class="col-12">
+              <ag-grid-angular
+                class="ag-theme-alpine"
+                style="height: 400px; width: 100%;"
+                [rowData]="reporteData"
+                [columnDefs]="columnDefs"
+                [defaultColDef]="defaultColDef"
+                [animateRows]="true"
+                [pagination]="true"
+                [paginationPageSize]="20"
+                (gridReady)="onGridReady($event)">
+              </ag-grid-angular>
+            </div>
+          </div>
+
+          <!-- Resumen estadístico -->
+          <div class="row mt-3" *ngIf="resumenEstadistico">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-header">
+                  <h5>Resumen Estadístico</h5>
+                </div>
+                <div class="card-body">
+                  <div class="row">
+                    <div class="col-md-3">
+                      <strong>Total Estimaciones:</strong> {{ resumenEstadistico.totalEstimaciones }}
+                    </div>
+                    <div class="col-md-3">
+                      <strong>Total MXN:</strong> {{ resumenEstadistico.totalMXN | currency:'MXN':'symbol':'1.2-2' }}
+                    </div>
+                    <div class="col-md-3">
+                      <strong>Total USD:</strong> {{ resumenEstadistico.totalUSD | currency:'USD':'symbol':'1.2-2' }}
+                    </div>
+                    <div class="col-md-3">
+                      <strong>Promedio por Día:</strong> {{ resumenEstadistico.promedioPorDia | currency:'MXN':'symbol':'1.2-2' }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

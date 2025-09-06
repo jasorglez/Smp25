@@ -80,6 +80,7 @@ export class StakeholdersComponent {
   proveedores: Providers[] = [];
   companias: Providers[] = [];
   providersAllList: Providers[] = [];
+  idRoot: number;
 
   private steakService = inject(SteakholderService);
   private signalsService = inject(SignalsService);
@@ -90,6 +91,7 @@ export class StakeholdersComponent {
 
   constructor() {
     effect(() => {
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idProject = this.signalsService.getProjectSelectedBySidebar()();
       console.log(this.idProject);
       if (this.idProject == null) {
@@ -184,7 +186,7 @@ export class StakeholdersComponent {
   }
 
   fetchAllProviders() {
-    this.providersService.getProviders().subscribe(
+    this.providersService.getProviders(this.idRoot).subscribe(
       (data: Providers[]) => {
         this.providersAllList = data;
         console.log(this.proveedores);

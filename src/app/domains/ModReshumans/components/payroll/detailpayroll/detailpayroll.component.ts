@@ -62,7 +62,7 @@ export class DetailpayrollComponent implements OnInit{
   idPayroll: number;
 
   columnDefs: ColDef[] = [
-    { headerName: 'Nombre Empleado', field: 'employeeName', width: 300, filter: true,  filterParams: {defaultToNothingSelected: true,},},
+    { headerName: 'Nombre Empleado', field: 'employeeName', width: 300, filter: true, pinned: 'left',  filterParams: {defaultToNothingSelected: true,},},
     {
       headerName: 'Precio x Hora',
       width: 150,
@@ -123,12 +123,15 @@ export class DetailpayrollComponent implements OnInit{
     },
 
     {
-      headerName: 'Retardos',
+      headerName: 'Salidas Pendientes',
       width: 110,
       field: 'delays',
-     /*  valueFormatter: (params) => {
-        return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
-      } */
+      cellStyle: (params) => {
+           if (params.value !== 0 && params.value != null) {
+             return { backgroundColor: '#fbcccc' }; // Fondo rojo
+           }
+           return null; // Sin estilos
+         }
     },
     {
       headerName: 'Salario Base',
@@ -158,6 +161,7 @@ export class DetailpayrollComponent implements OnInit{
       headerName: 'Bonos',
       width: 100,
       field: 'bonus',
+      cellStyle: { backgroundColor: '#d4edda' },
       valueFormatter: (params) => {
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
       },
@@ -177,6 +181,7 @@ export class DetailpayrollComponent implements OnInit{
       width: 150,
       editable: () => this.signalsService.getClosedPayroll()(),
       field: 'realDiscount',
+      cellStyle: { backgroundColor: '#d4edda' },
       valueFormatter: (params) => {
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
       },
@@ -186,6 +191,7 @@ export class DetailpayrollComponent implements OnInit{
       headerName: 'Ahorros',
       width: 100,
       field: 'savings',
+      cellStyle: { backgroundColor: '#d4edda' },
       valueFormatter: (params) => {
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
       }

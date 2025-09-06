@@ -171,6 +171,123 @@ export const routes: Routes = [
         ],
       },
       {
+        path: 'almacenes',
+        loadComponent: () =>
+          import(
+            './domains/Almacenes/pages/procalmacenes/procalmacenes.component'
+          ).then((a) => a.ProcalmacenesComponent),
+        canActivate: [MasterPermissionsGuard],
+        data: { permissions: { master: 'warehouses' } },
+        children: [
+          { path: '', redirectTo: 'materia-prima', pathMatch: 'full' },
+          {
+            path: 'proveedores',
+            loadComponent: () =>
+              import(
+                './domains/Warehouse/components/providers/providers.component'
+              ).then((p) => p.ProvidersComponent),
+            data: { type: 'PROVIDERS' },
+            canDeactivate: [UnsavedChangesGuard],
+          },
+          {
+            path: 'materia-prima',
+            loadComponent: () =>
+              import(
+                './domains/Almacenes/pages/materia-prima/materia-prima.component'
+              ).then((m) => m.MateriaPrimaComponent),
+            children: [
+              { path: '', redirectTo: 'materiales-maestro', pathMatch: 'full' },
+              {
+                path: 'materiales-maestro',
+                loadComponent: () =>
+                  import(
+                    './domains/Almacenes/components/materiales-maestro/materiales-maestro.component'
+                  ).then((m) => m.MaterialesMaestroComponent),
+                canDeactivate: [UnsavedChangesGuard],
+              },
+              {
+                path: 'cat-fam-sub',
+                loadComponent: () =>
+                  import(
+                    './domains/Almacenes/components/cat-fam-sub/cat-fam-sub.component'
+                  ).then((m) => m.CatFamSubComponent),
+                canDeactivate: [UnsavedChangesGuard],
+              },
+              {
+                path: 'primera-fase',
+                loadComponent: () =>
+                  import(
+                    './domains/Warehouse/components/materials/materials.component'
+                  ).then((m) => m.MaterialsComponent),
+                data: { type: 'PRIMERA_FASE' },
+                canDeactivate: [UnsavedChangesGuard],
+              },
+              {
+                path: 'primera-fase-historico',
+                loadComponent: () =>
+                  import(
+                    './domains/Warehouse/components/materials/materials.component'
+                  ).then((m) => m.MaterialsComponent),
+                data: { type: 'PRIMERA_FASE_HISTORICO' },
+              },
+              {
+                path: 'segunda-fase',
+                loadComponent: () =>
+                  import(
+                    './domains/Warehouse/components/materials/materials.component'
+                  ).then((m) => m.MaterialsComponent),
+                data: { type: 'SEGUNDA_FASE' },
+                canDeactivate: [UnsavedChangesGuard],
+              },
+              {
+                path: 'segunda-fase-historico',
+                loadComponent: () =>
+                  import(
+                    './domains/Warehouse/components/materials/materials.component'
+                  ).then((m) => m.MaterialsComponent),
+                data: { type: 'SEGUNDA_FASE_HISTORICO' },
+              },
+            ],
+          },
+          {
+            path: 'requisiciones',
+            loadComponent: () =>
+              import(
+                './domains/Warehouse/components/requisitionsdelison/requisitionsdelison.component'
+              ).then((r) => r.RequisitionsDelisonComponent),
+            canDeactivate: [UnsavedChangesGuard],
+          },
+          {
+            path: 'ordenes-compra',
+            loadComponent: () =>
+              import(
+                './domains/Warehouse/components/purchaseorderdelison/purchaseorderdelison.component'
+              ).then((p) => p.PurchaseOrderDelisonComponent),
+            canDeactivate: [UnsavedChangesGuard],
+          },
+          {
+            path: 'catalogo',
+            loadComponent: () =>
+              import('./domains/SMP/Components/catalogs/catalogs.component')
+                .then((s) => s.CatalogsComponent),
+            canDeactivate: [UnsavedChangesGuard],
+            children: [
+              {
+                path: ':section',
+                loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(p => p.CatalogsComponent)
+              },
+            ],
+          },
+          {
+            path: 'configuracion',
+            loadComponent: () =>
+              import(
+                './domains/Warehouse/components/configwarehouse/configwarehouse.component'
+              ).then((c) => c.ConfigwarehouseComponent),
+          },
+        ],
+      },
+      {
         path: 'dashboardgrales',
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'dashboard' } },
@@ -312,7 +429,7 @@ export const routes: Routes = [
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'projects' } },
         children: [
-          { path: '', redirectTo: 'ModProjects', pathMatch: 'full' },
+          { path: '', redirectTo: 'ot', pathMatch: 'full' },
           ...SharedModule.getRoutes(),
           {
             path: 'providers',
@@ -327,6 +444,33 @@ export const routes: Routes = [
               import(
                 './domains/ModProjects/components/contracts/contracts.component'
               ).then((c) => c.ContractsComponent),
+          },
+          {
+            path: 'catalogs',
+            loadComponent: () =>
+              import('./domains/SMP/Components/catalogs/catalogs.component')
+                .then((s) => s.CatalogsComponent),
+            canDeactivate: [UnsavedChangesGuard],
+            children: [
+              {
+                path: ':section',
+                loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(p => p.CatalogsComponent)
+              },
+            ],
+          },
+          {
+            path: 'materials',
+            loadComponent: () =>
+              import(
+                './domains/ModProjects/components/ot/materials/materials.component'
+              ).then((c) => c.MaterialsComponent),
+          },
+          {
+            path: 'equipment',
+            loadComponent: () =>
+              import(
+                './domains/ModProjects/components/ot/equipment/equipment.component'
+              ).then((c) => c.EquipmentComponent),
           },
           {
             path: 'projects',
@@ -346,8 +490,39 @@ export const routes: Routes = [
             path: 'estimates',
             loadComponent: () =>
               import(
-                './domains/ModProjects/components/estimates/estimates.component'
-              ).then((r) => r.EstimatesComponent),
+                './domains/ModProjects/pages/procestimates/procestimates.component'
+              ).then((r) => r.ProcesstimatesComponent),
+            children: [
+              { path: '', redirectTo: 'estimates', pathMatch: 'full' },
+              {
+                path: 'estimates',
+                loadComponent: () =>
+                  import(
+                    './domains/ModProjects/components/estimates/estimates.component'
+                  ).then((r) => r.EstimatesComponent),
+              },
+              {
+                path: 'reportes-estimaciones',
+                loadComponent: () =>
+                  import(
+                    './domains/ModProjects/components/estimates/reportes-estimaciones/reportes-estimaciones.component'
+                  ).then((r) => r.ReportesEstimacionesComponent),
+              },
+              {
+                path: 'reportes-generadores',
+                loadComponent: () =>
+                  import(
+                    './domains/ModProjects/components/estimates/reportes-generadores/reportes-generadores.component'
+                  ).then((r) => r.ReportesGeneradoresComponent),
+              },
+              {
+                path: 'diarios-semanales',
+                loadComponent: () =>
+                  import(
+                    './domains/ModProjects/components/estimates/diarios-semanales/diarios-semanales.component'
+                  ).then((r) => r.DiariosSemánalesComponent),
+              },
+            ],
           },
           {
             path: 'ot',
@@ -355,6 +530,14 @@ export const routes: Routes = [
               import(
                 './domains/ModProjects/pages/procot/procot.component'
               ).then((o) => o.ProcotComponent),
+              canActivate: [MasterPermissionsGuard],
+            data: {
+              permissions:
+              {
+                master: 'projects',
+                detailed: 'ot'
+              }
+            },
             children: [
               { path: '', redirectTo: 'ordenes', pathMatch: 'full' },
               ...SharedModule.getRoutes(),
@@ -369,8 +552,8 @@ export const routes: Routes = [
                 path: 'catastrales',
                 loadComponent: () =>
                   import(
-                    './domains/ModProjects/components/ot/catastrales/catastrales.component'
-                  ).then((c) => c.CatastralesComponent),
+                    './domains/ModProjects/components/ot/historicoOT/historicoOT.component'
+                  ).then((c) => c.HistoricoOTComponent),
               },
               {
                 path: 'generales',
@@ -422,7 +605,7 @@ export const routes: Routes = [
                   ).then((d) => d.DetailsComponent),
               },
             ],
-          },
+          }
         ],
       },
       {

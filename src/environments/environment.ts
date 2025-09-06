@@ -40,6 +40,15 @@ export const environment = {
  urlWarehouse      : 'https://bi2.com.mx/warehouse/api', // 5007
  //urlWarehouse    : 'http://localhost:5199/api',
 
+
+
+
+
+
+
+
+
+ 
  urlAdministration : 'https://bi2.com.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
  //urlAdministration : 'http://localhost:5047/api', // 5006 -- Tambien conocido como Tracking
 
@@ -65,7 +74,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.23.9 (15 Julio 2025 13:04)'
+  version: '2.33.1 (04 Septiembre 2025 18:08)'
 
 };
 

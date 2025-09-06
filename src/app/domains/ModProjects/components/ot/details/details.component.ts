@@ -2,10 +2,14 @@ import { Component, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
+import { firstValueFrom } from 'rxjs';
 import { OtService } from 'app/services/ot.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SignalsService } from 'app/services/signals.service';
+import { CatalogsService } from 'app/services/catalogs.service';
+import { AuthService } from 'app/services/auth.service';
+import { TimeService } from 'app/services/time.service';
 import { alerts } from 'app/helpers/alerts';
 
 export interface OtDetails {
@@ -33,6 +37,10 @@ export interface OtDetails {
   lectureWater?: string;
   observations?: string;
   results?: string;
+  idCompany?: number;
+  closed: boolean;
+  closedAt?: string;
+  closedApp: boolean;
   active: boolean;
 }
 
@@ -52,17 +60,26 @@ export class DetailsComponent implements OnInit {
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
+  private catalogService = inject(CatalogsService);
+  private authService = inject(AuthService);
+  private timeService = inject(TimeService);
+  idcompany: number = 0;
+  catalogArea: any [] = [];
   
   public otForm: FormGroup;
   public isEditMode: boolean = false;
   public isLoading: boolean = false;
   public otId: number | null = null;
 
+  datos: OtDetails | null = null;
+
   constructor() {
     this.otForm = this.createForm();
   }
 
   ngOnInit() {
+    this.idcompany = this.signalsService.getRootSelectedBySidebar()();
+    this.obternerArea();
     this.route.params.subscribe(params => {
       if (params['id']) {
         this.otId = +params['id'];
@@ -72,6 +89,15 @@ export class DetailsComponent implements OnInit {
         this.initializeNewOt();
       }
     });
+  }
+  
+  obternerArea(){
+    return this.catalogService.getPhases(this.idcompany).subscribe(
+      (data: any )=> {
+        this.catalogArea = data
+        console.log(this.catalogArea)
+      },
+      (error) => console.error('Error fetching conceptos:', error))
   }
 
   private createForm(): FormGroup {
@@ -99,6 +125,9 @@ export class DetailsComponent implements OnInit {
       lectureWater: ['', [Validators.maxLength(50)]],
       observations: ['', [Validators.maxLength(1000)]],
       results: ['', [Validators.maxLength(1000)]],
+      area: ['', Validators.required],
+      closedApp: [false],
+      closed: [false],
       active: [true]
     });
   }
@@ -110,6 +139,7 @@ export class DetailsComponent implements OnInit {
     this.otForm.patchValue({
       registerDate: new Date().toISOString().split('T')[0],
       idProject: selectedProject ? selectedProject() : 0,
+      closed: false,
       active: true
     });
   }
@@ -119,6 +149,8 @@ export class DetailsComponent implements OnInit {
     this.otService.getOtDetails(id).subscribe({
       next: (data: any) => {
         const otData = data.data || data;
+        console.log('Datos de OT recibidos:', otData);  
+        this.datos = otData;
         
         // Verificar autorización del proyecto
         if (!this.checkProjectAuthorization(otData)) {
@@ -198,6 +230,9 @@ export class DetailsComponent implements OnInit {
       lectureWater: actualData.lectureWater !== undefined ? actualData.lectureWater : '',
       observations: actualData.observations !== undefined ? actualData.observations : '',
       results: actualData.results !== undefined ? actualData.results : '',
+      area: actualData.area !==  undefined ? actualData.area : '',
+      closed: actualData.closed !== undefined ? actualData.closed : false,
+      closedApp: actualData.closedApp !== undefined ? actualData.closedApp : false,
       active: actualData.active !== undefined ? actualData.active : true
     };
 
@@ -205,11 +240,13 @@ export class DetailsComponent implements OnInit {
     this.otForm.updateValueAndValidity();
   }
 
-  onSubmit() {
+  async onSubmit() {
+     console.log('Form valid:', this.otForm.valid);
+  console.log('Form errors:', this.getFormErrors());
     if (this.otForm.valid) {
       this.isLoading = true;
-      const formData = this.prepareFormData();
-
+      const formData = await this.prepareFormData();
+      console.log(formData)
       if (this.isEditMode && this.otId) {
         this.updateOt(formData);
       } else {
@@ -219,9 +256,22 @@ export class DetailsComponent implements OnInit {
       this.markFormGroupTouched();
       alerts.basicAlert('Formulario incompleto', 'Por favor complete todos los campos requeridos', 'warning');
     }
+    
   }
 
-  private prepareFormData(): OtDetails {
+  // Método helper para debuggear
+getFormErrors() {
+  let formErrors: any = {};
+  Object.keys(this.otForm.controls).forEach(key => {
+    const controlErrors = this.otForm.get(key)?.errors;
+    if (controlErrors) {
+      formErrors[key] = controlErrors;
+    }
+  });
+  return formErrors;
+}
+
+  private async prepareFormData(): Promise<OtDetails> {
     const formValue = this.otForm.value;
     
     // Para nuevas OTs, asegurar que el idProject siempre sea el del signal
@@ -229,6 +279,21 @@ export class DetailsComponent implements OnInit {
     if (!this.isEditMode) {
       const selectedProject = this.signalsService.getProjectSelectedBySidebar();
       idProject = selectedProject ? selectedProject() : 0;
+    }
+    
+    // Manejar la lógica de closedAt basado en el estado de closed
+    let closedAt: string | null = null;
+    if (formValue.closed) {
+      try {
+        // Si se marca como cerrado, obtener la fecha y hora actual del timeService
+        const timeData = await firstValueFrom(this.timeService.getTime());
+        closedAt = timeData.localTime;
+        console.log('Tiempo obtenido del servicio:', timeData);
+      } catch (error) {
+        console.error('Error obteniendo tiempo del servicio:', error);
+        // Fallback a fecha local si el servicio falla
+        closedAt = new Date().toISOString();
+      }
     }
     
     return {
@@ -256,6 +321,10 @@ export class DetailsComponent implements OnInit {
       lectureWater: formValue.lectureWater,
       observations: formValue.observations,
       results: formValue.results,
+      area: formValue.area,
+      closed: formValue.closed,
+      closedAt: closedAt,
+      closedApp: formValue.closedApp,
       active: formValue.active
     } as any;
   }
@@ -359,6 +428,21 @@ export class DetailsComponent implements OnInit {
   }
 
   private checkProjectAuthorization(otData: any): boolean {
+    // Si el usuario tiene permisos para ver todas las OTs, verificar por empresa
+    if (this.authService.hasDetailedPermission('projects', 'get-all-ot')) {
+      console.log('Usuario tiene permisos get-all-ot, verificando por empresa');
+      
+      const otCompanyId = otData.idCompany || (Array.isArray(otData) ? otData[0]?.idCompany : otData.data?.idCompany);
+      
+      if (!otCompanyId || this.idcompany !== otCompanyId) {
+        console.warn(`Empresa no autorizada. Seleccionada: ${this.idcompany}, OT pertenece a: ${otCompanyId}`);
+        return false;
+      }
+      
+      return true;
+    }
+    
+    // Si no tiene permisos especiales, verificar por proyecto como antes
     const selectedProject = this.signalsService.getProjectSelectedBySidebar();
     
     if (!selectedProject) {

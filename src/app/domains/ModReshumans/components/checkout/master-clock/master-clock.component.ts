@@ -47,6 +47,10 @@ export default class MasterClockComponent implements OnInit {
         await this.obtenerDatos(); // Actualizar datos cuando se recibe señal
         this.signalsService.resetRefreshEmployees(); // Resetear la señal después de actualizar
       }
+      if (this.signalsService.getRefreshClock()() == true) {
+        await this.obtenerDatos(); // Actualizar datos cuando se recibe señal
+        this.signalsService.setRefreshClock(false); // Resetear la señal después de actualizar
+      }
     });
 
     this.selectFechas = this.fb.group({
@@ -220,12 +224,17 @@ export default class MasterClockComponent implements OnInit {
       },
       // Nivel 2: Bloque con fechas
       {
-        field: 'blockWithDates',
-        headerName: 'Bloque',
-        rowGroup: true,
-        width: 300,
+        field: 'idBlockPeriod',
+        headerName: 'ID Bloque',
         hide: true,
+        filter: 'agTextColumnFilter'
+      },
+      {
+        headerName: 'Bloque (con fechas)',
+        colId: 'blockWithDates', // personalizado
+        rowGroup: true,
         showRowGroup: false,
+        hide: true,
         valueGetter: (params) => {
           if (params.data) {
             const startDate = new Date(params.data.periodStart).toLocaleDateString('es-ES');
@@ -290,7 +299,23 @@ export default class MasterClockComponent implements OnInit {
       {
         field: 'baseHours',
         headerName: 'Horas base',
-        editable: false
+        cellStyle: (params) => {
+          // Solo aplicar estilo si hay un valor numérico válido
+          if (params.value !== null && params.value !== undefined && params.value !== '') {
+            return { backgroundColor: '#d4edda' };
+          }
+          return null;
+        },
+        editable: false,
+        valueFormatter: (params) => {
+        const value = params.value;
+        if (typeof value !== 'number' || isNaN(value)) return '';
+      
+        const hours = Math.floor(value);
+        const minutes = Math.round((value - hours) * 60);
+      
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      },
       },
       {
         field: 'hoursWithMinutes',
@@ -311,6 +336,14 @@ export default class MasterClockComponent implements OnInit {
       {
         field: 'specialExtraHours',
         headerName: 'Horas extra especiales',
+        colId: 'specialExtraHours',
+        cellStyle: (params) => {
+          // Solo aplicar estilo si hay un valor numérico válido
+          if (params.value !== null && params.value !== undefined && params.value !== '') {
+            return { backgroundColor: '#d4edda' };
+          }
+          return null;
+        },
         editable: false
       },
       {
@@ -442,38 +475,53 @@ export default class MasterClockComponent implements OnInit {
 
 
   async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
-    this.signalsService.setProviderOrCustomer(this.type);
-    const colId = event.column.getColId();
-    const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
-    const selectedId = selectedRowData.idEmployee; // Obtener el ID del registro
+  this.signalsService.setProviderOrCustomer(this.type);
 
-    // Filtrar el grid para mostrar solo el registro con el ID seleccionado
-    const filterModel = {
-      idEmployee: {
-        type: 'equals',
-        filter: selectedId,
-      },
-    };
+  const selectedRowData = event.data;
 
-    this.gridApi.setFilterModel(filterModel);
-    this.gridApi.onFilterChanged();
-
-    // Manejar casos especiales para pestañas
-    if (colId === 'specialExtraHours') {
-      if (!this.isOpen) {
-        await this.adjustGridSize();
-        this.showSpecialTimesTab = true;
-        this.isOpen = true;
-      } else {
-        await this.resetGridSize();
-        this.showSpecialTimesTab = false;
-        this.isOpen = false;
-      }
-    } else {
-      await this.activateDetailsTab();
-    }
-    this.selectedRowData = selectedRowData; // Guardar los datos seleccionados
+  if (!selectedRowData) {
+    console.warn('No hay datos en la fila seleccionada');
+    return;
   }
+  console.log('Fila doble clickeada:', selectedRowData);
+
+  //const selectedId = selectedRowData.idEmployee;
+  //const selectedBlock = selectedRowData.idBlockPeriod;
+
+  // ✅ Filtro combinado: empleado + bloque
+  const filterModel = {
+  idEmployee: {
+    type: 'equals',
+    filter: selectedRowData.idEmployee
+  },
+  idBlockPeriod: {
+    type: 'equals',
+    filter: selectedRowData.idBlockPeriod
+  }
+};
+this.gridApi.setFilterModel(filterModel);
+
+  this.gridApi.onFilterChanged();
+
+  // 🧠 Lógica de pestañas
+  const colId = event.column.getColId();
+  if (colId === 'specialExtraHours') {
+    if (!this.isOpen) {
+      await this.adjustGridSize();
+      this.showSpecialTimesTab = true;
+      this.isOpen = true;
+    } else {
+      await this.resetGridSize();
+      this.showSpecialTimesTab = false;
+      this.isOpen = false;
+    }
+  } else {
+    await this.activateDetailsTab();
+  }
+
+  this.selectedRowData = selectedRowData;
+}
+
 
   async activateDetailsTab() {
     if (!this.isOpen) {

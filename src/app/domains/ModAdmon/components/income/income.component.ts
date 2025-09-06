@@ -45,6 +45,7 @@ export class IncomeComponent {
   }
 
   constructor() {
+    
      this.onSelectedRow = this.onSelectedRow.bind(this);
      this.onSelectionChanged = this.onSelectionChanged.bind(this);
 
@@ -179,6 +180,7 @@ export class IncomeComponent {
   };
 
   async getIncomes() {
+    
     this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Ingresos`, 'Menu Administracion Ingresos',
           this.trackingService.getEmail() );
           

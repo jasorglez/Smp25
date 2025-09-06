@@ -1,209 +1,253 @@
-import { Component } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { TranslateModule } from '@ngx-translate/core';
-import { AgGridModule } from 'ag-grid-angular';
-import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { NgApexchartsModule } from 'ng-apexcharts';
+import { DailyReportService } from 'app/services/daily-report.service';
+import { SignalsService } from 'app/services/signals.service';
 
-interface UnidadData {
-  unidad: string;
-  empleado: string;
-  fecha: string;
+// Interfaces para los datos
+interface CuadrillaData {
+  projectName: string;
+  otNumber: string;
+  totalOt: number;
+  totalProject: number;
+}
+
+interface CuadrillaGroup {
+  projectName: string;
+  ots: { otNumber: string; totalOt: number }[];
+  totalProject: number;
+}
+
+interface ChartData {
+  series: number[];
+  labels: string[];
 }
 
 @Component({
   selector: 'app-unidad',
   standalone: true,
-  imports: [CommonModule, TranslateModule, AgGridModule],
+  imports: [CommonModule, NgApexchartsModule],
   templateUrl: './unidad.component.html',
   styleUrl: './unidad.component.scss'
 })
-export class UnidadComponent {
-  
-  // Variables de control
-  public notSavedChanges: boolean = false;
-  private tempIdCounter: number = 1;
+export class UnidadComponent implements OnInit {
 
-  // Configuración del grid
-  public gridApi!: GridApi;
-  public gridOptions: any = {
-    headerHeight: 40,
-    rowHeight: 35,
-    suppressDragLeaveHidesColumns: true,
-    suppressHorizontalScroll: false,
-    animateRows: true,
-    pagination: true,
-    paginationPageSize: 10
+  // Servicios
+  private dailyReportService = inject(DailyReportService);
+  private signalsService = inject(SignalsService);
+
+  // Variables de datos
+  public rawData: CuadrillaData[] = [];
+  public cuadrillasGrouped: CuadrillaGroup[] = [];
+  public generalChartData: ChartData = { series: [], labels: [] };
+  public isLoading: boolean = false;
+  public error: string = '';
+
+  // Configuración base de ApexCharts para gráficas circulares 3D
+  public chartOptions: any = {
+    chart: {
+      type: 'donut',
+      height: 300,
+      animations: {
+        enabled: true,
+        easing: 'easeinout',
+        speed: 800
+      }
+    },
+    plotOptions: {
+      pie: {
+        donut: {
+          size: '60%',
+          labels: {
+            show: true,
+            total: {
+              show: true,
+              showAlways: true,
+              label: 'Total',
+              fontSize: '9px',
+              fontWeight: 700,
+              color: '#333',
+              formatter: (w: any) => {
+                const total = w.globals.seriesTotals.reduce((a: number, b: number) => a + b, 0);
+                return '$' + total.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+              }
+            }
+          }
+        }
+      }
+    },
+    dataLabels: {
+      enabled: true,
+      formatter: (val: number) => {
+        return val.toFixed(1) + '%';
+      },
+      style: {
+        fontSize: '10px',
+        fontWeight: 'bold'
+      }
+    },
+    legend: {
+      show: true,
+      position: 'bottom',
+      fontSize: '10px',
+      formatter: (seriesName: string, opts: any) => {
+        const value = opts.w.globals.series[opts.seriesIndex];
+        return `${seriesName}: $${value.toLocaleString()}`;
+      }
+    },
+    tooltip: {
+      y: {
+        formatter: (val: number) => {
+          return '$' + val.toLocaleString();
+        }
+      }
+    },
+    // Los colores se asignarán dinámicamente por gráfica
   };
 
-  // Definición de columnas
-  public columnDefs: ColDef[] = [
-    {
-      field: 'unidad',
-      headerName: 'Unidad',
-      sortable: true,
-      filter: true,
-      resizable: true,
-      editable: true,
-      flex: 2
-    },
-    {
-      field: 'empleado',
-      headerName: 'Empleado',
-      sortable: true,
-      filter: true,
-      resizable: true,
-      editable: true,
-      flex: 2
-    },
-    {
-      field: 'fecha',
-      headerName: 'Fecha',
-      sortable: true,
-      filter: true,
-      resizable: true,
-      editable: true,
-      flex: 1
-    }
-  ];
-
-  // Datos falsos para el grid
-  public rowData: UnidadData[] = [
-    {
-      unidad: 'CORTES Y RECONEXION',
-      empleado: 'JUAN DE JESUS',
-      fecha: '29/05/2025 00:00'
-    },
-    {
-      unidad: 'MANTENIMIENTO PREVENTIVO',
-      empleado: 'MARIA GONZALEZ',
-      fecha: '30/05/2025 08:00'
-    },
-    {
-      unidad: 'REPARACION DE EQUIPOS',
-      empleado: 'CARLOS RODRIGUEZ',
-      fecha: '31/05/2025 10:30'
-    },
-    {
-      unidad: 'INSTALACION NUEVA',
-      empleado: 'ANA MARTINEZ',
-      fecha: '01/06/2025 14:15'
-    },
-    {
-      unidad: 'INSPECCION TECNICA',
-      empleado: 'LUIS HERRERA',
-      fecha: '02/06/2025 09:45'
-    },
-    {
-      unidad: 'CORTES Y RECONEXION',
-      empleado: 'PEDRO SANCHEZ',
-      fecha: '03/06/2025 16:20'
-    },
-    {
-      unidad: 'MANTENIMIENTO CORRECTIVO',
-      empleado: 'SOFIA TORRES',
-      fecha: '04/06/2025 11:00'
-    },
-    {
-      unidad: 'VERIFICACION DE SERVICIO',
-      empleado: 'DIEGO MORALES',
-      fecha: '05/06/2025 13:30'
-    }
-  ];
-  onGridReady(params: GridReadyEvent) {
-    this.gridApi = params.api;
-    params.api.sizeColumnsToFit();
+  ngOnInit(): void {
+    this.loadData();
   }
 
-  onSelectionChanged(event: any) {
-    const selectedRows = this.gridApi.getSelectedRows();
-    console.log('Fila seleccionada:', selectedRows);
-  }
-
-  onCellValueChanged(event: any) {
-    event.data.__modified = true;
-    this.notSavedChanges = true;
-  }
-
-  // Métodos CRUD
-  addRow() {
-    const tempId = `temp_${this.tempIdCounter++}`;
-    const newItem: UnidadData = {
-      unidad: '',
-      empleado: '',
-      fecha: ''
-    };
+  // Cargar datos del servicio
+  loadData(): void {
+    this.isLoading = true;
+    this.error = '';
     
-    // Agregar propiedades de control
-    (newItem as any).__isNew = true;
-    (newItem as any).id = tempId;
+    const idRoot = this.signalsService.getRootSelectedBySidebar()();
     
-    this.rowData = [newItem, ...this.rowData];
-    this.notSavedChanges = true;
-    
-    // Enfocar en la primera celda editable
-    setTimeout(() => {
-      if (this.gridApi) {
-        this.gridApi.setFocusedCell(0, 'unidad');
-        this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'unidad' });
-      }
-    }, 100);
-  }
-
-  saveChanges() {
-    // Validar datos requeridos
-    const invalidRows = this.rowData.filter(row => 
-      !row.unidad?.trim() || !row.empleado?.trim() || !row.fecha?.trim()
-    );
-    
-    if (invalidRows.length > 0) {
-      alert('Por favor complete todos los campos requeridos antes de guardar.');
+    if (!idRoot) {
+      this.error = 'No hay empresa seleccionada';
+      this.isLoading = false;
       return;
     }
-    
-    // Simular guardado (aquí iría la llamada al API)
-    console.log('Guardando cambios:', this.rowData);
-    
-    // Limpiar flags de control
-    this.rowData.forEach(row => {
-      delete (row as any).__isNew;
-      delete (row as any).__modified;
-      if (!(row as any).id || (row as any).id.startsWith('temp_')) {
-        (row as any).id = Math.random().toString(36).substr(2, 9);
+
+    this.dailyReportService.getTotalxCost(idRoot).subscribe({
+      next: (response: any) => {
+        console.log('🔍 Datos recibidos del servicio:', response);
+        
+        if (response.success && response.data) {
+          this.rawData = response.data;
+          this.processData();
+        } else {
+          this.error = 'No se encontraron datos para la empresa seleccionada';
+        }
+        this.isLoading = false;
+      },
+      error: (error) => {
+        console.error('❌ Error al cargar datos:', error);
+        this.error = 'Error al cargar los datos de costos';
+        this.isLoading = false;
       }
     });
-    
-    this.notSavedChanges = false;
-    alert('Cambios guardados exitosamente.');
   }
 
-  revert() {
-    // Restaurar datos originales (simular recarga desde API)
-    this.rowData = [
-      { unidad: 'CORTES Y RECONEXION', empleado: 'JUAN DE JESUS', fecha: '29/05/2025 00:00' },
-      { unidad: 'MANTENIMIENTO PREVENTIVO', empleado: 'MARIA GONZALEZ', fecha: '30/05/2025 08:00' },
-      { unidad: 'REPARACION DE EQUIPOS', empleado: 'CARLOS RODRIGUEZ', fecha: '31/05/2025 10:30' },
-      { unidad: 'INSTALACION NUEVA', empleado: 'ANA MARTINEZ', fecha: '01/06/2025 14:15' },
-      { unidad: 'INSPECCION TECNICA', empleado: 'LUIS HERRERA', fecha: '02/06/2025 09:45' },
-      { unidad: 'CORTES Y RECONEXION', empleado: 'PEDRO SANCHEZ', fecha: '03/06/2025 16:20' },
-      { unidad: 'MANTENIMIENTO CORRECTIVO', empleado: 'SOFIA TORRES', fecha: '04/06/2025 11:00' },
-      { unidad: 'VERIFICACION DE SERVICIO', empleado: 'DIEGO MORALES', fecha: '05/06/2025 13:30' }
-    ];
-    this.notSavedChanges = false;
+  // Procesar y agrupar los datos
+  processData(): void {
+    // Agrupar por projectName
+    const grouped = this.rawData.reduce((acc, item) => {
+      const existing = acc.find(g => g.projectName === item.projectName);
+      
+      if (existing) {
+        existing.ots.push({
+          otNumber: item.otNumber,
+          totalOt: item.totalOt
+        });
+      } else {
+        acc.push({
+          projectName: item.projectName,
+          ots: [{
+            otNumber: item.otNumber,
+            totalOt: item.totalOt
+          }],
+          totalProject: item.totalProject
+        });
+      }
+      
+      return acc;
+    }, [] as CuadrillaGroup[]);
+
+    this.cuadrillasGrouped = grouped;
+    
+    // Preparar datos para gráfica general
+    this.generalChartData = {
+      series: grouped.map(g => g.totalProject),
+      labels: grouped.map(g => g.projectName)
+    };
+
+    console.log('🔍 Datos procesados:', {
+      gruposIndividuales: this.cuadrillasGrouped.length,
+      datosGenerales: this.generalChartData
+    });
   }
 
-  deleteEntry() {
-    const selectedNodes = this.gridApi.getSelectedNodes();
+  // Paleta de colores diferentes para cada gráfica
+  private chartColorPalettes = [
+    ['#FF4444', '#FF6B6B', '#FF8E8E', '#FFB1B1'], // Rojos
+    ['#4ECDC4', '#6ED4CC', '#8EDCD5', '#AEE4DE'], // Verdes agua
+    ['#45B7D1', '#67C5D9', '#89D3E1', '#ABE1E9'], // Azules
+    ['#96CEB4', '#A8D6C2', '#BADED0', '#CCE6DE'], // Verde menta
+    ['#FFEAA7', '#FFEFB8', '#FFF4C9', '#FFF9DA'], // Amarillos
+    ['#DDA0DD', '#E4B3E4', '#EBC6EB', '#F2D9F2'], // Lilas
+    ['#98D8C8', '#AAE0D0', '#BCE8D8', '#CEF0E0'], // Verde agua claro
+    ['#F7DC6F', '#F9E489', '#FBECA3', '#FDF4BD']  // Dorados
+  ];
+
+  // Obtener configuración específica para cada cuadrilla
+  getCuadrillaChartOptions(cuadrilla: CuadrillaGroup, index: number): any {
+    const colorPalette = this.chartColorPalettes[index % this.chartColorPalettes.length];
     
-    if (selectedNodes.length === 0) {
-      alert('Por favor seleccione una fila para eliminar.');
-      return;
-    }
-    
-    if (confirm('¿Está seguro de que desea eliminar este registro?')) {
-      const selectedData = selectedNodes[0].data;
-      this.rowData = this.rowData.filter(row => row !== selectedData);
-      this.notSavedChanges = true;
-    }
+    return {
+      ...this.chartOptions,
+      series: cuadrilla.ots.map(ot => ot.totalOt),
+      labels: cuadrilla.ots.map(ot => ot.otNumber),
+      colors: colorPalette,
+      title: {
+        text: cuadrilla.projectName,
+        align: 'center',
+        style: {
+          fontSize: '14px',
+          fontWeight: 'bold',
+          color: '#333'
+        }
+      }
+    };
   }
 
+  // Obtener configuración para gráfica general
+  getGeneralChartOptions(): any {
+    // Para la gráfica general, usar el primer color de cada paleta
+    const generalColors = this.chartColorPalettes.map(palette => palette[0]);
+    
+    return {
+      ...this.chartOptions,
+      series: this.generalChartData.series,
+      labels: this.generalChartData.labels,
+      colors: generalColors,
+      title: {
+        text: 'Resumen General por Cuadrilla',
+        align: 'center',
+        style: {
+          fontSize: '16px',
+          fontWeight: 'bold',
+          color: '#333'
+        }
+      },
+      chart: {
+        ...this.chartOptions.chart,
+        height: 400
+      }
+    };
+  }
+
+  // Método para recargar datos
+  reloadData(): void {
+    this.loadData();
+  }
+
+  // Método para calcular total general
+  getTotalGeneral(): string {
+    const total = this.generalChartData.series.reduce((acc, curr) => acc + curr, 0);
+    return total.toLocaleString();
+  }
 }

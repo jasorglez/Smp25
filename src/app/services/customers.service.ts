@@ -28,7 +28,6 @@ export class CustomersService {
     return this.http.get(apiUrl, { headers: this.trackingService.getHeaders() });
   }
 
-
   addCustomer(data: any): Observable<any> {
     return this.http.post(`${environment.urlAdministration}/Customer`, data, { headers: this.trackingService.getHeaders() });
   }

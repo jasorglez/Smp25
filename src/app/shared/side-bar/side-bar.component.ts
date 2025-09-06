@@ -39,6 +39,8 @@ export class SideBarComponent {
   selectedBranchId: string = '';
   selectedCProcessId: number = 0;
   selectedPlatformId: number = 0;
+  userRoot: number = 0;
+
   usersData: any[];
 
   private rootAdministrator: number[] = [];
@@ -62,15 +64,37 @@ export class SideBarComponent {
           setTimeout(() => this.signalsService.resetSignalIncAndExp());
         }
     });
+
+    // 🔄 Effect para sincronización bidireccional Grid → Sidebar
+    effect(() => {
+      const selectedProjectFromSignal = this.signalsService.getProjectSelectedBySidebar()();
+      
+      // Actualizar el ComboBox visual solo si es diferente al valor actual
+      if (selectedProjectFromSignal && selectedProjectFromSignal.toString() !== this.selectedProjectId) {
+        console.log(`🔄 Sidebar ComboBox actualizado: ${this.selectedProjectId} → ${selectedProjectFromSignal}`);
+        this.selectedProjectId = selectedProjectFromSignal.toString();
+        
+        // Forzar actualización del DOM del select
+        setTimeout(() => {
+          const selectElement = document.getElementById('project') as HTMLSelectElement;
+          if (selectElement) {
+            selectElement.value = this.selectedProjectId;
+          }
+        }, 50);
+      }
+    });
   }
 
   async ngOnInit() {
+    this.userRoot = this.signalsService.getUserRoot()();
+    //console.log('User Root:', this.userRoot);
     if (this.signalsService.isidUserEmpty()) {
       this.userService.findEmail(localStorage.getItem('mail')).subscribe({
         next: (datauser: any) => {
           if (datauser) {
             this.trackingService.setId(datauser.id);
             this.signalsService.setidUser(datauser.id);
+              
 
             this.getpermissionxRoots();
           }
@@ -96,6 +120,9 @@ export class SideBarComponent {
     const target = event.target as HTMLSelectElement;
     this.selectedRoot = target.value;
     if (this.selectedRoot) {
+      // Limpiar selects de contracts y projects cuando cambia root
+      this.clearContractsAndProjects();
+      
       this.trackingService.setCompany(target.value);
       this.signalsService.setRootSelectedBySidebar(Number(this.selectedRoot));
       //    this.getpermissionxContracts(parseInt(this.selectedRoot));
@@ -278,6 +305,9 @@ export class SideBarComponent {
     const target = event.target as HTMLSelectElement;
     this.selectedBranchId = target.value;
     if (this.selectedBranchId) {
+      // Limpiar selects de contracts y projects cuando cambia branch
+      this.clearContractsAndProjects();
+      
       // Lógica para añadir la signal de branch
       this.signalsService.setBranchSelectedBySidebar(
         Number(this.selectedBranchId)
@@ -369,6 +399,8 @@ export class SideBarComponent {
       this.trackingService.setnameComp(datacom.name);
       this.signalsService.setCompanyName(datacom.name); // Envio la signal a auth.service
       this.trackingService.setpictureComp(datacom.picture);
+      this.trackingService.setPictureComp2(datacom.picture2);
+      this.trackingService.setPictureComp3(datacom.picture3);
       //this.trackingService.setformatrepint(datacom.formatrep);
       // alert('Format:'+ datacom.formatrep);
     });
@@ -491,10 +523,45 @@ export class SideBarComponent {
   warehouseproc() {
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
+      'Eleccion del menu Compras',
+      'Menu Side Bar',
+      ''
+    );
+  }
+
+  almacenesproc() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
       'Eleccion del menu Almacenes',
       'Menu Side Bar',
       ''
     );
+  }
+
+  private clearContractsAndProjects() {
+    // Limpiar datos de contracts
+    this.contractData = [];
+    this.selectedContractId = '';
+    this.signalsService.setContractSelectedBySidebar(null);
+    
+    // Limpiar datos de projects
+    this.projectData = [];
+    this.selectedProjectId = '';
+    this.signalsService.setProjectSelectedBySidebar(null);
+    this.trackingService.setProject('');
+    
+    // Limpiar los selects en el DOM
+    setTimeout(() => {
+      const contractSelect = document.getElementById('contracts') as HTMLSelectElement;
+      if (contractSelect) {
+        contractSelect.value = '';
+      }
+      
+      const projectSelect = document.getElementById('project') as HTMLSelectElement;
+      if (projectSelect) {
+        projectSelect.value = '';
+      }
+    }, 50);
   }
 
   private loadPermissions() {

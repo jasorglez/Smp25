@@ -106,35 +106,59 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
 
   constructor() {
     effect(() => {
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      this.idProject = this.signalsService.getProjectSelectedBySidebar()();
-      this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-      this.idRequisition = this.signalsService.getIdRequisition()();
-      this.getSetupData();
-      this.idReference = this.projectOrBranch ? this.idProject : this.idBranch;
+      const currentRoot = this.signalsService.getRootSelectedBySidebar()();
+      const currentProject = this.signalsService.getProjectSelectedBySidebar()();
+      const currentBranch = this.signalsService.getBranchSelectedBySidebar()();
+      const currentRequisition = this.signalsService.getIdRequisition()();
 
-      this.obtenerDatos();
-      this.obtenerRequisiciones();
-      this.obtenerProductos();
+      // Si cambió el root, limpiar datos
+      if (this.idRoot !== currentRoot) {
+        this.clearAllData();
+      }
 
-      if (this.idRequisition != null) {
-        this.obtenerDetalles();
+      this.idRoot = currentRoot;
+      this.idProject = currentProject;
+      this.idBranch = currentBranch;
+      this.idRequisition = currentRequisition;
+
+      if (this.idRoot) {
+        this.getSetupData().then(() => {
+          this.idReference = this.projectOrBranch ? this.idProject : this.idBranch;
+          
+          // Solo cargar datos si tenemos la referencia apropiada
+          if (this.idReference) {
+            this.obtenerDatos();
+            this.obtenerRequisiciones();
+            this.obtenerProductos();
+            if (this.idRequisition != null) {
+              this.obtenerDetalles();
+            }
+          }
+        });
       }
     });
   }
 
   ngOnInit() {
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+
     this.signalsService.deleteRequisitionData();
-    this.obtenerDatos();
-    this.obtenerDepartamentos();
-    this.obtenerUbicaciones();
-    this.obtenerMonedas();
-    this.obtenerUsuarios();
-    this.obtenerRequisiciones();
-    this.obtenerProveedores();
-    this.obtenerTipoPago();
-    this.obtenerProductos();
+    this.idProject = this.signalsService.getProjectSelectedBySidebar()();
+    this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+    this.idRequisition = this.signalsService.getIdRequisition()();
+
+    this.getSetupData().then(() => {
+      this.idReference = this.projectOrBranch ? this.idProject : this.idBranch;
+      this.obtenerDatos();
+      this.obtenerDepartamentos();
+      this.obtenerUbicaciones();
+      this.obtenerMonedas();
+      this.obtenerUsuarios();
+      this.obtenerRequisiciones();
+      this.obtenerProveedores();
+      this.obtenerTipoPago();
+      this.obtenerProductos();
+    });
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -171,23 +195,27 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     },
   };
 
-  getSetupData() {
-    this.setupService.getWarehouseSetup(this.idRoot).subscribe({
-      next: (data: any) => {
-        this.projectOrBranch = data[0].projectOrBranch;
-        this.typeReference = this.projectOrBranch ? 'project' : 'branch';
-        console.log(this.projectOrBranch);
-      },
-      error: (err) => {
-        if (err.status === 404) {
-          console.error(err);
-          alerts.basicAlert(
-            'Requisiciones',
-            'No se encontró la configuración de almacenes de la empresa.',
-            'error'
-          );
-        }
-      },
+  getSetupData(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.setupService.getWarehouseSetup(this.idRoot).subscribe({
+        next: (data: any) => {
+          this.projectOrBranch = data[0].projectOrBranch;
+          this.typeReference = this.projectOrBranch ? 'project' : 'branch';
+          console.log(this.projectOrBranch);
+          resolve();
+        },
+        error: (err) => {
+          if (err.status === 404) {
+            console.error(err);
+            alerts.basicAlert(
+              'Orden de Compra',
+              'No se encontró la configuración de almacenes de la empresa.',
+              'error'
+            );
+          }
+          reject(err);
+        },
+      });
     });
   }
 
@@ -637,7 +665,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   }
 
   obtenerProveedores() {
-    this.providersService.getProviders().subscribe(
+    this.providersService.getProviders(this.idRoot).subscribe(
       (data: any) => {
         this.proveedores = data;
         console.log(this.proveedores);
@@ -1089,6 +1117,35 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   }
 
   // ==================== UTILITY METHODS ====================
+
+  private clearAllData() {
+    // Limpiar datos master
+    this.masterRowData = [];
+    this.masterSelectedRowData = null;
+    this.newlyAddedMasterRows = [];
+    this.masterNotSavedChanges = false;
+
+    // Limpiar datos details
+    this.detailsRowData = [];
+    this.detailsSelectedRowData = null;
+    this.newlyAddedDetailRows = [];
+    this.detailsNotSavedChanges = false;
+
+    // Limpiar catálogos
+    this.requisiciones = [];
+    this.proveedores = [];
+    this.departamentos = [];
+    this.monedas = [];
+    this.usuarios = [];
+    this.tipoPago = [];
+    this.productos = [];
+    
+    // Limpiar IDs
+    this.idReference = null;
+    this.idRequisition = null;
+    this.projectOrBranch = null;
+    this.typeReference = null;
+  }
 
   private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };

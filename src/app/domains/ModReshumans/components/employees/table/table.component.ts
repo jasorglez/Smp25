@@ -339,11 +339,12 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       {
         field: 'employeeCode',
         headerName: 'UserName',
-        //headerClass: 'required-header',
+        headerClass: 'required-header',
         editable: true,
         suppressMovable: true,
         width: 170,
         filter: 'agSetColumnFilter',
+        cellStyle: (params) => this.validateRequiredField(params.value),
         filterParams: {
           defaultToNothingSelected: true,
         },
@@ -538,6 +539,15 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         headerName: 'Horas base',
         hide: this.idRoot == 18,
         editable: false,
+        valueFormatter: (params) => {
+        const value = params.value;
+        if (typeof value !== 'number' || isNaN(value)) return '';
+      
+        const hours = Math.floor(value);
+        const minutes = Math.round((value - hours) * 60);
+      
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      },
       },
       {
         field: 'idDepto',
@@ -767,14 +777,15 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             }
           },
         },
-        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-          if (!event.node.group) {
-            this.modalServiceTable.showModal({
-              params: event,
-              value: event.value,
-            });
-          }
-        },
+        // Modal deshabilitado para evitar conflictos entre componentes
+        // onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+        //   if (!event.node.group) {
+        //     this.modalServiceTable.showModal({
+        //       params: event,
+        //       value: event.value,
+        //     });
+        //   }
+        // },
         cellRenderer: (params: ICellRendererParams) => {
           if (params.node.group) {
             return params.value.toUpperCase();

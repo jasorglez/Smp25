@@ -34,6 +34,25 @@
               </div>
             </div>
 
+         <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label required">{{ 'Área' | translate }}</label>
+              <select
+                class="form-select"
+                formControlName="area"
+                [class.is-invalid]="isFieldInvalid('area')"
+              >
+                <option value="" disabled selected hidden>Seleccione un área</option>
+                <option *ngFor="let area of catalogArea" [value]="area.description">
+                  {{ area.description }}
+                </option>
+              </select>
+              <div class="invalid-feedback" *ngIf="isFieldInvalid('area')">
+                {{ getFieldError('area') }}
+              </div>
+            </div>
+          </div>
+
             <div class="row mb-3">
               <div class="col-md-4">
                 <label class="form-label required">{{ 'Fecha de Registro' | translate }}</label>
@@ -295,6 +314,54 @@
                   rows="4"
                   formControlName="results"
                   placeholder="Ingrese los resultados del trabajo..."></textarea>
+              </div>
+            </div>
+
+            <!-- Estado de la OT -->
+            <div class="row mb-4">
+              <div class="col-12">
+                <h5 class="section-title">
+                  <i class="bi bi-check-circle me-2"></i>
+                  {{ 'Estado de la OT' | translate }}
+                </h5>
+                <hr>
+              </div>
+            </div>
+
+            <div class="row mb-4">
+              <div class="col-md-6">
+                <div class="form-check">
+                  <div class="d-flex align-items-center gap-4 mb-2">
+                    <div class="form-check m-0">
+                      <input 
+                        class="form-check-input" 
+                        type="checkbox" 
+                        id="closedCheckboxWeb"
+                        formControlName="closed">
+                      <label class="form-check-label fw-bold ms-2" for="closedCheckboxWeb">
+                        <i class="bi bi-check-circle-fill me-1 text-success"></i>
+                        {{ 'Cerrado Web' | translate }}
+                      </label>
+                    </div>
+                  
+                    <div class="form-check m-0">
+                      <input 
+                        class="form-check-input" 
+                        type="checkbox" 
+                        id="closedCheckboxApp"
+                        formControlName="closedApp">
+                      <label class="form-check-label fw-bold ms-2" for="closedCheckboxApp">
+                        <i class="bi bi-check-circle-fill me-1 text-success"></i>
+                        {{ 'Cerrado App' | translate }}
+                      </label>
+                    </div>
+                  </div>
+
+                  <div class="form-text">
+                    {{ 'Marque esta casilla cuando la OT esté completada' | translate }}
+                  </div>
+                </div>
+                
               </div>
             </div>
 

@@ -1,0 +1,115 @@
+<div class="row p-1"> <!-- Reducimos el padding general de p-3 a p-1 -->
+    <div class="col-12">
+        <!-- Indicador de Vista Actual -->
+        <div class="row mb-1"> <!-- Reducimos el margen inferior de mb-2 a mb-1 -->
+            <div class="col-12">
+                <!-- Eliminamos el margen inferior mb-3 y ajustamos padding con py-2 -->
+                <div class="alert alert-info d-flex justify-content-between align-items-center py-2"> 
+                    <div>
+                        <!-- Hacemos el título un poco más pequeño con h6 y sin margen inferior -->
+                        <h6 class="mb-0" *ngIf="viewMode === 'master'">
+                            <i class="bi bi-folder2"></i> Generadores - Vista Maestro
+                        </h6>
+                        <h6 class="mb-0" *ngIf="viewMode === 'detail'">
+                            <i class="bi bi-file-text"></i> Generador: {{ selectedGeneratorForDetail?.numero || 'N/A' }} - Vista Detalle
+                        </h6>
+                        <!-- Mantenemos el texto pequeño como estaba -->
+                        <small class="text-muted" *ngIf="viewMode === 'master'">
+                            Haga doble-click en un generador para ver sus items
+                        </small>
+                        <small class="text-muted" *ngIf="viewMode === 'detail'">
+                            Mostrando items del generador seleccionado
+                        </small>
+                    </div>
+                    <button class="btn btn-outline-secondary btn-sm" 
+                            *ngIf="viewMode === 'detail'" 
+                            (click)="backToMasterView()">
+                        <i class="bi bi-arrow-left"></i> Volver a Maestro
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Eliminamos el margen inferior de esta fila por completo -->
+        <div class="row"> 
+            <!-- Botones MAESTRO - Solo en Vista Maestro -->
+            <nav class="col-auto d-flex flex-column align-items-start" *ngIf="viewMode === 'master'">
+                <div class="mb-2 small text-primary fw-bold">
+                    <i class="bi bi-folder2"></i> GENERADORES
+                </div>
+                <button type="button" class="btn btn-primary me-1 mb-2" (click)="addGenerator()" 
+                        title="Agregar nuevo generador">
+                    <i class="bi bi-plus-lg"></i>
+                </button>
+                <button type="button" class="btn btn-success position-relative mb-2" (click)="saveTreeChanges()">
+                    <i class="bi bi-floppy"></i>
+                    <span
+                        class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+                        *ngIf="notSavedChanges">
+                        <span class="visually-hidden">Hay cambios sin guardar</span>
+                    </span>
+                </button>
+                <button type="button" class="btn btn-warning mb-2" (click)="revert()">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+                <button type="button" class="btn btn-danger mb-2" (click)="deleteGenerator()" 
+                        [disabled]="!selectedRowData">
+                    <i class="bi bi-trash"></i>
+                </button>
+                <button type="button" class="btn btn-info mb-2" (click)="viewGeneratorDetail()" 
+                        [disabled]="!selectedRowData"
+                        title="Ver detalle del generador seleccionado">
+                    <i class="bi bi-eye"></i>
+                </button>
+                
+                <!-- Indicador del generador seleccionado -->
+                <div class="mt-2 small text-muted" *ngIf="selectedRowData">
+                    <i class="bi bi-folder2"></i>
+                    {{ selectedRowData?.numero || 'Generador' }} seleccionado
+                </div>
+            </nav>
+            <div class="col">
+                <!-- Tree Data Grid -->
+                <!-- Aumentamos la altura del grid para que ocupe el espacio ganado -->
+                <ag-grid-angular 
+                    style="width: 100%; height: 550px;" 
+                    class="ag-theme-quartz small-text-ag-grid" 
+                    [rowData]="treeData"
+                    [columnDefs]="columnDefs" 
+                    [gridOptions]="gridOptions"
+                    (cellValueChanged)="onCellValueChanged($event)" 
+                    (gridReady)="onGridReady($event)" 
+                    rowSelection="single">
+                </ag-grid-angular>
+            </div>
+            
+            <!-- Botones DETALLE - Solo en Vista Detalle -->
+            <nav class="col-auto d-flex flex-column align-items-end" *ngIf="viewMode === 'detail'">
+                <div class="mb-2 small text-success fw-bold">
+                    <i class="bi bi-file-text"></i> ITEMS
+                </div>
+                <button type="button" class="btn btn-outline-primary mb-2" (click)="addItem()" 
+                        title="Agregar item al generador: {{ selectedGeneratorForDetail?.numero }}">
+                    <i class="bi bi-plus-lg"></i>
+                </button>
+                <button type="button" class="btn btn-outline-success mb-2" (click)="saveItems()"
+                        [disabled]="!hasItemChanges()">
+                    <i class="bi bi-floppy"></i>
+                </button>
+                <button type="button" class="btn btn-outline-danger mb-2" (click)="deleteItem()" 
+                        [disabled]="!isItemSelected()">
+                    <i class="bi bi-trash"></i>
+                </button>
+                
+                <!-- Indicador del item seleccionado -->
+                <div class="mt-2 small text-muted text-end" *ngIf="isItemSelected()">
+                    <i class="bi bi-file-text"></i>
+                    Item {{ selectedRowData?.idResource || 'seleccionado' }}
+                </div>
+                <div class="mt-1 small text-success text-end">
+                    Generador: {{ selectedGeneratorForDetail?.numero }}
+                </div>
+            </nav>
+        </div>
+    </div>
+</div>
