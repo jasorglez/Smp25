@@ -48,6 +48,7 @@ interface OrdenesData {
 //  idTabla: number;
   registerDate: string;
   otNumber: string;
+  cuentaHoja: string;
   assignedTo: string;
   description: string;
   nameConsumer: string;
@@ -618,7 +619,7 @@ obtenerAnoMes(fecha) {
         this.onProjectChangedWithConfirmation(params);
       }
     },
-        {
+    {
       field: 'cdc',
       headerName: 'CDC',
       sortable: true,
@@ -631,6 +632,15 @@ obtenerAnoMes(fecha) {
           this.selectedOt.cdc = params.newValue;
         }
       }
+    },
+    {
+      field: 'cuentaHoja',
+      headerName: 'Hoja',
+      sortable: true,
+      filter: true,
+      resizable: true,
+      flex: 3,
+      editable: true,      
     },
     {
       field: 'otNumber',
