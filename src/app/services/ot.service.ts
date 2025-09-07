@@ -41,7 +41,6 @@ export class OtService {
     deleteOt(idOt: number): Observable<any> {
       return this.http.delete(`${environment.urlSmp}/OT/${idOt}`, { headers: this.trackingService.getHeaders() });
     }
-
     
     addOtViaPdf(idProject: number, pdfFile: File): Observable<any> {
       const formData = new FormData();
