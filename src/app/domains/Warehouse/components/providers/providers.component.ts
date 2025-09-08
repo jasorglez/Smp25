@@ -228,7 +228,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
       
       {
         field: 'nameContact',
-        headerName: 'Nombre Contacto',
+        headerName: 'Contacto principal + tooltip',
         editable: true,
         filter: true,
         cellEditor: 'autocompleteEditor',
@@ -280,360 +280,76 @@ export class ProvidersComponent implements CanComponentDeactivate {
         },
       },
       {
-        field: 'company',
-        headerName: 'Compania',
+        field: 'vigente',
+        headerName: 'Compañía',
         editable: true,
-        width: 250,
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        suppressMovable: true,
-        filter: true,
-        valueSetter: (params) => {
-          params.data[params.colDef.field] = params.newValue.toUpperCase();
-          return true;
-        }
-        /*cellEditor: 'agPopupTextCellEditor',
-        cellEditorParams: {
-          maxLength: 100,
-          cols: 50,
-          rows: 3,
-          onKeyDown: (event: KeyboardEvent) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.stopPropagation();
-            }
-          },
-        },
-        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-          if (!event.node.group) {
-            this.modalServiceTable.showModal({
-              params: event,
-              value: event.value,
-            });
-          }
-        },
-        cellRenderer: (params: ICellRendererParams) => {
-          if (params.node.group) {
-            return params.value;
-          }
-          return params.value;
-        },*/
-      },
-      {
-        field: 'total',
-        headerName:
-          this.type === 'CUSTOMERS' ? 'Total Credito' : 'Cuentas X Pagar',
-        editable: false,
-        filter: 'agNumberColumnFilter',
-        suppressMovable: true,
-        width: 160,
-        valueFormatter: (params) => {
-          if (params.value) {
-            return new Intl.NumberFormat('es-MX', {
-              style: 'currency',
-              currency: 'MXN',
-            }).format(params.value);
-          }
-          return '$0.00';
-        },
-        cellStyle: { backgroundColor: '#d4edda' },
-      },
-      /*{
-        field: 'idBranch',
-        headerName: 'Nombre sucursal',
-        headerClass: 'required-header',
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        hide:
-          this.authService.hasDetailedPermission(
-            'principal',
-            'see-all-branches'
-          ) || this.signalsService.getemailChoose() === environment.root
-            ? false
-            : true,
-        editable: true,
-        filter: true,
-        width: 170,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: (params) => {
-          // Ensure depto data is available when creating editor
-          return {
-            values: this.branchs ? this.branchs.map((item) => item.id) : [],
-          };
-        },
-        valueFormatter: (params) => {
-          // Handle potential null values and properly format the displayed value
-          if (!params.value) return '';
-
-          const foundBranch = this.branchs
-            ? this.branchs.find((item) => item.id === params.value)
-            : null;
-
-          return foundBranch ? foundBranch.name : params.value;
-        },
-        valueGetter: (params) => {
-          if (!params.data || !params.data.idBranch) return '';
-          const branch = this.branchs?.find(b => b.id === params.data.idBranch);
-          return branch ? branch.name : '';
-        },
-      },*/
-      
-      /*{
-        field: 'idTypecop',
-        headerName: this.type == 'CUSTOMERS'? 'Tipo cliente' : 'Tipo proveedor',
-        editable: true,
-        width: 150,
-        //hide: this.type != 'CUSTOMERS',
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.Typecop ? this.Typecop.map((item) => item.id) : [],
-        },
-        valueFormatter: (params) => {
-          const foundItem = this.Typecop
-            ? this.Typecop.find((item) => item.id === params.value)
-            : null;
-          return foundItem ? `${foundItem.description}` : params.value;
-        },
-      },*/
-      {
-        field: 'cp',
-        headerName: 'CP',
-        editable: true,
-        filter: true,
-        width: 105,
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-      },
-      {
-        field: 'address',
-        headerName: 'Direccion',
-        editable: true,
-        width: 250,
-        filter: true,
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        valueSetter: (params) => {
-          params.data[params.colDef.field] = params.newValue.toUpperCase();
-          return true;
-        }
-        /*cellEditor: 'agPopupTextCellEditor',
-        cellEditorParams: {
-          maxLength: 100,
-          cols: 50,
-          rows: 3,
-          onKeyDown: (event: KeyboardEvent) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.stopPropagation();
-            }
-          },
-        },
-        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-          if (!event.node.group) {
-            this.modalServiceTable.showModal({
-              params: event,
-              value: event.value,
-            });
-          }
-        },
-        cellRenderer: (params: ICellRendererParams) => {
-          if (params.node.group) {
-            return params.value;
-          }
-          return params.value;
-        },*/
-      },
-      /*{
-        field: 'addressfiscal',
-        headerName: 'Direccion Fiscal',
-        editable: false,
-        width: 250,
-        filter: true,
-        hide: true,
-        cellEditor: 'agPopupTextCellEditor',
-        cellEditorParams: {
-          maxLength: 100,
-          cols: 50,
-          rows: 3,
-          onKeyDown: (event: KeyboardEvent) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.stopPropagation();
-            }
-          },
-        },
-        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-          if (!event.node.group) {
-            this.modalServiceTable.showModal({
-              params: event,
-              value: event.value,
-            });
-          }
-        },
-        cellRenderer: (params: ICellRendererParams) => {
-          if (params.node.group) {
-            return params.value;
-          }
-          return params.value;
-        },
-      },*/
-      {
-        field: 'state',
-        headerName: 'Estado',
-        filter: true,
-        width: 160,
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        editable: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.estados, // Usar la lista de estados obtenida
-        },
-      },
-      {
-        field: 'city',
-        headerName: 'Ciudad',
-        editable: true,
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        width: 120,
-        filter: true,
-      },
-      {
-        field: 'neighborhood',
-        headerName: 'Colonia',
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        editable: true,
-        filter: true,
-        width: 300,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: (params) => {
-          if (this.infoCp && this.infoCp.length > 0) {
-            const asentamientos = this.infoCp[0].asentamientos;
-            // Ordenar los asentamientos alfabéticamente
-            const sortedAsentamientos = asentamientos.sort((a, b) =>
-              a.localeCompare(b)
-            );
-            return {
-              values: sortedAsentamientos,
-            };
-          }
-          return { values: [] };
-        },
-        valueFormatter: (params) => {
-          return params.value || 'Seleccionar asentamiento';
-        },
-      },
-      {
-        field: 'phone',
-        headerName: 'Telefono',
-        editable: true,
-        width: 120,
-        valueSetter: (params) => {
-          const phoneValue = params.newValue;
-          // Verificar que el número tenga exactamente 10 dígitos y sea numérico
-          const isValidPhone = /^\d{10}$/.test(phoneValue);
-          if (!isValidPhone) {
-            alerts.basicAlert(
-              'Teléfono inválido',
-              'El teléfono debe contener exactamente 10 dígitos numéricos.',
-              'error'
-            );
-            return false; // No se permite el cambio
-          }
-          params.data[params.colDef.field] = phoneValue;
-          return true;
-        },
-      },
-      {
-        field: 'rfc',
-        headerName: 'RFC',
-        editable: true,
-        hide: true,
         width: 100,
       },
-      
-      { field: 'radio', headerName: 'Radio', editable: true, width: 90 , hide: this.type != 'CUSTOMERS'},
-      /*{
-        field: 'latitud',
-        headerName: 'Latitud',
+      {
+        field: 'vigente',
+        headerName: 'Area',
         editable: true,
-        width: 110,
-        filter: true,
+        width: 100,
       },
       {
-        field: 'longitud',
-        headerName: 'Longitud',
+        field: 'vigente',
+        headerName: 'Telefono principal',
         editable: true,
-        width: 120,
-        filter: true,
-      },*/
-
+        width: 100,
+      },
       {
-        field: 'email',
-        headerName: 'Correo',
-        width: 200,
-        cellEditor: 'agTextCellEditor',
-        editable: (params) => params.data.__isNew,
-        cellEditorParams: {
-          useFormatter: true,
-        },
-        valueFormatter: (params) => params.value,
-        valueSetter: (params) => {
-          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-          if (emailRegex.test(params.newValue)) {
-            const duplicateExists = this.rowData.some(
-              (row, index) =>
-                index !== params.node.rowIndex && row.email === params.newValue
-            );
-            if (duplicateExists) {
-              alerts.basicAlert(
-                'Añadir usuario',
-                'Ya existe un usuario con ese correo electrónico.',
-                'error'
-              );
-              return false;
-            }
-            params.data[params.colDef.field] = params.newValue;
-            return true;
-          } else {
-            alerts.basicAlert(
-              'Editar usuario',
-              'Correo electrónico no válido.',
-              'error'
-            );
-            return false;
-          }
-        },
-      },{
-        field: 'id',
-        headerName: 'Id',
-        editable: false,
-        width: 70,
-        hide: true,
-        filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
-        filterParams: {
-          filterOptions: ['equals'], // Opciones de filtro
-        },
+        field: 'vigente',
+        headerName: 'Correo principal',
+        editable: true,
+        width: 100,
+      },
+      {
+        field: 'vigente',
+        headerName: 'Informacion de contacto + dk + tooltip',
+        editable: true,
+        width: 100,
+      },
+      {
+        field: 'vigente',
+        headerName: 'Bancos + dk + tooltip',
+        editable: true,
+        width: 100,
+      },
+      {
+        field: 'vigente',
+        headerName: 'Cuentas por pagar + dk + tooltip',
+        editable: true,
+        width: 100,
+      },
+      {
+        field: 'vigente',
+        headerName: 'Cp',
+        editable: true,
+        width: 100,
+      },
+      {
+        field: 'vigente',
+        headerName: 'Dirección',
+        editable: true,
+        width: 100,
+      },
+      {
+        field: 'vigente',
+        headerName: 'Estado',
+        editable: true,
+        width: 100,
+      },
+      {
+        field: 'vigente',
+        headerName: 'Ciudad',
+        editable: true,
+        width: 100,
+      },
+      {
+        field: 'vigente',
+        headerName: 'Colonia',
+        editable: true,
+        width: 100,
       },
     ];
   }

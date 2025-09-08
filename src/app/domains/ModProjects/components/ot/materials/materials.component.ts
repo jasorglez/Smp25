@@ -405,7 +405,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
   }
 
   async saveMasterChanges() {
-    const isValid = this.rowData.every(
+    /*const isValid = this.rowData.every(
       (item) => item.barCode && item.description && item.idMedida && item.date
     );
     if (!isValid) {
@@ -415,7 +415,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
         'error'
       );
       return;
-    }
+    }*/
 
     const newRows = this.rowData.filter((row) => row.__isNew);
     const modifiedRows = this.rowData.filter(
