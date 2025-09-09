@@ -469,7 +469,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
   }
 
   obtenerTipoPago() {
-    this.currencyService.getPaymentTypes().subscribe(
+    this.currencyService.getPaymentTypes(this.idRoot).subscribe(
       (data: Catalog[]) => {
         this.tipoPago = data;
       },
