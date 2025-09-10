@@ -201,7 +201,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         next: (data: any) => {
           this.projectOrBranch = data[0].projectOrBranch;
           this.typeReference = this.projectOrBranch ? 'project' : 'branch';
-          console.log(this.projectOrBranch);
+          console.log('Referencia', this.typeReference);
           resolve();
         },
         error: (err) => {
@@ -320,21 +320,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
             : null;
           return foundItem ? `${foundItem.name}` : params.value;
         },
-      },
-      {
-        field: 'delivery',
-        headerName: 'Entrega',
-        editable: true,
-        filter: true,
-        width: 150,
-      },
-      {
-        field: 'deliveryTime',
-        headerName: 'Tiempo de entrega',
-        editable: true,
-        filter: true,
-        width: 150,
-      },
+      },     
       {
         field: 'idCurrency',
         headerName: 'Moneda',
@@ -379,13 +365,59 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         editable: true,
         width: 150,
       },
+       {
+        field: 'delivery',
+        headerName: 'Entrega',
+        editable: true,
+        filter: true,
+        width: 150,
+      },
+      {
+        field: 'deliveryTime',
+        headerName: 'Tiempo de entrega',
+        editable: true,
+        filter: true,
+        width: 150,
+      },
       {
         field: 'conditions',
         headerName: 'Condición',
         editable: true,
         width: 150,
+      },     
+      {
+        field: 'idSolicit',
+        headerName: 'Solicita',
+        editable: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.usuarios ? this.usuarios.map((item) => item.id) : [],
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.usuarios
+            ? this.usuarios.find((item) => item.id === params.value)
+            : null;
+          return foundItem ? `${foundItem.displayName}` : params.value;
+        },
       },
       {
+        field: 'idAuthorize',
+        headerName: 'Autoriza',
+        editable: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.usuarios ? this.usuarios.map((item) => item.id) : [],
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.usuarios
+            ? this.usuarios.find((item) => item.id === params.value)
+            : null;
+          return foundItem ? `${foundItem.displayName}` : params.value;
+        },
+      },
+       {
         field: 'comments',
         headerName: 'Comentario',
         editable: false,
@@ -415,8 +447,8 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
           }
           return params.value;
         },
-      },
-      {
+      }
+    /*  {
         field: 'address',
         headerName: 'Dirección',
         editable: false,
@@ -508,39 +540,8 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
           }
           return params.value;
         },
-      },
-      {
-        field: 'idSolicit',
-        headerName: 'Solicita',
-        editable: true,
-        width: 150,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.usuarios ? this.usuarios.map((item) => item.id) : [],
-        },
-        valueFormatter: (params) => {
-          const foundItem = this.usuarios
-            ? this.usuarios.find((item) => item.id === params.value)
-            : null;
-          return foundItem ? `${foundItem.displayName}` : params.value;
-        },
-      },
-      {
-        field: 'idAuthorize',
-        headerName: 'Autoriza',
-        editable: true,
-        width: 150,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.usuarios ? this.usuarios.map((item) => item.id) : [],
-        },
-        valueFormatter: (params) => {
-          const foundItem = this.usuarios
-            ? this.usuarios.find((item) => item.id === params.value)
-            : null;
-          return foundItem ? `${foundItem.displayName}` : params.value;
-        },
-      },
+      },*/
+      
     ];
   }
 
@@ -712,7 +713,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   }
 
   obtenerTipoPago() {
-    this.currencyService.getPaymentTypes().subscribe(
+    this.currencyService.getPaymentTypes(this.idRoot).subscribe(
       (data: Catalog[]) => {
         this.tipoPago = data;
       },
@@ -789,7 +790,8 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     const newItem = {
       id: tempId,
       folio: '',
-      idProject: this.idProject,
+      typeReference: this.typeReference,
+      idReference: this.idProject,
       dateCreate: new Date().toISOString(),
       idProvider: 0,
       idDepartament: 0,
@@ -807,9 +809,9 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       typeOc: 'INSUMOS',
       idSolicit: 0,
       idRequisition: 0,
-      address: '',
-      city: '',
-      phone: '',
+      address: 'NA',
+      city: 'NA',
+      phone: 'NA',
       ivaRetention: 0,
       discount: 0,
       active: true,

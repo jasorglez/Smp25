@@ -13,6 +13,6 @@ export class DepartmentsService {
   private trackingService = inject(TrackingService);
 
   getDepartments(idCompany: number) {
-    return this.http.get(`${environment.urlWarehouse}/Catalog/getCatalogs?idCompany=${idCompany}&type=departament`, { headers: this.trackingService.getHeaders() });
+    return this.http.get(`${environment.urlWarehouse}/Catalog/getCatalogs?idCompany=${idCompany}&type=DEPARTAMENT`, { headers: this.trackingService.getHeaders() });
   }
 }

@@ -494,7 +494,7 @@ export class ReceiptsService {
               this.detailedReq.type == 'OC'
                 ? this.isInOut
                   ? ['auto', 'auto', 'auto', 'auto', '*']
-                  : ['auto', 'auto', '*', 'auto', 'auto', 'auto', 'auto']
+                  : ['auto', 'auto', 'auto', 'auto', '*', 'auto', 'auto']
                 : this.isInOut
                 ? ['auto', 'auto', 'auto', 'auto', '*']
                 : ['auto', 'auto', 'auto', 'auto', '*', 'auto'],
