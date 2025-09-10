@@ -44,18 +44,19 @@
         (cellDoubleClicked)="onCellDoubleClicked($event)"
         [components]="components"
         [stopEditingWhenCellsLoseFocus]="true" 
+        [context]="{ componentParent: this }"
         [localeText]="AG_GRID_LOCALE_ES">
       </ag-grid-angular>
     </div>
   </div>
 </div>
 
- <!--<div class="row">
+<div class="row">
   <div class="col-12">
-   <ul class="nav nav-tabs" id="myTab" role="tablist">
+    <!--<ul class="nav nav-tabs" id="myTab" role="tablist">
      
 
-    </ul>
+    </ul>-->
 
     <div class="tab-content" id="myTabContent">
       <div class="tab-pane fade show active" id="credits" role="tabpanel" aria-labelledby="credit-tab" *ngIf="showCreditsTab">
@@ -65,4 +66,5 @@
     </div>
   </div>
 
-</div>-->
+</div>
+

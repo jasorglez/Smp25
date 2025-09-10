@@ -2,6 +2,7 @@ import { Component, effect, HostListener, inject } from '@angular/core';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import * as bootstrap from 'bootstrap';
 import {
   CellDoubleClickedEvent,
   ColDef,
@@ -26,6 +27,7 @@ import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-edito
 import { SignalsService } from 'app/services/signals.service';
 import { ProvidersPaymentsComponent } from './providers-payments.component';
 import { DetailCellRendererComponent } from './detail-cell-renderer.component';
+import { DetailCellRendererComponentContact } from './details/detail-cell-renderer-contact.component';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { RadiusinfluenceComponent } from 'app/domains/ModAdmon/components/radiusinfluence/radiusinfluence.component';
 import { CustomersService } from 'app/services/customers.service';
@@ -40,7 +42,8 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '@env/environment';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
-import { TrackingService } from 'app/services/tracking.service';  
+import { TrackingService } from 'app/services/tracking.service';
+//import { DetailCellRendererComponent_1 as DetailCellRendererComponent } from "./details/detail-cell-renderer-contact.component";  
 
 @Component({
   selector: 'app-customers',
@@ -52,7 +55,8 @@ import { TrackingService } from 'app/services/tracking.service';
     MultiLineEditorComponent,
     ProvidersPaymentsComponent,
     DetailCellRendererComponent,
-  ],
+    DetailCellRendererComponentContact
+],
   templateUrl: './providers.component.html',
   styleUrls: ['./providers.component.scss'],
 })
@@ -99,6 +103,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      this.idCompany = this.signalsService.getRootSelectedBySidebar()();
       if (this.idBranch) {
         this.obtenerDatos();
         this.obtenerBranchs();
@@ -128,7 +133,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
         'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
     }
   }
-
   
   type: string = ''; // Para almacenar el tipo (CUSTOMERS o PROVIDERS)
   gridHeight: string = '75vh';
@@ -140,6 +144,13 @@ export class ProvidersComponent implements CanComponentDeactivate {
   branchs: any[] = [];
   Typecop: any[] = [];
   contactoCatalog: any[] = [];
+  
+  popoverVisible = false;
+  popoverTop = -50;
+  popoverLeft = 0;
+  popoverData: any = null;
+  estadobanck: boolean = false;
+  estadoid: number = 0;
   
   // Agregar esta nueva variable para almacenar el ID de la última fila editada
   private lastEditedRowId: number | string | null = null;
@@ -156,6 +167,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
   private tempIdCounter: number = 0;
   selectedTab: string = 'customers-payments';
   idBranch: number = null;
+  idCompany: number = null;
   idEmployee: number;
   infoCp: any;
   
@@ -187,7 +199,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
   nameClient = this.signalsService.getNameClient()();
 
   public gridOptions: any = {
-    headerHeight: 25,
+    /*headerHeight: 25,
     rowHeight: 20,
     suppressEnterWhenEditing: false,
     rowBuffer: 20,
@@ -195,7 +207,9 @@ export class ProvidersComponent implements CanComponentDeactivate {
     isRowMaster: (dataItem) => {
       return true; // Todas las filas de proveedores son maestras
     },
-    detailCellRenderer: 'detailCellRenderer',
+    //
+    detailCellRenderer: 'detailCellRenderer',*/
+    
     rowClass: (params) => {
       if (params.node.isSelected()) {
         return 'selected-row';
@@ -228,11 +242,27 @@ export class ProvidersComponent implements CanComponentDeactivate {
       
       {
         field: 'nameContact',
-        headerName: 'Contacto principal + tooltip',
+        headerName: 'Contacto principal',
         editable: true,
         filter: true,
         cellEditor: 'autocompleteEditor',
         width: 200,
+        /*cellRenderer: (params) => { 
+          const div = document.createElement('div'); 
+          div.innerText = params.value; 
+          const rowData = params.data;
+          div.addEventListener('mouseenter', () => { 
+            console.log('Hover sobre celda:', params.value); 
+            console.log('Datos completos de la fila:', rowData);
+            const modal = new bootstrap.Modal(document.getElementById('bonus')!);
+            modal.show();
+          }); 
+          div.addEventListener('mouseleave', () => { 
+            console.log('Mouse fuera de celda:', params.value); 
+            div.setAttribute('data-bs-dismiss', 'modal');
+          }); 
+          return div; 
+        },*/
         cellEditorParams: {
           filterList: this.rowData?.map(e => e.nameContact
           ),
@@ -280,79 +310,142 @@ export class ProvidersComponent implements CanComponentDeactivate {
         },
       },
       {
-        field: 'vigente',
+        field: 'company',
         headerName: 'Compañía',
         editable: true,
         width: 100,
       },
       {
-        field: 'vigente',
-        headerName: 'Area',
-        editable: true,
-        width: 100,
-      },
-      {
-        field: 'vigente',
+        field: 'phone',
         headerName: 'Telefono principal',
         editable: true,
         width: 100,
       },
       {
-        field: 'vigente',
+        field: 'email',
         headerName: 'Correo principal',
         editable: true,
         width: 100,
       },
       {
-        field: 'vigente',
-        headerName: 'Informacion de contacto + dk + tooltip',
+        field: 'fieldContact',
+        headerName: 'Informacion de contacto',
         editable: true,
         width: 100,
+        
       },
       {
-        field: 'vigente',
-        headerName: 'Bancos + dk + tooltip',
+        field: 'fieldBank',
+        headerName: 'Bancos',
         editable: true,
         width: 100,
+        cellRenderer: (params) => {
+          const div = document.createElement('div');
+          div.innerText = params.value;
+          const rowData = params.data;
+          // Acceder al componente Angular
+          //const scope = params.context.componentParent;
+          let lastHoveredId: number | null = null;
+          div.addEventListener('mouseenter', (event: MouseEvent) => {
+            console.log('Hover sobre celda:', params.value);
+            console.log('Datos completos de la fila:', rowData.id);
+
+            if (lastHoveredId !== rowData.id) {
+              lastHoveredId = rowData.id;
+              console.log("activo", rowData.id);
+            } else {
+              lastHoveredId = null;
+              console.log("inactivo", rowData.id);
+            }
+          });
+        
+          div.addEventListener('mouseleave', () => {
+            console.log('Mouse fuera de celda:', params.value);
+          });
+        
+          return div;
+        },
       },
       {
-        field: 'vigente',
-        headerName: 'Cuentas por pagar + dk + tooltip',
+        field: 'fieldCuenta',
+        headerName: 'Cuentas por pagar',
         editable: true,
         width: 100,
+        /*cellRenderer: (params) => {
+        const div = document.createElement('div');
+        div.innerText = params.value;
+              
+        const tooltip = document.createElement('div');
+        tooltip.classList.add('custom-tooltip');
+        tooltip.style.position = 'absolute';
+        tooltip.style.backgroundColor = 'rgba(255, 255, 255, 100)';
+        tooltip.style.color = 'black';
+        tooltip.style.padding = '6px 10px';
+        tooltip.style.borderRadius = '4px';
+        tooltip.style.fontSize = '12px';
+        tooltip.style.whiteSpace = 'nowrap';
+        tooltip.style.pointerEvents = 'none';
+        tooltip.style.zIndex = '9999';
+        tooltip.style.display = 'none'; // oculto por defecto
+              
+        // ⚠️ Evita que se quede colgado si no se borra después
+        document.body.appendChild(tooltip);
+              
+        div.addEventListener('mouseenter', (e) => {
+          const rowData = params.data;
+
+          tooltip.innerHTML = `<table><tr><td>${rowData.nameContact}</td></tr></table>`; // Cambia esto según tus datos
+          tooltip.style.display = 'block';
+        
+          // Posicionar tooltip cerca del mouse
+          const rect = div.getBoundingClientRect();
+          tooltip.style.left = `${rect.right + 10}px`;
+          tooltip.style.top = `${rect.top}px`;
+        
+          console.log('Hover sobre celda:', params.value);
+        });
+      
+        div.addEventListener('mouseleave', () => {
+          tooltip.style.display = 'none';
+        });
+      
+        return div;
+      },*/
       },
       {
-        field: 'vigente',
+        field: 'cp',
         headerName: 'Cp',
         editable: true,
         width: 100,
       },
       {
-        field: 'vigente',
+        field: 'address',
         headerName: 'Dirección',
         editable: true,
         width: 100,
       },
       {
-        field: 'vigente',
+        field: 'city',
         headerName: 'Estado',
         editable: true,
         width: 100,
       },
       {
-        field: 'vigente',
+        field: 'state',
         headerName: 'Ciudad',
         editable: true,
         width: 100,
       },
       {
-        field: 'vigente',
+        field: '',
         headerName: 'Colonia',
         editable: true,
         width: 100,
       },
     ];
   }
+
+  
 
   obtenerDatos() {
     if (!this.idBranch) {
@@ -365,7 +458,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
     return new Promise((resolve) => {
       this.customerService
-        .getCustomers(this.idBranch, this.type)
+        .getProviders(this.idCompany)
         .subscribe({
           next: (data: any) => {
             this.rowData = data;
@@ -530,6 +623,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
     const newItem = {
       id: tempId,
       idBranch: this.idBranch,
+      idRoot: this.idRoot,
       nameContact: '',
       company: '',
       phone: '',

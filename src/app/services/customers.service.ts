@@ -21,6 +21,11 @@ export class CustomersService {
     //alert(apiUrl)  
     return this.http.get(`${environment.urlAdministration}/Customer/branch/${id}?type=${type}`, { headers: this.trackingService.getHeaders() });
   }
+  getProviders(id: number) {
+    //const apiUrl = `${environment.urlAdministration}/Customer/branch/${id}?type=${type}`;      
+    //alert(apiUrl)  
+    return this.http.get(`${environment.urlWarehouse}/Material/matprov/${id}`, { headers: this.trackingService.getHeaders() });
+  }
 
   getCustomersByCompany(root : number, type: string) {
     
