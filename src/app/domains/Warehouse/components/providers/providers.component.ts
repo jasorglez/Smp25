@@ -28,6 +28,8 @@ import { SignalsService } from 'app/services/signals.service';
 import { ProvidersPaymentsComponent } from './providers-payments.component';
 import { DetailCellRendererComponent } from './detail-cell-renderer.component';
 import { DetailCellRendererComponentContact } from './details/detail-cell-renderer-contact.component';
+import { DetailCellRendererComponentBanck } from './details/detail-cell-renderer-banck.component';
+import { DetailCellRendererComponentCuentas } from './details/detail-cell-renderer-cuentas.component';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { RadiusinfluenceComponent } from 'app/domains/ModAdmon/components/radiusinfluence/radiusinfluence.component';
 import { CustomersService } from 'app/services/customers.service';
@@ -144,6 +146,12 @@ export class ProvidersComponent implements CanComponentDeactivate {
   branchs: any[] = [];
   Typecop: any[] = [];
   contactoCatalog: any[] = [];
+  // VARIABLES GLOBALES compartidas por todas las columnas
+  lastHoveredId: number | null = null;
+  lastHoveredColumn: string | null = null;
+  collapseTimerColumn: ReturnType<typeof setTimeout> | null = null;
+  hoverDelayTimer: ReturnType<typeof setTimeout> | null = null;
+
 
   estadobanck: boolean = false;
   estadoid: number = 0;
@@ -152,6 +160,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
   private lastEditedRowId: number | string | null = null;
 
   private lastExpandedNode: any = null;
+  private collapseTimer: any = null; // MEJORA: Temporizador para el colapso del detalle
   rowData: any;
   contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
@@ -175,7 +184,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
     filter: false,
     resizable: true,
     lockPosition: false,
-    enableRowGroup: true, // Enable row grouping for all columns
+    enableRowGroup: true, // Enable row grouping for all columnsddsd
     flex: 1,
   };
 
@@ -188,42 +197,78 @@ export class ProvidersComponent implements CanComponentDeactivate {
   components = {
     multiLineEditor: MultiLineEditorComponent,
     autocompleteEditor: AutocompleteEditorComponent,
-    detailCellRenderer: DetailCellRendererComponent,
+    detailCellRenderer: DetailCellRendererComponentContact,
+    detailCellRendererBanck: DetailCellRendererComponentBanck,
+    detailCellRendererCuentas: DetailCellRendererComponentCuentas
   };
 
   idClient = this.signalsService.getIdClient();
   nameClient = this.signalsService.getNameClient()();
 
   public gridOptions: any = {
-    headerHeight: 25,
-    rowHeight: 20,
-    suppressEnterWhenEditing: false,
-    rowBuffer: 20,
-    masterDetail: true,
-    isRowMaster: (dataItem) => {
-      return true; // Todas las filas de proveedores son maestras
-    },
-    detailCellRenderer: 'detailCellRenderer',
-    rowClass: (params) => {
-      if (params.node.isSelected()) {
-        return 'selected-row';
-      }
-      return '';
-    },
-    onRowClicked: (event) => {
-      event.node.setSelected(true);
-    },
-    onRowSelected: (event) => {
-      if (event.node.isSelected()) {
-        this.gridApi.forEachNode((node) => {
-          if (node.id !== event.node.id) {
-            node.setSelected(false);
+  headerHeight: 25,
+  rowHeight: 20,
+  suppressEnterWhenEditing: false,
+  rowBuffer: 20,
+  masterDetail: true,
+  isRowMaster: (dataItem) => {
+    return true; // Todas las filas de proveedores son maestras
+  },
+  detailCellRendererSelector: (params) => {
+    // Decide qué renderizador usar basado en la propiedad 'detailType'
+    if (params.data.detailType === 'contact') {
+      return {
+        component: 'detailCellRenderer',
+        // MEJORA: Añadir listeners para controlar el colapso al entrar/salir del panel de detalle
+        params: {
+          onMouseEnter: () => clearTimeout(this.collapseTimer),
+          onMouseLeave: () => {
+            params.node.setExpanded(false);
           }
-        });
-      }
-    },
-    
-  };
+        }
+      };
+    } else if (params.data.detailType === 'bank') {
+      return { component: 'detailCellRendererBanck' };
+    }else if (params.data.detailType === 'Cuentas') {
+      return { component: 'detailCellRendererCuentas' };
+    }
+    return undefined; // No mostrar detalle si no hay tipo
+  },
+  
+  rowClass: (params) => {
+    if (params.node.isSelected()) {
+      return 'selected-row';
+    }
+    return '';
+  },
+  onRowClicked: (event) => {
+    event.node.setSelected(true);
+  },
+  onRowSelected: (event) => {
+    if (event.node.isSelected()) {
+      this.gridApi.forEachNode((node) => {
+        if (node.id !== event.node.id) {
+          node.setSelected(false);
+        }
+      });
+    }
+  },
+
+  // ⭐ Nuevo evento: mostrar detalle al pasar el mouse por fieldContact
+  /*onCellMouseOver: (event) => {
+    if (event.column.getColId() === 'fieldContact') {
+      event.node.setExpanded(true); // Expande la fila
+    }
+  },
+
+  // (Opcional) colapsar cuando el mouse salga
+  onCellMouseOut: (event) => {
+    if (event.column.getColId() === 'fieldContact') {
+      event.node.setExpanded(false); // Colapsa la fila
+    }
+  }*/
+};
+
 
   get colMaster(): ColDef[] {
     return [
@@ -310,6 +355,24 @@ export class ProvidersComponent implements CanComponentDeactivate {
         width: 100,
       },
       {
+        field: 'fieldContact',
+        headerName: 'Contactos',
+        cellRenderer: this.createHoverCellRenderer('contact'),
+        editable: false
+      },
+      {
+        field: 'fieldBank',
+        headerName: 'Bancos',
+        editable: false,
+        cellRenderer: this.createHoverCellRenderer('bank')
+      },
+      {
+        field: 'fieldCuenta',
+        headerName: 'Cuentas',
+        cellRenderer: this.createHoverCellRenderer('Cuentas'),
+        editable: false
+      },
+      {
         field: 'phone',
         headerName: 'Telefono principal',
         editable: true,
@@ -353,6 +416,93 @@ export class ProvidersComponent implements CanComponentDeactivate {
       },
     ];
   }
+
+createHoverCellRenderer(detailType: string): (params: any) => HTMLElement {
+  // Variables compartidas entre celdas
+  let lastHoveredId: number | null = null;
+  let hoverDelayTimer: ReturnType<typeof setTimeout> | null = null;
+  let collapseTimer: ReturnType<typeof setTimeout> | null = null;
+
+  return (params: any): HTMLElement => {
+    const div = document.createElement('div');
+    div.innerText = params.value;
+
+    const rowData = params.data;
+    const node = params.node;
+    const api = params.api;
+
+    let isExpanded = false;
+
+    div.addEventListener('mouseenter', () => {
+      // Cancelar temporizadores pendientes
+      if (hoverDelayTimer) {
+        clearTimeout(hoverDelayTimer);
+        hoverDelayTimer = null;
+      }
+
+      if (collapseTimer) {
+        clearTimeout(collapseTimer);
+        collapseTimer = null;
+      }
+
+      // Iniciar temporizador para detectar hover prolongado
+      hoverDelayTimer = setTimeout(() => {
+        console.log('Hover sostenido sobre celda:', params.value);
+        console.log('Fila ID:', rowData.id);
+
+        const isSameRow = lastHoveredId === rowData.id;
+
+        if (isSameRow) {
+          // ✅ Si es la misma fila → colapsar
+          node.setExpanded(false);
+          lastHoveredId = null;
+          isExpanded = false;
+          console.log("Fila colapsada:", rowData.id);
+        } else {
+          // ✅ Si es una nueva fila → expandir
+          rowData.detailType = detailType;
+          rowData.tieneDetalle = true;
+
+          api.forEachNode((n) => {
+            if (n.id !== node.id) {
+              n.setExpanded(false);
+            }
+          });
+
+          node.setExpanded(true);
+          lastHoveredId = rowData.id;
+          isExpanded = true;
+          console.log("Fila expandida:", rowData.id);
+        }
+
+        hoverDelayTimer = null;
+      }, 500); // 1 segundo de hover requerido
+    });
+
+    div.addEventListener('mouseleave', () => {
+      // Cancelar el hover retrasado si el mouse sale antes
+      if (hoverDelayTimer) {
+        clearTimeout(hoverDelayTimer);
+        hoverDelayTimer = null;
+      }
+
+      // Si la fila está expandida, iniciar colapso con retardo
+      if (lastHoveredId === rowData.id && isExpanded && !collapseTimer) {
+        collapseTimer = setTimeout(() => {
+          node.setExpanded(false);
+          lastHoveredId = null;
+          isExpanded = false;
+          collapseTimer = null;
+          console.log("Fila colapsada por mouseleave:", rowData.id);
+        }, 300); // 300ms de retardo
+      }
+    });
+
+    return div;
+  };
+}
+
+
 
   handleRowHover(event: any) {
     const node = event.node;
@@ -514,19 +664,45 @@ export class ProvidersComponent implements CanComponentDeactivate {
     // Configurar master-detail después de que el grid esté listo
     this.gridApi.setGridOption('detailCellRendererParams', {
       context: {
-        loadProviderContacts: (providerId: number, callback: any) => {
-          this.loadProviderXTableData(providerId, callback);
+        CONTACT: {
+          load: (providerId: number, type: string, callback: any) => {
+            this.loadProviderXTableData(providerId, type, callback);
+          },
+          save: (providerId: number, data: any[], type: string) => {
+            this.saveProviderDetailsById(providerId, data, type);
+          },
+          delete: (params: any, callback: any) => {
+            this.deleteDetailRow(params);
+            callback();
+          }
         },
-        saveProviderContacts: (providerId: number, data: any[]) => {
-          this.saveProviderContactsById(providerId, data);
+        BANK: {
+          load: (providerId: number, type: string, callback: any) => {
+            this.loadProviderXTableData(providerId, type, callback);
+          },
+          save: (providerId: number, data: any[], type: string) => {
+            this.saveProviderDetailsById(providerId, data, type);
+          },
+          delete: (params: any, callback: any) => {
+            this.deleteDetailRow(params);
+            callback();
+          }
         },
-        deleteProviderContact: (params: any, callback: any) => {
-          this.deleteDetailRow(params);
-          callback();
-        },
-        type: 'CONTACT'
+        CUENTA: {
+          load: (providerId: number, type: string, callback: any) => {
+            this.loadProviderXTableData(providerId, type, callback);
+          },
+          save: (providerId: number, data: any[], type: string) => {
+            this.saveProviderDetailsById(providerId, data, type);
+          },
+          delete: (params: any, callback: any) => {
+            this.deleteDetailRow(params);
+            callback();
+          }
+        }
       }
     });
+
 
     // Expandir todas las filas por defecto después de cargar datos
     setTimeout(() => {
@@ -933,8 +1109,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
     ];
   }
 
-  loadProviderXTableData(providerId: number, successCallback: any) {
-    this.providersService.getProvidersXTable(providerId, 'CONTACT').subscribe({
+  loadProviderXTableData(providerId: number, type: string, successCallback: any) {
+    this.providersService.getProvidersXTable(providerId, type).subscribe({
       next: (data: any) => {
         this.providersXTableData[providerId] = data;
         successCallback(data);
@@ -969,9 +1145,9 @@ export class ProvidersComponent implements CanComponentDeactivate {
         await lastValueFrom(this.providersService.deleteProviderXTable(detailId));
         alerts.basicAlert('Contacto eliminado', 'El contacto se eliminó correctamente.', 'success');
         
-        // Recargar los datos del detalle según el tipo
-        this.loadProviderXTableData(providerId, (data) => {
-          this.providersXTableData[providerId] = data;
+        // Recargar los datos del detalle
+        this.loadProviderXTableData(providerId, params.data.type, (data) => {
+          this.providersXTableData[providerId] = data; // Esto puede que no sea necesario si el grid se refresca solo
           params.api.applyTransaction({ remove: [params.data] });
         });
       } catch (error) {
@@ -985,7 +1161,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
     }
   }
 
-  async saveProviderContactsById(providerId: number, data: any[]) {
+  async saveProviderDetailsById(providerId: number, data: any[], type: string) {
     const newDetails = data.filter((row: any) => row.__isNew);
     const modifiedDetails = data.filter((row: any) => row.__modified && !row.__isNew);
 
@@ -1000,13 +1176,13 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
       if (newDetails.length > 0 || modifiedDetails.length > 0) {
         alerts.basicAlert(
-          'Contactos guardados',
-          'Se han guardado los contactos correctamente.',
+          'Detalles guardados',
+          'Se han guardado los detalles correctamente.',
           'success'
         );
 
         // Recargar datos del proveedor específico
-        this.loadProviderXTableData(providerId, (refreshedData) => {
+        this.loadProviderXTableData(providerId, type, (refreshedData) => {
           this.providersXTableData[providerId] = refreshedData;
         });
       }
@@ -1015,7 +1191,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
       console.error('Error saving contacts:', error);
       alerts.basicAlert(
         'Error',
-        'Error al guardar los contactos.',
+        'Error al guardar los detalles.',
         'error'
       );
     }
@@ -1064,7 +1240,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
       // Reload contact data
       for (const providerId of Object.keys(this.providersXTableData)) {
-        this.loadProviderXTableData(Number(providerId), (data) => {
+        this.loadProviderXTableData(Number(providerId), 'CONTACT', (data) => { // Asumiendo que esto es para contactos, si no, se necesita el tipo
           this.providersXTableData[Number(providerId)] = data;
         });
       }

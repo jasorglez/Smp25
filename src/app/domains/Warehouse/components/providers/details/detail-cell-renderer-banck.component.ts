@@ -5,35 +5,35 @@ import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 
 @Component({
-  selector: 'app-detail-cell-renderer-contact',
+  selector: 'app-detail-cell-renderer-banck',
   standalone: true,
   imports: [AgGridModule, CommonModule],
-  template: `<!-- MEJORA: Añadir listeners para evitar que el panel se cierre al pasar el mouse sobre él -->
+  template: `
     <div 
       style="padding: 10px; background-color: #f8f9fa;"
       (mouseenter)="params.onMouseEnter && params.onMouseEnter()"
       (mouseleave)="params.onMouseLeave && params.onMouseLeave()">
-      <!-- Grid de Contactos -->
+      <!-- Grid de Banckos -->
       <div style="margin-bottom: 15px; height: 250px;">
         <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-          <strong>Contactos de: {{ providerName }}</strong>
+          <strong>Bancos de: {{ providerName }}</strong>
           <div>
             <button 
               class="btn btn-sm btn-success me-2" 
-              (click)="addContact()"
-              [disabled]="!contactGridApi">
+              (click)="addBanck()"
+              [disabled]="!BanckGridApi">
               <i class="bi bi-person-plus"></i> Agregar
             </button>
             <button 
               class="btn btn-sm btn-primary me-2" 
-              (click)="saveContacts()"
-              [disabled]="!hasContactChanges">
+              (click)="saveBancks()"
+              [disabled]="!hasBanckChanges">
               <i class="bi bi-floppy"></i> Guardar
             </button>
             <button 
               class="btn btn-sm btn-danger" 
-              (click)="deleteSelectedContact()"
-              [disabled]="!selectedContact">
+              (click)="deleteSelectedBanck()"
+              [disabled]="!selectedBanck">
               <i class="bi bi-trash"></i> Borrar
             </button>
           </div>
@@ -41,36 +41,36 @@ import { CommonModule } from '@angular/common';
         <ag-grid-angular
           class="ag-theme-quartz small-text-ag-grid"
           style="height: 100%; width: 100%;"
-          [columnDefs]="contactColumnDefs"
-          [rowData]="contactRowData"
-          [gridOptions]="contactGridOptions"
-          (gridReady)="onContactGridReady($event)"
-          (cellValueChanged)="onContactCellValueChanged($event)"
+          [columnDefs]="BanckColumnDefs"
+          [rowData]="BanckRowData"
+          [gridOptions]="BanckGridOptions"
+          (gridReady)="onBanckGridReady($event)"
+          (cellValueChanged)="onBanckCellValueChanged($event)"
           [components]="components">
         </ag-grid-angular>
       </div>
     </div>
   `
 })
-export class DetailCellRendererComponentContact implements ICellRendererAngularComp {
+export class DetailCellRendererComponentBanck implements ICellRendererAngularComp {
   params: any;
   providerId: number;
   providerName: string;
   
-  // Contact grid properties
-  contactRowData: any[] = [];
-  hasContactChanges: boolean = false;
-  contactGridApi: any;
-  selectedContact: any = null;
+  // Banck grid properties
+  BanckRowData: any[] = [];
+  hasBanckChanges: boolean = false;
+  BanckGridApi: any;
+  selectedBanck: any = null;
   
-  contactGridOptions: any = {
+  BanckGridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
     suppressEnterWhenEditing: false,
     rowSelection: 'single'
   };
 
-  contactColumnDefs = [
+  BanckColumnDefs = [
     {
       field: 'campo2',
       headerName: 'Nombre',
@@ -112,48 +112,48 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
   agInit(params: ICellRendererParams): void {
     this.params = params;
     this.providerId = params.data.id;
-    this.providerName = params.data.company || params.data.nameContact;
+    this.providerName = params.data.company || params.data.nameBanck;
     
-    // Cargar datos del grid de contactos
-    this.loadContactData();
+    // Cargar datos del grid de Banckos
+    this.loadBanckData();
   }
 
   refresh(): boolean {
     return false;
   }
 
-  // ========== CONTACT GRID METHODS ==========
-  onContactGridReady(params: any) {
-    this.contactGridApi = params.api;
+  // ========== Banck GRID METHODS ==========
+  onBanckGridReady(params: any) {
+    this.BanckGridApi = params.api;
     params.api.sizeColumnsToFit();
     
     params.api.addEventListener('selectionChanged', () => {
       const selectedNodes = params.api.getSelectedNodes();
-      this.selectedContact = selectedNodes.length > 0 ? selectedNodes[0].data : null;
+      this.selectedBanck = selectedNodes.length > 0 ? selectedNodes[0].data : null;
     });
   }
 
-  onContactCellValueChanged(event: any) {
+  onBanckCellValueChanged(event: any) {
     event.data.__modified = true;
-    this.hasContactChanges = true;
+    this.hasBanckChanges = true;
   }
 
-  loadContactData() {
-    if (this.params && this.params.context && this.params.context.CONTACT && this.params.context.CONTACT.load) {
-      this.params.context.CONTACT.load(this.providerId, 'CONTACT', (data: any) => {
-        this.contactRowData = data;
+  loadBanckData() {
+    if (this.params && this.params.context.BANK && this.params.context.BANK.load) {
+      this.params.context.BANK.load(this.providerId, 'BANK', (data: any) => {
+        this.BanckRowData = data;
       });
     }
   }
 
-  addContact() {
-    if (!this.contactGridApi) {
-      console.error('Contact grid API not ready');
+  addBanck() {
+    if (!this.BanckGridApi) {
+      console.error('Banck grid API not ready');
       return;
     }
 
-    const tempId = `temp_contact_${Date.now()}`;
-    const newContact = {
+    const tempId = `temp_Banck_${Date.now()}`;
+    const newBanck = {
       id: tempId,
       idTabla: this.providerId,
       campo1: 0,
@@ -163,41 +163,41 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
       campo5: '',
       campo6: 'NA',
       campo7: true,
-      type: 'CONTACT',
+      type: 'BANK',
       active: true,
       __isNew: true
     };
 
-    this.contactRowData = [newContact, ...this.contactRowData];
-    this.contactGridApi.setRowData(this.contactRowData);
-    this.hasContactChanges = true;
+    this.BanckRowData = [newBanck, ...this.BanckRowData];
+    this.BanckGridApi.setRowData(this.BanckRowData);
+    this.hasBanckChanges = true;
 
     setTimeout(() => {
-      this.contactGridApi.startEditingCell({
+      this.BanckGridApi.startEditingCell({
         rowIndex: 0,
         colKey: 'campo2'
       });
     }, 100);
   }
 
-  saveContacts() {
-    if (this.params && this.params.context && this.params.context.CONTACT && this.params.context.CONTACT.save) {
-      this.params.context.CONTACT.save(this.providerId, this.contactRowData, 'CONTACT');
-      this.hasContactChanges = false;
+  saveBancks() {
+    if (this.params && this.params.context.BANK && this.params.context.BANK.save) {
+      this.params.context.BANK.save(this.providerId, this.BanckRowData, 'BANK');
+      this.hasBanckChanges = false;
     }
   }
 
-  deleteSelectedContact() {
-    if (!this.selectedContact || !this.params.context.CONTACT.delete) {
+  deleteSelectedBanck() {
+    if (!this.selectedBanck) {
       return;
     }
 
-    if (this.params && this.params.context && this.params.context.CONTACT && this.params.context.CONTACT.delete) {
-      this.params.context.CONTACT.delete(
-        { data: this.selectedContact, api: this.contactGridApi }, 
+    if (this.params && this.params.context.BANK && this.params.context.BANK.delete) {
+      this.params.context.BANK.delete(
+        { data: this.selectedBanck, api: this.BanckGridApi }, 
         () => {
-          this.loadContactData();
-          this.selectedContact = null;
+          this.loadBanckData();
+          this.selectedBanck = null;
         }
       );
     }

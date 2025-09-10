@@ -5,35 +5,34 @@ import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 
 @Component({
-  selector: 'app-detail-cell-renderer-contact',
+  selector: 'app-detail-cell-renderer-cuentas',
   standalone: true,
   imports: [AgGridModule, CommonModule],
-  template: `<!-- MEJORA: Añadir listeners para evitar que el panel se cierre al pasar el mouse sobre él -->
-    <div 
-      style="padding: 10px; background-color: #f8f9fa;"
+  template: `
+    <div style="padding: 10px; background-color: #f8f9fa;"
       (mouseenter)="params.onMouseEnter && params.onMouseEnter()"
       (mouseleave)="params.onMouseLeave && params.onMouseLeave()">
-      <!-- Grid de Contactos -->
+      <!-- Grid de Cuenta -->
       <div style="margin-bottom: 15px; height: 250px;">
         <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-          <strong>Contactos de: {{ providerName }}</strong>
+          <strong>Cuentas de: {{ providerName }}</strong>
           <div>
             <button 
               class="btn btn-sm btn-success me-2" 
-              (click)="addContact()"
-              [disabled]="!contactGridApi">
+              (click)="addCuenta()"
+              [disabled]="!CuentaGridApi">
               <i class="bi bi-person-plus"></i> Agregar
             </button>
             <button 
               class="btn btn-sm btn-primary me-2" 
-              (click)="saveContacts()"
-              [disabled]="!hasContactChanges">
+              (click)="saveCuentas()"
+              [disabled]="!hasCuentaChanges">
               <i class="bi bi-floppy"></i> Guardar
             </button>
             <button 
               class="btn btn-sm btn-danger" 
-              (click)="deleteSelectedContact()"
-              [disabled]="!selectedContact">
+              (click)="deleteSelectedCuenta()"
+              [disabled]="!selectedCuenta">
               <i class="bi bi-trash"></i> Borrar
             </button>
           </div>
@@ -41,36 +40,36 @@ import { CommonModule } from '@angular/common';
         <ag-grid-angular
           class="ag-theme-quartz small-text-ag-grid"
           style="height: 100%; width: 100%;"
-          [columnDefs]="contactColumnDefs"
-          [rowData]="contactRowData"
-          [gridOptions]="contactGridOptions"
-          (gridReady)="onContactGridReady($event)"
-          (cellValueChanged)="onContactCellValueChanged($event)"
+          [columnDefs]="CuentaColumnDefs"
+          [rowData]="CuentaRowData"
+          [gridOptions]="CuentaGridOptions"
+          (gridReady)="onCuentaGridReady($event)"
+          (cellValueChanged)="onCuentaCellValueChanged($event)"
           [components]="components">
         </ag-grid-angular>
       </div>
     </div>
   `
 })
-export class DetailCellRendererComponentContact implements ICellRendererAngularComp {
+export class DetailCellRendererComponentCuentas implements ICellRendererAngularComp {
   params: any;
   providerId: number;
   providerName: string;
   
-  // Contact grid properties
-  contactRowData: any[] = [];
-  hasContactChanges: boolean = false;
-  contactGridApi: any;
-  selectedContact: any = null;
+  // Cuenta grid properties
+  CuentaRowData: any[] = [];
+  hasCuentaChanges: boolean = false;
+  CuentaGridApi: any;
+  selectedCuenta: any = null;
   
-  contactGridOptions: any = {
+  CuentaGridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
     suppressEnterWhenEditing: false,
     rowSelection: 'single'
   };
 
-  contactColumnDefs = [
+  CuentaColumnDefs = [
     {
       field: 'campo2',
       headerName: 'Nombre',
@@ -112,48 +111,48 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
   agInit(params: ICellRendererParams): void {
     this.params = params;
     this.providerId = params.data.id;
-    this.providerName = params.data.company || params.data.nameContact;
+    this.providerName = params.data.company || params.data.nameCuenta;
     
-    // Cargar datos del grid de contactos
-    this.loadContactData();
+    // Cargar datos del grid de Cuentaos
+    this.loadCuentaData();
   }
 
   refresh(): boolean {
     return false;
   }
 
-  // ========== CONTACT GRID METHODS ==========
-  onContactGridReady(params: any) {
-    this.contactGridApi = params.api;
+  // ========== Cuenta GRID METHODS ==========
+  onCuentaGridReady(params: any) {
+    this.CuentaGridApi = params.api;
     params.api.sizeColumnsToFit();
     
     params.api.addEventListener('selectionChanged', () => {
       const selectedNodes = params.api.getSelectedNodes();
-      this.selectedContact = selectedNodes.length > 0 ? selectedNodes[0].data : null;
+      this.selectedCuenta = selectedNodes.length > 0 ? selectedNodes[0].data : null;
     });
   }
 
-  onContactCellValueChanged(event: any) {
+  onCuentaCellValueChanged(event: any) {
     event.data.__modified = true;
-    this.hasContactChanges = true;
+    this.hasCuentaChanges = true;
   }
 
-  loadContactData() {
-    if (this.params && this.params.context && this.params.context.CONTACT && this.params.context.CONTACT.load) {
-      this.params.context.CONTACT.load(this.providerId, 'CONTACT', (data: any) => {
-        this.contactRowData = data;
+  loadCuentaData() {
+    if (this.params && this.params.context && this.params.context.CUENTA && this.params.context.CUENTA.load) {
+      this.params.context.CUENTA.load(this.providerId, 'CUENTA', (data: any) => {
+        this.CuentaRowData = data;
       });
     }
   }
 
-  addContact() {
-    if (!this.contactGridApi) {
-      console.error('Contact grid API not ready');
+  addCuenta() {
+    if (!this.CuentaGridApi) {
+      console.error('Cuenta grid API not ready');
       return;
     }
 
-    const tempId = `temp_contact_${Date.now()}`;
-    const newContact = {
+    const tempId = `temp_Cuenta_${Date.now()}`;
+    const newCuenta = {
       id: tempId,
       idTabla: this.providerId,
       campo1: 0,
@@ -162,42 +161,42 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
       campo4: '',
       campo5: '',
       campo6: 'NA',
-      campo7: true,
-      type: 'CONTACT',
+      campo7: true, // Asumo que campo7 es 'activo'
+      type: 'CUENTA',
       active: true,
       __isNew: true
     };
 
-    this.contactRowData = [newContact, ...this.contactRowData];
-    this.contactGridApi.setRowData(this.contactRowData);
-    this.hasContactChanges = true;
+    this.CuentaRowData = [newCuenta, ...this.CuentaRowData];
+    this.CuentaGridApi.setRowData(this.CuentaRowData);
+    this.hasCuentaChanges = true;
 
     setTimeout(() => {
-      this.contactGridApi.startEditingCell({
+      this.CuentaGridApi.startEditingCell({
         rowIndex: 0,
         colKey: 'campo2'
       });
     }, 100);
   }
 
-  saveContacts() {
-    if (this.params && this.params.context && this.params.context.CONTACT && this.params.context.CONTACT.save) {
-      this.params.context.CONTACT.save(this.providerId, this.contactRowData, 'CONTACT');
-      this.hasContactChanges = false;
+  saveCuentas() {
+    if (this.params && this.params.context && this.params.context.CUENTA && this.params.context.CUENTA.save) {
+      this.params.context.CUENTA.save(this.providerId, this.CuentaRowData, 'CUENTA');
+      this.hasCuentaChanges = false;
     }
   }
 
-  deleteSelectedContact() {
-    if (!this.selectedContact || !this.params.context.CONTACT.delete) {
+  deleteSelectedCuenta() {
+    if (!this.selectedCuenta || !this.params.context.CUENTA.delete) {
       return;
     }
 
-    if (this.params && this.params.context && this.params.context.CONTACT && this.params.context.CONTACT.delete) {
-      this.params.context.CONTACT.delete(
-        { data: this.selectedContact, api: this.contactGridApi }, 
+    if (this.params && this.params.context && this.params.context.CUENTA && this.params.context.CUENTA.delete) {
+      this.params.context.CUENTA.delete(
+        { data: this.selectedCuenta, api: this.CuentaGridApi }, 
         () => {
-          this.loadContactData();
-          this.selectedContact = null;
+          this.loadCuentaData();
+          this.selectedCuenta = null;
         }
       );
     }
