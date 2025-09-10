@@ -79,7 +79,7 @@ export class CatalogsService {
   }
 
   getTypesCat(type: string): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog?type=${type}`, { headers: this.trackingService.getHeaders() });
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/getTypeCat?type=${type}`, { headers: this.trackingService.getHeaders() });
   }
   
   addCatalog(catalog: any): Observable<any> {
