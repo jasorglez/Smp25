@@ -74,14 +74,13 @@ export class CatalogsService {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog?type=Ubication`, { headers: this.trackingService.getHeaders() });
   }
 
-  getDataTypes(): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog?type=Input`, { headers: this.trackingService.getHeaders() });
-  }
-
   getDocumentTypes(): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog?type=TypeDocument`, { headers: this.trackingService.getHeaders() });
   }
 
+  getTypesCat(type: string): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog?type=${type}`, { headers: this.trackingService.getHeaders() });
+  }
   
   addCatalog(catalog: any): Observable<any> {
     console.log(catalog);

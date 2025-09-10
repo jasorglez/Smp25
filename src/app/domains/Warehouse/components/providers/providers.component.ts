@@ -144,22 +144,18 @@ export class ProvidersComponent implements CanComponentDeactivate {
   branchs: any[] = [];
   Typecop: any[] = [];
   contactoCatalog: any[] = [];
-  
-  popoverVisible = false;
-  popoverTop = -50;
-  popoverLeft = 0;
-  popoverData: any = null;
+
   estadobanck: boolean = false;
   estadoid: number = 0;
   
   // Agregar esta nueva variable para almacenar el ID de la última fila editada
   private lastEditedRowId: number | string | null = null;
 
+  private lastExpandedNode: any = null;
   rowData: any;
   contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
-  providersXTableData: { [key: number]: any[] } = {};
-  providersBankData: { [key: number]: any[] } = {};
+  providersXTableData: { [key: number]: any[] } = {};  
   expandedProviders: Set<number> = new Set();
 
   id: string;
@@ -199,7 +195,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
   nameClient = this.signalsService.getNameClient()();
 
   public gridOptions: any = {
-    /*headerHeight: 25,
+    headerHeight: 25,
     rowHeight: 20,
     suppressEnterWhenEditing: false,
     rowBuffer: 20,
@@ -207,9 +203,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
     isRowMaster: (dataItem) => {
       return true; // Todas las filas de proveedores son maestras
     },
-    //
-    detailCellRenderer: 'detailCellRenderer',*/
-    
+    detailCellRenderer: 'detailCellRenderer',
     rowClass: (params) => {
       if (params.node.isSelected()) {
         return 'selected-row';
@@ -328,91 +322,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
         width: 100,
       },
       {
-        field: 'fieldContact',
-        headerName: 'Informacion de contacto',
-        editable: true,
-        width: 100,
-        
-      },
-      {
-        field: 'fieldBank',
-        headerName: 'Bancos',
-        editable: true,
-        width: 100,
-        cellRenderer: (params) => {
-          const div = document.createElement('div');
-          div.innerText = params.value;
-          const rowData = params.data;
-          // Acceder al componente Angular
-          //const scope = params.context.componentParent;
-          let lastHoveredId: number | null = null;
-          div.addEventListener('mouseenter', (event: MouseEvent) => {
-            console.log('Hover sobre celda:', params.value);
-            console.log('Datos completos de la fila:', rowData.id);
-
-            if (lastHoveredId !== rowData.id) {
-              lastHoveredId = rowData.id;
-              console.log("activo", rowData.id);
-            } else {
-              lastHoveredId = null;
-              console.log("inactivo", rowData.id);
-            }
-          });
-        
-          div.addEventListener('mouseleave', () => {
-            console.log('Mouse fuera de celda:', params.value);
-          });
-        
-          return div;
-        },
-      },
-      {
-        field: 'fieldCuenta',
-        headerName: 'Cuentas por pagar',
-        editable: true,
-        width: 100,
-        /*cellRenderer: (params) => {
-        const div = document.createElement('div');
-        div.innerText = params.value;
-              
-        const tooltip = document.createElement('div');
-        tooltip.classList.add('custom-tooltip');
-        tooltip.style.position = 'absolute';
-        tooltip.style.backgroundColor = 'rgba(255, 255, 255, 100)';
-        tooltip.style.color = 'black';
-        tooltip.style.padding = '6px 10px';
-        tooltip.style.borderRadius = '4px';
-        tooltip.style.fontSize = '12px';
-        tooltip.style.whiteSpace = 'nowrap';
-        tooltip.style.pointerEvents = 'none';
-        tooltip.style.zIndex = '9999';
-        tooltip.style.display = 'none'; // oculto por defecto
-              
-        // ⚠️ Evita que se quede colgado si no se borra después
-        document.body.appendChild(tooltip);
-              
-        div.addEventListener('mouseenter', (e) => {
-          const rowData = params.data;
-
-          tooltip.innerHTML = `<table><tr><td>${rowData.nameContact}</td></tr></table>`; // Cambia esto según tus datos
-          tooltip.style.display = 'block';
-        
-          // Posicionar tooltip cerca del mouse
-          const rect = div.getBoundingClientRect();
-          tooltip.style.left = `${rect.right + 10}px`;
-          tooltip.style.top = `${rect.top}px`;
-        
-          console.log('Hover sobre celda:', params.value);
-        });
-      
-        div.addEventListener('mouseleave', () => {
-          tooltip.style.display = 'none';
-        });
-      
-        return div;
-      },*/
-      },
-      {
         field: 'cp',
         headerName: 'Cp',
         editable: true,
@@ -445,6 +354,30 @@ export class ProvidersComponent implements CanComponentDeactivate {
     ];
   }
 
+  handleRowHover(event: any) {
+    const node = event.node;
+
+    // Si el mouse se mueve sobre el mismo nodo que ya está expandido, no hacemos nada.
+    if (this.lastExpandedNode && this.lastExpandedNode.id === node.id) {
+      return;
+    }
+
+    // Si hay un nodo previamente expandido, lo contraemos.
+    if (this.lastExpandedNode) {
+      this.lastExpandedNode.setExpanded(false);
+    }
+
+    // Expandimos el nodo actual y lo guardamos como el último expandido.
+    node.setExpanded(true);
+    this.lastExpandedNode = node;
+  }
+
+  collapseAllOnLeave() {
+    if (this.lastExpandedNode) {
+      this.lastExpandedNode.setExpanded(false);
+      this.lastExpandedNode = null;
+    }
+  }
   
 
   obtenerDatos() {
@@ -591,16 +524,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
           this.deleteDetailRow(params);
           callback();
         },
-        loadProviderBanks: (providerId: number, callback: any) => {
-          this.loadProviderBankData(providerId, callback);
-        },
-        saveProviderBanks: (providerId: number, data: any[]) => {
-          this.saveProviderBanksById(providerId, data);
-        },
-        deleteProviderBank: (params: any, callback: any) => {
-          this.deleteDetailRow(params);
-          callback();
-        },
         type: 'CONTACT'
       }
     });
@@ -678,7 +601,9 @@ export class ProvidersComponent implements CanComponentDeactivate {
           this.trackingService.getEmail() );
 
     const isValid = this.rowData.every(
-      (item) => item.idBranch && (item.nameContact || item.company) && (this.type == 'PROVIDERS') || (this.type == 'CUSTOMERS' && item.idTypecop)
+      (item) => (item.nameContact || item.company) && 
+        (this.type == 'PROVIDERS') || (this.type == 'CUSTOMERS' && item.idTypecop)
+        
     );
     if (!isValid) {
       alerts.basicAlert(
@@ -916,7 +841,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
   }
 
   getTypecop() {
-    this.catalogsService.getCatalogsVigente(this.idRoot, this.type).subscribe(
+    this.catalogsService.getCatalogsVigente(this.idRoot, 'CONTACT').subscribe(
       (data: Icatalog[]) => {
         this.Typecop = data;
       },
@@ -1021,21 +946,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
     });
   }
 
-  loadProviderBankData(providerId: number, successCallback: any) {
-    console.log('Loading bank data for provider:', providerId, 'with type: BANK');
-    this.providersService.getProvidersXTable(providerId, 'BANK').subscribe({
-      next: (data: any) => {
-        console.log('Bank data loaded:', data);
-        this.providersBankData[providerId] = data;
-        successCallback(data);
-      },
-      error: (error) => {
-        console.error('Error loading provider bank data:', error);
-        successCallback([]);
-      }
-    });
-  }
-
   onDetailCellValueChanged(event: any) {
     event.data.__modified = true;
     this.notSavedChanges = true;
@@ -1045,48 +955,30 @@ export class ProvidersComponent implements CanComponentDeactivate {
   async deleteDetailRow(params: any) {
     const providerId = params.data.idTabla;
     const detailId = params.data.id;
-    const isBank = params.data.type === 'BANK';
     
     if (params.data.__isNew) {
       // Si es una fila nueva, solo removerla del array local
-      if (isBank) {
-        this.providersBankData[providerId] = this.providersBankData[providerId]?.filter(
-          item => item.id !== detailId
-        ) || [];
-      } else {
-        this.providersXTableData[providerId] = this.providersXTableData[providerId]?.filter(
-          item => item.id !== detailId
-        ) || [];
-      }
+      this.providersXTableData[providerId] = this.providersXTableData[providerId]?.filter(
+        item => item.id !== detailId
+      ) || [];
       params.api.applyTransaction({ remove: [params.data] });
       this.notSavedChanges = true;
     } else {
       // Si es una fila existente, eliminarla del servidor
       try {
         await lastValueFrom(this.providersService.deleteProviderXTable(detailId));
-        alerts.basicAlert(
-          isBank ? 'Banco eliminado' : 'Contacto eliminado',
-          isBank ? 'El banco se eliminó correctamente.' : 'El contacto se eliminó correctamente.',
-          'success'
-        );
+        alerts.basicAlert('Contacto eliminado', 'El contacto se eliminó correctamente.', 'success');
         
         // Recargar los datos del detalle según el tipo
-        if (isBank) {
-          this.loadProviderBankData(providerId, (data) => {
-            this.providersBankData[providerId] = data;
-            params.api.applyTransaction({ remove: [params.data] });
-          });
-        } else {
-          this.loadProviderXTableData(providerId, (data) => {
-            this.providersXTableData[providerId] = data;
-            params.api.applyTransaction({ remove: [params.data] });
-          });
-        }
+        this.loadProviderXTableData(providerId, (data) => {
+          this.providersXTableData[providerId] = data;
+          params.api.applyTransaction({ remove: [params.data] });
+        });
       } catch (error) {
         console.error('Error deleting detail row:', error);
         alerts.basicAlert(
           'Error',
-          isBank ? 'Error al eliminar el banco.' : 'Error al eliminar el contacto.',
+          'Error al eliminar el contacto.',
           'error'
         );
       }
@@ -1129,76 +1021,11 @@ export class ProvidersComponent implements CanComponentDeactivate {
     }
   }
 
-  async saveProviderBanksById(providerId: number, data: any[]) {
-    console.log('saveProviderBanksById called with:', providerId, data);
-    const newDetails = data.filter((row: any) => row.__isNew);
-    const modifiedDetails = data.filter((row: any) => row.__modified && !row.__isNew);
-    
-    console.log('New bank details:', newDetails);
-    console.log('Modified bank details:', modifiedDetails);
-
-    try {
-      for (const row of newDetails) {
-        const cleanedData = this.cleanDataForServer(row);
-        console.log('Adding bank data to server:', cleanedData);
-        await lastValueFrom(this.providersService.addProviderXTable(cleanedData));
-      }
-
-      for (const row of modifiedDetails) {
-        const cleanedData = this.cleanDataForServer(row);
-        console.log('Updating bank data on server:', row.id, cleanedData);
-        await lastValueFrom(this.providersService.updateProviderXTable(row.id, cleanedData));
-      }
-
-      if (newDetails.length > 0 || modifiedDetails.length > 0) {
-        alerts.basicAlert(
-          'Bancos guardados',
-          'Se han guardado los datos bancarios correctamente.',
-          'success'
-        );
-
-        // Recargar datos del proveedor específico
-        this.loadProviderBankData(providerId, (refreshedData) => {
-          this.providersBankData[providerId] = refreshedData;
-        });
-      }
-
-    } catch (error) {
-      console.error('Error saving banks:', error);
-      alerts.basicAlert(
-        'Error',
-        'Error al guardar los datos bancarios.',
-        'error'
-      );
-    }
-  }
-
   async saveProviderXTableChanges() {
     const allDetailChanges = [];
     
     // Handle contact data
     for (const [providerId, details] of Object.entries(this.providersXTableData)) {
-      const newDetails = details.filter((row: any) => row.__isNew);
-      const modifiedDetails = details.filter((row: any) => row.__modified && !row.__isNew);
-
-      newDetails.forEach(row => {
-        allDetailChanges.push({
-          type: 'add',
-          data: this.cleanDataForServer(row)
-        });
-      });
-
-      modifiedDetails.forEach(row => {
-        allDetailChanges.push({
-          type: 'update',
-          id: row.id,
-          data: this.cleanDataForServer(row)
-        });
-      });
-    }
-
-    // Handle bank data
-    for (const [providerId, details] of Object.entries(this.providersBankData)) {
       const newDetails = details.filter((row: any) => row.__isNew);
       const modifiedDetails = details.filter((row: any) => row.__modified && !row.__isNew);
 
@@ -1231,7 +1058,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
       alerts.basicAlert(
         'Datos actualizados',
-        'Se han actualizado los contactos y datos bancarios correctamente.',
+        'Se han actualizado los contactos correctamente.',
         'success'
       );
 
@@ -1239,13 +1066,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
       for (const providerId of Object.keys(this.providersXTableData)) {
         this.loadProviderXTableData(Number(providerId), (data) => {
           this.providersXTableData[Number(providerId)] = data;
-        });
-      }
-
-      // Reload bank data
-      for (const providerId of Object.keys(this.providersBankData)) {
-        this.loadProviderBankData(Number(providerId), (data) => {
-          this.providersBankData[Number(providerId)] = data;
         });
       }
 

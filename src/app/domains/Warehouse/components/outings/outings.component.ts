@@ -154,7 +154,7 @@ export class OutingsComponent implements OnInit, CanComponentDeactivate {
     this.obtenerRequisiciones();
     this.obtenerProductos();
     this.obtenerAlmacenesPorUsuario();
-    this.obtenerTiposEntrada();
+    this.obtenerTiposSalida();
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -464,8 +464,8 @@ export class OutingsComponent implements OnInit, CanComponentDeactivate {
       );
   }
 
-  obtenerTiposEntrada() {
-    this.catalogsService.getDataTypes().subscribe(
+  obtenerTiposSalida() {
+    this.catalogsService.getTypesCat('OUT').subscribe(
       (data: any) => {
         this.tipoEntrada = data;
         console.log(this.tipoEntrada);
