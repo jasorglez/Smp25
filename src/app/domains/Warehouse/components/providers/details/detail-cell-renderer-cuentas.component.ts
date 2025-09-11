@@ -1,4 +1,5 @@
-import { Component } from '@angular/core';
+import { Component ,inject} from '@angular/core';
+import { SignalsService } from 'app/services/signals.service';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -52,6 +53,8 @@ import { CommonModule } from '@angular/common';
   `
 })
 export class DetailCellRendererComponentCuentas implements ICellRendererAngularComp {
+ private signalsService = inject(SignalsService);
+
   params: any;
   providerId: number;
   providerName: string;
@@ -183,6 +186,7 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
     if (this.params && this.params.context && this.params.context.CUENTA && this.params.context.CUENTA.save) {
       this.params.context.CUENTA.save(this.providerId, this.CuentaRowData, 'CUENTA');
       this.hasCuentaChanges = false;
+      this.signalsService.triggerRefreshEmployees();
     }
   }
 
@@ -197,6 +201,7 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
         () => {
           this.loadCuentaData();
           this.selectedCuenta = null;
+          this.signalsService.triggerRefreshEmployees();
         }
       );
     }

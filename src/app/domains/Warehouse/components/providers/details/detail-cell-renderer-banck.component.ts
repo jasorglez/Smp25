@@ -1,8 +1,10 @@
-import { Component } from '@angular/core';
+import { Component ,inject} from '@angular/core';
+import { SignalsService } from 'app/services/signals.service';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
+
 
 @Component({
   selector: 'app-detail-cell-renderer-banck',
@@ -53,6 +55,10 @@ import { CommonModule } from '@angular/common';
   `
 })
 export class DetailCellRendererComponentBanck implements ICellRendererAngularComp {
+
+  private signalsService = inject(SignalsService);
+
+
   params: any;
   providerId: number;
   providerName: string;
@@ -184,6 +190,7 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
     if (this.params && this.params.context.BANK && this.params.context.BANK.save) {
       this.params.context.BANK.save(this.providerId, this.BanckRowData, 'BANK');
       this.hasBanckChanges = false;
+      this.signalsService.triggerRefreshEmployees();
     }
   }
 
@@ -198,6 +205,7 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
         () => {
           this.loadBanckData();
           this.selectedBanck = null;
+          this.signalsService.triggerRefreshEmployees();
         }
       );
     }

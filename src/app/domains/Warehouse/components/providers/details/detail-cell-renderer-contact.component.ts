@@ -1,4 +1,5 @@
-import { Component } from '@angular/core';
+import { Component ,inject} from '@angular/core';
+import { SignalsService } from 'app/services/signals.service';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -53,6 +54,8 @@ import { CommonModule } from '@angular/common';
   `
 })
 export class DetailCellRendererComponentContact implements ICellRendererAngularComp {
+   private signalsService = inject(SignalsService);
+
   params: any;
   providerId: number;
   providerName: string;
@@ -184,6 +187,7 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
     if (this.params && this.params.context && this.params.context.CONTACT && this.params.context.CONTACT.save) {
       this.params.context.CONTACT.save(this.providerId, this.contactRowData, 'CONTACT');
       this.hasContactChanges = false;
+      this.signalsService.triggerRefreshEmployees();
     }
   }
 
@@ -198,6 +202,7 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
         () => {
           this.loadContactData();
           this.selectedContact = null;
+          this.signalsService.triggerRefreshEmployees();
         }
       );
     }
