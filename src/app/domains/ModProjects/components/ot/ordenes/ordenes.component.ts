@@ -5717,7 +5717,7 @@ closeUploadModal() {
 }
 
 
-async onFileSelected(event: Event, tipo: 'conLogo' | 'sinLogo'): Promise<void> {
+async onFileSelected(event: Event): Promise<void> {
   this.isUploading = true;
 
   const file = (event.target as HTMLInputElement).files?.[0];
@@ -5728,11 +5728,7 @@ async onFileSelected(event: Event, tipo: 'conLogo' | 'sinLogo'): Promise<void> {
 
   try {
     var response: any;
-    if(tipo === 'conLogo'){
-      response = await lastValueFrom(this.otService.addOtViaPdfCopy(this.idProject, file));
-    }else{
-      response = await lastValueFrom(this.otService.addOtViaPdf(this.idProject, file));
-    }
+      response = await lastValueFrom(this.otService.addOtViaPdfMaster(this.idProject, file));
     
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
@@ -5767,6 +5763,37 @@ async onFileSelected(event: Event, tipo: 'conLogo' | 'sinLogo'): Promise<void> {
     this.isUploading = false;
   }
 }
+triggerFileInput(fileInput: HTMLInputElement) {
+  if (!this.hasMultiSelectPermission) {
+    alerts.basicAlert('Error', 'No tiene permisos para realizar esta acción.', 'error');
+    return;
+  }
+
+  const selectedOTs = this.getSelectedOTs();
+  if (selectedOTs.length === 0) {
+    alerts.basicAlert('Error', 'Debe seleccionar al menos una OT.', 'error');
+    return;
+  }
+
+  fileInput.click(); // Abre el selector de archivos
+}
+handleFileChange(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+
+  if (file) {
+    console.log('Archivo seleccionado:', file);
+
+    // Aquí puedes manejar el archivo, por ejemplo subirlo, procesarlo, etc.
+    // this.uploadService.uploadFile(file, this.getSelectedOTs());
+  } else {
+    alerts.basicAlert('Error', 'No se seleccionó ningún archivo.', 'error');
+  }
+
+  input.value = ''; // Limpiar el input por si se quiere seleccionar el mismo archivo de nuevo
+}
+
+
 
 
 }

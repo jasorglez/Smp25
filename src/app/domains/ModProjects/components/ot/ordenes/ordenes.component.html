@@ -30,15 +30,13 @@
                    </button>
         
 
-                   <button type="button"
-                      class="btn btn-info ms-1 me-1 mb-2"
-                      (click)="openUploadModal()"
-                      [disabled]="isUploading">
+                    <button type="button" class="btn btn-info ms-1 me-1 mb-2" (click)="fileInput.click()" [disabled]="isUploading">
                       <i class="bi bi-file-earmark-pdf" *ngIf="!isUploading"></i>
                       <div class="spinner-border spinner-border-sm" role="status" *ngIf="isUploading">
                         <span class="visually-hidden">Subiendo...</span>
                       </div>
-                   </button>
+                    </button>
+                    <input #fileInput type="file" accept=".pdf" style="display: none" (change)="onFileSelected($event)">
 
                     <button type="button" class="btn btn-secondary ms-1 me-1 mb-2" 
                             (click)="openChangeProjectModal()" 
@@ -46,7 +44,8 @@
                             title="Cambiar proyecto de las OTs seleccionadas"
                             *ngIf="hasMultiSelectPermission">
                       <i class="bi bi-arrow-repeat"></i>
-                    </button>     
+                    </button>
+
 
                      @if (signalsService.getrootChoose ()== true) {
                        <button 
@@ -701,7 +700,7 @@
   </div>
 </div>
 
-<!-- Modal -->
+<!-- Modal 
 <div class="modal fade" id="optionModal" tabindex="-1" aria-labelledby="optionModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content shadow-lg border-0 rounded-4">
@@ -713,7 +712,6 @@
       <div class="modal-body text-center">
         <p class="fs-5 mb-4">¿Qué tipo de archivo deseas subir?</p>
 
-        <!-- Botón: subir PDF con logo -->
         <button
           type="button"
           class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2 w-100 mb-3"
@@ -740,7 +738,6 @@
           (change)="onFileSelected($event, 'conLogo')"
         />
 
-        <!-- Botón: subir PDF sin logo -->
         <button
           type="button"
           class="btn btn-outline-secondary d-flex align-items-center justify-content-center gap-2 w-100"
@@ -774,3 +771,4 @@
     </div>
   </div>
 </div>
+-->
