@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, ViewChild } from '@angular/core';
+                                             import { Component, computed, effect, inject, ViewChild } from '@angular/core';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { TrackingService } from 'app/services/tracking.service';
@@ -106,8 +106,6 @@ export class KardexComponent {
 
       })
     }
-
-
 
   }
 
