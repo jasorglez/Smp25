@@ -938,6 +938,7 @@ formatDate(dateStr: string): string {
 
 
   async saveChanges() {
+    let hasErrors = false; // 🔴 Controla si hubo errores en alguna petición
   const isValid = this.rowData.every(
     (item) => item.startDate && item.endDate && item.idBranch && item.startDate <= item.endDate
   );
@@ -992,14 +993,16 @@ formatDate(dateStr: string): string {
 
   const updateObservables = modifiedRows.map((row) => {
     return this.administrationService.updateNormalPayroll(row.id).pipe(
-      catchError((error) => {
-        alerts.basicAlert(
-          'Error',
-          error?.error?.message || 'Error al actualizar los datos.',
-          'error'
-        );
-        return EMPTY;
-      })
+    catchError((error) => {
+      hasErrors = true;
+      const mensajeError = typeof error.error === 'string'
+        ? error.error
+        : error?.error?.message || 'Error al actualizar los datos.';
+
+      alerts.basicAlert('Error', mensajeError, 'error');
+
+      return EMPTY; // Permite que las demás actualizaciones continúen
+    })
     );
   });
 
@@ -1007,11 +1010,13 @@ formatDate(dateStr: string): string {
     const responses = await lastValueFrom(
       concat(...addObservables, ...updateObservables).pipe(toArray())
     );
-    alerts.basicAlert(
-      'Datos actualizados',
-      'Se han actualizado los datos correctamente.',
-      'success'
-    );
+     if (!hasErrors) {
+      alerts.basicAlert(
+        'Datos actualizados',
+        'Se han actualizado los datos correctamente.',
+        'success'
+      );
+    }
     this.notSavedChanges = false;
     this.aggregatingRecord = false;
     this.obtenerDatos();
