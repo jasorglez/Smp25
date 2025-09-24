@@ -3227,7 +3227,7 @@ addVideo(){
       supervisor: 'SIN SUPERVISOR',
       type: this.selectedReporteArea,
       description: 'SIN DESCRIPCIÓN',
-      result: 'SIN RESULTADO',
+  //    result: 'SIN RESULTADO',
       totalPay : 0,
       active: true,
       paid: true,

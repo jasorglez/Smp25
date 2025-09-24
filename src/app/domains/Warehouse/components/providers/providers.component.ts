@@ -531,7 +531,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
 
     return new Promise((resolve) => {
       this.customerService
-        .getProviders(this.idCompany)
+        .getProviders(this.idCompany,'PROVIDERS')
         .subscribe({
           next: (data: any) => {
             this.rowData = data;
