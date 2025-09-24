@@ -1456,17 +1456,17 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     },
     { 
       field: 'close', 
-      headerName: 'Cerrado Web', 
+      headerName: 'Generado', 
       //editable: () => !this.signalsService.getClosedReport()(),
       editable: true,
-      width: 100,
+      width: 140,
     },
      { 
       field: 'description', 
       headerName: 'Comentario', 
       //editable: () => !this.signalsService.getClosedReport()(),
       editable: true,
-      width: 180,
+      width: 240,
     }
   ];
 

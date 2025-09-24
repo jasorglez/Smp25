@@ -76,7 +76,7 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
   contactColumnDefs = [
     {
       field: 'campo2',
-      headerName: 'Nombre',
+      headerName: 'Nombre Contacto',
       editable: true,
       width: 150,
       flex: 1
@@ -102,11 +102,10 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
       flex: 1
     },
     {
-      field: 'campo7',
-      headerName: 'Activo',
+      field: 'campo6',
+      headerName: 'Comentarios',
       editable: true,
-      width: 60,
-      cellEditor: 'agCheckboxCellEditor'
+      width: 190
     },
   ];
 

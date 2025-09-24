@@ -69,33 +69,15 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
   };
 
   bankColumnDefs = [
-    { field: 'campo2', headerName: 'Nombre del Banco', editable: true, flex: 1 },
-    { field: 'campo3', headerName: 'Cuenta', editable: true, flex: 1 },
-    {
-      field: 'campo4',
-      headerName: 'Clabe', 
-      editable: true,
-      width: 100
-    },
+    { field: 'campo2', headerName: 'Nombre Titular', editable: true, width: 190 },
+    { field: 'campo3', headerName: 'Banco', editable: true, width: 190 },
+    { field: 'campo4', headerName: 'Numero Cuenta', editable: true, width: 190 },
+    { field: 'campo5', headerName: 'Clabe', editable: true, width: 190 },
     {
       field: 'campo6',
-      headerName: 'Comentarios',
+      headerName: 'Comentario',
       editable: true,
-      width: 140,
-      flex: 1
-    },
-    {
-      field: 'campo5',
-      headerName: 'Email',
-      editable: true,
-      width: 140
-    },
-    {
-      field: 'campo7',
-      headerName: 'Activo',
-      editable: true,
-      width: 60,
-      cellEditor: 'agCheckboxCellEditor'
+      width: 250
     },
   ];
 

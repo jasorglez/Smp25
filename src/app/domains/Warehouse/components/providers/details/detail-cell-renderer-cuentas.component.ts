@@ -70,8 +70,7 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
     { field: 'campo2', headerName: 'Folio', editable: true, flex: 1 },
     { field: 'campo3', headerName: 'Fecha', editable: true, flex: 1, cellEditor: 'agDateCellEditor' },
     { field: 'campo4', headerName: 'Monto', editable: true, flex: 1, valueFormatter: params => `$${Number(params.value || 0).toFixed(2)}` },
-    { field: 'campo5', headerName: 'Saldo', editable: true, flex: 1, valueFormatter: params => `$${Number(params.value || 0).toFixed(2)}` },
-    { field: 'campo7', headerName: 'Pagada', editable: true, width: 80, cellEditor: 'agCheckboxCellEditor' }
+    { field: 'campo5', headerName: 'Saldo', editable: true, flex: 1, valueFormatter: params => `$${Number(params.value || 0).toFixed(2)}` }
   ];
 
   agInit(params: ICellRendererParams): void {
