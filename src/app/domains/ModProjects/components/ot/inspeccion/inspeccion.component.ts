@@ -259,7 +259,7 @@ export class InspeccionComponent implements OnInit {
       next: (data: ReportData[]) => {
         this.allReportsData = data;
         this.processDataForTabs();
-        console.log('Datos cargados:', data.length, 'reportes');
+        //console.log('Datos cargados:', data.length, 'reportes');
       },
       error: (error) => {
         console.error('Error al cargar reportes:', error);

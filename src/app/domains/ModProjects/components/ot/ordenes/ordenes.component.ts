@@ -172,6 +172,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   public isUploading: boolean = false;
   private idProject: number = 0;
   private idcompany: number = 0;
+  private isSelectionDrivenChange = false; // Flag para prevenir recarga de datos en selección de grid
   private lastExpandedProjectId: number | null = null;
 
   private catalogMateriales   : any[] = [];
@@ -2143,29 +2144,40 @@ addVideo(){
       this.trackingService.getEmail()
     );
     
+    // EFFECT PRINCIPAL: Reacciona a cambios de compañía y proyecto.
     effect(() => {
-      this.idProject =this.signalsService.getProjectSelectedBySidebar()();
-      this.idcompany = this.signalsService.getRootSelectedBySidebar()();
-      
-      //alert(this.signalsService.getClosedReport()())
-      //this.selectedStatusReport = this.signalsService.getClosedReport()();
-      this.catalogoMateriales();
-      this.catalogoEquipo();
-      this.obtenerTypeNotes();
-      this.obtenerConceptos();
-      this.obtenerProyectos();
-      this.loadEmployees();
-      this.getDeptoandPosition();
-      this.obtenerUnidades();
-      this.filtrarTipoReporte(this.tipoReporte);
-    });
+      const newProjectId = this.signalsService.getProjectSelectedBySidebar()() || 0;
+      const newCompanyId = this.signalsService.getRootSelectedBySidebar()();
 
-    // Effect para auto-actualizar PDF cuando se guarden cambio
+      const projectHasChanged = this.idProject !== newProjectId;
+      const companyHasChanged = this.idcompany !== newCompanyId;
 
-    // Effect para manejar expansión/colapso de grupos por proyecto
-    effect(() => {
-      const selectedProjectId = this.signalsService.getProjectSelectedBySidebar()();
-      this.handleProjectGroupExpansion(selectedProjectId);
+      // 1. Siempre actualizar la expansión de grupos si el proyecto cambia
+      if (projectHasChanged) {
+        this.handleProjectGroupExpansion(newProjectId);
+      }
+
+      // 2. Recargar todos los datos solo si el cambio NO fue iniciado por una selección en el grid.
+      //    Esto significa que el cambio vino del sidebar o de la compañía.
+      if ((projectHasChanged || companyHasChanged) && !this.isSelectionDrivenChange) {
+        this.idProject = newProjectId;
+        this.idcompany = newCompanyId;
+        this.obtenerProyectos(); // Esto llama a obtenerDatos() y recarga todo
+        // Los catálogos que dependen de la compañía también se recargan aquí
+        if (companyHasChanged) {
+          this.catalogoMateriales();
+          this.catalogoEquipo();
+          this.obtenerTypeNotes();
+          this.obtenerConceptos();
+          this.loadEmployees();
+          this.getDeptoandPosition();
+          this.obtenerUnidades();
+          this.obtenerArea();
+        }
+      }
+
+      // 3. Resetear el flag después de que el efecto se haya ejecutado
+      this.isSelectionDrivenChange = false;
     });
 
     this.loadColumnSizes();
@@ -2599,10 +2611,6 @@ addVideo(){
         this.gridApi.setRowNodeExpanded(newProjectNode, true);
         this.lastExpandedProjectId = selectedProjectId;
         
-        // Posicionarse en el último registro del proyecto expandido
-        setTimeout(() => {
-          this.scrollToLastRecordOfProject(selectedProjectId);
-        }, 100);
       } else {
         console.log('🔍 No se encontró nodo de grupo para proyecto:', selectedProjectId);
       }
@@ -2611,61 +2619,6 @@ addVideo(){
       console.log('🔍 Sin proyecto seleccionado - colapsando todos los grupos');
       this.gridApi.collapseAll();
       this.lastExpandedProjectId = null;
-    }
-  }
-
-  // Método para posicionarse en el primer registro del proyecto seleccionado
-  private scrollToLastRecordOfProject(projectId: number): void {
-    if (!this.gridApi) {
-      console.log('🔍 Grid API no disponible para posicionamiento');
-      return;
-    }
-
-    // Debug: mostrar algunos registros para verificar estructura
-    if (this.rowData.length > 0) {
-    }
-
-    // Obtener todos los nodos visibles (no grupos) del proyecto
-    let firstRow: any = null;
-    let foundNodes: any[] = [];
-    
-    this.gridApi.forEachNodeAfterFilterAndSort(node => {
-      // Debug detallado
-      if (!node.group && node.data) {
-        foundNodes.push({
-          nodeIndex: node.rowIndex,
-          idProject: node.data.idProject,
-          otNumber: node.data.otNumber,
-          matchesProject: node.data.idProject === projectId
-        });
-        
-        if (node.data.idProject === projectId) {
-          if (!firstRow) {
-            firstRow = node; // Tomar el primer registro encontrado
-          }
-        }
-      }
-    });
-
-    console.log('🔍 Nodos encontrados:', foundNodes.slice(0, 5)); // Solo mostrar primeros 5
-    console.log('🔍 Nodos que coinciden con proyecto', projectId, ':', foundNodes.filter(n => n.matchesProject));
-
-    if (firstRow) {
-      const rowIndex = firstRow.rowIndex;            
-      
-      // Scroll hasta el primer registro y seleccionarlo
-      this.gridApi.ensureIndexVisible(rowIndex, 'top');
-      
-      // Seleccionar la fila para mayor claridad visual
-      setTimeout(() => {
-        firstRow.setSelected(true, true); // true para seleccionar, true para clear otras selecciones
-        console.log('🔍 Fila seleccionada exitosamente');
-      }, 50);
-      
-    } else {
-      
-      const matchingData = this.rowData.filter(r => r.idProject === projectId);
-      console.log('🔍 Registros en rowData para este proyecto:', matchingData.length);
     }
   }
 
@@ -2704,6 +2657,7 @@ addVideo(){
         // Solo actualizar si el proyecto es diferente al actual del sidebar
         if (currentSidebarProject !== selectedProjectId) {
           console.log(`🔄 Sincronización Grid → Sidebar: ${currentSidebarProject} → ${selectedProjectId}`);
+          this.isSelectionDrivenChange = true; // <-- AVISAR AL EFFECT QUE EL CAMBIO ES INTERNO
           this.signalsService.setProjectSelectedBySidebar(selectedProjectId);
           
           // Log para debug

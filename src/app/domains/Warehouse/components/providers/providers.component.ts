@@ -27,8 +27,8 @@ import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-edito
 import { SignalsService } from 'app/services/signals.service';
 import { ProvidersPaymentsComponent } from './providers-payments.component';
 import { DetailCellRendererComponent } from './detail-cell-renderer.component';
-import { DetailCellRendererComponentContact } from './details/detail-cell-renderer-contact.component';
-import { DetailCellRendererComponentBanck } from './details/detail-cell-renderer-banck.component';
+import { DetailCellRendererComponentContact } from './details/detail-cell-renderer-contact.component'; // This seems to be the one for contacts
+import { DetailCellRendererComponentBanck } from './details/detail-cell-renderer-banck.component'; // This will be for banks
 import { DetailCellRendererComponentCuentas } from './details/detail-cell-renderer-cuentas.component';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { RadiusinfluenceComponent } from 'app/domains/ModAdmon/components/radiusinfluence/radiusinfluence.component';
@@ -57,7 +57,9 @@ import { TrackingService } from 'app/services/tracking.service';
     MultiLineEditorComponent,
     ProvidersPaymentsComponent,
     DetailCellRendererComponent,
-    DetailCellRendererComponentContact
+    DetailCellRendererComponentContact,
+    DetailCellRendererComponentBanck,
+    DetailCellRendererComponentCuentas
 ],
   templateUrl: './providers.component.html',
   styleUrls: ['./providers.component.scss'],
@@ -280,6 +282,13 @@ export class ProvidersComponent implements CanComponentDeactivate {
       },
       
       {
+        field: 'company',
+        headerName: 'Compañía',
+        editable: true,
+        width: 150,
+      },
+      
+      {
         field: 'nameContact',
         headerName: 'Contacto principal',
         editable: true,
@@ -348,42 +357,50 @@ export class ProvidersComponent implements CanComponentDeactivate {
           //excelMode: 'mac',d
         },
       },
+
       {
-        field: 'company',
-        headerName: 'Compañía',
+        field: 'company2',
+        headerName: 'Puesto',
         editable: true,
         width: 100,
       },
-      {
-        field: 'fieldContact',
-        headerName: 'Contactos',
-        cellRenderer: this.createHoverCellRenderer('contact'),
-        editable: false
-      },
-      {
-        field: 'fieldBank',
-        headerName: 'Bancos',
-        editable: false,
-        cellRenderer: this.createHoverCellRenderer('bank')
-      },
-      {
-        field: 'fieldCuenta',
-        headerName: 'Cuentas',
-        cellRenderer: this.createHoverCellRenderer('Cuentas'),
-        editable: false
-      },
+
       {
         field: 'phone',
         headerName: 'Telefono principal',
         editable: true,
         width: 100,
       },
+      
       {
         field: 'email',
-        headerName: 'Correo principal',
+        headerName: 'Email Principal',
         editable: true,
         width: 100,
       },
+
+      {
+        field: 'fieldContact',
+        headerName: 'Contactos',
+        cellRenderer: this.createHoverCellRenderer('contact'),
+        editable: false
+      },
+  
+      {
+        field: 'fieldBank',
+        headerName: 'Bancos',
+        editable: false,
+        cellRenderer: this.createHoverCellRenderer('bank')
+      },
+  
+      {
+        field: 'fieldCuenta',
+        headerName: 'Cuentas x Pagar',
+        cellRenderer: this.createHoverCellRenderer('Cuentas'),
+        editable: false
+      },
+   
+  
       {
         field: 'cp',
         headerName: 'Cp',
@@ -663,32 +680,33 @@ createHoverCellRenderer(detailType: string): (params: any) => HTMLElement {
     
     // Configurar master-detail después de que el grid esté listo
     this.gridApi.setGridOption('detailCellRendererParams', {
-      context: {
-        CONTACT: {
-          load: (providerId: number, type: string, callback: any) => {
+      getDetailRowData: (params) => {
+        params.successCallback(params.data.detailData);
+      },
+      context: { // Pasamos las funciones de CRUD a los componentes de detalle
+        CONTACT: { // Para la grilla de Contactos
+          load: (providerId: number, type: string, callback: (data: any[]) => void) => {
             this.loadProviderXTableData(providerId, type, callback);
           },
           save: (providerId: number, data: any[], type: string) => {
             this.saveProviderDetailsById(providerId, data, type);
           },
-          delete: (params: any, callback: any) => {
-            this.deleteDetailRow(params);
-            callback();
+          delete: (params: any, callback: () => void) => {
+            this.deleteDetailRow(params, callback);
           }
         },
-        BANK: {
-          load: (providerId: number, type: string, callback: any) => {
+        BANK: { // Para la grilla de Bancos
+          load: (providerId: number, type: string, callback: (data: any[]) => void) => {
             this.loadProviderXTableData(providerId, type, callback);
           },
           save: (providerId: number, data: any[], type: string) => {
             this.saveProviderDetailsById(providerId, data, type);
           },
-          delete: (params: any, callback: any) => {
-            this.deleteDetailRow(params);
-            callback();
+          delete: (params: any, callback: () => void) => {
+            this.deleteDetailRow(params, callback);
           }
         },
-        CUENTA: {
+        CUENTA: { // Para la grilla de Cuentas por Pagar
           load: (providerId: number, type: string, callback: any) => {
             this.loadProviderXTableData(providerId, type, callback);
           },
@@ -696,8 +714,7 @@ createHoverCellRenderer(detailType: string): (params: any) => HTMLElement {
             this.saveProviderDetailsById(providerId, data, type);
           },
           delete: (params: any, callback: any) => {
-            this.deleteDetailRow(params);
-            callback();
+            this.deleteDetailRow(params, callback);
           }
         }
       }
@@ -1050,7 +1067,7 @@ createHoverCellRenderer(detailType: string): (params: any) => HTMLElement {
       },
       {
         field: 'campo4',
-        headerName: 'Teléfono',
+        headerName: 'Teléfonott',
         editable: true,
         width: 120,
         valueSetter: (params) => {
@@ -1070,7 +1087,7 @@ createHoverCellRenderer(detailType: string): (params: any) => HTMLElement {
       },
       {
         field: 'campo5',
-        headerName: 'Email',
+        headerName: 'Email22',
         editable: true,
         width: 180,
         valueSetter: (params) => {
@@ -1087,6 +1104,15 @@ createHoverCellRenderer(detailType: string): (params: any) => HTMLElement {
           return true;
         }
       },
+
+      {
+        field: 've',
+        headerName: 'Comentario',
+        editable: true,
+        width: 80,
+        cellEditor: 'agCheckboxCellEditor'
+      },      
+
       {
         field: 'active',
         headerName: 'Activo',
@@ -1094,6 +1120,7 @@ createHoverCellRenderer(detailType: string): (params: any) => HTMLElement {
         width: 80,
         cellEditor: 'agCheckboxCellEditor'
       },
+
       {
         headerName: 'Acciones',
         width: 100,
@@ -1101,7 +1128,9 @@ createHoverCellRenderer(detailType: string): (params: any) => HTMLElement {
           const button = document.createElement('button');
           button.className = 'btn btn-sm btn-danger';
           button.innerHTML = '<i class="bi bi-trash"></i>';
-          button.onclick = () => this.deleteDetailRow(params);
+          button.onclick = () => this.deleteDetailRow(params, () => {
+            // Callback vacío, ya que este renderer no lo necesita para recargar.
+          });
           return button;
         },
         editable: false
@@ -1128,13 +1157,13 @@ createHoverCellRenderer(detailType: string): (params: any) => HTMLElement {
   }
 
 
-  async deleteDetailRow(params: any) {
+  async deleteDetailRow(params: any, successCallback: () => void) {
     const providerId = params.data.idTabla;
     const detailId = params.data.id;
     
     if (params.data.__isNew) {
       // Si es una fila nueva, solo removerla del array local
-      this.providersXTableData[providerId] = this.providersXTableData[providerId]?.filter(
+      this.providersXTableData[providerId] = (this.providersXTableData[providerId] || []).filter(
         item => item.id !== detailId
       ) || [];
       params.api.applyTransaction({ remove: [params.data] });
@@ -1144,12 +1173,7 @@ createHoverCellRenderer(detailType: string): (params: any) => HTMLElement {
       try {
         await lastValueFrom(this.providersService.deleteProviderXTable(detailId));
         alerts.basicAlert('Contacto eliminado', 'El contacto se eliminó correctamente.', 'success');
-        
-        // Recargar los datos del detalle
-        this.loadProviderXTableData(providerId, params.data.type, (data) => {
-          this.providersXTableData[providerId] = data; // Esto puede que no sea necesario si el grid se refresca solo
-          params.api.applyTransaction({ remove: [params.data] });
-        });
+        successCallback(); // Llama al callback para recargar los datos en el componente hijo
       } catch (error) {
         console.error('Error deleting detail row:', error);
         alerts.basicAlert(
@@ -1162,6 +1186,7 @@ createHoverCellRenderer(detailType: string): (params: any) => HTMLElement {
   }
 
   async saveProviderDetailsById(providerId: number, data: any[], type: string) {
+    console.log(`Saving details for provider ${providerId}, type: ${type}`, data);
     const newDetails = data.filter((row: any) => row.__isNew);
     const modifiedDetails = data.filter((row: any) => row.__modified && !row.__isNew);
 
@@ -1181,10 +1206,12 @@ createHoverCellRenderer(detailType: string): (params: any) => HTMLElement {
           'success'
         );
 
-        // Recargar datos del proveedor específico
-        this.loadProviderXTableData(providerId, type, (refreshedData) => {
-          this.providersXTableData[providerId] = refreshedData;
-        });
+        // No es necesario recargar aquí, el componente hijo lo hace.
+        // Simplemente limpiamos los flags.
+        data.forEach(row => {
+          delete row.__isNew;
+          delete row.__modified;
+        })
       }
 
     } catch (error) {
