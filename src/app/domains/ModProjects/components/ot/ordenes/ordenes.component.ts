@@ -725,7 +725,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         }
       }
     },
-    {
+   /* {
       field: 'cuentaHoja',
       headerName: 'Hoja',
       sortable: true,
@@ -733,7 +733,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       resizable: true,
       flex: 3,
       editable: true,      
-    },
+    },*/
     {
       field: 'otNumber',
       headerName: 'OT',
@@ -751,24 +751,24 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         }
       }
     },
-     /*{
+     {
       field: 'results',
       headerName: 'Resultados',
       sortable: true,
       filter: true,
       resizable: true,
-      flex: 2,
+      flex: 3,
       onCellDoubleClicked: (params: any) => {
         this.onOTCellDoubleClicked(params);
       }
-    },*/
+    },
     {
       field: 'area',
       headerName: 'Area',
       sortable: true,
       filter: true,
       resizable: true,
-      flex: 3,
+      flex: 2,
       editable: true,
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: {
@@ -781,7 +781,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       sortable: true,
       filter: true,
       resizable: true,
-      flex: 4,
+      flex: 3,
       editable: (params: any) => true,
       cellRenderer: 'agCheckboxCellRenderer',
       cellEditor: 'agCheckboxCellEditor'
@@ -792,7 +792,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       sortable: true,
       filter: true,
       resizable: true,
-      flex: 4,
+      flex: 3,
       editable: (params: any) => true,
       cellRenderer: 'agCheckboxCellRenderer',
       cellEditor: 'agCheckboxCellEditor'
