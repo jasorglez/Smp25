@@ -21,10 +21,11 @@ export class CustomersService {
     //alert(apiUrl)  
     return this.http.get(`${environment.urlAdministration}/Customer/branch/${id}?type=${type}`, { headers: this.trackingService.getHeaders() });
   }
-  getProviders(id: number) {
+
+  getProviders(id: number,type: string) {
     //const apiUrl = `${environment.urlAdministration}/Customer/branch/${id}?type=${type}`;      
     //alert(apiUrl)  
-    return this.http.get(`${environment.urlWarehouse}/Material/matprov/${id}`, { headers: this.trackingService.getHeaders() });
+    return this.http.get(`${environment.urlAdministration}/Customer/cusorprov?idCompany=${id}&type=${type}`, { headers: this.trackingService.getHeaders() });
   }
 
   getCustomersByCompany(root : number, type: string) {

@@ -1,5 +1,4 @@
 import { Component ,inject} from '@angular/core';
-import { SignalsService } from 'app/services/signals.service';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -12,9 +11,7 @@ import { CommonModule } from '@angular/common';
   imports: [AgGridModule, CommonModule],
   template: `
     <div 
-      style="padding: 10px; background-color: #f8f9fa;"
-      (mouseenter)="params.onMouseEnter && params.onMouseEnter()"
-      (mouseleave)="params.onMouseLeave && params.onMouseLeave()">
+      style="padding: 10px; background-color: #f8f9fa;">
       <!-- Grid de Banckos -->
       <div style="margin-bottom: 15px; height: 250px;">
         <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
@@ -22,20 +19,20 @@ import { CommonModule } from '@angular/common';
           <div>
             <button 
               class="btn btn-sm btn-success me-2" 
-              (click)="addBanck()"
-              [disabled]="!BanckGridApi">
-              <i class="bi bi-person-plus"></i> Agregar
+              (click)="addBank()"
+              [disabled]="!bankGridApi">
+              <i class="bi bi-plus-circle"></i> Agregar
             </button>
             <button 
               class="btn btn-sm btn-primary me-2" 
-              (click)="saveBancks()"
-              [disabled]="!hasBanckChanges">
+              (click)="saveBanks()"
+              [disabled]="!hasBankChanges">
               <i class="bi bi-floppy"></i> Guardar
             </button>
             <button 
               class="btn btn-sm btn-danger" 
-              (click)="deleteSelectedBanck()"
-              [disabled]="!selectedBanck">
+              (click)="deleteSelectedBank()"
+              [disabled]="!selectedBank">
               <i class="bi bi-trash"></i> Borrar
             </button>
           </div>
@@ -43,12 +40,11 @@ import { CommonModule } from '@angular/common';
         <ag-grid-angular
           class="ag-theme-quartz small-text-ag-grid"
           style="height: 100%; width: 100%;"
-          [columnDefs]="BanckColumnDefs"
-          [rowData]="BanckRowData"
-          [gridOptions]="BanckGridOptions"
-          (gridReady)="onBanckGridReady($event)"
-          (cellValueChanged)="onBanckCellValueChanged($event)"
-          [components]="components">
+          [columnDefs]="bankColumnDefs"
+          [rowData]="bankRowData"
+          [gridOptions]="bankGridOptions"
+          (gridReady)="onBankGridReady($event)"
+          (cellValueChanged)="onBankCellValueChanged($event)">
         </ag-grid-angular>
       </div>
     </div>
@@ -56,156 +52,105 @@ import { CommonModule } from '@angular/common';
 })
 export class DetailCellRendererComponentBanck implements ICellRendererAngularComp {
 
-  private signalsService = inject(SignalsService);
-
-
   params: any;
   providerId: number;
   providerName: string;
   
-  // Banck grid properties
-  BanckRowData: any[] = [];
-  hasBanckChanges: boolean = false;
-  BanckGridApi: any;
-  selectedBanck: any = null;
+  bankRowData: any[] = [];
+  hasBankChanges: boolean = false;
+  bankGridApi: any;
+  selectedBank: any = null;
   
-  BanckGridOptions: any = {
+  bankGridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
     suppressEnterWhenEditing: false,
     rowSelection: 'single'
   };
 
-  BanckColumnDefs = [
+  bankColumnDefs = [
+    { field: 'campo2', headerName: 'Nombre Titular', editable: true, width: 190 },
+    { field: 'campo3', headerName: 'Banco', editable: true, width: 190 },
+    { field: 'campo4', headerName: 'Numero Cuenta', editable: true, width: 190 },
+    { field: 'campo5', headerName: 'Clabe', editable: true, width: 190 },
     {
-      field: 'campo2',
-      headerName: 'Nombre',
+      field: 'campo6',
+      headerName: 'Comentario',
       editable: true,
-      width: 150,
-      flex: 1
-    },
-    {
-      field: 'campo3', 
-      headerName: 'Puesto',
-      editable: true,
-      width: 120,
-      flex: 1
-    },
-    {
-      field: 'campo4',
-      headerName: 'Teléfono', 
-      editable: true,
-      width: 100
-    },
-    {
-      field: 'campo5',
-      headerName: 'Email',
-      editable: true,
-      width: 140,
-      flex: 1
-    },
-    {
-      field: 'campo7',
-      headerName: 'Activo',
-      editable: true,
-      width: 60,
-      cellEditor: 'agCheckboxCellEditor'
+      width: 250
     },
   ];
-
-  components = {};
 
   agInit(params: ICellRendererParams): void {
     this.params = params;
     this.providerId = params.data.id;
-    this.providerName = params.data.company || params.data.nameBanck;
+    this.providerName = params.data.company || params.data.nameContact;
     
-    // Cargar datos del grid de Banckos
-    this.loadBanckData();
+    this.loadBankData();
   }
 
   refresh(): boolean {
     return false;
   }
 
-  // ========== Banck GRID METHODS ==========
-  onBanckGridReady(params: any) {
-    this.BanckGridApi = params.api;
-    params.api.sizeColumnsToFit();
+  onBankGridReady(params: any) {
+    this.bankGridApi = params.api;
     
     params.api.addEventListener('selectionChanged', () => {
       const selectedNodes = params.api.getSelectedNodes();
-      this.selectedBanck = selectedNodes.length > 0 ? selectedNodes[0].data : null;
+      this.selectedBank = selectedNodes.length > 0 ? selectedNodes[0].data : null;
     });
   }
 
-  onBanckCellValueChanged(event: any) {
+  onBankCellValueChanged(event: any) {
     event.data.__modified = true;
-    this.hasBanckChanges = true;
+    this.hasBankChanges = true;
   }
 
-  loadBanckData() {
+  loadBankData() {
     if (this.params && this.params.context.BANK && this.params.context.BANK.load) {
       this.params.context.BANK.load(this.providerId, 'BANK', (data: any) => {
-        this.BanckRowData = data;
+        this.bankRowData = data;
       });
     }
   }
 
-  addBanck() {
-    if (!this.BanckGridApi) {
-      console.error('Banck grid API not ready');
-      return;
-    }
-
-    const tempId = `temp_Banck_${Date.now()}`;
-    const newBanck = {
-      id: tempId,
+  addBank() {
+    const newBank = {
+      id: `temp_bank_${Date.now()}`,
       idTabla: this.providerId,
-      campo1: 0,
-      campo2: '',
-      campo3: '',
-      campo4: '',
-      campo5: '',
-      campo6: 'NA',
-      campo7: true,
       type: 'BANK',
-      active: true,
       __isNew: true
     };
-
-    this.BanckRowData = [newBanck, ...this.BanckRowData];
-    this.BanckGridApi.setRowData(this.BanckRowData);
-    this.hasBanckChanges = true;
+    this.bankRowData = [newBank, ...this.bankRowData];
+    this.hasBankChanges = true;
 
     setTimeout(() => {
-      this.BanckGridApi.startEditingCell({
+      this.bankGridApi.startEditingCell({
         rowIndex: 0,
         colKey: 'campo2'
       });
     }, 100);
   }
 
-  saveBancks() {
+  saveBanks() {
     if (this.params && this.params.context.BANK && this.params.context.BANK.save) {
-      this.params.context.BANK.save(this.providerId, this.BanckRowData, 'BANK');
-      this.hasBanckChanges = false;
-      this.signalsService.triggerRefreshEmployees();
+      this.params.context.BANK.save(this.providerId, this.bankRowData, 'BANK');
+      this.hasBankChanges = false;
     }
   }
 
-  deleteSelectedBanck() {
-    if (!this.selectedBanck) {
+  deleteSelectedBank() {
+    if (!this.selectedBank) {
       return;
     }
 
     if (this.params && this.params.context.BANK && this.params.context.BANK.delete) {
       this.params.context.BANK.delete(
-        { data: this.selectedBanck, api: this.BanckGridApi }, 
+        { data: this.selectedBank, api: this.bankGridApi }, 
         () => {
-          this.loadBanckData();
-          this.selectedBanck = null;
-          this.signalsService.triggerRefreshEmployees();
+          this.loadBankData();
+          this.selectedBank = null;
         }
       );
     }
