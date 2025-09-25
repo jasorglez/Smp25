@@ -121,5 +121,26 @@ export class OtService {
       
       return this.http.post(`${environment.urlSmp}/OT/uploadMaster?idProject=${idProject}`, formData, { headers });
     }
+    addExcel(excelFile: File): Observable<any> {
+      const formData = new FormData();
+      formData.append('file', excelFile, excelFile.name);
+      
+      // Crear headers simples que coincidan con el curl
+      const baseHeaders = this.trackingService.getHeaders();
+      console.log('Base headers from trackingService:', baseHeaders);
+      
+      // Crear un objeto headers limpio
+      const headers: any = {
+        'accept': '*/*'
+      };
+      
+      // Extraer Authorization del HttpHeaders usando el método get()
+      const authToken = baseHeaders.get('Authorization') || baseHeaders.get('authorization');
+      if (authToken) {
+        headers['Authorization'] = authToken;
+      }
+
+      return this.http.post(`${environment.urlSmp}/ProcesadorExcel/procesar`, formData, { headers });
+    }
 
   }

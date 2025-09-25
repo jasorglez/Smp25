@@ -541,8 +541,10 @@
                 <option value="ot">Generador de OT</option>
                 <option value="cuadrilla-interna">Cálculo de pago a cuadrilla interna</option>
                 <option value="cuadrilla-externa">Cálculo de pago a cuadrilla externa</option>
+                <option value="cargar-excel-externa">Cargar excel de cuadrilla externa</option>
               </select>
             </div>
+             
             <div class="row" *ngIf="opcionSeleccionada === 'cuadrilla-externa'">
               <div class="col-md-3" *ngFor="let item of opcionesNumericas">
                 <button 
@@ -554,7 +556,32 @@
                 </button>
               </div>
             </div>
-            <div class="row g-3">
+            <div class="mb-3" *ngIf="opcionSeleccionada === 'cargar-excel-externa'">
+              <button
+                  type="button"
+                  class="btn btn-outline-success w-100"
+                  (click)="fileInput.click()"
+                  [disabled]="isUploadingExcel"
+                >
+                  <i class="bi bi-file-earmark-excel" *ngIf="!isUploadingExcel"></i>
+                  <div class="spinner-border spinner-border-sm" role="status" *ngIf="isUploadingExcel">
+                    <span class="visually-hidden">Procesando...</span>
+                  </div>
+                  <span *ngIf="!isUploadingExcel"> Subir archivo Excel </span>
+                  <span *ngIf="isUploadingExcel"> Procesando... </span>
+                </button>
+
+                <!-- Input de archivo oculto -->
+                <input
+                  #fileInput
+                  type="file"
+                  accept=".xls,.xlsx"
+                  style="display: none"
+                  (change)="onFileSelectedExcel($event)"
+                />
+            </div>
+
+            <div class="row g-3" *ngIf="opcionSeleccionada !== 'cargar-excel-externa'">
               <div class="col-md-5">
                 <label for="fecha1" class="form-label fw-semibold">
                   <i class="bi bi-calendar-check me-1"></i>
@@ -616,7 +643,7 @@
               </div>
             </div>
           </div>
-          <div class="alert alert-info d-flex align-items-center" role="alert">
+          <div class="alert alert-info d-flex align-items-center" role="alert" *ngIf="opcionSeleccionada !== 'cargar-excel-externa'">
             <i class="bi bi-info-circle-fill me-2"></i>
             <div>
               <small>El reporte incluirá todas las órdenes de trabajo dentro del rango de fechas seleccionado que se encuentren cerradas.</small>
@@ -625,7 +652,7 @@
         </form>
       </div>
       
-      <div class="modal-footer bg-light">
+      <div class="modal-footer bg-light" *ngIf="opcionSeleccionada !== 'cargar-excel-externa'">
         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" (click)="cancelar()">
           <i class="bi bi-x-circle me-1"></i>
           Cancelar
