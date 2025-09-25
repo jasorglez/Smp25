@@ -415,10 +415,12 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       this.tipoReporte = selectElement.value;
       this.filtrarTipoReporte(this.tipoReporte);
   }
+  
   onOpcionSeleccionadaChange() {
     const selectElement = document.getElementById('opcion') as HTMLSelectElement;
       this.opcionSeleccionada = selectElement.value;
   }
+  
   toggleSeleccion(valor: number) {
   const index = this.seleccionados.indexOf(valor);
   if (index > -1) {
