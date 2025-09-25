@@ -393,9 +393,9 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
       {
         field: 'position',
-        headerName: 'Puesto',
+        headerName: 'Puesto/Area',
         editable: true,
-        width: 100,
+        width: 180,
       },
 
       {

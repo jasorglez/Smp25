@@ -67,10 +67,18 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
   };
 
   cuentaColumnDefs = [
-    { field: 'campo2', headerName: 'Folio', editable: true, flex: 1 },
-    { field: 'campo3', headerName: 'Fecha', editable: true, flex: 1, cellEditor: 'agDateCellEditor' },
-    { field: 'campo4', headerName: 'Monto', editable: true, flex: 1, valueFormatter: params => `$${Number(params.value || 0).toFixed(2)}` },
-    { field: 'campo5', headerName: 'Saldo', editable: true, flex: 1, valueFormatter: params => `$${Number(params.value || 0).toFixed(2)}` }
+    { field: 'campo2', headerName: 'Fecha OC', editable: true, flex: 1 },
+    { field: 'campo3', headerName: 'Factura o Nota', editable: true, flex: 1, cellEditor: 'agDateCellEditor' },
+    { field: 'campo4', headerName: 'MNumero Factura o Nota', editable: true, flex: 1, valueFormatter: params => `$${Number(params.value || 0).toFixed(2)}` },
+    { field: 'campo5', headerName: 'Articulo', editable: true, flex: 1, valueFormatter: params => `$${Number(params.value || 0).toFixed(2)}` },
+    { field: 'campo3', headerName: 'Categoria', editable: true, flex: 1, cellEditor: 'agDateCellEditor' },
+    { field: 'campo4', headerName: 'Familia', editable: true, flex: 1, valueFormatter: params => `$${Number(params.value || 0).toFixed(2)}` },
+    { field: 'campo5', headerName: 'SubFamilia', editable: true, flex: 1, valueFormatter: params => `$${Number(params.value || 0).toFixed(2)}` },
+    { field: 'campo2', headerName: 'Cantidad', editable: true, flex: 1 },
+    { field: 'campo3', headerName: 'Precio Unitario', editable: true, flex: 1, cellEditor: 'agDateCellEditor' },
+    { field: 'campo4', headerName: 'Total x Nota', editable: true, flex: 1, valueFormatter: params => `$${Number(params.value || 0).toFixed(2)}` },
+    { field: 'campo5', headerName: 'Abono a Cuenta', editable: true, flex: 1, valueFormatter: params => `$${Number(params.value || 0).toFixed(2)}` },
+    { field: 'campo4', headerName: 'Restante', editable: true, flex: 1, valueFormatter: params => `$${Number(params.value || 0).toFixed(2)}` },
   ];
 
   agInit(params: ICellRendererParams): void {

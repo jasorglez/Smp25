@@ -83,7 +83,7 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
     },
     {
       field: 'campo3', 
-      headerName: 'Puesto',
+      headerName: 'Puesto/Area',
       editable: true,
       width: 120,
       flex: 1
