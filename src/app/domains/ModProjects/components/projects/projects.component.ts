@@ -129,10 +129,12 @@ export class ProjectsComponent {
   };
 
   colMaster: ColDef[] = [
-    { field: 'number', headerName: 'OT', flex: 1 },
-    { field: 'idConsecutivo', headerName: 'ID PEMEX', flex: 1 },
-    { field: 'description', headerName: 'Descripcion', flex: 4 },
+    { field: 'number', headerName: 'Proyecto', flex: 1 },
     { field: 'name', headerName: 'Nombre', width: 100, filter: true, flex: 2 },
+    { field: 'idConsecutivo', headerName: 'ID PEMEX', flex: 1 },
+    { field: 'year', headerName: 'Year', flex: 1 },
+    { field: 'description', headerName: 'Descripcion', flex: 4 },
+    { field: 'state', headerName: 'Estado', flex: 1 },
     { field: 'classification', headerName: 'Clasificación', width: 100, filter: true, flex: 2 }
   ];
 
