@@ -197,10 +197,11 @@ export class UpdateExcelService {
   );
 }
 
-  processAndDownloadOt(dateStart: string, dateEnd: string): Observable<Blob> {
+  processAndDownloadOt(dateStart: string, dateEnd: string, type: number): Observable<Blob> {
     const dateRange = {
       dateStart: dateStart,
-      dateEnd: dateEnd
+      dateEnd: dateEnd,
+      type: type
     };
 
     return this.http.post(

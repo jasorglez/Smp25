@@ -451,6 +451,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   return `${año}-${mes}`;
  }
 
+ 
  onSubmit() {
     // 1. Asegurarse de que las fechas estén actualizadas con los valores del formulario.
     this.filtrarTipoReporte(this.myForm.value.tipoReporte);
@@ -468,7 +469,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
   switch (this.opcionSeleccionada) {
     case 'ot':
-      this.updateExcelService.processAndDownloadOt(this.fechaInicio, this.fechaFin).subscribe({
+      this.updateExcelService.processAndDownloadOt(this.fechaInicio, this.fechaFin , 1).subscribe({
         next: (blob: Blob) => {
           this.isGeneratingReport = false;
 
@@ -497,9 +498,68 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         }
       });
       break;
+      case 'oti':
+      this.updateExcelService.processAndDownloadOt(this.fechaInicio, this.fechaFin, 2).subscribe({
+        next: (blob: Blob) => {
+          this.isGeneratingReport = false;
+
+          // Crear link de descarga
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `FORMATO_GENERADOR_INTERNAS_${new Date().getTime()}.xlsx`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+
+          alerts.basicAlert('Éxito', `Excel generado desde ${this.fechaInicio} hasta ${this.fechaFin}`, 'success');
+          this.closeModal();
+        },
+        error: async (error) => {
+          this.isGeneratingReport = false;
+          console.error('Error al generar Excel:', error);
+          // Leer el mensaje de error desde el blob
+          let errorMessage = 'Error al generar el Excel. Inténtalo de nuevo.';
+          if (error.error instanceof Blob) {
+            errorMessage = await (error.error as Blob).text();
+          }
+          alerts.basicAlert('Error', errorMessage, 'error');
+        }
+      });
+      break;
+      case 'ote':
+      this.updateExcelService.processAndDownloadOt(this.fechaInicio, this.fechaFin, 3).subscribe({
+        next: (blob: Blob) => {
+          this.isGeneratingReport = false;
+
+          // Crear link de descarga
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `FORMATO_GENERADOR_EXTERNAS_${new Date().getTime()}.xlsx`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+
+          alerts.basicAlert('Éxito', `Excel generado desde ${this.fechaInicio} hasta ${this.fechaFin}`, 'success');
+          this.closeModal();
+        },
+        error: async (error) => {
+          this.isGeneratingReport = false;
+          console.error('Error al generar Excel:', error);
+          // Leer el mensaje de error desde el blob
+          let errorMessage = 'Error al generar el Excel. Inténtalo de nuevo.';
+          if (error.error instanceof Blob) {
+            errorMessage = await (error.error as Blob).text();
+          }
+          alerts.basicAlert('Error', errorMessage, 'error');
+        }
+      });
+      break;
 
     case 'cuadrilla-interna':
-      alert('Generando Excel para cuadrilla interna desde ' + this.fechaInicio + ' hasta ' + this.fechaFin);
       this.updateExcelService.processAndDownloadCuadInter(this.fechaInicio, this.fechaFin).subscribe({
         next: (blob: Blob) => {
           this.isGeneratingReport = false;
@@ -5797,9 +5857,10 @@ handleFileChange(event: Event) {
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
-
+        this.obtenerProyectos();
         alerts.basicAlert('Proceso Completado', 'El resumen del proceso se ha descargado.', 'success');
       } else {
+        this.obtenerProyectos();
         alerts.basicAlert('Proceso Completado', response.resumen || 'El archivo se procesó correctamente.', 'success');
       }
     } catch (error) {
