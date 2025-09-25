@@ -450,22 +450,19 @@ export class OrdenesComponent implements OnInit, OnDestroy {
  }
 
  onSubmit() {
-  if (this.myForm.invalid) {
-    alerts.basicAlert('Info', 'Por favor, completa todos los campos requeridos.', 'info');
-    return;
-  }
+    // 1. Asegurarse de que las fechas estén actualizadas con los valores del formulario.
+    this.filtrarTipoReporte(this.myForm.value.tipoReporte);
 
-  const formValues = this.myForm.value;
-  /*this.fechaInicio = formValues.fechaInicio;
-  this.fechaFin = formValues.fechaFin;*/
+    if (this.myForm.invalid) {
+      alerts.basicAlert('Info', 'Por favor, completa todos los campos requeridos.', 'info');
+      return;
+    }
 
   if (this.fechaInicio > this.fechaFin) {
     alert('La fecha de inicio no puede ser mayor que la fecha de fin.');
     return;
   }
   this.isGeneratingReport = true;
-  console.log(formValues);
-  
 
   switch (this.opcionSeleccionada) {
     case 'ot':
@@ -486,15 +483,21 @@ export class OrdenesComponent implements OnInit, OnDestroy {
           alerts.basicAlert('Éxito', `Excel generado desde ${this.fechaInicio} hasta ${this.fechaFin}`, 'success');
           this.closeModal();
         },
-        error: (error) => {
+        error: async (error) => {
           this.isGeneratingReport = false;
           console.error('Error al generar Excel:', error);
-          alerts.basicAlert('Error', 'Error al generar el Excel. Inténtalo de nuevo.', 'error');
+          // Leer el mensaje de error desde el blob
+          let errorMessage = 'Error al generar el Excel. Inténtalo de nuevo.';
+          if (error.error instanceof Blob) {
+            errorMessage = await (error.error as Blob).text();
+          }
+          alerts.basicAlert('Error', errorMessage, 'error');
         }
       });
       break;
 
     case 'cuadrilla-interna':
+      alert('Generando Excel para cuadrilla interna desde ' + this.fechaInicio + ' hasta ' + this.fechaFin);
       this.updateExcelService.processAndDownloadCuadInter(this.fechaInicio, this.fechaFin).subscribe({
         next: (blob: Blob) => {
           this.isGeneratingReport = false;
@@ -513,10 +516,15 @@ export class OrdenesComponent implements OnInit, OnDestroy {
           alerts.basicAlert('Éxito', `Excel generado desde ${this.fechaInicio} hasta ${this.fechaFin}`, 'success');
           this.closeModal();
         },
-        error: (error) => {
+        error: async (error) => {
           this.isGeneratingReport = false;
           console.error('Error al generar Excel:', error);
-          alerts.basicAlert('Error', 'Error al generar el Excel. Inténtalo de nuevo.', 'error');
+          // Leer el mensaje de error desde el blob
+          let errorMessage = 'Error al generar el Excel. Inténtalo de nuevo.';
+          if (error.error instanceof Blob) {
+            errorMessage = await (error.error as Blob).text();
+          }
+          alerts.basicAlert('Error', errorMessage, 'error');
         }
       });
       break;
@@ -544,10 +552,15 @@ export class OrdenesComponent implements OnInit, OnDestroy {
           alerts.basicAlert('Éxito', `Excel generado desde ${this.fechaInicio} hasta ${this.fechaFin}`, 'success');
           this.closeModal();
         },
-        error: (error) => {
+        error: async (error) => {
           this.isGeneratingReport = false;
           console.error('Error al generar Excel:', error);
-          alerts.basicAlert('Error', 'Error al generar el Excel. Inténtalo de nuevo.', 'error');
+          // Leer el mensaje de error desde el blob
+          let errorMessage = 'Error al generar el Excel. Inténtalo de nuevo.';
+          if (error.error instanceof Blob) {
+            errorMessage = await (error.error as Blob).text();
+          }
+          alerts.basicAlert('Error', errorMessage, 'error');
         }
       });
       }
