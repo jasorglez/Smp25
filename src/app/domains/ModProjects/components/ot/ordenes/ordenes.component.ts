@@ -5824,7 +5824,7 @@ handleFileChange(event: Event) {
 }
 
 
-  async onFileSelectedExcel(event: any): Promise<void> {
+  async onFileSelectedExcelExt(event: any): Promise<void> {
     const file: File = event.target.files[0];
     if (!file) {
       return;
@@ -5834,7 +5834,7 @@ handleFileChange(event: Event) {
 
     try {
       // Llama al servicio que envía el archivo al backend
-      const response = await lastValueFrom(this.otService.addExcel(file));
+      const response = await lastValueFrom(this.otService.addExcelExt(file));
 
       // El backend devuelve un objeto ProcesadorExcelResult
       if (response.errorMessage) {
@@ -5871,5 +5871,56 @@ handleFileChange(event: Event) {
       this.closeModal();
     }
   }
+  async onFileSelectedExcelInt(event: any): Promise<void> {
+    const file: File = event.target.files[0];
+    if (!file) {
+      return;
+    }
+
+    this.isUploadingExcel = true;
+
+    try {
+      // Llama al servicio que envía el archivo al backend
+      const response = await lastValueFrom(this.otService.addExcelInt(file));
+
+      // El backend devuelve un objeto ProcesadorExcelResult
+      if (response.errorMessage) {
+        alerts.basicAlert('Error al Procesar', response.errorMessage, 'error');
+      } else if (response.archivoBytes && response.nombreArchivo) {
+        // Si el backend devuelve un archivo, lo descargamos
+        const byteCharacters = atob(response.archivoBytes);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'text/plain' });
+
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = response.nombreArchivo;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        this.obtenerProyectos();
+        alerts.basicAlert('Proceso Completado', 'El resumen del proceso se ha descargado.', 'success');
+      } else {
+        this.obtenerProyectos();
+        alerts.basicAlert('Proceso Completado', response.resumen || 'El archivo se procesó correctamente.', 'success');
+      }
+    } catch (error) {
+      console.error('Error al subir el archivo Excel:', error);
+      alerts.basicAlert('Error', 'No se pudo procesar el archivo Excel. Revise la consola para más detalles.', 'error');
+    } finally {
+      this.isUploadingExcel = false;
+      this.closeModal();
+    }
+  }
+  mostrarDiv(): boolean {
+    return this.opcionSeleccionada !== 'cargar-excel-externa' && this.opcionSeleccionada !== 'cargar-excel-interna';
+  }
+
 
 }
