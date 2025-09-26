@@ -28,7 +28,7 @@ import { UpdateExcelService } from 'app/services/updateExcel.service';
 import { ProjectsService } from 'app/services/projects.service';
 import { AuthService } from 'app/services/auth.service';
 import * as bootstrap from 'bootstrap';
-import { firstValueFrom, lastValueFrom, EMPTY, catchError } from 'rxjs';
+import { firstValueFrom, lastValueFrom, EMPTY, catchError, first, Observable, tap } from 'rxjs';
 
 
 @Pipe({
@@ -730,7 +730,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         headerName: '',
         checkboxSelection: hasPermission,
         headerCheckboxSelection: hasPermission,
-        width: 50,
+        width: 40,
         pinned: 'left',
         suppressMenu: true,
         sortable: false,
@@ -747,7 +747,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         excelMode: 'mac'
        },
        resizable: true,
-       flex: 3,
+       flex: 2.5,
        hide: !this.authService.hasDetailedPermission('projects', 'get-all-ot'),
        editable: true,
        rowGroup: this.authService.hasDetailedPermission('projects', 'get-all-ot'),
@@ -777,7 +777,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       sortable: true,
       filter: true,
       resizable: true,
-      flex: 3,
+      flex: 2.5,
       editable: true,
       onCellValueChanged: (params: any) => {
         if (this.selectedOt && params.data.id === this.selectedOt.id) {
@@ -803,7 +803,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         excelMode: 'mac'
       },
       resizable: true,
-      flex: 3,
+      flex: 2.5,
       editable: true,
       onCellValueChanged: (params: any) => {
         if (this.selectedOt && params.data.id === this.selectedOt.id) {
@@ -818,8 +818,52 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       filter: true,
       resizable: true,
       flex: 3,
-      onCellDoubleClicked: (params: any) => {
-        this.onOTCellDoubleClicked(params);
+      editable: true,
+      onCellValueChanged: async (params: any) => {
+        if (params.newValue === params.oldValue) {
+          return; // No hacer nada si el valor no cambió
+        }
+
+        const otData = params.data;
+        const otId = otData.id;
+        
+        // Preguntar si se desea cerrar la OT
+        const confirmResult = await alerts.confirmAlert(
+          'Cerrar Orden de Trabajo',
+          '¿Deseas cerrar esta OT en la App y en la Web? Los resultados también se guardarán.',
+          'question',
+          'Sí, cerrar y guardar'
+        );
+
+        if (confirmResult.isConfirmed) {
+          // Si el usuario confirma, marcar como cerrado y guardar
+          otData.closed = true;
+          otData.closedApp = true;
+          // Actualizar visualmente los checkboxes en el grid
+          params.node.setDataValue('closed', true);
+          params.node.setDataValue('closedApp', true);
+        }
+
+        // Proceder a guardar los cambios (ya sea solo resultados o todo)
+        this.otService.updateOt(otId, otData).subscribe({
+          next: () => {
+            const message = confirmResult.isConfirmed
+              ? `La OT ${otData.otNumber} ha sido cerrada y los resultados guardados.`
+              : `Resultados de la OT ${otData.otNumber} actualizados correctamente.`;
+            alerts.basicAlert('Éxito', message, 'success');
+            if (confirmResult.isConfirmed) {
+              // Si se cerró la OT, la eliminamos de la vista del grid
+              params.api.applyTransaction({ remove: [otData] });
+            }
+            this.masterNotSavedChanges = false; // Reseteamos el flag de cambios pendientes
+          },
+          error: (error) => {
+            console.error('Error al actualizar la OT:', error);
+            alerts.basicAlert('Error', 'No se pudo guardar el cambio. Por favor, intente de nuevo.', 'error');
+            // Revertir el cambio en la UI en caso de error
+            params.node.setDataValue(params.colDef.field!, params.oldValue);
+          }
+        });
       }
     },
     {
@@ -828,7 +872,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       sortable: true,
       filter: true,
       resizable: true,
-      flex: 2,
+      flex: 2.5,
       editable: true,
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: {
@@ -837,23 +881,23 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     },
      {
       field: 'closedApp',
-      headerName: 'Cerrado APP',
+      headerName: 'APP',
       sortable: true,
       filter: true,
       resizable: true,
-      flex: 3,
-      editable: (params: any) => true,
+      flex: 2,
+      editable: true,
       cellRenderer: 'agCheckboxCellRenderer',
       cellEditor: 'agCheckboxCellEditor'
     },
     {
       field: 'closed',
-      headerName: 'Cerrado Web',
+      headerName: 'Web',
       sortable: true,
       filter: true,
       resizable: true,
-      flex: 3,
-      editable: (params: any) => true,
+      flex: 2,
+      editable: true,
       cellRenderer: 'agCheckboxCellRenderer',
       cellEditor: 'agCheckboxCellEditor'
     }
@@ -2524,7 +2568,15 @@ addVideo(){
   obtenerOTsDelProyectoActual() {
     this.otService.getOtListByProject(this.idProject,false).subscribe({
       next: (data: any) => {        
-        this.rowData = data;
+        if (this.gridApi) {
+          this.gridApi.setGridOption('rowData', data);
+          // Forzar un refresco de las celdas para asegurar que los checkboxes sean editables al inicio.
+          setTimeout(() => {
+            this.gridApi.refreshCells({ force: true });
+          }, 100);
+        } else {
+          this.rowData = data;
+        }
         
         // Aplicar lógica de agrupación después de cargar datos
         setTimeout(() => {
@@ -2587,7 +2639,15 @@ addVideo(){
           allOTs.push(...projectOTs);
         });
                 
-        this.rowData = allOTs;
+        if (this.gridApi) {
+          this.gridApi.setGridOption('rowData', allOTs);
+          // Forzar un refresco de las celdas para asegurar que los checkboxes sean editables al inicio.
+          setTimeout(() => {
+            this.gridApi.refreshCells({ force: true });
+          }, 100);
+        } else {
+          this.rowData = allOTs;
+        }
         
         // Aplicar lógica de agrupación después de cargar datos
         setTimeout(() => {
@@ -2701,7 +2761,7 @@ addVideo(){
   onSelectionChanged(event: any) {
     const selectedRows = this.gridApi.getSelectedRows();
         
-    if (selectedRows.length > 0) {
+    if (selectedRows.length > 0) {      
       const cuadrilla = this.projectsList.find(p => p.id === selectedRows[0].idProject);
       
       if (cuadrilla) {
@@ -2727,60 +2787,65 @@ addVideo(){
       // 🔄 SINCRONIZACIÓN BIDIRECCIONAL: Grid → Sidebar
       // Actualizar sidebar cuando se selecciona una fila en el grid
       const selectedProjectId = selectedRows[0].idProject;
-      if (selectedProjectId && selectedProjectId !== 0) {
-        const currentSidebarProject = this.signalsService.getProjectSelectedBySidebar()();
-        
-        // Solo actualizar si el proyecto es diferente al actual del sidebar
-        if (currentSidebarProject !== selectedProjectId) {
-          console.log(`🔄 Sincronización Grid → Sidebar: ${currentSidebarProject} → ${selectedProjectId}`);
-          this.isSelectionDrivenChange = true; // <-- AVISAR AL EFFECT QUE EL CAMBIO ES INTERNO
-          this.signalsService.setProjectSelectedBySidebar(selectedProjectId);
-          
-          // Log para debug
-          const project = this.projectsList.find(p => p.id === selectedProjectId);
-          console.log(`🔄 Sidebar actualizado al proyecto: ${project?.name || selectedProjectId}`);
-        }
+      const currentSidebarProject = this.signalsService.getProjectSelectedBySidebar()();
+
+      // 🏁 SOLUCIÓN A LA CONDICIÓN DE CARRERA:
+      // Si el proyecto de la OT seleccionada es diferente al del sidebar,
+      // el 'effect' se encargará de recargar los catálogos. Debemos esperar a que termine.
+      if (selectedProjectId && selectedProjectId !== currentSidebarProject) {
+        console.log(`🔄 Sincronización Grid → Sidebar: ${currentSidebarProject} → ${selectedProjectId}`);
+        this.isSelectionDrivenChange = true; // <-- AVISAR AL EFFECT QUE EL CAMBIO ES INTERNO
+        this.signalsService.setProjectSelectedBySidebar(selectedProjectId);
+        this.idProject = selectedProjectId; // Actualizar el ID de proyecto localmente
+
+        // El 'effect' se disparará. Esperamos a que el catálogo de conceptos se cargue
+        // antes de continuar con la carga de los datos de las pestañas.
+        this.obtenerConceptos().pipe(first()).subscribe(() => {
+          console.log('✅ Catálogo de conceptos cargado. Procediendo a cargar datos de pestañas.');
+          this.loadTabDetails(selectedRows[0]);
+        });
+      } else {
+        // Si el proyecto no cambió, cargamos los detalles directamente.
+        this.loadTabDetails(selectedRows[0]);
       }
-      
-      // Limpiar selección de reporte anterior
-      this.selectedReporteFecha = '';
-      this.selectedReporteTipo = '';
-      this.selectedReporteHoraInicio = '';
-      this.selectedReporteHoraTermino = '';
-      this.selectedReporteArea = selectedRows[0].area
-      this.selectedReporteId = null;
-      
-      // Resetear vista previa del PDF
-      this.showPdfEmbed = false;
-      this.pdfUrl = null;
-      if (this.originalUrl) {
-        URL.revokeObjectURL(this.originalUrl);
-        this.originalUrl = null;
-      }    
-      
-      // Verificar si hay proyecto seleccionado/detectado solo si hay OTs seleccionadas
-      if (selectedRows.length > 0) {
-        const detectedProject = this.detectProjectFromData();
-        if (!detectedProject) {          
-          // Solo mostrar alerta si se está intentando trabajar con conceptos o materiales
-          // alerts.basicAlert(
-          //   'Proyecto Requerido', 
-          //   'Por favor selecciona un proyecto en el sidebar izquierdo antes de trabajar con las OTs. Esto es necesario para cargar correctamente los catálogos de conceptos y materiales.', 
-          //   'warning'
-          // );
-        } else {
-          console.log('✅ Proyecto detectado:', detectedProject);
-        }
-      }
-      
-      // Cargar reportes diarios para esta OT
-      this.loadDailyReports();
-      
-      // Cargar datos de Personal para esta OT
-      this.loadPersonalData();
     } else {
       this.selectedOt = null;
     }
+  }
+
+  /**
+   * Carga los detalles de las pestañas (reportes, personal, etc.) para la OT seleccionada.
+   * @param selectedOtData Los datos de la OT seleccionada en el grid.
+   */
+  private loadTabDetails(selectedOtData: OrdenesData) {
+    // Limpiar selección de reporte anterior
+    this.selectedReporteFecha = '';
+    this.selectedReporteTipo = '';
+    this.selectedReporteHoraInicio = '';
+    this.selectedReporteHoraTermino = '';
+    this.selectedReporteArea = selectedOtData.area;
+    this.selectedReporteId = null;
+
+    // Resetear vista previa del PDF
+    this.showPdfEmbed = false;
+    this.pdfUrl = null;
+    if (this.originalUrl) {
+      URL.revokeObjectURL(this.originalUrl);
+      this.originalUrl = null;
+    }
+
+    const detectedProject = this.detectProjectFromData();
+    if (!detectedProject) {
+      // Podríamos mostrar una alerta aquí si fuera necesario
+    } else {
+      console.log('✅ Proyecto detectado:', detectedProject);
+    }
+
+    // Cargar reportes diarios para esta OT
+    this.loadDailyReports();
+
+    // Cargar datos de Personal para esta OT
+    this.loadPersonalData();
   }
 
   getSelectedOTs(): any[] {
@@ -2945,6 +3010,11 @@ addVideo(){
     }    
     
     this.masterNotSavedChanges = true;
+
+    // Forzar redibujado del grid para que los checkboxes se actualicen visualmente de inmediato.
+    if (this.gridApi) {
+      this.gridApi.redrawRows();
+    }
   }
 
   onOTCellDoubleClicked(event: any) {
@@ -2953,7 +3023,7 @@ addVideo(){
     const column = event.column;
     
     // Navegar si el doble click es en la columna "OT" o "Resultados"
-    if (column && column.colDef && (column.colDef.field === 'otNumber' || column.colDef.field === 'results')) {
+    if (column && column.colDef && (column.colDef.field === 'otNumber')) {
       console.log(`Navigating to OT details from ${column.colDef.field} column...`);
       if (rowData && rowData.id) {
         console.log('Navigating with ID:', rowData.id);
@@ -2962,7 +3032,12 @@ addVideo(){
         console.log('No ID found in row data');
       }
     } else {
-      console.log('Not clicking on navigation column, field is:', column?.colDef?.field);
+      // Si no es una columna de navegación, iniciar la edición estándar de la celda.
+      // Esto permite que los checkboxes se editen con un solo clic y otras celdas con doble clic.
+      console.log('Not a navigation column, starting edit for field:', column?.colDef?.field);
+      if (event.api && event.colDef.editable) {
+        event.api.startEditingCell({ rowIndex: event.rowIndex, colKey: event.column.getColId() });
+      }
     }
   }
 
@@ -4847,7 +4922,7 @@ async saveChangesEquipos() {
     );
   }
 
-  obtenerConceptos(){
+  obtenerConceptos(): Observable<any> {
     // Verificar si hay proyecto seleccionado
     if (!this.idProject) {
       console.warn('No hay proyecto seleccionado, intentando detectar automáticamente...');
@@ -4872,18 +4947,20 @@ async saveChangesEquipos() {
       }
     }
     
-    return this.workprogramsService.getActivities(this.idProject).subscribe(
-      (data: any) => {
+    return this.workprogramsService.getActivities(this.idProject).pipe(
+      tap((data: any) => {
         this.catalogConcepto = data;
         console.log('Catálogo de conceptos obtenido:', this.catalogConcepto);
         
-        // Refrescar el grid de conceptos después de cargar el catálogo
         if (this.conceptosGridApi) {
           this.conceptosGridApi.refreshCells();
           console.log('Grid de conceptos actualizado con catálogo');
         }
-      },
-      (error) => console.error('Error fetching conceptos:', error)
+      }),
+      catchError(error => {
+        console.error('Error fetching conceptos:', error);
+        return EMPTY; // Devolver un observable vacío en caso de error
+      })
     );
   }
 
