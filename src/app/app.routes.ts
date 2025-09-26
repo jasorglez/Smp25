@@ -462,14 +462,14 @@ export const routes: Routes = [
             path: 'materials',
             loadComponent: () =>
               import(
-                './domains/ModProjects/components/ot/materials/materials.component'
+                './domains/ModProjects/components/materials/materials.component'
               ).then((c) => c.MaterialsComponent),
           },
           {
             path: 'equipment',
             loadComponent: () =>
               import(
-                './domains/ModProjects/components/ot/equipment/equipment.component'
+                './domains/ModProjects/components/equipment/equipment.component'
               ).then((c) => c.EquipmentComponent),
           },
           {
@@ -552,7 +552,7 @@ export const routes: Routes = [
                 path: 'catastrales',
                 loadComponent: () =>
                   import(
-                    './domains/ModProjects/components/ot/historicoOT/historicoOT.component'
+                    './domains/ModProjects/components/ot/OtManuals/historicoOT.component'
                   ).then((c) => c.HistoricoOTComponent),
               },
               {
@@ -562,34 +562,22 @@ export const routes: Routes = [
                     './domains/ModProjects/components/ot/generales/generales.component'
                   ).then((g) => g.GeneralesComponent),
               },
-              {
-                path: 'conexion',
-                loadComponent: () =>
-                  import(
-                    './domains/ModProjects/components/ot/conexion/conexion.component'
-                  ).then((c) => c.ConexionComponent),
-              },
+              
               {
                 path: 'inspeccion',
                 loadComponent: () =>
                   import(
-                    './domains/ModProjects/components/ot/inspeccion/inspeccion.component'
+                    './domains/ModProjects/components/ot/totalDailyreport/inspeccion.component'
                   ).then((i) => i.InspeccionComponent),
               },
               {
                 path: 'unidad',
                 loadComponent: () =>
                   import(
-                    './domains/ModProjects/components/ot/unidad/unidad.component'
+                    './domains/ModProjects/components/ot/Graficas/unidad.component'
                   ).then((u) => u.UnidadComponent),
               },
-              {
-                path: 'servicio',
-                loadComponent: () =>
-                  import(
-                    './domains/ModProjects/components/ot/servicio/servicio.component'
-                  ).then((s) => s.ServicioComponent),
-              },
+             
               {
                 path: 'details',
                 loadComponent: () =>
