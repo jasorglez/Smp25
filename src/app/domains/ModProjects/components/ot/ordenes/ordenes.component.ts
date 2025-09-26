@@ -766,22 +766,22 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         filter: true,
         resizable: true,
         flex: 2.5,
-        editable: true,
+        editable: false,
         onCellValueChanged: (params: any) => {
           if (this.selectedOt && params.data.id === this.selectedOt.id) {
             this.selectedOt.cdc = params.newValue;
           }
         }
       },
-      /* {
+       {
          field: 'cuentaHoja',
          headerName: 'Hoja',
          sortable: true,
          filter: true,
          resizable: true,
-         flex: 3,
+         flex: 2.5,
          editable: true,      
-       },*/
+       },
       {
         field: 'otNumber',
         headerName: 'OT',
@@ -792,7 +792,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         },
         resizable: true,
         flex: 2.5,
-        editable: true,
+        editable: false,
         onCellValueChanged: (params: any) => {
           if (this.selectedOt && params.data.id === this.selectedOt.id) {
             this.selectedOt.otNumber = params.newValue;
@@ -873,7 +873,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         sortable: true,
         filter: true,
         resizable: true,
-        flex: 2,
+        flex: 2.5,
         editable: true,
         cellRenderer: 'agCheckboxCellRenderer',
         cellEditor: 'agCheckboxCellEditor'
@@ -884,7 +884,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         sortable: true,
         filter: true,
         resizable: true,
-        flex: 2,
+        flex: 2.5,
         editable: true,
         cellRenderer: 'agCheckboxCellRenderer',
         cellEditor: 'agCheckboxCellEditor'
@@ -2127,7 +2127,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     autoGroupColumnDef: {
       headerName: 'Grupo',
       field: 'ag-Grid-AutoColumn',
-      width: 190,
+      width: 170,
       checkboxSelection: true,
       cellRendererParams: {
         suppressCount: false
