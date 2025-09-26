@@ -120,6 +120,7 @@ builder.Services.AddScoped<IBranchService, BranchService>();
 builder.Services.AddScoped<IOTService, OTService>();
 builder.Services.AddScoped<IPdfProcessingService, PdfProcessingService>();
 builder.Services.AddScoped<IProcesadorExcel, ProcesadorExcel>();
+builder.Services.AddScoped<IProcesadorExcelInt, ProcesadorExcelInt>();
 builder.Services.AddScoped<IContractDetailsService, ContractDetailsService>();
 builder.Services.AddScoped<IConventionDetailsService, ConventionDetailsService>();
 builder.Services.AddScoped<IDailyReportService, DailyReportService>();
