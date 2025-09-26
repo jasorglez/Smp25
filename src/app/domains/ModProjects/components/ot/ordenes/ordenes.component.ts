@@ -2345,11 +2345,14 @@ export class OrdenesComponent implements OnInit, OnDestroy {
           this.catalogoMateriales();
           this.catalogoEquipo();
           this.obtenerTypeNotes();
-          this.obtenerConceptos();
           this.loadEmployees();
           this.getDeptoandPosition();
           this.obtenerUnidades();
           this.obtenerArea();
+        }
+        // Recargar conceptos cuando cambia el proyecto (necesario para el programa de trabajo)
+        if (projectHasChanged) {
+          this.obtenerConceptos();
         }
       }
 
