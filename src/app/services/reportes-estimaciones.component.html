@@ -1,0 +1,52 @@
+<div class="container-fluid mt-3">
+  <!-- Fila de filtros y acciones -->
+  <div class="card shadow-sm mb-3">
+    <div class="card-body">
+      <h5 class="card-title">Filtros de Estimaciones</h5>
+      <div class="row align-items-end">
+        <!-- Filtro Fecha Inicio -->
+        <div class="col-md-3">
+          <label for="fechaInicio" class="form-label">Fecha Inicio</label>
+          <input type="date" class="form-control" id="fechaInicio" [(ngModel)]="fechaInicio">
+        </div>
+
+        <!-- Filtro Fecha Fin -->
+        <div class="col-md-3">
+          <label for="fechaFin" class="form-label">Fecha Fin</label>
+          <input type="date" class="form-control" id="fechaFin" [(ngModel)]="fechaFin">
+        </div>
+
+        <!-- Botón de Consulta -->
+        <div class="col-md-3 d-flex align-items-end">
+          <button class="btn btn-primary w-100" (click)="consultarEstimaciones()" [disabled]="isLoading">
+            <span *ngIf="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            <i *ngIf="!isLoading" class="bi bi-search"></i>
+            {{ isLoading ? 'Consultando...' : 'Consultar' }}
+          </button>
+        </div>
+
+        <!-- Botón de Exportar -->
+        <div class="col-md-3 d-flex align-items-end">
+          <button class="btn btn-success w-100" (click)="exportarExcel()">
+            <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Grid de Estimaciones -->
+  <div class="card shadow-sm">
+    <div class="card-body p-0">
+      <ag-grid-angular
+        style="width: 100%; height: 75vh;"
+        class="ag-theme-alpine"
+        [columnDefs]="columnDefs"
+        [rowData]="rowData"
+        [defaultColDef]="defaultColDef"
+        (gridReady)="onGridReady($event)"
+      >
+      </ag-grid-angular>
+    </div>
+  </div>
+</div>

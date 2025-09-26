@@ -18,13 +18,13 @@ export class OtService {
       return this.http.get(`${environment.urlSmp}/OT`, { headers: this.trackingService.getHeaders() });
     }
 
-    getOtListByProject(idProject: number, close: boolean): Observable<any> {
+   getOtListByProject(idProject: number, close: boolean): Observable<any> {
       return this.http.get(`${environment.urlSmp}/OT/projects/${idProject}?close=${close}`, { headers: this.trackingService.getHeaders() });
     }
 
     getOtAllt(idRoot: number): Observable<any> {
-      return this.http.get(`${environment.urlSmp}/OT/reports/${idRoot}?close=${close}`, { headers: this.trackingService.getHeaders() });
-    }
+        return this.http.get(`${environment.urlSmp}/OT/reports/${idRoot}`, { headers: this.trackingService.getHeaders() });
+      }
     
     getOtDetails(idOt: number): Observable<any> {
       return this.http.get(`${environment.urlSmp}/OT/${idOt}`, { headers: this.trackingService.getHeaders() });

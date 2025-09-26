@@ -726,18 +726,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   public get oTcolumnDefs(): ColDef[] {
     const hasPermission = this.authService.hasDetailedPermission('projects', 'get-all-ot');
     return [
-      {
-        headerName: '',
-        checkboxSelection: hasPermission,
-        headerCheckboxSelection: hasPermission,
-        width: 40,
-        pinned: 'left',
-        suppressMenu: true,
-        sortable: false,
-        filter: false,
-        resizable: false,
-        hide: !hasPermission
-     },
      {
        field: 'idProject',
        headerName: 'Proyecto',
@@ -2138,16 +2126,84 @@ addVideo(){
     autoGroupColumnDef: {
       headerName: 'Grupo',
       field: 'ag-Grid-AutoColumn',
-      width: 150,
+      width: 190,
+      checkboxSelection: true,
       cellRendererParams: {
         suppressCount: false
       }
     },
+    onCellClicked: (event: any) => this.onGridCellClicked(event),
     onCellDoubleClicked: (event: any) => this.onOTCellDoubleClicked(event),
-    onCellValueChanged: (event: any) => {
-      this.onMasterCellValueChanged(event);
+    onCellValueChanged: (event: any) => this.onMasterCellValueChanged(event),
+    onRowSelected: (event: any) => this.onRowSelected(event)
+  }
+
+  /**
+   * Se dispara al hacer clic en cualquier celda. Filtra para actuar solo en el checkbox de un grupo.
+   * @param event - Parámetros del evento onCellClicked de AG-Grid.
+   */
+  async onGridCellClicked(event: any) {
+    // La lógica de cierre individual se movió a onSelectionChanged
+    // Este método se puede mantener para futuras acciones de clic en celda.
+  }
+
+  /**
+   * Se dispara cuando una fila (incluyendo grupos) es seleccionada.
+   * @param event - Parámetros del evento onRowSelected de AG-Grid.
+   */
+  async onRowSelected(event: any) {
+    // Actuar solo si se seleccionó un nodo de grupo
+    if (event.node.group && event.node.isSelected()) {
+      const groupNode = event.node;
+      const childOts = groupNode.allLeafChildren.map(node => node.data);
+
+      if (childOts.length === 0) return;
+
+      // Pequeña pausa para asegurar que la UI se actualice antes del diálogo
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      const confirmResult = await alerts.confirmAlert(
+        'Cerrar OTs del Grupo',
+        `¿Deseas cerrar las ${childOts.length} OTs de este grupo?`,
+        'question',
+        'Sí, cerrar todas'
+      );
+
+      if (confirmResult.isConfirmed) {
+        // Marcar todas las OTs como cerradas
+        childOts.forEach(ot => {
+          ot.closed = true;
+          ot.closedApp = true;
+        });
+        // Guardar los cambios y eliminarlas de la vista
+        await this.saveOtsInBatch(childOts, true);
+      } else {
+        // Si el usuario cancela, deseleccionar el grupo para evitar confusiones
+        groupNode.setSelected(false, true); // El segundo parámetro evita un bucle infinito de eventos
+      }
     }
-  };
+  }
+
+  /**
+   * Guarda un lote de OTs en el servidor y opcionalmente las elimina de la grilla.
+   * @param otsToSave - Array de OTs a guardar.
+   * @param removeAfterSave - Si es true, elimina las OTs de la grilla después de guardar.
+   */
+  async saveOtsInBatch(otsToSave: OrdenesData[], removeAfterSave: boolean = false) {
+    if (!otsToSave || otsToSave.length === 0) return;
+  
+    try {
+      const updatePromises = otsToSave.map(ot => firstValueFrom(this.otService.updateOt(Number(ot.id), ot)));
+      await Promise.all(updatePromises);
+      alerts.basicAlert('Éxito', `Se cerraron y guardaron ${otsToSave.length} OTs correctamente.`, 'success');
+      if (removeAfterSave) {
+        this.gridApi.applyTransaction({ remove: otsToSave });
+      }
+    } catch (error) {
+      alerts.basicAlert('Error', 'Ocurrió un error al actualizar las OTs.', 'error');
+      console.error('Error en guardado por lotes:', error);
+    }
+  }
 
   // Configuraciones de grid para las pestañas
   public tabGridOptions: any = {

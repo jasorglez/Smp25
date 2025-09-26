@@ -61,4 +61,5 @@ export class LogbookService {
   getNotesFromReport(idReport: number, typeNote: string): Observable<any> {
     return this.http.get(`${environment.urlSmp}/Logbook/reporte/${idReport}?typeNote=${typeNote}`, { headers: this.authService.getHeaders() })
   }
+
 }

@@ -3,10 +3,13 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
-import { EstimatesService } from 'app/services/estimates.service';
 import { SignalsService } from 'app/services/signals.service';
-import { TrackingService } from 'app/services/tracking.service';
 import { alerts } from 'app/helpers/alerts';
+
+// Importar los servicios que vamos a necesitar
+import { OtService } from 'app/services/ot.service';
+import { LogbookService } from 'app/services/logbook.service';
+import { WorkprogramsService } from 'app/services/workprograms.service';
 
 @Component({
   selector: 'app-reportes-estimaciones',
@@ -17,259 +20,107 @@ import { alerts } from 'app/helpers/alerts';
 })
 export class ReportesEstimacionesComponent {
 
-  private estimatesService = inject(EstimatesService);
+  // Inyectar servicios
+  private otService = inject(OtService);
+  private logbookService = inject(LogbookService);
+  private workprogramsService = inject(WorkprogramsService);
   private signalsService = inject(SignalsService);
-  private trackingService = inject(TrackingService);
 
-  // Variables del componente
+  // Propiedades para los filtros
   fechaInicio: string = '';
   fechaFin: string = '';
-  estadoFiltro: string = '';
+  isLoading: boolean = false;
   
-  reporteData: any[] = [];
-  resumenEstadistico: any = null;
-  
+  // Propiedades para el grid
   private gridApi: GridApi;
-  private contract = this.signalsService.getContractSelectedBySidebar()();
-
-  // Configuración del grid
-  defaultColDef = {
+  public rowData: any[] = [];
+  public defaultColDef: ColDef = {
     sortable: true,
     filter: true,
     resizable: true,
-    flex: 1
+    flex: 1,
+    minWidth: 150, // Ancho mínimo para evitar que las columnas se aplasten
+    cellStyle: { 'vertical-align': 'middle' }
   };
 
   columnDefs: ColDef[] = [
-    {
-      field: 'number',
-      headerName: 'No. Estimación',
-      width: 140,
-      pinned: 'left'
-    },
-    {
-      field: 'dateStart',
-      headerName: 'Fecha Inicio',
-      width: 120,
+    { headerName: 'Numero OS', field: 'otNumber', pinned: 'left' },
+    { headerName: 'INMUEBLE', field: 'cdc', pinned: 'left' },
+    { headerName: 'Nombre del servicio', field: 'description', width: 300 },
+    { headerName: 'Equipo Ejecutor', field: 'equipoEjecutor', valueGetter: () => 'N/A' }, // Placeholder
+    { headerName: 'Colonia', field: 'neighborhood' },
+    { headerName: 'Calle', field: 'address' },
+    { headerName: 'Número', field: 'oldAddressNumber' },
+    { headerName: 'Trabajo realizado', field: 'trabajoRealizado', valueGetter: () => 'N/A' }, // Placeholder
+    { headerName: 'Resultado del Trabajo', field: 'results' },
+    { headerName: 'Cantidad', field: 'quantity', type: 'numericColumn' },
+    { 
+      headerName: 'Fecha de Asignacion', 
+      field: 'registerDate',
       valueFormatter: (params) => {
         if (params.value) {
-          return new Date(params.value).toLocaleDateString('es-ES');
+          // Asume que la fecha viene en un formato que JS puede parsear
+          return new Date(params.value).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
         }
         return '';
       }
     },
-    {
-      field: 'dateEnd',
-      headerName: 'Fecha Fin',
-      width: 120,
+    { 
+      headerName: 'Fecha de Ejecucion', 
+      field: 'executionDate', // Este campo deberá venir del logbook
       valueFormatter: (params) => {
         if (params.value) {
-          return new Date(params.value).toLocaleDateString('es-ES');
+          return new Date(params.value).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
         }
         return '';
       }
     },
-    {
-      field: 'dias',
-      headerName: 'Días',
-      width: 80,
-      type: 'numericColumn'
-    },
-    {
-      field: 'typeMoney',
-      headerName: 'Moneda',
-      width: 100
-    },
-    {
-      field: 'amountMX',
-      headerName: 'Monto MXN',
-      width: 140,
-      type: 'numericColumn',
-      valueFormatter: (params) => {
-        return new Intl.NumberFormat('es-MX', { 
-          style: 'currency', 
-          currency: 'MXN' 
-        }).format(params.value);
-      }
-    },
-    {
-      field: 'amountDLL',
-      headerName: 'Monto USD',
-      width: 140,
-      type: 'numericColumn',
-      valueFormatter: (params) => {
-        return new Intl.NumberFormat('en-US', { 
-          style: 'currency', 
-          currency: 'USD' 
-        }).format(params.value);
-      }
-    },
-    {
-      field: 'acumulateMX',
-      headerName: 'Acumulado MXN',
-      width: 150,
-      type: 'numericColumn',
-      valueFormatter: (params) => {
-        return new Intl.NumberFormat('es-MX', { 
-          style: 'currency', 
-          currency: 'MXN' 
-        }).format(params.value);
-      }
-    },
-    {
-      field: 'acumulateDLL',
-      headerName: 'Acumulado USD',
-      width: 150,
-      type: 'numericColumn',
-      valueFormatter: (params) => {
-        return new Intl.NumberFormat('en-US', { 
-          style: 'currency', 
-          currency: 'USD' 
-        }).format(params.value);
-      }
-    },
-    {
-      field: 'type',
-      headerName: 'Tipo',
-      width: 120
-    },
-    {
-      field: 'authorizeUser',
-      headerName: 'Autorizado Por',
-      width: 150
-    },
-    {
-      field: 'comment',
-      headerName: 'Comentarios',
-      width: 200
-    }
+    { headerName: 'Dias', field: 'dias', valueGetter: () => 0 }, // Placeholder
+    { headerName: 'Area', field: 'area' },
+    { headerName: 'Validado', field: 'validado', valueGetter: () => 'PAGO' }, // Valor estático
+    { headerName: 'Observaciones', field: 'observations', width: 300 }
   ];
 
-  constructor() {
-    // Log de acceso al componente
-    this.trackingService.addLog(
-      this.trackingService.getnameComp(),
-      'Acceso a Reportes de Estimaciones',
-      'Modulo Proyectos - Estimaciones - Reportes',
-      this.trackingService.getEmail()
-    );
-
+  constructor() { 
     // Inicializar fechas por defecto (último mes)
     const hoy = new Date();
-    const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    const haceUnMes = new Date();
+    haceUnMes.setMonth(hoy.getMonth() - 1);
     
-    this.fechaInicio = inicioMes.toISOString().split('T')[0];
+    this.fechaInicio = haceUnMes.toISOString().split('T')[0];
     this.fechaFin = hoy.toISOString().split('T')[0];
   }
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-    this.generarReporte(); // Cargar datos iniciales
+    this.gridApi.setGridOption('rowHeight', 35);
+    this.gridApi.setGridOption('headerHeight', 40);
   }
 
-  generarReporte() {
-    this.trackingService.addLog(
-      this.trackingService.getnameComp(),
-      'Generar Reporte de Estimaciones',
-      'Modulo Proyectos - Estimaciones - Reportes',
-      this.trackingService.getEmail()
-    );
-
-    if (!this.contract) {
-      alerts.basicAlert('Error', 'Debe seleccionar un contrato', 'error');
+  /**
+   * Método principal que se llamará al presionar el botón "Consultar".
+   * Orquestará la carga de datos y la construcción de la grilla.
+   */
+  consultarEstimaciones() {
+    if (!this.fechaInicio || !this.fechaFin) {
+      alerts.basicAlert('Error', 'Por favor, seleccione un rango de fechas válido.', 'error');
       return;
     }
-
-    this.estimatesService.getEstimates(this.contract).subscribe({
-      next: (data: any[]) => {
-        // Aplicar filtros
-        let datosFiltrados = [...data];
-
-        // Filtro por fechas
-        if (this.fechaInicio) {
-          datosFiltrados = datosFiltrados.filter(item => 
-            new Date(item.dateStart) >= new Date(this.fechaInicio)
-          );
-        }
-
-        if (this.fechaFin) {
-          datosFiltrados = datosFiltrados.filter(item => 
-            new Date(item.dateEnd) <= new Date(this.fechaFin)
-          );
-        }
-
-        // Filtro por estado
-        if (this.estadoFiltro) {
-          datosFiltrados = datosFiltrados.filter(item => 
-            item.type === this.estadoFiltro
-          );
-        }
-
-        this.reporteData = datosFiltrados;
-        this.calcularResumenEstadistico();
-        
-        alerts.basicAlert('Reporte Generado', 
-          `Se encontraron ${this.reporteData.length} registros`, 'success');
-      },
-      error: (error) => {
-        console.error('Error al generar reporte:', error);
-        alerts.basicAlert('Error', 'Error al generar el reporte', 'error');
-      }
-    });
-  }
-
-  private calcularResumenEstadistico() {
-    if (this.reporteData.length === 0) {
-      this.resumenEstadistico = null;
-      return;
-    }
-
-    const totalMXN = this.reporteData.reduce((sum, item) => sum + (item.amountMX || 0), 0);
-    const totalUSD = this.reporteData.reduce((sum, item) => sum + (item.amountDLL || 0), 0);
-    const totalDias = this.reporteData.reduce((sum, item) => sum + (item.dias || 0), 0);
-
-    this.resumenEstadistico = {
-      totalEstimaciones: this.reporteData.length,
-      totalMXN: totalMXN,
-      totalUSD: totalUSD,
-      promedioPorDia: totalDias > 0 ? totalMXN / totalDias : 0
-    };
+    console.log(`Consultando datos desde ${this.fechaInicio} hasta ${this.fechaFin}`);
+    this.isLoading = true;
+    
+    // Lógica de consulta (actualmente simulada)
+    setTimeout(() => {
+      this.isLoading = false;
+      alerts.basicAlert('Info', 'Funcionalidad de consulta en desarrollo.', 'info');
+    }, 1000);
   }
 
   exportarExcel() {
-    this.trackingService.addLog(
-      this.trackingService.getnameComp(),
-      'Exportar Reporte Estimaciones a Excel',
-      'Modulo Proyectos - Estimaciones - Reportes',
-      this.trackingService.getEmail()
-    );
-
     if (this.gridApi) {
       this.gridApi.exportDataAsExcel({
         fileName: `Reporte_Estimaciones_${new Date().toISOString().split('T')[0]}.xlsx`
       });
     }
-  }
-
-  exportarPDF() {
-    this.trackingService.addLog(
-      this.trackingService.getnameComp(),
-      'Exportar Reporte Estimaciones a PDF',
-      'Modulo Proyectos - Estimaciones - Reportes',
-      this.trackingService.getEmail()
-    );
-
-    alerts.basicAlert('Funcionalidad', 'Exportar PDF próximamente disponible', 'info');
-  }
-
-  imprimirReporte() {
-    this.trackingService.addLog(
-      this.trackingService.getnameComp(),
-      'Imprimir Reporte Estimaciones',
-      'Modulo Proyectos - Estimaciones - Reportes',
-      this.trackingService.getEmail()
-    );
-
-    window.print();
   }
 }
