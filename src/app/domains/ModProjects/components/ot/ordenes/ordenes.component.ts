@@ -2860,13 +2860,17 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
         // El 'effect' se disparará. Esperamos a que el catálogo de conceptos se cargue
         // antes de continuar con la carga de los datos de las pestañas.
-        this.obtenerConceptos().pipe(first()).subscribe(() => {
+        this.obtenerConceptos(selectedProjectId).pipe(first()).subscribe(() => {
           console.log('✅ Catálogo de conceptos cargado. Procediendo a cargar datos de pestañas.');
           this.loadTabDetails(selectedRows[0]);
         });
       } else {
-        // Si el proyecto no cambió, cargamos los detalles directamente.
-        this.loadTabDetails(selectedRows[0]);
+        // Si el proyecto no cambió, refrescamos el catálogo por si acaso y cargamos los detalles
+        console.log('🔄 Proyecto no cambió, pero refrescando catálogo de conceptos para OT:', selectedRows[0].idProject);
+        this.obtenerConceptos(selectedRows[0].idProject).pipe(first()).subscribe(() => {
+          console.log('✅ Catálogo de conceptos refrescado. Procediendo a cargar datos de pestañas.');
+          this.loadTabDetails(selectedRows[0]);
+        });
       }
     } else {
       this.selectedOt = null;
@@ -5029,9 +5033,12 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     );
   }
 
-  obtenerConceptos(): Observable<any> {
+  obtenerConceptos(projectId?: number): Observable<any> {
+    // Usar el projectId pasado como parámetro, o intentar detectar uno
+    const targetProjectId = projectId || this.selectedOt?.idProject || this.idProject;
+
     // Verificar si hay proyecto seleccionado
-    if (!this.idProject) {
+    if (!targetProjectId) {
       console.warn('No hay proyecto seleccionado, intentando detectar automáticamente...');
 
       // Intentar detectar proyecto automáticamente desde los datos cargados
@@ -5039,36 +5046,30 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
       if (detectedProject) {
         console.log('Proyecto detectado automáticamente:', detectedProject);
-        this.idProject = parseInt(detectedProject.toString());
+        return this.workprogramsService.getActivities(parseInt(detectedProject.toString())).pipe(
+          tap((data: any) => this.processCatalogConceptos(data))
+        );
       } else {
-        // Si no se puede detectar, solo loggear el warning
-        console.warn('⚠️ No se pudo detectar proyecto para cargar conceptos. Los conceptos se cargarán sin filtro por proyecto.');
-        // Solo mostrar alerta si es crítico para la funcionalidad
-        // alerts.basicAlert(
-        //   'Proyecto requerido',
-        //   'Por favor seleccione un proyecto en el menú lateral para cargar los conceptos correctamente.',
-        //   'warning'
-        // );
-        // En lugar de retornar EMPTY, intentar cargar conceptos sin filtro de proyecto
-        // return EMPTY;
+        console.warn('⚠️ No se pudo detectar proyecto para cargar conceptos.');
+        return EMPTY;
       }
     }
 
-    return this.workprogramsService.getActivities(this.idProject).pipe(
-      tap((data: any) => {
-        this.catalogConcepto = data;
-        console.log('Catálogo de conceptos obtenido:', this.catalogConcepto);
-
-        if (this.conceptosGridApi) {
-          this.conceptosGridApi.refreshCells();
-          console.log('Grid de conceptos actualizado con catálogo');
-        }
-      }),
+    return this.workprogramsService.getActivities(targetProjectId).pipe(
+      tap((data: any) => this.processCatalogConceptos(data)),
       catchError(error => {
         console.error('Error fetching conceptos:', error);
         return EMPTY; // Devolver un observable vacío en caso de error
       })
     );
+  }
+
+  private processCatalogConceptos(data: any) {
+    this.catalogConcepto = data;
+
+    if (this.conceptosGridApi) {
+      this.conceptosGridApi.refreshCells();
+    }
   }
 
   // Método para detectar proyecto automáticamente desde los datos
