@@ -175,6 +175,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   private idcompany: number = 0;
   private isSelectionDrivenChange = false; // Flag para prevenir recarga de datos en selección de grid
   private lastExpandedProjectId: number | null = null;
+  private isSavingData = false; // Flag para evitar recargas duplicadas durante guardado
 
   private catalogMateriales: any[] = [];
   public catalogEquipos: any[] = [];
@@ -2598,6 +2599,12 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   private handleDailyReportUpdate(reportData: any): void {
     console.log('✅ Actualizando reportes diarios por SignalR...');
 
+    // 🚫 Ignorar notificaciones si estamos guardando datos (evitar duplicación)
+    if (this.isSavingData) {
+      console.log('⏭️ Ignorando notificación de SignalR porque estamos guardando datos');
+      return;
+    }
+
     // Recargar reportes diarios para mostrar el nuevo reporte
     this.loadDailyReports();
 
@@ -3541,7 +3548,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
     // Validación
     /*const invalidNewRows = newRows.filter(item => !item.date || !item.supervisor);
-    
+
     if (invalidNewRows.length > 0) {
       alerts.basicAlert('Añadir entrada', 'Debe introducir la fecha y supervisor antes de guardar.', 'error');
       return;
@@ -3553,6 +3560,9 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     }
 
     try {
+      // 🚫 Activar flag para ignorar notificaciones de SignalR durante el guardado
+      this.isSavingData = true;
+
       console.log('=== PREPARANDO REQUESTS ===');
 
       const addRequests = newRows.map((row, index) => {
@@ -3611,7 +3621,12 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       await this.loadDailyReports();
       console.log('Datos recargados exitosamente');
 
+      // ✅ Desactivar flag después de recargar
+      this.isSavingData = false;
+
     } catch (error: any) {
+      // ✅ Desactivar flag en caso de error
+      this.isSavingData = false;
       console.error('=== ERROR DETALLADO ===');
       console.error('Error completo:', error);
 
@@ -4581,6 +4596,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     const newMaterial = {
       //id: tempId,
       idOt: parseInt(this.selectedOt.id),
+      idProject: this.selectedOt.idProject,
       idReporte: this.selectedReporteId,
       idResource: '', // Inicializar como string vacío para consistencia
       quantity: 1,
@@ -4629,6 +4645,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     const newEquipo = {
       //id: tempId,
       idOt: parseInt(this.selectedOt.id),
+      idProject: this.selectedOt.idProject,
       idReporte: this.selectedReporteId,
       idResource: null, // Se almacenará el ID del equipo
       position: '',
@@ -5379,6 +5396,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     const newConcepto = {
       id: tempId,
       idOt: parseInt(this.selectedOt.id),
+      idProject: this.selectedOt.idProject,
       idReporte: this.selectedReporteId,
       idResource: null, // Se almacenará el ID del concepto
       position: '',
@@ -5653,6 +5671,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
     const newNota = {
       idOt: parseInt(this.selectedOt.id),
+      idProject: this.selectedOt.idProject,
       idReporte: this.selectedReporteId,
       idResource: '', // Inicializar como string vacío para consistencia
       quantity: 1,
