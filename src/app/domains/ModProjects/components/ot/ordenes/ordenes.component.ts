@@ -1437,9 +1437,17 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     {
       field: 'validado',
       headerName: 'Validado',
-      hide: !this.signalsService.getrootChoose(), // ← Esto oculta toda la columna
+      hide: !this.signalsService.getrootChoose(), // Oculta la columna si la condición se cumple
       flex: 1,
-      editable: false 
+      editable: true, // Tiene que ser editable para que se muestre el selector
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: ['PAGO', 'NO PAGO'] // Opciones del selector
+      },
+      valueFormatter: (params) => {
+        // Opcional: Asegura que el valor se muestre correctamente
+        return params.value === 'PAGO' || params.value === 'NO PAGO' ? params.value : '';
+      }
     }
   ];
 
@@ -1530,13 +1538,13 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         return params.value ? params.value.substring(0, 5) : '';
       }
     },
-    {
+    /*{
       field: 'paid',
       headerName: 'Pagado',
       //editable: () => !this.signalsService.getClosedReport()(),
       editable: true,
       width: 110,
-    },
+    },*/
     {
 
       field: 'totalPay',
