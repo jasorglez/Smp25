@@ -17,6 +17,7 @@ export class OtService {
     getOtList(): Observable<any> {
       return this.http.get(`${environment.urlSmp}/OT`, { headers: this.trackingService.getHeaders() });
     }
+    
 
    getOtListByProject(idProject: number, close: boolean): Observable<any> {
       return this.http.get(`${environment.urlSmp}/OT/projects/${idProject}?close=${close}`, { headers: this.trackingService.getHeaders() });

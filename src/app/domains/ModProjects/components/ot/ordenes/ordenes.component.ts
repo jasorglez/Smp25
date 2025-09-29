@@ -1433,6 +1433,13 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         const total = Number(params.value) || 0;
         return `$${total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
       }
+    },
+    {
+      field: 'validado',
+      headerName: 'Validado',
+      hide: !this.signalsService.getrootChoose(), // ← Esto oculta toda la columna
+      flex: 1,
+      editable: false 
     }
   ];
 
@@ -5377,6 +5384,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       description: 'SIN DESCRIPCIÓN',
       request: 'DEFAULT_REQUEST', // Campo requerido por backend
       orden: maxOrden + 1,
+      validado : 'PAGO',
       __isNew: true
     };
 
@@ -5426,20 +5434,14 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         return this.logbookService.updateDataForOt(Number(row.id), cleanedData).toPromise();
       });
 
-      console.log(`Ejecutando ${addRequests.length} requests de creación`);
-      console.log(`Ejecutando ${updateRequests.length} requests de actualización`);
-
       const responses = await Promise.all([...addRequests, ...updateRequests]);
 
-      console.log('=== RESPUESTAS RECIBIDAS ===');
-      console.log('Número de respuestas:', responses.length);
       responses.forEach((response, index) => {
         console.log(`Respuesta ${index + 1}:`, response);
 
         // Verificar estructura de la respuesta
         if (response && typeof response === 'object') {
-          console.log(`- success: ${response.success}`);
-          console.log(`- message: ${response.message}`);
+
           console.log(`- data: ${response.data ? 'SÍ' : 'NO'}`);
 
           if (response.data) {
@@ -5473,9 +5475,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       await this.updateTotalPayAfterConceptos();
 
       // Recargar datos desde el servidor
-      console.log('Recargando datos desde el servidor...');
       await this.loadDailyReports();
-      console.log('Datos recargados exitosamente');
 
     } catch (error: any) {
       console.error('=== ERROR DETALLADO ===');
@@ -5699,10 +5699,9 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
     try {
       const addRequests = newRows.map((row, index) => {
-        console.log(`=== FILA ORIGINAL ${index + 1} ===`, row);
+
         const cleanedData = this.cleanDataForServer(row);
-        console.log(`=== DATOS LIMPIADOS ${index + 1} ===`, cleanedData);
-        console.log(`JSON.stringify:`, JSON.stringify(cleanedData, null, 2));
+
         return this.logbookService.addDataForOt(cleanedData).toPromise();
       });
 
@@ -5712,8 +5711,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         return this.logbookService.updateDataForOt(Number(row.id), cleanedData).toPromise();
       });
 
-      console.log(`Ejecutando ${addRequests.length} requests de creación`);
-      console.log(`Ejecutando ${updateRequests.length} requests de actualización`);
 
       const responses = await Promise.all([...addRequests, ...updateRequests]);
 
