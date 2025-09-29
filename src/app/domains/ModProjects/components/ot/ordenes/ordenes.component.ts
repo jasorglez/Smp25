@@ -28,7 +28,7 @@ import { UpdateExcelService } from 'app/services/updateExcel.service';
 import { ProjectsService } from 'app/services/projects.service';
 import { AuthService } from 'app/services/auth.service';
 import * as bootstrap from 'bootstrap';
-import { firstValueFrom, lastValueFrom, EMPTY, catchError, first, Observable, tap } from 'rxjs';
+import { firstValueFrom, lastValueFrom, EMPTY, catchError, first, Observable, tap, of } from 'rxjs';
 
 
 @Pipe({
@@ -2869,17 +2869,21 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
         // El 'effect' se disparará. Esperamos a que el catálogo de conceptos se cargue
         // antes de continuar con la carga de los datos de las pestañas.
-        this.obtenerConceptos(selectedProjectId).pipe(first()).subscribe(() => {
-          console.log('✅ Catálogo de conceptos cargado. Procediendo a cargar datos de pestañas.');
+        // 🚨 IMPORTANTE: Usar catchError para continuar el flujo incluso si falla la carga de conceptos
+        this.obtenerConceptos(selectedProjectId).pipe(
+          first(),
+          catchError((error) => {
+            console.warn('⚠️ Error al cargar conceptos, pero continuando con carga de pestañas:', error);
+            return of(null); // Retornar observable vacío para continuar el flujo
+          })
+        ).subscribe(() => {
+          console.log('✅ Catálogo de conceptos procesado. Procediendo a cargar datos de pestañas.');
           this.loadTabDetails(selectedRows[0]);
         });
       } else {
-        // Si el proyecto no cambió, refrescamos el catálogo por si acaso y cargamos los detalles
-        console.log('🔄 Proyecto no cambió, pero refrescando catálogo de conceptos para OT:', selectedRows[0].idProject);
-        this.obtenerConceptos(selectedRows[0].idProject).pipe(first()).subscribe(() => {
-          console.log('✅ Catálogo de conceptos refrescado. Procediendo a cargar datos de pestañas.');
-          this.loadTabDetails(selectedRows[0]);
-        });
+        // 🚀 Si el proyecto no cambió, cargamos los detalles inmediatamente sin esperar
+        console.log('🔄 Proyecto no cambió, cargando datos de pestañas inmediatamente.');
+        this.loadTabDetails(selectedRows[0]);
       }
     } else {
       this.selectedOt = null;
