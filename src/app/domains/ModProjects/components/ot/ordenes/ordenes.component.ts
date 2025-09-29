@@ -28,7 +28,7 @@ import { UpdateExcelService } from 'app/services/updateExcel.service';
 import { ProjectsService } from 'app/services/projects.service';
 import { AuthService } from 'app/services/auth.service';
 import * as bootstrap from 'bootstrap';
-import { firstValueFrom, lastValueFrom, EMPTY, catchError, first, Observable, tap } from 'rxjs';
+import { firstValueFrom, lastValueFrom, EMPTY, catchError, first, Observable, tap, of } from 'rxjs';
 
 
 @Pipe({
@@ -175,6 +175,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   private idcompany: number = 0;
   private isSelectionDrivenChange = false; // Flag para prevenir recarga de datos en selección de grid
   private lastExpandedProjectId: number | null = null;
+  private isSavingData = false; // Flag para evitar recargas duplicadas durante guardado
 
   private catalogMateriales: any[] = [];
   public catalogEquipos: any[] = [];
@@ -780,6 +781,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
          filter: true,
          resizable: true,
          flex: 2.5,
+         hide: true,
          editable: true,      
        },
       {
@@ -2604,6 +2606,12 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   private handleDailyReportUpdate(reportData: any): void {
     console.log('✅ Actualizando reportes diarios por SignalR...');
 
+    // 🚫 Ignorar notificaciones si estamos guardando datos (evitar duplicación)
+    if (this.isSavingData) {
+      console.log('⏭️ Ignorando notificación de SignalR porque estamos guardando datos');
+      return;
+    }
+
     // Recargar reportes diarios para mostrar el nuevo reporte
     this.loadDailyReports();
 
@@ -2875,17 +2883,21 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
         // El 'effect' se disparará. Esperamos a que el catálogo de conceptos se cargue
         // antes de continuar con la carga de los datos de las pestañas.
-        this.obtenerConceptos(selectedProjectId).pipe(first()).subscribe(() => {
-          console.log('✅ Catálogo de conceptos cargado. Procediendo a cargar datos de pestañas.');
+        // 🚨 IMPORTANTE: Usar catchError para continuar el flujo incluso si falla la carga de conceptos
+        this.obtenerConceptos(selectedProjectId).pipe(
+          first(),
+          catchError((error) => {
+            console.warn('⚠️ Error al cargar conceptos, pero continuando con carga de pestañas:', error);
+            return of(null); // Retornar observable vacío para continuar el flujo
+          })
+        ).subscribe(() => {
+          console.log('✅ Catálogo de conceptos procesado. Procediendo a cargar datos de pestañas.');
           this.loadTabDetails(selectedRows[0]);
         });
       } else {
-        // Si el proyecto no cambió, refrescamos el catálogo por si acaso y cargamos los detalles
-        console.log('🔄 Proyecto no cambió, pero refrescando catálogo de conceptos para OT:', selectedRows[0].idProject);
-        this.obtenerConceptos(selectedRows[0].idProject).pipe(first()).subscribe(() => {
-          console.log('✅ Catálogo de conceptos refrescado. Procediendo a cargar datos de pestañas.');
-          this.loadTabDetails(selectedRows[0]);
-        });
+        // 🚀 Si el proyecto no cambió, cargamos los detalles inmediatamente sin esperar
+        console.log('🔄 Proyecto no cambió, cargando datos de pestañas inmediatamente.');
+        this.loadTabDetails(selectedRows[0]);
       }
     } else {
       this.selectedOt = null;
@@ -3543,7 +3555,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
     // Validación
     /*const invalidNewRows = newRows.filter(item => !item.date || !item.supervisor);
-    
+
     if (invalidNewRows.length > 0) {
       alerts.basicAlert('Añadir entrada', 'Debe introducir la fecha y supervisor antes de guardar.', 'error');
       return;
@@ -3555,6 +3567,9 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     }
 
     try {
+      // 🚫 Activar flag para ignorar notificaciones de SignalR durante el guardado
+      this.isSavingData = true;
+
       console.log('=== PREPARANDO REQUESTS ===');
 
       const addRequests = newRows.map((row, index) => {
@@ -3613,7 +3628,12 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       await this.loadDailyReports();
       console.log('Datos recargados exitosamente');
 
+      // ✅ Desactivar flag después de recargar
+      this.isSavingData = false;
+
     } catch (error: any) {
+      // ✅ Desactivar flag en caso de error
+      this.isSavingData = false;
       console.error('=== ERROR DETALLADO ===');
       console.error('Error completo:', error);
 
@@ -4583,6 +4603,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     const newMaterial = {
       //id: tempId,
       idOt: parseInt(this.selectedOt.id),
+      idProject: this.selectedOt.idProject,
       idReporte: this.selectedReporteId,
       idResource: '', // Inicializar como string vacío para consistencia
       quantity: 1,
@@ -4631,6 +4652,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     const newEquipo = {
       //id: tempId,
       idOt: parseInt(this.selectedOt.id),
+      idProject: this.selectedOt.idProject,
       idReporte: this.selectedReporteId,
       idResource: null, // Se almacenará el ID del equipo
       position: '',
@@ -5381,6 +5403,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     const newConcepto = {
       id: tempId,
       idOt: parseInt(this.selectedOt.id),
+      idProject: this.selectedOt.idProject,
       idReporte: this.selectedReporteId,
       idResource: null, // Se almacenará el ID del concepto
       position: '',
@@ -5655,6 +5678,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
     const newNota = {
       idOt: parseInt(this.selectedOt.id),
+      idProject: this.selectedOt.idProject,
       idReporte: this.selectedReporteId,
       idResource: '', // Inicializar como string vacío para consistencia
       quantity: 1,
