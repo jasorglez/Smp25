@@ -147,13 +147,19 @@ export class WorkprogramsComponent {
 
     gantt.config.columns = [
       { name: "add", label: "", width: 44 },
-      { name: "activity", label: "Actividad", width: 60 },
-      { name: "text", label: "Nombre de la tarea", tree: true, width: 160 },
-      { name: "start_date", label: "Fecha de inicio", align: "center", width: 80 },
-      { name: "end_date", label: "Fecha de fin", align: "center", width: 80 },
+      { name: "activity", label: "Actividad", width: 60, template: (task) => `<span style="font-size: 12px;">${task['activity'] || ''}</span>` },
+      { name: "text", label: "Nombre de la tarea", tree: true, width: 400, template: (task) => `<span style="font-size: 12px;">${task.text}</span>` },
       {
-        name: "progress", label: "Progreso", align: "center", width: 80, template: (task) => {
-          return Math.round(task.progress * 100) + "%";
+        name: "costMX", label: "<b style='font-size: 13px;'>Costo Mxn</b>", align: "right", width: 100, template: (task) => {
+          const cost = task['costMX'] ? `$${task['costMX'].toLocaleString('es-MX', { minimumFractionDigits: 2 })}` : '$0.00';
+          return `<span style="font-size: 12px;">${cost}</span>`;
+        }
+      },
+      { name: "start_date", label: "<b style='font-size: 12px;'>Fecha de inicio</b>", align: "center", width: 100, template: (task) => `<span style="font-size: 12px;">${task.start_date ? task.start_date.toLocaleDateString('es-ES') : ''}</span>` },
+      { name: "end_date", label: "<b style='font-size: 12px;'>Fecha de fin</b>", align: "center", width: 100, template: (task) => `<span style="font-size: 12px;">${task.end_date ? task.end_date.toLocaleDateString('es-ES') : ''}</span>` },
+      {
+        name: "progress", label: "<b style='font-size: 12px;'>Progreso</b>", align: "center", width: 80, template: (task) => {
+          return `<span style="font-size: 12px;">${Math.round(task.progress * 100)}%</span>`;
         }
       }
     ];
