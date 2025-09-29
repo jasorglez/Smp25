@@ -780,6 +780,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
          filter: true,
          resizable: true,
          flex: 2.5,
+         hide: true,
          editable: true,      
        },
       {
@@ -1536,6 +1537,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       //editable: () => !this.signalsService.getClosedReport()(),
       editable: true,
       width: 110,
+      hide:true,
     },
     {
 
