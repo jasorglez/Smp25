@@ -2,7 +2,7 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
-import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { ColDef, GridApi, GridReadyEvent, CellDoubleClickedEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { SignalsService } from 'app/services/signals.service';
 import { alerts } from 'app/helpers/alerts';
 import { firstValueFrom } from 'rxjs';
@@ -12,11 +12,13 @@ import { OtService } from 'app/services/ot.service';
 import { LogbookService } from 'app/services/logbook.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { ProjectsService } from 'app/services/projects.service';
+import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
+import { ModalService } from 'app/services/modal.service';
 
 @Component({
   selector: 'app-reportes-estimaciones',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
   templateUrl: './reportes-estimaciones.component.html',
   styleUrl: './reportes-estimaciones.component.scss'
 })
@@ -28,6 +30,7 @@ export class ReportesEstimacionesComponent {
   private workprogramsService = inject(WorkprogramsService);
   private signalsService = inject(SignalsService);
   private projectsService = inject(ProjectsService);
+  private modalService = inject(ModalService);
 
   // Propiedades para los filtros
   fechaInicio: string = '';
@@ -42,7 +45,19 @@ export class ReportesEstimacionesComponent {
 
   // Cache de OT para combo box
   private otCache: any[] = [];
-  
+
+  // Flag para prevenir llamadas recursivas en onCuadrillaChanged
+  private isUpdatingCuadrilla: boolean = false;
+
+  // Flag para prevenir llamadas recursivas en onValidadoChanged
+  private isUpdatingValidado: boolean = false;
+
+  // Flag para prevenir llamadas recursivas en onObservationsChanged
+  private isUpdatingObservations: boolean = false;
+
+  // Flag para prevenir llamadas recursivas en onResultsChanged
+  private isUpdatingResults: boolean = false;
+
   // Propiedades para el grid
   private gridApi: GridApi;
   public rowData: any[] = [];
@@ -154,7 +169,29 @@ export class ReportesEstimacionesComponent {
         return true;
       }
     },
-    { headerName: 'Resultado del Trabajo', field: 'results' },
+    {
+      headerName: 'Resultado del Trabajo',
+      field: 'results',
+      width: 300,
+      editable: false,
+      onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+        if (!event.node.group) {
+          this.modalService.showModal({
+            params: event,
+            value: event.value
+          });
+        }
+      },
+      onCellValueChanged: (params: any) => {
+        this.onResultsChanged(params);
+      },
+      cellRenderer: (params: ICellRendererParams) => {
+        if (params.node.group) {
+          return params.value;
+        }
+        return params.value;
+      }
+    },
     { headerName: 'Cantidad', field: 'quantity', type: 'numericColumn' },
     {
       headerName: 'Fecha de Asignacion',
@@ -177,8 +214,41 @@ export class ReportesEstimacionesComponent {
       }
     },
     { headerName: 'Area', field: 'area' },
-    { headerName: 'Validado', field: 'validado' },
-    { headerName: 'Observaciones', field: 'observations', width: 300 }
+    {
+      headerName: 'Validado',
+      field: 'validado',
+      editable: true,
+      cellEditor: 'agRichSelectCellEditor',
+      cellEditorParams: {
+        values: ['PAGO', 'NO PAGO']
+      },
+      onCellValueChanged: (params: any) => {
+        this.onValidadoChanged(params);
+      }
+    },
+    {
+      headerName: 'Observaciones',
+      field: 'observations',
+      width: 300,
+      editable: false,
+      onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+        if (!event.node.group) {
+          this.modalService.showModal({
+            params: event,
+            value: event.value
+          });
+        }
+      },
+      onCellValueChanged: (params: any) => {
+        this.onObservationsChanged(params);
+      },
+      cellRenderer: (params: ICellRendererParams) => {
+        if (params.node.group) {
+          return params.value;
+        }
+        return params.value;
+      }
+    }
   ];
 
   constructor() {
@@ -295,12 +365,22 @@ export class ReportesEstimacionesComponent {
   }
 
   onCuadrillaChanged(params: any) {
+    // Prevenir llamadas recursivas
+    if (this.isUpdatingCuadrilla) {
+      console.log('Llamada recursiva detectada, ignorando...');
+      return;
+    }
+
     if (params.newValue === params.oldValue) {
       return; // No change
     }
 
     const rowData = params.data;
-    const idLogbook = rowData.idLogbook; // Assuming the data has idLogbook
+    const idLogbook = rowData.idLogbook;
+
+    console.log('=== onCuadrillaChanged ===');
+    console.log('idLogbook obtenido:', idLogbook);
+    console.log('rowData completo:', rowData);
 
     if (!idLogbook) {
       alerts.basicAlert('Error', 'No se encontró el ID del logbook para actualizar.', 'error');
@@ -313,30 +393,266 @@ export class ReportesEstimacionesComponent {
       return;
     }
 
-    // Prepare data to update
-    const updateData = {
-      idProject: selectedProject.id,
-      // Include other necessary fields if needed
-      idOt: rowData.idOt,
-      idReporte: rowData.idReporte,
-      typeNote: 'LOG', // Assuming type for logbook
-      description: 'Actualización de proyecto',
-      quantity: rowData.quantity || 1,
-      date: rowData.fechaLogbook || new Date().toISOString().split('T')[0],
-      start: '08:00:00',
-      end: '17:00:00'
-    };
+    console.log('Proyecto seleccionado:', selectedProject);
 
-    this.logbookService.updateDataForOt(idLogbook, updateData).subscribe({
+    // Activar flag para prevenir recursión
+    this.isUpdatingCuadrilla = true;
+
+    // Obtener los datos completos del logbook primero
+    this.logbookService.getDataForLogbook(idLogbook).subscribe({
       next: (response) => {
-        console.log('Logbook actualizado:', response);
-        alerts.basicAlert('Éxito', 'Proyecto de la cuadrilla actualizado correctamente.', 'success');
+        console.log('Respuesta de getDataForLogbook:', response);
+
+        if (response.success && response.data) {
+          // Modificar solo el idProject en los datos obtenidos
+          const logbookData = response.data;
+          logbookData.idProject = selectedProject.id;
+
+          console.log('Datos a enviar a updateDataForOt:', logbookData);
+
+          // Enviar todo el objeto completo a updateDataForOt
+          this.logbookService.updateDataForOt(idLogbook, logbookData).subscribe({
+            next: (updateResponse) => {
+              console.log('Respuesta de updateDataForOt:', updateResponse);
+              alerts.basicAlert('Éxito', 'Proyecto de la cuadrilla actualizado correctamente.', 'success');
+              this.isUpdatingCuadrilla = false;
+            },
+            error: (error) => {
+              console.error('Error al actualizar logbook:', error);
+              alerts.basicAlert('Error', 'Error al actualizar el proyecto de la cuadrilla.', 'error');
+              // Revert the change
+              params.node.setDataValue('name', params.oldValue);
+              this.isUpdatingCuadrilla = false;
+            }
+          });
+        } else {
+          console.error('Respuesta sin éxito o sin data:', response);
+          alerts.basicAlert('Error', 'No se pudieron obtener los datos del logbook.', 'error');
+          params.node.setDataValue('name', params.oldValue);
+          this.isUpdatingCuadrilla = false;
+        }
       },
       error: (error) => {
-        console.error('Error al actualizar logbook:', error);
-        alerts.basicAlert('Error', 'Error al actualizar el proyecto de la cuadrilla.', 'error');
+        console.error('Error al obtener datos del logbook:', error);
+        alerts.basicAlert('Error', 'Error al obtener los datos del logbook.', 'error');
         // Revert the change
         params.node.setDataValue('name', params.oldValue);
+        this.isUpdatingCuadrilla = false;
+      }
+    });
+  }
+
+  onValidadoChanged(params: any) {
+    // Prevenir llamadas recursivas
+    if (this.isUpdatingValidado) {
+      console.log('Llamada recursiva detectada en Validado, ignorando...');
+      return;
+    }
+
+    if (params.newValue === params.oldValue) {
+      return; // No change
+    }
+
+    const rowData = params.data;
+    const idLogbook = rowData.idLogbook;
+
+    console.log('=== onValidadoChanged ===');
+    console.log('idLogbook obtenido:', idLogbook);
+    console.log('Valor nuevo:', params.newValue);
+    console.log('Valor anterior:', params.oldValue);
+
+    if (!idLogbook) {
+      alerts.basicAlert('Error', 'No se encontró el ID del logbook para actualizar.', 'error');
+      return;
+    }
+
+    // Activar flag para prevenir recursión
+    this.isUpdatingValidado = true;
+
+    // Obtener los datos completos del logbook primero
+    this.logbookService.getDataForLogbook(idLogbook).subscribe({
+      next: (response) => {
+        console.log('Respuesta de getDataForLogbook (Validado):', response);
+
+        if (response.success && response.data) {
+          // Modificar solo el campo validado en los datos obtenidos
+          const logbookData = response.data;
+          logbookData.validado = params.newValue;
+
+          console.log('Datos a enviar a updateDataForOt (Validado):', logbookData);
+
+          // Enviar todo el objeto completo a updateDataForOt
+          this.logbookService.updateDataForOt(idLogbook, logbookData).subscribe({
+            next: (updateResponse) => {
+              console.log('Respuesta de updateDataForOt (Validado):', updateResponse);
+              alerts.basicAlert('Éxito', 'Estado de validación actualizado correctamente.', 'success');
+              this.isUpdatingValidado = false;
+            },
+            error: (error) => {
+              console.error('Error al actualizar validado:', error);
+              alerts.basicAlert('Error', 'Error al actualizar el estado de validación.', 'error');
+              // Revert the change
+              params.node.setDataValue('validado', params.oldValue);
+              this.isUpdatingValidado = false;
+            }
+          });
+        } else {
+          console.error('Respuesta sin éxito o sin data (Validado):', response);
+          alerts.basicAlert('Error', 'No se pudieron obtener los datos del logbook.', 'error');
+          params.node.setDataValue('validado', params.oldValue);
+          this.isUpdatingValidado = false;
+        }
+      },
+      error: (error) => {
+        console.error('Error al obtener datos del logbook (Validado):', error);
+        alerts.basicAlert('Error', 'Error al obtener los datos del logbook.', 'error');
+        // Revert the change
+        params.node.setDataValue('validado', params.oldValue);
+        this.isUpdatingValidado = false;
+      }
+    });
+  }
+
+  onObservationsChanged(params: any) {
+    // Prevenir llamadas recursivas
+    if (this.isUpdatingObservations) {
+      console.log('Llamada recursiva detectada en Observaciones, ignorando...');
+      return;
+    }
+
+    if (params.newValue === params.oldValue) {
+      return; // No change
+    }
+
+    const rowData = params.data;
+    const idOt = rowData.idOt;
+
+    console.log('=== onObservationsChanged ===');
+    console.log('idOt obtenido:', idOt);
+    console.log('Valor nuevo:', params.newValue);
+    console.log('Valor anterior:', params.oldValue);
+
+    if (!idOt) {
+      alerts.basicAlert('Error', 'No se encontró el ID de la OT para actualizar.', 'error');
+      return;
+    }
+
+    // Activar flag para prevenir recursión
+    this.isUpdatingObservations = true;
+
+    // Obtener los datos completos de la OT primero
+    this.otService.getOtDetails(idOt).subscribe({
+      next: (response) => {
+        console.log('Respuesta de getOtDetails (Observaciones):', response);
+
+        // La respuesta es un array con un objeto
+        if (response && response.length > 0) {
+          const otData = response[0];
+          // Modificar solo el campo observations
+          otData.observations = params.newValue;
+
+          console.log('Datos a enviar a updateOt (Observaciones):', otData);
+
+          // Enviar todo el objeto completo a updateOt
+          this.otService.updateOt(idOt, otData).subscribe({
+            next: (updateResponse) => {
+              console.log('Respuesta de updateOt (Observaciones):', updateResponse);
+              alerts.basicAlert('Éxito', 'Observaciones actualizadas correctamente.', 'success');
+              this.isUpdatingObservations = false;
+            },
+            error: (error) => {
+              console.error('Error al actualizar observaciones:', error);
+              alerts.basicAlert('Error', 'Error al actualizar las observaciones.', 'error');
+              // Revert the change
+              params.node.setDataValue('observations', params.oldValue);
+              this.isUpdatingObservations = false;
+            }
+          });
+        } else {
+          console.error('Respuesta vacía o sin datos (Observaciones):', response);
+          alerts.basicAlert('Error', 'No se pudieron obtener los datos de la OT.', 'error');
+          params.node.setDataValue('observations', params.oldValue);
+          this.isUpdatingObservations = false;
+        }
+      },
+      error: (error) => {
+        console.error('Error al obtener datos de la OT (Observaciones):', error);
+        alerts.basicAlert('Error', 'Error al obtener los datos de la OT.', 'error');
+        // Revert the change
+        params.node.setDataValue('observations', params.oldValue);
+        this.isUpdatingObservations = false;
+      }
+    });
+  }
+
+  onResultsChanged(params: any) {
+    // Prevenir llamadas recursivas
+    if (this.isUpdatingResults) {
+      console.log('Llamada recursiva detectada en Results, ignorando...');
+      return;
+    }
+
+    if (params.newValue === params.oldValue) {
+      return; // No change
+    }
+
+    const rowData = params.data;
+    const idOt = rowData.idOt;
+
+    console.log('=== onResultsChanged ===');
+    console.log('idOt obtenido:', idOt);
+    console.log('Valor nuevo:', params.newValue);
+    console.log('Valor anterior:', params.oldValue);
+
+    if (!idOt) {
+      alerts.basicAlert('Error', 'No se encontró el ID de la OT para actualizar.', 'error');
+      return;
+    }
+
+    // Activar flag para prevenir recursión
+    this.isUpdatingResults = true;
+
+    // Obtener los datos completos de la OT primero
+    this.otService.getOtDetails(idOt).subscribe({
+      next: (response) => {
+        console.log('Respuesta de getOtDetails (Results):', response);
+
+        // La respuesta es un array con un objeto
+        if (response && response.length > 0) {
+          const otData = response[0];
+          // Modificar solo el campo results
+          otData.results = params.newValue;
+
+          console.log('Datos a enviar a updateOt (Results):', otData);
+
+          // Enviar todo el objeto completo a updateOt
+          this.otService.updateOt(idOt, otData).subscribe({
+            next: (updateResponse) => {
+              console.log('Respuesta de updateOt (Results):', updateResponse);
+              alerts.basicAlert('Éxito', 'Resultado del trabajo actualizado correctamente.', 'success');
+              this.isUpdatingResults = false;
+            },
+            error: (error) => {
+              console.error('Error al actualizar results:', error);
+              alerts.basicAlert('Error', 'Error al actualizar el resultado del trabajo.', 'error');
+              // Revert the change
+              params.node.setDataValue('results', params.oldValue);
+              this.isUpdatingResults = false;
+            }
+          });
+        } else {
+          console.error('Respuesta vacía o sin datos (Results):', response);
+          alerts.basicAlert('Error', 'No se pudieron obtener los datos de la OT.', 'error');
+          params.node.setDataValue('results', params.oldValue);
+          this.isUpdatingResults = false;
+        }
+      },
+      error: (error) => {
+        console.error('Error al obtener datos de la OT (Results):', error);
+        alerts.basicAlert('Error', 'Error al obtener los datos de la OT.', 'error');
+        // Revert the change
+        params.node.setDataValue('results', params.oldValue);
+        this.isUpdatingResults = false;
       }
     });
   }
