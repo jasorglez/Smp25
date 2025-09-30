@@ -25,8 +25,8 @@ export class DailyReportService {
     return this.http.get(`${environment.urlSmp}/DailyReport/cost?idReport=${idReport}`, { headers: this.trackingService.getHeaders() });
   }
 
-  getTotalxCost(idRoot: number): Observable<any> {
-    return this.http.get(`${environment.urlSmp}/DailyReport/ot-project/${idRoot}`, { headers: this.trackingService.getHeaders() });
+  getTotalxCost(idRoot: number, fechaInicio: string, fechaFin: string): Observable<any> {
+    return this.http.get(`${environment.urlSmp}/DailyReport/ot-project/${idRoot}?startDate=${fechaInicio}&endDate=${fechaFin}`, { headers: this.trackingService.getHeaders() });
   }
   
    // Actualizar solo el costo del reporte

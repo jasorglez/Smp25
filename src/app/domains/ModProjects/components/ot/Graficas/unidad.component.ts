@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { NgApexchartsModule } from 'ng-apexcharts';
 import { DailyReportService } from 'app/services/daily-report.service';
 import { SignalsService } from 'app/services/signals.service';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 
 // Interfaces para los datos
 interface CuadrillaData {
@@ -26,7 +27,7 @@ interface ChartData {
 @Component({
   selector: 'app-unidad',
   standalone: true,
-  imports: [CommonModule, NgApexchartsModule],
+  imports: [CommonModule, NgApexchartsModule, ReactiveFormsModule],
   templateUrl: './unidad.component.html',
   styleUrl: './unidad.component.scss'
 })
@@ -35,6 +36,7 @@ export class UnidadComponent implements OnInit {
   // Servicios
   private dailyReportService = inject(DailyReportService);
   private signalsService = inject(SignalsService);
+  private fb = inject(FormBuilder);
 
   // Variables de datos
   public rawData: CuadrillaData[] = [];
@@ -42,6 +44,10 @@ export class UnidadComponent implements OnInit {
   public generalChartData: ChartData = { series: [], labels: [] };
   public isLoading: boolean = false;
   public error: string = '';
+
+  selectFechas!: FormGroup;
+  fechaInicio: string = '';
+  fechaFin: string = '';
 
   // Configuración base de ApexCharts para gráficas circulares 3D
   public chartOptions: any = {
@@ -106,23 +112,55 @@ export class UnidadComponent implements OnInit {
   };
 
   ngOnInit(): void {
-    this.loadData();
+    this.initializeDatesAndForm();
+    this.loadData(this.fechaInicio, this.fechaFin);
+  }
+
+  private initializeDatesAndForm(): void {
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // Domingo: 0, Lunes: 1, ..., Sábado: 6
+
+    // Calcular el jueves de esta semana
+    const thisThursday = new Date(today);
+    thisThursday.setDate(today.getDate() - dayOfWeek + 4);
+
+    // Calcular el miércoles de la semana anterior
+    const previousWednesday = new Date(thisThursday);
+    previousWednesday.setDate(thisThursday.getDate() - 8);
+
+    // Formatear a YYYY-MM-DD
+    this.fechaInicio = previousWednesday.toISOString().split('T')[0];
+    this.fechaFin = thisThursday.toISOString().split('T')[0];
+
+    this.selectFechas = this.fb.group({
+      fechaInicio: [this.fechaInicio, Validators.required],
+      fechaFin: [this.fechaFin, Validators.required]
+    });
+
+    // Suscribirse a los cambios en el formulario para recargar datos automáticamente
+    this.selectFechas.valueChanges.subscribe(values => {
+      if (this.selectFechas.valid && values.fechaInicio && values.fechaFin) {
+        this.fechaInicio = values.fechaInicio;
+        this.fechaFin = values.fechaFin;
+        this.loadData(values.fechaInicio, values.fechaFin);
+      }
+    });
   }
 
   // Cargar datos del servicio
-  loadData(): void {
+  loadData(fechaInicio: string, fechaFin: string): void {
     this.isLoading = true;
     this.error = '';
     
     const idRoot = this.signalsService.getRootSelectedBySidebar()();
     
     if (!idRoot) {
-      this.error = 'No hay empresa seleccionada';
+      this.error = 'No hay empresa seleccionada.';
       this.isLoading = false;
       return;
     }
 
-    this.dailyReportService.getTotalxCost(idRoot).subscribe({
+    this.dailyReportService.getTotalxCost(idRoot, fechaInicio, fechaFin).subscribe({
       next: (response: any) => {
         console.log('🔍 Datos recibidos del servicio:', response);
         
@@ -130,13 +168,13 @@ export class UnidadComponent implements OnInit {
           this.rawData = response.data;
           this.processData();
         } else {
-          this.error = 'No se encontraron datos para la empresa seleccionada';
+          this.error = response.message || 'No se encontraron datos para la empresa seleccionada en el rango de fechas.';
         }
         this.isLoading = false;
       },
       error: (error) => {
         console.error('❌ Error al cargar datos:', error);
-        this.error = 'Error al cargar los datos de costos';
+        this.error = 'Error al cargar los datos de costos. Intente de nuevo.';
         this.isLoading = false;
       }
     });
@@ -242,12 +280,23 @@ export class UnidadComponent implements OnInit {
 
   // Método para recargar datos
   reloadData(): void {
-    this.loadData();
+    //this.loadData();
   }
 
   // Método para calcular total general
   getTotalGeneral(): string {
     const total = this.generalChartData.series.reduce((acc, curr) => acc + curr, 0);
     return total.toLocaleString();
+  }
+
+  Consultar(): void {
+    if (this.selectFechas.invalid) {
+      this.error = 'Por favor, seleccione una fecha de inicio y fin válidas.';
+      return;
+    }
+    const { fechaInicio, fechaFin } = this.selectFechas.value;
+    this.fechaInicio = fechaInicio;
+    this.fechaFin = fechaFin;
+    this.loadData(this.fechaInicio, this.fechaFin);
   }
 }
