@@ -58,6 +58,12 @@ export class ReportesEstimacionesComponent {
   // Flag para prevenir llamadas recursivas en onResultsChanged
   private isUpdatingResults: boolean = false;
 
+  // Flag para prevenir llamadas recursivas en onClassificationChanged
+  private isUpdatingClassification: boolean = false;
+
+  // Flag para prevenir llamadas recursivas en onQuantityChanged
+  private isUpdatingQuantity: boolean = false;
+
   // Propiedades para el grid
   private gridApi: GridApi;
   public rowData: any[] = [];
@@ -192,7 +198,15 @@ export class ReportesEstimacionesComponent {
         return params.value;
       }
     },
-    { headerName: 'Cantidad', field: 'quantity', type: 'numericColumn' },
+    {
+      headerName: 'Cantidad',
+      field: 'quantity',
+      type: 'numericColumn',
+      editable: true,
+      onCellValueChanged: (params: any) => {
+        this.onQuantityChanged(params);
+      }
+    },
     {
       headerName: 'Fecha de Asignacion',
       field: 'registerDate',
@@ -248,7 +262,19 @@ export class ReportesEstimacionesComponent {
         }
         return params.value;
       }
-    }
+    },
+    {
+      headerName: 'Clasificación',
+      field: 'classification',
+      editable: true,
+      cellEditor: 'agRichSelectCellEditor',
+      cellEditorParams: {
+        values: ['Interna', 'Externa']
+      },
+      onCellValueChanged: (params: any) => {
+        this.onClassificationChanged(params);
+      }
+    },
   ];
 
   constructor() {
@@ -438,6 +464,155 @@ export class ReportesEstimacionesComponent {
         // Revert the change
         params.node.setDataValue('name', params.oldValue);
         this.isUpdatingCuadrilla = false;
+      }
+    });
+  }
+
+  onClassificationChanged(params: any) {
+    // Prevenir llamadas recursivas
+    if (this.isUpdatingClassification) {
+      console.log('Llamada recursiva detectada en Classification, ignorando...');
+      return;
+    }
+
+    if (params.newValue === params.oldValue) {
+      return; // No change
+    }
+
+    const rowData = params.data;
+    const idLogbook = rowData.idLogbook;
+    const classification = params.newValue; // 'Interna' o 'Externa'
+
+    console.log('=== onClassificationChanged ===');
+    console.log('idLogbook obtenido:', idLogbook);
+    console.log('Nueva clasificación:', classification);
+
+    if (!idLogbook) {
+      alerts.basicAlert('Error', 'No se encontró el ID del logbook para actualizar.', 'error');
+      return;
+    }
+
+    // Activar flag para prevenir recursión
+    this.isUpdatingClassification = true;
+
+    // Obtener los datos completos del logbook primero
+    this.logbookService.getDataForLogbook(idLogbook).subscribe({
+      next: (response) => {
+        console.log('Respuesta de getDataForLogbook (Classification):', response);
+
+        if (response.success && response.data) {
+          // Modificar solo el campo classification en los datos obtenidos
+          const logbookData = response.data;
+          logbookData.classification = classification;
+
+          console.log('Datos a enviar a updateDataForOt (Classification):', logbookData);
+
+          // Enviar todo el objeto completo a updateDataForOt
+          this.logbookService.updateDataForOt(idLogbook, logbookData).subscribe({
+            next: (updateResponse) => {
+              console.log('Respuesta de updateDataForOt (Classification):', updateResponse);
+              alerts.basicAlert('Éxito', `Clasificación actualizada a "${classification}".`, 'success');
+              this.isUpdatingClassification = false;
+            },
+            error: (error) => {
+              console.error('Error al actualizar clasificación:', error);
+              alerts.basicAlert('Error', 'Error al actualizar la clasificación.', 'error');
+              // Revert the change
+              params.node.setDataValue('classification', params.oldValue);
+              this.isUpdatingClassification = false;
+            }
+          });
+        } else {
+          console.error('Respuesta sin éxito o sin data (Classification):', response);
+          alerts.basicAlert('Error', 'No se pudieron obtener los datos del logbook.', 'error');
+          params.node.setDataValue('classification', params.oldValue);
+          this.isUpdatingClassification = false;
+        }
+      },
+      error: (error) => {
+        console.error('Error al obtener datos del logbook (Classification):', error);
+        alerts.basicAlert('Error', 'Error al obtener los datos del logbook.', 'error');
+        // Revert the change
+        params.node.setDataValue('classification', params.oldValue);
+        this.isUpdatingClassification = false;
+      }
+    });
+  }
+
+  onQuantityChanged(params: any) {
+    // Prevenir llamadas recursivas
+    if (this.isUpdatingQuantity) {
+      console.log('Llamada recursiva detectada en Quantity, ignorando...');
+      return;
+    }
+
+    if (params.newValue === params.oldValue) {
+      return; // No change
+    }
+
+    const rowData = params.data;
+    const idLogbook = rowData.idLogbook;
+    const newQuantity = params.newValue;
+
+    console.log('=== onQuantityChanged ===');
+    console.log('idLogbook obtenido:', idLogbook);
+    console.log('Nueva cantidad:', newQuantity);
+
+    if (!idLogbook) {
+      alerts.basicAlert('Error', 'No se encontró el ID del logbook para actualizar.', 'error');
+      return;
+    }
+
+    // Validar que la cantidad sea válida
+    if (newQuantity === null || newQuantity === undefined || newQuantity < 0) {
+      alerts.basicAlert('Error', 'La cantidad debe ser un valor numérico válido mayor o igual a 0.', 'error');
+      params.node.setDataValue('quantity', params.oldValue);
+      return;
+    }
+
+    // Activar flag para prevenir recursión
+    this.isUpdatingQuantity = true;
+
+    // Obtener los datos completos del logbook primero
+    this.logbookService.getDataForLogbook(idLogbook).subscribe({
+      next: (response) => {
+        console.log('Respuesta de getDataForLogbook (Quantity):', response);
+
+        if (response.success && response.data) {
+          // Modificar solo el campo quantity en los datos obtenidos
+          const logbookData = response.data;
+          logbookData.quantity = newQuantity;
+
+          console.log('Datos a enviar a updateDataForOt (Quantity):', logbookData);
+
+          // Enviar todo el objeto completo a updateDataForOt
+          this.logbookService.updateDataForOt(idLogbook, logbookData).subscribe({
+            next: (updateResponse) => {
+              console.log('Respuesta de updateDataForOt (Quantity):', updateResponse);
+              alerts.basicAlert('Éxito', `Cantidad actualizada a ${newQuantity}.`, 'success');
+              this.isUpdatingQuantity = false;
+            },
+            error: (error) => {
+              console.error('Error al actualizar cantidad:', error);
+              alerts.basicAlert('Error', 'Error al actualizar la cantidad.', 'error');
+              // Revert the change
+              params.node.setDataValue('quantity', params.oldValue);
+              this.isUpdatingQuantity = false;
+            }
+          });
+        } else {
+          console.error('Respuesta sin éxito o sin data (Quantity):', response);
+          alerts.basicAlert('Error', 'No se pudieron obtener los datos del logbook.', 'error');
+          params.node.setDataValue('quantity', params.oldValue);
+          this.isUpdatingQuantity = false;
+        }
+      },
+      error: (error) => {
+        console.error('Error al obtener datos del logbook (Quantity):', error);
+        alerts.basicAlert('Error', 'Error al obtener los datos del logbook.', 'error');
+        // Revert the change
+        params.node.setDataValue('quantity', params.oldValue);
+        this.isUpdatingQuantity = false;
       }
     });
   }
