@@ -130,7 +130,7 @@ export class ReportesGeneradoresComponent implements OnInit {
         },
       field: 'area',
       headerName: 'Área',
-      width: 150
+      width: 100
     },
     {
       filterParams: {
@@ -145,12 +145,17 @@ export class ReportesGeneradoresComponent implements OnInit {
     {
       field: 'results',
       headerName: 'Resultado',
-      width: 150
+      width: 180
     },
     {
       field: 'observations',
       headerName: 'Observaciones',
-      width: 150
+      width: 280
+    },
+    {
+      field: 'cuentaHoja',
+      headerName: 'Hoja',
+      width: 15
     },
   ];
 
