@@ -73,8 +73,8 @@ export class ReportesGeneradoresComponent implements OnInit {
           //excelMode: 'windows',
         },
       field: 'otNumber',
-      headerName: 'Número OT',
-      width: 150,
+      headerName: 'OT',
+      width: 90,
       pinned: 'left'
     },
     {
@@ -84,8 +84,8 @@ export class ReportesGeneradoresComponent implements OnInit {
           //excelMode: 'windows',
         },
       field: 'cdc',
-      headerName: 'Número CDC',
-      width: 150,
+      headerName: 'CDC',
+      width: 90,
       pinned: 'left'
     },
     {
@@ -175,8 +175,9 @@ export class ReportesGeneradoresComponent implements OnInit {
           //excelMode: 'windows',
         },
       field: 'otNumber',
-      headerName: 'Número OT',
-      width: 100,
+      headerName: 'OT',
+      width: 90,
+      pinned: 'left'
     },
     {
       filterParams: {
@@ -185,8 +186,9 @@ export class ReportesGeneradoresComponent implements OnInit {
           //excelMode: 'windows',
         },
       field: 'cdcNumber',
-      headerName: 'Número CDC',
-      width: 150,
+      headerName: 'CDC',
+      width: 90,
+      pinned: 'left'
     },
     {
       filterParams: {
