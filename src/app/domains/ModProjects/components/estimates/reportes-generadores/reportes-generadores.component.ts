@@ -1,38 +1,43 @@
 import { Component, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
-import { EstimatesService } from 'app/services/estimates.service';
-import { GeneratorsService } from 'app/services/generators.service';
 import { SignalsService } from 'app/services/signals.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { alerts } from 'app/helpers/alerts';
+import { DatosXFechasService } from 'app/services/OtDatosXFechas.service';
+import { OnInit } from '@angular/core';
+import { ProjectsService } from 'app/services/projects.service';
+
 
 @Component({
   selector: 'app-reportes-generadores',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, AgGridModule],
   templateUrl: './reportes-generadores.component.html',
   styleUrl: './reportes-generadores.component.scss'
 })
-export class ReportesGeneradoresComponent {
+export class ReportesGeneradoresComponent implements OnInit {
 
-  private estimatesService = inject(EstimatesService);
-  private generatorsService = inject(GeneratorsService);
+  private datosXFechasService = inject(DatosXFechasService);
   private signalsService = inject(SignalsService);
+  private projectsService = inject(ProjectsService);
   private trackingService = inject(TrackingService);
+  private fb = inject(FormBuilder);
 
   // Variables del componente
   estimacionSeleccionada: string = '';
   fechaInicio: string = '';
   fechaFin: string = '';
-  activeTab: string = 'generadores';
+  activeTab: string = 'OTs';
   showGraficos: boolean = false;
+  selectFechas: FormGroup;
   
   estimaciones: any[] = [];
-  generadoresData: any[] = [];
-  itemsData: any[] = [];
+  projects: any[] = [];
+  OTsData: any[] = [];
+  DetallesData: any[] = [];
   resumenData: any = {
     totalGeneradores: 0,
     totalItems: 0,
@@ -41,8 +46,8 @@ export class ReportesGeneradoresComponent {
     porArea: []
   };
   
-  private generadoresGridApi: GridApi;
-  private itemsGridApi: GridApi;
+  private otsGridApi: GridApi;
+  private detallesGridApi: GridApi;
   private contract = this.signalsService.getContractSelectedBySidebar()();
 
   // Configuración del grid
@@ -53,16 +58,62 @@ export class ReportesGeneradoresComponent {
     flex: 1
   };
 
-  generadoresColumnDefs: ColDef[] = [
+  OTsColumnDefs: ColDef[] = [
     {
-      field: 'numero',
-      headerName: 'Número Generador',
+      filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'windows',
+        },
+      field: 'otNumber',
+      headerName: 'Número OT',
       width: 150,
       pinned: 'left'
     },
     {
-      field: 'dateStart',
-      headerName: 'Fecha Inicio',
+      filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'windows',
+        },
+      field: 'cdc',
+      headerName: 'Número CDC',
+      width: 150,
+      pinned: 'left'
+    },
+    {
+      filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'windows',
+        },
+      field: 'idProject',
+      headerName: 'Proyecto',
+      width: 150,
+      valueFormatter: (params) => {
+          // Handle potential null values and properly format the displayed value
+          if (!params.value) return '';
+
+          const foundProject = this.projects
+            ? this.projects.find((item) => item.id === params.value)
+            : null;
+
+          return foundProject ? foundProject.name : params.value;
+        },
+        valueGetter: (params) => {
+          if (!params.data || !params.data.idProject) return '';
+          const project = this.projects?.find(b => b.id === params.data.idProject);
+          return project ? project.name : '';
+        },
+    },
+    {
+      filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'windows',
+        },
+      field: 'registerDate',
+      headerName: 'Fecha',
       width: 120,
       valueFormatter: (params) => {
         if (params.value) {
@@ -72,90 +123,121 @@ export class ReportesGeneradoresComponent {
       }
     },
     {
-      field: 'dateEnd',
-      headerName: 'Fecha Fin',
-      width: 120,
-      valueFormatter: (params) => {
-        if (params.value) {
-          return new Date(params.value).toLocaleDateString('es-ES');
-        }
-        return '';
-      }
-    },
-    {
-      field: 'fase',
-      headerName: 'Área/Fase',
+      filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'windows',
+        },
+      field: 'area',
+      headerName: 'Área',
       width: 150
     },
     {
-      field: 'creadoPor',
-      headerName: 'Creado Por',
+      filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'windows',
+        },
+      field: 'description',
+      headerName: 'Descripción',
       width: 150
     },
-    {
-      field: 'revisadoPor',
-      headerName: 'Revisado Por',
-      width: 150
-    },
-    {
-      field: 'autorizadoPor',
-      headerName: 'Autorizado Por',
-      width: 150
-    },
-    {
-      field: 'aplicaIsometrico',
-      headerName: 'Aplica Isométrico',
-      width: 140,
-      cellRenderer: (params) => params.value ? 'Sí' : 'No'
-    },
-    {
-      field: 'totalItems',
-      headerName: 'Total Items',
-      width: 100,
-      type: 'numericColumn'
-    },
-    {
-      field: 'comment',
-      headerName: 'Comentarios',
-      width: 200
-    }
+    
   ];
 
-  itemsColumnDefs: ColDef[] = [
+  DetallesColumnDefs: ColDef[] = [
+    
     {
-      field: 'generadorNumero',
-      headerName: 'Generador',
-      width: 150,
-      cellRenderer: 'agGroupCellRenderer'
+      filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'windows',
+        },
+      field: 'otNumber',
+      headerName: 'Número OT',
+      width: 100,
     },
     {
-      field: 'recursoNombre',
-      headerName: 'Recurso',
-      width: 200
+      filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'windows',
+        },
+      field: 'cdcNumber',
+      headerName: 'Número CDC',
+      width: 150,
+    },
+    {
+      filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'windows',
+        },
+      field: 'date',
+      headerName: 'Fecha',
+      width: 120,
+      valueFormatter: (params) => {
+        if (params.value) {
+          return new Date(params.value).toLocaleDateString('es-ES');
+        }
+        return '';
+      }
+    },
+    {
+      filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'windows',
+        },
+      field: 'nameCuadrilla',
+      headerName: 'Cuadrilla',
+      width: 150
+    },
+    {
+      filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'windows',
+        },
+      field: 'typenote',
+      headerName: 'Tipo de Nota',
+      width: 150
+    },
+    {
+      headerName: 'Descripción',
+      width: 150,
+      valueGetter: (params) => {
+        if (!params.data) return '';
+        const concepto = params.data.nombreConcepto;
+        const empleado = params.data.nombreEmpleado;
+        return concepto && concepto.trim() !== '' ? concepto : empleado;
+      },
     },
     {
       field: 'quantity',
       headerName: 'Cantidad',
-      width: 100,
-      type: 'numericColumn'
+      width: 150,
+      valueGetter: (params) => {
+        return params.data.typenote === 'CONCEPT' ? params.data.quantity : '';
+      },
+      filterParams: {
+        defaultToNothingSelected: true,
+        // excelMode: 'windows',
+      },
     },
     {
-      field: 'accumulate',
-      headerName: 'Acumulado',
-      width: 120,
-      type: 'numericColumn',
-      valueFormatter: (params) => {
-        return params.value ? params.value.toLocaleString('es-MX', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2
-        }) : '0.00';
-      }
+      field: 'image',
+      headerName: 'Imagen',
+      width: 150,
+      valueGetter: (params) => {
+        return params.data.typenote === 'photo' ? params.data.image : '';
+      },
+      filterParams: {
+        defaultToNothingSelected: true,
+        // excelMode: 'windows',
+      },
     },
-    {
-      field: 'comment',
-      headerName: 'Comentarios',
-      width: 200
-    }
+    
   ];
 
   constructor() {
@@ -167,49 +249,67 @@ export class ReportesGeneradoresComponent {
       this.trackingService.getEmail()
     );
 
+    this.initializeDatesAndForm();
+
+    
+    // Ya no es necesario, la carga se hará al presionar el botón
     // Effect para cargar estimaciones cuando cambie el contrato
     effect(() => {
       const contractId = this.signalsService.getContractSelectedBySidebar()();
       if (contractId) {
         this.contract = contractId;
-        this.cargarEstimaciones();
+        //this.cargarEstimaciones();
       }
+      this.obtenerProjects();
+      this.initializeDatesAndForm();
     });
-
-    // Inicializar fechas por defecto
-    const hoy = new Date();
-    const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
     
-    this.fechaInicio = inicioMes.toISOString().split('T')[0];
-    this.fechaFin = hoy.toISOString().split('T')[0];
   }
-
-  cargarEstimaciones() {
-    if (!this.contract) return;
-
-    this.estimatesService.getEstimates(this.contract).subscribe({
-      next: (data: any[]) => {
-        this.estimaciones = data || [];
+  obtenerProjects() {
+    this.projectsService.getProjects().subscribe({
+      next: (projects) => {
+        this.projects = projects;
       },
       error: (error) => {
-        console.error('Error al cargar estimaciones:', error);
-        this.estimaciones = [];
+        console.error('Error al cargar proyectos:', error);
       }
     });
   }
 
-  onEstimacionChange() {
-    if (this.estimacionSeleccionada) {
-      this.generarReporte();
+  ngOnInit(): void {
+    this.generarReporte(); // Carga inicial de datos
+    this.obtenerProjects();
+  }
+
+  private initializeDatesAndForm(): void {
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // Domingo: 0, Lunes: 1, ..., Sábado: 6
+    const thisThursday = new Date(today);
+    thisThursday.setDate(today.getDate() - dayOfWeek + 4);
+    const previousWednesday = new Date(thisThursday);
+    previousWednesday.setDate(thisThursday.getDate() - 8);
+    this.fechaInicio = previousWednesday.toISOString().split('T')[0];
+    this.fechaFin = thisThursday.toISOString().split('T')[0];
+  
+      this.selectFechas = this.fb.group({
+        fechaInicio: [this.fechaInicio, Validators.required],
+        fechaFin: [this.fechaFin, Validators.required]
+      });
+  
+      // Suscribirse a los cambios en el formulario para recargar datos automáticamente
+      /*this.selectFechas.valueChanges.subscribe(values => {
+        if (this.selectFechas.valid && values.fechaInicio && values.fechaFin) {
+          this.generarReporte();
+        }
+      });*/
     }
+
+  onOTsGridReady(params: GridReadyEvent) {
+    this.otsGridApi = params.api;
   }
 
-  onGeneradoresGridReady(params: GridReadyEvent) {
-    this.generadoresGridApi = params.api;
-  }
-
-  onItemsGridReady(params: GridReadyEvent) {
-    this.itemsGridApi = params.api;
+  onDetallesGridReady(params: GridReadyEvent) {
+    this.detallesGridApi = params.api;
   }
 
   getDataPath = (data: any) => {
@@ -217,171 +317,52 @@ export class ReportesGeneradoresComponent {
   };
 
   generarReporte() {
+    if (this.selectFechas.invalid) {
+      alerts.basicAlert('Error', 'Por favor, seleccione fechas válidas.', 'error');
+      return;
+    }
+
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Generar Reporte de Generadores',
       'Modulo Proyectos - Estimaciones - Reportes Generadores',
       this.trackingService.getEmail()
     );
-
-    if (!this.estimacionSeleccionada) {
-      alerts.basicAlert('Error', 'Debe seleccionar una estimación', 'error');
+    
+    /*const idProject = this.signalsService.getProjectSelectedBySidebar()();
+    if (!idProject) {
+      alerts.basicAlert('Error', 'No hay un proyecto seleccionado.', 'error');
       return;
-    }
+    }*/
 
-    // Cargar generadores
-    this.generatorsService.getGenerators(parseInt(this.estimacionSeleccionada)).subscribe({
-      next: (generadores: any[]) => {
-        this.procesarGeneradores(generadores);
-        this.cargarItemsGeneradores(generadores);
+    const { fechaInicio, fechaFin } = this.selectFechas.value;
+
+    const startDate = new Date(fechaInicio);
+    const endDate = new Date(fechaFin);
+
+    this.datosXFechasService.getOTs(18, startDate, endDate).subscribe({
+      next: (data: any[]) => {
+        this.OTsData = data;
+        console.log('OTsData loaded:', this.OTsData);
+        //alerts.basicAlert('Reporte Generado', `Se encontraron ${data.length} OTs.`, 'success');
       },
       error: (error) => {
-        console.error('Error al cargar generadores:', error);
-        alerts.basicAlert('Error', 'Error al cargar los generadores', 'error');
+        console.error('Error al cargar OTs:', error);
+        //alerts.basicAlert('Error', 'Error al cargar los datos de OTs.', 'error');
+        this.OTsData = [];
       }
     });
-  }
-
-  private procesarGeneradores(generadores: any[]) {
-    // Aplicar filtros por fecha
-    let generadoresFiltrados = [...generadores];
-
-    if (this.fechaInicio) {
-      generadoresFiltrados = generadoresFiltrados.filter(gen => 
-        new Date(gen.dateStart) >= new Date(this.fechaInicio)
-      );
-    }
-
-    if (this.fechaFin) {
-      generadoresFiltrados = generadoresFiltrados.filter(gen => 
-        new Date(gen.dateEnd) <= new Date(this.fechaFin)
-      );
-    }
-
-    this.generadoresData = generadoresFiltrados.map(gen => ({
-      ...gen,
-      totalItems: 0 // Se actualizará cuando carguemos los items
-    }));
-
-    this.calcularResumen();
-  }
-
-  private async cargarItemsGeneradores(generadores: any[]) {
-    const allItems = [];
-
-    for (const generador of generadores) {
-      try {
-        const items = await this.generatorsService.getItemsGeneradores(generador.id).toPromise();
-        
-        // Agregar items al array con información del generador padre
-        for (const item of items || []) {
-          allItems.push({
-            ...item,
-            generadorId: generador.id,
-            generadorNumero: generador.numero,
-            orgHierarchy: [generador.numero, `Item_${item.id}`],
-            nodeType: 'item'
-          });
-        }
-
-        // Actualizar el conteo de items en el generador
-        const genIndex = this.generadoresData.findIndex(g => g.id === generador.id);
-        if (genIndex >= 0) {
-          this.generadoresData[genIndex].totalItems = items?.length || 0;
-        }
-
-      } catch (error) {
-        console.error(`Error cargando items para generador ${generador.id}:`, error);
+    this.datosXFechasService.getDailyReports(18, startDate, endDate).subscribe({
+      next: (data: any[]) => {
+        this.DetallesData = data;
+        console.log('DetallesData loaded:', this.DetallesData);
+        //alerts.basicAlert('Reporte Generado', `Se encontraron ${data.length} Detalles.`, 'success');
+      },
+      error: (error) => {
+        console.error('Error al cargar Detalles:', error);
+        //alerts.basicAlert('Error', 'Error al cargar los datos de Detalles.', 'error');
+        this.DetallesData = [];
       }
-    }
-
-    this.itemsData = allItems;
-    this.calcularResumen();
-
-    alerts.basicAlert('Reporte Generado', 
-      `Se encontraron ${this.generadoresData.length} generadores con ${this.itemsData.length} items`, 
-      'success');
-  }
-
-  private calcularResumen() {
-    const totalGeneradores = this.generadoresData.length;
-    const totalItems = this.itemsData.length;
-    
-    // Calcular rango de fechas
-    let fechaMinima = null;
-    let fechaMaxima = null;
-    
-    this.generadoresData.forEach(gen => {
-      const fechaInicio = new Date(gen.dateStart);
-      const fechaFin = new Date(gen.dateEnd);
-      
-      if (!fechaMinima || fechaInicio < fechaMinima) fechaMinima = fechaInicio;
-      if (!fechaMaxima || fechaFin > fechaMaxima) fechaMaxima = fechaFin;
     });
-
-    // Agrupar por área/fase
-    const areaCount = {};
-    this.generadoresData.forEach(gen => {
-      const area = gen.fase || 'Sin Área';
-      areaCount[area] = (areaCount[area] || 0) + 1;
-    });
-
-    const porArea = Object.keys(areaCount).map(key => ({
-      fase: key,
-      cantidad: areaCount[key]
-    }));
-
-    this.resumenData = {
-      totalGeneradores,
-      totalItems,
-      promedioItems: totalGeneradores > 0 ? totalItems / totalGeneradores : 0,
-      rangoFechas: fechaMinima && fechaMaxima ? 
-        `${fechaMinima.toLocaleDateString('es-ES')} - ${fechaMaxima.toLocaleDateString('es-ES')}` : 
-        'No disponible',
-      porArea
-    };
-  }
-
-  exportarExcel() {
-    this.trackingService.addLog(
-      this.trackingService.getnameComp(),
-      'Exportar Reporte Generadores a Excel',
-      'Modulo Proyectos - Estimaciones - Reportes Generadores',
-      this.trackingService.getEmail()
-    );
-
-    const gridApi = this.activeTab === 'generadores' ? this.generadoresGridApi : this.itemsGridApi;
-    
-    if (gridApi) {
-      gridApi.exportDataAsExcel({
-        fileName: `Reporte_Generadores_${this.activeTab}_${new Date().toISOString().split('T')[0]}.xlsx`
-      });
-    }
-  }
-
-  exportarPDF() {
-    this.trackingService.addLog(
-      this.trackingService.getnameComp(),
-      'Exportar Reporte Generadores a PDF',
-      'Modulo Proyectos - Estimaciones - Reportes Generadores',
-      this.trackingService.getEmail()
-    );
-
-    alerts.basicAlert('Funcionalidad', 'Exportar PDF próximamente disponible', 'info');
-  }
-
-  verGraficos() {
-    this.trackingService.addLog(
-      this.trackingService.getnameComp(),
-      'Ver Gráficos de Generadores',
-      'Modulo Proyectos - Estimaciones - Reportes Generadores',
-      this.trackingService.getEmail()
-    );
-
-    this.showGraficos = true;
-  }
-
-  cerrarGraficos() {
-    this.showGraficos = false;
   }
 }
