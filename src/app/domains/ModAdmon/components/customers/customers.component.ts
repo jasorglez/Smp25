@@ -96,8 +96,8 @@ export class CustomersComponent implements CanComponentDeactivate {
       this.obtenerDatos();
       this.obtenerBranchs();
       this.getTypecop();
-      this.signalsService.deleteClientData();      
-    });
+      this.signalsService.deleteClientData();
+    }, { allowSignalWrites: true });
 
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
@@ -391,6 +391,22 @@ export class CustomersComponent implements CanComponentDeactivate {
           defaultToNothingSelected: true,
           //excelMode: 'mac',
         },
+      },
+      {
+        field: 'rfc',
+        headerName: 'RFC',
+        editable: true,
+        filter: true,
+        width: 100,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
+        valueSetter: (params) => {
+          params.data[params.colDef.field] = params.newValue.toUpperCase();
+          return true;
+        }
       },
       {
         field: 'address',

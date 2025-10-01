@@ -16,12 +16,10 @@
               <form class="row g-3">
                 <div class="col-md-4">
                   <label for="regimenFiscal" class="form-label">Régimen Fiscal</label>
-                  <select class="form-select" id="regimenFiscal" [(ngModel)]="comprobante.regimenFiscal" name="regimenFiscal">
-                    <option value="">Seleccionar...</option>
-                    <option *ngFor="let regimen of regimenesFiscales" [value]="regimen.id">
-                      {{ regimen.description }}
-                    </option>
-                  </select>
+                  <ng-select id="regimenFiscal" [(ngModel)]="comprobante.regimenFiscal" name="regimenFiscal"
+                             [items]="regimenesFiscales" bindLabel="description" bindValue="id"
+                             placeholder="Seleccionar..." appendTo="body">
+                  </ng-select>
                 </div>
                 <div class="col-md-4">
                   <label for="codigoPostal" class="form-label">Código Postal Empresa</label>
@@ -33,30 +31,24 @@
                 </div>
                 <div class="col-md-4">
                   <label for="tipoFactura" class="form-label">Tipo de Factura</label>
-                  <select class="form-select" id="tipoFactura" [(ngModel)]="comprobante.tipoFactura" name="tipoFactura">
-                    <option value="">Seleccionar...</option>
-                    <option *ngFor="let tipo of tiposComprobante" [value]="tipo.tipoDeComprobante">
-                      {{ tipo.descripcion }}
-                    </option>
-                  </select>
+                  <ng-select id="tipoFactura" [(ngModel)]="comprobante.tipoFactura" name="tipoFactura"
+                             [items]="tiposComprobante" bindLabel="descripcion" bindValue="tipoDeComprobante"
+                             placeholder="Seleccionar..." appendTo="body">
+                  </ng-select>
                 </div>
                 <div class="col-md-4">
                   <label for="formaPago" class="form-label">Forma de Pago</label>
-                  <select class="form-select" id="formaPago" [(ngModel)]="comprobante.formaPago" name="formaPago">
-                    <option value="">Seleccionar...</option>
-                    <option *ngFor="let forma of formasPago" [value]="forma.formaPagoValue">
-                      {{ forma.descripcion }}
-                    </option>
-                  </select>
+                  <ng-select id="formaPago" [(ngModel)]="comprobante.formaPago" name="formaPago"
+                             [items]="formasPago" bindLabel="descripcion" bindValue="formaPagoValue"
+                             placeholder="Seleccionar..." appendTo="body">
+                  </ng-select>
                 </div>
                 <div class="col-md-4">
                   <label for="metodoPago" class="form-label">Método de Pago</label>
-                  <select class="form-select" id="metodoPago" [(ngModel)]="comprobante.metodoPago" name="metodoPago">
-                    <option value="">Seleccionar...</option>
-                    <option *ngFor="let metodo of metodosPago" [value]="metodo.metodoPagoValue">
-                      {{ metodo.descripcion }}
-                    </option>
-                  </select>
+                  <ng-select id="metodoPago" [(ngModel)]="comprobante.metodoPago" name="metodoPago"
+                             [items]="metodosPago" bindLabel="descripcion" bindValue="metodoPagoValue"
+                             placeholder="Seleccionar..." appendTo="body">
+                  </ng-select>
                 </div>
               </form>
             </div>
@@ -71,12 +63,10 @@
               <form class="row g-3">
                 <div class="col-md-6">
                   <label for="moneda" class="form-label">Moneda</label>
-                  <select class="form-select" id="moneda" [(ngModel)]="datosGenerales.moneda" name="moneda">
-                    <option value="">Seleccionar...</option>
-                    <option *ngFor="let mon of monedas" [value]="mon.cMoneda">
-                      {{ mon.descripcion }}
-                    </option>
-                  </select>
+                  <ng-select id="moneda" [(ngModel)]="datosGenerales.moneda" name="moneda"
+                             [items]="monedas" bindLabel="descripcion" bindValue="cMoneda"
+                             placeholder="Seleccionar..." appendTo="body">
+                  </ng-select>
                 </div>
                 <div class="col-md-6">
                   <label for="tipoCambio" class="form-label">Tipo de Cambio</label>
@@ -95,12 +85,11 @@
               <form class="row g-3">
                 <div class="col-md-6">
                   <label for="cliente" class="form-label">Cliente</label>
-                  <select class="form-select" id="cliente" [(ngModel)]="cliente.clienteSeleccionado" name="cliente">
-                    <option value="">Seleccionar cliente...</option>
-                    <option *ngFor="let cli of clientes" [value]="cli.id">
-                      {{ cli.name }}
-                    </option>
-                  </select>
+                  <ng-select id="cliente" [(ngModel)]="cliente.clienteSeleccionado" name="cliente"
+                             [items]="clientes" bindLabel="name" bindValue="id"
+                             placeholder="Seleccionar cliente..." appendTo="body"
+                             (change)="onClienteSeleccionado()">
+                  </ng-select>
                 </div>
                 <div class="col-md-6">
                   <label for="nombreRazonSocial" class="form-label">Nombre o Razón Social</label>
@@ -112,21 +101,17 @@
                 </div>
                 <div class="col-md-6">
                   <label for="regimenFiscalCliente" class="form-label">Régimen Fiscal</label>
-                  <select class="form-select" id="regimenFiscalCliente" [(ngModel)]="cliente.regimenFiscal" name="regimenFiscalCliente">
-                    <option value="">Seleccionar régimen fiscal...</option>
-                    <option *ngFor="let regimen of regimenesFiscales" [value]="regimen.id">
-                      {{ regimen.description }}
-                    </option>
-                  </select>
+                  <ng-select id="regimenFiscalCliente" [(ngModel)]="cliente.regimenFiscal" name="regimenFiscalCliente"
+                             [items]="regimenesFiscales" bindLabel="description" bindValue="id"
+                             placeholder="Seleccionar régimen fiscal..." appendTo="body">
+                  </ng-select>
                 </div>
                 <div class="col-md-12">
                   <label for="usoFactura" class="form-label">Uso de la Factura</label>
-                  <select class="form-select" id="usoFactura" [(ngModel)]="cliente.usoFactura" name="usoFactura">
-                    <option value="">Seleccionar uso de factura...</option>
-                    <option *ngFor="let uso of usosFactura" [value]="uso.cUsoCFDI">
-                      {{ uso.descripcion }}
-                    </option>
-                  </select>
+                  <ng-select id="usoFactura" [(ngModel)]="cliente.usoFactura" name="usoFactura"
+                             [items]="usosFactura" bindLabel="descripcion" bindValue="cUsoCFDI"
+                             placeholder="Seleccionar uso de factura..." appendTo="body">
+                  </ng-select>
                 </div>
               </form>
             </div>
@@ -187,12 +172,10 @@
                         <input type="number" class="form-control form-control-sm" [(ngModel)]="producto.importe" [name]="'importe_' + i" readonly>
                       </td>
                       <td>
-                        <select class="form-select form-select-sm" [(ngModel)]="producto.objetoImpuesto" [name]="'objetoImpuesto_' + i">
-                          <option value="">Seleccionar...</option>
-                          <option *ngFor="let objeto of objetosImpuesto" [value]="objeto.id">
-                            {{ objeto.descripcion }}
-                          </option>
-                        </select>
+                        <ng-select [(ngModel)]="producto.objetoImpuesto" [name]="'objetoImpuesto_' + i"
+                                   [items]="objetosImpuesto" bindLabel="descripcion" bindValue="id"
+                                   placeholder="Seleccionar..." [searchable]="false" [clearable]="false" appendTo="body">
+                        </ng-select>
                       </td>
                       <td>
                         <input type="text" class="form-control form-control-sm" [(ngModel)]="producto.numeroIdentificacion" [name]="'numeroIdentificacion_' + i">

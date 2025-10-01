@@ -1,67 +1,91 @@
 <!-- Fondo con overlay -->
 <div class="login-background" [style.backgroundImage]="'url(' + randomImage + ')'">
 	<div class="overlay"></div>
-  </div>
-  
-  <!-- Contenedor del Login -->
-  <div class="login-box">
-	
-	<div class="login-logo text-center mb-4">
-	  <img src="/assets/img/template/bi3.webp" class="img-fluid" style="max-width: 400px;">
+	<div class="particles">
+		<div class="particle" *ngFor="let p of [].constructor(20); let i = index" [style.animationDelay]="(i * 0.5) + 's'"></div>
 	</div>
-  
-	<div class="card rounded-4 border-0">
-	  <div class="card-body p-4">
-  
-		<h3 class="text-center mb-4 fw-bold">{{ 'titlelogin' | translate }}</h3>
-  
-		<form [formGroup]="flogin" (ngSubmit)="login()" autocomplete="off">
-		  <!-- Email -->
-		  <div class="form-floating mb-3">
-			<input type="email"
-				   class="form-control"
-				   id="emailInput"
-				   formControlName="emaillogin"
-				   placeholder="Correo Electrónico"
-				   [ngClass]="{'is-invalid': invalidField('emaillogin')}">
-			<label for="emailInput">Correo Electrónico</label>
-			<div class="invalid-feedback">Correo inválido.</div>
-		  </div>
-  
-		  <!-- Password -->
-		  <div class="form-floating position-relative mb-3">
-			<input [type]="hide ? 'password' : 'text'"
-				   id="passwordInput"
-				   formControlName="passwordlogin"
-				   class="form-control pe-5"
-				   placeholder="Contraseña"
-				   autocomplete="current-password"
-				   [ngClass]="{'is-invalid': invalidField('passwordlogin')}">
-			<label for="passwordInput">Contraseña</label>
-  
-			<!-- Toggle button -->
-			<button type="button"
-					class="btn btn-sm btn-link position-absolute top-50 end-0 translate-middle-y me-2"
-					(click)="toggleHide()"
-					tabindex="-1"
-					style="z-index: 5;">
-			  <i class="fas" [ngClass]="{'fa-eye-slash': !hide, 'fa-eye': hide}"></i>
-			</button>
-  
-			<div class="invalid-feedback">Contraseña inválida.</div>
-		  </div>
-  
-		  <!-- Botón de inicio -->
-		  <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold shadow-sm">
-			<i class="fas fa-sign-in-alt me-2"></i> Iniciar Sesión
-		  </button>
-		</form>
-	  </div>
+</div>
+
+<!-- Contenedor del Login -->
+<div class="login-box">
+
+	<div class="login-logo text-center mb-4">
+		<div class="logo-wrapper">
+			<img src="/assets/img/template/bi3.webp" class="img-fluid logo-img" alt="Logo">
+		</div>
 	</div>
 
-	<div class="text-center mt-3 footer-login">
-		<a href="https://bi2.mx" target="_blank">
-			<i class="fas fa-globe me-2"></i>
-			bi2.mx</a> - Versión {{environment.version}}
+	<div class="card rounded-4 border-0 shadow-lg">
+		<div class="card-body p-5">
+
+			<h3 class="text-center mb-4 fw-bold login-title">
+				<span class="title-gradient">{{ 'titlelogin' | translate }}</span>
+			</h3>
+
+			<form [formGroup]="flogin" (ngSubmit)="login()" autocomplete="off">
+				<!-- Email -->
+				<div class="form-floating mb-4 input-group-custom">
+					<div class="input-icon">
+						<i class="fas fa-envelope"></i>
+					</div>
+					<input type="email"
+						   class="form-control"
+						   id="emailInput"
+						   formControlName="emaillogin"
+						   placeholder="Correo Electrónico"
+						   [ngClass]="{'is-invalid': invalidField('emaillogin')}">
+					<label for="emailInput">Correo Electrónico</label>
+					<div class="invalid-feedback">
+						<i class="fas fa-exclamation-circle me-1"></i>
+						Correo inválido.
+					</div>
+				</div>
+
+				<!-- Password -->
+				<div class="form-floating position-relative mb-4 input-group-custom">
+					<div class="input-icon">
+						<i class="fas fa-lock"></i>
+					</div>
+					<input [type]="hide ? 'password' : 'text'"
+						   id="passwordInput"
+						   formControlName="passwordlogin"
+						   class="form-control pe-5"
+						   placeholder="Contraseña"
+						   autocomplete="current-password"
+						   [ngClass]="{'is-invalid': invalidField('passwordlogin')}">
+					<label for="passwordInput">Contraseña</label>
+
+					<!-- Toggle button -->
+					<button type="button"
+							class="btn btn-sm btn-link position-absolute top-50 end-0 translate-middle-y me-2 eye-toggle"
+							(click)="toggleHide()"
+							tabindex="-1">
+						<i class="fas" [ngClass]="{'fa-eye-slash': !hide, 'fa-eye': hide}"></i>
+					</button>
+
+					<div class="invalid-feedback">
+						<i class="fas fa-exclamation-circle me-1"></i>
+						Contraseña inválida.
+					</div>
+				</div>
+
+				<!-- Botón de inicio -->
+				<button type="submit" class="btn btn-primary w-100 py-3 fw-semibold shadow-sm login-btn">
+					<span class="btn-content">
+						<i class="fas fa-sign-in-alt me-2"></i>
+						<span>Iniciar Sesión</span>
+					</span>
+					<div class="btn-shine"></div>
+				</button>
+			</form>
+		</div>
 	</div>
-  </div>
+
+	<div class="text-center mt-4 footer-login">
+		<a href="https://bi2.mx" target="_blank" class="footer-link">
+			<i class="fas fa-globe me-2"></i>
+			bi2.mx
+		</a>
+		<span class="version-badge ms-2">v{{environment.version}}</span>
+	</div>
+</div>

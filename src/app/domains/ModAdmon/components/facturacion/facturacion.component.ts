@@ -1,6 +1,7 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { NgSelectModule } from '@ng-select/ng-select';
 import { FacturacionService } from 'app/services/facturacion.service';
 import { AdministrationService } from 'app/services/administration.service';
 import { CustomersService } from 'app/services/customers.service';
@@ -9,7 +10,7 @@ import { SignalsService } from 'app/services/signals.service';
 @Component({
   selector: 'app-facturacion',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, NgSelectModule],
   templateUrl: './facturacion.component.html',
   styleUrl: './facturacion.component.scss'
 })
@@ -19,6 +20,19 @@ export class FacturacionComponent implements OnInit {
   private administrationService = inject(AdministrationService);
   private customersService = inject(CustomersService);
   private signalsService = inject(SignalsService);
+
+  constructor() {
+    // Effect para reaccionar cuando cambie la compañía seleccionada
+    effect(() => {
+      const currentCompany = this.signalsService.getRootSelectedBySidebar()();
+
+      if (currentCompany) {
+        this.loadCustomers(currentCompany);
+      } else {
+        this.clientes = [];
+      }
+    });
+  }
 
   // Datos del comprobante
   comprobante = {
@@ -126,9 +140,9 @@ export class FacturacionComponent implements OnInit {
       next: (data: any[]) => {
         this.monedas = data;
         // Establecer Peso Mexicano por defecto después de cargar las monedas
-        const pesoMexicano = this.monedas.find(mon => mon.cMoneda === 'MXN');
+        const pesoMexicano = this.monedas.find(mon => mon.cMoneda === 'MXN  ');
         if (pesoMexicano) {
-          this.datosGenerales.moneda = 'MXN';
+          this.datosGenerales.moneda = 'MXN  ';
         }
       },
       error: (error) => {
@@ -148,19 +162,19 @@ export class FacturacionComponent implements OnInit {
       }
     });
 
-    // Cargar clientes
-    const currentCompany = this.signalsService.getRootSelectedBySidebar()();
-    if (currentCompany) {
-      this.customersService.getCustomersByCompany(currentCompany, 'CUSTOMERS').subscribe({
-        next: (data: any[]) => {
-          this.clientes = data;
-        },
-        error: (error) => {
-          console.error('Error loading Clientes:', error);
-          this.clientes = [];
-        }
-      });
-    }
+    // Los clientes se cargan mediante el effect que reacciona a getRootSelectedBySidebar
+  }
+
+  loadCustomers(currentCompany: number): void {
+    this.customersService.getCustomersByCompany(currentCompany, 'CUSTOMERS').subscribe({
+      next: (data: any[]) => {
+        this.clientes = data;
+      },
+      error: (error) => {
+        console.error('Error loading Clientes:', error);
+        this.clientes = [];
+      }
+    });
   }
 
   agregarProducto(): void {
@@ -192,6 +206,22 @@ export class FacturacionComponent implements OnInit {
 
   calcularTotal(): number {
     return this.productos.reduce((total, producto) => total + (producto.importe || 0), 0);
+  }
+
+  onClienteSeleccionado(): void {
+    const clienteId = this.cliente.clienteSeleccionado;
+
+    if (clienteId) {
+      const clienteEncontrado = this.clientes.find(c => c.id === clienteId);
+
+      if (clienteEncontrado) {
+        // Llenar código postal si existe, de lo contrario dejar en blanco
+        this.cliente.codigoPostal = clienteEncontrado.cp || '';
+      }
+    } else {
+      // Si no hay cliente seleccionado, limpiar el campo
+      this.cliente.codigoPostal = '';
+    }
   }
 
 }
