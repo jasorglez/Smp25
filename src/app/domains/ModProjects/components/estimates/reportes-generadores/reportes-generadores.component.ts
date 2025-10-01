@@ -9,6 +9,8 @@ import { alerts } from 'app/helpers/alerts';
 import { DatosXFechasService } from 'app/services/OtDatosXFechas.service';
 import { OnInit } from '@angular/core';
 import { ProjectsService } from 'app/services/projects.service';
+import { CatalogsService } from 'app/services/catalogs.service';
+import { ImageHandlerService } from 'app/services/image-handler.service';
 
 
 @Component({
@@ -24,6 +26,8 @@ export class ReportesGeneradoresComponent implements OnInit {
   private signalsService = inject(SignalsService);
   private projectsService = inject(ProjectsService);
   private trackingService = inject(TrackingService);
+  private catalogService = inject(CatalogsService);
+  private imageHandlerService = inject(ImageHandlerService);
   private fb = inject(FormBuilder);
 
   // Variables del componente
@@ -38,6 +42,8 @@ export class ReportesGeneradoresComponent implements OnInit {
   projects: any[] = [];
   OTsData: any[] = [];
   DetallesData: any[] = [];
+  idcompany: number = 0;
+  catalogDepartamentos: any[] = [];
   resumenData: any = {
     totalGeneradores: 0,
     totalItems: 0,
@@ -67,8 +73,8 @@ export class ReportesGeneradoresComponent implements OnInit {
           //excelMode: 'windows',
         },
       field: 'otNumber',
-      headerName: 'Número OT',
-      width: 150,
+      headerName: 'OT',
+      width: 90,
       pinned: 'left'
     },
     {
@@ -78,8 +84,8 @@ export class ReportesGeneradoresComponent implements OnInit {
           //excelMode: 'windows',
         },
       field: 'cdc',
-      headerName: 'Número CDC',
-      width: 150,
+      headerName: 'CDC',
+      width: 90,
       pinned: 'left'
     },
     {
@@ -169,8 +175,9 @@ export class ReportesGeneradoresComponent implements OnInit {
           //excelMode: 'windows',
         },
       field: 'otNumber',
-      headerName: 'Número OT',
-      width: 100,
+      headerName: 'OT',
+      width: 90,
+      pinned: 'left'
     },
     {
       filterParams: {
@@ -179,8 +186,9 @@ export class ReportesGeneradoresComponent implements OnInit {
           //excelMode: 'windows',
         },
       field: 'cdcNumber',
-      headerName: 'Número CDC',
-      width: 150,
+      headerName: 'CDC',
+      width: 90,
+      pinned: 'left'
     },
     {
       filterParams: {
@@ -219,39 +227,63 @@ export class ReportesGeneradoresComponent implements OnInit {
       width: 150
     },
     {
-      headerName: 'Descripción',
+      headerName: 'Nombre',
       width: 150,
       valueGetter: (params) => {
         if (!params.data) return '';
-        const concepto = params.data.nombreConcepto;
-        const empleado = params.data.nombreEmpleado;
-        return concepto && concepto.trim() !== '' ? concepto : empleado;
-      },
+
+        const {
+          nombreConcepto,
+          nombreEmpleado,
+          nombreMaterial,
+          nombreEquipo
+        } = params.data;
+        if(params.data.typenote === 'Photo' || params.data.typenote === 'Video') {
+          return params.data.description || '';
+        }
+
+        return (
+          (nombreConcepto && nombreConcepto.trim()) ||
+          (nombreEmpleado && nombreEmpleado.trim()) ||
+          (nombreMaterial && nombreMaterial.trim()) ||
+          (nombreEquipo && nombreEquipo.trim()) ||
+          ''
+        );
+      }
+
     },
     {
-      field: 'quantity',
-      headerName: 'Cantidad',
+      headerName: 'Description',
       width: 150,
       valueGetter: (params) => {
-        return params.data.typenote === 'CONCEPT' ? params.data.quantity : '';
+        // El valueGetter sigue siendo útil para filtrado y exportación
+        const data = params.data;
+        if (!data) return '';
+
+        if (data.typenote === 'PERSONAL') {
+          const posicion = this.catalogDepartamentos?.find(depto => depto.id === data.idPosicion);
+          return posicion?.description || '';
+        } else if (data.typenote === 'Photo') {
+          return data.image || '';
+        } else {
+          return data.quantity || '';
+        }
+      },
+      cellRenderer: (params: any) => {
+        // El cellRenderer decide qué mostrar en la celda
+        if (params.data && (params.data.typenote === 'Photo' || params.data.typenote === 'Video')) {
+          // Si es una foto o video, usamos el renderer de imágenes
+          return this.imageHandlerService.imageCellRenderer(params);
+        }
+        // Para cualquier otro caso, mostramos el valor de texto normalmente
+        return params.value;
       },
       filterParams: {
         defaultToNothingSelected: true,
         // excelMode: 'windows',
       },
     },
-    {
-      field: 'image',
-      headerName: 'Imagen',
-      width: 150,
-      valueGetter: (params) => {
-        return params.data.typenote === 'photo' ? params.data.image : '';
-      },
-      filterParams: {
-        defaultToNothingSelected: true,
-        // excelMode: 'windows',
-      },
-    },
+    
     
   ];
 
@@ -277,6 +309,8 @@ export class ReportesGeneradoresComponent implements OnInit {
       }
       this.obtenerProjects();
       this.initializeDatesAndForm();
+      this.idcompany = this.signalsService.getRootSelectedBySidebar()();
+      this.getDeptoandPosition();
     });
     
   }
@@ -330,6 +364,19 @@ export class ReportesGeneradoresComponent implements OnInit {
   getDataPath = (data: any) => {
     return data.orgHierarchy;
   };
+  getDeptoandPosition() {
+    this.catalogService.getCatalogsVigente(this.idcompany, 'POSITION').subscribe(
+      (data: any) => {
+        this.catalogDepartamentos = data;
+        console.log('Departamentos obtenidos:', this.catalogDepartamentos);
+      },
+      (error) => {
+        if (error.status == 404) this.catalogDepartamentos = [];
+        console.error('Error fetching data:', error);
+      }
+    );
+
+  }
 
   generarReporte() {
     if (this.selectFechas.invalid) {
