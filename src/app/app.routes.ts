@@ -950,6 +950,105 @@ export const routes: Routes = [
 
             ],
           },
+              {
+                path: 'page04',
+                loadComponent: () =>
+                  import('./domains/ModAdmon/pages/pages04/pages04.component').then(
+                    (p) => p.Pages04Component),
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Pestaña Facturacion Electronica',
+                    category: 'Administration'
+                  }
+                },
+                children: [
+                  { path: '', redirectTo: 'facturacion', pathMatch: 'full' },
+                  ...SharedModule.getRoutes(),
+   
+                  {
+                    path: 'facturacion',
+                    loadComponent: () =>
+                      import(
+                        './domains/ModAdmon/components/facturacion/facturacion.component'
+                      ).then((f) => f.FacturacionComponent),
+                    canActivate: [TrackingGuard],
+                    data: {
+                      tracking: {
+                        logMessage: 'Click en Pestaña Facturacion',
+                        category: 'Administration'
+                      }
+                    },
+                  },
+   
+                  {
+                    path: 'catalogos-sat',
+                    loadComponent: () =>
+                      import(
+                        './domains/ModAdmon/components/catalogos-sat/catalogos-sat.component'
+                      ).then((c) => c.CatalogosSatComponent),
+                    children: [
+                      {
+                        path: 'clave-unidad',
+                        loadComponent: () =>
+                          import(
+                            './domains/ModAdmon/components/catalogos-sat/components/clave-unidad/clave-unidad.component'
+                          ).then((c) => c.ClaveUnidadComponent),
+                      },
+                      {
+                        path: 'forma-pago',
+                        loadComponent: () =>
+                          import(
+                            './domains/ModAdmon/components/catalogos-sat/components/forma-pago/forma-pago.component'
+                          ).then((f) => f.FormaPagoComponent),
+                      },
+                      {
+                        path: 'metodo-pago',
+                        loadComponent: () =>
+                          import(
+                            './domains/ModAdmon/components/catalogos-sat/components/metodo-pago/metodo-pago.component'
+                          ).then((m) => m.MetodoPagoComponent),
+                      },
+                      {
+                        path: 'moneda',
+                        loadComponent: () =>
+                          import(
+                            './domains/ModAdmon/components/catalogos-sat/components/moneda/moneda.component'
+                          ).then((m) => m.MonedaComponent),
+                      },
+                      {
+                        path: 'tipo-comprobante',
+                        loadComponent: () =>
+                          import(
+                            './domains/ModAdmon/components/catalogos-sat/components/tipo-comprobante/tipo-comprobante.component'
+                          ).then((t) => t.TipoComprobanteComponent),
+                      },
+                      {
+                        path: 'uso-cfdi',
+                        loadComponent: () =>
+                          import(
+                            './domains/ModAdmon/components/catalogos-sat/components/uso-cfdi/uso-cfdi.component'
+                          ).then((u) => u.UsoCfdiComponent),
+                      },
+                      {
+                        path: 'productos-servicios',
+                        loadComponent: () =>
+                          import(
+                            './domains/ModAdmon/components/catalogos-sat/components/productos-servicios/productos-servicios.component'
+                          ).then((p) => p.ProductosServiciosComponent),
+                      },
+                      {
+                        path: '',
+                        redirectTo: 'clave-unidad',
+                        pathMatch: 'full'
+                      }
+                    ],
+                    canDeactivate: [UnsavedChangesGuard],
+                  },
+   
+                ],
+              },
+
 
         ],
       },

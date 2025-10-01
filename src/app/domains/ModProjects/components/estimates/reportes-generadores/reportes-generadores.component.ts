@@ -55,7 +55,8 @@ export class ReportesGeneradoresComponent implements OnInit {
     sortable: true,
     filter: true,
     resizable: true,
-    flex: 1
+    flex: 1,
+    rowHeight: 20
   };
 
   OTsColumnDefs: ColDef[] = [

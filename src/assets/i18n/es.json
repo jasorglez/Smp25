@@ -63,6 +63,7 @@
   "daily"         : "Diario",
   "delivery"      : "Entrega",
   "docum"         : "Documento",
+  "electronic"     : "Electronico",
   "edit"          : "Editar",
   "email"         : "Correo Electronico",
   "evidence"      : "Evidencia",
@@ -223,6 +224,7 @@
   "inspection_description"  : "Módulo de Inspecciones y Auditorías",
   "unit_description"        : "Gestión de Unidades Operativas",
   "service_description"     : "Gestión de Servicios y Mantenimiento",
+  "electronic_invoice"      : "Facturas Elctronicas",
 
   "menuPM":{
     "gi"  :"Gestion Interesados",
