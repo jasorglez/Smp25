@@ -3260,6 +3260,9 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   setActiveTab(tab: string) {
     this.activeTab = tab;
     console.log('Pestaña activa:', tab);
+    if (tab === 'conceptos' && this.selectedOt) {
+      this.obtenerConceptos(this.selectedOt.idProject).subscribe();
+    }
   }
 
   selectReporte(reporte: ReporteDiario) {
