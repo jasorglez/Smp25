@@ -142,7 +142,16 @@ export class ReportesGeneradoresComponent implements OnInit {
       headerName: 'Descripción',
       width: 150
     },
-    
+    {
+      field: 'results',
+      headerName: 'Resultado',
+      width: 150
+    },
+    {
+      field: 'observations',
+      headerName: 'Observaciones',
+      width: 150
+    },
   ];
 
   DetallesColumnDefs: ColDef[] = [
