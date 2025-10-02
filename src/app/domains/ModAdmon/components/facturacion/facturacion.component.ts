@@ -94,7 +94,7 @@ export class FacturacionComponent implements OnInit {
     // Cargar régimen fiscal desde AdministrationService
     this.administrationService.getFiscalRegimes().subscribe({
       next: (data: any[]) => {
-        this.regimenesFiscales = data;
+        this.regimenesFiscales = data.map(item => ({ ...item, display: `${item.id} - ${item.description}` }));
       },
       error: (error) => {
         console.error('Error loading Regimenes Fiscales:', error);
@@ -105,7 +105,7 @@ export class FacturacionComponent implements OnInit {
     // Cargar tipos de comprobante
     this.facturacionService.getTipoComprobante().subscribe({
       next: (data: any[]) => {
-        this.tiposComprobante = data;
+        this.tiposComprobante = data.map(item => ({ ...item, display: `${item.tipoDeComprobante} - ${item.descripcion}` }));
       },
       error: (error) => {
         console.error('Error loading Tipos Comprobante:', error);
@@ -116,7 +116,7 @@ export class FacturacionComponent implements OnInit {
     // Cargar formas de pago
     this.facturacionService.getFormaPago().subscribe({
       next: (data: any[]) => {
-        this.formasPago = data;
+        this.formasPago = data.map(item => ({ ...item, display: `${item.formaPagoValue} - ${item.descripcion}` }));
       },
       error: (error) => {
         console.error('Error loading Formas Pago:', error);
@@ -127,7 +127,7 @@ export class FacturacionComponent implements OnInit {
     // Cargar métodos de pago
     this.facturacionService.getMetodoPago().subscribe({
       next: (data: any[]) => {
-        this.metodosPago = data;
+        this.metodosPago = data.map(item => ({ ...item, display: `${item.metodoPagoValue} - ${item.descripcion}` }));
       },
       error: (error) => {
         console.error('Error loading Metodos Pago:', error);
@@ -138,7 +138,7 @@ export class FacturacionComponent implements OnInit {
     // Cargar monedas
     this.facturacionService.getMoneda().subscribe({
       next: (data: any[]) => {
-        this.monedas = data;
+        this.monedas = data.map(item => ({ ...item, display: `${item.cMoneda} - ${item.descripcion}` }));
         // Establecer Peso Mexicano por defecto después de cargar las monedas
         const pesoMexicano = this.monedas.find(mon => mon.cMoneda === 'MXN  ');
         if (pesoMexicano) {
@@ -154,11 +154,22 @@ export class FacturacionComponent implements OnInit {
     // Cargar usos CFDI para "Uso de la Factura"
     this.facturacionService.getUsoCfdi2fields().subscribe({
       next: (data: any[]) => {
-        this.usosFactura = data;
+        this.usosFactura = data.map(item => ({ ...item, display: `${item.cUsoCFDI} - ${item.descripcion}` }));
       },
       error: (error) => {
         console.error('Error loading Usos CFDI:', error);
         this.usosFactura = [];
+      }
+    });
+
+    // Cargar objetos de impuesto
+    this.facturacionService.getObjetosImpuesto().subscribe({
+      next: (data: any[]) => {
+        this.objetosImpuesto = data.map(item => ({ ...item, display: `${item.id} - ${item.descripcion}` }));
+      },
+      error: (error) => {
+        console.error('Error loading Objetos Impuesto:', error);
+        this.objetosImpuesto = [];
       }
     });
 
@@ -168,7 +179,7 @@ export class FacturacionComponent implements OnInit {
   loadCustomers(currentCompany: number): void {
     this.customersService.getCustomersByCompany(currentCompany, 'CUSTOMERS').subscribe({
       next: (data: any[]) => {
-        this.clientes = data;
+        this.clientes = data.map(item => ({ ...item, display: `${item.id} - ${item.name}` }));
       },
       error: (error) => {
         console.error('Error loading Clientes:', error);
