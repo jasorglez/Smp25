@@ -90,7 +90,7 @@
               [columnDefs]="DetallesColumnDefs"
               [defaultColDef]="defaultColDef"
               [animateRows]="true"
-  
+              (cellDoubleClicked)="onCellDoubleClick($event)"
               (gridReady)="onDetallesGridReady($event)"
               [stopEditingWhenCellsLoseFocus]="true">
             </ag-grid-angular>
@@ -161,6 +161,33 @@
           </div>-->
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalFoto" tabindex="-1" aria-labelledby="ModalBonosLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
+      <div class="modal-header p-2 border-0">
+        <h5 class="modal-title" id="ModalBonosLabel">Visualización</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar" (click)="pauseVideo()"></button>
+      </div>
+      <div class="modal-body text-center">
+        <ng-container *ngIf="selectedMediaType === 'Photo'">
+          <img [src]="selectedMediaUrl" [ngStyle]="{ height: '70vh' }" class="img-fluid" alt="Imagen" />
+        </ng-container>
+        <ng-container *ngIf="selectedMediaType === 'Video'">
+          <video [src]="selectedMediaUrl" #videoPlayer [ngStyle]="{ height: '70vh' }" class="img-fluid" controls></video>
+        </ng-container>
+      </div>
+      <div class="text-center my-1">
+        <button class="btn btn-lg btn-outline-primary d-inline-flex align-items-center gap-2 px-4 py-2 shadow-sm"
+                (click)="downloadFileFromUrl(selectedMediaUrl, 'Desde_Web')">
+          <i class="bi bi-download fs-5"></i>
+          Descargar
+        </button>
+      </div>
+
     </div>
   </div>
 </div>

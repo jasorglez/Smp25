@@ -1,4 +1,4 @@
-import { Component, inject, effect } from '@angular/core';
+import { Component, inject, effect, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -11,6 +11,7 @@ import { OnInit } from '@angular/core';
 import { ProjectsService } from 'app/services/projects.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
+import * as bootstrap from 'bootstrap';
 
 
 @Component({
@@ -21,7 +22,7 @@ import { ImageHandlerService } from 'app/services/image-handler.service';
   styleUrl: './reportes-generadores.component.scss'
 })
 export class ReportesGeneradoresComponent implements OnInit {
-
+  @ViewChild('videoPlayer') videoPlayer!: ElementRef<HTMLVideoElement>;
   private datosXFechasService = inject(DatosXFechasService);
   private signalsService = inject(SignalsService);
   private projectsService = inject(ProjectsService);
@@ -44,6 +45,8 @@ export class ReportesGeneradoresComponent implements OnInit {
   DetallesData: any[] = [];
   idcompany: number = 0;
   catalogDepartamentos: any[] = [];
+  selectedMediaUrl: string | null = null;
+  selectedMediaType: 'Photo' | 'Video' | null = null;
   resumenData: any = {
     totalGeneradores: 0,
     totalItems: 0,
@@ -377,6 +380,79 @@ export class ReportesGeneradoresComponent implements OnInit {
     );
 
   }
+  onCellDoubleClick(event: any): void {
+  const data = event.data;
+
+  if (data.typenote === 'Photo' || data.typenote === 'Video') {
+    console.log('Media data:', data); // Verifica los datos en la consola
+    this.selectedMediaUrl = data.image; // Asegúrate de tener esta URL en tus datos
+    this.selectedMediaType = data.typenote;
+
+    // Abres el modal manualmente usando Bootstrap (jQuery)
+    const modalElement = document.getElementById('modalFoto');
+    if (modalElement) {
+      const modal = new bootstrap.Modal(modalElement);
+      modal.show();
+    }
+  }
+}
+pauseVideo(): void {
+    const video = this.videoPlayer?.nativeElement;
+    if (video && !video.paused) {
+      video.pause();
+      video.currentTime = 0; // reinicia el video (opcional)
+    }
+  }
+downloadFileFromUrl(url: string, baseName: string): void {
+  fetch(url)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Error al descargar el archivo');
+      }
+      return response.blob();
+    })
+    .then(blob => {
+      // Obtener extensión desde el tipo MIME
+      const contentType = blob.type;
+      const extension = this.getExtensionFromMime(contentType);
+
+      // Crear nombre con fecha
+      const today = new Date();
+      const dateStr = today.toISOString().split('T')[0]; // yyyy-mm-dd
+      const hoursStr = today.toISOString().split('T')[1].split('.')[0]; // hh:mm:ss
+      const filename = `${baseName}-${dateStr}-${hoursStr}.${extension}`;
+
+      // Descargar archivo
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      a.click();
+      window.URL.revokeObjectURL(blobUrl); // Liberar memoria
+    })
+    .catch(error => {
+      console.error('Error al descargar:', error);
+    });
+}
+
+
+getExtensionFromMime(mime: string): string {
+  const mimeMap: { [key: string]: string } = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/gif': 'gif',
+    'video/mp4': 'mp4',
+    'video/webm': 'webm',
+    'application/pdf': 'pdf',
+    // Agrega más tipos si los necesitas
+  };
+
+  return mimeMap[mime] || 'bin'; // bin si no se reconoce el tipo
+}
+
+
+
+
 
   generarReporte() {
     if (this.selectFechas.invalid) {
