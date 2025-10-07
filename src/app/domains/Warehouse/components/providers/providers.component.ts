@@ -225,8 +225,16 @@ export class ProvidersComponent implements CanComponentDeactivate {
           },
         }
       };
-    }else if (params.data.detailType === 'Cuentas') {
-      return { component: 'detailCellRendererCuentas' }; // Asumiendo que este no necesita auto-colapso, o se puede añadir igual que los otros.
+    } else if (params.data.detailType === 'Cuentas') {
+      return { 
+        component: 'detailCellRendererCuentas',
+        params: {
+          onMouseEnter: () => clearTimeout(this.collapseTimer),
+          onMouseLeave: () => {
+            this.collapseTimer = setTimeout(() => params.node.setExpanded(false), 300);
+          },
+        }
+      };
     }
     return undefined; // No mostrar detalle si no hay tipo
   },

@@ -4,12 +4,13 @@ import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { DetallesComponentCuentas } from './subdetalles/Detalles-Cuentas.component';
+import { DetallesComponentCuentasAbono } from './subdetalles/Detalles-Cuentas-abono.component';
 
 @Component({
   selector: 'app-detail-cell-renderer-cuentas',
   standalone: true,
   providers: [CurrencyPipe],
-  imports: [AgGridModule, CommonModule, DetallesComponentCuentas],
+  imports: [AgGridModule, CommonModule, DetallesComponentCuentas, DetallesComponentCuentasAbono],
   template: `
     <div 
       style="padding: 10px; background-color: #f8f9fa;"
@@ -18,8 +19,8 @@ import { DetallesComponentCuentas } from './subdetalles/Detalles-Cuentas.compone
       <!-- Grid de Cuenta -->
       <div style="margin-bottom: 15px; height: 250px;">
         <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-          <strong>Cuentas de: {{ providerName }}</strong>
-          <div>
+          <strong>Abonos de: {{ providerName }}</strong>
+          <!--<div>
             <button 
               class="btn btn-sm btn-success me-2" 
               (click)="addCuenta()"
@@ -38,7 +39,7 @@ import { DetallesComponentCuentas } from './subdetalles/Detalles-Cuentas.compone
               [disabled]="!selectedCuenta">
               <i class="bi bi-trash"></i> Borrar
             </button>
-          </div>
+          </div>-->
         </div>
         <ag-grid-angular
           class="ag-theme-quartz small-text-ag-grid"
@@ -67,7 +68,8 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
   private collapseTimer: any = null;
 
   components = {
-    detallesCuentasRenderer: DetallesComponentCuentas
+    detallesCuentasRenderer: DetallesComponentCuentas,
+    DetallesComponentCuentasAbono: DetallesComponentCuentasAbono
   };
   
   cuentaGridOptions: any = {
@@ -76,20 +78,43 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
     suppressEnterWhenEditing: false,
     rowSelection: 'single',
     masterDetail: true,
-    isRowMaster: (dataItem) => dataItem && dataItem.id,
-    detailCellRenderer: 'detallesCuentasRenderer',
-    detailCellRendererParams: (p) => { // 'p' para evitar conflicto con this.params
+     isRowMaster: (dataItem) => {
+    // Asignar un detailType por defecto si no existe para evitar errores en el selector
+    if (!dataItem.detailType) dataItem.detailType = 'campo3';
+    return true; // Todas las filas de proveedores son maestras
+  },
+    //detailCellRenderer: 'detallesCuentasRenderer',
+    detailCellRendererSelector: (params) => {
+    
+    // Decide qué renderizador usar basado en la propiedad 'detailType'
+    if (params.data.detailType === 'campo5') {
       return {
-        context: this.params?.context, // Pasamos el contexto principal
-        // La lógica del mouse ahora se maneja aquí, como en providers.component.ts
-        onMouseEnter: () => {
-          if (this.collapseTimer) clearTimeout(this.collapseTimer);
-        },
-        onMouseLeave: () => {
-          this.collapseTimer = setTimeout(() => p.node.setExpanded(false), 300);
+        component: 'DetallesComponentCuentasAbono',
+        params: {
+          onMouseEnter: () => {clearTimeout(this.collapseTimer)},
+          onMouseLeave: () => {
+            this.collapseTimer = setTimeout(() => {
+              params.node.setExpanded(false);
+            }, 300); // Un retardo de 300ms
+          },
         }
       };
-    },
+    } else if (params.data.detailType === 'campo3') {
+      return { 
+        component: 'detallesCuentasRenderer',
+        params: {
+          onMouseEnter: () => {clearTimeout(this.collapseTimer)},
+          onMouseLeave: () => {
+            this.collapseTimer = setTimeout(() => params.node.setExpanded(false), 300);
+          },
+        }
+      };
+    }else 
+    return undefined; // No mostrar detalle si no hay tipo
+  },
+  detailCellRendererParams: {
+    // Se inicializa vacío, se llenará en agInit
+  }
   };
 
   constructor(private currencyPipe: CurrencyPipe) {}
@@ -194,15 +219,20 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
       flex: 1,
       valueFormatter: params => this.currencyPipe.transform(params.value, 'MXN', 'symbol', '1.2-2')
     },
-    { 
-      field: 'campo5', 
-      headerName: 'Abono a Cuenta', 
+    {
+      field: 'campo3',
+      headerName: 'Articulo',
       editable: false,
-      // Este cellRenderer ahora solo muestra el ícono y el valor
-      cellRenderer: (params) => {
-        const value = this.currencyPipe.transform(params.value, 'MXN', 'symbol', '1.2-2');
-        return `<i class="bi bi-box-arrow-in-down" style="cursor: pointer; color: #0d6efd;"></i> ${value || ''}`;
-      },
+      // Este cellRenderer muestra el ícono y el valor, y permite expandir/colapsar el detalle al hacer clic
+      cellRenderer: this.createDetailToggleCellRenderer('campo3'),
+      flex: 1
+    },
+    {
+      field: 'campo5',
+      headerName: 'Abono a Cuenta',
+      editable: false,
+      // Este cellRenderer muestra el ícono y el valor, y permite expandir/colapsar el detalle al hacer clic
+      cellRenderer: this.createDetailToggleCellRenderer('campo5'),
       flex: 1
     },
     { 
@@ -230,11 +260,32 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
   createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement {
     return (params: any): HTMLElement => {
       const div = document.createElement('div');
-      const value = this.currencyPipe.transform(params.value, 'MXN', 'symbol', '1.2-2');
-      div.innerHTML = `<i class="bi bi-box-arrow-in-down"></i> ${value || ''}`;
+      // Validar que el valor sea numérico antes de pasarlo al pipe
+      const isNumeric = params.value !== null && params.value !== '' && !isNaN(Number(params.value));
+      const value = isNumeric ? this.currencyPipe.transform(params.value, 'MXN', 'symbol', '1.2-2') : '$0.00';
+
+      div.innerHTML = `<i class="bi bi-box-arrow-in-down"></i> ${value}`;
       div.style.cursor = 'pointer';
       div.style.textDecoration = 'underline';
       div.style.color = '#0d6efd';
+
+      div.addEventListener('click', () => {
+        const node = params.node;
+        const api = params.api;
+        const isCurrentlyExpanded = node.expanded && params.data.detailType === detailType;
+
+        // Colapsar cualquier otra fila que esté expandida
+        api.forEachNode(otherNode => {
+          if (otherNode.expanded && otherNode.id !== node.id) {
+            otherNode.setExpanded(false);
+          }
+        });
+
+        // Establecer el tipo de detalle y expandir/colapsar
+        params.data.detailType = detailType;
+        node.setExpanded(!isCurrentlyExpanded);
+      });
+
       return div;
     };
   }

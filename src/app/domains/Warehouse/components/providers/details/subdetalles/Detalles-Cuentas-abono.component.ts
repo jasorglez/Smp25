@@ -18,7 +18,7 @@ import { CommonModule } from '@angular/common';
       <div style="margin-bottom: 15px; height: 250px;">
         <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
           <strong>Detalles de cuentas: {{ providerName }}</strong>
-          <!--<div>
+          <div>
             <button 
               class="btn btn-sm btn-success me-2" 
               (click)="addDetallesCuentas()"
@@ -37,7 +37,7 @@ import { CommonModule } from '@angular/common';
               [disabled]="!selectedDetallesCuentas">
               <i class="bi bi-trash"></i> Borrar
             </button>
-          </div>-->
+          </div>
         </div>
         <ag-grid-angular
           class="ag-theme-quartz small-text-ag-grid"
@@ -52,7 +52,7 @@ import { CommonModule } from '@angular/common';
     </div>
   `
 })
-export class DetallesComponentCuentas implements ICellRendererAngularComp {
+export class DetallesComponentCuentasAbono implements ICellRendererAngularComp {
 
   params: any;
   providerId: number;
@@ -71,25 +71,9 @@ export class DetallesComponentCuentas implements ICellRendererAngularComp {
   };
 
   DetallesCuentasColumnDefs = [
-    { field: 'campo2', headerName: 'Articulo', editable: true, flex: 1 },
-    { field: 'campo3', headerName: 'Categoria', editable: true, flex: 1 },
-    { field: 'campo4', headerName: 'Familia', editable: true, flex: 1 },
-    { field: 'campo5', headerName: 'SubFamilia', editable: true, flex: 1 },
-    { field: 'campo1', headerName: 'Cantidad', editable: true, width: 100 },
-    {
-      field: 'campo7',
-      headerName: 'Precio unitario',
-      editable: true,
-      width: 120,
-      valueFormatter: params => `$${Number(params.value || 0).toFixed(2)}`
-    },
-    {
-      field: 'campo6',
-      headerName: 'Total por nota',
-      editable: true,
-      width: 120,
-      valueFormatter: params => `$${Number(params.value || 0).toFixed(2)}`
-    },
+    { field: 'campo2', headerName: 'Fecha', editable: true, flex: 1 },
+    { field: 'campo3', headerName: 'Abono', editable: true, flex: 1 },
+    { field: 'campo4', headerName: 'Comentario', editable: true, flex: 1 },
   ];
 
   agInit(params: ICellRendererParams): void {
