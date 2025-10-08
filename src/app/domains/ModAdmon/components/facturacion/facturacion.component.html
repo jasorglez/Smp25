@@ -201,11 +201,35 @@
                   <div class="d-flex justify-content-end align-items-center">
                     <h5 class="mb-0"><strong>Total:</strong> <span class="text-primary">{{ calcularTotal() | number:'1.2-2' }}</span></h5>
                   </div>
+       
+                  <!-- Quinta Card: Timbrado -->
+                  <div class="card mb-4">
+                    <div class="card-header">
+                      <h6><i class="bi bi-stamp"></i> Timbrado de Factura</h6>
+                    </div>
+                    <div class="card-body">
+                      <div class="row g-3">
+                        <div class="col-12">
+                          <label for="invoiceXml" class="form-label">XML de la Factura</label>
+                          <textarea class="form-control" id="invoiceXml" rows="10" [(ngModel)]="invoiceXml" placeholder="Pegue aquí el XML de la factura a timbrar..."></textarea>
+                        </div>
+                        <div class="col-12">
+                          <button type="button" class="btn btn-success" (click)="stampInvoice()">
+                            <i class="bi bi-stamp-fill"></i> Timbrar Factura
+                          </button>
+                        </div>
+                        <div class="col-12" *ngIf="stampedXml">
+                          <label for="stampedXml" class="form-label">XML Timbrado</label>
+                          <textarea class="form-control" id="stampedXml" rows="10" [(ngModel)]="stampedXml" readonly></textarea>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+       
                 </div>
               </div>
             </div>
           </div>
-
         </div>
       </div>
     </div>

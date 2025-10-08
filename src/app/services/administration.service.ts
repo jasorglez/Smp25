@@ -84,8 +84,22 @@ export class AdministrationService {
     return this.http.post(`${environment.urlAdministration}/BillingManagement`, data, { headers: this.trackingService.getHeaders() });
   }
 
-  updateBillingManagementInfo(idRoot: number, data: any): Observable<any> {
+  updateBillingManagement(idRoot: number, data: any): Observable<any> {
     return this.http.put<any[]>(`${environment.urlAdministration}/BillingManagement/${idRoot}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  uploadCertificates(idRoot: number, formData: FormData): Observable<any> {
+      console.log('idRoot:', idRoot);
+    const headers = this.trackingService.getHeaders().delete('Content-Type');
+    return this.http.post(`${environment.urlAdministration}/BillingManagement/upload-certificates/${idRoot}`, formData, { headers });
+  }
+
+  checkCertificates(idRoot: number): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/BillingManagement/check-certificates/${idRoot}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  stampInvoice(idRoot: number, invoiceXml: string): Observable<any> {
+    return this.http.post(`${environment.urlAdministration}/BillingManagement/stamp/${idRoot}`, invoiceXml, { headers: this.trackingService.getHeaders() });
   }
 
   getFiscalRegimes(): Observable<any> {
@@ -131,6 +145,7 @@ export class AdministrationService {
       })
     );
   }
+  
   updateNormalPayroll(idNormal: number){
     return this.http.put(`${environment.urlAdministration}/NormalPayrolls/NormalPayrollClosing/${idNormal}`, {}, { headers: this.trackingService.getHeaders() })
   }

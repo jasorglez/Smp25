@@ -545,7 +545,7 @@ export class IncomeComponent {
       consecutive: currentConsecutive
     };
 
-    const updateConsecutiveObs = this.administrationService.updateBillingManagementInfo(
+    const updateConsecutiveObs = this.administrationService.updateBillingManagement(
       this.root,
       updatedBillingInfo // Enviar objeto directamente
     ).pipe(
