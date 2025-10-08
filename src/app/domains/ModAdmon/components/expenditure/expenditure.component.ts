@@ -613,7 +613,7 @@ onGridReady(params: GridReadyEvent) {
       consecutive: currentConsecutive
     };
 
-    const updateConsecutiveObs = this.administrationService.updateBillingManagementInfo(
+    const updateConsecutiveObs = this.administrationService.updateBillingManagement(
       this.idRoot,
       updatedBillingInfo // Enviar objeto directamente
     ).pipe(

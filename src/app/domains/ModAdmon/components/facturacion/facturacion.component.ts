@@ -72,6 +72,10 @@ export class FacturacionComponent implements OnInit {
   objetosImpuesto: any[] = [];
   clientes: any[] = [];
 
+  // Stamping
+  invoiceXml: string = '';
+  stampedXml: string = '';
+
   ngOnInit(): void {
     this.setDefaultValues();
     this.loadCatalogs();
@@ -233,6 +237,27 @@ export class FacturacionComponent implements OnInit {
       // Si no hay cliente seleccionado, limpiar el campo
       this.cliente.codigoPostal = '';
     }
+  }
+
+  stampInvoice(): void {
+    if (!this.invoiceXml.trim()) {
+      alert('Por favor, ingrese el XML de la factura.');
+      return;
+    }
+
+    const idRoot = this.signalsService.getRootSelectedBySidebar()();
+
+    this.administrationService.stampInvoice(idRoot, this.invoiceXml)
+      .subscribe({
+        next: (response: any) => {
+          this.stampedXml = response.stampedXml || response;
+          alert('Factura timbrada exitosamente.');
+        },
+        error: (err) => {
+          console.error('Error stamping invoice:', err);
+          alert('Error al timbrar la factura.');
+        }
+      });
   }
 
 }

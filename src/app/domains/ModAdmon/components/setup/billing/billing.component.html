@@ -61,19 +61,52 @@
           </div>
 
           <div class="col-12 mt-3">
+            <h5>Datos del Emisor</h5>
+            <div class="row g-3">
+              <div class="col-md-4 col-lg-4">
+                <label for="emisorRfc" class="form-label">RFC del Emisor <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="emisorRfc" placeholder="RFC del Emisor" [(ngModel)]="billingData.emisorRfc" maxlength="13">
+              </div>
+              <div class="col-md-4 col-lg-4">
+                <label for="emisorNombre" class="form-label">Nombre del Emisor <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="emisorNombre" placeholder="Nombre del Emisor" [(ngModel)]="billingData.emisorNombre">
+              </div>
+              <div class="col-md-4 col-lg-4">
+                <label for="emisorCp" class="form-label">Código Postal del Emisor <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="emisorCp" placeholder="Código Postal" [(ngModel)]="billingData.emisorCp" maxlength="5">
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 mt-3">
             <h5>Datos generales del certificado</h5>
             <div class="row g-3">
               <div class="col-md-4 col-lg-4">
-                <label for="pathCer" class="form-label">Ruta del Certificado .cer <span class="text-danger">*</span></label>
+                <label for="pathCer" class="form-label">Certificado .cer <span class="text-danger">*</span></label>
                 <input type="file" class="form-control" id="pathCer" accept=".cer" (change)="onCerFileSelected($event)">
               </div>
               <div class="col-md-4 col-lg-4">
-                <label for="pathKey" class="form-label">Ruta de la Llave .key <span class="text-danger">*</span></label>
+                <label for="pathKey" class="form-label">Llave .key <span class="text-danger">*</span></label>
                 <input type="file" class="form-control" id="pathKey" accept=".key" (change)="onKeyFileSelected($event)">
               </div>
               <div class="col-md-4 col-lg-4">
                 <label for="efirmaPass" class="form-label">Contraseña eFirma <span class="text-danger">*</span></label>
                 <input type="password" class="form-control" id="efirmaPass" placeholder="Contraseña eFirma" [(ngModel)]="billingData.efirmaPass">
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 mt-3">
+            <h5>Estado de los certificados</h5>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <p>Certificado .cer: <span [class]="certificateStatus.certificateConfigured ? 'text-success' : 'text-danger'">{{ certificateStatus.certificateConfigured ? 'Configurado' : 'No configurado' }}</span></p>
+              </div>
+              <div class="col-md-4">
+                <p>Llave .key: <span [class]="certificateStatus.keyConfigured ? 'text-success' : 'text-danger'">{{ certificateStatus.keyConfigured ? 'Configurado' : 'No configurado' }}</span></p>
+              </div>
+              <div class="col-md-4">
+                <p>Estado general: <span [class]="certificateStatus.isFullyConfigured ? 'text-success' : 'text-danger'">{{ certificateStatus.isFullyConfigured ? 'Completo' : 'Incompleto' }}</span></p>
               </div>
             </div>
           </div>
