@@ -38,6 +38,7 @@
         (selectionChanged)="onSelectionChanged($event)"
         [gridOptions]="gridOptions"
         (cellValueChanged)="onCellValueChanged($event)"
+        (cellClicked)="onCellClicked($event)"
         (rowSelected)="onSelectedRow($event)"
         (gridReady)="onGridReady($event)"
         [pagination]="false"

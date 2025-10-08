@@ -19,7 +19,8 @@ import {
   lastValueFrom,
   toArray,
   throwError,
-  map 
+  map,
+  Observable
 } from 'rxjs';
 import { AgGridModule } from 'ag-grid-angular';
 import { ModalService } from 'app/services/modal.service';
@@ -40,6 +41,7 @@ import { BranchsService } from 'app/services/branchs.service';
 import { AuthService } from 'app/services/auth.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { Icatalog } from 'app/interface/icatalog';
+import { ICustomer } from 'app/interface/icustomer';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '@env/environment';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
@@ -124,7 +126,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
   }
   
   type: string = ''; // Para almacenar el tipo (CUSTOMERS o PROVIDERS)
-  gridHeight: string = '75vh';
+  gridHeight: string = '90vh';
   showCreditsTab: boolean = false;
   private gridApi: GridApi;
   notSavedChanges: boolean = false;
@@ -146,6 +148,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
   // Agregar esta nueva variable para almacenar el ID de la última fila editada
   private lastEditedRowId: number | string | null = null;
 
+  private isProcessingMouseOver = false; // Bandera para evitar eventos MouseOver en cascada
   private lastExpandedNode: any = null;
   private collapseTimer: any = null; // MEJORA: Temporizador para el colapso del detalle
   rowData: any;
@@ -204,6 +207,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
   detailCellRendererSelector: (params) => {
     // Decide qué renderizador usar basado en la propiedad 'detailType'
     if (params.data.detailType === 'contact') {
+      params.node.setRowHeight(700); // Ajusta la altura de la fila de detalle
       return {
         component: 'detailCellRenderer',
         params: {
@@ -211,27 +215,29 @@ export class ProvidersComponent implements CanComponentDeactivate {
           onMouseLeave: () => { // Inicia el temporizador para cerrar al salir
             this.collapseTimer = setTimeout(() => {
               params.node.setExpanded(false);
-            }, 300); // Un retardo de 300ms
+            }, 500); // Un retardo de 500ms
           },
         }
       };
     } else if (params.data.detailType === 'bank') {
+      params.node.setRowHeight(700); // Ajusta la altura de la fila de detalle
       return { 
         component: 'detailCellRendererBanck',
         params: {
           onMouseEnter: () => clearTimeout(this.collapseTimer),
           onMouseLeave: () => {
-            this.collapseTimer = setTimeout(() => params.node.setExpanded(false), 300);
+            this.collapseTimer = setTimeout(() => params.node.setExpanded(false), 500);
           },
         }
       };
     } else if (params.data.detailType === 'Cuentas') {
+      params.node.setRowHeight(700); // Damos más altura para la tabla de cuentas
       return { 
         component: 'detailCellRendererCuentas',
         params: {
           onMouseEnter: () => clearTimeout(this.collapseTimer),
           onMouseLeave: () => {
-            this.collapseTimer = setTimeout(() => params.node.setExpanded(false), 300);
+            this.collapseTimer = setTimeout(() => params.node.setExpanded(false), 500);
           },
         }
       };
@@ -239,14 +245,11 @@ export class ProvidersComponent implements CanComponentDeactivate {
     return undefined; // No mostrar detalle si no hay tipo
   },
   
-  rowClass: (params) => {
+  getRowClass: (params) => {
     if (params.node.isSelected()) {
       return 'selected-row';
     }
     return '';
-  },
-  onRowClicked: (event) => {
-    event.node.setSelected(true);
   },
   onRowSelected: (event) => {
     if (event.node.isSelected()) {
@@ -259,44 +262,87 @@ export class ProvidersComponent implements CanComponentDeactivate {
   },
 
   onCellMouseOver: (event) => {
+    // No hacer nada si el mouse se mueve sobre una celda que no es de detalle
     const colId = event.column.getColId();
     const isDetailColumn = colId === 'fieldContact' || colId === 'fieldBank' || colId === 'fieldCuenta';
+    if (!isDetailColumn) return;
 
-    if (isDetailColumn) {
-      // Si el mouse se mueve a una celda de detalle, cancelamos cualquier cierre pendiente
-      if (this.collapseTimer) {
-        clearTimeout(this.collapseTimer);
-        this.collapseTimer = null;
-      }
+    // SOLUCIÓN: Si ya estamos procesando un evento, ignoramos los siguientes.
+    if (this.isProcessingMouseOver) return;
 
-      // Si ya está expandido para este tipo, no hacemos nada
-      if (event.node.expanded && event.data.detailType === this.getDetailTypeFromColId(colId)) {
-        return;
-      }
 
-      // Colapsar cualquier otra fila que esté expandida
-      this.gridApi.forEachNode(otherNode => {
-        if (otherNode.expanded && otherNode.id !== event.node.id) {
-          otherNode.setExpanded(false);
-        }
-      });
-
-      // Si la fila ya está expandida pero con un tipo de detalle DIFERENTE,
-      // la colapsamos primero para forzar el refresco del detalle.
-      const newDetailType = this.getDetailTypeFromColId(colId);
-      if (event.node.expanded && event.data.detailType !== newDetailType) {
-        // Forzamos el refresco colapsando y re-expandiendo con un pequeño retardo.
-        // Esto asegura que AG Grid desmonte el componente de detalle anterior antes de montar el nuevo.
-        event.data.detailType = newDetailType;
-        event.node.setExpanded(false);
-        setTimeout(() => event.node.setExpanded(true), 10); // 10ms es suficiente
-        return; // Salimos para evitar que se ejecute el setExpanded de abajo
-      }
-
-      // Establecer el tipo de detalle y expandir la fila
-      event.data.detailType = newDetailType;
-      event.node.setExpanded(true);
+    // SOLUCIÓN: Si el mouse se mueve a una nueva celda de detalle,
+    // cancelamos cualquier temporizador de colapso que esté pendiente.
+    if (this.collapseTimer) {
+      clearTimeout(this.collapseTimer);
+      this.collapseTimer = null;
     }
+
+    // MEJORA: Cancelar cualquier temporizador de expansión pendiente si el mouse se mueve a otra celda.
+    if (this.hoverDelayTimer) {
+      clearTimeout(this.hoverDelayTimer);
+      this.hoverDelayTimer = null;
+    }
+
+
+    const newDetailType = this.getDetailTypeFromColId(colId);
+    const isSameDetail = event.node.expanded && event.data.detailType === newDetailType;
+
+    // Si ya está expandido con el mismo detalle, no hacemos nada.
+    if (isSameDetail) return;
+
+    console.log(`[Depuración] MouseOver en celda de detalle. Columna: ${colId}, Fila ID: ${event.data.id}`);
+
+    const expandAndFilter = () => {
+        // 1. Colapsar cualquier otra fila que pudiera estar abierta.
+        //    Y limpiar cualquier filtro existente.
+        this.gridApi.forEachNode(otherNode => {
+            if (otherNode.expanded && otherNode.id !== event.node.id) {
+                otherNode.setExpanded(false);
+            }
+        });
+        // Limpiamos el filtro ANTES de aplicar uno nuevo para evitar conflictos.
+        this.gridApi.setFilterModel(null);
+        
+        // SOLUCIÓN: Activar la bandera para bloquear eventos subsiguientes.
+        this.isProcessingMouseOver = true;
+        setTimeout(() => {
+          this.isProcessingMouseOver = false;
+        }, 100); // Desbloquear después de 100ms
+
+        // 2. Aplicar filtro y luego expandir.
+        // Aplicar el filtro por ID para enfocar la fila actual.
+        const filterModel = {
+          id: { filterType: 'number', type: 'equals', filter: event.data.id },
+        };
+        console.log('[Depuración] Aplicando modelo de filtro:', filterModel);
+        this.gridApi.setFilterModel(filterModel);
+
+        // Expandir DESPUÉS de que el filtro se haya procesado.
+        // Un pequeño delay ayuda a asegurar que AG Grid procese el filtro antes de expandir.
+        setTimeout(() => {
+            event.data.detailType = newDetailType;
+            event.node.setExpanded(true);
+            console.log(`[Depuración] Fila ${event.data.id} expandida con detalle: ${newDetailType}`);
+        }, 50);
+    };
+
+    // MEJORA: Iniciar un temporizador para retrasar la expansión.
+    this.hoverDelayTimer = setTimeout(() => {
+      // Si la fila ya está expandida (pero con un detalle diferente),
+      // primero la colapsamos para forzar el refresco del componente de detalle.
+      if (event.node.expanded) {
+          console.log(`[Depuración] La fila ${event.data.id} ya estaba expandida. Colapsando para refrescar.`);
+          event.node.setExpanded(false);
+          // Usamos un pequeño timeout para asegurar que AG Grid procese el colapso
+          // antes de intentar expandir de nuevo con el nuevo detalle.
+          setTimeout(expandAndFilter, 50);
+      } else {
+          // Si no estaba expandida, simplemente expandimos y filtramos.
+          expandAndFilter();
+      }
+    }, 400); // Retraso de 400ms antes de expandir.
+    // Se elimina la lógica de hover para que solo funcione con click.
   },
 
   onCellMouseOut: (event) => {
@@ -304,17 +350,37 @@ export class ProvidersComponent implements CanComponentDeactivate {
     const colId = event.column.getColId();
     const isDetailColumn = colId === 'fieldContact' || colId === 'fieldBank' || colId === 'fieldCuenta';
 
+    // MEJORA: Si el mouse sale de la celda, cancelar el temporizador de expansión.
+    if (this.hoverDelayTimer) {
+      clearTimeout(this.hoverDelayTimer);
+      this.hoverDelayTimer = null;
+    }
+
     // Si el mouse sale de una celda de detalle, iniciamos el temporizador para colapsar.
     // El evento onMouseEnter del panel de detalle cancelará esto si el mouse entra en él.
     if (isDetailColumn && event.node.expanded) {
-      this.collapseTimer = setTimeout(() => event.node.setExpanded(false), 300);
+      this.collapseTimer = setTimeout(() => {
+        console.log(`[Depuración] Colapsando fila ${event.node.data.id} por timeout.`);
+        event.node.setExpanded(false);
+        // Al colapsar, limpiar cualquier filtro que se haya aplicado.
+        console.log('[Depuración] Limpiando filtro al colapsar por timeout.');
+        this.gridApi.setFilterModel(null);
+        this.gridApi.onFilterChanged();
+      }, 300);
     }
+    // Se elimina la lógica de hover para que solo funcione con click.
   }
 };
 
-
   get colMaster(): ColDef[] {
     return [
+      {
+        field: 'id',
+        headerName: 'ID',
+        hide: true, // La ocultamos porque es para uso interno
+        filter: 'agNumberColumnFilter',
+        width: 80
+      },
       {
         field: 'vigente',
         headerName: 'Activo',
@@ -424,20 +490,23 @@ export class ProvidersComponent implements CanComponentDeactivate {
         field: 'fieldContact',
         headerName: 'Contactos',
         cellRenderer: this.createDetailToggleCellRenderer('contact'),
-        editable: false
+        editable: false,
+        cellStyle: { backgroundColor: '#d4edda' },
       },
   
       {
         field: 'fieldBank',
         headerName: 'Bancos',
         editable: false,
-        cellRenderer: this.createDetailToggleCellRenderer('bank')
+        cellRenderer: this.createDetailToggleCellRenderer('bank'),
+        cellStyle: { backgroundColor: '#d4edda' },
       },
   
       {
         field: 'fieldCuenta',
         headerName: 'Cuentas x Pagar',
         cellRenderer: this.createDetailToggleCellRenderer('Cuentas'),
+        cellStyle: { backgroundColor: '#d4edda' },
         editable: false
       },
    
@@ -488,38 +557,28 @@ export class ProvidersComponent implements CanComponentDeactivate {
 createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement {
   return (params: any): HTMLElement => {
     const div = document.createElement('div');
+    //console.log(params.data.id)
+    switch
+      (detailType){
+      case 'contact':
+        div.innerText = params.data.fieldContact;
+        break;
+      case 'bank':
+        div.innerText = params.data.fieldBank;
+        break;
+      case 'Cuentas':
+        div.innerText = params.data.fieldCuenta;
+        break;
+      }
     // Usamos innerHTML para poder renderizar el ícono
-    div.innerHTML = `<i class="bi bi-box-arrow-in-down"></i> ${params.value || ''}`;
+    //div.innerHTML = params.data.id;
     div.style.cursor = 'pointer';
     div.style.textDecoration = 'underline';
-    div.style.color = '#0d6efd';
+    div.style.background = '#d4edda';
 
     const node = params.node;
     const api = params.api;
 
-    // El comportamiento de click se ha movido a onCellMouseOver, pero mantenemos el listener
-    // por si el usuario prefiere hacer click.
-    // div.addEventListener('click', () => {
-    //   // Determinar si la fila actual ya está expandida CON ESTE MISMO tipo de detalle
-    //   const isCurrentlyExpanded = node.expanded && params.data.detailType === detailType;
-
-    //   // Colapsar cualquier otra fila que esté expandida
-    //   api.forEachNode(otherNode => {
-    //     if (otherNode.expanded && otherNode.id !== node.id) {
-    //       otherNode.setExpanded(false);
-    //     }
-    //   });
-
-    //   if (isCurrentlyExpanded) { // Si se hace clic en la misma celda que ya está abierta...
-    //     // ...se cierra.
-    //     node.setExpanded(false);
-    //   } else {
-    //     // Si se hace clic en una celda diferente (o la fila está cerrada)...
-    //     // ...se establece el nuevo tipo de detalle y se expande la fila.
-    //     params.data.detailType = detailType;
-    //     node.setExpanded(true);
-    //   }
-    // });
 
     return div;
   };
@@ -543,6 +602,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
         .subscribe({
           next: (data: any) => {
             this.rowData = data;
+            console.log(this.rowData)
             // Asegurarse de que las columnas se ajusten después de cargar los datos
             if (this.gridApi) {
               this.gridApi.sizeColumnsToFit();
@@ -629,6 +689,59 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
     }
   }
 
+  onCellClicked(event: any): void {
+  event.node.setSelected(true);
+  console.log('Celda clickeada:', event);
+
+  // Cancelar cualquier temporizador de cierre pendiente de onCellMouseOut
+  if (this.collapseTimer) {
+    clearTimeout(this.collapseTimer);
+    this.collapseTimer = null;
+  }
+
+  const colId = event.column.getColId();
+  const isDetailColumn = colId === 'fieldContact' || colId === 'fieldBank' || colId === 'fieldCuenta';
+
+  if (isDetailColumn) {
+    const node = event.node;
+    const api = event.api;
+    const detailType = this.getDetailTypeFromColId(colId);
+
+    // Determinar si la fila actual ya está expandida CON ESTE MISMO tipo de detalle
+    const isCurrentlyExpanded = node.expanded && event.data.detailType === detailType;
+
+    // Colapsar cualquier otra fila que esté expandida
+    api.forEachNode(otherNode => {
+      if (otherNode.expanded && otherNode.id !== node.id) {
+        otherNode.setExpanded(false);
+      }
+    });
+
+    if (isCurrentlyExpanded) { // Si se hace clic en la misma celda que ya está abierta...
+      // ...se cierra y se limpia el filtro.
+      node.setExpanded(false);
+      api.setFilterModel(null);
+      api.onFilterChanged();
+    } else {
+      // Si se hace clic en una celda diferente (o la fila está cerrada)...
+      // ...se establece el nuevo tipo de detalle y se expande la fila.
+      
+      // Limpiar filtro antes de aplicar uno nuevo
+      api.setFilterModel(null);
+      
+      // Aplicar filtro por ID para enfocar la fila actual.
+      const filterModel = {
+        id: { filterType: 'number', type: 'equals', filter: event.data.id },
+      };
+      api.setFilterModel(filterModel);
+
+      // Expandir la fila con el detalle correcto
+      event.data.detailType = detailType;
+      node.setExpanded(true);
+    }
+  }
+}
+
   getCoordinatesFromCP(cp: string) {
     const url = `https://nominatim.openstreetmap.org/search?postalcode=${cp}&country=MX&format=json`;
     return this.http.get(url).pipe(
@@ -662,7 +775,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-    
+
     // Configurar master-detail después de que el grid esté listo
     this.gridApi.setGridOption('detailCellRendererParams', {
       getDetailRowData: (params) => {
@@ -736,6 +849,9 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
       longitud: '',
       idTypecop: 0,
       type: this.type,
+      fieldContact: 1,
+      fieldBank: 0,
+      fieldCuenta: 0,
       active: true,
       __isNew: true,
     };
@@ -793,6 +909,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+     
       return this.customerService.addCustomer(cleanedData);
     });
 
@@ -803,8 +920,8 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
     });
 
     try {
-      const responses = await lastValueFrom(
-        concat(...addObservables, ...updateObservables).pipe(toArray())
+      const responses: ICustomer[] = await lastValueFrom(
+        concat(...addObservables, ...updateObservables).pipe(toArray()) as Observable<ICustomer[]>
       );
 
       // Determinar qué ID vamos a seleccionar después de recargar
@@ -812,6 +929,18 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
         this.lastEditedRowId = modifiedRows[modifiedRows.length - 1].id;
       } else if (newRows.length > 0) {
         this.lastEditedRowId = 'SELECT_MAX_ID';
+        const data = {
+          campo1: 0,
+          campo2: responses[0].nameContact,
+          campo3: responses[0].position,
+          campo4: responses[0].phone,
+          campo5: responses[0].email,
+          campo6: "NA",
+          campo7: true,
+          idTabla: responses[0].id,
+          type: "CONTACT"
+        };
+        this.providersService.addProviderXTable(data).subscribe();
       }
 
       // Guardar también los cambios de ProviderXTable
@@ -961,7 +1090,8 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
       if(this.gridApi) {
         const filterModel = {
           id: {
-            type: 'equals',
+            filterType: 'number',
+            type: 'equals', // o 'contains', 'startsWith', etc.
             filter: selectedId,
           },
         };
@@ -1053,7 +1183,9 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
     } else {
       // Si es una fila existente, eliminarla del servidor
       try {
+        
         await lastValueFrom(this.providersService.deleteProviderXTable(detailId));
+
         alerts.basicAlert('Contacto eliminado', 'El contacto se eliminó correctamente.', 'success');
         successCallback(); // Llama al callback para recargar los datos en el componente hijo
       } catch (error) {
@@ -1074,7 +1206,9 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
 
     try {
       for (const row of newDetails) {
-        await lastValueFrom(this.providersService.addProviderXTable(this.cleanDataForServer(row)));
+        this.customerService.updateFiel(row.idTabla, row.type, "SUMA").subscribe();
+        await lastValueFrom(this.providersService.addProviderXTable(this.cleanDataForServer(row))); 
+        this.obtenerDatos(); 
       }
 
       for (const row of modifiedDetails) {

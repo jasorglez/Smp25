@@ -3,6 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { TrackingService } from './tracking.service';
 import { environment } from '@env/environment';
 import { Observable } from 'rxjs';
+import { ICustomer } from 'app/interface/icustomer';
 
 @Injectable({
   providedIn: 'root'
@@ -34,18 +35,27 @@ export class CustomersService {
     return this.http.get(apiUrl, { headers: this.trackingService.getHeaders() });
   }
 
-  addCustomer(data: any): Observable<any> {
-    return this.http.post(`${environment.urlAdministration}/Customer`, data, { headers: this.trackingService.getHeaders() });
+  addCustomer(data: any): Observable<ICustomer> {
+    return this.http.post<ICustomer>(`${environment.urlAdministration}/Customer`, data, { headers: this.trackingService.getHeaders() });
   }
 
-  updateCustomer(id: string, data: any): Observable<any> {
-    return this.http.put<any[]>(`${environment.urlAdministration}/Customer/${id}`, data, { headers: this.trackingService.getHeaders() });
+  updateCustomer(id: string, data: any): Observable<ICustomer> {
+    return this.http.put<ICustomer>(`${environment.urlAdministration}/Customer/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
   deleteCustomer(id: number): Observable<any> {
     return this.http.delete<any[]>(`${environment.urlAdministration}/Customer/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
+  updateFiel(id: number, type: string, operacion: string): Observable<ICustomer> {
+  return this.http.put<ICustomer>(
+    `${environment.urlAdministration}/Customer/Increment/${id}/${type}?operacion=${operacion}`,
+    {},
+    { headers: this.trackingService.getHeaders() }
+  );
+}
+
+  //Customer/Increment/1114/CONTACT?operacion=RESTA
   // Clientes Créditos
 
   getClientCredits(id: number) {

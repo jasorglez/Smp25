@@ -11,11 +11,11 @@ import { CommonModule } from '@angular/common';
   imports: [AgGridModule, CommonModule],
   template: `
     <div 
-      style="padding: 10px; background-color: #e9ecef;"
+      style="padding: 10px; background-color: #e9ecef; height: 100%; display: flex; flex-direction: column;"
       (mouseenter)="params.onMouseEnter && params.onMouseEnter()"
       (mouseleave)="params.onMouseLeave && params.onMouseLeave()">
       <!-- Grid de Banckos -->
-      <div style="margin-bottom: 15px; height: 250px;">
+      <div style="margin-bottom: 15px; flex-grow: 1; display: flex; flex-direction: column;">
         <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
           <strong>Detalles de cuentas: {{ providerName }}</strong>
           <div>
@@ -41,7 +41,7 @@ import { CommonModule } from '@angular/common';
         </div>
         <ag-grid-angular
           class="ag-theme-quartz small-text-ag-grid"
-          style="height: 100%; width: 100%;"
+          style="width: 100%; flex-grow: 1;"
           [columnDefs]="DetallesCuentasColumnDefs"
           [rowData]="DetallesCuentasRowData"
           [gridOptions]="DetallesCuentasGridOptions"

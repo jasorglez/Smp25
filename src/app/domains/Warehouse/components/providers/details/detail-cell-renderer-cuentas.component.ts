@@ -13,11 +13,11 @@ import { DetallesComponentCuentasAbono } from './subdetalles/Detalles-Cuentas-ab
   imports: [AgGridModule, CommonModule, DetallesComponentCuentas, DetallesComponentCuentasAbono],
   template: `
     <div 
-      style="padding: 10px; background-color: #f8f9fa;"
+      style="padding: 10px; background-color: #f8f9fa; height: 100%; display: flex; flex-direction: column;"
       (mouseenter)="params.onMouseEnter && params.onMouseEnter()"
       (mouseleave)="params.onMouseLeave && params.onMouseLeave()">
       <!-- Grid de Cuenta -->
-      <div style="margin-bottom: 15px; height: 250px;">
+      <div style="margin-bottom: 15px; flex-grow: 1; display: flex; flex-direction: column;">
         <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
           <strong>Abonos de: {{ providerName }}</strong>
           <!--<div>
@@ -43,7 +43,7 @@ import { DetallesComponentCuentasAbono } from './subdetalles/Detalles-Cuentas-ab
         </div>
         <ag-grid-angular
           class="ag-theme-quartz small-text-ag-grid"
-          style="height: 100%; width: 100%;"
+          style="width: 100%; flex-grow: 1;"
           [columnDefs]="cuentaColumnDefs"
           [rowData]="cuentaRowData"
           [gridOptions]="cuentaGridOptions"
@@ -60,7 +60,6 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
   params: any;
   providerId: number;
   providerName: string;
-  
   cuentaRowData: any[] = [];
   hasCuentaChanges: boolean = false;
   cuentaGridApi: any;
@@ -88,6 +87,7 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
     
     // Decide qué renderizador usar basado en la propiedad 'detailType'
     if (params.data.detailType === 'campo5') {
+      params.node.setRowHeight(800);
       return {
         component: 'DetallesComponentCuentasAbono',
         params: {
@@ -100,6 +100,7 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
         }
       };
     } else if (params.data.detailType === 'campo3') {
+      params.node.setRowHeight(800);
       return { 
         component: 'detallesCuentasRenderer',
         params: {
@@ -134,6 +135,12 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
     { field: 'campo4', headerName: 'Restante', editable: true, flex: 1, valueFormatter: params => `$${Number(params.value || 0).toFixed(2)}` },
   ];*/
   cuentaColumnDefs = [
+    {
+      field: 'id',
+      headerName: 'ID',
+      hide: true, // Oculta, solo para uso interno
+      filter: 'agNumberColumnFilter',
+    },
     { 
       field: 'campo8', 
       headerName: 'Fecha OC', 
@@ -217,7 +224,10 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
       headerName: 'Total por nota', 
       editable: false, 
       flex: 1,
-      valueFormatter: params => this.currencyPipe.transform(params.value, 'MXN', 'symbol', '1.2-2')
+      valueFormatter: params => {
+        const isNumeric = params.value !== null && params.value !== '' && !isNaN(Number(params.value));
+        return isNumeric ? this.currencyPipe.transform(params.value, 'MXN', 'symbol', '1.2-2') : '$0.00';
+      }
     },
     {
       field: 'campo3',
@@ -240,7 +250,10 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
       headerName: 'Restante', 
       editable: false, 
       flex: 1,
-      valueFormatter: params => this.currencyPipe.transform(params.value, 'MXN', 'symbol-narrow', '1.2-2')
+      valueFormatter: params => {
+        const isNumeric = params.value !== null && params.value !== '' && !isNaN(Number(params.value));
+        return isNumeric ? this.currencyPipe.transform(params.value, 'MXN', 'symbol-narrow', '1.2-2') : '$0.00';
+      }
     },
   ];
 
@@ -273,17 +286,29 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
         const node = params.node;
         const api = params.api;
         const isCurrentlyExpanded = node.expanded && params.data.detailType === detailType;
+        
+        if (isCurrentlyExpanded) {
+          // Si ya está expandido con el mismo detalle, simplemente colapsar y limpiar el filtro.
+          node.setExpanded(false);
+          api.setFilterModel(null);
+          api.onFilterChanged(); // Aplicar el filtro nulo
+        } else {
+          // Si no está expandido, o se cambia de detalle (Articulo -> Abono)
+          // 1. Colapsar cualquier otra fila que pudiera estar abierta.
+          api.forEachNode(otherNode => {
+            if (otherNode.expanded && otherNode.id !== node.id) {
+              otherNode.setExpanded(false);
+            }
+          });
 
-        // Colapsar cualquier otra fila que esté expandida
-        api.forEachNode(otherNode => {
-          if (otherNode.expanded && otherNode.id !== node.id) {
-            otherNode.setExpanded(false);
-          }
-        });
+          // 2. Establecer el filtro para mostrar solo la fila actual y aplicarlo.
+          api.setFilterModel({ id: { type: 'equals', filter: params.data.id } });
+          api.onFilterChanged();
 
-        // Establecer el tipo de detalle y expandir/colapsar
-        params.data.detailType = detailType;
-        node.setExpanded(!isCurrentlyExpanded);
+          // 3. Establecer el tipo de detalle y expandir
+          params.data.detailType = detailType;
+          node.setExpanded(true);
+        }
       });
 
       return div;
