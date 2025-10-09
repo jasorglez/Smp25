@@ -1,0 +1,82 @@
+.card {
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border-radius: 8px;
+
+  .card-header {
+    font-weight: 600;
+    border-radius: 8px 8px 0 0;
+
+    i {
+      margin-right: 8px;
+    }
+  }
+}
+
+.table {
+  font-size: 0.9rem;
+
+  thead {
+    background-color: #f8f9fa;
+  }
+}
+
+.badge {
+  font-size: 0.75rem;
+}
+
+.alert {
+  border-radius: 6px;
+
+  i {
+    margin-right: 8px;
+  }
+}
+
+.btn {
+  i {
+    margin-right: 6px;
+  }
+}
+
+// Estilos para inputs y selects
+.form-control,
+ng-select {
+  border-radius: 6px;
+}
+
+.form-label {
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+
+  .text-danger {
+    margin-left: 4px;
+  }
+}
+
+// Animaciones
+.spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
+  border-width: 0.15rem;
+}
+
+// Responsive
+@media (max-width: 991px) {
+  .col-lg-4 {
+    margin-top: 1rem;
+  }
+}
+
+// Totales destacados
+.h5.text-primary {
+  font-weight: 700;
+  font-size: 1.5rem;
+}
+
+// Estado de factura
+.alert {
+  i.fs-1 {
+    font-size: 3rem !important;
+    display: block;
+  }
+}
