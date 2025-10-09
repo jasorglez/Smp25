@@ -30,9 +30,26 @@ export class CustomersService {
   }
 
   getCustomersByCompany(root : number, type: string) {
-    
+
     const apiUrl = `${environment.urlAdministration}/Customer/company?idCompany=${root}&Type=${type}`;
     return this.http.get(apiUrl, { headers: this.trackingService.getHeaders() });
+  }
+
+  // Clientes configurados para facturación electrónica
+  getCustomersBilling(idRoot: number): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/CustomersBilling/by-root/${idRoot}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  addCustomerBilling(data: any): Observable<any> {
+    return this.http.post(`${environment.urlAdministration}/CustomersBilling`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateCustomerBilling(id: number, data: any): Observable<any> {
+    return this.http.put(`${environment.urlAdministration}/CustomersBilling/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteCustomerBilling(id: number): Observable<any> {
+    return this.http.delete(`${environment.urlAdministration}/CustomersBilling/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
   addCustomer(data: any): Observable<ICustomer> {
