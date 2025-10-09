@@ -172,7 +172,7 @@ export class IncomeComponent {
   };
 
   public rowSelection: 'single' | 'multiple' = 'single';
-  public paginationPageSize = 15;
+  public paginationPageSize = 15;t
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
   components = {
     multiLineEditor: MultiLineEditorComponent,
