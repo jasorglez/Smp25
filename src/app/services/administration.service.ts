@@ -122,10 +122,26 @@ export class AdministrationService {
     return this.http.post(`${environment.urlAdministration}/BillingManagement/cancel/${idIncomeExpense}`, body, { headers: this.trackingService.getHeaders() });
   }
 
+
+  //Facturación - Catálogos SAT
   //Productos y Servicios SAT
   getProductsAndServicesSAT(busq : string): Observable<any> {
     return this.http.get(`${environment.urlAdministration}/CatSatProductosServicios/SearchByTexto?texto=${busq}`, { headers: this.trackingService.getHeaders() });
   }
+
+  getUnitsSAT(): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/CatSatClavesUnidades`, { headers: this.trackingService.getHeaders() });
+  }
+
+ getObjetosImpuesto() {
+    return this.http.get(`${environment.urlSmp}/ObjetoImpuesto`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getObjetosImpuesto2fields() {
+    return this.http.get(`${environment.urlSmp}/ObjetoImpuesto/2fields`, { headers: this.trackingService.getHeaders() });
+  }
+
+  
   
   // Generar PDF
   getPdfInvoice(idIncomeExpense: number): Observable<any> {

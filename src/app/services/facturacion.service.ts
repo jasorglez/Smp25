@@ -69,12 +69,6 @@ export class FacturacionService {
     return this.http.get(`${environment.urlSmp}/ClaveProd/2fields`, { headers: this.trackingService.getHeaders() });
   }
 
-  getObjetosImpuesto() {
-    return this.http.get(`${environment.urlSmp}/ObjetoImpuesto`, { headers: this.trackingService.getHeaders() });
-  }
-
-  getObjetosImpuesto2fields() {
-    return this.http.get(`${environment.urlSmp}/ObjetoImpuesto/2fields`, { headers: this.trackingService.getHeaders() });
-  }
+ 
 
 }
