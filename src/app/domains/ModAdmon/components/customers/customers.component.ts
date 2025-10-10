@@ -356,31 +356,7 @@ export class CustomersComponent implements CanComponentDeactivate {s
           params.data[params.colDef.field] = params.newValue.toUpperCase();
           return true;
         }
-        /*cellEditor: 'agPopupTextCellEditor',
-        cellEditorParams: {
-          maxLength: 100,
-          cols: 50,
-          rows: 3,
-          onKeyDown: (event: KeyboardEvent) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.stopPropagation();
-            }
-          },
-        },
-        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-          if (!event.node.group) {
-            this.modalServiceTable.showModal({
-              params: event,
-              value: event.value,
-            });
-          }
-        },
-        cellRenderer: (params: ICellRendererParams) => {
-          if (params.node.group) {
-            return params.value;
-          }
-          return params.value;
-        },*/
+      
       },
       {
         field: 'total',
@@ -418,7 +394,7 @@ export class CustomersComponent implements CanComponentDeactivate {s
           return foundItem ? `${foundItem.description}` : params.value;
         },
       },
-      {
+ /*     {
         field: 'cp',
         headerName: 'CP',
         editable: true,
@@ -445,7 +421,7 @@ export class CustomersComponent implements CanComponentDeactivate {s
           params.data[params.colDef.field] = params.newValue.toUpperCase();
           return true;
         }
-      },
+      },*/
       {
         field: 'address',
         headerName: 'Direccion',
