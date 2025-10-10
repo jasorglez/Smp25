@@ -25,6 +25,7 @@ import { ModalService } from 'app/services/modal.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { SignalsService } from 'app/services/signals.service';
 import { CustomersPaymentsComponent } from './customers-payments.component';
+import { CustomersBillingComponent } from './customers-billing.component';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { RadiusinfluenceComponent } from '../radiusinfluence/radiusinfluence.component';
 import { CustomersService } from 'app/services/customers.service';
@@ -39,6 +40,8 @@ import { environment } from '@env/environment';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { TrackingService } from 'app/services/tracking.service';
+import { FacturacionService } from 'app/services/facturacion.service';
+import { AdministrationService } from 'app/services/administration.service';
 
 @Component({
   selector: 'app-customers',
@@ -49,13 +52,13 @@ import { TrackingService } from 'app/services/tracking.service';
     AgGridModule,
     MultiLineEditorComponent,
     CustomersPaymentsComponent,
+    CustomersBillingComponent,
   ],
   templateUrl: './customers.component.html',
   styleUrls: ['./customers.component.scss'],
 })
-export class CustomersComponent implements CanComponentDeactivate {
-  //  private administrationService = inject(AdministrationService);
-   private customerService = inject(CustomersService);
+export class CustomersComponent implements CanComponentDeactivate {s
+  private customerService = inject(CustomersService);
    private modalServiceTable = inject(ModalService);
    private signalsService = inject(SignalsService);
    private modalService = inject(NgbModal);
@@ -65,21 +68,26 @@ export class CustomersComponent implements CanComponentDeactivate {
    private authService = inject(AuthService);
    private catalogsService = inject(CatalogsService);
    private trackingService = inject(TrackingService);
+   private facturacionService = inject(FacturacionService);
+   private administrationService = inject(AdministrationService);
 
   private http = inject(HttpClient);
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   
   async ngOnInit() {
+    this.type = 'CUSTOMERS'; // Default type for customers component
     this.obtenerDatos();
     this.signalsService.deleteClientData();
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
     await this.getTypecop();
+    this.loadFiscalCatalogs(); // Cargar catálogos SAT
+    this.loadCustomersBilling(); // Cargar clientes habilitados para facturación
     this.route.data.subscribe((data) => {
-      this.type = data['type']; // 'CUSTOMERS' o 'PROVIDERS'
+      this.type = data['type'] || 'CUSTOMERS'; // 'CUSTOMERS' o 'PROVIDERS'
       this.obtenerDatos(); // Llamar a la función para cargar datos
       this.getStates(); // Llamar a la función para obtener los estados
       this.obtenerBranchs();
-      
+
     });
   }
 
@@ -125,6 +133,7 @@ export class CustomersComponent implements CanComponentDeactivate {
   type: string = ''; // Para almacenar el tipo (CUSTOMERS o PROVIDERS)
   gridHeight: string = '75vh';
   showCreditsTab: boolean = false;
+  showBillingTab: boolean = false;
   private gridApi: GridApi;
   notSavedChanges: boolean = false;
   selectedRowData: any = null;
@@ -132,7 +141,12 @@ export class CustomersComponent implements CanComponentDeactivate {
   branchs: any[] = [];
   Typecop: any[] = [];
   contactoCatalog: any[] = [];
-  
+
+  // Catálogos SAT para facturación electrónica
+  fiscalRegimes: any[] = [];
+  usosFactura: any[] = [];
+  customersBilling: any[] = []; // Clientes habilitados para facturación
+
   // Agregar esta nueva variable para almacenar el ID de la última fila editada
   private lastEditedRowId: number | string | null = null;
 
@@ -144,7 +158,7 @@ export class CustomersComponent implements CanComponentDeactivate {
   idRoot: number;
   private tempIdCounter: number = 0;
   selectedTab: string = 'customers-payments';
-  idBranch: number = null;
+  idBranch: number | null = null;
   idEmployee: number;
   infoCp: any;
   
@@ -177,9 +191,8 @@ export class CustomersComponent implements CanComponentDeactivate {
   public gridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
-    suppressEnterWhenEditing: false,
     rowBuffer: 20,
-    rowClass: (params) => {
+    getRowClass: (params) => {
       if (params.node.isSelected()) {
         return 'selected-row';
       }
@@ -207,6 +220,31 @@ export class CustomersComponent implements CanComponentDeactivate {
         headerName: 'Activo',
         editable: true,
         width: 100,
+      },
+      {
+        field: 'enabledForBilling',
+        headerName: 'Facturación Electrónica',
+        width: 180,
+        editable: false,
+        hide: this.type != 'CUSTOMERS',
+        cellRenderer: (params: ICellRendererParams) => {
+          const link = document.createElement('a');
+          link.href = 'javascript:void(0)';
+          link.innerText = 'Ver Facturación';
+          link.style.color = '#0d6efd';
+          link.style.textDecoration = 'underline';
+          link.style.cursor = 'pointer';
+          link.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.onCellDoubleClicked({
+              column: { getColId: () => 'enabledForBilling' },
+              data: params.data,
+              node: params.node,
+              api: params.api
+            } as any);
+          });
+          return link;
+        }
       },
       {
         field: 'idBranch',
@@ -589,7 +627,7 @@ export class CustomersComponent implements CanComponentDeactivate {
         headerName: 'Correo',
         width: 200,
         cellEditor: 'agTextCellEditor',
-        editable: (params) => params.data.__isNew,
+        editable: true,
         cellEditorParams: {
           useFormatter: true,
         },
@@ -620,7 +658,9 @@ export class CustomersComponent implements CanComponentDeactivate {
             return false;
           }
         },
-      },{
+      },
+
+      {
         field: 'id',
         headerName: 'Id',
         editable: false,
@@ -637,7 +677,11 @@ export class CustomersComponent implements CanComponentDeactivate {
   obtenerDatos() {
     this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Clientes`, 'Menu Administracion Ingresos',
            this.trackingService.getEmail() );
-           
+
+    if (this.idBranch === null || this.idBranch === undefined) {
+      return Promise.resolve(false);
+    }
+
     return new Promise((resolve) => {
       this.customerService
         .getCustomers(this.idBranch, this.type)
@@ -780,6 +824,8 @@ export class CustomersComponent implements CanComponentDeactivate {
       latitud: '',
       longitud: '',
       idTypecop: 0,
+      fiscalRegime: '',
+      usoCfdi: 'G03',
       type: this.type,
       active: true,
       __isNew: true,
@@ -987,11 +1033,11 @@ export class CustomersComponent implements CanComponentDeactivate {
     const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
     const selectedId = selectedRowData.id; // Obtener el ID del registro
 
-    this.notSavedChanges = true;
     this.selectedRowData = selectedRowData;
 
     // Filtrar el grid para mostrar solo el registro con el ID seleccionado solo si la columna es "total"
     if (colId === 'total') {
+      this.notSavedChanges = true;
       if(this.gridApi) {
         const filterModel = {
           id: {
@@ -1008,12 +1054,42 @@ export class CustomersComponent implements CanComponentDeactivate {
 
       this.activateCreditsTab(); // Activar la pestaña de créditos si es necesario
     }
+
+    // Activar cascada de facturación
+    if (colId === 'enabledForBilling') {
+      this.signalsService.setIdClient(selectedId);
+      this.signalsService.setNameClient(selectedRowData.nameContact || selectedRowData.company);
+      if(this.gridApi) {
+        const filterModel = {
+          id: {
+            type: 'equals',
+            filter: selectedId,
+          },
+        };
+        this.gridApi.setFilterModel(filterModel);
+        this.gridApi.onFilterChanged();
+      }
+      this.activateBillingTab();
+    }
   }
 
   async activateCreditsTab() {
     if (!this.isOpen) {
       setTimeout(async () => await this.adjustGridSize(), 0);
       this.showCreditsTab = true;
+      this.showBillingTab = false;
+      this.isOpen = true;
+    } else {
+      this.resetGridSize();
+      this.isOpen = false;
+    }
+  }
+
+  async activateBillingTab() {
+    if (!this.isOpen) {
+      setTimeout(async () => await this.adjustGridSize(), 0);
+      this.showBillingTab = true;
+      this.showCreditsTab = false;
       this.isOpen = true;
     } else {
       this.resetGridSize();
@@ -1024,6 +1100,7 @@ export class CustomersComponent implements CanComponentDeactivate {
   resetGridSize() {
     this.gridHeight = '80vh'; // Reset to default height
     this.showCreditsTab = false;
+    this.showBillingTab = false;
     this.gridApi.setFilterModel(null);
     this.gridApi.onFilterChanged();
   }
@@ -1052,6 +1129,96 @@ export class CustomersComponent implements CanComponentDeactivate {
       },
       (error) => console.error('Error fetching measures:', error)
     );
+  }
+
+  // ==================== MÉTODOS PARA FACTURACIÓN ELECTRÓNICA ====================
+
+  loadFiscalCatalogs() {
+    // Cargar régimen fiscal
+    this.administrationService.getFiscalRegimes().subscribe({
+      next: (data: any[]) => {
+        this.fiscalRegimes = data;
+      },
+      error: (err) => console.error('Error cargando regímenes fiscales:', err)
+    });
+
+    // Cargar usos CFDI
+    this.facturacionService.getUsoCfdi2fields().subscribe({
+      next: (data: any[]) => {
+        this.usosFactura = data;
+      },
+      error: (err) => console.error('Error cargando usos CFDI:', err)
+    });
+  }
+
+  loadCustomersBilling() {
+    this.customerService.getCustomersBilling(this.idRoot).subscribe({
+      next: (data: any[]) => {
+        this.customersBilling = data;
+        // Marcar en el grid cuáles están habilitados
+        if (this.rowData && Array.isArray(this.rowData)) {
+          this.rowData.forEach((customer: any) => {
+            const isEnabled = this.customersBilling.some(cb => cb.idCustomer === customer.id);
+            customer.enabledForBilling = isEnabled;
+          });
+          if (this.gridApi) {
+            this.gridApi.redrawRows();
+          }
+        }
+      },
+      error: (err) => console.error('Error cargando clientes de facturación:', err)
+    });
+  }
+
+  async toggleBillingEnabled(customer: any, enabled: boolean) {
+    if (!customer.id || customer.__isNew) {
+      // Si es nuevo, solo marcar el flag, se guardará al hacer saveChanges
+      customer.enabledForBilling = enabled;
+      return;
+    }
+
+    if (enabled) {
+      // Habilitar para facturación - INSERT en CustomersBilling
+      const billingData = {
+        idCustomer: customer.id,
+        idRoot: this.idRoot,
+        rfc: customer.rfc || '',
+        nombreFiscal: customer.name || customer.description || '',
+        codigoPostal: customer.cp || '',
+        regimenFiscal: customer.fiscalRegime || '',
+        usoCfdi: customer.usoCfdi || 'G03',
+        correoFacturacion: customer.email || '',
+        active: true
+      };
+
+      this.customerService.addCustomerBilling(billingData).subscribe({
+        next: () => {
+          alerts.basicAlert('Éxito', 'Cliente habilitado para facturación electrónica', 'success');
+          this.loadCustomersBilling();
+        },
+        error: (err) => {
+          console.error(err);
+          alerts.basicAlert('Error', 'No se pudo habilitar el cliente para facturación', 'error');
+          customer.enabledForBilling = false;
+        }
+      });
+    } else {
+      // Deshabilitar - DELETE de CustomersBilling
+      const billingRecord = this.customersBilling.find(cb => cb.idCustomer === customer.id);
+      if (billingRecord) {
+        this.customerService.deleteCustomerBilling(billingRecord.id).subscribe({
+          next: () => {
+            alerts.basicAlert('Éxito', 'Cliente deshabilitado para facturación electrónica', 'success');
+            this.loadCustomersBilling();
+          },
+          error: (err) => {
+            console.error(err);
+            alerts.basicAlert('Error', 'No se pudo deshabilitar el cliente', 'error');
+            customer.enabledForBilling = true;
+          }
+        });
+      }
+    }
   }
 
   // ==================== GUARD ALERT UNSAVED CHANGES ====================

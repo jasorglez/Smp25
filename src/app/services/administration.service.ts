@@ -77,7 +77,7 @@ export class AdministrationService {
 
   // Setup Facturacion
   getBillingManagementInfo(idRoot: number): Observable<any> {
-    return this.http.get(`${environment.urlAdministration}/BillingManagement/${idRoot}`, { headers: this.trackingService.getHeaders() });
+    return this.http.get(`${environment.urlAdministration}/BillingManagement/config/${idRoot}`, { headers: this.trackingService.getHeaders() });
   }
 
   addBillingManagementInfo(data: any): Observable<any> {
@@ -98,8 +98,36 @@ export class AdministrationService {
     return this.http.get(`${environment.urlAdministration}/BillingManagement/check-certificates/${idRoot}`, { headers: this.trackingService.getHeaders() });
   }
 
-  stampInvoice(idRoot: number, invoiceXml: string): Observable<any> {
-    return this.http.post(`${environment.urlAdministration}/BillingManagement/stamp/${idRoot}`, invoiceXml, { headers: this.trackingService.getHeaders() });
+  // Timbrado con Finkok (endpoint correcto según documentación)
+  stampInvoice(idIncomeExpense: number): Observable<any> {
+    return this.http.post(`${environment.urlAdministration}/BillingManagement/stamp/${idIncomeExpense}`, {}, { headers: this.trackingService.getHeaders() });
+  }
+
+  // Generar XML sin timbrar (opcional, para preview)
+  generateXml(idIncomeExpense: number): Observable<any> {
+    return this.http.post(`${environment.urlAdministration}/BillingManagement/generate-xml/${idIncomeExpense}`, {}, { headers: this.trackingService.getHeaders() });
+  }
+
+  // Validar con SAT
+  validateWithSat(idIncomeExpense: number): Observable<any> {
+    return this.http.post(`${environment.urlAdministration}/BillingManagement/validate-sat/${idIncomeExpense}`, {}, { headers: this.trackingService.getHeaders() });
+  }
+
+  // Cancelar CFDI
+  cancelInvoice(idIncomeExpense: number, motivoCancelacion: string, folioSustitucion?: string): Observable<any> {
+    const body = {
+      motivoCancelacion: motivoCancelacion,
+      folioSustitucion: folioSustitucion || null
+    };
+    return this.http.post(`${environment.urlAdministration}/BillingManagement/cancel/${idIncomeExpense}`, body, { headers: this.trackingService.getHeaders() });
+  }
+
+  // Generar PDF
+  getPdfInvoice(idIncomeExpense: number): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/BillingManagement/pdf/${idIncomeExpense}`, {
+      headers: this.trackingService.getHeaders(),
+      responseType: 'blob' as 'json'
+    });
   }
 
   getFiscalRegimes(): Observable<any> {

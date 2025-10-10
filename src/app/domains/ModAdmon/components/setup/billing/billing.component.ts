@@ -29,52 +29,84 @@ export class BillingComponent {
 
   ngOnInit() {
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-    this.getBillingManagementData();
+    console.log('ngOnInit - idRoot:', this.idRoot);
     this.getFiscalRegimes();
+    this.getBillingManagementData();
   }
 
   constructor() {
     effect(() => {
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      this.getBillingManagementData();
-      this.getFiscalRegimes();
+      const newIdRoot = this.signalsService.getRootSelectedBySidebar()();
+      console.log('effect triggered - newIdRoot:', newIdRoot, 'currentIdRoot:', this.idRoot);
+      if (newIdRoot && newIdRoot !== this.idRoot) {
+        this.idRoot = newIdRoot;
+        this.getBillingManagementData();
+      }
     });
   }
 
   getBillingManagementData() {
+    if (!this.idRoot) {
+      console.log('getBillingManagementData - idRoot is null, skipping');
+      return;
+    }
+
+    console.log('getBillingManagementData - calling API with idRoot:', this.idRoot);
     this.administrationService
       .getBillingManagementInfo(this.idRoot)
       .subscribe({
         next: (data: any) => {
-          this.billingData = data[0] || {};
-          if (this.billingData.fiscalRegime) {
-            this.billingData.fiscalRegime = Number(this.billingData.fiscalRegime);
+          console.log('getBillingManagementData - received data:', data);
+
+          if (data && data.length > 0) {
+            // Crear nuevo objeto con todos los campos
+            const record = data[0];
+
+            this.billingData = {
+              id: record.id,
+              idRoot: record.idRoot,
+              emisorRfc: record.emisorRfc || '',
+              emisorNombre: record.emisorNombre || '',
+              emisorCp: record.emisorCp || '',
+              fiscalYear: record.fiscalYear,
+              fiscalRegime: record.fiscalRegime ? Number(record.fiscalRegime) : null,
+              prefix: record.prefix || '',
+              consecutive: record.consecutive,
+              iIva: record.iIva,
+              iIeps: record.iIeps,
+              iI3: record.iI3,
+              rIva: record.rIva,
+              rIeps: record.rIeps,
+              efirmaPass: record.efirmaPass || '',
+              dateStart: record.dateStart ? record.dateStart.split('T')[0] : '',
+              dateEnd: record.dateEnd ? record.dateEnd.split('T')[0] : '',
+              cerFileContent: record.cerFileContent,
+              keyFileContent: record.keyFileContent,
+              active: record.active
+            };
+
+            this.newData = false;
+            console.log('getBillingManagementData - final billingData:', this.billingData);
+          } else {
+            this.billingData = {};
+            this.newData = true;
           }
-          // Convertir fechas a formato YYYY-MM-DD si existen
-          if (this.billingData.dateStart) {
-            this.billingData.dateStart = this.billingData.dateStart.split('T')[0];
-          }
-          if (this.billingData.dateEnd) {
-            this.billingData.dateEnd = this.billingData.dateEnd.split('T')[0];
-          }
-          // Ensure emisor fields are handled
-          if (!this.billingData.emisorRfc) {
-            this.billingData.emisorRfc = '';
-          }
-          if (!this.billingData.emisorNombre) {
-            this.billingData.emisorNombre = '';
-          }
-          if (!this.billingData.emisorCp) {
-            this.billingData.emisorCp = '';
-          }
-          this.newData = false;
-          console.log(this.billingData)
+
           this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Facturación', 'Menu Administracion Facturación',  this.trackingService.getEmail());
           this.checkCertificateStatus();
         },
         error: (err) => {
+          console.log('getBillingManagementData - error:', err);
           if (err.status === 404) {
-            this.billingData = {}; // Inicializar objeto vacío si no hay datos
+            this.billingData = {
+              emisorRfc: '',
+              emisorNombre: '',
+              emisorCp: '',
+              prefix: '',
+              efirmaPass: '',
+              dateStart: '',
+              dateEnd: ''
+            };
             this.newData = true;
             this.certificateStatus = {};
           }
@@ -83,15 +115,16 @@ export class BillingComponent {
   }
 
   getFiscalRegimes() {
+    console.log('getFiscalRegimes - calling API');
     this.administrationService
       .getFiscalRegimes()
       .subscribe({
         next: (data: any) => {
           this.fiscalRegimes = data;
-          console.log(this.fiscalRegimes);
+          console.log('getFiscalRegimes - received data:', this.fiscalRegimes);
         },
         error: (err) => {
-          console.error(err);
+          console.error('getFiscalRegimes - error:', err);
         }
       });
   }

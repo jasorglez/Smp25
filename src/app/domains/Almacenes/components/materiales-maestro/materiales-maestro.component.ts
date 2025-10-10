@@ -321,7 +321,7 @@ export class MaterialesMaestroComponent implements CanComponentDeactivate {
     suppressClickEdit: true,
     singleClickEdit: false,
     stopEditingWhenCellsLoseFocus: true,
-    rowClass: (params) => {
+    getRowClass: (params) => {
       if (params.data.nodeLevel === 'material') {
         return 'tree-material-row';
       }

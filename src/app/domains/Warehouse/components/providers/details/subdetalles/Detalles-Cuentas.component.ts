@@ -97,7 +97,6 @@ export class DetallesComponentCuentas implements ICellRendererAngularComp {
     // El ID ahora viene del 'id' de la fila de la cuenta, no del proveedor principal
     this.providerId = params.data.id; 
     this.providerName = params.data.company || params.data.nameContact;
-    
     this.loadDetallesCuentasData();
   }
 

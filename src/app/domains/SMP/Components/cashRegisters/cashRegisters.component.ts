@@ -227,12 +227,11 @@ export class CashRegistersComponent implements CanComponentDeactivate {
     
     headerHeight: 25,
     rowHeight: 20,
-    suppressEnterWhenEditing: false,
     groupDefaultExpanded: -1, // -1 significa expandir todos los niveles
     suppressDragLeaveHidesColumns: true,
     suppressMakeColumnVisibleAfterUnGroup: true,
     rowBuffer: 20,
-    rowClass: (params) => {
+    getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
         return 'selected-row';

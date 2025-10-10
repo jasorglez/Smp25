@@ -182,7 +182,7 @@ export class BonusComponent implements CanComponentDeactivate {
   public gridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
-    rowClass: (params) => {
+    getRowClass: (params) => {
       if (params.node.isSelected()) {
         return 'selected-row';
       }

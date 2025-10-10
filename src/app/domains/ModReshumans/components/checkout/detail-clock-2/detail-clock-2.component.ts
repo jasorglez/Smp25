@@ -194,7 +194,7 @@ export default class DetailClock2Component implements OnInit {
     rowHeight: 20,
     groupDefaultExpanded: -1, // -1 significa expandir todos los grupos
     suppressAggFuncInHeader: true,
-    rowClass: (params) => {
+    getRowClass: (params) => {
       if (params.node.isSelected()) {
         return 'selected-row';
       }

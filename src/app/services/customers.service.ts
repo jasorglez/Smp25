@@ -30,14 +30,43 @@ export class CustomersService {
   }
 
   getCustomersByCompany(root : number, type: string) {
-    
+
     const apiUrl = `${environment.urlAdministration}/Customer/company?idCompany=${root}&Type=${type}`;
     return this.http.get(apiUrl, { headers: this.trackingService.getHeaders() });
+  }
+
+  // Clientes configurados para facturación electrónica
+  getCustomersBilling(idRoot: number): Observable<any> {
+    //  const apiUrl = `${environment.urlAdministration}/CustomersBilling/by-root/${idRoot}`;      
+    //  alert(apiUrl)  
+    return this.http.get(`${environment.urlAdministration}/CustomersBilling/by-root/${idRoot}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  // Obtener datos de facturación por customer específico
+  getCustomersBillingByCustomer(idCustomer: number): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/CustomersBilling/by-customer/${idCustomer}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  addCustomerBilling(data: any): Observable<any> {
+     // const apiUrl = `${environment.urlAdministration}/CustomersBilling/` + data;      
+     // console.log('log apiUrl', data);
+     // alert(apiUrl)  
+
+    return this.http.post(`${environment.urlAdministration}/CustomersBilling`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateCustomerBilling(id: number, data: any): Observable<any> {
+    return this.http.put(`${environment.urlAdministration}/CustomersBilling/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteCustomerBilling(id: number): Observable<any> {
+    return this.http.delete(`${environment.urlAdministration}/CustomersBilling/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
   addCustomer(data: any): Observable<ICustomer> {
     return this.http.post<ICustomer>(`${environment.urlAdministration}/Customer`, data, { headers: this.trackingService.getHeaders() });
   }
+  
 
   updateCustomer(id: string, data: any): Observable<ICustomer> {
     return this.http.put<ICustomer>(`${environment.urlAdministration}/Customer/${id}`, data, { headers: this.trackingService.getHeaders() });
@@ -91,7 +120,22 @@ export class CustomersService {
     return this.http.delete(`${environment.urlAdministration}/PaymentsCreditsxCustomers/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
+  addProveedorCredit(data: any): Observable<ICustomer> {
+    return this.http.post<ICustomer>(`${environment.urlAdministration}/CustomerCreditsDelison`, data, { headers: this.trackingService.getHeaders() });
+  }
+  getProveedorCredit(id: number, table: number) {
+    return this.http.get(`${environment.urlAdministration}/CustomerCreditsDelison/customer/${id}/${table}`, { headers: this.trackingService.getHeaders() });
+  }
 
+  addAbonoCustomer(id: number): Observable<ICustomer> {
+    return this.http.put<ICustomer>(`${environment.urlAdministration}/CustomerCreditsDelison/abonoCuentas/${id}`, {}, { headers: this.trackingService.getHeaders() });
+  }
 
+  updateAbonoCustomer(id: number, data: any): Observable<any> {
+    return this.http.put(`${environment.urlAdministration}/CustomerCreditsDelison/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
 
+  deleteAbonoCustomer(id: number): Observable<any> {
+    return this.http.delete(`${environment.urlAdministration}/CustomerCreditsDelison/${id}`, { headers: this.trackingService.getHeaders() });
+  }
 }
