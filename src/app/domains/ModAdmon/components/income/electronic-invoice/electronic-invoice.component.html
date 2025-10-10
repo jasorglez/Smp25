@@ -67,19 +67,7 @@
             <div class="col-md-6">
               <div class="mb-3">
                 <label class="form-label fw-bold">Moneda</label>
-                <ng-select
-                  [(ngModel)]="electronicInvoice.moneda"
-                  [items]="monedas"
-                  bindLabel="display"
-                  bindValue="cMoneda"
-                  placeholder="Seleccione moneda">
-                </ng-select>
-              </div>
-            </div>
-            <div class="col-md-6" *ngIf="electronicInvoice.moneda !== 'MXN'">
-              <div class="mb-3">
-                <label class="form-label fw-bold">Tipo de Cambio</label>
-                <input type="number" class="form-control" [(ngModel)]="electronicInvoice.tipoCambio" step="0.0001">
+                <input type="text" class="form-control" value="MXN - Peso Mexicano" readonly disabled>
               </div>
             </div>
           </div>
