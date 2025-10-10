@@ -70,7 +70,7 @@ export class CustomersBillingComponent {
   public gridOptions: any = {
     headerHeight: 30,
     rowHeight: 30,
-    rowClass: (params) => {
+    getRowClass: (params) => {
       if (params.node.isSelected()) {
         return 'selected-row';
       }
