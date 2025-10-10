@@ -3,7 +3,8 @@ import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
-
+import { AdministrationService } from 'app/services/administration.service';
+import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 
 @Component({
   selector: 'app-detail-cell-renderer-banck',
@@ -44,14 +45,15 @@ import { CommonModule } from '@angular/common';
           [rowData]="bankRowData"
           [gridOptions]="bankGridOptions"
           (gridReady)="onBankGridReady($event)"
-          (cellValueChanged)="onBankCellValueChanged($event)">
+          (cellValueChanged)="onBankCellValueChanged($event)"
+          [components]="components">
         </ag-grid-angular>
       </div>
     </div>
   `
 })
 export class DetailCellRendererComponentBanck implements ICellRendererAngularComp {
-
+  private administrationService = inject(AdministrationService);
   params: any;
   providerId: number;
   providerName: string;
@@ -60,6 +62,7 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
   hasBankChanges: boolean = false;
   bankGridApi: any;
   selectedBank: any = null;
+  banks: any[] = [];
   
   bankGridOptions: any = {
     headerHeight: 25,
@@ -68,9 +71,37 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
     rowSelection: 'single'
   };
 
+  components = {
+    autocompleteEditor: AutocompleteEditorComponent,
+  };
+
   bankColumnDefs = [
     { field: 'campo2', headerName: 'Nombre Titular', editable: true, width: 190 },
-    { field: 'campo3', headerName: 'Banco', editable: true, width: 190 },
+    { field: 'campo3', 
+      headerName: 'Banco', 
+      editable: true, 
+      suppressMovable: true,
+          filter: true,
+          filterParams: {
+            // can be 'windows' or 'mac'
+            defaultToNothingSelected: true,
+            //excelMode: 'mac',
+          },
+          width: 200,
+          cellEditor: 'autocompleteEditor',
+          cellEditorParams: (params) => {
+            return {
+              filterList: this.banks ? this.banks.map((b) => b.name) : [],
+              placeholder: 'Buscar banco...',
+              minLength: 1
+            };
+          },
+          // valueSetter se asegura de que el valor seleccionado (el nombre) se guarde en el campo 'campo3'
+          valueSetter: (params) => {
+            params.data.campo3 = params.newValue;
+            return true;
+          }
+    },
     { field: 'campo4', headerName: 'Numero Cuenta', editable: true, width: 190 },
     { field: 'campo5', headerName: 'Clabe', editable: true, width: 190 },
     {
@@ -85,7 +116,7 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
     this.params = params;
     this.providerId = params.data.id;
     this.providerName = params.data.company || params.data.nameContact;
-    
+    this.getBanks();
     this.loadBankData();
   }
 
@@ -114,6 +145,18 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
       });
     }
   }
+  getBanks() {
+    this.administrationService.get2fieldsBanks().subscribe(
+      (data: any) => {
+        this.banks = [{ idBank: '', name: 'EFECTIVO' }, ...data];
+      },      
+      (error) => {
+        if (error.status == 404) this.banks = [];
+        console.error('Error fetching data:', error);
+      }
+    );
+  }
+
 
   addBank() {
     const newBank = {

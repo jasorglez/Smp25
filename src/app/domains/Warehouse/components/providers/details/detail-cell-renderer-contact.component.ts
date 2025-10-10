@@ -63,6 +63,7 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
   // Contact grid properties
   contactRowData: any[] = [];
   hasContactChanges: boolean = false;
+  name: string = '';
   contactGridApi: any;
   selectedContact: any = null;
   
@@ -70,7 +71,14 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
     headerHeight: 25,
     rowHeight: 20,
     suppressEnterWhenEditing: false,
-    rowSelection: 'single'
+    rowSelection: 'single',
+    getRowStyle: params => {
+      this.providerId
+      if(params.data.campo2 === this.name){
+        return { backgroundColor: '#ffcccc' };
+      }
+      return null;
+    }
   };
 
   contactColumnDefs = [
@@ -115,6 +123,8 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
     this.params = params;
     this.providerId = params.data.id;
     this.providerName = params.data.company || params.data.nameContact;
+    this.name = params.data.nameContact;
+
     
     // Cargar datos del grid de contactos
     this.loadContactData();
