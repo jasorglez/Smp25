@@ -266,7 +266,7 @@ export class CustomersBillingComponent {
       rfc: 'ELRFC123456XX',
       nombreFiscal: 'NOMBRE FISCAL',
       codigoPostal: '68310',
-      regimenFiscal: this.fiscalRegimes.length > 0 ? this.fiscalRegimes[0].id : '',
+      regimenFiscal: this.fiscalRegimes.length > 0 ? String(this.fiscalRegimes[0].id) : '',
       usoCfdi: 'G03',
       correoFacturacion: 'info@x.com',
       active: true,
