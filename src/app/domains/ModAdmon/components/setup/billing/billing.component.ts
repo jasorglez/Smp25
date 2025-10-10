@@ -29,24 +29,37 @@ export class BillingComponent {
 
   ngOnInit() {
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-    this.getBillingManagementData();
+    console.log('ngOnInit - idRoot:', this.idRoot);
     this.getFiscalRegimes();
+    this.getBillingManagementData();
   }
 
   constructor() {
     effect(() => {
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      this.getBillingManagementData();
-      this.getFiscalRegimes();
+      const newIdRoot = this.signalsService.getRootSelectedBySidebar()();
+      console.log('effect triggered - newIdRoot:', newIdRoot, 'currentIdRoot:', this.idRoot);
+      if (newIdRoot && newIdRoot !== this.idRoot) {
+        this.idRoot = newIdRoot;
+        this.getBillingManagementData();
+      }
     });
   }
 
   getBillingManagementData() {
+    if (!this.idRoot) {
+      console.log('getBillingManagementData - idRoot is null, skipping');
+      return;
+    }
+
+    console.log('getBillingManagementData - calling API with idRoot:', this.idRoot);
     this.administrationService
       .getBillingManagementInfo(this.idRoot)
       .subscribe({
         next: (data: any) => {
+          console.log('getBillingManagementData - received data:', data);
           this.billingData = data[0] || {};
+          console.log('getBillingManagementData - billingData after assignment:', this.billingData);
+
           if (this.billingData.fiscalRegime) {
             this.billingData.fiscalRegime = Number(this.billingData.fiscalRegime);
           }
@@ -68,11 +81,12 @@ export class BillingComponent {
             this.billingData.emisorCp = '';
           }
           this.newData = false;
-          console.log(this.billingData)
+          console.log('getBillingManagementData - final billingData:', this.billingData);
           this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Facturación', 'Menu Administracion Facturación',  this.trackingService.getEmail());
           this.checkCertificateStatus();
         },
         error: (err) => {
+          console.log('getBillingManagementData - error:', err);
           if (err.status === 404) {
             this.billingData = {}; // Inicializar objeto vacío si no hay datos
             this.newData = true;
@@ -83,15 +97,16 @@ export class BillingComponent {
   }
 
   getFiscalRegimes() {
+    console.log('getFiscalRegimes - calling API');
     this.administrationService
       .getFiscalRegimes()
       .subscribe({
         next: (data: any) => {
           this.fiscalRegimes = data;
-          console.log(this.fiscalRegimes);
+          console.log('getFiscalRegimes - received data:', this.fiscalRegimes);
         },
         error: (err) => {
-          console.error(err);
+          console.error('getFiscalRegimes - error:', err);
         }
       });
   }
