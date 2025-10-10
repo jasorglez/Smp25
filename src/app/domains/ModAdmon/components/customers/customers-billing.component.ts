@@ -135,6 +135,10 @@ export class CustomersBillingComponent {
           if (!params.value) return '';
           const found = this.fiscalRegimes.find(fr => fr.id === params.value);
           return found ? `${found.id} - ${found.description}` : params.value;
+        },
+        valueSetter: (params) => {
+          params.data[params.colDef.field] = String(params.newValue);
+          return true;
         }
       },
       {

@@ -1032,11 +1032,11 @@ export class CustomersComponent implements CanComponentDeactivate {
     const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
     const selectedId = selectedRowData.id; // Obtener el ID del registro
 
-    this.notSavedChanges = true;
     this.selectedRowData = selectedRowData;
 
     // Filtrar el grid para mostrar solo el registro con el ID seleccionado solo si la columna es "total"
     if (colId === 'total') {
+      this.notSavedChanges = true;
       if(this.gridApi) {
         const filterModel = {
           id: {
