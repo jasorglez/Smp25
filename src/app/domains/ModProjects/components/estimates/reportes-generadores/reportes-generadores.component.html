@@ -2,13 +2,11 @@
   <div class="row">
     <div class="col-12">
       <div class="card">
-        <div class="card-header">
-          <h4><i class="bi bi-graph-up"></i> Reportes de Generadores</h4>
-        </div>
+       
         <div class="card-body">
           <!-- Filtros -->
           <div class="row mb-3">
-            <div class="col-md-3">
+            <!--<div class="col-md-3">
               <label class="form-label">Estimación:</label>
               <select class="form-control" [(ngModel)]="estimacionSeleccionada" (change)="onEstimacionChange()">
                 <option value="">Seleccionar estimación...</option>
@@ -16,23 +14,25 @@
                   {{ est.number }} - {{ est.dateStart | date:'dd/MM/yyyy' }}
                 </option>
               </select>
-            </div>
-            <div class="col-md-3">
-              <label class="form-label">Fecha Inicio:</label>
-              <input type="date" class="form-control" [(ngModel)]="fechaInicio">
-            </div>
-            <div class="col-md-3">
-              <label class="form-label">Fecha Fin:</label>
-              <input type="date" class="form-control" [(ngModel)]="fechaFin">
-            </div>
-            <div class="col-md-3">
-              <button class="btn btn-primary mt-4" (click)="generarReporte()">
-                <i class="bi bi-search"></i> Generar Reporte
-              </button>
-            </div>
+            </div>-->
+            <form [formGroup]="selectFechas" (ngSubmit)="generarReporte()" class="row align-items-end">
+              <div class="col-md-3 mb-3">
+                <label for="fechaInicio" class="form-label">Fecha Inicio:</label>
+                <input type="date" id="fechaInicio" class="form-control" formControlName="fechaInicio">
+              </div>
+              <div class="col-md-3 mb-3">
+                <label for="fechaFin" class="form-label">Fecha Fin:</label>
+                <input type="date" id="fechaFin" class="form-control" formControlName="fechaFin">
+              </div>
+              <div class="col-md-3 mb-3">
+                <button type="submit" class="btn btn-primary" [disabled]="selectFechas.invalid">
+                  <i class="bi bi-search"></i> Generar Reporte
+                </button>
+              </div>
+            </form>
           </div>
 
-          <!-- Botones de exportación -->
+          <!-- Botones de exportación 
           <div class="row mb-3">
             <div class="col-12">
               <button class="btn btn-success me-2" (click)="exportarExcel()">
@@ -45,57 +45,54 @@
                 <i class="bi bi-bar-chart"></i> Ver Gráficos
               </button>
             </div>
-          </div>
+          </div>-->
 
           <!-- Tabs para diferentes vistas -->
           <ul class="nav nav-tabs mb-3">
             <li class="nav-item">
-              <a class="nav-link" [class.active]="activeTab === 'generadores'" (click)="activeTab = 'generadores'">
-                <i class="bi bi-cpu"></i> Generadores
+              <a class="nav-link" [class.active]="activeTab === 'OTs'" (click)="activeTab = 'OTs'">
+                <i class="bi bi-file-earmark"></i>OTs
               </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" [class.active]="activeTab === 'items'" (click)="activeTab = 'items'">
-                <i class="bi bi-list-ul"></i> Items Detallados
+              <a class="nav-link" [class.active]="activeTab === 'Detalles'" (click)="activeTab = 'Detalles'">
+                <i class="bi bi-list-ul"></i> Detalles
               </a>
             </li>
-            <li class="nav-item">
+            <!--<li class="nav-item">
               <a class="nav-link" [class.active]="activeTab === 'resumen'" (click)="activeTab = 'resumen'">
                 <i class="bi bi-clipboard-data"></i> Resumen
               </a>
-            </li>
+            </li>-->
           </ul>
 
-          <!-- Vista de Generadores -->
-          <div *ngIf="activeTab === 'generadores'">
+          <!-- Vista de OTs -->
+          <div *ngIf="activeTab === 'OTs'">
             <ag-grid-angular
-              class="ag-theme-alpine"
-              style="height: 400px; width: 100%;"
-              [rowData]="generadoresData"
-              [columnDefs]="generadoresColumnDefs"
+              style="width: 100%; height: 610px;"
+              class="ag-theme-quartz small-text-ag-grid"
+              [rowData]="OTsData"
+              [columnDefs]="OTsColumnDefs"
               [defaultColDef]="defaultColDef"
               [animateRows]="true"
-              [pagination]="true"
-              [paginationPageSize]="20"
-              (gridReady)="onGeneradoresGridReady($event)">
+
+              (gridReady)="onOTsGridReady($event)"
+              [stopEditingWhenCellsLoseFocus]="true">
             </ag-grid-angular>
           </div>
 
-          <!-- Vista de Items Detallados -->
-          <div *ngIf="activeTab === 'items'">
+          <!-- Vista de Detalles Detallados -->
+          <div *ngIf="activeTab === 'Detalles'">
             <ag-grid-angular
-              class="ag-theme-alpine"
-              style="height: 400px; width: 100%;"
-              [rowData]="itemsData"
-              [columnDefs]="itemsColumnDefs"
+               style="width: 100%; height: 610px;"
+               class="ag-theme-quartz small-text-ag-grid"
+              [rowData]="DetallesData"
+              [columnDefs]="DetallesColumnDefs"
               [defaultColDef]="defaultColDef"
               [animateRows]="true"
-              [pagination]="true"
-              [paginationPageSize]="20"
-              [treeData]="true"
-              [groupDefaultExpanded]="1"
-              [getDataPath]="getDataPath"
-              (gridReady)="onItemsGridReady($event)">
+              (cellDoubleClicked)="onCellDoubleClick($event)"
+              (gridReady)="onDetallesGridReady($event)"
+              [stopEditingWhenCellsLoseFocus]="true">
             </ag-grid-angular>
           </div>
 
@@ -108,16 +105,16 @@
                 </div>
                 <div class="card-body">
                   <div class="row mb-2">
-                    <div class="col-6"><strong>Total Generadores:</strong></div>
-                    <div class="col-6">{{ resumenData.totalGeneradores }}</div>
+                    <div class="col-6"><strong>Total OTs:</strong></div>
+                    <div class="col-6">{{ resumenData.totalOTs }}</div>
                   </div>
                   <div class="row mb-2">
-                    <div class="col-6"><strong>Total Items:</strong></div>
-                    <div class="col-6">{{ resumenData.totalItems }}</div>
+                    <div class="col-6"><strong>Total Detalles:</strong></div>
+                    <div class="col-6">{{ resumenData.totalDetalles }}</div>
                   </div>
                   <div class="row mb-2">
-                    <div class="col-6"><strong>Promedio Items/Generador:</strong></div>
-                    <div class="col-6">{{ resumenData.promedioItems | number:'1.1-1' }}</div>
+                    <div class="col-6"><strong>Promedio Detalles/Generador:</strong></div>
+                    <div class="col-6">{{ resumenData.promedioDetalles | number:'1.1-1' }}</div>
                   </div>
                   <div class="row mb-2">
                     <div class="col-6"><strong>Rango de Fechas:</strong></div>
@@ -134,7 +131,7 @@
                 <div class="card-body">
                   <div *ngFor="let area of resumenData.porArea" class="row mb-2">
                     <div class="col-6"><strong>{{ area.fase || 'Sin Área' }}:</strong></div>
-                    <div class="col-6">{{ area.cantidad }} generadores</div>
+                    <div class="col-6">{{ area.cantidad }} OTs</div>
                   </div>
                 </div>
               </div>
@@ -142,11 +139,11 @@
           </div>
 
           <!-- Modal para gráficos -->
-          <div class="modal fade" id="graficosModal" tabindex="-1" *ngIf="showGraficos">
+          <!--<div class="modal fade" id="graficosModal" tabindex="-1" *ngIf="showGraficos">
             <div class="modal-dialog modal-xl">
               <div class="modal-content">
                 <div class="modal-header">
-                  <h5 class="modal-title">Gráficos de Generadores</h5>
+                  <h5 class="modal-title">Gráficos de OTs</h5>
                   <button type="button" class="btn-close" (click)="cerrarGraficos()"></button>
                 </div>
                 <div class="modal-body">
@@ -161,9 +158,36 @@
                 </div>
               </div>
             </div>
-          </div>
+          </div>-->
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalFoto" tabindex="-1" aria-labelledby="ModalBonosLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
+      <div class="modal-header p-2 border-0">
+        <h5 class="modal-title" id="ModalBonosLabel">Visualización</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar" (click)="pauseVideo()"></button>
+      </div>
+      <div class="modal-body text-center">
+        <ng-container *ngIf="selectedMediaType === 'Photo'">
+          <img [src]="selectedMediaUrl" [ngStyle]="{ height: '70vh' }" class="img-fluid" alt="Imagen" />
+        </ng-container>
+        <ng-container *ngIf="selectedMediaType === 'Video'">
+          <video [src]="selectedMediaUrl" #videoPlayer [ngStyle]="{ height: '70vh' }" class="img-fluid" controls></video>
+        </ng-container>
+      </div>
+      <div class="text-center my-1">
+        <button class="btn btn-lg btn-outline-primary d-inline-flex align-items-center gap-2 px-4 py-2 shadow-sm"
+                (click)="downloadFileFromUrl(selectedMediaUrl, 'Desde_Web')">
+          <i class="bi bi-download fs-5"></i>
+          Descargar
+        </button>
+      </div>
+
     </div>
   </div>
 </div>

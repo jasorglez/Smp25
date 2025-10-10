@@ -64,4 +64,71 @@ export class ImageHandlerService {
         alerts.basicAlert('Subir imagen', 'Error al subir la imagen. Por favor, intente nuevamente.', 'error');
       });
   }
+
+
+  // NUEVO MÉTODO para subir videos a Firebase
+  uploadFileToFirebase(file: File, folder: string = 'videos'): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const path = `${folder}/${this.storagesService.generateRandom()}${file.name}`;
+      
+      this.storagesService.uploadFile(file, path)
+        .then(url => {
+          resolve(url);
+        })
+        .catch(error => {
+          console.error("Error uploading file to Firebase", error);
+          reject(error);
+        });
+    });
+  }
+
+  // NUEVO MÉTODO para manejar videos en el grid
+  onVideoCellClicked(params: ICellRendererParams) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'video/*';
+    input.onchange = (event: any) => this.uploadVideo(event, params);
+    input.click();
+  }
+
+// MÉTODO CORREGIDO para subir videos
+uploadVideo(event: any, params: any) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  // Validar que sea un archivo de video
+  if (!file.type.startsWith('video/')) {
+    alerts.basicAlert('Subir video', 'Solo se permiten archivos de video.', 'error');
+    return;
+  }
+
+  // Validar tamaño del archivo (máximo 100MB)
+  const maxSize = 100 * 1024 * 1024;
+  if (file.size > maxSize) {
+    alerts.basicAlert('Subir video', 'El archivo es demasiado grande. Tamaño máximo: 100MB', 'error');
+    return;
+  }
+
+  const path = `videos/${this.storagesService.generateRandom()}${file.name}`;
+
+  this.storagesService.uploadFile(file, path)
+    .then(url => {
+      // Actualizar directamente los datos en lugar de usar setDataValue
+      params.data.imageUrl = url;
+      
+      // Marcar como modificado para que se guarde
+      params.data.__modified = true;
+      
+      // Refrescar la celda para mostrar el cambio
+      if (params.node && params.node.gridApi) {
+        params.node.gridApi.refreshCells({ rowNodes: [params.node] });
+      }
+      
+      alerts.basicAlert('Subir video', 'Video subido exitosamente.', 'success');
+    })
+    .catch(error => {
+      console.error("Error uploading video", error);
+      alerts.basicAlert('Subir video', 'Error al subir el video. Por favor, intente nuevamente.', 'error');
+    });
+}
 }

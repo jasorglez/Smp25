@@ -2,6 +2,7 @@ import { Component, effect, HostListener, inject } from '@angular/core';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import * as bootstrap from 'bootstrap';
 import {
   CellDoubleClickedEvent,
   ColDef,
@@ -18,27 +19,35 @@ import {
   lastValueFrom,
   toArray,
   throwError,
-  map 
+  map,
+  Observable
 } from 'rxjs';
 import { AgGridModule } from 'ag-grid-angular';
 import { ModalService } from 'app/services/modal.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { SignalsService } from 'app/services/signals.service';
 import { ProvidersPaymentsComponent } from './providers-payments.component';
+
+import { DetailCellRendererComponentContact } from './details/detail-cell-renderer-contact.component'; // This seems to be the one for contacts
+import { DetailCellRendererComponentBanck } from './details/detail-cell-renderer-banck.component'; // This will be for banks
+import { DetailCellRendererComponentCuentas } from './details/detail-cell-renderer-cuentas.component';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { RadiusinfluenceComponent } from 'app/domains/ModAdmon/components/radiusinfluence/radiusinfluence.component';
 import { CustomersService } from 'app/services/customers.service';
+import { ProvidersService } from 'app/services/providers.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { InegiService } from 'app/services/inegi.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { AuthService } from 'app/services/auth.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { Icatalog } from 'app/interface/icatalog';
+import { ICustomer } from 'app/interface/icustomer';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '@env/environment';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
-import { TrackingService } from 'app/services/tracking.service';  
+import { TrackingService } from 'app/services/tracking.service';
+//import { DetailCellRendererComponent_1 as DetailCellRendererComponent } from "./details/detail-cell-renderer-contact.component";  
 
 @Component({
   selector: 'app-customers',
@@ -49,7 +58,10 @@ import { TrackingService } from 'app/services/tracking.service';
     AgGridModule,
     MultiLineEditorComponent,
     ProvidersPaymentsComponent,
-  ],
+    DetailCellRendererComponentContact,
+    DetailCellRendererComponentBanck,
+    DetailCellRendererComponentCuentas
+],
   templateUrl: './providers.component.html',
   styleUrls: ['./providers.component.scss'],
 })
@@ -57,6 +69,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
   
   private trackingService = inject(TrackingService);
   private customerService = inject(CustomersService);
+  private providersService = inject(ProvidersService);
   private modalServiceTable = inject(ModalService);
   private signalsService = inject(SignalsService);
   private modalService = inject(NgbModal);
@@ -72,13 +85,13 @@ export class ProvidersComponent implements CanComponentDeactivate {
   
 
   async ngOnInit() {
-    this.obtenerDatos();
     this.signalsService.deleteClientData();
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
     await this.getTypecop();
     this.route.data.subscribe((data) => {
       this.type = data['type']; // 'CUSTOMERS' o 'PROVIDERS'
-      this.obtenerDatos(); // Llamar a la función para cargar datos
+      // La carga de datos ahora se maneja por el effect que reacciona a los cambios de compañía/sucursal
+      // this.obtenerDatos(); 
       this.getStates(); // Llamar a la función para obtener los estadosd
       this.obtenerBranchs();
       
@@ -95,23 +108,13 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-      this.obtenerDatos();
-      this.obtenerBranchs();
-      this.getTypecop();
-      this.signalsService.deleteClientData();      
-    });
-
-    effect(() => {
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      this.getTypecop();
-  });
-
-    effect(() => {
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      this.obtenerDatos();
-      this.obtenerBranchs();
-      this.getTypecop();
-    });
+      this.idCompany = this.signalsService.getRootSelectedBySidebar()();
+      if (this.idBranch && this.idCompany) {
+        this.obtenerDatos();
+        this.obtenerBranchs();
+        this.getTypecop();
+      }
+    }, { allowSignalWrites: true });
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -121,10 +124,9 @@ export class ProvidersComponent implements CanComponentDeactivate {
         'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
     }
   }
-
   
   type: string = ''; // Para almacenar el tipo (CUSTOMERS o PROVIDERS)
-  gridHeight: string = '75vh';
+  gridHeight: string = '90vh';
   showCreditsTab: boolean = false;
   private gridApi: GridApi;
   notSavedChanges: boolean = false;
@@ -133,19 +135,34 @@ export class ProvidersComponent implements CanComponentDeactivate {
   branchs: any[] = [];
   Typecop: any[] = [];
   contactoCatalog: any[] = [];
+  // VARIABLES GLOBALES compartidas por todas las columnas
+  lastHoveredId: number | null = null;
+  lastHoveredColumn: string | null = null;
+  collapseTimerColumn: ReturnType<typeof setTimeout> | null = null;
+  hoverDelayTimer: ReturnType<typeof setTimeout> | null = null;
+
+
+  estadobanck: boolean = false;
+  estadoid: number = 0;
   
   // Agregar esta nueva variable para almacenar el ID de la última fila editada
   private lastEditedRowId: number | string | null = null;
 
+  private isProcessingMouseOver = false; // Bandera para evitar eventos MouseOver en cascada
+  private lastExpandedNode: any = null;
+  private collapseTimer: any = null; // MEJORA: Temporizador para el colapso del detalle
   rowData: any;
   contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
+  providersXTableData: { [key: number]: any[] } = {};  
+  expandedProviders: Set<number> = new Set();
 
   id: string;
   idRoot: number;
   private tempIdCounter: number = 0;
   selectedTab: string = 'customers-payments';
   idBranch: number = null;
+  idCompany: number = null;
   idEmployee: number;
   infoCp: any;
   
@@ -157,7 +174,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
     filter: false,
     resizable: true,
     lockPosition: false,
-    enableRowGroup: true, // Enable row grouping for all columns
+    enableRowGroup: true, // Enable row grouping for all columnsddsd
     flex: 1,
   };
 
@@ -170,38 +187,199 @@ export class ProvidersComponent implements CanComponentDeactivate {
   components = {
     multiLineEditor: MultiLineEditorComponent,
     autocompleteEditor: AutocompleteEditorComponent,
+    detailCellRenderer: DetailCellRendererComponentContact,
+    detailCellRendererBanck: DetailCellRendererComponentBanck,
+    detailCellRendererCuentas: DetailCellRendererComponentCuentas
   };
 
   idClient = this.signalsService.getIdClient();
   nameClient = this.signalsService.getNameClient()();
 
   public gridOptions: any = {
-    headerHeight: 25,
-    rowHeight: 20,
-    rowBuffer: 20,
-    getRowClass: (params) => {
-      if (params.node.isSelected()) {
-        return 'selected-row';
-      }
-      return '';
-    },
-    onRowClicked: (event) => {
-      event.node.setSelected(true);
-    },
-    onRowSelected: (event) => {
-      if (event.node.isSelected()) {
-        this.gridApi.forEachNode((node) => {
-          if (node.id !== event.node.id) {
-            node.setSelected(false);
-          }
+  headerHeight: 25,
+  rowHeight: 20,
+  rowBuffer: 20,
+  masterDetail: true,
+  isRowMaster: (dataItem) => {
+    return true; // Todas las filas de proveedores son maestras
+  },
+  detailCellRendererSelector: (params) => {
+    // Decide qué renderizador usar basado en la propiedad 'detailType'
+    if (params.data.detailType === 'contact') {
+      params.node.setRowHeight(700); // Ajusta la altura de la fila de detalle
+      return {
+        component: 'detailCellRenderer',
+        params: {
+          onMouseEnter: () => clearTimeout(this.collapseTimer), // Cancela el cierre si el mouse vuelve a entrar
+          onMouseLeave: () => { // Inicia el temporizador para cerrar al salir
+            this.collapseTimer = setTimeout(() => {
+              params.node.setExpanded(false);
+            }, 500); // Un retardo de 500ms
+          },
+        }
+      };
+    } else if (params.data.detailType === 'bank') {
+      params.node.setRowHeight(700); // Ajusta la altura de la fila de detalle
+      return {
+        component: 'detailCellRendererBanck',
+        params: {
+          onMouseEnter: () => clearTimeout(this.collapseTimer),
+          onMouseLeave: () => {
+            this.collapseTimer = setTimeout(() => params.node.setExpanded(false), 500);
+          },
+        }
+      };
+    } else if (params.data.detailType === 'Cuentas') {
+      params.node.setRowHeight(700); // Damos más altura para la tabla de cuentas
+      return {
+        component: 'detailCellRendererCuentas',
+        params: {
+          onMouseEnter: () => clearTimeout(this.collapseTimer),
+          onMouseLeave: () => {
+            this.collapseTimer = setTimeout(() => params.node.setExpanded(false), 500);
+          },
+        }
+      };
+    }
+    return undefined; // No mostrar detalle si no hay tipo
+  },
+
+  getRowClass: (params) => {
+    if (params.node.isSelected()) {
+      return 'selected-row';
+    }
+    return '';
+  },
+  onRowSelected: (event) => {
+    if (event.node.isSelected()) {
+      this.gridApi.forEachNode((node) => {
+        if (node.id !== event.node.id) {
+          node.setSelected(false);
+        }
+      });
+    }
+  },
+
+  onCellMouseOver: (event) => {
+    // No hacer nada si el mouse se mueve sobre una celda que no es de detalle
+    const colId = event.column.getColId();
+    const isDetailColumn = colId === 'fieldContact' || colId === 'fieldBank' || colId === 'fieldCuenta';
+    if (!isDetailColumn) return;
+
+    // SOLUCIÓN: Si ya estamos procesando un evento, ignoramos los siguientes.
+    if (this.isProcessingMouseOver) return;
+
+
+    // SOLUCIÓN: Si el mouse se mueve a una nueva celda de detalle,
+    // cancelamos cualquier temporizador de colapso que esté pendiente.
+    if (this.collapseTimer) {
+      clearTimeout(this.collapseTimer);
+      this.collapseTimer = null;
+    }
+
+    // MEJORA: Cancelar cualquier temporizador de expansión pendiente si el mouse se mueve a otra celda.
+    if (this.hoverDelayTimer) {
+      clearTimeout(this.hoverDelayTimer);
+      this.hoverDelayTimer = null;
+    }
+
+
+    const newDetailType = this.getDetailTypeFromColId(colId);
+    const isSameDetail = event.node.expanded && event.data.detailType === newDetailType;
+
+    // Si ya está expandido con el mismo detalle, no hacemos nada.
+    if (isSameDetail) return;
+
+    console.log(`[Depuración] MouseOver en celda de detalle. Columna: ${colId}, Fila ID: ${event.data.id}`);
+
+    const expandAndFilter = () => {
+        // 1. Colapsar cualquier otra fila que pudiera estar abierta.
+        //    Y limpiar cualquier filtro existente.
+        this.gridApi.forEachNode(otherNode => {
+            if (otherNode.expanded && otherNode.id !== event.node.id) {
+                otherNode.setExpanded(false);
+            }
         });
+        // Limpiamos el filtro ANTES de aplicar uno nuevo para evitar conflictos.
+        this.gridApi.setFilterModel(null);
+        
+        // SOLUCIÓN: Activar la bandera para bloquear eventos subsiguientes.
+        this.isProcessingMouseOver = true;
+        setTimeout(() => {
+          this.isProcessingMouseOver = false;
+        }, 100); // Desbloquear después de 100ms
+
+        // 2. Aplicar filtro y luego expandir.
+        // Aplicar el filtro por ID para enfocar la fila actual.
+        const filterModel = {
+          id: { filterType: 'number', type: 'equals', filter: event.data.id },
+        };
+        console.log('[Depuración] Aplicando modelo de filtro:', filterModel);
+        this.gridApi.setFilterModel(filterModel);
+
+        // Expandir DESPUÉS de que el filtro se haya procesado.
+        // Un pequeño delay ayuda a asegurar que AG Grid procese el filtro antes de expandir.
+        setTimeout(() => {
+            event.data.detailType = newDetailType;
+            event.node.setExpanded(true);
+            console.log(`[Depuración] Fila ${event.data.id} expandida con detalle: ${newDetailType}`);
+        }, 50);
+    };
+
+    // MEJORA: Iniciar un temporizador para retrasar la expansión.
+    this.hoverDelayTimer = setTimeout(() => {
+      // Si la fila ya está expandida (pero con un detalle diferente),
+      // primero la colapsamos para forzar el refresco del componente de detalle.
+      if (event.node.expanded) {
+          console.log(`[Depuración] La fila ${event.data.id} ya estaba expandida. Colapsando para refrescar.`);
+          event.node.setExpanded(false);
+          // Usamos un pequeño timeout para asegurar que AG Grid procese el colapso
+          // antes de intentar expandir de nuevo con el nuevo detalle.
+          setTimeout(expandAndFilter, 50);
+      } else {
+          // Si no estaba expandida, simplemente expandimos y filtramos.
+          expandAndFilter();
       }
-    },
-    
-  };
+    }, 400); // Retraso de 400ms antes de expandir.
+    // Se elimina la lógica de hover para que solo funcione con click.
+  },
+
+  onCellMouseOut: (event) => {
+    // No hay cambios en esta función, pero la incluyo por contexto
+    const colId = event.column.getColId();
+    const isDetailColumn = colId === 'fieldContact' || colId === 'fieldBank' || colId === 'fieldCuenta';
+
+    // MEJORA: Si el mouse sale de la celda, cancelar el temporizador de expansión.
+    if (this.hoverDelayTimer) {
+      clearTimeout(this.hoverDelayTimer);
+      this.hoverDelayTimer = null;
+    }
+
+    // Si el mouse sale de una celda de detalle, iniciamos el temporizador para colapsar.
+    // El evento onMouseEnter del panel de detalle cancelará esto si el mouse entra en él.
+    if (isDetailColumn && event.node.expanded) {
+      this.collapseTimer = setTimeout(() => {
+        console.log(`[Depuración] Colapsando fila ${event.node.data.id} por timeout.`);
+        event.node.setExpanded(false);
+        // Al colapsar, limpiar cualquier filtro que se haya aplicado.
+        console.log('[Depuración] Limpiando filtro al colapsar por timeout.');
+        this.gridApi.setFilterModel(null);
+        this.gridApi.onFilterChanged();
+      }, 300);
+    }
+    // Se elimina la lógica de hover para que solo funcione con click.
+  }
+};
 
   get colMaster(): ColDef[] {
     return [
+      {
+        field: 'id',
+        headerName: 'ID',
+        hide: true, // La ocultamos porque es para uso interno
+        filter: 'agNumberColumnFilter',
+        width: 80
+      },
       {
         field: 'vigente',
         headerName: 'Activo',
@@ -210,12 +388,35 @@ export class ProvidersComponent implements CanComponentDeactivate {
       },
       
       {
+        field: 'company',
+        headerName: 'Compañía',
+        editable: true,
+        width: 150,
+      },
+      
+      {
         field: 'nameContact',
-        headerName: 'Nombre Contacto',
+        headerName: 'Contacto principal',
         editable: true,
         filter: true,
         cellEditor: 'autocompleteEditor',
         width: 200,
+        /*cellRenderer: (params) => { 
+          const div = document.createElement('div'); 
+          div.innerText = params.value; 
+          const rowData = params.data;
+          div.addEventListener('mouseenter', () => { 
+            console.log('Hover sobre celda:', params.value); 
+            console.log('Datos completos de la fila:', rowData);
+            const modal = new bootstrap.Modal(document.getElementById('bonus')!);
+            modal.show();
+          }); 
+          div.addEventListener('mouseleave', () => { 
+            console.log('Mouse fuera de celda:', params.value); 
+            div.setAttribute('data-bs-dismiss', 'modal');
+          }); 
+          return div; 
+        },*/
         cellEditorParams: {
           filterList: this.rowData?.map(e => e.nameContact
           ),
@@ -262,375 +463,149 @@ export class ProvidersComponent implements CanComponentDeactivate {
           //excelMode: 'mac',d
         },
       },
-      {
-        field: 'company',
-        headerName: 'Compania',
-        editable: true,
-        width: 250,
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        suppressMovable: true,
-        filter: true,
-        valueSetter: (params) => {
-          params.data[params.colDef.field] = params.newValue.toUpperCase();
-          return true;
-        }
-        /*cellEditor: 'agPopupTextCellEditor',
-        cellEditorParams: {
-          maxLength: 100,
-          cols: 50,
-          rows: 3,
-          onKeyDown: (event: KeyboardEvent) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.stopPropagation();
-            }
-          },
-        },
-        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-          if (!event.node.group) {
-            this.modalServiceTable.showModal({
-              params: event,
-              value: event.value,
-            });
-          }
-        },
-        cellRenderer: (params: ICellRendererParams) => {
-          if (params.node.group) {
-            return params.value;
-          }
-          return params.value;
-        },*/
-      },
-      {
-        field: 'total',
-        headerName:
-          this.type === 'CUSTOMERS' ? 'Total Credito' : 'Cuentas X Pagar',
-        editable: false,
-        filter: 'agNumberColumnFilter',
-        suppressMovable: true,
-        width: 160,
-        valueFormatter: (params) => {
-          if (params.value) {
-            return new Intl.NumberFormat('es-MX', {
-              style: 'currency',
-              currency: 'MXN',
-            }).format(params.value);
-          }
-          return '$0.00';
-        },
-        cellStyle: { backgroundColor: '#d4edda' },
-      },
-      /*{
-        field: 'idBranch',
-        headerName: 'Nombre sucursal',
-        headerClass: 'required-header',
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        hide:
-          this.authService.hasDetailedPermission(
-            'principal',
-            'see-all-branches'
-          ) || this.signalsService.getemailChoose() === environment.root
-            ? false
-            : true,
-        editable: true,
-        filter: true,
-        width: 170,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: (params) => {
-          // Ensure depto data is available when creating editor
-          return {
-            values: this.branchs ? this.branchs.map((item) => item.id) : [],
-          };
-        },
-        valueFormatter: (params) => {
-          // Handle potential null values and properly format the displayed value
-          if (!params.value) return '';
 
-          const foundBranch = this.branchs
-            ? this.branchs.find((item) => item.id === params.value)
-            : null;
+      {
+        field: 'position',
+        headerName: 'Puesto/Area',
+        editable: true,
+        width: 180,
+      },
 
-          return foundBranch ? foundBranch.name : params.value;
-        },
-        valueGetter: (params) => {
-          if (!params.data || !params.data.idBranch) return '';
-          const branch = this.branchs?.find(b => b.id === params.data.idBranch);
-          return branch ? branch.name : '';
-        },
-      },*/
-      
-      /*{
-        field: 'idTypecop',
-        headerName: this.type == 'CUSTOMERS'? 'Tipo cliente' : 'Tipo proveedor',
-        editable: true,
-        width: 150,
-        //hide: this.type != 'CUSTOMERS',
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.Typecop ? this.Typecop.map((item) => item.id) : [],
-        },
-        valueFormatter: (params) => {
-          const foundItem = this.Typecop
-            ? this.Typecop.find((item) => item.id === params.value)
-            : null;
-          return foundItem ? `${foundItem.description}` : params.value;
-        },
-      },*/
-      {
-        field: 'cp',
-        headerName: 'CP',
-        editable: true,
-        filter: true,
-        width: 105,
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-      },
-      {
-        field: 'address',
-        headerName: 'Direccion',
-        editable: true,
-        width: 250,
-        filter: true,
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        valueSetter: (params) => {
-          params.data[params.colDef.field] = params.newValue.toUpperCase();
-          return true;
-        }
-        /*cellEditor: 'agPopupTextCellEditor',
-        cellEditorParams: {
-          maxLength: 100,
-          cols: 50,
-          rows: 3,
-          onKeyDown: (event: KeyboardEvent) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.stopPropagation();
-            }
-          },
-        },
-        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-          if (!event.node.group) {
-            this.modalServiceTable.showModal({
-              params: event,
-              value: event.value,
-            });
-          }
-        },
-        cellRenderer: (params: ICellRendererParams) => {
-          if (params.node.group) {
-            return params.value;
-          }
-          return params.value;
-        },*/
-      },
-      /*{
-        field: 'addressfiscal',
-        headerName: 'Direccion Fiscal',
-        editable: false,
-        width: 250,
-        filter: true,
-        hide: true,
-        cellEditor: 'agPopupTextCellEditor',
-        cellEditorParams: {
-          maxLength: 100,
-          cols: 50,
-          rows: 3,
-          onKeyDown: (event: KeyboardEvent) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.stopPropagation();
-            }
-          },
-        },
-        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-          if (!event.node.group) {
-            this.modalServiceTable.showModal({
-              params: event,
-              value: event.value,
-            });
-          }
-        },
-        cellRenderer: (params: ICellRendererParams) => {
-          if (params.node.group) {
-            return params.value;
-          }
-          return params.value;
-        },
-      },*/
-      {
-        field: 'state',
-        headerName: 'Estado',
-        filter: true,
-        width: 160,
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        editable: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.estados, // Usar la lista de estados obtenida
-        },
-      },
-      {
-        field: 'city',
-        headerName: 'Ciudad',
-        editable: true,
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        width: 120,
-        filter: true,
-      },
-      {
-        field: 'neighborhood',
-        headerName: 'Colonia',
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        editable: true,
-        filter: true,
-        width: 300,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: (params) => {
-          if (this.infoCp && this.infoCp.length > 0) {
-            const asentamientos = this.infoCp[0].asentamientos;
-            // Ordenar los asentamientos alfabéticamente
-            const sortedAsentamientos = asentamientos.sort((a, b) =>
-              a.localeCompare(b)
-            );
-            return {
-              values: sortedAsentamientos,
-            };
-          }
-          return { values: [] };
-        },
-        valueFormatter: (params) => {
-          return params.value || 'Seleccionar asentamiento';
-        },
-      },
       {
         field: 'phone',
-        headerName: 'Telefono',
+        headerName: 'Telefono principal',
         editable: true,
-        width: 120,
-        valueSetter: (params) => {
-          const phoneValue = params.newValue;
-          // Verificar que el número tenga exactamente 10 dígitos y sea numérico
-          const isValidPhone = /^\d{10}$/.test(phoneValue);
-          if (!isValidPhone) {
-            alerts.basicAlert(
-              'Teléfono inválido',
-              'El teléfono debe contener exactamente 10 dígitos numéricos.',
-              'error'
-            );
-            return false; // No se permite el cambio
-          }
-          params.data[params.colDef.field] = phoneValue;
-          return true;
-        },
-      },
-      {
-        field: 'rfc',
-        headerName: 'RFC',
-        editable: true,
-        hide: true,
         width: 100,
       },
       
-      { field: 'radio', headerName: 'Radio', editable: true, width: 90 , hide: this.type != 'CUSTOMERS'},
-      /*{
-        field: 'latitud',
-        headerName: 'Latitud',
-        editable: true,
-        width: 110,
-        filter: true,
-      },
-      {
-        field: 'longitud',
-        headerName: 'Longitud',
-        editable: true,
-        width: 120,
-        filter: true,
-      },*/
-
       {
         field: 'email',
-        headerName: 'Correo',
-        width: 200,
-        cellEditor: 'agTextCellEditor',
-        editable: (params) => params.data.__isNew,
-        cellEditorParams: {
-          useFormatter: true,
-        },
-        valueFormatter: (params) => params.value,
-        valueSetter: (params) => {
-          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-          if (emailRegex.test(params.newValue)) {
-            const duplicateExists = this.rowData.some(
-              (row, index) =>
-                index !== params.node.rowIndex && row.email === params.newValue
-            );
-            if (duplicateExists) {
-              alerts.basicAlert(
-                'Añadir usuario',
-                'Ya existe un usuario con ese correo electrónico.',
-                'error'
-              );
-              return false;
-            }
-            params.data[params.colDef.field] = params.newValue;
-            return true;
-          } else {
-            alerts.basicAlert(
-              'Editar usuario',
-              'Correo electrónico no válido.',
-              'error'
-            );
-            return false;
-          }
-        },
-      },{
-        field: 'id',
-        headerName: 'Id',
+        headerName: 'Email Principal',
+        editable: true,
+        width: 100,
+      },
+
+      {
+        field: 'fieldContact',
+        headerName: 'Contactos',
+        cellRenderer: this.createDetailToggleCellRenderer('contact'),
         editable: false,
-        width: 70,
-        hide: true,
-        filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
-        filterParams: {
-          filterOptions: ['equals'], // Opciones de filtro
-        },
+        cellStyle: { backgroundColor: '#d4edda' },
+      },
+  
+      {
+        field: 'fieldBank',
+        headerName: 'Bancos',
+        editable: false,
+        cellRenderer: this.createDetailToggleCellRenderer('bank'),
+        cellStyle: { backgroundColor: '#d4edda' },
+      },
+  
+      {
+        field: 'fieldCuenta',
+        headerName: 'Cuentas x Pagar',
+        cellRenderer: this.createDetailToggleCellRenderer('Cuentas'),
+        cellStyle: { backgroundColor: '#d4edda' },
+        editable: false
+      },
+   
+  
+      {
+        field: 'cp',
+        headerName: 'Cp',
+        editable: true,
+        width: 100,
+      },
+      {
+        field: 'address',
+        headerName: 'Dirección',
+        editable: true,
+        width: 100,
+      },
+      {
+        field: 'city',
+        headerName: 'Estado',
+        editable: true,
+        width: 100,
+      },
+      {
+        field: 'state',
+        headerName: 'Ciudad',
+        editable: true,
+        width: 100,
+      },
+      {
+        field: '',
+        headerName: 'Colonia',
+        editable: true,
+        width: 100,
       },
     ];
   }
 
+  // Función auxiliar para obtener el tipo de detalle desde el ID de la columna
+  getDetailTypeFromColId(colId: string): string | null {
+    if (colId === 'fieldContact') return 'contact';
+    if (colId === 'fieldBank') return 'bank';
+    if (colId === 'fieldCuenta') return 'Cuentas';
+    return null;
+  }
+
+
+
+createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement {
+  return (params: any): HTMLElement => {
+    const div = document.createElement('div');
+    //console.log(params.data.id)
+    switch
+      (detailType){
+      case 'contact':
+        div.innerText = params.data.fieldContact;
+        break;
+      case 'bank':
+        div.innerText = params.data.fieldBank;
+        break;
+      case 'Cuentas':
+        div.innerText = params.data.fieldCuenta;
+        break;
+      }
+    // Usamos innerHTML para poder renderizar el ícono
+    //div.innerHTML = params.data.id;
+    div.style.cursor = 'pointer';
+    div.style.textDecoration = 'underline';
+    div.style.background = '#d4edda';
+
+    const node = params.node;
+    const api = params.api;
+
+
+    return div;
+  };
+}
+
+
+  
+
   obtenerDatos() {
+    if (!this.idBranch) {
+      console.log('idBranch no está disponible aún');
+      return Promise.resolve(false);
+    }
+
     this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Proveedores`, 'Menu Administracion Proveedores ',
           this.trackingService.getEmail() );
 
     return new Promise((resolve) => {
       this.customerService
-        .getCustomers(this.idBranch, this.type)
+        .getProviders(this.idCompany,'PROVIDERS')
         .subscribe({
           next: (data: any) => {
             this.rowData = data;
+            console.log(this.rowData)
+            // Asegurarse de que las columnas se ajusten después de cargar los datos
+            if (this.gridApi) {
+              this.gridApi.sizeColumnsToFit();
+            }
             console.log(data)
             resolve(true);
           },
@@ -713,6 +688,59 @@ export class ProvidersComponent implements CanComponentDeactivate {
     }
   }
 
+  onCellClicked(event: any): void {
+  event.node.setSelected(true);
+  console.log('Celda clickeada:', event);
+
+  // Cancelar cualquier temporizador de cierre pendiente de onCellMouseOut
+  if (this.collapseTimer) {
+    clearTimeout(this.collapseTimer);
+    this.collapseTimer = null;
+  }
+
+  const colId = event.column.getColId();
+  const isDetailColumn = colId === 'fieldContact' || colId === 'fieldBank' || colId === 'fieldCuenta';
+
+  if (isDetailColumn) {
+    const node = event.node;
+    const api = event.api;
+    const detailType = this.getDetailTypeFromColId(colId);
+
+    // Determinar si la fila actual ya está expandida CON ESTE MISMO tipo de detalle
+    const isCurrentlyExpanded = node.expanded && event.data.detailType === detailType;
+
+    // Colapsar cualquier otra fila que esté expandida
+    api.forEachNode(otherNode => {
+      if (otherNode.expanded && otherNode.id !== node.id) {
+        otherNode.setExpanded(false);
+      }
+    });
+
+    if (isCurrentlyExpanded) { // Si se hace clic en la misma celda que ya está abierta...
+      // ...se cierra y se limpia el filtro.
+      node.setExpanded(false);
+      api.setFilterModel(null);
+      api.onFilterChanged();
+    } else {
+      // Si se hace clic en una celda diferente (o la fila está cerrada)...
+      // ...se establece el nuevo tipo de detalle y se expande la fila.
+      
+      // Limpiar filtro antes de aplicar uno nuevo
+      api.setFilterModel(null);
+      
+      // Aplicar filtro por ID para enfocar la fila actual.
+      const filterModel = {
+        id: { filterType: 'number', type: 'equals', filter: event.data.id },
+      };
+      api.setFilterModel(filterModel);
+
+      // Expandir la fila con el detalle correcto
+      event.data.detailType = detailType;
+      node.setExpanded(true);
+    }
+  }
+}
+
   getCoordinatesFromCP(cp: string) {
     const url = `https://nominatim.openstreetmap.org/search?postalcode=${cp}&country=MX&format=json`;
     return this.http.get(url).pipe(
@@ -746,6 +774,50 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+
+    // Configurar master-detail después de que el grid esté listo
+    this.gridApi.setGridOption('detailCellRendererParams', {
+      getDetailRowData: (params) => {
+        params.successCallback(params.data.detailData);
+      },
+      context: { // Pasamos las funciones de CRUD a los componentes de detalle
+        CONTACT: { // Para la grilla de Contactos
+          load: (providerId: number, type: string, callback: (data: any[]) => void) => {
+            this.loadProviderXTableData(providerId, type, callback);
+          },
+          save: (providerId: number, data: any[], type: string) => {
+            this.saveProviderDetailsById(providerId, data, type);
+          },
+          delete: (params: any, callback: () => void) => {
+            this.deleteDetailRow(params, callback);
+          }
+        },
+        BANK: { // Para la grilla de Bancos
+          load: (providerId: number, type: string, callback: (data: any[]) => void) => {
+            this.loadProviderXTableData(providerId, type, callback);
+          },
+          save: (providerId: number, data: any[], type: string) => {
+            this.saveProviderDetailsById(providerId, data, type);
+          },
+          delete: (params: any, callback: () => void) => {
+            this.deleteDetailRow(params, callback);
+          }
+        },
+        CUENTA: { // Para la grilla de Cuentas por Pagar
+          load: (providerId: number, type: string, callback: any) => {
+            this.loadProviderXTableData(providerId, type, callback);
+          },
+          save: (providerId: number, data: any[], type: string) => {
+            this.saveProviderDetailsById(providerId, data, type);
+          },
+          delete: (params: any, callback: any) => {
+            this.deleteDetailRow(params, callback);
+          }
+        }
+      }
+    });
+
+
   }
 
   addRow() {
@@ -756,8 +828,10 @@ export class ProvidersComponent implements CanComponentDeactivate {
     const newItem = {
       id: tempId,
       idBranch: this.idBranch,
+      idRoot: this.idRoot,
       nameContact: '',
       company: '',
+      position: '',
       phone: '',
       rfc: '',
       city: '',
@@ -774,6 +848,9 @@ export class ProvidersComponent implements CanComponentDeactivate {
       longitud: '',
       idTypecop: 0,
       type: this.type,
+      fieldContact: 1,
+      fieldBank: 0,
+      fieldCuenta: 0,
       active: true,
       __isNew: true,
     };
@@ -810,7 +887,9 @@ export class ProvidersComponent implements CanComponentDeactivate {
           this.trackingService.getEmail() );
 
     const isValid = this.rowData.every(
-      (item) => item.idBranch && (item.nameContact || item.company) && (this.type == 'PROVIDERS') || (this.type == 'CUSTOMERS' && item.idTypecop)
+      (item) => (item.nameContact || item.company) && 
+        (this.type == 'PROVIDERS') || (this.type == 'CUSTOMERS' && item.idTypecop)
+        
     );
     if (!isValid) {
       alerts.basicAlert(
@@ -829,6 +908,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+     
       return this.customerService.addCustomer(cleanedData);
     });
 
@@ -839,8 +919,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
     });
 
     try {
-      const responses = await lastValueFrom(
-        concat(...addObservables, ...updateObservables).pipe(toArray())
+      const responses: ICustomer[] = await lastValueFrom(
+        concat(...addObservables, ...updateObservables).pipe(toArray()) as Observable<ICustomer[]>
       );
 
       // Determinar qué ID vamos a seleccionar después de recargar
@@ -848,7 +928,22 @@ export class ProvidersComponent implements CanComponentDeactivate {
         this.lastEditedRowId = modifiedRows[modifiedRows.length - 1].id;
       } else if (newRows.length > 0) {
         this.lastEditedRowId = 'SELECT_MAX_ID';
+        const data = {
+          campo1: 0,
+          campo2: responses[0].nameContact,
+          campo3: responses[0].position,
+          campo4: responses[0].phone,
+          campo5: responses[0].email,
+          campo6: "NA",
+          campo7: true,
+          idTabla: responses[0].id,
+          type: "CONTACT"
+        };
+        this.providersService.addProviderXTable(data).subscribe();
       }
+
+      // Guardar también los cambios de ProviderXTable
+      await this.saveProviderXTableChanges();
 
       alerts.basicAlert(
         'Datos actualizados',
@@ -994,7 +1089,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
       if(this.gridApi) {
         const filterModel = {
           id: {
-            type: 'equals',
+            filterType: 'number',
+            type: 'equals', // o 'contains', 'startsWith', etc.
             filter: selectedId,
           },
         };
@@ -1045,12 +1141,160 @@ export class ProvidersComponent implements CanComponentDeactivate {
   }
 
   getTypecop() {
-    this.catalogsService.getCatalogsVigente(this.idRoot, this.type).subscribe(
+    this.catalogsService.getCatalogsVigente(this.idRoot, 'CONTACT').subscribe(
       (data: Icatalog[]) => {
         this.Typecop = data;
       },
       (error) => console.error('Error fetching measures:', error)
     );
+  }
+
+  loadProviderXTableData(providerId: number, type: string, successCallback: any) {
+    this.providersService.getProvidersXTable(providerId, type).subscribe({
+      next: (data: any) => {
+        this.providersXTableData[providerId] = data;
+        successCallback(data);
+      },
+      error: (error) => {
+        console.error('Error loading provider details:', error);
+        successCallback([]);
+      }
+    });
+  }
+
+  onDetailCellValueChanged(event: any) {
+    event.data.__modified = true;
+    this.notSavedChanges = true;
+  }
+
+
+  async deleteDetailRow(params: any, successCallback: () => void) {
+    const providerId = params.data.idTabla;
+    const detailId = params.data.id;
+    
+    if (params.data.__isNew) {
+      // Si es una fila nueva, solo removerla del array local
+      this.providersXTableData[providerId] = (this.providersXTableData[providerId] || []).filter(
+        item => item.id !== detailId
+      ) || [];
+      params.api.applyTransaction({ remove: [params.data] });
+      this.notSavedChanges = true;
+    } else {
+      // Si es una fila existente, eliminarla del servidor
+      try {
+        
+        await lastValueFrom(this.providersService.deleteProviderXTable(detailId));
+
+        alerts.basicAlert('Contacto eliminado', 'El contacto se eliminó correctamente.', 'success');
+        successCallback(); // Llama al callback para recargar los datos en el componente hijo
+      } catch (error) {
+        console.error('Error deleting detail row:', error);
+        alerts.basicAlert(
+          'Error',
+          'Error al eliminar el contacto.',
+          'error'
+        );
+      }
+    }
+  }
+
+  async saveProviderDetailsById(providerId: number, data: any[], type: string) {
+    console.log(`Saving details for provider ${providerId}, type: ${type}`, data);
+    const newDetails = data.filter((row: any) => row.__isNew);
+    const modifiedDetails = data.filter((row: any) => row.__modified && !row.__isNew);
+
+    try {
+      for (const row of newDetails) {
+        this.customerService.updateFiel(row.idTabla, row.type, "SUMA").subscribe();
+        await lastValueFrom(this.providersService.addProviderXTable(this.cleanDataForServer(row))); 
+        this.obtenerDatos(); 
+      }
+
+      for (const row of modifiedDetails) {
+        await lastValueFrom(this.providersService.updateProviderXTable(row.id, this.cleanDataForServer(row)));
+      }
+
+      if (newDetails.length > 0 || modifiedDetails.length > 0) {
+        alerts.basicAlert(
+          'Detalles guardados',
+          'Se han guardado los detalles correctamente.',
+          'success'
+        );
+
+        // No es necesario recargar aquí, el componente hijo lo hace.
+        // Simplemente limpiamos los flags.
+        data.forEach(row => {
+          delete row.__isNew;
+          delete row.__modified;
+        })
+      }
+
+    } catch (error) {
+      console.error('Error saving contacts:', error);
+      alerts.basicAlert(
+        'Error',
+        'Error al guardar los detalles.',
+        'error'
+      );
+    }
+  }
+
+  async saveProviderXTableChanges() {
+    const allDetailChanges = [];
+    
+    // Handle contact data
+    for (const [providerId, details] of Object.entries(this.providersXTableData)) {
+      const newDetails = details.filter((row: any) => row.__isNew);
+      const modifiedDetails = details.filter((row: any) => row.__modified && !row.__isNew);
+
+      newDetails.forEach(row => {
+        allDetailChanges.push({
+          type: 'add',
+          data: this.cleanDataForServer(row)
+        });
+      });
+
+      modifiedDetails.forEach(row => {
+        allDetailChanges.push({
+          type: 'update',
+          id: row.id,
+          data: this.cleanDataForServer(row)
+        });
+      });
+    }
+
+    if (allDetailChanges.length === 0) return;
+
+    try {
+      for (const change of allDetailChanges) {
+        if (change.type === 'add') {
+          await lastValueFrom(this.providersService.addProviderXTable(change.data));
+        } else if (change.type === 'update') {
+          await lastValueFrom(this.providersService.updateProviderXTable(change.id, change.data));
+        }
+      }
+
+      alerts.basicAlert(
+        'Datos actualizados',
+        'Se han actualizado los contactos correctamente.',
+        'success'
+      );
+
+      // Reload contact data
+      for (const providerId of Object.keys(this.providersXTableData)) {
+        this.loadProviderXTableData(Number(providerId), 'CONTACT', (data) => { // Asumiendo que esto es para contactos, si no, se necesita el tipo
+          this.providersXTableData[Number(providerId)] = data;
+        });
+      }
+
+    } catch (error) {
+      console.error('Error saving detail changes:', error);
+      alerts.basicAlert(
+        'Error',
+        'Error al guardar los cambios en contactos.',
+        'error'
+      );
+    }
   }
 
   // ==================== GUARD ALERT UNSAVED CHANGES ====================

@@ -131,7 +131,7 @@ export class EntrancesComponent implements OnInit, CanComponentDeactivate {
         );
       } else {
         this.obtenerDatos();
-        this.obtenerRequisiciones();
+        this.obtenerOcReq();
       }
 
       if (this.IdInAndOut != null) {
@@ -143,7 +143,7 @@ export class EntrancesComponent implements OnInit, CanComponentDeactivate {
   ngOnInit() {
     this.signalsService.deleteInAndOutData();
     this.obtenerDatos();
-    this.obtenerRequisiciones();
+    this.obtenerOcReq();
     this.obtenerProductos();
     this.obtenerAlmacenesPorUsuario();
     this.obtenerTiposEntrada();
@@ -424,7 +424,8 @@ export class EntrancesComponent implements OnInit, CanComponentDeactivate {
       );
   }
 
-  obtenerRequisiciones() {
+  obtenerOcReq() {
+    console.log('Obteniendo OC y Requisiciones...', this.typeReference, this.idProject  );
     this.ocService
       .getOcAndReqs(this.typeReference, this.idProject, 'OC')
       .subscribe(
@@ -436,9 +437,10 @@ export class EntrancesComponent implements OnInit, CanComponentDeactivate {
   }
 
   obtenerTiposEntrada() {
-    this.catalogsService.getDataTypes().subscribe(
+    this.catalogsService.getTypesCat('INPUT').subscribe(
       (data: any) => {
         this.tipoEntrada = data;
+        console.log('Tipos de entrada cargados:', this.tipoEntrada)
       },
       (error) => console.error('Error fetching data:', error)
     );

@@ -45,8 +45,12 @@ export class LogbookService {
     return this.http.get(`${environment.urlSmp}/Logbook/reporte/${idReporte}?typeNote=${typeNote}`, { headers: this.authService.getHeaders() });
   }
 
+  getDataForLogbook(id: number): Observable<any> {
+    return this.http.get(`${environment.urlSmp}/Logbook/${id}`, { headers: this.authService.getHeaders() });
+  }
+
   addDataForOt(data: any): Observable<any> {
-    console.log('Adding data for OT:', data);
+    //console.log('Adding data for OT:', data);
     return this.http.post(`${environment.urlSmp}/Logbook`, data, { headers: this.authService.getHeaders() });
   }
 
@@ -61,4 +65,11 @@ export class LogbookService {
   getNotesFromReport(idReport: number, typeNote: string): Observable<any> {
     return this.http.get(`${environment.urlSmp}/Logbook/reporte/${idReport}?typeNote=${typeNote}`, { headers: this.authService.getHeaders() })
   }
+
+  getOtListxReport(idRoot: number, fecha1 : string, fecha2:string): Observable<any> {
+        //  const apiUrl = `${environment.urlSmp}/Logbook/reportsOt?idCompany=${idRoot}&fecha1=${fecha1}&fecha2=${fecha2}`;
+        //  alert(apiUrl)
+      return this.http.get(`${environment.urlSmp}/Logbook/reportsOt?idCompany=${idRoot}&fecha1=${fecha1}&fecha2=${fecha2}`, { headers: this.authService.getHeaders() });
+    }
+
 }

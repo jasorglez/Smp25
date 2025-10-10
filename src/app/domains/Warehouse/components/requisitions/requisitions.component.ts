@@ -66,6 +66,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
   idReference: number = null;
   private tempIdCounter: number = 0;
   idRequisition: number = null;
+  private lastProcessedRequisition: number = null;
   private masterGridApi: GridApi;
   private detailsGridApi: GridApi;
   private gridApi: GridApi;
@@ -104,42 +105,65 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
   constructor() {
     effect(() => {
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      this.idProject = this.signalsService.getProjectSelectedBySidebar()();
-      this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-      this.idRequisition = this.signalsService.getIdRequisition()();
-      this.getSetupData();
-      this.obtenerDepartamentos();
-      this.idReference = this.projectOrBranch ? this.idProject : this.idBranch;
-      console.log(this.idReference);
-      this.obtenerDatos();
-      this.obtenerProductos();
-      this.obtenerMonedas();
-      if (this.idRequisition != null) {
-        this.obtenerDetalles();
+      const currentRoot = this.signalsService.getRootSelectedBySidebar()();
+      const currentProject = this.signalsService.getProjectSelectedBySidebar()();
+      const currentBranch = this.signalsService.getBranchSelectedBySidebar()();
+      const currentRequisition = this.signalsService.getIdRequisition()();
+
+      // Si cambió el root, limpiar datos
+      if (this.idRoot !== currentRoot) {
+        this.clearAllData();
+      }
+
+      // Detectar si solo cambió la requisición seleccionada (no root, project o branch)
+      const rootChanged = this.idRoot !== currentRoot;
+      const projectChanged = this.idProject !== currentProject;
+      const branchChanged = this.idBranch !== currentBranch;
+      const requisitionChanged = this.lastProcessedRequisition !== currentRequisition;
+      
+      // Solo considerar que cambió la requisición si había una anteriormente o si ahora hay una
+      const onlyRequisitionChanged = !rootChanged && !projectChanged && !branchChanged && 
+                                   requisitionChanged && 
+                                   (this.lastProcessedRequisition !== null || currentRequisition !== null);
+      
+
+      this.idRoot = currentRoot;
+      this.idProject = currentProject;
+      this.idBranch = currentBranch;
+      this.idRequisition = currentRequisition;
+      
+      // Actualizar el estado procesado después de la lógica
+      this.lastProcessedRequisition = currentRequisition;
+
+      if (this.idRoot) {
+        this.getSetupData().then(() => {
+          this.idReference = this.projectOrBranch ? this.idProject : this.idBranch;
+          
+          // Solo cargar datos si tenemos la referencia apropiada Y no es solo cambio de requisición
+          if (this.idReference && !onlyRequisitionChanged) {
+            this.obtenerDepartamentos();
+            this.obtenerDatos();
+            this.obtenerUbicaciones();
+            this.obtenerMonedas();
+            this.obtenerUsuarios();
+            this.obtenerProveedores();
+            this.obtenerTipoPago();
+            this.obtenerProductos();
+          }
+          
+          // Cargar detalles independientemente si hay requisición
+          if (this.idRequisition != null) {
+            this.obtenerDetalles();
+          }
+        });
       }
     });
   }
 
   ngOnInit() {
-    this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-
+    // El effect() del constructor ya maneja toda la carga de datos
+    // Solo necesitamos inicializar algunos servicios básicos aquí
     this.signalsService.deleteRequisitionData();
-    this.idProject = this.signalsService.getProjectSelectedBySidebar()();
-    this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-    this.idRequisition = this.signalsService.getIdRequisition()();
-
-    this.getSetupData().then(() => {
-      this.idReference = this.projectOrBranch ? this.idProject : this.idBranch;
-      this.obtenerDatos();
-      this.obtenerDepartamentos();
-      this.obtenerUbicaciones();
-      this.obtenerMonedas();
-      this.obtenerUsuarios();
-      this.obtenerProveedores();
-      this.obtenerTipoPago();
-      this.obtenerProductos();
-    });
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -270,6 +294,8 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         headerName: 'Cerrado',
         editable: true,
         width: 120,
+        cellRenderer: 'agCheckboxCellRenderer',
+        cellEditor: 'agCheckboxCellEditor',
       },
 
       {
@@ -443,7 +469,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
   }
 
   obtenerTipoPago() {
-    this.currencyService.getPaymentTypes().subscribe(
+    this.currencyService.getPaymentTypes(this.idRoot).subscribe(
       (data: Catalog[]) => {
         this.tipoPago = data;
       },
@@ -525,7 +551,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       dateCreate: new Date().toISOString(),
       idProveedor: 0,
       idDepartament: 0,
-      delivery: '',
+      delivery: 'A',
       deliveryTime: '',
       dateSupply: '',
       idPayment: 0,
@@ -577,11 +603,13 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      console.log('Master - Datos para agregar:', cleanedData);
       return this.requisitionsService.addOcAndReq(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      console.log('Master - Datos para actualizar (ID:', row.id, '):', cleanedData);
       return this.requisitionsService.updateOcAndReq(row.id, cleanedData);
     });
 
@@ -730,12 +758,13 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      console.log('Details - Datos para agregar:', cleanedData);
       return this.requisitionsService.addReqItem(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData);
+      console.log('Details - Datos para actualizar (ID:', row.id, '):', cleanedData);
       return this.requisitionsService.updateReqItem(row.id, cleanedData);
     });
 
@@ -842,12 +871,42 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
   // ==================== UTILITY METHODS ====================
 
+  private clearAllData() {
+    // Limpiar datos master
+    this.masterRowData = [];
+    this.masterSelectedRowData = null;
+    this.newlyAddedMasterRows = [];
+    this.masterNotSavedChanges = false;
+
+    // Limpiar datos details
+    this.detailsRowData = [];
+    this.detailsSelectedRowData = null;
+    this.newlyAddedDetailRows = [];
+    this.detailsNotSavedChanges = false;
+
+    // Limpiar catálogos
+    this.departamentos = [];
+    this.productos = [];
+    this.monedas = [];
+    
+    // Limpiar IDs
+    this.idReference = null;
+    this.idRequisition = null;
+    this.lastProcessedRequisition = null;
+    this.projectOrBranch = null;
+    this.typeReference = null;
+  }
+
   private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
+    }
+    // Si existe dateCreate, copiar su valor a dateSupply
+    if (cleanedData.dateCreate) {
+      cleanedData.dateSupply = cleanedData.dateCreate;
     }
     return cleanedData;
   }

@@ -84,8 +84,50 @@ export class AdministrationService {
     return this.http.post(`${environment.urlAdministration}/BillingManagement`, data, { headers: this.trackingService.getHeaders() });
   }
 
-  updateBillingManagementInfo(idRoot: number, data: any): Observable<any> {
+  updateBillingManagement(idRoot: number, data: any): Observable<any> {
     return this.http.put<any[]>(`${environment.urlAdministration}/BillingManagement/${idRoot}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  uploadCertificates(idRoot: number, formData: FormData): Observable<any> {
+      console.log('idRoot:', idRoot);
+    const headers = this.trackingService.getHeaders().delete('Content-Type');
+    return this.http.post(`${environment.urlAdministration}/BillingManagement/upload-certificates/${idRoot}`, formData, { headers });
+  }
+
+  checkCertificates(idRoot: number): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/BillingManagement/check-certificates/${idRoot}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  // Timbrado con Finkok (endpoint correcto según documentación)
+  stampInvoice(idIncomeExpense: number): Observable<any> {
+    return this.http.post(`${environment.urlAdministration}/BillingManagement/stamp/${idIncomeExpense}`, {}, { headers: this.trackingService.getHeaders() });
+  }
+
+  // Generar XML sin timbrar (opcional, para preview)
+  generateXml(idIncomeExpense: number): Observable<any> {
+    return this.http.post(`${environment.urlAdministration}/BillingManagement/generate-xml/${idIncomeExpense}`, {}, { headers: this.trackingService.getHeaders() });
+  }
+
+  // Validar con SAT
+  validateWithSat(idIncomeExpense: number): Observable<any> {
+    return this.http.post(`${environment.urlAdministration}/BillingManagement/validate-sat/${idIncomeExpense}`, {}, { headers: this.trackingService.getHeaders() });
+  }
+
+  // Cancelar CFDI
+  cancelInvoice(idIncomeExpense: number, motivoCancelacion: string, folioSustitucion?: string): Observable<any> {
+    const body = {
+      motivoCancelacion: motivoCancelacion,
+      folioSustitucion: folioSustitucion || null
+    };
+    return this.http.post(`${environment.urlAdministration}/BillingManagement/cancel/${idIncomeExpense}`, body, { headers: this.trackingService.getHeaders() });
+  }
+
+  // Generar PDF
+  getPdfInvoice(idIncomeExpense: number): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/BillingManagement/pdf/${idIncomeExpense}`, {
+      headers: this.trackingService.getHeaders(),
+      responseType: 'blob' as 'json'
+    });
   }
 
   getFiscalRegimes(): Observable<any> {
@@ -131,6 +173,7 @@ export class AdministrationService {
       })
     );
   }
+  
   updateNormalPayroll(idNormal: number){
     return this.http.put(`${environment.urlAdministration}/NormalPayrolls/NormalPayrollClosing/${idNormal}`, {}, { headers: this.trackingService.getHeaders() })
   }

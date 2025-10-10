@@ -261,6 +261,18 @@ public gridOptions: any = {
         flex: 1
       },
       {
+        field: 'rfc',
+        headerName: 'RFC',
+        editable: true,
+        flex: 1
+      },
+      {
+        field: 'cp',
+        headerName: 'Código Postal',
+        editable: true,
+        flex: 1
+      },
+      {
         field: 'picture',
         headerName: 'Foto Root',
         cellEditor: 'agTextCellEditor',
@@ -336,6 +348,8 @@ public gridOptions: any = {
       city: '',
       state: '',
       country: '',
+      rfc: '',
+      cp: '',
       active: 1,
       __isNew: true,
     };

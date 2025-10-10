@@ -105,3 +105,4 @@ The application supports hot reloading in development mode and includes comprehe
 - Añadiendo @capacitor/angular al proyecto
 - Interfaz para OT añadida, con Capacitor
 - Se ha cambiado el formato de la lista de OT en ot/ordenes
+- Se ha modificado reportes-estimaciones

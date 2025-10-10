@@ -14,9 +14,11 @@ import { SignalsService } from 'app/services/signals.service';
 export class ProcprojectsComponent {
   authService = inject(AuthService);
 
-  private signalsService = inject(SignalsService);
+  public signalsService = inject(SignalsService);
+
     ngOnInit() {
       this.signalsService.setCatalogSelected('PROJECTS');
     }
 
+     
 }

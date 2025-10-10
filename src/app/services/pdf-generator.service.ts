@@ -41,6 +41,7 @@ export class PdfGeneratorService {
   typeNotesCatalog: any[] = [];
   conceptosData: any[] = [];
   conceptosCatalog: any[] = [];
+  root: boolean;
 
   constructor(
     private datos: ReceivedataService,
@@ -56,6 +57,7 @@ export class PdfGeneratorService {
 
     effect(() => { 
       this.idcompany = this.signalsService.getRootSelectedBySidebar()();
+      this.root = signalsService.getrootChoose ()
       this.catalogoMateriales();
       this.catalogoEquipo();
       this.obtenerUnidades();
@@ -663,45 +665,100 @@ private processMaterialesData(): string[][] {
     return tableData;
   }
 
-  private processConceptosData(): string[][] {
+   private processConceptosData(): string[][] {
     if (!this.conceptosData || this.conceptosData.length === 0) {
-      return [
-        ['Conc.', 'Descripción', 'Can.'],
-        ['No hay datos de conceptos', 'Sin descripción disponible', '0']
-      ];
+      if (this.root) {
+        return [
+          ['Conc.', 'Descripción', 'Can.', 'P.U.', 'Monto'],
+          ['No hay datos de conceptos', 'Sin descripción disponible', '0', '$0.00', '$0.00']
+        ];
+      } else {
+        return [
+          ['Conc.', 'Descripción', 'Can.'],
+          ['No hay datos de conceptos', 'Sin descripción disponible', '0']
+        ];
+      }
     }
-
     // Agrupar por concepto y sumar cantidades
-    const conceptoMap = new Map<string, { activity: string, description: string, cantidad: number }>();
+    type ConceptoBase = { activity: string, description: string, cantidad: number };
+    type ConceptoExtendido = ConceptoBase & { precioUnitario: number, monto: number };
+
+    let conceptoMapBase = new Map<string, ConceptoBase>();
+    let conceptoMapExtendido = new Map<string, ConceptoExtendido>();
     
     this.conceptosData.forEach(conceptos => {
+      // Usar el conceptName procesado si está disponible, sino buscar en el catálogo
+      let activity: string;
+      let description: string;
+      let precioUnitario = 0;
+      
+      if (conceptos.conceptName) {
+        // Usar el nombre ya procesado desde el componente
+        activity = conceptos.conceptName;
+        description = conceptos.conceptName;
+      } else {
+        // Fallback al método original si no está procesado
+        const conceptosSeleccionado = this.conceptosCatalog.find(e => e.id === conceptos.idResource);
+        activity = conceptosSeleccionado ? conceptosSeleccionado.activity : 'Sin nombre';
+        description = conceptosSeleccionado ? conceptosSeleccionado.text : 'Sin descripción';
+      }
+
+      // Obtener el precio unitario del catálogo
       const conceptosSeleccionado = this.conceptosCatalog.find(e => e.id === conceptos.idResource);
-      const activity = conceptosSeleccionado ? conceptosSeleccionado.activity : 'Sin nombre';
-      const description = conceptosSeleccionado ? conceptosSeleccionado.text : 'Sin descripción';
+      if (conceptosSeleccionado && conceptosSeleccionado.costMX) {
+        precioUnitario = Number(conceptosSeleccionado.costMX);
+      }
+      
       const cantidad = conceptos.quantity ?? 0;
+      const monto = precioUnitario * cantidad;
       
       const key = `${conceptos.idResource}-${activity}`;
-      
-      if (conceptoMap.has(key)) {
-        const existing = conceptoMap.get(key)!;
-        conceptoMap.set(key, {
-          activity: existing.activity,
-          description: existing.description,
-          cantidad: existing.cantidad + cantidad
-        });
+      if (this.root) {
+        if (conceptoMapExtendido.has(key)) {
+          const existing = conceptoMapExtendido.get(key)!;
+          conceptoMapExtendido.set(key, {
+            activity: existing.activity,
+            description: existing.description,
+            cantidad: existing.cantidad + cantidad,
+            precioUnitario: existing.precioUnitario,
+            monto: existing.monto + monto
+          });
+        } else {
+          conceptoMapExtendido.set(key, { activity, description, cantidad, precioUnitario, monto });
+        }
       } else {
-        conceptoMap.set(key, { activity, description, cantidad });
+        if (conceptoMapBase.has(key)) {
+          const existing = conceptoMapBase.get(key)!;
+          conceptoMapBase.set(key, {
+            activity: existing.activity,
+            description: existing.description,
+            cantidad: existing.cantidad + cantidad,
+          });
+        } else {
+          conceptoMapBase.set(key, { activity, description, cantidad });
+        }
       }
     });
     
     // Convertir a array para la tabla
-    const tableData = [['Conc.', 'Descripción', 'Can.']];
-    conceptoMap.forEach(data => {
-      tableData.push([data.activity, data.description, data.cantidad.toString()]);
-    });
+    let tableData: string[][] = [];
+
+    if (this.root) {
+      tableData = [['Conc.', 'Descripción', 'Can.', 'P.U.', 'Monto']];
+      conceptoMapExtendido.forEach(data => {
+        const precioUnitarioFormatted = `$${data.precioUnitario.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
+        const montoFormatted = `$${data.monto.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
+        tableData.push([data.activity, data.description, data.cantidad.toString(), precioUnitarioFormatted, montoFormatted]);
+      });
+    } else {
+      tableData = [['Conc.', 'Descripción', 'Can.']];
+      conceptoMapBase.forEach(data => {
+        tableData.push([data.activity, data.description, data.cantidad.toString()]);
+      });
+    }
 
     return tableData;
-  }
+  } 
 
   private generateDocDefinition() {
     this.limpiarPdfMakeKeys(this.imagenes);
@@ -928,7 +985,7 @@ private processMaterialesData(): string[][] {
               width: '100%',
               table: {
                 headerRows: 1,
-                widths: ['auto', '*', 'auto'],
+                widths: this.root ? ['auto', '*', 'auto', 'auto', 'auto'] : ['auto', '*', 'auto'],
                 body: this.processConceptosData()
               },
               layout: {

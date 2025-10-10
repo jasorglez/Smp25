@@ -53,7 +53,7 @@ export class TrackingService {
     return this.idUser ;
   }
 
-  private getAuthToken(): string {
+  public getAuthToken(): string {
     return localStorage.getItem('token') || '';
   }
 

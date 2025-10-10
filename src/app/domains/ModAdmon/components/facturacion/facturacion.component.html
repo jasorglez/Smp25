@@ -1,0 +1,237 @@
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h5><i class="bi bi-receipt"></i> Facturación Electrónica</h5>
+        </div>
+        <div class="card-body">
+
+          <!-- Primera Card: Comprobante -->
+          <div class="card mb-4">
+            <div class="card-header">
+              <h6><i class="bi bi-file-earmark-text"></i> Comprobante</h6>
+            </div>
+            <div class="card-body">
+              <form class="row g-3">
+                <div class="col-md-4">
+                  <label for="regimenFiscal" class="form-label">Régimen Fiscal</label>
+                  <ng-select id="regimenFiscal" [(ngModel)]="comprobante.regimenFiscal" name="regimenFiscal"
+                             [items]="regimenesFiscales" bindLabel="display" bindValue="id"
+                             placeholder="Seleccionar..." appendTo="body">
+                  </ng-select>
+                </div>
+                <div class="col-md-4">
+                  <label for="codigoPostal" class="form-label">Código Postal Empresa</label>
+                  <input type="text" class="form-control" id="codigoPostal" [(ngModel)]="comprobante.codigoPostal" name="codigoPostal" maxlength="5">
+                </div>
+                <div class="col-md-4">
+                  <label for="fechaEmision" class="form-label">Fecha de Emisión</label>
+                  <input type="datetime-local" class="form-control" id="fechaEmision" [(ngModel)]="comprobante.fechaEmision" name="fechaEmision">
+                </div>
+                <div class="col-md-4">
+                  <label for="tipoFactura" class="form-label">Tipo de Factura</label>
+                  <ng-select id="tipoFactura" [(ngModel)]="comprobante.tipoFactura" name="tipoFactura"
+                             [items]="tiposComprobante" bindLabel="display" bindValue="tipoDeComprobante"
+                             placeholder="Seleccionar..." appendTo="body">
+                  </ng-select>
+                </div>
+                <div class="col-md-4">
+                  <label for="formaPago" class="form-label">Forma de Pago</label>
+                  <ng-select id="formaPago" [(ngModel)]="comprobante.formaPago" name="formaPago"
+                             [items]="formasPago" bindLabel="display" bindValue="formaPagoValue"
+                             placeholder="Seleccionar..." appendTo="body">
+                  </ng-select>
+                </div>
+                <div class="col-md-4">
+                  <label for="metodoPago" class="form-label">Método de Pago</label>
+                  <ng-select id="metodoPago" [(ngModel)]="comprobante.metodoPago" name="metodoPago"
+                             [items]="metodosPago" bindLabel="display" bindValue="metodoPagoValue"
+                             placeholder="Seleccionar..." appendTo="body">
+                  </ng-select>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Segunda Card: Datos Generales -->
+          <div class="card mb-4">
+            <div class="card-header">
+              <h6><i class="bi bi-info-circle"></i> Datos Generales</h6>
+            </div>
+            <div class="card-body">
+              <form class="row g-3">
+                <div class="col-md-6">
+                  <label for="moneda" class="form-label">Moneda</label>
+                  <ng-select id="moneda" [(ngModel)]="datosGenerales.moneda" name="moneda"
+                             [items]="monedas" bindLabel="display" bindValue="cMoneda"
+                             placeholder="Seleccionar..." appendTo="body">
+                  </ng-select>
+                </div>
+                <div class="col-md-6">
+                  <label for="tipoCambio" class="form-label">Tipo de Cambio</label>
+                  <input type="number" class="form-control" id="tipoCambio" [(ngModel)]="datosGenerales.tipoCambio" name="tipoCambio" step="0.01">
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Tercera Card: Datos del Cliente -->
+          <div class="card mb-4">
+            <div class="card-header">
+              <h6><i class="bi bi-person"></i> Datos del Cliente</h6>
+            </div>
+            <div class="card-body">
+              <form class="row g-3">
+                <div class="col-md-6">
+                  <label for="cliente" class="form-label">Cliente</label>
+                  <ng-select id="cliente" [(ngModel)]="cliente.clienteSeleccionado" name="cliente"
+                             [items]="clientes" bindLabel="display" bindValue="id"
+                             placeholder="Seleccionar cliente..." appendTo="body"
+                             (change)="onClienteSeleccionado()">
+                  </ng-select>
+                </div>
+                <div class="col-md-6">
+                  <label for="nombreRazonSocial" class="form-label">Nombre o Razón Social</label>
+                  <input type="text" class="form-control" id="nombreRazonSocial" [(ngModel)]="cliente.nombreRazonSocial" name="nombreRazonSocial">
+                </div>
+                <div class="col-md-6">
+                  <label for="codigoPostalCliente" class="form-label">Código Postal</label>
+                  <input type="text" class="form-control" id="codigoPostalCliente" [(ngModel)]="cliente.codigoPostal" name="codigoPostalCliente" maxlength="5">
+                </div>
+                <div class="col-md-6">
+                  <label for="regimenFiscalCliente" class="form-label">Régimen Fiscal</label>
+                  <ng-select id="regimenFiscalCliente" [(ngModel)]="cliente.regimenFiscal" name="regimenFiscalCliente"
+                             [items]="regimenesFiscales" bindLabel="display" bindValue="id"
+                             placeholder="Seleccionar régimen fiscal..." appendTo="body">
+                  </ng-select>
+                </div>
+                <div class="col-md-12">
+                  <label for="usoFactura" class="form-label">Uso de la Factura</label>
+                  <ng-select id="usoFactura" [(ngModel)]="cliente.usoFactura" name="usoFactura"
+                             [items]="usosFactura" bindLabel="display" bindValue="cUsoCFDI"
+                             placeholder="Seleccionar uso de factura..." appendTo="body">
+                  </ng-select>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Cuarta Card: Productos y Servicios -->
+          <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h6 class="mb-0"><i class="bi bi-box-seam"></i> Productos y Servicios</h6>
+              <button type="button" class="btn btn-primary btn-sm ms-auto" (click)="agregarProducto()">
+                <i class="bi bi-plus-lg"></i> Agregar
+              </button>
+            </div>
+            <div class="card-body p-3">
+              <div *ngFor="let producto of productos; let i = index" class="border rounded p-3 mb-3 bg-light">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label [for]="'descripcionDetallada_' + i" class="form-label">Descripción Detallada</label>
+                    <input type="text" class="form-control form-control-sm" [(ngModel)]="producto.descripcionDetallada"
+                           [name]="'descripcionDetallada_' + i" [id]="'descripcionDetallada_' + i">
+                  </div>
+
+                  <div class="col-md-6">
+                    <label [for]="'productoServicio_' + i" class="form-label">Producto o Servicio</label>
+                    <div class="input-group input-group-sm">
+                      <span class="input-group-text" style="cursor: pointer;" title="Buscar producto o servicio">
+                        <i class="bi bi-search"></i>
+                      </span>
+                      <input type="text"
+                             class="form-control form-control-sm"
+                             [(ngModel)]="producto.productoServicio"
+                             [name]="'productoServicio_' + i"
+                             [id]="'productoServicio_' + i"
+                             placeholder="Producto o servicio"
+                             [title]="'Escribe las tres primeras letras de la descripcion o la clave completa conforme al catalogo. Podras Consulta la clave en el icono de la busqueda'">
+                    </div>
+                  </div>
+
+                  <div class="col-md-3">
+                    <label [for]="'unidadMedida_' + i" class="form-label">Unidad de Medida</label>
+                    <input type="text" class="form-control form-control-sm" [(ngModel)]="producto.unidadMedida"
+                           [name]="'unidadMedida_' + i" [id]="'unidadMedida_' + i">
+                  </div>
+
+                  <div class="col-md-3">
+                    <label [for]="'cantidad_' + i" class="form-label">Cantidad</label>
+                    <input type="number" class="form-control form-control-sm" [(ngModel)]="producto.cantidad"
+                           [name]="'cantidad_' + i" [id]="'cantidad_' + i" step="0.001" (input)="calcularImporte(i)">
+                  </div>
+
+                  <div class="col-md-3">
+                    <label [for]="'valorUnitario_' + i" class="form-label">Valor Unitario</label>
+                    <input type="number" class="form-control form-control-sm" [(ngModel)]="producto.valorUnitario"
+                           [name]="'valorUnitario_' + i" [id]="'valorUnitario_' + i" step="0.01" (input)="calcularImporte(i)">
+                  </div>
+
+                  <div class="col-md-3">
+                    <label [for]="'importe_' + i" class="form-label">Importe</label>
+                    <input type="number" class="form-control form-control-sm" [(ngModel)]="producto.importe"
+                           [name]="'importe_' + i" [id]="'importe_' + i" readonly>
+                  </div>
+
+                  <div class="col-md-6">
+                    <label class="form-label">Objeto de Impuesto</label>
+                    <ng-select [(ngModel)]="producto.objetoImpuesto" [name]="'objetoImpuesto_' + i"
+                               [items]="objetosImpuesto" bindLabel="display" bindValue="id"
+                               placeholder="Seleccionar..." [searchable]="true" [clearable]="false">
+                    </ng-select>
+                  </div>
+
+                  <div class="col-md-5">
+                    <label [for]="'numeroIdentificacion_' + i" class="form-label">Número de Identificación</label>
+                    <input type="text" class="form-control form-control-sm" [(ngModel)]="producto.numeroIdentificacion"
+                           [name]="'numeroIdentificacion_' + i" [id]="'numeroIdentificacion_' + i">
+                  </div>
+
+                  <div class="col-md-1 d-flex align-items-end">
+                    <button type="button" class="btn btn-danger btn-sm w-100" (click)="eliminarProducto(i)" title="Eliminar producto">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row mt-4">
+                <div class="col-12">
+                  <div class="d-flex justify-content-end align-items-center">
+                    <h5 class="mb-0"><strong>Total:</strong> <span class="text-primary">{{ calcularTotal() | number:'1.2-2' }}</span></h5>
+                  </div>
+       
+                  <!-- Quinta Card: Timbrado -->
+                  <div class="card mb-4">
+                    <div class="card-header">
+                      <h6><i class="bi bi-stamp"></i> Timbrado de Factura</h6>
+                    </div>
+                    <div class="card-body">
+                      <div class="row g-3">
+                        <div class="col-12">
+                          <label for="invoiceXml" class="form-label">XML de la Factura</label>
+                          <textarea class="form-control" id="invoiceXml" rows="10" [(ngModel)]="invoiceXml" placeholder="Pegue aquí el XML de la factura a timbrar..."></textarea>
+                        </div>
+                        <div class="col-12">
+                          <button type="button" class="btn btn-success" (click)="stampInvoice()">
+                            <i class="bi bi-stamp-fill"></i> Timbrar Factura
+                          </button>
+                        </div>
+                        <div class="col-12" *ngIf="stampedXml">
+                          <label for="stampedXml" class="form-label">XML Timbrado</label>
+                          <textarea class="form-control" id="stampedXml" rows="10" [(ngModel)]="stampedXml" readonly></textarea>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+       
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

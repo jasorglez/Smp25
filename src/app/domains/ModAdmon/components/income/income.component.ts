@@ -16,15 +16,17 @@ import { SignalsService } from 'app/services/signals.service';
 import { NgSelectComponent, NgSelectModule } from '@ng-select/ng-select';
 import { AdditionalInfoComponent } from "./additional-info/additional-info.component";
 import { ConceptsincomeComponent } from './conceptsincome/conceptsincome.component';
+import { ElectronicInvoiceComponent } from './electronic-invoice/electronic-invoice.component';
 import { CustomersService } from 'app/services/customers.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { FacturacionService } from 'app/services/facturacion.service';
 
 @Component({
   selector: 'app-income',
   standalone: true,
-  imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule, 
-             FormsModule, AdditionalInfoComponent, ConceptsincomeComponent],
+  imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
+             FormsModule, AdditionalInfoComponent, ConceptsincomeComponent, ElectronicInvoiceComponent],
   templateUrl: './income.component.html',
   styleUrl: './income.component.scss'
 })
@@ -37,11 +39,12 @@ export class IncomeComponent {
   private usersService = inject(UsersService);
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
-  private BranchsService = inject(BranchsService)
-  
+  private BranchsService = inject(BranchsService);
+  private facturacionService = inject(FacturacionService);
 
-  ngOnInit() {       
-   
+
+  ngOnInit() {
+
   }
 
   constructor() {
@@ -60,10 +63,11 @@ export class IncomeComponent {
       await this.getBillingManagementInfo();
       await this.getBankAccounts();
       await this.getIncomes();
-    
+
       await this.getCustomers();   // Obtener clientes después de sucursales
       await this.loadAuthorizers();
       await this.getCurrentUser();
+      await this.loadSATCatalogs();  // Cargar catálogos SAT
 
     }, { allowSignalWrites: true });
     effect(() => {
@@ -93,6 +97,10 @@ export class IncomeComponent {
   idBranch: number;
   bankAccounts: any[] = [];
   prefixAndConsecutive: any[] = [];
+
+  // Catálogos SAT para facturación electrónica
+  formasPago: any[] = [];
+  metodosPago: any[] = [];
 
   private _idAccount: number; // Variable de respaldo para el setter
 
@@ -172,7 +180,7 @@ export class IncomeComponent {
   };
 
   public rowSelection: 'single' | 'multiple' = 'single';
-  public paginationPageSize = 15;
+  public paginationPageSize = 15;t
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
   components = {
     multiLineEditor: MultiLineEditorComponent,
@@ -202,15 +210,25 @@ export class IncomeComponent {
 
 
   async getCustomers() {
-    this.customersService.getCustomersByCompany(this.root, 'CUSTOMERS').subscribe(
+    // Obtener solo clientes configurados para facturación electrónica
+    this.customersService.getCustomersBilling(this.root).subscribe(
       (data: any) => {
-        this.customers = data;
+        // Mapear para usar idCustomer en lugar de id
+        this.customers = data.map((item: any) => ({
+          id: item.idCustomer,
+          name: item.nombreFiscal,
+          rfc: item.rfc,
+          cp: item.codigoPostal,
+          fiscalRegime: item.regimenFiscal,
+          usoCfdi: item.usoCfdi,
+          email: item.correoFacturacion
+        }));
       },
       error => {
         console.error(error);
       }
     )
-      this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Clientes`, 'Menu Administracion Ingresos',
+      this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Clientes Facturación`, 'Menu Administracion Ingresos',
            this.trackingService.getEmail() );
   }
 
@@ -271,10 +289,24 @@ export class IncomeComponent {
     ].join('-');
   }
 
+  // Cargar catálogos SAT para facturación electrónica
+  async loadSATCatalogs() {
+    forkJoin({
+      formasPago: this.facturacionService.getFormaPago2fields(),
+      metodosPago: this.facturacionService.getMetodoPago2fields()
+    }).subscribe({
+      next: (data: any) => {
+        this.formasPago = data.formasPago || [];
+        this.metodosPago = data.metodosPago || [];
+      },
+      error: (err) => console.error('Error cargando catálogos SAT:', err)
+    });
+  }
+
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
     return [
-      { field: 'numberDocument', headerName: '# Documento', editable: false, filter: true, width: 130 },
+      { field: 'numberDocument', headerName: '# Factura', editable: false, filter: true, width: 130 },
       {
         field: 'description', headerName: 'Descripción', editable: true, width: 315, filter: true,
         cellEditor: 'agPopupTextCellEditor',
@@ -365,6 +397,56 @@ export class IncomeComponent {
       },
 
       {
+        field: 'formaPago',
+        headerName: 'Forma Pago',
+        editable: true,
+        width: 250,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.formasPago.map(fp => fp.formaPagoValue)
+        },
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const found = this.formasPago.find(fp => fp.formaPagoValue === params.value);
+          return found ? `${found.formaPagoValue} - ${found.descripcion}` : params.value;
+        }
+      },
+
+      {
+        field: 'metodoPago',
+        headerName: 'Método Pago',
+        editable: true,
+        width: 280,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.metodosPago.map(mp => mp.metodoPagoValue)
+        },
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const found = this.metodosPago.find(mp => mp.metodoPagoValue === params.value);
+          return found ? `${found.metodoPagoValue} - ${found.descripcion}` : params.value;
+        }
+      },
+
+      {
+        field: 'uuid',
+        headerName: 'UUID',
+        editable: false,
+        width: 150,
+        filter: true,
+        valueFormatter: (params) => {
+          if (!params.value || params.value === 'NA') return 'Sin Timbrar';
+          return params.value.substring(0, 15) + '...';
+        },
+        cellStyle: (params) => {
+          if (params.value && params.value !== 'NA') {
+            return { backgroundColor: '#d4edda', color: '#155724' }; // Verde si está timbrado
+          }
+          return { backgroundColor: '#fff3cd', color: '#856404' }; // Amarillo si no está timbrado
+        }
+      },
+
+      {
         field: 'status',
         headerName: 'Estatus',
         editable: true,
@@ -379,7 +461,7 @@ export class IncomeComponent {
           ]
         }
       },
-  
+
       {
         field: 'idExpend',
         headerName: 'Autoriza',
@@ -458,6 +540,9 @@ export class IncomeComponent {
       subtotal: 0,
       tax: 0,
       total: 0,
+      // Campos de facturación electrónica
+      formaPago: '01', // 01 = Efectivo (valor por defecto)
+      metodoPago: 'PUE', // PUE = Pago en una sola exhibición
       createdBy: this.currentUser || 'Usuario temporal',
       createdAt: new Date().toISOString(),
       modifiedBy: null,
@@ -505,27 +590,30 @@ export class IncomeComponent {
       return;
     }
 
-    // Validar que el array tenga elementos
-    if (!this.prefixAndConsecutive?.[0]) {
-      alerts.basicAlert(
-        'Error de configuración',
-        'La configuración de prefijo/consecutivo no está cargada correctamente',
-        'error'
-      );
-      return;
-    }
-
     const newRows = this.incomes.filter((row) => row.__isNew);
     const modifiedRows = this.incomes.filter(
       (row) => row.__modified && !row.__isNew
     );
 
-    // Generar números de documento para nuevas filas
-    let currentConsecutive = this.prefixAndConsecutive[0].consecutive;
-    newRows.forEach(row => {
-      currentConsecutive++;
-      row.numberDocument = `${this.prefixAndConsecutive[0].prefix}${currentConsecutive.toString().padStart(4, '0')}`;
-    });
+    // Solo validar configuración si hay nuevas filas que necesitan número de documento
+    let currentConsecutive = 0;
+    if (newRows.length > 0) {
+      if (!this.prefixAndConsecutive?.[0]) {
+        alerts.basicAlert(
+          'Error de configuración',
+          'La configuración de prefijo/consecutivo no está cargada correctamente',
+          'error'
+        );
+        return;
+      }
+
+      // Generar números de documento para nuevas filas
+      currentConsecutive = this.prefixAndConsecutive[0].consecutive;
+      newRows.forEach(row => {
+        currentConsecutive++;
+        row.numberDocument = `${this.prefixAndConsecutive[0].prefix}${currentConsecutive.toString().padStart(4, '0')}`;
+      });
+    }
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
@@ -539,26 +627,34 @@ export class IncomeComponent {
       return this.incomesAndExpensesService.updateIncomesAndExpenses(row.id, cleanedData);
     });
 
-    // Crear objeto sin array
-    const updatedBillingInfo = {
-      ...this.prefixAndConsecutive[0],
-      consecutive: currentConsecutive
-    };
-
-    const updateConsecutiveObs = this.administrationService.updateBillingManagementInfo(
-      this.root,
-      updatedBillingInfo // Enviar objeto directamente
-    ).pipe(
-      tap(response => {
-        // Actualizar el array local con el nuevo objeto
-        this.prefixAndConsecutive = [updatedBillingInfo];
-      })
-    );
-
     try {
-      const responses = await lastValueFrom(
-        concat(...addObservables, ...updateObservables, updateConsecutiveObs).pipe(toArray())
-      );
+      // Solo actualizar consecutivo si hay nuevas filas
+      if (newRows.length > 0) {
+        // Crear objeto sin array
+        const updatedBillingInfo = {
+          ...this.prefixAndConsecutive[0],
+          consecutive: currentConsecutive
+        };
+
+        const updateConsecutiveObs = this.administrationService.updateBillingManagement(
+          this.root,
+          updatedBillingInfo
+        ).pipe(
+          tap(response => {
+            // Actualizar el array local con el nuevo objeto
+            this.prefixAndConsecutive = [updatedBillingInfo];
+          })
+        );
+
+        const responses = await lastValueFrom(
+          concat(...addObservables, ...updateObservables, updateConsecutiveObs).pipe(toArray())
+        );
+      } else {
+        // Si solo hay modificaciones, no actualizar consecutivo
+        const responses = await lastValueFrom(
+          concat(...addObservables, ...updateObservables).pipe(toArray())
+        );
+      }
 
       alerts.basicAlert(
         'Datos actualizados',

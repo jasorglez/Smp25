@@ -286,6 +286,7 @@ export class MasterPayrollComponent implements OnInit {
         headerName: 'Sucursal',
         field: 'idBranch',
         headerClass: 'required-header',
+        pinned: 'left',
         hide:
           this.authService.hasDetailedPermission(
             'principal',
@@ -335,6 +336,7 @@ export class MasterPayrollComponent implements OnInit {
         field: 'idBlockPeriod',
         headerName: 'Bloque del Periodo',
         headerClass: 'required-header',
+        pinned: 'left',
         editable: true,
         suppressMovable: true,
         width: 120,
@@ -522,6 +524,7 @@ export class MasterPayrollComponent implements OnInit {
         field: 'totalBaseWorkingHours',
         headerName: 'Total Horas Trabajadas',
         width: 170,
+        cellStyle: { backgroundColor: '#d4edda' },
         valueFormatter: (params) => {
         const value = params.value;
         if (typeof value !== 'number' || isNaN(value)) return '';
@@ -566,6 +569,22 @@ export class MasterPayrollComponent implements OnInit {
       
         return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
         },
+      },
+      { 
+        field: 'totalAbsence',
+        headerName: 'Total de faltas',
+        width: 140,
+      },
+       { 
+        field: 'totalDelays',
+        headerName: 'Total de pendientes',
+        width: 140,
+        cellStyle: (params) => {
+          if (params.value !== 0 && params.value != null) {
+            return { backgroundColor: '#fbcccc' }; // Fondo rojo
+          }
+          return null; // Sin estilos
+        }
       },
        { 
         field: 'totalBaseSalary',
@@ -919,6 +938,7 @@ formatDate(dateStr: string): string {
 
 
   async saveChanges() {
+    let hasErrors = false; // 🔴 Controla si hubo errores en alguna petición
   const isValid = this.rowData.every(
     (item) => item.startDate && item.endDate && item.idBranch && item.startDate <= item.endDate
   );
@@ -973,14 +993,16 @@ formatDate(dateStr: string): string {
 
   const updateObservables = modifiedRows.map((row) => {
     return this.administrationService.updateNormalPayroll(row.id).pipe(
-      catchError((error) => {
-        alerts.basicAlert(
-          'Error',
-          error?.error?.message || 'Error al actualizar los datos.',
-          'error'
-        );
-        return EMPTY;
-      })
+    catchError((error) => {
+      hasErrors = true;
+      const mensajeError = typeof error.error === 'string'
+        ? error.error
+        : error?.error?.message || 'Error al actualizar los datos.';
+
+      alerts.basicAlert('Error', mensajeError, 'error');
+
+      return EMPTY; // Permite que las demás actualizaciones continúen
+    })
     );
   });
 
@@ -988,11 +1010,13 @@ formatDate(dateStr: string): string {
     const responses = await lastValueFrom(
       concat(...addObservables, ...updateObservables).pipe(toArray())
     );
-    alerts.basicAlert(
-      'Datos actualizados',
-      'Se han actualizado los datos correctamente.',
-      'success'
-    );
+     if (!hasErrors) {
+      alerts.basicAlert(
+        'Datos actualizados',
+        'Se han actualizado los datos correctamente.',
+        'success'
+      );
+    }
     this.notSavedChanges = false;
     this.aggregatingRecord = false;
     this.obtenerDatos();
@@ -1231,6 +1255,12 @@ formatDate(dateStr: string): string {
                 'success'
               );
               this.obtenerDatos();
+              this.gridHeight = '80vh'; // Reset to default height
+              this.showPayrollDetailTab = false; // Ocultar la pestaña de detalle
+              if (this.gridApi) {
+                this.gridApi.setFilterModel(null); // Limpiar filtros
+                this.gridApi.onFilterChanged(); // Aplicar cambios
+              }
               this.notSavedChanges = false;
               this.selectedRowData = null;
             });

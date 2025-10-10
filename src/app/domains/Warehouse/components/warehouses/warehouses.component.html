@@ -7,32 +7,41 @@
     <main class="col-12">
       <div class="row">
         <nav class="col-auto d-flex flex-column align-items-start">
+          
           <button type="button" class="btn btn-primary me-1 mb-2" (click)="addRow()">
-            <i class="bi bi-plus-lg" style="font-size: 1.5rem;"></i>
+            <i class="bi bi-plus-lg" style="font-size: 1rem;"></i>
           </button>
+
           <button type="button" class="btn btn-success position-relative mb-2" (click)="saveChanges()">
-            <i class="bi bi-floppy" style="font-size: 1.5rem;"></i>
+            <i class="bi bi-floppy" style="font-size: 1rem;"></i>
             <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
               *ngIf="notSavedChanges">
               <span class="visually-hidden">Hay cambios sin guardar</span>
             </span>
           </button>
+
           <button type="button" class="btn btn-warning mb-2" (click)="revert()">
-            <i class="bi bi-arrow-clockwise" style="font-size: 1.5rem;"></i>
+            <i class="bi bi-arrow-clockwise" style="font-size: 1rem;"></i>
           </button>
-          <button type="button" class="btn btn-danger mb-2" (click)="deleteEntry()">
-            <i class="bi bi-trash" style="font-size: 1.5rem;"></i>
+          <button type="button" class="btn btn-danger mb-2" (click)="Delete()">
+            <i class="bi bi-trash" style="font-size: 1rem;"></i>
           </button>
         </nav>
 
         <section class="col">
           <ag-grid-angular style="width: 100%; height: 500px;" class="ag-theme-quartz small-text-ag-grid" [rowData]="rowData"
-            [columnDefs]="colMaster" (selectionChanged)="onSelectionChanged($event)"
-            (cellValueChanged)="onCellValueChanged($event)" (rowSelected)="onSelectedRow($event)"
-            (gridReady)="onGridReady($event)" rowSelection="single" [pivotPanelShow]="pivotPanelShow"
-            [rowSelection]="rowSelection" [rowGroupPanelShow]="rowGroupPanelShow"
-            [paginationPageSize]="paginationPageSize" [paginationPageSizeSelector]="paginationPageSizeSelector"
-            [pagination]="true" [gridOptions]="gridOptions" [stopEditingWhenCellsLoseFocus]="true">
+             [columnDefs]="colMaster" 
+             (selectionChanged)="onSelectionChanged($event)"
+             (cellValueChanged)="onCellValueChanged($event)" 
+             (rowSelected)="onSelectedRow($event)"
+             (gridReady)="onGridReady($event)" 
+             rowSelection="single" 
+             [pivotPanelShow]="pivotPanelShow"
+             [rowSelection]="rowSelection"             
+             [paginationPageSize]="paginationPageSize" 
+             [paginationPageSizeSelector]="paginationPageSizeSelector"
+             [pagination]="true" [gridOptions]="gridOptions" 
+             [stopEditingWhenCellsLoseFocus]="true">
           </ag-grid-angular>
         </section>
       </div>

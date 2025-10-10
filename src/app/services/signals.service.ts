@@ -56,7 +56,7 @@ getMasterUpdateTrigger() {
 
   private emailChoose           = signal<string | null>(null);
 
-  private rootChoose            = signal<string | null>(null);
+  private rootChoose            = signal<boolean>(false);
   
   private catalogSelected       = signal<string | null>(null);
 
@@ -70,8 +70,8 @@ getMasterUpdateTrigger() {
     this.emailChoose.set(id);
   }
 
-  setrootChoose(id: string) {
-    this.catalogSelected.set(id);
+  setrootChoose(id: boolean) {
+    this.rootChoose.set(id);
   }
 
   setCatalogSelected(id: string) {
@@ -743,6 +743,7 @@ getMasterUpdateTrigger() {
   private initSaving = signal<boolean>(false);
   private closedPayroll = signal<boolean>(false);
   private closedReport = signal<boolean>(false);
+  private refreshClock = signal<boolean>(false);
 
   setIdCatalogFamily(id: number){
     this.idCatalogFamily.set(id);
@@ -800,5 +801,12 @@ getMasterUpdateTrigger() {
   }
   getClosedReport() {
     return this.closedReport;
+  }
+
+  setRefreshClock(value: boolean) {
+    this.refreshClock.set(value);
+  }
+  getRefreshClock() {
+    return this.refreshClock;
   }
 }

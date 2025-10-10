@@ -15,7 +15,7 @@
 .modern-header {
   background: linear-gradient(135deg, #6c7ce7 0%, #8b6db8 100%);
   border: none;
-  padding: 1.5rem;
+  padding: 0.8rem;
   color: white;
   position: relative;
   overflow: hidden;
@@ -51,15 +51,15 @@
     color: rgba(255, 255, 255, 0.8);
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
-    padding: 0.75rem 1.25rem;
+    border-radius: 6px;
+    padding: 0.4rem 0.8rem;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     font-weight: 500;
     text-decoration: none;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    min-height: 44px; // Para mejor touch targets
+    gap: 0.35rem;
+    min-height: 32px; // Reducido de 44px a 32px
     backdrop-filter: blur(10px);
     position: relative;
     overflow: hidden;
@@ -77,12 +77,12 @@
     }
 
     i {
-      font-size: 1.1rem;
+      font-size: 0.9rem;
       transition: transform 0.3s ease;
     }
 
     span {
-      font-size: 0.9rem;
+      font-size: 0.75rem;
       white-space: nowrap;
     }
 

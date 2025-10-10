@@ -197,10 +197,11 @@ export class UpdateExcelService {
   );
 }
 
-  processAndDownloadOt(dateStart: string, dateEnd: string): Observable<Blob> {
+  processAndDownloadOt(dateStart: string, dateEnd: string, type: number): Observable<Blob> {
     const dateRange = {
       dateStart: dateStart,
-      dateEnd: dateEnd
+      dateEnd: dateEnd,
+      type: type
     };
 
     return this.http.post(
@@ -220,6 +221,23 @@ export class UpdateExcelService {
 
     return this.http.post(
       `${environment.urlSmp}/UpdateExcel/process-and-download-cuadinter`,
+      dateRange,
+      { 
+        headers: this.trackingService.getHeaders(),
+        responseType: 'blob'
+      }
+    );
+  }
+  processAndDownloadCuadExter(dateStart: string, dateEnd: string, seleccionados: any[]): Observable<Blob> {
+    const dateRange = {
+      dateStart: dateStart,
+      dateEnd: dateEnd,
+      seleccionados: seleccionados.map(String) 
+    };
+    console.log('Datos enviados a processAndDownloadCuadExter:', dateRange);
+
+    return this.http.post(
+      `${environment.urlSmp}/UpdateExcel/process-and-download-cuadexter`,
       dateRange,
       { 
         headers: this.trackingService.getHeaders(),

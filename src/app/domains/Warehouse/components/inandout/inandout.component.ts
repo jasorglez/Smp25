@@ -469,7 +469,7 @@ public gridOptions: any = {
   }
 
   obtenerTiposEntrada() {
-    this.catalogsService.getDataTypes().subscribe(
+    this.catalogsService.getTypesCat('INPUT').subscribe(
       (data: any) => {
         this.tipoEntrada = data;
         console.log(this.tipoEntrada);

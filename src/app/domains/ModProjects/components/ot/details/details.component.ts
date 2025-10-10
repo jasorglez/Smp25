@@ -40,6 +40,7 @@ export interface OtDetails {
   idCompany?: number;
   closed: boolean;
   closedAt?: string;
+  closedApp: boolean;
   active: boolean;
 }
 
@@ -70,6 +71,8 @@ export class DetailsComponent implements OnInit {
   public isLoading: boolean = false;
   public otId: number | null = null;
 
+  datos: OtDetails | null = null;
+
   constructor() {
     this.otForm = this.createForm();
   }
@@ -87,6 +90,7 @@ export class DetailsComponent implements OnInit {
       }
     });
   }
+  
   obternerArea(){
     return this.catalogService.getPhases(this.idcompany).subscribe(
       (data: any )=> {
@@ -95,6 +99,7 @@ export class DetailsComponent implements OnInit {
       },
       (error) => console.error('Error fetching conceptos:', error))
   }
+
   private createForm(): FormGroup {
     return this.fb.group({
       registerDate: [new Date().toISOString().split('T')[0], [Validators.required]],
@@ -121,6 +126,7 @@ export class DetailsComponent implements OnInit {
       observations: ['', [Validators.maxLength(1000)]],
       results: ['', [Validators.maxLength(1000)]],
       area: ['', Validators.required],
+      closedApp: [false],
       closed: [false],
       active: [true]
     });
@@ -143,6 +149,8 @@ export class DetailsComponent implements OnInit {
     this.otService.getOtDetails(id).subscribe({
       next: (data: any) => {
         const otData = data.data || data;
+        console.log('Datos de OT recibidos:', otData);  
+        this.datos = otData;
         
         // Verificar autorización del proyecto
         if (!this.checkProjectAuthorization(otData)) {
@@ -224,6 +232,7 @@ export class DetailsComponent implements OnInit {
       results: actualData.results !== undefined ? actualData.results : '',
       area: actualData.area !==  undefined ? actualData.area : '',
       closed: actualData.closed !== undefined ? actualData.closed : false,
+      closedApp: actualData.closedApp !== undefined ? actualData.closedApp : false,
       active: actualData.active !== undefined ? actualData.active : true
     };
 
@@ -232,6 +241,8 @@ export class DetailsComponent implements OnInit {
   }
 
   async onSubmit() {
+     console.log('Form valid:', this.otForm.valid);
+  console.log('Form errors:', this.getFormErrors());
     if (this.otForm.valid) {
       this.isLoading = true;
       const formData = await this.prepareFormData();
@@ -245,7 +256,20 @@ export class DetailsComponent implements OnInit {
       this.markFormGroupTouched();
       alerts.basicAlert('Formulario incompleto', 'Por favor complete todos los campos requeridos', 'warning');
     }
+    
   }
+
+  // Método helper para debuggear
+getFormErrors() {
+  let formErrors: any = {};
+  Object.keys(this.otForm.controls).forEach(key => {
+    const controlErrors = this.otForm.get(key)?.errors;
+    if (controlErrors) {
+      formErrors[key] = controlErrors;
+    }
+  });
+  return formErrors;
+}
 
   private async prepareFormData(): Promise<OtDetails> {
     const formValue = this.otForm.value;
@@ -300,6 +324,7 @@ export class DetailsComponent implements OnInit {
       area: formValue.area,
       closed: formValue.closed,
       closedAt: closedAt,
+      closedApp: formValue.closedApp,
       active: formValue.active
     } as any;
   }

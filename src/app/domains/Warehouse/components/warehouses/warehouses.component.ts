@@ -308,12 +308,12 @@ export class WarehousesComponent implements CanComponentDeactivate {
     }
   }
 
-  async deleteEntry() {
+  async Delete() {
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert(
-        'Eliminar entrada',
-        'Por favor, seleccione una entrada para eliminar.',
+        'Eliminar Almacen',
+        'Por favor, seleccione Almacen para eliminar.',
         'error'
       );
       return;
@@ -327,8 +327,8 @@ export class WarehousesComponent implements CanComponentDeactivate {
       .pipe(
         catchError((error) => {
           alerts.basicAlert(
-            'Eliminar entrada',
-            'Error al eliminar la entrada.',
+            'Eliminar Almacen',
+            'Error al eliminar Almacen.',
             'error'
           );
           console.error(error);
@@ -337,15 +337,15 @@ export class WarehousesComponent implements CanComponentDeactivate {
       )
       .subscribe(() => {
         alerts.basicAlert(
-          'Eliminar entrada',
-          'Entrada eliminada satisfactoriamente.',
+          'Eliminar Almacen',
+          'Almacen Eliminado satisfactoriamente.',
           'success'
         );
         this.obtenerDatos();
 
         alerts.basicAlert(
-          'Eliminar entrada',
-          'Entrada eliminada satisfactoriamente.',
+          'Eliminar Almacen',
+          'Almacen eliminado satisfactoriamente.',
           'success'
         );
         this.notSavedChanges = false;

@@ -462,14 +462,14 @@ export const routes: Routes = [
             path: 'materials',
             loadComponent: () =>
               import(
-                './domains/ModProjects/components/ot/materials/materials.component'
+                './domains/ModProjects/components/materials/materials.component'
               ).then((c) => c.MaterialsComponent),
           },
           {
             path: 'equipment',
             loadComponent: () =>
               import(
-                './domains/ModProjects/components/ot/equipment/equipment.component'
+                './domains/ModProjects/components/equipment/equipment.component'
               ).then((c) => c.EquipmentComponent),
           },
           {
@@ -552,8 +552,8 @@ export const routes: Routes = [
                 path: 'catastrales',
                 loadComponent: () =>
                   import(
-                    './domains/ModProjects/components/ot/catastrales/catastrales.component'
-                  ).then((c) => c.CatastralesComponent),
+                    './domains/ModProjects/components/ot/OtManuals/historicoOT.component'
+                  ).then((c) => c.HistoricoOTComponent),
               },
               {
                 path: 'generales',
@@ -562,34 +562,22 @@ export const routes: Routes = [
                     './domains/ModProjects/components/ot/generales/generales.component'
                   ).then((g) => g.GeneralesComponent),
               },
-              {
-                path: 'conexion',
-                loadComponent: () =>
-                  import(
-                    './domains/ModProjects/components/ot/conexion/conexion.component'
-                  ).then((c) => c.ConexionComponent),
-              },
+              
               {
                 path: 'inspeccion',
                 loadComponent: () =>
                   import(
-                    './domains/ModProjects/components/ot/inspeccion/inspeccion.component'
+                    './domains/ModProjects/components/ot/totalDailyreport/inspeccion.component'
                   ).then((i) => i.InspeccionComponent),
               },
               {
                 path: 'unidad',
                 loadComponent: () =>
                   import(
-                    './domains/ModProjects/components/ot/unidad/unidad.component'
+                    './domains/ModProjects/components/ot/Graficas/unidad.component'
                   ).then((u) => u.UnidadComponent),
               },
-              {
-                path: 'servicio',
-                loadComponent: () =>
-                  import(
-                    './domains/ModProjects/components/ot/servicio/servicio.component'
-                  ).then((s) => s.ServicioComponent),
-              },
+             
               {
                 path: 'details',
                 loadComponent: () =>
@@ -962,6 +950,105 @@ export const routes: Routes = [
 
             ],
           },
+              {
+                path: 'page04',
+                loadComponent: () =>
+                  import('./domains/ModAdmon/pages/pages04/pages04.component').then(
+                    (p) => p.Pages04Component),
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Pestaña Facturacion Electronica',
+                    category: 'Administration'
+                  }
+                },
+                children: [
+                  { path: '', redirectTo: 'facturacion', pathMatch: 'full' },
+                  ...SharedModule.getRoutes(),
+   
+                  {
+                    path: 'facturacion',
+                    loadComponent: () =>
+                      import(
+                        './domains/ModAdmon/components/facturacion/facturacion.component'
+                      ).then((f) => f.FacturacionComponent),
+                    canActivate: [TrackingGuard],
+                    data: {
+                      tracking: {
+                        logMessage: 'Click en Pestaña Facturacion',
+                        category: 'Administration'
+                      }
+                    },
+                  },
+   
+                  {
+                    path: 'catalogos-sat',
+                    loadComponent: () =>
+                      import(
+                        './domains/ModAdmon/components/catalogos-sat/catalogos-sat.component'
+                      ).then((c) => c.CatalogosSatComponent),
+                    children: [
+                      {
+                        path: 'clave-unidad',
+                        loadComponent: () =>
+                          import(
+                            './domains/ModAdmon/components/catalogos-sat/components/clave-unidad/clave-unidad.component'
+                          ).then((c) => c.ClaveUnidadComponent),
+                      },
+                      {
+                        path: 'forma-pago',
+                        loadComponent: () =>
+                          import(
+                            './domains/ModAdmon/components/catalogos-sat/components/forma-pago/forma-pago.component'
+                          ).then((f) => f.FormaPagoComponent),
+                      },
+                      {
+                        path: 'metodo-pago',
+                        loadComponent: () =>
+                          import(
+                            './domains/ModAdmon/components/catalogos-sat/components/metodo-pago/metodo-pago.component'
+                          ).then((m) => m.MetodoPagoComponent),
+                      },
+                      {
+                        path: 'moneda',
+                        loadComponent: () =>
+                          import(
+                            './domains/ModAdmon/components/catalogos-sat/components/moneda/moneda.component'
+                          ).then((m) => m.MonedaComponent),
+                      },
+                      {
+                        path: 'tipo-comprobante',
+                        loadComponent: () =>
+                          import(
+                            './domains/ModAdmon/components/catalogos-sat/components/tipo-comprobante/tipo-comprobante.component'
+                          ).then((t) => t.TipoComprobanteComponent),
+                      },
+                      {
+                        path: 'uso-cfdi',
+                        loadComponent: () =>
+                          import(
+                            './domains/ModAdmon/components/catalogos-sat/components/uso-cfdi/uso-cfdi.component'
+                          ).then((u) => u.UsoCfdiComponent),
+                      },
+                      {
+                        path: 'productos-servicios',
+                        loadComponent: () =>
+                          import(
+                            './domains/ModAdmon/components/catalogos-sat/components/productos-servicios/productos-servicios.component'
+                          ).then((p) => p.ProductosServiciosComponent),
+                      },
+                      {
+                        path: '',
+                        redirectTo: 'clave-unidad',
+                        pathMatch: 'full'
+                      }
+                    ],
+                    canDeactivate: [UnsavedChangesGuard],
+                  },
+   
+                ],
+              },
+
 
         ],
       },

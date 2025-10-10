@@ -39,6 +39,8 @@ import { environment } from '@env/environment';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { TrackingService } from 'app/services/tracking.service';
+import { FacturacionService } from 'app/services/facturacion.service';
+import { AdministrationService } from 'app/services/administration.service';
 
 @Component({
   selector: 'app-customers',
@@ -54,8 +56,7 @@ import { TrackingService } from 'app/services/tracking.service';
   styleUrls: ['./customers.component.scss'],
 })
 export class CustomersComponent implements CanComponentDeactivate {
-  //  private administrationService = inject(AdministrationService);
-   private customerService = inject(CustomersService);
+  private customerService = inject(CustomersService);
    private modalServiceTable = inject(ModalService);
    private signalsService = inject(SignalsService);
    private modalService = inject(NgbModal);
@@ -65,6 +66,8 @@ export class CustomersComponent implements CanComponentDeactivate {
    private authService = inject(AuthService);
    private catalogsService = inject(CatalogsService);
    private trackingService = inject(TrackingService);
+   private facturacionService = inject(FacturacionService);
+   private administrationService = inject(AdministrationService);
 
   private http = inject(HttpClient);
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
@@ -74,12 +77,14 @@ export class CustomersComponent implements CanComponentDeactivate {
     this.signalsService.deleteClientData();
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
     await this.getTypecop();
+    this.loadFiscalCatalogs(); // Cargar catálogos SAT
+    this.loadCustomersBilling(); // Cargar clientes habilitados para facturación
     this.route.data.subscribe((data) => {
       this.type = data['type']; // 'CUSTOMERS' o 'PROVIDERS'
       this.obtenerDatos(); // Llamar a la función para cargar datos
       this.getStates(); // Llamar a la función para obtener los estados
       this.obtenerBranchs();
-      
+
     });
   }
 
@@ -96,8 +101,8 @@ export class CustomersComponent implements CanComponentDeactivate {
       this.obtenerDatos();
       this.obtenerBranchs();
       this.getTypecop();
-      this.signalsService.deleteClientData();      
-    });
+      this.signalsService.deleteClientData();
+    }, { allowSignalWrites: true });
 
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
@@ -132,7 +137,12 @@ export class CustomersComponent implements CanComponentDeactivate {
   branchs: any[] = [];
   Typecop: any[] = [];
   contactoCatalog: any[] = [];
-  
+
+  // Catálogos SAT para facturación electrónica
+  fiscalRegimes: any[] = [];
+  usosFactura: any[] = [];
+  customersBilling: any[] = []; // Clientes habilitados para facturación
+
   // Agregar esta nueva variable para almacenar el ID de la última fila editada
   private lastEditedRowId: number | string | null = null;
 
@@ -392,6 +402,22 @@ export class CustomersComponent implements CanComponentDeactivate {
         },
       },
       {
+        field: 'rfc',
+        headerName: 'RFC',
+        editable: true,
+        filter: true,
+        width: 100,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
+        },
+        valueSetter: (params) => {
+          params.data[params.colDef.field] = params.newValue.toUpperCase();
+          return true;
+        }
+      },
+      {
         field: 'address',
         headerName: 'Direccion',
         editable: true,
@@ -603,7 +629,64 @@ export class CustomersComponent implements CanComponentDeactivate {
             return false;
           }
         },
-      },{
+      },
+
+      // ==================== COLUMNAS PARA FACTURACIÓN ELECTRÓNICA ====================
+      {
+        field: 'fiscalRegime',
+        headerName: 'Régimen Fiscal',
+        width: 180,
+        editable: true,
+        hide: this.type != 'CUSTOMERS',
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.fiscalRegimes.map(fr => fr.id)
+        },
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const found = this.fiscalRegimes.find(fr => fr.id === params.value);
+          return found ? `${found.id} - ${found.description}` : params.value;
+        }
+      },
+      {
+        field: 'usoCfdi',
+        headerName: 'Uso CFDI',
+        width: 200,
+        editable: true,
+        hide: this.type != 'CUSTOMERS',
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.usosFactura.map(uf => uf.cUsoCFDI)
+        },
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const found = this.usosFactura.find(uf => uf.cUsoCFDI === params.value);
+          return found ? `${found.cUsoCFDI} - ${found.descripcion}` : params.value;
+        }
+      },
+      {
+        field: 'enabledForBilling',
+        headerName: 'Facturación Electrónica',
+        width: 180,
+        editable: true,
+        hide: this.type != 'CUSTOMERS',
+        cellRenderer: (params: ICellRendererParams) => {
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.checked = params.value || false;
+          checkbox.disabled = !params.data.__isNew && params.data.id > 0; // Editable solo al crear o después via evento
+          checkbox.style.cursor = 'pointer';
+          checkbox.addEventListener('change', async (e) => {
+            const target = e.target as HTMLInputElement;
+            params.data.enabledForBilling = target.checked;
+            await this.toggleBillingEnabled(params.data, target.checked);
+            params.api.refreshCells({ rowNodes: [params.node], force: true });
+          });
+          return checkbox;
+        }
+      },
+
+      {
         field: 'id',
         headerName: 'Id',
         editable: false,
@@ -1039,6 +1122,96 @@ export class CustomersComponent implements CanComponentDeactivate {
       },
       (error) => console.error('Error fetching measures:', error)
     );
+  }
+
+  // ==================== MÉTODOS PARA FACTURACIÓN ELECTRÓNICA ====================
+
+  loadFiscalCatalogs() {
+    // Cargar régimen fiscal
+    this.administrationService.getFiscalRegimes().subscribe({
+      next: (data: any[]) => {
+        this.fiscalRegimes = data;
+      },
+      error: (err) => console.error('Error cargando regímenes fiscales:', err)
+    });
+
+    // Cargar usos CFDI
+    this.facturacionService.getUsoCfdi2fields().subscribe({
+      next: (data: any[]) => {
+        this.usosFactura = data;
+      },
+      error: (err) => console.error('Error cargando usos CFDI:', err)
+    });
+  }
+
+  loadCustomersBilling() {
+    this.customerService.getCustomersBilling(this.idRoot).subscribe({
+      next: (data: any[]) => {
+        this.customersBilling = data;
+        // Marcar en el grid cuáles están habilitados
+        if (this.rowData && Array.isArray(this.rowData)) {
+          this.rowData.forEach((customer: any) => {
+            const isEnabled = this.customersBilling.some(cb => cb.idCustomer === customer.id);
+            customer.enabledForBilling = isEnabled;
+          });
+          if (this.gridApi) {
+            this.gridApi.redrawRows();
+          }
+        }
+      },
+      error: (err) => console.error('Error cargando clientes de facturación:', err)
+    });
+  }
+
+  async toggleBillingEnabled(customer: any, enabled: boolean) {
+    if (!customer.id || customer.__isNew) {
+      // Si es nuevo, solo marcar el flag, se guardará al hacer saveChanges
+      customer.enabledForBilling = enabled;
+      return;
+    }
+
+    if (enabled) {
+      // Habilitar para facturación - INSERT en CustomersBilling
+      const billingData = {
+        idCustomer: customer.id,
+        idRoot: this.idRoot,
+        rfc: customer.rfc || '',
+        nombreFiscal: customer.name || customer.description || '',
+        codigoPostal: customer.cp || '',
+        regimenFiscal: customer.fiscalRegime || '',
+        usoCfdi: customer.usoCfdi || 'G03',
+        correoFacturacion: customer.email || '',
+        active: true
+      };
+
+      this.customerService.addCustomerBilling(billingData).subscribe({
+        next: () => {
+          alerts.basicAlert('Éxito', 'Cliente habilitado para facturación electrónica', 'success');
+          this.loadCustomersBilling();
+        },
+        error: (err) => {
+          console.error(err);
+          alerts.basicAlert('Error', 'No se pudo habilitar el cliente para facturación', 'error');
+          customer.enabledForBilling = false;
+        }
+      });
+    } else {
+      // Deshabilitar - DELETE de CustomersBilling
+      const billingRecord = this.customersBilling.find(cb => cb.idCustomer === customer.id);
+      if (billingRecord) {
+        this.customerService.deleteCustomerBilling(billingRecord.id).subscribe({
+          next: () => {
+            alerts.basicAlert('Éxito', 'Cliente deshabilitado para facturación electrónica', 'success');
+            this.loadCustomersBilling();
+          },
+          error: (err) => {
+            console.error(err);
+            alerts.basicAlert('Error', 'No se pudo deshabilitar el cliente', 'error');
+            customer.enabledForBilling = true;
+          }
+        });
+      }
+    }
   }
 
   // ==================== GUARD ALERT UNSAVED CHANGES ====================

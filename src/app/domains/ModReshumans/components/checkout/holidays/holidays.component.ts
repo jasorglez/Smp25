@@ -154,6 +154,7 @@ export default class HolidaysComponent {
         if (current > fin) {
           forkJoin(allRequests).subscribe({
             next: (responses) => {
+              //alert('Registros completados: ' + responses.length);
               console.log('✅ Registros completados:', responses);
               alerts.basicAlert('Éxito', 'Se procesaron todos los registros.', 'success');
             },
@@ -170,6 +171,10 @@ export default class HolidaysComponent {
 
         this.employeesService.getEmployeeClockByBranch(this.idBranch, nombreDia).subscribe({
           next: (empleados) => {
+            if (empleados.length === 0) {
+              alerts.basicAlert('Información', `No hay empleados para ${nombreDia} (${fechaStr})`, 'info');
+              return;
+            }
             empleados.forEach((item: any) => {
               const horaSalida = this.sumarHoras(item.entry1, item.hours);
 
