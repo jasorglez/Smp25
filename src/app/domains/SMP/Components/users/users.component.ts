@@ -5,7 +5,6 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { UsersService } from 'app/services/users.service';
 import { alerts } from 'app/helpers/alerts';
 import { FormsModule } from '@angular/forms';
-import { UsersProfileComponent } from "./users-profile.component";
 import { catchError, concat, EMPTY, lastValueFrom, toArray, tap } from 'rxjs';
 import { MatDialogModule } from '@angular/material/dialog';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
@@ -19,6 +18,7 @@ import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/auto
 import { env } from 'echarts';
 import { environment } from '@env/environment';
 import { TrackingService } from 'app/services/tracking.service';
+import { DetailPermissionsRendererComponent } from './details/detail-permissions-renderer.component';
 
 @Injectable({
   providedIn: 'root',
@@ -32,8 +32,8 @@ import { TrackingService } from 'app/services/tracking.service';
     CommonModule,
     FormsModule,
     AgGridModule,
-    UsersProfileComponent,
-    MatDialogModule
+    MatDialogModule,
+    DetailPermissionsRendererComponent
   ],
   templateUrl: './users.component.html',
   styleUrl: './users.component.scss',
@@ -110,7 +110,8 @@ constructor() {
 
   components = {
     multiLineEditor: MultiLineEditorComponent,
-    autocompleteEditor: AutocompleteEditorComponent
+    autocompleteEditor: AutocompleteEditorComponent,
+    detailPermissionsRenderer: DetailPermissionsRendererComponent
   }
   obtenerEmpleados() {
     return new Promise((resolve) => {
@@ -192,6 +193,12 @@ constructor() {
   public gridOptions: any = {
     headerHeight: 30,
     rowHeight: 30,
+    masterDetail: true,
+    isRowMaster: (dataItem) => {
+      return true; // Todas las filas pueden tener detalles de permisos
+    },
+    detailCellRenderer: 'detailPermissionsRenderer',
+    detailRowHeight: 600,
     rowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -217,6 +224,13 @@ constructor() {
 
   get columnDefs(): ColDef[] {
     return [
+      {
+        field: 'id',
+        headerName: 'ID',
+        hide: true,
+        filter: 'agNumberColumnFilter',
+        width: 80
+      },
       {
         field: 'active',
         hide: true
@@ -704,6 +718,73 @@ constructor() {
     this.obtenerDatos();
     this.notSavedChanges = false;
     this.trackingService.addLog(this.trackingService.getnameComp(),'Revertir Registro en Usuarios', 'Menu Administracion Usuarios',  this.trackingService.getEmail());
+  }
+
+  togglePermissions() {
+    const selectedNodes = this.gridApi.getSelectedNodes();
+
+    if (selectedNodes.length === 0) {
+      alerts.basicAlert(
+        'Permisos',
+        'Por favor, seleccione un usuario para ver sus permisos.',
+        'warning'
+      );
+      return;
+    }
+
+    const selectedNode = selectedNodes[0];
+    const selectedData = selectedNode.data;
+    const isCurrentlyExpanded = selectedNode.expanded;
+
+    if (isCurrentlyExpanded) {
+      // Si está expandido, colapsar y limpiar el filtro
+      selectedNode.setExpanded(false);
+      this.gridApi.setFilterModel(null);
+      this.gridApi.onFilterChanged();
+
+      this.trackingService.addLog(
+        this.trackingService.getnameComp(),
+        'Ocultar Permisos',
+        'Menu Administracion Usuarios',
+        this.trackingService.getEmail()
+      );
+    } else {
+      // Si no está expandido, colapsar otros, aplicar filtro y expandir
+
+      // Colapsar todas las demás filas
+      this.gridApi.forEachNode((node) => {
+        if (node.expanded) {
+          node.setExpanded(false);
+        }
+      });
+
+      // Limpiar filtro previo
+      this.gridApi.setFilterModel(null);
+
+      // Aplicar filtro para mostrar solo el usuario seleccionado
+      const filterModel = {
+        id: {
+          filterType: 'number',
+          type: 'equals',
+          filter: selectedData.id
+        }
+      };
+
+      this.gridApi.setFilterModel(filterModel);
+      this.gridApi.onFilterChanged();
+
+      // Expandir después de aplicar el filtro
+      setTimeout(() => {
+        selectedNode.setExpanded(true);
+      }, 50);
+
+      this.trackingService.addLog(
+        this.trackingService.getnameComp(),
+        'Mostrar Permisos',
+        'Menu Administracion Usuarios',
+        this.trackingService.getEmail()
+      );
+    }
   }
 
   getRoleColorEmoji(roleId: number): string {
