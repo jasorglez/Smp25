@@ -210,25 +210,26 @@ export class IncomeComponent {
 
 
   async getCustomers() {
-    // Obtener solo clientes configurados para facturación electrónica
-    this.customersService.getCustomersBilling(this.root).subscribe(
+    // Obtener todos los clientes de la compañía
+    this.customersService.getCustomersByCompany(this.root, 'CUSTOMERS').subscribe(
       (data: any) => {
-        // Mapear para usar idCustomer en lugar de id
+        // Mapear para formato consistente
         this.customers = data.map((item: any) => ({
-          id: item.idCustomer,
-          name: item.nombreFiscal,
+          id: item.id,
+          description: item.nameContact || item.company || item.name,
+          name: item.nameContact || item.company || item.name,
           rfc: item.rfc,
-          cp: item.codigoPostal,
-          fiscalRegime: item.regimenFiscal,
+          cp: item.cp,
+          fiscalRegime: item.fiscalRegime,
           usoCfdi: item.usoCfdi,
-          email: item.correoFacturacion
+          email: item.email
         }));
       },
       error => {
         console.error(error);
       }
     )
-      this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Clientes Facturación`, 'Menu Administracion Ingresos',
+      this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Clientes`, 'Menu Administracion Ingresos',
            this.trackingService.getEmail() );
   }
 
