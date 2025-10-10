@@ -54,4 +54,9 @@ export class ProvidersService {
   deleteProviderXTable(id: number) {
     return this.http.delete(`${environment.urlWarehouse}/ProveedorXTabla/${id}`, { headers: this.trackingService.getHeaders() });
   }
+
+  updateAbonoProviderXTable(id: number, table: number) {
+    return this.http.put(`${environment.urlWarehouse}/ProveedorXTabla/abonoTabla/${id}/${table}`, {}, { headers: this.trackingService.getHeaders() });
+  }
+  
 }

@@ -145,7 +145,7 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
       field: 'campo8', 
       headerName: 'Fecha OC', 
       editable: true, 
-       cellEditor: 'agDateCellEditor',
+      cellEditor: 'agDateCellEditor',
       cellEditorParams: {
         min: '2020-01-01',
         max: '2030-12-31'
@@ -224,9 +224,10 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
       headerName: 'Total por nota', 
       editable: false, 
       flex: 1,
+      
       valueFormatter: params => {
         const isNumeric = params.value !== null && params.value !== '' && !isNaN(Number(params.value));
-        return isNumeric ? this.currencyPipe.transform(params.value, 'MXN', 'symbol', '1.2-2') : '$0.00';
+        return isNumeric ? this.currencyPipe.transform(params.value, '', 'symbol', '1.2-2') : '$0.00';
       }
     },
     {
@@ -235,7 +236,8 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
       editable: false,
       // Este cellRenderer muestra el ícono y el valor, y permite expandir/colapsar el detalle al hacer clic
       cellRenderer: this.createDetailToggleCellRenderer('campo3'),
-      flex: 1
+      flex: 1,
+      cellStyle: { backgroundColor: '#d4edda' },
     },
     {
       field: 'campo5',
@@ -243,7 +245,8 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
       editable: false,
       // Este cellRenderer muestra el ícono y el valor, y permite expandir/colapsar el detalle al hacer clic
       cellRenderer: this.createDetailToggleCellRenderer('campo5'),
-      flex: 1
+      flex: 1,
+      cellStyle: { backgroundColor: '#d4edda' },
     },
     { 
       field: 'campo6', 
@@ -274,10 +277,19 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
     return (params: any): HTMLElement => {
       const div = document.createElement('div');
       // Validar que el valor sea numérico antes de pasarlo al pipe
-      const isNumeric = params.value !== null && params.value !== '' && !isNaN(Number(params.value));
-      const value = isNumeric ? this.currencyPipe.transform(params.value, 'MXN', 'symbol', '1.2-2') : '$0.00';
-
-      div.innerHTML = `<i class="bi bi-box-arrow-in-down"></i> ${value}`;
+      switch
+      (detailType) {
+        case 'campo5':
+          const isNumeric = params.value !== null && params.value !== '' && !isNaN(Number(params.value));
+          const value = isNumeric ? this.currencyPipe.transform(params.value, '', 'symbol', '1.2-2') : '$0.00';
+          div.innerHTML = `${value}`;
+        break;
+        case 'campo3':
+          div.innerHTML = `${params.value}`;
+        break;
+      }
+        
+     
       div.style.cursor = 'pointer';
       div.style.textDecoration = 'underline';
       div.style.color = '#0d6efd';
@@ -369,6 +381,7 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
       campo4: '',
       campo5: '',
       campo6: '0',
+      campo3: '0',
       campo8: formattedDate, // Asignar la fecha de hoy
       __isNew: true
     };

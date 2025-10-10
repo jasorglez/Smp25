@@ -44,6 +44,7 @@ import { Icatalog } from 'app/interface/icatalog';
 import { ICustomer } from 'app/interface/icustomer';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '@env/environment';
+import { CommonModule, CurrencyPipe } from '@angular/common';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { TrackingService } from 'app/services/tracking.service';
@@ -52,6 +53,7 @@ import { TrackingService } from 'app/services/tracking.service';
 @Component({
   selector: 'app-customers',
   standalone: true,
+  providers: [CurrencyPipe],
   imports: [
     RouterModule,
     DomainsModule,
@@ -98,7 +100,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
     });
   }
 
-  constructor() {
+  constructor(private currencyPipe: CurrencyPipe) {
     effect(async () => {
       if (this.signalsService.getRefreshEmployees()() == true) {
         await this.obtenerDatos(); // Actualizar datos cuando se recibe señal
@@ -566,7 +568,9 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
         div.innerText = params.data.fieldBank;
         break;
       case 'Cuentas':
-        div.innerText = params.data.fieldCuenta;
+        const isNumeric = params.data.fieldCuenta !== null && params.data.fieldCuenta !== '' && !isNaN(Number(params.data.fieldCuenta));
+        const value = isNumeric ? this.currencyPipe.transform(params.data.fieldCuenta, '','symbol', '1.2-2') : '$0.00';
+        div.innerText = value;
         break;
       }
     // Usamos innerHTML para poder renderizar el ícono
@@ -789,7 +793,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
             this.saveProviderDetailsById(providerId, data, type);
           },
           delete: (params: any, callback: () => void) => {
-            this.deleteDetailRow(params, callback);
+            this.deleteDetailRow(params, callback, 'CONTACT');
           }
         },
         BANK: { // Para la grilla de Bancos
@@ -800,7 +804,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
             this.saveProviderDetailsById(providerId, data, type);
           },
           delete: (params: any, callback: () => void) => {
-            this.deleteDetailRow(params, callback);
+            this.deleteDetailRow(params, callback, 'BANK');
           }
         },
         CUENTA: { // Para la grilla de Cuentas por Pagar
@@ -811,7 +815,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
             this.saveProviderDetailsById(providerId, data, type);
           },
           delete: (params: any, callback: any) => {
-            this.deleteDetailRow(params, callback);
+            this.deleteDetailRow(params, callback, 'CUENTA');
           }
         }
       }
@@ -1168,7 +1172,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
   }
 
 
-  async deleteDetailRow(params: any, successCallback: () => void) {
+  async deleteDetailRow(params: any, successCallback: () => void, type: string) {
     const providerId = params.data.idTabla;
     const detailId = params.data.id;
     
@@ -1182,7 +1186,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
     } else {
       // Si es una fila existente, eliminarla del servidor
       try {
-        
+        this.customerService.updateFiel(providerId, type, "RESTA").subscribe();
         await lastValueFrom(this.providersService.deleteProviderXTable(detailId));
 
         alerts.basicAlert('Contacto eliminado', 'El contacto se eliminó correctamente.', 'success');
