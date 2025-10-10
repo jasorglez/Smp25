@@ -25,6 +25,7 @@ import { ModalService } from 'app/services/modal.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { SignalsService } from 'app/services/signals.service';
 import { CustomersPaymentsComponent } from './customers-payments.component';
+import { CustomersBillingComponent } from './customers-billing.component';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { RadiusinfluenceComponent } from '../radiusinfluence/radiusinfluence.component';
 import { CustomersService } from 'app/services/customers.service';
@@ -51,6 +52,7 @@ import { AdministrationService } from 'app/services/administration.service';
     AgGridModule,
     MultiLineEditorComponent,
     CustomersPaymentsComponent,
+    CustomersBillingComponent,
   ],
   templateUrl: './customers.component.html',
   styleUrls: ['./customers.component.scss'],
@@ -130,6 +132,7 @@ export class CustomersComponent implements CanComponentDeactivate {
   type: string = ''; // Para almacenar el tipo (CUSTOMERS o PROVIDERS)
   gridHeight: string = '75vh';
   showCreditsTab: boolean = false;
+  showBillingTab: boolean = false;
   private gridApi: GridApi;
   notSavedChanges: boolean = false;
   selectedRowData: any = null;
@@ -633,56 +636,28 @@ export class CustomersComponent implements CanComponentDeactivate {
 
       // ==================== COLUMNAS PARA FACTURACIÓN ELECTRÓNICA ====================
       {
-        field: 'fiscalRegime',
-        headerName: 'Régimen Fiscal',
-        width: 180,
-        editable: true,
-        hide: this.type != 'CUSTOMERS',
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.fiscalRegimes.map(fr => fr.id)
-        },
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          const found = this.fiscalRegimes.find(fr => fr.id === params.value);
-          return found ? `${found.id} - ${found.description}` : params.value;
-        }
-      },
-      {
-        field: 'usoCfdi',
-        headerName: 'Uso CFDI',
-        width: 200,
-        editable: true,
-        hide: this.type != 'CUSTOMERS',
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.usosFactura.map(uf => uf.cUsoCFDI)
-        },
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          const found = this.usosFactura.find(uf => uf.cUsoCFDI === params.value);
-          return found ? `${found.cUsoCFDI} - ${found.descripcion}` : params.value;
-        }
-      },
-      {
         field: 'enabledForBilling',
         headerName: 'Facturación Electrónica',
         width: 180,
-        editable: true,
+        editable: false,
         hide: this.type != 'CUSTOMERS',
         cellRenderer: (params: ICellRendererParams) => {
-          const checkbox = document.createElement('input');
-          checkbox.type = 'checkbox';
-          checkbox.checked = params.value || false;
-          checkbox.disabled = !params.data.__isNew && params.data.id > 0; // Editable solo al crear o después via evento
-          checkbox.style.cursor = 'pointer';
-          checkbox.addEventListener('change', async (e) => {
-            const target = e.target as HTMLInputElement;
-            params.data.enabledForBilling = target.checked;
-            await this.toggleBillingEnabled(params.data, target.checked);
-            params.api.refreshCells({ rowNodes: [params.node], force: true });
+          const link = document.createElement('a');
+          link.href = 'javascript:void(0)';
+          link.innerText = 'Ver Facturación';
+          link.style.color = '#0d6efd';
+          link.style.textDecoration = 'underline';
+          link.style.cursor = 'pointer';
+          link.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.onCellDoubleClicked({
+              column: { getColId: () => 'enabledForBilling' },
+              data: params.data,
+              node: params.node,
+              api: params.api
+            } as any);
           });
-          return checkbox;
+          return link;
         }
       },
 
@@ -1078,12 +1053,42 @@ export class CustomersComponent implements CanComponentDeactivate {
 
       this.activateCreditsTab(); // Activar la pestaña de créditos si es necesario
     }
+
+    // Activar cascada de facturación
+    if (colId === 'enabledForBilling') {
+      this.signalsService.setIdClient(selectedId);
+      this.signalsService.setNameClient(selectedRowData.nameContact || selectedRowData.company);
+      if(this.gridApi) {
+        const filterModel = {
+          id: {
+            type: 'equals',
+            filter: selectedId,
+          },
+        };
+        this.gridApi.setFilterModel(filterModel);
+        this.gridApi.onFilterChanged();
+      }
+      this.activateBillingTab();
+    }
   }
 
   async activateCreditsTab() {
     if (!this.isOpen) {
       setTimeout(async () => await this.adjustGridSize(), 0);
       this.showCreditsTab = true;
+      this.showBillingTab = false;
+      this.isOpen = true;
+    } else {
+      this.resetGridSize();
+      this.isOpen = false;
+    }
+  }
+
+  async activateBillingTab() {
+    if (!this.isOpen) {
+      setTimeout(async () => await this.adjustGridSize(), 0);
+      this.showBillingTab = true;
+      this.showCreditsTab = false;
       this.isOpen = true;
     } else {
       this.resetGridSize();
@@ -1094,6 +1099,7 @@ export class CustomersComponent implements CanComponentDeactivate {
   resetGridSize() {
     this.gridHeight = '80vh'; // Reset to default height
     this.showCreditsTab = false;
+    this.showBillingTab = false;
     this.gridApi.setFilterModel(null);
     this.gridApi.onFilterChanged();
   }

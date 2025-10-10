@@ -40,6 +40,11 @@ export class CustomersService {
     return this.http.get(`${environment.urlAdministration}/CustomersBilling/by-root/${idRoot}`, { headers: this.trackingService.getHeaders() });
   }
 
+  // Obtener datos de facturación por customer específico
+  getCustomersBillingByCustomer(idCustomer: number): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/CustomersBilling/by-customer/${idCustomer}`, { headers: this.trackingService.getHeaders() });
+  }
+
   addCustomerBilling(data: any): Observable<any> {
     return this.http.post(`${environment.urlAdministration}/CustomersBilling`, data, { headers: this.trackingService.getHeaders() });
   }
