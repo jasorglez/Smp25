@@ -130,7 +130,11 @@ export class AdministrationService {
   }
 
   getUnitsSAT(): Observable<any> {
-    return this.http.get(`${environment.urlAdministration}/CatSatClavesUnidades`, { headers: this.trackingService.getHeaders() });
+    return this.http.get(`${environment.urlAdministration}/CatSatClavesUnidades/GetAll`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getUnitsSATSearch(texto: string): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/CatSatClavesUnidades/SearchByTexto?texto=${texto}`, { headers: this.trackingService.getHeaders() });
   }
 
  getObjetosImpuesto() {

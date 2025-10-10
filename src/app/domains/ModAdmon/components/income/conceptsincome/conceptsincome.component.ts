@@ -8,6 +8,7 @@ import { AdministrationService } from 'app/services/administration.service';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { SignalsService } from 'app/services/signals.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
+import { SearchableSelectComponent } from 'app/shared/searchable-select/searchable-select.component';
 import { tap, lastValueFrom, concat, toArray, catchError, EMPTY } from 'rxjs';
 import { Icatalog } from 'app/interface/icatalog';
 import { CatalogsService } from 'app/services/catalogs.service';
@@ -16,7 +17,7 @@ import { ActivatedRoute } from '@angular/router';
 @Component({
   selector: 'app-conceptsincome',
   standalone: true,
-  imports: [AgGridModule, CommonModule, FormsModule],
+  imports: [AgGridModule, CommonModule, FormsModule, SearchableSelectComponent],
   templateUrl: './conceptsincome.component.html',
   styleUrl: './conceptsincome.component.scss'
 })
@@ -33,9 +34,10 @@ export class ConceptsincomeComponent {
   this.idIncExp = this.signalsService.getIdIncomeAndExpense()();
   this.idRoot = this.signalsService.getRootSelectedBySidebar()();
   console.log('Initial values - idIncExp:', this.idIncExp, 'idRoot:', this.idRoot);
-  
+
   this.getMeasures();
-  
+  this.loadSATCatalogs();
+
   if (this.idIncExp) {
     console.log('Initial load with idIncExp:', this.idIncExp);
     this.getData();
@@ -43,7 +45,7 @@ export class ConceptsincomeComponent {
       console.log('Billing info loaded');
     });
   }
-  
+
   this.route.data.subscribe((data) => {
     console.log('Route data changed:', data);
     this.showform = data['showform'];
@@ -99,6 +101,10 @@ export class ConceptsincomeComponent {
   total: number = 0;
   measures: Icatalog[] = [];
 
+  // SAT Catalogs for new columns
+  objetosImpuesto: any[] = [];
+  productosServiciosSAT: any[] = [];
+
   // Para obtener el dato de la facturacion y el porcentaje
   async getBillingManagementInfo() {
     if (!this.idRoot) return;
@@ -145,7 +151,8 @@ export class ConceptsincomeComponent {
 
   components =
     {
-      multiLineEditorComponent: MultiLineEditorComponent
+      multiLineEditorComponent: MultiLineEditorComponent,
+      searchableSelect: SearchableSelectComponent
     }
 
     get colMaster(): ColDef[] {
@@ -181,8 +188,66 @@ export class ConceptsincomeComponent {
             cellEditorParams: {
               values: this.measures.map(measure => measure.description),
             }
-          },        
-        
+          },
+
+        {
+          field: 'claveUnidad',
+          headerName: 'Clave Unidad',
+          editable: true,
+          flex: 3,
+          cellEditor: 'searchableSelect',
+          cellEditorParams: {
+            searchFunction: (searchText: string) => {
+              return this.administrationService.getUnitsSATSearch(searchText);
+            },
+            displayField: 'texto',
+            valueField: 'idClavesUnidades',
+            placeholder: 'Buscar unidad...'
+          },
+          valueFormatter: (params) => {
+            if (!params.value) return '';
+            // For display, we might need to store the text separately or fetch it
+            return params.value; // This will show the idClavesUnidades
+          }
+        },
+
+        {
+          field: 'objetoImp',
+          headerName: 'Objeto Impuesto',
+          editable: true,
+          flex: 3,
+          cellEditor: 'agSelectCellEditor',
+          cellEditorParams: (params) => ({
+            values: this.objetosImpuesto.map(obj => obj.objeto)
+          }),
+          valueFormatter: (params) => {
+            if (!params.value) return '';
+            const found = this.objetosImpuesto.find(obj => obj.objeto === params.value);
+            return found ? `${found.objeto} - ${found.descripcion}` : params.value;
+          }
+        },
+
+        {
+          field: 'claveProdServ',
+          headerName: 'Producto/Servicio',
+          editable: true,
+          flex: 4,
+          cellEditor: 'searchableSelect',
+          cellEditorParams: {
+            searchFunction: (searchText: string) => {
+              return this.administrationService.getProductsAndServicesSAT(searchText);
+            },
+            displayField: 'texto',
+            valueField: 'idProductosServicios',
+            placeholder: 'Buscar producto o servicio...'
+          },
+          valueFormatter: (params) => {
+            if (!params.value) return '';
+            // For display, we might need to store the text separately or fetch it
+            return params.value; // This will show the idProductosServicios
+          }
+        },
+
         {
           field: 'price',
           headerName: 'Precio',
@@ -190,7 +255,7 @@ export class ConceptsincomeComponent {
           editable: true,
           flex: 4,
           valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
-        },      
+        },
         {
           field: 'total',
           headerName: 'Subtotal',
@@ -257,6 +322,20 @@ export class ConceptsincomeComponent {
         this.measures = [];
       }
     )
+  }
+
+  async loadSATCatalogs() {
+    // Load SAT catalogs for the new columns (only objetosImpuesto since units are loaded dynamically)
+    this.administrationService.getObjetosImpuesto().subscribe({
+      next: (data: any[]) => {
+        this.objetosImpuesto = data || [];
+        console.log('Objetos Impuesto loaded:', this.objetosImpuesto.length);
+      },
+      error: (err) => {
+        console.error('Error loading Objetos Impuesto:', err);
+        this.objetosImpuesto = [];
+      }
+    });
   }
 
   onSelectedRow(event: any) {
@@ -337,6 +416,9 @@ export class ConceptsincomeComponent {
       description: '',
       quantity: 1,
       unit: '',
+      claveUnidad: '',
+      objetoImp: '02', // Default to "Sí objeto de impuesto"
+      claveProdServ: '',
       price: 0,
       total: 0,
       iva: false,

@@ -167,7 +167,7 @@ export class FacturacionComponent implements OnInit {
     });
 
     // Cargar objetos de impuesto
-    this.facturacionService.getObjetosImpuesto().subscribe({
+    this.administrationService.getObjetosImpuesto().subscribe({
       next: (data: any[]) => {
         this.objetosImpuesto = data.map(item => ({ ...item, display: `${item.id} - ${item.descripcion}` }));
       },
