@@ -17,7 +17,7 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray, forkJoin } from 'rxj
   template: `
     <div style="padding: 10px; background-color: #f8f9fa; height: 100%; display: flex; flex-direction: column;">
       <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-        <strong>Almacenes de: {{ userName }} ({{ branchName }})</strong>
+        <strong>Departamentos de: {{ userName }} ({{ branchName }})</strong>
         <div class="d-flex">
           <button
             class="btn btn-primary ms-1"

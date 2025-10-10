@@ -640,8 +640,8 @@ export const routes: Routes = [
           {
             path: 'roles',
             loadComponent: () =>
-              import('./domains/SMP/Components/roles/roles.component').then(
-                (r) => r.RolesComponent
+              import('./domains/SMP/Components/rolesDelison/rolesDelison.component').then(
+                (r) => r.RolesDelisonComponent
               ),
             canActivate: [MasterPermissionsGuard, TrackingGuard],
             data: {

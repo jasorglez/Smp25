@@ -57,5 +57,4 @@ export class RolesService {
       return this.http.put(`${environment.urlSecurity}/RolesxDetailedPermission?idRole=${idRole}&idDetailedPermission=${idDetailedPermission}`, data, { headers: this.trackingService.getHeaders() });
     }
 
-
 }
