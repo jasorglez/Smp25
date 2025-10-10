@@ -161,7 +161,6 @@ export default class DbComponent {
   public gridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
-    suppressEnterWhenEditing: false,
   };
 
   ngOnInit() {

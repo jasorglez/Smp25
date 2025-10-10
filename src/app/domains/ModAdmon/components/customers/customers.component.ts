@@ -144,7 +144,7 @@ export class CustomersComponent implements CanComponentDeactivate {
   idRoot: number;
   private tempIdCounter: number = 0;
   selectedTab: string = 'customers-payments';
-  idBranch: number = null;
+  idBranch: number | null = null;
   idEmployee: number;
   infoCp: any;
   
@@ -177,9 +177,8 @@ export class CustomersComponent implements CanComponentDeactivate {
   public gridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
-    suppressEnterWhenEditing: false,
     rowBuffer: 20,
-    rowClass: (params) => {
+    getRowClass: (params) => {
       if (params.node.isSelected()) {
         return 'selected-row';
       }
@@ -621,7 +620,11 @@ export class CustomersComponent implements CanComponentDeactivate {
   obtenerDatos() {
     this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Clientes`, 'Menu Administracion Ingresos',
            this.trackingService.getEmail() );
-           
+
+    if (this.idBranch === null || this.idBranch === undefined) {
+      return Promise.resolve(false);
+    }
+
     return new Promise((resolve) => {
       this.customerService
         .getCustomers(this.idBranch, this.type)

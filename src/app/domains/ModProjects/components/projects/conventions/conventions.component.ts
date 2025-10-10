@@ -81,9 +81,8 @@ export class ConventionsComponent {
   public gridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
-    suppressEnterWhenEditing: false,
     rowBuffer: 20,
-    rowClass: (params) => {
+    getRowClass: (params) => {
       if (params.node.isSelected()) {
         return 'selected-row';
       }

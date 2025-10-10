@@ -312,7 +312,7 @@ export class SubatalogsComponent implements CanComponentDeactivate {
   public gridOptions: any = {
     headerHeight: 30,
     rowHeight: 20,
-    rowClass: (params) => {
+    getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
         return 'selected-row';

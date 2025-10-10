@@ -170,7 +170,7 @@ export class BranchesComponent implements CanComponentDeactivate {
     headerHeight: 30,
     rowHeight: 30,
     groupDefaultExpanded: -1,
-    rowClass: (params) => {
+    getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
         return 'selected-row';

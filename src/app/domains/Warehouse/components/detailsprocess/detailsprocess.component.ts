@@ -80,7 +80,7 @@ export class DetailsprocessComponent {
   public gridOptions: any = {
     headerHeight: 30,
     rowHeight: 25,
-    rowClass: (params) => {
+    getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
         return 'selected-row';

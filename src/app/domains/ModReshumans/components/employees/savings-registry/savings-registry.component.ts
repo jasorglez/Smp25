@@ -53,11 +53,10 @@ export class SavingsRegistryComponent {
   public maestroGridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
-    suppressEnterWhenEditing: false,
     /*rowClassRules: {
       "row-green": params => params.data?.remain != 0
     },*/
-    rowClass: (params) => {
+    getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
         return 'selected-row';

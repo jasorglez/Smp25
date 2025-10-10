@@ -148,7 +148,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   public gridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
-    rowClass: (params) => {
+    getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
         return 'selected-row';
@@ -197,7 +197,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   public masterGridOptions: any = {
     headerHeight: 30,
     rowHeight: 30,
-    rowClass: (params) => {
+    getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
         return 'selected-row';
