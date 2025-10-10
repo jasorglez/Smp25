@@ -379,13 +379,17 @@ export class CustomersBillingComponent {
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }
-    // Ensure regimenFiscal is a number if it's a string number
-    if (cleanedData.regimenFiscal && typeof cleanedData.regimenFiscal === 'string') {
-      const num = parseInt(cleanedData.regimenFiscal, 10);
-      if (!isNaN(num)) {
-        cleanedData.regimenFiscal = num;
-      }
+
+    // Mapear idCustomer a customer (requerido por el backend)
+    if (cleanedData.idCustomer) {
+      cleanedData.customer = cleanedData.idCustomer;
     }
+
+    // Asegurar que regimenFiscal sea string
+    if (cleanedData.regimenFiscal) {
+      cleanedData.regimenFiscal = String(cleanedData.regimenFiscal);
+    }
+
     return cleanedData;
   }
 }
