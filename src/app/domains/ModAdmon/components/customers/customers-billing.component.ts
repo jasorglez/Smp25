@@ -22,6 +22,7 @@ export class CustomersBillingComponent {
 
   ngOnInit() {
     this.obtenerDatos();
+    this.loadFiscalCatalogs();
   }
 
   constructor() {
@@ -29,7 +30,6 @@ export class CustomersBillingComponent {
       this.idCustomer = this.signalsService.getIdClient()();
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.obtenerDatos();
-      this.loadFiscalCatalogs();
     });
   }
 
@@ -114,6 +114,7 @@ export class CustomersBillingComponent {
           return true;
         }
       },
+      
       {
         field: 'codigoPostal',
         headerName: 'CP',
@@ -121,6 +122,7 @@ export class CustomersBillingComponent {
         width: 100,
         editable: true
       },
+      
       {
         field: 'regimenFiscal',
         headerName: 'Régimen Fiscal',
@@ -128,19 +130,20 @@ export class CustomersBillingComponent {
         width: 300,
         editable: true,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.fiscalRegimes.map(fr => fr.id)
-        },
+        cellEditorParams: (params) => ({
+          values: this.fiscalRegimes.map(fr => String(fr.id))  // <-- convertir a string
+        }),
         valueFormatter: (params) => {
           if (!params.value) return '';
-          const found = this.fiscalRegimes.find(fr => fr.id === params.value);
+          const found = this.fiscalRegimes.find(fr => String(fr.id) === String(params.value));
           return found ? `${found.id} - ${found.description}` : params.value;
         },
-        valueSetter: (params) => {
-          params.data[params.colDef.field] = String(params.newValue);
+        valueSetter: (params) => {  
+          params.data[params.colDef.field] = String(params.newValue); // <-- guardar como string
           return true;
         }
       },
+
       {
         field: 'usoCfdi',
         headerName: 'Uso CFDI',
@@ -148,15 +151,20 @@ export class CustomersBillingComponent {
         width: 300,
         editable: true,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
+        cellEditorParams: (params) => ({
           values: this.usosFactura.map(uf => uf.cUsoCFDI)
-        },
+        }),
         valueFormatter: (params) => {
           if (!params.value) return '';
           const found = this.usosFactura.find(uf => uf.cUsoCFDI === params.value);
           return found ? `${found.cUsoCFDI} - ${found.descripcion}` : params.value;
+        },
+        valueSetter: (params) => {
+          params.data[params.colDef.field] = params.newValue;
+          return true;
         }
       },
+      
       {
         field: 'correoFacturacion',
         headerName: 'Correo Facturación',
@@ -164,12 +172,14 @@ export class CustomersBillingComponent {
         width: 250,
         editable: true
       },
+      
       {
         field: 'active',
         headerName: 'Activo',
         width: 100,
         editable: true
       },
+      
       {
         field: 'id',
         headerName: 'Id',
@@ -253,12 +263,12 @@ export class CustomersBillingComponent {
       id: tempId,
       idCustomer: this.idCustomer,
       idRoot: this.idRoot,
-      rfc: '',
-      nombreFiscal: '',
-      codigoPostal: '',
-      regimenFiscal: '',
+      rfc: 'ELRFC123456XX',
+      nombreFiscal: 'NOMBRE FISCAL',
+      codigoPostal: '68310',
+      regimenFiscal: this.fiscalRegimes.length > 0 ? this.fiscalRegimes[0].id : '',
       usoCfdi: 'G03',
-      correoFacturacion: '',
+      correoFacturacion: 'info@x.com',
       active: true,
       __isNew: true,
     };
@@ -368,6 +378,13 @@ export class CustomersBillingComponent {
     delete cleanedData.__modified;
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
+    }
+    // Ensure regimenFiscal is a number if it's a string number
+    if (cleanedData.regimenFiscal && typeof cleanedData.regimenFiscal === 'string') {
+      const num = parseInt(cleanedData.regimenFiscal, 10);
+      if (!isNaN(num)) {
+        cleanedData.regimenFiscal = num;
+      }
     }
     return cleanedData;
   }

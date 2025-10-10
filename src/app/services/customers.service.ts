@@ -37,6 +37,8 @@ export class CustomersService {
 
   // Clientes configurados para facturación electrónica
   getCustomersBilling(idRoot: number): Observable<any> {
+    //  const apiUrl = `${environment.urlAdministration}/CustomersBilling/by-root/${idRoot}`;      
+    //  alert(apiUrl)  
     return this.http.get(`${environment.urlAdministration}/CustomersBilling/by-root/${idRoot}`, { headers: this.trackingService.getHeaders() });
   }
 
@@ -46,6 +48,10 @@ export class CustomersService {
   }
 
   addCustomerBilling(data: any): Observable<any> {
+     // const apiUrl = `${environment.urlAdministration}/CustomersBilling/` + data;      
+     // console.log('log apiUrl', data);
+     // alert(apiUrl)  
+
     return this.http.post(`${environment.urlAdministration}/CustomersBilling`, data, { headers: this.trackingService.getHeaders() });
   }
 

@@ -57,7 +57,7 @@ import { AdministrationService } from 'app/services/administration.service';
   templateUrl: './customers.component.html',
   styleUrls: ['./customers.component.scss'],
 })
-export class CustomersComponent implements CanComponentDeactivate {
+export class CustomersComponent implements CanComponentDeactivate {s
   private customerService = inject(CustomersService);
    private modalServiceTable = inject(ModalService);
    private signalsService = inject(SignalsService);
@@ -75,6 +75,7 @@ export class CustomersComponent implements CanComponentDeactivate {
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   
   async ngOnInit() {
+    this.type = 'CUSTOMERS'; // Default type for customers component
     this.obtenerDatos();
     this.signalsService.deleteClientData();
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
@@ -82,7 +83,7 @@ export class CustomersComponent implements CanComponentDeactivate {
     this.loadFiscalCatalogs(); // Cargar catálogos SAT
     this.loadCustomersBilling(); // Cargar clientes habilitados para facturación
     this.route.data.subscribe((data) => {
-      this.type = data['type']; // 'CUSTOMERS' o 'PROVIDERS'
+      this.type = data['type'] || 'CUSTOMERS'; // 'CUSTOMERS' o 'PROVIDERS'
       this.obtenerDatos(); // Llamar a la función para cargar datos
       this.getStates(); // Llamar a la función para obtener los estados
       this.obtenerBranchs();
@@ -219,6 +220,31 @@ export class CustomersComponent implements CanComponentDeactivate {
         headerName: 'Activo',
         editable: true,
         width: 100,
+      },
+      {
+        field: 'enabledForBilling',
+        headerName: 'Facturación Electrónica',
+        width: 180,
+        editable: false,
+        hide: this.type != 'CUSTOMERS',
+        cellRenderer: (params: ICellRendererParams) => {
+          const link = document.createElement('a');
+          link.href = 'javascript:void(0)';
+          link.innerText = 'Ver Facturación';
+          link.style.color = '#0d6efd';
+          link.style.textDecoration = 'underline';
+          link.style.cursor = 'pointer';
+          link.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.onCellDoubleClicked({
+              column: { getColId: () => 'enabledForBilling' },
+              data: params.data,
+              node: params.node,
+              api: params.api
+            } as any);
+          });
+          return link;
+        }
       },
       {
         field: 'idBranch',
@@ -601,7 +627,7 @@ export class CustomersComponent implements CanComponentDeactivate {
         headerName: 'Correo',
         width: 200,
         cellEditor: 'agTextCellEditor',
-        editable: (params) => params.data.__isNew,
+        editable: true,
         cellEditorParams: {
           useFormatter: true,
         },
@@ -632,33 +658,6 @@ export class CustomersComponent implements CanComponentDeactivate {
             return false;
           }
         },
-      },
-
-      // ==================== COLUMNAS PARA FACTURACIÓN ELECTRÓNICA ====================
-      {
-        field: 'enabledForBilling',
-        headerName: 'Facturación Electrónica',
-        width: 180,
-        editable: false,
-        hide: this.type != 'CUSTOMERS',
-        cellRenderer: (params: ICellRendererParams) => {
-          const link = document.createElement('a');
-          link.href = 'javascript:void(0)';
-          link.innerText = 'Ver Facturación';
-          link.style.color = '#0d6efd';
-          link.style.textDecoration = 'underline';
-          link.style.cursor = 'pointer';
-          link.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.onCellDoubleClicked({
-              column: { getColId: () => 'enabledForBilling' },
-              data: params.data,
-              node: params.node,
-              api: params.api
-            } as any);
-          });
-          return link;
-        }
       },
 
       {
@@ -825,6 +824,8 @@ export class CustomersComponent implements CanComponentDeactivate {
       latitud: '',
       longitud: '',
       idTypecop: 0,
+      fiscalRegime: '',
+      usoCfdi: 'G03',
       type: this.type,
       active: true,
       __isNew: true,
