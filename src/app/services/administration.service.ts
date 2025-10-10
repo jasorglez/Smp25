@@ -77,7 +77,7 @@ export class AdministrationService {
 
   // Setup Facturacion
   getBillingManagementInfo(idRoot: number): Observable<any> {
-    return this.http.get(`${environment.urlAdministration}/BillingManagement/${idRoot}`, { headers: this.trackingService.getHeaders() });
+    return this.http.get(`${environment.urlAdministration}/BillingManagement/config/${idRoot}`, { headers: this.trackingService.getHeaders() });
   }
 
   addBillingManagementInfo(data: any): Observable<any> {
