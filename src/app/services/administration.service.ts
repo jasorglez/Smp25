@@ -122,6 +122,11 @@ export class AdministrationService {
     return this.http.post(`${environment.urlAdministration}/BillingManagement/cancel/${idIncomeExpense}`, body, { headers: this.trackingService.getHeaders() });
   }
 
+  //Productos y Servicios SAT
+  getProductsAndServicesSAT(busq : string): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/CatSatProductosServicios/SearchByTexto?texto=${busq}`, { headers: this.trackingService.getHeaders() });
+  }
+  
   // Generar PDF
   getPdfInvoice(idIncomeExpense: number): Observable<any> {
     return this.http.get(`${environment.urlAdministration}/BillingManagement/pdf/${idIncomeExpense}`, {
