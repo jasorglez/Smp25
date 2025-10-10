@@ -208,40 +208,12 @@ export class ProvidersComponent implements CanComponentDeactivate {
   detailCellRendererSelector: (params) => {
     // Decide qué renderizador usar basado en la propiedad 'detailType'
     if (params.data.detailType === 'contact') {
-      params.node.setRowHeight(700); // Ajusta la altura de la fila de detalle
-      return {
-        component: 'detailCellRenderer',
-        params: {
-          onMouseEnter: () => clearTimeout(this.collapseTimer), // Cancela el cierre si el mouse vuelve a entrar
-          onMouseLeave: () => { // Inicia el temporizador para cerrar al salir
-            this.collapseTimer = setTimeout(() => {
-              params.node.setExpanded(false);
-            }, 500); // Un retardo de 500ms
-          },
-        }
-      };
+      return { component: 'detailCellRenderer' };
     } else if (params.data.detailType === 'bank') {
-      params.node.setRowHeight(700); // Ajusta la altura de la fila de detalle
-      return {
-        component: 'detailCellRendererBanck',
-        params: {
-          onMouseEnter: () => clearTimeout(this.collapseTimer),
-          onMouseLeave: () => {
-            this.collapseTimer = setTimeout(() => params.node.setExpanded(false), 500);
-          },
-        }
-      };
+      return { component: 'detailCellRendererBanck' };
     } else if (params.data.detailType === 'Cuentas') {
-      params.node.setRowHeight(700); // Damos más altura para la tabla de cuentas
-      return {
-        component: 'detailCellRendererCuentas',
-        params: {
-          onMouseEnter: () => clearTimeout(this.collapseTimer),
-          onMouseLeave: () => {
-            this.collapseTimer = setTimeout(() => params.node.setExpanded(false), 500);
-          },
-        }
-      };
+      params.node.setRowHeight(700);
+      return { component: 'detailCellRendererCuentas' };
     }
     return undefined; // No mostrar detalle si no hay tipo
   },
@@ -262,115 +234,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
     }
   },
 
-  onCellMouseOver: (event) => {
-    // No hacer nada si el mouse se mueve sobre una celda que no es de detalle
-    const colId = event.column.getColId();
-    const isDetailColumn = colId === 'fieldContact' || colId === 'fieldBank' || colId === 'fieldCuenta';
-    if (!isDetailColumn) return;
-
-    // SOLUCIÓN: Si ya estamos procesando un evento, ignoramos los siguientes.
-    if (this.isProcessingMouseOver) return;
-
-
-    // SOLUCIÓN: Si el mouse se mueve a una nueva celda de detalle,
-    // cancelamos cualquier temporizador de colapso que esté pendiente.
-    if (this.collapseTimer) {
-      clearTimeout(this.collapseTimer);
-      this.collapseTimer = null;
-    }
-
-    // MEJORA: Cancelar cualquier temporizador de expansión pendiente si el mouse se mueve a otra celda.
-    if (this.hoverDelayTimer) {
-      clearTimeout(this.hoverDelayTimer);
-      this.hoverDelayTimer = null;
-    }
-
-
-    const newDetailType = this.getDetailTypeFromColId(colId);
-    const isSameDetail = event.node.expanded && event.data.detailType === newDetailType;
-
-    // Si ya está expandido con el mismo detalle, no hacemos nada.
-    if (isSameDetail) return;
-
-    console.log(`[Depuración] MouseOver en celda de detalle. Columna: ${colId}, Fila ID: ${event.data.id}`);
-
-    const expandAndFilter = () => {
-        // 1. Colapsar cualquier otra fila que pudiera estar abierta.
-        //    Y limpiar cualquier filtro existente.
-        this.gridApi.forEachNode(otherNode => {
-            if (otherNode.expanded && otherNode.id !== event.node.id) {
-                otherNode.setExpanded(false);
-            }
-        });
-        // Limpiamos el filtro ANTES de aplicar uno nuevo para evitar conflictos.
-        this.gridApi.setFilterModel(null);
-        
-        // SOLUCIÓN: Activar la bandera para bloquear eventos subsiguientes.
-        this.isProcessingMouseOver = true;
-        setTimeout(() => {
-          this.isProcessingMouseOver = false;
-        }, 100); // Desbloquear después de 100ms
-
-        // 2. Aplicar filtro y luego expandir.
-        // Aplicar el filtro por ID para enfocar la fila actual.
-        const filterModel = {
-          id: { filterType: 'number', type: 'equals', filter: event.data.id },
-        };
-        console.log('[Depuración] Aplicando modelo de filtro:', filterModel);
-        this.gridApi.setFilterModel(filterModel);
-
-        // Expandir DESPUÉS de que el filtro se haya procesado.
-        // Un pequeño delay ayuda a asegurar que AG Grid procese el filtro antes de expandir.
-        setTimeout(() => {
-            event.data.detailType = newDetailType;
-            event.node.setExpanded(true);
-            console.log(`[Depuración] Fila ${event.data.id} expandida con detalle: ${newDetailType}`);
-        }, 50);
-    };
-
-    // MEJORA: Iniciar un temporizador para retrasar la expansión.
-    this.hoverDelayTimer = setTimeout(() => {
-      // Si la fila ya está expandida (pero con un detalle diferente),
-      // primero la colapsamos para forzar el refresco del componente de detalle.
-      if (event.node.expanded) {
-          console.log(`[Depuración] La fila ${event.data.id} ya estaba expandida. Colapsando para refrescar.`);
-          event.node.setExpanded(false);
-          // Usamos un pequeño timeout para asegurar que AG Grid procese el colapso
-          // antes de intentar expandir de nuevo con el nuevo detalle.
-          setTimeout(expandAndFilter, 50);
-      } else {
-          // Si no estaba expandida, simplemente expandimos y filtramos.
-          expandAndFilter();
-      }
-    }, 400); // Retraso de 400ms antes de expandir.
-    // Se elimina la lógica de hover para que solo funcione con click.
-  },
-
-  onCellMouseOut: (event) => {
-    // No hay cambios en esta función, pero la incluyo por contexto
-    const colId = event.column.getColId();
-    const isDetailColumn = colId === 'fieldContact' || colId === 'fieldBank' || colId === 'fieldCuenta';
-
-    // MEJORA: Si el mouse sale de la celda, cancelar el temporizador de expansión.
-    if (this.hoverDelayTimer) {
-      clearTimeout(this.hoverDelayTimer);
-      this.hoverDelayTimer = null;
-    }
-
-    // Si el mouse sale de una celda de detalle, iniciamos el temporizador para colapsar.
-    // El evento onMouseEnter del panel de detalle cancelará esto si el mouse entra en él.
-    if (isDetailColumn && event.node.expanded) {
-      this.collapseTimer = setTimeout(() => {
-        console.log(`[Depuración] Colapsando fila ${event.node.data.id} por timeout.`);
-        event.node.setExpanded(false);
-        // Al colapsar, limpiar cualquier filtro que se haya aplicado.
-        console.log('[Depuración] Limpiando filtro al colapsar por timeout.');
-        this.gridApi.setFilterModel(null);
-        this.gridApi.onFilterChanged();
-      }, 300);
-    }
-    // Se elimina la lógica de hover para que solo funcione con click.
-  }
 };
 
   get colMaster(): ColDef[] {
@@ -695,12 +558,6 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
   onCellClicked(event: any): void {
   event.node.setSelected(true);
   console.log('Celda clickeada:', event);
-
-  // Cancelar cualquier temporizador de cierre pendiente de onCellMouseOut
-  if (this.collapseTimer) {
-    clearTimeout(this.collapseTimer);
-    this.collapseTimer = null;
-  }
 
   const colId = event.column.getColId();
   const isDetailColumn = colId === 'fieldContact' || colId === 'fieldBank' || colId === 'fieldCuenta';
