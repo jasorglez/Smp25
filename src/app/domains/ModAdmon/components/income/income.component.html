@@ -102,21 +102,35 @@
     <!-- 1. Estructura de NAVEGACIÓN de pestañas (unificada y correcta) -->
     <ul class="nav nav-tabs" id="incomeDetailTab" role="tablist">
       <li class="nav-item" role="presentation">
-        <button 
-          class="nav-link" 
+        <button
+          class="nav-link"
           [class.active]="activeTab === 'concepts'"
-          (click)="setActiveTab('concepts')" 
+          (click)="setActiveTab('concepts')"
           type="button">
-          Conceptos
+          <i class="bi bi-list-ul me-1"></i> Conceptos
         </button>
       </li>
       <li class="nav-item" role="presentation">
-        <button 
-          class="nav-link" 
+        <button
+          class="nav-link"
           [class.active]="activeTab === 'info'"
-          (click)="setActiveTab('info')" 
+          (click)="setActiveTab('info')"
           type="button">
-          Información Adicional
+          <i class="bi bi-info-circle me-1"></i> Información Adicional
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button
+          class="nav-link"
+          [class.active]="activeTab === 'invoice'"
+          (click)="setActiveTab('invoice')"
+          type="button">
+          <i class="bi bi-file-earmark-text me-1"></i> Facturación Electrónica
+          <span
+            *ngIf="selectedIncomes?.uuid && selectedIncomes?.uuid !== 'NA'"
+            class="badge bg-success ms-2">
+            <i class="bi bi-check-circle"></i> Timbrada
+          </span>
         </button>
       </li>
     </ul>
@@ -134,7 +148,12 @@
       <div *ngIf="activeTab === 'info'" class="tab-pane fade show active">
         <app-additional-info></app-additional-info>
       </div>
-      
+
+      <!-- Panel para "Facturación Electrónica" -->
+      <div *ngIf="activeTab === 'invoice'" class="tab-pane fade show active">
+        <app-electronic-invoice></app-electronic-invoice>
+      </div>
+
     </div>
   </div>
 

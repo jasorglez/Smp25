@@ -240,6 +240,13 @@ export class FacturacionComponent implements OnInit {
   }
 
   stampInvoice(): void {
+    // NOTA: Este componente es un demo/ejemplo.
+    // Para facturación real, usar el componente income -> pestaña "Facturación Electrónica"
+
+    alert('Este es un componente de demostración.\n\nPara facturación electrónica real, use:\nMenú -> Administración -> Ingresos -> Facturación Electrónica');
+
+    // Si deseas mantener esta funcionalidad de demo con XML manual, descomenta lo siguiente:
+    /*
     if (!this.invoiceXml.trim()) {
       alert('Por favor, ingrese el XML de la factura.');
       return;
@@ -247,7 +254,8 @@ export class FacturacionComponent implements OnInit {
 
     const idRoot = this.signalsService.getRootSelectedBySidebar()();
 
-    this.administrationService.stampInvoice(idRoot, this.invoiceXml)
+    // Necesitarías crear un endpoint diferente para esto
+    this.administrationService.stampInvoiceWithXml(idRoot, this.invoiceXml)
       .subscribe({
         next: (response: any) => {
           this.stampedXml = response.stampedXml || response;
@@ -258,6 +266,7 @@ export class FacturacionComponent implements OnInit {
           alert('Error al timbrar la factura.');
         }
       });
+    */
   }
 
 }

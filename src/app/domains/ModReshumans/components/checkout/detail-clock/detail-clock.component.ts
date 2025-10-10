@@ -105,7 +105,7 @@ export default class DetailClockComponent implements OnInit {
      headerHeight: 25,
      rowHeight: 20,
      groupDefaultExpanded: -1, // -1 significa expandir todos los grupos
-     rowClass: (params) => {
+     getRowClass: (params) => {
        if (params.node.isSelected()) {
          return 'selected-row';
        }

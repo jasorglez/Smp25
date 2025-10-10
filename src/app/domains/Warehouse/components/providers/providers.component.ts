@@ -200,7 +200,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
   public gridOptions: any = {
   headerHeight: 25,
   rowHeight: 20,
-  suppressEnterWhenEditing: false,
   rowBuffer: 20,
   masterDetail: true,
   isRowMaster: (dataItem) => {
@@ -223,7 +222,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
       };
     } else if (params.data.detailType === 'bank') {
       params.node.setRowHeight(700); // Ajusta la altura de la fila de detalle
-      return { 
+      return {
         component: 'detailCellRendererBanck',
         params: {
           onMouseEnter: () => clearTimeout(this.collapseTimer),
@@ -234,7 +233,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
       };
     } else if (params.data.detailType === 'Cuentas') {
       params.node.setRowHeight(700); // Damos más altura para la tabla de cuentas
-      return { 
+      return {
         component: 'detailCellRendererCuentas',
         params: {
           onMouseEnter: () => clearTimeout(this.collapseTimer),
@@ -246,7 +245,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
     }
     return undefined; // No mostrar detalle si no hay tipo
   },
-  
+
   getRowClass: (params) => {
     if (params.node.isSelected()) {
       return 'selected-row';

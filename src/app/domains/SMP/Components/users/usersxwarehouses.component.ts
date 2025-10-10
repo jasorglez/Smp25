@@ -91,7 +91,7 @@ export class UsersxwarehousesComponent {
 public gridOptions: any = {
   headerHeight: 30,
   rowHeight: 30,
-  rowClass: (params) => {
+  getRowClass: (params) => {
     // Verificar si la fila está seleccionada
     if (params.node.isSelected()) {
       return 'selected-row';
