@@ -19,14 +19,14 @@ import { ICellEditorAngularComp } from 'ag-grid-angular';
         autocomplete="off"
       />
       <div class="dropdown-menu show">
-        <div 
+        <div
           *ngFor="let option of filteredOptions; let i = index"
           class="form-control dropdown-item"
           [class.active]="i === selectedIndex"
           (click)="selectOption(option)"
-          [attr.data-value]="option.id"
+          [attr.data-value]="option[params.valueField || 'id']"
         >
-          {{option.description}}
+          {{option[params.displayField || 'description']}}
         </div>
         <div *ngIf="filteredOptions.length === 0" class="dropdown-item disabled text-center">
           No se encontraron resultados
@@ -70,7 +70,7 @@ import { ICellEditorAngularComp } from 'ag-grid-angular';
   `]
 })
 export class SearchableSelectComponent implements ICellEditorAngularComp {
-  private params: any;
+  public params: any;
   public value: any;
   public searchText: string = '';
   public allOptions: any[] = [];
@@ -114,13 +114,24 @@ export class SearchableSelectComponent implements ICellEditorAngularComp {
   agInit(params: any): void {
     this.params = params;
     this.value = params.value;
-    this.allOptions = params.options || [];
-    this.filteredOptions = [...this.allOptions];
-    
-    // Inicializar el texto de búsqueda con la descripción del valor actual
-    const currentOption = this.allOptions.find(opt => opt.id === this.value);
-    if (currentOption) {
-      this.searchText = currentOption.description;
+
+    // Check if we have a searchFunction for dynamic search
+    if (params.searchFunction) {
+      this.allOptions = [];
+      this.filteredOptions = [];
+      // For dynamic search, we'll load options when user types
+    } else {
+      // Static options
+      this.allOptions = params.options || [];
+      this.filteredOptions = [...this.allOptions];
+
+      // Inicializar el texto de búsqueda con la descripción del valor actual
+      const valueField = params.valueField || 'id';
+      const displayField = params.displayField || 'description';
+      const currentOption = this.allOptions.find(opt => opt[valueField] === this.value);
+      if (currentOption) {
+        this.searchText = currentOption[displayField];
+      }
     }
 
     // Enfocar el input automáticamente
@@ -138,21 +149,45 @@ export class SearchableSelectComponent implements ICellEditorAngularComp {
   }
 
   filterOptions(): void {
-    this.filteredOptions = this.allOptions.filter(option =>
-      option.description.toLowerCase().includes(this.searchText.toLowerCase())
-    );
-    this.selectedIndex = this.filteredOptions.length > 0 ? 0 : -1;
+    if (this.params.searchFunction && this.searchText.trim().length > 0) {
+      // Dynamic search - call the API
+      this.params.searchFunction(this.searchText.trim()).subscribe({
+        next: (data: any[]) => {
+          this.allOptions = data || [];
+          this.filteredOptions = [...this.allOptions];
+          this.selectedIndex = this.filteredOptions.length > 0 ? 0 : -1;
+        },
+        error: (err) => {
+          console.error('Error searching options:', err);
+          this.filteredOptions = [];
+          this.selectedIndex = -1;
+        }
+      });
+    } else if (this.allOptions.length > 0) {
+      // Static filtering
+      this.filteredOptions = this.allOptions.filter(option =>
+        option.description.toLowerCase().includes(this.searchText.toLowerCase())
+      );
+      this.selectedIndex = this.filteredOptions.length > 0 ? 0 : -1;
+    } else {
+      this.filteredOptions = [];
+      this.selectedIndex = -1;
+    }
   }
 
   selectOption(option: any): void {
-    this.value = option.id;
-    this.searchText = option.description;
+    const valueField = this.params.valueField || 'id';
+    const displayField = this.params.displayField || 'description';
+    this.value = option[valueField];
+    this.searchText = option[displayField];
     this.params.api.stopEditing();
   }
 
   getDisplayValue(): string {
-    const option = this.allOptions.find(opt => opt.id === this.value);
-    return option ? option.description : 'Seleccione...';
+    const valueField = this.params?.valueField || 'id';
+    const displayField = this.params?.displayField || 'description';
+    const option = this.allOptions.find(opt => opt[valueField] === this.value);
+    return option ? option[displayField] : 'Seleccione...';
   }
 
   isPopup(): boolean {

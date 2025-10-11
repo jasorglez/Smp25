@@ -89,14 +89,20 @@ export class AdministrationService {
   }
 
   uploadCertificates(idRoot: number, formData: FormData): Observable<any> {
-      console.log('idRoot:', idRoot);
+    //  console.log('idRoot:', idRoot);
     const headers = this.trackingService.getHeaders().delete('Content-Type');
     return this.http.post(`${environment.urlAdministration}/BillingManagement/upload-certificates/${idRoot}`, formData, { headers });
   }
 
+// Para actualizar cuando ya existen
+updateCertificates(idRoot: number, formData: FormData): Observable<any> {
+  return this.http.put(`${environment.urlAdministration}/BillingManagement/update-certificates/${idRoot}`, formData);
+}
+
   checkCertificates(idRoot: number): Observable<any> {
     return this.http.get(`${environment.urlAdministration}/BillingManagement/check-certificates/${idRoot}`, { headers: this.trackingService.getHeaders() });
   }
+  
 
   // Timbrado con Finkok (endpoint correcto según documentación)
   stampInvoice(idIncomeExpense: number): Observable<any> {
@@ -128,7 +134,7 @@ export class AdministrationService {
   getProductsAndServicesSAT(busq : string): Observable<any> {
     return this.http.get(`${environment.urlAdministration}/CatSatProductosServicios/SearchByTexto?texto=${busq}`, { headers: this.trackingService.getHeaders() });
   }
-
+  
   getUnitsSAT(): Observable<any> {
     return this.http.get(`${environment.urlAdministration}/CatSatClavesUnidades/GetAll`, { headers: this.trackingService.getHeaders() });
   }

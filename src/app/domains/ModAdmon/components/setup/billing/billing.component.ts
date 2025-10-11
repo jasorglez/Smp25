@@ -144,32 +144,121 @@ export class BillingComponent {
       });
   }
 
-  saveChanges() {
-    console.log('Saving changes, cerFile:', this.cerFile, 'keyFile:', this.keyFile);
-    if (this.cerFile || this.keyFile) {
-      console.log('Uploading files');
-      const formData = new FormData();
-      if (this.cerFile) formData.append('CerFile', this.cerFile);
-      if (this.keyFile) formData.append('KeyFile', this.keyFile);
 
-      this.administrationService.uploadCertificates(this.idRoot, formData)
-        .subscribe({
-          next: (response: any) => {
-            console.log('Upload success:', response);
-            if (response.message) {
-              alerts.basicAlert("Éxito", response.message, "success");
-            }
-            this.saveConfig();
-          },
-          error: (err) => {
-            console.log('Upload error:', err);
-            alerts.basicAlert("Error", "Error al subir certificados.", "error");
+
+// En billing.component.ts - Modifica el método saveChanges()
+
+saveChanges() {
+  console.log('Saving changes, cerFile:', this.cerFile, 'keyFile:', this.keyFile);
+  
+  // Si hay archivos para subir/actualizar
+  if (this.cerFile || this.keyFile) {
+    console.log('Processing certificate files');
+    const formData = new FormData();
+    if (this.cerFile) formData.append('CerFile', this.cerFile);
+    if (this.keyFile) formData.append('KeyFile', this.keyFile);
+
+    // Decidir si es subida inicial o actualización
+    const uploadMethod = this.certificateStatus.certificateConfigured || this.certificateStatus.keyConfigured 
+      ? this.administrationService.updateCertificates.bind(this.administrationService)
+      : this.administrationService.uploadCertificates.bind(this.administrationService);
+
+    uploadMethod(this.idRoot, formData)
+      .subscribe({
+        next: (response: any) => {
+          console.log('Certificate operation success:', response);
+          if (response.message) {
+            alerts.basicAlert("Éxito", response.message, "success");
           }
-        });
-    } else {
-      this.saveConfig();
-    }
+          // Limpiar los archivos seleccionados después de subir/actualizar
+          this.cerFile = null;
+          this.keyFile = null;
+          this.clearFileInputs();
+          this.saveConfig();
+        },
+        error: (err) => {
+          console.log('Certificate operation error:', err);
+          const errorMessage = err.error?.message || "Error al procesar los certificados.";
+          alerts.basicAlert("Error", errorMessage, "error");
+        }
+      });
+  } else {
+    this.saveConfig();
   }
+}
+
+// Método para limpiar los inputs de archivo
+clearFileInputs() {
+  const cerInput = document.getElementById('pathCer') as HTMLInputElement;
+  const keyInput = document.getElementById('pathKey') as HTMLInputElement;
+  if (cerInput) cerInput.value = '';
+  if (keyInput) keyInput.value = '';
+}
+
+// Modifica onCerFileSelected para mejor feedback
+onCerFileSelected(event: any) {
+  const file: File = event.target.files[0];
+  if (file) {
+    // Validar tamaño (5MB máximo)
+    if (file.size > 5 * 1024 * 1024) {
+      alerts.basicAlert("Error", "El archivo .cer no debe exceder 5MB", "error");
+      event.target.value = '';
+      return;
+    }
+
+    // Validar extensión
+    if (!file.name.toLowerCase().endsWith('.cer')) {
+      alerts.basicAlert("Error", "El archivo debe tener extensión .cer", "error");
+      event.target.value = '';
+      return;
+    }
+
+    this.cerFile = file;
+    console.log('Cer file selected:', file.name, 'Size:', file.size);
+
+    // Leer el archivo .cer para extraer fechas
+    const reader = new FileReader();
+    reader.onload = (e: any) => {
+      try {
+        const certData = e.target.result as ArrayBuffer;
+        const cert = this.parseCert(certData);
+
+        // Asignar las fechas al formulario
+        this.billingData.dateStart = cert.validFrom;
+        this.billingData.dateEnd = cert.validTo;
+        
+        console.log('Certificate dates extracted:', cert.validFrom, 'to', cert.validTo);
+      } catch (error) {
+        console.error('Error al leer el certificado:', error);
+        alerts.basicAlert("Advertencia", "No se pudieron extraer las fechas del certificado. Verifique que sea un archivo .cer válido.", "warning");
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+}
+
+onKeyFileSelected(event: any) {
+  const file: File = event.target.files[0];
+  if (file) {
+    // Validar tamaño (5MB máximo)
+    if (file.size > 5 * 1024 * 1024) {
+      alerts.basicAlert("Error", "El archivo .key no debe exceder 5MB", "error");
+      event.target.value = '';
+      return;
+    }
+
+    // Validar extensión
+    if (!file.name.toLowerCase().endsWith('.key')) {
+      alerts.basicAlert("Error", "El archivo debe tener extensión .key", "error");
+      event.target.value = '';
+      return;
+    }
+
+    this.keyFile = file;
+    console.log('Key file selected:', file.name, 'Size:', file.size);
+  }
+}
+
 
   saveConfig() {
     if (this.newData) {
@@ -213,29 +302,7 @@ export class BillingComponent {
     this.trackingService.addLog(this.trackingService.getnameComp(),'Revertir Registro en Facturación', 'Menu Administracion Facturación',  this.trackingService.getEmail());
   }
 
-  onCerFileSelected(event: any) {
-    const file: File = event.target.files[0];
-    if (file) {
-      this.cerFile = file;
-
-      // Leer el archivo .cer
-      const reader = new FileReader();
-      reader.onload = (e: any) => {
-        try {
-          const certData = e.target.result as ArrayBuffer;
-          const cert = this.parseCert(certData);
-
-          // Asignar las fechas al formulario
-          this.billingData.dateStart = cert.validFrom;
-          this.billingData.dateEnd = cert.validTo;
-        } catch (error) {
-          console.error('Error al leer el certificado:', error);
-          alerts.basicAlert("Error", "No se pudo leer el certificado. Asegúrese de que es un archivo .cer válido.", "error");
-        }
-      };
-      reader.readAsArrayBuffer(file);
-    }
-  }
+ 
 
   // Método para parsear el certificado
   private parseCert(certData: ArrayBuffer): { validFrom: string, validTo: string } {
@@ -249,11 +316,17 @@ export class BillingComponent {
     return { validFrom, validTo };
   }
 
-  onKeyFileSelected(event: any) {
-    const file: File = event.target.files[0];
-    if (file) {
-      this.keyFile = file;
-    }
+getCertificateStatusMessage(): string {
+  if (!this.certificateStatus.certificateConfigured && !this.certificateStatus.keyConfigured) {
+    return 'Suba ambos archivos (.cer y .key) para completar la configuración.';
+  } else if (this.certificateStatus.certificateConfigured && !this.certificateStatus.keyConfigured) {
+    return 'Falta configurar el archivo .key.';
+  } else if (!this.certificateStatus.certificateConfigured && this.certificateStatus.keyConfigured) {
+    return 'Falta configurar el archivo .cer.';
+  } else {
+    return 'Ambos certificados están configurados correctamente.';
   }
+}
+ 
 
 }

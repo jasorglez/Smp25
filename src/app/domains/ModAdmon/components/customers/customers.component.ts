@@ -394,7 +394,8 @@ export class CustomersComponent implements CanComponentDeactivate {s
           return foundItem ? `${foundItem.description}` : params.value;
         },
       },
- /*     {
+
+    /*     {
         field: 'cp',
         headerName: 'CP',
         editable: true,
@@ -406,6 +407,7 @@ export class CustomersComponent implements CanComponentDeactivate {s
           //excelMode: 'mac',
         },
       },
+      
       {
         field: 'rfc',
         headerName: 'RFC',
@@ -422,6 +424,7 @@ export class CustomersComponent implements CanComponentDeactivate {s
           return true;
         }
       },*/
+
       {
         field: 'address',
         headerName: 'Direccion',
