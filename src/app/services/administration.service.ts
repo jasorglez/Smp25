@@ -88,6 +88,20 @@ export class AdministrationService {
     return this.http.put<any[]>(`${environment.urlAdministration}/BillingManagement/${idRoot}`, data, { headers: this.trackingService.getHeaders() });
   }
 
+  // En tu servicio AdministrationService, modifica temporalmente el método:
+updateBillingManagementConsecutive(idRoot: number, data: any): Observable<any> {
+  // Asegurarse de que los datos tengan la estructura correcta
+  const payload = {
+    request: data.request || data
+  };
+  
+  return this.http.put<any[]>(
+    `${environment.urlAdministration}/BillingManagement/${idRoot}/consecutive`, 
+    payload, 
+    { headers: this.trackingService.getHeaders() }
+  );
+}
+
   uploadCertificates(idRoot: number, formData: FormData): Observable<any> {
     //  console.log('idRoot:', idRoot);
     const headers = this.trackingService.getHeaders().delete('Content-Type');
