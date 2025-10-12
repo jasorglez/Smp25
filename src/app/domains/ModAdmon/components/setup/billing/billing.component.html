@@ -9,7 +9,7 @@
         </div>
         <div class="col-md-6 col-lg-6">
           <label for="fiscalRegime" class="form-label">Régimen Fiscal <span class="text-danger">*</span></label>
-          <select class="form-select" id="fiscalRegime" [(ngModel)]="billingData.fiscalRegime">
+          <select class="form-select" id="fiscalRegime" [(ngModel)]="billingData.fiscalRegime" (change)="onFiscalRegimeChange()">
             <option *ngFor="let regime of fiscalRegimes" [value]="regime.id">{{regime.id}} - {{ regime.description }}</option>
           </select>
         </div>
@@ -65,7 +65,9 @@
           <div class="row g-3">
             <div class="col-md-4 col-lg-4">
               <label for="emisorRfc" class="form-label">RFC del Emisor <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" id="emisorRfc" placeholder="RFC del Emisor" [(ngModel)]="billingData.emisorRfc" maxlength="13">
+              <input type="text" class="form-control" id="emisorRfc" placeholder="RFC del Emisor"
+                     [(ngModel)]="billingData.emisorRfc" maxlength="13"
+                     (blur)="onRfcBlur()">
             </div>
             <div class="col-md-4 col-lg-4">
               <label for="emisorNombre" class="form-label">Nombre del Emisor <span class="text-danger">*</span></label>
