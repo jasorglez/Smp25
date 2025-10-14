@@ -260,7 +260,48 @@ onKeyFileSelected(event: any) {
 }
 
 
+  validateRfc() {
+    const rfc = this.billingData.emisorRfc;
+    const fiscalRegime = this.billingData.fiscalRegime;
+    const moralRegimes = [601, 603, 610, 620, 622, 623, 624, 626];
+    const fisicaRegimes = [605, 606, 607, 608, 610, 611, 612, 614, 615, 616, 621, 625, 626];
+    
+    if (!rfc) return true;
+
+    // Validar longitud del RFC
+    if (rfc.length < 12 || rfc.length > 13) {
+      alerts.basicAlert("Error", "El RFC debe tener entre 12 y 13 caracteres", "error");
+      return false;
+    }
+
+    // Validar régimen fiscal para personas morales
+    if (fiscalRegime && moralRegimes.includes(Number(fiscalRegime)) && rfc.length !== 12) {
+      alerts.basicAlert("Error", "Para el régimen fiscal seleccionado (Persona Moral), el RFC debe tener exactamente 12 caracteres", "error");
+      return false;
+    }
+
+    // Validar régimen fiscal para personas físicas
+    if (fiscalRegime && fisicaRegimes.includes(Number(fiscalRegime)) && rfc.length !== 13) {
+      alerts.basicAlert("Error", "Para el régimen fiscal seleccionado (Persona Física), el RFC debe tener exactamente 13 caracteres", "error");
+      return false;
+    }
+
+    return true;
+  }
+
+  onRfcBlur() {
+    this.validateRfc();
+  }
+
+  onFiscalRegimeChange() {
+    this.validateRfc();
+  }
+
   saveConfig() {
+    if (!this.validateRfc()) {
+      return;
+    }
+
     if (this.newData) {
       this.billingData.idRoot = this.idRoot;
       console.log('Datos enviados a addBillingManagementInfo:', this.billingData);
