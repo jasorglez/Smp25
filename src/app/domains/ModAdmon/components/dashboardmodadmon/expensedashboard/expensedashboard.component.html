@@ -1,1 +1,114 @@
-<p>expensedashboard works!</p>
+<div class="dashboard-container">
+
+  <!-- Bloque 1: Título, KPI Principal y Filtros Personalizables -->
+
+  <div class="kpi-and-filters-row">
+    <div class="kpi-card">
+      <div class="kpi-content">
+        <span class="kpi-title">EGRESOS TOTALES</span>
+        <span class="kpi-value">{{ totalExpensesKpi | currency:'$':'symbol':'1.2-2' }}</span>
+      </div>
+      <i class="bi bi-cash-stack kpi-icon"></i>
+    </div>
+
+    <div class="custom-filters">
+      <div class="filter-group">
+        <label for="startDate">Desde:</label>
+        <input
+          type="date"
+          id="startDate"
+          class="form-control"
+          [(ngModel)]="startDate"
+          (change)="onFilterChange()">
+      </div>
+
+      <div class="filter-group">
+        <label for="endDate">Hasta:</label>
+        <input
+          type="date"
+          id="endDate"
+          class="form-control"
+          [(ngModel)]="endDate"
+          (change)="onFilterChange()">
+      </div>
+
+      <div class="filter-group">
+        <label for="projectFilter">Proyecto:</label>
+        <select
+          id="projectFilter"
+          class="form-select"
+          [(ngModel)]="selectedProjectId"
+          (change)="onFilterChange()">
+          <option [ngValue]="null">Todos los proyectos</option>
+          <option *ngFor="let project of projectsList" [ngValue]="project.id">
+            {{ project.name }}
+          </option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bloque 2: Vistas Anuales -->
+  <div class="dashboard-row">
+    <div class="dashboard-card chart-card">
+      <apx-chart *ngIf="groupedAnnualChartOptions?.series"
+        [series]="groupedAnnualChartOptions.series"
+        [chart]="groupedAnnualChartOptions.chart"
+        [xaxis]="groupedAnnualChartOptions.xaxis"
+        [yaxis]="groupedAnnualChartOptions.yaxis"
+        [title]="groupedAnnualChartOptions.title"
+        [plotOptions]="groupedAnnualChartOptions.plotOptions"
+        [tooltip]="groupedAnnualChartOptions.tooltip"
+        [dataLabels]="groupedAnnualChartOptions.dataLabels"
+      ></apx-chart>
+    </div>
+
+    <div class="dashboard-card chart-card">
+      <apx-chart *ngIf="currentYearChartOptions?.series"
+        [series]="currentYearChartOptions.series"
+        [chart]="currentYearChartOptions.chart"
+        [xaxis]="currentYearChartOptions.xaxis"
+        [yaxis]="currentYearChartOptions.yaxis"
+        [title]="currentYearChartOptions.title"
+        [tooltip]="currentYearChartOptions.tooltip"
+        [dataLabels]="currentYearChartOptions.dataLabels"
+      ></apx-chart>
+    </div>
+  </div>
+
+  <!-- Bloque 3: Vistas de Tendencia y Distribución -->
+  <div class="dashboard-row">
+    <div class="dashboard-card list-card">
+      <h5 class="list-title">LISTADO DE EGRESOS POR PROVEEDOR</h5>
+      <ul class="provider-list">
+        <li *ngFor="let provider of providerList">
+          <span>{{ provider.name }}</span>
+          <span class="provider-total">{{ provider.total | currency:'$':'symbol':'1.2-2' }}</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="dashboard-card chart-card wide-card">
+      <apx-chart *ngIf="expensesTrendChartOptions?.series"
+        [series]="expensesTrendChartOptions.series"
+        [chart]="expensesTrendChartOptions.chart"
+        [xaxis]="expensesTrendChartOptions.xaxis"
+        [yaxis]="expensesTrendChartOptions.yaxis"
+        [title]="expensesTrendChartOptions.title"
+        [stroke]="expensesTrendChartOptions.stroke"
+        [tooltip]="expensesTrendChartOptions.tooltip"
+      ></apx-chart>
+    </div>
+
+    <div class="dashboard-card chart-card">
+      <apx-chart *ngIf="pieChartOptions?.series"
+        [series]="pieChartOptions.series"
+        [chart]="pieChartOptions.chart"
+        [labels]="pieChartOptions.labels"
+        [title]="pieChartOptions.title"
+        [legend]="pieChartOptions.legend"
+      ></apx-chart>
+    </div>
+  </div>
+
+</div>

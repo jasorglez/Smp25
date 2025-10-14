@@ -22,6 +22,10 @@ export class IncomesAndExpensesService {
     return this.http.get<any>(environment.urlAdministration + '/Incomeandexpense/incomexroot?idroot=' + idRoot, { headers: this.tracking.getHeaders() });
   }
 
+  getExpensesxroot(idRoot: number): Observable<any> {
+    return this.http.get<any>(environment.urlAdministration + '/Incomeandexpense/expensexroot?idroot=' + idRoot, { headers: this.tracking.getHeaders() });
+  }
+
 
   getIncomesAndExpenses(idRoot: number): Observable<any> {
     return this.http.get<any>(environment.urlAdministration + '/Incomeandexpense/Bussines/' + idRoot, { headers: this.tracking.getHeaders() });
