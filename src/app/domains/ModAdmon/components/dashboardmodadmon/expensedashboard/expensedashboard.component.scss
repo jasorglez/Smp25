@@ -1,0 +1,156 @@
+// expensedashboard.component.scss
+
+:host {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.dashboard-container {
+  padding: 20px;
+  background-color: #f4f7fa;
+}
+
+.main-header {
+  background-color: #ffffff;
+  padding: 10px 20px;
+  margin-bottom: 20px;
+  text-align: center;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+
+  h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #343a40;
+  }
+}
+
+.kpi-and-filters-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.kpi-card {
+  background-color: #ffffff;
+  padding: 15px 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-grow: 1;
+  max-width: 350px;
+
+  .kpi-content {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .kpi-title {
+    color: #ffc107; // Amarillo para egresos
+    font-weight: bold;
+    font-size: 0.9rem;
+    margin-bottom: 2px;
+  }
+
+  .kpi-value {
+    font-size: 1.8rem;
+    font-weight: 400;
+    color: #495057;
+    line-height: 1.1;
+  }
+
+  .kpi-icon {
+    font-size: 2.5rem;
+    color: #ced4da;
+  }
+}
+
+// --- FILTROS PERSONALIZABLES ---
+.custom-filters {
+  display: flex;
+  gap: 15px;
+  background-color: #ffffff;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  align-items: flex-end;
+
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+
+    label {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #495057;
+      margin-bottom: 0;
+    }
+
+    .form-control,
+    .form-select {
+      padding: 6px 10px;
+      font-size: 0.9rem;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+      min-width: 150px;
+
+      &:focus {
+        border-color: #ffc107;
+        box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25);
+        outline: none;
+      }
+    }
+  }
+}
+
+.dashboard-row {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.dashboard-card {
+  background-color: #ffffff;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  flex: 1;
+}
+
+.chart-card {
+  min-width: 0; // Fix para que flexbox funcione bien con apexcharts
+}
+
+.list-card {
+  .list-title {
+    font-weight: bold;
+    color: #ffc107; // Amarillo para egresos
+    margin-bottom: 15px;
+    font-size: 14px;
+  }
+
+  .provider-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+
+    li {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #f4f7fa;
+
+      .provider-total {
+        font-weight: bold;
+      }
+    }
+  }
+}
+
+.wide-card {
+  flex: 2; // Esta tarjeta ocupará el doble de espacio
+}
