@@ -53,23 +53,6 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
       flex: 1
     },
     {
-      field: 'contacto',
-      headerName: 'Contacto',
-      width: 150,
-      flex: 1
-    },
-    {
-      field: 'telefono',
-      headerName: 'Teléfono',
-      width: 120
-    },
-    {
-      field: 'email',
-      headerName: 'Email',
-      width: 180,
-      flex: 1
-    },
-    {
       field: 'precioUnitario',
       headerName: 'Precio Unitario',
       width: 130,
@@ -79,9 +62,38 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
       }
     },
     {
-      field: 'tiempoEntrega',
-      headerName: 'Tiempo Entrega',
-      width: 130
+      field: 'descripcionEmpaque',
+      headerName: 'Descripción Empaque',
+      width: 180,
+      flex: 1
+    },
+    {
+      field: 'piezasPorPaquete',
+      headerName: 'Piezas x Paquete',
+      width: 140
+    },
+    {
+      field: 'medidas',
+      headerName: 'Medidas',
+      width: 140,
+      flex: 1
+    },
+    {
+      field: 'pesoVolumen',
+      headerName: 'Peso o Volumen',
+      width: 140
+    },
+    {
+      field: 'caducidadGarantia',
+      headerName: 'Caducidad o Garantía',
+      width: 160,
+      flex: 1
+    },
+    {
+      field: 'sucursal',
+      headerName: 'Sucursal',
+      width: 150,
+      flex: 1
     }
   ];
 

@@ -49,55 +49,45 @@ export class MaterialesMaestroComponent implements OnInit {
         subfamilia: 'Hexagonales',
         proveedor: 'Tornillos SA de CV',
         imagen: '📷',
-        fieldProveedores: 2,
-        fieldFamilia: 3,
         proveedoresData: [
           {
             id: 101,
             nombreProveedor: 'Tornillos SA de CV',
-            contacto: 'Juan Pérez',
-            telefono: '555-1234',
-            email: 'ventas@tornillos.com',
             precioUnitario: 2.50,
-            tiempoEntrega: '5 días'
+            descripcionEmpaque: 'Caja de cartón',
+            piezasPorPaquete: 100,
+            medidas: '1/2" x 3"',
+            pesoVolumen: '2.5 kg',
+            caducidadGarantia: 'N/A',
+            sucursal: 'Monterrey Centro'
           },
           {
             id: 102,
             nombreProveedor: 'Ferretería del Norte',
-            contacto: 'María García',
-            telefono: '555-5678',
-            email: 'info@ferrenorte.com',
             precioUnitario: 2.30,
-            tiempoEntrega: '3 días'
+            descripcionEmpaque: 'Bolsa plástica',
+            piezasPorPaquete: 50,
+            medidas: '1/2" x 3"',
+            pesoVolumen: '1.2 kg',
+            caducidadGarantia: 'N/A',
+            sucursal: 'Guadalajara Sur'
           }
         ],
         familiaData: [
           {
             id: 1001,
-            subfamilia: 'Hexagonales',
-            codigo: 'HEX-001',
-            descripcion: 'Tornillos hexagonales estándar',
-            unidadMedida: 'Pieza',
-            stockMinimo: 100,
-            stockMaximo: 1000
+            consecutivo: 1,
+            descripcion: 'Tornillos hexagonales estándar para uso general'
           },
           {
             id: 1002,
-            subfamilia: 'Hexagonales Inoxidables',
-            codigo: 'HEX-002',
-            descripcion: 'Tornillos hexagonales acero inoxidable',
-            unidadMedida: 'Pieza',
-            stockMinimo: 50,
-            stockMaximo: 500
+            consecutivo: 2,
+            descripcion: 'Tornillos hexagonales de acero inoxidable para ambientes húmedos'
           },
           {
             id: 1003,
-            subfamilia: 'Hexagonales Galvanizados',
-            codigo: 'HEX-003',
-            descripcion: 'Tornillos hexagonales galvanizados',
-            unidadMedida: 'Pieza',
-            stockMinimo: 75,
-            stockMaximo: 750
+            consecutivo: 3,
+            descripcion: 'Tornillos hexagonales galvanizados para exteriores'
           }
         ]
       },
@@ -111,37 +101,40 @@ export class MaterialesMaestroComponent implements OnInit {
         subfamilia: 'Portland',
         proveedor: 'Cementos Mexicanos',
         imagen: '📷',
-        fieldProveedores: 1,
-        fieldFamilia: 2,
         proveedoresData: [
           {
             id: 201,
             nombreProveedor: 'Cementos Mexicanos',
-            contacto: 'Carlos Rodríguez',
-            telefono: '555-9876',
-            email: 'ventas@cemex.com',
             precioUnitario: 180.00,
-            tiempoEntrega: '1 día'
+            descripcionEmpaque: 'Saco de papel kraft',
+            piezasPorPaquete: 1,
+            medidas: '50 x 30 x 15 cm',
+            pesoVolumen: '50 kg',
+            caducidadGarantia: '6 meses',
+            sucursal: 'Ciudad de México Norte'
+          },
+          {
+            id: 202,
+            nombreProveedor: 'Cementos Mexicanos',
+            precioUnitario: 175.00,
+            descripcionEmpaque: 'Saco de papel kraft',
+            piezasPorPaquete: 1,
+            medidas: '50 x 30 x 15 cm',
+            pesoVolumen: '50 kg',
+            caducidadGarantia: '6 meses',
+            sucursal: 'Querétaro Este'
           }
         ],
         familiaData: [
           {
             id: 2001,
-            subfamilia: 'Portland Gris',
-            codigo: 'CEM-001',
-            descripcion: 'Cemento Portland tipo I gris',
-            unidadMedida: 'Bulto 50kg',
-            stockMinimo: 200,
-            stockMaximo: 2000
+            consecutivo: 1,
+            descripcion: 'Cemento Portland tipo I gris para construcción general'
           },
           {
             id: 2002,
-            subfamilia: 'Portland Blanco',
-            codigo: 'CEM-002',
-            descripcion: 'Cemento Portland tipo I blanco',
-            unidadMedida: 'Bulto 50kg',
-            stockMinimo: 100,
-            stockMaximo: 1000
+            consecutivo: 2,
+            descripcion: 'Cemento Portland tipo I blanco para acabados finos'
           }
         ]
       },
@@ -155,64 +148,61 @@ export class MaterialesMaestroComponent implements OnInit {
         subfamilia: 'Conductores',
         proveedor: 'Distribuidora Eléctrica',
         imagen: '📷',
-        fieldProveedores: 2,
-        fieldFamilia: 4,
         proveedoresData: [
           {
             id: 301,
             nombreProveedor: 'Distribuidora Eléctrica',
-            contacto: 'Luis Martínez',
-            telefono: '555-4321',
-            email: 'contacto@diselec.com',
             precioUnitario: 15.50,
-            tiempoEntrega: '2 días'
+            descripcionEmpaque: 'Rollo',
+            piezasPorPaquete: 100,
+            medidas: 'Cal. 12 AWG',
+            pesoVolumen: '8.5 kg/100m',
+            caducidadGarantia: '10 años',
+            sucursal: 'Puebla Centro'
           },
           {
             id: 302,
             nombreProveedor: 'Cables y Más',
-            contacto: 'Ana López',
-            telefono: '555-8765',
-            email: 'ventas@cablesymas.com',
             precioUnitario: 14.80,
-            tiempoEntrega: '4 días'
+            descripcionEmpaque: 'Rollo',
+            piezasPorPaquete: 100,
+            medidas: 'Cal. 12 AWG',
+            pesoVolumen: '8.3 kg/100m',
+            caducidadGarantia: '10 años',
+            sucursal: 'León Norte'
+          },
+          {
+            id: 303,
+            nombreProveedor: 'Distribuidora Eléctrica',
+            precioUnitario: 16.00,
+            descripcionEmpaque: 'Carrete',
+            piezasPorPaquete: 500,
+            medidas: 'Cal. 12 AWG',
+            pesoVolumen: '42 kg/500m',
+            caducidadGarantia: '10 años',
+            sucursal: 'Tijuana Oeste'
           }
         ],
         familiaData: [
           {
             id: 3001,
-            subfamilia: 'Conductores Cobre',
-            codigo: 'CAB-001',
-            descripcion: 'Cable conductor de cobre calibre 12',
-            unidadMedida: 'Metro',
-            stockMinimo: 500,
-            stockMaximo: 5000
+            consecutivo: 1,
+            descripcion: 'Cable conductor de cobre calibre 12 para instalaciones eléctricas residenciales'
           },
           {
             id: 3002,
-            subfamilia: 'Conductores Aluminio',
-            codigo: 'CAB-002',
-            descripcion: 'Cable conductor de aluminio calibre 12',
-            unidadMedida: 'Metro',
-            stockMinimo: 300,
-            stockMaximo: 3000
+            consecutivo: 2,
+            descripcion: 'Cable conductor de aluminio calibre 12 para instalaciones comerciales'
           },
           {
             id: 3003,
-            subfamilia: 'Conductores Flexibles',
-            codigo: 'CAB-003',
-            descripcion: 'Cable conductor flexible calibre 12',
-            unidadMedida: 'Metro',
-            stockMinimo: 400,
-            stockMaximo: 4000
+            consecutivo: 3,
+            descripcion: 'Cable conductor flexible calibre 12 para equipos móviles'
           },
           {
             id: 3004,
-            subfamilia: 'Conductores Blindados',
-            codigo: 'CAB-004',
-            descripcion: 'Cable conductor blindado calibre 12',
-            unidadMedida: 'Metro',
-            stockMinimo: 200,
-            stockMaximo: 2000
+            consecutivo: 4,
+            descripcion: 'Cable conductor blindado calibre 12 para ambientes industriales'
           }
         ]
       }
@@ -307,7 +297,9 @@ export class MaterialesMaestroComponent implements OnInit {
         field: 'proveedor',
         headerName: 'Proveedor',
         width: 200,
-        filter: true
+        filter: true,
+        cellRenderer: this.createDetailToggleCellRenderer('proveedores'),
+        cellStyle: { backgroundColor: '#e3f2fd', cursor: 'pointer', textDecoration: 'underline' }
       },
       {
         field: 'imagen',
@@ -316,21 +308,13 @@ export class MaterialesMaestroComponent implements OnInit {
         cellRenderer: (params: any) => {
           return params.value ? '📷 Ver' : '📷 Subir';
         }
-      },
-      {
-        field: 'fieldProveedores',
-        headerName: 'Ver Proveedores',
-        width: 150,
-        cellRenderer: this.createDetailToggleCellRenderer('proveedores'),
-        cellStyle: { backgroundColor: '#e3f2fd', cursor: 'pointer', textDecoration: 'underline' },
-        editable: false
       }
     ];
   }
 
   // Función auxiliar para obtener el tipo de detalle desde el ID de la columna
   getDetailTypeFromColId(colId: string): string | null {
-    if (colId === 'fieldProveedores') return 'proveedores';
+    if (colId === 'proveedor') return 'proveedores';
     if (colId === 'familia') return 'familia';
     return null;
   }
@@ -341,7 +325,7 @@ export class MaterialesMaestroComponent implements OnInit {
 
       switch (detailType) {
         case 'proveedores':
-          div.innerText = `Ver (${params.data.fieldProveedores})`;
+          div.innerText = params.value || '';
           break;
         case 'familia':
           div.innerText = params.value || '';
@@ -359,7 +343,7 @@ export class MaterialesMaestroComponent implements OnInit {
     event.node.setSelected(true);
 
     const colId = event.column.getColId();
-    const isDetailColumn = colId === 'fieldProveedores' || colId === 'familia';
+    const isDetailColumn = colId === 'proveedor' || colId === 'familia';
 
     if (isDetailColumn) {
       const node = event.node;

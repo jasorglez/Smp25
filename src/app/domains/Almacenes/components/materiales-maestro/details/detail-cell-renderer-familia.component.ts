@@ -44,36 +44,15 @@ export class DetailCellRendererFamiliaComponent implements ICellRendererAngularC
 
   familiaColumnDefs = [
     {
-      field: 'subfamilia',
-      headerName: 'Subfamilia',
-      width: 200,
-      flex: 1
-    },
-    {
-      field: 'codigo',
-      headerName: 'Código',
+      field: 'consecutivo',
+      headerName: 'Consecutivo',
       width: 120
     },
     {
       field: 'descripcion',
       headerName: 'Descripción',
-      width: 250,
+      width: 400,
       flex: 1
-    },
-    {
-      field: 'unidadMedida',
-      headerName: 'Unidad de Medida',
-      width: 150
-    },
-    {
-      field: 'stockMinimo',
-      headerName: 'Stock Mínimo',
-      width: 120
-    },
-    {
-      field: 'stockMaximo',
-      headerName: 'Stock Máximo',
-      width: 120
     }
   ];
 
