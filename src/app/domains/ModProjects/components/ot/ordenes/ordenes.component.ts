@@ -780,9 +780,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
          sortable: true,
          filter: true,
          resizable: true,
-         flex: 2.5,
-         hide: true,
-         editable: true,      
+         flex: 2.5,         
+         editable: false,      
        },
       {
         field: 'otNumber',
