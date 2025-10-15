@@ -10,8 +10,10 @@
           [columnDefs]="colMaster"
           [gridOptions]="gridOptions"
           (gridReady)="onGridReady($event)"
+          (cellClicked)="onCellClicked($event)"
           [stopEditingWhenCellsLoseFocus]="true"
           [localeText]="AG_GRID_LOCALE_ES"
+          [components]="components"
         >
         </ag-grid-angular>
       </section>

@@ -4,11 +4,19 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { DetailCellRendererProveedoresComponent } from './details/detail-cell-renderer-proveedores.component';
+import { DetailCellRendererFamiliaComponent } from './details/detail-cell-renderer-familia.component';
 
 @Component({
   selector: 'app-materiales-maestro',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    AgGridModule,
+    DetailCellRendererProveedoresComponent,
+    DetailCellRendererFamiliaComponent
+  ],
   templateUrl: './materiales-maestro.component.html',
   styleUrl: './materiales-maestro.component.scss'
 })
@@ -33,7 +41,6 @@ export class MaterialesMaestroComponent implements OnInit {
     this.rowData = [
       {
         id: 1,
-        nodeLevel: 'material',
         activo: true,
         numMat: 'MAT-001',
         articulo: 'Tornillo Hexagonal 1/2"',
@@ -42,15 +49,15 @@ export class MaterialesMaestroComponent implements OnInit {
         subfamilia: 'Hexagonales',
         proveedor: 'Tornillos SA de CV',
         imagen: '📷',
-        isExpanded: false,
-        proveedores: [
+        fieldProveedores: 2,
+        fieldFamilia: 3,
+        proveedoresData: [
           {
             id: 101,
             nombreProveedor: 'Tornillos SA de CV',
             contacto: 'Juan Pérez',
             telefono: '555-1234',
             email: 'ventas@tornillos.com',
-            direccion: 'Av. Industrial 123',
             precioUnitario: 2.50,
             tiempoEntrega: '5 días'
           },
@@ -60,15 +67,42 @@ export class MaterialesMaestroComponent implements OnInit {
             contacto: 'María García',
             telefono: '555-5678',
             email: 'info@ferrenorte.com',
-            direccion: 'Calle Comercio 456',
             precioUnitario: 2.30,
             tiempoEntrega: '3 días'
+          }
+        ],
+        familiaData: [
+          {
+            id: 1001,
+            subfamilia: 'Hexagonales',
+            codigo: 'HEX-001',
+            descripcion: 'Tornillos hexagonales estándar',
+            unidadMedida: 'Pieza',
+            stockMinimo: 100,
+            stockMaximo: 1000
+          },
+          {
+            id: 1002,
+            subfamilia: 'Hexagonales Inoxidables',
+            codigo: 'HEX-002',
+            descripcion: 'Tornillos hexagonales acero inoxidable',
+            unidadMedida: 'Pieza',
+            stockMinimo: 50,
+            stockMaximo: 500
+          },
+          {
+            id: 1003,
+            subfamilia: 'Hexagonales Galvanizados',
+            codigo: 'HEX-003',
+            descripcion: 'Tornillos hexagonales galvanizados',
+            unidadMedida: 'Pieza',
+            stockMinimo: 75,
+            stockMaximo: 750
           }
         ]
       },
       {
         id: 2,
-        nodeLevel: 'material',
         activo: true,
         numMat: 'MAT-002',
         articulo: 'Cemento Portland Gris 50kg',
@@ -77,23 +111,42 @@ export class MaterialesMaestroComponent implements OnInit {
         subfamilia: 'Portland',
         proveedor: 'Cementos Mexicanos',
         imagen: '📷',
-        isExpanded: false,
-        proveedores: [
+        fieldProveedores: 1,
+        fieldFamilia: 2,
+        proveedoresData: [
           {
             id: 201,
             nombreProveedor: 'Cementos Mexicanos',
             contacto: 'Carlos Rodríguez',
             telefono: '555-9876',
             email: 'ventas@cemex.com',
-            direccion: 'Zona Industrial Ote.',
             precioUnitario: 180.00,
             tiempoEntrega: '1 día'
+          }
+        ],
+        familiaData: [
+          {
+            id: 2001,
+            subfamilia: 'Portland Gris',
+            codigo: 'CEM-001',
+            descripcion: 'Cemento Portland tipo I gris',
+            unidadMedida: 'Bulto 50kg',
+            stockMinimo: 200,
+            stockMaximo: 2000
+          },
+          {
+            id: 2002,
+            subfamilia: 'Portland Blanco',
+            codigo: 'CEM-002',
+            descripcion: 'Cemento Portland tipo I blanco',
+            unidadMedida: 'Bulto 50kg',
+            stockMinimo: 100,
+            stockMaximo: 1000
           }
         ]
       },
       {
         id: 3,
-        nodeLevel: 'material',
         activo: false,
         numMat: 'MAT-003',
         articulo: 'Cable Eléctrico Cal 12 AWG',
@@ -102,15 +155,15 @@ export class MaterialesMaestroComponent implements OnInit {
         subfamilia: 'Conductores',
         proveedor: 'Distribuidora Eléctrica',
         imagen: '📷',
-        isExpanded: false,
-        proveedores: [
+        fieldProveedores: 2,
+        fieldFamilia: 4,
+        proveedoresData: [
           {
             id: 301,
             nombreProveedor: 'Distribuidora Eléctrica',
             contacto: 'Luis Martínez',
             telefono: '555-4321',
             email: 'contacto@diselec.com',
-            direccion: 'Blvd. Electricistas 789',
             precioUnitario: 15.50,
             tiempoEntrega: '2 días'
           },
@@ -120,14 +173,56 @@ export class MaterialesMaestroComponent implements OnInit {
             contacto: 'Ana López',
             telefono: '555-8765',
             email: 'ventas@cablesymas.com',
-            direccion: 'Av. Tecnología 321',
             precioUnitario: 14.80,
             tiempoEntrega: '4 días'
+          }
+        ],
+        familiaData: [
+          {
+            id: 3001,
+            subfamilia: 'Conductores Cobre',
+            codigo: 'CAB-001',
+            descripcion: 'Cable conductor de cobre calibre 12',
+            unidadMedida: 'Metro',
+            stockMinimo: 500,
+            stockMaximo: 5000
+          },
+          {
+            id: 3002,
+            subfamilia: 'Conductores Aluminio',
+            codigo: 'CAB-002',
+            descripcion: 'Cable conductor de aluminio calibre 12',
+            unidadMedida: 'Metro',
+            stockMinimo: 300,
+            stockMaximo: 3000
+          },
+          {
+            id: 3003,
+            subfamilia: 'Conductores Flexibles',
+            codigo: 'CAB-003',
+            descripcion: 'Cable conductor flexible calibre 12',
+            unidadMedida: 'Metro',
+            stockMinimo: 400,
+            stockMaximo: 4000
+          },
+          {
+            id: 3004,
+            subfamilia: 'Conductores Blindados',
+            codigo: 'CAB-004',
+            descripcion: 'Cable conductor blindado calibre 12',
+            unidadMedida: 'Metro',
+            stockMinimo: 200,
+            stockMaximo: 2000
           }
         ]
       }
     ];
   }
+
+  components = {
+    detailCellRendererProveedores: DetailCellRendererProveedoresComponent,
+    detailCellRendererFamilia: DetailCellRendererFamiliaComponent
+  };
 
   public gridOptions: any = {
     headerHeight: 35,
@@ -136,14 +231,32 @@ export class MaterialesMaestroComponent implements OnInit {
     suppressClickEdit: true,
     singleClickEdit: false,
     stopEditingWhenCellsLoseFocus: true,
-    getRowClass: (params: any) => {
-      if (params.data.nodeLevel === 'material') {
-        return 'material-row';
+    masterDetail: true,
+    isRowMaster: (dataItem) => {
+      return true; // Todas las filas son maestras
+    },
+    detailCellRendererSelector: (params) => {
+      if (params.data.detailType === 'proveedores') {
+        return { component: 'detailCellRendererProveedores' };
+      } else if (params.data.detailType === 'familia') {
+        return { component: 'detailCellRendererFamilia' };
       }
-      if (params.data.nodeLevel === 'proveedor-detail') {
-        return 'proveedor-detail-row';
+      return undefined;
+    },
+    getRowClass: (params: any) => {
+      if (params.node.isSelected()) {
+        return 'selected-row';
       }
       return '';
+    },
+    onRowSelected: (event) => {
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
     }
   };
 
@@ -154,169 +267,137 @@ export class MaterialesMaestroComponent implements OnInit {
         headerName: 'Activo',
         width: 100,
         cellRenderer: (params: any) => {
-          if (params.data.nodeLevel === 'material') {
-            const checked = params.data.activo ? 'checked' : '';
-            return `<input type="checkbox" ${checked} disabled style="cursor: pointer;">`;
-          }
-          return '';
+          const checked = params.data.activo ? 'checked' : '';
+          return `<input type="checkbox" ${checked} disabled style="cursor: pointer;">`;
         }
       },
       {
         field: 'numMat',
         headerName: 'Num Mat',
         width: 130,
-        filter: true,
-        cellRenderer: (params: any) => {
-          return params.data.nodeLevel === 'material' ? params.value || '' : '';
-        }
+        filter: true
       },
       {
         field: 'articulo',
         headerName: 'Artículo',
         width: 250,
-        filter: true,
-        cellRenderer: (params: any) => {
-          return params.data.nodeLevel === 'material' ? params.value || '' : '';
-        }
+        filter: true
       },
       {
         field: 'categoria',
         headerName: 'Categoría',
         width: 150,
-        filter: true,
-        cellRenderer: (params: any) => {
-          return params.data.nodeLevel === 'material' ? params.value || '' : '';
-        }
+        filter: true
       },
       {
         field: 'familia',
         headerName: 'Familia',
         width: 150,
         filter: true,
-        cellRenderer: (params: any) => {
-          return params.data.nodeLevel === 'material' ? params.value || '' : '';
-        }
+        cellRenderer: this.createDetailToggleCellRenderer('familia'),
+        cellStyle: { backgroundColor: '#fff3e0', cursor: 'pointer', textDecoration: 'underline' }
       },
       {
         field: 'subfamilia',
         headerName: 'Subfamilia',
         width: 150,
-        filter: true,
-        cellRenderer: (params: any) => {
-          return params.data.nodeLevel === 'material' ? params.value || '' : '';
-        }
+        filter: true
       },
       {
         field: 'proveedor',
         headerName: 'Proveedor',
         width: 200,
-        filter: true,
-        cellRenderer: (params: any) => {
-          return params.data.nodeLevel === 'material' ? params.value || '' : '';
-        }
+        filter: true
       },
       {
         field: 'imagen',
         headerName: 'Imagen',
         width: 100,
         cellRenderer: (params: any) => {
-          if (params.data.nodeLevel === 'material') {
-            return params.value ? '📷 Ver' : '📷 Subir';
-          }
-          return '';
+          return params.value ? '📷 Ver' : '📷 Subir';
         }
       },
       {
-        field: 'verProveedor',
-        headerName: 'Ver Proveedor',
+        field: 'fieldProveedores',
+        headerName: 'Ver Proveedores',
         width: 150,
-        cellRenderer: (params: any) => {
-          if (params.data.nodeLevel === 'material') {
-            const proveedorCount = params.data.proveedores?.length || 0;
-            const isExpanded = params.data.isExpanded || false;
-            const chevron = isExpanded ? '▼' : '▶';
-            return `<button class="btn btn-sm btn-primary">${chevron} Ver (${proveedorCount})</button>`;
-          }
-          return '';
-        },
-        onCellClicked: (event: any) => {
-          if (event.data.nodeLevel === 'material') {
-            this.toggleProveedorExpansion(event.data);
-          }
-        }
+        cellRenderer: this.createDetailToggleCellRenderer('proveedores'),
+        cellStyle: { backgroundColor: '#e3f2fd', cursor: 'pointer', textDecoration: 'underline' },
+        editable: false
       }
     ];
   }
 
-  // Columnas para el grid de detalle de proveedores (cascada)
-  get colProveedorDetail(): ColDef[] {
-    return [
-      {
-        field: 'nombreProveedor',
-        headerName: 'Nombre Proveedor',
-        width: 200
-      },
-      {
-        field: 'contacto',
-        headerName: 'Contacto',
-        width: 150
-      },
-      {
-        field: 'telefono',
-        headerName: 'Teléfono',
-        width: 120
-      },
-      {
-        field: 'email',
-        headerName: 'Email',
-        width: 200
-      },
-      {
-        field: 'direccion',
-        headerName: 'Dirección',
-        width: 250
-      },
-      {
-        field: 'precioUnitario',
-        headerName: 'Precio Unitario',
-        width: 130,
-        cellRenderer: (params: any) => {
-          return params.value ? `$${params.value.toFixed(2)}` : '';
-        }
-      },
-      {
-        field: 'tiempoEntrega',
-        headerName: 'Tiempo Entrega',
-        width: 130
-      }
-    ];
+  // Función auxiliar para obtener el tipo de detalle desde el ID de la columna
+  getDetailTypeFromColId(colId: string): string | null {
+    if (colId === 'fieldProveedores') return 'proveedores';
+    if (colId === 'familia') return 'familia';
+    return null;
   }
 
-  toggleProveedorExpansion(materialData: any) {
-    const materialIndex = this.rowData.findIndex(item => item.id === materialData.id);
+  createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement {
+    return (params: any): HTMLElement => {
+      const div = document.createElement('div');
 
-    if (materialIndex === -1) return;
+      switch (detailType) {
+        case 'proveedores':
+          div.innerText = `Ver (${params.data.fieldProveedores})`;
+          break;
+        case 'familia':
+          div.innerText = params.value || '';
+          break;
+      }
 
-    const material = this.rowData[materialIndex];
-    material.isExpanded = !material.isExpanded;
+      div.style.cursor = 'pointer';
+      div.style.textDecoration = 'underline';
 
-    if (material.isExpanded) {
-      // Insertar filas de proveedores justo después del material
-      const proveedorRows = material.proveedores.map((prov: any) => ({
-        ...prov,
-        nodeLevel: 'proveedor-detail',
-        parentId: material.id
-      }));
+      return div;
+    };
+  }
 
-      this.rowData.splice(materialIndex + 1, 0, ...proveedorRows);
-    } else {
-      // Remover filas de proveedores
-      this.rowData = this.rowData.filter(item =>
-        !(item.nodeLevel === 'proveedor-detail' && item.parentId === material.id)
-      );
+  onCellClicked(event: any): void {
+    event.node.setSelected(true);
+
+    const colId = event.column.getColId();
+    const isDetailColumn = colId === 'fieldProveedores' || colId === 'familia';
+
+    if (isDetailColumn) {
+      const node = event.node;
+      const api = event.api;
+      const detailType = this.getDetailTypeFromColId(colId);
+
+      // Determinar si la fila actual ya está expandida CON ESTE MISMO tipo de detalle
+      const isCurrentlyExpanded = node.expanded && event.data.detailType === detailType;
+
+      // Colapsar cualquier otra fila que esté expandida
+      api.forEachNode((otherNode: any) => {
+        if (otherNode.expanded && otherNode.id !== node.id) {
+          otherNode.setExpanded(false);
+        }
+      });
+
+      if (isCurrentlyExpanded) {
+        // Si se hace clic en la misma celda que ya está abierta, se cierra y se limpia el filtro
+        node.setExpanded(false);
+        api.setFilterModel(null);
+        api.onFilterChanged();
+      } else {
+        // Si se hace clic en una celda diferente (o la fila está cerrada)
+
+        // Limpiar filtro antes de aplicar uno nuevo
+        api.setFilterModel(null);
+
+        // Aplicar filtro por ID para enfocar la fila actual
+        const filterModel = {
+          id: { filterType: 'number', type: 'equals', filter: event.data.id },
+        };
+        api.setFilterModel(filterModel);
+
+        // Expandir la fila con el detalle correcto
+        event.data.detailType = detailType;
+        node.setExpanded(true);
+      }
     }
-
-    this.gridApi.setGridOption('rowData', this.rowData);
   }
 
   onGridReady(params: GridReadyEvent) {
