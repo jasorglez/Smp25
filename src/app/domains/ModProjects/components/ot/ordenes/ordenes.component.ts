@@ -801,6 +801,15 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         }
       },
       {
+        field: 'package',
+        headerName: 'Paquete',
+        sortable: true,
+        filter: true,
+        resizable: true,
+        flex: 2.5,         
+        editable: false,      
+      },
+      {
         field: 'results',
         headerName: 'Resultados',
         sortable: true,
