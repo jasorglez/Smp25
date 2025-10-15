@@ -77,16 +77,25 @@ export class MaterialesMaestroComponent implements OnInit {
           {
             id: 1001,
             consecutivo: 1,
+            subfamilia: 'Hexagonales',
+            sabor: 'N/A',
+            presentacion: 'Caja 100 pzas',
             descripcion: 'Tornillos hexagonales estándar para uso general'
           },
           {
             id: 1002,
             consecutivo: 2,
+            subfamilia: 'Hexagonales',
+            sabor: 'N/A',
+            presentacion: 'Caja 50 pzas',
             descripcion: 'Tornillos hexagonales de acero inoxidable para ambientes húmedos'
           },
           {
             id: 1003,
             consecutivo: 3,
+            subfamilia: 'Hexagonales',
+            sabor: 'N/A',
+            presentacion: 'Bolsa 200 pzas',
             descripcion: 'Tornillos hexagonales galvanizados para exteriores'
           }
         ]
@@ -129,11 +138,17 @@ export class MaterialesMaestroComponent implements OnInit {
           {
             id: 2001,
             consecutivo: 1,
+            subfamilia: 'Portland',
+            sabor: 'N/A',
+            presentacion: 'Saco 50kg',
             descripcion: 'Cemento Portland tipo I gris para construcción general'
           },
           {
             id: 2002,
             consecutivo: 2,
+            subfamilia: 'Portland',
+            sabor: 'N/A',
+            presentacion: 'Saco 25kg',
             descripcion: 'Cemento Portland tipo I blanco para acabados finos'
           }
         ]
@@ -187,22 +202,208 @@ export class MaterialesMaestroComponent implements OnInit {
           {
             id: 3001,
             consecutivo: 1,
+            subfamilia: 'Conductores',
+            sabor: 'N/A',
+            presentacion: 'Rollo 100m',
             descripcion: 'Cable conductor de cobre calibre 12 para instalaciones eléctricas residenciales'
           },
           {
             id: 3002,
             consecutivo: 2,
+            subfamilia: 'Conductores',
+            sabor: 'N/A',
+            presentacion: 'Rollo 50m',
             descripcion: 'Cable conductor de aluminio calibre 12 para instalaciones comerciales'
           },
           {
             id: 3003,
             consecutivo: 3,
+            subfamilia: 'Conductores',
+            sabor: 'N/A',
+            presentacion: 'Rollo 25m',
             descripcion: 'Cable conductor flexible calibre 12 para equipos móviles'
           },
           {
             id: 3004,
             consecutivo: 4,
+            subfamilia: 'Conductores',
+            sabor: 'N/A',
+            presentacion: 'Carrete 500m',
             descripcion: 'Cable conductor blindado calibre 12 para ambientes industriales'
+          }
+        ]
+      },
+      {
+        id: 4,
+        activo: true,
+        numMat: 'MAT-004',
+        articulo: 'Refresco Embotellado',
+        categoria: 'Alimentos y Bebidas',
+        familia: 'Bebidas',
+        subfamilia: 'Refrescos',
+        proveedor: 'Embotelladora del Valle',
+        imagen: '📷',
+        proveedoresData: [
+          {
+            id: 401,
+            nombreProveedor: 'Embotelladora del Valle',
+            precioUnitario: 12.50,
+            descripcionEmpaque: 'Caja de cartón',
+            piezasPorPaquete: 24,
+            medidas: '600ml',
+            pesoVolumen: '15 kg',
+            caducidadGarantia: '6 meses',
+            sucursal: 'Monterrey Centro'
+          }
+        ],
+        familiaData: [
+          {
+            id: 4001,
+            consecutivo: 1,
+            subfamilia: 'Refrescos',
+            sabor: 'Cola',
+            presentacion: 'Botella 600ml',
+            descripcion: 'Refresco de cola carbonatado sabor original'
+          },
+          {
+            id: 4002,
+            consecutivo: 2,
+            subfamilia: 'Refrescos',
+            sabor: 'Naranja',
+            presentacion: 'Botella 600ml',
+            descripcion: 'Refresco de naranja carbonatado con jugo natural'
+          },
+          {
+            id: 4003,
+            consecutivo: 3,
+            subfamilia: 'Refrescos',
+            sabor: 'Limón',
+            presentacion: 'Botella 355ml',
+            descripcion: 'Refresco de limón carbonatado light sin azúcar'
+          },
+          {
+            id: 4004,
+            consecutivo: 4,
+            subfamilia: 'Refrescos',
+            sabor: 'Fresa',
+            presentacion: 'Lata 355ml',
+            descripcion: 'Refresco de fresa carbonatado sabor artificial'
+          }
+        ]
+      },
+      {
+        id: 5,
+        activo: true,
+        numMat: 'MAT-005',
+        articulo: 'Galletas Dulces',
+        categoria: 'Alimentos y Bebidas',
+        familia: 'Botanas',
+        subfamilia: 'Galletas',
+        proveedor: 'Galletas y Más SA',
+        imagen: '📷',
+        proveedoresData: [
+          {
+            id: 501,
+            nombreProveedor: 'Galletas y Más SA',
+            precioUnitario: 18.00,
+            descripcionEmpaque: 'Caja display',
+            piezasPorPaquete: 20,
+            medidas: '180g',
+            pesoVolumen: '3.6 kg',
+            caducidadGarantia: '8 meses',
+            sucursal: 'Guadalajara Centro'
+          }
+        ],
+        familiaData: [
+          {
+            id: 5001,
+            consecutivo: 1,
+            subfamilia: 'Galletas',
+            sabor: 'Chocolate',
+            presentacion: 'Paquete 180g',
+            descripcion: 'Galletas con chispas de chocolate semiamargo'
+          },
+          {
+            id: 5002,
+            consecutivo: 2,
+            subfamilia: 'Galletas',
+            sabor: 'Vainilla',
+            presentacion: 'Paquete 200g',
+            descripcion: 'Galletas de vainilla con crema tipo sandwich'
+          },
+          {
+            id: 5003,
+            consecutivo: 3,
+            subfamilia: 'Galletas',
+            sabor: 'Avena y Miel',
+            presentacion: 'Paquete 150g',
+            descripcion: 'Galletas de avena integral endulzadas con miel'
+          }
+        ]
+      },
+      {
+        id: 6,
+        activo: true,
+        numMat: 'MAT-006',
+        articulo: 'Yogurt Natural',
+        categoria: 'Alimentos y Bebidas',
+        familia: 'Lácteos',
+        subfamilia: 'Yogurt',
+        proveedor: 'Lácteos del Norte',
+        imagen: '📷',
+        proveedoresData: [
+          {
+            id: 601,
+            nombreProveedor: 'Lácteos del Norte',
+            precioUnitario: 25.00,
+            descripcionEmpaque: 'Charola de cartón',
+            piezasPorPaquete: 12,
+            medidas: '1 litro',
+            pesoVolumen: '12.5 kg',
+            caducidadGarantia: '30 días',
+            sucursal: 'Querétaro Norte'
+          }
+        ],
+        familiaData: [
+          {
+            id: 6001,
+            consecutivo: 1,
+            subfamilia: 'Yogurt',
+            sabor: 'Natural',
+            presentacion: 'Envase 1L',
+            descripcion: 'Yogurt natural sin azúcar añadida'
+          },
+          {
+            id: 6002,
+            consecutivo: 2,
+            subfamilia: 'Yogurt',
+            sabor: 'Fresa',
+            presentacion: 'Envase 1L',
+            descripcion: 'Yogurt con sabor a fresa con trozos de fruta'
+          },
+          {
+            id: 6003,
+            consecutivo: 3,
+            subfamilia: 'Yogurt',
+            sabor: 'Durazno',
+            presentacion: 'Envase 500ml',
+            descripcion: 'Yogurt con sabor a durazno bajo en grasa'
+          },
+          {
+            id: 6004,
+            consecutivo: 4,
+            subfamilia: 'Yogurt',
+            sabor: 'Arándano',
+            presentacion: 'Envase 250ml',
+            descripcion: 'Yogurt griego con arándanos naturales'
+          },
+          {
+            id: 6005,
+            consecutivo: 5,
+            subfamilia: 'Yogurt',
+            sabor: 'Mango',
+            presentacion: 'Envase 1L',
+            descripcion: 'Yogurt con pulpa de mango tropical'
           }
         ]
       }

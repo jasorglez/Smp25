@@ -49,9 +49,24 @@ export class DetailCellRendererFamiliaComponent implements ICellRendererAngularC
       width: 120
     },
     {
+      field: 'subfamilia',
+      headerName: 'Subfamilia',
+      width: 150
+    },
+    {
+      field: 'sabor',
+      headerName: 'Sabor',
+      width: 150
+    },
+    {
+      field: 'presentacion',
+      headerName: 'Presentación',
+      width: 150
+    },
+    {
       field: 'descripcion',
       headerName: 'Descripción',
-      width: 400,
+      width: 300,
       flex: 1
     }
   ];
