@@ -3,16 +3,46 @@
   <div class="row mb-4">
     <div class="col-12">
       <div class="d-flex justify-content-between align-items-center">
-        <div>
+        <div class="flex-grow-1">
           <h3 class="mb-1">
             <i class="bi bi-diagram-3-fill text-primary me-2"></i>
             Catálogo de Cuentas Contables
+            <button class="btn btn-sm btn-outline-info ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#helpCollapse" title="Ver atajos de teclado">
+              <i class="bi bi-keyboard"></i>
+            </button>
           </h3>
           <p class="text-muted mb-0">Gestión de cuentas de ingresos y egresos</p>
+
+          <!-- Ayuda de atajos -->
+          <div class="collapse mt-2" id="helpCollapse">
+            <div class="alert alert-info alert-dismissible fade show py-2" role="alert">
+              <small>
+                <strong>Atajos de teclado:</strong>
+                <kbd>Ctrl+N</kbd> Nueva cuenta |
+                <kbd>Ctrl+F</kbd> Buscar |
+                <kbd>Enter</kbd> Expandir/Colapsar |
+                <kbd>Del</kbd> Eliminar
+              </small>
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          </div>
+
+          <!-- Breadcrumbs para cuenta seleccionada -->
+          <nav *ngIf="selectedCuenta" aria-label="breadcrumb" class="mt-2">
+            <ol class="breadcrumb mb-0">
+              <li class="breadcrumb-item active">
+                <small>
+                  <i class="bi bi-arrow-right-short"></i>
+                  <strong>{{ selectedCuenta.codigo }}</strong> - {{ selectedCuenta.nombre }}
+                  <span class="badge bg-secondary ms-2" style="font-size: 0.7rem;">Nivel {{ selectedCuenta.nivel }}</span>
+                </small>
+              </li>
+            </ol>
+          </nav>
         </div>
         <div>
-          <button class="btn btn-success me-2" (click)="openCreateModal()" [disabled]="loading">
-            <i class="bi bi-plus-circle me-1"></i> Nueva Cuenta Nivel 1
+          <button class="btn btn-success me-2" (click)="openCreateModal()" [disabled]="loading" title="Ctrl + N">
+            <i class="bi bi-plus-circle me-1"></i> Nueva Cuenta <small class="text-white-50">(Ctrl+N)</small>
           </button>
           <button class="btn btn-outline-secondary" (click)="exportToExcel()" [disabled]="loading">
             <i class="bi bi-file-earmark-excel me-1"></i> Exportar
@@ -24,7 +54,7 @@
 
   <!-- Filtros y Controles -->
   <div class="row mb-3">
-    <div class="col-md-6">
+    <div class="col-md-5">
       <div class="input-group">
         <span class="input-group-text">
           <i class="bi bi-search"></i>
@@ -32,7 +62,7 @@
         <input
           type="text"
           class="form-control"
-          placeholder="Buscar por código, nombre o descripción..."
+          placeholder="Buscar por código, nombre o descripción... (Ctrl+F)"
           [(ngModel)]="searchTerm"
           (ngModelChange)="filterTree()"
         />
@@ -40,6 +70,15 @@
           <i class="bi bi-x-lg"></i>
         </button>
       </div>
+    </div>
+
+    <div class="col-md-1">
+      <select class="form-select form-select-sm" [(ngModel)]="filterNivel" (ngModelChange)="filterTree()" title="Filtrar por nivel">
+        <option [ngValue]="null">Todos</option>
+        <option [ngValue]="1">Nivel 1</option>
+        <option [ngValue]="2">Nivel 2</option>
+        <option [ngValue]="3">Nivel 3</option>
+      </select>
     </div>
 
     <div class="col-md-6">
@@ -143,71 +182,23 @@
           </div>
         </div>
 
-        <div class="card-body p-0">
-          <div class="table-responsive">
-            <table class="table table-hover table-sm mb-0">
-              <thead class="table-light sticky-top">
-                <tr>
-                  <th style="width: 100px;">Código</th>
-                  <th>Nombre</th>
-                  <th style="width: 250px;">Descripción</th>
-                  <th style="width: 80px;" class="text-center">Nivel</th>
-                  <th style="width: 80px;" class="text-center">Tipo</th>
-                  <th style="width: 80px;" class="text-center">Estado</th>
-                  <th style="width: 150px;" class="text-center">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let cuenta of filteredFlatCuentas" [class.table-secondary]="!cuenta.activo">
-                  <td>
-                    <span class="badge" [class]="'bg-' + (cuenta.nivel === 1 ? 'primary' : cuenta.nivel === 2 ? 'info' : 'success')">
-                      {{ cuenta.codigo }}
-                    </span>
-                  </td>
-                  <td>
-                    <i [class]="getNivelIcon(cuenta.nivel) + ' me-1'"></i>
-                    {{ cuenta.nombre }}
-                  </td>
-                  <td class="text-muted small">{{ cuenta.descripcion || '-' }}</td>
-                  <td class="text-center">
-                    <span class="badge" [class]="'bg-' + (cuenta.nivel === 1 ? 'primary' : cuenta.nivel === 2 ? 'info' : 'success')">
-                      {{ cuenta.nivel }}
-                    </span>
-                  </td>
-                  <td class="text-center">
-                    <span class="badge" [class.bg-warning]="cuenta.esHoja" [class.bg-secondary]="!cuenta.esHoja">
-                      {{ cuenta.esHoja ? 'Hoja' : 'Padre' }}
-                    </span>
-                  </td>
-                  <td class="text-center">
-                    <span class="badge" [class.bg-success]="cuenta.activo" [class.bg-danger]="!cuenta.activo">
-                      {{ cuenta.activo ? 'Activa' : 'Inactiva' }}
-                    </span>
-                  </td>
-                  <td class="text-center">
-                    <div class="btn-group btn-group-sm">
-                      <button class="btn btn-outline-primary" (click)="openEditModal(cuenta)" title="Editar">
-                        <i class="bi bi-pencil"></i>
-                      </button>
-                      <button
-                        class="btn btn-outline-danger"
-                        (click)="deleteCuenta(cuenta)"
-                        title="Eliminar"
-                        [disabled]="!cuenta.activo"
-                      >
-                        <i class="bi bi-trash"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-
-            <div *ngIf="filteredFlatCuentas.length === 0" class="text-center p-4">
-              <i class="bi bi-filter-circle display-4 text-muted"></i>
-              <p class="mt-2 text-muted">No se encontraron cuentas con los filtros aplicados</p>
-            </div>
-          </div>
+        <div class="card-body p-2">
+          <!-- AG Grid -->
+          <ag-grid-angular
+            style="width: 100%; height: 600px;"
+            class="ag-theme-alpine"
+            [rowData]="filteredFlatCuentas"
+            [columnDefs]="columnDefs"
+            [defaultColDef]="defaultColDef"
+            [localeText]="AG_GRID_LOCALE_ES"
+            [pagination]="true"
+            [paginationPageSize]="20"
+            [paginationPageSizeSelector]="[10, 20, 50, 100]"
+            [animateRows]="true"
+            [rowSelection]="'single'"
+            (gridReady)="onGridReady($event)"
+          >
+          </ag-grid-angular>
         </div>
       </div>
     </div>
@@ -225,7 +216,7 @@
         [class.inactive]="!node.activo"
       >
         <div class="tree-node-content" (click)="selectCuenta(node)">
-          <!-- Toggle para nodos con hijos -->
+          <!-- Toggle para nodos con hijos (solo chevron, sin iconos redundantes) -->
           <button
             *ngIf="node.hijos && node.hijos.length > 0"
             class="btn btn-sm btn-link tree-toggle p-0 me-2"
@@ -235,15 +226,12 @@
           </button>
           <span *ngIf="!node.hijos || node.hijos.length === 0" class="tree-spacer"></span>
 
-          <!-- Icono -->
-          <i [class]="getNivelIcon(node.nivel) + ' me-2 tree-icon'"></i>
-
-          <!-- Código y Nombre -->
+          <!-- Código y Nombre (sin iconos, estilo AG Grid) -->
           <div class="tree-info flex-grow-1">
-            <span class="tree-code">{{ node.codigo }}</span>
+            <span class="tree-code fw-bold">{{ node.codigo }}</span>
             <span class="tree-name">{{ node.nombre }}</span>
-            <span *ngIf="node.esHoja" class="badge bg-warning ms-2" style="font-size: 0.7rem;">Hoja</span>
-            <span *ngIf="!node.activo" class="badge bg-danger ms-2" style="font-size: 0.7rem;">Inactiva</span>
+            <span *ngIf="node.esHoja" class="badge bg-warning text-dark ms-2" style="font-size: 0.65rem;">Hoja</span>
+            <span *ngIf="!node.activo" class="badge bg-danger ms-2" style="font-size: 0.65rem;">Inactiva</span>
           </div>
 
           <!-- Acciones -->
