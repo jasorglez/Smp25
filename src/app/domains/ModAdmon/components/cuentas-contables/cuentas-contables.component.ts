@@ -10,7 +10,7 @@ import {
   ICuentaContableTree,
   ICuentaContableForm
 } from 'app/interface/icuentas-contables';
-import { alerts } from '../../../../../helpers/alerts';
+import { alerts } from 'app/helpers/alerts';
 import { ModalCuentaContableComponent } from './modal-cuenta-contable/modal-cuenta-contable.component';
 
 @Component({
@@ -187,7 +187,7 @@ export class CuentasContablesComponent implements OnInit {
     );
   }
 
-  openEditModal(cuenta: ICuentaContableTree): void {
+  openEditModal(cuenta: ICuentaContable | ICuentaContableTree): void {
     const modalRef = this.modalService.open(ModalCuentaContableComponent, {
       size: 'lg',
       backdrop: 'static'
@@ -208,9 +208,10 @@ export class CuentasContablesComponent implements OnInit {
     );
   }
 
-  async deleteCuenta(cuenta: ICuentaContableTree): Promise<void> {
+  async deleteCuenta(cuenta: ICuentaContable | ICuentaContableTree): Promise<void> {
     // Validar que no tenga hijos
-    if (cuenta.hijos && cuenta.hijos.length > 0) {
+    const cuentaTree = cuenta as ICuentaContableTree;
+    if (cuentaTree.hijos && cuentaTree.hijos.length > 0) {
       alerts.basicAlert(
         'No se puede eliminar',
         'Esta cuenta tiene subcuentas asociadas. Debe eliminar primero las subcuentas.',
@@ -219,13 +220,14 @@ export class CuentasContablesComponent implements OnInit {
       return;
     }
 
-    const confirmed = await alerts.confirmAlert(
+    const result = await alerts.confirmAlert(
       '¿Eliminar cuenta?',
       `¿Está seguro de eliminar la cuenta ${cuenta.codigo} - ${cuenta.nombre}?`,
-      'warning'
+      'warning',
+      'Sí, eliminar'
     );
 
-    if (confirmed) {
+    if (result.isConfirmed) {
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
         `Eliminar cuenta ${cuenta.codigo}`,

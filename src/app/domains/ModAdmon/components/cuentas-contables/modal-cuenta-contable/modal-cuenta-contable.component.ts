@@ -9,7 +9,7 @@ import {
   ICuentaContableTree,
   ICuentaContableForm
 } from 'app/interface/icuentas-contables';
-import { alerts } from '../../../../../../helpers/alerts';
+import { alerts } from 'app/helpers/alerts';
 
 @Component({
   selector: 'app-modal-cuenta-contable',

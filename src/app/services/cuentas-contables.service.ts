@@ -14,7 +14,7 @@ import {
 })
 export class CuentasContablesService {
   private http = inject(HttpClient);
-  private apiUrl = `${environment.apiUrlTracking}/CuentasContables`;
+  private apiUrl = `${environment.urlAdministration}/CuentasContables`;
 
   /**
    * Obtiene todas las cuentas contables de una compañía
