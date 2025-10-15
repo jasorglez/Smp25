@@ -4,50 +4,35 @@
 }
 
 // Estilos para el grid AG-Grid
-.ag-theme-alpine {
-  --ag-header-height: 35px;
-  --ag-row-height: 35px;
-  --ag-font-size: 13px;
-  
-  // Colores de filas alternativas como en la imagen maestro.png
-  .ag-row-even {
-    background-color: #fff3cd; // Amarillo claro
+::ng-deep .ag-theme-quartz {
+
+  // Estilo para filas de material (principal)
+  .material-row {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    border-bottom: 2px solid #dee2e6;
   }
-  
-  .ag-row-odd {
-    background-color: #ffeaa7; // Amarillo más intenso
+
+  // Estilo para filas de detalle de proveedor (cascada)
+  .proveedor-detail-row {
+    background-color: #e7f3ff;
+    padding-left: 30px;
+    border-left: 3px solid #0d6efd;
   }
-  
+
   // Resaltar fila seleccionada
   .ag-row-selected {
     background-color: #cce5ff !important;
     border: 2px solid #007bff;
   }
-  
-  // Estilos para celdas editables
-  .ag-cell-editable {
-    background-color: #f8f9fa;
-    border: 1px solid #dee2e6;
-  }
-  
-  // Celdas modificadas
-  .ag-cell-data-changed {
-    background-color: #d1ecf1 !important;
-    animation: flash 1s;
-  }
-  
-  @keyframes flash {
-    0% { background-color: #b3d9ff; }
-    100% { background-color: #d1ecf1; }
-  }
-  
+
   // Estilos para checkboxes
   input[type="checkbox"] {
     width: 16px;
     height: 16px;
     margin: 0;
   }
-  
+
   // Estilos para botones dentro del grid
   .btn {
     padding: 2px 6px;
@@ -55,93 +40,13 @@
   }
 }
 
-// Botones de la barra de herramientas
-.btn-group .btn {
-  font-size: 14px;
-  padding: 6px 12px;
-}
-
-// Alertas
-.alert {
-  font-size: 14px;
-  
-  &.alert-info {
-    background-color: #e7f3ff;
-    border-color: #b3d9ff;
-    color: #055160;
-  }
-  
-  &.alert-warning {
-    background-color: #fff3cd;
-    border-color: #ffda6a;
-    color: #664d03;
-  }
-}
-
-// Card de información del registro seleccionado
-.card {
-  font-size: 14px;
-  
-  .card-header {
-    background-color: #f8f9fa;
-    border-bottom: 1px solid #dee2e6;
-    padding: 8px 12px;
-    
-    h6 {
-      color: #495057;
-      font-weight: 600;
-    }
-  }
-  
-  .card-body {
-    padding: 12px;
-    
-    .text-muted {
-      font-size: 12px;
-      color: #6c757d !important;
-    }
-    
-    strong {
-      color: #495057;
-      font-size: 13px;
-    }
-  }
-}
-
-// Leyenda de ayuda
-.list-unstyled {
-  li {
-    margin-bottom: 4px;
-    
-    i {
-      width: 16px;
-      display: inline-block;
-    }
-  }
-}
-
-// Estados de botones deshabilitados
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 // Responsividad
 @media (max-width: 768px) {
   .container-fluid {
     padding: 0.5rem;
   }
-  
-  .btn-group {
-    flex-direction: column;
-    width: 100%;
-    
-    .btn {
-      margin-bottom: 4px;
-    }
-  }
-  
-  .ag-theme-alpine {
+
+  ::ng-deep .ag-theme-quartz {
     height: 400px !important;
     font-size: 12px;
   }

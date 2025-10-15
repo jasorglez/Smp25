@@ -1,861 +1,390 @@
-import { Component, effect, inject, HostListener } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
-import { alerts } from 'app/helpers/alerts';
 import { AgGridModule } from 'ag-grid-angular';
-import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { SignalsService } from 'app/services/signals.service';
-import { CatalogsService } from 'app/services/catalogs.service';
-import { MaterialsService } from 'app/services/materials.service';
-import { MaterialsResponse } from 'app/interface/materials.interface';
-import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
-import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
+import { DetailCellRendererProveedoresComponent } from './details/detail-cell-renderer-proveedores.component';
+import { DetailCellRendererFamiliaComponent } from './details/detail-cell-renderer-familia.component';
 
 @Component({
   selector: 'app-materiales-maestro',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    AgGridModule,
+    DetailCellRendererProveedoresComponent,
+    DetailCellRendererFamiliaComponent
+  ],
   templateUrl: './materiales-maestro.component.html',
   styleUrl: './materiales-maestro.component.scss'
 })
-export class MaterialesMaestroComponent implements CanComponentDeactivate {
+export class MaterialesMaestroComponent implements OnInit {
 
-  private catalogsService = inject(CatalogsService);
-  private signalsService = inject(SignalsService);
-  private materialsService = inject(MaterialsService);
+  private gridApi!: GridApi;
 
-  constructor() {
-    effect(() => {
-      console.log('Effect ejecutado en constructor');
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      console.log('idRoot actualizado a:', this.idRoot);
-      this.obtenerDatos();
-      this.obtenerCatalogos();
-      this.obtenerMedidas();
-      this.cargarDatosMock();
-    });
-  }
-
-  @HostListener('window:beforeunload', ['$event'])
-  unloadNotification($event: any): void {
-    if (this.notSavedChanges) {
-      $event.returnValue = 'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
-    }
-  }
-
-  notSavedChanges: boolean = false;
-  private gridApi: GridApi;
-  private idRoot = this.signalsService.getRootSelectedBySidebar()();
-  private tempIdCounter: number = 0;
-  
-  categories: any[] = [];
-  familias: any[] = [];
-  subfamilias: any[] = []; // Subfamilias filtradas para la fila actual
-  todasSubfamilias: any[] = []; // Todas las subfamilias disponibles
-  medidas: any[] = []; // Unidades de medida
-  proveedores: any[] = []; // Proveedores (datos mock)
-  sucursales: any[] = []; // Sucursales (datos mock)
-  rawData: any[] = []; // Datos originales del API
-  treeData: any[] = []; // Datos estructurados en árbol
-  rowData: any[] = []; // Datos visibles en el grid
-  selectedRowData: any = null;
-  newlyAddedRows: string[] = [];
+  rowData: any[] = [];
   gridHeight: string = '80vh';
-  
+
   public rowSelection: 'single' | 'multiple' = 'single';
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
-  async obtenerDatos() {
-    console.log('obtenerDatos() llamado, idRoot:', this.idRoot);
-    
-    if (!this.idRoot) {
-      console.warn('No idRoot available');
-      return;
-    }
-
-    try {
-      // Asegurar que los catálogos estén cargados primero
-      await this.obtenerCatalogos();
-      
-      console.log('Llamando al servicio de materiales con idRoot:', this.idRoot, 'type: CONSUMABLE');
-      
-      const materials = await lastValueFrom(
-        this.materialsService.getAllMaterialsxview(this.idRoot)
-          .pipe(
-            catchError((error) => {
-              console.error('Error en el pipe catchError:', error);
-              return EMPTY;
-            })
-          )
-      );
-      
-      console.log('Materiales recibidos del servicio:', materials);
-      console.log('Número de materiales:', materials?.length || 0);
-      
-      this.rawData = materials;
-    this.buildTreeStructure();
-    this.updateGridData();
-      
-    } catch (error) {
-      console.error('Error en try/catch al cargar materiales:', error);
-      this.rowData = [];
-      if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', this.rowData);
-      }
-    }
+  ngOnInit() {
+    this.cargarDatosFalsos();
   }
 
-  // Construir estructura de árbol: Material -> Proveedor -> Items
-  private buildTreeStructure() {
-    console.log('Construyendo estructura de árbol con:', this.rawData.length, 'materiales');
-    
-    if (!this.rawData || this.rawData.length === 0) {
-      this.treeData = [];
-      return;
-    }
-    
-    this.treeData = [];
-    const materialsMap = new Map();
-    const providersMap = new Map();
-    
-    // Procesar cada registro del API (cada uno es una orden de compra)
-    this.rawData.forEach(material => {
-      const materialKey = material.description;
-      const companyName = material.company === 'N/A' ? 'Sin Proveedor' : material.company;
-      const providerKey = `${materialKey}_${companyName}`;
-      
-      // Solo crear nodos si hay datos relevantes (no N/A en typeOcorReq)
-      const hasOrderData = material.typeOcorReq !== 'N/A' && material.folioOcorReq !== 'N/A';
-      
-      // Crear nodo de material si no existe
-      if (!materialsMap.has(materialKey)) {
-        const materialNode = {
-          id: `material_${materialKey}`,
-          nodeLevel: 'material',
-          description: material.description,
-          articulo: material.description,
-          isExpanded: true,
-          isVisible: true,
-          providerCount: 0,
-          totalCost: 0
-        };
-        materialsMap.set(materialKey, materialNode);
-        this.treeData.push(materialNode);
-      }
-      
-      // Solo procesar si tiene datos de orden de compra
-      if (hasOrderData) {
-        // Crear nodo de proveedor si no existe
-        if (!providersMap.has(providerKey)) {
-          const providerNode = {
-            id: `provider_${providerKey}`,
-            nodeLevel: 'provider', 
-            description: companyName,
-            proveedor: companyName,
-            parentMaterial: materialKey,
-            isExpanded: true,
-            isVisible: true,
-            orderCount: 0,
-            totalCost: 0
-          };
-          providersMap.set(providerKey, providerNode);
-          this.treeData.push(providerNode);
-          
-          // Incrementar contador de proveedores del material
-          materialsMap.get(materialKey).providerCount++;
-        }
-        
-        // Crear orden de compra individual
-        const totalOC = (material.price || 0) * (material.inOrOutQuantity || 0);
-        const orderNode = {
-          id: `order_${material.id}_${Date.now()}`,
-          nodeLevel: 'order',
-          parentMaterial: materialKey,
-          parentProvider: companyName,
-          isVisible: true,
-          // Datos de la orden de compra
-          folioOcorReq: material.folioOcorReq,
-          price: material.price,
-          inOrOutQuantity: material.inOrOutQuantity,
-          totalOC: totalOC,
-          fechaOc: material.fechaOc,
-          // Campos del material para mostrar en el grid
-          insumo: material.insumo,
-          medida: material.measure,
-          quantity: material.quantity,
-          categoria: this.getCategoriaDescription(material.idCategory),
-          familia: this.getFamiliaDescription(material.idFamilia),
-          subFamilia: this.getSubfamiliaDescription(material.idSubfamilia),
-          costoMN: material.costoMN,
-          descriptionPackage: material.descriptionPackage,
-          packageQuantity: material.packageQuantity,
-          weightOrVolumes: material.weightOrVolumes,
-          expiration: material.expiration,
-          activo: material.active
-        };
-        
-        this.treeData.push(orderNode);
-        
-        // Actualizar contadores y totales
-        const materialNode = materialsMap.get(materialKey);
-        const providerNode = providersMap.get(providerKey);
-        
-        materialNode.totalCost += totalOC;
-        providerNode.orderCount++;
-        providerNode.totalCost += totalOC;
-      }
-    });
-    
-    console.log('Estructura de árbol construida:', this.treeData.length, 'nodos');
-  }
-  
-  // Actualizar datos visibles del grid
-  private updateGridData() {
-    this.rowData = this.treeData.filter(item => item.isVisible);
-    if (this.gridApi) {
-      this.gridApi.setGridOption('rowData', this.rowData);
-    }
-  }
-
-  // Métodos helper para obtener descripciones de catálogos
-  private getCategoriaDescription(idCategory: number): string {
-    console.log('getCategoriaDescription - idCategory:', idCategory, 'categories:', this.categories?.length);
-    if (!idCategory || !this.categories) return '';
-    const categoria = this.categories.find(cat => cat.id === idCategory);
-    console.log('Categoria encontrada:', categoria);
-    return categoria ? categoria.description : '';
-  }
-
-  private getFamiliaDescription(idFamilia: number): string {
-    console.log('getFamiliaDescription - idFamilia:', idFamilia, 'familias:', this.familias?.length);
-    if (!idFamilia || !this.familias) return '';
-    const familia = this.familias.find(fam => fam.id === idFamilia);
-    console.log('Familia encontrada:', familia);
-    return familia ? familia.description : '';
-  }
-
-  private getSubfamiliaDescription(idSubfamilia: number): string {
-    console.log('getSubfamiliaDescription - idSubfamilia:', idSubfamilia, 'subfamilias:', this.todasSubfamilias?.length);
-    if (!idSubfamilia || !this.todasSubfamilias) return '';
-    const subfamilia = this.todasSubfamilias.find(sub => sub.id === idSubfamilia);
-    console.log('Subfamilia encontrada:', subfamilia);
-    return subfamilia ? subfamilia.description : '';
-  }
-
-
-  async obtenerCatalogos() {
-    if (!this.idRoot) return;
-
-    try {
-      // Cargar categorías, familias y todas las subfamilias
-      const [categories, families, subfamilies] = await Promise.all([
-        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'CATEGORY')),
-        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'FAM-CAT')),
-        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'SUB-FAM'))
-      ]);
-
-      this.categories = categories || [];
-      this.familias = families || [];
-      this.todasSubfamilias = subfamilies || [];
-      this.subfamilias = []; // Se filtrarán dinámicamente
-
-      console.log('Catálogos cargados:', {
-        categories: this.categories.length,
-        families: this.familias.length,
-        subfamilies: this.todasSubfamilias.length
-      });
-
-    } catch (error) {
-      console.error('Error fetching catalogs:', error);
-      this.categories = [];
-      this.familias = [];
-      this.todasSubfamilias = [];
-      this.subfamilias = [];
-    }
-  }
-
-
-  filtrarSubfamilias(categoriaId: number, familiaId: number) {
-    // Filtrar subfamilias que tengan parentId=categoriaId y subParentId=familiaId (igual que CAT-Fam-Sub)
-    return this.todasSubfamilias.filter(subfamilia => 
-      subfamilia.parentId === categoriaId && subfamilia.subParentId === familiaId
-    );
-  }
-
-  obtenerMedidas() {
-    if (!this.idRoot) return;
-    
-    this.catalogsService.getCatalogs(this.idRoot, 'MEASURE').subscribe(
-      (data: any[]) => {
-        this.medidas = data || [];
+  cargarDatosFalsos() {
+    // Data falsa con 3 registros principales
+    this.rowData = [
+      {
+        id: 1,
+        activo: true,
+        numMat: 'MAT-001',
+        articulo: 'Tornillo Hexagonal 1/2"',
+        categoria: 'Ferretería',
+        familia: 'Tornillería',
+        subfamilia: 'Hexagonales',
+        proveedor: 'Tornillos SA de CV',
+        imagen: '📷',
+        proveedoresData: [
+          {
+            id: 101,
+            nombreProveedor: 'Tornillos SA de CV',
+            precioUnitario: 2.50,
+            descripcionEmpaque: 'Caja de cartón',
+            piezasPorPaquete: 100,
+            medidas: '1/2" x 3"',
+            pesoVolumen: '2.5 kg',
+            caducidadGarantia: 'N/A',
+            sucursal: 'Monterrey Centro'
+          },
+          {
+            id: 102,
+            nombreProveedor: 'Ferretería del Norte',
+            precioUnitario: 2.30,
+            descripcionEmpaque: 'Bolsa plástica',
+            piezasPorPaquete: 50,
+            medidas: '1/2" x 3"',
+            pesoVolumen: '1.2 kg',
+            caducidadGarantia: 'N/A',
+            sucursal: 'Guadalajara Sur'
+          }
+        ],
+        familiaData: [
+          {
+            id: 1001,
+            consecutivo: 1,
+            descripcion: 'Tornillos hexagonales estándar para uso general'
+          },
+          {
+            id: 1002,
+            consecutivo: 2,
+            descripcion: 'Tornillos hexagonales de acero inoxidable para ambientes húmedos'
+          },
+          {
+            id: 1003,
+            consecutivo: 3,
+            descripcion: 'Tornillos hexagonales galvanizados para exteriores'
+          }
+        ]
       },
-      (error) => console.error('Error fetching measures:', error)
-    );
+      {
+        id: 2,
+        activo: true,
+        numMat: 'MAT-002',
+        articulo: 'Cemento Portland Gris 50kg',
+        categoria: 'Construcción',
+        familia: 'Cemento',
+        subfamilia: 'Portland',
+        proveedor: 'Cementos Mexicanos',
+        imagen: '📷',
+        proveedoresData: [
+          {
+            id: 201,
+            nombreProveedor: 'Cementos Mexicanos',
+            precioUnitario: 180.00,
+            descripcionEmpaque: 'Saco de papel kraft',
+            piezasPorPaquete: 1,
+            medidas: '50 x 30 x 15 cm',
+            pesoVolumen: '50 kg',
+            caducidadGarantia: '6 meses',
+            sucursal: 'Ciudad de México Norte'
+          },
+          {
+            id: 202,
+            nombreProveedor: 'Cementos Mexicanos',
+            precioUnitario: 175.00,
+            descripcionEmpaque: 'Saco de papel kraft',
+            piezasPorPaquete: 1,
+            medidas: '50 x 30 x 15 cm',
+            pesoVolumen: '50 kg',
+            caducidadGarantia: '6 meses',
+            sucursal: 'Querétaro Este'
+          }
+        ],
+        familiaData: [
+          {
+            id: 2001,
+            consecutivo: 1,
+            descripcion: 'Cemento Portland tipo I gris para construcción general'
+          },
+          {
+            id: 2002,
+            consecutivo: 2,
+            descripcion: 'Cemento Portland tipo I blanco para acabados finos'
+          }
+        ]
+      },
+      {
+        id: 3,
+        activo: false,
+        numMat: 'MAT-003',
+        articulo: 'Cable Eléctrico Cal 12 AWG',
+        categoria: 'Eléctrico',
+        familia: 'Cables',
+        subfamilia: 'Conductores',
+        proveedor: 'Distribuidora Eléctrica',
+        imagen: '📷',
+        proveedoresData: [
+          {
+            id: 301,
+            nombreProveedor: 'Distribuidora Eléctrica',
+            precioUnitario: 15.50,
+            descripcionEmpaque: 'Rollo',
+            piezasPorPaquete: 100,
+            medidas: 'Cal. 12 AWG',
+            pesoVolumen: '8.5 kg/100m',
+            caducidadGarantia: '10 años',
+            sucursal: 'Puebla Centro'
+          },
+          {
+            id: 302,
+            nombreProveedor: 'Cables y Más',
+            precioUnitario: 14.80,
+            descripcionEmpaque: 'Rollo',
+            piezasPorPaquete: 100,
+            medidas: 'Cal. 12 AWG',
+            pesoVolumen: '8.3 kg/100m',
+            caducidadGarantia: '10 años',
+            sucursal: 'León Norte'
+          },
+          {
+            id: 303,
+            nombreProveedor: 'Distribuidora Eléctrica',
+            precioUnitario: 16.00,
+            descripcionEmpaque: 'Carrete',
+            piezasPorPaquete: 500,
+            medidas: 'Cal. 12 AWG',
+            pesoVolumen: '42 kg/500m',
+            caducidadGarantia: '10 años',
+            sucursal: 'Tijuana Oeste'
+          }
+        ],
+        familiaData: [
+          {
+            id: 3001,
+            consecutivo: 1,
+            descripcion: 'Cable conductor de cobre calibre 12 para instalaciones eléctricas residenciales'
+          },
+          {
+            id: 3002,
+            consecutivo: 2,
+            descripcion: 'Cable conductor de aluminio calibre 12 para instalaciones comerciales'
+          },
+          {
+            id: 3003,
+            consecutivo: 3,
+            descripcion: 'Cable conductor flexible calibre 12 para equipos móviles'
+          },
+          {
+            id: 3004,
+            consecutivo: 4,
+            descripcion: 'Cable conductor blindado calibre 12 para ambientes industriales'
+          }
+        ]
+      }
+    ];
   }
 
-  cargarDatosMock() {
-    // Datos mock para proveedores
-    this.proveedores = [
-      { id: 1, description: 'Proveedor A' },
-      { id: 2, description: 'Proveedor B' },
-      { id: 3, description: 'Proveedor C' }
-    ];
-
-    // Datos mock para sucursales
-    this.sucursales = [
-      { id: 1, description: 'Sucursal Centro' },
-      { id: 2, description: 'Sucursal Norte' },
-      { id: 3, description: 'Sucursal Sur' }
-    ];
-  }
+  components = {
+    detailCellRendererProveedores: DetailCellRendererProveedoresComponent,
+    detailCellRendererFamilia: DetailCellRendererFamiliaComponent
+  };
 
   public gridOptions: any = {
     headerHeight: 35,
     rowHeight: 35,
     animateRows: true,
-    treeData: false,
     suppressClickEdit: true,
     singleClickEdit: false,
     stopEditingWhenCellsLoseFocus: true,
-    getRowClass: (params) => {
-      if (params.data.nodeLevel === 'material') {
-        return 'tree-material-row';
-      }
-      if (params.data.nodeLevel === 'provider') {
-        return 'tree-provider-row';
-      }
-      return 'tree-item-row';
+    masterDetail: true,
+    isRowMaster: (dataItem) => {
+      return true; // Todas las filas son maestras
     },
-    onRowClicked: (event) => {
-      event.node.setSelected(true);
+    detailCellRendererSelector: (params) => {
+      if (params.data.detailType === 'proveedores') {
+        return { component: 'detailCellRendererProveedores' };
+      } else if (params.data.detailType === 'familia') {
+        return { component: 'detailCellRendererFamilia' };
+      }
+      return undefined;
+    },
+    getRowClass: (params: any) => {
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
     },
     onRowSelected: (event) => {
       if (event.node.isSelected()) {
-        this.selectedRowData = event.data;
         this.gridApi.forEachNode((node) => {
           if (node.id !== event.node.id) {
             node.setSelected(false);
           }
         });
       }
-    },
-    onCellValueChanged: (event) => {
-      this.onCellValueChanged(event);
     }
   };
 
   get colMaster(): ColDef[] {
     return [
       {
-        field: 'articulo',
-        headerName: 'Material',
-        width: 200,
-        cellRenderer: (params: any) => {
-          if (params.data.nodeLevel === 'material') {
-            const isExpanded = params.data.isExpanded || false;
-            const chevron = isExpanded ? '▼' : '▶';
-            const providerCount = params.data.providerCount || 0;
-            const totalCost = params.data.totalCost || 0;
-            return `<span class="chevron-icon" data-action="toggle" style="cursor: pointer; margin-right: 5px;">${chevron}</span> <strong>${params.data.description}</strong> (${providerCount}) - $${totalCost.toFixed(2)}`;
-          }
-          return '';
-        },
-        onCellClicked: (event: any) => {
-          if (event.event.target.classList.contains('chevron-icon') || 
-              event.event.target.getAttribute('data-action') === 'toggle') {
-            if (event.data.nodeLevel === 'material') {
-              this.toggleMaterialExpansion(event.data);
-            }
-          }
-        }
-      },
-      {
         field: 'activo',
         headerName: 'Activo',
         width: 100,
         cellRenderer: (params: any) => {
-          if (params.data.nodeLevel === 'order') {
-            const checked = params.data.activo ? 'checked' : '';
-            return `<input type="checkbox" ${checked} disabled style="cursor: pointer;">`;
-          }
-          return '';
+          const checked = params.data.activo ? 'checked' : '';
+          return `<input type="checkbox" ${checked} disabled style="cursor: pointer;">`;
         }
+      },
+      {
+        field: 'numMat',
+        headerName: 'Num Mat',
+        width: 130,
+        filter: true
+      },
+      {
+        field: 'articulo',
+        headerName: 'Artículo',
+        width: 250,
+        filter: true
       },
       {
         field: 'categoria',
         headerName: 'Categoría',
-        width: 130,
-        filter: true,
-        cellRenderer: (params: any) => {
-          return params.data.nodeLevel === 'order' ? params.value || '' : '';
-        }
+        width: 150,
+        filter: true
       },
       {
         field: 'familia',
         headerName: 'Familia',
-        width: 130,
-        filter: true,
-        cellRenderer: (params: any) => {
-          return params.data.nodeLevel === 'order' ? params.value || '' : '';
-        }
-      },
-      {
-        field: 'subFamilia',
-        headerName: 'Subfamilia',
-        width: 130,
-        filter: true,
-        cellRenderer: (params: any) => {
-          return params.data.nodeLevel === 'order' ? params.value || '' : '';
-        }
-      },
-      {
-        field: 'costoMN',
-        headerName: 'Precio unitario',
-        width: 120,
-        cellRenderer: (params: any) => {
-          if (params.data.nodeLevel === 'order') {
-            const value = params.value || 0;
-            return `$${value.toFixed(2)}`;
-          }
-          return '';
-        }
-      },
-      {
-        field: 'descriptionPackage',
-        headerName: 'Descripción empacado',
-        width: 180,
-        filter: true,
-        cellRenderer: (params: any) => {
-          return params.data.nodeLevel === 'order' ? params.value || '' : '';
-        }
-      },
-      {
-        field: 'packageQuantity',
-        headerName: 'Núm piezas por paquete',
         width: 150,
-        cellRenderer: (params: any) => {
-          return params.data.nodeLevel === 'order' ? params.value || 0 : '';
-        }
-      },
-      {
-        field: 'insumo',
-        headerName: 'Numero Material',
-        width: 140,
         filter: true,
-        cellRenderer: (params: any) => {
-          return params.data.nodeLevel === 'order' ? params.value || '' : '';
-        }
+        cellRenderer: this.createDetailToggleCellRenderer('familia'),
+        cellStyle: { backgroundColor: '#fff3e0', cursor: 'pointer', textDecoration: 'underline' }
       },
       {
-        field: 'medida',
-        headerName: 'Medidas',
-        width: 100,
-        filter: true,
-        cellRenderer: (params: any) => {
-          return params.data.nodeLevel === 'order' ? params.value || '' : '';
-        }
-      },
-      {
-        field: 'weightOrVolumes',
-        headerName: 'Pesos o volúmenes en Kgr o lts',
-        width: 180,
-        cellRenderer: (params: any) => {
-          if (params.data.nodeLevel === 'order') {
-            const value = params.value || 0;
-            return value.toString();
-          }
-          return '';
-        }
-      },
-      {
-        field: 'expiration',
-        headerName: 'Caducidad o garantía en meses',
-        width: 180,
-        cellRenderer: (params: any) => {
-          if (params.data.nodeLevel === 'order') {
-            const value = params.value || 0;
-            return value.toString();
-          }
-          return '';
-        }
-      },
-      {
-        field: 'picture',
-        headerName: 'Imagen',
-        editable: false,
-        width: 100,
-        cellRenderer: (params) => {
-          if (params.data.nodeLevel === 'order') {
-            return params.value ? '📷 Imagen' : '📷 Subir';
-          }
-          return '';
-        }
+        field: 'subfamilia',
+        headerName: 'Subfamilia',
+        width: 150,
+        filter: true
       },
       {
         field: 'proveedor',
         headerName: 'Proveedor',
         width: 200,
-        cellRenderer: (params: any) => {
-          if (params.data.nodeLevel === 'provider') {
-            const isExpanded = params.data.isExpanded || false;
-            const chevron = isExpanded ? '▼' : '▶';
-            const orderCount = params.data.orderCount || 0;
-            const totalCost = params.data.totalCost || 0;
-            return `<span style="margin-left: 20px;"></span><span class="chevron-icon" data-action="toggle" style="cursor: pointer; margin-right: 5px;">${chevron}</span> ${params.data.description} (${orderCount}) - $${totalCost.toFixed(2)}`;
-          }
-          return '';
-        },
-        onCellClicked: (event: any) => {
-          if (event.event.target.classList.contains('chevron-icon') || 
-              event.event.target.getAttribute('data-action') === 'toggle') {
-            if (event.data.nodeLevel === 'provider') {
-              this.toggleProviderExpansion(event.data);
-            }
-          }
-        }
-      },
-      {
-        field: 'folioOcorReq',
-        headerName: 'Folio OC',
-        width: 120,
         filter: true,
-        cellRenderer: (params: any) => {
-          return params.data.nodeLevel === 'order' ? params.value || '' : '';
-        }
+        cellRenderer: this.createDetailToggleCellRenderer('proveedores'),
+        cellStyle: { backgroundColor: '#e3f2fd', cursor: 'pointer', textDecoration: 'underline' }
       },
       {
-        field: 'price',
-        headerName: 'Precio',
+        field: 'imagen',
+        headerName: 'Imagen',
         width: 100,
         cellRenderer: (params: any) => {
-          if (params.data.nodeLevel === 'order') {
-            const value = params.value || 0;
-            return `$${value.toFixed(2)}`;
-          }
-          return '';
+          return params.value ? '📷 Ver' : '📷 Subir';
         }
-      },
-      {
-        field: 'inOrOutQuantity',
-        headerName: 'Cantidad',
-        width: 100,
-        cellRenderer: (params: any) => {
-          return params.data.nodeLevel === 'order' ? params.value || 0 : '';
-        }
-      },
-      {
-        field: 'totalOC',
-        headerName: 'Total OC',
-        width: 120,
-        cellRenderer: (params: any) => {
-          if (params.data.nodeLevel === 'order') {
-            const value = params.value || 0;
-            return `$${value.toFixed(2)}`;
-          }
-          return '';
-        }
-      },
+      }
     ];
   }
 
-  onSelectedRow(event: any) {
-    this.selectedRowData = event.data;
+  // Función auxiliar para obtener el tipo de detalle desde el ID de la columna
+  getDetailTypeFromColId(colId: string): string | null {
+    if (colId === 'proveedor') return 'proveedores';
+    if (colId === 'familia') return 'familia';
+    return null;
   }
 
-  onSelectionChanged(event: any) {
-    const selectedNodes = event.api.getSelectedNodes();
-    if (selectedNodes.length > 0) {
-      this.selectedRowData = selectedNodes[0].data;
-    } else {
-      this.selectedRowData = null;
-    }
-  }
+  createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement {
+    return (params: any): HTMLElement => {
+      const div = document.createElement('div');
 
-  async onCellValueChanged(event: any) {
-    console.log('Celda cambiada:', event.colDef.field, 'nuevo valor:', event.newValue, 'valor anterior:', event.oldValue);
-    event.data.__modified = true;
-    this.notSavedChanges = true;
-    
-    // Si cambió la categoría, limpiar familia y subfamilia
-    if (event.colDef.field === 'categoria') {
-      event.data.familia = '';
-      event.data.subFamilia = '';
-      this.gridApi.refreshCells({
-        rowNodes: [event.node],
-        columns: ['familia', 'subFamilia']
-      });
-    }
-    
-    // Si cambió la familia, limpiar subfamilia y filtrar nuevas subfamilias
-    if (event.colDef.field === 'familia') {
-      event.data.subFamilia = '';
-      
-      // Obtener IDs de categoría y familia
-      const categoriaName = event.data.categoria;
-      const familiaName = event.data.familia;
-      
-      if (categoriaName && familiaName) {
-        const categoria = this.categories.find(c => c.description === categoriaName);
-        const familia = this.familias.find(f => f.description === familiaName);
-        
-        if (categoria && familia) {
-          // Filtrar subfamilias específicas para esta categoría+familia
-          this.subfamilias = this.filtrarSubfamilias(categoria.id, familia.id);
-          console.log(`Subfamilias filtradas para categoria ${categoria.id} y familia ${familia.id}:`, this.subfamilias.length);
-        }
+      switch (detailType) {
+        case 'proveedores':
+          div.innerText = params.value || '';
+          break;
+        case 'familia':
+          div.innerText = params.value || '';
+          break;
       }
-      
-      this.gridApi.refreshCells({
-        rowNodes: [event.node],
-        columns: ['subFamilia']
+
+      div.style.cursor = 'pointer';
+      div.style.textDecoration = 'underline';
+
+      return div;
+    };
+  }
+
+  onCellClicked(event: any): void {
+    event.node.setSelected(true);
+
+    const colId = event.column.getColId();
+    const isDetailColumn = colId === 'proveedor' || colId === 'familia';
+
+    if (isDetailColumn) {
+      const node = event.node;
+      const api = event.api;
+      const detailType = this.getDetailTypeFromColId(colId);
+
+      // Determinar si la fila actual ya está expandida CON ESTE MISMO tipo de detalle
+      const isCurrentlyExpanded = node.expanded && event.data.detailType === detailType;
+
+      // Colapsar cualquier otra fila que esté expandida
+      api.forEachNode((otherNode: any) => {
+        if (otherNode.expanded && otherNode.id !== node.id) {
+          otherNode.setExpanded(false);
+        }
       });
+
+      if (isCurrentlyExpanded) {
+        // Si se hace clic en la misma celda que ya está abierta, se cierra y se limpia el filtro
+        node.setExpanded(false);
+        api.setFilterModel(null);
+        api.onFilterChanged();
+      } else {
+        // Si se hace clic en una celda diferente (o la fila está cerrada)
+
+        // Limpiar filtro antes de aplicar uno nuevo
+        api.setFilterModel(null);
+
+        // Aplicar filtro por ID para enfocar la fila actual
+        const filterModel = {
+          id: { filterType: 'number', type: 'equals', filter: event.data.id },
+        };
+        api.setFilterModel(filterModel);
+
+        // Expandir la fila con el detalle correcto
+        event.data.detailType = detailType;
+        node.setExpanded(true);
+      }
     }
   }
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-  }
-
-  addRow() {
-    const tempId = `temp_${this.tempIdCounter++}`;
-    const newItem = {
-      id: tempId,
-      activo: true,
-      articulo: '',
-      categoria: '',
-      familia: '',
-      subFamilia: '',
-      proveedor: '',
-      costoMN: 0,
-      descriptionPackage: '',
-      packageQuantity: 1,
-      insumo: '',
-      medida: '',
-      weightOrVolumes: 0,
-      expiration: 0,
-      picture: '',
-      // Campos adicionales del API
-      idCompany: Number(this.idRoot),
-      idBranch: null,
-      idCustomer: null,
-      barCode: '',
-      idFamilia: 0,
-      idSubfamilia: 0,
-      idMedida: 0,
-      idUbication: 0,
-      aplicaResg: false,
-      costoDLL: 0,
-      ventaMN: 0,
-      ventaDLL: 0,
-      vigente: true,
-      typeMaterial: 'CONSUMABLE',
-      date: new Date().toISOString(),
-      stockMin: 0,
-      stockMax: 0,
-      __isNew: true
-    };
-
-    this.rowData = [newItem, ...this.rowData];
-    this.newlyAddedRows.push(tempId);
-    this.notSavedChanges = true;
-    this.gridApi.setGridOption('rowData', this.rowData);
-
-    setTimeout(() => {
-      const firstRowIndex = 0;
-      this.gridApi.ensureIndexVisible(firstRowIndex);
-      this.gridApi.startEditingCell({
-        rowIndex: firstRowIndex,
-        colKey: 'articulo'
-      });
-    }, 0);
-  }
-
-  async saveChanges() {
-    if (!this.rowData.every(item => item.articulo)) {
-      alerts.basicAlert('Error', 'Debe llenar la descripción del artículo.', 'error');
-      return;
-    }
-
-    try {
-      const modifiedRows = this.rowData.filter(row => row.__modified || row.__isNew);
-      
-      for (const row of modifiedRows) {
-        const data = this.prepareDataForSave(row);
-        
-        if (row.__isNew) {
-          console.log('Guardando nuevo material XSDDDDD:', data);
-          await lastValueFrom(this.materialsService.addMaterial(data));
-        } else {
-          await lastValueFrom(this.materialsService.updateMaterial(row.id.toString(), data));
-        }
-      }
-      
-      this.rowData = this.rowData.map(row => {
-        const cleanRow = { ...row };
-        delete cleanRow.__isNew;
-        delete cleanRow.__modified;
-        return cleanRow;
-      });
-      
-      alerts.basicAlert('Éxito', 'Datos guardados correctamente.', 'success');
-      this.notSavedChanges = false;
-      this.newlyAddedRows = [];
-      await this.obtenerDatos();
-      
-    } catch (error) {
-      console.error('Error:', error);
-      alerts.basicAlert('Error', 'Error al guardar.', 'error');
-    }
-  }
-
-  private prepareDataForSave(row: any): any {
-    return {
-      idCompany: Number(this.idRoot),
-      description: row.articulo,
-      insumo: row.insumo || '',
-      idCategory: this.getCategoriaId(row.categoria),
-      idFamilia: this.getFamiliaId(row.familia),
-      idSubfamilia: this.getSubfamiliaId(row.subFamilia),
-      costoMN: Number(row.costoMN) || 0,
-      descriptionPackage: row.descriptionPackage || '',
-      packageQuantity: Number(row.packageQuantity) || 1,
-      measure: row.medida || '',
-      weightOrVolumes: Number(row.weightOrVolumes) || 0,
-      expiration: Number(row.expiration) || 0,
-      picture: row.picture || '',
-      typeMaterial: 'CONSUMABLE',
-      active: Boolean(row.activo),
-      vigente: true,
-      stockMin: 0,
-      stockMax: 0,
-      costoDLL: 0,
-      ventaMN: 0,
-      ventaDLL: 0,
-      aplicaResg: false,
-      barCode: row.barCode || '',
-      idBranch: null,
-      idCustomer: null,
-      idMedida: 0,
-      idUbication: 0,
-      date: new Date().toISOString()
-    };
-  }
-
-  // Métodos helper para obtener IDs de catálogos
-  private getCategoriaId(description: string): number {
-    console.log('getCategoriaId - buscando:', description, 'en', this.categories?.length, 'categorias');
-    if (!description || !this.categories) return 0;
-    const categoria = this.categories.find(cat => cat.description === description);
-    console.log('Categoria encontrada:', categoria);
-    return categoria ? categoria.id : 0;
-  }
-
-  private getFamiliaId(description: string): number {
-    if (!description || !this.familias) return 0;
-    const familia = this.familias.find(fam => fam.description === description);
-    return familia ? familia.id : 0;
-  }
-
-  private getSubfamiliaId(description: string): number {
-    if (!description || !this.todasSubfamilias) return 0;
-    const subfamilia = this.todasSubfamilias.find(sub => sub.description === description);
-    return subfamilia ? subfamilia.id : 0;
-  }
-
-  async deleteEntry() {
-    const selectedNodes = this.gridApi.getSelectedNodes();
-    if (selectedNodes.length === 0) {
-      alerts.basicAlert(
-        'Eliminar entrada',
-        'Por favor, seleccione una entrada para eliminar.',
-        'error'
-      );
-      return;
-    }
-
-    const selectedData = selectedNodes[0].data;
-    this.rowData = this.rowData.filter(item => item.id !== selectedData.id);
-    this.selectedRowData = null;
-    this.notSavedChanges = true;
-    this.gridApi.setGridOption('rowData', this.rowData);
-    
-    alerts.basicAlert(
-      'Eliminar entrada',
-      'Entrada eliminada satisfactoriamente.',
-      'success'
-    );
-  }
-
-  // Métodos para manejar expand/collapse
-  toggleMaterialExpansion(materialData: any) {
-    const material = this.treeData.find(item => 
-      item.nodeLevel === 'material' && item.articulo === materialData.articulo
-    );
-    
-    if (material) {
-      material.isExpanded = !material.isExpanded;
-      
-      // Mostrar/ocultar proveedores de este material
-      this.treeData.forEach(item => {
-        if (item.nodeLevel === 'provider' && item.parentMaterial === material.articulo) {
-          item.isVisible = material.isExpanded;
-          
-          // Si ocultamos el proveedor, también ocultar sus órdenes
-          if (!material.isExpanded) {
-            this.treeData.forEach(subItem => {
-              if (subItem.nodeLevel === 'order' && subItem.parentProvider === item.proveedor && subItem.parentMaterial === material.articulo) {
-                subItem.isVisible = false;
-              }
-            });
-          } else {
-            // Si mostramos el proveedor, mostrar órdenes solo si el proveedor está expandido
-            if (item.isExpanded) {
-              this.treeData.forEach(subItem => {
-                if (subItem.nodeLevel === 'order' && subItem.parentProvider === item.proveedor && subItem.parentMaterial === material.articulo) {
-                  subItem.isVisible = true;
-                }
-              });
-            }
-          }
-        }
-      });
-      
-      this.updateGridData();
-    }
-  }
-
-  toggleProviderExpansion(providerData: any) {
-    const provider = this.treeData.find(item => 
-      item.nodeLevel === 'provider' && item.proveedor === providerData.proveedor && item.parentMaterial === providerData.parentMaterial
-    );
-    
-    if (provider) {
-      provider.isExpanded = !provider.isExpanded;
-      
-      // Mostrar/ocultar órdenes de este proveedor
-      this.treeData.forEach(item => {
-        if (item.nodeLevel === 'order' && item.parentProvider === provider.proveedor && item.parentMaterial === provider.parentMaterial) {
-          item.isVisible = provider.isExpanded;
-        }
-      });
-      
-      this.updateGridData();
-    }
-  }
-
-
-  revert() {
-    this.obtenerDatos();
-    this.notSavedChanges = false;
-    this.selectedRowData = null;
-    this.newlyAddedRows = [];
-  }
-
-  async canDeactivate(): Promise<boolean> {
-    return confirmExitIfUnsaved(this.notSavedChanges);
   }
 }
