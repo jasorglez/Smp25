@@ -1049,6 +1049,20 @@ export const routes: Routes = [
                 ],
               },
 
+          {
+            path: 'cuentas-contables',
+            loadComponent: () =>
+              import(
+                './domains/ModAdmon/components/cuentas-contables/cuentas-contables.component'
+              ).then((c) => c.CuentasContablesComponent),
+            canActivate: [TrackingGuard],
+            data: {
+              tracking: {
+                logMessage: 'Click en Catálogo de Cuentas Contables',
+                category: 'Administration'
+              }
+            }
+          },
 
         ],
       },
