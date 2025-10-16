@@ -52,16 +52,16 @@ export class MaterialesMaestroComponent implements OnInit {
         id: 1,
         activo: true,
         numMat: 'MAT-001',
-        articulo: 'Tornillo Hexagonal 1/2"',
+        articulo: 'Corcholata Dorada',
         categoria: 'Materia Prima',
         familia: 'Basica',
-        subfamilia: 'Basica',
-        proveedor: 'Tornillos SA de CV',
+        subfamilia: '3',
+        proveedor: '2',
         imagen: '📷',
         proveedoresData: [
           {
             id: 101,
-            nombreProveedor: 'Tornillos SA de CV',
+            nombreProveedor: 'Envasadora llos SA de CV',
             precioUnitario: 2.50,
             descripcionEmpaque: 'Caja de cartón',
             piezasPorPaquete: 100,
@@ -86,7 +86,7 @@ export class MaterialesMaestroComponent implements OnInit {
           {
             id: 1001,
             consecutivo: 1,
-            subfamilia: 'Hexagonales',
+            subfamilia: 'Refresco',
             sabor: 'N/A',
             presentacion: 'Caja 100 pzas',
             descripcion: 'Tornillos hexagonales estándar para uso general'
@@ -94,7 +94,7 @@ export class MaterialesMaestroComponent implements OnInit {
           {
             id: 1002,
             consecutivo: 2,
-            subfamilia: 'Hexagonales',
+            subfamilia: 'Sidra',
             sabor: 'N/A',
             presentacion: 'Caja 50 pzas',
             descripcion: 'Tornillos hexagonales de acero inoxidable para ambientes húmedos'
@@ -102,7 +102,7 @@ export class MaterialesMaestroComponent implements OnInit {
           {
             id: 1003,
             consecutivo: 3,
-            subfamilia: 'Hexagonales',
+            subfamilia: 'Vinos',
             sabor: 'N/A',
             presentacion: 'Bolsa 200 pzas',
             descripcion: 'Tornillos hexagonales galvanizados para exteriores'
@@ -142,16 +142,16 @@ export class MaterialesMaestroComponent implements OnInit {
         id: 2,
         activo: true,
         numMat: 'MAT-002',
-        articulo: 'Cemento Portland Gris 50kg',
+        articulo: 'Jugo Manzana',
         categoria: 'Materia Prima',
         familia: 'Basica',
         subfamilia: 'Basica',
-        proveedor: 'Cementos Mexicanos',
+        proveedor: 'Jugos Mexicanos',
         imagen: '📷',
         proveedoresData: [
           {
             id: 201,
-            nombreProveedor: 'Cementos Mexicanos',
+            nombreProveedor: 'Jugos Mexicanos',
             precioUnitario: 180.00,
             descripcionEmpaque: 'Saco de papel kraft',
             piezasPorPaquete: 1,
@@ -215,11 +215,11 @@ export class MaterialesMaestroComponent implements OnInit {
         id: 3,
         activo: false,
         numMat: 'MAT-003',
-        articulo: 'Cable Eléctrico Cal 12 AWG',
+        articulo: 'Azucar Morena',
         categoria: 'Eléctrico',
         familia: 'Basica',
         subfamilia: 'Basica',
-        proveedor: 'Distribuidora Eléctrica',
+        proveedor: 'ingenio IOca',
         imagen: '📷',
         proveedoresData: [
           {
@@ -324,7 +324,7 @@ export class MaterialesMaestroComponent implements OnInit {
         id: 4,
         activo: true,
         numMat: 'MAT-004',
-        articulo: 'Refresco Embotellado',
+        articulo: 'Envase para Refresco Embotellado',
         categoria: 'Alimentos y Bebidas',
         familia: 'Basica',
         subfamilia: 'Primaria',
@@ -393,7 +393,7 @@ export class MaterialesMaestroComponent implements OnInit {
         id: 5,
         activo: true,
         numMat: 'MAT-005',
-        articulo: 'Galletas Dulces',
+        articulo: 'Valvulas de Control para Fluidos',
         categoria: 'Alimentos y Bebidas',
         familia: 'Basica',
         subfamilia: 'Primaria',
@@ -454,7 +454,7 @@ export class MaterialesMaestroComponent implements OnInit {
         id: 6,
         activo: true,
         numMat: 'MAT-006',
-        articulo: 'Yogurt Natural',
+        articulo: 'Endulcorante Natural',
         categoria: 'Alimentos y Bebidas',
         familia: 'Basica',
         subfamilia: 'Primaria',
@@ -604,6 +604,12 @@ export class MaterialesMaestroComponent implements OnInit {
       {
         field: 'articulo',
         headerName: 'Artículo',
+        width: 250,
+        filter: true
+      },
+      {
+        field: 'categoria',
+        headerName: 'Categoria',
         width: 250,
         filter: true
       },
