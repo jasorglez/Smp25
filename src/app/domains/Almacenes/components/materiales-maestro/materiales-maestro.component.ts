@@ -87,7 +87,7 @@ export class MaterialesMaestroComponent implements OnInit {
             id: 1001,
             consecutivo: 1,
             subfamilia: 'Refresco',
-            sabor: 'N/A',
+            sabor: '2',
             presentacion: 'Caja 100 pzas',
             descripcion: 'Tornillos hexagonales estándar para uso general'
           },
@@ -95,7 +95,7 @@ export class MaterialesMaestroComponent implements OnInit {
             id: 1002,
             consecutivo: 2,
             subfamilia: 'Sidra',
-            sabor: 'N/A',
+            sabor: '6',
             presentacion: 'Caja 50 pzas',
             descripcion: 'Tornillos hexagonales de acero inoxidable para ambientes húmedos'
           },
@@ -103,7 +103,7 @@ export class MaterialesMaestroComponent implements OnInit {
             id: 1003,
             consecutivo: 3,
             subfamilia: 'Vinos',
-            sabor: 'N/A',
+            sabor: '4',
             presentacion: 'Bolsa 200 pzas',
             descripcion: 'Tornillos hexagonales galvanizados para exteriores'
           }
