@@ -55,7 +55,7 @@ export class MaterialesMaestroComponent implements OnInit {
         articulo: 'Tornillo Hexagonal 1/2"',
         categoria: 'Materia Prima',
         familia: 'Basica',
-        subfamilia: 'Hexagonales',
+        subfamilia: 'Basica',
         proveedor: 'Tornillos SA de CV',
         imagen: '📷',
         proveedoresData: [
@@ -145,7 +145,7 @@ export class MaterialesMaestroComponent implements OnInit {
         articulo: 'Cemento Portland Gris 50kg',
         categoria: 'Materia Prima',
         familia: 'Basica',
-        subfamilia: 'Portland',
+        subfamilia: 'Basica',
         proveedor: 'Cementos Mexicanos',
         imagen: '📷',
         proveedoresData: [
@@ -217,8 +217,8 @@ export class MaterialesMaestroComponent implements OnInit {
         numMat: 'MAT-003',
         articulo: 'Cable Eléctrico Cal 12 AWG',
         categoria: 'Eléctrico',
-        familia: 'Cables',
-        subfamilia: 'Conductores',
+        familia: 'Basica',
+        subfamilia: 'Basica',
         proveedor: 'Distribuidora Eléctrica',
         imagen: '📷',
         proveedoresData: [
@@ -326,8 +326,8 @@ export class MaterialesMaestroComponent implements OnInit {
         numMat: 'MAT-004',
         articulo: 'Refresco Embotellado',
         categoria: 'Alimentos y Bebidas',
-        familia: 'Bebidas',
-        subfamilia: 'Refrescos',
+        familia: 'Basica',
+        subfamilia: 'Primaria',
         proveedor: 'Embotelladora del Valle',
         imagen: '📷',
         proveedoresData: [
@@ -395,8 +395,8 @@ export class MaterialesMaestroComponent implements OnInit {
         numMat: 'MAT-005',
         articulo: 'Galletas Dulces',
         categoria: 'Alimentos y Bebidas',
-        familia: 'Botanas',
-        subfamilia: 'Galletas',
+        familia: 'Basica',
+        subfamilia: 'Primaria',
         proveedor: 'Galletas y Más SA',
         imagen: '📷',
         proveedoresData: [
@@ -456,8 +456,8 @@ export class MaterialesMaestroComponent implements OnInit {
         numMat: 'MAT-006',
         articulo: 'Yogurt Natural',
         categoria: 'Alimentos y Bebidas',
-        familia: 'Lácteos',
-        subfamilia: 'Yogurt',
+        familia: 'Basica',
+        subfamilia: 'Primaria',
         proveedor: 'Lácteos del Norte',
         imagen: '📷',
         proveedoresData: [
