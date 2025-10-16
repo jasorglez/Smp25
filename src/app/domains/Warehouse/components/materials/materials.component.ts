@@ -30,6 +30,7 @@ import { PricePresentations } from 'app/interface/materials.interface';
 import { BranchsService } from 'app/services/branchs.service';
 import { CustomersService } from 'app/services/customers.service';
 import { PriceProductsPresentationsComponent } from './components/price-products-presentations/price-products-presentations.component';
+import { DetailCellRendererHistoricoComponent } from './details/detail-cell-renderer-historico.component';
 
 declare const bootstrap: any; // Añadir declaración para Bootstrap
 
@@ -125,6 +126,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
   components = {
     multiLineEditor: MultiLineEditorComponent,
     autocompleteEditor: AutocompleteEditorComponent,
+    detailCellRendererHistorico: DetailCellRendererHistoricoComponent,
   };
 
   // Inject of new way for Angular 18
@@ -141,6 +143,16 @@ export class MaterialsComponent implements CanComponentDeactivate {
   public gridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
+    masterDetail: true,
+    isRowMaster: (dataItem: any) => {
+      return this.type === 'PRIMERA_FASE' && dataItem.historicoData && dataItem.historicoData.length > 0;
+    },
+    detailCellRendererSelector: (params: any) => {
+      if (this.type === 'PRIMERA_FASE' && params.data.detailType === 'historico') {
+        return { component: 'detailCellRendererHistorico' };
+      }
+      return undefined;
+    },
     getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -162,10 +174,127 @@ export class MaterialsComponent implements CanComponentDeactivate {
         });
       }
     },
-    // onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
+    onCellClicked: this.onCellClicked.bind(this),
   };
 
   get colMaster(): ColDef[] {
+    // Columnas específicas para Primera Fase
+    if (this.type === 'PRIMERA_FASE') {
+      return [
+        {
+          field: 'materialPrimeraFase',
+          headerName: 'Material Primera Fase',
+          editable: true,
+          width: 200,
+          flex: 1
+        },
+        {
+          field: 'materiaPrimaBasica',
+          headerName: 'Materia Prima Basica',
+          editable: true,
+          width: 200,
+          flex: 1
+        },
+        {
+          field: 'costo',
+          headerName: 'Costo',
+          editable: true,
+          width: 120,
+          valueFormatter: (params) => {
+            return params.value ? `$${params.value.toFixed(2)}` : '$0.00';
+          }
+        },
+        {
+          field: 'cantidadLtsKg',
+          headerName: 'Cantidad LTS/KG',
+          editable: true,
+          width: 140
+        },
+        {
+          field: 'proporcion',
+          headerName: 'Proporcion',
+          editable: true,
+          width: 120
+        },
+        {
+          field: 'porDefinir',
+          headerName: 'Por Definir',
+          editable: true,
+          width: 120
+        },
+        {
+          field: 'costoTotal',
+          headerName: 'Costo Total',
+          editable: true,
+          width: 120,
+          valueFormatter: (params) => {
+            return params.value ? `$${params.value.toFixed(2)}` : '$0.00';
+          }
+        },
+        {
+          field: 'productoMermaLtsKg',
+          headerName: 'Producto Merma LTS/KG',
+          editable: true,
+          width: 180
+        },
+        {
+          field: 'porcentajeMerma',
+          headerName: 'Porcentaje Merma(2%)',
+          editable: true,
+          width: 160
+        },
+        {
+          field: 'costoFinal',
+          headerName: 'Costo Final',
+          editable: true,
+          width: 120,
+          valueFormatter: (params) => {
+            return params.value ? `$${params.value.toFixed(2)}` : '$0.00';
+          }
+        },
+        {
+          field: 'fechaCambio',
+          headerName: 'Fecha Cambio',
+          editable: true,
+          width: 120,
+          valueFormatter: (params) => {
+            if (params.value) {
+              return params.value.split('T')[0];
+            }
+            return '';
+          }
+        },
+        {
+          field: 'lote',
+          headerName: 'Lote',
+          editable: true,
+          width: 120
+        },
+        {
+          field: 'parametros',
+          headerName: 'Parametros',
+          editable: true,
+          width: 150,
+          flex: 1
+        },
+        {
+          field: 'historico',
+          headerName: 'Historico',
+          editable: false,
+          width: 120,
+          cellStyle: { backgroundColor: '#f3e5f5', cursor: 'pointer', textDecoration: 'underline' },
+          cellRenderer: (params: any) => {
+            const div = document.createElement('div');
+            div.innerText = 'Ver Histórico';
+            div.style.cursor = 'pointer';
+            div.style.textDecoration = 'underline';
+            return div;
+          }
+        }
+      ];
+    }
+
+    // Columnas originales para otros tipos
     return [
       { field: 'vigente', headerName: 'Activo', editable: true, width: 100 },
       {
@@ -645,7 +774,321 @@ export class MaterialsComponent implements CanComponentDeactivate {
     ];
   }
 
-  obtenerDatos() {
+  obtenerDatos(): any {
+    // Datos fake para Primera Fase
+    if (this.type === 'PRIMERA_FASE') {
+      this.rowData = [
+        {
+          id: 1,
+          materialPrimeraFase: 'Salsa Picante Premium',
+          materiaPrimaBasica: 'Chile Habanero',
+          costo: 125.50,
+          cantidadLtsKg: '15.5 KG',
+          proporcion: '25%',
+          porDefinir: 'Especias',
+          costoTotal: 1850.75,
+          productoMermaLtsKg: '0.31 KG',
+          porcentajeMerma: '2%',
+          costoFinal: 1887.77,
+          fechaCambio: '2025-01-15T00:00:00',
+          lote: 'LT-2025-001',
+          parametros: 'Temp: 4-8°C, pH: 3.5-4.0',
+          historicoData: [
+            {
+              materialPrimeraFase: 'Salsa Picante Premium',
+              materiaPrimaBasica: 'Chile Habanero',
+              costo: 125.50,
+              cantidadLtsKg: '15.5 KG',
+              costoTotal: 1850.75,
+              productoMermaLtsKg: '0.31 KG',
+              porcentajeMerma: '2.00%',
+              costoFinal: 1887.77,
+              fechaCambio: '2025-01-15T00:00:00',
+              asignado: true
+            },
+            {
+              materialPrimeraFase: 'Salsa Picante Premium',
+              materiaPrimaBasica: 'Chile Habanero',
+              costo: 120.00,
+              cantidadLtsKg: '15.5 KG',
+              costoTotal: 1767.50,
+              productoMermaLtsKg: '0.31 KG',
+              porcentajeMerma: '2.00%',
+              costoFinal: 1803.05,
+              fechaCambio: '2024-12-10T00:00:00',
+              asignado: false
+            },
+            {
+              materialPrimeraFase: 'Salsa Picante Premium',
+              materiaPrimaBasica: 'Chile Habanero',
+              costo: 115.75,
+              cantidadLtsKg: '15.0 KG',
+              costoTotal: 1702.50,
+              productoMermaLtsKg: '0.30 KG',
+              porcentajeMerma: '2.00%',
+              costoFinal: 1736.55,
+              fechaCambio: '2024-11-20T00:00:00',
+              asignado: false
+            },
+            {
+              materialPrimeraFase: 'Salsa Picante Premium',
+              materiaPrimaBasica: 'Chile Habanero',
+              costo: 110.00,
+              cantidadLtsKg: '14.5 KG',
+              costoTotal: 1620.00,
+              productoMermaLtsKg: '0.29 KG',
+              porcentajeMerma: '2.00%',
+              costoFinal: 1652.40,
+              fechaCambio: '2024-10-15T00:00:00',
+              asignado: false
+            }
+          ]
+        },
+        {
+          id: 2,
+          materialPrimeraFase: 'Base Chocolate Obscuro',
+          materiaPrimaBasica: 'Cacao en Polvo',
+          costo: 285.00,
+          cantidadLtsKg: '22.8 KG',
+          proporcion: '45%',
+          porDefinir: 'Azúcar',
+          costoTotal: 3250.60,
+          productoMermaLtsKg: '0.46 KG',
+          porcentajeMerma: '2%',
+          costoFinal: 3315.61,
+          fechaCambio: '2025-01-10T00:00:00',
+          lote: 'LT-2025-002',
+          parametros: 'Temp: 18-22°C, Humedad: <50%',
+          historicoData: [
+            {
+              materialPrimeraFase: 'Base Chocolate Obscuro',
+              materiaPrimaBasica: 'Cacao en Polvo',
+              costo: 285.00,
+              cantidadLtsKg: '22.8 KG',
+              costoTotal: 3250.60,
+              productoMermaLtsKg: '0.46 KG',
+              porcentajeMerma: '2.00%',
+              costoFinal: 3315.61,
+              fechaCambio: '2025-01-10T00:00:00',
+              asignado: true
+            },
+            {
+              materialPrimeraFase: 'Base Chocolate Obscuro',
+              materiaPrimaBasica: 'Cacao en Polvo',
+              costo: 275.00,
+              cantidadLtsKg: '22.8 KG',
+              costoTotal: 3135.00,
+              productoMermaLtsKg: '0.46 KG',
+              porcentajeMerma: '2.00%',
+              costoFinal: 3197.70,
+              fechaCambio: '2024-12-01T00:00:00',
+              asignado: false
+            },
+            {
+              materialPrimeraFase: 'Base Chocolate Obscuro',
+              materiaPrimaBasica: 'Cacao en Polvo',
+              costo: 265.00,
+              cantidadLtsKg: '22.0 KG',
+              costoTotal: 2987.50,
+              productoMermaLtsKg: '0.44 KG',
+              porcentajeMerma: '2.00%',
+              costoFinal: 3047.25,
+              fechaCambio: '2024-10-15T00:00:00',
+              asignado: false
+            }
+          ]
+        },
+        {
+          id: 3,
+          materialPrimeraFase: 'Aderezo Ranch Especial',
+          materiaPrimaBasica: 'Crema Ácida',
+          costo: 98.75,
+          cantidadLtsKg: '12.0 LTS',
+          proporcion: '35%',
+          porDefinir: 'Hierbas',
+          costoTotal: 1420.80,
+          productoMermaLtsKg: '0.24 LTS',
+          porcentajeMerma: '2%',
+          costoFinal: 1449.22,
+          fechaCambio: '2025-01-12T00:00:00',
+          lote: 'LT-2025-003',
+          parametros: 'Temp: 2-6°C, Caducidad: 30 días',
+          historicoData: [
+            {
+              materialPrimeraFase: 'Aderezo Ranch Especial',
+              materiaPrimaBasica: 'Crema Ácida',
+              costo: 98.75,
+              cantidadLtsKg: '12.0 LTS',
+              costoTotal: 1420.80,
+              productoMermaLtsKg: '0.24 LTS',
+              porcentajeMerma: '2.00%',
+              costoFinal: 1449.22,
+              fechaCambio: '2025-01-12T00:00:00',
+              asignado: true
+            },
+            {
+              materialPrimeraFase: 'Aderezo Ranch Especial',
+              materiaPrimaBasica: 'Crema Ácida',
+              costo: 95.00,
+              cantidadLtsKg: '12.0 LTS',
+              costoTotal: 1367.00,
+              productoMermaLtsKg: '0.24 LTS',
+              porcentajeMerma: '2.00%',
+              costoFinal: 1394.34,
+              fechaCambio: '2025-01-08T00:00:00',
+              asignado: false
+            },
+            {
+              materialPrimeraFase: 'Aderezo Ranch Especial',
+              materiaPrimaBasica: 'Crema Ácida',
+              costo: 92.00,
+              cantidadLtsKg: '12.0 LTS',
+              costoTotal: 1324.00,
+              productoMermaLtsKg: '0.24 LTS',
+              porcentajeMerma: '2.00%',
+              costoFinal: 1350.48,
+              fechaCambio: '2024-12-20T00:00:00',
+              asignado: false
+            },
+            {
+              materialPrimeraFase: 'Aderezo Ranch Especial',
+              materiaPrimaBasica: 'Crema Ácida',
+              costo: 88.00,
+              cantidadLtsKg: '11.5 LTS',
+              costoTotal: 1254.00,
+              productoMermaLtsKg: '0.23 LTS',
+              porcentajeMerma: '2.00%',
+              costoFinal: 1279.08,
+              fechaCambio: '2024-11-05T00:00:00',
+              asignado: false
+            }
+          ]
+        },
+        {
+          id: 4,
+          materialPrimeraFase: 'Conservador Natural',
+          materiaPrimaBasica: 'Ácido Cítrico',
+          costo: 45.20,
+          cantidadLtsKg: '5.5 KG',
+          proporcion: '10%',
+          porDefinir: 'Sal',
+          costoTotal: 625.30,
+          productoMermaLtsKg: '0.11 KG',
+          porcentajeMerma: '2%',
+          costoFinal: 637.81,
+          fechaCambio: '2025-01-08T00:00:00',
+          lote: 'LT-2025-004',
+          parametros: 'Temp: Ambiente, pH: 2.0-3.0',
+          historicoData: [
+            {
+              materialPrimeraFase: 'Conservador Natural',
+              materiaPrimaBasica: 'Ácido Cítrico',
+              costo: 45.20,
+              cantidadLtsKg: '5.5 KG',
+              costoTotal: 625.30,
+              productoMermaLtsKg: '0.11 KG',
+              porcentajeMerma: '2.00%',
+              costoFinal: 637.81,
+              fechaCambio: '2025-01-08T00:00:00',
+              asignado: true
+            },
+            {
+              materialPrimeraFase: 'Conservador Natural',
+              materiaPrimaBasica: 'Ácido Cítrico',
+              costo: 43.50,
+              cantidadLtsKg: '5.5 KG',
+              costoTotal: 601.75,
+              productoMermaLtsKg: '0.11 KG',
+              porcentajeMerma: '2.00%',
+              costoFinal: 613.79,
+              fechaCambio: '2024-11-25T00:00:00',
+              asignado: false
+            },
+            {
+              materialPrimeraFase: 'Conservador Natural',
+              materiaPrimaBasica: 'Ácido Cítrico',
+              costo: 40.00,
+              cantidadLtsKg: '5.0 KG',
+              costoTotal: 550.00,
+              productoMermaLtsKg: '0.10 KG',
+              porcentajeMerma: '2.00%',
+              costoFinal: 561.00,
+              fechaCambio: '2024-09-10T00:00:00',
+              asignado: false
+            }
+          ]
+        },
+        {
+          id: 5,
+          materialPrimeraFase: 'Emulsificante Vegetal',
+          materiaPrimaBasica: 'Lecitina de Soya',
+          costo: 165.90,
+          cantidadLtsKg: '8.2 KG',
+          proporcion: '18%',
+          porDefinir: 'Estabilizante',
+          costoTotal: 1950.45,
+          productoMermaLtsKg: '0.16 KG',
+          porcentajeMerma: '2%',
+          costoFinal: 1989.46,
+          fechaCambio: '2025-01-14T00:00:00',
+          lote: 'LT-2025-005',
+          parametros: 'Temp: 15-25°C, No GMO',
+          historicoData: [
+            {
+              materialPrimeraFase: 'Emulsificante Vegetal',
+              materiaPrimaBasica: 'Lecitina de Soya',
+              costo: 165.90,
+              cantidadLtsKg: '8.2 KG',
+              costoTotal: 1950.45,
+              productoMermaLtsKg: '0.16 KG',
+              porcentajeMerma: '2.00%',
+              costoFinal: 1989.46,
+              fechaCambio: '2025-01-14T00:00:00',
+              asignado: true
+            },
+            {
+              materialPrimeraFase: 'Emulsificante Vegetal',
+              materiaPrimaBasica: 'Lecitina de Soya',
+              costo: 160.00,
+              cantidadLtsKg: '8.2 KG',
+              costoTotal: 1880.00,
+              productoMermaLtsKg: '0.16 KG',
+              porcentajeMerma: '2.00%',
+              costoFinal: 1917.60,
+              fechaCambio: '2024-12-18T00:00:00',
+              asignado: false
+            },
+            {
+              materialPrimeraFase: 'Emulsificante Vegetal',
+              materiaPrimaBasica: 'Lecitina de Soya',
+              costo: 155.00,
+              cantidadLtsKg: '8.0 KG',
+              costoTotal: 1805.00,
+              productoMermaLtsKg: '0.16 KG',
+              porcentajeMerma: '2.00%',
+              costoFinal: 1841.10,
+              fechaCambio: '2024-10-30T00:00:00',
+              asignado: false
+            },
+            {
+              materialPrimeraFase: 'Emulsificante Vegetal',
+              materiaPrimaBasica: 'Lecitina de Soya',
+              costo: 145.00,
+              cantidadLtsKg: '8.0 KG',
+              costoTotal: 1690.00,
+              productoMermaLtsKg: '0.16 KG',
+              porcentajeMerma: '2.00%',
+              costoFinal: 1723.80,
+              fechaCambio: '2024-08-15T00:00:00',
+              asignado: false
+            }
+          ]
+        }
+      ];
+      return;
+    }
+
+    // Obtener datos normales del servicio para otros tipos
     return this.materialsService.getMaterials(this.idRoot, this.type).subscribe(
       (data: any) => {
         this.rowData = data;
@@ -885,6 +1328,60 @@ export class MaterialsComponent implements CanComponentDeactivate {
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+  }
+
+  onCellClicked(event: any): void {
+    const colId = event.column.getColId();
+
+    // Solo para Primera Fase y columna Historico
+    if (this.type === 'PRIMERA_FASE' && colId === 'historico') {
+      const node = event.node;
+      const api = event.api;
+
+      // Verificar si ya está expandido con detalle de historico
+      const isCurrentlyExpanded = node.expanded && event.data.detailType === 'historico';
+
+      if (isCurrentlyExpanded) {
+        // Si ya está expandido, colapsarlo y mostrar todas las filas
+        node.setExpanded(false);
+
+        // Mostrar todas las filas de nuevo
+        api.forEachNode((otherNode: any) => {
+          otherNode.setRowHeight(undefined);
+        });
+        api.onRowHeightChanged();
+      } else {
+        // Colapsar cualquier otra fila expandida
+        api.forEachNode((otherNode: any) => {
+          if (otherNode.expanded && otherNode.id !== node.id) {
+            otherNode.setExpanded(false);
+          }
+        });
+
+        // Ocultar todas las demás filas (altura 0)
+        api.forEachNode((otherNode: any) => {
+          if (otherNode.id !== node.id) {
+            otherNode.setRowHeight(0);
+          }
+        });
+
+        // Si la fila está expandida con otro tipo de detalle, cerrarla primero
+        if (node.expanded) {
+          node.setExpanded(false);
+        }
+
+        // Asignar el tipo de detalle
+        event.data.detailType = 'historico';
+
+        // Aplicar los cambios de altura
+        api.onRowHeightChanged();
+
+        // Expandir con el detalle de historico
+        setTimeout(() => {
+          node.setExpanded(true);
+        }, 0);
+      }
+    }
   }
 
   addRow() {
