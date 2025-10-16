@@ -44,8 +44,8 @@ export class MaterialesMaestroComponent implements OnInit {
         activo: true,
         numMat: 'MAT-001',
         articulo: 'Tornillo Hexagonal 1/2"',
-        categoria: 'Ferretería',
-        familia: 'Tornillería',
+        categoria: 'Materia Prima',
+        familia: 'Basica',
         subfamilia: 'Hexagonales',
         proveedor: 'Tornillos SA de CV',
         imagen: '📷',
@@ -96,8 +96,8 @@ export class MaterialesMaestroComponent implements OnInit {
         activo: true,
         numMat: 'MAT-002',
         articulo: 'Cemento Portland Gris 50kg',
-        categoria: 'Construcción',
-        familia: 'Cemento',
+        categoria: 'Materia Prima',
+        familia: 'Basica',
         subfamilia: 'Portland',
         proveedor: 'Cementos Mexicanos',
         imagen: '📷',
@@ -262,6 +262,7 @@ export class MaterialesMaestroComponent implements OnInit {
         }
       },
       {
+  
         field: 'numMat',
         headerName: 'Num Mat',
         width: 130,
@@ -273,12 +274,7 @@ export class MaterialesMaestroComponent implements OnInit {
         width: 250,
         filter: true
       },
-      {
-        field: 'categoria',
-        headerName: 'Categoría',
-        width: 150,
-        filter: true
-      },
+  
       {
         field: 'familia',
         headerName: 'Familia',

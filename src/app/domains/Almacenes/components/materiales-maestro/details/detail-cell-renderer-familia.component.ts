@@ -13,7 +13,7 @@ import { CommonModule } from '@angular/common';
       style="padding: 10px; background-color: #fff3e0; height: 100%; display: flex; flex-direction: column;">
       <div style="margin-bottom: 15px; flex-grow: 1; display: flex; flex-direction: column;">
         <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-          <strong>Detalles de Familia: {{ familiaName }}</strong>
+          <strong>Detalles de Sub-Familia: {{ familiaName }}</strong>
         </div>
         <ag-grid-angular
           class="ag-theme-quartz small-text-ag-grid"
