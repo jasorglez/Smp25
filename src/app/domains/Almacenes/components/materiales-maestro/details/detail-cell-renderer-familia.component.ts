@@ -13,7 +13,7 @@ import { CommonModule } from '@angular/common';
       style="padding: 10px; background-color: #fff3e0; height: 100%; display: flex; flex-direction: column;">
       <div style="margin-bottom: 15px; flex-grow: 1; display: flex; flex-direction: column;">
         <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-          <strong>Detalles de Familia: {{ familiaName }}</strong>
+          <strong>Detalles de Subfamilia: {{ familiaName }}</strong>
         </div>
         <ag-grid-angular
           class="ag-theme-quartz small-text-ag-grid"
@@ -44,11 +44,6 @@ export class DetailCellRendererFamiliaComponent implements ICellRendererAngularC
 
   familiaColumnDefs = [
     {
-      field: 'consecutivo',
-      headerName: 'Consecutivo',
-      width: 120
-    },
-    {
       field: 'subfamilia',
       headerName: 'Subfamilia',
       width: 150
@@ -74,7 +69,7 @@ export class DetailCellRendererFamiliaComponent implements ICellRendererAngularC
   agInit(params: ICellRendererParams): void {
     this.params = params;
     this.materialId = params.data.id;
-    this.familiaName = params.data.familia || 'N/A';
+    this.familiaName = params.data.subfamilia || 'N/A';
 
     // Cargar datos de familia desde los datos del material
     this.familiaRowData = params.data.familiaData || [];

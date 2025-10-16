@@ -1,8 +1,9 @@
 import { Component } from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
-import { ICellRendererParams } from 'ag-grid-enterprise';
+import { ICellRendererParams, GridApi } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule, CurrencyPipe } from '@angular/common';
+import { DetailCellRendererSucursalComponent } from './detail-cell-renderer-sucursal.component';
 
 @Component({
   selector: 'app-detail-cell-renderer-proveedores',
@@ -22,7 +23,9 @@ import { CommonModule, CurrencyPipe } from '@angular/common';
           [columnDefs]="proveedorColumnDefs"
           [rowData]="proveedorRowData"
           [gridOptions]="proveedorGridOptions"
-          (gridReady)="onProveedorGridReady($event)">
+          [components]="components"
+          (gridReady)="onProveedorGridReady($event)"
+          (cellClicked)="onCellClicked($event)">
         </ag-grid-angular>
       </div>
     </div>
@@ -42,7 +45,21 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
     headerHeight: 25,
     rowHeight: 20,
     suppressEnterWhenEditing: false,
-    rowSelection: 'single'
+    rowSelection: 'single',
+    masterDetail: true,
+    isRowMaster: (dataItem: any) => {
+      return true; // Todas las filas pueden tener detalle de sucursal
+    },
+    detailCellRendererSelector: (params: any) => {
+      if (params.data.detailType === 'sucursal') {
+        return { component: 'detailCellRendererSucursal' };
+      }
+      return undefined;
+    }
+  };
+
+  components = {
+    detailCellRendererSucursal: DetailCellRendererSucursalComponent
   };
 
   proveedorColumnDefs = [
@@ -93,7 +110,15 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
       field: 'sucursal',
       headerName: 'Sucursal',
       width: 150,
-      flex: 1
+      flex: 1,
+      cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' },
+      cellRenderer: (params: any) => {
+        const div = document.createElement('div');
+        div.innerText = params.value || '';
+        div.style.cursor = 'pointer';
+        div.style.textDecoration = 'underline';
+        return div;
+      }
     }
   ];
 
@@ -113,5 +138,59 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
   onProveedorGridReady(params: any) {
     this.proveedorGridApi = params.api;
     params.api.sizeColumnsToFit();
+  }
+
+  onCellClicked(event: any): void {
+    const colId = event.column.getColId();
+
+    if (colId === 'sucursal') {
+      const node = event.node;
+      const api = event.api;
+
+      // Verificar si ya está expandido con detalle de sucursal
+      const isCurrentlyExpanded = node.expanded && event.data.detailType === 'sucursal';
+
+      if (isCurrentlyExpanded) {
+        // Si ya está expandido, colapsarlo y mostrar todas las filas
+        node.setExpanded(false);
+
+        // Mostrar todas las filas de nuevo
+        api.forEachNode((otherNode: any) => {
+          otherNode.setRowHeight(undefined);
+        });
+        api.onRowHeightChanged();
+      } else {
+        // Colapsar cualquier otra fila expandida en este grid
+        api.forEachNode((otherNode: any) => {
+          if (otherNode.expanded && otherNode.id !== node.id) {
+            otherNode.setExpanded(false);
+          }
+        });
+
+        // Ocultar todas las demás filas (altura 0)
+        api.forEachNode((otherNode: any) => {
+          if (otherNode.id !== node.id) {
+            otherNode.setRowHeight(0);
+          }
+        });
+
+        // Si la fila está expandida con otro tipo de detalle, cerrarla primero
+        if (node.expanded && event.data.detailType !== 'sucursal') {
+          node.setExpanded(false);
+        }
+
+        // Asignar sucursalData del material padre al proveedor
+        event.data.sucursalData = this.params.data.sucursalData || [];
+        event.data.detailType = 'sucursal';
+
+        // Aplicar los cambios de altura
+        api.onRowHeightChanged();
+
+        // Expandir con el detalle de sucursal
+        setTimeout(() => {
+          node.setExpanded(true);
+        }, 0);
+      }
+    }
   }
 }

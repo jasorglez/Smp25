@@ -1,6 +1,32 @@
 <section class="col-12 mt-3">
   <div class="row">
-    <main class="col-12">
+    <!-- Botonera lateral -->
+    <div class="col-auto">
+      <div class="d-flex flex-column gap-1">
+        <button type="button" class="btn btn-primary" (click)="addMaterial()" title="Nuevo material">
+          <i class="bi bi-plus-lg"></i>
+        </button>
+        <button type="button" class="btn btn-success position-relative" (click)="saveChanges()" [disabled]="!hasUnsavedChanges" title="Guardar cambios">
+          <i class="bi bi-floppy"></i>
+          <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+            *ngIf="hasUnsavedChanges">
+            <span class="visually-hidden">Hay cambios sin guardar</span>
+          </span>
+        </button>
+        <button type="button" class="btn btn-info" (click)="editMaterial()" [disabled]="!selectedMaterial" title="Editar material">
+          <i class="bi bi-pencil"></i>
+        </button>
+        <button type="button" class="btn btn-warning" (click)="refreshData()" title="Recargar datos">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+        <button type="button" class="btn btn-danger" (click)="deleteMaterial()" [disabled]="!selectedMaterial" title="Eliminar material">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Grid principal -->
+    <main class="col">
       <section class="col">
         <ag-grid-angular
           style="width: 100%"
@@ -14,6 +40,8 @@
           [stopEditingWhenCellsLoseFocus]="true"
           [localeText]="AG_GRID_LOCALE_ES"
           [components]="components"
+          [rowSelection]="rowSelection"
+          (selectionChanged)="onSelectionChanged($event)"
         >
         </ag-grid-angular>
       </section>
