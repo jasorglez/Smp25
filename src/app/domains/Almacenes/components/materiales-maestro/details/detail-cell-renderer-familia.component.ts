@@ -3,6 +3,7 @@ import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
+import { DetailCellRendererCaracteristicasComponent } from './detail-cell-renderer-caracteristicas.component';
 
 @Component({
   selector: 'app-detail-cell-renderer-familia',
@@ -21,7 +22,9 @@ import { CommonModule } from '@angular/common';
           [columnDefs]="familiaColumnDefs"
           [rowData]="familiaRowData"
           [gridOptions]="familiaGridOptions"
-          (gridReady)="onFamiliaGridReady($event)">
+          [components]="components"
+          (gridReady)="onFamiliaGridReady($event)"
+          (cellClicked)="onCellClicked($event)">
         </ag-grid-angular>
       </div>
     </div>
@@ -39,30 +42,43 @@ export class DetailCellRendererFamiliaComponent implements ICellRendererAngularC
     headerHeight: 25,
     rowHeight: 20,
     suppressEnterWhenEditing: false,
-    rowSelection: 'single'
+    rowSelection: 'single',
+    masterDetail: true,
+    isRowMaster: (dataItem: any) => {
+      return true; // Todas las filas pueden tener detalle de características
+    },
+    detailCellRendererSelector: (params: any) => {
+      if (params.data.detailType === 'caracteristicas') {
+        return { component: 'detailCellRendererCaracteristicas' };
+      }
+      return undefined;
+    }
+  };
+
+  components = {
+    detailCellRendererCaracteristicas: DetailCellRendererCaracteristicasComponent
   };
 
   familiaColumnDefs = [
     {
       field: 'subfamilia',
       headerName: 'Subfamilia',
-      width: 150
-    },
-    {
-      field: 'sabor',
-      headerName: 'Sabor',
-      width: 150
-    },
-    {
-      field: 'presentacion',
-      headerName: 'Presentación',
-      width: 150
-    },
-    {
-      field: 'descripcion',
-      headerName: 'Descripción',
-      width: 300,
+      width: 200,
       flex: 1
+    },
+    {
+      field: 'caracteristicas',
+      headerName: 'Características',
+      width: 200,
+      flex: 1,
+      cellStyle: { backgroundColor: '#e8eaf6', cursor: 'pointer', textDecoration: 'underline' },
+      cellRenderer: (params: any) => {
+        const div = document.createElement('div');
+        div.innerText = 'Ver Características';
+        div.style.cursor = 'pointer';
+        div.style.textDecoration = 'underline';
+        return div;
+      }
     }
   ];
 
@@ -82,5 +98,58 @@ export class DetailCellRendererFamiliaComponent implements ICellRendererAngularC
   onFamiliaGridReady(params: any) {
     this.familiaGridApi = params.api;
     params.api.sizeColumnsToFit();
+  }
+
+  onCellClicked(event: any): void {
+    const colId = event.column.getColId();
+
+    if (colId === 'caracteristicas') {
+      const node = event.node;
+      const api = event.api;
+
+      // Verificar si ya está expandido con detalle de características
+      const isCurrentlyExpanded = node.expanded && event.data.detailType === 'caracteristicas';
+
+      if (isCurrentlyExpanded) {
+        // Si ya está expandido, colapsarlo y mostrar todas las filas
+        node.setExpanded(false);
+
+        // Mostrar todas las filas de nuevo
+        api.forEachNode((otherNode: any) => {
+          otherNode.setRowHeight(undefined);
+        });
+        api.onRowHeightChanged();
+      } else {
+        // Colapsar cualquier otra fila expandida en este grid
+        api.forEachNode((otherNode: any) => {
+          if (otherNode.expanded && otherNode.id !== node.id) {
+            otherNode.setExpanded(false);
+          }
+        });
+
+        // Ocultar todas las demás filas (altura 0)
+        api.forEachNode((otherNode: any) => {
+          if (otherNode.id !== node.id) {
+            otherNode.setRowHeight(0);
+          }
+        });
+
+        // Si la fila está expandida con otro tipo de detalle, cerrarla primero
+        if (node.expanded && event.data.detailType !== 'caracteristicas') {
+          node.setExpanded(false);
+        }
+
+        // Asignar el tipo de detalle
+        event.data.detailType = 'caracteristicas';
+
+        // Aplicar los cambios de altura
+        api.onRowHeightChanged();
+
+        // Expandir con el detalle de características
+        setTimeout(() => {
+          node.setExpanded(true);
+        }, 0);
+      }
+    }
   }
 }

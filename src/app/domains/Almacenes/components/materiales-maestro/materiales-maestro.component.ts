@@ -55,7 +55,7 @@ export class MaterialesMaestroComponent implements OnInit {
         articulo: 'Tornillo Hexagonal 1/2"',
         categoria: 'Materia Prima',
         familia: 'Basica',
-        subfamilia: 'Basica',
+        subfamilia: '2',
         proveedor: 'Tornillos SA de CV',
         imagen: '📷',
         proveedoresData: [
@@ -85,27 +85,27 @@ export class MaterialesMaestroComponent implements OnInit {
         familiaData: [
           {
             id: 1001,
-            consecutivo: 1,
-            subfamilia: 'Hexagonales',
-            sabor: 'N/A',
-            presentacion: 'Caja 100 pzas',
-            descripcion: 'Tornillos hexagonales estándar para uso general'
-          },
-          {
-            id: 1002,
-            consecutivo: 2,
-            subfamilia: 'Hexagonales',
-            sabor: 'N/A',
-            presentacion: 'Caja 50 pzas',
-            descripcion: 'Tornillos hexagonales de acero inoxidable para ambientes húmedos'
-          },
-          {
-            id: 1003,
-            consecutivo: 3,
-            subfamilia: 'Hexagonales',
-            sabor: 'N/A',
-            presentacion: 'Bolsa 200 pzas',
-            descripcion: 'Tornillos hexagonales galvanizados para exteriores'
+            subfamilia: '2',
+            caracteristicasData: [
+              {
+                id: 10011,
+                sabor: 'N/A',
+                presentacion: 'Caja 100 pzas',
+                descripcion: 'Tornillos hexagonales estándar para uso general'
+              },
+              {
+                id: 10012,
+                sabor: 'N/A',
+                presentacion: 'Caja 50 pzas',
+                descripcion: 'Tornillos hexagonales de acero inoxidable para ambientes húmedos'
+              },
+              {
+                id: 10013,
+                sabor: 'N/A',
+                presentacion: 'Bolsa 200 pzas',
+                descripcion: 'Tornillos hexagonales galvanizados para exteriores'
+              }
+            ]
           }
         ],
         sucursalData: [
@@ -145,7 +145,7 @@ export class MaterialesMaestroComponent implements OnInit {
         articulo: 'Cemento Portland Gris 50kg',
         categoria: 'Materia Prima',
         familia: 'Basica',
-        subfamilia: 'Basica',
+        subfamilia: '3',
         proveedor: 'Cementos Mexicanos',
         imagen: '📷',
         proveedoresData: [
@@ -175,19 +175,21 @@ export class MaterialesMaestroComponent implements OnInit {
         familiaData: [
           {
             id: 2001,
-            consecutivo: 1,
-            subfamilia: 'Portland',
-            sabor: 'N/A',
-            presentacion: 'Saco 50kg',
-            descripcion: 'Cemento Portland tipo I gris para construcción general'
-          },
-          {
-            id: 2002,
-            consecutivo: 2,
-            subfamilia: 'Portland',
-            sabor: 'N/A',
-            presentacion: 'Saco 25kg',
-            descripcion: 'Cemento Portland tipo I blanco para acabados finos'
+            subfamilia: '3',
+            caracteristicasData: [
+              {
+                id: 20011,
+                sabor: 'N/A',
+                presentacion: 'Saco 50kg',
+                descripcion: 'Cemento Portland tipo I gris para construcción general'
+              },
+              {
+                id: 20012,
+                sabor: 'N/A',
+                presentacion: 'Saco 25kg',
+                descripcion: 'Cemento Portland tipo I blanco para acabados finos'
+              }
+            ]
           }
         ],
         sucursalData: [
@@ -218,7 +220,7 @@ export class MaterialesMaestroComponent implements OnInit {
         articulo: 'Cable Eléctrico Cal 12 AWG',
         categoria: 'Eléctrico',
         familia: 'Basica',
-        subfamilia: 'Basica',
+        subfamilia: '4',
         proveedor: 'Distribuidora Eléctrica',
         imagen: '📷',
         proveedoresData: [
@@ -259,35 +261,33 @@ export class MaterialesMaestroComponent implements OnInit {
         familiaData: [
           {
             id: 3001,
-            consecutivo: 1,
-            subfamilia: 'Conductores',
-            sabor: 'N/A',
-            presentacion: 'Rollo 100m',
-            descripcion: 'Cable conductor de cobre calibre 12 para instalaciones eléctricas residenciales'
-          },
-          {
-            id: 3002,
-            consecutivo: 2,
-            subfamilia: 'Conductores',
-            sabor: 'N/A',
-            presentacion: 'Rollo 50m',
-            descripcion: 'Cable conductor de aluminio calibre 12 para instalaciones comerciales'
-          },
-          {
-            id: 3003,
-            consecutivo: 3,
-            subfamilia: 'Conductores',
-            sabor: 'N/A',
-            presentacion: 'Rollo 25m',
-            descripcion: 'Cable conductor flexible calibre 12 para equipos móviles'
-          },
-          {
-            id: 3004,
-            consecutivo: 4,
-            subfamilia: 'Conductores',
-            sabor: 'N/A',
-            presentacion: 'Carrete 500m',
-            descripcion: 'Cable conductor blindado calibre 12 para ambientes industriales'
+            subfamilia: '4',
+            caracteristicasData: [
+              {
+                id: 30011,
+                sabor: 'N/A',
+                presentacion: 'Rollo 100m',
+                descripcion: 'Cable conductor de cobre calibre 12 para instalaciones eléctricas residenciales'
+              },
+              {
+                id: 30012,
+                sabor: 'N/A',
+                presentacion: 'Rollo 50m',
+                descripcion: 'Cable conductor de aluminio calibre 12 para instalaciones comerciales'
+              },
+              {
+                id: 30013,
+                sabor: 'N/A',
+                presentacion: 'Rollo 25m',
+                descripcion: 'Cable conductor flexible calibre 12 para equipos móviles'
+              },
+              {
+                id: 30014,
+                sabor: 'N/A',
+                presentacion: 'Carrete 500m',
+                descripcion: 'Cable conductor blindado calibre 12 para ambientes industriales'
+              }
+            ]
           }
         ],
         sucursalData: [
@@ -327,7 +327,7 @@ export class MaterialesMaestroComponent implements OnInit {
         articulo: 'Refresco Embotellado',
         categoria: 'Alimentos y Bebidas',
         familia: 'Basica',
-        subfamilia: 'Primaria',
+        subfamilia: '5',
         proveedor: 'Embotelladora del Valle',
         imagen: '📷',
         proveedoresData: [
@@ -346,35 +346,33 @@ export class MaterialesMaestroComponent implements OnInit {
         familiaData: [
           {
             id: 4001,
-            consecutivo: 1,
-            subfamilia: 'Refrescos',
-            sabor: 'Cola',
-            presentacion: 'Botella 600ml',
-            descripcion: 'Refresco de cola carbonatado sabor original'
-          },
-          {
-            id: 4002,
-            consecutivo: 2,
-            subfamilia: 'Refrescos',
-            sabor: 'Naranja',
-            presentacion: 'Botella 600ml',
-            descripcion: 'Refresco de naranja carbonatado con jugo natural'
-          },
-          {
-            id: 4003,
-            consecutivo: 3,
-            subfamilia: 'Refrescos',
-            sabor: 'Limón',
-            presentacion: 'Botella 355ml',
-            descripcion: 'Refresco de limón carbonatado light sin azúcar'
-          },
-          {
-            id: 4004,
-            consecutivo: 4,
-            subfamilia: 'Refrescos',
-            sabor: 'Fresa',
-            presentacion: 'Lata 355ml',
-            descripcion: 'Refresco de fresa carbonatado sabor artificial'
+            subfamilia: '5',
+            caracteristicasData: [
+              {
+                id: 40011,
+                sabor: 'Cola',
+                presentacion: 'Botella 600ml',
+                descripcion: 'Refresco de cola carbonatado sabor original'
+              },
+              {
+                id: 40012,
+                sabor: 'Naranja',
+                presentacion: 'Botella 600ml',
+                descripcion: 'Refresco de naranja carbonatado con jugo natural'
+              },
+              {
+                id: 40013,
+                sabor: 'Limón',
+                presentacion: 'Botella 355ml',
+                descripcion: 'Refresco de limón carbonatado light sin azúcar'
+              },
+              {
+                id: 40014,
+                sabor: 'Fresa',
+                presentacion: 'Lata 355ml',
+                descripcion: 'Refresco de fresa carbonatado sabor artificial'
+              }
+            ]
           }
         ],
         sucursalData: [
@@ -396,7 +394,7 @@ export class MaterialesMaestroComponent implements OnInit {
         articulo: 'Galletas Dulces',
         categoria: 'Alimentos y Bebidas',
         familia: 'Basica',
-        subfamilia: 'Primaria',
+        subfamilia: '6',
         proveedor: 'Galletas y Más SA',
         imagen: '📷',
         proveedoresData: [
@@ -415,27 +413,27 @@ export class MaterialesMaestroComponent implements OnInit {
         familiaData: [
           {
             id: 5001,
-            consecutivo: 1,
-            subfamilia: 'Galletas',
-            sabor: 'Chocolate',
-            presentacion: 'Paquete 180g',
-            descripcion: 'Galletas con chispas de chocolate semiamargo'
-          },
-          {
-            id: 5002,
-            consecutivo: 2,
-            subfamilia: 'Galletas',
-            sabor: 'Vainilla',
-            presentacion: 'Paquete 200g',
-            descripcion: 'Galletas de vainilla con crema tipo sandwich'
-          },
-          {
-            id: 5003,
-            consecutivo: 3,
-            subfamilia: 'Galletas',
-            sabor: 'Avena y Miel',
-            presentacion: 'Paquete 150g',
-            descripcion: 'Galletas de avena integral endulzadas con miel'
+            subfamilia: '6',
+            caracteristicasData: [
+              {
+                id: 50011,
+                sabor: 'Chocolate',
+                presentacion: 'Paquete 180g',
+                descripcion: 'Galletas con chispas de chocolate semiamargo'
+              },
+              {
+                id: 50012,
+                sabor: 'Vainilla',
+                presentacion: 'Paquete 200g',
+                descripcion: 'Galletas de vainilla con crema tipo sandwich'
+              },
+              {
+                id: 50013,
+                sabor: 'Avena y Miel',
+                presentacion: 'Paquete 150g',
+                descripcion: 'Galletas de avena integral endulzadas con miel'
+              }
+            ]
           }
         ],
         sucursalData: [
@@ -457,7 +455,7 @@ export class MaterialesMaestroComponent implements OnInit {
         articulo: 'Yogurt Natural',
         categoria: 'Alimentos y Bebidas',
         familia: 'Basica',
-        subfamilia: 'Primaria',
+        subfamilia: '45',
         proveedor: 'Lácteos del Norte',
         imagen: '📷',
         proveedoresData: [
@@ -476,43 +474,39 @@ export class MaterialesMaestroComponent implements OnInit {
         familiaData: [
           {
             id: 6001,
-            consecutivo: 1,
-            subfamilia: 'Yogurt',
-            sabor: 'Natural',
-            presentacion: 'Envase 1L',
-            descripcion: 'Yogurt natural sin azúcar añadida'
-          },
-          {
-            id: 6002,
-            consecutivo: 2,
-            subfamilia: 'Yogurt',
-            sabor: 'Fresa',
-            presentacion: 'Envase 1L',
-            descripcion: 'Yogurt con sabor a fresa con trozos de fruta'
-          },
-          {
-            id: 6003,
-            consecutivo: 3,
-            subfamilia: 'Yogurt',
-            sabor: 'Durazno',
-            presentacion: 'Envase 500ml',
-            descripcion: 'Yogurt con sabor a durazno bajo en grasa'
-          },
-          {
-            id: 6004,
-            consecutivo: 4,
-            subfamilia: 'Yogurt',
-            sabor: 'Arándano',
-            presentacion: 'Envase 250ml',
-            descripcion: 'Yogurt griego con arándanos naturales'
-          },
-          {
-            id: 6005,
-            consecutivo: 5,
-            subfamilia: 'Yogurt',
-            sabor: 'Mango',
-            presentacion: 'Envase 1L',
-            descripcion: 'Yogurt con pulpa de mango tropical'
+            subfamilia: '45',
+            caracteristicasData: [
+              {
+                id: 60011,
+                sabor: 'Natural',
+                presentacion: 'Envase 1L',
+                descripcion: 'Yogurt natural sin azúcar añadida'
+              },
+              {
+                id: 60012,
+                sabor: 'Fresa',
+                presentacion: 'Envase 1L',
+                descripcion: 'Yogurt con sabor a fresa con trozos de fruta'
+              },
+              {
+                id: 60013,
+                sabor: 'Durazno',
+                presentacion: 'Envase 500ml',
+                descripcion: 'Yogurt con sabor a durazno bajo en grasa'
+              },
+              {
+                id: 60014,
+                sabor: 'Arándano',
+                presentacion: 'Envase 250ml',
+                descripcion: 'Yogurt griego con arándanos naturales'
+              },
+              {
+                id: 60015,
+                sabor: 'Mango',
+                presentacion: 'Envase 1L',
+                descripcion: 'Yogurt con pulpa de mango tropical'
+              }
+            ]
           }
         ],
         sucursalData: [
@@ -607,7 +601,12 @@ export class MaterialesMaestroComponent implements OnInit {
         width: 250,
         filter: true
       },
-  
+      {
+        field: 'categoria',
+        headerName: 'Categoría',
+        width: 150,
+        filter: true
+      },
       {
         field: 'familia',
         headerName: 'Familia',
