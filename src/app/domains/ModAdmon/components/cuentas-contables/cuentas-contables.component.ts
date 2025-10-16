@@ -51,6 +51,7 @@ export class CuentasContablesComponent implements OnInit {
   private fb = inject(FormBuilder);
 
   cuentasTree: ICuentaContableTree[] = [];
+  cuentasTreeFlat: any[] = []; // Para AG Grid Tree Data Mode
   cuentasFlat: ICuentaContable[] = [];
   cuentasHojas: ICuentaContable[] = [];
 
@@ -182,63 +183,50 @@ export class CuentasContablesComponent implements OnInit {
     ];
   }
 
-  
+
   setupAgGridTreeColumns(): void {
-  this.columnDefsTree = [
-    {
+    this.columnDefsTree = [
+      {
+        headerName: 'Descripción',
+        field: 'descripcion',
+        flex: 1,
+        minWidth: 250,
+        valueFormatter: (params) => params.value || '-'
+      },
+      {
+        headerName: 'Nivel',
+        field: 'nivel',
+        width: 100,
+        cellRenderer: (params: ICellRendererParams) => {
+          if (!params.value) return '';
+          const nivel = params.value;
+          const colorClass = nivel === 1 ? 'primary' : nivel === 2 ? 'info' : 'success';
+          return `<span class="badge bg-${colorClass}">Nivel ${nivel}</span>`;
+        }
+      },
+      {
+        headerName: 'Estado',
+        field: 'activo',
+        width: 120,
+        cellRenderer: (params: ICellRendererParams) => {
+          if (params.value === undefined) return '';
+          return params.value
+            ? '<span class="badge bg-success">Activa</span>'
+            : '<span class="badge bg-danger">Inactiva</span>';
+        }
+      }
+    ];
+
+    // Configuración específica para la columna de agrupación en Tree Data Mode
+    this.autoGroupColumnDef = {
       headerName: 'Cuenta Contable',
       minWidth: 400,
-      cellRenderer: 'agGroupCellRenderer',
       cellRendererParams: {
         suppressCount: true,
         innerRenderer: this.customTreeCellRenderer.bind(this)
       }
-    },
-    {
-      headerName: 'Código',
-      field: 'codigo',
-      width: 150,
-      cellClass: 'fw-bold'
-    },
-    {
-      headerName: 'Descripción',
-      field: 'descripcion',
-      flex: 1,
-      minWidth: 200,
-      valueFormatter: (params) => params.value || '-'
-    },
-    {
-      headerName: 'Nivel',
-      field: 'nivel',
-      width: 100,
-      valueFormatter: (params) => `Nivel ${params.value}`,
-      cellRenderer: (params: ICellRendererParams) => {
-        const nivel = params.value;
-        const colorClass = nivel === 1 ? 'primary' : nivel === 2 ? 'info' : 'success';
-        return `<span class="badge bg-${colorClass}">${nivel}</span>`;
-      }
-    },
-    {
-      headerName: 'Estado',
-      field: 'activo',
-      width: 120,
-      cellRenderer: (params: ICellRendererParams) => 
-        params.value 
-          ? '<span class="badge bg-success">Activa</span>' 
-          : '<span class="badge bg-danger">Inactiva</span>'
-    }
-  ];
-
-  // Configuración específica para agrupación
-  this.autoGroupColumnDef = {
-    headerName: 'Cuenta Contable',
-    minWidth: 400,
-    cellRendererParams: {
-      suppressCount: true,
-      innerRenderer: this.customTreeCellRenderer.bind(this)
-    }
-  };
-}
+    };
+  }
 
 
 
@@ -267,21 +255,38 @@ export class CuentasContablesComponent implements OnInit {
   }
 
   onGridReady(params: GridReadyEvent): void {
-    if (this.viewMode === 'list') {
-      this.gridApi = params.api;
+    this.gridApi = params.api;
+
+    // Expandir primer nivel en modo árbol
+    if (this.viewMode === 'tree') {
+      setTimeout(() => {
+        this.gridApi.forEachNode(node => {
+          if (node.level === 0) {
+            node.setExpanded(true);
+          }
+        });
+      }, 100);
     }
+
     this.applyGridFilters();
   }
 
   onSelectionChanged(event: any): void {
-    if (this.viewMode === 'list') {
-      const selectedNodes = event.api.getSelectedNodes();
-      if (selectedNodes.length > 0) {
-        this.selectedRowData = selectedNodes[0].data;
+    const selectedNodes = event.api.getSelectedNodes();
+    if (selectedNodes.length > 0) {
+      const selectedData = selectedNodes[0].data;
+
+      if (this.viewMode === 'list') {
+        this.selectedRowData = selectedData;
         this.selectedCuenta = null;
-      } else {
+      } else if (this.viewMode === 'tree') {
+        // En modo árbol, mapear los datos seleccionados
+        this.selectedCuenta = selectedData;
         this.selectedRowData = null;
       }
+    } else {
+      this.selectedRowData = null;
+      this.selectedCuenta = null;
     }
   }
 
@@ -302,14 +307,22 @@ export class CuentasContablesComponent implements OnInit {
 
     this.cuentasService.getTree(this.idCompany).subscribe({
       next: (tree) => {
-        // Procesar el árbol para AG Grid Tree Data
+        // Procesar el árbol para HTML (modo anterior)
         this.cuentasTree = this.buildTreeDataForGrid(tree);
+
+        // Procesar para AG Grid Tree Data Mode
+        this.cuentasTreeFlat = this.buildFlatTreeData(tree);
+
         this.loading = false;
-        
+
         // Si estamos en vista árbol, expandir el primer nivel
         setTimeout(() => {
-          if (this.viewMode === 'tree') {
-            this.expandAllNodes();
+          if (this.viewMode === 'tree' && this.gridApi) {
+            this.gridApi.forEachNode(node => {
+              if (node.level === 0) {
+                node.setExpanded(true);
+              }
+            });
           }
         }, 100);
       },
@@ -331,7 +344,7 @@ export class CuentasContablesComponent implements OnInit {
     });
   }
 
-  // Construir la estructura de árbol para HTML
+  // Construir la estructura de árbol para HTML (vista antigua)
   buildTreeDataForGrid(tree: ICuentaContableTree[]): ICuentaContableTree[] {
     const processNode = (node: ICuentaContableTree): ICuentaContableTree => {
       return {
@@ -342,6 +355,39 @@ export class CuentasContablesComponent implements OnInit {
     };
 
     return tree.map(node => processNode(node));
+  }
+
+  // Construir estructura plana con dataPath para AG Grid Tree Data Mode
+  buildFlatTreeData(tree: ICuentaContableTree[]): any[] {
+    const result: any[] = [];
+
+    const processNode = (node: ICuentaContableTree, path: string[] = []) => {
+      const currentPath = [...path, node.codigo];
+
+      const flatNode = {
+        id: node.id,
+        codigo: node.codigo,
+        nombre: node.nombre,
+        descripcion: node.descripcion || '',
+        nivel: node.nivel,
+        idPadre: node.idPadre,
+        esHoja: node.esHoja,
+        activo: node.activo,
+        idCompany: node.idCompany,
+        dataPath: currentPath, // Propiedad crítica para AG Grid Tree Data
+        hasChildren: node.hijos && node.hijos.length > 0
+      };
+
+      result.push(flatNode);
+
+      // Procesar hijos recursivamente
+      if (node.hijos && node.hijos.length > 0) {
+        node.hijos.forEach(hijo => processNode(hijo, currentPath));
+      }
+    };
+
+    tree.forEach(node => processNode(node));
+    return result;
   }
 
   // Métodos para manejar el árbol HTML
@@ -425,11 +471,19 @@ export class CuentasContablesComponent implements OnInit {
   }
 
   expandAll(): void {
-    this.expandAllNodes();
+    if (this.viewMode === 'tree' && this.gridApi) {
+      this.gridApi.expandAll();
+    } else {
+      this.expandAllNodes();
+    }
   }
 
   collapseAll(): void {
-    this.collapseAllNodes();
+    if (this.viewMode === 'tree' && this.gridApi) {
+      this.gridApi.collapseAll();
+    } else {
+      this.collapseAllNodes();
+    }
   }
 
   filterTree(): void {
@@ -438,20 +492,18 @@ export class CuentasContablesComponent implements OnInit {
   }
 
   applyGridFilters(): void {
-    if (this.viewMode === 'list' && this.gridApi) {
-      // Aplicar QuickFilter
-      this.gridApi.setGridOption('quickFilterText', this.filterForm.value.searchTerm);
+    if (!this.gridApi) return;
 
-      // Aplicar filtros de columna si es necesario
-      const nivelFilter = this.gridApi.getFilterInstance('nivel');
-      if (nivelFilter) {
-        const nivel = this.filterForm.value.filterNivel;
-        const nivelFilterModel = nivel ? { type: 'equals', filter: nivel } : null;
-        (nivelFilter as any).setModel(nivelFilterModel);
-        this.gridApi.onFilterChanged();
-      }
-    } else if (this.viewMode === 'tree') {
-      this.applyTreeFilters();
+    // Aplicar QuickFilter para búsqueda de texto
+    this.gridApi.setGridOption('quickFilterText', this.filterForm.value.searchTerm);
+
+    // Aplicar filtro de nivel si existe
+    const nivelFilter = this.gridApi.getFilterInstance('nivel');
+    if (nivelFilter) {
+      const nivel = this.filterForm.value.filterNivel;
+      const nivelFilterModel = nivel ? { type: 'equals', filter: nivel } : null;
+      (nivelFilter as any).setModel(nivelFilterModel);
+      this.gridApi.onFilterChanged();
     }
   }
 
