@@ -157,7 +157,7 @@ export class MaterialesMaestroComponent implements OnInit {
         articulo: 'Jugo Manzana',
         categoria: 'Materia Prima',
         familia: 'Basica',
-        subfamilia: 'Basica',
+        subfamilia: '1',
         proveedor: 'Jugos Mexicanos',
         imagen: '📷',
         proveedoresData: [
@@ -232,7 +232,7 @@ export class MaterialesMaestroComponent implements OnInit {
         articulo: 'Azucar Morena',
         categoria: 'Eléctrico',
         familia: 'Basica',
-        subfamilia: 'Basica',
+        subfamilia: '1',
         proveedor: 'ingenio IOca',
         imagen: '📷',
         proveedoresData: [
