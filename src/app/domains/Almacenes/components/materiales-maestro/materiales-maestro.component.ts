@@ -52,16 +52,16 @@ export class MaterialesMaestroComponent implements OnInit {
         id: 1,
         activo: true,
         numMat: 'MAT-001',
-        articulo: 'Tornillo Hexagonal 1/2"',
+        articulo: 'Corcholata Dorada',
         categoria: 'Materia Prima',
         familia: 'Basica',
-        subfamilia: '2',
-        proveedor: 'Tornillos SA de CV',
+        subfamilia: '3',
+        proveedor: '2',
         imagen: '📷',
         proveedoresData: [
           {
             id: 101,
-            nombreProveedor: 'Tornillos SA de CV',
+            nombreProveedor: 'Envasadora llos SA de CV',
             precioUnitario: 2.50,
             descripcionEmpaque: 'Caja de cartón',
             piezasPorPaquete: 100,
@@ -85,23 +85,35 @@ export class MaterialesMaestroComponent implements OnInit {
         familiaData: [
           {
             id: 1001,
-            subfamilia: '2',
+            subfamilia: 'Refresco',
             caracteristicasData: [
               {
                 id: 10011,
-                sabor: 'N/A',
+                sabor: '2',
                 presentacion: 'Caja 100 pzas',
                 descripcion: 'Tornillos hexagonales estándar para uso general'
-              },
+              }
+            ]
+          },
+          {
+            id: 1002,
+            subfamilia: 'Sidra',
+            caracteristicasData: [
               {
                 id: 10012,
-                sabor: 'N/A',
+                sabor: '6',
                 presentacion: 'Caja 50 pzas',
                 descripcion: 'Tornillos hexagonales de acero inoxidable para ambientes húmedos'
-              },
+              }
+            ]
+          },
+          {
+            id: 1003,
+            subfamilia: 'Vinos',
+            caracteristicasData: [
               {
                 id: 10013,
-                sabor: 'N/A',
+                sabor: '4',
                 presentacion: 'Bolsa 200 pzas',
                 descripcion: 'Tornillos hexagonales galvanizados para exteriores'
               }
@@ -142,16 +154,16 @@ export class MaterialesMaestroComponent implements OnInit {
         id: 2,
         activo: true,
         numMat: 'MAT-002',
-        articulo: 'Cemento Portland Gris 50kg',
+        articulo: 'Jugo Manzana',
         categoria: 'Materia Prima',
         familia: 'Basica',
-        subfamilia: '3',
-        proveedor: 'Cementos Mexicanos',
+        subfamilia: 'Basica',
+        proveedor: 'Jugos Mexicanos',
         imagen: '📷',
         proveedoresData: [
           {
             id: 201,
-            nombreProveedor: 'Cementos Mexicanos',
+            nombreProveedor: 'Jugos Mexicanos',
             precioUnitario: 180.00,
             descripcionEmpaque: 'Saco de papel kraft',
             piezasPorPaquete: 1,
@@ -217,11 +229,11 @@ export class MaterialesMaestroComponent implements OnInit {
         id: 3,
         activo: false,
         numMat: 'MAT-003',
-        articulo: 'Cable Eléctrico Cal 12 AWG',
+        articulo: 'Azucar Morena',
         categoria: 'Eléctrico',
         familia: 'Basica',
-        subfamilia: '4',
-        proveedor: 'Distribuidora Eléctrica',
+        subfamilia: 'Basica',
+        proveedor: 'ingenio IOca',
         imagen: '📷',
         proveedoresData: [
           {
@@ -324,7 +336,7 @@ export class MaterialesMaestroComponent implements OnInit {
         id: 4,
         activo: true,
         numMat: 'MAT-004',
-        articulo: 'Refresco Embotellado',
+        articulo: 'Envase para Refresco Embotellado',
         categoria: 'Alimentos y Bebidas',
         familia: 'Basica',
         subfamilia: '5',
@@ -391,7 +403,7 @@ export class MaterialesMaestroComponent implements OnInit {
         id: 5,
         activo: true,
         numMat: 'MAT-005',
-        articulo: 'Galletas Dulces',
+        articulo: 'Valvulas de Control para Fluidos',
         categoria: 'Alimentos y Bebidas',
         familia: 'Basica',
         subfamilia: '6',
@@ -452,7 +464,7 @@ export class MaterialesMaestroComponent implements OnInit {
         id: 6,
         activo: true,
         numMat: 'MAT-006',
-        articulo: 'Yogurt Natural',
+        articulo: 'Endulcorante Natural',
         categoria: 'Alimentos y Bebidas',
         familia: 'Basica',
         subfamilia: '45',
@@ -603,8 +615,8 @@ export class MaterialesMaestroComponent implements OnInit {
       },
       {
         field: 'categoria',
-        headerName: 'Categoría',
-        width: 150,
+        headerName: 'Categoria',
+        width: 250,
         filter: true
       },
       {
