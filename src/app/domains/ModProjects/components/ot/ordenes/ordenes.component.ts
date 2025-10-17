@@ -780,9 +780,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
          sortable: true,
          filter: true,
          resizable: true,
-         flex: 2.5,
-         hide: true,
-         editable: true,      
+         flex: 2.5,         
+         editable: false,      
        },
       {
         field: 'otNumber',
@@ -800,6 +799,15 @@ export class OrdenesComponent implements OnInit, OnDestroy {
             this.selectedOt.otNumber = params.newValue;
           }
         }
+      },
+      {
+        field: 'package',
+        headerName: 'Paquete',
+        sortable: true,
+        filter: true,
+        resizable: true,
+        flex: 2.5,         
+        editable: false,      
       },
       {
         field: 'results',

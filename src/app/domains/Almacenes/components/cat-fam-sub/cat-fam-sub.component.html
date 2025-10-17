@@ -340,6 +340,32 @@
               Activo
             </label>
           </div>
+
+          <!-- Checkboxes para Subfamilias -->
+          <div *ngIf="editingItem?.nodeLevel === 'subfamily'" class="mt-3">
+            <div class="form-check">
+              <input 
+                class="form-check-input" 
+                type="checkbox" 
+                id="editMateriaPrima"
+                [(ngModel)]="modalForm.valueAdditionBit"
+                name="valueAdditionBit">
+              <label class="form-check-label" for="editMateriaPrima">
+                Materia Prima
+              </label>
+            </div>
+            <div class="form-check">
+              <input 
+                class="form-check-input" 
+                type="checkbox" 
+                id="editRequisiciones"
+                [(ngModel)]="modalForm.valueAdditionBit2"
+                name="valueAdditionBit2">
+              <label class="form-check-label" for="editRequisiciones">
+                Requisiciones
+              </label>
+            </div>
+          </div>
         </form>
       </div>
       <div class="modal-footer">

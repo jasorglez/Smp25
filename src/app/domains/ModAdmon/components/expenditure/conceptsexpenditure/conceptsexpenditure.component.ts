@@ -10,6 +10,7 @@ import { CustomersService } from 'app/services/customers.service';
 import { EmployeesService } from 'app/services/employees.service';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { SignalsService } from 'app/services/signals.service';
+import { CuentasContablesService } from 'app/services/cuentas-contables.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { lastValueFrom, concat, toArray, forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -34,6 +35,7 @@ export class ConceptsexpenditureComponent {
       signals:         inject(SignalsService),
       administration:  inject(AdministrationService),
       trackingService: inject(TrackingService),
+      cuentasContables: inject(CuentasContablesService),
 
       route: inject(ActivatedRoute),
 
@@ -49,6 +51,7 @@ export class ConceptsexpenditureComponent {
     private tempIdCounter = 0;
     private employees = signal<IGenericEntity[]>([]);
     private providers = signal<IGenericEntity[]>([]);
+    private cuentasContables = signal<IGenericEntity[]>([]);
   
     public ivaPercent = signal(0);
     public subtotal = signal(0);
@@ -75,7 +78,7 @@ export class ConceptsexpenditureComponent {
       if (newIdIncExp !== this.idIncExp) {
         this.idIncExp = newIdIncExp;
         // ✅ CORRECCIÓN: Verificar que los catálogos estén cargados antes de cargar datos
-        if (this.idRoot && (this.employees().length > 0 || this.providers().length > 0)) {
+        if (this.idRoot && (this.employees().length > 0 || this.providers().length > 0 || this.cuentasContables().length > 0)) {
           this.loadGridData(this.idIncExp);
         }
       }
@@ -106,6 +109,12 @@ export class ConceptsexpenditureComponent {
           return of([]);
         })
       ),
+      cuentasContables: this.services.cuentasContables.getHojas(idRoot).pipe(
+        catchError((error) => {
+          console.error('Error cargando cuentas contables:', error);
+          return of([]);
+        })
+      ),
       billingInfo: this.services.administration.getBillingManagementInfo(idRoot).pipe(
         catchError((error) => {
           console.error('Error cargando billing info:', error);
@@ -115,16 +124,18 @@ export class ConceptsexpenditureComponent {
     };
   
     forkJoin(sources).subscribe({
-      next: ({ employees, providers, billingInfo }) => {
+      next: ({ employees, providers, cuentasContables, billingInfo }) => {
         console.log('📊 Datos cargados:', {
           empleados: Array.isArray(employees) ? employees.length : 0,
           proveedores: Array.isArray(providers) ? providers.length : 0,
+          cuentasContables: Array.isArray(cuentasContables) ? cuentasContables.length : 0,
           iva: billingInfo?.[0]?.iIva
         });
-        
+
         // ✅ CORRECCIÓN: Asegurar que los datos sean arrays válidos
         this.employees.set(Array.isArray(employees) ? employees : []);
         this.providers.set(Array.isArray(providers) ? providers : []);
+        this.cuentasContables.set(Array.isArray(cuentasContables) ? cuentasContables : []);
         this.ivaPercent.set(billingInfo?.[0]?.iIva ?? 16);
         
         // ✅ CORRECCIÓN: Forzar actualización del grid después de cargar catálogos
@@ -140,6 +151,7 @@ export class ConceptsexpenditureComponent {
         // Asegurar que los signals tengan valores por defecto
         this.employees.set([]);
         this.providers.set([]);
+        this.cuentasContables.set([]);
         this.ivaPercent.set(16);
       }
     });
@@ -162,7 +174,7 @@ export class ConceptsexpenditureComponent {
         
         const transformedData = (data || []).map(item => {
           const type = item.typeExpense?.trim().toUpperCase();
-          
+
           // ✅ CORRECCIÓN: Configurar selectedEntity para mostrar en el combo
           let selectedEntity = null;
           if (type === 'EMPLEADOS' && item.idExpense) {
@@ -171,13 +183,17 @@ export class ConceptsexpenditureComponent {
           } else if (type === 'PROVEEDORES' && item.idExpense) {
             const provider = this.providers().find(p => p.id === item.idExpense);
             selectedEntity = provider?.name || null;
+          } else if (type === 'OTROS' && item.idExpense) {
+            const cuenta = this.cuentasContables().find(c => c.id === item.idExpense);
+            selectedEntity = cuenta ? `${cuenta['codigo']} - ${cuenta['nombre']}` : null;
           }
-          
+
           return {
             ...item,
             typeExpense: type,
             idEmployee: type === 'EMPLEADOS' ? item.idExpense : null,
             idProvider: type === 'PROVEEDORES' ? item.idExpense : null,
+            idCuentaContable: type === 'OTROS' ? item.idExpense : null,
             selectedEntity: selectedEntity
           };
         });
@@ -290,29 +306,41 @@ export class ConceptsexpenditureComponent {
         editable: true, 
         flex: 4,
         cellEditor: 'agSelectCellEditor', 
-        cellEditorParams: { values: ['EMPLEADOS', 'PROVEEDORES', 'OTROS'] }
+        cellEditorParams: { values: ['EMPLEADOS', 'PROVEEDORES', 'OTROS'] },
+        valueFormatter: (params) => {
+          const value = params.value;
+          if (value === 'EMPLEADOS') return 'Empleados';
+          if (value === 'PROVEEDORES') return 'Proveedores';
+          if (value === 'OTROS') return 'Otros';
+          return value;
+        }
       },
   
       // ✅ CORRECCIÓN: UN SOLO COMBO que cambia dinámicamente
       {
-            headerName: 'Empleado/Proveedor',
+            headerName: 'Empleado/Proveedor/Cuenta',
             field: 'selectedEntity',
             width: 250,
-            editable: params => params.data.typeExpense && params.data.typeExpense !== 'OTROS',
+            editable: params => params.data.typeExpense,
             cellClass: params => params.data.typeExpense === 'OTROS' ? 'cell-disabled' : '',
             cellEditor: 'agSelectCellEditor',
             cellEditorParams: (params) => {
               if (!params.data) return { values: [] };
-              
+
               const type = params.data.typeExpense;
               if (type === 'EMPLEADOS') {
-                return { 
+                return {
                   values: this.employees().map(e => e.name),
                   formatValue: (value) => value || ''
                 };
               } else if (type === 'PROVEEDORES') {
-                return { 
+                return {
                   values: this.providers().map(p => p.name),
+                  formatValue: (value) => value || ''
+                };
+              } else if (type === 'OTROS') {
+                return {
+                  values: this.cuentasContables().map(c => `${c['codigo']} - ${c['nombre']}`),
                   formatValue: (value) => value || ''
                 };
               }
@@ -320,13 +348,14 @@ export class ConceptsexpenditureComponent {
             },
             valueSetter: (params) => {
               if (!params.data) return false;
-              
+
               const type = params.data.typeExpense;
               if (type === 'EMPLEADOS') {
                 const employee = this.employees().find(e => e.name === params.newValue);
                 if (employee) {
                   params.data.idEmployee = employee.id;
                   params.data.idProvider = null;
+                  params.data.idCuentaContable = null;
                   params.data.selectedEntity = params.newValue;
                   return true;
                 }
@@ -335,6 +364,16 @@ export class ConceptsexpenditureComponent {
                 if (provider) {
                   params.data.idProvider = provider.id;
                   params.data.idEmployee = null;
+                  params.data.idCuentaContable = null;
+                  params.data.selectedEntity = params.newValue;
+                  return true;
+                }
+              } else if (type === 'OTROS') {
+                const cuenta = this.cuentasContables().find(c => `${c['codigo']} - ${c['nombre']}` === params.newValue);
+                if (cuenta) {
+                  params.data.idCuentaContable = cuenta.id;
+                  params.data.idEmployee = null;
+                  params.data.idProvider = null;
                   params.data.selectedEntity = params.newValue;
                   return true;
                 }
@@ -344,16 +383,19 @@ export class ConceptsexpenditureComponent {
             valueFormatter: (params) => {
                   // ✅ Añadir protección contra null
                   if (!params || !params.data) return '';
-                  
+
                   const type = params.data.typeExpense;
                   if (!type) return '';
-  
+
                   if (type === 'EMPLEADOS' && params.data.idEmployee) {
                     const employee = this.employees().find(e => e.id === params.data.idEmployee);
                     return employee ? employee.name : '';
                   } else if (type === 'PROVEEDORES' && params.data.idProvider) {
                     const provider = this.providers().find(p => p.id === params.data.idProvider);
                     return provider ? provider.name : '';
+                  } else if (type === 'OTROS' && params.data.idCuentaContable) {
+                    const cuenta = this.cuentasContables().find(c => c.id === params.data.idCuentaContable);
+                    return cuenta ? `${cuenta['codigo']} - ${cuenta['nombre']}` : '';
                   }
                   return '';
             }
@@ -406,10 +448,11 @@ export class ConceptsexpenditureComponent {
       // Lógica existente para cambio de tipo
       data.idEmployee = null;
       data.idProvider = null;
+      data.idCuentaContable = null;
       data.selectedEntity = null;
-  
-      this.gridApi.refreshCells({ 
-        rowNodes: [params.node], 
+
+      this.gridApi.refreshCells({
+        rowNodes: [params.node],
         force: true,
         columns: ['selectedEntity']
       });
@@ -537,9 +580,10 @@ export class ConceptsexpenditureComponent {
     try {
       const cleanAndAdapt = (row: any) => {
         const dataToSend = this.cleanDataForServer(row);
-        dataToSend.idExpense = row.idEmployee || row.idProvider || null;
+        dataToSend.idExpense = row.idEmployee || row.idProvider || row.idCuentaContable || null;
         delete dataToSend.idEmployee;
         delete dataToSend.idProvider;
+        delete dataToSend.idCuentaContable;
         delete dataToSend.selectedEntity; // ✅ CORRECCIÓN: Eliminar campo auxiliar
         return dataToSend;
       };

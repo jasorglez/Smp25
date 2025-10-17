@@ -1,0 +1,53 @@
+/* En tu archivo cuentas-contables.component.scss */
+:host ::ng-deep .ag-theme-alpine {
+  --ag-header-height: 40px;
+  --ag-row-height: 45px;
+  --ag-header-background-color: #f8f9fa;
+  --ag-odd-row-background-color: #fcfcfc;
+}
+
+:host ::ng-deep .ag-theme-alpine .ag-root-wrapper {
+  border: none;
+}
+
+:host ::ng-deep .small-text-ag-grid .ag-cell {
+  font-size: 0.875rem;
+}
+
+/* Estilos para el árbol HTML */
+.tree-container {
+  max-height: 600px;
+  overflow-y: auto;
+  border: 1px solid #dee2e6;
+  border-radius: 0.375rem;
+}
+
+.tree-node {
+  position: relative;
+}
+
+.tree-item {
+  cursor: pointer;
+  transition: background-color 0.15s ease-in-out;
+  user-select: none;
+}
+
+.tree-item:hover {
+  background-color: #f8f9fa;
+}
+
+.tree-item.selected {
+  background-color: #e3f2fd;
+  border-left: 3px solid #2196f3;
+}
+
+.tree-children {
+  margin-left: 20px;
+  border-left: 1px solid #dee2e6;
+}
+
+/* Estilos para la indentación de niveles */
+:host ::ng-deep .nivel-1 { padding-left: 10px; }
+:host ::ng-deep .nivel-2 { padding-left: 30px; }
+:host ::ng-deep .nivel-3 { padding-left: 50px; }
+:host ::ng-deep .nivel-4 { padding-left: 70px; }

@@ -60,7 +60,9 @@ export class CatFamSubComponent {
   // Datos del formulario modal
   modalForm = {
     description: '',
-    active: true
+    active: true,
+    valueAdditionBit: false,
+    valueAdditionBit2: false
   };
   
   // Datos para edición
@@ -244,33 +246,35 @@ export class CatFamSubComponent {
       },
       {
         headerName: 'Materia Prima',
-        field: 'materiaPrima',
+        field: 'valueAdditionBit',
         width: 120,
         cellRenderer: (params: any) => {
-          const value = params.data.materiaPrima || false;
-          const checked = value ? 'checked' : '';
-          return `<input type="checkbox" ${checked} disabled style="cursor: pointer;">`;
+          if (params.data.nodeLevel === 'subfamily') {
+            const value = params.data.valueAdditionBit || false;
+            const checked = value ? 'checked' : '';
+            return `<input type="checkbox" ${checked} disabled style="cursor: pointer;">`;
+          }
+          return '';
         }
       },
       {
         headerName: 'Requisiciones',
-        field: 'requisiciones',
+        field: 'valueAdditionBit2',
         width: 120,
         cellRenderer: (params: any) => {
-          const value = params.data.requisiciones || false;
-          const checked = value ? 'checked' : '';
-          return `<input type="checkbox" ${checked} disabled style="cursor: pointer;">`;
+          if (params.data.nodeLevel === 'subfamily') {
+            const value = params.data.valueAdditionBit2 || false;
+            const checked = value ? 'checked' : '';
+            return `<input type="checkbox" ${checked} disabled style="cursor: pointer;">`;
+          }
+          return '';
         }
       },
       {
         headerName: 'Activo',
         field: 'activo',
         width: 100,
-        cellRenderer: (params: any) => {
-          const value = params.data.active === 1 || params.data.activo;
-          const checked = value ? 'checked' : '';
-          return `<input type="checkbox" ${checked} disabled style="cursor: pointer;">`;
-        }
+        cellRenderer: 'agCheckboxCellRenderer',
       }
     ];
   }
@@ -513,6 +517,8 @@ export class CatFamSubComponent {
     this.editingItem = { ...item };
     this.modalForm.description = item.description || '';
     this.modalForm.active = item.active === 1;
+    this.modalForm.valueAdditionBit = item.valueAdditionBit || false;
+    this.modalForm.valueAdditionBit2 = item.valueAdditionBit2 || false;
     this.showEditModal = true;
   }
   
@@ -530,7 +536,9 @@ export class CatFamSubComponent {
   private resetModalForm() {
     this.modalForm = {
       description: '',
-      active: true
+      active: true,
+      valueAdditionBit: false,
+      valueAdditionBit2: false
     };
   }
   
@@ -631,7 +639,8 @@ export class CatFamSubComponent {
       description: this.modalForm.description,
       valueAddition: this.editingItem.valueAddition,
       valueAddition2: this.editingItem.valueAddition2,
-      valueAdditionBit: this.editingItem.valueAdditionBit,
+      valueAdditionBit: this.modalForm.valueAdditionBit,
+      valueAdditionBit2: this.modalForm.valueAdditionBit2,
       vigente: this.editingItem.vigente,
       type: this.editingItem.type,
       parentId: this.editingItem.parentId,
@@ -662,6 +671,7 @@ export class CatFamSubComponent {
       valueAddition: String(data.valueAddition || 'NA'),
       valueAddition2: String(data.valueAddition2 || 'NA'),
       valueAdditionBit: Boolean(data.valueAdditionBit || false),
+      valueAdditionBit2: Boolean(data.valueAdditionBit2 || false),
       vigente: Boolean(data.vigente !== false),
       type: String(data.type),
       parentId: Number(data.parentId || 0),
