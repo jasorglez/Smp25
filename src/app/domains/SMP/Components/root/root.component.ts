@@ -273,13 +273,10 @@ public gridOptions: any = {
         flex: 1
       },
       {
-        field: 'type',
-        headerName: 'Tipo de empresa',
+        field: 'advanced',
+        headerName: 'Permisos avanzados',
         editable: true,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: ['Pública', 'Privada']
-        },
         flex: 1
       },
       {
@@ -357,6 +354,7 @@ public gridOptions: any = {
       consortium: 'NO',
       formatRep: '',
       city: '',
+      advanced: false,
       state: '',
       country: '',
       rfc: '',
