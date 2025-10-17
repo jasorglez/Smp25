@@ -421,6 +421,7 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
             canRead: permiso.canRead,
             canUpdate: permiso.canUpdate,
             canDelete: permiso.canDelete,
+            active: permiso.active,
           };
           console.log(detailData)
           return this.permitionsService.addPermitionsDetail(detailData);
