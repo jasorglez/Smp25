@@ -273,6 +273,16 @@ public gridOptions: any = {
         flex: 1
       },
       {
+        field: 'type',
+        headerName: 'Tipo de empresa',
+        editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: ['Pública', 'Privada']
+        },
+        flex: 1
+      },
+      {
         field: 'picture',
         headerName: 'Foto Root',
         cellEditor: 'agTextCellEditor',
@@ -294,6 +304,7 @@ public gridOptions: any = {
         },
         editable: false,
       },
+      
       {
         field: 'picture3',
         headerName: 'Footer',

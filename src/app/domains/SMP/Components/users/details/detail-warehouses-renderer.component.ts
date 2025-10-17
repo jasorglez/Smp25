@@ -7,13 +7,16 @@ import { SignalsService } from 'app/services/signals.service';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { WarehousesService } from 'app/services/warehouses.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { PermitionsService } from 'app/services/permitions.service';
+import { RolesService } from 'app/services/roles.service';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, concat, EMPTY, lastValueFrom, toArray, forkJoin } from 'rxjs';
+import { DetailPermissionsUserComponent } from './detail-permissions-user/detail-permissions-user.component';
 
 @Component({
   selector: 'app-detail-warehouses-renderer',
   standalone: true,
-  imports: [AgGridModule, CommonModule],
+  imports: [AgGridModule, CommonModule, DetailPermissionsUserComponent],
   template: `
     <div style="padding: 10px; background-color: #f8f9fa; height: 100%; display: flex; flex-direction: column;">
       <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
@@ -51,8 +54,10 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray, forkJoin } from 'rxj
           [columnDefs]="warehousesColumnDefs"
           [rowData]="warehousesRowData"
           [gridOptions]="warehousesGridOptions"
+          [components]="components"
           (gridReady)="onWarehousesGridReady($event)"
-          (cellValueChanged)="onWarehousesCellValueChanged($event)">
+          (cellValueChanged)="onWarehousesCellValueChanged($event)"
+          (cellClicked)="onCellClicked($event)">
         </ag-grid-angular>
       </div>
     </div>
@@ -63,17 +68,30 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
   private usersxpermissionsService = inject(UsersxpermissionsService);
   private warehousesService = inject(WarehousesService);
   private trackingService = inject(TrackingService);
+  private rolesService = inject(RolesService);
+  private permitionsService = inject(PermitionsService);
 
+  components = {
+    DetailPermissionsUserComponent: DetailPermissionsUserComponent,
+  };
   params: any;
   userId: number;
   userName: string;
   branchId: number;
   branchName: string;
+  idCompany: number;
+
 
   // Warehouses grid properties
   warehousesRowData: any[] = [];
+  catalogRoles: any[] = [];
+  catalogPosiciones: any[] = [];
+  rolesDefinidos: any[] = [];
+  catalogGeneralPosiciones: any[] = [];
   hasWarehouseChanges: boolean = false;
+  private collapseTimer: any = null;
   warehousesGridApi: any;
+  idPosicionSelect: number;
   selectedWarehouse: any = null;
 
   // Data for dropdowns
@@ -86,44 +104,144 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
     headerHeight: 25,
     rowHeight: 20,
     suppressEnterWhenEditing: false,
-    rowSelection: 'single'
+    rowSelection: 'single',
+    masterDetail: true,
+    detailCellRendererSelector: (params) => {
+    // Decide qué renderizador usar basado en la propiedad 'detailType'
+    if (params.data.detailType === 'Permisos') {
+      params.node.setRowHeight(800);
+      return {
+        component: 'DetailPermissionsUserComponent',
+        params: {
+          idUser: this.userId,
+          idBranch: this.branchId,
+          idRole: params.data.idRole,
+          idPosicion: params.data.idPosicion,
+          onMouseEnter: () => {clearTimeout(this.collapseTimer)},
+          onMouseLeave: () => {
+            this.collapseTimer = setTimeout(() => {
+              params.node.setExpanded(false);
+            }, 300); // Un retardo de 300ms
+          },
+        }
+      };
+    } else 
+    return undefined;
+  },
+    detailRowHeight: 600,
+    rowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
   };
 
   get warehousesColumnDefs(): any[] {
     return [
       {
-        field: 'name',
-        headerName: 'Almacén',
+        field: 'id',
+        headerName: 'ID',
+        filter: 'agNumberColumnFilter',
+        hide: true,
+      },
+      {
+        field: 'idRole',
+        headerName: 'Departamento',
         editable: true,
         suppressMovable: true,
         filter: false,
         flex: 1,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.warehouses ? this.warehouses.map((item: any) => item.name) : []
-        },
-        valueFormatter: (params: any) => {
-          if (params.data?.name) {
-            return params.data.name;
+        onCellValueChanged: (params) => {
+          const newRolId = params.newValue;
+          if (newRolId && newRolId !== params.oldValue) {
+            // Llama al método que recarga las posiciones válidas para ese rol
+            this.getPoscionesbyRole(newRolId);
           }
-          if (params.data?.idPermission) {
-            const foundWarehouse = this.warehouses.find((item: any) => item.id === params.data.idPermission);
-            return foundWarehouse ? foundWarehouse.name : `ID: ${params.data.idPermission}`;
-          }
-          return params.value || '';
         },
-        valueSetter: (params: any) => {
-          if (params.newValue && this.warehouses) {
-            const selectedWarehouse = this.warehouses.find((w: any) => w.name === params.newValue);
-            if (selectedWarehouse) {
-              params.data.idPermission = selectedWarehouse.id;
-              params.data[params.colDef.field] = params.newValue;
-              return true;
+        cellEditorParams: (params) => {
+          return {
+            values: this.catalogRoles 
+              ? this.catalogRoles.map(item => item.id)
+              : []
+          };
+        },
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const found = this.catalogRoles?.find(item => item.id === params.value);
+          return found ? found.description : params.value;
+        },
+        valueSetter: (params) => {
+          const newDeptId = params.newValue;
+
+          if (params.data.idRole === newDeptId) return false;
+
+          params.data.idRole = newDeptId;
+
+          this.getPoscionesbyRole(newDeptId).then((posiciones) => {
+            // Guardar las posiciones directamente en la fila
+            params.data.posicionesDisponibles = posiciones;
+          
+            // Resetear idPosicion si es necesario
+            params.data.idPosicion = null;
+          
+            // Refrescar celdas
+            if (this.warehousesGridApi) {
+              this.warehousesGridApi.refreshCells({ rowNodes: [params.node], force: true });
             }
-          }
-          return false;
+          });
+        
+          return true;
+        },
+      },
+      {
+        field: 'idPosicion',
+        headerName: 'Posicion',
+        editable: true,
+        suppressMovable: true,
+        filter: 'agNumberColumnFilter', // Opcional: Ocultar el botón de filtro si no es para el usuario
+        flex: 1,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: (params) => {
+          // Ensure catalogPosiciones data is available when creating editor
+          return {
+            values: this.catalogPosiciones 
+              ? this.catalogPosiciones.map(item => item.id)
+              : []
+          };
+        },
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+            const found = this.catalogGeneralPosiciones?.find(item => item.id === params.value);
+            return found ? found.description : params.value;
+
+        },
+        valueSetter: (params) => {
+          const newDeptId = params.newValue;
+
+          if (params.data.idPosicion === newDeptId) return false;
+
+          params.data.idPosicion = newDeptId;
+
+          this.getCRUD(newDeptId).then((posiciones) => {
+            this.rolesDefinidos = posiciones;
+          });
+        
+          return true;
+        },
+      },
+      {
+        field: 'Permisos',
+        headerName: 'Permisos',
+        cellStyle: { backgroundColor: '#d4edda' },
+        cellRenderer: (params) => {
+          // Hacemos que el texto parezca un enlace para indicar que es clickeable.
+          return `<span style="cursor: pointer; text-decoration: underline; color: #0d6efd;">Ver Permisos</span>`;
         }
-      }
+      },
+
     ];
   }
 
@@ -133,66 +251,92 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
     this.userName = params.data.userName || '';
     this.branchId = params.data.idPermission;
     this.branchName = params.data.name || '';
-
+    this.idCompany = this.signalsService.getRootSelectedBySidebar()();
     // Cargar catálogos y datos
     this.loadCatalogs();
+    this.getGeneralPosicion();
+    this.getRoles();
+    this.obternerDatos();
   }
 
   refresh(): boolean {
     return false;
   }
-
-  async loadCatalogs() {
-    // Cargar almacenes de la sucursal
-    this.warehousesService.getSimpleWarehouses(this.branchId).subscribe(
+   getRoles() {
+    this.rolesService.getCatalogRoles(this.idCompany).subscribe(
       (data: any) => {
-        this.warehouses = data;
-        this.warehousesMap = data.reduce((acc: any, warehouse: any) => {
-          acc[warehouse.id] = warehouse.name;
-          return acc;
-        }, {});
-        this.loadWarehousesData();
-      },
+        this.catalogRoles = data;
+        //console.log(this.catalogRoles)
+      },      
       (error) => {
-        if (error.status == 404) {
-          this.warehouses = [];
-          this.warehousesRowData = [];
-        } else {
-          console.error('Error fetching warehouses:', error);
-        }
+        if (error.status == 404) this.catalogRoles = [];
+        console.error('Error fetching data:', error);
       }
     );
   }
+  getGeneralPosicion() {
+    this.rolesService.getGeneralPosicion(this.idCompany).subscribe(
+      (data: any) => {
+        this.catalogGeneralPosiciones = data;
+      },      
+      (error) => {
+        if (error.status == 404) this.catalogRoles = [];
+        console.error('Error fetching data:', error);
+      }
+    );
+  }
+  getPoscionesbyRole(roles: number): Promise<any[]> {
+    return new Promise((resolve, reject) => {
+      this.rolesService.getCatalogPosiciones(this.idCompany, roles).subscribe({
+        next: (data: any) => {
+          
+          resolve(data || []);
+        },
+        error: (error) => {
+          if (error.status === 404) {
+            resolve([]);
+          } else {
+            console.error('Error fetching posiciones:', error);
+            reject(error);
+          }
+        }
+      });
+    });
+  }
+
+  getCRUD(idPosicion: number): Promise<any[]> {
+    return new Promise((resolve, reject) => {
+      this.rolesService.getCatalogCRUD(idPosicion).subscribe({
+        next: (data: any) => {
+          console.log(data)
+          resolve(data || []);
+        },
+        error: (error) => {
+          if (error.status === 404) {
+            resolve([]);
+          } else {
+            console.error('Error fetching posiciones:', error);
+            reject(error);
+          }
+        }
+      });
+    });
+  }
+  obternerDatos(){
+    this.permitionsService.getRolYPosicion(this.userId, this.branchId).subscribe(
+      (data: any) => {
+        console.log(data)
+        this.warehousesRowData =data 
+      })
+  }
+
+  async loadCatalogs() {
+    // No longer needed as we are not loading warehouse permissions here.
+    // This component now handles Role and Position permissions per branch.
+  }
 
   loadWarehousesData() {
-    const permissionType = 'warehouse';
-
-    this.usersxpermissionsService.getDataUsersxPermissions(permissionType).subscribe({
-      next: (data: any) => {
-        // Filtrar por usuario y que el warehouse pertenezca a esta branch
-        this.warehousesRowData = data.filter((row: any) =>
-          row.idUser === this.userId &&
-          this.warehouses.some((w: any) => w.id === row.idPermission && w.idBranch === this.branchId)
-        );
-
-        this.trackingService.addLog(
-          this.trackingService.getnameComp(),
-          'Get Registro en Usuarios por Almacén',
-          'Menu Administracion Usuarios por Almacén',
-          this.trackingService.getEmail()
-        );
-
-        setTimeout(() => {
-          if (this.warehousesGridApi && this.warehouses.length > 0) {
-            this.warehousesGridApi.refreshCells();
-          }
-        }, 100);
-      },
-      error: (error) => {
-        console.error('Error fetching warehouses data:', error);
-        this.warehousesRowData = [];
-      }
-    });
+    // This method is no longer needed as data is fetched in obternerDatos()
   }
 
   onWarehousesGridReady(params: any) {
@@ -219,14 +363,11 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
     }
 
     const tempId = `temp_${this.tempIdCounter++}`;
-    const defaultWarehouseId = this.warehouses.length > 0 ? this.warehouses[0].id : 0;
 
     const newWarehouse = {
       id: tempId,
       idUser: this.userId,
-      idPermission: defaultWarehouseId,
-      type: 'warehouse',
-      active: 1,
+      idBranch: this.branchId,
       __isNew: true
     };
 
@@ -236,7 +377,7 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
 
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
-      'Add Registro en Usuarios por Almacén',
+      'Add Registro de Permisos por Departamento',
       'Menu Administracion Usuarios',
       this.trackingService.getEmail()
     );
@@ -244,46 +385,62 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
     setTimeout(() => {
       this.warehousesGridApi.startEditingCell({
         rowIndex: 0,
-        colKey: 'name'
+        colKey: 'idRole'
       });
     }, 100);
   }
 
   async saveWarehouses() {
-    const isValid = this.warehousesRowData.every((item) => item.idPermission);
+    const isValid = this.warehousesRowData.every((item) => item.idRole && item.idPosicion);
 
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
-        'Debe seleccionar un almacén antes de guardar.',
+        'Debe seleccionar un Departamento y una Posición antes de guardar.',
         'error'
       );
       return;
     }
 
     const newRows = this.warehousesRowData.filter((row) => row.__isNew);
-    const modifiedRows = this.warehousesRowData.filter((row) => row.__modified && !row.__isNew);
+    const modifiedRows = this.warehousesRowData.filter((row) => row.__modified && !row.__isNew); // Assuming you handle updates
 
-    const addObservables = newRows.map((row) => {
+    const addObservables = newRows.flatMap((row) => {
+      const observables = [];
+      // Main permission entry
       const cleanedData = this.cleanDataForServer(row);
-      this.trackingService.addLog(
-        this.trackingService.getnameComp(),
-        'Add Registro en Usuarios por Almacén',
-        'Menu Administracion Usuarios',
-        this.trackingService.getEmail()
-      );
-      return this.usersxpermissionsService.addUserxPermission(cleanedData);
+      //observables.push(this.permitionsService.addPermitions(cleanedData));
+      // Detailed permissions if they exist
+      console.log(this.rolesDefinidos)
+      if (this.rolesDefinidos && this.rolesDefinidos.length > 0) {
+        const detailObservables = this.rolesDefinidos.map((permiso) => {
+          const detailData = {
+            ...cleanedData,
+            idDetailedPermission: permiso.idDetailedPermission,
+            canCreate: permiso.canCreate,
+            canRead: permiso.canRead,
+            canUpdate: permiso.canUpdate,
+            canDelete: permiso.canDelete,
+          };
+          console.log(detailData)
+          return this.permitionsService.addPermitionsDetail(detailData);
+        });
+        observables.push(...detailObservables);
+      }
+      return observables;
     });
 
     const updateObservables = modifiedRows.map((row) => {
+      console.log(this.idPosicionSelect)
+      console.log(row)
       const cleanedData = this.cleanDataForServer(row);
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
-        'Update Registro en Usuarios por Almacén',
+        'Update Registro de Permisos por Departamento',
         'Menu Administracion Usuarios',
         this.trackingService.getEmail()
       );
-      return this.usersxpermissionsService.updateUserxPermission(row.id, cleanedData);
+      return this.permitionsService.updatePermitionsByPosicion(this.userId, this.branchId , row.idRole, this.idPosicionSelect , row.idPosicion);
     });
 
     try {
@@ -296,7 +453,7 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
         'success'
       );
       this.hasWarehouseChanges = false;
-      this.loadWarehousesData();
+      this.obternerDatos();
     } catch (error) {
       console.error(error);
       alerts.basicAlert(
@@ -311,10 +468,10 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
     if (!this.selectedWarehouse) {
       return;
     }
-
+    console.log(this.selectedWarehouse)
     const warehouseId = this.selectedWarehouse.id;
 
-    this.usersxpermissionsService.deleteUserxPermission(warehouseId).pipe(
+    this.permitionsService.deleteRoles(this.userId, this.branchId, this.selectedWarehouse.idRole, this.selectedWarehouse.idPosicion).pipe(
       catchError((error) => {
         alerts.basicAlert(
           'Eliminar entrada',
@@ -333,12 +490,12 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
 
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
-        'Delete Registro en Usuarios por Almacén',
+        'Delete Registro de Permisos por Departamento',
         'Menu Administracion Usuarios',
         this.trackingService.getEmail()
       );
 
-      this.loadWarehousesData();
+      this.obternerDatos();
       this.selectedWarehouse = null;
     });
   }
@@ -347,10 +504,68 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
-    delete cleanedData.name;
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }
     return cleanedData;
+  }
+
+  async onCellClicked(event: any): Promise<void> {
+    const colId = event.column.getColId();
+    if (colId === 'idRole') {
+      const roleId = event.data.idRole;
+      console.log(event.data)
+      if (roleId) {
+        this.catalogPosiciones = await this.getPoscionesbyRole(roleId);
+      } else {
+        this.catalogPosiciones = [];
+      }
+    }
+    if (colId === 'idPosicion') {
+      const selectedData = event.data;
+      const roleId = event.data.idRole;
+      this.idPosicionSelect = event.data.idPosicion
+      if (roleId) {
+        this.catalogPosiciones = await this.getPoscionesbyRole(roleId);
+      } else {
+        this.catalogPosiciones = [];
+      }
+    }
+    if (colId === 'Permisos') {
+      const selectedData = event.data;
+      const node = event.node;
+      const api = event.api;
+      const detailType = 'Permisos';
+      const isCurrentlyExpanded = node.expanded && event.data.detailType === detailType;
+
+      if (node.expanded) {
+        node.setExpanded(false);
+        // Limpiar el filtro al colapsar
+        api.setFilterModel(null);
+        api.onFilterChanged();
+      } else {
+        // Colapsar cualquier otra fila que esté expandida
+        api.forEachNode(otherNode => {
+          if (otherNode.expanded && otherNode.id !== node.id) {
+            otherNode.setExpanded(false);
+          }
+        });
+      
+        // Asignar el tipo de detalle
+        event.data.detailType = detailType;
+      
+        // Aplicar filtro por idPosicion para enfocar la fila actual
+        const filterModel = {
+          idPosicion: { filterType: 'number', type: 'equals', filter: selectedData.idPosicion }
+        };
+      
+        api.setFilterModel(filterModel);
+      
+        // Diferir la expansión del nodo para evitar conflicto con el render actual
+        requestAnimationFrame(() => {
+          node.setExpanded(true);
+        });
+      }
+    }
   }
 }

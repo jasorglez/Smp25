@@ -341,9 +341,9 @@ constructor() {
         //editable: this.authorizedPass,
         editable:true
       },
-      {
+      /*{
         field: 'idDepartament',
-        headerName: 'Rol de Usuario ℹ️',
+        headerName: 'Security',
         editable: true,
         suppressMovable: true,
         filter: false,
@@ -388,6 +388,14 @@ constructor() {
 
           return foundDepto ? foundDepto.description : params.value;
         },
+      },*/
+      {
+        field: 'security',
+        headerName: 'Security',
+        //cellRenderer: () => 'Ver Permisos', // Opcional: Mostrar texto en la celda
+        cellStyle: { backgroundColor: '#d4edda' },
+        onCellClicked: this.togglePermissions.bind(this)
+
       },
      /*  {
         field: 'phone',

@@ -620,6 +620,7 @@ getMasterUpdateTrigger() {
   // Para roles
 
   private idRole = signal<number>(null);
+  private idPosicion = signal<number>(null);
 
   setIdRole(id: number) {
     this.idRole.set(id);
@@ -627,6 +628,14 @@ getMasterUpdateTrigger() {
 
   getIdRole() {
     return this.idRole;
+  }
+
+  setIdPosicion(id: number) {
+    this.idPosicion.set(id);
+  }
+
+  getIdPosicion() {
+    return this.idPosicion;
   }
 
   // Contratos
