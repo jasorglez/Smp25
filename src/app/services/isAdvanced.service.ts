@@ -227,7 +227,6 @@ export class AuthService {
 
   // Verifica si el usuario tiene un permiso detallado
   hasDetailedPermission(masterPermissionKey: string, detailedPermissionKey: string): boolean {
-    console.log("++++++++",this.userPermissions);
     return this.userPermissions?.[masterPermissionKey]?.children?.[detailedPermissionKey] === true;
   }
 
