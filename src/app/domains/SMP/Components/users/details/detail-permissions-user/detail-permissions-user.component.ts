@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject, OnInit } from '@angular/core';
+import { Component, HostListener, inject } from '@angular/core';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import {
@@ -8,10 +8,9 @@ import {
   GridReadyEvent,
   ICellRendererParams,
 } from 'ag-grid-enterprise';
-import { alerts } from '../../../../../helpers/alerts';
-import { AgGridModule } from 'ag-grid-angular';
+import { alerts } from 'app/helpers/alerts';
+import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
-import { SignalsService } from 'app/services/signals.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ClockService } from 'app/services/clock.service';
@@ -21,37 +20,22 @@ import { lastValueFrom, concat, toArray, forkJoin } from 'rxjs';
 import { RolesService } from 'app/services/roles.service';
 import { TimeService } from 'app/services/time.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { PermitionsService } from 'app/services/permitions.service';
 
 @Component({
-  selector: 'app-roles-detailed',
+  selector: 'app-detail-permissions-user',
   standalone: true,
   imports: [RouterModule, DomainsModule, AgGridModule, TimeEditorModule],
-  templateUrl: './rolesDelison-detailed.component.html',
-  styleUrl: './rolesDelison-detailed.component.scss'
+  templateUrl: './detail-permissions-user.component.html',
 })
-export class RolesDetailedDelisonComponent implements OnInit {
+export class DetailPermissionsUserComponent implements ICellRendererAngularComp {
   private rolesService = inject(RolesService);
-  private signalsService = inject(SignalsService);
   private clockService = inject(ClockService);
   private timeService = inject(TimeService);
   private route = inject(ActivatedRoute);
   private fb = inject(FormBuilder);
   private trackingService = inject(TrackingService);
-
-  ngOnInit() {
-    this.idRole = this.signalsService.getIdRole()();
-    this.idPosicion = this.signalsService.getIdPosicion()();
-    this.obtenerDatos(this.idRole, this.idPosicion);
-  }
-
-  constructor() {
-    effect(() => {
-      this.idRole = this.signalsService.getIdRole()();
-      this.idPosicion = this.signalsService.getIdPosicion()();
-      this.obtenerDatos(this.idRole, this.idPosicion);
-    });
-
-  }
+  private permitionsService = inject(PermitionsService);
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
@@ -81,6 +65,8 @@ export class RolesDetailedDelisonComponent implements OnInit {
   newlyAddedRows: string[] = [];
 
   id: string;
+  idUser: number;
+  idBranch: number;
   idRole: number;
   idPosicion: number;
   selectedTab: string = 'customers-payments';
@@ -131,6 +117,13 @@ export class RolesDetailedDelisonComponent implements OnInit {
       }
       return '';
     },
+    onFirstDataRendered: (params) => {
+      // Una vez que los datos se han renderizado por primera vez,
+      // ajustamos el tamaño de las columnas.
+      // Esto evita el conflicto de renderizado.
+      const allColumnIds = params.api.getColumns().map(column => column.getColId());
+      params.api.autoSizeColumns(allColumnIds);
+    }
   };
 
   get colDetail(): ColDef[] {
@@ -176,21 +169,25 @@ export class RolesDetailedDelisonComponent implements OnInit {
     ];
   }
 
-  obtenerDatos(idRole: number, idPosicion: number) {
-    this.rolesService.getPermissionsByRoles(idRole, idPosicion)
+  agInit(params: ICellRendererParams & { idUser: number,idBranch: number, idRole: number, idPosicion: number }): void {
+    //this.rowData = params.data; // Los datos de los permisosa
+    this.idUser = params.idUser; // El ID del usuario de la fila maestra
+    this.idBranch = params.idBranch; // El ID de la sucursal de la fila maestra 
+    this.idRole = params.idRole; // El ID del rol de la fila maestra
+    this.idPosicion = params.idPosicion; // El ID de la posición de la fila maestra
+    this.obtenerDatos(this.idUser,this.idBranch,this.idRole, this.idPosicion);
+  }
+
+  refresh(params: ICellRendererParams): boolean {
+    return false;
+  }
+
+  obtenerDatos(idUser: number, idBranch: number,Role: number, idPosicion: number) {
+    this.permitionsService.getPermitionsDetail(idUser, idBranch, Role, idPosicion)
       .subscribe((data: any) => {
         this.rowData = [];
         this.rowData = data;
-        console.log(this.rowData)
-
-        // Esperar a que el grid se actualice y luego ajustar las columnas
-        setTimeout(() => {
-          if (this.gridApi) {
-            // Obtener todas las columnas y ajustarlas automáticamente
-            const allColumnIds = this.gridApi.getColumns().map(column => column.getColId());
-            this.gridApi.autoSizeColumns(allColumnIds);
-          }
-        }, 100);
+        console.log("algo aqui", this.rowData)
       });
   }
 
@@ -270,32 +267,40 @@ export class RolesDetailedDelisonComponent implements OnInit {
 
     for (const row of modifiedRows) {
       const cleanedData = this.cleanDataForServer(row);
+      // Asignar los IDs necesarios para la creación
+      
+
       try {
-        // Intentar obtener el permiso individual
         await lastValueFrom(
-          this.rolesService.getIndividualDetailedPermissionxRol(row.idRole, row.idPosicion, row.idDetailedPermission)
+          this.permitionsService.getPermitionsByDetailedPermission(this.idUser,this.idBranch,this.idRole, this.idPosicion, row.idDetailedPermission)
         );
-        // Si llegamos aquí, el permiso existe, así que lo agregamos a updateObservables
         const timeResponse = await lastValueFrom(this.timeService.getTime());
         cleanedData.updatedAt = timeResponse.localTime;
-        cleanedData.idPosicion = this.idPosicion;
+        cleanedData.idDetailedPermission = row.idDetailedPermission;
+        console.log(cleanedData)
         updateObservables.push(
-          this.rolesService.updateDetailedPermissionsxRoles(row.idRole, row.idDetailedPermission, cleanedData)
+          this.permitionsService.updatePermitionsDetail(this.idUser,this.idBranch,this.idRole, this.idPosicion, row.idDetailedPermission, cleanedData)
         );
         this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Detalle de Roles', 'Menu Administracion Detalle de Roles',  this.trackingService.getEmail());
-      } catch (error) {
+        
+      } catch (error:any) {
         console.log(error)
-        // Si el error es 404, significa que el permiso no existe y debemos crearlo
-        if (error.status === 404) {
+         // Si la actualización falla con 404, significa que el permiso no existe y debemos CREARLO.
+        if (error.status === 404 || error.message?.includes('No se encontró')) {
           const timeResponse = await lastValueFrom(this.timeService.getTime());
           cleanedData.createdAt = timeResponse.localTime;
+          cleanedData.idDetailedPermission = row.idDetailedPermission;
+          cleanedData.idUser = this.idUser;
+          cleanedData.idBranch = this.idBranch;
+          cleanedData.idRole = this.idRole;
           cleanedData.idPosicion = this.idPosicion;
+          delete cleanedData.id;
+
           addObservables.push(
-            this.rolesService.addDetailedPermissionsxRoles(cleanedData)
+            this.permitionsService.addPermitions(cleanedData)
           );
           this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Detalle de Roles', 'Menu Administracion Detalle de Roles',  this.trackingService.getEmail());
         } else {
-          // Si es otro tipo de error, lo propagamos
           throw error;
         }
       }
@@ -316,7 +321,12 @@ export class RolesDetailedDelisonComponent implements OnInit {
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
 
-      await this.obtenerDatos(this.idRole, this.idPosicion);
+      // Recargamos los datos
+      this.obtenerDatos(this.idUser, this.idBranch, this.idRole, this.idPosicion);
+
+      // Forzamos el reajuste de columnas en el siguiente ciclo, después de que los datos se hayan actualizado.
+      // Esto evita el conflicto de renderizado.
+      setTimeout(() => this.gridApi.autoSizeAllColumns(), 0);
 
     } catch (error) {
       console.error(error);
@@ -329,7 +339,7 @@ export class RolesDetailedDelisonComponent implements OnInit {
   }
 
   revertDetailData() {
-    this.obtenerDatos(this.idRole, this.idPosicion);
+    this.obtenerDatos(this.idUser,this.idBranch,this.idRole, this.idPosicion);
     this.notSavedChanges = false;
   }
 
@@ -337,7 +347,10 @@ export class RolesDetailedDelisonComponent implements OnInit {
     const cleanedData = { ...data };
     delete cleanedData.detailedPermissionName;
     delete cleanedData.masterPermissionName;
-    delete cleanedData.__modified;
+    cleanedData.idUser = this.idUser;
+      cleanedData.idBranch = this.idBranch;
+      cleanedData.idRole = this.idRole;
+      cleanedData.idPosicion = this.idPosicion;
     return cleanedData;
   }
 }

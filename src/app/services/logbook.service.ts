@@ -72,4 +72,7 @@ export class LogbookService {
       return this.http.get(`${environment.urlSmp}/Logbook/reportsOt?idCompany=${idRoot}&fecha1=${fecha1}&fecha2=${fecha2}`, { headers: this.authService.getHeaders() });
     }
 
+    getMediaByOt(idOt: number): Observable<any> {
+      return this.http.get(`${environment.urlSmp}/Logbook/ots/${idOt}/media/download`, { headers: this.authService.getHeaders() });
+    }
 }

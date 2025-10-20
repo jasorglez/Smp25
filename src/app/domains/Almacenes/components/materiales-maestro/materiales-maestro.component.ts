@@ -89,7 +89,7 @@ export class MaterialesMaestroComponent implements OnInit {
             caracteristicasData: [
               {
                 id: 10011,
-                sabor: '2',
+                sabor: 'Refresco',
                 presentacion: 'Caja 100 pzas',
                 descripcion: 'Tornillos hexagonales estándar para uso general'
               }
@@ -101,7 +101,7 @@ export class MaterialesMaestroComponent implements OnInit {
             caracteristicasData: [
               {
                 id: 10012,
-                sabor: '6',
+                sabor: 'Sidra',
                 presentacion: 'Caja 50 pzas',
                 descripcion: 'Tornillos hexagonales de acero inoxidable para ambientes húmedos'
               }
@@ -113,7 +113,7 @@ export class MaterialesMaestroComponent implements OnInit {
             caracteristicasData: [
               {
                 id: 10013,
-                sabor: '4',
+                sabor: 'Vinos Tinto',
                 presentacion: 'Bolsa 200 pzas',
                 descripcion: 'Tornillos hexagonales galvanizados para exteriores'
               }
@@ -158,7 +158,7 @@ export class MaterialesMaestroComponent implements OnInit {
         categoria: 'Materia Prima',
         familia: 'Basica',
         subfamilia: '1',
-        proveedor: 'Jugos Mexicanos',
+        proveedor: '2',
         imagen: '📷',
         proveedoresData: [
           {
@@ -233,7 +233,7 @@ export class MaterialesMaestroComponent implements OnInit {
         categoria: 'Eléctrico',
         familia: 'Basica',
         subfamilia: '1',
-        proveedor: 'ingenio IOca',
+        proveedor: '3',
         imagen: '📷',
         proveedoresData: [
           {
@@ -340,7 +340,7 @@ export class MaterialesMaestroComponent implements OnInit {
         categoria: 'Alimentos y Bebidas',
         familia: 'Basica',
         subfamilia: '5',
-        proveedor: 'Embotelladora del Valle',
+        proveedor: '1',
         imagen: '📷',
         proveedoresData: [
           {
@@ -407,7 +407,7 @@ export class MaterialesMaestroComponent implements OnInit {
         categoria: 'Alimentos y Bebidas',
         familia: 'Basica',
         subfamilia: '6',
-        proveedor: 'Galletas y Más SA',
+        proveedor: '1',
         imagen: '📷',
         proveedoresData: [
           {
@@ -468,7 +468,7 @@ export class MaterialesMaestroComponent implements OnInit {
         categoria: 'Alimentos y Bebidas',
         familia: 'Basica',
         subfamilia: '45',
-        proveedor: 'Lácteos del Norte',
+        proveedor: '1',
         imagen: '📷',
         proveedoresData: [
           {

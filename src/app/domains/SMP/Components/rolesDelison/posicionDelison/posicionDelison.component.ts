@@ -8,17 +8,18 @@ import { PosicionesService } from 'app/services/posiciones.service';
 import { alerts } from 'app/helpers/alerts';
 import { forkJoin, lastValueFrom } from 'rxjs';
 import { SignalsService } from 'app/services/signals.service';
+import { RolesDetailedDelisonComponent } from '../rolesDelison-detailed/rolesDelison-detailed.component';
 
 @Component({
   selector: 'app-posicion-delison',
   standalone: true,
   providers: [CurrencyPipe],
-  imports: [AgGridModule, CommonModule],
+  imports: [AgGridModule, CommonModule,RolesDetailedDelisonComponent ],
   template: `
-    <div 
-      #container tabindex="-1" style="padding: 10px; background-color: #f8f9fa; height: 100%; display: flex; flex-direction: column; outline: none;">
-      <!-- Grid de Cuenta -->
-      <div style="margin-bottom: 15px; flex-grow: 1; display: flex; flex-direction: column;" *ngIf="roleId">
+    <!-- Contenedor principal con Flexbox -->
+    <div #container tabindex="-1" style="padding: 10px; background-color: #f8f9fa; height: 100%; display: flex; flex-direction: column; outline: none;">
+      <!-- Contenedor del Grid de Posiciones -->
+      <div [style.flex]="permisos ? '0 1 25%' : '1 1 100%'" style="display: flex; flex-direction: column; transition: flex 0.3s ease-in-out;" *ngIf="roleId">
         <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
           <strong>Posiciones para el Rol: {{ roleName }}</strong>
           <div>
@@ -42,18 +43,25 @@ import { SignalsService } from 'app/services/signals.service';
             </button>
           </div>
         </div>
+        <!-- El grid ahora ocupa todo el espacio de su contenedor padre -->
         <ag-grid-angular
           class="ag-theme-quartz small-text-ag-grid"
-          style="width: 100%; flex-grow: 1;"
+          style="width: 100%; height: 100%;"
           [columnDefs]="posicionColumnDefs"
           [rowData]="posicionRowData"
           [gridOptions]="posicionGridOptions"
           (gridReady)="onPosicionGridReady($event)"
           (selectionChanged)="onPosicionSelectionChanged($event)"
-          (cellValueChanged)="onPosicionCellValueChanged($event)">
+          (cellValueChanged)="onPosicionCellValueChanged($event)"
+          (cellClicked)="onCellClicked($event)">
         </ag-grid-angular>
       </div>
+      <div *ngIf="permisos" style="flex: 1 1 75%; overflow-y: auto; margin-top: 10px;">
+        <app-roles-detailed></app-roles-detailed>
+      </div>
     </div>
+    
+    
   `
 })
 export class PosicionDelisonComponent implements ICellRendererAngularComp, AfterViewInit {
@@ -68,6 +76,7 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
   hasPosicionChanges: boolean = false;
   posicionGridApi: any;
   selectedPosicion: any = null;
+  permisos: boolean = false;
   
   posicionGridOptions: any = {
     headerHeight: 25,
@@ -92,6 +101,7 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
     {
       field: 'id',
       headerName: 'ID',
+      filter: 'agNumberColumnFilter',
       hide: true,
     },
     { 
@@ -102,12 +112,57 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
     },
     { 
       field: 'permisos', 
-      headerName: 'Permisos', 
-      editable: true, 
-      flex: 1
+      headerName: 'Permisos',
+      cellStyle: { backgroundColor: '#d4edda' }, 
+      flex: 1,
+      cellRenderer: (params) => {
+        // Hacemos que el texto parezca un enlace para indicar que es clickeable.
+        return `<span style="cursor: pointer; text-decoration: underline; color: #0d6efd;">Ver Permisos</span>`;
+      }
     },
   ];
+  onCellClicked(event: any): void {
+    const colId = event.column.getColId();
+    // Reaccionar al clic en la columna 'permisos'
+    if (colId === 'permisos') {
+      const selectedData = event.data;
+      const node = event.node;
+      const api = event.api;
+      const detailType = 'posiciones';
+      console.log(selectedData);
+      
+      if (node.expanded) {
+        node.setExpanded(false);
+        api.setFilterModel(null);
+        api.onFilterChanged();
+        this.permisos = false;
+        // Dar tiempo al DOM para actualizarse y luego ajustar el grid
+        // No es necesario redimensionar columnas al colapsar
+      } else {
+        // Colapsar cualquier otra fila que esté expandida para evitar múltiples detalles abiertos.
+        api.forEachNode(otherNode => {
+          if (otherNode.expanded && otherNode.id !== node.id) {
+            otherNode.setExpanded(false);
+          }
+        });
 
+        // Si se hace clic en una celda diferente (o la fila está cerrada)...
+        // ...se establece el nuevo tipo de detalle y se expande la fila.
+
+        // Aplicar filtro por ID para enfocar la fila actual y ocultar las demás.
+        api.setFilterModel({ id: { type: 'equals', filter: event.data.id } });
+        api.onFilterChanged();
+
+        // Asignar el tipo de detalle y expandir.
+        event.data.detailType = detailType;
+        node.setExpanded(true);
+        this.signalsService.setIdRole(selectedData.idRoles);
+        this.signalsService.setIdPosicion(selectedData.id);
+        this.permisos = true;
+        // No es necesario redimensionar columnas al expandir
+      }
+    }
+  }
   agInit(params: ICellRendererParams): void {
     console.log('Params:', params);
     this.params = params;
@@ -118,12 +173,7 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
   }
 
   ngAfterViewInit(): void {
-    // Usamos un pequeño timeout para asegurar que el elemento es visible antes de intentar enfocarlo.
-    setTimeout(() => {
-      if (this.container && this.container.nativeElement) {
-        this.container.nativeElement.focus();
-      }
-    }, 50);
+    // Se elimina la llamada a focus() para evitar el parpadeo/redimensionamiento del grid al abrir el detalle.
   }
   refresh(): boolean {
     return false;
@@ -136,6 +186,7 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
 
   onPosicionGridReady(params: any) {
     this.posicionGridApi = params.api;
+    this.posicionGridApi.sizeColumnsToFit();
   }
 
   onPosicionSelectionChanged(event: any) {

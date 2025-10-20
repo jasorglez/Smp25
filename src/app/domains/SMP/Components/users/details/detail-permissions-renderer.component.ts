@@ -195,7 +195,20 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
             }
             return false;
           }
-        }
+        },
+        {
+        field: 'security',
+        headerName: 'Security',
+        //cellRenderer: () => 'Ver Permisos', // Opcional: Mostrar texto en la celda
+        cellStyle: { backgroundColor: '#d4edda' },
+        onCellClicked: this.toggleBranches.bind(this)
+
+        },
+        {
+        field: 'security',
+        headerName: 'Security',
+        //cellRenderer: () => 'Ver Permisos', // Opcional: Mostrar texto en la celda
+        },
       ];
     }
   }

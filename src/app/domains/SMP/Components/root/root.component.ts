@@ -273,6 +273,13 @@ public gridOptions: any = {
         flex: 1
       },
       {
+        field: 'advanced',
+        headerName: 'Permisos avanzados',
+        editable: true,
+        cellEditor: 'agSelectCellEditor',
+        flex: 1
+      },
+      {
         field: 'picture',
         headerName: 'Foto Root',
         cellEditor: 'agTextCellEditor',
@@ -294,6 +301,7 @@ public gridOptions: any = {
         },
         editable: false,
       },
+      
       {
         field: 'picture3',
         headerName: 'Footer',
@@ -346,6 +354,7 @@ public gridOptions: any = {
       consortium: 'NO',
       formatRep: '',
       city: '',
+      advanced: false,
       state: '',
       country: '',
       rfc: '',

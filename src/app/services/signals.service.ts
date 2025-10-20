@@ -57,6 +57,8 @@ getMasterUpdateTrigger() {
   private emailChoose           = signal<string | null>(null);
 
   private rootChoose            = signal<boolean>(false);
+
+  private isAdvanced            = signal<boolean>(false);
   
   private catalogSelected       = signal<string | null>(null);
 
@@ -68,6 +70,10 @@ getMasterUpdateTrigger() {
 
   setemailChoose(id: string) {
     this.emailChoose.set(id);
+  }
+
+  setIsAdvanced(id: boolean) {
+    this.isAdvanced.set(id);
   }
 
   setrootChoose(id: boolean) {
@@ -119,6 +125,11 @@ getMasterUpdateTrigger() {
   getemailChoose()
   {
     return this.emailChoose()
+  }
+
+  getIsAdvanced()
+  {
+    return this.isAdvanced()
   }
 
   getrootChoose() {
@@ -620,6 +631,7 @@ getMasterUpdateTrigger() {
   // Para roles
 
   private idRole = signal<number>(null);
+  private idPosicion = signal<number>(null);
 
   setIdRole(id: number) {
     this.idRole.set(id);
@@ -627,6 +639,14 @@ getMasterUpdateTrigger() {
 
   getIdRole() {
     return this.idRole;
+  }
+
+  setIdPosicion(id: number) {
+    this.idPosicion.set(id);
+  }
+
+  getIdPosicion() {
+    return this.idPosicion;
   }
 
   // Contratos
