@@ -143,6 +143,7 @@ export class SideBarComponent {
           this.signalsService.setRootSelectedBySidebar(
             Number(this.selectedRoot)
           );
+          this.signalsService.setIsAdvanced(this.rootData[0].advanced);
           this.trackingService.setCompany(this.selectedRoot);
           this.getHeadersCompanys(this.selectedRoot);
           // Llamar a getpermissionxContracts con el primer elemento

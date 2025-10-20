@@ -47,6 +47,7 @@ export class UsersComponent {
   departamentos: any[] = [];
   position: any[] = [];
   rowData: any[] = [];
+  isAdvanced: boolean = false;
   paginationPageSize = 20; // Tamaño de página
   pagination = true; // Habilitar paginación
   notSavedChanges: boolean = false;
@@ -101,6 +102,7 @@ constructor() {
     effect(() => {
        this.idRoot = this.signalsService.getRootSelectedBySidebar()();
        this.userRoot = this.signalsService.getUserRoot()();
+       this.isAdvanced = this.signalsService.getIsAdvanced()
        this.obtenerDatos();
         this.getRoles();
       this.verification();
@@ -392,6 +394,7 @@ constructor() {
       {
         field: 'security',
         headerName: 'Security',
+        hide: !this.isAdvanced,
         //cellRenderer: () => 'Ver Permisos', // Opcional: Mostrar texto en la celda
         cellStyle: { backgroundColor: '#d4edda' },
         onCellClicked: this.togglePermissions.bind(this)
@@ -448,7 +451,9 @@ constructor() {
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
       // Aquí envío todo a la signal
-      this.enviarSignal();
+      if(!this.isAdvanced){
+        this.enviarSignal();
+      }
     } else {
       this.selectedRowData = null;
     }
