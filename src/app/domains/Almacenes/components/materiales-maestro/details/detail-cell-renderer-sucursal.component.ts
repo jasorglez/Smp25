@@ -3,6 +3,7 @@ import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
+import { alerts } from 'app/helpers/alerts';
 
 @Component({
   selector: 'app-detail-cell-renderer-sucursal',
@@ -14,6 +15,17 @@ import { CommonModule } from '@angular/common';
       <div style="margin-bottom: 15px; flex-grow: 1; display: flex; flex-direction: column;">
         <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
           <strong>Detalles de Sucursales - Material: {{ materialName }}</strong>
+          <div class="d-flex gap-1">
+            <button type="button" class="btn btn-primary btn-lg" (click)="addSucursal()" title="Nueva sucursal">
+              <i class="bi bi-plus-lg"></i>
+            </button>
+            <button type="button" class="btn btn-success btn-lg" (click)="editSucursal()" [disabled]="!selectedSucursal" title="Editar sucursal">
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button type="button" class="btn btn-danger btn-lg" (click)="deleteSucursal()" [disabled]="!selectedSucursal" title="Eliminar sucursal">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
         </div>
         <ag-grid-angular
           class="ag-theme-quartz small-text-ag-grid"
@@ -21,7 +33,8 @@ import { CommonModule } from '@angular/common';
           [columnDefs]="sucursalColumnDefs"
           [rowData]="sucursalRowData"
           [gridOptions]="sucursalGridOptions"
-          (gridReady)="onSucursalGridReady($event)">
+          (gridReady)="onSucursalGridReady($event)"
+          (selectionChanged)="onSucursalSelectionChanged($event)">
         </ag-grid-angular>
       </div>
     </div>
@@ -34,6 +47,7 @@ export class DetailCellRendererSucursalComponent implements ICellRendererAngular
   materialName: string;
   sucursalRowData: any[] = [];
   sucursalGridApi: any;
+  selectedSucursal: any = null;
 
   sucursalGridOptions: any = {
     headerHeight: 25,
@@ -95,5 +109,43 @@ export class DetailCellRendererSucursalComponent implements ICellRendererAngular
   onSucursalGridReady(params: any) {
     this.sucursalGridApi = params.api;
     params.api.sizeColumnsToFit();
+  }
+
+  onSucursalSelectionChanged(event: any): void {
+    const selectedRows = event.api.getSelectedRows();
+    this.selectedSucursal = selectedRows.length > 0 ? selectedRows[0] : null;
+  }
+
+  addSucursal(): void {
+    // TODO: Implementar agregar sucursal
+    alerts.basicAlert('Funcionalidad no implementada', 'Agregar sucursal próximamente', 'info');
+  }
+
+  editSucursal(): void {
+    if (!this.selectedSucursal) {
+      alerts.basicAlert('Selección requerida', 'Por favor seleccione una sucursal para editar', 'warning');
+      return;
+    }
+    // TODO: Implementar editar sucursal
+    alerts.basicAlert('Funcionalidad no implementada', 'Editar sucursal próximamente', 'info');
+  }
+
+  async deleteSucursal(): Promise<void> {
+    if (!this.selectedSucursal) {
+      alerts.basicAlert('Selección requerida', 'Por favor seleccione una sucursal para eliminar', 'warning');
+      return;
+    }
+
+    const result = await alerts.confirmAlert(
+      '¿Eliminar sucursal?',
+      `¿Está seguro de eliminar la sucursal ${this.selectedSucursal.sucursal}?`,
+      'warning',
+      'Sí, eliminar'
+    );
+
+    if (result.isConfirmed) {
+      // TODO: Implementar eliminación de la sucursal
+      alerts.basicAlert('Funcionalidad no implementada', 'Eliminar sucursal próximamente', 'info');
+    }
   }
 }
