@@ -85,7 +85,9 @@ export class ReportesEstimacionesComponent {
     pagination: false,
     domLayout: 'normal',
     singleClickEdit: true,
-    stopEditingWhenCellsLoseFocus: true
+    stopEditingWhenCellsLoseFocus: true,
+    enableBrowserTooltips: true,
+    getContextMenuItems: (params: any) => this.getContextMenuItems(params)
   };
 
   columnDefs: ColDef[] = [
@@ -828,6 +830,100 @@ export class ReportesEstimacionesComponent {
         // Revert the change
         params.node.setDataValue('results', params.oldValue);
         this.isUpdatingResults = false;
+      }
+    });
+  }
+
+  /**
+   * Configura las opciones del menú contextual para ag-grid
+   */
+  getContextMenuItems(params: any) {
+    console.log('getContextMenuItems llamado', params);
+
+    const result: any[] = [
+      {
+        name: 'Descargar multimedia',
+        action: () => {
+          console.log('Acción Descargar multimedia ejecutada');
+          this.downloadMultimedia(params.node.data);
+        },
+        disabled: !params.node?.data?.idOt,
+        cssClasses: ['custom-menu-item']
+      },
+      'separator',
+      'copy',
+      'copyWithHeaders',
+      'paste',
+      'separator',
+      'export'
+    ];
+
+    console.log('Menú contextual generado:', result);
+    return result;
+  }
+
+  /**
+   * Descarga el archivo ZIP con fotos y videos de la OT
+   */
+  downloadMultimedia(rowData: any) {
+    const idOt = rowData.idOt;
+
+    if (!idOt) {
+      alerts.basicAlert('Error', 'No se encontró el ID de la OT.', 'error');
+      return;
+    }
+
+    console.log('Descargando multimedia para OT:', idOt);
+    alerts.basicAlert('Procesando', 'Preparando archivos multimedia...', 'info');
+
+    this.logbookService.getMediaByOt(idOt).subscribe({
+      next: (response) => {
+        console.log('Respuesta de getMediaByOt:', response);
+
+        if (response.success && response.data && response.data.downloadUrl) {
+          const { downloadUrl, zipFileName, fileCount } = response.data;
+
+          // Crear elemento 'a' temporal para descargar el archivo
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.download = zipFileName;
+          link.target = '_blank';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          alerts.basicAlert(
+            'Éxito',
+            `Descargando ${fileCount} archivo(s) multimedia de la OT ${rowData.otNumber || idOt}.`,
+            'success'
+          );
+        } else {
+          alerts.basicAlert(
+            'Información',
+            response.message || 'No hay archivos multimedia disponibles para esta OT.',
+            'info'
+          );
+        }
+      },
+      error: (error) => {
+        console.error('Error al descargar multimedia:', error);
+
+        // Verificar si es un error 404 (no hay archivos)
+        if (error.status === 404) {
+          alerts.basicAlert(
+            'Sin archivos',
+            'Esta orden de trabajo no tiene fotos o videos.',
+            'info'
+          );
+        } else {
+          // Otros errores
+          const errorMessage = error.error?.message || error.message || 'Error al descargar los archivos multimedia.';
+          alerts.basicAlert(
+            'Error',
+            errorMessage,
+            'error'
+          );
+        }
       }
     });
   }
