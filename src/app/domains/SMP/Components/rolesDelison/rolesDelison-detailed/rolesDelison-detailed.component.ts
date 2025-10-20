@@ -40,13 +40,15 @@ export class RolesDetailedDelisonComponent implements OnInit {
 
   ngOnInit() {
     this.idRole = this.signalsService.getIdRole()();
-    this.obtenerDatos(this.idRole);
+    this.idPosicion = this.signalsService.getIdPosicion()();
+    this.obtenerDatos(this.idRole, this.idPosicion);
   }
 
   constructor() {
     effect(() => {
       this.idRole = this.signalsService.getIdRole()();
-      this.obtenerDatos(this.idRole);
+      this.idPosicion = this.signalsService.getIdPosicion()();
+      this.obtenerDatos(this.idRole, this.idPosicion);
     });
 
   }
@@ -80,6 +82,7 @@ export class RolesDetailedDelisonComponent implements OnInit {
 
   id: string;
   idRole: number;
+  idPosicion: number;
   selectedTab: string = 'customers-payments';
   idEmployee: number;
   fechaInicio: any;
@@ -152,32 +155,34 @@ export class RolesDetailedDelisonComponent implements OnInit {
       },
       {
         field: 'canCreate',
-        headerName: '¿Puede crear?',
+        headerName: 'Crear',
         editable: true
       },
       {
         field: 'canRead',
-        headerName: '¿Puede leer?',
+        headerName: 'Leer',
         editable: true
       },
       {
         field: 'canUpdate',
-        headerName: '¿Puede actualizar?',
+        headerName: 'Actualizar',
         editable: true
       },
       {
         field: 'canDelete',
-        headerName: '¿Puede borrar?',
+        headerName: 'Borrar',
         editable: true
       },
     ];
   }
 
-  obtenerDatos(idRole: number) {
-    this.rolesService.getPermissionsByRoles(idRole)
+  obtenerDatos(idRole: number, idPosicion: number) {
+    this.rolesService.getPermissionsByRoles(idRole, idPosicion)
       .subscribe((data: any) => {
         this.rowData = [];
         this.rowData = data;
+        console.log(this.rowData)
+
         // Esperar a que el grid se actualice y luego ajustar las columnas
         setTimeout(() => {
           if (this.gridApi) {
@@ -265,24 +270,26 @@ export class RolesDetailedDelisonComponent implements OnInit {
 
     for (const row of modifiedRows) {
       const cleanedData = this.cleanDataForServer(row);
-      
       try {
         // Intentar obtener el permiso individual
         await lastValueFrom(
-          this.rolesService.getIndividualDetailedPermissionxRol(row.idRole, row.idDetailedPermission)
+          this.rolesService.getIndividualDetailedPermissionxRol(row.idRole, row.idPosicion, row.idDetailedPermission)
         );
         // Si llegamos aquí, el permiso existe, así que lo agregamos a updateObservables
         const timeResponse = await lastValueFrom(this.timeService.getTime());
         cleanedData.updatedAt = timeResponse.localTime;
+        cleanedData.idPosicion = this.idPosicion;
         updateObservables.push(
           this.rolesService.updateDetailedPermissionsxRoles(row.idRole, row.idDetailedPermission, cleanedData)
         );
         this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Detalle de Roles', 'Menu Administracion Detalle de Roles',  this.trackingService.getEmail());
       } catch (error) {
+        console.log(error)
         // Si el error es 404, significa que el permiso no existe y debemos crearlo
         if (error.status === 404) {
           const timeResponse = await lastValueFrom(this.timeService.getTime());
           cleanedData.createdAt = timeResponse.localTime;
+          cleanedData.idPosicion = this.idPosicion;
           addObservables.push(
             this.rolesService.addDetailedPermissionsxRoles(cleanedData)
           );
@@ -309,7 +316,7 @@ export class RolesDetailedDelisonComponent implements OnInit {
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
 
-      await this.obtenerDatos(this.idRole);
+      await this.obtenerDatos(this.idRole, this.idPosicion);
 
     } catch (error) {
       console.error(error);
@@ -322,7 +329,7 @@ export class RolesDetailedDelisonComponent implements OnInit {
   }
 
   revertDetailData() {
-    this.obtenerDatos(this.idRole);
+    this.obtenerDatos(this.idRole, this.idPosicion);
     this.notSavedChanges = false;
   }
 
