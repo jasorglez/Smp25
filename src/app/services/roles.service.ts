@@ -41,12 +41,12 @@ export class RolesService {
       return this.http.delete(`${environment.urlSecurity}/Roles/${id}`, { headers: this.trackingService.getHeaders() });
     }
 
-    getPermissionsByRoles(idRole: number): Observable<any> {
-      return this.http.get(`${environment.urlSecurity}/RolesxDetailedPermissionsSummary?idRole=${idRole}`, { headers: this.trackingService.getHeaders() });
+    getPermissionsByRoles(idRole: number, idPosicion: number): Observable<any> {
+      return this.http.get(`${environment.urlSecurity}/RolesxDetailedPermissionsSummary?idRole=${idRole}&posicion=${idPosicion}`, { headers: this.trackingService.getHeaders() });
     }
 
-    getIndividualDetailedPermissionxRol(idRole: number, idDetailedPermission: number): Observable<any> {
-      return this.http.get(`${environment.urlSecurity}/RolesxDetailedPermission?idRole=${idRole}&idDetailedPermission=${idDetailedPermission}`, { headers: this.trackingService.getHeaders() });
+    getIndividualDetailedPermissionxRol(idRole: number,idPosicion: number, idDetailedPermission: number): Observable<any> {
+      return this.http.get(`${environment.urlSecurity}/RolesxDetailedPermission?idRole=${idRole}&posicion=${idPosicion}&idDetailedPermission=${idDetailedPermission}`, { headers: this.trackingService.getHeaders() });
     }
 
     addDetailedPermissionsxRoles(data: any): Observable<any> {
@@ -55,6 +55,19 @@ export class RolesService {
 
     updateDetailedPermissionsxRoles(idRole: number, idDetailedPermission: number, data: any): Observable<any> {
       return this.http.put(`${environment.urlSecurity}/RolesxDetailedPermission?idRole=${idRole}&idDetailedPermission=${idDetailedPermission}`, data, { headers: this.trackingService.getHeaders() });
+    }
+
+    getCatalogRoles(idCompany: number): Observable<any> {
+      return this.http.get(`${environment.urlSecurity}/RolesxDetailedPermission/calog/${idCompany}`, { headers: this.trackingService.getHeaders() });
+    }
+    getGeneralPosicion(idCompany: number): Observable<any> {
+      return this.http.get(`${environment.urlSecurity}/RolesxDetailedPermission/calogPosiciones/${idCompany}`, { headers: this.trackingService.getHeaders() });
+    }
+    getCatalogPosiciones(idCompany: number, role: number): Observable<any> {
+      return this.http.get(`${environment.urlSecurity}/RolesxDetailedPermission/calog/${idCompany}/${role}`, { headers: this.trackingService.getHeaders() });
+    }
+    getCatalogCRUD(idPosicion: number): Observable<any> {
+      return this.http.get(`${environment.urlSecurity}/RolesxDetailedPermission/posiciones/${idPosicion}`, { headers: this.trackingService.getHeaders() });
     }
 
 }
