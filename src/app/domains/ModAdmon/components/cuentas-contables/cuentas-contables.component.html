@@ -53,27 +53,27 @@
   </div>
 
   <!-- Filtros y Controles -->
-  <div class="row mb-3">
+  <div class="row mb-3" [formGroup]="filterForm">
     <div class="col-md-5">
       <div class="input-group">
         <span class="input-group-text">
           <i class="bi bi-search"></i>
         </span>
         <input
+          #searchInput
           type="text"
           class="form-control"
           placeholder="Buscar por código, nombre o descripción... (Ctrl+F)"
-          [(ngModel)]="searchTerm"
-          (ngModelChange)="filterTree()"
+          formControlName="searchTerm"
         />
-        <button class="btn btn-outline-secondary" (click)="searchTerm = ''; filterTree()" *ngIf="searchTerm">
+        <button class="btn btn-outline-secondary" (click)="filterForm.get('searchTerm')?.reset()" *ngIf="filterForm.get('searchTerm')?.value">
           <i class="bi bi-x-lg"></i>
         </button>
       </div>
     </div>
 
     <div class="col-md-1">
-      <select class="form-select form-select-sm" [(ngModel)]="filterNivel" (ngModelChange)="filterTree()" title="Filtrar por nivel">
+      <select class="form-select form-select-sm" formControlName="filterNivel" title="Filtrar por nivel">
         <option [ngValue]="null">Todos</option>
         <option [ngValue]="1">Nivel 1</option>
         <option [ngValue]="2">Nivel 2</option>
@@ -105,24 +105,36 @@
 
   <!-- Vista de Árbol -->
   <div *ngIf="viewMode === 'tree'" class="row">
-    <div class="col-12">
-      <div class="card shadow-sm">
-        <div class="card-header bg-light d-flex justify-content-between align-items-center">
-          <h5 class="mb-0">
-            <i class="bi bi-tree-fill text-success me-2"></i>
-            Estructura Jerárquica
-          </h5>
-          <div class="btn-group btn-group-sm">
-            <button class="btn btn-outline-secondary" (click)="expandAll()" [disabled]="loading">
-              <i class="bi bi-arrows-expand me-1"></i> Expandir Todo
-            </button>
-            <button class="btn btn-outline-secondary" (click)="collapseAll()" [disabled]="loading">
-              <i class="bi bi-arrows-collapse me-1"></i> Colapsar Todo
-            </button>
-          </div>
-        </div>
+    <!-- Botonera lateral -->
+    <div class="col-auto">
+      <div class="d-flex flex-column gap-1">
+        <button type="button" class="btn btn-primary" (click)="openCreateModal(selectedCuenta)" [disabled]="loading" title="Nueva cuenta">
+          <i class="bi bi-plus-lg"></i>
+        </button>
+        <button type="button" class="btn btn-info" (click)="openEditModal(selectedCuenta)" [disabled]="!selectedCuenta || loading" title="Editar cuenta">
+          <i class="bi bi-pencil"></i>
+        </button>
+        <button type="button" class="btn btn-warning" (click)="loadData()" [disabled]="loading" title="Recargar datos">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+        <button type="button" class="btn btn-danger" (click)="deleteCuenta(selectedCuenta)"
+          [disabled]="!selectedCuenta || loading" title="Eliminar cuenta">
+          <i class="bi bi-trash"></i>
+        </button>
+        <hr class="my-2 border-secondary" style="width: 100%;">
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="expandAll()" [disabled]="loading" title="Expandir Todo">
+          <i class="bi bi-arrows-expand"></i>
+        </button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="collapseAll()" [disabled]="loading" title="Colapsar Todo">
+          <i class="bi bi-arrows-collapse"></i>
+        </button>
+      </div>
+    </div>
 
-        <div class="card-body p-0">
+    <!-- Contenido del árbol con AG Grid -->
+    <div class="col">
+      <div class="card shadow-sm" style="height: 75vh;">
+        <div class="card-body p-0 h-100">
           <div *ngIf="loading" class="text-center p-5">
             <div class="spinner-border text-primary" role="status">
               <span class="visually-hidden">Cargando...</span>
@@ -130,7 +142,7 @@
             <p class="mt-2 text-muted">Cargando catálogo...</p>
           </div>
 
-          <div *ngIf="!loading && cuentasTree.length === 0" class="text-center p-5">
+          <div *ngIf="!loading && cuentasTreeFlat.length === 0" class="text-center p-5">
             <i class="bi bi-inbox display-1 text-muted"></i>
             <p class="mt-3 text-muted">No hay cuentas registradas</p>
             <button class="btn btn-primary" (click)="openCreateModal()">
@@ -138,9 +150,25 @@
             </button>
           </div>
 
-          <div *ngIf="!loading && cuentasTree.length > 0" class="tree-container">
-            <ng-container *ngTemplateOutlet="treeNode; context: { $implicit: cuentasTree, level: 0 }"></ng-container>
-          </div>
+          <!-- AG Grid Tree Data Mode -->
+          <ag-grid-angular
+            *ngIf="!loading && cuentasTreeFlat.length > 0"
+            style="width: 100%; height: 100%;"
+            class="ag-theme-quartz small-text-ag-grid"
+            [rowData]="cuentasTreeFlat"
+            [columnDefs]="columnDefsTree"
+            [defaultColDef]="defaultColDef"
+            [autoGroupColumnDef]="autoGroupColumnDef"
+            [treeData]="true"
+            [getDataPath]="getDataPath"
+            [localeText]="AG_GRID_LOCALE_ES"
+            [animateRows]="true"
+            [rowSelection]="'single'"
+            [groupDefaultExpanded]="1"
+            (gridReady)="onGridReady($event)"
+            (selectionChanged)="onSelectionChanged($event)"
+          >
+          </ag-grid-angular>
         </div>
       </div>
     </div>
@@ -148,46 +176,43 @@
 
   <!-- Vista de Lista -->
   <div *ngIf="viewMode === 'list'" class="row">
-    <div class="col-12">
-      <div class="card shadow-sm">
-        <div class="card-header bg-light">
-          <div class="row align-items-center">
-            <div class="col-md-6">
-              <h5 class="mb-0">
-                <i class="bi bi-list-ul text-primary me-2"></i>
-                Lista de Cuentas
-              </h5>
-            </div>
-            <div class="col-md-6">
-              <div class="d-flex justify-content-end gap-2">
-                <div class="form-check">
-                  <input
-                    class="form-check-input"
-                    type="checkbox"
-                    id="showActiveOnly"
-                    [(ngModel)]="showOnlyActive"
-                  />
-                  <label class="form-check-label" for="showActiveOnly">
-                    Solo activas
-                  </label>
-                </div>
-                <select class="form-select form-select-sm" style="width: auto;" [(ngModel)]="filterNivel">
-                  <option [ngValue]="null">Todos los niveles</option>
-                  <option [ngValue]="1">Nivel 1</option>
-                  <option [ngValue]="2">Nivel 2</option>
-                  <option [ngValue]="3">Nivel 3</option>
-                </select>
-              </div>
+    <!-- Botonera lateral -->
+    <div class="col-auto">
+      <div class="d-flex flex-column gap-1">
+        <button type="button" class="btn btn-primary" (click)="addRow()" [disabled]="loading" title="Añadir nueva cuenta">
+          <i class="bi bi-plus-lg"></i>
+        </button>
+        <button type="button" class="btn btn-success position-relative" (click)="saveChanges()" [disabled]="!hasUnsavedChanges || loading" title="Guardar cambios">
+          <i class="bi bi-floppy"></i>
+          <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+            *ngIf="hasUnsavedChanges">
+            <span class="visually-hidden">Hay cambios sin guardar</span>
+          </span>
+        </button>
+        <button type="button" class="btn btn-warning" (click)="revert()" [disabled]="loading" title="Descartar cambios">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+        <button type="button" class="btn btn-danger" (click)="deleteEntry()" [disabled]="!selectedRowData || loading" title="Eliminar cuenta seleccionada">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Contenido de la grilla -->
+    <div class="col">
+      <div class="card shadow-sm" style="height: 75vh;">
+        <div class="card-body p-0 h-100">
+          <div *ngIf="loading" class="text-center p-5">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Cargando...</span>
             </div>
           </div>
-        </div>
-
-        <div class="card-body p-2">
           <!-- AG Grid -->
           <ag-grid-angular
-            style="width: 100%; height: 600px;"
-            class="ag-theme-alpine"
-            [rowData]="filteredFlatCuentas"
+            *ngIf="!loading"
+            style="width: 100%; height: 100%;"
+            class="ag-theme-quartz small-text-ag-grid"
+            [rowData]="cuentasFlat"
             [columnDefs]="columnDefs"
             [defaultColDef]="defaultColDef"
             [localeText]="AG_GRID_LOCALE_ES"
@@ -197,6 +222,8 @@
             [animateRows]="true"
             [rowSelection]="'single'"
             (gridReady)="onGridReady($event)"
+            (selectionChanged)="onSelectionChanged($event)"
+            (cellValueChanged)="onCellValueChanged($event)"
           >
           </ag-grid-angular>
         </div>
@@ -204,69 +231,3 @@
     </div>
   </div>
 </div>
-
-<!-- Template recursivo para el árbol -->
-<ng-template #treeNode let-nodes let-level="level">
-  <ul class="tree-list" [class.tree-root]="level === 0">
-    <li *ngFor="let node of nodes" class="tree-item" [class.tree-item-hidden]="!node.visible">
-      <div
-        class="tree-node"
-        [class]="getNivelClass(node.nivel)"
-        [class.selected]="selectedCuenta?.id === node.id"
-        [class.inactive]="!node.activo"
-      >
-        <div class="tree-node-content" (click)="selectCuenta(node)">
-          <!-- Toggle para nodos con hijos (solo chevron, sin iconos redundantes) -->
-          <button
-            *ngIf="node.hijos && node.hijos.length > 0"
-            class="btn btn-sm btn-link tree-toggle p-0 me-2"
-            (click)="toggleNode(node); $event.stopPropagation()"
-          >
-            <i [class]="node.expanded ? 'bi bi-chevron-down' : 'bi bi-chevron-right'"></i>
-          </button>
-          <span *ngIf="!node.hijos || node.hijos.length === 0" class="tree-spacer"></span>
-
-          <!-- Código y Nombre (sin iconos, estilo AG Grid) -->
-          <div class="tree-info flex-grow-1">
-            <span class="tree-code fw-bold">{{ node.codigo }}</span>
-            <span class="tree-name">{{ node.nombre }}</span>
-            <span *ngIf="node.esHoja" class="badge bg-warning text-dark ms-2" style="font-size: 0.65rem;">Hoja</span>
-            <span *ngIf="!node.activo" class="badge bg-danger ms-2" style="font-size: 0.65rem;">Inactiva</span>
-          </div>
-
-          <!-- Acciones -->
-          <div class="tree-actions" (click)="$event.stopPropagation()">
-            <button
-              *ngIf="node.nivel < 3"
-              class="btn btn-sm btn-outline-success me-1"
-              (click)="openCreateModal(node)"
-              title="Agregar subcuenta"
-            >
-              <i class="bi bi-plus-circle"></i>
-            </button>
-            <button
-              class="btn btn-sm btn-outline-primary me-1"
-              (click)="openEditModal(node)"
-              title="Editar"
-            >
-              <i class="bi bi-pencil"></i>
-            </button>
-            <button
-              class="btn btn-sm btn-outline-danger"
-              (click)="deleteCuenta(node)"
-              title="Eliminar"
-              [disabled]="(node.hijos && node.hijos.length > 0) || !node.activo"
-            >
-              <i class="bi bi-trash"></i>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Nodos hijos (recursivo) -->
-      <ng-container *ngIf="node.hijos && node.hijos.length > 0 && node.expanded">
-        <ng-container *ngTemplateOutlet="treeNode; context: { $implicit: node.hijos, level: level + 1 }"></ng-container>
-      </ng-container>
-    </li>
-  </ul>
-</ng-template>

@@ -385,6 +385,8 @@ constructor() {
                 cellEditor: 'searchableSelect',
                 cellEditorParams: {
                   options: this.expenses,
+                  valueField: 'id',
+                  displayField: 'description'
                 },
                 valueFormatter: (params) => {
                   const foundItem = this.expenses
@@ -624,16 +626,40 @@ onGridReady(params: GridReadyEvent) {
     );
 
     try {
-      const responses = await lastValueFrom(
-        concat(...addObservables, ...updateObservables, updateConsecutiveObs).pipe(toArray())
-      );
+      // Solo actualizar consecutivo si hay nuevas filas
+      if (newRows.length > 0) {
+        // Crear objeto sin array
+        const updatedBillingInfo = {
+          ...this.prefixAndConsecutive[0],
+          consecutive: currentConsecutive
+        };
+
+        const updateConsecutiveObs = this.administrationService.updateBillingManagement(
+          this.idRoot,
+          updatedBillingInfo
+        ).pipe(
+          tap(response => {
+            // Actualizar el array local con el nuevo objeto
+            this.prefixAndConsecutive = [updatedBillingInfo];
+          })
+        );
+
+        const responses = await lastValueFrom(
+          concat(...addObservables, ...updateObservables, updateConsecutiveObs).pipe(toArray())
+        );
+      } else {
+        // Si solo hay modificaciones, no actualizar consecutivo
+        const responses = await lastValueFrom(
+          concat(...addObservables, ...updateObservables).pipe(toArray())
+        );
+      }
 
       alerts.basicAlert(
         'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
+        'Se han actualizados los datos correctamente.',
         'success'
       );
-      
+
       this.trackingService.addLog(this.trackingService.getnameComp(), `Salvar Egresos`, 'Egresos ',
           this.trackingService.getEmail() );
 
