@@ -446,6 +446,13 @@ export const routes: Routes = [
               ).then((c) => c.ContractsComponent),
           },
           {
+            path: 'concepts',
+            loadComponent: () =>
+              import('./domains/ModProjects/components/concepts/concepts.component')
+                .then((c) => c.ConceptsComponent),
+            canDeactivate: [UnsavedChangesGuard],
+          },
+          {
             path: 'catalogs',
             loadComponent: () =>
               import('./domains/SMP/Components/catalogs/catalogs.component')
