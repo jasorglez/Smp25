@@ -453,6 +453,11 @@ export const routes: Routes = [
             canDeactivate: [UnsavedChangesGuard],
             children: [
               {
+                path: 'CONCEPTS',
+                loadComponent: () => import('./domains/ModProjects/components/concepts/concepts.component').then(c => c.ConceptsComponent),
+                canDeactivate: [UnsavedChangesGuard],
+              },
+              {
                 path: ':section',
                 loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(p => p.CatalogsComponent)
               },

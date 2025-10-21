@@ -1,0 +1,31 @@
+.card {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.small-text-ag-grid {
+  font-size: 0.875rem;
+}
+
+::ng-deep .selected-row {
+  background-color: #e3f2fd !important;
+}
+
+.btn {
+  min-width: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn i {
+  font-size: 1rem;
+}
+
+.gap-2 {
+  gap: 0.5rem;
+}
