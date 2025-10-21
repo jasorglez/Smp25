@@ -1,5 +1,5 @@
 export interface MaterialsResponse {
-  id: number;
+  id: number | string;
   idCompany: number;
   idBranch?: number | null;
   typeOcorReq?: string;
@@ -49,6 +49,9 @@ export interface MaterialsResponse {
   familiaData?: any[];
   sucursalData?: any[];
   detailType?: string;
+  // Propiedades de control para el grid
+  __isNew?: boolean;
+  __modified?: boolean;
 }
 
 export interface PricePresentations {
