@@ -4,6 +4,7 @@ import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 import { DetailCellRendererCaracteristicasComponent } from './detail-cell-renderer-caracteristicas.component';
+import { alerts } from 'app/helpers/alerts';
 
 @Component({
   selector: 'app-detail-cell-renderer-familia',
@@ -15,6 +16,17 @@ import { DetailCellRendererCaracteristicasComponent } from './detail-cell-render
       <div style="margin-bottom: 15px; flex-grow: 1; display: flex; flex-direction: column;">
         <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
           <strong>Detalles de Subfamilia: {{ familiaName }}</strong>
+          <div class="d-flex gap-1">
+            <button type="button" class="btn btn-primary btn-lg" (click)="addSubfamilia()" title="Nueva subfamilia">
+              <i class="bi bi-plus-lg"></i>
+            </button>
+            <button type="button" class="btn btn-success btn-lg" (click)="editSubfamilia()" [disabled]="!selectedSubfamilia" title="Editar subfamilia">
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button type="button" class="btn btn-danger btn-lg" (click)="deleteSubfamilia()" [disabled]="!selectedSubfamilia" title="Eliminar subfamilia">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
         </div>
         <ag-grid-angular
           class="ag-theme-quartz small-text-ag-grid"
@@ -24,7 +36,8 @@ import { DetailCellRendererCaracteristicasComponent } from './detail-cell-render
           [gridOptions]="familiaGridOptions"
           [components]="components"
           (gridReady)="onFamiliaGridReady($event)"
-          (cellClicked)="onCellClicked($event)">
+          (cellClicked)="onCellClicked($event)"
+          (selectionChanged)="onFamiliaSelectionChanged($event)">
         </ag-grid-angular>
       </div>
     </div>
@@ -37,6 +50,7 @@ export class DetailCellRendererFamiliaComponent implements ICellRendererAngularC
   familiaName: string;
   familiaRowData: any[] = [];
   familiaGridApi: any;
+  selectedSubfamilia: any = null;
 
   familiaGridOptions: any = {
     headerHeight: 25,
@@ -98,6 +112,44 @@ export class DetailCellRendererFamiliaComponent implements ICellRendererAngularC
   onFamiliaGridReady(params: any) {
     this.familiaGridApi = params.api;
     params.api.sizeColumnsToFit();
+  }
+
+  onFamiliaSelectionChanged(event: any): void {
+    const selectedRows = event.api.getSelectedRows();
+    this.selectedSubfamilia = selectedRows.length > 0 ? selectedRows[0] : null;
+  }
+
+  addSubfamilia(): void {
+    // TODO: Implementar agregar subfamilia
+    alerts.basicAlert('Funcionalidad no implementada', 'Agregar subfamilia próximamente', 'info');
+  }
+
+  editSubfamilia(): void {
+    if (!this.selectedSubfamilia) {
+      alerts.basicAlert('Selección requerida', 'Por favor seleccione una subfamilia para editar', 'warning');
+      return;
+    }
+    // TODO: Implementar editar subfamilia
+    alerts.basicAlert('Funcionalidad no implementada', 'Editar subfamilia próximamente', 'info');
+  }
+
+  async deleteSubfamilia(): Promise<void> {
+    if (!this.selectedSubfamilia) {
+      alerts.basicAlert('Selección requerida', 'Por favor seleccione una subfamilia para eliminar', 'warning');
+      return;
+    }
+
+    const result = await alerts.confirmAlert(
+      '¿Eliminar subfamilia?',
+      `¿Está seguro de eliminar la subfamilia ${this.selectedSubfamilia.subfamilia}?`,
+      'warning',
+      'Sí, eliminar'
+    );
+
+    if (result.isConfirmed) {
+      // TODO: Implementar eliminación de la subfamilia
+      alerts.basicAlert('Funcionalidad no implementada', 'Eliminar subfamilia próximamente', 'info');
+    }
   }
 
   onCellClicked(event: any): void {
