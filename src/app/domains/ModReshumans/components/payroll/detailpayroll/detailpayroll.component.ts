@@ -21,6 +21,7 @@ import { BonusComponent } from '../bonus/bonus.component';
 import { ModalBonusComponent } from './modalBonus/modalBonus.component';
 import { EmployeesService } from 'app/services/employees.service';
 import { AdministrationService } from 'app/services/administration.service';
+import { AuthService } from 'app/services/auth.service';
 
 @Component({
   selector: 'app-detailpayroll',
@@ -35,6 +36,7 @@ export class DetailpayrollComponent implements OnInit{
   private administrationService = inject(AdministrationService);
   private signalsService = inject(SignalsService);
   private payrollService = inject(PayrollService);
+  authService = inject(AuthService);
 
   defaultColDef = {
     sortable: true
@@ -179,7 +181,7 @@ export class DetailpayrollComponent implements OnInit{
     {
       headerName: 'Descuento Real',
       width: 150,
-      editable: () => this.signalsService.getClosedPayroll()(),
+      editable: () => this.signalsService.getClosedPayroll()() ? this.authService.getCrudPermission('hr', 'payroll', 'update') : true,
       field: 'realDiscount',
       cellStyle: { backgroundColor: '#d4edda' },
       valueFormatter: (params) => {
