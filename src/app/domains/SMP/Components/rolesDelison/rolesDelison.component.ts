@@ -205,7 +205,7 @@ constructor(private currencyPipe: CurrencyPipe) {
     }
     return undefined; // No mostrar detalle si no hay tipo
   },
-  detailRowHeight: 400,
+  detailRowHeight: 600,
   detailCellRendererParams: { // Parámetros/contexto global para todos los detalles
     context: { rolesService: this.rolesService, trackingService: this.trackingService }
   }
@@ -250,19 +250,13 @@ constructor(private currencyPipe: CurrencyPipe) {
         }
       },
       {
-        field: 'comment',
-        headerName: 'Comentario*',
-        cellEditor: 'agTextCellEditor',
-        flex: 1,
-        editable: true
-      },
-      {
         field: 'posiciones',
         headerName: 'Posiciones*',
+        
         hide: false,
         cellRenderer: this.createDetailToggleCellRenderer('posiciones'),
         flex: 1,
-        cellStyle: { cursor: 'pointer', 'text-decoration': 'underline', color: '#0d6efd' }
+        cellStyle: { backgroundColor: '#d4edda' },
       },
     ];
   }

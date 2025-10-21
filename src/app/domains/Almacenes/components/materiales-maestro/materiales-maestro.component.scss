@@ -26,6 +26,18 @@
     border: 2px solid #007bff;
   }
 
+  // Fila nueva
+  .new-row {
+    background-color: #d4edda !important;
+    border-left: 4px solid #28a745;
+  }
+
+  // Fila modificada
+  .modified-row {
+    background-color: #fff3cd !important;
+    border-left: 4px solid #ffc107;
+  }
+
   // Estilos para checkboxes
   input[type="checkbox"] {
     width: 16px;
