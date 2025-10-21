@@ -4,6 +4,7 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { EmployeesxloansService } from 'app/services/employeesxloans.service';
 import { SignalsService } from 'app/services/signals.service';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { AuthService } from 'app/services/auth.service';
 
 @Component({
   selector: 'app-savings-registry',
@@ -16,6 +17,7 @@ export class SavingsRegistryComponent {
   private employeesxloansService = inject(EmployeesxloansService);
   private signalsService = inject(SignalsService);
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+  authService = inject(AuthService);
 
   defaultColDef = {
     flex: 1,
@@ -82,7 +84,11 @@ export class SavingsRegistryComponent {
   loadData() {
     this.employeesxloansService.getSavingsRegistry(this.idBranch).subscribe(
       (maestroRowData: any[]) => {
+        if(this.authService.getCrudPermission('hr', 'employees', 'read')){
         this.maestroRowData = maestroRowData;
+        } else {
+        this.maestroRowData = []
+        }
       },
       (error) => {
         console.error('Error loading loans data:', error);

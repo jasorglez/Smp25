@@ -56,6 +56,7 @@ export class UsersComponent {
   userRoot: number = 0;
   authorizedPass:boolean = false;
   empleadoCatalgos: any[] = [];
+  idUser: number = null;
 
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
@@ -101,8 +102,9 @@ export class UsersComponent {
 constructor() {
     effect(() => {
        this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+       this.idUser = this.signalsService.getIdUSer()();
        this.userRoot = this.signalsService.getUserRoot()();
-       this.isAdvanced = this.signalsService.getIsAdvanced()
+       this.isAdvanced = this.signalsService.getIsAdvanced();
        this.obtenerDatos();
         this.getRoles();
       this.verification();
@@ -394,7 +396,7 @@ constructor() {
       {
         field: 'security',
         headerName: 'Security',
-        hide: !this.isAdvanced,
+        hide: !this.isAdvanced && this.idUser !== 42,
         //cellRenderer: () => 'Ver Permisos', // Opcional: Mostrar texto en la celda
         cellStyle: { backgroundColor: '#d4edda' },
         onCellClicked: this.togglePermissions.bind(this)

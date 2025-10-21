@@ -15,6 +15,7 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { TimeService } from 'app/services/time.service';
 import { AdministrationService } from 'app/services/administration.service';
 import { EmployeesService } from 'app/services/employees.service';
+import { AuthService } from 'app/services/auth.service';
 
 @Component({
   selector: 'app-employeesxsavings',
@@ -29,6 +30,7 @@ export class EmployeesxSavingsComponent {
   private signalsService = inject(SignalsService);
   private timeService = inject(TimeService);
   private employeeService = inject(EmployeesService);
+  authService = inject(AuthService);
 
   defaultColDef = {
     flex: 1,
@@ -248,7 +250,12 @@ export class EmployeesxSavingsComponent {
         return '';
       },
       flex: 1,
-      editable: (params) => params.data?.__isNew === true || this.authorizedPass,
+      editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'employees', 'update');
+        },
     },
     {
       headerName: 'Ahorro *',
@@ -264,7 +271,12 @@ export class EmployeesxSavingsComponent {
         return '';
       },
       flex: 1,
-      editable: (params) => params.data?.__isNew === true || this.authorizedPass,
+      editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'employees', 'update');
+        },
     },
     {
       headerName: 'Retirado',
@@ -320,7 +332,12 @@ export class EmployeesxSavingsComponent {
         return '';
       },
       flex: 1,
-      editable: (params) => params.data?.__isNew === true || this.authorizedPass,
+      editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'employees', 'update');
+        },
     },
     {
       headerName: 'Abono *',
@@ -336,13 +353,23 @@ export class EmployeesxSavingsComponent {
         return '$0.00';
       },
       flex: 2,
-      editable: (params) => params.data?.__isNew === true || this.authorizedPass,
+      editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'employees', 'update');
+        },
     },
     {
       headerName: 'Comentario',
       field: 'descripcion',
       flex: 1,
-      editable: (params) => params.data?.__isNew === true,
+      editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'employees', 'update');
+        },
     },
   ];
 
