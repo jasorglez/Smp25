@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -10,6 +10,9 @@ import { DetailCellRendererProveedoresComponent } from './details/detail-cell-re
 import { DetailCellRendererFamiliaComponent } from './details/detail-cell-renderer-familia.component';
 import { DetailCellRendererSucursalComponent } from './details/detail-cell-renderer-sucursal.component';
 import { ModalMaterialComponent } from './modal-material/modal-material.component';
+import { MaterialsService } from 'app/services/materials.service';
+import { MaterialsResponse } from 'app/interface/materials.interface';
+import { SignalsService } from 'app/services/signals.service';
 
 @Component({
   selector: 'app-materiales-maestro',
@@ -28,10 +31,12 @@ import { ModalMaterialComponent } from './modal-material/modal-material.componen
 export class MaterialesMaestroComponent implements OnInit {
 
   private gridApi!: GridApi;
+  private materialsService = inject(MaterialsService);
+  private signalsService = inject(SignalsService);
 
-  rowData: any[] = [];
+  rowData: MaterialsResponse[] = [];
   gridHeight: string = '80vh';
-  selectedMaterial: any = null;
+  selectedMaterial: MaterialsResponse | null = null;
   hasUnsavedChanges: boolean = false;
 
   public rowSelection: 'single' | 'multiple' = 'single';
@@ -42,508 +47,23 @@ export class MaterialesMaestroComponent implements OnInit {
   constructor(private modalService: NgbModal) {}
 
   ngOnInit() {
-    this.cargarDatosFalsos();
+    this.loadMaterials();
   }
 
-  cargarDatosFalsos() {
-    // Data falsa con 3 registros principales
-    this.rowData = [
-      {
-        id: 1,
-        activo: true,
-        numMat: 'MAT-001',
-        articulo: 'Corcholata Dorada',
-        categoria: 'Materia Prima',
-        familia: 'Basica',
-        subfamilia: '3',
-        proveedor: '2',
-        imagen: '📷',
-        proveedoresData: [
-          {
-            id: 101,
-            nombreProveedor: 'Envasadora llos SA de CV',
-            precioUnitario: 2.50,
-            descripcionEmpaque: 'Caja de cartón',
-            piezasPorPaquete: 100,
-            medidas: '1/2" x 3"',
-            pesoVolumen: '2.5 kg',
-            caducidadGarantia: 'N/A',
-            sucursal: 'Monterrey Centro'
-          },
-          {
-            id: 102,
-            nombreProveedor: 'Ferretería del Norte',
-            precioUnitario: 2.30,
-            descripcionEmpaque: 'Bolsa plástica',
-            piezasPorPaquete: 50,
-            medidas: '1/2" x 3"',
-            pesoVolumen: '1.2 kg',
-            caducidadGarantia: 'N/A',
-            sucursal: 'Guadalajara Sur'
-          }
-        ],
-        familiaData: [
-          {
-            id: 1001,
-            subfamilia: 'Refresco',
-            caracteristicasData: [
-              {
-                id: 10011,
-                sabor: 'Refresco',
-                presentacion: 'Caja 100 pzas',
-                descripcion: 'Tornillos hexagonales estándar para uso general'
-              }
-            ]
-          },
-          {
-            id: 1002,
-            subfamilia: 'Sidra',
-            caracteristicasData: [
-              {
-                id: 10012,
-                sabor: 'Sidra',
-                presentacion: 'Caja 50 pzas',
-                descripcion: 'Tornillos hexagonales de acero inoxidable para ambientes húmedos'
-              }
-            ]
-          },
-          {
-            id: 1003,
-            subfamilia: 'Vinos',
-            caracteristicasData: [
-              {
-                id: 10013,
-                sabor: 'Vinos Tinto',
-                presentacion: 'Bolsa 200 pzas',
-                descripcion: 'Tornillos hexagonales galvanizados para exteriores'
-              }
-            ]
-          }
-        ],
-        sucursalData: [
-          {
-            id: 10001,
-            sucursal: 'Monterrey Centro',
-            fechaAlta: '2024-01-15',
-            stockMinimo: 500,
-            resurtido: 2000,
-            capacidadMaxAlmacen: 10000,
-            tiempoEntrega: '2-3 días hábiles'
-          },
-          {
-            id: 10002,
-            sucursal: 'Guadalajara Sur',
-            fechaAlta: '2024-02-20',
-            stockMinimo: 300,
-            resurtido: 1500,
-            capacidadMaxAlmacen: 8000,
-            tiempoEntrega: '3-4 días hábiles'
-          },
-          {
-            id: 10003,
-            sucursal: 'Ciudad de México Norte',
-            fechaAlta: '2024-03-10',
-            stockMinimo: 1000,
-            resurtido: 3000,
-            capacidadMaxAlmacen: 15000,
-            tiempoEntrega: '1-2 días hábiles'
-          }
-        ]
+  loadMaterials() {
+    const idRoot = this.signalsService.company().id;
+    this.materialsService.getMaterialsxview(idRoot).subscribe({
+      next: (data) => {
+        this.rowData = data;
+        console.log('Materials loaded:', data);
       },
-      {
-        id: 2,
-        activo: true,
-        numMat: 'MAT-002',
-        articulo: 'Jugo Manzana',
-        categoria: 'Materia Prima',
-        familia: 'Basica',
-        subfamilia: '1',
-        proveedor: '2',
-        imagen: '📷',
-        proveedoresData: [
-          {
-            id: 201,
-            nombreProveedor: 'Jugos Mexicanos',
-            precioUnitario: 180.00,
-            descripcionEmpaque: 'Saco de papel kraft',
-            piezasPorPaquete: 1,
-            medidas: '50 x 30 x 15 cm',
-            pesoVolumen: '50 kg',
-            caducidadGarantia: '6 meses',
-            sucursal: 'Ciudad de México Norte'
-          },
-          {
-            id: 202,
-            nombreProveedor: 'Cementos Mexicanos',
-            precioUnitario: 175.00,
-            descripcionEmpaque: 'Saco de papel kraft',
-            piezasPorPaquete: 1,
-            medidas: '50 x 30 x 15 cm',
-            pesoVolumen: '50 kg',
-            caducidadGarantia: '6 meses',
-            sucursal: 'Querétaro Este'
-          }
-        ],
-        familiaData: [
-          {
-            id: 2001,
-            subfamilia: '3',
-            caracteristicasData: [
-              {
-                id: 20011,
-                sabor: 'N/A',
-                presentacion: 'Saco 50kg',
-                descripcion: 'Cemento Portland tipo I gris para construcción general'
-              },
-              {
-                id: 20012,
-                sabor: 'N/A',
-                presentacion: 'Saco 25kg',
-                descripcion: 'Cemento Portland tipo I blanco para acabados finos'
-              }
-            ]
-          }
-        ],
-        sucursalData: [
-          {
-            id: 20001,
-            sucursal: 'Ciudad de México Norte',
-            fechaAlta: '2023-11-05',
-            stockMinimo: 200,
-            resurtido: 800,
-            capacidadMaxAlmacen: 5000,
-            tiempoEntrega: '1-2 días hábiles'
-          },
-          {
-            id: 20002,
-            sucursal: 'Querétaro Este',
-            fechaAlta: '2024-01-12',
-            stockMinimo: 150,
-            resurtido: 600,
-            capacidadMaxAlmacen: 4000,
-            tiempoEntrega: '2-3 días hábiles'
-          }
-        ]
-      },
-      {
-        id: 3,
-        activo: false,
-        numMat: 'MAT-003',
-        articulo: 'Azucar Morena',
-        categoria: 'Eléctrico',
-        familia: 'Basica',
-        subfamilia: '1',
-        proveedor: '3',
-        imagen: '📷',
-        proveedoresData: [
-          {
-            id: 301,
-            nombreProveedor: 'Distribuidora Eléctrica',
-            precioUnitario: 15.50,
-            descripcionEmpaque: 'Rollo',
-            piezasPorPaquete: 100,
-            medidas: 'Cal. 12 AWG',
-            pesoVolumen: '8.5 kg/100m',
-            caducidadGarantia: '10 años',
-            sucursal: 'Puebla Centro'
-          },
-          {
-            id: 302,
-            nombreProveedor: 'Cables y Más',
-            precioUnitario: 14.80,
-            descripcionEmpaque: 'Rollo',
-            piezasPorPaquete: 100,
-            medidas: 'Cal. 12 AWG',
-            pesoVolumen: '8.3 kg/100m',
-            caducidadGarantia: '10 años',
-            sucursal: 'León Norte'
-          },
-          {
-            id: 303,
-            nombreProveedor: 'Distribuidora Eléctrica',
-            precioUnitario: 16.00,
-            descripcionEmpaque: 'Carrete',
-            piezasPorPaquete: 500,
-            medidas: 'Cal. 12 AWG',
-            pesoVolumen: '42 kg/500m',
-            caducidadGarantia: '10 años',
-            sucursal: 'Tijuana Oeste'
-          }
-        ],
-        familiaData: [
-          {
-            id: 3001,
-            subfamilia: '4',
-            caracteristicasData: [
-              {
-                id: 30011,
-                sabor: 'N/A',
-                presentacion: 'Rollo 100m',
-                descripcion: 'Cable conductor de cobre calibre 12 para instalaciones eléctricas residenciales'
-              },
-              {
-                id: 30012,
-                sabor: 'N/A',
-                presentacion: 'Rollo 50m',
-                descripcion: 'Cable conductor de aluminio calibre 12 para instalaciones comerciales'
-              },
-              {
-                id: 30013,
-                sabor: 'N/A',
-                presentacion: 'Rollo 25m',
-                descripcion: 'Cable conductor flexible calibre 12 para equipos móviles'
-              },
-              {
-                id: 30014,
-                sabor: 'N/A',
-                presentacion: 'Carrete 500m',
-                descripcion: 'Cable conductor blindado calibre 12 para ambientes industriales'
-              }
-            ]
-          }
-        ],
-        sucursalData: [
-          {
-            id: 30001,
-            sucursal: 'Puebla Centro',
-            fechaAlta: '2024-02-18',
-            stockMinimo: 1000,
-            resurtido: 5000,
-            capacidadMaxAlmacen: 20000,
-            tiempoEntrega: '2-3 días hábiles'
-          },
-          {
-            id: 30002,
-            sucursal: 'León Norte',
-            fechaAlta: '2024-03-05',
-            stockMinimo: 800,
-            resurtido: 4000,
-            capacidadMaxAlmacen: 18000,
-            tiempoEntrega: '3-4 días hábiles'
-          },
-          {
-            id: 30003,
-            sucursal: 'Tijuana Oeste',
-            fechaAlta: '2024-04-10',
-            stockMinimo: 600,
-            resurtido: 3000,
-            capacidadMaxAlmacen: 15000,
-            tiempoEntrega: '4-5 días hábiles'
-          }
-        ]
-      },
-      {
-        id: 4,
-        activo: true,
-        numMat: 'MAT-004',
-        articulo: 'Envase para Refresco Embotellado',
-        categoria: 'Alimentos y Bebidas',
-        familia: 'Basica',
-        subfamilia: '5',
-        proveedor: '1',
-        imagen: '📷',
-        proveedoresData: [
-          {
-            id: 401,
-            nombreProveedor: 'Embotelladora del Valle',
-            precioUnitario: 12.50,
-            descripcionEmpaque: 'Caja de cartón',
-            piezasPorPaquete: 24,
-            medidas: '600ml',
-            pesoVolumen: '15 kg',
-            caducidadGarantia: '6 meses',
-            sucursal: 'Monterrey Centro'
-          }
-        ],
-        familiaData: [
-          {
-            id: 4001,
-            subfamilia: '5',
-            caracteristicasData: [
-              {
-                id: 40011,
-                sabor: 'Cola',
-                presentacion: 'Botella 600ml',
-                descripcion: 'Refresco de cola carbonatado sabor original'
-              },
-              {
-                id: 40012,
-                sabor: 'Naranja',
-                presentacion: 'Botella 600ml',
-                descripcion: 'Refresco de naranja carbonatado con jugo natural'
-              },
-              {
-                id: 40013,
-                sabor: 'Limón',
-                presentacion: 'Botella 355ml',
-                descripcion: 'Refresco de limón carbonatado light sin azúcar'
-              },
-              {
-                id: 40014,
-                sabor: 'Fresa',
-                presentacion: 'Lata 355ml',
-                descripcion: 'Refresco de fresa carbonatado sabor artificial'
-              }
-            ]
-          }
-        ],
-        sucursalData: [
-          {
-            id: 40001,
-            sucursal: 'Monterrey Centro',
-            fechaAlta: '2024-05-01',
-            stockMinimo: 2000,
-            resurtido: 10000,
-            capacidadMaxAlmacen: 50000,
-            tiempoEntrega: '1-2 días hábiles'
-          }
-        ]
-      },
-      {
-        id: 5,
-        activo: true,
-        numMat: 'MAT-005',
-        articulo: 'Valvulas de Control para Fluidos',
-        categoria: 'Alimentos y Bebidas',
-        familia: 'Basica',
-        subfamilia: '6',
-        proveedor: '1',
-        imagen: '📷',
-        proveedoresData: [
-          {
-            id: 501,
-            nombreProveedor: 'Galletas y Más SA',
-            precioUnitario: 18.00,
-            descripcionEmpaque: 'Caja display',
-            piezasPorPaquete: 20,
-            medidas: '180g',
-            pesoVolumen: '3.6 kg',
-            caducidadGarantia: '8 meses',
-            sucursal: 'Guadalajara Centro'
-          }
-        ],
-        familiaData: [
-          {
-            id: 5001,
-            subfamilia: '6',
-            caracteristicasData: [
-              {
-                id: 50011,
-                sabor: 'Chocolate',
-                presentacion: 'Paquete 180g',
-                descripcion: 'Galletas con chispas de chocolate semiamargo'
-              },
-              {
-                id: 50012,
-                sabor: 'Vainilla',
-                presentacion: 'Paquete 200g',
-                descripcion: 'Galletas de vainilla con crema tipo sandwich'
-              },
-              {
-                id: 50013,
-                sabor: 'Avena y Miel',
-                presentacion: 'Paquete 150g',
-                descripcion: 'Galletas de avena integral endulzadas con miel'
-              }
-            ]
-          }
-        ],
-        sucursalData: [
-          {
-            id: 50001,
-            sucursal: 'Guadalajara Centro',
-            fechaAlta: '2024-06-15',
-            stockMinimo: 1500,
-            resurtido: 6000,
-            capacidadMaxAlmacen: 30000,
-            tiempoEntrega: '2-3 días hábiles'
-          }
-        ]
-      },
-      {
-        id: 6,
-        activo: true,
-        numMat: 'MAT-006',
-        articulo: 'Endulcorante Natural',
-        categoria: 'Alimentos y Bebidas',
-        familia: 'Basica',
-        subfamilia: '45',
-        proveedor: '1',
-        imagen: '📷',
-        proveedoresData: [
-          {
-            id: 601,
-            nombreProveedor: 'Lácteos del Norte',
-            precioUnitario: 25.00,
-            descripcionEmpaque: 'Charola de cartón',
-            piezasPorPaquete: 12,
-            medidas: '1 litro',
-            pesoVolumen: '12.5 kg',
-            caducidadGarantia: '30 días',
-            sucursal: 'Querétaro Norte'
-          }
-        ],
-        familiaData: [
-          {
-            id: 6001,
-            subfamilia: '45',
-            caracteristicasData: [
-              {
-                id: 60011,
-                sabor: 'Natural',
-                presentacion: 'Envase 1L',
-                descripcion: 'Yogurt natural sin azúcar añadida'
-              },
-              {
-                id: 60012,
-                sabor: 'Fresa',
-                presentacion: 'Envase 1L',
-                descripcion: 'Yogurt con sabor a fresa con trozos de fruta'
-              },
-              {
-                id: 60013,
-                sabor: 'Durazno',
-                presentacion: 'Envase 500ml',
-                descripcion: 'Yogurt con sabor a durazno bajo en grasa'
-              },
-              {
-                id: 60014,
-                sabor: 'Arándano',
-                presentacion: 'Envase 250ml',
-                descripcion: 'Yogurt griego con arándanos naturales'
-              },
-              {
-                id: 60015,
-                sabor: 'Mango',
-                presentacion: 'Envase 1L',
-                descripcion: 'Yogurt con pulpa de mango tropical'
-              }
-            ]
-          }
-        ],
-        sucursalData: [
-          {
-            id: 60001,
-            sucursal: 'Querétaro Norte',
-            fechaAlta: '2024-07-10',
-            stockMinimo: 500,
-            resurtido: 2500,
-            capacidadMaxAlmacen: 12000,
-            tiempoEntrega: '1-2 días hábiles'
-          },
-          {
-            id: 60002,
-            sucursal: 'Monterrey Centro',
-            fechaAlta: '2024-08-01',
-            stockMinimo: 400,
-            resurtido: 2000,
-            capacidadMaxAlmacen: 10000,
-            tiempoEntrega: '2-3 días hábiles'
-          }
-        ]
+      error: (error) => {
+        console.error('Error loading materials:', error);
+        alerts.basicAlert('Error', 'Error al cargar materiales', 'error');
       }
-    ];
+    });
   }
+
 
   components = {
     detailCellRendererProveedores: DetailCellRendererProveedoresComponent,
@@ -592,17 +112,16 @@ export class MaterialesMaestroComponent implements OnInit {
   get colMaster(): ColDef[] {
     return [
       {
-        field: 'activo',
+        field: 'active',
         headerName: 'Activo',
         width: 100,
         cellRenderer: (params: any) => {
-          const checked = params.data.activo ? 'checked' : '';
+          const checked = params.data.active ? 'checked' : '';
           return `<input type="checkbox" ${checked} disabled style="cursor: pointer;">`;
         }
       },
       {
-  
-        field: 'numMat',
+        field: 'insumo',
         headerName: 'Num Mat',
         width: 130,
         filter: true
@@ -626,23 +145,27 @@ export class MaterialesMaestroComponent implements OnInit {
         filter: true
       },
       {
-        field: 'subfamilia',
+        field: 'subfamilyCount',
         headerName: 'Subfamilia',
         width: 150,
         filter: true,
-        cellRenderer: this.createDetailToggleCellRenderer('familia'),
+        cellRenderer: (params: any) => {
+          return `${params.data.subfamilia} (${params.value})`;
+        },
         cellStyle: { backgroundColor: '#fff3e0', cursor: 'pointer', textDecoration: 'underline' }
       },
       {
-        field: 'proveedor',
+        field: 'providerCount',
         headerName: 'Proveedor',
         width: 200,
         filter: true,
-        cellRenderer: this.createDetailToggleCellRenderer('proveedores'),
+        cellRenderer: (params: any) => {
+          return `${params.value} proveedor${params.value !== 1 ? 'es' : ''}`;
+        },
         cellStyle: { backgroundColor: '#e3f2fd', cursor: 'pointer', textDecoration: 'underline' }
       },
       {
-        field: 'imagen',
+        field: 'picture',
         headerName: 'Imagen',
         width: 100,
         cellRenderer: (params: any) => {
@@ -654,8 +177,8 @@ export class MaterialesMaestroComponent implements OnInit {
 
   // Función auxiliar para obtener el tipo de detalle desde el ID de la columna
   getDetailTypeFromColId(colId: string): string | null {
-    if (colId === 'proveedor') return 'proveedores';
-    if (colId === 'subfamilia') return 'familia';
+    if (colId === 'providerCount') return 'proveedores';
+    if (colId === 'subfamilyCount') return 'familia';
     return null;
   }
 
@@ -683,7 +206,7 @@ export class MaterialesMaestroComponent implements OnInit {
     event.node.setSelected(true);
 
     const colId = event.column.getColId();
-    const isDetailColumn = colId === 'proveedor' || colId === 'subfamilia';
+    const isDetailColumn = colId === 'providerCount' || colId === 'subfamilyCount';
 
     if (isDetailColumn) {
       const node = event.node;
@@ -825,7 +348,7 @@ export class MaterialesMaestroComponent implements OnInit {
   }
 
   refreshData(): void {
-    this.cargarDatosFalsos();
+    this.loadMaterials();
     this.selectedMaterial = null;
     this.hasUnsavedChanges = false;
     alerts.basicAlert('Recargado', 'Los datos han sido recargados', 'success');
