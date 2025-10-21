@@ -1,4 +1,4 @@
-import { inject, Injectable } from '@angular/core';
+import { effect, inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import {
@@ -42,6 +42,17 @@ export class AuthService {
   private auth = inject(Auth);
   private http = inject(HttpClient);
   private signalsService = inject(SignalsService);
+
+  idBranch: number;
+  isAdvanced: boolean = false;
+
+
+  constructor() {
+      effect(() => {
+        this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+        this.isAdvanced = this.signalsService.getIsAdvanced();
+      });
+    }
 
   login(data: Ilogin) {
     //Aquí creamos el Token
@@ -205,9 +216,11 @@ export class AuthService {
       })
     );
   }
-
   fetchUserPermissions(userId: number): Observable<any> {
     return this.http.get(`${environment.urlSecurity}/UserSystemPermissions/guard/${userId}`, { headers: this.trackingService.getHeaders() });
+  }
+  fetchUserPermissionsAdvanced(userId: number, idBranch: number): Observable<any> {
+    return this.http.get(`${environment.urlSecurity}/UserSystemPermissions/guardAdvanced/${userId}/${idBranch}`, { headers: this.trackingService.getHeaders() });
   }
 
   // Almacena los permisos en el servicio
@@ -227,8 +240,35 @@ export class AuthService {
 
   // Verifica si el usuario tiene un permiso detallado
   hasDetailedPermission(masterPermissionKey: string, detailedPermissionKey: string): boolean {
-    console.log("++++++++",this.userPermissions);
-    return this.userPermissions?.[masterPermissionKey]?.children?.[detailedPermissionKey] === true;
+    const section = this.userPermissions?.[masterPermissionKey];
+    const subSection = section?.children?.[detailedPermissionKey];
+
+    return section?.active === true && subSection?.active === true;
   }
+  getCrudPermission(
+  masterPermissionKey: string,
+  detailedPermissionKey: string,
+  action: 'create' | 'read' | 'update' | 'delete'
+): boolean {
+  const section = this.userPermissions?.[masterPermissionKey];
+  const subSection = section?.children?.[detailedPermissionKey];
+
+  if (section?.active !== true || subSection?.active !== true) {
+    return false;
+  }
+
+  const crudMap = {
+    create: subSection.crud?.canCreate,
+    read: subSection.crud?.canRead,
+    update: subSection.crud?.canUpdate,
+    delete: subSection.crud?.canDelete
+  };
+
+  return crudMap[action] === true;
+}
+
+
+
+
 
 }

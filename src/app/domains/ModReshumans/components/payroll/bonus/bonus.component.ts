@@ -64,7 +64,7 @@ export class BonusComponent implements CanComponentDeactivate {
   private catalogsService = inject(CatalogsService);
   private administrationService = inject(AdministrationService);
   private employeeService = inject(EmployeesService);
-  private authService = inject(AuthService);
+  authService = inject(AuthService);
   private branchesService = inject(BranchsService);
   private gridApi: GridApi;
   private hrService = inject(HRService);
@@ -268,7 +268,10 @@ export class BonusComponent implements CanComponentDeactivate {
       const data = await firstValueFrom(
         this.administrationService.getEmployeesBonus(this.fechaInicio, this.fechaFin, this.idBranch)
       );
+      if(this.authService.getCrudPermission('hr', 'payroll', 'read')){
       this.rowData = data;
+      }else
+        this.rowData = []
       console.log("---- data de bonos empleados: ", this.rowData);
     } catch (err) {
       console.error('Error al obtener empleados con bonus:', err);

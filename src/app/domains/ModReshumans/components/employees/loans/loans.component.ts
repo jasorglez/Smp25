@@ -14,6 +14,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { TimeService } from 'app/services/time.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { AuthService } from 'app/services/auth.service';
 
 @Component({
   selector: 'app-employeesxloans',
@@ -27,6 +28,7 @@ export class EmployeesxLoansComponent {
   private signalsService = inject(SignalsService);
   private timeService = inject(TimeService);
   private trackingService = inject(TrackingService);
+  authService = inject(AuthService);
 
   defaultColDef = {
     flex: 1,
@@ -171,7 +173,7 @@ export class EmployeesxLoansComponent {
 
     this.employeesxloansService.getConceptsxLoansCredit(this.idLoan).subscribe(
       (detalleRowData) => {
-        if (!detalleRowData || detalleRowData.length === 0) {
+        if (!detalleRowData || detalleRowData.length === 0 && !this.authService.getCrudPermission('hr', 'employees', 'read')) {
           this.detalleRowData = [];
         } else {
           this.detalleRowData = detalleRowData;
@@ -223,7 +225,12 @@ export class EmployeesxLoansComponent {
         }
         return '';
       },
-      editable: (params) => params.data?.__isNew === true || this.authorizedPass,
+      editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'employees', 'update');
+        },
     },
     {
       headerName: 'Préstamo *',
@@ -239,7 +246,12 @@ export class EmployeesxLoansComponent {
         }
         return '';
       },
-      editable: (params) => params.data?.__isNew === true || this.authorizedPass,
+      editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'employees', 'update');
+        },
     },
     {
       headerName: 'Pagado',
@@ -275,7 +287,12 @@ export class EmployeesxLoansComponent {
       headerName: 'Comentario',
       field: 'comments', 
       width: 400,
-      editable: (params) => params.data?.__isNew === true || this.authorizedPass,
+      editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'employees', 'update');
+        },
     }
   ];
 
@@ -301,7 +318,12 @@ export class EmployeesxLoansComponent {
         return '';
       },
       flex: 1,
-      editable: (params) => params.data?.__isNew === true || this.authorizedPass,
+      editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'employees', 'update');
+        },
     },
     {
       headerName: 'Abono *',
@@ -317,13 +339,23 @@ export class EmployeesxLoansComponent {
         return '$0.00';
       },
       flex: 2,
-      editable: (params) => params.data?.__isNew === true || this.authorizedPass,
+      editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'employees', 'update');
+        },
     },
     {
       headerName: 'Comentario',
       field: 'descripcion',
       flex: 1,
-      editable: (params) => params.data?.__isNew === true,
+      editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'employees', 'update');
+        },
     },
   ];
 

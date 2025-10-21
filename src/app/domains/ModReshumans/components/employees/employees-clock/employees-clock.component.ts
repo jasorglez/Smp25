@@ -7,6 +7,7 @@ import { EmployeesService } from 'app/services/employees.service';
 import { SignalsService } from 'app/services/signals.service';
 import { alerts } from 'app/helpers/alerts';
 import { TrackingService } from 'app/services/tracking.service';
+import { AuthService } from 'app/services/auth.service';
 
 @Component({
   selector: 'app-employees-clock',
@@ -20,6 +21,7 @@ export class EmployeesClockComponent {
   private employeesService = inject(EmployeesService);
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
+  authService = inject(AuthService);
   
 
   idEmployee: number = null;
@@ -52,7 +54,11 @@ export class EmployeesClockComponent {
   getEmployees() {
     this.employeesService.getEmployees(this.idBranch).subscribe(
       (data: any) => {
+        if(this.authService.getCrudPermission('hr', 'employees', 'read')){
         this.employees = data;
+        }else{
+        this.employees = []
+        }
         console.log('Empleados:', data);
       },
       (error) => {

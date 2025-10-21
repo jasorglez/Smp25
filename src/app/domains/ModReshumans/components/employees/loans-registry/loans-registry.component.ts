@@ -3,6 +3,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { EmployeesxloansService } from 'app/services/employeesxloans.service';
 import { SignalsService } from 'app/services/signals.service';
+import { AuthService } from 'app/services/auth.service';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 
 @Component({
@@ -15,6 +16,7 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 export class LoansRegistryComponent {
   private employeesxloansService = inject(EmployeesxloansService);
   private signalsService = inject(SignalsService);
+  authService = inject(AuthService);
 
   defaultColDef = {
     flex: 1,
@@ -82,7 +84,12 @@ export class LoansRegistryComponent {
   loadData() {
     this.employeesxloansService.getLoansRegistry(this.idBranch).subscribe(
       (maestroRowData: any[]) => {
+        if(this.authService.getCrudPermission('hr', 'employees', 'read')){
         this.maestroRowData = maestroRowData;
+        }
+        else{
+          this.maestroRowData = [];
+        }
       },
       (error) => {
         console.error('Error loading loans data:', error);

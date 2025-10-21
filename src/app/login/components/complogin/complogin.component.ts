@@ -16,6 +16,7 @@ import { AuthService } from '../../../services/auth.service';
 import { UsersService } from '../../../services/users.service';
 import { SignalsService } from 'app/services/signals.service';
 import { DomainsModule } from 'app/domains/domainsmodule';
+import { switchMap, tap } from 'rxjs/operators';
 import { environment } from '@env/environment';
 
 @Component({
@@ -64,12 +65,17 @@ export class ComploginComponent implements OnInit {
 		passwordlogin : ['', Validators.required]
 	})
 
+  isAdvanced: boolean = false;
   formSubmitted = false;
+  idBranch: number;
 
   valorcapturado = '' ;
 
 
   ngOnInit(): void {
+    
+    this.isAdvanced = this.signalsService.getIsAdvanced();
+    this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
     this.randomImage = this.images[Math.floor(Math.random() * this.images.length)];
   }
 
@@ -118,21 +124,27 @@ export class ComploginComponent implements OnInit {
               //aqui atrapa la signal, y le doy el valor del email
               this.signalsService.setemailChoose(this.emailcapt) ;
 
-                            
                this.signalsService.setrootChoose(datauser.userRoot) ;
-                 // console.log('User Root en Login:', this.signalsService.getrootChoose());
 
-              // Cargar permisos del usuario
-              this.auth.getUserId(this.emailcapt).subscribe((userId) => {
-                this.auth.fetchUserPermissions(userId).subscribe(
-                  (data: any) => {
-                    this.auth.setUserPermissions(data.permissions);
-                    this.router.navigate(['/main']);
-                  },
-                  (error) => {
-                    console.error('Error fetching user permissions:', error);
-                  }
-                );
+              // Refactorización: Encadenar observables con switchMap
+              this.auth.getUserId(this.emailcapt).pipe(
+                switchMap(userId => {
+                  // Determinar qué llamada de permisos hacer basado en el estado 'advanced' del usuario
+                  const isAdvanced = datauser.advanced;
+                  // Nota: idBranch no está disponible aquí. Si es necesario, debe obtenerse de 'datauser'
+                  // o de una selección previa al login. Asumimos que no es estrictamente necesario para el primer login.
+                   
+                  const permissions$ = this.isAdvanced
+                    ? this.auth.fetchUserPermissionsAdvanced(userId, this.idBranch) // Usar null o un valor por defecto
+                    : this.auth.fetchUserPermissions(userId);
+                  return permissions$;
+                }),
+                tap((permissionsData: any) => {
+                  this.auth.setUserPermissions(permissionsData.permissions);
+                  this.router.navigate(['/main']);
+                })
+              ).subscribe({
+                error: (permError) => console.error('Error fetching user permissions:', permError)
               });
             }
           },

@@ -36,6 +36,7 @@
                 class="form-check-input"
                 [id]="'active_' + dia.id"
                 [disabled]="!idEmployee"
+                *ngIf="authService.getCrudPermission('hr', 'employees', 'create')"
               />
               <label for="active_{{ dia.id }}" class="form-check-label">{{
                 dia.day
@@ -107,6 +108,7 @@
                   (click)="resetDay(i)"
                   title="Borrar horarios del día"
                   [disabled]="!idEmployee"
+                  *ngIf="authService.getCrudPermission('hr', 'employees', 'delete')"
                 >
                 <i class="bi bi-eraser-fill"></i>
                 </button>
@@ -118,6 +120,7 @@
                   (click)="applyToAllDays(i)"
                   title="Aplicar a todos los días"
                   [disabled]="!idEmployee"
+                  *ngIf="authService.getCrudPermission('hr', 'employees', 'create') || authService.getCrudPermission('hr', 'employees', 'update')" 
                 >
                   <i class="fas fa-clone"></i>
                 </button>
@@ -131,7 +134,7 @@
       <span class="me-3">
         Total horas semanales: <strong>{{ calcularTotalHoras() }}</strong>
       </span>
-      <button type="submit" class="btn btn-primary" [disabled]="!idEmployee">Guardar Horario</button>
+      <button type="submit" class="btn btn-primary" [disabled]="!idEmployee" *ngIf="authService.getCrudPermission('hr', 'employees', 'create') || authService.getCrudPermission('hr', 'employees', 'update')" >Guardar Horario</button>
     </div>
   </form>
 </div>
