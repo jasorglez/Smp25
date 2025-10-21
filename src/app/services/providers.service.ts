@@ -20,7 +20,7 @@ export class ProvidersService {
   }
   
     getMaterXTable(idMaterial: number, type: string ) {
-    return this.http.get(`${environment.urlWarehouse}/ProveedorXTabla?idProveedor=${idMaterial}&Type=${type}`, { headers: this.trackingService.getHeaders() });
+    return this.http.get(`${environment.urlWarehouse}/ProveedorXTabla/by-material?idMaterial=${idMaterial}&type=${type} `, { headers: this.trackingService.getHeaders() });
   }
   
   getProviders(idRoot: number) {
