@@ -73,9 +73,9 @@ export class ConceptsComponent implements OnInit, CanComponentDeactivate {
       {
         field: 'description',
         headerName: 'Descripción',
-        editable: true,
+        editable: false,
         filter: true,
-        width: 300,
+        flex: 2,
         valueSetter: (params) => {
           const rawValue = params.newValue;
           if (!rawValue || typeof rawValue !== 'string') {
@@ -110,13 +110,66 @@ export class ConceptsComponent implements OnInit, CanComponentDeactivate {
         },
       },
       {
-        field: 'vigente',
-        headerName: 'Activo',
-        editable: true,
-        width: 100,
-        cellRenderer: (params: any) => {
-          return params.value ? 'Sí' : 'No';
-        }
+        field: 'internalTeamValue',
+        headerName: 'Costo de Cuadrilla Interna',
+        editable: (params) => {
+          return params.data.internalTeamValue !== null && params.data.internalTeamValue !== undefined;
+        },
+        flex: 1,
+        filter: 'agNumberColumnFilter',
+        cellStyle: (params) => {
+          if (params.value === null || params.value === undefined) {
+            return { backgroundColor: '#f0f0f0', cursor: 'not-allowed' };
+          }
+          return null;
+        },
+        valueFormatter: (params) => {
+          return params.value !== null && params.value !== undefined
+            ? `$${Number(params.value).toLocaleString('es-MX', {
+                minimumFractionDigits: 2,
+              })}`
+            : '-';
+        },
+        valueSetter: (params) => {
+          const value = parseFloat(params.newValue);
+          if (isNaN(value)) {
+            alerts.basicAlert('Valor inválido', 'Debe ingresar un número válido', 'error');
+            return false;
+          }
+          params.data[params.colDef.field] = value;
+          return true;
+        },
+      },
+      {
+        field: 'externalTeamValue',
+        headerName: 'Costo de Cuadrilla Externa',
+        editable: (params) => {
+          return params.data.externalTeamValue !== null && params.data.externalTeamValue !== undefined;
+        },
+        flex: 1,
+        filter: 'agNumberColumnFilter',
+        cellStyle: (params) => {
+          if (params.value === null || params.value === undefined) {
+            return { backgroundColor: '#f0f0f0', cursor: 'not-allowed' };
+          }
+          return null;
+        },
+        valueFormatter: (params) => {
+          return params.value !== null && params.value !== undefined
+            ? `$${Number(params.value).toLocaleString('es-MX', {
+                minimumFractionDigits: 2,
+              })}`
+            : '-';
+        },
+        valueSetter: (params) => {
+          const value = parseFloat(params.newValue);
+          if (isNaN(value)) {
+            alerts.basicAlert('Valor inválido', 'Debe ingresar un número válido', 'error');
+            return false;
+          }
+          params.data[params.colDef.field] = value;
+          return true;
+        },
       },
     ];
   }
@@ -168,7 +221,9 @@ export class ConceptsComponent implements OnInit, CanComponentDeactivate {
     const newItem = {
       id: tempId,
       description: '',
-      vigente: true,
+      internalTeamValue: 0,
+      externalTeamValue: 0,
+      active: true,
       __isNew: true,
     };
     this.rowData = [newItem, ...this.rowData];

@@ -15,26 +15,26 @@ export class TdConceptsService {
 
   // Get all TDConcepts
   getTDConcepts(): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.urlSmp}/api/TDConcepts`, { headers: this.trackingService.getHeaders() });
+    return this.http.get<any[]>(`${environment.urlSmp}/TDConcepts`, { headers: this.trackingService.getHeaders() });
   }
 
   // Get TDConcept by ID
   getTDConceptById(id: number): Observable<any> {
-    return this.http.get<any>(`${environment.urlSmp}/api/TDConcepts/${id}`, { headers: this.trackingService.getHeaders() });
+    return this.http.get<any>(`${environment.urlSmp}/TDConcepts/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
   // Add new TDConcept
   addTDConcept(concept: any): Observable<any> {
-    return this.http.post<any>(`${environment.urlSmp}/api/TDConcepts`, concept, { headers: this.trackingService.getHeaders() });
+    return this.http.post<any>(`${environment.urlSmp}/TDConcepts`, concept, { headers: this.trackingService.getHeaders() });
   }
 
   // Update TDConcept
   updateTDConcept(id: number, concept: any): Observable<any> {
-    return this.http.put<any>(`${environment.urlSmp}/api/TDConcepts/${id}`, concept, { headers: this.trackingService.getHeaders() });
+    return this.http.put<any>(`${environment.urlSmp}/TDConcepts/${id}`, concept, { headers: this.trackingService.getHeaders() });
   }
 
   // Delete TDConcept
   deleteTDConcept(id: number): Observable<any> {
-    return this.http.delete<any>(`${environment.urlSmp}/api/TDConcepts/${id}`, { headers: this.trackingService.getHeaders() });
+    return this.http.delete<any>(`${environment.urlSmp}/TDConcepts/${id}`, { headers: this.trackingService.getHeaders() });
   }
 }
