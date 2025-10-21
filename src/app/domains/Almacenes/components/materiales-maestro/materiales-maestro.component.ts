@@ -51,7 +51,7 @@ export class MaterialesMaestroComponent implements OnInit {
   }
 
   loadMaterials() {
-    const idRoot = this.signalsService.company().id;
+    const idRoot = this.signalsService.idCompany();
     this.materialsService.getMaterialsxview(idRoot).subscribe({
       next: (data) => {
         this.rowData = data;
@@ -324,7 +324,7 @@ export class MaterialesMaestroComponent implements OnInit {
 
     const result = await alerts.confirmAlert(
       '¿Eliminar material?',
-      `¿Está seguro de eliminar el material ${this.selectedMaterial.numMat} - ${this.selectedMaterial.articulo}?`,
+      `¿Está seguro de eliminar el material ${this.selectedMaterial.insumo} - ${this.selectedMaterial.articulo}?`,
       'warning',
       'Sí, eliminar'
     );
