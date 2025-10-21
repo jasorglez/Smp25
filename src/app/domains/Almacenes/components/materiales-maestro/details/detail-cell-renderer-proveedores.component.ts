@@ -27,10 +27,19 @@ import { SignalsService } from 'app/services/signals.service';
               <i class="bi bi-person-plus"></i> Agregar
             </button>
             <button
-              class="btn btn-sm btn-primary me-2"
+              class="btn btn-sm btn-primary me-2 position-relative"
               (click)="saveProveedores()"
               [disabled]="!hasProveedorChanges">
               <i class="bi bi-floppy"></i> Guardar
+              <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+                *ngIf="hasProveedorChanges">
+                <span class="visually-hidden">Hay cambios sin guardar</span>
+              </span>
+            </button>
+            <button
+              class="btn btn-sm btn-warning me-2"
+              (click)="revertChanges()">
+              <i class="bi bi-arrow-clockwise"></i> Deshacer
             </button>
             <button
               class="btn btn-sm btn-danger"
@@ -96,8 +105,6 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: (params: any) => {
         const values = this.providers ? this.providers.map((p: any) => `${p.name} ${p.description}`.trim()) : [];
-        console.log('🔍 COMBO PROVEEDOR - Valores disponibles:', values);
-        console.log('🔍 COMBO PROVEEDOR - Total proveedores:', this.providers?.length);
         return {
           values: values
         };
@@ -330,6 +337,12 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
       this.params.context.MATERIAL.save(this.materialId, this.proveedorRowData, 'MATERIAL');
       this.hasProveedorChanges = false;
     }
+  }
+
+  revertChanges() {
+    this.loadProveedorData();
+    this.hasProveedorChanges = false;
+    this.selectedProveedor = null;
   }
 
   deleteSelectedProveedor(): void {

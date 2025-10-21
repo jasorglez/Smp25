@@ -616,11 +616,6 @@ export class MaterialesMaestroComponent implements OnInit {
           delete row.__isNew;
           delete row.__modified;
         });
-
-        // Recargar el contador de proveedores con timeout para evitar conflictos de renderizado
-        setTimeout(() => {
-          this.loadMaterials();
-        }, 0);
       }
 
     } catch (error) {
@@ -650,11 +645,6 @@ export class MaterialesMaestroComponent implements OnInit {
         await lastValueFrom(this.providersService.deleteProviderXTable(detailId));
         alerts.basicAlert('Proveedor eliminado', 'El proveedor se eliminó correctamente.', 'success');
         successCallback(); // Llama al callback para recargar los datos en el componente hijo
-
-        // Recargar el contador de proveedores con timeout para evitar conflictos de renderizado
-        setTimeout(() => {
-          this.loadMaterials();
-        }, 0);
       } catch (error) {
         console.error('Error deleting detail row:', error);
         alerts.basicAlert(
