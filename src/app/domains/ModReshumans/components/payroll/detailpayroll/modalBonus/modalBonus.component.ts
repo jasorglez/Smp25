@@ -15,6 +15,7 @@ import {
 import { AgGridModule } from 'ag-grid-angular';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { EmployeesService } from 'app/services/employees.service'; 
+import { AuthService } from 'app/services/auth.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 
 @Component({
@@ -34,6 +35,7 @@ export class ModalBonusComponent {
   private employeeService = inject(EmployeesService);
   private catalogsService = inject(CatalogsService);
   private lastEditedRowId: number | string | null = null;
+  authService = inject(AuthService);
 
   idEmpleado: number = 0;
   idBranch: number = 0;
@@ -127,7 +129,12 @@ obtenerEmpleado(): Promise<any> {
         {
         field: 'incidenceDate',
         headerName: 'Fecha',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'payroll', 'update');
+        },
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
         width: 200,
@@ -159,7 +166,12 @@ obtenerEmpleado(): Promise<any> {
       {
         field: 'idBonus',
         headerName: 'Concepto',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'payroll', 'update');
+        },
         filter: true,
         width: 150,
         filterParams: {
