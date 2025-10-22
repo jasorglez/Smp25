@@ -2,10 +2,10 @@
     <div class="row">
       <div class="col-auto mt-3">
         <div class="d-flex flex-column gap-1 me-0">
-          <button type="button" class="btn btn-primary" (click)="addRow()">
+          <button type="button" class="btn btn-primary" (click)="addRow()" *ngIf="authService.getCrudPermission('hr', 'payroll', 'create')">
             <i class="bi bi-plus-lg"></i>
           </button>
-          <button type="button" class="btn btn-success position-relative" (click)="saveChanges()">
+          <button type="button" class="btn btn-success position-relative" (click)="saveChanges()" *ngIf="authService.getCrudPermission('hr', 'payroll', 'create') || authService.getCrudPermission('hr', 'payroll', 'update')">
             <i class="bi bi-floppy"></i>
             <span class="position-absolute top-0 end-0 translate-middle p-2 bg-danger border border-light rounded-circle"
               *ngIf="notSavedChanges">
@@ -15,7 +15,7 @@
           <button type="button" class="btn btn-warning" (click)="refreshData()">
             <i class="bi bi-arrow-clockwise"></i>
           </button>
-          <button type="button" class="btn btn-danger" (click)="deleteEntry()">
+          <button type="button" class="btn btn-danger" (click)="deleteEntry()" *ngIf="authService.getCrudPermission('hr', 'payroll', 'delete') ">
             <i class="bi bi-trash"></i>
           </button>
           <button type="button" class="btn btn-secondary" (click)="resetGridSize()">

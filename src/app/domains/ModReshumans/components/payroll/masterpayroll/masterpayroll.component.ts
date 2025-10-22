@@ -206,7 +206,7 @@ export class MasterPayrollComponent implements OnInit {
   }
 
   private signalsService = inject(SignalsService);
-  private authService = inject(AuthService);
+  authService = inject(AuthService);
   private branchesService = inject(BranchsService);
   private administrationService = inject(AdministrationService);
   private payrollService = inject(PayrollService);
@@ -294,7 +294,12 @@ export class MasterPayrollComponent implements OnInit {
           ) || this.signalsService.getemailChoose() === 'root@beapp.com.mx'
             ? false
             : true,
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'payroll', 'update');
+        },
         filter: true,
         width: 170,
         filterParams: {
@@ -337,7 +342,12 @@ export class MasterPayrollComponent implements OnInit {
         headerName: 'Bloque del Periodo',
         headerClass: 'required-header',
         pinned: 'left',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'payroll', 'update');
+        },
         suppressMovable: true,
         width: 120,
         filter: 'agSetColumnFilter',
@@ -418,7 +428,10 @@ export class MasterPayrollComponent implements OnInit {
         filter: 'agDateColumnFilter',
 
         editable: (params) => {
-          return this.aggregatingRecord;
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'payroll', 'update');
         },
       
         cellEditor: 'agDateCellEditor',
@@ -473,7 +486,10 @@ export class MasterPayrollComponent implements OnInit {
         field: 'endDate',
         filter: 'agDateColumnFilter',
         editable: (params) => {
-          return this.aggregatingRecord;
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'payroll', 'update');
         },
         cellEditor: 'agDateCellEditor',
         valueGetter: (params) => {

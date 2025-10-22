@@ -31,6 +31,7 @@ import { environment } from '@env/environment';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 
+
 @Component({
   selector: 'app-employees-table',
   standalone: true,
@@ -56,7 +57,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   private catalogService = inject(CatalogsService);
   private timeService = inject(TimeService);
   private branchesService = inject(BranchsService);
-  private authService = inject(AuthService);
+  authService = inject(AuthService);
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   id: number;
@@ -212,8 +213,13 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       {
         field: 'vigente',
         hide: this.idRoot == 18,
-        headerName: 'Activo',
-        editable: true,
+        headerName: 'Activo',        
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'employees', 'update');
+        },
         /*suppressMovable: true,
         filter: true,*/
         width: 100,
@@ -244,7 +250,12 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           ) || this.signalsService.getemailChoose() === environment.root
             ? false
             : true,
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'employees', 'update');
+        },
         filter: true,
         width: 170,
         cellEditor: 'agSelectCellEditor',
@@ -285,7 +296,12 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         field: 'name',
         headerName: 'Nombre',
         headerClass: 'required-header',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'employees', 'update');
+        },
         suppressMovable: true,
         width: 270,
         filter: 'agSetColumnFilter',
@@ -339,7 +355,12 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         field: 'employeeCode',
         headerName: 'UserName',
         headerClass: 'required-header',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'employees', 'update');
+        },
         suppressMovable: true,
         width: 170,
         filter: 'agSetColumnFilter',
@@ -509,7 +530,12 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         hide: this.idRoot == 18,
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'employees', 'update');
+        },
         filter: 'agNumberColumnFilter',
         filterParams: {
           // can be 'windows' or 'mac'
@@ -553,7 +579,12 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         headerName: 'Departamento',
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'employees', 'update');
+        },
         suppressMovable: true,
         filter: true,
         filterParams: {
@@ -596,7 +627,12 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         headerName: 'Posicion',
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'employees', 'update');
+        },
         suppressMovable: true,
         filter: true,
         filterParams: {
@@ -638,7 +674,12 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         field: 'idBank',
         headerName: 'Banco',
         hide: this.idRoot == 18,
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'employees', 'update');
+        },
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
         suppressMovable: true,
@@ -670,7 +711,12 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       {
         field: 'ingressDate',
         headerName: 'Fecha de ingreso',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'employees', 'update');
+        },
         filter: 'agDateColumnFilter',
         filterParams: {
           // can be 'windows' or 'mac'
@@ -678,7 +724,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           //excelMode: 'mac',
         },
         width: 150,
-        cellRenderer: 'agDateCellRenderer',
         cellEditor: 'agDateCellEditor',
         valueGetter: (params) => {
           // Si no hay fecha, usar fecha actual
@@ -719,7 +764,12 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       {
         field: 'phone',
         headerName: 'Teléfono',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'employees', 'update');
+        },
         filter: false,
         width: 150,
         valueSetter: (params) => {
@@ -741,7 +791,12 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       {
         field: 'cp',
         headerName: 'CP',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'employees', 'update');
+        },
         filter: true,
         filterParams: {
           // can be 'windows' or 'mac'
@@ -753,7 +808,12 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       {
         field: 'address',
         headerName: 'Dirección',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'employees', 'update');
+        },
         filterParams: {
           // can be 'windows' or 'mac'
           defaultToNothingSelected: true,
@@ -824,7 +884,12 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       {
         field: 'neighborhood',
         headerName: 'Colonia',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'employees', 'update');
+        },
         filter: true,
         filterParams: {
           // can be 'windows' or 'mac'
@@ -854,7 +919,12 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       {
         field: 'rfc',
         headerName: 'RFC',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'employees', 'update');
+        },
         filter: true,
         filterParams: {
           // can be 'windows' or 'mac'
@@ -882,7 +952,12 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     return new Promise((resolve) => {
       this.employeeService.getEmployees(this.idBranch).subscribe(
         (data: any) => {
-          this.rowData = data;
+          if(this.authService.getCrudPermission('hr', 'employees', 'read')){
+            this.rowData = data;
+          }else{
+            this.rowData =[];
+          }
+          
           console.log('Datos obtenidos del servidor:', this.rowData);
 
           // Actualizar el grid y esperar a que termine
