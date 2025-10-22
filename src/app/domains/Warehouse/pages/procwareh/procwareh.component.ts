@@ -10,6 +10,7 @@ import { SharedModule } from 'app/shared/shared.module';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { RouterModule } from '@angular/router';
 import { SignalsService } from 'app/services/signals.service';
+import { AuthService } from 'app/services/auth.service';
 
 @Component({
   selector: 'app-procwareh',
@@ -21,7 +22,7 @@ import { SignalsService } from 'app/services/signals.service';
 export class ProcwarehComponent {
 
     private signalsService = inject(SignalsService);
-
+    authService = inject(AuthService);
   selectedTab :string = '';
 
    constructor() {

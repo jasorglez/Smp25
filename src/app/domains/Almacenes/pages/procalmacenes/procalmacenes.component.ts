@@ -4,6 +4,7 @@ import { TrackingService } from '../../../../services/tracking.service';
 import { SharedModule } from 'app/shared/shared.module';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { RouterModule } from '@angular/router';
+import { AuthService } from 'app/services/auth.service';
 import { SignalsService } from 'app/services/signals.service';
 
 @Component({
@@ -17,6 +18,7 @@ export class ProcalmacenesComponent {
 
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
+  authService = inject(AuthService);
 
   selectedTab: string = '';
 

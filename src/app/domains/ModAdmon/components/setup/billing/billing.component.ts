@@ -7,6 +7,7 @@ import { alerts } from 'app/helpers/alerts';
 import * as asn1js from 'asn1js';
 import * as pkijs from 'pkijs';
 import { TrackingService } from 'app/services/tracking.service';
+import { AuthService } from 'app/services/auth.service';
 
 @Component({
   selector: 'app-billing',
@@ -19,6 +20,8 @@ export class BillingComponent {
   private signalsService = inject(SignalsService);
   private administrationService = inject(AdministrationService);
   private trackingService = inject(TrackingService);
+  authService = inject(AuthService);
+  
   idRoot: number = null;
   billingData: any = {};
   fiscalRegimes: any = [];

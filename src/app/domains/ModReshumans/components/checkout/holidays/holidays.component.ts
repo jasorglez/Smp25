@@ -8,6 +8,7 @@ import { ClockService } from 'app/services/clock.service';
 import { CommonModule } from '@angular/common';
 import { EmployeesService } from 'app/services/employees.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { AuthService } from 'app/services/auth.service';
 
 @Component({
   selector: 'app-holidays',
@@ -43,6 +44,7 @@ export default class HolidaysComponent {
   requests: any[] = [];
   catalogoFestiveVigente: any[] = [];
   festivo: number = null;
+  authService = inject(AuthService);
 
   constructor(private formBuilder: FormBuilder) {
     effect(() => {

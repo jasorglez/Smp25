@@ -26,7 +26,7 @@ export const routes: Routes = [
             './domains/Warehouse/pages/procwareh/procwareh.component'
           ).then((w) => w.ProcwarehComponent),
         canActivate: [MasterPermissionsGuard],
-        data: { permissions: { master: 'warehouses' } },
+        data: { permissions: { master: 'shopping' } },
         children: [
           { path: '', redirectTo: 'Warehouse', pathMatch: 'full' },
           ...SharedModule.getRoutes(),

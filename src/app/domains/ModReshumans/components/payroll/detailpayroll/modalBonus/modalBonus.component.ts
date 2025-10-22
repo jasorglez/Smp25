@@ -64,7 +64,9 @@ export class ModalBonusComponent {
       await this.obtenerBonos(); // ✅ espera que termine antes de continuar
       this.obtenerDatosCatalogos();
       this.obtenerDatosCatalogosVigente();
-      this.addMasterRow(); // ✅ ahora sí, ya hay datos en rowData
+      if(this.authService.getCrudPermission('hr', 'payroll', 'create')){
+        this.addMasterRow(); // ✅ ahora sí, ya hay datos en rowData
+      }
     });
   }
 
