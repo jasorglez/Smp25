@@ -12,6 +12,7 @@ import { ClockService } from 'app/services/clock.service';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { concat, toArray } from 'rxjs';
 import { TrackingService } from 'app/services/tracking.service';
+import { AuthService } from 'app/services/auth.service';
 
 @Component({
   selector: 'app-discrepancies',
@@ -28,6 +29,7 @@ export default class DiscrepanciesComponent implements OnInit {
   private fb = inject(FormBuilder);
   private clockService = inject(ClockService);
   private trackingService = inject(TrackingService);
+  authService = inject(AuthService);
 
   ngOnInit() {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
@@ -232,7 +234,12 @@ export default class DiscrepanciesComponent implements OnInit {
       {
         field: 'discrepanceAllowedReason',
         headerName: 'Suma a horas ajustadas',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'clock', 'update');
+        },
         width: 150,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
@@ -274,7 +281,11 @@ export default class DiscrepanciesComponent implements OnInit {
   obtenerDatos() {
     this.clockService.getHourDiscrepancies(this.idBranch).subscribe((data: any) => {
       this.rowData = [];
+      if(this.authService.getCrudPermission('hr', 'clock', 'read')){
       this.rowData = data;
+      }else{
+        this.rowData = []
+      }
       console.log(this.rowData);
       this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Diferencias de Checador', 'Menu Recursos Humanos Diferencias de Checador',  this.trackingService.getEmail());
       // Esperar a que el grid se actualice y luego ajustar las columnas

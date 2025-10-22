@@ -3,6 +3,7 @@ import { PositionsComponent } from './positions/positions.component';
 import { BillingComponent } from './billing/billing.component';
 import { CatalogsComponent } from 'app/domains/SMP/Components/catalogs/catalogs.component';
 import { SignalsService } from 'app/services/signals.service';
+import { AuthService } from 'app/services/auth.service';
 
 @Component({
   selector: 'app-setup',
@@ -15,6 +16,7 @@ export class SetupAdmonComponent {
   idRoot: number;
 
   private signalsService = inject(SignalsService);
+  authService = inject(AuthService);
 
   ngOnInit() {
     this.signalsService.setCatalogSelected('ADMINISTRATION');

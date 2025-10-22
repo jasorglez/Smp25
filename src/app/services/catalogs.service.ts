@@ -16,6 +16,10 @@ export class CatalogsService {
   getCatalogs(idRoot: number, type: string): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/getCatalogs?idCompany=${idRoot}&type=${type}`, { headers: this.trackingService.getHeaders() });
   }
+
+  getCatalogsxSubfamily(idRoot, idFamily: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/getSubfamily?idCompany=${idRoot}&idFam=${idFamily}`, { headers: this.trackingService.getHeaders() });
+  }  
   
   getCatalogsVigente(idRoot: number, type: string): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/getCatalogsVigente?idCompany=${idRoot}&type=${type}`, { headers: this.trackingService.getHeaders() });

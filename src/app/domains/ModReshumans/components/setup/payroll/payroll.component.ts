@@ -12,6 +12,7 @@ import { AdministrationService } from 'app/services/administration.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { IdBlockPeriodsService } from 'app/services/IdBlockPeriods.service';
 import * as XLSX from 'xlsx';
+import { AuthService } from 'app/services/auth.service';
 
 interface Bank {
   id: number;
@@ -22,7 +23,7 @@ interface Bank {
 @Component({
   selector: 'app-payroll',
   standalone: true,
-  imports: [ NgFor, ReactiveFormsModule ],
+  imports: [ NgFor, ReactiveFormsModule , CommonModule],
   templateUrl: './payroll.component.html',
   styles: [`
     .json-preview {
@@ -40,6 +41,7 @@ export class PayrollComponent {
   private hrService = inject(HRService);
   private branchsService = inject(BranchsService);
   private idBlockPeriodsService = inject(IdBlockPeriodsService);
+  authService = inject(AuthService);
 
   formBuilder = inject(FormBuilder);
   isLoading: boolean = false;
@@ -90,12 +92,12 @@ export class PayrollComponent {
   }
 
   myForm: FormGroup = this.formBuilder.group({
-    startDay: ['', Validators.required, []],
-    payrollPeriod: ['', [Validators.required, Validators.minLength(1)], []],
-    overtimePay: ['', [Validators.required, Validators.minLength(1)], []],
-    discount: ['', [Validators.required, Validators.minLength(1)], []],
-    specialOvertimePay: ['', [Validators.required, Validators.minLength(1)], []],
-    identificationBlockPeriod: ['', [Validators.required]]
+    startDay: [{ value: '', disabled: !this.authService.getCrudPermission('hr', 'setup', 'update') && !this.authService.getCrudPermission('hr', 'setup', 'create') },Validators.required, []],
+    payrollPeriod: [{ value: '', disabled: !this.authService.getCrudPermission('hr', 'setup', 'update') && !this.authService.getCrudPermission('hr', 'setup', 'create') },[Validators.required, Validators.minLength(1)], []],
+    overtimePay: [{ value: '', disabled: !this.authService.getCrudPermission('hr', 'setup', 'update') && !this.authService.getCrudPermission('hr', 'setup', 'create') },[Validators.required, Validators.minLength(1)], []],
+    discount: [{ value: '', disabled: !this.authService.getCrudPermission('hr', 'setup', 'update') && !this.authService.getCrudPermission('hr', 'setup', 'create') },[Validators.required, Validators.minLength(1)], []],
+    specialOvertimePay: [{ value: '', disabled: !this.authService.getCrudPermission('hr', 'setup', 'update') && !this.authService.getCrudPermission('hr', 'setup', 'create') },[Validators.required, Validators.minLength(1)], []],
+    identificationBlockPeriod: [{ value: '', disabled: !this.authService.getCrudPermission('hr', 'setup', 'update') && !this.authService.getCrudPermission('hr', 'setup', 'create') },[Validators.required]]
   })
   
   getNameBranch() {
