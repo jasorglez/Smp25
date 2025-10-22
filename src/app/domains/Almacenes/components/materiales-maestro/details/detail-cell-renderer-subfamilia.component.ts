@@ -121,25 +121,25 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
     this.subfamiliaRowData = [
       {
         id: 1,
-        subfamilia: 'Subfamilia 1',
+        subfamilia: 'Vinos',
         sabor: 'Sabor A',
         presentacion: 'Presentación 1'
       },
       {
         id: 2,
-        subfamilia: 'Subfamilia 2',
+        subfamilia: 'Sidra',
         sabor: 'Sabor B',
         presentacion: 'Presentación 2'
       },
       {
         id: 3,
-        subfamilia: 'Subfamilia 3',
+        subfamilia: 'Refresco',
         sabor: 'Sabor C',
         presentacion: 'Presentación 3'
       },
       {
         id: 4,
-        subfamilia: 'Subfamilia 4',
+        subfamilia: 'Crema',
         sabor: 'Sabor D',
         presentacion: 'Presentación 4'
       }
