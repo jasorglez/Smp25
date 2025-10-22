@@ -75,4 +75,8 @@ export class LogbookService {
     getMediaByOt(idOt: number): Observable<any> {
       return this.http.get(`${environment.urlSmp}/Logbook/ots/${idOt}/media/download`, { headers: this.authService.getHeaders() });
     }
+
+    updateProjectForOt(idOt: number, newIdProject: number): Observable<any> {
+      return this.http.put(`${environment.urlSmp}/OT/ots/${idOt}/project/${newIdProject}`, {}, { headers: this.authService.getHeaders() });
+    }
 }
