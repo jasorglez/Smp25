@@ -8,6 +8,7 @@ import { alerts } from 'app/helpers/alerts';
 import { DetailCellRendererProveedoresComponent } from './details/detail-cell-renderer-proveedores.component';
 import { DetailCellRendererFamiliaComponent } from './details/detail-cell-renderer-familia.component';
 import { DetailCellRendererSucursalComponent } from './details/detail-cell-renderer-sucursal.component';
+import { DetailCellRendererSubfamiliaComponent } from './details/detail-cell-renderer-subfamilia.component';
 import { MaterialsService } from 'app/services/materials.service';
 import { MaterialsResponse } from 'app/interface/materials.interface';
 import { SignalsService } from 'app/services/signals.service';
@@ -27,7 +28,8 @@ import { environment } from '@env/environment';
     AgGridModule,
     DetailCellRendererProveedoresComponent,
     DetailCellRendererFamiliaComponent,
-    DetailCellRendererSucursalComponent
+    DetailCellRendererSucursalComponent,
+    DetailCellRendererSubfamiliaComponent
   ],
   templateUrl: './materiales-maestro.component.html',
   styleUrl: './materiales-maestro.component.scss'
@@ -132,7 +134,8 @@ export class MaterialesMaestroComponent implements OnInit {
   components = {
     detailCellRendererProveedores: DetailCellRendererProveedoresComponent,
     detailCellRendererFamilia: DetailCellRendererFamiliaComponent,
-    detailCellRendererSucursal: DetailCellRendererSucursalComponent
+    detailCellRendererSucursal: DetailCellRendererSucursalComponent,
+    detailCellRendererSubfamilia: DetailCellRendererSubfamiliaComponent
   };
 
   public gridOptions: any = {
@@ -153,6 +156,8 @@ export class MaterialesMaestroComponent implements OnInit {
         return { component: 'detailCellRendererFamilia' };
       } else if (params.data.detailType === 'sucursal') {
         return { component: 'detailCellRendererSucursal' };
+      } else if (params.data.detailType === 'subfamilia') {
+        return { component: 'detailCellRendererSubfamilia' };
       }
       return undefined;
     },
@@ -302,7 +307,7 @@ export class MaterialesMaestroComponent implements OnInit {
   // Función auxiliar para obtener el tipo de detalle desde el ID de la columna
   getDetailTypeFromColId(colId: string): string | null {
     if (colId === 'providerCount') return 'proveedores';
-    if (colId === 'subfamilyCount') return 'familia';
+    if (colId === 'subfamilyCount') return 'subfamilia';
     return null;
   }
 
@@ -314,7 +319,7 @@ export class MaterialesMaestroComponent implements OnInit {
         case 'proveedores':
           div.innerText = params.value || '';
           break;
-        case 'familia':
+        case 'subfamilia':
           div.innerText = params.value || '';
           break;
       }

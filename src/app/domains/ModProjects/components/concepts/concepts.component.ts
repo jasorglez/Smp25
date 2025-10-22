@@ -128,7 +128,7 @@ export class ConceptsComponent implements OnInit, CanComponentDeactivate {
             ? `$${Number(params.value).toLocaleString('es-MX', {
                 minimumFractionDigits: 2,
               })}`
-            : '-';
+            : 'N/A';
         },
         valueSetter: (params) => {
           const value = parseFloat(params.newValue);
@@ -159,7 +159,7 @@ export class ConceptsComponent implements OnInit, CanComponentDeactivate {
             ? `$${Number(params.value).toLocaleString('es-MX', {
                 minimumFractionDigits: 2,
               })}`
-            : '-';
+            : 'N/A';
         },
         valueSetter: (params) => {
           const value = parseFloat(params.newValue);
