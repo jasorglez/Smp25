@@ -3002,6 +3002,9 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
       for (const ot of selectedOTs) {
         try {
+          // Guardar el proyecto antiguo ANTES de actualizar
+          const oldProjectId = ot.idProject;
+
           // Primero actualizar la OT
           await firstValueFrom(this.otService.updateOt(ot.id, {
             ...ot,
@@ -3009,7 +3012,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
           }));
 
           // Luego actualizar todos los registros del logbook asociados
-          await firstValueFrom(this.logbookService.updateProjectForOt(ot.id, newProjectId));
+          // Pasamos el oldProjectId para que el backend pueda mapear correctamente los workprograms
+          await firstValueFrom(this.logbookService.updateProjectForOt(ot.id, newProjectId, oldProjectId));
 
           successCount++;
         } catch (error) {
@@ -3244,6 +3248,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     const otId = params.data.id;
     const updatedOtData = { ...params.data };
     const newProjectId = params.newValue;
+    const oldProjectId = params.oldValue;
 
     console.log('Updating OT with ID:', otId);
     console.log('Updated data:', updatedOtData);
@@ -3254,7 +3259,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         console.log('OT updated successfully:', response);
 
         // Luego actualizar todos los registros del logbook asociados a esta OT
-        this.logbookService.updateProjectForOt(otId, newProjectId).subscribe({
+        // Pasamos el oldProjectId para que el backend pueda mapear correctamente los workprograms
+        this.logbookService.updateProjectForOt(otId, newProjectId, oldProjectId).subscribe({
           next: (logbookResponse: any) => {
             console.log('Logbook records updated successfully:', logbookResponse);
 

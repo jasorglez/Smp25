@@ -76,7 +76,10 @@ export class LogbookService {
       return this.http.get(`${environment.urlSmp}/Logbook/ots/${idOt}/media/download`, { headers: this.authService.getHeaders() });
     }
 
-    updateProjectForOt(idOt: number, newIdProject: number): Observable<any> {
-      return this.http.put(`${environment.urlSmp}/OT/ots/${idOt}/project/${newIdProject}`, {}, { headers: this.authService.getHeaders() });
+    updateProjectForOt(idOt: number, newIdProject: number, oldIdProject?: number): Observable<any> {
+      const url = oldIdProject
+        ? `${environment.urlSmp}/OT/ots/${idOt}/project/${newIdProject}?oldIdProject=${oldIdProject}`
+        : `${environment.urlSmp}/OT/ots/${idOt}/project/${newIdProject}`;
+      return this.http.put(url, {}, { headers: this.authService.getHeaders() });
     }
 }
