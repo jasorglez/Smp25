@@ -21,6 +21,7 @@ import { lastValueFrom, concat, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { EmployeesService } from 'app/services/employees.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { AuthService } from 'app/services/auth.service';
 
 declare var bootstrap: any;
 
@@ -38,6 +39,7 @@ export default class DetailClock2Component implements OnInit {
   private fb = inject(FormBuilder);
   private employeesService = inject(EmployeesService);
   private trackingService = inject(TrackingService);
+  authService = inject(AuthService);
 
   ngOnInit() {
     this.idEmployee = this.signalsService.getDetailClockForEmployee().idEmployee();
@@ -240,7 +242,12 @@ export default class DetailClock2Component implements OnInit {
       {
         field: 'date',
         headerName: 'Fecha',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'clock', 'update');
+        },
         cellEditor: 'agDateCellEditor',
         width: 120,
         valueFormatter: (params) => {
@@ -289,7 +296,12 @@ export default class DetailClock2Component implements OnInit {
        {
         field: 'checkTime',
         headerName: 'Hora de Registro',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'clock', 'update');
+        },
         cellEditor: 'timeEditor',
         width: 200,
         valueFormatter: (params) => {
@@ -300,7 +312,7 @@ export default class DetailClock2Component implements OnInit {
       {
         field: 'realHourBySystem',
         headerName: 'Hora de Registro de Sistema',
-        editable: true,
+        editable: false,
         cellEditor: 'timeEditor',
         width: 200,
         valueFormatter: (params) => {
@@ -322,7 +334,12 @@ export default class DetailClock2Component implements OnInit {
       {
         field: 'type',
         headerName: 'Tipo',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'clock', 'update');
+        },
         width: 100,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
@@ -545,7 +562,12 @@ export default class DetailClock2Component implements OnInit {
       {
         field: 'valid',
         headerName: 'Válido',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'clock', 'update');
+        },
         width: 100
       },
       {
@@ -574,7 +596,12 @@ export default class DetailClock2Component implements OnInit {
       {
         field: 'idReason',
         headerName: 'Razón de motivo de falta',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'clock', 'update');
+        },
         width: 200,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
@@ -592,7 +619,7 @@ export default class DetailClock2Component implements OnInit {
       {
         field: 'minuteDiscount',
         headerName: 'Minutos Descontados',
-        editable: true,
+        editable: false,
         cellDataType: 'number',
         cellEditor: 'agTextCellEditor',
         width: 200,
@@ -663,10 +690,15 @@ export default class DetailClock2Component implements OnInit {
       .subscribe((data: any) => {
         // Asegurarse de que las fechas estén en el formato correcto
         console.log('Datos obtenidos:', data);
+        if(this.authService.getCrudPermission('hr', 'clock', 'read')){
         this.rowData = data.map((item: any) => ({
           ...item,
           date: item.date ? new Date(item.date).toISOString().split('T')[0] : null
         }));
+      }
+        else{
+          this.rowData = []
+        }
         this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Detalle de Checador', 'Menu Recursos Humanos Detalle de Checador',  this.trackingService.getEmail());
         // Esperar a que el grid se actualice y luego ajustar las columnas
         setTimeout(() => {

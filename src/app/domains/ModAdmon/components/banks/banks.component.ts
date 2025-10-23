@@ -19,6 +19,7 @@ import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-edito
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
+import { AuthService } from 'app/services/auth.service';
 
 @Component({
   selector: 'app-banks',
@@ -33,6 +34,7 @@ import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
   styleUrl: './banks.component.scss',
 })
 export class BanksComponent implements CanComponentDeactivate {
+  authService = inject(AuthService);
   constructor() {
     this.obtenerDatos();
   }
@@ -109,7 +111,12 @@ export class BanksComponent implements CanComponentDeactivate {
       {
         field: 'name',
         headerName: 'Banco',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'bank', 'update');
+        },
         filter: true,
         width: 150,
       },
@@ -131,11 +138,13 @@ export class BanksComponent implements CanComponentDeactivate {
           },
         },
         onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+          if(event.data.__isNew || this.authService.getCrudPermission('administration', 'bank', 'update')){
           if (!event.node.group) {
             this.modalServiceTable.showModal({
               params: event,
               value: event.value,
             });
+          }
           }
         },
         cellRenderer: (params: ICellRendererParams) => {
@@ -146,12 +155,22 @@ export class BanksComponent implements CanComponentDeactivate {
         },
       },
 
-      { field: 'contact', headerName: 'Contacto', editable: true, width: 150 },
+      { field: 'contact', headerName: 'Contacto', editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'bank', 'update');
+        }, width: 150 },
 
       {
         field: 'phone',
         headerName: 'Telefono',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'bank', 'update');
+        },
         width: 120,
         cellEditorParams: {
           maxLength: 15,
@@ -177,18 +196,32 @@ export class BanksComponent implements CanComponentDeactivate {
       {
         field: 'numBranch',
         headerName: 'Num. Sucursal',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'bank', 'update');
+        },
         width: 140,
       },
 
-      { field: 'code', headerName: 'Codigo', editable: true, width: 95 },
+      { field: 'code', headerName: 'Codigo', editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'bank', 'update');
+        }, width: 95 },
     ];
   }
 
   obtenerDatos() {
     this.administrationService.getBanks().subscribe({
       next: (data: any) => {
-        this.Bankdata = data;
+        if(this.authService.getCrudPermission('administration', 'bank', 'read')){
+        this.Bankdata = data;}
+        else{
+          this.Bankdata = []
+        }
         //console.log('Data Bank:', data);
       },
       error: (error) => {

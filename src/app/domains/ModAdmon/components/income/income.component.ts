@@ -21,6 +21,7 @@ import { CustomersService } from 'app/services/customers.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { FacturacionService } from 'app/services/facturacion.service';
+import { AuthService } from 'app/services/auth.service';
 
 @Component({
   selector: 'app-income',
@@ -41,6 +42,7 @@ export class IncomeComponent {
   private trackingService = inject(TrackingService);
   private BranchsService = inject(BranchsService);
   private facturacionService = inject(FacturacionService);
+  authService = inject(AuthService);
 
 
   ngOnInit() {
@@ -214,10 +216,15 @@ export class IncomeComponent {
     this.incomesAndExpensesService.getIncomesAndExpenses(this.root).subscribe({
       next: (incomes) => {
         // Filtrado y manejo de caso sin datos
+        if(this.authService.getCrudPermission('administration', 'income', 'read')){
         const filtered = incomes?.filter(income => {
           return income.type === "DEPOSITO" && income.idAccount === this.idAccount
         }) || [];
         this.incomes = filtered;
+        }else{
+          this.incomes =[]
+        }
+        
       },
       error: (err) => {
         // Manejo de errores HTTP

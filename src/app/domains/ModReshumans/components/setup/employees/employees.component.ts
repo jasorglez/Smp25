@@ -1,19 +1,22 @@
 import { Component, effect, inject } from '@angular/core';
 import { SignalsService } from 'app/services/signals.service';
 import { alerts } from 'app/helpers/alerts';
+import { CommonModule } from '@angular/common';
 import { HRService } from 'app/services/hr.service';
+import { AuthService } from 'app/services/auth.service';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormControl } from '@angular/forms';
 
 @Component({
   selector: 'app-employees',
   standalone: true,
-  imports: [  ReactiveFormsModule ],
+  imports: [  ReactiveFormsModule ,CommonModule],
   templateUrl: './employees.component.html',
 })
 export class EmployeesComponent {
   
   private signalsService = inject(SignalsService); 
   private hrService = inject(HRService);
+  authService = inject(AuthService);
 
   formBuilder = inject(FormBuilder);
   idBranch: number;
@@ -27,12 +30,17 @@ export class EmployeesComponent {
         this.getData();
       });
     }
+    
 
   myForm: FormGroup = this.formBuilder.group({
-    vigency: ['', [Validators.required, Validators.minLength(1)], []],  
+    vigency: [
+      { value: '', disabled: !this.authService.getCrudPermission('hr', 'setup', 'update') && !this.authService.getCrudPermission('hr', 'setup', 'create') },
+      [Validators.required, Validators.minLength(1)]
+    ],
   })
 
   getData() {
+    
     this.hrService.getHRManagementData(this.idBranch).subscribe({
       next: (data: any) => {
         this.hrData = data[0] || {};

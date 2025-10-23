@@ -25,15 +25,14 @@
                 </a>
              </li>
 
-             <li class="nav-item">
+             <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'materials')">
                 <a class="nav-link modern-tab" routerLink="materials" routerLinkActive="active">
                   <i class="bi bi-box-seam"></i>
                   <span>{{ 'materials' | translate}}</span>
                 </a>
              </li>
-
-           @if (signalsService.getrootChoose ()== true) {  
-             <li class="nav-item">
+ 
+             <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'workprograms')">
               
                 <a class="nav-link modern-tab" routerLink="workprograms" routerLinkActive="active">
                   <i class="bi bi-diagram-3"></i>
@@ -42,14 +41,14 @@
              </li> 
 
              
-             <li class="nav-item">
+             <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'contracts')">
                 <a class="nav-link modern-tab" routerLink="contracts" routerLinkActive="active">
                   <i class="bi bi-file-earmark-text"></i>
                   <span>{{ 'contract' | translate}}</span>
                 </a>
              </li>        
 
-             <li class="nav-item">
+             <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'providers')">
                 <a class="nav-link modern-tab" routerLink="providers" routerLinkActive="active">
                   <i class="bi bi-people"></i>
                   <span>{{ 'providers' | translate}}</span>
@@ -57,13 +56,19 @@
              </li>
                           
 
-             <li class="nav-item">
+             <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'equipment')">
                 <a class="nav-link modern-tab" routerLink="equipment" routerLinkActive="active">
                   <i class="bi bi-gear-wide-connected"></i>
                   <span>{{ 'equipment' | translate}}</span>
                 </a>
              </li>
-              <li class="nav-item">
+             <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'concepts')">
+                <a class="nav-link modern-tab" routerLink="concepts" routerLinkActive="active">
+                  <i class="bi bi-folder"></i>
+                  <span>Conceptos</span>
+                </a>
+             </li>
+              <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'catalogs')">
                 <a class="nav-link modern-tab" routerLink="catalogs" routerLinkActive="active">
                   <i class="bi bi-journal-text"></i>
                   <span>{{ 'catalogs' | translate}}</span>
@@ -71,7 +76,7 @@
              </li>
              
 
-             <li class="nav-item">
+             <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'projects')">
                 <a class="nav-link modern-tab" routerLink="projects" routerLinkActive="active">
                   <i class="bi bi-building"></i>
                   <span>{{ 'projects' | translate}}</span>
@@ -84,13 +89,12 @@
                   <span>{{ 'oil' | translate}}</span>
                 </a>
              </li>
-             <li class="nav-item">
+             <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'estimates')">
                 <a class="nav-link modern-tab" routerLink="estimates" routerLinkActive="active">
                   <i class="bi bi-calculator"></i>
                   <span>{{ 'estimate' | translate}}</span>
                 </a>
              </li>
-            }
 
             </ul>
           </div>

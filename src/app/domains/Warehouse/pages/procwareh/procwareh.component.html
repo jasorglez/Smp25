@@ -2,27 +2,27 @@
   <div class="card">
     <div class="card-header p-2">
       <ul class="nav nav-pills">
-        <li class="nav-item">
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'providers')">
           <a class="nav-link green-tab" routerLink="page03" routerLinkActive="active"><i 
             class="bi bi-file-earmark-person-fill"></i>{{'providers' | translate}} </a>
         </li>
         
-        <li class="nav-item">
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'warehouses')">
           <a class="nav-link green-tab" routerLink="warehouses" routerLinkActive="active"><i
             class="bi bi-houses"></i> {{'warehouses' | translate}}</a>
         </li>
 
-        <li class="nav-item">
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'materials')">
           <a class="nav-link green-tab" routerLink="page02typemat" routerLinkActive="active"><i class="bi bi-archive-fill"></i>
             {{'materials' | translate}}</a>
         </li>
         
-        <li class="nav-item">
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'requisitions')">
           <a class="nav-link green-tab" routerLink="requisitions" routerLinkActive="active"><i
             class="bi bi-list-task"></i> {{'requisitions' | translate}}</a>
         </li>
 
-        <li class="nav-item">
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'purchas_eorder')">
           <a class="nav-link green-tab" routerLink="purchaseorder" routerLinkActive="active"><i
             class="bi bi-cart-fill"></i> {{'orders' | translate}} {{'purchase' | translate}}</a>
         </li>
@@ -34,36 +34,36 @@
           </a>
         </li>-->
         
-         <li class="nav-item">
+         <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'entrances')">
           <a class="nav-link green-tab" routerLink="entrances" routerLinkActive="active">
             <i class="bi bi-arrow-up-right"></i> {{'entrances' | translate}}
           </a>
         </li>
            
-        <li class="nav-item">
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'outings')">
           <a class="nav-link green-tab" routerLink="outings" routerLinkActive="active">
             <i class="bi bi-arrow-up-right"></i> {{'outings' | translate}}
           </a>
         </li>
 
-        <li class="nav-item">
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'kardex')">
           <a class="nav-link green-tab" routerLink="kardex" routerLinkActive="active"><i
             class="bi bi-pc-display-horizontal"></i> {{'kardex' | translate}} </a>
         </li>
 
-        <li class="nav-item">
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'guard')">
           <a class="nav-link green-tab" routerLink="guard" routerLinkActive="active"><i
             class="bi bi-graph-up"></i> {{'guard' | translate}} </a>
         </li>
 
             
-        <li class="nav-item">
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'catalogs')">
           <a class="nav-link green-tab" routerLink="catalogs" routerLinkActive="active"><i class="bi bi-journal-text"></i>
              Catálogos</a>
        </li>
 
         
-       <li class="nav-item">
+       <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'setup')">
         <a class="nav-link green-tab" routerLink="setupwh" routerLinkActive="active"><i
           class="bi bi-gear-fill"></i> {{'setting' | translate}}</a>
       </li>

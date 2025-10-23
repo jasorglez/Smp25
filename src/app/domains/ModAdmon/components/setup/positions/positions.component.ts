@@ -7,6 +7,7 @@ import { AdministrationService } from 'app/services/administration.service';
 import { SignalsService } from 'app/services/signals.service';
 import { alerts } from 'app/helpers/alerts';
 import { TrackingService } from 'app/services/tracking.service';
+import { AuthService } from 'app/services/auth.service';
 
 @Component({
   selector: 'app-positions',
@@ -19,6 +20,8 @@ export class PositionsComponent {
   private signalsService = inject(SignalsService);
   private administrationService = inject(AdministrationService);
   private trackingService = inject(TrackingService);
+  authService = inject(AuthService);
+  
   idRoot: number = null;
   setupData: any = {};
   fiscalRegimes: any = [];

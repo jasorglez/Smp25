@@ -1160,6 +1160,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     {
       field: 'cuadrilla',
       headerName: 'Cuadrilla',
+      hide: true,
       flex: 1, editable: () => !this.signalsService.getClosedReport()(),
       valueGetter: (params) => {
         return params.data.cuadrilla || `Cuadrilla ${this.cuadrillaSelect}`;
@@ -2995,11 +2996,30 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         return;
       }
 
+      let successCount = 0;
+      let failedCount = 0;
+      const newProjectId = parseInt(this.selectedNewProject);
+
       for (const ot of selectedOTs) {
-        await firstValueFrom(this.otService.updateOt(ot.id, {
-          ...ot,
-          idProject: this.selectedNewProject
-        }));
+        try {
+          // Guardar el proyecto antiguo ANTES de actualizar
+          const oldProjectId = ot.idProject;
+
+          // Primero actualizar la OT
+          await firstValueFrom(this.otService.updateOt(ot.id, {
+            ...ot,
+            idProject: newProjectId
+          }));
+
+          // Luego actualizar todos los registros del logbook asociados
+          // Pasamos el oldProjectId para que el backend pueda mapear correctamente los workprograms
+          await firstValueFrom(this.logbookService.updateProjectForOt(ot.id, newProjectId, oldProjectId));
+
+          successCount++;
+        } catch (error) {
+          console.error(`Error al cambiar proyecto para OT ${ot.id}:`, error);
+          failedCount++;
+        }
       }
 
       // Cerrar modal
@@ -3009,7 +3029,12 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       // Recargar datos
       this.obtenerDatos();
 
-      alerts.basicAlert('Éxito', `Se cambiaron ${selectedOTs.length} OT(s) de proyecto exitosamente.`, 'success');
+      // Mostrar resultado
+      if (failedCount === 0) {
+        alerts.basicAlert('Éxito', `Se cambiaron ${successCount} OT(s) de proyecto exitosamente y todos sus registros del logbook.`, 'success');
+      } else {
+        alerts.basicAlert('Advertencia', `Se cambiaron ${successCount} OT(s) exitosamente, pero ${failedCount} fallaron.`, 'warning');
+      }
 
     } catch (error) {
       console.error('Error al cambiar proyecto:', error);
@@ -3222,33 +3247,75 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
     const otId = params.data.id;
     const updatedOtData = { ...params.data };
+    const newProjectId = params.newValue;
+    const oldProjectId = params.oldValue;
 
     console.log('Updating OT with ID:', otId);
     console.log('Updated data:', updatedOtData);
 
+    // Primero actualizar la OT
     this.otService.updateOt(otId, updatedOtData).subscribe({
       next: (response: any) => {
         console.log('OT updated successfully:', response);
-        const oldProject = this.projectsList.find(p => p.id === params.oldValue);
-        const newProject = this.projectsList.find(p => p.id === params.newValue);
-        const oldProjectName = oldProject ? oldProject.name : params.oldValue;
-        const newProjectName = newProject ? newProject.name : params.newValue;
 
-        this.trackingService.addLog(
-          this.trackingService.getnameComp(),
-          `Proyecto cambiado de ${oldProjectName} a ${newProjectName} para OT ${params.data.otNumber}`,
-          'Menu Proyectos Ordenes de Trabajo',
-          this.trackingService.getEmail()
-        );
+        // Luego actualizar todos los registros del logbook asociados a esta OT
+        // Pasamos el oldProjectId para que el backend pueda mapear correctamente los workprograms
+        this.logbookService.updateProjectForOt(otId, newProjectId, oldProjectId).subscribe({
+          next: (logbookResponse: any) => {
+            console.log('Logbook records updated successfully:', logbookResponse);
 
-        alerts.basicAlert(
-          'Proyecto Actualizado',
-          `La orden de trabajo ${params.data.otNumber} ha sido movida exitosamente al proyecto ${newProjectName}.`,
-          'success'
-        );
+            const oldProject = this.projectsList.find(p => p.id === params.oldValue);
+            const newProject = this.projectsList.find(p => p.id === params.newValue);
+            const oldProjectName = oldProject ? oldProject.name : params.oldValue;
+            const newProjectName = newProject ? newProject.name : params.newValue;
 
-        // Refrescar la tabla para mostrar los cambios
-        this.obtenerDatos();
+            this.trackingService.addLog(
+              this.trackingService.getnameComp(),
+              `Proyecto cambiado de ${oldProjectName} a ${newProjectName} para OT ${params.data.otNumber}`,
+              'Menu Proyectos Ordenes de Trabajo',
+              this.trackingService.getEmail()
+            );
+
+            alerts.basicAlert(
+              'Proyecto Actualizado',
+              `La orden de trabajo ${params.data.otNumber} y todos sus registros han sido movidos exitosamente al proyecto ${newProjectName}.`,
+              'success'
+            );
+
+            // Refrescar la tabla para mostrar los cambios
+            this.obtenerDatos();
+
+            // Si esta OT está seleccionada, recargar sus datos
+            if (this.selectedOt && this.selectedOt.id === otId) {
+              this.selectedOt.idProject = newProjectId;
+
+              // Actualizar cuadrillaSelect con el nuevo proyecto
+              const newProject = this.projectsList.find(p => p.id === newProjectId);
+              if (newProject) {
+                if (newProject.name === "ADMON TD") {
+                  this.cuadrillaSelect = "";
+                } else {
+                  const select = newProject.name.split('-');
+                  const numero = parseInt(select[1], 10);
+                  this.cuadrillaSelect = `${numero}`;
+                }
+                console.log('📋 CuadrillaSelect actualizada a:', this.cuadrillaSelect);
+              }
+
+              this.reloadLogbookData();
+            }
+          },
+          error: (logbookError: any) => {
+            console.error('Error updating logbook records:', logbookError);
+            alerts.basicAlert(
+              'Advertencia',
+              `La OT fue actualizada pero hubo un problema al actualizar algunos registros del logbook. Por favor, verifique los datos.`,
+              'warning'
+            );
+            // Refrescar de todos modos
+            this.obtenerDatos();
+          }
+        });
       },
       error: (error: any) => {
         console.error('Error updating OT:', error);
@@ -3262,6 +3329,23 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         params.api.refreshCells({ rowNodes: [params.node], force: true });
       }
     });
+  }
+
+  // Método auxiliar para recargar los datos del logbook
+  private reloadLogbookData() {
+    // Recargar conceptos con el nuevo proyecto
+    if (this.selectedOt && this.selectedOt.idProject) {
+      this.obtenerConceptos(this.selectedOt.idProject).subscribe();
+    }
+
+    // Recargar datos de personal y materiales si hay un reporte seleccionado
+    if (this.selectedReporteId) {
+      this.obtenerPersonal(this.selectedReporteId);
+      this.obtenerMateriales(this.selectedReporteId);
+    }
+
+    // Recargar todos los datos de personal de la OT
+    this.loadPersonalData();
   }
 
   // Métodos para pestañas y vista previa
@@ -4563,6 +4647,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     const newPersonal = {
       //id: tempId,
       idOt: parseInt(this.selectedOt.id),
+      idProject: this.selectedOt.idProject,
       idReporte: this.selectedReporteId,
       idResource: null, // Se almacenará el ID del empleado
       position: '',

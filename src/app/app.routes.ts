@@ -26,7 +26,7 @@ export const routes: Routes = [
             './domains/Warehouse/pages/procwareh/procwareh.component'
           ).then((w) => w.ProcwarehComponent),
         canActivate: [MasterPermissionsGuard],
-        data: { permissions: { master: 'warehouses' } },
+        data: { permissions: { master: 'shopping' } },
         children: [
           { path: '', redirectTo: 'Warehouse', pathMatch: 'full' },
           ...SharedModule.getRoutes(),
@@ -446,6 +446,13 @@ export const routes: Routes = [
               ).then((c) => c.ContractsComponent),
           },
           {
+            path: 'concepts',
+            loadComponent: () =>
+              import('./domains/ModProjects/components/concepts/concepts.component')
+                .then((c) => c.ConceptsComponent),
+            canDeactivate: [UnsavedChangesGuard],
+          },
+          {
             path: 'catalogs',
             loadComponent: () =>
               import('./domains/SMP/Components/catalogs/catalogs.component')
@@ -633,6 +640,20 @@ export const routes: Routes = [
             data: {
               tracking: {
                 logMessage: 'Click en Pestaña Configuración Módulo Root',
+                category: 'Setup'
+              }
+            }
+          },
+          {
+            path: 'menu',
+            loadComponent: () =>
+              import('./domains/SMP/Components/menus/menu.component').then(
+                (r) => r.menuComponent
+              ),
+           canActivate: [TrackingGuard],
+            data: {
+              tracking: {
+                logMessage: 'Click en Pestaña Configuración Módulo Menu',
                 category: 'Setup'
               }
             }

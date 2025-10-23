@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sqlcmd:*)",
+      "Read(//c/Developer/Angular/angular18/**)",
+      "Read(//c/Developer/Visual Studio 22/c#/MicroServicios/MicroserviciosWarehouse/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

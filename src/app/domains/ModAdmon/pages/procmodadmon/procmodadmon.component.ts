@@ -4,6 +4,7 @@ import { DomainsModule } from 'app/domains/domainsmodule';
 import { SharedModule } from 'app/shared/shared.module';
 import { SignalsService } from 'app/services/signals.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { AuthService } from 'app/services/auth.service';
 
 @Component({
   selector: 'app-procmodadmon',
@@ -16,6 +17,7 @@ import { TrackingService } from 'app/services/tracking.service';
 export class ProcmodadmonComponent {
    private signalsService = inject(SignalsService);
    private trackingService = inject(TrackingService);
+   authService = inject(AuthService);
 
   idUser: number = null;
 

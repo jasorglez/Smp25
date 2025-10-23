@@ -1,21 +1,23 @@
 import { Component, effect, inject } from '@angular/core';
 import { SignalsService } from 'app/services/signals.service';
 import { alerts } from 'app/helpers/alerts';
+import { CommonModule } from '@angular/common';
 import { HRService } from 'app/services/hr.service';
+import { AuthService } from 'app/services/auth.service';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormControl } from '@angular/forms';
 
 
 @Component({
   selector: 'app-clock',
   standalone: true,
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, CommonModule],
   templateUrl: './clock.component.html',
 })
 export class ClockComponent {
   private signalsService = inject(SignalsService);
   private hrService = inject(HRService);
   formBuilder = inject(FormBuilder);
-
+  authService = inject(AuthService);
   idBranch: number;
   hrData: any = {};
   newData: boolean;
@@ -29,9 +31,9 @@ export class ClockComponent {
   }
 
   myForm: FormGroup = this.formBuilder.group({
-    delay1: ['', [Validators.required, Validators.min(0), Validators.max(60)]],
-    delay2: ['', [Validators.required, Validators.min(0), Validators.max(60)]],
-    settingToleranceTime: ['', [Validators.required]],
+    delay1: [ { value: '', disabled: !this.authService.getCrudPermission('hr', 'setup', 'update') && !this.authService.getCrudPermission('hr', 'setup', 'create') }, [Validators.required, Validators.min(0), Validators.max(60)]],
+    delay2: [ { value: '', disabled: !this.authService.getCrudPermission('hr', 'setup', 'update') && !this.authService.getCrudPermission('hr', 'setup', 'create') }, [Validators.required, Validators.min(0), Validators.max(60)]],
+    settingToleranceTime: [ { value: '', disabled: !this.authService.getCrudPermission('hr', 'setup', 'update') && !this.authService.getCrudPermission('hr', 'setup', 'create') }, [Validators.required]],
   });
 
   getData() {
