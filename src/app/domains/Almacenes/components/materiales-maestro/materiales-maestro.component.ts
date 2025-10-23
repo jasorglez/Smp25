@@ -56,6 +56,7 @@ export class MaterialesMaestroComponent implements OnInit {
   families: any[] = [];
   subfamilies: any[] = [];
 
+
   // Datos de proveedores por material
   materialsXTableData: { [key: number]: any[] } = {};
 
@@ -397,6 +398,7 @@ export class MaterialesMaestroComponent implements OnInit {
         params.successCallback(params.data.detailData);
       },
       context: {
+        idRoot: this.idRoot, // Pasar idRoot al detail renderer
         MATERIAL: {
           load: (materialId: number, type: string, callback: (data: any[]) => void) => {
             this.loadMaterialXTableData(materialId, type, callback);
