@@ -357,7 +357,12 @@ export class BonusComponent implements CanComponentDeactivate {
         headerName: 'Nombre',
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'payroll', 'update');
+        },
         filterParams: {
           // can be 'windows' or 'mac'
           defaultToNothingSelected: true,
@@ -381,7 +386,12 @@ export class BonusComponent implements CanComponentDeactivate {
       {
         field: 'incidenceDate',
         headerName: 'Fecha',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'payroll', 'update');
+        },
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
         width: 200,
@@ -409,7 +419,12 @@ export class BonusComponent implements CanComponentDeactivate {
       {
         field: 'idBonus',
         headerName: 'Concepto',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('hr', 'payroll', 'update');
+        },
         filter: true,
         width: 150,
         filterParams: {

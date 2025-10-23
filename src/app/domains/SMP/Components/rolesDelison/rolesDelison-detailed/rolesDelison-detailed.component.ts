@@ -154,13 +154,13 @@ export class RolesDetailedDelisonComponent implements OnInit {
         hide: true,
       },
       {
-        field: 'canCreate',
-        headerName: 'Crear',
+        field: 'canRead',
+        headerName: 'Ver',
         editable: true
       },
       {
-        field: 'canRead',
-        headerName: 'Leer',
+        field: 'canCreate',
+        headerName: 'Crear',
         editable: true
       },
       {

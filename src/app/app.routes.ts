@@ -26,7 +26,7 @@ export const routes: Routes = [
             './domains/Warehouse/pages/procwareh/procwareh.component'
           ).then((w) => w.ProcwarehComponent),
         canActivate: [MasterPermissionsGuard],
-        data: { permissions: { master: 'warehouses' } },
+        data: { permissions: { master: 'shopping' } },
         children: [
           { path: '', redirectTo: 'Warehouse', pathMatch: 'full' },
           ...SharedModule.getRoutes(),
@@ -444,6 +444,13 @@ export const routes: Routes = [
               import(
                 './domains/ModProjects/components/contracts/contracts.component'
               ).then((c) => c.ContractsComponent),
+          },
+          {
+            path: 'concepts',
+            loadComponent: () =>
+              import('./domains/ModProjects/components/concepts/concepts.component')
+                .then((c) => c.ConceptsComponent),
+            canDeactivate: [UnsavedChangesGuard],
           },
           {
             path: 'catalogs',

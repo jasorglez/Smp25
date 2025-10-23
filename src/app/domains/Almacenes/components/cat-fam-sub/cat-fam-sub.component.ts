@@ -72,6 +72,9 @@ export class CatFamSubComponent {
   treeData: any[] = [];
   selectedRowData: any = null;
   selectedNodeLevel: 'category' | 'family' | 'subfamily' | null = null;
+
+  // Estado de expansión para persistir
+  private expansionState: Map<string, { category: boolean, families: Map<string, boolean> }> = new Map();
   
 
 
@@ -82,8 +85,11 @@ export class CatFamSubComponent {
   // Cargar datos del catálogo (3 niveles)
   async loadCatalogData() {
     if (!this.idRoot) return;
-    
+
     try {
+      // Guardar estado de expansión antes de recargar
+      this.saveExpansionState();
+
       // Cargar los 3 tipos de datos en paralelo
       const [categories, families, subfamilies] = await Promise.all([
         lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'CATEGORY')),
@@ -93,7 +99,10 @@ export class CatFamSubComponent {
 
       // Construir estructura jerárquica
       this.buildTreeStructure(categories, families, subfamilies);
-      
+
+      // Restaurar estado de expansión
+      this.restoreExpansionState();
+
     } catch (error) {
       console.error('Error al cargar datos del catálogo:', error);
       this.treeData = [];
@@ -108,37 +117,37 @@ export class CatFamSubComponent {
   // Construir estructura plana para 3 columnas con control de expansión
   private buildTreeStructure(categories: any[], families: any[], subfamilies: any[]) {
     this.treeData = [];
-    
+
     // Agregar categorías (nivel 1) - siempre visibles
     categories.forEach(category => {
       const categoryNode = {
         ...category,
         nodeLevel: 'category',
         originalId: category.id,
-        isExpanded: true, // Por defecto expandido
+        isExpanded: false, // Por defecto colapsado
         isVisible: true
       };
       this.treeData.push(categoryNode);
-      
+
       // Buscar familias de esta categoría (nivel 2)
       const categoryFamilies = families.filter(family => family.parentId === category.id);
-      
+
       categoryFamilies.forEach(family => {
         const familyNode = {
           ...family,
           nodeLevel: 'family',
           originalId: family.id,
           parentCategoryId: category.id,
-          isExpanded: true, // Por defecto expandido
-          isVisible: true
+          isExpanded: false, // Por defecto colapsado
+          isVisible: false // Ocultas por defecto
         };
         this.treeData.push(familyNode);
-        
+
         // Buscar subfamilias de esta familia (nivel 3)
-        const familySubfamilies = subfamilies.filter(subfamily => 
+        const familySubfamilies = subfamilies.filter(subfamily =>
           subfamily.subParentId === family.id
         );
-        
+
         familySubfamilies.forEach(subfamily => {
           const subfamilyNode = {
             ...subfamily,
@@ -146,14 +155,12 @@ export class CatFamSubComponent {
             originalId: subfamily.id,
             parentCategoryId: category.id,
             parentFamilyId: family.id,
-            isVisible: true
+            isVisible: false // Ocultas por defecto
           };
           this.treeData.push(subfamilyNode);
         });
       });
     });
-
-    console.log('Estructura plana construida:', this.treeData);
   }
 
   // Configuración del grid
@@ -679,8 +686,72 @@ export class CatFamSubComponent {
       price: Number(data.price || 0),
       active: Number(data.active || 1)
     };
-    
+
     console.log('Datos enviados al servidor:', cleanData);
     return cleanData;
+  }
+
+  // Guardar estado de expansión actual
+  private saveExpansionState() {
+    this.expansionState.clear();
+
+    this.treeData.forEach(item => {
+      if (item.nodeLevel === 'category') {
+        const familiesMap = new Map<string, boolean>();
+
+        // Guardar estado de familias de esta categoría
+        this.treeData.forEach(family => {
+          if (family.nodeLevel === 'family' && family.parentCategoryId === item.originalId) {
+            familiesMap.set(String(family.originalId), family.isExpanded || false);
+          }
+        });
+
+        this.expansionState.set(String(item.originalId), {
+          category: item.isExpanded || false,
+          families: familiesMap
+        });
+      }
+    });
+  }
+
+  // Restaurar estado de expansión después de reconstruir
+  private restoreExpansionState() {
+    if (this.expansionState.size === 0) return;
+
+    this.treeData.forEach(item => {
+      if (item.nodeLevel === 'category') {
+        const state = this.expansionState.get(String(item.originalId));
+        if (state) {
+          item.isExpanded = state.category;
+
+          // Mostrar/ocultar familias según estado guardado
+          this.treeData.forEach(family => {
+            if (family.nodeLevel === 'family' && family.parentCategoryId === item.originalId) {
+              family.isVisible = state.category;
+
+              // Restaurar estado de expansión de la familia
+              const familyExpanded = state.families.get(String(family.originalId));
+              if (familyExpanded !== undefined) {
+                family.isExpanded = familyExpanded;
+
+                // Mostrar/ocultar subfamilias según estado de familia
+                if (family.isVisible) {
+                  this.treeData.forEach(subfamily => {
+                    if (subfamily.nodeLevel === 'subfamily' && subfamily.parentFamilyId === family.originalId) {
+                      subfamily.isVisible = familyExpanded;
+                    }
+                  });
+                }
+              }
+            }
+          });
+        }
+      }
+    });
+
+    // Refrescar grid
+    if (this.gridApi) {
+      this.gridApi.setGridOption('rowData', this.flattenTreeData());
+    }
   }
 }
