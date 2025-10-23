@@ -40,7 +40,7 @@ export class ExpenditureComponent {
   private usersService              = inject(UsersService);
   private signalsService            = inject(SignalsService);
   private branchesService           = inject(BranchsService)
-  private authService               = inject(AuthService);
+  authService               = inject(AuthService);
   public trackingService = inject(TrackingService);
 
   public isIncomeMode: boolean = false;      
@@ -231,15 +231,19 @@ constructor() {
     multiLineEditor: MultiLineEditorComponent,
     searchableSelect: SearchableSelectComponent
   };
-
+  
   async getExpenditure() {
     this.incomesAndExpensesService.getIncomesAndExpenses(this.idRoot).subscribe({
       next: (incomes) => {
         // Filtrado y manejo de caso sin datos
+        if(this.authService.getCrudPermission('administration', 'expend', 'read')){
         const filtered = incomes?.filter(income => {
           return income.type === "GASTO" && income.idAccount === this.idAccount
         }) || [];
         this.incomes = filtered;
+      } else {
+        this.incomes = [];
+      }
       },
       error: (err) => {
         // Manejo de errores HTTP
@@ -324,8 +328,18 @@ constructor() {
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
     return [
-      { field: 'id', headerName: 'Id', editable: true, filter: true, width: 50 },
-      { field: 'numberDocument', headerName: '# Documento', editable: true, filter: true, width: 150 },
+      { field: 'id', headerName: 'Id', editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'expend', 'update');
+        }, filter: true, width: 50 },
+      { field: 'numberDocument', headerName: '# Documento', editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'expend', 'update');
+        }, filter: true, width: 150 },
       
       {
               field: 'idBranch',
@@ -338,7 +352,12 @@ constructor() {
                 ) || this.signalsService.getemailChoose() === environment.root
                   ? false
                   : true,
-              editable: true,
+              editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'expend', 'update');
+        },
               filter: true,
               width: 170,
               cellEditor: 'agSelectCellEditor',
@@ -376,12 +395,22 @@ constructor() {
             },
       
             {
-              field: 'date', headerName: 'Fecha', editable: true, cellDataType: 'date', width: 125,
+              field: 'date', headerName: 'Fecha', editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'expend', 'update');
+        }, cellDataType: 'date', width: 125,
               valueFormatter: (params) => this.formatDate(params.value)
             },
 
             {
-                field: 'idExpend', headerName: 'Tipo Gasto', editable: true, width: 195,
+                field: 'idExpend', headerName: 'Tipo Gasto', editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'expend', 'update');
+        }, width: 195,
                 cellEditor: 'searchableSelect',
                 cellEditorParams: {
                   options: this.expenses,
@@ -397,7 +426,12 @@ constructor() {
             },
 
             {
-              field: 'description', headerName: 'Descripción', editable: true, width: 325, filter: true,
+              field: 'description', headerName: 'Descripción', editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'expend', 'update');
+        }, width: 325, filter: true,
               cellEditor: 'agPopupTextCellEditor',
               cellEditorParams: {
                 maxLength: 100,
@@ -454,7 +488,12 @@ constructor() {
       {
         field: 'status',
         headerName: 'Estatus',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'expend', 'update');
+        },
         width: 105,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {

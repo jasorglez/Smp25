@@ -21,6 +21,7 @@ import { RolesService } from 'app/services/roles.service';
 import { TimeService } from 'app/services/time.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { PermitionsService } from 'app/services/permitions.service';
+import { SignalsService } from 'app/services/signals.service';
 
 @Component({
   selector: 'app-detail-permissions-user',
@@ -32,6 +33,7 @@ export class DetailPermissionsUserComponent implements ICellRendererAngularComp 
   private rolesService = inject(RolesService);
   private clockService = inject(ClockService);
   private timeService = inject(TimeService);
+  private signalsService = inject(SignalsService);
   private route = inject(ActivatedRoute);
   private fb = inject(FormBuilder);
   private trackingService = inject(TrackingService);
@@ -47,6 +49,7 @@ export class DetailPermissionsUserComponent implements ICellRendererAngularComp 
 
   selectFechas: FormGroup;
   type: string = '';
+  idEmpresa: number;
   gridHeight: string = '55vh';
   showCreditsTab: boolean = false;
   private gridApi: GridApi;
@@ -175,6 +178,7 @@ export class DetailPermissionsUserComponent implements ICellRendererAngularComp 
     this.idBranch = params.idBranch; // El ID de la sucursal de la fila maestra 
     this.idRole = params.idRole; // El ID del rol de la fila maestra
     this.idPosicion = params.idPosicion; // El ID de la posición de la fila maestra
+    this.idEmpresa = this.signalsService.getRootSelectedBySidebar()();
     this.obtenerDatos(this.idUser,this.idBranch,this.idRole, this.idPosicion);
   }
 
@@ -183,7 +187,7 @@ export class DetailPermissionsUserComponent implements ICellRendererAngularComp 
   }
 
   obtenerDatos(idUser: number, idBranch: number,Role: number, idPosicion: number) {
-    this.permitionsService.getPermitionsDetail(idUser, idBranch, Role, idPosicion)
+    this.permitionsService.getPermitionsDetail(this.idEmpresa, idUser, idBranch, Role, idPosicion)
       .subscribe((data: any) => {
         this.rowData = [];
         this.rowData = data;

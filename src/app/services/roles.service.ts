@@ -41,8 +41,8 @@ export class RolesService {
       return this.http.delete(`${environment.urlSecurity}/Roles/${id}`, { headers: this.trackingService.getHeaders() });
     }
 
-    getPermissionsByRoles(idRole: number, idPosicion: number): Observable<any> {
-      return this.http.get(`${environment.urlSecurity}/RolesxDetailedPermissionsSummary?idRole=${idRole}&posicion=${idPosicion}`, { headers: this.trackingService.getHeaders() });
+    getPermissionsByRoles(idCompany:number, idRole: number, idPosicion: number): Observable<any> {
+      return this.http.get(`${environment.urlSecurity}/RolesxDetailedPermissionsSummary?idCompany=${idCompany}&idRole=${idRole}&posicion=${idPosicion}`, { headers: this.trackingService.getHeaders() });
     }
 
     getIndividualDetailedPermissionxRol(idRole: number,idPosicion: number, idDetailedPermission: number): Observable<any> {

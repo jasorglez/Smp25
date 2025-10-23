@@ -65,7 +65,7 @@ export class CustomersComponent implements CanComponentDeactivate {s
    private route = inject(ActivatedRoute);
    private inegiService = inject(InegiService);
    private branchesService = inject(BranchsService);
-   private authService = inject(AuthService);
+   authService = inject(AuthService);
    private catalogsService = inject(CatalogsService);
    private trackingService = inject(TrackingService);
    private facturacionService = inject(FacturacionService);
@@ -218,7 +218,12 @@ export class CustomersComponent implements CanComponentDeactivate {s
       {
         field: 'vigente',
         headerName: 'Activo',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'customer', 'update');
+        },
         width: 100,
       },
       {
@@ -262,7 +267,12 @@ export class CustomersComponent implements CanComponentDeactivate {s
           ) || this.signalsService.getemailChoose() === environment.root
             ? false
             : true,
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'customer', 'update');
+        },
         filter: true,
         width: 170,
         cellEditor: 'agSelectCellEditor',
@@ -291,7 +301,12 @@ export class CustomersComponent implements CanComponentDeactivate {s
       {
         field: 'nameContact',
         headerName: 'Nombre Contacto',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'customer', 'update');
+        },
         filter: true,
         //suppressMovable: true,
         width: 270,
@@ -343,7 +358,12 @@ export class CustomersComponent implements CanComponentDeactivate {s
       {
         field: 'company',
         headerName: 'Compania',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'customer', 'update');
+        },
         width: 250,
         filterParams: {
           // can be 'windows' or 'mac'
@@ -380,7 +400,12 @@ export class CustomersComponent implements CanComponentDeactivate {s
       {
         field: 'idTypecop',
         headerName: this.type == 'CUSTOMERS'? 'Tipo cliente' : 'Tipo proveedor',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'customer', 'update');
+        },
         width: 150,
         //hide: this.type != 'CUSTOMERS',
         cellEditor: 'agSelectCellEditor',
@@ -398,7 +423,12 @@ export class CustomersComponent implements CanComponentDeactivate {s
     /*     {
         field: 'cp',
         headerName: 'CP',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'customer', 'update');
+        },
         filter: true,
         width: 105,
         filterParams: {
@@ -411,7 +441,12 @@ export class CustomersComponent implements CanComponentDeactivate {s
       {
         field: 'rfc',
         headerName: 'RFC',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'customer', 'update');
+        },
         filter: true,
         width: 100,
         filterParams: {
@@ -428,7 +463,12 @@ export class CustomersComponent implements CanComponentDeactivate {s
       {
         field: 'address',
         headerName: 'Direccion',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'customer', 'update');
+        },
         width: 250,
         filter: true,
         filterParams: {
@@ -509,7 +549,12 @@ export class CustomersComponent implements CanComponentDeactivate {s
           defaultToNothingSelected: true,
           //excelMode: 'mac',
         },
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'customer', 'update');
+        },
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.estados, // Usar la lista de estados obtenida
@@ -518,7 +563,12 @@ export class CustomersComponent implements CanComponentDeactivate {s
       {
         field: 'city',
         headerName: 'Ciudad',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'customer', 'update');
+        },
         filterParams: {
           // can be 'windows' or 'mac'
           defaultToNothingSelected: true,
@@ -535,7 +585,12 @@ export class CustomersComponent implements CanComponentDeactivate {s
           defaultToNothingSelected: true,
           //excelMode: 'mac',
         },
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'customer', 'update');
+        },
         filter: true,
         width: 300,
         cellEditor: 'agSelectCellEditor',
@@ -559,7 +614,12 @@ export class CustomersComponent implements CanComponentDeactivate {s
       {
         field: 'phone',
         headerName: 'Telefono',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'customer', 'update');
+        },
         width: 120,
         valueSetter: (params) => {
           const phoneValue = params.newValue;
@@ -580,23 +640,43 @@ export class CustomersComponent implements CanComponentDeactivate {s
       {
         field: 'rfc',
         headerName: 'RFC',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'customer', 'update');
+        },
         hide: true,
         width: 100,
       },
       
-      { field: 'radio', headerName: 'Radio', editable: true, width: 90 , hide: this.type != 'CUSTOMERS'},
+      { field: 'radio', headerName: 'Radio', editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'customer', 'update');
+        }, width: 90 , hide: this.type != 'CUSTOMERS'},
       /*{
         field: 'latitud',
         headerName: 'Latitud',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'customer', 'update');
+        },
         width: 110,
         filter: true,
       },
       {
         field: 'longitud',
         headerName: 'Longitud',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'customer', 'update');
+        },
         width: 120,
         filter: true,
       },*/
@@ -606,7 +686,12 @@ export class CustomersComponent implements CanComponentDeactivate {s
         headerName: 'Correo',
         width: 200,
         cellEditor: 'agTextCellEditor',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'customer', 'update');
+        },
         cellEditorParams: {
           useFormatter: true,
         },
@@ -666,7 +751,11 @@ export class CustomersComponent implements CanComponentDeactivate {s
         .getCustomers(this.idBranch, this.type)
         .subscribe({
           next: (data: any) => {
+            if(this.authService.getCrudPermission('administration', 'customer', 'read')){
             this.rowData = data;
+            }else{
+            this.rowData = []
+            }
             resolve(true);
           },
           error: (error) => {

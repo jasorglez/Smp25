@@ -6,6 +6,7 @@ import { FacturacionService } from 'app/services/facturacion.service';
 import { AdministrationService } from 'app/services/administration.service';
 import { CustomersService } from 'app/services/customers.service';
 import { SignalsService } from 'app/services/signals.service';
+import { AuthService } from 'app/services/auth.service';
 
 @Component({
   selector: 'app-facturacion',
@@ -20,6 +21,7 @@ export class FacturacionComponent implements OnInit {
   private administrationService = inject(AdministrationService);
   private customersService = inject(CustomersService);
   private signalsService = inject(SignalsService);
+  authService = inject(AuthService);
 
   constructor() {
     // Effect para reaccionar cuando cambie la compañía seleccionada
