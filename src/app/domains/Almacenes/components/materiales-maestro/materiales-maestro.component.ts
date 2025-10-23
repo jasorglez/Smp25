@@ -1,15 +1,22 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject, effect } from '@angular/core';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { alerts } from 'app/helpers/alerts';
 import { DetailCellRendererProveedoresComponent } from './details/detail-cell-renderer-proveedores.component';
 import { DetailCellRendererFamiliaComponent } from './details/detail-cell-renderer-familia.component';
 import { DetailCellRendererSucursalComponent } from './details/detail-cell-renderer-sucursal.component';
-import { ModalMaterialComponent } from './modal-material/modal-material.component';
+import { MaterialsService } from 'app/services/materials.service';
+import { MaterialsResponse } from 'app/interface/materials.interface';
+import { SignalsService } from 'app/services/signals.service';
+import { CatalogsService } from 'app/services/catalogs.service';
+import { ProvidersService } from 'app/services/providers.service';
+import { CustomersService } from 'app/services/customers.service';
+import { BranchsService } from 'app/services/branchs.service';
+import { lastValueFrom } from 'rxjs';
+import { environment } from '@env/environment';
 
 @Component({
   selector: 'app-materiales-maestro',
@@ -28,522 +35,99 @@ import { ModalMaterialComponent } from './modal-material/modal-material.componen
 export class MaterialesMaestroComponent implements OnInit {
 
   private gridApi!: GridApi;
+  private materialsService = inject(MaterialsService);
+  private signalsService = inject(SignalsService);
+  private catalogsService = inject(CatalogsService);
+  private providersService = inject(ProvidersService);
+  private customersService = inject(CustomersService);
+  private branchsService = inject(BranchsService);
 
-  rowData: any[] = [];
+  rowData: MaterialsResponse[] = [];
+  allMaterialsData: MaterialsResponse[] = []; // Guarda todos los datos
   gridHeight: string = '80vh';
-  selectedMaterial: any = null;
+  selectedMaterial: MaterialsResponse | null = null;
   hasUnsavedChanges: boolean = false;
+  idRoot: number | null = null;
+
+  // Catálogos para los combos
+  categories: any[] = [];
+  families: any[] = [];
+  subfamilies: any[] = [];
+
+  // Datos de proveedores por material
+  materialsXTableData: { [key: number]: any[] } = {};
 
   public rowSelection: 'single' | 'multiple' = 'single';
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
-  constructor(private modalService: NgbModal) {}
+  constructor() {
+    effect(() => {
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+      if (this.idRoot) {
+        this.loadCatalogs();
+        this.loadMaterials();
+      }
+    });
+  }
 
   ngOnInit() {
-    this.cargarDatosFalsos();
+    if (this.idRoot) {
+      this.loadCatalogs();
+      this.loadMaterials();
+    }
   }
 
-  cargarDatosFalsos() {
-    // Data falsa con 3 registros principales
-    this.rowData = [
-      {
-        id: 1,
-        activo: true,
-        numMat: 'MAT-001',
-        articulo: 'Corcholata Dorada',
-        categoria: 'Materia Prima',
-        familia: 'Basica',
-        subfamilia: '3',
-        proveedor: '2',
-        imagen: '📷',
-        proveedoresData: [
-          {
-            id: 101,
-            nombreProveedor: 'Envasadora llos SA de CV',
-            precioUnitario: 2.50,
-            descripcionEmpaque: 'Caja de cartón',
-            piezasPorPaquete: 100,
-            medidas: '1/2" x 3"',
-            pesoVolumen: '2.5 kg',
-            caducidadGarantia: 'N/A',
-            sucursal: 'Monterrey Centro'
-          },
-          {
-            id: 102,
-            nombreProveedor: 'Ferretería del Norte',
-            precioUnitario: 2.30,
-            descripcionEmpaque: 'Bolsa plástica',
-            piezasPorPaquete: 50,
-            medidas: '1/2" x 3"',
-            pesoVolumen: '1.2 kg',
-            caducidadGarantia: 'N/A',
-            sucursal: 'Guadalajara Sur'
-          }
-        ],
-        familiaData: [
-          {
-            id: 1001,
-            subfamilia: 'Refresco',
-            caracteristicasData: [
-              {
-                id: 10011,
-                sabor: 'Refresco',
-                presentacion: 'Caja 100 pzas',
-                descripcion: 'Tornillos hexagonales estándar para uso general'
-              }
-            ]
-          },
-          {
-            id: 1002,
-            subfamilia: 'Sidra',
-            caracteristicasData: [
-              {
-                id: 10012,
-                sabor: 'Sidra',
-                presentacion: 'Caja 50 pzas',
-                descripcion: 'Tornillos hexagonales de acero inoxidable para ambientes húmedos'
-              }
-            ]
-          },
-          {
-            id: 1003,
-            subfamilia: 'Vinos',
-            caracteristicasData: [
-              {
-                id: 10013,
-                sabor: 'Vinos Tinto',
-                presentacion: 'Bolsa 200 pzas',
-                descripcion: 'Tornillos hexagonales galvanizados para exteriores'
-              }
-            ]
-          }
-        ],
-        sucursalData: [
-          {
-            id: 10001,
-            sucursal: 'Monterrey Centro',
-            fechaAlta: '2024-01-15',
-            stockMinimo: 500,
-            resurtido: 2000,
-            capacidadMaxAlmacen: 10000,
-            tiempoEntrega: '2-3 días hábiles'
-          },
-          {
-            id: 10002,
-            sucursal: 'Guadalajara Sur',
-            fechaAlta: '2024-02-20',
-            stockMinimo: 300,
-            resurtido: 1500,
-            capacidadMaxAlmacen: 8000,
-            tiempoEntrega: '3-4 días hábiles'
-          },
-          {
-            id: 10003,
-            sucursal: 'Ciudad de México Norte',
-            fechaAlta: '2024-03-10',
-            stockMinimo: 1000,
-            resurtido: 3000,
-            capacidadMaxAlmacen: 15000,
-            tiempoEntrega: '1-2 días hábiles'
-          }
-        ]
-      },
-      {
-        id: 2,
-        activo: true,
-        numMat: 'MAT-002',
-        articulo: 'Jugo Manzana',
-        categoria: 'Materia Prima',
-        familia: 'Basica',
-        subfamilia: '1',
-        proveedor: '2',
-        imagen: '📷',
-        proveedoresData: [
-          {
-            id: 201,
-            nombreProveedor: 'Jugos Mexicanos',
-            precioUnitario: 180.00,
-            descripcionEmpaque: 'Saco de papel kraft',
-            piezasPorPaquete: 1,
-            medidas: '50 x 30 x 15 cm',
-            pesoVolumen: '50 kg',
-            caducidadGarantia: '6 meses',
-            sucursal: 'Ciudad de México Norte'
-          },
-          {
-            id: 202,
-            nombreProveedor: 'Cementos Mexicanos',
-            precioUnitario: 175.00,
-            descripcionEmpaque: 'Saco de papel kraft',
-            piezasPorPaquete: 1,
-            medidas: '50 x 30 x 15 cm',
-            pesoVolumen: '50 kg',
-            caducidadGarantia: '6 meses',
-            sucursal: 'Querétaro Este'
-          }
-        ],
-        familiaData: [
-          {
-            id: 2001,
-            subfamilia: '3',
-            caracteristicasData: [
-              {
-                id: 20011,
-                sabor: 'N/A',
-                presentacion: 'Saco 50kg',
-                descripcion: 'Cemento Portland tipo I gris para construcción general'
-              },
-              {
-                id: 20012,
-                sabor: 'N/A',
-                presentacion: 'Saco 25kg',
-                descripcion: 'Cemento Portland tipo I blanco para acabados finos'
-              }
-            ]
-          }
-        ],
-        sucursalData: [
-          {
-            id: 20001,
-            sucursal: 'Ciudad de México Norte',
-            fechaAlta: '2023-11-05',
-            stockMinimo: 200,
-            resurtido: 800,
-            capacidadMaxAlmacen: 5000,
-            tiempoEntrega: '1-2 días hábiles'
-          },
-          {
-            id: 20002,
-            sucursal: 'Querétaro Este',
-            fechaAlta: '2024-01-12',
-            stockMinimo: 150,
-            resurtido: 600,
-            capacidadMaxAlmacen: 4000,
-            tiempoEntrega: '2-3 días hábiles'
-          }
-        ]
-      },
-      {
-        id: 3,
-        activo: false,
-        numMat: 'MAT-003',
-        articulo: 'Azucar Morena',
-        categoria: 'Eléctrico',
-        familia: 'Basica',
-        subfamilia: '1',
-        proveedor: '3',
-        imagen: '📷',
-        proveedoresData: [
-          {
-            id: 301,
-            nombreProveedor: 'Distribuidora Eléctrica',
-            precioUnitario: 15.50,
-            descripcionEmpaque: 'Rollo',
-            piezasPorPaquete: 100,
-            medidas: 'Cal. 12 AWG',
-            pesoVolumen: '8.5 kg/100m',
-            caducidadGarantia: '10 años',
-            sucursal: 'Puebla Centro'
-          },
-          {
-            id: 302,
-            nombreProveedor: 'Cables y Más',
-            precioUnitario: 14.80,
-            descripcionEmpaque: 'Rollo',
-            piezasPorPaquete: 100,
-            medidas: 'Cal. 12 AWG',
-            pesoVolumen: '8.3 kg/100m',
-            caducidadGarantia: '10 años',
-            sucursal: 'León Norte'
-          },
-          {
-            id: 303,
-            nombreProveedor: 'Distribuidora Eléctrica',
-            precioUnitario: 16.00,
-            descripcionEmpaque: 'Carrete',
-            piezasPorPaquete: 500,
-            medidas: 'Cal. 12 AWG',
-            pesoVolumen: '42 kg/500m',
-            caducidadGarantia: '10 años',
-            sucursal: 'Tijuana Oeste'
-          }
-        ],
-        familiaData: [
-          {
-            id: 3001,
-            subfamilia: '4',
-            caracteristicasData: [
-              {
-                id: 30011,
-                sabor: 'N/A',
-                presentacion: 'Rollo 100m',
-                descripcion: 'Cable conductor de cobre calibre 12 para instalaciones eléctricas residenciales'
-              },
-              {
-                id: 30012,
-                sabor: 'N/A',
-                presentacion: 'Rollo 50m',
-                descripcion: 'Cable conductor de aluminio calibre 12 para instalaciones comerciales'
-              },
-              {
-                id: 30013,
-                sabor: 'N/A',
-                presentacion: 'Rollo 25m',
-                descripcion: 'Cable conductor flexible calibre 12 para equipos móviles'
-              },
-              {
-                id: 30014,
-                sabor: 'N/A',
-                presentacion: 'Carrete 500m',
-                descripcion: 'Cable conductor blindado calibre 12 para ambientes industriales'
-              }
-            ]
-          }
-        ],
-        sucursalData: [
-          {
-            id: 30001,
-            sucursal: 'Puebla Centro',
-            fechaAlta: '2024-02-18',
-            stockMinimo: 1000,
-            resurtido: 5000,
-            capacidadMaxAlmacen: 20000,
-            tiempoEntrega: '2-3 días hábiles'
-          },
-          {
-            id: 30002,
-            sucursal: 'León Norte',
-            fechaAlta: '2024-03-05',
-            stockMinimo: 800,
-            resurtido: 4000,
-            capacidadMaxAlmacen: 18000,
-            tiempoEntrega: '3-4 días hábiles'
-          },
-          {
-            id: 30003,
-            sucursal: 'Tijuana Oeste',
-            fechaAlta: '2024-04-10',
-            stockMinimo: 600,
-            resurtido: 3000,
-            capacidadMaxAlmacen: 15000,
-            tiempoEntrega: '4-5 días hábiles'
-          }
-        ]
-      },
-      {
-        id: 4,
-        activo: true,
-        numMat: 'MAT-004',
-        articulo: 'Envase para Refresco Embotellado',
-        categoria: 'Alimentos y Bebidas',
-        familia: 'Basica',
-        subfamilia: '5',
-        proveedor: '1',
-        imagen: '📷',
-        proveedoresData: [
-          {
-            id: 401,
-            nombreProveedor: 'Embotelladora del Valle',
-            precioUnitario: 12.50,
-            descripcionEmpaque: 'Caja de cartón',
-            piezasPorPaquete: 24,
-            medidas: '600ml',
-            pesoVolumen: '15 kg',
-            caducidadGarantia: '6 meses',
-            sucursal: 'Monterrey Centro'
-          }
-        ],
-        familiaData: [
-          {
-            id: 4001,
-            subfamilia: '5',
-            caracteristicasData: [
-              {
-                id: 40011,
-                sabor: 'Cola',
-                presentacion: 'Botella 600ml',
-                descripcion: 'Refresco de cola carbonatado sabor original'
-              },
-              {
-                id: 40012,
-                sabor: 'Naranja',
-                presentacion: 'Botella 600ml',
-                descripcion: 'Refresco de naranja carbonatado con jugo natural'
-              },
-              {
-                id: 40013,
-                sabor: 'Limón',
-                presentacion: 'Botella 355ml',
-                descripcion: 'Refresco de limón carbonatado light sin azúcar'
-              },
-              {
-                id: 40014,
-                sabor: 'Fresa',
-                presentacion: 'Lata 355ml',
-                descripcion: 'Refresco de fresa carbonatado sabor artificial'
-              }
-            ]
-          }
-        ],
-        sucursalData: [
-          {
-            id: 40001,
-            sucursal: 'Monterrey Centro',
-            fechaAlta: '2024-05-01',
-            stockMinimo: 2000,
-            resurtido: 10000,
-            capacidadMaxAlmacen: 50000,
-            tiempoEntrega: '1-2 días hábiles'
-          }
-        ]
-      },
-      {
-        id: 5,
-        activo: true,
-        numMat: 'MAT-005',
-        articulo: 'Valvulas de Control para Fluidos',
-        categoria: 'Alimentos y Bebidas',
-        familia: 'Basica',
-        subfamilia: '6',
-        proveedor: '1',
-        imagen: '📷',
-        proveedoresData: [
-          {
-            id: 501,
-            nombreProveedor: 'Galletas y Más SA',
-            precioUnitario: 18.00,
-            descripcionEmpaque: 'Caja display',
-            piezasPorPaquete: 20,
-            medidas: '180g',
-            pesoVolumen: '3.6 kg',
-            caducidadGarantia: '8 meses',
-            sucursal: 'Guadalajara Centro'
-          }
-        ],
-        familiaData: [
-          {
-            id: 5001,
-            subfamilia: '6',
-            caracteristicasData: [
-              {
-                id: 50011,
-                sabor: 'Chocolate',
-                presentacion: 'Paquete 180g',
-                descripcion: 'Galletas con chispas de chocolate semiamargo'
-              },
-              {
-                id: 50012,
-                sabor: 'Vainilla',
-                presentacion: 'Paquete 200g',
-                descripcion: 'Galletas de vainilla con crema tipo sandwich'
-              },
-              {
-                id: 50013,
-                sabor: 'Avena y Miel',
-                presentacion: 'Paquete 150g',
-                descripcion: 'Galletas de avena integral endulzadas con miel'
-              }
-            ]
-          }
-        ],
-        sucursalData: [
-          {
-            id: 50001,
-            sucursal: 'Guadalajara Centro',
-            fechaAlta: '2024-06-15',
-            stockMinimo: 1500,
-            resurtido: 6000,
-            capacidadMaxAlmacen: 30000,
-            tiempoEntrega: '2-3 días hábiles'
-          }
-        ]
-      },
-      {
-        id: 6,
-        activo: true,
-        numMat: 'MAT-006',
-        articulo: 'Endulcorante Natural',
-        categoria: 'Alimentos y Bebidas',
-        familia: 'Basica',
-        subfamilia: '45',
-        proveedor: '1',
-        imagen: '📷',
-        proveedoresData: [
-          {
-            id: 601,
-            nombreProveedor: 'Lácteos del Norte',
-            precioUnitario: 25.00,
-            descripcionEmpaque: 'Charola de cartón',
-            piezasPorPaquete: 12,
-            medidas: '1 litro',
-            pesoVolumen: '12.5 kg',
-            caducidadGarantia: '30 días',
-            sucursal: 'Querétaro Norte'
-          }
-        ],
-        familiaData: [
-          {
-            id: 6001,
-            subfamilia: '45',
-            caracteristicasData: [
-              {
-                id: 60011,
-                sabor: 'Natural',
-                presentacion: 'Envase 1L',
-                descripcion: 'Yogurt natural sin azúcar añadida'
-              },
-              {
-                id: 60012,
-                sabor: 'Fresa',
-                presentacion: 'Envase 1L',
-                descripcion: 'Yogurt con sabor a fresa con trozos de fruta'
-              },
-              {
-                id: 60013,
-                sabor: 'Durazno',
-                presentacion: 'Envase 500ml',
-                descripcion: 'Yogurt con sabor a durazno bajo en grasa'
-              },
-              {
-                id: 60014,
-                sabor: 'Arándano',
-                presentacion: 'Envase 250ml',
-                descripcion: 'Yogurt griego con arándanos naturales'
-              },
-              {
-                id: 60015,
-                sabor: 'Mango',
-                presentacion: 'Envase 1L',
-                descripcion: 'Yogurt con pulpa de mango tropical'
-              }
-            ]
-          }
-        ],
-        sucursalData: [
-          {
-            id: 60001,
-            sucursal: 'Querétaro Norte',
-            fechaAlta: '2024-07-10',
-            stockMinimo: 500,
-            resurtido: 2500,
-            capacidadMaxAlmacen: 12000,
-            tiempoEntrega: '1-2 días hábiles'
-          },
-          {
-            id: 60002,
-            sucursal: 'Monterrey Centro',
-            fechaAlta: '2024-08-01',
-            stockMinimo: 400,
-            resurtido: 2000,
-            capacidadMaxAlmacen: 10000,
-            tiempoEntrega: '2-3 días hábiles'
-          }
-        ]
-      }
-    ];
+  async loadCatalogs() {
+    if (!this.idRoot) return;
+
+    try {
+      // Cargar categorías, familias y subfamilias en paralelo
+      [this.categories, this.families, this.subfamilies] = await Promise.all([
+        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'CATEGORY')),
+        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'FAM-CAT')),
+        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'SUB-FAM'))
+      ]);
+
+      console.log('Catalogs loaded:', {
+        categories: this.categories,
+        families: this.families,
+        subfamilies: this.subfamilies
+      });
+    } catch (error) {
+      console.error('Error loading catalogs:', error);
+    }
   }
+
+  // Obtener familias de una categoría específica
+  getFamiliesByCategory(categoryId: number): any[] {
+    return this.families.filter(f => f.parentId === categoryId);
+  }
+
+  // Obtener subfamilias de una familia específica
+  getSubfamiliesByFamily(familyId: number): any[] {
+    return this.subfamilies.filter(sf => sf.subParentId === familyId);
+  }
+
+  loadMaterials() {
+    if (!this.idRoot) {
+      console.warn('No idRoot available');
+      return;
+    }
+
+    this.materialsService.getMaterialsxview(this.idRoot).subscribe({
+      next: (data) => {
+        this.rowData = data;
+        console.log('Materials loaded:', data);
+      },
+      error: (error) => {
+        console.error('Error loading materials:', error);
+        alerts.basicAlert('Error', 'Error al cargar materiales', 'error');
+      }
+    });
+  }
+
 
   components = {
     detailCellRendererProveedores: DetailCellRendererProveedoresComponent,
@@ -555,14 +139,14 @@ export class MaterialesMaestroComponent implements OnInit {
     headerHeight: 35,
     rowHeight: 35,
     animateRows: true,
-    suppressClickEdit: true,
-    singleClickEdit: false,
+    suppressClickEdit: false,
+    singleClickEdit: true,
     stopEditingWhenCellsLoseFocus: true,
     masterDetail: true,
-    isRowMaster: (dataItem) => {
+    isRowMaster: (dataItem: any) => {
       return true; // Todas las filas son maestras
     },
-    detailCellRendererSelector: (params) => {
+    detailCellRendererSelector: (params: any) => {
       if (params.data.detailType === 'proveedores') {
         return { component: 'detailCellRendererProveedores' };
       } else if (params.data.detailType === 'familia') {
@@ -576,9 +160,15 @@ export class MaterialesMaestroComponent implements OnInit {
       if (params.node.isSelected()) {
         return 'selected-row';
       }
+      if (params.data.__isNew) {
+        return 'new-row';
+      }
+      if (params.data.__modified) {
+        return 'modified-row';
+      }
       return '';
     },
-    onRowSelected: (event) => {
+    onRowSelected: (event: any) => {
       if (event.node.isSelected()) {
         this.gridApi.forEachNode((node) => {
           if (node.id !== event.node.id) {
@@ -586,63 +176,120 @@ export class MaterialesMaestroComponent implements OnInit {
           }
         });
       }
+    },
+    onCellValueChanged: (event: any) => {
+      console.log('Cell value changed:', event);
+      event.data.__modified = true;
+      this.hasUnsavedChanges = true;
+      this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
     }
   };
 
   get colMaster(): ColDef[] {
     return [
       {
-        field: 'activo',
+        field: 'active',
         headerName: 'Activo',
         width: 100,
-        cellRenderer: (params: any) => {
-          const checked = params.data.activo ? 'checked' : '';
-          return `<input type="checkbox" ${checked} disabled style="cursor: pointer;">`;
-        }
+        editable: true,
+        cellRenderer: 'agCheckboxCellRenderer',
+        cellEditor: 'agCheckboxCellEditor'
       },
       {
-  
-        field: 'numMat',
+        field: 'insumo',
         headerName: 'Num Mat',
         width: 130,
-        filter: true
+        filter: true,
+        editable: true
       },
       {
         field: 'articulo',
         headerName: 'Artículo',
         width: 250,
-        filter: true
+        filter: true,
+        editable: true
       },
       {
-        field: 'categoria',
+        field: 'idCategory',
         headerName: 'Categoria',
         width: 250,
-        filter: true
+        editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.categories.map(c => c.id)
+        },
+        valueFormatter: (params: any) => {
+          const cat = this.categories.find(c => c.id === params.value);
+          return cat ? cat.description : params.data.categoria || '';
+        },
+        onCellValueChanged: (params: any) => {
+          // Cuando cambia la categoría, resetear familia y subfamilia
+          params.data.idFamilia = null;
+          params.data.familia = '';
+          params.data.idSubfamilia = null;
+          params.data.subfamilia = '';
+          this.hasUnsavedChanges = true;
+          // Refrescar la fila para actualizar el combo de familia
+          params.api.refreshCells({ rowNodes: [params.node], force: true });
+        }
       },
       {
-        field: 'familia',
+        field: 'idFamilia',
         headerName: 'Familia',
-        width: 150,
-        filter: true
+        width: 200,
+        editable: (params: any) => {
+          // Solo editable si hay una categoría seleccionada
+          return params.data.idCategory != null;
+        },
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: (params: any) => {
+          // Obtener familias filtradas por la categoría seleccionada
+          const familiesFiltered = this.getFamiliesByCategory(params.data.idCategory);
+          return {
+            values: familiesFiltered.map(f => f.id)
+          };
+        },
+        valueFormatter: (params: any) => {
+          const fam = this.families.find(f => f.id === params.value);
+          return fam ? fam.description : params.data.familia || '';
+        },
+        onCellValueChanged: (params: any) => {
+          // Cuando cambia la familia, resetear subfamilia
+          params.data.idSubfamilia = null;
+          params.data.subfamilia = '';
+          this.hasUnsavedChanges = true;
+          params.api.refreshCells({ rowNodes: [params.node], force: true });
+        },
+        cellStyle: (params: any) => {
+          if (!params.data.idCategory) {
+            return { backgroundColor: '#f0f0f0', color: '#999' };
+          }
+          return null;
+        }
       },
       {
-        field: 'subfamilia',
+        field: 'subfamilyCount',
         headerName: 'Subfamilia',
-        width: 150,
+        width: 120,
         filter: true,
-        cellRenderer: this.createDetailToggleCellRenderer('familia'),
+        cellRenderer: (params: any) => {
+          const count = params.value || 0;
+          return count;
+        },
         cellStyle: { backgroundColor: '#fff3e0', cursor: 'pointer', textDecoration: 'underline' }
       },
       {
-        field: 'proveedor',
+        field: 'providerCount',
         headerName: 'Proveedor',
-        width: 200,
+        width: 120,
         filter: true,
-        cellRenderer: this.createDetailToggleCellRenderer('proveedores'),
+        cellRenderer: (params: any) => {
+          return params.value || 0;
+        },
         cellStyle: { backgroundColor: '#e3f2fd', cursor: 'pointer', textDecoration: 'underline' }
       },
       {
-        field: 'imagen',
+        field: 'picture',
         headerName: 'Imagen',
         width: 100,
         cellRenderer: (params: any) => {
@@ -654,8 +301,8 @@ export class MaterialesMaestroComponent implements OnInit {
 
   // Función auxiliar para obtener el tipo de detalle desde el ID de la columna
   getDetailTypeFromColId(colId: string): string | null {
-    if (colId === 'proveedor') return 'proveedores';
-    if (colId === 'subfamilia') return 'familia';
+    if (colId === 'providerCount') return 'proveedores';
+    if (colId === 'subfamilyCount') return 'familia';
     return null;
   }
 
@@ -683,7 +330,7 @@ export class MaterialesMaestroComponent implements OnInit {
     event.node.setSelected(true);
 
     const colId = event.column.getColId();
-    const isDetailColumn = colId === 'proveedor' || colId === 'subfamilia';
+    const isDetailColumn = colId === 'providerCount' || colId === 'subfamilyCount';
 
     if (isDetailColumn) {
       const node = event.node;
@@ -738,6 +385,26 @@ export class MaterialesMaestroComponent implements OnInit {
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+
+    // Configurar master-detail después de que el grid esté listo
+    this.gridApi.setGridOption('detailCellRendererParams', {
+      getDetailRowData: (params) => {
+        params.successCallback(params.data.detailData);
+      },
+      context: {
+        MATERIAL: {
+          load: (materialId: number, type: string, callback: (data: any[]) => void) => {
+            this.loadMaterialXTableData(materialId, type, callback);
+          },
+          save: (materialId: number, data: any[], type: string) => {
+            this.saveMaterialDetailsById(materialId, data, type);
+          },
+          delete: (params: any, callback: () => void) => {
+            this.deleteDetailRow(params, callback, 'MATERIAL');
+          }
+        }
+      }
+    });
   }
 
   onSelectionChanged(event: any): void {
@@ -746,22 +413,39 @@ export class MaterialesMaestroComponent implements OnInit {
   }
 
   addMaterial(): void {
-    const modalRef = this.modalService.open(ModalMaterialComponent, {
-      size: 'lg',
-      backdrop: 'static'
-    });
+    const newMaterial: any = {
+      id: `temp_${Date.now()}`, // ID temporal
+      __isNew: true,
+      active: true,
+      insumo: '',
+      articulo: '',
+      idCategory: 0,
+      categoria: '',
+      idFamilia: 0,
+      familia: '',
+      idSubfamilia: 0,
+      subfamilia: '',
+      subfamilyCount: 0,
+      providerCount: 0,
+      picture: '',
+      idCompany: this.idRoot
+    };
 
-    modalRef.componentInstance.isEdit = false;
+    // Agregar al inicio del grid
+    this.rowData = [newMaterial as MaterialsResponse, ...this.rowData];
+    this.hasUnsavedChanges = true;
 
-    modalRef.result.then(
-      (newMaterial) => {
-        if (newMaterial) {
-          this.rowData = [...this.rowData, newMaterial];
-          this.hasUnsavedChanges = true;
-        }
-      },
-      () => { }
-    );
+    // Seleccionar la nueva fila y comenzar a editar
+    setTimeout(() => {
+      const newRowNode = this.gridApi.getRowNode(newMaterial.id);
+      if (newRowNode) {
+        newRowNode.setSelected(true);
+        this.gridApi.startEditingCell({
+          rowIndex: 0,
+          colKey: 'insumo'
+        });
+      }
+    }, 100);
   }
 
   editMaterial(): void {
@@ -770,27 +454,14 @@ export class MaterialesMaestroComponent implements OnInit {
       return;
     }
 
-    const modalRef = this.modalService.open(ModalMaterialComponent, {
-      size: 'lg',
-      backdrop: 'static'
-    });
-
-    modalRef.componentInstance.material = { ...this.selectedMaterial };
-    modalRef.componentInstance.isEdit = true;
-
-    modalRef.result.then(
-      (updatedMaterial) => {
-        if (updatedMaterial) {
-          const index = this.rowData.findIndex(m => m.id === updatedMaterial.id);
-          if (index !== -1) {
-            this.rowData[index] = updatedMaterial;
-            this.rowData = [...this.rowData]; // Trigger change detection
-            this.hasUnsavedChanges = true;
-          }
-        }
-      },
-      () => { }
-    );
+    // Iniciar edición en la primera celda editable
+    const selectedNode = this.gridApi.getSelectedNodes()[0];
+    if (selectedNode) {
+      this.gridApi.startEditingCell({
+        rowIndex: selectedNode.rowIndex!,
+        colKey: 'insumo'
+      });
+    }
   }
 
   async deleteMaterial(): Promise<void> {
@@ -801,33 +472,197 @@ export class MaterialesMaestroComponent implements OnInit {
 
     const result = await alerts.confirmAlert(
       '¿Eliminar material?',
-      `¿Está seguro de eliminar el material ${this.selectedMaterial.numMat} - ${this.selectedMaterial.articulo}?`,
+      `¿Está seguro de eliminar el material ${this.selectedMaterial.insumo} - ${this.selectedMaterial.articulo}?`,
       'warning',
       'Sí, eliminar'
     );
 
     if (result.isConfirmed) {
-      // Eliminar del array de datos
-      this.rowData = this.rowData.filter(m => m.id !== this.selectedMaterial.id);
-      this.selectedMaterial = null;
-      this.hasUnsavedChanges = true;
-      alerts.basicAlert('Eliminado', 'El material ha sido eliminado', 'success');
+      try {
+        const materialId = typeof this.selectedMaterial.id === 'string' ?
+          parseInt(this.selectedMaterial.id.replace('temp_', '')) :
+          this.selectedMaterial.id;
+
+        await lastValueFrom(this.materialsService.deleteMaterial(materialId));
+        alerts.basicAlert('Eliminado', 'El material ha sido eliminado correctamente', 'success');
+        this.selectedMaterial = null;
+        this.loadMaterials(); // Recargar datos
+      } catch (error: any) {
+        console.error('Error al eliminar material:', error);
+        const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
+        alerts.basicAlert('Error', `No se pudo eliminar el material: ${errorMsg}`, 'error');
+      }
     }
   }
 
-  saveChanges(): void {
+  async saveChanges(): Promise<void> {
     if (!this.hasUnsavedChanges) {
+      alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;
     }
-    // TODO: Guardar cambios en el servidor
-    alerts.basicAlert('Guardado', 'Los cambios han sido guardados correctamente', 'success');
-    this.hasUnsavedChanges = false;
+
+    // Buscar filas nuevas y modificadas
+    const newRows = this.rowData.filter((row: any) => row.__isNew);
+    const modifiedRows = this.rowData.filter((row: any) => row.__modified && !row.__isNew);
+
+    if (newRows.length === 0 && modifiedRows.length === 0) {
+      alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
+      this.hasUnsavedChanges = false;
+      return;
+    }
+
+    try {
+      // Guardar nuevos registros
+      for (const newRow of newRows) {
+        const materialData = this.prepareMaterialData(newRow);
+        await lastValueFrom(this.materialsService.addMaterial(materialData));
+      }
+
+      // Actualizar registros modificados
+      for (const modifiedRow of modifiedRows) {
+        const materialData = this.prepareMaterialData(modifiedRow);
+        await lastValueFrom(this.materialsService.updateMaterial(modifiedRow.id.toString(), materialData));
+      }
+
+      alerts.basicAlert('Guardado', 'Los cambios han sido guardados correctamente', 'success');
+      this.hasUnsavedChanges = false;
+      this.loadMaterials(); // Recargar datos
+    } catch (error: any) {
+      console.error('Error al guardar cambios:', error);
+      const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
+      alerts.basicAlert('Error', `No se pudieron guardar los cambios: ${errorMsg}`, 'error');
+    }
+  }
+
+  private prepareMaterialData(row: any): any {
+    return {
+      idCompany: this.idRoot,
+      idBranch: null,
+      typeOcorReq: '',
+      idCustomer: null,
+      insumo: row.insumo || '',
+      barCode: '',
+      barcode: '',
+      company: '',
+      articulo: '',
+      idCategory: row.idCategory || 0,
+      idFamilia: row.idFamilia || 0,
+      idSubfamilia: row.idSubfamilia || 0,
+      idMedida: 0,
+      idUbication: 0,
+      description: row.articulo || '',
+      folio: '',
+      price: 0,
+      quantity: 0,
+      date: new Date().toISOString(),
+      aplicaResg: false,
+      costoMN: 0,
+      costoDLL: 0,
+      ventaMN: 0,
+      ventaDLL: 0,
+      stockMin: 0,
+      stockMax: 0,
+      picture: row.picture || '',
+      typeMaterial: 'CONSUMABLE',
+      folioOcorReq: '',
+      active: row.active ?? true
+    };
   }
 
   refreshData(): void {
-    this.cargarDatosFalsos();
+    this.loadMaterials();
     this.selectedMaterial = null;
     this.hasUnsavedChanges = false;
     alerts.basicAlert('Recargado', 'Los datos han sido recargados', 'success');
+  }
+
+  // ==================== MÉTODOS CRUD PARA PROVEEDORES DEL MATERIAL ====================
+
+  loadMaterialXTableData(materialId: number, type: string, successCallback: any) {
+    this.providersService.getMaterXTable(materialId, type).subscribe({
+      next: (data: any) => {
+        this.materialsXTableData[materialId] = data;
+        successCallback(data);
+      },
+      error: (error) => {
+        console.error('Error loading material details:', error);
+        successCallback([]);
+      }
+    });
+  }
+
+  async saveMaterialDetailsById(materialId: number, data: any[], type: string) {
+    const newDetails = data.filter((row: any) => row.__isNew);
+    const modifiedDetails = data.filter((row: any) => row.__modified && !row.__isNew);
+
+    try {
+      for (const row of newDetails) {
+        await lastValueFrom(this.providersService.addProviderXTable(this.cleanDataForServer(row)));
+      }
+
+      for (const row of modifiedDetails) {
+        await lastValueFrom(this.providersService.updateProviderXTable(row.id, this.cleanDataForServer(row)));
+      }
+
+      if (newDetails.length > 0 || modifiedDetails.length > 0) {
+        alerts.basicAlert(
+          'Detalles guardados',
+          'Se han guardado los proveedores correctamente.',
+          'success'
+        );
+
+        // Limpiar los flags
+        data.forEach(row => {
+          delete row.__isNew;
+          delete row.__modified;
+        });
+      }
+
+    } catch (error) {
+      console.error('Error saving provider details:', error);
+      alerts.basicAlert(
+        'Error',
+        'Error al guardar los proveedores.',
+        'error'
+      );
+    }
+  }
+
+  async deleteDetailRow(params: any, successCallback: () => void, type: string) {
+    const materialId = params.data.campo1;
+    const detailId = params.data.id;
+
+    if (params.data.__isNew) {
+      // Si es una fila nueva, solo removerla del array local
+      this.materialsXTableData[materialId] = (this.materialsXTableData[materialId] || []).filter(
+        item => item.id !== detailId
+      ) || [];
+      params.api.applyTransaction({ remove: [params.data] });
+      this.hasUnsavedChanges = true;
+    } else {
+      // Si es una fila existente, eliminarla del servidor
+      try {
+        await lastValueFrom(this.providersService.deleteProviderXTable(detailId));
+        alerts.basicAlert('Proveedor eliminado', 'El proveedor se eliminó correctamente.', 'success');
+        successCallback(); // Llama al callback para recargar los datos en el componente hijo
+      } catch (error) {
+        console.error('Error deleting detail row:', error);
+        alerts.basicAlert(
+          'Error',
+          'Error al eliminar el proveedor.',
+          'error'
+        );
+      }
+    }
+  }
+
+  private cleanDataForServer(data: any): any {
+    const cleanedData = { ...data };
+    delete cleanedData.__isNew;
+    delete cleanedData.__modified;
+    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
+      delete cleanedData.id;
+    }
+    return cleanedData;
   }
 }

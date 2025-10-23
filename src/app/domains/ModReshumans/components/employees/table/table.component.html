@@ -9,6 +9,7 @@
           type="button"
           class="btn btn-primary ms-1 me-1"
           (click)="addMasterRow()"
+          *ngIf="authService.getCrudPermission('hr', 'employees', 'create')"
         >
           <i class="bi bi-plus-lg"></i>
         </button>
@@ -16,6 +17,7 @@
           type="button"
           class="btn btn-success ms-1 me-1 position-relative"
           (click)="saveMasterChanges()"
+          *ngIf="authService.getCrudPermission('hr', 'employees', 'create') || authService.getCrudPermission('hr', 'employees', 'update')"
         >
           <i class="bi bi-floppy"></i>
           <span
@@ -36,6 +38,7 @@
           type="button"
           class="btn btn-danger ms-1 me-1"
           (click)="deleteMasterEntry()"
+          *ngIf="authService.getCrudPermission('hr', 'employees', 'delete')"
         >
           <i class="bi bi-trash"></i>
         </button>

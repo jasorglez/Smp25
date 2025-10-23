@@ -8,7 +8,7 @@
                      class="bi bi-building-fill-gear"></i> {{ 'root' | translate}}</a>
             </li>
 
-            <li class="nav-item" *ngIf="canSeeBranches">
+            <li class="nav-item" *ngIf="canSeeBranches || isRoot">
                <a class="nav-link green-tab" routerLink="branches" routerLinkActive="active"><i
                      class="bi bi-building-fill-gear"></i> {{ 'branchs' | translate}}</a>
             </li>

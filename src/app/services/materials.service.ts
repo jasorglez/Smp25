@@ -18,6 +18,12 @@ export class MaterialsService {
     );
   }
 
+  getMaterialsxview(idRoot: number): Observable<MaterialsResponse[]> {
+    return this.http.get<MaterialsResponse[]>(`${environment.urlWarehouse}/Material/with-counts/${idRoot}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
   getAllMaterialsxview(id: number): Observable<MaterialsResponse[]> {
     return this.http.get<MaterialsResponse[]>(`${environment.urlWarehouse}/Material/materialsview/${id}`,
       { headers: this.trackingService.getHeaders() }
