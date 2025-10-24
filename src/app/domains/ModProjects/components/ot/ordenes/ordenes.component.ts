@@ -2019,11 +2019,19 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         if (selectedData.__isNew) {
           this.fotografias = this.fotografias.filter(f => f.id !== id);
           this.notSavedFotografiaChanges = this.fotografias.some(f => f.__isNew);
+
+          // Limpiar vista previa del PDF para reflejar cambios
+          this.clearPdfPreview();
+
           alerts.basicAlert('Éxito', 'Fotografía eliminada correctamente', 'success');
         } else {
           this.logbookService.deleteDataForOt(Number(id)).subscribe({
             next: (response) => {
               this.fotografias = this.fotografias.filter(f => f.id !== id);
+
+              // Limpiar vista previa del PDF para reflejar cambios
+              this.clearPdfPreview();
+
               alerts.basicAlert('Éxito', 'Fotografía eliminada correctamente del servidor', 'success');
             },
             error: (error) => {
@@ -2078,11 +2086,19 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         if (selectedData.__isNew) {
           this.videos = this.videos.filter(v => v.id !== id);
           this.notSavedVideoChanges = this.videos.some(v => v.__isNew);
+
+          // Limpiar vista previa del PDF para reflejar cambios
+          this.clearPdfPreview();
+
           alerts.basicAlert('Éxito', 'Video eliminado correctamente', 'success');
         } else {
           this.logbookService.deleteDataForOt(Number(id)).subscribe({
             next: (response) => {
               this.videos = this.videos.filter(v => v.id !== id);
+
+              // Limpiar vista previa del PDF para reflejar cambios
+              this.clearPdfPreview();
+
               alerts.basicAlert('Éxito', 'Video eliminado correctamente del servidor', 'success');
             },
             error: (error) => {
@@ -2934,6 +2950,15 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       this.originalUrl = null;
     }
 
+    // Limpiar todos los datos de pestañas para evitar que persistan datos de OT anterior
+    this.fotografias = [];
+    this.videos = [];
+    this.notas = [];
+    this.personal = [];
+    this.materiales = [];
+    this.equipos = [];
+    this.conceptos = [];
+
     const detectedProject = this.detectProjectFromData();
     if (!detectedProject) {
       // Podríamos mostrar una alerta aquí si fuera necesario
@@ -3357,10 +3382,31 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Limpia la vista previa del PDF actual
+   */
+  clearPdfPreview() {
+    this.showPdfEmbed = false;
+    this.pdfUrl = null;
+    if (this.originalUrl) {
+      URL.revokeObjectURL(this.originalUrl);
+      this.originalUrl = null;
+    }
+  }
+
   selectReporte(reporte: ReporteDiario) {
     // Limpiar selecciones previas
     this.selectedFotografia = null;
     this.selectedVideo = null;
+
+    // Limpiar todos los datos de pestañas para evitar que persistan datos del reporte anterior
+    this.fotografias = [];
+    this.videos = [];
+    this.notas = [];
+    this.personal = [];
+    this.materiales = [];
+    this.equipos = [];
+    this.conceptos = [];
 
     // Verificar que el proyecto del sidebar coincida con el proyecto de la OT
     const sidebarProjectId = this.signalsService.getProjectSelectedBySidebar()();
@@ -5040,16 +5086,19 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   obtenerFotografias(selectedReporteId: any) {
     this.logbookService.getInfoByReporte(selectedReporteId, "Photo").subscribe(
       (data: any) => {
-        this.fotografias = data.data;
+        this.fotografias = data.data || [];
       },
-      (error) => console.error('Error fetching data:', error)
+      (error) => {
+        console.error('Error fetching data:', error);
+        this.fotografias = []; // Limpiar en caso de error
+      }
     );
   }
 
   obtenerVideos(selectedReporteId: any) {
     this.logbookService.getInfoByReporte(selectedReporteId, "Video").subscribe(
       (data: any) => {
-        this.videos = data.data.map((video: any) => {
+        this.videos = (data.data || []).map((video: any) => {
           // La URL del video está en el campo 'imageUrl'
           const videoUrl = video.imageUrl || video.videoUrl || video.url || '';
 
@@ -5060,7 +5109,10 @@ export class OrdenesComponent implements OnInit, OnDestroy {
           };
         });
       },
-      (error) => console.error('Error fetching data:', error)
+      (error) => {
+        console.error('Error fetching data:', error);
+        this.videos = []; // Limpiar en caso de error
+      }
     );
   }
 
@@ -5068,7 +5120,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     this.logbookService.getInfoByReporte(selectedReporteId, "NOTE").subscribe(
       (data: any) => {
         // Procesar los datos del servidor para evitar duplicaciones
-        this.notas = data.data.map((nota: any, index: number) => ({
+        this.notas = (data.data || []).map((nota: any, index: number) => ({
           ...nota,
           // Generar ID único si viene con 0 o no tiene ID válido
           id: nota.id && nota.id !== 0 ? nota.id : `server_nota_${selectedReporteId}_${index}_${Date.now()}`,
@@ -5078,7 +5130,10 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         }));
         console.log('Notas procesadas desde servidor:', this.notas);
       },
-      (error) => console.error('Error fetching data:', error)
+      (error) => {
+        console.error('Error fetching data:', error);
+        this.notas = []; // Limpiar en caso de error
+      }
     );
   }
 
@@ -5978,6 +6033,10 @@ export class OrdenesComponent implements OnInit, OnDestroy {
           this.notas = this.notas.filter(m => m.id !== id);
           this.notSavedNoteChanges = this.notas.some(m => m.__isNew);
           console.log('Notas después de eliminación local:', this.notas);
+
+          // Limpiar vista previa del PDF para reflejar cambios
+          this.clearPdfPreview();
+
           alerts.basicAlert('Éxito', 'Nota eliminada correctamente', 'success');
         } else {
           console.log('Eliminando registro existente usando endpoint DELETE');
@@ -5988,6 +6047,10 @@ export class OrdenesComponent implements OnInit, OnDestroy {
               console.log('Respuesta del DELETE:', response);
               this.notas = this.notas.filter(m => m.id !== id);
               console.log('Notas después de eliminación del servidor:', this.notas);
+
+              // Limpiar vista previa del PDF para reflejar cambios
+              this.clearPdfPreview();
+
               alerts.basicAlert('Éxito', 'Nota eliminada correctamente del servidor', 'success');
             },
             error: (error) => {
