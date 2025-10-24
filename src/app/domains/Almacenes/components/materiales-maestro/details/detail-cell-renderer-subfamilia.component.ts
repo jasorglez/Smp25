@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnDestroy } from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams, ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -6,38 +6,52 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
 import { CatalogsService } from 'app/services/catalogs.service';
-import { lastValueFrom } from 'rxjs';
+import { lastValueFrom, Subscription } from 'rxjs';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { SubfamiliaModalService } from '../services/subfamilia-modal.service';
 
 @Component({
   selector: 'app-detail-cell-renderer-subfamilia',
   standalone: true,
   imports: [AgGridModule, CommonModule, FormsModule],
   template: `
-<div style="padding: 15px; background-color: #fff3e0; height: 100%; display: flex; flex-direction: column;">
-  <!-- Header -->
-  <div style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
-    <h6 class="mb-0">
-      <i class="bi bi-cup-straw"></i> Variantes de: <strong>{{ materialName }}</strong>
-    </h6>
-
-    <!-- Botones de acción -->
-    <div class="btn-group btn-group-sm" role="group">
-      <button type="button" class="btn btn-success" (click)="addCatalogItem()" title="Agregar">
-        <i class="bi bi-plus-lg"></i> Agregar
-      </button>
-      <button type="button" class="btn btn-danger" (click)="deleteSelectedItem()"
-              [disabled]="!selectedRowData" title="Eliminar">
-        <i class="bi bi-trash"></i> Eliminar
-      </button>
+<div style="padding: 10px; background-color: #fff3e0; height: 100%; display: flex; flex-direction: column;">
+  <div style="margin-bottom: 15px; flex-grow: 1; display: flex; flex-direction: column;">
+    <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+      <strong><i class="bi bi-cup-straw"></i> Variantes de: {{ materialName }}</strong>
+      <div class="d-flex gap-2">
+        <button
+          class="btn btn-sm btn-success me-2"
+          (click)="addCatalogItem()"
+          [disabled]="!gridApi">
+          <i class="bi bi-plus-lg"></i> Agregar
+        </button>
+        <button
+          class="btn btn-sm btn-primary me-2 position-relative"
+          (click)="saveChanges()"
+          [disabled]="!hasUnsavedChanges">
+          <i class="bi bi-floppy"></i> Guardar
+          <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+            *ngIf="hasUnsavedChanges">
+            <span class="visually-hidden">Hay cambios sin guardar</span>
+          </span>
+        </button>
+        <button
+          class="btn btn-sm btn-warning me-2"
+          (click)="revertChanges()">
+          <i class="bi bi-arrow-clockwise"></i> Deshacer
+        </button>
+        <button
+          class="btn btn-sm btn-danger"
+          (click)="deleteSelectedItem()"
+          [disabled]="!selectedRowData">
+          <i class="bi bi-trash"></i> Borrar
+        </button>
+      </div>
     </div>
-  </div>
-
-  <!-- AG Grid -->
-  <div style="flex-grow: 1;">
     <ag-grid-angular
-      class="ag-theme-quartz"
-      style="width: 100%; height: 100%;"
+      class="ag-theme-quartz small-text-ag-grid"
+      style="width: 100%; flex-grow: 1;"
       [columnDefs]="columnDefs"
       [rowData]="flattenTreeData()"
       [gridOptions]="gridOptions"
@@ -45,113 +59,6 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
       (gridReady)="onGridReady($event)">
     </ag-grid-angular>
   </div>
-</div>
-
-<!-- ========== MODAL PARA AGREGAR FLAVOR ========== -->
-<div class="modal fade" [class.show]="showAddFlavorModal"
-     [style.display]="showAddFlavorModal ? 'block' : 'none'"
-     tabindex="-1" *ngIf="showAddFlavorModal">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header bg-info text-white">
-        <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Nuevo Flavor</h5>
-        <button type="button" class="btn-close btn-close-white" (click)="closeModals()"></button>
-      </div>
-      <div class="modal-body">
-        <form (ngSubmit)="saveNewFlavor()">
-          <div class="mb-3">
-            <label for="flavorDescription" class="form-label">Descripción *</label>
-            <input type="text" class="form-control" id="flavorDescription"
-                   [(ngModel)]="modalForm.description" name="description" required>
-          </div>
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="flavorActive"
-                   [(ngModel)]="modalForm.active" name="active">
-            <label class="form-check-label" for="flavorActive">Activo</label>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" (click)="closeModals()">Cancelar</button>
-            <button type="submit" class="btn btn-info">
-              <i class="bi bi-check-circle"></i> Guardar
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ========== MODAL PARA AGREGAR PRESENTATION ========== -->
-<div class="modal fade" [class.show]="showAddPresentationModal"
-     [style.display]="showAddPresentationModal ? 'block' : 'none'"
-     tabindex="-1" *ngIf="showAddPresentationModal">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header bg-secondary text-white">
-        <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Nueva Presentación</h5>
-        <button type="button" class="btn-close btn-close-white" (click)="closeModals()"></button>
-      </div>
-      <div class="modal-body">
-        <form (ngSubmit)="saveNewPresentation()">
-          <div class="mb-3">
-            <label for="presentationDescription" class="form-label">Descripción *</label>
-            <input type="text" class="form-control" id="presentationDescription"
-                   [(ngModel)]="modalForm.description" name="description" required>
-          </div>
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="presentationActive"
-                   [(ngModel)]="modalForm.active" name="active">
-            <label class="form-check-label" for="presentationActive">Activo</label>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" (click)="closeModals()">Cancelar</button>
-            <button type="submit" class="btn btn-secondary">
-              <i class="bi bi-check-circle"></i> Guardar
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ========== MODAL PARA EDITAR ========== -->
-<div class="modal fade" [class.show]="showEditModal"
-     [style.display]="showEditModal ? 'block' : 'none'"
-     tabindex="-1" *ngIf="showEditModal">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header bg-warning text-dark">
-        <h5 class="modal-title"><i class="bi bi-pencil-square"></i> Editar</h5>
-        <button type="button" class="btn-close" (click)="closeModals()"></button>
-      </div>
-      <div class="modal-body">
-        <form (ngSubmit)="saveEditChanges()">
-          <div class="mb-3">
-            <label for="editDescription" class="form-label">Descripción *</label>
-            <input type="text" class="form-control" id="editDescription"
-                   [(ngModel)]="modalForm.description" name="description" required>
-          </div>
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="editActive"
-                   [(ngModel)]="modalForm.active" name="active">
-            <label class="form-check-label" for="editActive">Activo</label>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" (click)="closeModals()">Cancelar</button>
-            <button type="submit" class="btn btn-warning">
-              <i class="bi bi-check-circle"></i> Actualizar
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Backdrop para modales -->
-<div class="modal-backdrop fade show"
-     *ngIf="showAddFlavorModal || showAddPresentationModal || showEditModal">
 </div>
 `,
   styles: [`
@@ -161,9 +68,11 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 }
 `]
 })
-export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngularComp {
+export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngularComp, OnDestroy {
 
   private catalogsService = inject(CatalogsService);
+  private modalService = inject(SubfamiliaModalService);
+  private modalSubscription?: Subscription;
 
   params: any;
   materialId: number;
@@ -171,28 +80,15 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
   idRoot: number;
   idFamilia: number; // La subfamilia base viene del idFamilia del material
 
-  private gridApi!: GridApi;
+  gridApi!: GridApi;
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
-
-  // Propiedades para modales (igual que cat-fam-sub)
-  showAddSubfamiliaModal = false;
-  showAddFlavorModal = false;
-  showAddPresentationModal = false;
-  showEditModal = false;
-
-  // Datos del formulario modal
-  modalForm = {
-    description: '',
-    active: true
-  };
-
-  // Datos para edición
-  editingItem: any = null;
 
   // Datos del catálogo jerárquico
   treeData: any[] = [];
+  originalTreeData: any[] = []; // Para revertir cambios
   selectedRowData: any = null;
   selectedNodeLevel: 'subfamilia' | 'flavor' | 'presentation' | null = null;
+  hasUnsavedChanges: boolean = false;
 
   // Estado de expansión para persistir
   private expansionState: Map<string, { subfamilia: boolean, flavors: Map<string, boolean> }> = new Map();
@@ -210,6 +106,12 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
     // La subfamilia viene del idFamilia del material
     this.idFamilia = params.data.idFamilia;
 
+    // Suscribirse a confirmaciones de guardado del servicio de modales
+    this.modalSubscription = this.modalService.saveConfirmed$.subscribe(data => {
+      console.log('💾 DetailCellRenderer - Recibido evento de guardado:', data);
+      this.handleModalSave(data);
+    });
+
     // Cargar datos
     this.loadCatalogData();
   }
@@ -218,29 +120,79 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
     return false;
   }
 
+  ngOnDestroy() {
+    if (this.modalSubscription) {
+      this.modalSubscription.unsubscribe();
+    }
+  }
+
   // Cargar datos del catálogo (3 niveles: Subfamilia → Flavor → Presentation)
   async loadCatalogData() {
-    if (!this.idRoot) return;
+    console.log('🔍 loadCatalogData - Parámetros:', {
+      idRoot: this.idRoot,
+      idFamilia: this.idFamilia,
+      materialId: this.materialId,
+      materialName: this.materialName
+    });
+
+    if (!this.idRoot || !this.idFamilia) {
+      console.warn('❌ idRoot o idFamilia es null, no se pueden cargar datos');
+      return;
+    }
 
     try {
       // Guardar estado de expansión antes de recargar
       this.saveExpansionState();
 
-      // Cargar los 3 tipos de datos en paralelo
-      const [subfamilias, flavors, presentations] = await Promise.all([
-        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'SUB-FAM')),
-        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'FLAVOR')),
-        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'PRESENTATI'))
-      ]);
+      console.log('📡 Cargando subfamilias, flavors y presentations...');
+
+      // Cargar subfamilias del endpoint correcto
+      const subfamilias = await lastValueFrom(
+        this.catalogsService.getCatalogsxSubfamily(this.idRoot, this.idFamilia)
+      );
+
+      // Cargar flavors y presentations (pueden no existir aún, manejar 404)
+      let flavors: any[] = [];
+      let presentations: any[] = [];
+
+      try {
+        flavors = await lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'FLAVOR'));
+      } catch (error: any) {
+        if (error.status === 404) {
+          console.log('ℹ️ No hay flavors registrados todavía');
+          flavors = [];
+        } else {
+          throw error; // Re-lanzar si es otro tipo de error
+        }
+      }
+
+      try {
+        presentations = await lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'PRESENTATI'));
+      } catch (error: any) {
+        if (error.status === 404) {
+          console.log('ℹ️ No hay presentations registradas todavía');
+          presentations = [];
+        } else {
+          throw error; // Re-lanzar si es otro tipo de error
+        }
+      }
+
+      console.log('✅ Datos recibidos de la BD:', {
+        subfamilias: subfamilias.length,
+        flavors: flavors.length,
+        presentations: presentations.length
+      });
 
       // Construir estructura jerárquica
       this.buildTreeStructure(subfamilias, flavors, presentations);
+
+      console.log('🌲 TreeData construido:', this.treeData);
 
       // Restaurar estado de expansión
       this.restoreExpansionState();
 
     } catch (error) {
-      console.error('Error al cargar datos del catálogo:', error);
+      console.error('❌ Error al cargar datos del catálogo:', error);
       this.treeData = [];
       alerts.basicAlert('Error', 'Error al cargar los datos.', 'error');
     }
@@ -250,55 +202,69 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
   private buildTreeStructure(subfamilias: any[], flavors: any[], presentations: any[]) {
     this.treeData = [];
 
-    // Filtrar solo la subfamilia del material actual
-    const materialSubfamilia = subfamilias.find(s => s.id === this.idFamilia);
+    console.log('🏗️ Construyendo estructura con:', {
+      'Total subfamilias': subfamilias.length,
+      'Total flavors': flavors.length,
+      'Total presentations': presentations.length
+    });
 
-    if (!materialSubfamilia) {
-      console.warn('No se encontró la subfamilia del material');
-      return;
-    }
-
-    // Agregar subfamilia (nivel 1) - siempre visible
-    const subfamiliaNode = {
-      ...materialSubfamilia,
-      nodeLevel: 'subfamilia',
-      originalId: materialSubfamilia.id,
-      isExpanded: false,
-      isVisible: true
-    };
-    this.treeData.push(subfamiliaNode);
-
-    // Buscar flavors de esta subfamilia (nivel 2)
-    const subfamiliaFlavors = flavors.filter(flavor => flavor.parentId === materialSubfamilia.id);
-
-    subfamiliaFlavors.forEach(flavor => {
-      const flavorNode = {
-        ...flavor,
-        nodeLevel: 'flavor',
-        originalId: flavor.id,
-        parentSubfamiliaId: materialSubfamilia.id,
+    // Agregar TODAS las subfamilias (nivel 1) - siempre visibles
+    subfamilias.forEach(subfamilia => {
+      const subfamiliaNode = {
+        ...subfamilia,
+        nodeLevel: 'subfamilia',
+        originalId: subfamilia.id,
         isExpanded: false,
-        isVisible: false // Ocultas por defecto
+        isVisible: true
       };
-      this.treeData.push(flavorNode);
+      this.treeData.push(subfamiliaNode);
 
-      // Buscar presentations de este flavor (nivel 3)
-      const flavorPresentations = presentations.filter(presentation =>
-        presentation.subParentId === flavor.id
+      // Buscar flavors de esta subfamilia (nivel 2)
+      // Los flavors tienen: parentId = subfamiliaId, subParentId = 0
+      const subfamiliaFlavors = flavors.filter(flavor =>
+        flavor.parentId === subfamilia.id && (flavor.subParentId === 0 || !flavor.subParentId)
       );
 
-      flavorPresentations.forEach(presentation => {
-        const presentationNode = {
-          ...presentation,
-          nodeLevel: 'presentation',
-          originalId: presentation.id,
-          parentSubfamiliaId: materialSubfamilia.id,
-          parentFlavorId: flavor.id,
+      console.log(`  📦 Subfamilia "${subfamilia.description}" tiene ${subfamiliaFlavors.length} flavors`);
+
+      subfamiliaFlavors.forEach(flavor => {
+        const flavorNode = {
+          ...flavor,
+          nodeLevel: 'flavor',
+          originalId: flavor.id,
+          parentSubfamiliaId: subfamilia.id,
+          isExpanded: false,
           isVisible: false // Ocultas por defecto
         };
-        this.treeData.push(presentationNode);
+        this.treeData.push(flavorNode);
+
+        // Buscar presentations de este flavor (nivel 3)
+        // Las presentations tienen: parentId = subfamiliaId, subParentId = flavorId
+        const flavorPresentations = presentations.filter(presentation =>
+          presentation.parentId === subfamilia.id && presentation.subParentId === flavor.id
+        );
+
+        console.log(`    🎁 Flavor "${flavor.description}" tiene ${flavorPresentations.length} presentations`);
+
+        flavorPresentations.forEach(presentation => {
+          const presentationNode = {
+            ...presentation,
+            nodeLevel: 'presentation',
+            originalId: presentation.id,
+            parentSubfamiliaId: subfamilia.id,
+            parentFlavorId: flavor.id,
+            isVisible: false // Ocultas por defecto
+          };
+          this.treeData.push(presentationNode);
+        });
       });
     });
+
+    console.log(`✅ Estructura construida con ${this.treeData.length} nodos`);
+
+    // Guardar copia para revertir cambios
+    this.originalTreeData = JSON.parse(JSON.stringify(this.treeData));
+    this.hasUnsavedChanges = false;
   }
 
   // Configuración del grid
@@ -316,12 +282,8 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
         if (event.node.isSelected()) {
           this.onRowSelected(event);
         }
-      },
-      onCellDoubleClicked: (event: any) => {
-        if (event.data) {
-          this.openEditModal(event.data);
-        }
       }
+      // onCellDoubleClicked está en cada columna individualmente
     };
   }
 
@@ -344,9 +306,18 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
           return '';
         },
         onCellClicked: (event: any) => {
+          // Solo expandir si el click es en el chevron
           if (event.event.target.classList.contains('chevron-icon') ||
               event.event.target.getAttribute('data-action') === 'toggle') {
             this.toggleSubfamiliaExpansion(event.data);
+            event.event.stopPropagation(); // Evitar que dispare otros eventos
+          }
+        },
+        onCellDoubleClicked: (event: any) => {
+          // Doble click para editar (solo si NO es en el chevron)
+          if (!event.event.target.classList.contains('chevron-icon') &&
+              event.event.target.getAttribute('data-action') !== 'toggle') {
+            this.openEditModal(event.data);
           }
         }
       },
@@ -364,9 +335,18 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
           return '';
         },
         onCellClicked: (event: any) => {
+          // Solo expandir si el click es en el chevron
           if (event.event.target.classList.contains('chevron-icon') ||
               event.event.target.getAttribute('data-action') === 'toggle') {
             this.toggleFlavorExpansion(event.data);
+            event.event.stopPropagation(); // Evitar que dispare otros eventos
+          }
+        },
+        onCellDoubleClicked: (event: any) => {
+          // Doble click para editar (solo si NO es en el chevron)
+          if (!event.event.target.classList.contains('chevron-icon') &&
+              event.event.target.getAttribute('data-action') !== 'toggle') {
+            this.openEditModal(event.data);
           }
         }
       },
@@ -379,6 +359,12 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
             return `<span style="margin-right: 15px;"></span> ${params.data.description}`;
           }
           return '';
+        },
+        onCellDoubleClicked: (event: any) => {
+          // Doble click para editar presentations
+          if (event.data && event.data.nodeLevel === 'presentation') {
+            this.openEditModal(event.data);
+          }
         }
       },
       {
@@ -476,7 +462,7 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
   // Agregar nuevo elemento según nivel seleccionado
   addCatalogItem() {
     if (!this.selectedRowData) {
-      this.openAddFlavorModal(); // Si no hay selección, agregar flavor
+      this.openAddSubfamiliaModal(); // Si no hay selección, agregar subfamilia
       return;
     }
 
@@ -491,7 +477,7 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
         alerts.basicAlert('Nivel máximo', 'No se pueden agregar elementos debajo de una presentación.', 'warning');
         break;
       default:
-        this.openAddFlavorModal();
+        this.openAddSubfamiliaModal();
     }
   }
 
@@ -547,13 +533,211 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
 
   // ========== MÉTODOS PARA MODALES ==========
 
-  openAddFlavorModal() {
-    if (!this.selectedRowData || this.selectedNodeLevel !== 'subfamilia') {
-      alerts.basicAlert('Error', 'Seleccione una subfamilia para agregar un flavor.', 'warning');
+  handleModalSave(data: any) {
+    console.log('💾 handleModalSave - Procesando datos:', data);
+
+    if (!data || !data.type) {
+      console.error('❌ Datos inválidos recibidos del modal');
       return;
     }
-    this.resetModalForm();
-    this.showAddFlavorModal = true;
+
+    switch (data.type) {
+      case 'subfamilia':
+        this.handleSaveSubfamilia(data);
+        break;
+      case 'flavor':
+        this.handleSaveFlavor(data);
+        break;
+      case 'presentation':
+        this.handleSavePresentation(data);
+        break;
+      default:
+        console.error('❌ Tipo de modal desconocido:', data.type);
+    }
+  }
+
+  private async handleSaveSubfamilia(data: any) {
+    if (data.mode === 'add') {
+      // Preparar datos para guardar en BD
+      const newSubfamilia = this.cleanDataForServer({
+        description: data.description,
+        type: 'SUB-FAM',
+        parentId: this.idFamilia, // La familia del material
+        subParentId: 0,
+        active: data.active ? 1 : 0
+      });
+
+      try {
+        const response = await lastValueFrom(this.catalogsService.addCatalog(newSubfamilia));
+        console.log('✅ Subfamilia guardada en BD:', response);
+        alerts.basicAlert('Éxito', 'Subfamilia creada correctamente.', 'success');
+
+        // Recargar datos del servidor
+        await this.loadCatalogData();
+      } catch (error: any) {
+        console.error('❌ Error al crear subfamilia:', error);
+        const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
+        alerts.basicAlert('Error', `Error al crear la subfamilia: ${errorMsg}`, 'error');
+      }
+    } else if (data.mode === 'edit' && data.data) {
+      // Editar subfamilia existente
+      const item = this.treeData.find(i => i.originalId === data.data.originalId);
+      if (item) {
+        item.description = data.description;
+        item.active = data.active ? 1 : 0;
+        item.__modified = true;
+        this.hasUnsavedChanges = true;
+
+        if (this.gridApi) {
+          this.gridApi.setGridOption('rowData', this.flattenTreeData());
+        }
+
+        alerts.basicAlert('Éxito', 'Subfamilia actualizada. Haz clic en Guardar para aplicar los cambios.', 'success');
+      }
+    }
+  }
+
+  private async handleSaveFlavor(data: any) {
+    if (data.mode === 'add' && data.parentData?.subfamiliaId) {
+      // Preparar datos para guardar en BD
+      const newFlavor = this.cleanDataForServer({
+        description: data.description,
+        type: 'FLAVOR',
+        parentId: data.parentData.subfamiliaId, // ID de la subfamilia padre
+        subParentId: 0,
+        active: data.active ? 1 : 0
+      });
+
+      try {
+        const response = await lastValueFrom(this.catalogsService.addCatalog(newFlavor));
+        console.log('✅ Flavor guardado en BD:', response);
+        alerts.basicAlert('Éxito', 'Sabor creado correctamente.', 'success');
+
+        // Guardar el ID de la subfamilia que debe expandirse
+        const subfamiliaToExpand = data.parentData.subfamiliaId;
+
+        // Recargar datos del servidor
+        await this.loadCatalogData();
+
+        // Expandir automáticamente la subfamilia padre después de recargar
+        const parentSubfamilia = this.treeData.find(
+          item => item.nodeLevel === 'subfamilia' && item.originalId === subfamiliaToExpand
+        );
+        if (parentSubfamilia && !parentSubfamilia.isExpanded) {
+          this.toggleSubfamiliaExpansion(parentSubfamilia);
+        }
+      } catch (error: any) {
+        console.error('❌ Error al crear flavor:', error);
+        const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
+        alerts.basicAlert('Error', `Error al crear el sabor: ${errorMsg}`, 'error');
+      }
+    } else if (data.mode === 'edit' && data.data) {
+      // Editar flavor existente
+      const item = this.treeData.find(i => i.originalId === data.data.originalId);
+      if (item) {
+        item.description = data.description;
+        item.active = data.active ? 1 : 0;
+        item.__modified = true;
+        this.hasUnsavedChanges = true;
+
+        if (this.gridApi) {
+          this.gridApi.setGridOption('rowData', this.flattenTreeData());
+        }
+
+        alerts.basicAlert('Éxito', 'Sabor actualizado. Haz clic en Guardar para aplicar los cambios.', 'success');
+      }
+    }
+  }
+
+  private async handleSavePresentation(data: any) {
+    if (data.mode === 'add' && data.parentData?.flavorId) {
+      // Preparar datos para guardar en BD
+      const newPresentation = this.cleanDataForServer({
+        description: data.description,
+        type: 'PRESENTATI',
+        parentId: data.parentData.subfamiliaId, // ID de la subfamilia raíz
+        subParentId: data.parentData.flavorId, // ID del flavor padre
+        active: data.active ? 1 : 0
+      });
+
+      try {
+        const response = await lastValueFrom(this.catalogsService.addCatalog(newPresentation));
+        console.log('✅ Presentation guardada en BD:', response);
+        alerts.basicAlert('Éxito', 'Presentación creada correctamente.', 'success');
+
+        // Guardar los IDs que deben expandirse
+        const subfamiliaToExpand = data.parentData.subfamiliaId;
+        const flavorToExpand = data.parentData.flavorId;
+
+        // Recargar datos del servidor
+        await this.loadCatalogData();
+
+        // Expandir automáticamente la subfamilia padre
+        const parentSubfamilia = this.treeData.find(
+          item => item.nodeLevel === 'subfamilia' && item.originalId === subfamiliaToExpand
+        );
+        if (parentSubfamilia && !parentSubfamilia.isExpanded) {
+          this.toggleSubfamiliaExpansion(parentSubfamilia);
+        }
+
+        // Expandir automáticamente el flavor padre
+        const parentFlavor = this.treeData.find(
+          item => item.nodeLevel === 'flavor' && item.originalId === flavorToExpand
+        );
+        if (parentFlavor && !parentFlavor.isExpanded) {
+          this.toggleFlavorExpansion(parentFlavor);
+        }
+      } catch (error: any) {
+        console.error('❌ Error al crear presentation:', error);
+        const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
+        alerts.basicAlert('Error', `Error al crear la presentación: ${errorMsg}`, 'error');
+      }
+    } else if (data.mode === 'edit' && data.data) {
+      // Editar presentation existente
+      const item = this.treeData.find(i => i.originalId === data.data.originalId);
+      if (item) {
+        item.description = data.description;
+        item.active = data.active ? 1 : 0;
+        item.__modified = true;
+        this.hasUnsavedChanges = true;
+
+        if (this.gridApi) {
+          this.gridApi.setGridOption('rowData', this.flattenTreeData());
+        }
+
+        alerts.basicAlert('Éxito', 'Presentación actualizada. Haz clic en Guardar para aplicar los cambios.', 'success');
+      }
+    }
+  }
+
+  openAddSubfamiliaModal() {
+    console.log('🔵 Abriendo modal Subfamilia');
+    this.modalService.openModal({
+      type: 'subfamilia',
+      mode: 'add',
+      parentData: {
+        idRoot: this.idRoot,
+        idFamilia: this.idFamilia,
+        materialId: this.materialId,
+        materialName: this.materialName
+      }
+    });
+  }
+
+  openAddFlavorModal() {
+    if (!this.selectedRowData || this.selectedNodeLevel !== 'subfamilia') {
+      alerts.basicAlert('Error', 'Seleccione una subfamilia para agregar un sabor.', 'warning');
+      return;
+    }
+    console.log('🔵 Abriendo modal Flavor para subfamilia:', this.selectedRowData);
+    this.modalService.openModal({
+      type: 'flavor',
+      mode: 'add',
+      parentData: {
+        subfamiliaId: this.selectedRowData.originalId,
+        subfamiliaName: this.selectedRowData.description
+      }
+    });
   }
 
   openAddPresentationModal() {
@@ -561,118 +745,92 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
       alerts.basicAlert('Error', 'Seleccione un flavor para agregar una presentación.', 'warning');
       return;
     }
-    this.resetModalForm();
-    this.showAddPresentationModal = true;
+    console.log('🔵 Abriendo modal Presentation para flavor:', this.selectedRowData);
+    this.modalService.openModal({
+      type: 'presentation',
+      mode: 'add',
+      parentData: {
+        flavorId: this.selectedRowData.originalId,
+        flavorName: this.selectedRowData.description,
+        subfamiliaId: this.selectedRowData.parentSubfamiliaId
+      }
+    });
   }
 
   openEditModal(item: any) {
-    this.editingItem = { ...item };
-    this.modalForm.description = item.description || '';
-    this.modalForm.active = item.active === 1;
-    this.showEditModal = true;
+    console.log('🔵 Abriendo modal Editar para:', item);
+    this.modalService.openModal({
+      type: item.nodeLevel,
+      mode: 'edit',
+      data: item
+    });
   }
 
-  closeModals() {
-    this.showAddFlavorModal = false;
-    this.showAddPresentationModal = false;
-    this.showEditModal = false;
-    this.resetModalForm();
-    this.editingItem = null;
-  }
-
-  private resetModalForm() {
-    this.modalForm = {
-      description: '',
-      active: true
-    };
-  }
-
-  async saveNewFlavor() {
-    if (!this.modalForm.description.trim()) {
-      alerts.basicAlert('Error', 'La descripción es obligatoria.', 'warning');
+  async saveChanges() {
+    if (!this.hasUnsavedChanges) {
+      alerts.basicAlert('Info', 'No hay cambios sin guardar.', 'info');
       return;
     }
-
-    const newFlavor = this.cleanDataForServer({
-      description: this.modalForm.description,
-      type: 'FLAVOR',
-      parentId: this.selectedRowData.originalId,
-      active: this.modalForm.active ? 1 : 0
-    });
 
     try {
-      await lastValueFrom(this.catalogsService.addCatalog(newFlavor));
-      alerts.basicAlert('Éxito', 'Flavor creado correctamente.', 'success');
-      this.closeModals();
-      this.loadCatalogData();
+      const itemsToSave = this.treeData.filter(item => item.__isNew || item.__modified);
+
+      console.log(`💾 Guardando ${itemsToSave.length} cambios...`);
+
+      for (const item of itemsToSave) {
+        if (item.__isNew) {
+          // Guardar nuevo item
+          const dataToSave = this.cleanDataForServer({
+            description: item.description,
+            type: item.nodeLevel === 'subfamilia' ? 'SUB-FAM' :
+                  item.nodeLevel === 'flavor' ? 'FLAVOR' : 'PRESENTATI',
+            parentId: item.parentSubfamiliaId || this.idFamilia,
+            subParentId: item.parentFlavorId || 0,
+            active: item.active
+          });
+          await lastValueFrom(this.catalogsService.addCatalog(dataToSave));
+        } else if (item.__modified) {
+          // Actualizar item existente
+          const dataToSave = this.cleanDataForServer({
+            description: item.description,
+            valueAddition: item.valueAddition,
+            valueAddition2: item.valueAddition2,
+            valueAdditionBit: item.valueAdditionBit,
+            valueAdditionBit2: item.valueAdditionBit2,
+            vigente: item.vigente,
+            type: item.type,
+            parentId: item.parentId,
+            subParentId: item.subParentId,
+            price: item.price,
+            active: item.active
+          });
+          await lastValueFrom(this.catalogsService.updateCatalog(item.originalId, dataToSave));
+        }
+      }
+
+      alerts.basicAlert('Éxito', 'Cambios guardados correctamente.', 'success');
+      await this.loadCatalogData();
     } catch (error: any) {
-      console.error('Error al crear flavor:', error);
+      console.error('❌ Error al guardar cambios:', error);
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
-      alerts.basicAlert('Error', `Error al crear el flavor: ${errorMsg}`, 'error');
+      alerts.basicAlert('Error', `Error al guardar los cambios: ${errorMsg}`, 'error');
     }
   }
 
-  async saveNewPresentation() {
-    if (!this.modalForm.description.trim()) {
-      alerts.basicAlert('Error', 'La descripción es obligatoria.', 'warning');
+  revertChanges() {
+    if (!this.hasUnsavedChanges) {
+      alerts.basicAlert('Info', 'No hay cambios para revertir.', 'info');
       return;
     }
 
-    const newPresentation = this.cleanDataForServer({
-      description: this.modalForm.description,
-      type: 'PRESENTATI',
-      parentId: this.selectedRowData.parentSubfamiliaId,
-      subParentId: this.selectedRowData.originalId,
-      active: this.modalForm.active ? 1 : 0
-    });
+    this.treeData = JSON.parse(JSON.stringify(this.originalTreeData));
+    this.hasUnsavedChanges = false;
 
-    try {
-      await lastValueFrom(this.catalogsService.addCatalog(newPresentation));
-      alerts.basicAlert('Éxito', 'Presentación creada correctamente.', 'success');
-      this.closeModals();
-      this.loadCatalogData();
-    } catch (error: any) {
-      console.error('Error al crear presentación:', error);
-      const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
-      alerts.basicAlert('Error', `Error al crear la presentación: ${errorMsg}`, 'error');
-    }
-  }
-
-  async saveEditChanges() {
-    if (!this.modalForm.description.trim()) {
-      alerts.basicAlert('Error', 'La descripción es obligatoria.', 'warning');
-      return;
+    if (this.gridApi) {
+      this.gridApi.setGridOption('rowData', this.flattenTreeData());
     }
 
-    if (!this.editingItem?.originalId) {
-      alerts.basicAlert('Error', 'No se puede identificar el registro a actualizar.', 'error');
-      return;
-    }
-
-    const updatedData = this.cleanDataForServer({
-      description: this.modalForm.description,
-      valueAddition: this.editingItem.valueAddition,
-      valueAddition2: this.editingItem.valueAddition2,
-      valueAdditionBit: this.editingItem.valueAdditionBit,
-      valueAdditionBit2: this.editingItem.valueAdditionBit2,
-      vigente: this.editingItem.vigente,
-      type: this.editingItem.type,
-      parentId: this.editingItem.parentId,
-      subParentId: this.editingItem.subParentId,
-      price: this.editingItem.price,
-      active: this.modalForm.active ? 1 : 0
-    });
-
-    try {
-      await lastValueFrom(this.catalogsService.updateCatalog(this.editingItem.originalId, updatedData));
-      alerts.basicAlert('Éxito', 'Registro actualizado correctamente.', 'success');
-      this.closeModals();
-      this.loadCatalogData();
-    } catch (error: any) {
-      console.error('Error al actualizar:', error);
-      const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
-      alerts.basicAlert('Error', `Error al actualizar el registro: ${errorMsg}`, 'error');
-    }
+    alerts.basicAlert('Éxito', 'Cambios revertidos correctamente.', 'success');
   }
 
   private cleanDataForServer(data: any): any {

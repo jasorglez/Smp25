@@ -3,7 +3,14 @@
     "allow": [
       "Bash(sqlcmd:*)",
       "Read(//c/Developer/Angular/angular18/**)",
-      "Read(//c/Developer/Visual Studio 22/c#/MicroServicios/MicroserviciosWarehouse/**)"
+      "Read(//c/Developer/Visual Studio 22/c#/MicroServicios/MicroserviciosWarehouse/**)",
+      "Bash(npm run build:*)",
+      "WebSearch",
+      "WebFetch(domain:time.is)",
+      "WebFetch(domain:www.timeanddate.com)",
+      "Bash(curl:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(awk:*)"
     ],
     "deny": [],
     "ask": []
