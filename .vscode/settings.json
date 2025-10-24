@@ -4,5 +4,6 @@
             "externalTemplate": true,
             "skipStyle": true
         }
-    }
+    },
+    "CodeGPT.apiKey": "Ollama"
 }
