@@ -18,6 +18,7 @@ import { ModalService } from 'app/services/modal.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
+import { AuthService } from 'app/services/auth.service';
 
 interface Bank {
   id: number;
@@ -37,6 +38,7 @@ interface Bank {
   styleUrl: './accountbanks.component.scss',
 })
 export class AccountbanksComponent implements CanComponentDeactivate {
+  authService = inject(AuthService);
   ngOnInit() {
     this.obtenerDatos();
     this.obtenerBanks();
@@ -118,7 +120,12 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       {
         field: 'idBanco',
         headerName: 'Banco',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'bank', 'update');
+        },
         width: 150,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
@@ -134,7 +141,12 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       {
         field: 'numberAccount',
         headerName: 'Numero Cuenta',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'bank', 'update');
+        },
         filter: true,
         width: 200,
       },
@@ -142,7 +154,12 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       {
         field: 'nameAccount',
         headerName: 'Nombre Cuenta',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'bank', 'update');
+        },
         width: 200,
         filter: true,
       },
@@ -150,14 +167,24 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       {
         field: 'interbancaria',
         headerName: 'Interbancaria',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'bank', 'update');
+        },
         width: 160,
       },
 
       {
         field: 'folioCheque',
         headerName: 'Inicio Cheque',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'bank', 'update');
+        },
         width: 129,
         cellEditorParams: {
           maxLength: 5,
@@ -167,14 +194,24 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       {
         field: 'folioSinCheque',
         headerName: 'Termino Cheque',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'bank', 'update');
+        },
         width: 140,
       },
 
       {
         field: 'gasto',
         headerName: 'Gastos',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'bank', 'update');
+        },
         width: 105,
         valueFormatter: (params) =>
           params.value?.toLocaleString('es-MX', {
@@ -185,7 +222,12 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       {
         field: 'depositoPagado',
         headerName: 'Ingresos',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'bank', 'update');
+        },
         width: 105,
         valueFormatter: (params) =>
           params.value?.toLocaleString('es-MX', {
@@ -196,7 +238,12 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       {
         field: 'saldo',
         headerName: 'Saldo',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('administration', 'bank', 'update');
+        },
         width: 110,
         valueFormatter: (params) =>
           params.value?.toLocaleString('es-MX', {
@@ -328,7 +375,12 @@ export class AccountbanksComponent implements CanComponentDeactivate {
     this.administrationService
       .getAccountBanks(parseInt(localStorage.getItem('company')))
       .subscribe((response: any) => {
+        if(this.authService.getCrudPermission('administration', 'bank', 'read')){
         this.rowMaster = response;
+        }
+        else{
+          this.rowMaster = []
+        }
         if (!response || response.length === 0) {
           alerts.basicAlert('Aviso', 'No hay datos disponibles', 'info');
         }

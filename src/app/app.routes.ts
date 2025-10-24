@@ -645,6 +645,20 @@ export const routes: Routes = [
             }
           },
           {
+            path: 'menu',
+            loadComponent: () =>
+              import('./domains/SMP/Components/menus/menu.component').then(
+                (r) => r.menuComponent
+              ),
+           canActivate: [TrackingGuard],
+            data: {
+              tracking: {
+                logMessage: 'Click en Pestaña Configuración Módulo Menu',
+                category: 'Setup'
+              }
+            }
+          },
+          {
             path: 'roles',
             loadComponent: () =>
               import('./domains/SMP/Components/rolesDelison/rolesDelison.component').then(

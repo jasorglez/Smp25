@@ -6,10 +6,10 @@
     
     <div class="col-auto">
       <div class="d-flex flex-column gap-1">
-        <button type="button" class="btn btn-primary" (click)="addRow()">
+        <button type="button" class="btn btn-primary" (click)="addRow()" *ngIf="authService.getCrudPermission('administration', 'bank', 'create')">
           <i class="bi bi-plus-lg"></i>
         </button>
-                <button type="button" class="btn btn-success position-relative" (click)="saveChanges()">
+                <button type="button" class="btn btn-success position-relative" (click)="saveChanges()" *ngIf="authService.getCrudPermission('administration', 'bank', 'create') || authService.getCrudPermission('administration', 'bank', 'update')">
           <i class="bi bi-floppy"></i>
           <span class="position-absolute top-0 end-0 translate-middle p-2 bg-danger border border-light rounded-circle"
             *ngIf="notSavedChanges">
@@ -19,7 +19,7 @@
                 <button type="button" class="btn btn-warning" (click)="revert()">
           <i class="bi bi-arrow-clockwise"></i>
         </button>
-                <button type="button" class="btn btn-danger" (click)="deleteEntry()">
+                <button type="button" class="btn btn-danger" (click)="deleteEntry()" *ngIf="authService.getCrudPermission('administration', 'bank', 'delete')">
           <i class="bi bi-trash"></i>
         </button>
       </div>

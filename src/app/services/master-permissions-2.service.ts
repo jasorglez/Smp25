@@ -13,8 +13,8 @@ export class MasterPermissions2Service {
   private trackingService = inject(TrackingService);
   
   // Obtener todos los permisos maestros
-  getMasterPermissions(): Observable<any> {
-    return this.http.get(`${environment.urlSecurity}/UserSystemPermissions/master`, {headers: this.trackingService.getHeaders()} );
+  getMasterPermissions(idEmpresa: number): Observable<any> {
+    return this.http.get(`${environment.urlSecurity}/UserSystemPermissions/master/${idEmpresa}`, {headers: this.trackingService.getHeaders()} );
   }
 
   // Obtener permisos detallados por masterId

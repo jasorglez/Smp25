@@ -32,11 +32,11 @@ export class PermitionsService {
    updatePermitionsByPosicion(idUser: number, idBranch: number, idRole:number, idPosicion:number, newPosicion: number): Observable<any> {
     return this.http.put(`${environment.urlSecurity}/CrudPremissionsDelison/posicion?idUser=${idUser}&idBranch=${idBranch}&idRole=${idRole}&idPosicion=${idPosicion}&newPosicion=${newPosicion}`,{}, { headers: this.trackingService.getHeaders() });
   }
-  getPermitionsDetail(idUser: number, idBranch: number, idRole:number, idPosicion:number): Observable<any> {
-    return this.http.get(`${environment.urlSecurity}/CrudPremissionsDelison/${idUser}/${idBranch}/${idRole}/${idPosicion}`, { headers: this.trackingService.getHeaders() });
+  getPermitionsDetail(idEmpresa: number,idUser: number, idBranch: number, idRole:number, idPosicion:number): Observable<any> {
+    return this.http.get(`${environment.urlSecurity}/CrudPremissionsDelison/${idEmpresa}/${idUser}/${idBranch}/${idRole}/${idPosicion}`, { headers: this.trackingService.getHeaders() });
   }
   getPermitionsByDetailedPermission(idUser: number, idBranch: number, idRole:number, idPosicion:number , idDetailedPermission: number): Observable<any> {
-    return this.http.get(`${environment.urlSecurity}/CrudPremissionsDelison/${idUser}/${idBranch}/${idRole}/${idPosicion}/${idDetailedPermission}`, { headers: this.trackingService.getHeaders() });
+    return this.http.get(`${environment.urlSecurity}/CrudPremissionsDelison/details-by-permission/${idUser}/${idBranch}/${idRole}/${idPosicion}/${idDetailedPermission}`, { headers: this.trackingService.getHeaders() });
   }
   deleteRoles(idUser: number, idBranch: number, idRole:number, idPosicion:number): Observable<any> {
     return this.http.delete(`${environment.urlSecurity}/CrudPremissionsDelison/${idUser}/${idBranch}/${idRole}/${idPosicion}`, { headers: this.trackingService.getHeaders() });

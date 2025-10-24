@@ -25,6 +25,8 @@ export class UsersxMasterPermissions2Component {
   masterPermissions: any[] = []; // Almacena los permisos maestros
   userPermissions: number[] = []; // Almacena los IDs de los permisos del usuario
   selectedUserId: number; // Cambia esto según el usuario seleccionado
+  idEmpresa: number;
+
   private permissionService = inject(MasterPermissions2Service);
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
@@ -38,6 +40,7 @@ export class UsersxMasterPermissions2Component {
   constructor() {
     effect(() => {
       this.selectedUserId = Number(this.signalsService.profile.idUser());
+      this.idEmpresa = this.signalsService.getRootSelectedBySidebar()();
       this.loadPermissions();
     });
   }
@@ -45,7 +48,7 @@ export class UsersxMasterPermissions2Component {
   // Cargar los permisos maestros y los permisos del usuario
   loadPermissions() {
     // Obtener permisos maestros
-    this.permissionService.getMasterPermissions().subscribe((data: any) => {
+    this.permissionService.getMasterPermissions(this.idEmpresa).subscribe((data: any) => {
       this.masterPermissions = data;
       console.log(this.masterPermissions);
       this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Permisos Maestros', 'Menu Administracion Permisos Maestros',  this.trackingService.getEmail());

@@ -41,6 +41,7 @@ export class RolesDetailedDelisonComponent implements OnInit {
   ngOnInit() {
     this.idRole = this.signalsService.getIdRole()();
     this.idPosicion = this.signalsService.getIdPosicion()();
+    this.idEmpresa = this.signalsService.getRootSelectedBySidebar()();
     this.obtenerDatos(this.idRole, this.idPosicion);
   }
 
@@ -48,6 +49,7 @@ export class RolesDetailedDelisonComponent implements OnInit {
     effect(() => {
       this.idRole = this.signalsService.getIdRole()();
       this.idPosicion = this.signalsService.getIdPosicion()();
+      this.idEmpresa = this.signalsService.getRootSelectedBySidebar()();
       this.obtenerDatos(this.idRole, this.idPosicion);
     });
 
@@ -69,6 +71,7 @@ export class RolesDetailedDelisonComponent implements OnInit {
   notSavedChanges: boolean = false;
   selectedRowData: any = null;
   isOpen: boolean = false;
+  idEmpresa: number;
   branchs: any[] = [];
   Typecop: any[] = [];
   tempIdCounter: number = 0; // Contador para IDs temporales
@@ -177,7 +180,7 @@ export class RolesDetailedDelisonComponent implements OnInit {
   }
 
   obtenerDatos(idRole: number, idPosicion: number) {
-    this.rolesService.getPermissionsByRoles(idRole, idPosicion)
+    this.rolesService.getPermissionsByRoles( this.idEmpresa , idRole, idPosicion)
       .subscribe((data: any) => {
         this.rowData = [];
         this.rowData = data;
