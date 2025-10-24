@@ -552,13 +552,19 @@
             </div>
              
             <div class="row" *ngIf="opcionSeleccionada === 'cuadrilla-externa'">
-              <div class="col-md-3" *ngFor="let item of opcionesNumericas">
-                <button 
-                  type="button" 
+              <div class="col-md-12 mb-3" *ngIf="cuadrillasExternas.length === 0">
+                <div class="alert alert-info" role="alert">
+                  <i class="bi bi-info-circle me-2"></i>
+                  Cargando cuadrillas externas...
+                </div>
+              </div>
+              <div class="col-md-3" *ngFor="let cuadrilla of cuadrillasExternas">
+                <button
+                  type="button"
                   class="btn btn-outline-primary w-100 mb-2"
-                  [class.active]="seleccionados.includes(item)"
-                  (click)="toggleSeleccion(item)">
-                  {{ item }}
+                  [class.active]="seleccionados.includes(cuadrilla.idConsecutivo)"
+                  (click)="toggleSeleccion(cuadrilla.idConsecutivo)">
+                  {{ cuadrilla.name }}
                 </button>
               </div>
             </div>

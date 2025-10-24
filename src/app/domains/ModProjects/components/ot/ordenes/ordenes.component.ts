@@ -270,7 +270,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   tipoReporte: string = 'personalizado';
   opcionSeleccionada: string = 'seleccionar';
   cuadrillaSelect: string = '';
-  opcionesNumericas = [6, 4, 8, 9];
+  opcionesNumericas = [6, 4, 8, 9]; // DEPRECATED: Usar cuadrillasExternas en su lugar
+  cuadrillasExternas: Array<{idConsecutivo: number, name: string}> = [];
   seleccionados: number[] = [];
   projet: number = 0;
   myForm;
@@ -317,6 +318,9 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
     this.isGeneratingReport = false;
 
+    // Cargar cuadrillas externas antes de mostrar el modal
+    this.loadCuadrillasExternas();
+
     // Initialize and show modal
     const modalElement = document.getElementById('modal');
     if (modalElement) {
@@ -326,6 +330,41 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       });
       this.modalInstance.show();
     }
+  }
+
+  /**
+   * Carga las cuadrillas externas desde el endpoint de proyectos
+   */
+  loadCuadrillasExternas() {
+    if (!this.idcompany) {
+      console.warn('⚠️ No hay idcompany disponible para cargar cuadrillas externas');
+      return;
+    }
+
+    this.projectsService.getProjectListByCompany(this.idcompany).subscribe({
+      next: (response: any) => {
+        // Filtrar solo proyectos con classification === "Externa" y active === 1
+        // Excluir proyectos que contengan "PRUEBA" en el nombre
+        const proyectosExternos = response.filter((proyecto: any) =>
+          proyecto.classification === 'Externa' &&
+          proyecto.active === 1 &&
+          !proyecto.name.toUpperCase().includes('PRUEBA')
+        );
+
+        // Mapear a la estructura que necesita el componente usando idConsecutivo
+        this.cuadrillasExternas = proyectosExternos.map((proyecto: any) => ({
+          idConsecutivo: proyecto.idConsecutivo,
+          name: proyecto.name
+        }));
+
+        console.log('✅ Cuadrillas externas cargadas:', this.cuadrillasExternas);
+      },
+      error: (error) => {
+        console.error('❌ Error al cargar cuadrillas externas:', error);
+        // En caso de error, mantener el array vacío
+        this.cuadrillasExternas = [];
+      }
+    });
   }
 
   async delete(): Promise<void> {
