@@ -16,6 +16,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { env } from 'echarts';
+import { AuthService } from 'app/services/auth.service';
 import { environment } from '@env/environment';
 import { TrackingService } from 'app/services/tracking.service';
 import { DetailPermissionsRendererComponent } from './details/detail-permissions-renderer.component';
@@ -55,6 +56,7 @@ export class UsersComponent {
   id: string;
   userRoot: number = 0;
   authorizedPass:boolean = false;
+  dataEmpleado: any = null;
   empleadoCatalgos: any[] = [];
   idUser: number = null;
 
@@ -70,6 +72,7 @@ export class UsersComponent {
   private signalsService = inject(SignalsService);
   private rolesService   = inject(RolesService);  
   private employeeService = inject(EmployeesService);
+  authService = inject(AuthService);
 
   profile = computed(() => this.signalsService.profile);
 
@@ -109,6 +112,10 @@ constructor() {
         this.getRoles();
       this.verification();
       this.obtenerEmpleados();
+      if(this.signalsService.getRefresSecurity()()){  
+        this.obtenerDatos();
+        this.signalsService.setRefresSecurity(false);
+      }
     })
 }
 
@@ -146,11 +153,12 @@ constructor() {
       next: (response: any) => {
         if (response && response.code === 200 && response.data) {
           console.log('Response USER COMPONENT', response.data);
-
+          if(this.authService.getCrudPermission('setup', 'users', 'read')){
           this.rowData = response.data.map((item: any) => {
             return { id: item.id, ...item };
           });
           this.rowData = this.rowData.filter(row => row.active !== 0);
+          }
           console.log('RowData USER COMPONENT', this.rowData);
         } else {
           console.error('Respuesta inválida del servidor');
@@ -187,6 +195,21 @@ constructor() {
     const department = this.departamentos.find(dept => dept.id === idDepartament);
     console.log('Department:', department);
     return department ? department.description : 'Departamento no encontrado';
+  }
+  procesoData(userId: number){
+    if (this.dataEmpleado && this.dataEmpleado.idBranch) {
+      const sucursal =
+      {
+        "idUser": userId,
+        "idPermission": this.dataEmpleado.idBranch,
+        "type": "branch",
+        "description": null,
+        "active": 1
+      }
+      console.log('Adding branch permission from employee data:', sucursal);
+      return this.usersxrootService.addUserxPermission(sucursal);
+    }
+    return null; // No hay datos de empleado o sucursal para procesar
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -242,7 +265,12 @@ constructor() {
       {
         field: 'displayName',
         headerName: 'Nombre *',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('setup', 'users', 'update');
+        },
         filter: true,
         cellEditor: 'autocompleteEditor',
         flex: 1,
@@ -267,7 +295,17 @@ constructor() {
             );
             return false;
           }
-        
+          const empleadoInfo = this.empleadoCatalgos?.find(
+            (item) => item.name.toUpperCase() === newValue
+          );
+          if (empleadoInfo) {
+            this.dataEmpleado = empleadoInfo;
+            params.data.idRol = 1;
+          }else{
+            this.dataEmpleado = null;
+            params.data.idRol = 0;
+          }
+          console.log('Empleado encontrado:', this.dataEmpleado);
           params.data[params.colDef.field] = newValue;
           return true;
         }
@@ -278,7 +316,12 @@ constructor() {
         headerName: 'Email *',
         cellEditor: 'agTextCellEditor',
         flex: 1,
-        editable: (params) => params.data.__isNew,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('setup', 'users', 'update');
+        },
         cellEditorParams: {
           useFormatter: true,
         },
@@ -343,7 +386,12 @@ constructor() {
         },
         
         //editable: this.authorizedPass,
-        editable:true
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('setup', 'users', 'update');
+        },
       },
       /*{
         field: 'idDepartament',
@@ -394,7 +442,7 @@ constructor() {
         },
       },*/
       {
-        field: 'security',
+        field: 'idRol',
         headerName: 'Security',
         hide: !this.isAdvanced && this.idUser !== 42,
         //cellRenderer: () => 'Ver Permisos', // Opcional: Mostrar texto en la celda
@@ -412,9 +460,12 @@ constructor() {
         field: 'picture',
         headerName: 'Imagen de perfil',
         cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
-        cellRendererParams: {
-          clicked: this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService),
+        cellRendererParams: (params) => {
+          const canEditImage = params.data.__isNew || this.authService.getCrudPermission('setup', 'users', 'update');
+          return {
+          clicked: canEditImage ? this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService) : null,
           field: 'picture'
+          };
         },
         editable: false,
         flex: 1
@@ -422,11 +473,13 @@ constructor() {
       {
         field: 'signature',
         headerName: 'Firma',
-        cellEditor: 'agTextCellEditor',
         cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
-        cellRendererParams: {
-          clicked: this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService),
-          field: 'signature'
+        cellRendererParams: (params) => {
+          const canEditImage = params.data.__isNew || this.authService.getCrudPermission('setup', 'users', 'update');
+          return {
+            clicked: canEditImage ? this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService) : null,
+            field: 'signature'
+          };
         },
         editable: false,
         flex: 1
@@ -435,7 +488,12 @@ constructor() {
         field: 'isRoot',
         headerName: 'Root',
         //cellEditor: 'agTextCellEditor',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('setup', 'users', 'update');
+        },
         width: 90,
         hide: !this.authorizedPass
       } 
@@ -561,6 +619,7 @@ constructor() {
         const cleanedData = this.cleanDataForServer(row);
         console.log('this Add CleanedData', cleanedData);
         this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Usuarios', 'Menu Administracion Usuarios',  this.trackingService.getEmail());
+        
         return this.usersService.addUser(cleanedData).pipe(
           tap(response => {
             console.log('Respuesta directa del addUser:', {
@@ -611,7 +670,11 @@ constructor() {
         // Array para almacenar las peticiones
         const requests = [this.usersxrootService.addUserxPermission(formattedRoot)];
 
-        // Solo añadir el permiso de branch si el ID es positivo
+        // Añadir permiso de branch desde datos de empleado si existe
+        const branchPermissionFromEmployee = this.procesoData(userId);
+        if (branchPermissionFromEmployee) {
+          requests.push(branchPermissionFromEmployee);
+        } else { // Si no, añadir desde el sidebar si el ID es positivo
         const branchId = this.signalsService.getBranchSelectedBySidebar()();
         if (branchId > 0) {
           const formattedBranch = {
@@ -624,7 +687,7 @@ constructor() {
           console.log('Datos de permiso branch a guardar:', formattedBranch);
           requests.push(this.usersxrootService.addUserxPermission(formattedBranch));
         }
-
+      }
         console.log('Datos de permiso root a guardar:', formattedRoot);
         return requests;
       }).filter(req => req !== null);

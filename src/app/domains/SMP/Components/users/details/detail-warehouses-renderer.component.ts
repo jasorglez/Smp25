@@ -10,6 +10,7 @@ import { TrackingService } from 'app/services/tracking.service';
 import { PermitionsService } from 'app/services/permitions.service';
 import { RolesService } from 'app/services/roles.service';
 import { alerts } from 'app/helpers/alerts';
+import { AuthService } from 'app/services/auth.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray, forkJoin } from 'rxjs';
 import { DetailPermissionsUserComponent } from './detail-permissions-user/detail-permissions-user.component';
 
@@ -25,13 +26,15 @@ import { DetailPermissionsUserComponent } from './detail-permissions-user/detail
           <button
             class="btn btn-primary ms-1"
             (click)="addWarehouse()"
-            [disabled]="!warehousesGridApi">
+            [disabled]="!warehousesGridApi"
+            *ngIf="authService.getCrudPermission('setup', 'users', 'create')">
             <i class="bi bi-plus-lg"></i>
           </button>
           <button
             class="btn btn-success ms-1 position-relative"
             (click)="saveWarehouses()"
-            [disabled]="!hasWarehouseChanges">
+            [disabled]="!hasWarehouseChanges"
+            *ngIf="authService.getCrudPermission('setup', 'users', 'create') || authService.getCrudPermission('setup', 'users', 'update')">
             <i class="bi bi-floppy"></i>
             <span
               class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
@@ -42,7 +45,8 @@ import { DetailPermissionsUserComponent } from './detail-permissions-user/detail
           <button
             class="btn btn-danger ms-1"
             (click)="deleteSelectedWarehouse()"
-            [disabled]="!selectedWarehouse">
+            [disabled]="!selectedWarehouse"
+            *ngIf="authService.getCrudPermission('setup', 'users', 'delete')">
             <i class="bi bi-trash"></i>
           </button>
         </div>
@@ -70,6 +74,7 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
   private trackingService = inject(TrackingService);
   private rolesService = inject(RolesService);
   private permitionsService = inject(PermitionsService);
+  authService = inject(AuthService);
 
   components = {
     DetailPermissionsUserComponent: DetailPermissionsUserComponent,
@@ -145,11 +150,17 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
         headerName: 'ID',
         filter: 'agNumberColumnFilter',
         hide: true,
+        
       },
       {
         field: 'idRole',
         headerName: 'Departamento',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('setup', 'users', 'update');
+        },
         suppressMovable: true,
         filter: false,
         flex: 1,
@@ -199,7 +210,12 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
       {
         field: 'idPosicion',
         headerName: 'Posicion',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('setup', 'users', 'update');
+        },
         suppressMovable: true,
         filter: 'agNumberColumnFilter', // Opcional: Ocultar el botón de filtro si no es para el usuario
         flex: 1,
@@ -219,16 +235,27 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
 
         },
         valueSetter: (params) => {
-          const newDeptId = params.newValue;
+          const newPosicionId = params.newValue;
+          const currentRoleId = params.data.idRole;
 
-          if (params.data.idPosicion === newDeptId) return false;
+          if (params.data.idPosicion === newPosicionId) return false;
 
-          params.data.idPosicion = newDeptId;
+          // Verificar si la combinación de rol y posición ya existe
+          const duplicateExists = this.warehousesRowData.some(
+            (row, index) => row.idRole === currentRoleId && row.idPosicion === newPosicionId && params.node.rowIndex !== index
+          );
 
-          this.getCRUD(newDeptId).then((posiciones) => {
+          if (duplicateExists) {
+            alerts.basicAlert('Permiso Duplicado', 'Esta combinación de Departamento y Posición ya ha sido asignada.', 'error');
+            return false; // Evita que el valor se establezca
+          }
+
+          params.data.idPosicion = newPosicionId;
+
+          this.getCRUD(newPosicionId).then((posiciones) => {
             this.rolesDefinidos = posiciones;
           });
-        
+
           return true;
         },
       },
@@ -323,11 +350,13 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
     });
   }
   obternerDatos(){
+    if(this.authService.getCrudPermission('setup', 'users', 'read')){
     this.permitionsService.getRolYPosicion(this.userId, this.branchId).subscribe(
       (data: any) => {
         console.log(data)
         this.warehousesRowData =data 
       })
+    }
   }
 
   async loadCatalogs() {
@@ -454,6 +483,7 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
         'success'
       );
       this.hasWarehouseChanges = false;
+      this.signalsService.setRefresCantidadPermisos(true);
       this.obternerDatos();
     } catch (error) {
       console.error(error);
@@ -497,6 +527,7 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
       );
 
       this.obternerDatos();
+      this.signalsService.setRefresCantidadPermisos(true);
       this.selectedWarehouse = null;
     });
   }

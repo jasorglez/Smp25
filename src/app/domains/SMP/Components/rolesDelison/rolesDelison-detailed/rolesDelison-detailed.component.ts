@@ -21,6 +21,7 @@ import { lastValueFrom, concat, toArray, forkJoin } from 'rxjs';
 import { RolesService } from 'app/services/roles.service';
 import { TimeService } from 'app/services/time.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { AuthService } from 'app/services/auth.service';
 
 @Component({
   selector: 'app-roles-detailed',
@@ -37,6 +38,7 @@ export class RolesDetailedDelisonComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private fb = inject(FormBuilder);
   private trackingService = inject(TrackingService);
+  authService = inject(AuthService);
 
   ngOnInit() {
     this.idRole = this.signalsService.getIdRole()();
@@ -159,22 +161,42 @@ export class RolesDetailedDelisonComponent implements OnInit {
       {
         field: 'canRead',
         headerName: 'Ver',
-        editable: true
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('setup', 'roles', 'update');
+        },
       },
       {
         field: 'canCreate',
         headerName: 'Crear',
-        editable: true
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('setup', 'roles', 'update');
+        },
       },
       {
         field: 'canUpdate',
         headerName: 'Actualizar',
-        editable: true
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('setup', 'roles', 'update');
+        },
       },
       {
         field: 'canDelete',
         headerName: 'Borrar',
-        editable: true
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('setup', 'roles', 'update');
+        },
       },
     ];
   }
@@ -183,7 +205,9 @@ export class RolesDetailedDelisonComponent implements OnInit {
     this.rolesService.getPermissionsByRoles( this.idEmpresa , idRole, idPosicion)
       .subscribe((data: any) => {
         this.rowData = [];
+        if(this.authService.getCrudPermission('setup', 'roles', 'read')){
         this.rowData = data;
+        }
         console.log(this.rowData)
 
         // Esperar a que el grid se actualice y luego ajustar las columnas

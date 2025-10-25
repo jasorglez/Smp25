@@ -28,6 +28,9 @@ export class UsersService {
   getDataUsers(idCompany: number): Observable<any> {
     return this.http.get(`${environment.urlSecurity}/User/userdep?id=${idCompany}`, { headers: this.trackingService.getHeaders() });
   }
+  updateActulizarSecurity(idUser: number, Operacion: string): Observable<any> {
+    return this.http.put(`${environment.urlSecurity}/User/security/${idUser}/${Operacion}`, {}, { headers: this.trackingService.getHeaders() });
+  }
 
   getUserById(id: number): Observable<any> {
     return this.http.get(`${environment.urlSecurity}/User/${id}`, { headers: this.trackingService.getHeaders() });

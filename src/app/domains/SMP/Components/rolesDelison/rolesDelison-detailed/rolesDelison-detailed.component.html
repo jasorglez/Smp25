@@ -3,7 +3,7 @@
       <!-- Columna de botones -->
       <div class="col-auto">
         <div class="d-flex flex-column gap-1">
-          <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveDetailChanges()">
+          <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveDetailChanges()" *ngIf="authService.getCrudPermission('setup', 'roles', 'create') || authService.getCrudPermission('setup', 'roles', 'update')">
             <i class="bi bi-floppy"></i>
             <span
               class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"

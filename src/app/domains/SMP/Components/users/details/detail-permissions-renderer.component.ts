@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, effect, inject } from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -9,11 +9,14 @@ import { BranchsService } from 'app/services/branchs.service';
 import { RootService } from 'app/services/root.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { alerts } from 'app/helpers/alerts';
-import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { catchError, concat, EMPTY, lastValueFrom, toArray, concatMap } from 'rxjs';
 import { environment } from '@env/environment';
 import { DetailWarehousesRendererComponent } from './detail-warehouses-renderer.component';
 import { DetailBranchesRendererComponent } from './detail-branches-renderer.component';
 import { AuthService } from 'app/services/auth.service';
+import { PermitionsService } from 'app/services/permitions.service';
+import { UsersService } from 'app/services/users.service';
+
 
 @Component({
   selector: 'app-detail-permissions-renderer',
@@ -27,13 +30,15 @@ import { AuthService } from 'app/services/auth.service';
           <button
             class="btn btn-primary ms-1"
             (click)="addPermission()"
-            [disabled]="!permissionsGridApi">
+            [disabled]="!permissionsGridApi"
+            *ngIf="authService.getCrudPermission('setup', 'users', 'create')">
             <i class="bi bi-plus-lg"></i>
           </button>
           <button
             class="btn btn-success ms-1 position-relative"
             (click)="savePermissions()"
-            [disabled]="!hasPermissionChanges">
+            [disabled]="!hasPermissionChanges"
+            *ngIf="authService.getCrudPermission('setup', 'users', 'create') || authService.getCrudPermission('setup', 'users', 'update')">
             <i class="bi bi-floppy"></i>
             <span
               class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
@@ -44,14 +49,15 @@ import { AuthService } from 'app/services/auth.service';
           <button
             class="btn btn-danger ms-1"
             (click)="deleteSelectedPermission()"
-            [disabled]="!selectedPermission">
+            [disabled]="!selectedPermission"
+            *ngIf="authService.getCrudPermission('setup', 'users', 'delete')">
             <i class="bi bi-trash"></i>
           </button>
-          <button
+          <!--<button
             class="btn btn-info ms-1"
             (click)="isRootUser ? toggleBranches() : toggleWarehouses()">
             <i class="bi bi-shield-lock"></i>
-          </button>
+          </button>-->
         </div>
       </div>
       <div style="flex-grow: 1; display: flex; flex-direction: column; min-height: 0;">
@@ -74,8 +80,10 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
   private usersxpermissionsService = inject(UsersxpermissionsService);
   private branchesService = inject(BranchsService);
   private rootService = inject(RootService);
+  private usersService        = inject(UsersService);
   private trackingService = inject(TrackingService);
-  private authService = inject(AuthService);
+  private permitionsService = inject(PermitionsService);
+  authService = inject(AuthService);
 
   params: any;
   userId: number;
@@ -83,7 +91,7 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
   isRootUser: boolean = false;
   showRoot: boolean = false;
   canSeeBranches: boolean = false;
-
+  permiso: any[] = [];
   // Permissions grid properties
   permissionsRowData: any[] = [];
   hasPermissionChanges: boolean = false;
@@ -141,15 +149,30 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
           },
           valueFormatter: (params: any) => this.roots[params.value] || '',
           valueSetter: (params: any) => {
-            const newValue = params.newValue;
-            if (this.roots.hasOwnProperty(newValue)) {
-              params.data[params.colDef.field] = newValue;
+            const selectedId = params.newValue;
+            if (this.roots.hasOwnProperty(selectedId)) {
+              // Verificar si la empresa ya ha sido asignada
+              const duplicateExists = this.permissionsRowData.some(
+                (row, index) => row.idPermission === selectedId && params.node.rowIndex !== index
+              );
+
+              if (duplicateExists) {
+                alerts.basicAlert('Empresa Duplicada', 'Esta empresa ya ha sido asignada al usuario.', 'error');
+                return false; // Evita que el valor se establezca
+              }
+
+              params.data[params.colDef.field] = selectedId;
               return true;
             }
             return false;
           },
           valueParser: (params: any) => params.newValue,
-          editable: true,
+          editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('setup', 'users', 'update');
+        },
           flex: 1
         }
       ];
@@ -166,7 +189,12 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
         {
           field: 'name',
           headerName: 'Sucursal',
-          editable: true,
+          editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('setup', 'users', 'update');
+        },
           suppressMovable: true,
           filter: false,
           flex: 1,
@@ -188,6 +216,16 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
             if (params.newValue && this.branches) {
               const selectedBranch = this.branches.find((b: any) => b.name === params.newValue);
               if (selectedBranch) {
+                // Verificar si la sucursal ya ha sido asignada
+                const duplicateExists = this.permissionsRowData.some(
+                  (row, index) => row.idPermission === selectedBranch.id && params.node.rowIndex !== index
+                );
+
+                if (duplicateExists) {
+                  alerts.basicAlert('Sucursal Duplicada', 'Esta sucursal ya ha sido asignada al usuario.', 'error');
+                  return false; // Evita que el valor se establezca
+                }
+
                 params.data.idPermission = selectedBranch.id;
                 params.data[params.colDef.field] = params.newValue;
                 return true;
@@ -197,26 +235,48 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
           }
         },
         {
-        field: 'security',
-        headerName: 'Security',
-        //cellRenderer: () => 'Ver Permisos', // Opcional: Mostrar texto en la celda
-        cellStyle: { backgroundColor: '#d4edda' },
-        onCellClicked: this.toggleBranches.bind(this)
-
+          field: 'department',
+          headerName: 'Departamento',
+          valueFormatter: (params) => {
+            const found = this.permiso.find((p: any) => p.id === params.data.idPermission);
+            return found ? found.departmentCount ?? 0 : 0; // ← muestra 0 si no existe
+          },
+          cellStyle: { backgroundColor: '#d4edda' },
+          onCellClicked: this.toggleBranches.bind(this)
         },
         {
-        field: 'security',
-        headerName: 'Security',
-        //cellRenderer: () => 'Ver Permisos', // Opcional: Mostrar texto en la celda
-        },
+          field: 'position',
+          headerName: 'Posición',
+          valueFormatter: (params) => {
+            const found = this.permiso.find((p: any) => p.id === params.data.idPermission);
+            return found ? found.positionCount ?? 0 : 0; // ← muestra 0 si no existe
+          }
+        }
       ];
     }
   }
-
+  getInfoByUser(){
+    this.permitionsService.getInfoByUser(this.userId)
+      .subscribe((data: any) => {
+        this.permiso = [];
+        this.permiso = data;
+        console.log("algo aqui", this.permiso)
+      });
+  }
+  constructor() {
+      effect(() => {
+         if(this.signalsService.getRefresCantidadPermisos()()){
+          this.loadCatalogs();
+          this.getInfoByUser();
+          this.signalsService.setRefresCantidadPermisos(false);
+         }
+      })
+  }
   agInit(params: ICellRendererParams): void {
     this.params = params;
     this.userId = params.data.id;
     this.userName = params.data.displayName || params.data.email;
+    this.getInfoByUser();
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
 
     // Determinar permisos según users-menu lógica
@@ -282,7 +342,7 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
           this.trackingService.getEmail()
         );
       });
-    } else {
+    } else if (this.authService.getCrudPermission('setup', 'users', 'read')){
       // Para usuarios normales, cargar sucursales
       this.branchesService.getBranchesByUserAndCompany(this.userId, this.idRoot).subscribe(
         (data: any) => {
@@ -400,7 +460,10 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
         'Menu Administracion Usuarios',
         this.trackingService.getEmail()
       );
-      return this.usersxpermissionsService.addUserxPermission(cleanedData);
+      
+      return this.usersxpermissionsService.addUserxPermission(cleanedData).pipe(
+        concatMap(() => this.usersService.updateActulizarSecurity(cleanedData.idUser, 'SUMA'))
+      );
     });
 
     const updateObservables = modifiedRows.map((row) => {
@@ -427,6 +490,7 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
         'success'
       );
       this.hasPermissionChanges = false;
+      this.signalsService.setRefresSecurity(true);
       this.loadPermissionsData();
     } catch (error) {
       console.error(error);
@@ -443,17 +507,18 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
       return;
     }
 
-    const permissionId = this.selectedPermission.id;
-
-    this.usersxpermissionsService.deleteUserxPermission(permissionId).pipe(
+    const permissionId = this.selectedPermission.internalId;
+    console.log(this.selectedPermission)
+    this.usersxpermissionsService.deleteUserxPermission(permissionId).pipe(      
+      concatMap(() => this.usersService.updateActulizarSecurity(this.userId, 'RESTA')),
       catchError((error) => {
         alerts.basicAlert(
           'Eliminar entrada',
           'Error al eliminar la entrada.',
           'error'
         );
-        console.error(error);
-        return EMPTY;
+        console.error(error);        
+        return EMPTY; // Detiene el flujo del observable en caso de error
       })
     ).subscribe(() => {
       alerts.basicAlert(
@@ -474,6 +539,7 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
 
       this.loadPermissionsData();
       this.selectedPermission = null;
+      this.signalsService.setRefresSecurity(true);
     });
   }
 
