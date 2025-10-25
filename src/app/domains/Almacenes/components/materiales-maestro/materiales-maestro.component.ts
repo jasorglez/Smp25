@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, effect } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, effect } from '@angular/core';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -16,8 +16,9 @@ import { CatalogsService } from 'app/services/catalogs.service';
 import { ProvidersService } from 'app/services/providers.service';
 import { CustomersService } from 'app/services/customers.service';
 import { BranchsService } from 'app/services/branchs.service';
-import { lastValueFrom } from 'rxjs';
+import { lastValueFrom, Subscription } from 'rxjs';
 import { environment } from '@env/environment';
+import { SubfamiliaModalService, ModalData } from './services/subfamilia-modal.service';
 
 @Component({
   selector: 'app-materiales-maestro',
@@ -34,7 +35,7 @@ import { environment } from '@env/environment';
   templateUrl: './materiales-maestro.component.html',
   styleUrl: './materiales-maestro.component.scss'
 })
-export class MaterialesMaestroComponent implements OnInit {
+export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
   private gridApi!: GridApi;
   private materialsService = inject(MaterialsService);
@@ -43,6 +44,7 @@ export class MaterialesMaestroComponent implements OnInit {
   private providersService = inject(ProvidersService);
   private customersService = inject(CustomersService);
   private branchsService = inject(BranchsService);
+  private subfamiliaModalService = inject(SubfamiliaModalService);
 
   rowData: MaterialsResponse[] = [];
   allMaterialsData: MaterialsResponse[] = []; // Guarda todos los datos
@@ -55,6 +57,36 @@ export class MaterialesMaestroComponent implements OnInit {
   categories: any[] = [];
   families: any[] = [];
   subfamilies: any[] = [];
+
+  // Modal de subfamilias
+  private modalSubscription?: Subscription;
+  showModal = false;
+  modalType: 'subfamilia' | 'flavor' | 'presentation' = 'subfamilia';
+  modalMode: 'add' | 'edit' = 'add';
+  modalData: ModalData | null = null;
+  modalForm = {
+    description: '',
+    active: true
+  };
+
+  // Modal de imagen
+  showImageModal = false;
+  selectedImageUrl = '';
+
+  // Modal de agregar/editar material
+  showMaterialModal = false;
+  materialModalMode: 'add' | 'edit' = 'add';
+  materialForm = {
+    insumo: '',
+    articulo: '',
+    idCategory: 0,
+    idFamilia: 0,
+    picture: '',
+    active: true
+  };
+  selectedImageFile: File | null = null;
+  previewImageUrl: string = '';
+
 
   // Datos de proveedores por material
   materialsXTableData: { [key: number]: any[] } = {};
@@ -78,6 +110,18 @@ export class MaterialesMaestroComponent implements OnInit {
     if (this.idRoot) {
       this.loadCatalogs();
       this.loadMaterials();
+    }
+
+    // Suscribirse a las solicitudes de modal del servicio
+    this.modalSubscription = this.subfamiliaModalService.modalRequest$.subscribe(data => {
+      console.log('🔔 MaterialesMaestro - Recibida solicitud de modal:', data);
+      this.handleModalRequest(data);
+    });
+  }
+
+  ngOnDestroy() {
+    if (this.modalSubscription) {
+      this.modalSubscription.unsubscribe();
     }
   }
 
@@ -146,6 +190,7 @@ export class MaterialesMaestroComponent implements OnInit {
     singleClickEdit: true,
     stopEditingWhenCellsLoseFocus: true,
     masterDetail: true,
+    detailRowHeight: 600, // Altura del detail row para subfamilias (ajustable)
     isRowMaster: (dataItem: any) => {
       return true; // Todas las filas son maestras
     },
@@ -296,9 +341,18 @@ export class MaterialesMaestroComponent implements OnInit {
       {
         field: 'picture',
         headerName: 'Imagen',
-        width: 100,
+        width: 120,
         cellRenderer: (params: any) => {
-          return params.value ? '📷 Ver' : '📷 Subir';
+          if (params.value) {
+            // Mostrar miniatura de la imagen
+            return `<img src="${params.value}" style="width: 40px; height: 40px; object-fit: cover; cursor: pointer; border-radius: 4px; border: 1px solid #ddd;" title="Click para ver en grande" />`;
+          }
+          return '<span style="cursor: pointer; color: #999;">📷 Sin imagen</span>';
+        },
+        onCellClicked: (params: any) => {
+          if (params.value) {
+            this.openImageModal(params.value);
+          }
         }
       }
     ];
@@ -397,6 +451,7 @@ export class MaterialesMaestroComponent implements OnInit {
         params.successCallback(params.data.detailData);
       },
       context: {
+        idRoot: this.idRoot, // Pasar idRoot al detail renderer
         MATERIAL: {
           load: (materialId: number, type: string, callback: (data: any[]) => void) => {
             this.loadMaterialXTableData(materialId, type, callback);
@@ -418,39 +473,18 @@ export class MaterialesMaestroComponent implements OnInit {
   }
 
   addMaterial(): void {
-    const newMaterial: any = {
-      id: `temp_${Date.now()}`, // ID temporal
-      __isNew: true,
-      active: true,
+    this.materialModalMode = 'add';
+    this.materialForm = {
       insumo: '',
       articulo: '',
       idCategory: 0,
-      categoria: '',
       idFamilia: 0,
-      familia: '',
-      idSubfamilia: 0,
-      subfamilia: '',
-      subfamilyCount: 0,
-      providerCount: 0,
       picture: '',
-      idCompany: this.idRoot
+      active: true
     };
-
-    // Agregar al inicio del grid
-    this.rowData = [newMaterial as MaterialsResponse, ...this.rowData];
-    this.hasUnsavedChanges = true;
-
-    // Seleccionar la nueva fila y comenzar a editar
-    setTimeout(() => {
-      const newRowNode = this.gridApi.getRowNode(newMaterial.id);
-      if (newRowNode) {
-        newRowNode.setSelected(true);
-        this.gridApi.startEditingCell({
-          rowIndex: 0,
-          colKey: 'insumo'
-        });
-      }
-    }, 100);
+    this.selectedImageFile = null;
+    this.previewImageUrl = '';
+    this.showMaterialModal = true;
   }
 
   editMaterial(): void {
@@ -669,5 +703,161 @@ export class MaterialesMaestroComponent implements OnInit {
       delete cleanedData.id;
     }
     return cleanedData;
+  }
+
+  // ========== MÉTODOS PARA MODAL DE SUBFAMILIAS ==========
+
+  handleModalRequest(data: ModalData) {
+    console.log('📝 MaterialesMaestro - Manejando solicitud de modal:', data);
+    this.modalData = data;
+    this.modalType = data.type;
+    this.modalMode = data.mode;
+
+    // Si es edición, cargar datos existentes
+    if (data.mode === 'edit' && data.data) {
+      this.modalForm.description = data.data.description || '';
+      this.modalForm.active = data.data.active === 1;
+    } else {
+      // Resetear form para modo agregar
+      this.modalForm = {
+        description: '',
+        active: true
+      };
+    }
+
+    this.showModal = true;
+  }
+
+  saveModal() {
+    if (!this.modalForm.description.trim()) {
+      alerts.basicAlert('Error', 'La descripción es obligatoria.', 'warning');
+      return;
+    }
+
+    console.log('💾 MaterialesMaestro - Guardando modal:', {
+      type: this.modalType,
+      mode: this.modalMode,
+      form: this.modalForm,
+      parentData: this.modalData?.parentData
+    });
+
+    // Preparar datos para enviar al servicio
+    const saveData = {
+      type: this.modalType,
+      mode: this.modalMode,
+      description: this.modalForm.description,
+      active: this.modalForm.active,
+      parentData: this.modalData?.parentData,
+      data: this.modalData?.data // ⭐ Incluir datos originales para modo edición
+    };
+
+    // Enviar confirmación de guardado al servicio
+    this.subfamiliaModalService.confirmSave(saveData);
+
+    // Cerrar modal
+    this.closeModal();
+  }
+
+  closeModal() {
+    this.showModal = false;
+    this.modalData = null;
+    this.modalForm = {
+      description: '',
+      active: true
+    };
+  }
+
+  // ========== MÉTODOS PARA MODAL DE IMAGEN ==========
+  openImageModal(imageUrl: string) {
+    this.selectedImageUrl = imageUrl;
+    this.showImageModal = true;
+  }
+
+  closeImageModal() {
+    this.showImageModal = false;
+    this.selectedImageUrl = '';
+  }
+
+  // ========== MÉTODOS PARA MODAL DE MATERIAL ==========
+  onImageFileSelected(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      this.selectedImageFile = file;
+
+      // Crear preview de la imagen
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        this.previewImageUrl = e.target.result;
+        this.materialForm.picture = e.target.result; // Guardar como base64
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  removeImage() {
+    this.selectedImageFile = null;
+    this.previewImageUrl = '';
+    this.materialForm.picture = '';
+  }
+
+  async saveMaterialFromModal() {
+    // Validar campos requeridos
+    if (!this.materialForm.insumo.trim()) {
+      alerts.basicAlert('Error', 'El número de material es obligatorio', 'warning');
+      return;
+    }
+    if (!this.materialForm.articulo.trim()) {
+      alerts.basicAlert('Error', 'El nombre del artículo es obligatorio', 'warning');
+      return;
+    }
+
+    try {
+      const materialData = this.prepareMaterialData({
+        ...this.materialForm,
+        active: this.materialForm.active
+      });
+
+      await lastValueFrom(this.materialsService.addMaterial(materialData));
+      alerts.basicAlert('Guardado', 'Material creado correctamente', 'success');
+      this.closeMaterialModal();
+      this.loadMaterials();
+    } catch (error: any) {
+      console.error('Error al guardar material:', error);
+      const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
+      alerts.basicAlert('Error', `No se pudo guardar el material: ${errorMsg}`, 'error');
+    }
+  }
+
+  closeMaterialModal() {
+    this.showMaterialModal = false;
+    this.materialForm = {
+      insumo: '',
+      articulo: '',
+      idCategory: 0,
+      idFamilia: 0,
+      picture: '',
+      active: true
+    };
+    this.selectedImageFile = null;
+    this.previewImageUrl = '';
+  }
+
+  getModalTitle(): string {
+    const typeLabels = {
+      subfamilia: 'Subfamilia',
+      flavor: 'Sabor',
+      presentation: 'Presentación'
+    };
+    const modeLabel = this.modalMode === 'add' ? 'Nueva' : 'Editar';
+    return `${modeLabel} ${typeLabels[this.modalType]}`;
+  }
+
+  getModalColor(): string {
+    const colors = {
+      subfamilia: 'primary',
+      flavor: 'info',
+      presentation: 'secondary'
+    };
+    return colors[this.modalType];
   }
 }
