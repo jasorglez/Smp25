@@ -24,6 +24,7 @@ import { HRService } from 'app/services/hr.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { RootService } from 'app/services/root.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { AuthService } from 'app/services/auth.service';
 
 @Component({
   selector: 'app-branches',
@@ -43,6 +44,7 @@ export class BranchesComponent implements CanComponentDeactivate {
   private hrService = inject(HRService);
   private rootService = inject(RootService);
   private trackingService = inject(TrackingService);
+  authService = inject(AuthService);
 
   //Variables master
   masterRowData: any[] = [];
@@ -121,6 +123,7 @@ export class BranchesComponent implements CanComponentDeactivate {
         }
       );
     } else {
+      if(this.authService.getCrudPermission('setup', 'branches', 'read')){
       this.branchesService.getBranches(this.idRoot).subscribe(
         (data: Ibranch[]) => {
           this.masterRowData = data.sort((a, b) =>
@@ -132,6 +135,7 @@ export class BranchesComponent implements CanComponentDeactivate {
           console.error('Error fetching branches:', error);
         }
       );
+    }
     }
   }
 
@@ -239,7 +243,12 @@ export class BranchesComponent implements CanComponentDeactivate {
       {
         field: 'name',
         headerName: 'Nombre *',
-        editable: this.signalsService.getemailChoose() === environment.root ? false : true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('setup', 'branches', 'update');
+        },
         filter: true,
         width: 250,
         valueSetter: (params) => {
@@ -279,7 +288,12 @@ export class BranchesComponent implements CanComponentDeactivate {
       {
         field: 'description',
         headerName: 'Descripción *',
-        editable: this.signalsService.getemailChoose() === environment.root ? false : true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('setup', 'branches', 'update');
+        },
         filter: true,
         width: 400,
         valueSetter: (params) => {
@@ -290,7 +304,12 @@ export class BranchesComponent implements CanComponentDeactivate {
       {
         field: 'idEstado',
         headerName: 'Estado',
-        editable: this.signalsService.getemailChoose() !== environment.root,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('setup', 'branches', 'update');
+        },
         filter: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
@@ -317,7 +336,12 @@ export class BranchesComponent implements CanComponentDeactivate {
       {
         field: 'address',
         headerName: 'Dirección *',
-        editable: this.signalsService.getemailChoose() === environment.root ? false : true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('setup', 'branches', 'update');
+        },
         filter: true,
         width: 400,
         /*cellEditor: 'agPopupTextCellEditor',
@@ -345,7 +369,12 @@ export class BranchesComponent implements CanComponentDeactivate {
       {
         field: 'vigente',
         headerName: 'Activo',
-        editable: this.signalsService.getemailChoose() === environment.root ? false : true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('setup', 'branches', 'update');
+        },
         suppressMovable: true,
         filter: true,
         width: 150,

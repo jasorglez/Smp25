@@ -3,9 +3,9 @@
         <div class="row mb-3">
             <div class="col">
                 <div class="d-flex justify-content-end mb-2">
-                    <button type="button" class="btn btn-primary ms-1" (click)="addRow()"><i
+                    <button type="button" class="btn btn-primary ms-1" (click)="addRow()" *ngIf="authService.getCrudPermission('setup', 'users', 'create')"><i
                             class="bi bi-plus-lg"></i></button>
-                    <button type="button" class="btn btn-success ms-1 position-relative" (click)="saveChanges()">
+                    <button type="button" class="btn btn-success ms-1 position-relative" (click)="saveChanges()" *ngIf="authService.getCrudPermission('setup', 'users', 'create') || authService.getCrudPermission('setup', 'users', 'update')">
                         <i class="bi bi-floppy"></i>
                         <span
                             class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
@@ -14,7 +14,7 @@
                     </button>
                     <button type="button" class="btn btn-warning ms-1" (click)="revert()"><i class="bi bi-arrow-clockwise"
                        ></i></button>
-                    <button type="button" class="btn btn-danger ms-1" (click)="deleteUser()"><i class="bi bi-trash"
+                    <button type="button" class="btn btn-danger ms-1" (click)="deleteUser()" *ngIf="authService.getCrudPermission('setup', 'users', 'delete')"><i class="bi bi-trash"
                            ></i></button>
                     <!--<button type="button" class="btn btn-info ms-1" (click)="togglePermissions()">
                         <i class="bi bi-shield-lock"></i> Permisos

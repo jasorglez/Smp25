@@ -7,6 +7,7 @@ import { RolesService } from 'app/services/roles.service';
 import { PosicionesService } from 'app/services/posiciones.service';
 import { alerts } from 'app/helpers/alerts';
 import { forkJoin, lastValueFrom } from 'rxjs';
+import { AuthService } from 'app/services/auth.service';
 import { SignalsService } from 'app/services/signals.service';
 import { RolesDetailedDelisonComponent } from '../rolesDelison-detailed/rolesDelison-detailed.component';
 
@@ -26,19 +27,22 @@ import { RolesDetailedDelisonComponent } from '../rolesDelison-detailed/rolesDel
             <button 
               class="btn btn-sm btn-success me-2" 
               (click)="addPosicion()"
-              [disabled]="!posicionGridApi">
+              [disabled]="!posicionGridApi"
+              *ngIf="authService.getCrudPermission('setup', 'roles', 'create')">
               <i class="bi bi-plus-circle"></i> Agregar
             </button>
             <button 
               class="btn btn-sm btn-primary me-2" 
               (click)="savePosiciones()"
-              [disabled]="!hasPosicionChanges">
+              [disabled]="!hasPosicionChanges"
+              *ngIf="authService.getCrudPermission('setup', 'roles', 'create') || authService.getCrudPermission('setup', 'roles', 'update')">
               <i class="bi bi-floppy"></i> Guardar
             </button>
             <button 
               class="btn btn-sm btn-danger" 
               (click)="deleteSelectedPosicion()"
-              [disabled]="!selectedPosicion">
+              [disabled]="!selectedPosicion"
+              *ngIf="authService.getCrudPermission('setup', 'roles', 'delete')">
               <i class="bi bi-trash"></i> Borrar
             </button>
           </div>
@@ -94,6 +98,7 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
   private rolesService = inject(RolesService);
   private posicionesService = inject(PosicionesService);
   private signalsService = inject(SignalsService);
+  authService = inject(AuthService);
 
   constructor(private currencyPipe: CurrencyPipe) {}
 
@@ -107,7 +112,12 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
     { 
       field: 'description', 
       headerName: 'Descripción', 
-      editable: true, 
+      editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('setup', 'roles', 'update');
+        },
       flex: 1 
     },
     { 

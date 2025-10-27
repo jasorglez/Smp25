@@ -764,6 +764,9 @@ getMasterUpdateTrigger() {
   private closedPayroll = signal<boolean>(false);
   private closedReport = signal<boolean>(false);
   private refreshClock = signal<boolean>(false);
+  private refresCantidadPermisos = signal<boolean>(false);
+  private refresSecurity = signal<boolean>(false);
+
 
   setIdCatalogFamily(id: number){
     this.idCatalogFamily.set(id);
@@ -828,5 +831,19 @@ getMasterUpdateTrigger() {
   }
   getRefreshClock() {
     return this.refreshClock;
+  }
+
+  setRefresCantidadPermisos(value: boolean) {
+    this.refresCantidadPermisos.set(value);
+  }
+  getRefresCantidadPermisos() {
+    return this.refresCantidadPermisos;
+  }
+
+  setRefresSecurity(value: boolean) {
+    this.refresSecurity.set(value);
+  }
+  getRefresSecurity() {
+    return this.refresSecurity;
   }
 }

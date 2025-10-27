@@ -20,6 +20,7 @@ import { environment } from '@env/environment';
 import { RolesDetailedDelisonComponent } from './rolesDelison-detailed/rolesDelison-detailed.component';
 import { PosicionDelisonComponent } from './posicionDelison/posicionDelison.component';
 import { TrackingService } from 'app/services/tracking.service';
+import { AuthService } from 'app/services/auth.service';
 
 @Injectable({
   providedIn: 'root',
@@ -71,6 +72,7 @@ export class RolesDelisonComponent {
   private signalsService = inject(SignalsService);
   private rolesService   = inject(RolesService);
   private trackingService = inject(TrackingService);
+  authService = inject(AuthService);
 
   profile = computed(() => this.signalsService.profile);
 
@@ -128,6 +130,7 @@ constructor(private currencyPipe: CurrencyPipe) {
 
 
   obtenerDatos() {
+    if(this.authService.getCrudPermission('setup', 'roles', 'read')){
      this.rolesService.getRoles(this.idRoot).subscribe(
       (data: any) => {
         this.rowData = data.data;
@@ -138,6 +141,7 @@ constructor(private currencyPipe: CurrencyPipe) {
         console.error('Error fetching data:', error);
       }
     );
+    }
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -221,7 +225,12 @@ constructor(private currencyPipe: CurrencyPipe) {
       {
         field: 'description',
         headerName: 'Nombre *',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('setup', 'roles', 'update');
+        },
         filter: true,
         cellEditor: 'autocompleteEditor',
         flex: 1,

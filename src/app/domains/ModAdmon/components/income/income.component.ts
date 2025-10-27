@@ -85,6 +85,8 @@ export class IncomeComponent {
   // NUEVA PROPIEDAD: Para controlar qué pestaña está visible,  'concepts' será la pestaña por defecto al inicio.
   public activeTab: string = 'concepts';
 
+  hasConsecutiveError: boolean = false;
+
   showform : string = '';
   branches: number[] = [];
   incomes: any[] = [];
@@ -165,6 +167,23 @@ export class IncomeComponent {
       }
       return '';
     },
+    getRowStyle: (params) => {
+      if (params.data) {
+        switch (params.data.status) {
+          case 'Pendiente':
+            return { backgroundColor: '#cce5ff', color: '#004085' }; // Azul
+          case 'Pagada':
+            return { backgroundColor: '#d4edda', color: '#155724' }; // Verde
+          case 'Cancelada':
+            return { backgroundColor: '#f8d7da', color: '#721c24' }; // Rojo
+          case 'Entregada':
+            return { backgroundColor: '#fff3cd', color: '#856404' }; // Amarillo
+          default:
+            return null;
+        }
+      }
+      return null;
+    },
     onRowClicked: (event) => {
       // Seleccionar la fila al hacer clic en cualquier celda
       event.node.setSelected(true);
@@ -182,7 +201,7 @@ export class IncomeComponent {
   };
 
   public rowSelection: 'single' | 'multiple' = 'single';
-  public paginationPageSize = 15;t
+  public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
   components = {
     multiLineEditor: MultiLineEditorComponent,
@@ -314,6 +333,21 @@ export class IncomeComponent {
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
     return [
+      {
+        field: 'status',
+        headerName: 'Estatus',
+        editable: true,
+        width: 105,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: [
+            'Pendiente',
+            'Entregada',
+            'Cancelada',
+            'Pagada'
+          ]
+        }
+      },
       { field: 'numberDocument', headerName: '# Factura', editable: false, filter: true, width: 130 },
       {
         field: 'description', headerName: 'Descripción', editable: true, width: 315, filter: true,
@@ -454,21 +488,6 @@ export class IncomeComponent {
         }
       },
 
-      {
-        field: 'status',
-        headerName: 'Estatus',
-        editable: true,
-        width: 105,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: [
-            'Pendiente',
-            'Entregada',
-            'Cancelada',
-            'Pagada'
-          ]
-        }
-      },
 
       {
         field: 'idExpend',
@@ -583,104 +602,161 @@ export class IncomeComponent {
     }, 50); // Un pequeño retraso de 50ms
   }
 
-  async saveChanges() {
+async saveChanges() {
+  const isValid = this.incomes.every((item) => item.description);
     
-    const isValid = this.incomes.every((item) =>   item.description );
-  
-    console.log('Guardando cambios...', isValid);
+  if (!isValid) {
+    alerts.basicAlert(
+      'Añadir entrada',
+      'Debe llenar todos los campos antes de guardar.',
+      'error'
+    );
+    return;
+  }
 
-    if (!isValid) {
+  const newRows = this.incomes.filter((row) => row.__isNew);
+  const modifiedRows = this.incomes.filter(
+    (row) => row.__modified && !row.__isNew
+  );
+
+  // Solo validar configuración si hay nuevas filas que necesitan número de documento
+  let currentConsecutive = 0;
+  if (newRows.length > 0) {
+    if (!this.prefixAndConsecutive?.[0]) {
       alerts.basicAlert(
-        'Añadir entrada',
-        'Debe llenar todos los campos antes de guardar.',
+        'Error de configuración',
+        'La configuración de prefijo/consecutivo no está cargada correctamente',
         'error'
       );
       return;
     }
 
-    const newRows = this.incomes.filter((row) => row.__isNew);
-    const modifiedRows = this.incomes.filter(
-      (row) => row.__modified && !row.__isNew
+    // Generar números de documento para nuevas filas
+    currentConsecutive = this.prefixAndConsecutive[0].consecutive;
+    newRows.forEach(row => {
+      currentConsecutive++;
+      row.numberDocument = `${this.prefixAndConsecutive[0].prefix}${currentConsecutive.toString().padStart(4, '0')}`;
+    });
+  }
+
+  try {
+    // PRIMERO: Guardar los registros de income (SIEMPRE)
+    await this.saveIncomeRecords(newRows, modifiedRows);
+    
+    // LUEGO: Actualizar el consecutivo si hay nuevas filas (manejar error específico)
+ if (newRows.length > 0) {
+  try {
+    await this.updateBillingManagement(currentConsecutive);
+    this.hasConsecutiveError = false;
+  } catch (consecutiveError) {
+    // Error específico del consecutivo - mostrar alerta pero no revertir todo
+    console.error('Error actualizando consecutivo:', consecutiveError);
+    this.hasConsecutiveError = true;
+    alerts.basicAlert(
+      'Advertencia - Consecutivo',
+      'Los registros se guardaron correctamente, pero hubo un problema al actualizar el consecutivo. Contacte al administrador.',
+      'warning'
     );
+  }
+}
 
-    // Solo validar configuración si hay nuevas filas que necesitan número de documento
-    let currentConsecutive = 0;
-    if (newRows.length > 0) {
-      if (!this.prefixAndConsecutive?.[0]) {
-        alerts.basicAlert(
-          'Error de configuración',
-          'La configuración de prefijo/consecutivo no está cargada correctamente',
-          'error'
-        );
-        return;
-      }
-
-      // Generar números de documento para nuevas filas
-      currentConsecutive = this.prefixAndConsecutive[0].consecutive;
-      newRows.forEach(row => {
-        currentConsecutive++;
-        row.numberDocument = `${this.prefixAndConsecutive[0].prefix}${currentConsecutive.toString().padStart(4, '0')}`;
-      });
-    }
-
-    const addObservables = newRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      this.trackingService.addLog(this.trackingService.getnameComp(),'Save Registro en Ingresos', 'Menu Administracion Ingresos',  this.trackingService.getEmail());
-      return this.incomesAndExpensesService.addIncomesAndExpenses(cleanedData);
-    });
-
-    const updateObservables = modifiedRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Ingresos', 'Menu Administracion Ingresos',  this.trackingService.getEmail());
-      return this.incomesAndExpensesService.updateIncomesAndExpenses(row.id, cleanedData);
-    });
-
-    try {
-      // Solo actualizar consecutivo si hay nuevas filas
-      if (newRows.length > 0) {
-        // Crear objeto sin array
-        const updatedBillingInfo = {
-          ...this.prefixAndConsecutive[0],
-          consecutive: currentConsecutive
-        };
-
-        const updateConsecutiveObs = this.administrationService.updateBillingManagement(
-          this.root,
-          updatedBillingInfo
-        ).pipe(
-          tap(response => {
-            // Actualizar el array local con el nuevo objeto
-            this.prefixAndConsecutive = [updatedBillingInfo];
-          })
-        );
-
-        const responses = await lastValueFrom(
-          concat(...addObservables, ...updateObservables, updateConsecutiveObs).pipe(toArray())
-        );
-      } else {
-        // Si solo hay modificaciones, no actualizar consecutivo
-        const responses = await lastValueFrom(
-          concat(...addObservables, ...updateObservables).pipe(toArray())
-        );
-      }
-
+    // Éxito completo o parcial
+    if (newRows.length === 0 || !this.hasConsecutiveError) {
       alerts.basicAlert(
         'Datos actualizados',
         'Se han actualizado los datos correctamente.',
         'success'
       );
-      this.notSavedChanges = false;
-      this.newlyAddedRows = [];
-      await this.getIncomes(); // Refrescar los datos
-    } catch (error) {
-      console.error(error);
-      alerts.basicAlert(
-        'Error',
-        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
-        'error'
+    }
+
+    this.notSavedChanges = false;
+    this.newlyAddedRows = [];
+    await this.getIncomes(); // Refrescar los datos
+
+  } catch (error) {
+    console.error('Error crítico en saveChanges:', error);
+    alerts.basicAlert(
+      'Error',
+      'Ocurrió un error al guardar los registros. Por favor, intente nuevamente.',
+      'error'
+    );
+  }
+}
+
+
+  // Método separado para guardar los registros de income
+  private async saveIncomeRecords(newRows: any[], modifiedRows: any[]): Promise<void> {
+    const addObservables = newRows.map((row) => {
+      const cleanedData = this.cleanDataForServer(row);
+      console.log('Guardando nueva fila:', cleanedData);
+      this.trackingService.addLog(
+        this.trackingService.getnameComp(),
+        'Save Registro en Ingresos', 
+        'Menu Administracion Ingresos',  
+        this.trackingService.getEmail()
+      );
+      return this.incomesAndExpensesService.addIncomesAndExpenses(cleanedData);
+    });
+
+    const updateObservables = modifiedRows.map((row) => {
+      const cleanedData = this.cleanDataForServer(row);
+      console.log('Actualizando fila existente:', cleanedData);
+      this.trackingService.addLog(
+        this.trackingService.getnameComp(),
+        'Update Registro en Ingresos', 
+        'Menu Administracion Ingresos',  
+        this.trackingService.getEmail()
+      );
+      return this.incomesAndExpensesService.updateIncomesAndExpenses(row.id, cleanedData);
+    });
+
+    // Ejecutar todas las operaciones de guardado
+    const allObservables = [...addObservables, ...updateObservables];
+    
+    if (allObservables.length > 0) {
+      await lastValueFrom(
+        forkJoin(allObservables) // Usar forkJoin para ejecutar todas en paralelo
       );
     }
   }
+
+// Método separado para actualizar el billing management (SOLO consecutivo)
+private async updateBillingManagement(currentConsecutive: number): Promise<void> {
+  console.log('Actualizando consecutivo a:', currentConsecutive);
+  
+  // CORRECCIÓN: Envolver el consecutive en un objeto "request"
+  const payload = {
+    request: {
+      consecutive: currentConsecutive
+    }
+  };
+  
+  await lastValueFrom(
+    this.administrationService.updateBillingManagementConsecutive(
+      this.root,
+      payload
+    ).pipe(
+      tap((updatedBilling: any) => {
+        console.log('Consecutivo actualizado exitosamente:', updatedBilling);
+        // Actualizar el array local con la respuesta completa del servidor
+        this.prefixAndConsecutive = [updatedBilling];
+      }),
+      catchError((error) => {
+        console.error('Error actualizando consecutivo:', error);
+        
+        // Log específico para tracking
+        this.trackingService.addLog(
+          this.trackingService.getnameComp(),
+          `Error actualizando consecutivo: ${error.message}`, 
+          'Menu Administracion Ingresos - Error Consecutivo',  
+          this.trackingService.getEmail()
+        );
+        
+        throw error; // Re-lanzar el error para manejarlo en saveChanges
+      })
+    )
+  );
+}
 
   async deleteEntry() {
     const selectedNodes = this.gridApi.getSelectedNodes();
@@ -758,6 +834,5 @@ export class IncomeComponent {
       }
     )
   }
-
+ 
 }
-

@@ -22,6 +22,7 @@ import { TimeService } from 'app/services/time.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { PermitionsService } from 'app/services/permitions.service';
 import { SignalsService } from 'app/services/signals.service';
+import { AuthService } from 'app/services/auth.service';
 
 @Component({
   selector: 'app-detail-permissions-user',
@@ -38,6 +39,7 @@ export class DetailPermissionsUserComponent implements ICellRendererAngularComp 
   private fb = inject(FormBuilder);
   private trackingService = inject(TrackingService);
   private permitionsService = inject(PermitionsService);
+  authService = inject(AuthService);
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
@@ -71,6 +73,7 @@ export class DetailPermissionsUserComponent implements ICellRendererAngularComp 
   idUser: number;
   idBranch: number;
   idRole: number;
+  editable: boolean = false;
   idPosicion: number;
   selectedTab: string = 'customers-payments';
   idEmployee: number;
@@ -128,6 +131,21 @@ export class DetailPermissionsUserComponent implements ICellRendererAngularComp 
       params.api.autoSizeColumns(allColumnIds);
     }
   };
+  modificar(){
+    const newal = true
+    if(this.authService.getCrudPermission('setup', 'users', 'create')){
+       this.permitionsService.getPermitionsDetail(this.idEmpresa, this.idUser, this.idBranch, this.idRole, this.idPosicion)
+      .subscribe((data: any) => {
+        this.rowData = [];
+        this.editable = true
+        this.rowData = data;
+        console.log("algo aqui", this.rowData)
+      });
+    }else if(this.authService.getCrudPermission('setup', 'users', 'update')){
+       this.editable = true
+    }
+       
+  }
 
   get colDetail(): ColDef[] {
     return [
@@ -152,22 +170,22 @@ export class DetailPermissionsUserComponent implements ICellRendererAngularComp 
       {
         field: 'canRead',
         headerName: 'Ver',
-        editable: true
+        editable: this.editable
       },
       {
         field: 'canCreate',
         headerName: 'Crear',
-        editable: true
+        editable: this.editable
       },
       {
         field: 'canUpdate',
         headerName: 'Actualizar',
-        editable: true
+        editable: this.editable
       },
       {
         field: 'canDelete',
         headerName: 'Borrar',
-        editable: true
+        editable: this.editable
       },
     ];
   }
@@ -187,7 +205,7 @@ export class DetailPermissionsUserComponent implements ICellRendererAngularComp 
   }
 
   obtenerDatos(idUser: number, idBranch: number,Role: number, idPosicion: number) {
-    this.permitionsService.getPermitionsDetail(this.idEmpresa, idUser, idBranch, Role, idPosicion)
+    this.permitionsService.getPermitionsSencillo(this.idEmpresa, idUser, idBranch, Role, idPosicion)
       .subscribe((data: any) => {
         this.rowData = [];
         this.rowData = data;
@@ -324,6 +342,7 @@ export class DetailPermissionsUserComponent implements ICellRendererAngularComp 
       );
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
+      
 
       // Recargamos los datos
       this.obtenerDatos(this.idUser, this.idBranch, this.idRole, this.idPosicion);
@@ -345,6 +364,7 @@ export class DetailPermissionsUserComponent implements ICellRendererAngularComp 
   revertDetailData() {
     this.obtenerDatos(this.idUser,this.idBranch,this.idRole, this.idPosicion);
     this.notSavedChanges = false;
+    
   }
 
   private cleanDataForServer(data: any): any {
