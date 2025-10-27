@@ -181,22 +181,22 @@ export const routes: Routes = [
         children: [
           { path: '', redirectTo: 'materia-prima', pathMatch: 'full' },
           {
-            path: 'proveedores',
-            loadComponent: () =>
-              import(
-                './domains/Warehouse/components/providers/providers.component'
-              ).then((p) => p.ProvidersComponent),
-            data: { type: 'PROVIDERS' },
-            canDeactivate: [UnsavedChangesGuard],
-          },
-          {
             path: 'materia-prima',
             loadComponent: () =>
               import(
                 './domains/Almacenes/pages/materia-prima/materia-prima.component'
               ).then((m) => m.MateriaPrimaComponent),
             children: [
-              { path: '', redirectTo: 'materiales-maestro', pathMatch: 'full' },
+              { path: '', redirectTo: 'proveedores', pathMatch: 'full' },
+              {
+                path: 'proveedores',
+                loadComponent: () =>
+                  import(
+                    './domains/Warehouse/components/providers/providers.component'
+                  ).then((p) => p.ProvidersComponent),
+                data: { type: 'PROVIDERS' },
+                canDeactivate: [UnsavedChangesGuard],
+              },
               {
                 path: 'materiales-maestro',
                 loadComponent: () =>
@@ -250,20 +250,39 @@ export const routes: Routes = [
             ],
           },
           {
-            path: 'requisiciones',
+            path: 'compras',
             loadComponent: () =>
               import(
-                './domains/Warehouse/components/requisitionsdelison/requisitionsdelison.component'
-              ).then((r) => r.RequisitionsDelisonComponent),
-            canDeactivate: [UnsavedChangesGuard],
-          },
-          {
-            path: 'ordenes-compra',
-            loadComponent: () =>
-              import(
-                './domains/Warehouse/components/purchaseorderdelison/purchaseorderdelison.component'
-              ).then((p) => p.PurchaseOrderDelisonComponent),
-            canDeactivate: [UnsavedChangesGuard],
+                './domains/Almacenes/pages/compras/compras.component'
+              ).then((c) => c.ComprasComponent),
+            children: [
+              { path: '', redirectTo: 'proveedores', pathMatch: 'full' },
+              {
+                path: 'proveedores',
+                loadComponent: () =>
+                  import(
+                    './domains/Warehouse/components/providers/providers.component'
+                  ).then((p) => p.ProvidersComponent),
+                data: { type: 'PROVIDERS' },
+                canDeactivate: [UnsavedChangesGuard],
+              },
+              {
+                path: 'requisiciones',
+                loadComponent: () =>
+                  import(
+                    './domains/Warehouse/components/requisitionsdelison/requisitionsdelison.component'
+                  ).then((r) => r.RequisitionsDelisonComponent),
+                canDeactivate: [UnsavedChangesGuard],
+              },
+              {
+                path: 'ordenes-compra',
+                loadComponent: () =>
+                  import(
+                    './domains/Warehouse/components/purchaseorderdelison/purchaseorderdelison.component'
+                  ).then((p) => p.PurchaseOrderDelisonComponent),
+                canDeactivate: [UnsavedChangesGuard],
+              },
+            ],
           },
           {
             path: 'catalogo',

@@ -336,6 +336,14 @@ export class ProvidersComponent implements CanComponentDeactivate {
         width: 180,
       },
 
+      //Es un combo de Tipo de Proveedor qe le compro
+      {
+        field: 'typeProvider',
+        headerName: 'Tipo Proveedor',
+        editable: true,
+        width: 150,
+      },
+
       {
         field: 'phone',
         headerName: 'Telefono principal',

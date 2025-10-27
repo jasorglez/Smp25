@@ -49,19 +49,86 @@ export class UsersxwarehousesComponent {
   private tempIdCounter: number = 0;
   private permissionType: string = 'warehouse';
 
+  /**
+   * Getter que implementa la lógica de priorización para obtener el idBranch:
+   * 1. Prioriza getBranchFromPermissions() (branch seleccionado en usersxbranches)
+   * 2. Si no existe, usa getBranchSelectedBySidebar() (branch del sidebar)
+   */
+  get idBranch(): number {
+    const branchFromPermissions = this.signalsService.getBranchFromPermissions()();
+    const branchFromSidebar = this.signalsService.getBranchSelectedBySidebar()();
+
+    if (branchFromPermissions) {
+      return branchFromPermissions;
+    }
+
+    return branchFromSidebar || 0;
+  }
+
   constructor() {
     effect(() => {
-      this.signalsService.getBranchSelectedBySidebar();
-      this.cargarDatos();
+      const branchFromPermissions = this.signalsService.getBranchFromPermissions()();
+      const branchFromSidebar = this.signalsService.getBranchSelectedBySidebar()();
+
+      // Solo recargar si hay un usuario seleccionado y un branch válido
+      if (this.idUser && (branchFromPermissions || branchFromSidebar)) {
+        this.cargarDatos();
+      }
     });
   }
 
   cargarDatos() {
+    const currentIdBranch = this.idBranch;
+
+    // Validar que tenemos un idBranch válido (rechazar solo 0 o undefined)
+    // -9 es válido y significa "todas las sucursales"
+    if (!currentIdBranch || currentIdBranch === 0) {
+      console.warn('⚠️ No hay idBranch válido para cargar warehouses. IdBranch:', currentIdBranch);
+      this.rowData = [];
+      alerts.basicAlert(
+        'Sucursal no seleccionada',
+        'Por favor, seleccione una sucursal en el panel izquierdo para ver los almacenes.',
+        'info'
+      );
+      return;
+    }
+
+    console.log('🔍 Cargando datos con idBranch:', currentIdBranch);
+
+    // Si idBranch es -9 (todas las sucursales), solo cargar permisos sin filtrar por almacenes
+    if (currentIdBranch === -9) {
+      this.usersxwarehousesService.getDataUsersxPermissions(this.permissionType).subscribe({
+        next: (permisos) => {
+          console.log('✅ Datos recibidos (todas las sucursales):', { permisos: permisos.length });
+
+          // Filtrar solo por usuario
+          this.rowData = Object.values(permisos).filter((row: any) =>
+            row.idUser === this.idUser
+          );
+
+          console.log('📊 Filas filtradas:', this.rowData.length);
+          this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Usuarios por Almacén (todas las sucursales)', 'Menu Administracion Usuarios por Almacén',  this.trackingService.getEmail());
+        },
+        error: (error) => {
+          console.error('❌ Error al cargar permisos:', error);
+          alerts.basicAlert(
+            'Error',
+            'Ocurrió un error al cargar los permisos.',
+            'error'
+          );
+        }
+      });
+      return;
+    }
+
+    // Para sucursales específicas, cargar almacenes y permisos
     forkJoin({
       permisos: this.usersxwarehousesService.getDataUsersxPermissions(this.permissionType),
-      almacenes: this.warehousesService.getSimpleWarehouses(this.signalsService.getBranchSelectedBySidebar()())
+      almacenes: this.warehousesService.getSimpleWarehouses(currentIdBranch)
     }).subscribe({
       next: ({ permisos, almacenes }) => {
+        console.log('✅ Datos recibidos:', { permisos: permisos.length, almacenes: almacenes.length });
+
         // Guardar almacenes en el formato requerido
         this.warehouses = almacenes.reduce((acc, dep) => {
           acc[dep.id] = dep.name;
@@ -69,20 +136,34 @@ export class UsersxwarehousesComponent {
         }, {});
 
         // Filtrar permisos por usuario y sucursal
-        const idBranchActual = this.signalsService.getBranchSelectedBySidebar()();
-        this.rowData = Object.values(permisos).filter((row: any) => 
-          row.idUser === this.idUser && 
-          almacenes.some(almacen => almacen.id === row.idPermission && almacen.idBranch === idBranchActual)
+        this.rowData = Object.values(permisos).filter((row: any) =>
+          row.idUser === this.idUser &&
+          almacenes.some(almacen => almacen.id === row.idPermission && almacen.idBranch === currentIdBranch)
         );
+
+        console.log('📊 Filas filtradas:', this.rowData.length);
         this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Usuarios por Almacén', 'Menu Administracion Usuarios por Almacén',  this.trackingService.getEmail());
       },
       error: (error) => {
-        console.error('Error al cargar los datos:', error);
-        alerts.basicAlert(
-          'Error',
-          'Ocurrió un error al cargar los datos',
-          'error'
-        );
+        console.error('❌ Error al cargar los datos:', error);
+        console.error('❌ idBranch usado:', currentIdBranch);
+        console.error('❌ Detalles del error:', error.message, error.status);
+
+        // Si es 404, probablemente no hay almacenes para esta sucursal
+        if (error.status === 404) {
+          this.rowData = [];
+          alerts.basicAlert(
+            'Sin almacenes',
+            'No hay almacenes registrados para esta sucursal.',
+            'info'
+          );
+        } else {
+          alerts.basicAlert(
+            'Error',
+            `Ocurrió un error al cargar los datos: ${error.message || 'Desconocido'}`,
+            'error'
+          );
+        }
       }
     });
   }
@@ -123,7 +204,7 @@ public gridOptions: any = {
       },
       {
         field: 'idPermission',
-        headerName: 'Almacén',
+        headerName: 'Almacénq',
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
           values: Object.keys(this.warehouses).sort((a, b) => this.warehouses[a].localeCompare(this.warehouses[b])),

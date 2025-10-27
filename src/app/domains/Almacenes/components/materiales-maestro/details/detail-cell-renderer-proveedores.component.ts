@@ -96,6 +96,13 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
   };
 
   proveedorColumnDefs = [
+      {
+        field: 'active',
+        headerName: 'Principal',
+        editable: true,
+        width: 111,
+      },
+
     {
       field: 'providerName',
       headerName: 'Proveedor',

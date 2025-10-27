@@ -30,15 +30,6 @@ export class ProcalmacenesComponent {
   onTabSelected(tabName: string) {
     this.selectedTab = tabName;
 
-    if (tabName === 'proveedores') {
-      this.trackingService.addLog(
-        this.trackingService.getnameComp(),
-        'Click en la Pestaña Proveedores',
-        'Almacenes',
-        this.trackingService.getEmail()
-      );
-    }
-
     if (tabName === 'materia-prima') {
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
@@ -48,19 +39,10 @@ export class ProcalmacenesComponent {
       );
     }
 
-    if (tabName === 'requisiciones') {
+    if (tabName === 'compras') {
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
-        'Click en la Pestaña Requisiciones',
-        'Almacenes',
-        this.trackingService.getEmail()
-      );
-    }
-
-    if (tabName === 'ordenes-compra') {
-      this.trackingService.addLog(
-        this.trackingService.getnameComp(),
-        'Click en la Pestaña Ordenes Compra',
+        'Click en la Pestaña Compras',
         'Almacenes',
         this.trackingService.getEmail()
       );
