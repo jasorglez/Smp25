@@ -26,6 +26,7 @@ import { EmployeesxSavingsComponent } from '../savings/savings.component';
 import { TimeService } from 'app/services/time.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { BranchsService } from 'app/services/branchs.service';
+import { RolesService } from 'app/services/roles.service';
 import { AuthService } from 'app/services/auth.service';
 import { environment } from '@env/environment';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
@@ -58,12 +59,14 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   private timeService = inject(TimeService);
   private branchesService = inject(BranchsService);
   authService = inject(AuthService);
+  private rolesService = inject(RolesService);
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   id: number;
   idBranch: number;
   idRoot: number;
   idEmployee: number;
+  idPosicionSelect: number;
 
   cp: string;
   infoCp: any;
@@ -74,9 +77,12 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
   rowData: any[] = [];
   banks: any[] = [];
+  catalogGeneralPosiciones: any[] = [];
   depto: any[] = [];
+  catalogPosiciones: any[] = [];
   position: any[] = [];
   branchs: any[] = [];
+  catalogRoles: any[] = []
 
   // Variables de control del grid
   valorsenal: string = 'administrador';
@@ -138,6 +144,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           'error'
         );
       } else {
+        this.getGeneralPosicion();
+        this.getRoles()
         this.obtenerDatos();
         this.obtenerBranchs();
         this.getBanks();
@@ -540,37 +548,72 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         },
         width: 190,
         cellEditor: 'agSelectCellEditor',
+        onCellValueChanged: (params) => {
+          const newRolId = params.newValue;
+          if (newRolId && newRolId !== params.oldValue) {
+            // Llama al método que recarga las posiciones válidas para ese rol
+            this.getPoscionesbyRole(newRolId);
+          }
+        },
         cellEditorParams: (params) => {
-          // Ensure depto data is available when creating editor
           return {
-            values: this.depto ? this.depto.map((item) => item.id) : [],
+            values: this.catalogRoles 
+              ? this.catalogRoles.map(item => item.id)
+              : []
           };
         },
         valueFormatter: (params) => {
-          // Handle potential null values and properly format the displayed value
           if (!params.value) return '';
+          const found = this.catalogRoles?.find(item => item.id === params.value);
+          return found ? found.description : params.value;
+        },
+        valueSetter: (params) => {
+          const newDeptId = params.newValue;
 
-          const foundDepto = this.depto
-            ? this.depto.find((item) => item.id === params.value)
-            : null;
+          if (params.data.idDepto === newDeptId) return false;
 
-          return foundDepto ? foundDepto.description : params.value;
+          params.data.idDepto = newDeptId;
+
+          this.getPoscionesbyRole(newDeptId).then((posiciones) => {
+            // Guardar las posiciones directamente en la fila
+            this.catalogPosiciones = posiciones;
+
+            // --- INICIO DE LA CORRECCIÓN ---
+            // Verificar si la posición actual sigue siendo válida en el nuevo catálogo
+            const currentPositionId = params.data.idPosition;
+            const isPositionStillValid = posiciones.some(p => p.id === currentPositionId);
+
+            // Si la posición ya no es válida, la reseteamos. Si no, la mantenemos.
+            if (!isPositionStillValid) {
+              params.data.idPosition = null;
+            }
+            // --- FIN DE LA CORRECCIÓN ---
+
+            // Refrescar celdas
+            if (this.gridApi) {
+              this.gridApi.refreshCells({ rowNodes: [params.node], force: true });
+            }
+          });
+        
+          return true;
         },
         valueGetter: (params) => {
           // Handle potential null values and properly format the displayed value
           if (!params.data || !params.data.idDepto) return '';
 
-          const foundDepto = this.depto
-            ? this.depto.find((d) => d.id === params.data.idDepto)
+          const foundDepto = this.catalogRoles
+            ? this.catalogRoles.find((d) => d.id === params.data.idDepto)
             : null;
 
           return foundDepto ? foundDepto.description :'';
         },
         
+        
       },
       {
         field: 'idPosition',
         headerName: 'Posicion',
+        width: 190,
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
         editable: (params) => {
@@ -580,36 +623,46 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           return this.authService.getCrudPermission('hr', 'employees', 'update');
         },
         suppressMovable: true,
-        filter: true,
         filterParams: {
           // can be 'windows' or 'mac'
           defaultToNothingSelected: true,
           //excelMode: 'mac',
         },
-        width: 190,
+        filter: true, // Opcional: Ocultar el botón de filtro si no es para el usuario
+        flex: 0,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: (params) => {
-          // Ensure depto data is available when creating editor
+          // Ensure catalogPosiciones data is available when creating editor
           return {
-            values: this.position ? this.position.map((item) => item.id) : [],
+            values: this.catalogPosiciones 
+              ? this.catalogPosiciones.map(item => item.id)
+              : []
           };
         },
         valueFormatter: (params) => {
-          // Handle potential null values and properly format the displayed value
           if (!params.value) return '';
+            const found = this.catalogGeneralPosiciones?.find(item => item.id === params.value);
+            return found ? found.description : params.value;
 
-          const foundDepto = this.depto
-            ? this.position.find((item) => item.id === params.value)
-            : null;
+        },
+        valueSetter: (params) => {
+          const newPosicionId = params.newValue;
+          const currentDeptId = params.data.idDepto;
 
-          return foundDepto ? foundDepto.description : params.value;
+          if (params.data.idPosition === newPosicionId) return false;
+
+          // Verificar si la combinación de rol y posición ya existe
+
+          params.data.idPosition = newPosicionId;
+
+          return true;
         },
         valueGetter: (params) => {
           // Handle potential null values and properly format the displayed value
           if (!params.data || !params.data.idPosition) return '';
 
-          const foundDepto = this.depto
-            ? this.position.find((item) => item.id === params.data.idPosition)
+          const foundDepto = this.catalogGeneralPosiciones
+            ? this.catalogGeneralPosiciones.find((d) => d.id === params.data.idPosition)
             : null;
 
           return foundDepto ? foundDepto.description :'';
@@ -1648,6 +1701,47 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       },
     });
   }
+    getGeneralPosicion() {
+    this.rolesService.getGeneralPosicion(this.idRoot).subscribe(
+      (data: any) => {
+        this.catalogGeneralPosiciones = data;
+      },      
+      (error) => {
+        if (error.status == 404) this.catalogGeneralPosiciones = [];
+        console.error('Error fetching data:', error);
+      }
+    );
+  }
+   getRoles() {
+    this.rolesService.getCatalogRoles(this.idRoot).subscribe(
+      (data: any) => {
+        this.catalogRoles = data;
+        //console.log(this.catalogRoles)
+      },      
+      (error) => {
+        if (error.status == 404) this.catalogRoles = [];
+        console.error('Error fetching data:', error);
+      }
+    );
+  }
+  getPoscionesbyRole(roles: number): Promise<any[]> {
+    return new Promise((resolve, reject) => {
+      this.rolesService.getCatalogPosiciones(this.idRoot, roles).subscribe({
+        next: (data: any) => {
+          
+          resolve(data || []);
+        },
+        error: (error) => {
+          if (error.status === 404) {
+            resolve([]);
+          } else {
+            console.error('Error fetching posiciones:', error);
+            reject(error);
+          }
+        }
+      });
+    });
+  }
 
   // mandarlo a llamar de una funcion tools y  Reusamos codigo, la otra es el estandar para el log.....
 
@@ -2078,6 +2172,28 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   
     // Eliminar la asignación duplicada de selectedRowData
     // this.selectedRowData = selectedRowData; // Esta línea ya se encuentra al principio
+  }
+  async onCellClicked(event: any): Promise<void> {
+    const colId = event.column.getColId();
+    if (colId === 'idDepto') {
+      const roleId = event.data.idDepto;
+      console.log(event.data)
+      if (roleId) {
+        this.catalogPosiciones = await this.getPoscionesbyRole(roleId);
+      } else {
+        this.catalogPosiciones = [];
+      }
+    }
+    if (colId === 'idPosition') {
+      const selectedData = event.data;
+      const roleId = event.data.idDepto;
+      this.idPosicionSelect = event.data.idPosition
+      if (roleId) {
+        this.catalogPosiciones = await this.getPoscionesbyRole(roleId);
+      } else {
+        this.catalogPosiciones = [];
+      }
+    }
   }
   
   async activateLoansTab() {

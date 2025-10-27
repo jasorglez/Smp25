@@ -4,8 +4,8 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { UsersService } from 'app/services/users.service';
 import { alerts } from 'app/helpers/alerts';
-import { FormsModule } from '@angular/forms';
-import { catchError, concat, EMPTY, lastValueFrom, toArray, tap } from 'rxjs';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { catchError, concat, EMPTY, lastValueFrom, toArray, tap, Observable, from, mergeMap } from 'rxjs';
 import { MatDialogModule } from '@angular/material/dialog';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { CatalogsService } from 'app/services/catalogs.service';
@@ -18,6 +18,7 @@ import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/auto
 import { env } from 'echarts';
 import { AuthService } from 'app/services/auth.service';
 import { environment } from '@env/environment';
+import { PermitionsService } from 'app/services/permitions.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { DetailPermissionsRendererComponent } from './details/detail-permissions-renderer.component';
 
@@ -34,7 +35,8 @@ import { DetailPermissionsRendererComponent } from './details/detail-permissions
     FormsModule,
     AgGridModule,
     MatDialogModule,
-    DetailPermissionsRendererComponent
+    DetailPermissionsRendererComponent,
+    ReactiveFormsModule
   ],
   templateUrl: './users.component.html',
   styleUrl: './users.component.scss',
@@ -73,6 +75,8 @@ export class UsersComponent {
   private rolesService   = inject(RolesService);  
   private employeeService = inject(EmployeesService);
   authService = inject(AuthService);
+ private permitionsService = inject(PermitionsService);
+
 
   profile = computed(() => this.signalsService.profile);
 
@@ -196,20 +200,69 @@ constructor() {
     console.log('Department:', department);
     return department ? department.description : 'Departamento no encontrado';
   }
-  procesoData(userId: number){
-    if (this.dataEmpleado && this.dataEmpleado.idBranch) {
-      const sucursal =
-      {
-        "idUser": userId,
-        "idPermission": this.dataEmpleado.idBranch,
-        "type": "branch",
-        "description": null,
-        "active": 1
-      }
-      console.log('Adding branch permission from employee data:', sucursal);
-      return this.usersxrootService.addUserxPermission(sucursal);
+
+  procesoData(userId: number): Observable<any> {
+    console.log("++++++++++++++++" , this.dataEmpleado)
+    if (!this.dataEmpleado || !this.dataEmpleado.idBranch) {
+      console.warn("No hay datos válidos de empleado o sucursal.");
+      return EMPTY;
     }
-    return null; // No hay datos de empleado o sucursal para procesar
+  
+    // Crear permiso de sucursal
+    const sucursal = {
+      idUser: userId,
+      idPermission: this.dataEmpleado.idBranch,
+      type: "branch",
+      description: null,
+      active: 1
+    };
+  
+    const addBranchPermission$ = this.usersxrootService.addUserxPermission(sucursal);
+  
+    // Obtener los roles o permisos definidos del puesto
+    const addDetailedPermissions$ = from(this.getCRUD(this.dataEmpleado.idPosition)).pipe(
+      mergeMap(rolesDefinidos => {
+        if (!rolesDefinidos || rolesDefinidos.length === 0) {
+          console.warn("No se encontraron permisos definidos para esta posición.");
+          return EMPTY;
+        }
+        const detailObservables = rolesDefinidos.map(permiso => {
+          const detailData = {
+            idUser: userId, idBranch: this.dataEmpleado.idBranch,
+            idRole: this.dataEmpleado.idDepto,
+            idPosicion:this.dataEmpleado.idPosition,
+            idDetailedPermission: permiso.idDetailedPermission, canCreate: permiso.canCreate,
+            canRead: permiso.canRead, canUpdate: permiso.canUpdate, canDelete: permiso.canDelete,
+            active: permiso.active
+          };
+          console.log("Agregando permiso:", detailData);
+          return this.permitionsService.addPermitionsDetail(detailData);
+        });
+        return concat(...detailObservables);
+      }
+    ));
+  
+    return concat(addBranchPermission$, addDetailedPermissions$);
+  }
+
+
+  getCRUD(idPosicion: number): Promise<any[]> {
+    return new Promise((resolve, reject) => {
+      this.rolesService.getCatalogCRUD(idPosicion).subscribe({
+        next: (data: any) => {
+          console.log(data)
+          resolve(data || []);
+        },
+        error: (error) => {
+          if (error.status === 404) {
+            resolve([]);
+          } else {
+            console.error('Error fetching posiciones:', error);
+            reject(error);
+          }
+        }
+      });
+    });
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -672,7 +725,7 @@ constructor() {
 
         // Añadir permiso de branch desde datos de empleado si existe
         const branchPermissionFromEmployee = this.procesoData(userId);
-        if (branchPermissionFromEmployee) {
+        if (branchPermissionFromEmployee && branchPermissionFromEmployee !== EMPTY) {
           requests.push(branchPermissionFromEmployee);
         } else { // Si no, añadir desde el sidebar si el ID es positivo
         const branchId = this.signalsService.getBranchSelectedBySidebar()();
