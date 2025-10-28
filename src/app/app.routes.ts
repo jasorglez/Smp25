@@ -1630,12 +1630,14 @@ export const routes: Routes = [
           },
           
           {
-            path: 'catalogo',
+            path: 'catalogs',
             loadComponent: () =>
               import('./domains/SMP/Components/catalogs/catalogs.component')
                 .then((s) => s.CatalogsComponent),
-            canDeactivate: [UnsavedChangesGuard],
-            children: [
+              canActivate: [MasterPermissionsGuard],
+              data: { permissions: { master: 'hr', detailed: 'catalogs' } },
+              canDeactivate: [UnsavedChangesGuard],
+              children: [
               {
                 path: ':section',
                 loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(p => p.CatalogsComponent)
