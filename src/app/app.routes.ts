@@ -1596,7 +1596,7 @@ export const routes: Routes = [
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'shoppingDelison' } },
         children: [
-          { path: '', redirectTo: 'providers', pathMatch: 'full' },
+          { path: '', redirectTo: '', pathMatch: 'full' },
           {
             path: 'providers',
             loadComponent: () =>

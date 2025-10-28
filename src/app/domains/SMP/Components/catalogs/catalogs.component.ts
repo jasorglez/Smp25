@@ -21,6 +21,7 @@ import {
 import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
 
 import { alerts } from '../../../../helpers/alerts';
+import { AuthService } from 'app/services/auth.service';
 import { SharedModule } from 'app/shared/shared.module';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
@@ -42,6 +43,7 @@ import { SubatalogsComponent } from "../../../Warehouse/components/catalogs/cata
   styleUrl: './catalogs.component.scss',
 })
 export class CatalogsComponent implements CanComponentDeactivate {
+  authService = inject(AuthService);
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   notSavedChanges: boolean = false;
   rowData: any;
@@ -53,6 +55,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
   idRoot: number;
   selectedCatalog: string; // Variable para almacenar e
   showDetailsTab: boolean = false;
+  typeCatalog: string;
   gridHeight: string = '50vh';
   prefixAndConsecutive: any[] = [];
   private tempIdCounter: number = 0;
@@ -67,6 +70,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
 
   constructor(private route: ActivatedRoute) {
     effect(() => {
+      this.permisos(this.signalsService.getCatalogSelected());
     if(this.signalsService.getCloseCatalog()()){
       this.notSavedChanges = false;
       this.idCatalog = null;
@@ -108,6 +112,22 @@ export class CatalogsComponent implements CanComponentDeactivate {
     if (this.gridApi) {
       this.gridApi.setFilterModel(null);
       this.gridApi.onFilterChanged();
+    }
+  }
+  permisos(type: string){
+    switch (type) {
+        case 'RESOURCEHUMAN':
+          this.typeCatalog = 'hr'
+        break
+        case 'ADMINISTRATION':
+          this.typeCatalog = 'administration'
+        break
+        case 'SHOPPINGDELISON':
+          this.typeCatalog = 'shoppingDelison'
+        break
+        case 'ALMACENES':
+          this.typeCatalog = 'warehouses'
+        break
     }
   }
 
@@ -216,7 +236,12 @@ export class CatalogsComponent implements CanComponentDeactivate {
       {
         field: 'id',
         headerName: 'Id',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission(this.typeCatalog, 'catalogs', 'update');
+        },
         width: 80,
         hide:true,
         filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
@@ -227,7 +252,12 @@ export class CatalogsComponent implements CanComponentDeactivate {
       {
         field: 'valueAddition',
         headerName: 'name',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission(this.typeCatalog, 'catalogs', 'update');
+        },
         width: 100,
         hide: this.selectedCatalog !== 'TRABREALIZADO',
       },
@@ -239,7 +269,12 @@ export class CatalogsComponent implements CanComponentDeactivate {
           defaultToNothingSelected: true,
           //excelMode: 'mac',
         },
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission(this.typeCatalog, 'catalogs', 'update');
+        },
         filter: true,
         width: 250,
         valueSetter: (params) => {
@@ -304,7 +339,12 @@ export class CatalogsComponent implements CanComponentDeactivate {
           return params.value
         },
 
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission(this.typeCatalog, 'catalogs', 'update');
+        },
         width: 100,
         hide:
           this.selectedCatalog !== 'BONUS' &&
@@ -318,14 +358,24 @@ export class CatalogsComponent implements CanComponentDeactivate {
             : this.selectedCatalog === 'REASON'
             ? 'Aplicacion de horas a nomina'
             : 'Campo',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission(this.typeCatalog, 'catalogs', 'update');
+        },
         width: 200,
         hide:this.selectedCatalog !== 'ABSENCES' && this.selectedCatalog !== 'REASON'
       },
       {
         field: 'price',
         headerName: 'Precio',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission(this.typeCatalog, 'catalogs', 'update');
+        },
         width: 100,
         hide: this.selectedCatalog !== 'TRABREALIZADO',
         valueFormatter: (params) => {
@@ -340,7 +390,12 @@ export class CatalogsComponent implements CanComponentDeactivate {
       {
         field: 'vigente',
         headerName: 'Activo',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission(this.typeCatalog, 'catalogs', 'update');
+        },
         hide: this.idRoot == 18, // Solo mostrar si idRoot es 18
         width: 100,
       },
