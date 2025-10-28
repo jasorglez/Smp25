@@ -1300,7 +1300,7 @@ export const routes: Routes = [
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'hr' } },
         children: [
-          { path: '', redirectTo: 'employees', pathMatch: 'full' },
+          { path: '', redirectTo: '', pathMatch: 'full' },
           ...SharedModule.getRoutes(),
           {
             path: 'employees',
@@ -1317,12 +1317,7 @@ export const routes: Routes = [
               }
             },
             children: [
-              {
-                path: '',
-                redirectTo: 'employees-table',
-                pathMatch: 'full'
-              },
-
+              { path: '', redirectTo: 'employees-table', pathMatch: 'full' },
               {
                 path: 'clock',
                 loadComponent: () =>
@@ -1576,7 +1571,6 @@ export const routes: Routes = [
                 .then((s) => s.CatalogsComponent),
             canActivate: [MasterPermissionsGuard],
             data: { permissions: { master: 'hr', detailed: 'catalogs' } },
-            canDeactivate: [UnsavedChangesGuard],
             children: [
               {
                 path: ':section',
@@ -1635,8 +1629,7 @@ export const routes: Routes = [
               import('./domains/SMP/Components/catalogs/catalogs.component')
                 .then((s) => s.CatalogsComponent),
               canActivate: [MasterPermissionsGuard],
-              data: { permissions: { master: 'hr', detailed: 'catalogs' } },
-              canDeactivate: [UnsavedChangesGuard],
+              data: { permissions: { master: 'shoppingDelison', detailed: 'catalogs' } },
               children: [
               {
                 path: ':section',
