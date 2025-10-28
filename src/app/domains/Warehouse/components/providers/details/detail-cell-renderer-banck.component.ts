@@ -3,6 +3,7 @@ import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
+import { AuthService } from 'app/services/auth.service';
 import { AdministrationService } from 'app/services/administration.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 
@@ -21,19 +22,22 @@ import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/auto
             <button 
               class="btn btn-sm btn-success me-2" 
               (click)="addBank()"
-              [disabled]="!bankGridApi">
+              [disabled]="!bankGridApi"
+              *ngIf="authService.getCrudPermission('shoppingDelison', 'providers', 'create')">
               <i class="bi bi-plus-circle"></i> Agregar
             </button>
             <button 
               class="btn btn-sm btn-primary me-2" 
               (click)="saveBanks()"
-              [disabled]="!hasBankChanges">
+              [disabled]="!hasBankChanges"
+              *ngIf="authService.getCrudPermission('shoppingDelison', 'providers', 'create') || authService.getCrudPermission('shoppingDelison', 'providers', 'update')">
               <i class="bi bi-floppy"></i> Guardar
             </button>
             <button 
               class="btn btn-sm btn-danger" 
               (click)="deleteSelectedBank()"
-              [disabled]="!selectedBank">
+              [disabled]="!selectedBank"
+              *ngIf="authService.getCrudPermission('shoppingDelison', 'providers', 'delete')">
               <i class="bi bi-trash"></i> Borrar
             </button>
           </div>
@@ -57,6 +61,7 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
   params: any;
   providerId: number;
   providerName: string;
+  authService = inject(AuthService);
   
   bankRowData: any[] = [];
   hasBankChanges: boolean = false;
@@ -76,10 +81,20 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
   };
 
   bankColumnDefs = [
-    { field: 'campo2', headerName: 'Nombre Titular', editable: true, width: 190 },
+    { field: 'campo2', headerName: 'Nombre Titular', editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+        }, width: 190 },
     { field: 'campo3', 
       headerName: 'Banco', 
-      editable: true, 
+      editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+        },
       suppressMovable: true,
           filter: true,
           filterParams: {
@@ -102,8 +117,18 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
             return true;
           }
     },
-    { field: 'campo4', headerName: 'Numero Cuenta', editable: true, width: 190 },
-    { field: 'campo5', headerName: 'Clabe', editable: true, width: 190 },
+    { field: 'campo4', headerName: 'Numero Cuenta', editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+        },width: 190 },
+    { field: 'campo5', headerName: 'Clabe', editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+        },width: 190 },
     {
       field: 'campo6',
       headerName: 'Comentario',

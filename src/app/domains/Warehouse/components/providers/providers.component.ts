@@ -78,7 +78,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
   private route = inject(ActivatedRoute);
   private inegiService = inject(InegiService);
   private branchesService = inject(BranchsService);
-  private authService = inject(AuthService);
+  authService = inject(AuthService);
   private catalogsService = inject(CatalogsService);
 
 
@@ -248,21 +248,36 @@ export class ProvidersComponent implements CanComponentDeactivate {
       {
         field: 'vigente',
         headerName: 'Activo',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+        },
         width: 100,
       },
       
       {
         field: 'company',
         headerName: 'Compañía',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+        },
         width: 150,
       },
       
       {
         field: 'nameContact',
         headerName: 'Contacto principal',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+        },
         filter: true,
         cellEditor: 'autocompleteEditor',
         width: 200,
@@ -332,7 +347,12 @@ export class ProvidersComponent implements CanComponentDeactivate {
       {
         field: 'position',
         headerName: 'Puesto/Area',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+        },
         width: 180,
       },
 
@@ -340,21 +360,36 @@ export class ProvidersComponent implements CanComponentDeactivate {
       {
         field: 'typeProvider',
         headerName: 'Tipo Proveedor',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+        },
         width: 150,
       },
 
       {
         field: 'phone',
         headerName: 'Telefono principal',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+        },
         width: 100,
       },
       
       {
         field: 'email',
         headerName: 'Email Principal',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+        },
         width: 100,
       },
 
@@ -386,31 +421,56 @@ export class ProvidersComponent implements CanComponentDeactivate {
       {
         field: 'cp',
         headerName: 'Cp',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+        },
         width: 100,
       },
       {
         field: 'address',
         headerName: 'Dirección',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+        },
         width: 100,
       },
       {
         field: 'city',
         headerName: 'Estado',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+        },
         width: 100,
       },
       {
         field: 'state',
         headerName: 'Ciudad',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+        },
         width: 100,
       },
       {
         field: '',
         headerName: 'Colonia',
-        editable: true,
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+        },
         width: 100,
       },
     ];
@@ -475,7 +535,9 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
         .getProviders(this.idCompany,'PROVIDERS')
         .subscribe({
           next: (data: any) => {
+            if(this.authService.getCrudPermission('shoppingDelison', 'providers', 'read')){
             this.rowData = data;
+            }
             console.log(this.rowData)
             // Asegurarse de que las columnas se ajusten después de cargar los datos
             if (this.gridApi) {

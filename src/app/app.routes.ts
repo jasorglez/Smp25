@@ -1594,6 +1594,64 @@ export const routes: Routes = [
         ],
       },
       {
+        path: 'shoppingDelison',
+        loadComponent: () =>
+          import(
+            './domains/ModShoppingDelison/pages/procshoppingDelison.component'
+          ).then((a) => a.ProcShoppingDelisonComponent),
+        canActivate: [MasterPermissionsGuard],
+        data: { permissions: { master: 'shoppingDelison' } },
+        children: [
+          { path: '', redirectTo: 'providers', pathMatch: 'full' },
+          {
+            path: 'providers',
+            loadComponent: () =>
+              import(
+                './domains/Warehouse/components/providers/providers.component'
+              ).then((c) => c.ProvidersComponent),
+                data: { type: 'PROVIDERS' },
+                canDeactivate: [UnsavedChangesGuard],
+          },
+          {
+            path: 'requisitions',
+            loadComponent: () =>
+              import(
+                './domains/Warehouse/components/requisitionsdelison/requisitionsdelison.component'
+              ).then((c) => c.RequisitionsDelisonComponent),
+                canDeactivate: [UnsavedChangesGuard],
+          },
+          {
+            path: 'purchas_eorder',
+            loadComponent: () =>
+              import(
+                './domains/Warehouse/components/purchaseorderdelison/purchaseorderdelison.component'
+              ).then((c) => c.PurchaseOrderDelisonComponent),
+                canDeactivate: [UnsavedChangesGuard],
+          },
+          
+          {
+            path: 'catalogo',
+            loadComponent: () =>
+              import('./domains/SMP/Components/catalogs/catalogs.component')
+                .then((s) => s.CatalogsComponent),
+            canDeactivate: [UnsavedChangesGuard],
+            children: [
+              {
+                path: ':section',
+                loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(p => p.CatalogsComponent)
+              },
+            ],
+          },
+          {
+            path: 'configuracion',
+            loadComponent: () =>
+              import(
+                './domains/Warehouse/components/configwarehouse/configwarehouse.component'
+              ).then((c) => c.ConfigwarehouseComponent),
+          },
+        ],
+      },
+      {
         path: 'unauthorized',
         loadComponent: () =>
           import('./shared/unauthorized/unauthorized.component').then(

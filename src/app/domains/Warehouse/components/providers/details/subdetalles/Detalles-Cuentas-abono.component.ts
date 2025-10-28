@@ -7,6 +7,7 @@ import { CustomersService } from 'app/services/customers.service';
 import { alerts } from 'app/helpers/alerts';
 import { concat, lastValueFrom, toArray, forkJoin, concatMap } from 'rxjs';
 import { SignalsService } from 'app/services/signals.service';
+import { AuthService } from 'app/services/auth.service';
 import { ProvidersService } from 'app/services/providers.service';
 
 
@@ -27,19 +28,22 @@ import { ProvidersService } from 'app/services/providers.service';
             <button 
               class="btn btn-sm btn-success me-2" 
               (click)="addDetallesCuentas()"
-              [disabled]="!DetallesCuentasGridApi">
+              [disabled]="!DetallesCuentasGridApi"
+              *ngIf="authService.getCrudPermission('shoppingDelison', 'providers', 'create')">
               <i class="bi bi-plus-circle"></i> Agregar
             </button>
             <button 
               class="btn btn-sm btn-primary me-2" 
               (click)="saveDetallesCuentass()"
-              [disabled]="!hasDetallesCuentasChanges">
+              [disabled]="!hasDetallesCuentasChanges"
+              *ngIf="authService.getCrudPermission('shoppingDelison', 'providers', 'create') || authService.getCrudPermission('shoppingDelison', 'providers', 'update')">
               <i class="bi bi-floppy"></i> Guardar
             </button>
             <button 
               class="btn btn-sm btn-danger" 
               (click)="deleteSelectedDetallesCuentas()"
-              [disabled]="!selectedDetallesCuentas">
+              [disabled]="!selectedDetallesCuentas"
+              *ngIf="authService.getCrudPermission('shoppingDelison', 'providers', 'create')">
               <i class="bi bi-trash"></i> Borrar
             </button>
           </div>
@@ -61,6 +65,7 @@ export class DetallesComponentCuentasAbono implements ICellRendererAngularComp {
   private customerService = inject(CustomersService);
   private signalsService = inject(SignalsService);
   private providersService = inject(ProvidersService);
+  authService = inject(AuthService);
 
   params: any;
   cuentas: number;
@@ -84,7 +89,12 @@ export class DetallesComponentCuentasAbono implements ICellRendererAngularComp {
     { 
       field: 'date', 
       headerName: 'Fecha', 
-      editable: true, 
+      editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+        }, 
       flex: 1,
       cellEditor: 'agDateCellEditor',
       cellEditorParams: {
@@ -153,7 +163,12 @@ export class DetallesComponentCuentasAbono implements ICellRendererAngularComp {
         return true;
       },
     },
-    { field: 'total', headerName: 'Abono', editable: true, flex: 1, 
+    { field: 'total', headerName: 'Abono', editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+        }, flex: 1, 
       valueSetter: (params) => {
         const nuevoValor = Number(params.newValue);
         const maximo = Number(this.maximo);
@@ -172,7 +187,12 @@ export class DetallesComponentCuentasAbono implements ICellRendererAngularComp {
         return new CurrencyPipe('en-US').transform(params.value, 'USD', 'symbol', '1.2-2');
       }
     },
-    { field: 'comments', headerName: 'Comentario', editable: true, flex: 1 },
+    { field: 'comments', headerName: 'Comentario', editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+        }, flex: 1 },
   ];
 
   agInit(params: ICellRendererParams): void {

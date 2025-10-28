@@ -130,6 +130,19 @@
           <mat-icon>warehouse</mat-icon> {{ "buy" | translate }}
         </a>
       </li>
+      <li
+        class="nav-item"
+        *ngIf="authService.hasMasterPermission('shoppingDelison')"
+      >
+        <a
+          class="nav-link d-flex align-items-center"
+          [routerLink]="['/shoppingDelison']"
+          routerLinkActive="active-link"
+          (click)="warehouseproc()"
+        >
+          <mat-icon>warehouse</mat-icon> {{ "buy" | translate }}
+        </a>
+      </li>
 
       <li
         class="nav-item"

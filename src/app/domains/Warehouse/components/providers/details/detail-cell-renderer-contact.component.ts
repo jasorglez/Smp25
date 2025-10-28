@@ -3,6 +3,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
+import { AuthService } from 'app/services/auth.service';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -22,19 +23,22 @@ import { CommonModule } from '@angular/common';
             <button 
               class="btn btn-sm btn-success me-2" 
               (click)="addContact()"
-              [disabled]="!contactGridApi">
+              [disabled]="!contactGridApi"
+              *ngIf="authService.getCrudPermission('shoppingDelison', 'providers', 'create')">
               <i class="bi bi-person-plus"></i> Agregar
             </button>
             <button 
               class="btn btn-sm btn-primary me-2" 
               (click)="saveContacts()"
-              [disabled]="!hasContactChanges">
+              [disabled]="!hasContactChanges"
+              *ngIf="authService.getCrudPermission('shoppingDelison', 'providers', 'create') || authService.getCrudPermission('shoppingDelison', 'providers', 'update')">
               <i class="bi bi-floppy"></i> Guardar
             </button>
             <button 
               class="btn btn-sm btn-danger" 
               (click)="deleteSelectedContact()"
-              [disabled]="!selectedContact">
+              [disabled]="!selectedContact" 
+              *ngIf="authService.getCrudPermission('shoppingDelison', 'providers', 'delete')">
               <i class="bi bi-trash"></i> Borrar
             </button>
           </div>
@@ -55,6 +59,7 @@ import { CommonModule } from '@angular/common';
 })
 export class DetailCellRendererComponentContact implements ICellRendererAngularComp {
    private signalsService = inject(SignalsService);
+   authService = inject(AuthService);
 
   params: any;
   providerId: number;
@@ -85,34 +90,59 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
     {
       field: 'campo2',
       headerName: 'Nombre Contacto',
-      editable: true,
+      editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+        },
       width: 150,
       flex: 1
     },
     {
       field: 'campo3', 
       headerName: 'Puesto/Area',
-      editable: true,
+      editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+        },
       width: 120,
       flex: 1
     },
     {
       field: 'campo4',
       headerName: 'Teléfono', 
-      editable: true,
+      editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+        },
       width: 100
     },
     {
       field: 'campo5',
       headerName: 'Email',
-      editable: true,
+      editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+        },
       width: 140,
       flex: 1
     },
     {
       field: 'campo6',
       headerName: 'Comentarios',
-      editable: true,
+      editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+        },
       width: 190
     },
   ];
