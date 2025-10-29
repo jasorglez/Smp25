@@ -9,7 +9,7 @@ import { toArray } from 'rxjs/operators';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
-
+import { CatFamSubComponent } from 'app/domains/Almacenes/components/cat-fam-sub/cat-fam-sub.component';
 import {
   ColDef,
   GridApi,
@@ -19,6 +19,7 @@ import {
   CellDoubleClickedEvent
 } from 'ag-grid-enterprise';
 import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
+
 
 import { alerts } from '../../../../helpers/alerts';
 import { AuthService } from 'app/services/auth.service';
@@ -37,7 +38,8 @@ import { SubatalogsComponent } from "../../../Warehouse/components/catalogs/cata
     AgGridModule,
     SharedModule,
     TranslateModule,
-    SubatalogsComponent
+    SubatalogsComponent,
+    CatFamSubComponent
 ],
   templateUrl: './catalogs.component.html',
   styleUrl: './catalogs.component.scss',
@@ -56,6 +58,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
   selectedCatalog: string; // Variable para almacenar e
   showDetailsTab: boolean = false;
   typeCatalog: string;
+  cat:boolean = false;
   gridHeight: string = '50vh';
   prefixAndConsecutive: any[] = [];
   private tempIdCounter: number = 0;
@@ -70,6 +73,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
 
   constructor(private route: ActivatedRoute) {
     effect(() => {
+      console.log(this.listsections)
       this.permisos(this.signalsService.getCatalogSelected());
     if(this.signalsService.getCloseCatalog()()){
       this.notSavedChanges = false;
@@ -114,6 +118,11 @@ export class CatalogsComponent implements CanComponentDeactivate {
       this.gridApi.onFilterChanged();
     }
   }
+
+  refres(open: boolean){
+    this.cat = open;
+  }
+
   permisos(type: string){
     switch (type) {
         case 'RESOURCEHUMAN':

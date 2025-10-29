@@ -664,6 +664,20 @@ export const routes: Routes = [
             }
           },
           {
+            path: 'columnHider',
+            loadComponent: () =>
+              import('./domains/SMP/Components/columnHider/columnHider.component').then(
+                (r) => r.columnHiderComponent
+              ),
+           canActivate: [TrackingGuard],
+            data: {
+              tracking: {
+                logMessage: 'Click en Pestaña Configuración Módulo columnHider',
+                category: 'Setup'
+              }
+            }
+          },
+          {
             path: 'menu',
             loadComponent: () =>
               import('./domains/SMP/Components/menus/menu.component').then(
@@ -1632,9 +1646,17 @@ export const routes: Routes = [
               data: { permissions: { master: 'shoppingDelison', detailed: 'catalogs' } },
               children: [
               {
+                path: 'cat-fam-sub',
+                loadComponent: () =>
+                  import(
+                    './domains/Almacenes/components/cat-fam-sub/cat-fam-sub.component'
+                  ).then((m) => m.CatFamSubComponent),
+              },
+              {
                 path: ':section',
                 loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(p => p.CatalogsComponent)
               },
+              
             ],
           },
           {
