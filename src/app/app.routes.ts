@@ -295,6 +295,13 @@ export const routes: Routes = [
                 path: ':section',
                 loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(p => p.CatalogsComponent)
               },
+              {
+                path: 'materia-prima',
+                loadComponent: () =>
+                  import('./domains/Almacenes/components/cat-fam-sub/cat-fam-sub.component')
+                    .then((m) => m.CatFamSubComponent),
+                canDeactivate: [UnsavedChangesGuard],
+              },
             ],
           },
           {

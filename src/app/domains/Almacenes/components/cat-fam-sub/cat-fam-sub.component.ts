@@ -262,6 +262,13 @@ export class CatFamSubComponent {
             return `<input type="checkbox" ${checked} disabled style="cursor: pointer;">`;
           }
           return '';
+        },
+        onCellClicked: (params: any) => {
+          if (params.data.nodeLevel === 'subfamily') {
+            // Leer la tabla DEPARTAMENT cuando se haga click en Materia Prima
+            console.log('Click en Materia Prima para subfamilia:', params.data);
+            this.loadDepartmentsForSubfamily(params.data);
+          }
         }
       },
       {
@@ -671,25 +678,61 @@ export class CatFamSubComponent {
   }
 
   // Limpiar datos para servidor
-  private cleanDataForServer(data: any): any {
-    const cleanData = {
-      idCompany: Number(this.idRoot),
-      description: String(data.description || '').trim(),
-      valueAddition: String(data.valueAddition || 'NA'),
-      valueAddition2: String(data.valueAddition2 || 'NA'),
-      valueAdditionBit: Boolean(data.valueAdditionBit || false),
-      valueAdditionBit2: Boolean(data.valueAdditionBit2 || false),
-      vigente: Boolean(data.vigente !== false),
-      type: String(data.type),
-      parentId: Number(data.parentId || 0),
-      subParentId: Number(data.subParentId || 0),
-      price: Number(data.price || 0),
-      active: Number(data.active || 1)
-    };
+   private cleanDataForServer(data: any): any {
+     const cleanData = {
+       idCompany: Number(this.idRoot),
+       description: String(data.description || '').trim(),
+       valueAddition: String(data.valueAddition || 'NA'),
+       valueAddition2: String(data.valueAddition2 || 'NA'),
+       valueAdditionBit: Boolean(data.valueAdditionBit || false),
+       valueAdditionBit2: Boolean(data.valueAdditionBit2 || false),
+       vigente: Boolean(data.vigente !== false),
+       type: String(data.type),
+       parentId: Number(data.parentId || 0),
+       subParentId: Number(data.subParentId || 0),
+       price: Number(data.price || 0),
+       active: Number(data.active || 1)
+     };
 
-    console.log('Datos enviados al servidor:', cleanData);
-    return cleanData;
-  }
+     console.log('Datos enviados al servidor:', cleanData);
+     return cleanData;
+   }
+
+   // Leer tabla DEPARTAMENT cuando se hace click en Materia Prima
+   private loadDepartmentsForSubfamily(subfamilyData: any) {
+     console.log('Cargando departamentos para subfamilia:', subfamilyData);
+
+     // Usar el servicio de catálogos para obtener departamentos
+     this.catalogsService.getCatalogs(this.idRoot, 'DEPARTAMENT').subscribe({
+       next: (departments: any[]) => {
+         console.log('Departamentos obtenidos:', departments);
+
+         // Aquí puedes mostrar los departamentos en un modal, alert, o navegar a otra vista
+         if (departments && departments.length > 0) {
+           const departmentNames = departments.map(d => d.description).join(', ');
+           alerts.basicAlert(
+             'Departamentos',
+             `Departamentos asociados a la subfamilia "${subfamilyData.description}": ${departmentNames}`,
+             'info'
+           );
+         } else {
+           alerts.basicAlert(
+             'Sin Departamentos',
+             `No hay departamentos asociados a la subfamilia "${subfamilyData.description}"`,
+             'warning'
+           );
+         }
+       },
+       error: (error) => {
+         console.error('Error al cargar departamentos:', error);
+         alerts.basicAlert(
+           'Error',
+           'Error al cargar los departamentos',
+           'error'
+         );
+       }
+     });
+   }
 
   // Guardar estado de expansión actual
   private saveExpansionState() {

@@ -291,7 +291,7 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
   get columnDefs(): ColDef[] {
     return [
       {
-        headerName: 'Subfamilia',
+        headerName: 'Producto/Area',
         field: 'subfamiliaDisplay',
         width: 200,
         cellRenderer: (params: any) => {
@@ -322,7 +322,7 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
         }
       },
       {
-        headerName: 'Flavor',
+        headerName: 'Sabor',
         field: 'flavorDisplay',
         width: 200,
         cellRenderer: (params: any) => {
@@ -351,7 +351,7 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
         }
       },
       {
-        headerName: 'Presentation',
+        headerName: 'Presentacion',
         field: 'presentationDisplay',
         width: 200,
         cellRenderer: (params: any) => {

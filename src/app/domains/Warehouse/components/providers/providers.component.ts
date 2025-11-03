@@ -31,6 +31,7 @@ import { ProvidersPaymentsComponent } from './providers-payments.component';
 import { DetailCellRendererComponentContact } from './details/detail-cell-renderer-contact.component'; // This seems to be the one for contacts
 import { DetailCellRendererComponentBanck } from './details/detail-cell-renderer-banck.component'; // This will be for banks
 import { DetailCellRendererComponentCuentas } from './details/detail-cell-renderer-cuentas.component';
+import { DetailCellRendererTipoProveedorComponent } from './details/detail-cell-renderer-tipo-proveedor.component';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { RadiusinfluenceComponent } from 'app/domains/ModAdmon/components/radiusinfluence/radiusinfluence.component';
 import { CustomersService } from 'app/services/customers.service';
@@ -62,7 +63,8 @@ import { TrackingService } from 'app/services/tracking.service';
     ProvidersPaymentsComponent,
     DetailCellRendererComponentContact,
     DetailCellRendererComponentBanck,
-    DetailCellRendererComponentCuentas
+    DetailCellRendererComponentCuentas,
+    DetailCellRendererTipoProveedorComponent
 ],
   templateUrl: './providers.component.html',
   styleUrls: ['./providers.component.scss'],
@@ -191,7 +193,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
     autocompleteEditor: AutocompleteEditorComponent,
     detailCellRenderer: DetailCellRendererComponentContact,
     detailCellRendererBanck: DetailCellRendererComponentBanck,
-    detailCellRendererCuentas: DetailCellRendererComponentCuentas
+    detailCellRendererCuentas: DetailCellRendererComponentCuentas,
+    detailCellRendererTipoProveedor: DetailCellRendererTipoProveedorComponent
   };
 
   idClient = this.signalsService.getIdClient();
@@ -214,6 +217,9 @@ export class ProvidersComponent implements CanComponentDeactivate {
     } else if (params.data.detailType === 'Cuentas') {
       params.node.setRowHeight(700);
       return { component: 'detailCellRendererCuentas' };
+    } else if (params.data.detailType === 'tipoProveedor') {
+      params.node.setRowHeight(250);
+      return { component: 'detailCellRendererTipoProveedor' };
     }
     return undefined; // No mostrar detalle si no hay tipo
   },
@@ -360,13 +366,29 @@ export class ProvidersComponent implements CanComponentDeactivate {
       {
         field: 'typeProvider',
         headerName: 'Tipo Proveedor',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
+        editable: false,
+        cellRenderer: (params: any): HTMLElement => {
+          const div = document.createElement('div');
+
+          // Mostrar el valor desde typework o typeProvider
+          const displayValue = params.data.typework || params.data.typeProvider;
+
+          if (displayValue) {
+            div.innerText = displayValue;
+          } else {
+            div.innerText = '🔽 Seleccionar...';
+            div.style.color = '#888';
           }
-          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+
+          div.style.cursor = 'pointer';
+          div.style.textDecoration = 'underline';
+          div.style.background = '#fff3cd';
+          div.style.padding = '2px 5px';
+          div.style.borderRadius = '3px';
+
+          return div;
         },
-        width: 150,
+        width: 250,
       },
 
       {
@@ -481,6 +503,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
     if (colId === 'fieldContact') return 'contact';
     if (colId === 'fieldBank') return 'bank';
     if (colId === 'fieldCuenta') return 'Cuentas';
+    if (colId === 'typeProvider') return 'tipoProveedor';
     return null;
   }
 
@@ -630,7 +653,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
   console.log('Celda clickeada:', event);
 
   const colId = event.column.getColId();
-  const isDetailColumn = colId === 'fieldContact' || colId === 'fieldBank' || colId === 'fieldCuenta';
+  const isDetailColumn = colId === 'fieldContact' || colId === 'fieldBank' || colId === 'fieldCuenta' || colId === 'typeProvider';
 
   if (isDetailColumn) {
     const node = event.node;
@@ -655,10 +678,10 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
     } else {
       // Si se hace clic en una celda diferente (o la fila está cerrada)...
       // ...se establece el nuevo tipo de detalle y se expande la fila.
-      
+
       // Limpiar filtro antes de aplicar uno nuevo
       api.setFilterModel(null);
-      
+
       // Aplicar filtro por ID para enfocar la fila actual.
       const filterModel = {
         id: { filterType: 'number', type: 'equals', filter: event.data.id },
@@ -783,6 +806,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
       fieldBank: 0,
       fieldCuenta: 0,
       active: true,
+      typework: '',  // Nuevo campo para Tipo de Proveedor (cascada)
       __isNew: true,
     };
     this.rowData = [newItem, ...this.rowData];
@@ -839,13 +863,13 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-     
+      console.log('Datos a AGREGAR (incluyendo typework):', cleanedData);
       return this.customerService.addCustomer(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-
+      console.log('Datos a ACTUALIZAR (incluyendo typework):', cleanedData);
       return this.customerService.updateCustomer(row.id, cleanedData);
     });
 
@@ -994,6 +1018,8 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
+    delete cleanedData.typeProvider; // Solo para visualización, no va a BD
+    delete cleanedData.tipoProveedorRows; // Solo para reconstruir grid, no va a BD
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }

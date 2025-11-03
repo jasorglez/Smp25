@@ -11,7 +11,9 @@
       "Bash(curl:*)",
       "Bash(powershell -Command:*)",
       "Bash(awk:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(npm start)",
+      "Bash(npx ng build:*)"
     ],
     "deny": [],
     "ask": []

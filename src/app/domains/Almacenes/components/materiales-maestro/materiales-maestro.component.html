@@ -6,19 +6,24 @@
         <button type="button" class="btn btn-success" (click)="addMaterial()" title="Agregar material">
           <i class="bi bi-plus-lg"></i>
         </button>
+
         <button type="button" class="btn btn-primary position-relative" (click)="saveChanges()" [disabled]="!hasUnsavedChanges" title="Guardar cambios">
           <i class="bi bi-floppy"></i>
-          <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-            *ngIf="hasUnsavedChanges">
-            <span class="visually-hidden">Hay cambios sin guardar</span>
-          </span>
+          <span
+          class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+          *ngIf="hasUnsavedChanges">
+          <span class="visually-hidden">Hay cambios sin guardar</span>
+        </span>
         </button>
+
         <button type="button" class="btn btn-warning" (click)="refreshData()" title="Recargar datos">
           <i class="bi bi-arrow-clockwise"></i>
         </button>
+
         <button type="button" class="btn btn-danger" (click)="deleteMaterial()" [disabled]="!selectedMaterial" title="Eliminar material">
           <i class="bi bi-trash"></i>
         </button>
+
       </div>
     </div>
 
