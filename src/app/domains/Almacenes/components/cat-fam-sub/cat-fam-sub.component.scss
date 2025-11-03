@@ -1,8 +1,17 @@
 // Estilos para el grid del catálogo jerárquico
 .catalog-grid {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  
+  font-size: 0.8125rem; // 13px
+
   ::ng-deep {
+    // Reducir tamaño de fuente en las celdas
+    .ag-cell {
+      font-size: 0.8125rem !important; // 13px
+    }
+
+    .ag-header-cell-text {
+      font-size: 0.8125rem !important; // 13px
+    }
     // Estilos para diferentes niveles de la jerarquía
     .ag-row[row-id*="category"] {
       background-color: #e3f2fd !important;
