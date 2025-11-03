@@ -1,0 +1,35 @@
+<div class="mt-2 light-blue-background">
+    
+    <!-- Columna de botones -->
+     <div class="col-12">
+        <div class="row mt-4">
+            <div class="col-auto">
+              <div class="mb-3">
+                <label for="empresaSelect" class="form-label">Seleccionar Empresa:</label>
+                <select class="form-select" id="empresaSelect" [(ngModel)]="selectedEmpresa" (change)="onEmpresaSelected()">
+                  <option [ngValue]="null" disabled>Selecciona una empresa</option>
+                  <option *ngFor="let empresa of empresas" [ngValue]="empresa">{{ empresa.nameSmall }}</option>
+                </select>
+              </div>
+            </div>
+          </div>
+     </div>
+     <div class="col-12">
+        <ul class="list-group">
+          <li class="list-group-item" *ngFor="let menu of masterMenus; let i = index">
+            <div class="form-check form-switch">
+              <input class="form-check-input" 
+                     type="checkbox" 
+                     [disabled]="!selectedEmpresa"
+                     [(ngModel)]="menu.hasPermission"
+                     (ngModelChange)="onPermissionChange()"
+                     role="switch"
+                     [id]="'menu-check-' + i">
+              <label class="form-check-label" [for]="'menu-check-' + i">
+                {{ menu.permissionName }}
+              </label>
+            </div>
+          </li>
+        </ul>
+     </div>
+</div>

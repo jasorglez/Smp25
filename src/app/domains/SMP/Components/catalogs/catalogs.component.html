@@ -2,12 +2,22 @@
   <div class="card">
      <div class="card-header p-2">
         <ul class="nav nav-pills">
+          <li *ngIf="typeCatalog === 'shoppingDelison'">
+            <a class="nav-link green-tab" 
+              [routerLink]="['cat-fam-sub']"
+              routerLinkActive="active"
+              (click)="refres(true)"
+              >
+              <i class="bi bi-list-ul"></i>CAT-FAM-SUB
+            </a>
+          </li>
           <li class="nav-item" *ngFor="let item of listsections">
             <a
               class="nav-link green-tab"
               [routerLink]="item.sections.toUpperCase()"
               routerLinkActive="active"
-              (click)="onSectionSelected(item)">
+              (click)="onSectionSelected(item)"
+              (click)="refres(false)">
               <i class="bi bi-list-ul"></i> {{ item.sections }}
             </a>
           </li>
@@ -21,7 +31,7 @@
             </a>
           </li>-->
         </ul>
-        <div class="container-fluid mt-4 mb-4 light-blue-background">
+        <div class="container-fluid mt-4 mb-4 light-blue-background" *ngIf="cat === false">
           <div class="row">
             <div class="col-md-2">
               <select 
@@ -97,10 +107,12 @@
             </div>
           </div>
         </div>
+        <div *ngIf="cat === true">
+          <app-cat-fam-sub></app-cat-fam-sub>
+        </div>
       </div>
   </div>
 </div>
 <div *ngIf="idCatalog != null">
   <subCatalogs />
 </div>
-
