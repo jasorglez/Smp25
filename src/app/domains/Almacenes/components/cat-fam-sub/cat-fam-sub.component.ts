@@ -169,7 +169,7 @@ export class CatFamSubComponent {
   get gridOptions(): any {
     return {
       headerHeight: 35,
-      rowHeight: 35,
+      rowHeight: 28,
       animateRows: true,
       treeData: false, // Cambiar a false para usar 3 columnas separadas
       // Grid en modo solo lectura - sin edición inline

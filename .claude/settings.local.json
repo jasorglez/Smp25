@@ -19,7 +19,9 @@
       "Bash(C:temp_query.sql)",
       "Bash(del C:temp_query.sql)",
       "Bash(query.sql)",
-      "Bash(del:*)"
+      "Bash(del:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
