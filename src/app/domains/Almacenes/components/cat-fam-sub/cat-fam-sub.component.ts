@@ -69,7 +69,7 @@ export class CatFamSubComponent {
   
   // Datos para edición
   editingItem: any = null;
-  
+
   // Datos del catálogo jerárquico
   treeData: any[] = [];
   selectedRowData: any = null;
@@ -77,6 +77,9 @@ export class CatFamSubComponent {
 
   // Estado de expansión para persistir
   private expansionState: Map<string, { category: boolean, families: Map<string, boolean> }> = new Map();
+
+  // Flag para evitar toggle durante doble click
+  private isDoubleClicking = false;
   
 
 
@@ -185,9 +188,15 @@ export class CatFamSubComponent {
         this.onCellValueChanged(event);
       },
       onCellDoubleClicked: (event: any) => {
-        // Abrir modal de edición en doble click 
+        // Abrir modal de edición en doble click
         if (event.data) {
+          // Marcar que estamos en doble click para evitar toggle
+          this.isDoubleClicking = true;
           this.openEditModal(event.data);
+          // Resetear después de un breve momento
+          setTimeout(() => {
+            this.isDoubleClicking = false;
+          }, 300);
         }
       }
     };
@@ -216,7 +225,10 @@ export class CatFamSubComponent {
           return '';
         },
         onCellClicked: (event: any) => {
-          if (event.event.target.classList.contains('chevron-icon') || 
+          // Evitar toggle si se está haciendo doble click
+          if (this.isDoubleClicking) return;
+
+          if (event.event.target.classList.contains('chevron-icon') ||
               event.event.target.getAttribute('data-action') === 'toggle') {
             this.toggleCategoryExpansion(event.data);
           }
@@ -236,7 +248,10 @@ export class CatFamSubComponent {
           return '';
         },
         onCellClicked: (event: any) => {
-          if (event.event.target.classList.contains('chevron-icon') || 
+          // Evitar toggle si se está haciendo doble click
+          if (this.isDoubleClicking) return;
+
+          if (event.event.target.classList.contains('chevron-icon') ||
               event.event.target.getAttribute('data-action') === 'toggle') {
             this.toggleFamilyExpansion(event.data);
           }
