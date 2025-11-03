@@ -59,7 +59,9 @@ export class CatFamSubComponent {
   
   // Datos del formulario modal
   modalForm = {
+    valueAddition: '',
     description: '',
+    valueAddition2: '',
     active: true,
     valueAdditionBit: false,
     valueAdditionBit2: false
@@ -529,7 +531,9 @@ export class CatFamSubComponent {
   // Abrir modal de edición
   openEditModal(item: any) {
     this.editingItem = { ...item };
+    this.modalForm.valueAddition = item.valueAddition || '';
     this.modalForm.description = item.description || '';
+    this.modalForm.valueAddition2 = item.valueAddition2 || '';
     this.modalForm.active = item.active === 1;
     this.modalForm.valueAdditionBit = item.valueAdditionBit || false;
     this.modalForm.valueAdditionBit2 = item.valueAdditionBit2 || false;
@@ -549,7 +553,9 @@ export class CatFamSubComponent {
   // Resetear formulario modal
   private resetModalForm() {
     this.modalForm = {
+      valueAddition: '',
       description: '',
+      valueAddition2: '',
       active: true,
       valueAdditionBit: false,
       valueAdditionBit2: false
@@ -559,16 +565,18 @@ export class CatFamSubComponent {
   // Guardar nueva categoría
   async saveNewCategory() {
     if (!this.modalForm.description.trim()) {
-      alerts.basicAlert('Error', 'La descripción es obligatoria.', 'warning');
+      alerts.basicAlert('Error', 'El nombre es obligatorio.', 'warning');
       return;
     }
-    
+
     const newCategory = this.cleanDataForServer({
+      valueAddition: this.modalForm.valueAddition,
       description: this.modalForm.description,
+      valueAddition2: this.modalForm.valueAddition2,
       type: 'CATEGORY',
       active: this.modalForm.active ? 1 : 0
     });
-    
+
     try {
       const response = await lastValueFrom(this.catalogsService.addCatalog(newCategory));
       console.log('Respuesta del servidor (nueva categoría):', response);
@@ -585,17 +593,19 @@ export class CatFamSubComponent {
   // Guardar nueva familia
   async saveNewFamily() {
     if (!this.modalForm.description.trim()) {
-      alerts.basicAlert('Error', 'La descripción es obligatoria.', 'warning');
+      alerts.basicAlert('Error', 'El nombre es obligatorio.', 'warning');
       return;
     }
-    
+
     const newFamily = this.cleanDataForServer({
+      valueAddition: this.modalForm.valueAddition,
       description: this.modalForm.description,
+      valueAddition2: this.modalForm.valueAddition2,
       type: 'FAM-CAT',
       parentId: this.selectedRowData.originalId,
       active: this.modalForm.active ? 1 : 0
     });
-    
+
     try {
       const response = await lastValueFrom(this.catalogsService.addCatalog(newFamily));
       console.log('Respuesta del servidor (nueva familia):', response);
@@ -612,18 +622,20 @@ export class CatFamSubComponent {
   // Guardar nueva subfamilia
   async saveNewSubfamily() {
     if (!this.modalForm.description.trim()) {
-      alerts.basicAlert('Error', 'La descripción es obligatoria.', 'warning');
+      alerts.basicAlert('Error', 'El nombre es obligatorio.', 'warning');
       return;
     }
-    
+
     const newSubfamily = this.cleanDataForServer({
+      valueAddition: this.modalForm.valueAddition,
       description: this.modalForm.description,
+      valueAddition2: this.modalForm.valueAddition2,
       type: 'SUB-FAM',
       parentId: this.selectedRowData.parentCategoryId,
       subParentId: this.selectedRowData.originalId,
       active: this.modalForm.active ? 1 : 0
     });
-    
+
     try {
       const response = await lastValueFrom(this.catalogsService.addCatalog(newSubfamily));
       console.log('Respuesta del servidor (nueva subfamilia):', response);
@@ -640,19 +652,19 @@ export class CatFamSubComponent {
   // Guardar cambios en edición
   async saveEditChanges() {
     if (!this.modalForm.description.trim()) {
-      alerts.basicAlert('Error', 'La descripción es obligatoria.', 'warning');
+      alerts.basicAlert('Error', 'El nombre es obligatorio.', 'warning');
       return;
     }
-    
+
     if (!this.editingItem?.originalId) {
       alerts.basicAlert('Error', 'No se puede identificar el registro a actualizar.', 'error');
       return;
     }
-    
+
     const updatedData = this.cleanDataForServer({
+      valueAddition: this.modalForm.valueAddition,
       description: this.modalForm.description,
-      valueAddition: this.editingItem.valueAddition,
-      valueAddition2: this.editingItem.valueAddition2,
+      valueAddition2: this.modalForm.valueAddition2,
       valueAdditionBit: this.modalForm.valueAdditionBit,
       valueAdditionBit2: this.modalForm.valueAdditionBit2,
       vigente: this.editingItem.vigente,
@@ -662,7 +674,7 @@ export class CatFamSubComponent {
       price: this.editingItem.price,
       active: this.modalForm.active ? 1 : 0
     });
-    
+
     try {
       console.log('Actualizando registro ID:', this.editingItem.originalId);
       const response = await lastValueFrom(this.catalogsService.updateCatalog(this.editingItem.originalId, updatedData));

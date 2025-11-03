@@ -292,6 +292,18 @@ export const routes: Routes = [
             canDeactivate: [UnsavedChangesGuard],
             children: [
               {
+                path: 'MATERIA PRIMA',
+                loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(p => p.CatalogsComponent)
+              },
+              {
+                path: 'COMPRAS',
+                loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(p => p.CatalogsComponent)
+              },
+              {
+                path: 'cat-fam-sub',
+                loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(p => p.CatalogsComponent)
+              },
+              {
                 path: ':section',
                 loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(p => p.CatalogsComponent)
               },

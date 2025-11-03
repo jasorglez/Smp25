@@ -13,7 +13,13 @@
       "Bash(awk:*)",
       "Bash(mkdir:*)",
       "Bash(npm start)",
-      "Bash(npx ng build:*)"
+      "Bash(npx ng build:*)",
+      "Bash(ping:*)",
+      "Bash(timeout:*)",
+      "Bash(C:temp_query.sql)",
+      "Bash(del C:temp_query.sql)",
+      "Bash(query.sql)",
+      "Bash(del:*)"
     ],
     "deny": [],
     "ask": []

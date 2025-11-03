@@ -24,7 +24,7 @@ export class ProcalmacenesComponent {
 
   constructor() {
     this.selectedTab = 'materia-prima';
-    this.signalsService.setCatalogSelected('ALMACENES');
+    this.signalsService.setCatalogSelected('WAREHOUSE');
   }
 
   onTabSelected(tabName: string) {
