@@ -12,6 +12,12 @@ export class MaterialsService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
+  getProvidersxmaterials(idRoot: number): Observable<MaterialsResponse[]> {
+    return this.http.get<MaterialsResponse[]>(`${environment.urlWarehouse}/Material/matprov/${idRoot}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
   getMaterials(id: number, typemat: string): Observable<MaterialsResponse[]> {
     return this.http.get<MaterialsResponse[]>(`${environment.urlWarehouse}/Material/${id}?typematerial=${typemat}`,
       { headers: this.trackingService.getHeaders() }

@@ -21,7 +21,9 @@
       "Bash(query.sql)",
       "Bash(del:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git pull:*)",
+      "Bash(git fetch:*)"
     ],
     "deny": [],
     "ask": []
