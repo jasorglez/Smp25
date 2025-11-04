@@ -278,8 +278,61 @@
 // Hover effects para badges en alertas
 .alert .badge {
   transition: all 0.2s ease;
-  
+
   &:hover {
     transform: scale(1.05);
+  }
+}
+
+// ========== ESTILOS PARA TOOLTIPS PERSONALIZADOS ==========
+
+// Asegurar que los tooltips se muestren correctamente sobre el grid
+.catalog-grid {
+  ::ng-deep {
+    // Permitir overflow visible en celdas para tooltips
+    .ag-cell {
+      overflow: visible !important;
+    }
+
+    // Asegurar que el wrapper de la celda tenga z-index apropiado al hacer hover
+    .catalog-cell-wrapper:hover {
+      z-index: 1000;
+      position: relative;
+    }
+
+    // Mejorar la interacción con los chevrons
+    .chevron-icon {
+      color: #2196f3;
+      font-weight: bold;
+      user-select: none;
+      transition: transform 0.2s ease;
+
+      &:hover {
+        transform: scale(1.2);
+        color: #1976d2;
+      }
+    }
+  }
+}
+
+// Estilos globales para tooltips (en caso de que aparezcan fuera del grid)
+::ng-deep {
+  .custom-tooltip {
+    // Asegurar que esté por encima de todo
+    z-index: 10000 !important;
+
+    // Animación suave
+    animation: tooltipFadeIn 0.2s ease-out;
+  }
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
   }
 }

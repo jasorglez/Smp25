@@ -180,6 +180,12 @@ export class CatFamSubComponent {
       singleClickEdit: false,
       stopEditingWhenCellsLoseFocus: true,
       suppressScrollOnNewData: true, // ⭐ Evitar scroll automático al actualizar datos
+      // ⭐ Habilitar tooltips del navegador
+      enableBrowserTooltips: true,
+      tooltipShowDelay: 500, // Mostrar después de 500ms
+      context: {
+        componentParent: this
+      },
       onRowSelected: (event: any) => {
         if (event.node.isSelected()) {
           this.onRowSelected(event);
@@ -215,18 +221,35 @@ export class CatFamSubComponent {
             const isExpanded = params.data.isExpanded || false;
             const chevron = isExpanded ? '▼' : '▶';
             const description = params.data.description;
-            
-            // Si la descripción ya tiene contador (contiene paréntesis), usarla tal como está
-            // Si no tiene contador, agregar el contador calculado
             const hasCounter = description.includes('(') && description.includes(')');
             const displayText = hasCounter ? description : `${description} (${this.getFamilyCountForCategory(params.data.originalId)})`;
-            
-            return `<span class="chevron-icon" data-action="toggle" style="cursor: pointer; margin-right: 5px;">${chevron}</span> ${displayText}`;
+
+            return `<span class="chevron-icon" data-action="toggle" style="cursor: pointer; margin-right: 5px; color: #2196f3; font-weight: bold;">${chevron}</span> ${displayText}`;
           }
           return '';
         },
+        tooltipValueGetter: (params: any) => {
+          if (params.data.nodeLevel === 'category') {
+            const desc = params.data.valueAddition;
+            const abbr = params.data.valueAddition2;
+
+            // Mostrar tooltip si alguno de los campos no es null/undefined/vacío
+            if (!desc && !abbr) return null;
+
+            let tooltip = `📁 ${params.data.description}\n\n`;
+
+            if (desc) {
+              tooltip += `📝 Descripción: ${desc}\n`;
+            }
+            if (abbr) {
+              tooltip += `🔤 Abreviatura: ${abbr}`;
+            }
+
+            return tooltip;
+          }
+          return null;
+        },
         onCellClicked: (event: any) => {
-          // Evitar toggle si se está haciendo doble click
           if (this.isDoubleClicking) return;
 
           if (event.event.target.classList.contains('chevron-icon') ||
@@ -244,12 +267,32 @@ export class CatFamSubComponent {
             const childCount = this.getSubfamilyCountForFamily(params.data.originalId);
             const isExpanded = params.data.isExpanded || false;
             const chevron = isExpanded ? '▼' : '▶';
-            return `<span class="chevron-icon" data-action="toggle" style="cursor: pointer; margin-right: 5px;">${chevron}</span> ${params.data.description} (${childCount})`;
+            return `<span class="chevron-icon" data-action="toggle" style="cursor: pointer; margin-right: 5px; color: #2196f3; font-weight: bold;">${chevron}</span> ${params.data.description} (${childCount})`;
           }
           return '';
         },
+        tooltipValueGetter: (params: any) => {
+          if (params.data.nodeLevel === 'family') {
+            const desc = params.data.valueAddition;
+            const abbr = params.data.valueAddition2;
+
+            // Mostrar tooltip si alguno de los campos no es null/undefined/vacío
+            if (!desc && !abbr) return null;
+
+            let tooltip = `📂 ${params.data.description}\n\n`;
+
+            if (desc) {
+              tooltip += `📝 Descripción: ${desc}\n`;
+            }
+            if (abbr) {
+              tooltip += `🔤 Abreviatura: ${abbr}`;
+            }
+
+            return tooltip;
+          }
+          return null;
+        },
         onCellClicked: (event: any) => {
-          // Evitar toggle si se está haciendo doble click
           if (this.isDoubleClicking) return;
 
           if (event.event.target.classList.contains('chevron-icon') ||
@@ -267,6 +310,27 @@ export class CatFamSubComponent {
             return `<span style="margin-right: 15px;"></span> ${params.data.description}`;
           }
           return '';
+        },
+        tooltipValueGetter: (params: any) => {
+          if (params.data.nodeLevel === 'subfamily') {
+            const desc = params.data.valueAddition;
+            const abbr = params.data.valueAddition2;
+
+            // Mostrar tooltip si alguno de los campos no es null/undefined/vacío
+            if (!desc && !abbr) return null;
+
+            let tooltip = `📄 ${params.data.description}\n\n`;
+
+            if (desc) {
+              tooltip += `📝 Descripción: ${desc}\n`;
+            }
+            if (abbr) {
+              tooltip += `🔤 Abreviatura: ${abbr}`;
+            }
+
+            return tooltip;
+          }
+          return null;
         }
       },
       {

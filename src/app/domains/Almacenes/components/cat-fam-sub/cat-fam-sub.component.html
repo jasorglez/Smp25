@@ -117,20 +117,7 @@
       </div>
       <div class="modal-body">
         <form (ngSubmit)="saveNewCategory()">
-          <div class="mb-3">
-            <label for="categoryValueAddition" class="form-label">
-              <i class="bi bi-pencil"></i> Descripción
-            </label>
-            <input
-              type="text"
-              class="form-control"
-              id="categoryValueAddition"
-              [(ngModel)]="modalForm.valueAddition"
-              name="valueAddition"
-              placeholder="Ingrese la descripción..."
-              maxlength="100"
-              #descriptionInput>
-          </div>
+          
 
           <div class="mb-3">
             <label for="categoryDescription" class="form-label">
@@ -146,6 +133,20 @@
               maxlength="100"
               required>
           </div>
+          <div class="mb-3">
+          <label for="categoryValueAddition" class="form-label">
+            <i class="bi bi-pencil"></i> Descripción
+          </label>
+          <input
+            type="text"
+            class="form-control"
+            id="categoryValueAddition"
+            [(ngModel)]="modalForm.valueAddition"
+            name="valueAddition"
+            placeholder="Ingrese la descripción..."
+            maxlength="100"
+            #descriptionInput>
+        </div>
 
           <div class="mb-3">
             <label for="categoryValueAddition2" class="form-label">
@@ -207,20 +208,6 @@
         
         <form (ngSubmit)="saveNewFamily()">
           <div class="mb-3">
-            <label for="familyValueAddition" class="form-label">
-              <i class="bi bi-pencil"></i> Descripción
-            </label>
-            <input
-              type="text"
-              class="form-control"
-              id="familyValueAddition"
-              [(ngModel)]="modalForm.valueAddition"
-              name="valueAddition"
-              placeholder="Ingrese la descripción..."
-              maxlength="100">
-          </div>
-
-          <div class="mb-3">
             <label for="familyDescription" class="form-label">
               <i class="bi bi-tag"></i> Nombre
             </label>
@@ -233,6 +220,19 @@
               placeholder="Ingrese el nombre de la familia..."
               maxlength="100"
               required>
+          </div>
+          <div class="mb-3">
+            <label for="familyValueAddition" class="form-label">
+              <i class="bi bi-pencil"></i> Descripción
+            </label>
+            <input
+              type="text"
+              class="form-control"
+              id="familyValueAddition"
+              [(ngModel)]="modalForm.valueAddition"
+              name="valueAddition"
+              placeholder="Ingrese la descripción..."
+              maxlength="100">
           </div>
 
           <div class="mb-3">
@@ -297,20 +297,6 @@
         
         <form (ngSubmit)="saveNewSubfamily()">
           <div class="mb-3">
-            <label for="subfamilyValueAddition" class="form-label">
-              <i class="bi bi-pencil"></i> Descripción
-            </label>
-            <input
-              type="text"
-              class="form-control"
-              id="subfamilyValueAddition"
-              [(ngModel)]="modalForm.valueAddition"
-              name="valueAddition"
-              placeholder="Ingrese la descripción..."
-              maxlength="100">
-          </div>
-
-          <div class="mb-3">
             <label for="subfamilyDescription" class="form-label">
               <i class="bi bi-tag"></i> Nombre
             </label>
@@ -324,7 +310,19 @@
               maxlength="100"
               required>
           </div>
-
+          <div class="mb-3">
+            <label for="subfamilyValueAddition" class="form-label">
+              <i class="bi bi-pencil"></i> Descripción
+            </label>
+            <input
+              type="text"
+              class="form-control"
+              id="subfamilyValueAddition"
+              [(ngModel)]="modalForm.valueAddition"
+              name="valueAddition"
+              placeholder="Ingrese la descripción..."
+              maxlength="100">
+          </div>
           <div class="mb-3">
             <label for="subfamilyValueAddition2" class="form-label">
               <i class="bi bi-fonts"></i> Abreviatura
@@ -401,20 +399,6 @@
         
         <form (ngSubmit)="saveEditChanges()">
           <div class="mb-3">
-            <label for="editValueAddition" class="form-label">
-              <i class="bi bi-pencil"></i> Descripción
-            </label>
-            <input
-              type="text"
-              class="form-control"
-              id="editValueAddition"
-              [(ngModel)]="modalForm.valueAddition"
-              name="valueAddition"
-              placeholder="Ingrese la descripción..."
-              maxlength="100">
-          </div>
-
-          <div class="mb-3">
             <label for="editDescription" class="form-label">
               <i class="bi bi-tag"></i> Nombre
             </label>
@@ -427,6 +411,20 @@
               placeholder="Ingrese el nombre..."
               maxlength="100"
               required>
+          </div>
+
+          <div class="mb-3">
+            <label for="editValueAddition" class="form-label">
+              <i class="bi bi-pencil"></i> Descripción
+            </label>
+            <input
+              type="text"
+              class="form-control"
+              id="editValueAddition"
+              [(ngModel)]="modalForm.valueAddition"
+              name="valueAddition"
+              placeholder="Ingrese la descripción..."
+              maxlength="100">
           </div>
 
           <div class="mb-3">

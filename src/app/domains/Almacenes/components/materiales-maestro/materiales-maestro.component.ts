@@ -9,6 +9,7 @@ import { DetailCellRendererProveedoresComponent } from './details/detail-cell-re
 import { DetailCellRendererFamiliaComponent } from './details/detail-cell-renderer-familia.component';
 import { DetailCellRendererSucursalComponent } from './details/detail-cell-renderer-sucursal.component';
 import { DetailCellRendererSubfamiliaComponent } from './details/detail-cell-renderer-subfamilia.component';
+import { SelectWithTooltipEditorComponent } from './editors/select-with-tooltip-editor.component';
 import { MaterialsService } from 'app/services/materials.service';
 import { MaterialsResponse } from 'app/interface/materials.interface';
 import { SignalsService } from 'app/services/signals.service';
@@ -30,7 +31,8 @@ import { SubfamiliaModalService, ModalData } from './services/subfamilia-modal.s
     DetailCellRendererProveedoresComponent,
     DetailCellRendererFamiliaComponent,
     DetailCellRendererSucursalComponent,
-    DetailCellRendererSubfamiliaComponent
+    DetailCellRendererSubfamiliaComponent,
+    SelectWithTooltipEditorComponent
   ],
   templateUrl: './materiales-maestro.component.html',
   styleUrl: './materiales-maestro.component.scss'
@@ -267,10 +269,16 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         headerName: 'Categoria',
         width: 250,
         editable: true,
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: SelectWithTooltipEditorComponent,
         cellEditorParams: {
-          values: this.categories.map(c => c.id)
+          options: this.categories.map(c => ({
+            id: c.id,
+            description: c.description,
+            valueAddition: c.valueAddition,
+            valueAddition2: c.valueAddition2
+          }))
         },
+        cellEditorPopup: true,
         valueFormatter: (params: any) => {
           const cat = this.categories.find(c => c.id === params.value);
           return cat ? cat.description : params.data.categoria || '';
@@ -294,14 +302,20 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           // Solo editable si hay una categoría seleccionada
           return params.data.idCategory != null;
         },
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: SelectWithTooltipEditorComponent,
         cellEditorParams: (params: any) => {
           // Obtener familias filtradas por la categoría seleccionada
           const familiesFiltered = this.getFamiliesByCategory(params.data.idCategory);
           return {
-            values: familiesFiltered.map(f => f.id)
+            options: familiesFiltered.map(f => ({
+              id: f.id,
+              description: f.description,
+              valueAddition: f.valueAddition,
+              valueAddition2: f.valueAddition2
+            }))
           };
         },
+        cellEditorPopup: true,
         valueFormatter: (params: any) => {
           const fam = this.families.find(f => f.id === params.value);
           return fam ? fam.description : params.data.familia || '';
@@ -328,14 +342,20 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           // Solo editable si hay una familia seleccionada
           return params.data.idFamilia != null;
         },
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: SelectWithTooltipEditorComponent,
         cellEditorParams: (params: any) => {
           // Obtener subfamilias filtradas por la familia seleccionada
           const subfamiliesFiltered = this.getSubfamiliesByFamily(params.data.idFamilia);
           return {
-            values: subfamiliesFiltered.map(sf => sf.id)
+            options: subfamiliesFiltered.map(sf => ({
+              id: sf.id,
+              description: sf.description,
+              valueAddition: sf.valueAddition,
+              valueAddition2: sf.valueAddition2
+            }))
           };
         },
+        cellEditorPopup: true,
         valueFormatter: (params: any) => {
           const sf = this.subfamilies.find(sf => sf.id === params.value);
           return sf ? sf.description : params.data.subfamilia || '';
