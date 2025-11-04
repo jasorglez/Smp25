@@ -982,6 +982,30 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
       return;
     }
 
+    // Validar que el proveedor no esté siendo usado en materiales
+    try {
+      const materialsData: any = await lastValueFrom(
+        this.providersService.getProvidersXTable(selectedData.id, 'MATERIAL')
+      );
+
+      if (materialsData && materialsData.length > 0) {
+        alerts.basicAlert(
+          'No se puede eliminar',
+          `Este proveedor está siendo utilizado en ${materialsData.length} material(es). No se puede eliminar.`,
+          'error'
+        );
+        return;
+      }
+    } catch (error) {
+      console.error('Error verificando uso del proveedor:', error);
+      alerts.basicAlert(
+        'Error',
+        'Error al verificar si el proveedor está en uso.',
+        'error'
+      );
+      return;
+    }
+
     const id = selectedData.id;
     selectedData.active = 0;
     this.customerService
