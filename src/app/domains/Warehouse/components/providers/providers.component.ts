@@ -565,7 +565,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
 
     return new Promise((resolve) => {
       this.materialsService
-        .getProvidersxmaterials(this.idRoot)
+        .getMaterialsxview(this.idRoot)
         .subscribe({
           next: (data: any) => {
             if(this.authService.getCrudPermission('shoppingDelison', 'providers', 'read')){
