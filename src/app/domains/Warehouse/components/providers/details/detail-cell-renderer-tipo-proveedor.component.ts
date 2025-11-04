@@ -7,11 +7,12 @@ import { CatalogsService } from 'app/services/catalogs.service';
 import { SignalsService } from 'app/services/signals.service';
 import { CustomersService } from 'app/services/customers.service';
 import { alerts } from 'app/helpers/alerts';
+import { SelectWithTooltipEditorComponent } from 'app/domains/Almacenes/components/materiales-maestro/editors/select-with-tooltip-editor.component';
 
 @Component({
   selector: 'app-detail-cell-renderer-tipo-proveedor',
   standalone: true,
-  imports: [CommonModule, AgGridModule],
+  imports: [CommonModule, AgGridModule, SelectWithTooltipEditorComponent],
   template: `
     <div style="padding: 10px; background-color: #e3f2fd; height: 100%; display: flex; flex-direction: column;">
       <!-- Título y botones -->
@@ -102,19 +103,25 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
       field: 'categoria',
       headerName: 'Categoría',
       editable: true,
-      cellEditor: 'agSelectCellEditor',
+      cellEditor: SelectWithTooltipEditorComponent,
       cellEditorParams: () => {
         return {
-          values: this.categorias.map(c => c.description)
+          options: this.categorias.map(c => ({
+            id: c.description,
+            description: c.description,
+            valueAddition: c.valueAddition,
+            valueAddition2: c.valueAddition2
+          }))
         };
       },
+      cellEditorPopup: true,
       width: 180
     },
     {
       field: 'familia',
       headerName: 'Familia',
       editable: true,
-      cellEditor: 'agSelectCellEditor',
+      cellEditor: SelectWithTooltipEditorComponent,
       cellEditorParams: (params: any) => {
         // Filtrar familias según la categoría seleccionada en la fila
         const categoriaSeleccionada = params.data.categoria;
@@ -123,20 +130,26 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
         if (categoriaObj) {
           const familiasFiltradas = this.familias
             .filter(f => f.parentId === categoriaObj.id)
-            .map(f => f.description);
+            .map(f => ({
+              id: f.description,
+              description: f.description,
+              valueAddition: f.valueAddition,
+              valueAddition2: f.valueAddition2
+            }));
 
-          return { values: familiasFiltradas };
+          return { options: familiasFiltradas };
         }
 
-        return { values: [] };
+        return { options: [] };
       },
+      cellEditorPopup: true,
       width: 180
     },
     {
       field: 'subfamilia',
       headerName: 'Subfamilia',
       editable: true,
-      cellEditor: 'agSelectCellEditor',
+      cellEditor: SelectWithTooltipEditorComponent,
       cellEditorParams: (params: any) => {
         // Filtrar subfamilias según la familia seleccionada en la fila
         const familiaSeleccionada = params.data.familia;
@@ -145,13 +158,19 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
         if (familiaObj) {
           const subfamiliasFiltradas = this.subfamilias
             .filter(s => s.subParentId === familiaObj.id)
-            .map(s => s.description);
+            .map(s => ({
+              id: s.description,
+              description: s.description,
+              valueAddition: s.valueAddition,
+              valueAddition2: s.valueAddition2
+            }));
 
-          return { values: subfamiliasFiltradas };
+          return { options: subfamiliasFiltradas };
         }
 
-        return { values: [] };
+        return { options: [] };
       },
+      cellEditorPopup: true,
       width: 200
     }
   ];
@@ -162,7 +181,11 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
     rowHeight: 25,
     rowSelection: 'single',
     suppressCellFocus: false,
-    stopEditingWhenCellsLoseFocus: true
+    stopEditingWhenCellsLoseFocus: true,
+    // Agregar soporte para componentes Angular como editores
+    frameworkComponents: {
+      selectWithTooltipEditor: SelectWithTooltipEditorComponent
+    }
   };
 
   agInit(params: ICellRendererParams): void {
@@ -218,6 +241,11 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
         familias: this.familias.length,
         subfamilias: this.subfamilias.length
       });
+
+      // Verificar si tienen valueAddition y valueAddition2
+      console.log('Ejemplo de categoría:', this.categorias[0]);
+      console.log('Ejemplo de familia:', this.familias[0]);
+      console.log('Ejemplo de subfamilia:', this.subfamilias[0]);
 
     } catch (error) {
       console.error('Error al cargar catálogos:', error);
