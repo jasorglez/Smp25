@@ -575,8 +575,8 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
           this.trackingService.getEmail() );
 
     return new Promise((resolve) => {
-      this.customerService
-        .getProviders(this.idRoot, 'PROVIDERS')
+      this.materialsService
+        .getProvidersxmaterials(this.idRoot)
         .subscribe({
           next: (data: any) => {
             if(this.authService.getCrudPermission('shoppingDelison', 'providers', 'read')){
