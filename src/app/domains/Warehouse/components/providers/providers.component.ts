@@ -36,6 +36,7 @@ import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { RadiusinfluenceComponent } from 'app/domains/ModAdmon/components/radiusinfluence/radiusinfluence.component';
 import { CustomersService } from 'app/services/customers.service';
 import { ProvidersService } from 'app/services/providers.service';
+import { MaterialsService } from 'app/services/materials.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { InegiService } from 'app/services/inegi.service';
 import { BranchsService } from 'app/services/branchs.service';
@@ -74,6 +75,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
   private trackingService = inject(TrackingService);
   private customerService = inject(CustomersService);
   private providersService = inject(ProvidersService);
+  private materialsService = inject(MaterialsService);
   private modalServiceTable = inject(ModalService);
   private signalsService = inject(SignalsService);
   private modalService = inject(NgbModal);
@@ -438,8 +440,16 @@ export class ProvidersComponent implements CanComponentDeactivate {
         cellStyle: { backgroundColor: '#d4edda' },
         editable: false
       },
-   
-  
+
+      {
+        field: 'fieldMaterial',
+        headerName: 'Materiales',
+        editable: false,
+        cellStyle: { backgroundColor: '#d4edda' },
+        width: 100,
+      },
+
+
       {
         field: 'cp',
         headerName: 'Cp',
@@ -545,8 +555,8 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
   
 
   obtenerDatos() {
-    if (!this.idBranch) {
-      console.log('idBranch no está disponible aún');
+    if (!this.idRoot) {
+      console.log('idRoot no está disponible aún');
       return Promise.resolve(false);
     }
 
@@ -554,8 +564,8 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
           this.trackingService.getEmail() );
 
     return new Promise((resolve) => {
-      this.customerService
-        .getProviders(this.idCompany,'PROVIDERS')
+      this.materialsService
+        .getProvidersxmaterials(this.idRoot)
         .subscribe({
           next: (data: any) => {
             if(this.authService.getCrudPermission('shoppingDelison', 'providers', 'read')){
@@ -575,7 +585,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
           }
         });
     });
-    
+
   }
 
   obtenerBranchs() {
