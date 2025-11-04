@@ -173,12 +173,13 @@ export class CatFamSubComponent {
     return {
       headerHeight: 35,
       rowHeight: 28,
-      animateRows: true,
+      animateRows: false, // Desactivar animaciones que pueden causar scroll inesperado
       treeData: false, // Cambiar a false para usar 3 columnas separadas
       // Grid en modo solo lectura - sin edición inline
       suppressClickEdit: true,
       singleClickEdit: false,
       stopEditingWhenCellsLoseFocus: true,
+      suppressScrollOnNewData: true, // ⭐ Evitar scroll automático al actualizar datos
       onRowSelected: (event: any) => {
         if (event.node.isSelected()) {
           this.onRowSelected(event);
@@ -370,18 +371,18 @@ export class CatFamSubComponent {
 
   // Métodos para manejar expand/collapse
   toggleCategoryExpansion(categoryData: any) {
-    const category = this.treeData.find(item => 
+    const category = this.treeData.find(item =>
       item.nodeLevel === 'category' && item.originalId === categoryData.originalId
     );
-    
+
     if (category) {
       category.isExpanded = !category.isExpanded;
-      
+
       // Mostrar/ocultar familias de esta categoría
       this.treeData.forEach(item => {
         if (item.nodeLevel === 'family' && item.parentCategoryId === category.originalId) {
           item.isVisible = category.isExpanded;
-          
+
           // Si ocultamos la familia, también ocultar sus subfamilias
           if (!category.isExpanded) {
             this.treeData.forEach(subItem => {
@@ -401,7 +402,7 @@ export class CatFamSubComponent {
           }
         }
       });
-      
+
       // Refrescar el grid
       if (this.gridApi) {
         this.gridApi.setGridOption('rowData', this.flattenTreeData());
@@ -410,20 +411,20 @@ export class CatFamSubComponent {
   }
 
   toggleFamilyExpansion(familyData: any) {
-    const family = this.treeData.find(item => 
+    const family = this.treeData.find(item =>
       item.nodeLevel === 'family' && item.originalId === familyData.originalId
     );
-    
+
     if (family) {
       family.isExpanded = !family.isExpanded;
-      
+
       // Mostrar/ocultar subfamilias de esta familia
       this.treeData.forEach(item => {
         if (item.nodeLevel === 'subfamily' && item.parentFamilyId === family.originalId) {
           item.isVisible = family.isExpanded;
         }
       });
-      
+
       // Refrescar el grid
       if (this.gridApi) {
         this.gridApi.setGridOption('rowData', this.flattenTreeData());
