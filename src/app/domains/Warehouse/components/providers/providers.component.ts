@@ -90,20 +90,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   
 
-  async ngOnInit() {
-    this.signalsService.deleteClientData();
-    this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-    await this.getTypecop();
-    this.route.data.subscribe((data) => {
-      this.type = data['type']; // 'CUSTOMERS' o 'PROVIDERS'
-      // La carga de datos ahora se maneja por el effect que reacciona a los cambios de compañía/sucursal
-      // this.obtenerDatos(); 
-      this.getStates(); // Llamar a la función para obtener los estadosd
-      this.obtenerBranchs();
-      
-    });
-  }
-
   constructor(private currencyPipe: CurrencyPipe) {
     effect(async () => {
       if (this.signalsService.getRefreshEmployees()() == true) {
@@ -115,12 +101,37 @@ export class ProvidersComponent implements CanComponentDeactivate {
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.idCompany = this.signalsService.getRootSelectedBySidebar()();
+      this.idRoot = this.idCompany; // Sincronizar idRoot con idCompany
+
       if (this.idBranch && this.idCompany) {
         this.obtenerDatos();
         this.obtenerBranchs();
         this.getTypecop();
       }
     }, { allowSignalWrites: true });
+  }
+
+  async ngOnInit() {
+    this.signalsService.deleteClientData();
+
+    // Obtener el tipo de ruta primero
+    this.route.data.subscribe((data) => {
+      this.type = data['type']; // 'CUSTOMERS' o 'PROVIDERS'
+      this.getStates(); // Llamar a la función para obtener los estados
+    });
+
+    // Obtener valores iniciales de las señales
+    this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+    this.idCompany = this.signalsService.getRootSelectedBySidebar()();
+    this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+
+    // Si las señales ya tienen valores, cargar datos inmediatamente
+    if (this.idRoot && this.idCompany && this.idBranch) {
+      this.getTypecop();
+      this.obtenerBranchs();
+      this.obtenerDatos();
+    }
+    // Si no, el effect del constructor se encargará cuando las señales estén listas
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -564,8 +575,8 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
           this.trackingService.getEmail() );
 
     return new Promise((resolve) => {
-      this.materialsService
-        .getMaterialsxview(this.idRoot)
+      this.customerService
+        .getProviders(this.idRoot, 'PROVIDERS')
         .subscribe({
           next: (data: any) => {
             if(this.authService.getCrudPermission('shoppingDelison', 'providers', 'read')){
