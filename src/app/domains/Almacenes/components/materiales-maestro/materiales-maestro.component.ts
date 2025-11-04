@@ -10,6 +10,7 @@ import { DetailCellRendererFamiliaComponent } from './details/detail-cell-render
 import { DetailCellRendererSucursalComponent } from './details/detail-cell-renderer-sucursal.component';
 import { DetailCellRendererSubfamiliaComponent } from './details/detail-cell-renderer-subfamilia.component';
 import { SelectWithTooltipEditorComponent } from './editors/select-with-tooltip-editor.component';
+import { ImageCellRendererComponent } from './renderers/image-cell-renderer.component';
 import { MaterialsService } from 'app/services/materials.service';
 import { MaterialsResponse } from 'app/interface/materials.interface';
 import { SignalsService } from 'app/services/signals.service';
@@ -32,7 +33,8 @@ import { SubfamiliaModalService, ModalData } from './services/subfamilia-modal.s
     DetailCellRendererFamiliaComponent,
     DetailCellRendererSucursalComponent,
     DetailCellRendererSubfamiliaComponent,
-    SelectWithTooltipEditorComponent
+    SelectWithTooltipEditorComponent,
+    ImageCellRendererComponent
   ],
   templateUrl: './materiales-maestro.component.html',
   styleUrl: './materiales-maestro.component.scss'
@@ -396,17 +398,11 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       {
         field: 'picture',
         headerName: 'Imagen',
-        width: 120,
-        cellRenderer: (params: any) => {
-          if (params.value) {
-            // Mostrar miniatura de la imagen
-            return `<img src="${params.value}" style="width: 40px; height: 40px; object-fit: cover; cursor: pointer; border-radius: 4px; border: 1px solid #ddd;" title="Click para ver en grande" />`;
-          }
-          return '<span style="cursor: pointer; color: #999;">📷 Sin imagen</span>';
-        },
-        onCellClicked: (params: any) => {
-          if (params.value) {
-            this.openImageModal(params.value);
+        width: 150,
+        cellRenderer: ImageCellRendererComponent,
+        cellRendererParams: {
+          context: {
+            componentParent: this
           }
         }
       }

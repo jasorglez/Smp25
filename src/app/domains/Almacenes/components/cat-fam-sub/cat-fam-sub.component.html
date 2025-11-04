@@ -131,6 +131,7 @@
               name="description"
               placeholder="Ingrese el nombre de la categoría..."
               maxlength="100"
+              (input)="toUpperCase($event, 'description')"
               required>
           </div>
           <div class="mb-3">
@@ -145,6 +146,7 @@
             name="valueAddition"
             placeholder="Ingrese la descripción..."
             maxlength="100"
+            (input)="toUpperCase($event, 'valueAddition')"
             #descriptionInput>
         </div>
 
@@ -159,7 +161,8 @@
               [(ngModel)]="modalForm.valueAddition2"
               name="valueAddition2"
               placeholder="Ingrese la abreviatura..."
-              maxlength="50">
+              maxlength="50"
+              (input)="toUpperCase($event, 'valueAddition2')">
           </div>
 
           <div class="form-check">
@@ -219,6 +222,7 @@
               name="description"
               placeholder="Ingrese el nombre de la familia..."
               maxlength="100"
+              (input)="toUpperCase($event, 'description')"
               required>
           </div>
           <div class="mb-3">
@@ -232,7 +236,8 @@
               [(ngModel)]="modalForm.valueAddition"
               name="valueAddition"
               placeholder="Ingrese la descripción..."
-              maxlength="100">
+              maxlength="100"
+              (input)="toUpperCase($event, 'valueAddition')">
           </div>
 
           <div class="mb-3">
@@ -246,7 +251,8 @@
               [(ngModel)]="modalForm.valueAddition2"
               name="valueAddition2"
               placeholder="Ingrese la abreviatura..."
-              maxlength="50">
+              maxlength="50"
+              (input)="toUpperCase($event, 'valueAddition2')">
           </div>
 
           <div class="form-check">
@@ -308,6 +314,7 @@
               name="description"
               placeholder="Ingrese el nombre de la subfamilia..."
               maxlength="100"
+              (input)="toUpperCase($event, 'description')"
               required>
           </div>
           <div class="mb-3">
@@ -321,7 +328,8 @@
               [(ngModel)]="modalForm.valueAddition"
               name="valueAddition"
               placeholder="Ingrese la descripción..."
-              maxlength="100">
+              maxlength="100"
+              (input)="toUpperCase($event, 'valueAddition')">
           </div>
           <div class="mb-3">
             <label for="subfamilyValueAddition2" class="form-label">
@@ -334,7 +342,8 @@
               [(ngModel)]="modalForm.valueAddition2"
               name="valueAddition2"
               placeholder="Ingrese la abreviatura..."
-              maxlength="50">
+              maxlength="50"
+              (input)="toUpperCase($event, 'valueAddition2')">
           </div>
 
           <div class="form-check">
@@ -410,6 +419,7 @@
               name="description"
               placeholder="Ingrese el nombre..."
               maxlength="100"
+              (input)="toUpperCase($event, 'description')"
               required>
           </div>
 
@@ -424,7 +434,8 @@
               [(ngModel)]="modalForm.valueAddition"
               name="valueAddition"
               placeholder="Ingrese la descripción..."
-              maxlength="100">
+              maxlength="100"
+              (input)="toUpperCase($event, 'valueAddition')">
           </div>
 
           <div class="mb-3">
@@ -438,7 +449,8 @@
               [(ngModel)]="modalForm.valueAddition2"
               name="valueAddition2"
               placeholder="Ingrese la abreviatura..."
-              maxlength="50">
+              maxlength="50"
+              (input)="toUpperCase($event, 'valueAddition2')">
           </div>
 
           <div class="form-check">

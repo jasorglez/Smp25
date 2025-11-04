@@ -641,7 +641,22 @@ export class CatFamSubComponent {
       valueAdditionBit2: false
     };
   }
-  
+
+  // Convertir a mayúsculas mientras se escribe
+  toUpperCase(event: any, field: 'description' | 'valueAddition' | 'valueAddition2') {
+    const input = event.target as HTMLInputElement;
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+
+    // Convertir a mayúsculas
+    this.modalForm[field] = input.value.toUpperCase();
+
+    // Restaurar la posición del cursor
+    setTimeout(() => {
+      input.setSelectionRange(start, end);
+    }, 0);
+  }
+
   // Guardar nueva categoría
   async saveNewCategory() {
     if (!this.modalForm.description.trim()) {

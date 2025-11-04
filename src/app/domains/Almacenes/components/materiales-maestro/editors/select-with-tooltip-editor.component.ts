@@ -1,4 +1,4 @@
-import { Component, ViewChild, AfterViewInit, ViewContainerRef, Renderer2, OnDestroy } from '@angular/core';
+import { Component, AfterViewInit, Renderer2, OnDestroy } from '@angular/core';
 import { ICellEditorAngularComp } from 'ag-grid-angular';
 import { ICellEditorParams } from 'ag-grid-enterprise';
 import { CommonModule } from '@angular/common';
@@ -20,49 +20,7 @@ export interface SelectWithTooltipParams extends ICellEditorParams {
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="select-editor-container" #container (scroll)="onScroll()">
-      <div class="select-dropdown">
-        <div class="select-option"
-             #optionElement
-             *ngFor="let option of options"
-             [class.selected]="option.id === selectedValue"
-             [class.hovered]="hoveredOptionId === option.id"
-             (click)="selectOption(option)"
-             (mouseenter)="onOptionHover(option, optionElement)"
-             (mouseleave)="onOptionLeave()"
-             (mousemove)="onOptionMove(optionElement)">
-          <span class="option-text">{{ option.description }}</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Tooltip separado, fuera del dropdown -->
-    <div class="option-tooltip"
-         *ngIf="showTooltip && hoveredOption && hasTooltipData(hoveredOption)"
-         [style.top.px]="tooltipPosition.top"
-         [style.left.px]="tooltipPosition.left">
-      <div class="tooltip-arrow"></div>
-      <div class="tooltip-content">
-        <div class="tooltip-header">
-          <i class="bi bi-info-circle"></i>
-          <strong>{{ hoveredOption.description }}</strong>
-        </div>
-        <div class="tooltip-body">
-          <div class="tooltip-row" *ngIf="hoveredOption.valueAddition">
-            <span class="tooltip-label">
-              <i class="bi bi-pencil"></i> Descripción:
-            </span>
-            <span class="tooltip-value">{{ hoveredOption.valueAddition }}</span>
-          </div>
-          <div class="tooltip-row" *ngIf="hoveredOption.valueAddition2">
-            <span class="tooltip-label">
-              <i class="bi bi-fonts"></i> Abreviatura:
-            </span>
-            <span class="tooltip-value">{{ hoveredOption.valueAddition2 }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- Placeholder vacío - el dropdown se renderiza en el body -->
   `,
   styles: [`
     .select-editor-container {
@@ -234,17 +192,17 @@ export interface SelectWithTooltipParams extends ICellEditorParams {
   `]
 })
 export class SelectWithTooltipEditorComponent implements ICellEditorAngularComp, AfterViewInit, OnDestroy {
-  @ViewChild('container', { read: ViewContainerRef }) container!: ViewContainerRef;
-
   options: SelectOption[] = [];
   selectedValue: any = null;
   hoveredOptionId: any = null;
   hoveredOption: SelectOption | null = null;
   tooltipPosition = { top: 0, left: 0 };
+  dropdownPosition = { top: 0, left: 0 };
   showTooltip = false;
   private currentHoveredElement: HTMLElement | null = null;
   private params!: SelectWithTooltipParams;
   private tooltipElement: HTMLElement | null = null;
+  private dropdownElement: HTMLElement | null = null;
 
   constructor(private renderer: Renderer2) {}
 
@@ -255,24 +213,95 @@ export class SelectWithTooltipEditorComponent implements ICellEditorAngularComp,
   }
 
   ngAfterViewInit(): void {
-    // Posicionar el dropdown cerca de la celda
+    // Crear el dropdown en el body
     setTimeout(() => {
-      this.positionDropdown();
+      this.createDropdownInBody();
     }, 0);
   }
 
-  private positionDropdown(): void {
+  private createDropdownInBody(): void {
     if (!this.params || !this.params.eGridCell) return;
 
-    const containerElement = this.container?.element?.nativeElement?.parentElement;
-    if (!containerElement) return;
-
+    // Obtener posición de la celda
     const cellRect = this.params.eGridCell.getBoundingClientRect();
 
-    // Posicionar debajo de la celda
-    containerElement.style.top = `${cellRect.bottom}px`;
-    containerElement.style.left = `${cellRect.left}px`;
-    containerElement.style.width = `${Math.max(cellRect.width, 200)}px`;
+    // Crear contenedor del dropdown
+    this.dropdownElement = this.renderer.createElement('div');
+    this.renderer.addClass(this.dropdownElement, 'custom-select-dropdown-container');
+
+    // Estilos del contenedor
+    this.renderer.setStyle(this.dropdownElement, 'position', 'fixed');
+    this.renderer.setStyle(this.dropdownElement, 'z-index', '10000');
+    this.renderer.setStyle(this.dropdownElement, 'background', 'white');
+    this.renderer.setStyle(this.dropdownElement, 'border', '1px solid #ccc');
+    this.renderer.setStyle(this.dropdownElement, 'box-shadow', '0 4px 12px rgba(0, 0, 0, 0.15)');
+    this.renderer.setStyle(this.dropdownElement, 'max-height', '300px');
+    this.renderer.setStyle(this.dropdownElement, 'overflow-y', 'auto');
+    this.renderer.setStyle(this.dropdownElement, 'border-radius', '4px');
+    this.renderer.setStyle(this.dropdownElement, 'min-width', '200px');
+    this.renderer.setStyle(this.dropdownElement, 'top', `${cellRect.bottom}px`);
+    this.renderer.setStyle(this.dropdownElement, 'left', `${cellRect.left}px`);
+    this.renderer.setStyle(this.dropdownElement, 'width', `${Math.max(cellRect.width, 200)}px`);
+
+    // Crear opciones
+    this.options.forEach((option) => {
+      const optionElement = this.renderer.createElement('div');
+      this.renderer.addClass(optionElement, 'custom-select-option');
+
+      // Estilos de la opción
+      this.renderer.setStyle(optionElement, 'padding', '8px 12px');
+      this.renderer.setStyle(optionElement, 'cursor', 'pointer');
+      this.renderer.setStyle(optionElement, 'transition', 'background-color 0.2s ease');
+      this.renderer.setStyle(optionElement, 'border-bottom', '1px solid #f0f0f0');
+
+      if (option.id === this.selectedValue) {
+        this.renderer.setStyle(optionElement, 'background-color', '#2196f3');
+        this.renderer.setStyle(optionElement, 'color', 'white');
+        this.renderer.setStyle(optionElement, 'font-weight', '600');
+      }
+
+      // Texto de la opción
+      const textElement = this.renderer.createElement('span');
+      const text = this.renderer.createText(option.description);
+      this.renderer.appendChild(textElement, text);
+      this.renderer.setStyle(textElement, 'display', 'block');
+      this.renderer.setStyle(textElement, 'white-space', 'nowrap');
+      this.renderer.setStyle(textElement, 'overflow', 'hidden');
+      this.renderer.setStyle(textElement, 'text-overflow', 'ellipsis');
+      this.renderer.appendChild(optionElement, textElement);
+
+      // Event listeners
+      this.renderer.listen(optionElement, 'click', () => this.selectOption(option));
+      this.renderer.listen(optionElement, 'mouseenter', () => {
+        this.hoveredOptionId = option.id;
+        this.renderer.setStyle(optionElement, 'background-color', '#e3f2fd');
+        this.onOptionHover(option, optionElement);
+      });
+      this.renderer.listen(optionElement, 'mouseleave', () => {
+        if (option.id !== this.selectedValue) {
+          this.renderer.setStyle(optionElement, 'background-color', 'transparent');
+        }
+        this.onOptionLeave();
+      });
+      this.renderer.listen(optionElement, 'mousemove', () => {
+        this.onOptionMove(optionElement);
+      });
+
+      this.renderer.appendChild(this.dropdownElement, optionElement);
+    });
+
+    // Event listener para scroll
+    this.renderer.listen(this.dropdownElement, 'scroll', () => this.onScroll());
+
+    // Agregar al body
+    this.renderer.appendChild(document.body, this.dropdownElement);
+  }
+
+  private removeDropdownFromBody(): void {
+    if (this.dropdownElement) {
+      this.renderer.removeChild(document.body, this.dropdownElement);
+      this.dropdownElement = null;
+    }
   }
 
   getValue(): any {
@@ -285,19 +314,16 @@ export class SelectWithTooltipEditorComponent implements ICellEditorAngularComp,
 
   selectOption(option: SelectOption): void {
     this.selectedValue = option.id;
+    this.removeDropdownFromBody();
+    this.removeTooltipFromBody();
     this.params.stopEditing();
   }
 
   onOptionHover(option: SelectOption, element: HTMLElement): void {
-    console.log('onOptionHover called for:', option.description);
-    console.log('Has tooltip data?', this.hasTooltipData(option));
-
     this.hoveredOptionId = option.id;
     this.hoveredOption = option;
     this.currentHoveredElement = element;
     this.showTooltip = true;
-
-    console.log('showTooltip set to:', this.showTooltip);
 
     // Calcular posición del tooltip
     this.updateTooltipPosition(element);
@@ -337,19 +363,8 @@ export class SelectWithTooltipEditorComponent implements ICellEditorAngularComp,
     // Obtener la posición de la opción relativamente al viewport
     const optionRect = element.getBoundingClientRect();
 
-    console.log('=== DEBUG TOOLTIP POSITION ===');
-    console.log('Option rect:', {
-      top: optionRect.top,
-      left: optionRect.left,
-      right: optionRect.right,
-      bottom: optionRect.bottom,
-      width: optionRect.width,
-      height: optionRect.height
-    });
-
     const windowWidth = window.innerWidth;
     const windowHeight = window.innerHeight;
-    console.log('Window size:', { width: windowWidth, height: windowHeight });
 
     const tooltipWidth = 300;
     const tooltipHeight = 150;
@@ -358,22 +373,18 @@ export class SelectWithTooltipEditorComponent implements ICellEditorAngularComp,
     // Por defecto, mostrar a la derecha de la opción
     let left = optionRect.right + gap;
     let top = optionRect.top;
-    console.log('Initial position (right side):', { top, left });
 
     // Si no cabe a la derecha, mostrar a la izquierda
     if (left + tooltipWidth > windowWidth) {
       left = optionRect.left - tooltipWidth - gap;
-      console.log('Moved to left side:', left);
     }
 
     // Si aún no cabe a la izquierda, forzar al lado derecho pero ajustado
     if (left < 0) {
       left = optionRect.right + gap;
-      console.log('Moved back to right side (left was negative):', left);
       // Si se sale por la derecha, limitarlo
       if (left + tooltipWidth > windowWidth) {
         left = windowWidth - tooltipWidth - gap;
-        console.log('Adjusted to fit window:', left);
       }
     }
 
@@ -381,17 +392,12 @@ export class SelectWithTooltipEditorComponent implements ICellEditorAngularComp,
     // Si no cabe abajo, ajustar hacia arriba
     if (top + tooltipHeight > windowHeight) {
       top = windowHeight - tooltipHeight - gap;
-      console.log('Adjusted top (bottom overflow):', top);
     }
 
     // Si está muy arriba, ajustar hacia abajo
     if (top < gap) {
       top = gap;
-      console.log('Adjusted top (too high):', top);
     }
-
-    console.log('Final position:', { top, left });
-    console.log('==============================');
 
     this.tooltipPosition = {
       top: top,
@@ -466,19 +472,17 @@ export class SelectWithTooltipEditorComponent implements ICellEditorAngularComp,
 
     // Agregar al body
     this.renderer.appendChild(document.body, this.tooltipElement);
-
-    console.log('✅ Tooltip created in body at position:', this.tooltipPosition);
   }
 
   private removeTooltipFromBody(): void {
     if (this.tooltipElement) {
       this.renderer.removeChild(document.body, this.tooltipElement);
       this.tooltipElement = null;
-      console.log('🗑️ Tooltip removed from body');
     }
   }
 
   ngOnDestroy(): void {
+    this.removeDropdownFromBody();
     this.removeTooltipFromBody();
   }
 }
