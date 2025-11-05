@@ -180,6 +180,12 @@ export class CatFamSubComponent {
       singleClickEdit: false,
       stopEditingWhenCellsLoseFocus: true,
       suppressScrollOnNewData: true, // ⭐ Evitar scroll automático al actualizar datos
+      // ⭐ Habilitar tooltips del navegador
+      enableBrowserTooltips: true,
+      tooltipShowDelay: 500, // Mostrar después de 500ms
+      context: {
+        componentParent: this
+      },
       onRowSelected: (event: any) => {
         if (event.node.isSelected()) {
           this.onRowSelected(event);
@@ -215,18 +221,35 @@ export class CatFamSubComponent {
             const isExpanded = params.data.isExpanded || false;
             const chevron = isExpanded ? '▼' : '▶';
             const description = params.data.description;
-            
-            // Si la descripción ya tiene contador (contiene paréntesis), usarla tal como está
-            // Si no tiene contador, agregar el contador calculado
             const hasCounter = description.includes('(') && description.includes(')');
             const displayText = hasCounter ? description : `${description} (${this.getFamilyCountForCategory(params.data.originalId)})`;
-            
-            return `<span class="chevron-icon" data-action="toggle" style="cursor: pointer; margin-right: 5px;">${chevron}</span> ${displayText}`;
+
+            return `<span class="chevron-icon" data-action="toggle" style="cursor: pointer; margin-right: 5px; color: #2196f3; font-weight: bold;">${chevron}</span> ${displayText}`;
           }
           return '';
         },
+        tooltipValueGetter: (params: any) => {
+          if (params.data.nodeLevel === 'category') {
+            const desc = params.data.valueAddition;
+            const abbr = params.data.valueAddition2;
+
+            // Mostrar tooltip si alguno de los campos no es null/undefined/vacío
+            if (!desc && !abbr) return null;
+
+            let tooltip = `📁 ${params.data.description}\n\n`;
+
+            if (desc) {
+              tooltip += `📝 Descripción: ${desc}\n`;
+            }
+            if (abbr) {
+              tooltip += `🔤 Abreviatura: ${abbr}`;
+            }
+
+            return tooltip;
+          }
+          return null;
+        },
         onCellClicked: (event: any) => {
-          // Evitar toggle si se está haciendo doble click
           if (this.isDoubleClicking) return;
 
           if (event.event.target.classList.contains('chevron-icon') ||
@@ -244,12 +267,32 @@ export class CatFamSubComponent {
             const childCount = this.getSubfamilyCountForFamily(params.data.originalId);
             const isExpanded = params.data.isExpanded || false;
             const chevron = isExpanded ? '▼' : '▶';
-            return `<span class="chevron-icon" data-action="toggle" style="cursor: pointer; margin-right: 5px;">${chevron}</span> ${params.data.description} (${childCount})`;
+            return `<span class="chevron-icon" data-action="toggle" style="cursor: pointer; margin-right: 5px; color: #2196f3; font-weight: bold;">${chevron}</span> ${params.data.description} (${childCount})`;
           }
           return '';
         },
+        tooltipValueGetter: (params: any) => {
+          if (params.data.nodeLevel === 'family') {
+            const desc = params.data.valueAddition;
+            const abbr = params.data.valueAddition2;
+
+            // Mostrar tooltip si alguno de los campos no es null/undefined/vacío
+            if (!desc && !abbr) return null;
+
+            let tooltip = `📂 ${params.data.description}\n\n`;
+
+            if (desc) {
+              tooltip += `📝 Descripción: ${desc}\n`;
+            }
+            if (abbr) {
+              tooltip += `🔤 Abreviatura: ${abbr}`;
+            }
+
+            return tooltip;
+          }
+          return null;
+        },
         onCellClicked: (event: any) => {
-          // Evitar toggle si se está haciendo doble click
           if (this.isDoubleClicking) return;
 
           if (event.event.target.classList.contains('chevron-icon') ||
@@ -267,6 +310,27 @@ export class CatFamSubComponent {
             return `<span style="margin-right: 15px;"></span> ${params.data.description}`;
           }
           return '';
+        },
+        tooltipValueGetter: (params: any) => {
+          if (params.data.nodeLevel === 'subfamily') {
+            const desc = params.data.valueAddition;
+            const abbr = params.data.valueAddition2;
+
+            // Mostrar tooltip si alguno de los campos no es null/undefined/vacío
+            if (!desc && !abbr) return null;
+
+            let tooltip = `📄 ${params.data.description}\n\n`;
+
+            if (desc) {
+              tooltip += `📝 Descripción: ${desc}\n`;
+            }
+            if (abbr) {
+              tooltip += `🔤 Abreviatura: ${abbr}`;
+            }
+
+            return tooltip;
+          }
+          return null;
         }
       },
       {
@@ -304,8 +368,9 @@ export class CatFamSubComponent {
       },
       {
         headerName: 'Activo',
-        field: 'activo',
+        field: 'vigente',
         width: 100,
+        editable: true,
         cellRenderer: 'agCheckboxCellRenderer',
       }
     ];
@@ -324,8 +389,314 @@ export class CatFamSubComponent {
   // Cambios en celdas
   onCellValueChanged(event: any) {
     console.log('Dato cambiado:', event.data);
+
+    // Si se cambió la columna vigente
+    if (event.colDef.field === 'vigente') {
+      const newValue = event.newValue;
+      const nodeLevel = event.data.nodeLevel;
+
+      // ==================== DESACTIVACIONES (cascada hacia abajo) ====================
+
+      // 1. Si se desactiva una categoría, desactivar todas sus familias y subfamilias
+      if (nodeLevel === 'category' && newValue === false) {
+        const categoryId = event.data.originalId;
+        console.log(`❌ Desactivando categoría ${categoryId} - cascada a familias y subfamilias`);
+
+        this.treeData.forEach(node => {
+          // Desactivar familias de esta categoría
+          if (node.nodeLevel === 'family' && node.parentCategoryId === categoryId) {
+            node.vigente = false;
+            node.__modified = true;
+            console.log(`  ❌ Familia desactivada: ${node.description}`);
+
+            // Desactivar subfamilias de esta familia
+            const familyId = node.originalId;
+            this.treeData.forEach(subNode => {
+              if (subNode.nodeLevel === 'subfamily' && subNode.parentFamilyId === familyId) {
+                subNode.vigente = false;
+                subNode.__modified = true;
+                console.log(`    ❌ Subfamilia desactivada: ${subNode.description}`);
+              }
+            });
+          }
+        });
+
+        this.gridApi.refreshCells({ force: true });
+      }
+
+      // 2. Si se desactiva una familia, desactivar todas sus subfamilias
+      if (nodeLevel === 'family' && newValue === false) {
+        const familyId = event.data.originalId;
+        console.log(`❌ Desactivando familia ${familyId} - cascada a subfamilias`);
+
+        this.treeData.forEach(node => {
+          if (node.nodeLevel === 'subfamily' && node.parentFamilyId === familyId) {
+            node.vigente = false;
+            node.__modified = true;
+            console.log(`  ❌ Subfamilia desactivada: ${node.description}`);
+          }
+        });
+
+        this.gridApi.refreshCells({ force: true });
+      }
+
+      // ==================== ACTIVACIONES ====================
+
+      // 3. Si se activa una categoría, activar todas sus familias y subfamilias (cascada hacia abajo)
+      if (nodeLevel === 'category' && newValue === true) {
+        const categoryId = event.data.originalId;
+        console.log(`✅ Activando categoría ${categoryId} - cascada a familias y subfamilias`);
+
+        this.treeData.forEach(node => {
+          // Activar familias de esta categoría
+          if (node.nodeLevel === 'family' && node.parentCategoryId === categoryId) {
+            node.vigente = true;
+            node.__modified = true;
+            console.log(`  ✅ Familia activada: ${node.description}`);
+
+            // Activar subfamilias de esta familia
+            const familyId = node.originalId;
+            this.treeData.forEach(subNode => {
+              if (subNode.nodeLevel === 'subfamily' && subNode.parentFamilyId === familyId) {
+                subNode.vigente = true;
+                subNode.__modified = true;
+                console.log(`    ✅ Subfamilia activada: ${subNode.description}`);
+              }
+            });
+          }
+        });
+
+        this.gridApi.refreshCells({ force: true });
+      }
+
+      // 4. Si se activa una familia, activar su categoría padre y todas sus subfamilias
+      if (nodeLevel === 'family' && newValue === true) {
+        const familyId = event.data.originalId;
+        const categoryId = event.data.parentCategoryId;
+        console.log(`✅ Activando familia ${familyId} - activar categoría padre ${categoryId} y subfamilias hijas`);
+
+        // Activar categoría padre (hacia arriba)
+        this.treeData.forEach(node => {
+          if (node.nodeLevel === 'category' && node.originalId === categoryId) {
+            node.vigente = true;
+            node.__modified = true;
+            console.log(`  ✅ Categoría padre activada: ${node.description}`);
+          }
+        });
+
+        // Activar subfamilias hijas (hacia abajo)
+        this.treeData.forEach(node => {
+          if (node.nodeLevel === 'subfamily' && node.parentFamilyId === familyId) {
+            node.vigente = true;
+            node.__modified = true;
+            console.log(`  ✅ Subfamilia activada: ${node.description}`);
+          }
+        });
+
+        this.gridApi.refreshCells({ force: true });
+      }
+
+      // 5. Si se cambia una subfamilia, verificar si activar/desactivar padre según hermanos
+      if (nodeLevel === 'subfamily') {
+        const familyId = event.data.parentFamilyId;
+
+        // Buscar todas las subfamilias hermanas (misma familia padre)
+        const allSubfamilies = this.treeData.filter(node =>
+          node.nodeLevel === 'subfamily' && node.parentFamilyId === familyId
+        );
+
+        // Contar subfamilias activas
+        const activeCount = allSubfamilies.filter(sf => sf.vigente === true).length;
+        const totalCount = allSubfamilies.length;
+
+        console.log(`📊 Subfamilia ${newValue ? 'activada' : 'desactivada'}: ${event.data.description}`);
+        console.log(`   Subfamilias activas: ${activeCount}/${totalCount}`);
+
+        // Buscar la familia padre
+        const familyNode = this.treeData.find(node =>
+          node.nodeLevel === 'family' && node.originalId === familyId
+        );
+
+        if (familyNode) {
+          const categoryId = familyNode.parentCategoryId;
+
+          // Si TODAS las subfamilias están activas → activar familia padre
+          if (activeCount === totalCount && newValue === true) {
+            console.log(`✅ Todas las subfamilias activas → activando familia padre`);
+
+            if (!familyNode.vigente) {
+              familyNode.vigente = true;
+              familyNode.__modified = true;
+              console.log(`  ✅ Familia activada: ${familyNode.description}`);
+            }
+
+            // Verificar si todas las familias de la categoría están activas
+            const allFamilies = this.treeData.filter(node =>
+              node.nodeLevel === 'family' && node.parentCategoryId === categoryId
+            );
+            const activeFamilies = allFamilies.filter(f => f.vigente === true).length;
+
+            console.log(`   Familias activas: ${activeFamilies}/${allFamilies.length}`);
+
+            // Si TODAS las familias están activas → activar categoría
+            if (activeFamilies === allFamilies.length) {
+              console.log(`✅ Todas las familias activas → activando categoría padre`);
+
+              this.treeData.forEach(node => {
+                if (node.nodeLevel === 'category' && node.originalId === categoryId && !node.vigente) {
+                  node.vigente = true;
+                  node.__modified = true;
+                  console.log(`  ✅ Categoría activada: ${node.description}`);
+                }
+              });
+            }
+          }
+
+          // Si TODAS las subfamilias están desactivadas → desactivar familia padre
+          if (activeCount === 0 && newValue === false) {
+            console.log(`❌ Todas las subfamilias desactivadas → desactivando familia padre`);
+
+            if (familyNode.vigente) {
+              familyNode.vigente = false;
+              familyNode.__modified = true;
+              console.log(`  ❌ Familia desactivada: ${familyNode.description}`);
+            }
+
+            // Verificar si todas las familias de la categoría están desactivadas
+            const allFamilies = this.treeData.filter(node =>
+              node.nodeLevel === 'family' && node.parentCategoryId === categoryId
+            );
+            const inactiveFamilies = allFamilies.filter(f => f.vigente === false).length;
+
+            console.log(`   Familias desactivadas: ${inactiveFamilies}/${allFamilies.length}`);
+
+            // Si TODAS las familias están desactivadas → desactivar categoría
+            if (inactiveFamilies === allFamilies.length) {
+              console.log(`❌ Todas las familias desactivadas → desactivando categoría padre`);
+
+              this.treeData.forEach(node => {
+                if (node.nodeLevel === 'category' && node.originalId === categoryId && node.vigente) {
+                  node.vigente = false;
+                  node.__modified = true;
+                  console.log(`  ❌ Categoría desactivada: ${node.description}`);
+                }
+              });
+            }
+          }
+        }
+
+        this.gridApi.refreshCells({ force: true });
+      }
+
+      // 6. Si se cambia una familia, verificar si activar/desactivar categoría según hermanas
+      if (nodeLevel === 'family') {
+        const categoryId = event.data.parentCategoryId;
+
+        // Buscar todas las familias hermanas (misma categoría padre)
+        const allFamilies = this.treeData.filter(node =>
+          node.nodeLevel === 'family' && node.parentCategoryId === categoryId
+        );
+
+        const activeCount = allFamilies.filter(f => f.vigente === true).length;
+        const totalCount = allFamilies.length;
+
+        console.log(`📊 Familia ${newValue ? 'activada' : 'desactivada'}: ${event.data.description}`);
+        console.log(`   Familias activas: ${activeCount}/${totalCount}`);
+
+        // Si TODAS las familias están activas → activar categoría padre
+        if (activeCount === totalCount && newValue === true) {
+          console.log(`✅ Todas las familias activas → activando categoría padre`);
+
+          this.treeData.forEach(node => {
+            if (node.nodeLevel === 'category' && node.originalId === categoryId && !node.vigente) {
+              node.vigente = true;
+              node.__modified = true;
+              console.log(`  ✅ Categoría activada: ${node.description}`);
+            }
+          });
+        }
+
+        // Si TODAS las familias están desactivadas → desactivar categoría padre
+        if (activeCount === 0 && newValue === false) {
+          console.log(`❌ Todas las familias desactivadas → desactivando categoría padre`);
+
+          this.treeData.forEach(node => {
+            if (node.nodeLevel === 'category' && node.originalId === categoryId && node.vigente) {
+              node.vigente = false;
+              node.__modified = true;
+              console.log(`  ❌ Categoría desactivada: ${node.description}`);
+            }
+          });
+        }
+      }
+
+      // ==================== GUARDADO AUTOMÁTICO ====================
+      // Guardar automáticamente todos los cambios en vigente
+      this.saveVigenteChanges();
+    }
+
     event.data.__modified = true;
     this.notSavedChanges = true;
+  }
+
+  // Guardar cambios de vigente automáticamente
+  async saveVigenteChanges() {
+    // Filtrar solo los elementos que tienen cambios en vigente
+    const itemsToUpdate = this.treeData.filter(item => item.__modified);
+
+    if (itemsToUpdate.length === 0) {
+      console.log('No hay cambios de vigente para guardar');
+      return;
+    }
+
+    console.log(`💾 Guardando ${itemsToUpdate.length} cambios de vigente...`);
+
+    try {
+      // Guardar cada elemento modificado
+      for (const item of itemsToUpdate) {
+        const updateData = {
+          idCompany: item.idCompany,
+          description: item.description,
+          valueAddition: item.valueAddition || 'NA',
+          valueAddition2: item.valueAddition2 || 'NA',
+          valueAdditionBit: item.valueAdditionBit || false,
+          valueAdditionBit2: item.valueAdditionBit2 || false,
+          vigente: item.vigente,
+          type: item.type,
+          parentId: item.parentId || 0,
+          subParentId: item.subParentId || 0,
+          price: item.price || 0,
+          active: item.active || 1
+        };
+
+        await lastValueFrom(this.catalogsService.updateCatalog(item.originalId, updateData));
+        console.log(`  ✅ Guardado: ${item.description} (vigente: ${item.vigente})`);
+
+        // Limpiar el flag de modificado
+        delete item.__modified;
+      }
+
+      console.log('✅ Todos los cambios de vigente se guardaron correctamente');
+      this.notSavedChanges = false;
+
+      // Recargar datos para asegurar consistencia
+      await this.loadCatalogData();
+
+      // Mostrar mensaje de éxito
+      alerts.basicAlert(
+        'Guardado exitoso',
+        `Se han realizado los cambios correctamente.`,
+        'success'
+      );
+
+    } catch (error) {
+      console.error('❌ Error al guardar cambios de vigente:', error);
+      alerts.basicAlert(
+        'Error',
+        'Error al guardar los cambios. Por favor, intente nuevamente.',
+        'error'
+      );
+    }
   }
 
   // Grid listo
@@ -577,7 +948,22 @@ export class CatFamSubComponent {
       valueAdditionBit2: false
     };
   }
-  
+
+  // Convertir a mayúsculas mientras se escribe
+  toUpperCase(event: any, field: 'description' | 'valueAddition' | 'valueAddition2') {
+    const input = event.target as HTMLInputElement;
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+
+    // Convertir a mayúsculas
+    this.modalForm[field] = input.value.toUpperCase();
+
+    // Restaurar la posición del cursor
+    setTimeout(() => {
+      input.setSelectionRange(start, end);
+    }, 0);
+  }
+
   // Guardar nueva categoría
   async saveNewCategory() {
     if (!this.modalForm.description.trim()) {

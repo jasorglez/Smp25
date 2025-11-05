@@ -9,6 +9,8 @@ import { DetailCellRendererProveedoresComponent } from './details/detail-cell-re
 import { DetailCellRendererFamiliaComponent } from './details/detail-cell-renderer-familia.component';
 import { DetailCellRendererSucursalComponent } from './details/detail-cell-renderer-sucursal.component';
 import { DetailCellRendererSubfamiliaComponent } from './details/detail-cell-renderer-subfamilia.component';
+import { SelectWithTooltipEditorComponent } from './editors/select-with-tooltip-editor.component';
+import { ImageCellRendererComponent } from './renderers/image-cell-renderer.component';
 import { MaterialsService } from 'app/services/materials.service';
 import { MaterialsResponse } from 'app/interface/materials.interface';
 import { SignalsService } from 'app/services/signals.service';
@@ -30,7 +32,9 @@ import { SubfamiliaModalService, ModalData } from './services/subfamilia-modal.s
     DetailCellRendererProveedoresComponent,
     DetailCellRendererFamiliaComponent,
     DetailCellRendererSucursalComponent,
-    DetailCellRendererSubfamiliaComponent
+    DetailCellRendererSubfamiliaComponent,
+    SelectWithTooltipEditorComponent,
+    ImageCellRendererComponent
   ],
   templateUrl: './materiales-maestro.component.html',
   styleUrl: './materiales-maestro.component.scss'
@@ -232,6 +236,13 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     },
     onCellValueChanged: (event: any) => {
       console.log('Cell value changed:', event);
+
+      // Convertir vigente a true/false (nunca NULL)
+      if (event.colDef.field === 'vigente') {
+        event.data.vigente = event.newValue === true || event.newValue === 1 ? true : false;
+        console.log('Vigente changed to:', event.data.vigente);
+      }
+
       event.data.__modified = true;
       this.hasUnsavedChanges = true;
       this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
@@ -241,7 +252,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   get colMaster(): ColDef[] {
     return [
       {
-        field: 'active',
+        field: 'vigente',
         headerName: 'Activo',
         width: 100,
         editable: true,
@@ -267,10 +278,16 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         headerName: 'Categoria',
         width: 250,
         editable: true,
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: SelectWithTooltipEditorComponent,
         cellEditorParams: {
-          values: this.categories.map(c => c.id)
+          options: this.categories.map(c => ({
+            id: c.id,
+            description: c.description,
+            valueAddition: c.valueAddition,
+            valueAddition2: c.valueAddition2
+          }))
         },
+        cellEditorPopup: true,
         valueFormatter: (params: any) => {
           const cat = this.categories.find(c => c.id === params.value);
           return cat ? cat.description : params.data.categoria || '';
@@ -294,14 +311,20 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           // Solo editable si hay una categoría seleccionada
           return params.data.idCategory != null;
         },
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: SelectWithTooltipEditorComponent,
         cellEditorParams: (params: any) => {
           // Obtener familias filtradas por la categoría seleccionada
           const familiesFiltered = this.getFamiliesByCategory(params.data.idCategory);
           return {
-            values: familiesFiltered.map(f => f.id)
+            options: familiesFiltered.map(f => ({
+              id: f.id,
+              description: f.description,
+              valueAddition: f.valueAddition,
+              valueAddition2: f.valueAddition2
+            }))
           };
         },
+        cellEditorPopup: true,
         valueFormatter: (params: any) => {
           const fam = this.families.find(f => f.id === params.value);
           return fam ? fam.description : params.data.familia || '';
@@ -328,14 +351,20 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           // Solo editable si hay una familia seleccionada
           return params.data.idFamilia != null;
         },
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: SelectWithTooltipEditorComponent,
         cellEditorParams: (params: any) => {
           // Obtener subfamilias filtradas por la familia seleccionada
           const subfamiliesFiltered = this.getSubfamiliesByFamily(params.data.idFamilia);
           return {
-            values: subfamiliesFiltered.map(sf => sf.id)
+            options: subfamiliesFiltered.map(sf => ({
+              id: sf.id,
+              description: sf.description,
+              valueAddition: sf.valueAddition,
+              valueAddition2: sf.valueAddition2
+            }))
           };
         },
+        cellEditorPopup: true,
         valueFormatter: (params: any) => {
           const sf = this.subfamilies.find(sf => sf.id === params.value);
           return sf ? sf.description : params.data.subfamilia || '';
@@ -376,17 +405,11 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       {
         field: 'picture',
         headerName: 'Imagen',
-        width: 120,
-        cellRenderer: (params: any) => {
-          if (params.value) {
-            // Mostrar miniatura de la imagen
-            return `<img src="${params.value}" style="width: 40px; height: 40px; object-fit: cover; cursor: pointer; border-radius: 4px; border: 1px solid #ddd;" title="Click para ver en grande" />`;
-          }
-          return '<span style="cursor: pointer; color: #999;">📷 Sin imagen</span>';
-        },
-        onCellClicked: (params: any) => {
-          if (params.value) {
-            this.openImageModal(params.value);
+        width: 150,
+        cellRenderer: ImageCellRendererComponent,
+        cellRendererParams: {
+          context: {
+            componentParent: this
           }
         }
       }
@@ -668,6 +691,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       picture: row.picture || '',
       typeMaterial: 'CONSUMABLE',
       folioOcorReq: '',
+      vigente: row.vigente === true || row.vigente === 1 ? true : false,
       active: row.active ?? true
     };
   }

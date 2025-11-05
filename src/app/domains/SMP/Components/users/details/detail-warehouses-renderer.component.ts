@@ -13,11 +13,12 @@ import { alerts } from 'app/helpers/alerts';
 import { AuthService } from 'app/services/auth.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray, forkJoin } from 'rxjs';
 import { DetailPermissionsUserComponent } from './detail-permissions-user/detail-permissions-user.component';
+import { PermissionsViewByUserComponent } from './detail-permissions-user/permissions-view.component';
 
 @Component({
   selector: 'app-detail-warehouses-renderer',
   standalone: true,
-  imports: [AgGridModule, CommonModule, DetailPermissionsUserComponent],
+  imports: [AgGridModule, CommonModule, DetailPermissionsUserComponent, PermissionsViewByUserComponent],
   template: `
     <div style="padding: 10px; background-color: #f8f9fa; height: 100%; display: flex; flex-direction: column;">
       <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
@@ -78,6 +79,7 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
 
   components = {
     DetailPermissionsUserComponent: DetailPermissionsUserComponent,
+    PermissionsViewByUserComponent: PermissionsViewByUserComponent,
   };
   params: any;
   userId: number;
@@ -116,7 +118,7 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
     if (params.data.detailType === 'Permisos') {
       params.node.setRowHeight(800);
       return {
-        component: 'DetailPermissionsUserComponent',
+        component: 'PermissionsViewByUserComponent',
         params: {
           idUser: this.userId,
           idBranch: this.branchId,
@@ -437,7 +439,11 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
     const addObservables = newRows.flatMap((row) => {
       const observables = [];
       // Main permission entry
-      const cleanedData = this.cleanDataForServer(row);
+      const cleanedData = this.cleanDataForServer(row);      
+      // Eliminar la propiedad 'posicionesDisponibles' del objeto.
+      delete cleanedData.posicionesDisponibles;
+      // Llamar al servicio con el objeto 'cleanedData' ya modificado.
+      observables.push(this.permitionsService.addPermitionsDetailBydescription(cleanedData));
       //observables.push(this.permitionsService.addPermitions(cleanedData));
       // Detailed permissions if they exist
       console.log(this.rolesDefinidos)
@@ -445,7 +451,12 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
         const detailObservables = this.rolesDefinidos.map((permiso) => {
           const detailData = {
             ...cleanedData,
+            idMasterPermission: permiso.idMasterPermission,
+            masterRead: permiso.masterRead,
             idDetailedPermission: permiso.idDetailedPermission,
+            detailedRead: permiso.detailedRead,
+            idShowPermition: permiso.idShowPermition,
+            showColumn: permiso.showColumn,
             canCreate: permiso.canCreate,
             canRead: permiso.canRead,
             canUpdate: permiso.canUpdate,

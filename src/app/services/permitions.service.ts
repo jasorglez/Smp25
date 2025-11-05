@@ -23,6 +23,10 @@ export class PermitionsService {
       return this.http.post(`${environment.urlSecurity}/CrudPremissionsDelison`, data, { headers: this.trackingService.getHeaders() });
     }
 
+  addPermitionsDetailBydescription(data: any): Observable<any> {
+    return this.http.post(`${environment.urlSecurity}/CrudPremissionsDelison/bydescription`, data, { headers: this.trackingService.getHeaders() });
+  }
+
   getRolYPosicion(idUser: number, idBranch: number): Observable<any> {
     return this.http.get(`${environment.urlSecurity}/CrudPremissionsDelison/${idUser}/${idBranch}`, { headers: this.trackingService.getHeaders() });
   }

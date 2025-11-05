@@ -13,13 +13,18 @@
                   <a class="nav-link green-tab" routerLink="providers" routerLinkActive="active"><i 
                      class="bi bi-file-earmark-person-fill"></i>{{'providers' | translate}}</a>
                </li>
-                <li class="nav-item" *ngIf="authService.hasDetailedPermission('shoppingDelison', 'purchas_eorder')">
-                  <a class="nav-link green-tab" routerLink="purchas_eorder" routerLinkActive="active"><i
-                     class="bi bi-cart-fill"></i> {{'orders' | translate}} {{'purchase' | translate}}</a>
+               <li class="nav-item" *ngIf="authService.hasDetailedPermission('shoppingDelison', 'materia-prima')">
+                 <a class="nav-link" routerLink="materia-prima" routerLinkActive="active">
+                   <i class="bi bi-boxes"></i> Materia Prima
+                 </a>
                </li>
                <li class="nav-item" *ngIf="authService.hasDetailedPermission('shoppingDelison', 'requisitions')">
                   <a class="nav-link green-tab" routerLink="requisitions" routerLinkActive="active"><i
                      class="bi bi-list-task"></i> {{'requisitions' | translate}}</a>
+               </li>
+                <li class="nav-item" *ngIf="authService.hasDetailedPermission('shoppingDelison', 'purchas_eorder')">
+                  <a class="nav-link green-tab" routerLink="purchas_eorder" routerLinkActive="active"><i
+                     class="bi bi-cart-fill"></i> {{'orders' | translate}} {{'purchase' | translate}}</a>
                </li>
                <li class="nav-item" *ngIf="authService.hasDetailedPermission('shoppingDelison', 'catalogs')">
                    <a class="nav-link green-tab" routerLink="catalogs" routerLinkActive="active"><i class="bi bi-journal-text"></i>

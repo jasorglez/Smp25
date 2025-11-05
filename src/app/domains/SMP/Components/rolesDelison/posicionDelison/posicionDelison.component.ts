@@ -10,12 +10,13 @@ import { forkJoin, lastValueFrom } from 'rxjs';
 import { AuthService } from 'app/services/auth.service';
 import { SignalsService } from 'app/services/signals.service';
 import { RolesDetailedDelisonComponent } from '../rolesDelison-detailed/rolesDelison-detailed.component';
+import { PermissionsViewComponent } from '../rolesDelison-detailed/permissions-view.component';
 
 @Component({
   selector: 'app-posicion-delison',
   standalone: true,
   providers: [CurrencyPipe],
-  imports: [AgGridModule, CommonModule,RolesDetailedDelisonComponent ],
+  imports: [AgGridModule, CommonModule,RolesDetailedDelisonComponent, PermissionsViewComponent ],
   template: `
     <!-- Contenedor principal con Flexbox -->
     <div #container tabindex="-1" style="padding: 10px; background-color: #f8f9fa; height: 100%; display: flex; flex-direction: column; outline: none;">
@@ -61,7 +62,7 @@ import { RolesDetailedDelisonComponent } from '../rolesDelison-detailed/rolesDel
         </ag-grid-angular>
       </div>
       <div *ngIf="permisos" style="flex: 1 1 75%; overflow-y: auto; margin-top: 10px;">
-        <app-roles-detailed></app-roles-detailed>
+        <app-permissions-view></app-permissions-view>
       </div>
     </div>
     

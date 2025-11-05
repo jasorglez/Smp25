@@ -192,7 +192,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
     resizable: true,
     lockPosition: false,
     enableRowGroup: true, // Enable row grouping for all columnsddsd
-    flex: 1,
+    // flex: 1, // Commented out to allow autosize to work properly
   };
 
   currentIndex = 0;
@@ -252,6 +252,22 @@ export class ProvidersComponent implements CanComponentDeactivate {
       });
     }
   },
+  onFirstDataRendered: (params) => {
+    console.log('onFirstDataRendered - autosizing columns...');
+
+    // Obtener todas las columnas
+    const allColumnIds: string[] = [];
+    params.api.getColumns()?.forEach((column: any) => {
+      allColumnIds.push(column.getId());
+    });
+
+    console.log('Columns to autosize:', allColumnIds);
+
+    // Autoajustar todas las columnas al contenido (considera header y datos)
+    params.api.autoSizeColumns(allColumnIds, false);
+
+    console.log('Autosize completed');
+  },
 
 };
 
@@ -262,7 +278,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
         headerName: 'ID',
         hide: true, // La ocultamos porque es para uso interno
         filter: 'agNumberColumnFilter',
-        width: 80
       },
       {
         field: 'vigente',
@@ -273,9 +288,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
           }
           return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
         },
-        width: 100,
       },
-      
+
       {
         field: 'company',
         headerName: 'Compañía',
@@ -285,9 +299,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
           }
           return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
         },
-        width: 150,
       },
-      
+
       {
         field: 'nameContact',
         headerName: 'Contacto principal',
@@ -299,7 +312,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
         },
         filter: true,
         cellEditor: 'autocompleteEditor',
-        width: 200,
         /*cellRenderer: (params) => { 
           const div = document.createElement('div'); 
           div.innerText = params.value; 
@@ -373,7 +385,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
      //     return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
          return false;
         },
-        width: 180,
       },
 
       //Es un combo de Tipo de Proveedor qe le compro
@@ -402,7 +413,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
           return div;
         },
-        width: 250,
       },
 
       {
@@ -414,9 +424,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
           }
           return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
         },
-        width: 100,
       },
-      
+
       {
         field: 'email',
         headerName: 'Email Principal',
@@ -426,7 +435,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
           }
           return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
         },
-        width: 100,
       },
 
       {
@@ -458,7 +466,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
         headerName: 'Materiales',
         editable: false,
         cellStyle: { backgroundColor: '#d4edda' },
-        width: 100,
       },
 
 
@@ -471,7 +478,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
           }
           return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
         },
-        width: 100,
       },
       {
         field: 'address',
@@ -482,21 +488,9 @@ export class ProvidersComponent implements CanComponentDeactivate {
           }
           return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
         },
-        width: 100,
       },
       {
         field: 'city',
-        headerName: 'Estado',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
-        },
-        width: 100,
-      },
-      {
-        field: 'state',
         headerName: 'Ciudad',
         editable: (params) => {
           if (params.data.__isNew) {
@@ -504,7 +498,16 @@ export class ProvidersComponent implements CanComponentDeactivate {
           }
           return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
         },
-        width: 100,
+      },
+      {
+        field: 'state',
+        headerName: 'Estado',
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+        },
       },
       {
         field: '',
@@ -515,7 +518,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
           }
           return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
         },
-        width: 100,
       },
     ];
   }
@@ -584,10 +586,6 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
             this.rowData = data;
             }
             console.log(this.rowData)
-            // Asegurarse de que las columnas se ajusten después de cargar los datos
-            if (this.gridApi) {
-              this.gridApi.sizeColumnsToFit();
-            }
             console.log(data)
             resolve(true);
           },
