@@ -236,6 +236,13 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     },
     onCellValueChanged: (event: any) => {
       console.log('Cell value changed:', event);
+
+      // Convertir vigente a true/false (nunca NULL)
+      if (event.colDef.field === 'vigente') {
+        event.data.vigente = event.newValue === true || event.newValue === 1 ? true : false;
+        console.log('Vigente changed to:', event.data.vigente);
+      }
+
       event.data.__modified = true;
       this.hasUnsavedChanges = true;
       this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
@@ -245,7 +252,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   get colMaster(): ColDef[] {
     return [
       {
-        field: 'active',
+        field: 'vigente',
         headerName: 'Activo',
         width: 100,
         editable: true,
@@ -684,6 +691,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       picture: row.picture || '',
       typeMaterial: 'CONSUMABLE',
       folioOcorReq: '',
+      vigente: row.vigente === true || row.vigente === 1 ? true : false,
       active: row.active ?? true
     };
   }
