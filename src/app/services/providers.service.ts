@@ -4,8 +4,7 @@ import { TrackingService } from './tracking.service';
 import { environment } from '@env/environment';
 
 
-import { HttpClient } from '@angular/common/http';
-
+import { HttpClient } from '@angular/common/http'
 @Injectable({
   providedIn: 'root',
 })

@@ -1,6 +1,6 @@
 {
   "name": "bi-aug-24",
-  "version": "2.51.5",
+  "version": "2.51.7",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",

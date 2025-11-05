@@ -32,6 +32,19 @@
     border-left: 4px solid #28a745;
   }
 
+  // Fila nueva con resaltado para edición
+  .new-row-highlight {
+    background-color: #fff3cd !important;
+    border-left: 4px solid #ffc107;
+    animation: blink 1s infinite;
+  }
+
+  @keyframes blink {
+    0% { background-color: #fff3cd; }
+    50% { background-color: #ffeaa7; }
+    100% { background-color: #fff3cd; }
+  }
+
   // Fila modificada
   .modified-row {
     background-color: #fff3cd !important;

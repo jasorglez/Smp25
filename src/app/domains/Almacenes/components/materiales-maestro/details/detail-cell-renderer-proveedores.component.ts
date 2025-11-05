@@ -249,7 +249,8 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
   loadProviders() {
     this.customersService.getCustomersByCompany(this.idRoot, 'PROVIDERS').subscribe({
       next: (data: any) => {
-        this.providers = data;
+        // Filtrar solo proveedores vigentes
+        this.providers = data.filter((p: any) => p.vigente === true || p.vigente === 1);
         // Refrescar el grid para que los combos se actualicen con los proveedores
         if (this.proveedorGridApi) {
           this.proveedorGridApi.refreshCells({ force: true });

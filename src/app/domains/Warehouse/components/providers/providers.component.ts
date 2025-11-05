@@ -31,10 +31,12 @@ import { ProvidersPaymentsComponent } from './providers-payments.component';
 import { DetailCellRendererComponentContact } from './details/detail-cell-renderer-contact.component'; // This seems to be the one for contacts
 import { DetailCellRendererComponentBanck } from './details/detail-cell-renderer-banck.component'; // This will be for banks
 import { DetailCellRendererComponentCuentas } from './details/detail-cell-renderer-cuentas.component';
+import { DetailCellRendererTipoProveedorComponent } from './details/detail-cell-renderer-tipo-proveedor.component';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { RadiusinfluenceComponent } from 'app/domains/ModAdmon/components/radiusinfluence/radiusinfluence.component';
 import { CustomersService } from 'app/services/customers.service';
 import { ProvidersService } from 'app/services/providers.service';
+import { MaterialsService } from 'app/services/materials.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { InegiService } from 'app/services/inegi.service';
 import { BranchsService } from 'app/services/branchs.service';
@@ -62,7 +64,8 @@ import { TrackingService } from 'app/services/tracking.service';
     ProvidersPaymentsComponent,
     DetailCellRendererComponentContact,
     DetailCellRendererComponentBanck,
-    DetailCellRendererComponentCuentas
+    DetailCellRendererComponentCuentas,
+    DetailCellRendererTipoProveedorComponent
 ],
   templateUrl: './providers.component.html',
   styleUrls: ['./providers.component.scss'],
@@ -72,6 +75,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
   private trackingService = inject(TrackingService);
   private customerService = inject(CustomersService);
   private providersService = inject(ProvidersService);
+  private materialsService = inject(MaterialsService);
   private modalServiceTable = inject(ModalService);
   private signalsService = inject(SignalsService);
   private modalService = inject(NgbModal);
@@ -86,20 +90,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   
 
-  async ngOnInit() {
-    this.signalsService.deleteClientData();
-    this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-    await this.getTypecop();
-    this.route.data.subscribe((data) => {
-      this.type = data['type']; // 'CUSTOMERS' o 'PROVIDERS'
-      // La carga de datos ahora se maneja por el effect que reacciona a los cambios de compañía/sucursal
-      // this.obtenerDatos(); 
-      this.getStates(); // Llamar a la función para obtener los estadosd
-      this.obtenerBranchs();
-      
-    });
-  }
-
   constructor(private currencyPipe: CurrencyPipe) {
     effect(async () => {
       if (this.signalsService.getRefreshEmployees()() == true) {
@@ -111,12 +101,37 @@ export class ProvidersComponent implements CanComponentDeactivate {
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.idCompany = this.signalsService.getRootSelectedBySidebar()();
+      this.idRoot = this.idCompany; // Sincronizar idRoot con idCompany
+
       if (this.idBranch && this.idCompany) {
         this.obtenerDatos();
         this.obtenerBranchs();
         this.getTypecop();
       }
     }, { allowSignalWrites: true });
+  }
+
+  async ngOnInit() {
+    this.signalsService.deleteClientData();
+
+    // Obtener el tipo de ruta primero
+    this.route.data.subscribe((data) => {
+      this.type = data['type']; // 'CUSTOMERS' o 'PROVIDERS'
+      this.getStates(); // Llamar a la función para obtener los estados
+    });
+
+    // Obtener valores iniciales de las señales
+    this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+    this.idCompany = this.signalsService.getRootSelectedBySidebar()();
+    this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+
+    // Si las señales ya tienen valores, cargar datos inmediatamente
+    if (this.idRoot && this.idCompany && this.idBranch) {
+      this.getTypecop();
+      this.obtenerBranchs();
+      this.obtenerDatos();
+    }
+    // Si no, el effect del constructor se encargará cuando las señales estén listas
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -177,7 +192,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
     resizable: true,
     lockPosition: false,
     enableRowGroup: true, // Enable row grouping for all columnsddsd
-    flex: 1,
+    // flex: 1, // Commented out to allow autosize to work properly
   };
 
   currentIndex = 0;
@@ -191,7 +206,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
     autocompleteEditor: AutocompleteEditorComponent,
     detailCellRenderer: DetailCellRendererComponentContact,
     detailCellRendererBanck: DetailCellRendererComponentBanck,
-    detailCellRendererCuentas: DetailCellRendererComponentCuentas
+    detailCellRendererCuentas: DetailCellRendererComponentCuentas,
+    detailCellRendererTipoProveedor: DetailCellRendererTipoProveedorComponent
   };
 
   idClient = this.signalsService.getIdClient();
@@ -214,6 +230,9 @@ export class ProvidersComponent implements CanComponentDeactivate {
     } else if (params.data.detailType === 'Cuentas') {
       params.node.setRowHeight(700);
       return { component: 'detailCellRendererCuentas' };
+    } else if (params.data.detailType === 'tipoProveedor') {
+      params.node.setRowHeight(250);
+      return { component: 'detailCellRendererTipoProveedor' };
     }
     return undefined; // No mostrar detalle si no hay tipo
   },
@@ -233,6 +252,22 @@ export class ProvidersComponent implements CanComponentDeactivate {
       });
     }
   },
+  onFirstDataRendered: (params) => {
+    console.log('onFirstDataRendered - autosizing columns...');
+
+    // Obtener todas las columnas
+    const allColumnIds: string[] = [];
+    params.api.getColumns()?.forEach((column: any) => {
+      allColumnIds.push(column.getId());
+    });
+
+    console.log('Columns to autosize:', allColumnIds);
+
+    // Autoajustar todas las columnas al contenido (considera header y datos)
+    params.api.autoSizeColumns(allColumnIds, false);
+
+    console.log('Autosize completed');
+  },
 
 };
 
@@ -243,7 +278,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
         headerName: 'ID',
         hide: true, // La ocultamos porque es para uso interno
         filter: 'agNumberColumnFilter',
-        width: 80
       },
       {
         field: 'vigente',
@@ -254,9 +288,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
           }
           return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
         },
-        width: 100,
       },
-      
+
       {
         field: 'company',
         headerName: 'Compañía',
@@ -266,9 +299,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
           }
           return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
         },
-        width: 150,
       },
-      
+
       {
         field: 'nameContact',
         headerName: 'Contacto principal',
@@ -280,7 +312,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
         },
         filter: true,
         cellEditor: 'autocompleteEditor',
-        width: 200,
         /*cellRenderer: (params) => { 
           const div = document.createElement('div'); 
           div.innerText = params.value; 
@@ -353,20 +384,34 @@ export class ProvidersComponent implements CanComponentDeactivate {
           }
           return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
         },
-        width: 180,
       },
 
       //Es un combo de Tipo de Proveedor qe le compro
       {
         field: 'typeProvider',
         headerName: 'Tipo Proveedor',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
+        editable: false,
+        cellRenderer: (params: any): HTMLElement => {
+          const div = document.createElement('div');
+
+          // Mostrar el valor desde typework o typeProvider
+          const displayValue = params.data.typework || params.data.typeProvider;
+
+          if (displayValue) {
+            div.innerText = displayValue;
+          } else {
+            div.innerText = '🔽 Seleccionar...';
+            div.style.color = '#888';
           }
-          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+
+          div.style.cursor = 'pointer';
+          div.style.textDecoration = 'underline';
+          div.style.background = '#fff3cd';
+          div.style.padding = '2px 5px';
+          div.style.borderRadius = '3px';
+
+          return div;
         },
-        width: 150,
       },
 
       {
@@ -378,9 +423,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
           }
           return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
         },
-        width: 100,
       },
-      
+
       {
         field: 'email',
         headerName: 'Email Principal',
@@ -390,7 +434,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
           }
           return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
         },
-        width: 100,
       },
 
       {
@@ -416,8 +459,15 @@ export class ProvidersComponent implements CanComponentDeactivate {
         cellStyle: { backgroundColor: '#d4edda' },
         editable: false
       },
-   
-  
+
+      {
+        field: 'fieldMaterial',
+        headerName: 'Materiales',
+        editable: false,
+        cellStyle: { backgroundColor: '#d4edda' },
+      },
+
+
       {
         field: 'cp',
         headerName: 'Cp',
@@ -427,7 +477,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
           }
           return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
         },
-        width: 100,
       },
       {
         field: 'address',
@@ -438,21 +487,9 @@ export class ProvidersComponent implements CanComponentDeactivate {
           }
           return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
         },
-        width: 100,
       },
       {
         field: 'city',
-        headerName: 'Estado',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
-        },
-        width: 100,
-      },
-      {
-        field: 'state',
         headerName: 'Ciudad',
         editable: (params) => {
           if (params.data.__isNew) {
@@ -460,7 +497,16 @@ export class ProvidersComponent implements CanComponentDeactivate {
           }
           return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
         },
-        width: 100,
+      },
+      {
+        field: 'state',
+        headerName: 'Estado',
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+        },
       },
       {
         field: '',
@@ -471,7 +517,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
           }
           return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
         },
-        width: 100,
       },
     ];
   }
@@ -481,6 +526,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
     if (colId === 'fieldContact') return 'contact';
     if (colId === 'fieldBank') return 'bank';
     if (colId === 'fieldCuenta') return 'Cuentas';
+    if (colId === 'typeProvider') return 'tipoProveedor';
     return null;
   }
 
@@ -522,8 +568,8 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
   
 
   obtenerDatos() {
-    if (!this.idBranch) {
-      console.log('idBranch no está disponible aún');
+    if (!this.idRoot) {
+      console.log('idRoot no está disponible aún');
       return Promise.resolve(false);
     }
 
@@ -531,18 +577,14 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
           this.trackingService.getEmail() );
 
     return new Promise((resolve) => {
-      this.customerService
-        .getProviders(this.idCompany,'PROVIDERS')
+      this.materialsService
+        .getProvidersxmaterials(this.idRoot)
         .subscribe({
           next: (data: any) => {
             if(this.authService.getCrudPermission('shoppingDelison', 'providers', 'read')){
             this.rowData = data;
             }
             console.log(this.rowData)
-            // Asegurarse de que las columnas se ajusten después de cargar los datos
-            if (this.gridApi) {
-              this.gridApi.sizeColumnsToFit();
-            }
             console.log(data)
             resolve(true);
           },
@@ -552,7 +594,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
           }
         });
     });
-    
+
   }
 
   obtenerBranchs() {
@@ -630,7 +672,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
   console.log('Celda clickeada:', event);
 
   const colId = event.column.getColId();
-  const isDetailColumn = colId === 'fieldContact' || colId === 'fieldBank' || colId === 'fieldCuenta';
+  const isDetailColumn = colId === 'fieldContact' || colId === 'fieldBank' || colId === 'fieldCuenta' || colId === 'typeProvider';
 
   if (isDetailColumn) {
     const node = event.node;
@@ -655,10 +697,10 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
     } else {
       // Si se hace clic en una celda diferente (o la fila está cerrada)...
       // ...se establece el nuevo tipo de detalle y se expande la fila.
-      
+
       // Limpiar filtro antes de aplicar uno nuevo
       api.setFilterModel(null);
-      
+
       // Aplicar filtro por ID para enfocar la fila actual.
       const filterModel = {
         id: { filterType: 'number', type: 'equals', filter: event.data.id },
@@ -783,6 +825,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
       fieldBank: 0,
       fieldCuenta: 0,
       active: true,
+      typework: '',  // Nuevo campo para Tipo de Proveedor (cascada)
       __isNew: true,
     };
     this.rowData = [newItem, ...this.rowData];
@@ -839,13 +882,13 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-     
+      console.log('Datos a AGREGAR (incluyendo typework):', cleanedData);
       return this.customerService.addCustomer(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-
+      console.log('Datos a ACTUALIZAR (incluyendo typework):', cleanedData);
       return this.customerService.updateCustomer(row.id, cleanedData);
     });
 
@@ -958,6 +1001,30 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
       return;
     }
 
+    // Validar que el proveedor no esté siendo usado en materiales
+    try {
+      const materialsData: any = await lastValueFrom(
+        this.providersService.getProvidersXTable(selectedData.id, 'MATERIAL')
+      );
+
+      if (materialsData && materialsData.length > 0) {
+        alerts.basicAlert(
+          'No se puede eliminar',
+          `Este proveedor está siendo utilizado en ${materialsData.length} material(es). No se puede eliminar.`,
+          'error'
+        );
+        return;
+      }
+    } catch (error) {
+      console.error('Error verificando uso del proveedor:', error);
+      alerts.basicAlert(
+        'Error',
+        'Error al verificar si el proveedor está en uso.',
+        'error'
+      );
+      return;
+    }
+
     const id = selectedData.id;
     selectedData.active = 0;
     this.customerService
@@ -994,6 +1061,8 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
+    delete cleanedData.typeProvider; // Solo para visualización, no va a BD
+    delete cleanedData.tipoProveedorRows; // Solo para reconstruir grid, no va a BD
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }

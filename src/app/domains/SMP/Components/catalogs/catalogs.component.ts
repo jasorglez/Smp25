@@ -135,6 +135,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
           this.typeCatalog = 'shoppingDelison'
         break
         case 'ALMACENES':
+        case 'WAREHOUSE':
           this.typeCatalog = 'warehouses'
         break
     }
@@ -155,6 +156,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
     this.rowData = [];
     this.selectedCatalog= '';
     this.idCatalog = null;
+    this.obtenerTables(); // Cargar las tablas de la sección seleccionada
   }
   onOptionSelected(item: any): void {
     this.select = item.name

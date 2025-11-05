@@ -9,6 +9,8 @@ import { DetailCellRendererProveedoresComponent } from './details/detail-cell-re
 import { DetailCellRendererFamiliaComponent } from './details/detail-cell-renderer-familia.component';
 import { DetailCellRendererSucursalComponent } from './details/detail-cell-renderer-sucursal.component';
 import { DetailCellRendererSubfamiliaComponent } from './details/detail-cell-renderer-subfamilia.component';
+import { SelectWithTooltipEditorComponent } from './editors/select-with-tooltip-editor.component';
+import { ImageCellRendererComponent } from './renderers/image-cell-renderer.component';
 import { MaterialsService } from 'app/services/materials.service';
 import { MaterialsResponse } from 'app/interface/materials.interface';
 import { SignalsService } from 'app/services/signals.service';
@@ -30,7 +32,9 @@ import { SubfamiliaModalService, ModalData } from './services/subfamilia-modal.s
     DetailCellRendererProveedoresComponent,
     DetailCellRendererFamiliaComponent,
     DetailCellRendererSucursalComponent,
-    DetailCellRendererSubfamiliaComponent
+    DetailCellRendererSubfamiliaComponent,
+    SelectWithTooltipEditorComponent,
+    ImageCellRendererComponent
   ],
   templateUrl: './materiales-maestro.component.html',
   styleUrl: './materiales-maestro.component.scss'
@@ -46,12 +50,14 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   private branchsService = inject(BranchsService);
   private subfamiliaModalService = inject(SubfamiliaModalService);
 
-  rowData: MaterialsResponse[] = [];
+  rowData: any[] = [];
   allMaterialsData: MaterialsResponse[] = []; // Guarda todos los datos
   gridHeight: string = '80vh';
   selectedMaterial: MaterialsResponse | null = null;
   hasUnsavedChanges: boolean = false;
   idRoot: number | null = null;
+  newlyAddedRows: string[] = [];
+  private tempIdCounter: number = 0;
 
   // Catálogos para los combos
   categories: any[] = [];
@@ -153,6 +159,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
   // Obtener subfamilias de una familia específica
   getSubfamiliesByFamily(familyId: number): any[] {
+    if (!familyId) return [];
     return this.subfamilies.filter(sf => sf.subParentId === familyId);
   }
 
@@ -211,7 +218,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         return 'selected-row';
       }
       if (params.data.__isNew) {
-        return 'new-row';
+        return 'new-row-highlight';
       }
       if (params.data.__modified) {
         return 'modified-row';
@@ -229,6 +236,13 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     },
     onCellValueChanged: (event: any) => {
       console.log('Cell value changed:', event);
+
+      // Convertir vigente a true/false (nunca NULL)
+      if (event.colDef.field === 'vigente') {
+        event.data.vigente = event.newValue === true || event.newValue === 1 ? true : false;
+        console.log('Vigente changed to:', event.data.vigente);
+      }
+
       event.data.__modified = true;
       this.hasUnsavedChanges = true;
       this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
@@ -238,7 +252,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   get colMaster(): ColDef[] {
     return [
       {
-        field: 'active',
+        field: 'vigente',
         headerName: 'Activo',
         width: 100,
         editable: true,
@@ -264,10 +278,16 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         headerName: 'Categoria',
         width: 250,
         editable: true,
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: SelectWithTooltipEditorComponent,
         cellEditorParams: {
-          values: this.categories.map(c => c.id)
+          options: this.categories.map(c => ({
+            id: c.id,
+            description: c.description,
+            valueAddition: c.valueAddition,
+            valueAddition2: c.valueAddition2
+          }))
         },
+        cellEditorPopup: true,
         valueFormatter: (params: any) => {
           const cat = this.categories.find(c => c.id === params.value);
           return cat ? cat.description : params.data.categoria || '';
@@ -291,14 +311,20 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           // Solo editable si hay una categoría seleccionada
           return params.data.idCategory != null;
         },
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: SelectWithTooltipEditorComponent,
         cellEditorParams: (params: any) => {
           // Obtener familias filtradas por la categoría seleccionada
           const familiesFiltered = this.getFamiliesByCategory(params.data.idCategory);
           return {
-            values: familiesFiltered.map(f => f.id)
+            options: familiesFiltered.map(f => ({
+              id: f.id,
+              description: f.description,
+              valueAddition: f.valueAddition,
+              valueAddition2: f.valueAddition2
+            }))
           };
         },
+        cellEditorPopup: true,
         valueFormatter: (params: any) => {
           const fam = this.families.find(f => f.id === params.value);
           return fam ? fam.description : params.data.familia || '';
@@ -318,9 +344,47 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         }
       },
       {
-        field: 'subfamilyCount',
+        field: 'idSubfamilia',
         headerName: 'Subfamilia',
-        width: 120,
+        width: 200,
+        editable: (params: any) => {
+          // Solo editable si hay una familia seleccionada
+          return params.data.idFamilia != null;
+        },
+        cellEditor: SelectWithTooltipEditorComponent,
+        cellEditorParams: (params: any) => {
+          // Obtener subfamilias filtradas por la familia seleccionada
+          const subfamiliesFiltered = this.getSubfamiliesByFamily(params.data.idFamilia);
+          return {
+            options: subfamiliesFiltered.map(sf => ({
+              id: sf.id,
+              description: sf.description,
+              valueAddition: sf.valueAddition,
+              valueAddition2: sf.valueAddition2
+            }))
+          };
+        },
+        cellEditorPopup: true,
+        valueFormatter: (params: any) => {
+          const sf = this.subfamilies.find(sf => sf.id === params.value);
+          return sf ? sf.description : params.data.subfamilia || '';
+        },
+        onCellValueChanged: (params: any) => {
+          this.hasUnsavedChanges = true;
+          params.api.refreshCells({ rowNodes: [params.node], force: true });
+        },
+        cellStyle: (params: any) => {
+          if (!params.data.idFamilia) {
+            return { backgroundColor: '#f0f0f0', color: '#999' };
+          }
+          return null;
+        }
+      },
+      
+      {
+        field: 'subfamilyCount',
+        headerName: 'Donde Usa',
+        width: 150,
         filter: true,
         cellRenderer: (params: any) => {
           const count = params.value || 0;
@@ -341,17 +405,11 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       {
         field: 'picture',
         headerName: 'Imagen',
-        width: 120,
-        cellRenderer: (params: any) => {
-          if (params.value) {
-            // Mostrar miniatura de la imagen
-            return `<img src="${params.value}" style="width: 40px; height: 40px; object-fit: cover; cursor: pointer; border-radius: 4px; border: 1px solid #ddd;" title="Click para ver en grande" />`;
-          }
-          return '<span style="cursor: pointer; color: #999;">📷 Sin imagen</span>';
-        },
-        onCellClicked: (params: any) => {
-          if (params.value) {
-            this.openImageModal(params.value);
+        width: 150,
+        cellRenderer: ImageCellRendererComponent,
+        cellRendererParams: {
+          context: {
+            componentParent: this
           }
         }
       }
@@ -473,18 +531,47 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   }
 
   addMaterial(): void {
-    this.materialModalMode = 'add';
-    this.materialForm = {
+    const tempId = `temp_${this.tempIdCounter++}`;
+    const newItem = {
+      id: tempId,
+      idCompany: this.idRoot,
       insumo: '',
       articulo: '',
-      idCategory: 0,
-      idFamilia: 0,
+      idCategory: null,
+      idFamilia: null,
+      idSubfamilia: null,
+      idMedida: null,
+      idUbication: null,
+      description: '',
+      date: new Date().toISOString(),
+      aplicaResg: false,
       picture: '',
-      active: true
+      costoMN: 0,
+      costoDLL: 0,
+      ventaMN: 0,
+      ventaDLL: 0,
+      stockMin: 0,
+      stockMax: 0,
+      vigente: true,
+      active: true,
+      __isNew: true,
     };
-    this.selectedImageFile = null;
-    this.previewImageUrl = '';
-    this.showMaterialModal = true;
+
+    this.rowData = [newItem, ...this.rowData];
+    this.newlyAddedRows.push(tempId);
+    this.hasUnsavedChanges = true;
+    this.gridApi.setGridOption('rowData', this.rowData);
+
+    setTimeout(() => {
+      const firstRowIndex = 0;
+
+      this.gridApi.ensureIndexVisible(firstRowIndex);
+
+      this.gridApi.startEditingCell({
+        rowIndex: firstRowIndex,
+        colKey: 'articulo'
+      });
+    }, 0);
   }
 
   editMaterial(): void {
@@ -604,6 +691,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       picture: row.picture || '',
       typeMaterial: 'CONSUMABLE',
       folioOcorReq: '',
+      vigente: row.vigente === true || row.vigente === 1 ? true : false,
       active: row.active ?? true
     };
   }

@@ -87,7 +87,13 @@ export class ReportesEstimacionesComponent {
     singleClickEdit: true,
     stopEditingWhenCellsLoseFocus: true,
     enableBrowserTooltips: true,
-    getContextMenuItems: (params: any) => this.getContextMenuItems(params)
+    getContextMenuItems: (params: any) => this.getContextMenuItems(params),
+    getRowStyle: (params: any) => {
+      if (params.data?.downloaded === true) {
+        return { background: '#d4edda' }; // Verde claro para filas descargadas
+      }
+      return undefined;
+    }
   };
 
   columnDefs: ColDef[] = [
@@ -364,6 +370,27 @@ export class ReportesEstimacionesComponent {
         fileName: `Reporte_Estimaciones_${new Date().toISOString().split('T')[0]}.xlsx`
       });
     }
+  }
+
+  /**
+   * Recarga solo los datos de la tabla sin cambiar filtros ni proyectos
+   */
+  reloadTableData() {
+    const idRoot = this.signalsService.getRootSelectedBySidebar()();
+    if (!idRoot || !this.fechaInicio || !this.fechaFin) {
+      return;
+    }
+
+    this.logbookService.getOtListxReport(idRoot, this.fechaInicio, this.fechaFin).subscribe({
+      next: (data) => {
+        this.rowData = data;
+        console.log('Datos recargados:', data.length, 'registros');
+      },
+      error: (error) => {
+        console.error('Error al recargar datos:', error);
+        alerts.basicAlert('Error', 'Error al recargar los datos.', 'error');
+      }
+    });
   }
 
   // Método para cargar conceptos de proyectos visibles en los datos
@@ -897,6 +924,9 @@ export class ReportesEstimacionesComponent {
             `Descargando ${fileCount} archivo(s) multimedia de la OT ${rowData.otNumber || idOt}.`,
             'success'
           );
+
+          // Recargar los datos de la tabla para actualizar el estado de downloaded
+          this.reloadTableData();
         } else {
           alerts.basicAlert(
             'Información',
