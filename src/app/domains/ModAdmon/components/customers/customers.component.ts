@@ -951,7 +951,6 @@ export class CustomersComponent implements CanComponentDeactivate {s
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-
       return this.customerService.updateCustomer(row.id, cleanedData);
     });
 
@@ -1083,8 +1082,14 @@ export class CustomersComponent implements CanComponentDeactivate {s
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
+    delete cleanedData.detailType; // Propiedad interna del grid
+    // NO incluir 'type' para evitar actualizarlo en ediciones
+    // El 'type' solo se debe incluir al agregar nuevos registros
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
+    } else {
+      // Si NO es un registro nuevo (temp_), eliminar 'type' para no actualizarlo
+      delete cleanedData.type;
     }
     return cleanedData;
   }

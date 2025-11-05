@@ -120,27 +120,22 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
 
   constructor(private currencyPipe: CurrencyPipe) {}
 
-  /*cuentaColumnDefs = [
-    { field: 'campo2', headerName: 'Fecha OC', editable: true, flex: 1 },
-    { field: 'campo3', headerName: 'Factura o Nota', editable: true, flex: 1, cellEditor: 'agDateCellEditor' },
-    { field: 'campo4', headerName: 'MNumero Factura o Nota', editable: true, flex: 1, valueFormatter: params => `$${Number(params.value || 0).toFixed(2)}` },
-    { field: 'campo5', headerName: 'Articulo', editable: true, flex: 1, valueFormatter: params => `$${Number(params.value || 0).toFixed(2)}` },
-    { field: 'campo3', headerName: 'Categoria', editable: true, flex: 1, cellEditor: 'agDateCellEditor' },
-    { field: 'campo4', headerName: 'Familia', editable: true, flex: 1, valueFormatter: params => `$${Number(params.value || 0).toFixed(2)}` },
-    { field: 'campo5', headerName: 'SubFamilia', editable: true, flex: 1, valueFormatter: params => `$${Number(params.value || 0).toFixed(2)}` },
-    { field: 'campo2', headerName: 'Cantidad', editable: true, flex: 1 },
-    { field: 'campo3', headerName: 'Precio Unitario', editable: true, flex: 1, cellEditor: 'agDateCellEditor' },
-    { field: 'campo4', headerName: 'Total x Nota', editable: true, flex: 1, valueFormatter: params => `$${Number(params.value || 0).toFixed(2)}` },
-    { field: 'campo5', headerName: 'Abono a Cuenta', editable: true, flex: 1, valueFormatter: params => `$${Number(params.value || 0).toFixed(2)}` },
-    { field: 'campo4', headerName: 'Restante', editable: true, flex: 1, valueFormatter: params => `$${Number(params.value || 0).toFixed(2)}` },
-  ];*/
   cuentaColumnDefs = [
     {
+      field: 'campo3',
+      headerName: 'Fecha Requisicion',
+      editable: false,
+      // Este cellRenderer muestra el ícono y el valor, y permite expandir/colapsar el detalle al hacer clic
+      cellRenderer: this.createDetailToggleCellRenderer('campo3'),
+      flex: 1,
+      cellStyle: { backgroundColor: '#d4edda' },
+    },    
+    {
       field: 'id',
-      headerName: 'ID',
-      hide: true, // Oculta, solo para uso interno
-      filter: 'agNumberColumnFilter',
+      headerName: 'Requisicion',      
+      
     },
+
     { 
       field: 'campo8', 
       headerName: 'Fecha OC', 
@@ -205,7 +200,7 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
     },
     { 
       field: 'campo2', 
-      headerName: 'Factura o Nota', 
+      headerName: 'Tipo Factura/Nota', 
       editable: true, 
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: {
@@ -215,9 +210,10 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
     },
     { 
       field: 'campo1', 
-      headerName: 'Numero Factura o Nota', 
+      headerName: 'Numero Factura/Nota', 
       editable: true, 
       flex: 1
+      
     },
     { 
       field: 'campo4', 
@@ -230,15 +226,7 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
         return isNumeric ? this.currencyPipe.transform(params.value, '', 'symbol', '1.2-2') : '$0.00';
       }
     },
-    {
-      field: 'campo3',
-      headerName: 'Articulo',
-      editable: false,
-      // Este cellRenderer muestra el ícono y el valor, y permite expandir/colapsar el detalle al hacer clic
-      cellRenderer: this.createDetailToggleCellRenderer('campo3'),
-      flex: 1,
-      cellStyle: { backgroundColor: '#d4edda' },
-    },
+
     {
       field: 'campo5',
       headerName: 'Abono a Cuenta',

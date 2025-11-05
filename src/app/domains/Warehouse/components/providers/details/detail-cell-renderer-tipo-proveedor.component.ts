@@ -98,6 +98,12 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
 
   // Column Defs con combo boxes en cascada
   columnDefs: any[] = [
+     {
+      field: 'vigente', //seran chechbox
+      headerName: 'Activo',
+      editable: true,      
+      width: 50
+    },
     {
       field: 'categoria',
       headerName: 'Categoría',
@@ -153,7 +159,13 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
         return { values: [] };
       },
       width: 200
-    }
+    },
+    {
+      field: 'vigente',
+      headerName: 'Principal', //seran chechbox
+      editable: true,      
+      width: 50
+    },
   ];
 
   // Grid Options
@@ -357,6 +369,7 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
+    delete cleanedData.type; // No actualizar el campo 'type' en ediciones
     delete cleanedData.typeProvider; // Solo para visualización
     delete cleanedData.tipoProveedorRows; // Solo para reconstruir grid
     delete cleanedData.detailType; // Propiedad interna del grid

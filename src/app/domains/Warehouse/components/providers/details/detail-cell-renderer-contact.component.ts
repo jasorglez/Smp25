@@ -87,6 +87,12 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
   };
 
   contactColumnDefs = [
+     {
+      field: 'vigente', //seran chechbox
+      headerName: 'Activo',
+      editable: true,      
+      width: 66
+    },
     {
       field: 'campo2',
       headerName: 'Nombre Contacto',
@@ -143,7 +149,13 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
           }
           return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
         },
-      width: 190
+      width: 140
+    },
+     {
+      field: 'principal',
+      headerName: 'Principal', //seran chechbox
+      editable: true,      
+      width: 66
     },
   ];
 
