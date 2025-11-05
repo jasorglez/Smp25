@@ -1,0 +1,92 @@
+<div class="permissions-container">
+  <div class="row">
+      <!-- Columna de botones -->
+      <div class="col-auto">
+        <div class="d-flex flex-column gap-1">
+          <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveDetailChanges()">
+            <i class="bi bi-floppy"></i>
+          </button>
+          <button type="button" class="btn btn-warning ms-1 me-1">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+        </div>
+      </div>
+  
+  <div class="col">
+  <div *ngFor="let master of groupedPermissions" class="master-group">
+    <div id="master" class="permission-header master-header ">
+      <span class="permission-name">{{ master.masterPermissionName }}</span>
+      <label class="switch">
+        <input type="checkbox" [(ngModel)]="master.masterRead">
+        <span class="slider round"></span>
+      </label>
+    </div>
+
+    <!-- Nivel 2: Contenedor para los permisos detallados. Solo se muestra si masterRead es true -->
+    <div *ngIf="master.masterRead" class="details-container">
+      <div *ngFor="let detail of master.details" class="detail-group">
+        <div id="detail" class="permission-header detail-header">
+          <span class="permission-name">{{ detail.detailedPermissionName }}</span>
+          <label class="switch">
+            <input type="checkbox" [(ngModel)]="detail.detailedRead">
+            <span class="slider round"></span>
+          </label>
+        </div>
+
+        <!-- Nivel 3: Contenedor para los sub-detalles. Solo se muestra si detailedRead es true -->
+        <div *ngIf="detail.detailedRead" class="subdetails-container">
+          <div *ngFor="let subdetailGroup of detail.subdetails" class="subdetail-group">            
+            <!-- Nivel 3.5: Encabezado para el grupo de subdetalle (ej: "Empleados") -->
+            <div id="subdetail" class="permission-header subdetail-header-group">
+              <span class="permission-name">{{ subdetailGroup.subdetailedPermissionName }}</span>
+            </div>
+
+            <!-- Nivel 4: Renderizar el item "Principal" si existe -->
+            <div *ngIf="subdetailGroup.principal" class="crud-item-wrapper">
+              <div class="permission-header subdetail-header">
+                <span class="permission-name">{{ subdetailGroup.principal.name }}</span>
+                <div class="crud-permissions">
+                  <label class="switch">
+                    <input type="checkbox" [(ngModel)]="subdetailGroup.principal.canRead">
+                    <span class="slider round"></span>
+                  </label>
+                </div>
+              </div>
+              <!-- Permisos CRUD para "Principal" -->
+              <div *ngIf="subdetailGroup.principal.canRead" class="crud-permissions-container">
+                <label><input type="checkbox" [(ngModel)]="subdetailGroup.principal.canCreate"> Crear</label>
+                <label><input type="checkbox" [(ngModel)]="subdetailGroup.principal.canUpdate"> Actualizar</label>
+                <label><input type="checkbox" [(ngModel)]="subdetailGroup.principal.canDelete"> Borrar</label>
+              </div>
+            </div>
+
+            <!-- Nivel 4.5: Contenedor para los hijos, visible solo si 'Principal' tiene canRead=true -->
+            <div *ngIf="subdetailGroup.principal && subdetailGroup.principal.canRead" class="children-container">
+              <!-- Iterar sobre los items hijos (Ahorros, Prestamos, etc.) -->
+              <div  *ngFor="let child of subdetailGroup.children" class="crud-item-wrapper">
+                <div id="columns" class="permission-header subdetail-header">
+                  <span class="permission-name">{{ child.name }}</span>
+                  <div class="crud-permissions">
+                    <label class="switch">
+                      <input type="checkbox" [(ngModel)]="child.canRead">
+                      <span class="slider round"></span>
+                    </label>
+                  </div>
+                </div>
+                <!-- Permisos CRUD para el hijo -->
+                <div *ngIf="child.canRead" class="crud-permissions-container">
+                  <label><input type="checkbox" [(ngModel)]="child.canCreate"> Crear</label>
+                  <label><input type="checkbox" [(ngModel)]="child.canUpdate"> Actualizar</label>
+                  <label><input type="checkbox" [(ngModel)]="child.canDelete"> Borrar</label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    </div>
+  </div>
+</div>
+</div>

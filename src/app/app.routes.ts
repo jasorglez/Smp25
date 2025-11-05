@@ -1621,6 +1621,65 @@ export const routes: Routes = [
                 canDeactivate: [UnsavedChangesGuard],
           },
           {
+            path: 'materia-prima',
+            loadComponent: () =>
+              import(
+                './domains/ModShoppingDelison/pages/materia-prima/materia-prima.component'
+              ).then((m) => m.MateriaPrimaComponent),
+            children: [
+              {
+                path: 'materiales-maestro',
+                loadComponent: () =>
+                  import(
+                    './domains/Almacenes/components/materiales-maestro/materiales-maestro.component'
+                  ).then((m) => m.MaterialesMaestroComponent),
+                canDeactivate: [UnsavedChangesGuard],
+              },
+              {
+                path: 'cat-fam-sub',
+                loadComponent: () =>
+                  import(
+                    './domains/Almacenes/components/cat-fam-sub/cat-fam-sub.component'
+                  ).then((m) => m.CatFamSubComponent),
+                canDeactivate: [UnsavedChangesGuard],
+              },
+              {
+                path: 'primera-fase',
+                loadComponent: () =>
+                  import(
+                    './domains/Warehouse/components/materials/materials.component'
+                  ).then((m) => m.MaterialsComponent),
+                data: { type: 'PRIMERA_FASE' },
+                canDeactivate: [UnsavedChangesGuard],
+              },
+              {
+                path: 'primera-fase-historico',
+                loadComponent: () =>
+                  import(
+                    './domains/Warehouse/components/materials/materials.component'
+                  ).then((m) => m.MaterialsComponent),
+                data: { type: 'PRIMERA_FASE_HISTORICO' },
+              },
+              {
+                path: 'segunda-fase',
+                loadComponent: () =>
+                  import(
+                    './domains/Warehouse/components/materials/materials.component'
+                  ).then((m) => m.MaterialsComponent),
+                data: { type: 'SEGUNDA_FASE' },
+                canDeactivate: [UnsavedChangesGuard],
+              },
+              {
+                path: 'segunda-fase-historico',
+                loadComponent: () =>
+                  import(
+                    './domains/Warehouse/components/materials/materials.component'
+                  ).then((m) => m.MaterialsComponent),
+                data: { type: 'SEGUNDA_FASE_HISTORICO' },
+              },
+            ],
+          },
+          {
             path: 'requisitions',
             loadComponent: () =>
               import(

@@ -71,3 +71,22 @@ export class RolesService {
     }
 
 }
+
+export interface RolesxDetailedPermission {
+  id?: number;
+  idMasterPermission?: number;
+  masterRead?: boolean;
+  idDetailedPermission?: number;
+  detailedRead?: boolean;
+  subdetailedPermissionName?: string;
+  idShowPermition?: number;
+  idRole?: number;
+  idPosicion?: number;
+  canCreate?: boolean;
+  canRead?: boolean;
+  canUpdate?: boolean;
+  canDelete?: boolean;
+  active?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}

@@ -4,6 +4,7 @@ import { DomainsModule } from 'app/domains/domainsmodule';
 import {
   CellDoubleClickedEvent,
   ColDef,
+  ColGroupDef,
   GridApi,
   GridReadyEvent,
   ICellRendererParams,
@@ -107,7 +108,17 @@ export class RolesDetailedDelisonComponent implements OnInit {
   public rowSelection: 'single' | 'multiple' = 'single';
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'never';
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'never';
-
+  rowDataPrue = [
+    {masterPermissionName: "Recursos Humanos", masterRead: true, detailedPermissionName: "Empleados", detailedRead: true, subdetailedPermissionName:  "Empleados", canRead: true, canCreate: true, canUpdate: true, canDelete: true},
+    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Empleados", detailedRead: true, subdetailedPermissionName:  "Horarios", canRead: true, canCreate: true, canUpdate: true, canDelete: true},
+    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Empleados", detailedRead: true, subdetailedPermissionName:  "Historico Préstamos", canRead: true, canCreate: true, canUpdate: true, canDelete: true},
+    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Empleados", detailedRead: true, subdetailedPermissionName:  "Historico Ahorros", canRead: true, canCreate: true, canUpdate: true, canDelete: true},
+    {masterPermissionName: "Recursos Humanos", masterRead: true, detailedPermissionName: "Nómina", detailedRead: true, subdetailedPermissionName:  "Nómina", canRead: true, canCreate: true, canUpdate: true, canDelete: true},
+    {masterPermissionName: "Recursos Humanos", masterRead: true, detailedPermissionName: "Nómina", detailedRead: true, subdetailedPermissionName:  "Bonos Historicos", canRead: true, canCreate: true, canUpdate: true, canDelete: true},
+    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Nómina", detailedRead: true, subdetailedPermissionName:  "Histórico de Nominas Digitales", canRead: true, canCreate: true, canUpdate: true, canDelete: true},
+    {masterPermissionName: "Compras delison", masterRead: true, detailedPermissionName: "Proveedores", detailedRead: true, subdetailedPermissionName:  "Proveedores", canRead: true, canCreate: true, canUpdate: true, canDelete: true},
+    {masterPermissionName: "Compras delison", masterRead: true, detailedPermissionName: "Requisiciones", detailedRead: true, subdetailedPermissionName:  "Requisiciones", canRead: true, canCreate: true, canUpdate: true, canDelete: true},
+  ]
   components = {
     multiLineEditor: MultiLineEditorComponent,
     autocompleteEditor: AutocompleteEditorComponent,
@@ -138,20 +149,52 @@ export class RolesDetailedDelisonComponent implements OnInit {
     },
   };
 
-  get colDetail(): ColDef[] {
+  public autoGroupColumnDef: ColDef = {
+    headerName: 'Permisos',
+    minWidth: 300,
+    cellRendererParams: {
+      suppressCount: true, // No mostrar el contador de hijos (ej: (3))
+      // Usamos un valueGetter para mostrar el valor correcto en la fila de grupo
+      valueGetter: params => {
+        if (params.node.group) {
+          // Para el primer nivel de grupo (masterPermissionName)
+          if (params.node.level === 0) {
+            const masterReadValue = params.data.masterRead;
+            return `Ver: ${masterReadValue ? 'Sí' : 'No'}`;
+          }
+          // Para el segundo nivel de grupo (detailedPermissionName)
+          if (params.node.level === 1) {
+            const detailedReadValue = params.data.detailedRead;
+            return `Ver: ${detailedReadValue ? 'Sí' : 'No'}`;
+          }
+        }
+        // Para las filas hoja, no mostramos nada extra aquí
+        return '';
+      },
+    },
+  };
+
+  get colDetail(): (ColDef | ColGroupDef)[] {
     return [
-      {
-        field: 'masterPermissionName',
-        headerName: 'Permiso Maestro',
-        flex: 4,
-        rowGroup: true,
-        hide: true
-      },
-      {
-        field: 'detailedPermissionName',
-        headerName: 'Permiso Detallado',
-        flex: 7
-      },
+    {
+      field: 'masterPermissionName',
+      headerName: 'Permiso Maestro',
+      rowGroup: true,
+      hide: true
+    },
+    {
+      field: 'detailedPermissionName',
+      headerName: 'Permiso Detallado',
+      rowGroup: true,
+      hide: true
+    },
+    {
+      field: 'subdetailedPermissionName',
+      headerName: 'Permiso',
+      flex: 7
+    },
+    
+    
       {
         field: 'idDetailedPermission',
         headerName: 'ID Permiso Detallado',
@@ -161,41 +204,57 @@ export class RolesDetailedDelisonComponent implements OnInit {
       {
         field: 'canRead',
         headerName: 'Ver',
+        cellRenderer: 'agCheckboxCellRenderer',
         editable: (params) => {
           if (params.data.__isNew) {
             return true;
           }
           return this.authService.getCrudPermission('setup', 'roles', 'update');
+        },
+        cellRendererParams: {
+          disabled: false,
         },
       },
       {
         field: 'canCreate',
         headerName: 'Crear',
+        cellRenderer: 'agCheckboxCellRenderer',
         editable: (params) => {
           if (params.data.__isNew) {
             return true;
           }
           return this.authService.getCrudPermission('setup', 'roles', 'update');
+        },
+        cellRendererParams: {
+          disabled: false,
         },
       },
       {
         field: 'canUpdate',
         headerName: 'Actualizar',
+        cellRenderer: 'agCheckboxCellRenderer',
         editable: (params) => {
           if (params.data.__isNew) {
             return true;
           }
           return this.authService.getCrudPermission('setup', 'roles', 'update');
         },
+        cellRendererParams: {
+          disabled: false,
+        },
       },
       {
         field: 'canDelete',
         headerName: 'Borrar',
+        cellRenderer: 'agCheckboxCellRenderer',
         editable: (params) => {
           if (params.data.__isNew) {
             return true;
           }
           return this.authService.getCrudPermission('setup', 'roles', 'update');
+        },
+        cellRendererParams: {
+          disabled: false,
         },
       },
     ];
@@ -204,9 +263,28 @@ export class RolesDetailedDelisonComponent implements OnInit {
   obtenerDatos(idRole: number, idPosicion: number) {
     this.rolesService.getPermissionsByRoles( this.idEmpresa , idRole, idPosicion)
       .subscribe((data: any) => {
-        this.rowData = [];
         if(this.authService.getCrudPermission('setup', 'roles', 'read')){
-        this.rowData = data;
+          // Obtenemos los masterPermissionName que tienen masterRead = false
+          const mastersToFilter = data
+            .filter(item => item.masterRead === false)
+            .map(item => item.masterPermissionName);
+
+          // Obtenemos los detailedPermissionName que tienen detailedRead = false
+          const detailsToFilter = data
+            .filter(item => item.detailedRead === false)
+            .map(item => item.detailedPermissionName);
+
+          // Filtramos los datos
+          const filteredData = data.filter(item => {
+            // Si el masterRead del item es false, no lo incluimos
+            if (mastersToFilter.includes(item.masterPermissionName)) return false;
+            // Si el detailedRead del item es false, no lo incluimos
+            if (detailsToFilter.includes(item.detailedPermissionName)) return false;
+            return true;
+          });
+          this.rowData = filteredData;
+        } else {
+          this.rowData = [];
         }
         console.log(this.rowData)
 
