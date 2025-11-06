@@ -58,7 +58,7 @@ export class PermissionsViewComponent implements OnInit {
   idPosicion: number;
   idEmpresa: number;
   rawData: any[] = [];
-
+  notSavedChanges: boolean = false;
 
   // Datos planos originales como los recibes de la API
   /*rawData = [
@@ -103,6 +103,31 @@ export class PermissionsViewComponent implements OnInit {
          this.groupedPermissions = this.transformData(this.rawData);
        });
     this.groupedPermissions = this.transformData(this.rawData);
+  }
+
+  checkForChanges() {
+    const modifiedPermissions = this.untransformData(this.groupedPermissions);
+    this.notSavedChanges = modifiedPermissions.length > 0;
+  }
+
+  revertChanges() {
+    // Volvemos a transformar los datos originales para descartar cualquier cambio
+    this.groupedPermissions = this.transformData(this.rawData);
+    // Reseteamos el indicador de cambios
+    this.notSavedChanges = false;
+    //alerts.basicAlert('Cambios revertidos', 'Se han descartado los cambios no guardados.', 'info');
+  }
+
+  onMasterReadChange(master: MasterPermission) {
+    this.checkForChanges();
+  }
+
+  onDetailedReadChange(detail: DetailedPermission) {
+    this.checkForChanges();
+  }
+
+  onCrudChange(permission: CrudPermission) {
+    this.checkForChanges();
   }
 
   /**
@@ -231,6 +256,7 @@ export class PermissionsViewComponent implements OnInit {
         'Los permisos se han guardado correctamente.',
         'success'
       );
+      this.notSavedChanges = false;
       this.trackingService.addLog(this.trackingService.getnameComp(),'Update/Add Registros en Detalle de Roles', 'Menu Administracion Detalle de Roles',  this.trackingService.getEmail());
       this.obtenerDatos(this.idRole, this.idPosicion);
 
