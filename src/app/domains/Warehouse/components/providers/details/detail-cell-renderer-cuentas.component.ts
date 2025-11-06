@@ -79,7 +79,7 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
     masterDetail: true,
      isRowMaster: (dataItem) => {
     // Asignar un detailType por defecto si no existe para evitar errores en el selector
-    if (!dataItem.detailType) dataItem.detailType = 'campo3';
+    if (!dataItem.detailType) dataItem.detailType = 'campo1';
     return true; // Todas las filas de proveedores son maestras
   },
     //detailCellRenderer: 'detallesCuentasRenderer',
@@ -99,7 +99,7 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
           },
         }
       };
-    } else if (params.data.detailType === 'campo3') {
+    } else if (params.data.detailType === 'campo1') {
       params.node.setRowHeight(800);
       return {
         component: 'detallesCuentasRenderer',
@@ -127,8 +127,8 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
 
     console.log('Columns to autosize:', allColumnIds);
 
-    // Autoajustar todas las columnas al contenido (skipHeader=true considera header y datos)
-    params.api.autoSizeColumns(allColumnIds, true);
+    // Autoajustar todas las columnas al contenido (skipHeader=false incluye header en el cálculo)
+    params.api.autoSizeColumns(allColumnIds, false);
 
     console.log('Autosize completed');
   }
@@ -141,21 +141,18 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
       field: 'campo3',
       headerName: 'Fecha Requisicion',
       editable: false,
-      // Este cellRenderer muestra el ícono y el valor, y permite expandir/colapsar el detalle al hacer clic
-      cellRenderer: this.createDetailToggleCellRenderer('campo3'),
-      flex: 1,
-      cellStyle: { backgroundColor: '#d4edda' },
-    },    
+      flex: 1
+    },
     {
       field: 'id',
-      headerName: 'Requisicion',      
-      
+      headerName: 'Requisicion',
+
     },
 
-    { 
-      field: 'campo8', 
-      headerName: 'Fecha OC', 
-      editable: true, 
+    {
+      field: 'campo8',
+      headerName: 'Fecha OC',
+      editable: true,
       cellEditor: 'agDateCellEditor',
       cellEditorParams: {
         min: '2020-01-01',
@@ -212,24 +209,26 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
         }
         return true;
       },
-      flex: 1 
+      flex: 1
     },
-    { 
-      field: 'campo2', 
-      headerName: 'Tipo Factura/Nota', 
-      editable: true, 
+    {
+      field: 'campo2',
+      headerName: 'Tipo Factura/Nota',
+      editable: true,
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: {
         values: ['FACTURA', 'NOTA'] // Opciones del selector
       },
       flex: 1
     },
-    { 
-      field: 'campo1', 
-      headerName: 'Numero Factura/Nota', 
-      editable: true, 
-      flex: 1
-      
+    {
+      field: 'campo1',
+      headerName: 'Numero Factura/Nota',
+      editable: false,
+      // Este cellRenderer muestra el ícono y el valor, y permite expandir/colapsar el detalle al hacer clic
+      cellRenderer: this.createDetailToggleCellRenderer('campo1'),
+      flex: 1,
+      cellStyle: { backgroundColor: '#d4edda' }
     },
     { 
       field: 'campo4', 
@@ -288,12 +287,12 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
           const value = isNumeric ? this.currencyPipe.transform(params.value, '', 'symbol', '1.2-2') : '$0.00';
           div.innerHTML = `${value}`;
         break;
-        case 'campo3':
+        case 'campo1':
           div.innerHTML = `${params.value}`;
         break;
       }
-        
-     
+
+
       div.style.cursor = 'pointer';
       div.style.textDecoration = 'underline';
       div.style.color = '#0d6efd';
@@ -302,7 +301,7 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
         const node = params.node;
         const api = params.api;
         const isCurrentlyExpanded = node.expanded && params.data.detailType === detailType;
-        
+
         if (isCurrentlyExpanded) {
           // Si ya está expandido con el mismo detalle, simplemente colapsar y limpiar el filtro.
           node.setExpanded(false);
