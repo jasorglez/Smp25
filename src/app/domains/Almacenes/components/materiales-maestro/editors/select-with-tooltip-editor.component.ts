@@ -253,6 +253,9 @@ export class SelectWithTooltipEditorComponent implements ICellEditorAngularComp,
       this.renderer.setStyle(optionElement, 'cursor', 'pointer');
       this.renderer.setStyle(optionElement, 'transition', 'background-color 0.2s ease');
       this.renderer.setStyle(optionElement, 'border-bottom', '1px solid #f0f0f0');
+      this.renderer.setStyle(optionElement, 'user-select', 'none');
+      this.renderer.setStyle(optionElement, 'position', 'relative');
+      this.renderer.setStyle(optionElement, 'z-index', '1');
 
       if (option.id === this.selectedValue) {
         this.renderer.setStyle(optionElement, 'background-color', '#2196f3');
@@ -270,8 +273,17 @@ export class SelectWithTooltipEditorComponent implements ICellEditorAngularComp,
       this.renderer.setStyle(textElement, 'text-overflow', 'ellipsis');
       this.renderer.appendChild(optionElement, textElement);
 
-      // Event listeners
-      this.renderer.listen(optionElement, 'click', () => this.selectOption(option));
+      // Event listeners - Click primero con prioridad
+      this.renderer.listen(optionElement, 'mousedown', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.selectOption(option);
+      });
+      this.renderer.listen(optionElement, 'click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.selectOption(option);
+      });
       this.renderer.listen(optionElement, 'mouseenter', () => {
         this.hoveredOptionId = option.id;
         this.renderer.setStyle(optionElement, 'background-color', '#e3f2fd');
@@ -313,10 +325,23 @@ export class SelectWithTooltipEditorComponent implements ICellEditorAngularComp,
   }
 
   selectOption(option: SelectOption): void {
+    console.log('Opción seleccionada:', option.description, 'ID:', option.id);
     this.selectedValue = option.id;
-    this.removeDropdownFromBody();
+
+    // Limpiar inmediatamente
+    this.showTooltip = false;
+    this.hoveredOptionId = null;
+    this.hoveredOption = null;
+    this.currentHoveredElement = null;
+
+    // Remover elementos del DOM
     this.removeTooltipFromBody();
-    this.params.stopEditing();
+    this.removeDropdownFromBody();
+
+    // Detener edición
+    if (this.params && this.params.stopEditing) {
+      this.params.stopEditing();
+    }
   }
 
   onOptionHover(option: SelectOption, element: HTMLElement): void {

@@ -385,7 +385,6 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         field: 'subfamilyCount',
         headerName: 'Donde Usa',
         width: 150,
-        filter: true,
         cellRenderer: (params: any) => {
           const count = params.value || 0;
           return count;
@@ -396,7 +395,6 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         field: 'providerCount',
         headerName: 'Proveedor',
         width: 120,
-        filter: true,
         cellRenderer: (params: any) => {
           return params.value || 0;
         },
