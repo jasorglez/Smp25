@@ -291,7 +291,7 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
   get columnDefs(): ColDef[] {
     return [
       {
-        headerName: 'Producto/Area',
+        headerName: 'Categoria/Producto',
         field: 'subfamiliaDisplay',
         width: 200,
         cellRenderer: (params: any) => {

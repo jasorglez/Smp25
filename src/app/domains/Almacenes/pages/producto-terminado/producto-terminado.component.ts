@@ -245,7 +245,7 @@ export class ProductoTerminadoComponent {
     get columnDefs(): ColDef[] {
       return [
         {
-          headerName: 'Categoría',
+          headerName: 'Categoría/Producto',
           field: 'categoryDisplay',
           width: 300,
           cellRenderer: (params: any) => {
@@ -270,7 +270,7 @@ export class ProductoTerminadoComponent {
           }
         },
         {
-          headerName: 'Presentación',
+          headerName: 'Sabor',
           field: 'familyDisplay',
           width: 300,
           cellRenderer: (params: any) => {
@@ -292,7 +292,7 @@ export class ProductoTerminadoComponent {
           }
         },
         {
-          headerName: 'Nombre',
+          headerName: 'Presentación',
           field: 'subfamilyDisplay',
           width: 300,
           cellRenderer: (params: any) => {
