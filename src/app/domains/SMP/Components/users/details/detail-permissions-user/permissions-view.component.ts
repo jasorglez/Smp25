@@ -1,13 +1,14 @@
 import { Component, effect, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RolesService, RolesxDetailedPermission } from 'app/services/roles.service';
+import { RolesService, CrudxDetailedPermission } from 'app/services/roles.service';
 import { SignalsService } from 'app/services/signals.service';
 import { forkJoin, lastValueFrom } from 'rxjs';
 import { TimeService } from 'app/services/time.service';
 import { alerts } from 'app/helpers/alerts';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { TrackingService } from 'app/services/tracking.service';
+import { PermitionsService } from 'app/services/permitions.service';
 
 // --- Interfaces para una mejor definición de tipos ---
 interface CrudPermission {
@@ -51,6 +52,7 @@ interface MasterPermission {
 })
 export class PermissionsViewByUserComponent implements OnInit {
   private rolesService = inject(RolesService);
+  private permitionsService = inject(PermitionsService);
   private signalsService = inject(SignalsService);
   private timeService = inject(TimeService);
   private trackingService = inject(TrackingService);
@@ -65,6 +67,7 @@ export class PermissionsViewByUserComponent implements OnInit {
   branchName: string;
   idCompany: number;
   rawData: any[] = [];
+  notSavedChanges: boolean = false;
 
 
   // Datos planos originales como los recibes de la API
@@ -87,36 +90,27 @@ export class PermissionsViewByUserComponent implements OnInit {
   groupedPermissions: MasterPermission[] = [];
 
   constructor() {
-    effect(() => {
-      this.idRole = this.signalsService.getIdRole()();
-      this.idPosicion = this.signalsService.getIdPosicion()();
-      this.idEmpresa = this.signalsService.getRootSelectedBySidebar()();
-      this.obtenerDatos(this.idRole, this.idPosicion);
-    });
+    // Remove effect as idRole and idPosicion should come from agInit params
   }
 
   ngOnInit(): void {
-    this.idRole = this.signalsService.getIdRole()();
-    this.idPosicion = this.signalsService.getIdPosicion()();
+    // ngOnInit is called before agInit, so idRole and idPosicion won't be set yet.
+    // Data fetching should happen in agInit for cell renderers.
     this.idEmpresa = this.signalsService.getRootSelectedBySidebar()();
-    this.obtenerDatos(this.idRole, this.idPosicion);
   }
-  agInit(params: ICellRendererParams): void {
+  agInit(params: ICellRendererParams & { idUser: number, idBranch: number, idRole: number, idPosicion: number }): void {
       this.params = params;
-      this.userId = params.data.idUser;
-      this.userName = params.data.userName || '';
-      this.branchId = params.data.idPermission;
-      this.branchName = params.data.name || '';
+      this.userId = params.idUser; // Corrected access
+      this.branchId = params.idBranch; // Corrected access (assuming idBranch is passed as idBranch)
+      this.idRole = params.idRole; // Corrected access
+      this.idPosicion = params.idPosicion; // Corrected access
       this.idCompany = this.signalsService.getRootSelectedBySidebar()();
-      // Cargar catálogos y datos
-      /*this.loadCatalogs();
-      this.getGeneralPosicion();
-      this.getRoles();
-      this.obternerDatos();*/
+      // Fetch data once all necessary parameters are available
+      this.obtenerDatos(this.idCompany, this.userId, this.branchId, this.idRole, this.idPosicion);
     }
 
-  obtenerDatos(idRole: number, idPosicion: number) {
-     this.rolesService.getPermissionsByRoles(this.idEmpresa, idRole, idPosicion)
+  obtenerDatos(idCompany: number, idUser: number, idBranch: number, idRole: number, idPosicion: number) {
+     this.permitionsService.getPermitionsSencillo(idCompany, idUser, idBranch, idRole, idPosicion)
        .subscribe((data: any) => {
          this.rawData = data;
          console.log("new data", this.rawData);
@@ -124,6 +118,20 @@ export class PermissionsViewByUserComponent implements OnInit {
        });
     this.groupedPermissions = this.transformData(this.rawData);
   }
+   modificar(){
+    //if(this.authService.getCrudPermission('setup', 'users', 'create')){
+       this.permitionsService.getPermitionsDetail(this.idEmpresa, this.userId, this.branchId, this.idRole, this.idPosicion)
+      .subscribe((data: any) => {
+        //this.editable = true
+        this.rawData = data;
+        this.groupedPermissions = this.transformData(this.rawData);
+      });
+    //}else if(this.authService.getCrudPermission('setup', 'users', 'update')){
+       //this.editable = true
+    //}/
+       
+  }
+
 
   /**
    * Transforma una lista plana de permisos en una estructura jerárquica.
@@ -196,6 +204,30 @@ export class PermissionsViewByUserComponent implements OnInit {
     return Array.from(masterMap.values());
   }
 
+  checkForChanges() {
+      const modifiedPermissions = this.untransformData(this.groupedPermissions);
+      this.notSavedChanges = modifiedPermissions.length > 0;
+    }
+  
+    revertChanges() {
+      // Volvemos a transformar los datos originales para descartar cualquier cambio
+      this.groupedPermissions = this.transformData(this.rawData);
+      // Reseteamos el indicador de cambios
+      this.notSavedChanges = false;
+      //alerts.basicAlert('Cambios revertidos', 'Se han descartado los cambios no guardados.', 'info');
+    }
+  
+    onMasterReadChange(master: MasterPermission) {
+      this.checkForChanges();
+    }
+  
+    onDetailedReadChange(detail: DetailedPermission) {
+      this.checkForChanges();
+    }
+  
+    onCrudChange(permission: CrudPermission) {
+      this.checkForChanges();
+    }
   async saveDetailChanges() {
     const modifiedPermissions = this.untransformData(this.groupedPermissions);
 
@@ -215,7 +247,9 @@ export class PermissionsViewByUserComponent implements OnInit {
 
         // Solo procesamos si no hemos registrado ya un cambio para esta combinación única.
         if (!changesMap.has(uniqueKey)) {
-          const payload: RolesxDetailedPermission = {
+          const payload: CrudxDetailedPermission = {
+            idUser: this.userId,
+            idBranch: this.branchId,
             idMasterPermission: perm.idMasterPermission,
             masterRead: perm.masterRead,
             idDetailedPermission: perm.idDetailedPermission,
@@ -240,7 +274,7 @@ export class PermissionsViewByUserComponent implements OnInit {
       const saveObservables = Array.from(changesMap.values()).map(payload => {
         console.log("Enviando payload único:", payload);
         // Usamos el endpoint de "add" que internamente crea o actualiza.
-        return this.rolesService.addDetailedPermissionsxRoles(payload);
+        return this.permitionsService.addPermitions(payload);
       });
 
       // Ejecutamos todas las operaciones de creación y actualización en paralelo
@@ -251,8 +285,8 @@ export class PermissionsViewByUserComponent implements OnInit {
         'Los permisos se han guardado correctamente.',
         'success'
       );
+      this.notSavedChanges = false;
       this.trackingService.addLog(this.trackingService.getnameComp(),'Update/Add Registros en Detalle de Roles', 'Menu Administracion Detalle de Roles',  this.trackingService.getEmail());
-      this.obtenerDatos(this.idRole, this.idPosicion);
 
     } catch (error) {
       console.error("Error al guardar los permisos:", error);
@@ -285,10 +319,10 @@ export class PermissionsViewByUserComponent implements OnInit {
             const hasAnyPermission = master.masterRead || detail.detailedRead || permission.canRead || permission.canCreate || permission.canUpdate || permission.canDelete;
             const isNewAndHasPermissions = !original.id && hasAnyPermission;
 
-            if (isModified || isNewAndHasPermissions) {
+            //if (isModified || isNewAndHasPermissions) {
               // Añadimos el permiso modificado junto con los valores de sus padres
               modifiedList.push({ ...permission, masterRead: master.masterRead, detailedRead: detail.detailedRead });
-            }
+            //}
           });
         });
       });

@@ -3,10 +3,19 @@
       <!-- Columna de botones -->
       <div class="col-auto">
         <div class="d-flex flex-column gap-1">
+          <button type="button" class="btn btn-primary ms-1 me-1 position-relative" (click)="modificar()" >
+            <i class="bi bi-pencil"></i>
+            
+          </button>
           <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveDetailChanges()">
             <i class="bi bi-floppy"></i>
+            <span
+              class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+              *ngIf="notSavedChanges">
+              <span class="visually-hidden">Hay cambios sin guardar</span>
+            </span>
           </button>
-          <button type="button" class="btn btn-warning ms-1 me-1">
+          <button type="button" class="btn btn-warning ms-1 me-1"  (click)="revertChanges()">
             <i class="bi bi-arrow-clockwise"></i>
           </button>
         </div>
@@ -17,7 +26,7 @@
     <div id="master" class="permission-header master-header ">
       <span class="permission-name">{{ master.masterPermissionName }}</span>
       <label class="switch">
-        <input type="checkbox" [(ngModel)]="master.masterRead">
+        <input type="checkbox" [(ngModel)]="master.masterRead"  (ngModelChange)="onMasterReadChange(master)">
         <span class="slider round"></span>
       </label>
     </div>
@@ -28,7 +37,7 @@
         <div id="detail" class="permission-header detail-header">
           <span class="permission-name">{{ detail.detailedPermissionName }}</span>
           <label class="switch">
-            <input type="checkbox" [(ngModel)]="detail.detailedRead">
+            <input type="checkbox" [(ngModel)]="detail.detailedRead" (ngModelChange)="onDetailedReadChange(detail)">
             <span class="slider round"></span>
           </label>
         </div>
@@ -47,16 +56,16 @@
                 <span class="permission-name">{{ subdetailGroup.principal.name }}</span>
                 <div class="crud-permissions">
                   <label class="switch">
-                    <input type="checkbox" [(ngModel)]="subdetailGroup.principal.canRead">
+                    <input type="checkbox" [(ngModel)]="subdetailGroup.principal.canRead" (ngModelChange)="onCrudChange(subdetailGroup.principal)">
                     <span class="slider round"></span>
                   </label>
                 </div>
               </div>
               <!-- Permisos CRUD para "Principal" -->
               <div *ngIf="subdetailGroup.principal.canRead" class="crud-permissions-container">
-                <label><input type="checkbox" [(ngModel)]="subdetailGroup.principal.canCreate"> Crear</label>
-                <label><input type="checkbox" [(ngModel)]="subdetailGroup.principal.canUpdate"> Actualizar</label>
-                <label><input type="checkbox" [(ngModel)]="subdetailGroup.principal.canDelete"> Borrar</label>
+                <label><input type="checkbox" [(ngModel)]="subdetailGroup.principal.canCreate"(ngModelChange)="onCrudChange(subdetailGroup.principal)"> Crear</label>
+                <label><input type="checkbox" [(ngModel)]="subdetailGroup.principal.canUpdate"(ngModelChange)="onCrudChange(subdetailGroup.principal)"> Actualizar</label>
+                <label><input type="checkbox" [(ngModel)]="subdetailGroup.principal.canDelete"(ngModelChange)="onCrudChange(subdetailGroup.principal)"> Borrar</label>
               </div>
             </div>
 
@@ -68,16 +77,16 @@
                   <span class="permission-name">{{ child.name }}</span>
                   <div class="crud-permissions">
                     <label class="switch">
-                      <input type="checkbox" [(ngModel)]="child.canRead">
+                      <input type="checkbox" [(ngModel)]="child.canRead" (ngModelChange)="onCrudChange(child)">
                       <span class="slider round"></span>
                     </label>
                   </div>
                 </div>
                 <!-- Permisos CRUD para el hijo -->
                 <div *ngIf="child.canRead" class="crud-permissions-container">
-                  <label><input type="checkbox" [(ngModel)]="child.canCreate"> Crear</label>
-                  <label><input type="checkbox" [(ngModel)]="child.canUpdate"> Actualizar</label>
-                  <label><input type="checkbox" [(ngModel)]="child.canDelete"> Borrar</label>
+                  <label><input type="checkbox" [(ngModel)]="child.canCreate" (ngModelChange)="onCrudChange(child)"> Crear</label>
+                  <label><input type="checkbox" [(ngModel)]="child.canUpdate" (ngModelChange)="onCrudChange(child)"> Actualizar</label>
+                  <label><input type="checkbox" [(ngModel)]="child.canDelete" (ngModelChange)="onCrudChange(child)"> Borrar</label>
                 </div>
               </div>
             </div>

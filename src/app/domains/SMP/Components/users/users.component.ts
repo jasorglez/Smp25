@@ -278,7 +278,7 @@ constructor() {
       return true; // Todas las filas pueden tener detalles de permisos
     },
     detailCellRenderer: 'detailPermissionsRenderer',
-    detailRowHeight: 600,
+    detailRowHeight: 1000,
     rowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
