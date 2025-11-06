@@ -126,7 +126,7 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
         return { component: 'detailWarehousesRenderer' };
       }
     },
-    detailRowHeight: 600
+    detailRowHeight: 21000
   };
 
   get permissionsColumnDefs(): any[] {

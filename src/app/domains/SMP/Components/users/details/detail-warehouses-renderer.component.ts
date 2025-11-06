@@ -116,7 +116,7 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
     detailCellRendererSelector: (params) => {
     // Decide qué renderizador usar basado en la propiedad 'detailType'
     if (params.data.detailType === 'Permisos') {
-      params.node.setRowHeight(800);
+      params.node.setRowHeight(20000);
       return {
         component: 'PermissionsViewByUserComponent',
         params: {
@@ -135,7 +135,7 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
     } else 
     return undefined;
   },
-    detailRowHeight: 600,
+    detailRowHeight: 20000,
     rowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
