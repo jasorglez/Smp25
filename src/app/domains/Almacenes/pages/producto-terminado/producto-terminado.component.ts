@@ -260,27 +260,6 @@ export class ProductoTerminadoComponent {
             }
             return '';
           },
-          tooltipValueGetter: (params: any) => {
-            if (params.data.nodeLevel === 'category') {
-              const desc = params.data.valueAddition;
-              const abbr = params.data.valueAddition2;
-  
-              // Mostrar tooltip si alguno de los campos no es null/undefined/vacío
-              if (!desc && !abbr) return null;
-  
-              let tooltip = `📁 ${params.data.description}\n\n`;
-  
-              if (desc) {
-                tooltip += `📝 Descripción: ${desc}\n`;
-              }
-              if (abbr) {
-                tooltip += `🔤 Abreviatura: ${abbr}`;
-              }
-  
-              return tooltip;
-            }
-            return null;
-          },
           onCellClicked: (event: any) => {
             if (this.isDoubleClicking) return;
   
@@ -303,27 +282,6 @@ export class ProductoTerminadoComponent {
             }
             return '';
           },
-          tooltipValueGetter: (params: any) => {
-            if (params.data.nodeLevel === 'family') {
-              const desc = params.data.valueAddition;
-              const abbr = params.data.valueAddition2;
-  
-              // Mostrar tooltip si alguno de los campos no es null/undefined/vacío
-              if (!desc && !abbr) return null;
-  
-              let tooltip = `📂 ${params.data.description}\n\n`;
-  
-              if (desc) {
-                tooltip += `📝 Descripción: ${desc}\n`;
-              }
-              if (abbr) {
-                tooltip += `🔤 Abreviatura: ${abbr}`;
-              }
-  
-              return tooltip;
-            }
-            return null;
-          },
           onCellClicked: (event: any) => {
             if (this.isDoubleClicking) return;
   
@@ -342,30 +300,9 @@ export class ProductoTerminadoComponent {
               return `<span style="margin-right: 15px;"></span> ${params.data.description}`;
             }
             return '';
-          },
-          tooltipValueGetter: (params: any) => {
-            if (params.data.nodeLevel === 'subfamily') {
-              const desc = params.data.valueAddition;
-              const abbr = params.data.valueAddition2;
-  
-              // Mostrar tooltip si alguno de los campos no es null/undefined/vacío
-              if (!desc && !abbr) return null;
-  
-              let tooltip = `📄 ${params.data.description}\n\n`;
-  
-              if (desc) {
-                tooltip += `📝 Descripción: ${desc}\n`;
-              }
-              if (abbr) {
-                tooltip += `🔤 Abreviatura: ${abbr}`;
-              }
-  
-              return tooltip;
-            }
-            return null;
           }
         },
-        
+
         {
           headerName: 'Activo',
           field: 'vigente',
