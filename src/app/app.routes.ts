@@ -214,6 +214,14 @@ export const routes: Routes = [
                 canDeactivate: [UnsavedChangesGuard],
               },
               {
+                path: 'producto-terminado',
+                loadComponent: () =>
+                  import(
+                    './domains/Almacenes/pages/producto-terminado/producto-terminado.component'
+                  ).then((m) => m.ProductoTerminadoComponent),
+                canDeactivate: [UnsavedChangesGuard],
+              },
+              {
                 path: 'primera-fase',
                 loadComponent: () =>
                   import(

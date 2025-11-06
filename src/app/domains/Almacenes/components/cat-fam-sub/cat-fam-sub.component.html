@@ -296,11 +296,11 @@
         <!-- Mostrar jerarquía padre -->
         <div class="alert alert-secondary mb-3" *ngIf="selectedRowData">
           <strong>Jerarquía:</strong><br>
-          <span class="badge bg-primary me-1">{{ selectedRowData.orgHierarchy[0] }}</span> 
+          <span class="badge bg-primary me-1">{{ getCategoryName(selectedRowData.parentCategoryId) }}</span>
           →
           <span class="badge bg-info ms-1">{{ selectedRowData.description }}</span>
         </div>
-        
+
         <form (ngSubmit)="saveNewSubfamily()">
           <div class="mb-3">
             <label for="subfamilyDescription" class="form-label">

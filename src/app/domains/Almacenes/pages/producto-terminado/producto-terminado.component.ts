@@ -17,7 +17,8 @@ import { lastValueFrom } from 'rxjs';
   selector: 'app-producto-terminado',
   standalone: true,
   imports: [CommonModule, RouterModule, FormsModule, AgGridModule],
-  templateUrl: './producto-terminado.component.html'
+  templateUrl: './producto-terminado.component.html',
+  styleUrl: './producto-terminado.component.scss'
 })
 export class ProductoTerminadoComponent {
 
@@ -108,14 +109,14 @@ export class ProductoTerminadoComponent {
 
         // Cargar los 3 tipos de datos en paralelo
         console.log('📡 Solicitando datos al API:');
-        console.log('   - CATEGORY-PROD');
-        console.log('   - PRESENT-PROD');
-        console.log('   - NOMBRE-PROD');
+        console.log('   - CATEGORY-PROD (Categorías)');
+        console.log('   - PRESENT-PROD (Presentaciones)');
+        console.log('   - NAME-PROD (Nombres)');
 
         const [categories, families, subfamilies] = await Promise.all([
           lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'CATEGORY-PROD')),
           lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'PRESENT-PROD')),
-          lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'NOMBRE-PROD'))
+          lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'NAME-PROD'))
         ]);
 
         console.log('✅ Datos recibidos:');
@@ -290,7 +291,7 @@ export class ProductoTerminadoComponent {
           }
         },
         {
-          headerName: 'Presentacion',
+          headerName: 'Presentación',
           field: 'familyDisplay',
           width: 300,
           cellRenderer: (params: any) => {
@@ -720,7 +721,7 @@ export class ProductoTerminadoComponent {
         case 'subfamily':
           alerts.basicAlert(
             'Nivel máximo',
-            'No se pueden agregar elementos debajo de una subfamilia.',
+            'No se pueden agregar elementos debajo de un nombre de producto.',
             'warning'
           );
           break;
@@ -879,13 +880,24 @@ export class ProductoTerminadoComponent {
     // Contar subfamilias de una familia
     private getSubfamilyCountForFamily(familyId: string | number): number {
       if (!this.treeData || !familyId) return 0;
-      
+
       // Contar cuántas subfamilias tienen parentFamilyId igual al familyId
-      return this.treeData.filter(item => 
+      return this.treeData.filter(item =>
         item.nodeLevel === 'subfamily' && item.parentFamilyId === familyId
       ).length;
     }
-  
+
+    // Obtener el nombre de la categoría por ID
+    getCategoryName(categoryId: string | number): string {
+      if (!this.treeData || !categoryId) return 'N/A';
+
+      const category = this.treeData.find(item =>
+        item.nodeLevel === 'category' && item.originalId === categoryId
+      );
+
+      return category?.description || 'N/A';
+    }
+
     // ========== MÉTODOS PARA MODALES ==========
     
     // Abrir modal para nueva categoría
@@ -894,20 +906,20 @@ export class ProductoTerminadoComponent {
       this.showAddCategoryModal = true;
     }
     
-    // Abrir modal para nueva familia
+    // Abrir modal para nueva presentación
     openAddFamilyModal() {
       if (!this.selectedRowData || this.selectedNodeLevel !== 'category') {
-        alerts.basicAlert('Error', 'Seleccione una categoría para agregar una familia.', 'warning');
+        alerts.basicAlert('Error', 'Seleccione una categoría para agregar una presentación.', 'warning');
         return;
       }
       this.resetModalForm();
       this.showAddFamilyModal = true;
     }
-    
-    // Abrir modal para nueva subfamilia
+
+    // Abrir modal para nuevo nombre
     openAddSubfamilyModal() {
       if (!this.selectedRowData || this.selectedNodeLevel !== 'family') {
-        alerts.basicAlert('Error', 'Seleccione una familia para agregar una subfamilia.', 'warning');
+        alerts.basicAlert('Error', 'Seleccione una presentación para agregar un nombre.', 'warning');
         return;
       }
       this.resetModalForm();
@@ -1009,44 +1021,44 @@ export class ProductoTerminadoComponent {
   
       try {
         const response = await lastValueFrom(this.catalogsService.addCatalog(newFamily));
-        console.log('Respuesta del servidor (nueva familia):', response);
-        alerts.basicAlert('Éxito', 'Familia creada correctamente.', 'success');
+        console.log('Respuesta del servidor (nueva presentación):', response);
+        alerts.basicAlert('Éxito', 'Presentación creada correctamente.', 'success');
         this.closeModals();
         this.loadCatalogData();
       } catch (error: any) {
-        console.error('Error al crear familia:', error);
+        console.error('Error al crear presentación:', error);
         const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
-        alerts.basicAlert('Error', `Error al crear la familia: ${errorMsg}`, 'error');
+        alerts.basicAlert('Error', `Error al crear la presentación: ${errorMsg}`, 'error');
       }
     }
-    
-    // Guardar nueva subfamilia
+
+    // Guardar nuevo nombre
     async saveNewSubfamily() {
       if (!this.modalForm.description.trim()) {
         alerts.basicAlert('Error', 'El nombre es obligatorio.', 'warning');
         return;
       }
-  
+
       const newSubfamily = this.cleanDataForServer({
         valueAddition: this.modalForm.valueAddition,
         description: this.modalForm.description,
         valueAddition2: this.modalForm.valueAddition2,
-        type: 'NOMBRE-PROD',
+        type: 'NAME-PROD',
         parentId: this.selectedRowData.parentCategoryId,
         subParentId: this.selectedRowData.originalId,
         active: this.modalForm.active ? 1 : 0
       });
-  
+
       try {
         const response = await lastValueFrom(this.catalogsService.addCatalog(newSubfamily));
-        console.log('Respuesta del servidor (nueva subfamilia):', response);
-        alerts.basicAlert('Éxito', 'Subfamilia creada correctamente.', 'success');
+        console.log('Respuesta del servidor (nuevo nombre):', response);
+        alerts.basicAlert('Éxito', 'Nombre creado correctamente.', 'success');
         this.closeModals();
         this.loadCatalogData();
       } catch (error: any) {
-        console.error('Error al crear subfamilia:', error);
+        console.error('Error al crear nombre:', error);
         const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
-        alerts.basicAlert('Error', `Error al crear la subfamilia: ${errorMsg}`, 'error');
+        alerts.basicAlert('Error', `Error al crear el nombre: ${errorMsg}`, 'error');
       }
     }
     
