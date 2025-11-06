@@ -894,6 +894,7 @@ export class ReportesEstimacionesComponent {
    */
   downloadMultimedia(rowData: any) {
     const idOt = rowData.idOt;
+    const inmueble = rowData.cdc || 'N/A';
 
     if (!idOt) {
       alerts.basicAlert('Error', 'No se encontró el ID de la OT.', 'error');
@@ -910,18 +911,12 @@ export class ReportesEstimacionesComponent {
         if (response.success && response.data && response.data.downloadUrl) {
           const { downloadUrl, zipFileName, fileCount } = response.data;
 
-          // Crear elemento 'a' temporal para descargar el archivo
-          const link = document.createElement('a');
-          link.href = downloadUrl;
-          link.download = zipFileName;
-          link.target = '_blank';
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
+          // Abrir descarga directamente para evitar bloqueo del navegador
+          window.open(downloadUrl, '_blank');
 
           alerts.basicAlert(
             'Éxito',
-            `Descargando ${fileCount} archivo(s) multimedia de la OT ${rowData.otNumber || idOt}.`,
+            `Descargando ${fileCount} archivo(s) multimedia del INMUEBLE ${inmueble}.`,
             'success'
           );
 

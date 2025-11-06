@@ -123,6 +123,22 @@ export default class DetailClockComponent implements OnInit {
          });
        }
      },
+     onFirstDataRendered: (params) => {
+       console.log('onFirstDataRendered - autosizing columns...');
+
+       // Obtener todas las columnas
+       const allColumnIds: string[] = [];
+       params.api.getColumns()?.forEach((column: any) => {
+         allColumnIds.push(column.getId());
+       });
+
+       console.log('Columns to autosize:', allColumnIds);
+
+       // Autoajustar todas las columnas al contenido (skipHeader=true considera header y datos)
+       params.api.autoSizeColumns(allColumnIds, true);
+
+       console.log('Autosize completed');
+     }
    };
  
  

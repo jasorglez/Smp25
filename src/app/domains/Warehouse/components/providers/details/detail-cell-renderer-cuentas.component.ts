@@ -84,7 +84,7 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
   },
     //detailCellRenderer: 'detallesCuentasRenderer',
     detailCellRendererSelector: (params) => {
-    
+
     // Decide qué renderizador usar basado en la propiedad 'detailType'
     if (params.data.detailType === 'campo5') {
       params.node.setRowHeight(800);
@@ -101,7 +101,7 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
       };
     } else if (params.data.detailType === 'campo3') {
       params.node.setRowHeight(800);
-      return { 
+      return {
         component: 'detallesCuentasRenderer',
         params: {
           onMouseEnter: () => {clearTimeout(this.collapseTimer)},
@@ -110,11 +110,27 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
           },
         }
       };
-    }else 
+    }else
     return undefined; // No mostrar detalle si no hay tipo
   },
   detailCellRendererParams: {
     // Se inicializa vacío, se llenará en agInit
+  },
+  onFirstDataRendered: (params) => {
+    console.log('onFirstDataRendered - autosizing columns...');
+
+    // Obtener todas las columnas
+    const allColumnIds: string[] = [];
+    params.api.getColumns()?.forEach((column: any) => {
+      allColumnIds.push(column.getId());
+    });
+
+    console.log('Columns to autosize:', allColumnIds);
+
+    // Autoajustar todas las columnas al contenido (skipHeader=true considera header y datos)
+    params.api.autoSizeColumns(allColumnIds, true);
+
+    console.log('Autosize completed');
   }
   };
 

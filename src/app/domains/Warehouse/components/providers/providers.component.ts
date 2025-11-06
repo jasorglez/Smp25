@@ -683,16 +683,16 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
     // Determinar si la fila actual ya está expandida CON ESTE MISMO tipo de detalle
     const isCurrentlyExpanded = node.expanded && event.data.detailType === detailType;
 
-    // Colapsar cualquier otra fila que esté expandida
+    // Colapsar TODAS las filas expandidas (incluida la actual)
     api.forEachNode(otherNode => {
-      if (otherNode.expanded && otherNode.id !== node.id) {
+      if (otherNode.expanded) {
         otherNode.setExpanded(false);
       }
     });
 
-    if (isCurrentlyExpanded) { // Si se hace clic en la misma celda que ya está abierta...
-      // ...se cierra y se limpia el filtro.
-      node.setExpanded(false);
+    if (isCurrentlyExpanded) {
+      // Si se hace clic en la misma celda que ya está abierta...
+      // ...ya se cerró arriba, solo limpiar el filtro.
       api.setFilterModel(null);
       api.onFilterChanged();
     } else {
