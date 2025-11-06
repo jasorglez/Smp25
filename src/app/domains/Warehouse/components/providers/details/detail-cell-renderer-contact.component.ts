@@ -83,10 +83,32 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
         return { backgroundColor: '#ffcccc' };
       }
       return null;
+    },
+    onFirstDataRendered: (params) => {
+      console.log('onFirstDataRendered - autosizing columns...');
+
+      // Obtener todas las columnas
+      const allColumnIds: string[] = [];
+      params.api.getColumns()?.forEach((column: any) => {
+        allColumnIds.push(column.getId());
+      });
+
+      console.log('Columns to autosize:', allColumnIds);
+
+      // Autoajustar todas las columnas al contenido (skipHeader=true considera header y datos)
+      params.api.autoSizeColumns(allColumnIds, true);
+
+      console.log('Autosize completed');
     }
   };
 
   contactColumnDefs = [
+     {
+      field: 'vigente', //seran chechbox
+      headerName: 'Activo',
+      editable: true,      
+      width: 66
+    },
     {
       field: 'campo2',
       headerName: 'Nombre Contacto',
@@ -143,7 +165,13 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
           }
           return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
         },
-      width: 190
+      width: 140
+    },
+     {
+      field: 'principal',
+      headerName: 'Principal', //seran chechbox
+      editable: true,      
+      width: 66
     },
   ];
 

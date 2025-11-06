@@ -73,7 +73,23 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
     headerHeight: 25,
     rowHeight: 20,
     suppressEnterWhenEditing: false,
-    rowSelection: 'single'
+    rowSelection: 'single',
+    onFirstDataRendered: (params) => {
+      console.log('onFirstDataRendered - autosizing columns...');
+
+      // Obtener todas las columnas
+      const allColumnIds: string[] = [];
+      params.api.getColumns()?.forEach((column: any) => {
+        allColumnIds.push(column.getId());
+      });
+
+      console.log('Columns to autosize:', allColumnIds);
+
+      // Autoajustar todas las columnas al contenido (skipHeader=true considera header y datos)
+      params.api.autoSizeColumns(allColumnIds, true);
+
+      console.log('Autosize completed');
+    }
   };
 
   components = {
@@ -81,6 +97,12 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
   };
 
   bankColumnDefs = [
+     {
+       field: 'vigente', //seran chechbox
+       headerName: 'Activo',
+       editable: true,      
+       width: 98
+    },
     { field: 'campo2', headerName: 'Nombre Titular', editable: (params) => {
           if (params.data.__isNew) {
             return true;
@@ -123,17 +145,27 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
           }
           return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
         },width: 190 },
+    
     { field: 'campo5', headerName: 'Clabe', editable: (params) => {
           if (params.data.__isNew) {
             return true;
           }
           return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
-        },width: 190 },
+        },width: 190 
+    },
+    
     {
       field: 'campo6',
       headerName: 'Comentario',
       editable: true,
       width: 250
+    },
+    
+    {
+      field: 'vigente', //seran chechbox
+      headerName: 'Principal', 
+      editable: true,      
+      width: 98
     },
   ];
 

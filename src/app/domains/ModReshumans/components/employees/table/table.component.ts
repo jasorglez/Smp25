@@ -189,7 +189,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         const currentColIndex = editableColumns.findIndex(
           (col) => col.field === params.column.getColDef().field
         );
-  
+
         if (currentColIndex < editableColumns.length - 1) {
           // Añadir delay de 50ms antes de mover el foco
           requestAnimationFrame(() => {
@@ -204,6 +204,22 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       }
     },
     onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
+    onFirstDataRendered: (params) => {
+      console.log('onFirstDataRendered - autosizing columns...');
+
+      // Obtener todas las columnas
+      const allColumnIds: string[] = [];
+      params.api.getColumns()?.forEach((column: any) => {
+        allColumnIds.push(column.getId());
+      });
+
+      console.log('Columns to autosize:', allColumnIds);
+
+      // Autoajustar todas las columnas al contenido (skipHeader=false considera header y datos)
+      params.api.autoSizeColumns(allColumnIds, true);
+
+      console.log('Autosize completed');
+    }
   };
   
 

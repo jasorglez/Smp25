@@ -382,7 +382,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+     //     return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+         return false;
         },
       },
 
@@ -682,16 +683,16 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
     // Determinar si la fila actual ya está expandida CON ESTE MISMO tipo de detalle
     const isCurrentlyExpanded = node.expanded && event.data.detailType === detailType;
 
-    // Colapsar cualquier otra fila que esté expandida
+    // Colapsar TODAS las filas expandidas (incluida la actual)
     api.forEachNode(otherNode => {
-      if (otherNode.expanded && otherNode.id !== node.id) {
+      if (otherNode.expanded) {
         otherNode.setExpanded(false);
       }
     });
 
-    if (isCurrentlyExpanded) { // Si se hace clic en la misma celda que ya está abierta...
-      // ...se cierra y se limpia el filtro.
-      node.setExpanded(false);
+    if (isCurrentlyExpanded) {
+      // Si se hace clic en la misma celda que ya está abierta...
+      // ...ya se cerró arriba, solo limpiar el filtro.
       api.setFilterModel(null);
       api.onFilterChanged();
     } else {
@@ -820,7 +821,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
       latitud: '',
       longitud: '',
       idTypecop: 0,
-      type: this.type,
+     // type: this.type,
       fieldContact: 1,
       fieldBank: 0,
       fieldCuenta: 0,
@@ -882,13 +883,13 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('Datos a AGREGAR (incluyendo typework):', cleanedData);
+      console.log('Datos a AGREGAR:', cleanedData);
       return this.customerService.addCustomer(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('Datos a ACTUALIZAR (incluyendo typework):', cleanedData);
+      console.log('Datos a ACTUALIZAR (sin type):', cleanedData);
       return this.customerService.updateCustomer(row.id, cleanedData);
     });
 
@@ -1063,8 +1064,14 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
     delete cleanedData.__modified;
     delete cleanedData.typeProvider; // Solo para visualización, no va a BD
     delete cleanedData.tipoProveedorRows; // Solo para reconstruir grid, no va a BD
+    delete cleanedData.detailType; // Propiedad interna del grid
+    // NO incluir 'type' para evitar actualizarlo en ediciones
+    // El 'type' solo se debe incluir al agregar nuevos registros
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
+    } else {
+      // Si NO es un registro nuevo (temp_), eliminar 'type' para no actualizarlo
+      delete cleanedData.type;
     }
     return cleanedData;
   }

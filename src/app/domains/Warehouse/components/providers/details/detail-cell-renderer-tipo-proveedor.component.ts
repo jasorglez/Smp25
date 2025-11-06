@@ -99,6 +99,12 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
 
   // Column Defs con combo boxes en cascada
   columnDefs: any[] = [
+     {
+      field: 'vigente', //seran chechbox
+      headerName: 'Activo',
+      editable: true,      
+      width: 50
+    },
     {
       field: 'categoria',
       headerName: 'Categoría',
@@ -172,7 +178,13 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
       },
       cellEditorPopup: true,
       width: 200
-    }
+    },
+    {
+      field: 'vigente',
+      headerName: 'Principal', //seran chechbox
+      editable: true,      
+      width: 50
+    },
   ];
 
   // Grid Options
@@ -185,6 +197,22 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
     // Agregar soporte para componentes Angular como editores
     frameworkComponents: {
       selectWithTooltipEditor: SelectWithTooltipEditorComponent
+    },
+    onFirstDataRendered: (params) => {
+      console.log('onFirstDataRendered - autosizing columns...');
+
+      // Obtener todas las columnas
+      const allColumnIds: string[] = [];
+      params.api.getColumns()?.forEach((column: any) => {
+        allColumnIds.push(column.getId());
+      });
+
+      console.log('Columns to autosize:', allColumnIds);
+
+      // Autoajustar todas las columnas al contenido (skipHeader=true considera header y datos)
+      params.api.autoSizeColumns(allColumnIds, true);
+
+      console.log('Autosize completed');
     }
   };
 
@@ -385,6 +413,7 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
+    delete cleanedData.type; // No actualizar el campo 'type' en ediciones
     delete cleanedData.typeProvider; // Solo para visualización
     delete cleanedData.tipoProveedorRows; // Solo para reconstruir grid
     delete cleanedData.detailType; // Propiedad interna del grid

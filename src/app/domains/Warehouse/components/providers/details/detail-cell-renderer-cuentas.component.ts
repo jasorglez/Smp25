@@ -79,12 +79,12 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
     masterDetail: true,
      isRowMaster: (dataItem) => {
     // Asignar un detailType por defecto si no existe para evitar errores en el selector
-    if (!dataItem.detailType) dataItem.detailType = 'campo3';
+    if (!dataItem.detailType) dataItem.detailType = 'campo1';
     return true; // Todas las filas de proveedores son maestras
   },
     //detailCellRenderer: 'detallesCuentasRenderer',
     detailCellRendererSelector: (params) => {
-    
+
     // Decide qué renderizador usar basado en la propiedad 'detailType'
     if (params.data.detailType === 'campo5') {
       params.node.setRowHeight(800);
@@ -99,9 +99,9 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
           },
         }
       };
-    } else if (params.data.detailType === 'campo3') {
+    } else if (params.data.detailType === 'campo1') {
       params.node.setRowHeight(800);
-      return { 
+      return {
         component: 'detallesCuentasRenderer',
         params: {
           onMouseEnter: () => {clearTimeout(this.collapseTimer)},
@@ -110,41 +110,49 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
           },
         }
       };
-    }else 
+    }else
     return undefined; // No mostrar detalle si no hay tipo
   },
   detailCellRendererParams: {
     // Se inicializa vacío, se llenará en agInit
+  },
+  onFirstDataRendered: (params) => {
+    console.log('onFirstDataRendered - autosizing columns...');
+
+    // Obtener todas las columnas
+    const allColumnIds: string[] = [];
+    params.api.getColumns()?.forEach((column: any) => {
+      allColumnIds.push(column.getId());
+    });
+
+    console.log('Columns to autosize:', allColumnIds);
+
+    // Autoajustar todas las columnas al contenido (skipHeader=false incluye header en el cálculo)
+    params.api.autoSizeColumns(allColumnIds, false);
+
+    console.log('Autosize completed');
   }
   };
 
   constructor(private currencyPipe: CurrencyPipe) {}
 
-  /*cuentaColumnDefs = [
-    { field: 'campo2', headerName: 'Fecha OC', editable: true, flex: 1 },
-    { field: 'campo3', headerName: 'Factura o Nota', editable: true, flex: 1, cellEditor: 'agDateCellEditor' },
-    { field: 'campo4', headerName: 'MNumero Factura o Nota', editable: true, flex: 1, valueFormatter: params => `$${Number(params.value || 0).toFixed(2)}` },
-    { field: 'campo5', headerName: 'Articulo', editable: true, flex: 1, valueFormatter: params => `$${Number(params.value || 0).toFixed(2)}` },
-    { field: 'campo3', headerName: 'Categoria', editable: true, flex: 1, cellEditor: 'agDateCellEditor' },
-    { field: 'campo4', headerName: 'Familia', editable: true, flex: 1, valueFormatter: params => `$${Number(params.value || 0).toFixed(2)}` },
-    { field: 'campo5', headerName: 'SubFamilia', editable: true, flex: 1, valueFormatter: params => `$${Number(params.value || 0).toFixed(2)}` },
-    { field: 'campo2', headerName: 'Cantidad', editable: true, flex: 1 },
-    { field: 'campo3', headerName: 'Precio Unitario', editable: true, flex: 1, cellEditor: 'agDateCellEditor' },
-    { field: 'campo4', headerName: 'Total x Nota', editable: true, flex: 1, valueFormatter: params => `$${Number(params.value || 0).toFixed(2)}` },
-    { field: 'campo5', headerName: 'Abono a Cuenta', editable: true, flex: 1, valueFormatter: params => `$${Number(params.value || 0).toFixed(2)}` },
-    { field: 'campo4', headerName: 'Restante', editable: true, flex: 1, valueFormatter: params => `$${Number(params.value || 0).toFixed(2)}` },
-  ];*/
   cuentaColumnDefs = [
     {
-      field: 'id',
-      headerName: 'ID',
-      hide: true, // Oculta, solo para uso interno
-      filter: 'agNumberColumnFilter',
+      field: 'campo3',
+      headerName: 'Fecha Requisicion',
+      editable: false,
+      flex: 1
     },
-    { 
-      field: 'campo8', 
-      headerName: 'Fecha OC', 
-      editable: true, 
+    {
+      field: 'id',
+      headerName: 'Requisicion',
+
+    },
+
+    {
+      field: 'campo8',
+      headerName: 'Fecha OC',
+      editable: true,
       cellEditor: 'agDateCellEditor',
       cellEditorParams: {
         min: '2020-01-01',
@@ -201,23 +209,26 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
         }
         return true;
       },
-      flex: 1 
+      flex: 1
     },
-    { 
-      field: 'campo2', 
-      headerName: 'Factura o Nota', 
-      editable: true, 
+    {
+      field: 'campo2',
+      headerName: 'Tipo Factura/Nota',
+      editable: true,
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: {
         values: ['FACTURA', 'NOTA'] // Opciones del selector
       },
       flex: 1
     },
-    { 
-      field: 'campo1', 
-      headerName: 'Numero Factura o Nota', 
-      editable: true, 
-      flex: 1
+    {
+      field: 'campo1',
+      headerName: 'Numero Factura/Nota',
+      editable: false,
+      // Este cellRenderer muestra el ícono y el valor, y permite expandir/colapsar el detalle al hacer clic
+      cellRenderer: this.createDetailToggleCellRenderer('campo1'),
+      flex: 1,
+      cellStyle: { backgroundColor: '#d4edda' }
     },
     { 
       field: 'campo4', 
@@ -230,15 +241,7 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
         return isNumeric ? this.currencyPipe.transform(params.value, '', 'symbol', '1.2-2') : '$0.00';
       }
     },
-    {
-      field: 'campo3',
-      headerName: 'Articulo',
-      editable: false,
-      // Este cellRenderer muestra el ícono y el valor, y permite expandir/colapsar el detalle al hacer clic
-      cellRenderer: this.createDetailToggleCellRenderer('campo3'),
-      flex: 1,
-      cellStyle: { backgroundColor: '#d4edda' },
-    },
+
     {
       field: 'campo5',
       headerName: 'Abono a Cuenta',
@@ -284,12 +287,12 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
           const value = isNumeric ? this.currencyPipe.transform(params.value, '', 'symbol', '1.2-2') : '$0.00';
           div.innerHTML = `${value}`;
         break;
-        case 'campo3':
+        case 'campo1':
           div.innerHTML = `${params.value}`;
         break;
       }
-        
-     
+
+
       div.style.cursor = 'pointer';
       div.style.textDecoration = 'underline';
       div.style.color = '#0d6efd';
@@ -298,7 +301,7 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
         const node = params.node;
         const api = params.api;
         const isCurrentlyExpanded = node.expanded && params.data.detailType === detailType;
-        
+
         if (isCurrentlyExpanded) {
           // Si ya está expandido con el mismo detalle, simplemente colapsar y limpiar el filtro.
           node.setExpanded(false);

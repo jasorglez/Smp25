@@ -880,11 +880,22 @@ export class CatFamSubComponent {
   // Contar subfamilias de una familia
   private getSubfamilyCountForFamily(familyId: string | number): number {
     if (!this.treeData || !familyId) return 0;
-    
+
     // Contar cuántas subfamilias tienen parentFamilyId igual al familyId
-    return this.treeData.filter(item => 
+    return this.treeData.filter(item =>
       item.nodeLevel === 'subfamily' && item.parentFamilyId === familyId
     ).length;
+  }
+
+  // Obtener el nombre de la categoría por ID
+  getCategoryName(categoryId: string | number): string {
+    if (!this.treeData || !categoryId) return 'N/A';
+
+    const category = this.treeData.find(item =>
+      item.nodeLevel === 'category' && item.originalId === categoryId
+    );
+
+    return category?.description || 'N/A';
   }
 
   // ========== MÉTODOS PARA MODALES ==========
