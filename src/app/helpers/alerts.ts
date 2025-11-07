@@ -55,4 +55,30 @@ export class alerts{
 		});
 	}
 
+	/*=============================================
+	Función para mostrar loading (no se puede cerrar)
+	=============================================*/
+
+	static showLoading(title: string, text: string) {
+		Swal.fire({
+			title: title,
+			text: text,
+			allowOutsideClick: false,
+			allowEscapeKey: false,
+			allowEnterKey: false,
+			showConfirmButton: false,
+			didOpen: () => {
+				Swal.showLoading();
+			}
+		});
+	}
+
+	/*=============================================
+	Función para cerrar el loading
+	=============================================*/
+
+	static closeLoading() {
+		Swal.close();
+	}
+
 }

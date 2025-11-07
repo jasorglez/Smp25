@@ -901,18 +901,57 @@ export class ReportesEstimacionesComponent {
       return;
     }
 
-    console.log('Descargando multimedia para OT:', idOt);
-    alerts.basicAlert('Procesando', 'Preparando archivos multimedia...', 'info');
+    console.log('=== downloadMultimedia iniciado ===');
+    console.log('idOt:', idOt);
+    console.log('inmueble:', inmueble);
+
+    // Mostrar loading que no se puede cerrar
+    alerts.showLoading(
+      'Preparando archivos',
+      'Creando archivo ZIP con fotos y videos. Por favor espere...'
+    );
 
     this.logbookService.getMediaByOt(idOt).subscribe({
       next: (response) => {
-        console.log('Respuesta de getMediaByOt:', response);
+        console.log('=== Respuesta de getMediaByOt ===', response);
 
         if (response.success && response.data && response.data.downloadUrl) {
           const { downloadUrl, zipFileName, fileCount } = response.data;
 
-          // Abrir descarga directamente para evitar bloqueo del navegador
-          window.open(downloadUrl, '_blank');
+          console.log('downloadUrl:', downloadUrl);
+          console.log('zipFileName:', zipFileName);
+          console.log('fileCount:', fileCount);
+
+          // Cerrar el loading antes de abrir la descarga
+          alerts.closeLoading();
+
+          // Método 1: Intentar window.open (más limpio pero puede ser bloqueado)
+          const newWindow = window.open(downloadUrl, '_blank');
+
+          if (newWindow) {
+            console.log('✓ window.open ejecutado exitosamente');
+          } else {
+            console.warn('✗ window.open bloqueado, intentando método alternativo...');
+
+            // Método 2: Crear elemento <a> temporal con download attribute
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = zipFileName;
+            link.target = '_blank';
+            link.style.display = 'none';
+
+            document.body.appendChild(link);
+            console.log('Elemento <a> creado y agregado al DOM');
+
+            link.click();
+            console.log('Click en elemento <a> ejecutado');
+
+            // Remover después de un pequeño delay
+            setTimeout(() => {
+              document.body.removeChild(link);
+              console.log('Elemento <a> removido del DOM');
+            }, 100);
+          }
 
           alerts.basicAlert(
             'Éxito',
@@ -923,6 +962,11 @@ export class ReportesEstimacionesComponent {
           // Recargar los datos de la tabla para actualizar el estado de downloaded
           this.reloadTableData();
         } else {
+          console.warn('Respuesta sin datos de descarga:', response);
+
+          // Cerrar el loading
+          alerts.closeLoading();
+
           alerts.basicAlert(
             'Información',
             response.message || 'No hay archivos multimedia disponibles para esta OT.',
@@ -931,7 +975,10 @@ export class ReportesEstimacionesComponent {
         }
       },
       error: (error) => {
-        console.error('Error al descargar multimedia:', error);
+        console.error('=== Error en downloadMultimedia ===', error);
+
+        // Cerrar el loading en caso de error
+        alerts.closeLoading();
 
         // Verificar si es un error 404 (no hay archivos)
         if (error.status === 404) {
