@@ -905,11 +905,6 @@ export class ReportesEstimacionesComponent {
     console.log('idOt:', idOt);
     console.log('inmueble:', inmueble);
 
-    // CLAVE: Abrir ventana en blanco INMEDIATAMENTE (mientras tenemos contexto de usuario)
-    // Esto previene el bloqueo de pop-ups porque se ejecuta síncronamente con el click del usuario
-    const newWindow = window.open('about:blank', '_blank');
-    console.log('Ventana en blanco creada:', newWindow ? 'SÍ' : 'NO');
-
     // Mostrar loading que no se puede cerrar
     alerts.showLoading(
       'Preparando archivos',
@@ -930,48 +925,25 @@ export class ReportesEstimacionesComponent {
           // Cerrar el loading
           alerts.closeLoading();
 
-          // Si logramos abrir la ventana, redirigirla a la URL de descarga
-          if (newWindow && !newWindow.closed) {
-            console.log('✓ Redirigiendo ventana existente a:', downloadUrl);
-            newWindow.location.href = downloadUrl;
-          } else {
-            // Fallback: Si la ventana se cerró o nunca se abrió, usar método alternativo
-            console.warn('✗ Ventana no disponible, usando fallback...');
-
-            const link = document.createElement('a');
-            link.href = downloadUrl;
-            link.download = zipFileName;
-            link.target = '_blank';
-            link.rel = 'noopener noreferrer';
-            link.style.display = 'none';
-
-            document.body.appendChild(link);
-            link.click();
-            console.log('✓ Fallback <a> ejecutado');
-
-            setTimeout(() => {
-              document.body.removeChild(link);
-            }, 500);
-          }
+          // Usar location.href para descargar en la misma pestaña
+          // Este método es el más confiable y funciona siempre
+          console.log('✓ Iniciando descarga con location.href');
+          window.location.href = downloadUrl;
 
           // Mostrar mensaje de éxito
-          alerts.basicAlert(
-            'Éxito',
-            `Descargando ${fileCount} archivo(s) multimedia del INMUEBLE ${inmueble}.`,
-            'success'
-          );
+          setTimeout(() => {
+            alerts.basicAlert(
+              'Éxito',
+              `Descargando ${fileCount} archivo(s) multimedia del INMUEBLE ${inmueble}.`,
+              'success'
+            );
 
-          // Recargar los datos de la tabla para actualizar el estado de downloaded
-          this.reloadTableData();
+            // Recargar los datos de la tabla para actualizar el estado de downloaded
+            this.reloadTableData();
+          }, 300); // Delay para dar tiempo a que inicie la descarga
 
         } else {
           console.warn('Respuesta sin datos de descarga:', response);
-
-          // Cerrar la ventana en blanco si no hay descarga
-          if (newWindow && !newWindow.closed) {
-            newWindow.close();
-            console.log('Ventana en blanco cerrada (sin datos)');
-          }
 
           // Cerrar el loading
           alerts.closeLoading();
@@ -985,12 +957,6 @@ export class ReportesEstimacionesComponent {
       },
       error: (error) => {
         console.error('=== Error en downloadMultimedia ===', error);
-
-        // Cerrar la ventana en blanco si hay error
-        if (newWindow && !newWindow.closed) {
-          newWindow.close();
-          console.log('Ventana en blanco cerrada (error)');
-        }
 
         // Cerrar el loading en caso de error
         alerts.closeLoading();
