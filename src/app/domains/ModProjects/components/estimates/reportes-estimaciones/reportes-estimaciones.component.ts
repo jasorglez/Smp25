@@ -922,45 +922,26 @@ export class ReportesEstimacionesComponent {
           console.log('zipFileName:', zipFileName);
           console.log('fileCount:', fileCount);
 
-          // Cerrar el loading antes de abrir la descarga
+          // Cerrar el loading
           alerts.closeLoading();
 
-          // Método 1: Intentar window.open (más limpio pero puede ser bloqueado)
-          const newWindow = window.open(downloadUrl, '_blank');
+          // Usar location.href para descargar en la misma pestaña
+          // Este método es el más confiable y funciona siempre
+          console.log('✓ Iniciando descarga con location.href');
+          window.location.href = downloadUrl;
 
-          if (newWindow) {
-            console.log('✓ window.open ejecutado exitosamente');
-          } else {
-            console.warn('✗ window.open bloqueado, intentando método alternativo...');
+          // Mostrar mensaje de éxito
+          setTimeout(() => {
+            alerts.basicAlert(
+              'Éxito',
+              `Descargando ${fileCount} archivo(s) multimedia del INMUEBLE ${inmueble}.`,
+              'success'
+            );
 
-            // Método 2: Crear elemento <a> temporal con download attribute
-            const link = document.createElement('a');
-            link.href = downloadUrl;
-            link.download = zipFileName;
-            link.target = '_blank';
-            link.style.display = 'none';
+            // Recargar los datos de la tabla para actualizar el estado de downloaded
+            this.reloadTableData();
+          }, 300); // Delay para dar tiempo a que inicie la descarga
 
-            document.body.appendChild(link);
-            console.log('Elemento <a> creado y agregado al DOM');
-
-            link.click();
-            console.log('Click en elemento <a> ejecutado');
-
-            // Remover después de un pequeño delay
-            setTimeout(() => {
-              document.body.removeChild(link);
-              console.log('Elemento <a> removido del DOM');
-            }, 100);
-          }
-
-          alerts.basicAlert(
-            'Éxito',
-            `Descargando ${fileCount} archivo(s) multimedia del INMUEBLE ${inmueble}.`,
-            'success'
-          );
-
-          // Recargar los datos de la tabla para actualizar el estado de downloaded
-          this.reloadTableData();
         } else {
           console.warn('Respuesta sin datos de descarga:', response);
 
