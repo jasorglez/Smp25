@@ -108,6 +108,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       if (this.idRoot) {
         this.loadCatalogs();
         this.loadMaterials();
+        // Actualizar el contexto del grid cuando cambia idRoot
+        this.updateGridContext();
       }
     });
   }
@@ -499,6 +501,13 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     this.gridApi = params.api;
 
     // Configurar master-detail después de que el grid esté listo
+    this.updateGridContext();
+  }
+
+  // Actualizar el contexto del grid (llamado cuando cambia idRoot o al inicializar el grid)
+  updateGridContext() {
+    if (!this.gridApi) return;
+
     this.gridApi.setGridOption('detailCellRendererParams', {
       getDetailRowData: (params) => {
         params.successCallback(params.data.detailData);
