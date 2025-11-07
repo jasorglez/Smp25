@@ -905,6 +905,11 @@ export class ReportesEstimacionesComponent {
     console.log('idOt:', idOt);
     console.log('inmueble:', inmueble);
 
+    // CLAVE: Abrir ventana en blanco INMEDIATAMENTE (mientras tenemos contexto de usuario)
+    // Esto previene el bloqueo de pop-ups porque se ejecuta síncronamente con el click del usuario
+    const newWindow = window.open('about:blank', '_blank');
+    console.log('Ventana en blanco creada:', newWindow ? 'SÍ' : 'NO');
+
     // Mostrar loading que no se puede cerrar
     alerts.showLoading(
       'Preparando archivos',
@@ -922,37 +927,34 @@ export class ReportesEstimacionesComponent {
           console.log('zipFileName:', zipFileName);
           console.log('fileCount:', fileCount);
 
-          // Cerrar el loading antes de abrir la descarga
+          // Cerrar el loading
           alerts.closeLoading();
 
-          // Método 1: Intentar window.open (más limpio pero puede ser bloqueado)
-          const newWindow = window.open(downloadUrl, '_blank');
-
-          if (newWindow) {
-            console.log('✓ window.open ejecutado exitosamente');
+          // Si logramos abrir la ventana, redirigirla a la URL de descarga
+          if (newWindow && !newWindow.closed) {
+            console.log('✓ Redirigiendo ventana existente a:', downloadUrl);
+            newWindow.location.href = downloadUrl;
           } else {
-            console.warn('✗ window.open bloqueado, intentando método alternativo...');
+            // Fallback: Si la ventana se cerró o nunca se abrió, usar método alternativo
+            console.warn('✗ Ventana no disponible, usando fallback...');
 
-            // Método 2: Crear elemento <a> temporal con download attribute
             const link = document.createElement('a');
             link.href = downloadUrl;
             link.download = zipFileName;
             link.target = '_blank';
+            link.rel = 'noopener noreferrer';
             link.style.display = 'none';
 
             document.body.appendChild(link);
-            console.log('Elemento <a> creado y agregado al DOM');
-
             link.click();
-            console.log('Click en elemento <a> ejecutado');
+            console.log('✓ Fallback <a> ejecutado');
 
-            // Remover después de un pequeño delay
             setTimeout(() => {
               document.body.removeChild(link);
-              console.log('Elemento <a> removido del DOM');
-            }, 100);
+            }, 500);
           }
 
+          // Mostrar mensaje de éxito
           alerts.basicAlert(
             'Éxito',
             `Descargando ${fileCount} archivo(s) multimedia del INMUEBLE ${inmueble}.`,
@@ -961,8 +963,15 @@ export class ReportesEstimacionesComponent {
 
           // Recargar los datos de la tabla para actualizar el estado de downloaded
           this.reloadTableData();
+
         } else {
           console.warn('Respuesta sin datos de descarga:', response);
+
+          // Cerrar la ventana en blanco si no hay descarga
+          if (newWindow && !newWindow.closed) {
+            newWindow.close();
+            console.log('Ventana en blanco cerrada (sin datos)');
+          }
 
           // Cerrar el loading
           alerts.closeLoading();
@@ -976,6 +985,12 @@ export class ReportesEstimacionesComponent {
       },
       error: (error) => {
         console.error('=== Error en downloadMultimedia ===', error);
+
+        // Cerrar la ventana en blanco si hay error
+        if (newWindow && !newWindow.closed) {
+          newWindow.close();
+          console.log('Ventana en blanco cerrada (error)');
+        }
 
         // Cerrar el loading en caso de error
         alerts.closeLoading();
