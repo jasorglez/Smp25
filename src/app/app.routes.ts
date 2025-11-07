@@ -217,7 +217,7 @@ export const routes: Routes = [
                 path: 'producto-terminado',
                 loadComponent: () =>
                   import(
-                    './domains/Almacenes/pages/producto-terminado/producto-terminado.component'
+                    './domains/Almacenes/components/producto-terminado/producto-terminado.component'
                   ).then((m) => m.ProductoTerminadoComponent),
                 canDeactivate: [UnsavedChangesGuard],
               },
@@ -258,39 +258,12 @@ export const routes: Routes = [
             ],
           },
           {
-            path: 'compras',
+            path: 'producto-terminado',
             loadComponent: () =>
               import(
-                './domains/Almacenes/pages/compras/compras.component'
-              ).then((c) => c.ComprasComponent),
-            children: [
-              { path: '', redirectTo: 'proveedores', pathMatch: 'full' },
-              {
-                path: 'proveedores',
-                loadComponent: () =>
-                  import(
-                    './domains/Warehouse/components/providers/providers.component'
-                  ).then((p) => p.ProvidersComponent),
-                data: { type: 'PROVIDERS' },
-                canDeactivate: [UnsavedChangesGuard],
-              },
-              {
-                path: 'requisiciones',
-                loadComponent: () =>
-                  import(
-                    './domains/Warehouse/components/requisitionsdelison/requisitionsdelison.component'
-                  ).then((r) => r.RequisitionsDelisonComponent),
-                canDeactivate: [UnsavedChangesGuard],
-              },
-              {
-                path: 'ordenes-compra',
-                loadComponent: () =>
-                  import(
-                    './domains/Warehouse/components/purchaseorderdelison/purchaseorderdelison.component'
-                  ).then((p) => p.PurchaseOrderDelisonComponent),
-                canDeactivate: [UnsavedChangesGuard],
-              },
-            ],
+                './domains/Almacenes/components/producto-terminado/producto-terminado.component'
+              ).then((p) => p.ProductoTerminadoComponent),
+            canDeactivate: [UnsavedChangesGuard],
           },
           {
             path: 'catalogo',
@@ -320,6 +293,13 @@ export const routes: Routes = [
                 loadComponent: () =>
                   import('./domains/Almacenes/components/cat-fam-sub/cat-fam-sub.component')
                     .then((m) => m.CatFamSubComponent),
+                canDeactivate: [UnsavedChangesGuard],
+              },
+              {
+                path: 'producto-terminado',
+                loadComponent: () =>
+                  import('./domains/Almacenes/components/producto-terminado/producto-terminado.component')
+                    .then((m) => m.ProductoTerminadoComponent),
                 canDeactivate: [UnsavedChangesGuard],
               },
             ],

@@ -29,6 +29,14 @@
               <i class="bi bi-diagram-3"></i> CAT-FAM-SUB
             </a>
           </li>
+          <li class="nav-item" *ngIf="typeCatalog === 'warehouses'">
+            <a class="nav-link green-tab"
+              [routerLink]="['/almacenes/producto-terminado']"
+              routerLinkActive="active"
+              (click)="refres(true)">
+              <i class="bi bi-box-seam"></i> PRODUCTO TERMINADO
+            </a>
+          </li>
           <!--<li class="nav-item" *ngIf="select == 'WAREHOUSE'">
             <a
               routerLink="MATERIALES2"
