@@ -261,9 +261,36 @@ export const routes: Routes = [
             path: 'producto-terminado',
             loadComponent: () =>
               import(
-                './domains/Almacenes/components/producto-terminado/producto-terminado.component'
+                './domains/Almacenes/pages/producto-terminado/producto-terminado.component'
               ).then((p) => p.ProductoTerminadoComponent),
             canDeactivate: [UnsavedChangesGuard],
+            children: [
+              { path: '', redirectTo: 'cat-prod-term', pathMatch: 'full' },
+              {
+                path: 'cat-prod-term',
+                loadComponent: () =>
+                  import(
+                    './domains/Almacenes/components/cat-fam-sub/cat-fam-sub.component'
+                  ).then((m) => m.CatFamSubComponent),
+                canDeactivate: [UnsavedChangesGuard],
+              },
+              {
+                path: 'materiales-maestro',
+                loadComponent: () =>
+                  import(
+                    './domains/Almacenes/components/materiales-maestro/materiales-maestro.component'
+                  ).then((m) => m.MaterialesMaestroComponent),
+                canDeactivate: [UnsavedChangesGuard],
+              },
+              {
+                path: 'productos-terminados',
+                loadComponent: () =>
+                  import(
+                    './domains/Almacenes/pages/productos-terminados/productos-terminados.component'
+                  ).then((p) => p.ProductosTerminadosComponent),
+                canDeactivate: [UnsavedChangesGuard],
+              },
+            ],
           },
           {
             path: 'catalogo',
