@@ -144,38 +144,17 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
       // Guardar estado de expansión antes de recargar
       this.saveExpansionState();
 
-      console.log('📡 Cargando subfamilias, flavors y presentations...');
+      console.log('📡 Cargando datos de Producto Terminado...');
+      console.log('   - CATEGORY-PROD (Categorías)');
+      console.log('   - NAME-PROD (Nombres)');
+      console.log('   - PRESENT-PROD (Presentaciones)');
 
-      // Cargar subfamilias del endpoint correcto
-      const subfamilias = await lastValueFrom(
-        this.catalogsService.getCatalogsxSubfamily(this.idRoot, this.idFamilia)
-      );
-
-      // Cargar flavors y presentations (pueden no existir aún, manejar 404)
-      let flavors: any[] = [];
-      let presentations: any[] = [];
-
-      try {
-        flavors = await lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'FLAVOR'));
-      } catch (error: any) {
-        if (error.status === 404) {
-          console.log('ℹ️ No hay flavors registrados todavía');
-          flavors = [];
-        } else {
-          throw error; // Re-lanzar si es otro tipo de error
-        }
-      }
-
-      try {
-        presentations = await lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'PRESENTATI'));
-      } catch (error: any) {
-        if (error.status === 404) {
-          console.log('ℹ️ No hay presentations registradas todavía');
-          presentations = [];
-        } else {
-          throw error; // Re-lanzar si es otro tipo de error
-        }
-      }
+      // Cargar los 3 tipos de datos en paralelo (igual que producto-terminado)
+      const [subfamilias, flavors, presentations] = await Promise.all([
+        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'CATEGORY-PROD')),
+        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'NAME-PROD')),
+        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'PRESENT-PROD'))
+      ]);
 
       console.log('✅ Datos recibidos de la BD:', {
         subfamilias: subfamilias.length,
@@ -199,68 +178,86 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
   }
 
   // Construir estructura plana para 3 columnas con control de expansión
-  private buildTreeStructure(subfamilias: any[], flavors: any[], presentations: any[]) {
+  private buildTreeStructure(categories: any[], names: any[], presentations: any[]) {
     this.treeData = [];
 
-    console.log('🏗️ Construyendo estructura con:', {
-      'Total subfamilias': subfamilias.length,
-      'Total flavors': flavors.length,
-      'Total presentations': presentations.length
+    console.log('🏗️ Construyendo estructura de Productos Terminados:', {
+      'Total categorías (CATEGORY-PROD)': categories.length,
+      'Total nombres/sabores (NAME-PROD)': names.length,
+      'Total presentaciones (PRESENT-PROD)': presentations.length
     });
 
-    // Agregar TODAS las subfamilias (nivel 1) - siempre visibles
-    subfamilias.forEach(subfamilia => {
-      const subfamiliaNode = {
-        ...subfamilia,
-        nodeLevel: 'subfamilia',
-        originalId: subfamilia.id,
+    // 🔍 DEBUG: Ver estructura de los datos
+    console.log('🔍 ESTRUCTURA DE DATOS:');
+    if (categories.length > 0) {
+      console.log('  📋 Ejemplo de categoría:', categories[0]);
+    }
+    if (names.length > 0) {
+      console.log('  📋 Ejemplo de nombre:', names[0]);
+      console.log('  📋 Todos los nombres:', names);
+    }
+    if (presentations.length > 0) {
+      console.log('  📋 Ejemplo de presentación:', presentations[0]);
+      console.log('  📋 Todas las presentaciones:', presentations);
+    }
+
+    // NIVEL 1: Agregar TODAS las categorías de producto terminado
+    // Las categorías tienen: parentId = 0 o null
+    categories.forEach(category => {
+      const categoryNode = {
+        ...category,
+        nodeLevel: 'subfamilia', // Mantener nombre por compatibilidad con template
+        originalId: category.id,
         isExpanded: false,
         isVisible: true
       };
-      this.treeData.push(subfamiliaNode);
+      this.treeData.push(categoryNode);
 
-      // Buscar flavors de esta subfamilia (nivel 2)
-      // Los flavors tienen: parentId = subfamiliaId, subParentId = 0
-      const subfamiliaFlavors = flavors.filter(flavor =>
-        flavor.parentId === subfamilia.id && (flavor.subParentId === 0 || !flavor.subParentId)
+      // NIVEL 2: Buscar presentaciones/marcas de esta categoría
+      // Las presentaciones tienen: parentId = categoryId, subParentId = 0
+      const categoryPresentations = presentations.filter(presentation =>
+        presentation.parentId === category.id && (presentation.subParentId === 0 || !presentation.subParentId)
       );
 
-      console.log(`  📦 Subfamilia "${subfamilia.description}" tiene ${subfamiliaFlavors.length} flavors`);
+      console.log(`  📦 Categoría "${category.description}" (ID=${category.id}) tiene ${categoryPresentations.length} presentaciones/marcas`);
 
-      subfamiliaFlavors.forEach(flavor => {
-        const flavorNode = {
-          ...flavor,
-          nodeLevel: 'flavor',
-          originalId: flavor.id,
-          parentSubfamiliaId: subfamilia.id,
+      categoryPresentations.forEach(presentation => {
+        const presentationNode = {
+          ...presentation,
+          nodeLevel: 'flavor', // Mantener nombre por compatibilidad con template (nivel 2)
+          originalId: presentation.id,
+          parentSubfamiliaId: category.id, // ID de la categoría padre
           isExpanded: false,
           isVisible: false // Ocultas por defecto
         };
-        this.treeData.push(flavorNode);
+        this.treeData.push(presentationNode);
 
-        // Buscar presentations de este flavor (nivel 3)
-        // Las presentations tienen: parentId = subfamiliaId, subParentId = flavorId
-        const flavorPresentations = presentations.filter(presentation =>
-          presentation.parentId === subfamilia.id && presentation.subParentId === flavor.id
+        // NIVEL 3: Buscar nombres/tamaños de esta presentación
+        // Los nombres tienen: parentId = categoryId, subParentId = presentationId
+        const presentationNames = names.filter(name =>
+          name.parentId === category.id && name.subParentId === presentation.id
         );
 
-        console.log(`    🎁 Flavor "${flavor.description}" tiene ${flavorPresentations.length} presentations`);
+        console.log(`    🎁 Presentación "${presentation.description}" tiene ${presentationNames.length} tamaños`);
 
-        flavorPresentations.forEach(presentation => {
-          const presentationNode = {
-            ...presentation,
-            nodeLevel: 'presentation',
-            originalId: presentation.id,
-            parentSubfamiliaId: subfamilia.id,
-            parentFlavorId: flavor.id,
+        presentationNames.forEach(name => {
+          const nameNode = {
+            ...name,
+            nodeLevel: 'presentation', // Nivel 3
+            originalId: name.id,
+            parentSubfamiliaId: category.id, // ID de la categoría raíz
+            parentFlavorId: presentation.id, // ID de la presentación padre
             isVisible: false // Ocultas por defecto
           };
-          this.treeData.push(presentationNode);
+          this.treeData.push(nameNode);
         });
       });
     });
 
-    console.log(`✅ Estructura construida con ${this.treeData.length} nodos`);
+    console.log(`✅ Estructura construida con ${this.treeData.length} nodos en total`);
+    console.log(`   - Categorías visibles: ${this.treeData.filter(n => n.nodeLevel === 'subfamilia').length}`);
+    console.log(`   - Nombres cargados: ${this.treeData.filter(n => n.nodeLevel === 'flavor').length}`);
+    console.log(`   - Presentaciones cargadas: ${this.treeData.filter(n => n.nodeLevel === 'presentation').length}`);
 
     // Guardar copia para revertir cambios
     this.originalTreeData = JSON.parse(JSON.stringify(this.treeData));
@@ -368,7 +365,7 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
         }
       },
       {
-        headerName: 'Activo',
+        headerName: 'Se usa aquí',
         field: 'active',
         width: 80,
         cellRenderer: 'agCheckboxCellRenderer',
@@ -418,6 +415,8 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
       // Refrescar el grid
       if (this.gridApi) {
         this.gridApi.setGridOption('rowData', this.flattenTreeData());
+        // Reajustar columnas después de cambiar datos
+        setTimeout(() => this.gridApi?.sizeColumnsToFit(), 50);
       }
     }
   }
@@ -440,6 +439,8 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
       // Refrescar el grid
       if (this.gridApi) {
         this.gridApi.setGridOption('rowData', this.flattenTreeData());
+        // Reajustar columnas después de cambiar datos
+        setTimeout(() => this.gridApi?.sizeColumnsToFit(), 50);
       }
     }
   }
@@ -457,6 +458,13 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
   // Grid listo
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+
+    // Autoajustar columnas al contenido o al header (lo que sea más largo)
+    setTimeout(() => {
+      if (this.gridApi) {
+        this.gridApi.sizeColumnsToFit();
+      }
+    }, 100);
   }
 
   // Agregar nuevo elemento según nivel seleccionado
@@ -828,6 +836,8 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
 
     if (this.gridApi) {
       this.gridApi.setGridOption('rowData', this.flattenTreeData());
+      // Reajustar columnas después de revertir
+      setTimeout(() => this.gridApi?.sizeColumnsToFit(), 50);
     }
 
     alerts.basicAlert('Éxito', 'Cambios revertidos correctamente.', 'success');
@@ -908,6 +918,8 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
 
     if (this.gridApi) {
       this.gridApi.setGridOption('rowData', this.flattenTreeData());
+      // Reajustar columnas después de restaurar expansión
+      setTimeout(() => this.gridApi?.sizeColumnsToFit(), 50);
     }
   }
 }

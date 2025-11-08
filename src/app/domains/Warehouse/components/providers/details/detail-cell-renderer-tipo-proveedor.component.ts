@@ -415,11 +415,20 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
   }
 
   revertChanges(): void {
-    // Recargar datos originales
+    // Recargar datos originales desde tipoProveedorRows o typework
     if (this.params.data.tipoProveedorRows) {
       this.rowData = JSON.parse(JSON.stringify(this.params.data.tipoProveedorRows));
+    } else if (this.params.data.typework && this.params.data.typework.trim() !== '') {
+      // Si no hay tipoProveedorRows pero sí hay typework, parsearlo
+      this.parseTypeworkToRows(this.params.data.typework);
     } else {
+      // Si no hay ninguno, dejar vacío
       this.rowData = [];
+    }
+
+    // Refrescar el grid para mostrar los datos revertidos
+    if (this.gridApi) {
+      this.gridApi.setGridOption('rowData', this.rowData);
     }
 
     this.hasChanges = false;
