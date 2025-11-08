@@ -290,6 +290,7 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
       {
         headerName: 'Categoria/Producto',
         field: 'subfamiliaDisplay',
+        filter: true,
         width: 200,
         cellRenderer: (params: any) => {
           if (params.data.nodeLevel === 'subfamilia') {
@@ -321,6 +322,7 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
       {
         headerName: 'Sabor',
         field: 'flavorDisplay',
+        filter: true,
         width: 200,
         cellRenderer: (params: any) => {
           if (params.data.nodeLevel === 'flavor') {
@@ -350,6 +352,7 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
       {
         headerName: 'Presentacion',
         field: 'presentationDisplay',
+        filter: true,
         width: 200,
         cellRenderer: (params: any) => {
           if (params.data.nodeLevel === 'presentation') {
