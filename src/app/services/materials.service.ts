@@ -77,4 +77,26 @@ export class MaterialsService {
       { headers: this.trackingService.getHeaders() }
     );
   }
+
+  checkMaterialExistsInFinalProduct(idMaterial: number, idPresentation: number): Observable<boolean> {
+    return this.http.get<boolean>(
+      `${environment.urlWarehouse}/MaterialxFinalProduct/exists?idMaterial=${idMaterial}&idPresentation=${idPresentation}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  addMaterialToFinalProduct(idMaterial: number, idPresentation: number, data: any = {}): Observable<any> {
+    return this.http.post(
+      `${environment.urlWarehouse}/MaterialxFinalProduct?idMaterial=${idMaterial}&idPresentation=${idPresentation}`,
+      data,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  removeMaterialFromFinalProduct(idMaterial: number, idPresentation: number): Observable<any> {
+    return this.http.delete(
+      `${environment.urlWarehouse}/MaterialxFinalProduct?idMaterial=${idMaterial}&idPresentation=${idPresentation}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
 }

@@ -6,6 +6,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
 import { CatalogsService } from 'app/services/catalogs.service';
+import { MaterialsService } from 'app/services/materials.service';
 import { lastValueFrom, Subscription } from 'rxjs';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { SubfamiliaModalService } from '../services/subfamilia-modal.service';
@@ -21,12 +22,6 @@ import { SubfamiliaModalService } from '../services/subfamilia-modal.service';
       <strong><i class="bi bi-cup-straw"></i> Variantes de: {{ materialName }}</strong>
       <div class="d-flex gap-2">
         <button
-          class="btn btn-sm btn-success me-2"
-          (click)="addCatalogItem()"
-          [disabled]="!gridApi">
-          <i class="bi bi-plus-lg"></i> Agregar
-        </button>
-        <button
           class="btn btn-sm btn-primary me-2 position-relative"
           (click)="saveChanges()"
           [disabled]="!hasUnsavedChanges">
@@ -40,12 +35,6 @@ import { SubfamiliaModalService } from '../services/subfamilia-modal.service';
           class="btn btn-sm btn-warning me-2"
           (click)="revertChanges()">
           <i class="bi bi-arrow-clockwise"></i> Deshacer
-        </button>
-        <button
-          class="btn btn-sm btn-danger"
-          (click)="deleteSelectedItem()"
-          [disabled]="!selectedRowData">
-          <i class="bi bi-trash"></i> Borrar
         </button>
       </div>
     </div>
@@ -71,6 +60,7 @@ import { SubfamiliaModalService } from '../services/subfamilia-modal.service';
 export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngularComp, OnDestroy {
 
   private catalogsService = inject(CatalogsService);
+  private materialsService = inject(MaterialsService);
   private modalService = inject(SubfamiliaModalService);
   private modalSubscription?: Subscription;
 
@@ -170,6 +160,9 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
       // Restaurar estado de expansión
       this.restoreExpansionState();
 
+      // Cargar el estado "Se usa aquí" para todas las presentaciones
+      await this.loadSeUsaAquiStatus();
+
     } catch (error) {
       console.error('❌ Error al cargar datos del catálogo:', error);
       this.treeData = [];
@@ -247,7 +240,9 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
             originalId: name.id,
             parentSubfamiliaId: category.id, // ID de la categoría raíz
             parentFlavorId: presentation.id, // ID de la presentación padre
-            isVisible: false // Ocultas por defecto
+            isVisible: false, // Ocultas por defecto
+            seUsaAqui: false, // Inicializar en false, se cargará desde el endpoint
+            isLoadingSeUsa: true // Indicador de carga
           };
           this.treeData.push(nameNode);
         });
@@ -259,8 +254,7 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
     console.log(`   - Nombres cargados: ${this.treeData.filter(n => n.nodeLevel === 'flavor').length}`);
     console.log(`   - Presentaciones cargadas: ${this.treeData.filter(n => n.nodeLevel === 'presentation').length}`);
 
-    // Guardar copia para revertir cambios
-    this.originalTreeData = JSON.parse(JSON.stringify(this.treeData));
+    // NO guardar copia aquí, se guardará después de cargar "Se usa aquí"
     this.hasUnsavedChanges = false;
   }
 
@@ -369,9 +363,40 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
       },
       {
         headerName: 'Se usa aquí',
-        field: 'active',
-        width: 80,
-        cellRenderer: 'agCheckboxCellRenderer',
+        field: 'seUsaAqui',
+        width: 120,
+        editable: (params: any) => {
+          // Solo editable en presentaciones que ya cargaron
+          return params.data.nodeLevel === 'presentation' && !params.data.isLoadingSeUsa;
+        },
+        cellRenderer: (params: any) => {
+          // Solo mostrar checkbox en presentaciones
+          if (params.data.nodeLevel !== 'presentation') {
+            return '';
+          }
+
+          // Mientras está cargando, mostrar texto
+          if (params.data.isLoadingSeUsa) {
+            return '<span style="color: #999; font-style: italic;">Cargando...</span>';
+          }
+
+          // Usar el renderer nativo de AG Grid
+          return undefined; // Esto permite que AG Grid use agCheckboxCellRenderer
+        },
+        cellRendererSelector: (params: any) => {
+          // Solo usar agCheckboxCellRenderer para presentaciones que ya cargaron
+          if (params.data.nodeLevel === 'presentation' && !params.data.isLoadingSeUsa) {
+            return {
+              component: 'agCheckboxCellRenderer'
+            };
+          }
+          return undefined;
+        },
+        cellEditor: 'agCheckboxCellEditor',
+        onCellValueChanged: (params: any) => {
+          // Guardar cambio inmediatamente al marcar/desmarcar
+          this.onSeUsaAquiChanged(params);
+        }
       }
     ];
   }
@@ -784,10 +809,19 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
     }
 
     try {
+      // Filtrar items de catálogos modificados (__isNew o __modified)
       const itemsToSave = this.treeData.filter(item => item.__isNew || item.__modified);
 
-      console.log(`💾 Guardando ${itemsToSave.length} cambios...`);
+      // Filtrar presentaciones con cambios en "Se usa aquí"
+      const presentationsToSave = this.treeData.filter(
+        item => item.nodeLevel === 'presentation' && item.__seUsaAquiModified
+      );
 
+      console.log(`💾 Guardando cambios...`);
+      console.log(`   - Items de catálogo: ${itemsToSave.length}`);
+      console.log(`   - Presentaciones (Se usa aquí): ${presentationsToSave.length}`);
+
+      // Guardar cambios de catálogos (subfamilias, flavors, presentaciones)
       for (const item of itemsToSave) {
         if (item.__isNew) {
           // Guardar nuevo item
@@ -819,7 +853,41 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
         }
       }
 
+      // Guardar cambios de "Se usa aquí" (MaterialxFinalProduct)
+      for (const presentation of presentationsToSave) {
+        const originalValue = presentation.__originalSeUsaAqui ?? false;
+        const currentValue = presentation.seUsaAqui;
+
+        console.log(`   Procesando "${presentation.description}": ${originalValue} → ${currentValue}`);
+
+        if (currentValue === true && originalValue === false) {
+          // Agregar relación
+          console.log(`   ➕ Agregando material a presentación ${presentation.originalId}`);
+          await lastValueFrom(
+            this.materialsService.addMaterialToFinalProduct(
+              this.materialId,
+              presentation.originalId,
+              {}
+            )
+          );
+        } else if (currentValue === false && originalValue === true) {
+          // Eliminar relación
+          console.log(`   ➖ Eliminando material de presentación ${presentation.originalId}`);
+          await lastValueFrom(
+            this.materialsService.removeMaterialFromFinalProduct(
+              this.materialId,
+              presentation.originalId
+            )
+          );
+        }
+
+        // Limpiar flags de modificación
+        delete presentation.__seUsaAquiModified;
+        delete presentation.__originalSeUsaAqui;
+      }
+
       alerts.basicAlert('Éxito', 'Cambios guardados correctamente.', 'success');
+      this.hasUnsavedChanges = false;
       await this.loadCatalogData();
     } catch (error: any) {
       console.error('❌ Error al guardar cambios:', error);
@@ -844,6 +912,213 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
     }
 
     alerts.basicAlert('Éxito', 'Cambios revertidos correctamente.', 'success');
+  }
+
+  // Cargar el estado "Se usa aquí" para todas las presentaciones
+  private async loadSeUsaAquiStatus() {
+    console.log('🔍 Cargando estado "Se usa aquí" para todas las presentaciones...');
+
+    // Filtrar solo las presentaciones (nivel 3)
+    const presentations = this.treeData.filter(item => item.nodeLevel === 'presentation');
+
+    console.log(`📊 Total de presentaciones a verificar: ${presentations.length}`);
+
+    if (presentations.length === 0) {
+      console.log('⚠️ No hay presentaciones para verificar');
+      return;
+    }
+
+    // Cargar el estado para cada presentación
+    const promises = presentations.map(async (presentation) => {
+      try {
+        const exists = await lastValueFrom(
+          this.materialsService.checkMaterialExistsInFinalProduct(this.materialId, presentation.originalId)
+        );
+        presentation.seUsaAqui = exists;
+        presentation.isLoadingSeUsa = false;
+        console.log(`✅ Presentación "${presentation.description}" (ID=${presentation.originalId}): ${exists ? 'SÍ se usa' : 'NO se usa'}`);
+      } catch (error) {
+        console.error(`❌ Error al verificar presentación "${presentation.description}":`, error);
+        presentation.seUsaAqui = false;
+        presentation.isLoadingSeUsa = false;
+      }
+    });
+
+    // Esperar a que todas las consultas terminen
+    await Promise.all(promises);
+
+    console.log('✅ Estado "Se usa aquí" cargado para todas las presentaciones');
+
+    // Reordenar y auto-expandir sabores con presentaciones marcadas
+    this.reorderAndExpandMarkedItems();
+
+    // IMPORTANTE: Guardar copia para revertir cambios DESPUÉS de cargar todo
+    this.originalTreeData = JSON.parse(JSON.stringify(this.treeData));
+    console.log('📋 Copia de seguridad creada para Deshacer');
+
+    // Refrescar el grid para mostrar los checkboxes actualizados
+    if (this.gridApi) {
+      this.gridApi.setGridOption('rowData', this.flattenTreeData());
+    }
+  }
+
+  // Reordenar categorías y auto-expandir sabores con presentaciones marcadas
+  private reorderAndExpandMarkedItems() {
+    console.log('🔄 Reordenando y expandiendo elementos con presentaciones marcadas...');
+
+    // Paso 1: Identificar qué sabores y categorías tienen presentaciones marcadas
+    const markedPresentationIds = this.treeData
+      .filter(item => item.nodeLevel === 'presentation' && item.seUsaAqui === true)
+      .map(item => item.originalId);
+
+    console.log(`📌 Presentaciones marcadas encontradas: ${markedPresentationIds.length}`);
+
+    // Identificar sabores que contienen presentaciones marcadas
+    const flavorsWithMarked = new Set<number>();
+    this.treeData
+      .filter(item => item.nodeLevel === 'presentation' && item.seUsaAqui === true)
+      .forEach(presentation => {
+        if (presentation.parentFlavorId) {
+          flavorsWithMarked.add(presentation.parentFlavorId);
+        }
+      });
+
+    // Identificar categorías que contienen sabores con presentaciones marcadas
+    const categoriesWithMarked = new Set<number>();
+    this.treeData
+      .filter(item => item.nodeLevel === 'flavor' && flavorsWithMarked.has(item.originalId))
+      .forEach(flavor => {
+        if (flavor.parentSubfamiliaId) {
+          categoriesWithMarked.add(flavor.parentSubfamiliaId);
+        }
+      });
+
+    console.log(`📂 Sabores con presentaciones marcadas: ${flavorsWithMarked.size}`);
+    console.log(`📁 Categorías con sabores marcados: ${categoriesWithMarked.size}`);
+
+    // Paso 2: Separar y reordenar categorías
+    const categoriesMarked = this.treeData.filter(
+      item => item.nodeLevel === 'subfamilia' && categoriesWithMarked.has(item.originalId)
+    );
+    const categoriesUnmarked = this.treeData.filter(
+      item => item.nodeLevel === 'subfamilia' && !categoriesWithMarked.has(item.originalId)
+    );
+
+    // Paso 3: Separar sabores y presentaciones
+    const flavors = this.treeData.filter(item => item.nodeLevel === 'flavor');
+    const presentations = this.treeData.filter(item => item.nodeLevel === 'presentation');
+
+    // Paso 4: Reconstruir treeData con el nuevo orden
+    this.treeData = [];
+
+    // Primero: Categorías con presentaciones marcadas (expandidas)
+    categoriesMarked.forEach(category => {
+      category.isExpanded = true; // Auto-expandir
+      category.isVisible = true;
+      this.treeData.push(category);
+
+      // Agregar sabores de esta categoría (marcados primero, luego no marcados)
+      const categoryFlavors = flavors.filter(f => f.parentSubfamiliaId === category.originalId);
+      const flavorsMarkedInCategory = categoryFlavors.filter(f => flavorsWithMarked.has(f.originalId));
+      const flavorsUnmarkedInCategory = categoryFlavors.filter(f => !flavorsWithMarked.has(f.originalId));
+
+      // Sabores con presentaciones marcadas (expandidos)
+      flavorsMarkedInCategory.forEach(flavor => {
+        flavor.isExpanded = true; // Auto-expandir
+        flavor.isVisible = true; // Visible porque la categoría está expandida
+        this.treeData.push(flavor);
+
+        // Agregar presentaciones de este sabor (marcadas primero, luego no marcadas)
+        const flavorPresentations = presentations.filter(p => p.parentFlavorId === flavor.originalId);
+        const presentationsMarked = flavorPresentations.filter(p => p.seUsaAqui === true);
+        const presentationsUnmarked = flavorPresentations.filter(p => p.seUsaAqui !== true);
+
+        [...presentationsMarked, ...presentationsUnmarked].forEach(presentation => {
+          presentation.isVisible = true; // Visible porque el sabor está expandido
+          this.treeData.push(presentation);
+        });
+      });
+
+      // Sabores sin presentaciones marcadas (colapsados)
+      flavorsUnmarkedInCategory.forEach(flavor => {
+        flavor.isExpanded = false;
+        flavor.isVisible = true; // Visible porque la categoría está expandida
+        this.treeData.push(flavor);
+
+        // Agregar presentaciones (ocultas)
+        const flavorPresentations = presentations.filter(p => p.parentFlavorId === flavor.originalId);
+        flavorPresentations.forEach(presentation => {
+          presentation.isVisible = false; // Ocultas porque el sabor está colapsado
+          this.treeData.push(presentation);
+        });
+      });
+    });
+
+    // Segundo: Categorías sin presentaciones marcadas (colapsadas)
+    categoriesUnmarked.forEach(category => {
+      category.isExpanded = false;
+      category.isVisible = true;
+      this.treeData.push(category);
+
+      // Agregar sabores de esta categoría (ocultos)
+      const categoryFlavors = flavors.filter(f => f.parentSubfamiliaId === category.originalId);
+      categoryFlavors.forEach(flavor => {
+        flavor.isExpanded = false;
+        flavor.isVisible = false; // Ocultos porque la categoría está colapsada
+        this.treeData.push(flavor);
+
+        // Agregar presentaciones (ocultas)
+        const flavorPresentations = presentations.filter(p => p.parentFlavorId === flavor.originalId);
+        flavorPresentations.forEach(presentation => {
+          presentation.isVisible = false;
+          this.treeData.push(presentation);
+        });
+      });
+    });
+
+    console.log('✅ Reordenamiento y expansión completados');
+    console.log(`   - Categorías al inicio (expandidas): ${categoriesMarked.length}`);
+    console.log(`   - Sabores expandidos automáticamente: ${flavorsWithMarked.size}`);
+  }
+
+  // Manejar cambios en el checkbox "Se usa aquí" (solo marcar, no guardar)
+  onSeUsaAquiChanged(params: any) {
+    const presentation = params.data;
+    const newValue = params.newValue;
+    const oldValue = params.oldValue;
+
+    console.log(`🔄 Checkbox cambiado para "${presentation.description}":`, {
+      oldValue,
+      newValue,
+      materialId: this.materialId,
+      presentationId: presentation.originalId
+    });
+
+    // Si no cambió realmente, no hacer nada
+    if (newValue === oldValue) {
+      return;
+    }
+
+    // Guardar el valor original si no existe
+    if (presentation.__originalSeUsaAqui === undefined) {
+      presentation.__originalSeUsaAqui = oldValue;
+    }
+
+    // Marcar como modificado
+    presentation.__seUsaAquiModified = true;
+
+    // Actualizar el estado de "hasUnsavedChanges"
+    this.hasUnsavedChanges = true;
+
+    console.log(`📝 Cambio marcado localmente (no guardado aún)`);
+
+    // Reordenar y expandir después de marcar/desmarcar
+    this.reorderAndExpandMarkedItems();
+
+    // Refrescar el grid
+    if (this.gridApi) {
+      this.gridApi.setGridOption('rowData', this.flattenTreeData());
+    }
   }
 
   private cleanDataForServer(data: any): any {
