@@ -283,9 +283,29 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
     return [
       {
         headerName: 'Categoria/Producto',
-        field: 'subfamiliaDisplay',
-        filter: true,
+        field: 'categoriaFilter',
+        filter: 'agSetColumnFilter',
+        filterParams: {
+          buttons: ['reset', 'apply'],
+          closeOnApply: true,
+          suppressSelectAll: false,
+          caseSensitive: false,
+          // Excluir blanks del filtro y del resultado
+          suppressBlanksInFilter: true,
+          // Filtro personalizado que siempre pasa las filas con valor vacío
+          textFormatter: (value: string) => {
+            return value ? value.toLowerCase() : '';
+          }
+        },
         width: 200,
+        valueGetter: (params: any) => {
+          // Retornar el valor para filtrar solo si es subfamilia
+          if (params.data && params.data.nodeLevel === 'subfamilia') {
+            return params.data.description;
+          }
+          // NO retornar nada (undefined) para que no aparezca en el filtro
+          return undefined;
+        },
         cellRenderer: (params: any) => {
           if (params.data.nodeLevel === 'subfamilia') {
             const isExpanded = params.data.isExpanded || false;
@@ -315,9 +335,26 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
       },
       {
         headerName: 'Sabor',
-        field: 'flavorDisplay',
-        filter: true,
+        field: 'saborFilter',
+        filter: 'agSetColumnFilter',
+        filterParams: {
+          buttons: ['reset', 'apply'],
+          closeOnApply: true,
+          suppressSelectAll: false,
+          caseSensitive: false,
+          suppressBlanksInFilter: true,
+          textFormatter: (value: string) => {
+            return value ? value.toLowerCase() : '';
+          }
+        },
         width: 200,
+        valueGetter: (params: any) => {
+          // Retornar el valor para filtrar solo si es flavor
+          if (params.data && params.data.nodeLevel === 'flavor') {
+            return params.data.description;
+          }
+          return undefined;
+        },
         cellRenderer: (params: any) => {
           if (params.data.nodeLevel === 'flavor') {
             const childCount = this.getPresentationCountForFlavor(params.data.originalId);
@@ -345,9 +382,26 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
       },
       {
         headerName: 'Presentacion',
-        field: 'presentationDisplay',
-        filter: true,
+        field: 'presentacionFilter',
+        filter: 'agSetColumnFilter',
+        filterParams: {
+          buttons: ['reset', 'apply'],
+          closeOnApply: true,
+          suppressSelectAll: false,
+          caseSensitive: false,
+          suppressBlanksInFilter: true,
+          textFormatter: (value: string) => {
+            return value ? value.toLowerCase() : '';
+          }
+        },
         width: 200,
+        valueGetter: (params: any) => {
+          // Retornar el valor para filtrar solo si es presentation
+          if (params.data && params.data.nodeLevel === 'presentation') {
+            return params.data.description;
+          }
+          return undefined;
+        },
         cellRenderer: (params: any) => {
           if (params.data.nodeLevel === 'presentation') {
             return `<span style="margin-right: 15px;"></span> ${params.data.description}`;
