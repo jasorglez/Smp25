@@ -14,11 +14,14 @@ import { ProdTerminadoService } from 'app/services/prodterminado.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { lastValueFrom } from 'rxjs';
+import { DetailCellRendererPrecioMayoreoComponent } from './details/detail-cell-renderer-precio-mayoreo.component';
+import { DetailCellRendererCodigoBarrasComponent } from './details/detail-cell-renderer-codigo-barras.component';
+import { DetailCellRendererCostosAlmacenComponent } from './detail-cell-renderer-costos-almacen.component';
 
 @Component({
   selector: 'app-productos-terminados',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, AgGridModule, TranslateModule, DomainsModule, SharedModule],
+  imports: [CommonModule, RouterModule, FormsModule, AgGridModule, TranslateModule, DomainsModule, SharedModule, DetailCellRendererPrecioMayoreoComponent, DetailCellRendererCodigoBarrasComponent, DetailCellRendererCostosAlmacenComponent],
   templateUrl: './productos-terminados.component.html',
   styleUrl: './productos-terminados.component.scss'
 })
@@ -55,12 +58,11 @@ export class ProductosTerminadosComponent {
 
   notSavedChanges: boolean = false;
   private gridApi: GridApi;
+  private secondaryGridApi: GridApi;
 
   // Datos del grid
   rowData: any[] = [];
   comboBoxData: any[] = [];
-
-  // Configuración del grid
   get gridOptions(): any {
     return {
       headerHeight: 35,
@@ -72,6 +74,23 @@ export class ProductosTerminadosComponent {
       suppressScrollOnNewData: true,
       enableBrowserTooltips: true,
       tooltipShowDelay: 500,
+      masterDetail: true,
+      isRowMaster: (dataItem) => {
+        // Una fila es maestra si tiene precio de mayoreo, código de barras o costos.
+        return dataItem && (dataItem.precioUnitarioMayoreo != null || dataItem.codigoBarras || dataItem.costos);
+      },
+      detailCellRendererSelector: (params) => {
+        if (params.data.detailType === 'precioMayoreo') {
+          return { component: DetailCellRendererPrecioMayoreoComponent };
+        }
+        if (params.data.detailType === 'codigoBarras') {
+          return { component: DetailCellRendererCodigoBarrasComponent };
+        }
+        if (params.data.detailType === 'costosAlmacen') {
+          return { component: DetailCellRendererCostosAlmacenComponent };
+        }
+        return undefined;
+      },
       context: {
         componentParent: this
       },
@@ -90,13 +109,13 @@ export class ProductosTerminadosComponent {
     };
   }
 
-  // Definición de columnas
+  // Definición de columnas para el grid principal
   get columnDefs(): ColDef[] {
     return [
       {
         headerName: 'Activo',
         field: 'vigente',
-        width: 80,
+        width: 120,
         editable: true,
         cellRenderer: 'agCheckboxCellRenderer',
       },
@@ -125,41 +144,77 @@ export class ProductosTerminadosComponent {
         field: 'precioUnitario',
         width: 130,
         editable: true,
-        type: 'numericColumn'
+        type: 'numericColumn',
+        valueFormatter: (params: any) => {
+          return params.value ? `$${params.value}` : '$0';
+        }
       },
       {
         headerName: 'Precio Unitario Mayoreo',
         field: 'precioUnitarioMayoreo',
         width: 180,
-        editable: true,
-        type: 'numericColumn'
+        editable: false,
+        type: 'numericColumn',
+        valueFormatter: (params: any) => {
+          return params.value != null ? `$${params.value}` : '$0';
+        },
+        // Renderer personalizado para dar estilo y manejar el click
+        cellRenderer: (params: any): HTMLElement => {
+          const div = document.createElement('div');
+          const displayValue = params.value != null ? `$${params.value}` : '$0';
+          div.innerText = displayValue;
+          div.style.cursor = 'pointer';
+          div.style.textDecoration = 'underline';
+          div.style.color = '#0d6efd'; // Color azul para simular un link
+          div.style.fontWeight = '500';
+          return div;
+        }
       },
       {
         headerName: 'Precio X Caja',
         field: 'precioXCaja',
         width: 130,
         editable: true,
-        type: 'numericColumn'
+        type: 'numericColumn',
+        valueFormatter: (params: any) => {
+          return params.value ? `$${params.value}` : '$0';
+        }
       },
       {
         headerName: 'Código de Barras',
         field: 'codigoBarras',
         width: 150,
-        editable: true
+        editable: false,
+        cellRenderer: (params: any): HTMLElement => {
+          const div = document.createElement('div');
+          div.innerText = params.value || '';
+          div.style.cursor = 'pointer';
+          div.style.textDecoration = 'underline';
+          div.style.color = '#0d6efd';
+          div.style.fontWeight = '500';
+          return div;
+        }
       },
       {
-        headerName: 'Costos',
+        headerName: 'Costos y Almacén',
         field: 'costos',
-        width: 100,
-        editable: true,
-        type: 'numericColumn'
-      },
-      {
-        headerName: 'Almacén',
-        field: 'almacen',
-        width: 120,
-        editable: true
+        width: 150,
+        editable: false,
+        type: 'numericColumn',
+        valueFormatter: (params: any) => {
+          return params.value ? `$${params.value}` : '$0';
+        },
+        cellRenderer: (params: any): HTMLElement => {
+          const div = document.createElement('div');
+          div.innerText = params.value ? `$${params.value}` : '$0';
+          div.style.cursor = 'pointer';
+          div.style.textDecoration = 'underline';
+          div.style.color = '#0d6efd';
+          div.style.fontWeight = '500';
+          return div;
+        },
       }
+      
     ];
   }
 
@@ -183,26 +238,62 @@ export class ProductosTerminadosComponent {
         {
           id: 1,
           vigente: true,
-          producto: '',
-          cantidadXCajas: 0,
-          precioUnitario: 0,
-          precioUnitarioMayoreo: 0,
-          precioXCaja: 0,
-          codigoBarras: '',
-          costos: 0,
-          almacen: ''
+          producto: 'Producto A',
+          cantidadXCajas: 10,
+          precioUnitario: 100,
+          precioUnitarioMayoreo: 90,
+          precioXCaja: 1000,
+          codigoBarras: '1234567890123',
+          costos: 80,
+          almacen: 'Almacén 1'
         },
         {
           id: 2,
+          vigente: true,
+          producto: 'Producto B',
+          cantidadXCajas: 20,
+          precioUnitario: 200,
+          precioUnitarioMayoreo: 180,
+          precioXCaja: 4000,
+          codigoBarras: '1234567890124',
+          costos: 160,
+          almacen: 'Almacén 2'
+        },
+        {
+          id: 3,
           vigente: false,
-          producto: '',
-          cantidadXCajas: 0,
-          precioUnitario: 0,
-          precioUnitarioMayoreo: 0,
-          precioXCaja: 0,
-          codigoBarras: '',
-          costos: 0,
-          almacen: ''
+          producto: 'Producto C',
+          cantidadXCajas: 15,
+          precioUnitario: 150,
+          precioUnitarioMayoreo: 135,
+          precioXCaja: 2250,
+          codigoBarras: '1234567890125',
+          costos: 120,
+          almacen: 'Almacén 3'
+        },
+        {
+          id: 4,
+          vigente: true,
+          producto: 'Producto D',
+          cantidadXCajas: 25,
+          precioUnitario: 250,
+          precioUnitarioMayoreo: 225,
+          precioXCaja: 6250,
+          codigoBarras: '1234567890126',
+          costos: 200,
+          almacen: 'Almacén 4'
+        },
+        {
+          id: 5,
+          vigente: true,
+          producto: 'Producto E',
+          cantidadXCajas: 30,
+          precioUnitario: 300,
+          precioUnitarioMayoreo: 270,
+          precioXCaja: 9000,
+          codigoBarras: '1234567890127',
+          costos: 240,
+          almacen: 'Almacén 5'
         }
       ];
 
@@ -249,6 +340,16 @@ export class ProductosTerminadosComponent {
   // Grid listo
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+
+    // Configurar master-detail después de que el grid esté listo
+    this.gridApi.setGridOption('detailCellRendererParams', {
+      getDetailRowData: (params) => {
+        params.successCallback(params.data.detailData || []);
+      },
+      context: {
+        componentParent: this
+      }
+    });
   }
 
   // Cambios en celdas
@@ -256,6 +357,52 @@ export class ProductosTerminadosComponent {
     console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
+
+    // Implementar cascada para precioUnitarioMayoreo basado en precioUnitario
+    if (event.colDef.field === 'precioUnitario') {
+      const precioUnitario = event.newValue || 0;
+      // Aplicar descuento del 10% para mayoreo (similar al comportamiento estudiado)
+      event.data.precioUnitarioMayoreo = precioUnitario * 0.9;
+      // Refrescar la celda para mostrar el cambio
+      this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
+    }
+  }
+
+  // Manejar click en celda para mostrar/ocultar detalle
+  onCellClicked(event: any): void {
+    const colId = event.column.getColId();
+
+    // Si es la columna de Precio Unitario Mayoreo, mostrar/ocultar detalle
+    if (colId === 'precioUnitarioMayoreo') {
+      const node = event.node;
+      if (node) {
+        // 1. Asignar el tipo de detalle para que el selector sepa qué componente renderizar.
+        event.data.detailType = 'precioMayoreo';
+        
+        // 2. Expandir o colapsar la fila manualmente.
+        node.setExpanded(!node.expanded);
+      }
+    }
+
+    if (colId === 'codigoBarras') {
+      const node = event.node;
+      if (node) {
+        // 1. Asignar el tipo de detalle para que el selector sepa qué componente renderizar.
+        event.data.detailType = 'codigoBarras';
+        // 2. Expandir o colapsar la fila manualmente.
+        node.setExpanded(!node.expanded);
+      }
+    }
+
+    if (colId === 'costos') {
+      const node = event.node;
+      if (node) {
+        // 1. Asignar el tipo de detalle para que el selector sepa qué componente renderizar.
+        event.data.detailType = 'costosAlmacen';
+        // 2. Expandir o colapsar la fila manualmente.
+        node.setExpanded(!node.expanded);
+      }
+    }
   }
 
   // Guardar cambios
