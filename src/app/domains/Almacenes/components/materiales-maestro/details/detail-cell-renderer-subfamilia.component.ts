@@ -165,7 +165,7 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
       headerHeight: 30,
       rowHeight: 30,
       animateRows: true,
-      suppressClickEdit: true,
+      suppressClickEdit: false, // Cambié a false para permitir edición
       singleClickEdit: false,
       stopEditingWhenCellsLoseFocus: true,
       localeText: this.AG_GRID_LOCALE_ES,
@@ -233,26 +233,14 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
         headerName: 'Se usa aquí',
         field: 'seUsaAqui',
         width: 120,
-        editable: (params: any) => {
-          return !params.node.group && !params.data.isLoadingSeUsa;
-        },
-        cellRenderer: (params: any) => {
-          if (params.node.group) {
-            return '';
-          }
-          if (params.data.isLoadingSeUsa) {
-            return '<span style="color: #999; font-style: italic;">Cargando...</span>';
-          }
-          return undefined;
-        },
-        cellRendererSelector: (params: any) => {
-          if (!params.node.group && !params.data.isLoadingSeUsa) {
-            return { component: 'agCheckboxCellRenderer' };
-          }
-          return undefined;
-        },
+        editable: true,
+        cellRenderer: 'agCheckboxCellRenderer',
         cellEditor: 'agCheckboxCellEditor',
         onCellValueChanged: (params: any) => {
+          // Solo procesar cambios de filas de datos
+          if (params.node && params.node.group) {
+            return;
+          }
           this.onSeUsaAquiChanged(params);
         }
       }
