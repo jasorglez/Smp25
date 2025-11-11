@@ -12,10 +12,10 @@
             <!-- Columna de botones para Ahorros -->
             <div class="col-auto">
               <div class="d-flex flex-column gap-0 me-0">
-                <button type="button" class="btn btn-primary" (click)="addRow('Master')" *ngIf="authService.getCrudPermission('hr', 'employees', 'create')">
+                <button type="button" class="btn btn-primary" (click)="addRow('Master')" *ngIf="authService.getCrudPermissionDetail('hr', seccion ,subSeccion , 'create')">
                   <i class="bi bi-plus-lg"></i>
                 </button>
-                <button type="button" class="btn btn-success position-relative" (click)="saveMasterChanges()" *ngIf="authService.getCrudPermission('hr', 'employees', 'create') || authService.getCrudPermission('hr', 'employees', 'update')" >
+                <button type="button" class="btn btn-success position-relative" (click)="saveMasterChanges()" *ngIf="authService.getCrudPermissionDetail('hr', seccion ,subSeccion , 'create') || authService.getCrudPermissionDetail('hr', seccion ,subSeccion , 'update')" >
                   <i class="bi bi-floppy"></i>
                   <span
                     class="position-absolute top-0 end-0 translate-middle p-2 bg-danger border border-light rounded-circle"
@@ -26,7 +26,7 @@
                 <button type="button" class="btn btn-warning" (click)="revertMasterData()">
                   <i class="bi bi-arrow-clockwise"></i>
                 </button>
-                <button type="button" class="btn btn-danger" (click)="deleteMasterEntry()" *ngIf="authService.getCrudPermission('hr', 'employees', 'delete')"><i class="bi bi-trash"></i></button>
+                <button type="button" class="btn btn-danger" (click)="deleteMasterEntry()" *ngIf="authService.getCrudPermissionDetail('hr', seccion ,subSeccion , 'delete')"><i class="bi bi-trash"></i></button>
               </div>
             </div>
             <!-- Grid Maestro -->
@@ -55,10 +55,10 @@
             <!-- Columna de botones para Detalles -->
             <div class="col-auto">
               <div class="d-flex flex-column gap-0 me-0">
-                <button type="button" class="btn btn-primary" (click)="addRow('Detailed')" *ngIf="authService.getCrudPermission('hr', 'employees', 'create')">
+                <button type="button" class="btn btn-primary" (click)="addRow('Detailed')" *ngIf="authService.getCrudPermissionDetail('hr', seccion ,subSeccion , 'create')">
                   <i class="bi bi-plus-lg"></i>
                 </button>
-                <button type="button" class="btn btn-success position-relative" (click)="saveDetailChanges()" *ngIf="authService.getCrudPermission('hr', 'employees', 'create') || authService.getCrudPermission('hr', 'employees', 'update')">
+                <button type="button" class="btn btn-success position-relative" (click)="saveDetailChanges()" *ngIf="authService.getCrudPermissionDetail('hr', seccion ,subSeccion , 'create') || authService.getCrudPermissionDetail('hr', seccion ,subSeccion , 'update')">
                   <i class="bi bi-floppy"></i>
                   <span
                     class="position-absolute top-0 end-0 translate-middle p-2 bg-danger border border-light rounded-circle"
@@ -66,7 +66,7 @@
                     <span class="visually-hidden">Hay cambios sin guardar</span>
                   </span>
                 </button>
-                <button type="button" class="btn btn-warning" (click)="revertDetailData()" *ngIf="authService.getCrudPermission('hr', 'employees', 'delete')">
+                <button type="button" class="btn btn-warning" (click)="revertDetailData()" *ngIf="authService.getCrudPermissionDetail('hr', seccion ,subSeccion , 'delete')">
                   <i class="bi bi-arrow-clockwise"></i>
                 </button>
               </div>

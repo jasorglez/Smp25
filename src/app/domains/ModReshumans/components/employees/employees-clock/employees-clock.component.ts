@@ -54,11 +54,7 @@ export class EmployeesClockComponent {
   getEmployees() {
     this.employeesService.getEmployees(this.idBranch).subscribe(
       (data: any) => {
-        if(this.authService.getCrudPermission('hr', 'employees', 'read')){
         this.employees = data;
-        }else{
-        this.employees = []
-        }
         console.log('Empleados:', data);
       },
       (error) => {

@@ -64,9 +64,9 @@ export class ModalBonusComponent {
       await this.obtenerBonos(); // ✅ espera que termine antes de continuar
       this.obtenerDatosCatalogos();
       this.obtenerDatosCatalogosVigente();
-      if(this.authService.getCrudPermission('hr', 'payroll', 'create')){
+      /*if(this.authService.getCrudPermission('hr', 'payroll','','','', 'create')){
         this.addMasterRow(); // ✅ ahora sí, ya hay datos en rowData
-      }
+      }*/
     });
   }
 
@@ -135,7 +135,7 @@ obtenerEmpleado(): Promise<any> {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'payroll', 'update');
+          return true
         },
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
@@ -172,7 +172,7 @@ obtenerEmpleado(): Promise<any> {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'payroll', 'update');
+          return true
         },
         filter: true,
         width: 150,

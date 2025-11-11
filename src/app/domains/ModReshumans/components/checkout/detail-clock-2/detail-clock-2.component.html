@@ -3,21 +3,21 @@
     <!-- Columna de botones -->
     <div class="col-auto">
       <div class="d-flex flex-column gap-1">
-        <button type="button" class="btn btn-primary ms-1 me-1" (click)="addDetailRow()" *ngIf="authService.getCrudPermission('hr', 'clock', 'create')" >
+        <button type="button" class="btn btn-primary ms-1 me-1" (click)="addDetailRow()" *ngIf="authService.getCrudPermissionDetail('hr', 'clock','MaeChe_Ajus', 'create')" >
           <i class="bi bi-plus-lg"></i>
         </button>
-        <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveDetailChanges()" *ngIf="authService.getCrudPermission('hr', 'clock', 'create') || authService.getCrudPermission('hr', 'clock', 'update')" >
+        <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveDetailChanges()" *ngIf="authService.getCrudPermissionDetail('hr', 'clock','MaeChe_Ajus', 'create') || authService.getCrudPermissionDetail('hr', 'clock','MaeChe_Ajus', 'update')" >
           <i class="bi bi-floppy"></i>
           <span
             class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
             *ngIf="notSavedChanges">
             <span class="visually-hidden">Hay cambios sin guardar</span>
-          </span>
+          </span> 
         </button>
         <button type="button" class="btn btn-warning ms-1 me-1" (click)="revertDetailData()">
           <i class="bi bi-arrow-clockwise"></i>
         </button>
-        <button type="button" class="btn btn-info ms-1 me-1" data-bs-toggle="modal" data-bs-target="#addJustificanteModal" *ngIf="authService.getCrudPermission('hr', 'clock', 'create')">
+        <button type="button" class="btn btn-info ms-1 me-1" data-bs-toggle="modal" data-bs-target="#addJustificanteModal" *ngIf="authService.getCrudPermissionDetail('hr', 'clock','MaeChe_Fes', 'read')">
           <i class="bi bi-cake"></i>
         </button>
       </div>
@@ -80,7 +80,7 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" (click)="cancelar()">Cancelar</button>
-        <button type="button" class="btn btn-primary" (click)="confirmarAnadir()" data-bs-dismiss="modal" >Añadir</button>
+        <button type="button" class="btn btn-primary" (click)="confirmarAnadir()" data-bs-dismiss="modal" *ngIf="authService.getCrudPermissionDetail('hr', 'clock','MaeChe_Fes', 'create')">Añadir</button>
       </div>
     </div>
   </div>

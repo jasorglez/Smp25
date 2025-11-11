@@ -28,14 +28,14 @@ import { PermissionsViewByUserComponent } from './detail-permissions-user/permis
             class="btn btn-primary ms-1"
             (click)="addWarehouse()"
             [disabled]="!warehousesGridApi"
-            *ngIf="authService.getCrudPermission('setup', 'users', 'create')">
+            >
             <i class="bi bi-plus-lg"></i>
           </button>
           <button
             class="btn btn-success ms-1 position-relative"
             (click)="saveWarehouses()"
             [disabled]="!hasWarehouseChanges"
-            *ngIf="authService.getCrudPermission('setup', 'users', 'create') || authService.getCrudPermission('setup', 'users', 'update')">
+           >
             <i class="bi bi-floppy"></i>
             <span
               class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
@@ -47,7 +47,7 @@ import { PermissionsViewByUserComponent } from './detail-permissions-user/permis
             class="btn btn-danger ms-1"
             (click)="deleteSelectedWarehouse()"
             [disabled]="!selectedWarehouse"
-            *ngIf="authService.getCrudPermission('setup', 'users', 'delete')">
+            >
             <i class="bi bi-trash"></i>
           </button>
         </div>
@@ -161,7 +161,7 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('setup', 'users', 'update');
+          return true
         },
         suppressMovable: true,
         filter: false,
@@ -216,7 +216,7 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('setup', 'users', 'update');
+          return true
         },
         suppressMovable: true,
         filter: 'agNumberColumnFilter', // Opcional: Ocultar el botón de filtro si no es para el usuario
@@ -352,13 +352,12 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
     });
   }
   obternerDatos(){
-    if(this.authService.getCrudPermission('setup', 'users', 'read')){
+    
     this.permitionsService.getRolYPosicion(this.userId, this.branchId).subscribe(
       (data: any) => {
         console.log(data)
         this.warehousesRowData =data 
       })
-    }
   }
 
   async loadCatalogs() {

@@ -286,7 +286,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers','Pro_Pri', 'update');
         },
       },
 
@@ -297,7 +297,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers','Pro_Pri', 'update');
         },
       },
 
@@ -308,7 +308,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers','Pro_Pri', 'update');
         },
         filter: true,
         cellEditor: 'autocompleteEditor',
@@ -382,7 +382,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-     //     return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+     //     return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers','Pro_Pri', 'update');
          return false;
         },
       },
@@ -422,7 +422,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers','Pro_Pri', 'update');
         },
       },
 
@@ -433,7 +433,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers','Pro_Pri', 'update');
         },
       },
 
@@ -476,7 +476,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers','Pro_Pri', 'update');
         },
       },
       {
@@ -486,7 +486,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers','Pro_Pri', 'update');
         },
       },
       {
@@ -496,7 +496,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers','Pro_Pri', 'update');
         },
       },
       {
@@ -506,7 +506,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers','Pro_Pri', 'update');
         },
       },
       {
@@ -516,7 +516,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('shoppingDelison', 'providers', 'update');
+          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers','Pro_Pri', 'update');
         },
       },
     ];
@@ -582,9 +582,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
         .getProvidersxmaterials(this.idRoot)
         .subscribe({
           next: (data: any) => {
-            if(this.authService.getCrudPermission('shoppingDelison', 'providers', 'read')){
             this.rowData = data;
-            }
             console.log(this.rowData)
             console.log(data)
             resolve(true);

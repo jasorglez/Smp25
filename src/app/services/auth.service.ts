@@ -225,11 +225,13 @@ export class AuthService {
 
   // Almacena los permisos en el servicio
   setUserPermissions(permissions: any): void {
+     console.log(permissions)
     this.userPermissions = permissions;
   }
 
   // Obtiene los permisos almacenados
   getUserPermissions(): any {
+   
     return this.userPermissions;
   }
 
@@ -245,27 +247,84 @@ export class AuthService {
 
     return section?.active === true && subSection?.active === true;
   }
+
+  hasSubDetailedPermission(masterPermissionKey: string, detailedPermissionKey: string, subdetailedPermissionKey: string): boolean {
+    const section = this.userPermissions?.[masterPermissionKey];
+    const subSection = section?.children?.[detailedPermissionKey];
+    const subSubSection = subSection?.children?.[subdetailedPermissionKey];
+    return section?.active === true && subSection?.active === true && subSubSection?.active === true;
+  }
   getCrudPermission(
   masterPermissionKey: string,
   detailedPermissionKey: string,
+  subdetailedPermissionKey: string,
+  menu: string,
+  capa: string,
   action: 'create' | 'read' | 'update' | 'delete'
 ): boolean {
   const section = this.userPermissions?.[masterPermissionKey];
   const subSection = section?.children?.[detailedPermissionKey];
+  const subSubSection = subSection?.children?.[subdetailedPermissionKey];
 
-  if (section?.active !== true || subSection?.active !== true) {
+  // Verifica que las tres capas existan y estén activas
+  if (
+    section?.active !== true ||
+    subSection?.active !== true ||
+    subSubSection?.active !== true
+  ) {
     return false;
   }
 
+  // Verifica que name y description coincidan
+  if (
+    subSubSection?.name !== menu ||
+    subSubSection?.description !== capa
+  ) {
+    return false;
+  }
+
+  // Mapeo CRUD
   const crudMap = {
-    create: subSection.crud?.canCreate,
-    read: subSection.crud?.canRead,
-    update: subSection.crud?.canUpdate,
-    delete: subSection.crud?.canDelete
+    create: subSubSection.crud?.canCreate,
+    read: subSubSection.crud?.canRead,
+    update: subSubSection.crud?.canUpdate,
+    delete: subSubSection.crud?.canDelete
   };
 
   return crudMap[action] === true;
 }
+
+getCrudPermissionDetail(
+  masterPermissionKey: string,
+  detailedPermissionKey: string,
+  subdetailedPermissionKey: string,
+  action: 'create' | 'read' | 'update' | 'delete'
+): boolean {
+  const section = this.userPermissions?.[masterPermissionKey];
+  const subSection = section?.children?.[detailedPermissionKey];
+  const subSubSection = subSection?.children?.[subdetailedPermissionKey];
+
+  // Verifica que las tres capas existan y estén activas
+  if (
+    section?.active !== true ||
+    subSection?.active !== true ||
+    subSubSection?.active !== true
+  ) {
+    return false;
+  }
+
+  // Mapeo CRUD
+  const crudMap = {
+    create: subSubSection.crud?.canCreate,
+    read: subSubSection.crud?.canRead,
+    update: subSubSection.crud?.canUpdate,
+    delete: subSubSection.crud?.canDelete
+  };
+
+  return crudMap[action] === true;
+}
+
+
 
 
 

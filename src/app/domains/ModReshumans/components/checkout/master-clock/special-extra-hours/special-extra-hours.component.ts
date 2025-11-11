@@ -8,6 +8,7 @@ import {
   SelectionChangedEvent,
 } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
+import { AuthService } from 'app/services/auth.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { AgGridModule } from 'ag-grid-angular';
 import { SignalsService } from 'app/services/signals.service';
@@ -39,6 +40,7 @@ export class SpecialExtraHoursComponent {
   private timeService = inject(TimeService);
   private trackingService = inject(TrackingService);
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+  authService = inject(AuthService);
 
   defaultColDef = {
     flex: 1,
@@ -125,7 +127,12 @@ maestroColumnDefs: ColDef[] = [
   {
     field: 'startDateStamp',
     headerName: 'Fecha Inicio',
-    editable: true,
+    editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermissionDetail('hr', 'clock','MaeChe_HorEsp', 'update');
+        },
     cellEditor: 'agDateCellEditor',
     flex: 1,
     valueGetter: (params) => this.formatDate(params.data?.startDate),
@@ -198,7 +205,12 @@ maestroColumnDefs: ColDef[] = [
     field: 'startHourStamp',
     headerName: 'Hora Inicio',
     cellEditor: 'timeEditorComponent',
-    editable: true,
+    editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermissionDetail('hr', 'clock','MaeChe_HorEsp', 'update');
+        },
     flex: 1,
     valueGetter: (params) => this.formatTime(params.data?.startDate),
     valueSetter: (params) => {
@@ -251,7 +263,12 @@ maestroColumnDefs: ColDef[] = [
     field: 'endDateStamp',
     headerName: 'Fecha Fin',
     cellEditor: 'agDateCellEditor',
-    editable: true,
+    editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermissionDetail('hr', 'clock','MaeChe_HorEsp', 'update');
+        },
     flex: 1,
     valueGetter: (params) => this.formatDate(params.data?.endDate),
     valueSetter: (params) => {
@@ -323,7 +340,12 @@ maestroColumnDefs: ColDef[] = [
     field: 'endHourStamp',
     headerName: 'Hora Fin',
     cellEditor: 'timeEditorComponent',
-    editable: true,
+    editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return this.authService.getCrudPermissionDetail('hr', 'clock','MaeChe_HorEsp', 'update');
+        },
     flex: 1,
     valueGetter: (params) => this.formatTime(params.data?.endDate),
     valueSetter: (params) => {

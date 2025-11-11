@@ -123,7 +123,7 @@ export class BranchesComponent implements CanComponentDeactivate {
         }
       );
     } else {
-      if(this.authService.getCrudPermission('setup', 'branches', 'read')){
+      
       this.branchesService.getBranches(this.idRoot).subscribe(
         (data: Ibranch[]) => {
           this.masterRowData = data.sort((a, b) =>
@@ -135,7 +135,7 @@ export class BranchesComponent implements CanComponentDeactivate {
           console.error('Error fetching branches:', error);
         }
       );
-    }
+    
     }
   }
 
@@ -247,7 +247,7 @@ export class BranchesComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('setup', 'branches', 'update');
+          return true
         },
         filter: true,
         width: 250,
@@ -292,7 +292,7 @@ export class BranchesComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('setup', 'branches', 'update');
+          return true
         },
         filter: true,
         width: 400,
@@ -308,7 +308,7 @@ export class BranchesComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('setup', 'branches', 'update');
+          return true
         },
         filter: true,
         cellEditor: 'agSelectCellEditor',
@@ -340,7 +340,7 @@ export class BranchesComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('setup', 'branches', 'update');
+          return true
         },
         filter: true,
         width: 400,
@@ -373,7 +373,7 @@ export class BranchesComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('setup', 'branches', 'update');
+          return true
         },
         suppressMovable: true,
         filter: true,

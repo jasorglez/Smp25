@@ -245,7 +245,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
         },
         /*suppressMovable: true,
         filter: true,*/
@@ -266,7 +266,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
         },
         filter: true,
         width: 170,
@@ -312,7 +312,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin', 'update');
         },
         suppressMovable: true,
         width: 270,
@@ -371,7 +371,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin','update');
         },
         suppressMovable: true,
         width: 170,
@@ -449,7 +449,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         field: 'loan',
         headerName: 'Préstamos',
         editable: false,
-        hide: this.idRoot == 18,
+        hide: this.idRoot == 18 || !this.authService.hasSubDetailedPermission('hr', 'employees', 'Emp_Pre'),
         filter: 'agNumberColumnFilter',
         suppressMovable: true,
         filterParams: {
@@ -472,7 +472,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       {
         field: 'saving',
         headerName: 'Ahorro',
-        hide: this.idRoot == 18,
+        hide: this.idRoot == 18 || !this.authService.hasSubDetailedPermission('hr', 'employees', 'Emp_Aho'),
         editable: false,
         filter: 'agNumberColumnFilter',
         filterParams: {
@@ -504,7 +504,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
         },
         filter: 'agNumberColumnFilter',
         filterParams: {
@@ -553,7 +553,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
         },
         suppressMovable: true,
         filter: true,
@@ -636,7 +636,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
         },
         suppressMovable: true,
         filterParams: {
@@ -693,7 +693,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
         },
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
@@ -730,7 +730,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
         },
         filter: 'agDateColumnFilter',
         filterParams: {
@@ -783,7 +783,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
         },
         filter: false,
         width: 150,
@@ -810,7 +810,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
         },
         filter: true,
         filterParams: {
@@ -827,7 +827,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
         },
         filterParams: {
           // can be 'windows' or 'mac'
@@ -878,7 +878,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
         },
         filter: true,
         filterParams: {
@@ -913,7 +913,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
         },
         filter: true,
         filterParams: {
@@ -947,7 +947,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
         },
         /*suppressMovable: true,
         filter: true,*/
@@ -983,7 +983,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
         },
         filter: true,
         width: 170,
@@ -1029,7 +1029,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
         },
         suppressMovable: true,
         width: 270,
@@ -1088,7 +1088,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
         },
         suppressMovable: true,
         width: 170,
@@ -1263,7 +1263,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
         },
         filter: 'agNumberColumnFilter',
         filterParams: {
@@ -1312,7 +1312,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
         },
         suppressMovable: true,
         filter: true,
@@ -1360,7 +1360,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
         },
         suppressMovable: true,
         filter: true,
@@ -1407,7 +1407,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
         },
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
@@ -1444,7 +1444,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
         },
         filter: 'agDateColumnFilter',
         filterParams: {
@@ -1497,7 +1497,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
         },
         filter: false,
         width: 150,
@@ -1524,7 +1524,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
         },
         filter: true,
         filterParams: {
@@ -1541,7 +1541,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
         },
         filterParams: {
           // can be 'windows' or 'mac'
@@ -1617,7 +1617,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
         },
         filter: true,
         filterParams: {
@@ -1652,7 +1652,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
         },
         filter: true,
         filterParams: {
@@ -1682,7 +1682,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     return new Promise((resolve) => {
       this.employeeService.getEmployees(this.idBranch).subscribe(
         (data: any) => {
-          if(this.authService.getCrudPermission('hr', 'employees', 'read')){
+          if(this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin', 'read')){
             this.rowData = data;
           }else{
             this.rowData =[];

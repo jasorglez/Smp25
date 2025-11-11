@@ -39,7 +39,7 @@
             </div>         
         </div>
         <div class="text-center mt-3">
-            <button type="submit"  class="btn btn-success me-2" *ngIf="authService.getCrudPermission('hr', 'setup', 'create') || authService.getCrudPermission('hr', 'setup', 'update')"  ><i
+            <button type="submit"  class="btn btn-success me-2"  ><i
                 class="fas fa-save me-2"></i>Guardar</button>
             <button type="button" class="btn btn-secondary" (click)="revertChanges()"><i
                 class="fas fa-times me-2"></i>Cancelar</button>
@@ -57,7 +57,7 @@
                     <div class="row g-3">
                         <div class="mb-4">
                             <label for="fileInput" class="form-label">Selecciona un archivo Excel de nómina:</label>
-                            <input type="file" class="form-control" id="fileInput" (change)="onFileChange($event)" *ngIf="authService.getCrudPermission('hr', 'setup', 'create') || authService.getCrudPermission('hr', 'setup', 'update')"  
+                            <input type="file" class="form-control" id="fileInput" (change)="onFileChange($event)" 
                                 accept=".xlsx, .xls" [disabled]="isLoading">
                             <div class="form-text">
                                 Formatos aceptados: .xlsx, .xls
@@ -136,7 +136,7 @@
                 </div>
             </div>
             <div class="mt-4 text-end">
-                <button type="button" class="btn btn-primary me-2" (click)="sendPayrollData()" *ngIf="authService.getCrudPermission('hr', 'setup', 'create') || authService.getCrudPermission('hr', 'setup', 'update')"  ><i
+                <button type="button" class="btn btn-primary me-2" (click)="sendPayrollData()" ><i
                         class="fas fa-save me-2"></i>Guardar</button>
                 <button type="button" class="btn btn-secondary" (click)="resetForm()"><i
                         class="fas fa-times me-2"></i>Cancelar</button>

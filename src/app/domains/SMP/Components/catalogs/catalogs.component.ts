@@ -64,6 +64,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
   private tempIdCounter: number = 0;
   private gridApi: GridApi;
   select: string;
+  active: string = ""
 
   menuSelect: number;
   showWarehTab: Signal<boolean>;
@@ -251,7 +252,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission(this.typeCatalog, 'catalogs', 'update');
+          return this.authService.getCrudPermission(this.typeCatalog, 'catalogs','','','', 'update');
         },
         width: 80,
         hide:true,
@@ -267,7 +268,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission(this.typeCatalog, 'catalogs', 'update');
+          return this.authService.getCrudPermission(this.typeCatalog, 'catalogs','','','', 'update');
         },
         width: 100,
         hide: this.selectedCatalog !== 'TRABREALIZADO',
@@ -284,7 +285,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission(this.typeCatalog, 'catalogs', 'update');
+          return this.authService.getCrudPermission(this.typeCatalog, 'catalogs','','','', 'update');
         },
         filter: true,
         width: 250,
@@ -354,7 +355,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission(this.typeCatalog, 'catalogs', 'update');
+          return this.authService.getCrudPermission(this.typeCatalog, 'catalogs','','','', 'update');
         },
         width: 100,
         hide:
@@ -373,7 +374,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission(this.typeCatalog, 'catalogs', 'update');
+          return this.authService.getCrudPermission(this.typeCatalog, 'catalogs','','','', 'update');
         },
         width: 200,
         hide:this.selectedCatalog !== 'ABSENCES' && this.selectedCatalog !== 'REASON'
@@ -385,7 +386,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission(this.typeCatalog, 'catalogs', 'update');
+          return this.authService.getCrudPermission(this.typeCatalog, 'catalogs','','','', 'update');
         },
         width: 100,
         hide: this.selectedCatalog !== 'TRABREALIZADO',
@@ -405,7 +406,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission(this.typeCatalog, 'catalogs', 'update');
+          return this.authService.getCrudPermission(this.typeCatalog, 'catalogs','','','', 'update');
         },
         hide: this.idRoot == 18, // Solo mostrar si idRoot es 18
         width: 100,

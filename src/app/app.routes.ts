@@ -1365,7 +1365,6 @@ export const routes: Routes = [
               }
             },
             children: [
-              { path: '', redirectTo: 'employees-table', pathMatch: 'full' },
               {
                 path: 'clock',
                 loadComponent: () =>
@@ -1436,7 +1435,6 @@ export const routes: Routes = [
             canActivate: [MasterPermissionsGuard],
             data: { permissions: { master: 'hr', detailed: 'payroll' } },
             children: [
-              { path: '', redirectTo: 'master-payroll', pathMatch: 'full' },
               {
                 path: 'master-payroll',
                 loadComponent: () =>
@@ -1549,7 +1547,6 @@ export const routes: Routes = [
             canActivate: [MasterPermissionsGuard],
             data: { permissions: { master: 'hr', detailed: 'clock' } },
             children: [
-              { path: '', redirectTo: 'master-clock', pathMatch: 'full' },
               {
                 path: 'discrepancies',
                 loadComponent: () => import('./domains/ModReshumans/components/checkout/discrepancies/discrepancies.component'),

@@ -34,7 +34,7 @@ export class EmployeesComponent {
 
   myForm: FormGroup = this.formBuilder.group({
     vigency: [
-      { value: '', disabled: !this.authService.getCrudPermission('hr', 'setup', 'update') && !this.authService.getCrudPermission('hr', 'setup', 'create') },
+      { value: ''/*, disabled: !this.authService.getCrudPermission('hr', 'setup','','','', 'update') && !this.authService.getCrudPermission('hr', 'setup','','','', 'create') */},
       [Validators.required, Validators.minLength(1)]
     ],
   })

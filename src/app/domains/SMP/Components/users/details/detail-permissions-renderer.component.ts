@@ -31,14 +31,14 @@ import { UsersService } from 'app/services/users.service';
             class="btn btn-primary ms-1"
             (click)="addPermission()"
             [disabled]="!permissionsGridApi"
-            *ngIf="authService.getCrudPermission('setup', 'users', 'create')">
+            >
             <i class="bi bi-plus-lg"></i>
           </button>
           <button
             class="btn btn-success ms-1 position-relative"
             (click)="savePermissions()"
             [disabled]="!hasPermissionChanges"
-            *ngIf="authService.getCrudPermission('setup', 'users', 'create') || authService.getCrudPermission('setup', 'users', 'update')">
+           >
             <i class="bi bi-floppy"></i>
             <span
               class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
@@ -50,7 +50,7 @@ import { UsersService } from 'app/services/users.service';
             class="btn btn-danger ms-1"
             (click)="deleteSelectedPermission()"
             [disabled]="!selectedPermission"
-            *ngIf="authService.getCrudPermission('setup', 'users', 'delete')">
+            >
             <i class="bi bi-trash"></i>
           </button>
           <!--<button
@@ -171,7 +171,7 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('setup', 'users', 'update');
+          return true
         },
           flex: 1
         }
@@ -193,7 +193,7 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('setup', 'users', 'update');
+          return true
         },
           suppressMovable: true,
           filter: false,
@@ -342,7 +342,7 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
           this.trackingService.getEmail()
         );
       });
-    } else if (this.authService.getCrudPermission('setup', 'users', 'read')){
+    } else 
       // Para usuarios normales, cargar sucursales
       this.branchesService.getBranchesByUserAndCompany(this.userId, this.idRoot).subscribe(
         (data: any) => {
@@ -371,7 +371,6 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
           console.error('Error fetching branches data:', error);
         }
       );
-    }
   }
 
   onPermissionsGridReady(params: any) {

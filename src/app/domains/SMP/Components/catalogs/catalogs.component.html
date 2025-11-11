@@ -76,14 +76,14 @@
                 <div class="col-auto">
                   <div class="d-flex flex-column gap-2 align-items-center">
                     <button type="button" class="btn btn-primary" (click)="addRow()"
-                    *ngIf="authService.getCrudPermission(typeCatalog, 'catalogs', 'create')">
+                    *ngIf="authService.getCrudPermissionDetail(typeCatalog, 'catalogs','Cat_prin', 'create')">
                       <i class="bi bi-plus-lg"></i>
                     </button>
                     <button
                       type="button"
                       class="btn btn-success position-relative"
                       (click)="saveChanges()"
-                      *ngIf="authService.getCrudPermission(typeCatalog, 'catalogs', 'create') || authService.getCrudPermission(typeCatalog, 'catalogs', 'update')"
+                      *ngIf="authService.getCrudPermissionDetail(typeCatalog, 'catalogs','Cat_prin', 'create') || authService.getCrudPermissionDetail(typeCatalog, 'catalogs','Cat_prin', 'update')"
                     >
                       <i class="bi bi-floppy"></i>
                       <span

@@ -115,7 +115,7 @@ export class BanksComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('administration', 'bank', 'update');
+          return true;
         },
         filter: true,
         width: 150,
@@ -138,14 +138,14 @@ export class BanksComponent implements CanComponentDeactivate {
           },
         },
         onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-          if(event.data.__isNew || this.authService.getCrudPermission('administration', 'bank', 'update')){
+          //if(event.data.__isNew || true){
           if (!event.node.group) {
             this.modalServiceTable.showModal({
               params: event,
               value: event.value,
             });
           }
-          }
+          //}
         },
         cellRenderer: (params: ICellRendererParams) => {
           if (params.node.group) {
@@ -159,7 +159,7 @@ export class BanksComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('administration', 'bank', 'update');
+          return true;
         }, width: 150 },
 
       {
@@ -169,7 +169,7 @@ export class BanksComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('administration', 'bank', 'update');
+          return true;
         },
         width: 120,
         cellEditorParams: {
@@ -200,7 +200,7 @@ export class BanksComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('administration', 'bank', 'update');
+          return true;
         },
         width: 140,
       },
@@ -209,7 +209,7 @@ export class BanksComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('administration', 'bank', 'update');
+          return true;
         }, width: 95 },
     ];
   }
@@ -217,11 +217,7 @@ export class BanksComponent implements CanComponentDeactivate {
   obtenerDatos() {
     this.administrationService.getBanks().subscribe({
       next: (data: any) => {
-        if(this.authService.getCrudPermission('administration', 'bank', 'read')){
-        this.Bankdata = data;}
-        else{
-          this.Bankdata = []
-        }
+        this.Bankdata = data;
         //console.log('Data Bank:', data);
       },
       error: (error) => {
