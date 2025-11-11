@@ -120,6 +120,13 @@ export class ProductosTerminadosComponent {
         cellRenderer: 'agCheckboxCellRenderer',
       },
       {
+        headerName: 'id de Producto',
+        field: 'cantidadXCajas',
+        width: 150,
+        editable: true,
+        type: 'numericColumn'
+      },
+      {
         headerName: 'Producto',
         field: 'producto',
         width: 200,
