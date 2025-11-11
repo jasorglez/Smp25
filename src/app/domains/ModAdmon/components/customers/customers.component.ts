@@ -222,7 +222,7 @@ export class CustomersComponent implements CanComponentDeactivate {s
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermissionDetail('administration', 'customer','Pro_Pri', 'update');
+          return true;
         },
         width: 100,
       },
@@ -271,7 +271,7 @@ export class CustomersComponent implements CanComponentDeactivate {s
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermissionDetail('administration', 'customer','Pro_Pri', 'update');
+          return true;
         },
         filter: true,
         width: 170,
@@ -305,7 +305,7 @@ export class CustomersComponent implements CanComponentDeactivate {s
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermissionDetail('administration', 'customer','Pro_Pri', 'update');
+          return true;
         },
         filter: true,
         //suppressMovable: true,
@@ -362,7 +362,7 @@ export class CustomersComponent implements CanComponentDeactivate {s
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermissionDetail('administration', 'customer','Pro_Pri', 'update');
+          return true;
         },
         width: 250,
         filterParams: {
@@ -404,7 +404,7 @@ export class CustomersComponent implements CanComponentDeactivate {s
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermissionDetail('administration', 'customer','Pro_Pri', 'update');
+          return true;
         },
         width: 150,
         //hide: this.type != 'CUSTOMERS',
@@ -427,7 +427,7 @@ export class CustomersComponent implements CanComponentDeactivate {s
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermissionDetail('administration', 'customer','Pro_Pri', 'update');
+          return true;
         },
         filter: true,
         width: 105,
@@ -445,7 +445,7 @@ export class CustomersComponent implements CanComponentDeactivate {s
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermissionDetail('administration', 'customer','Pro_Pri', 'update');
+          return true;
         },
         filter: true,
         width: 100,
@@ -467,7 +467,7 @@ export class CustomersComponent implements CanComponentDeactivate {s
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermissionDetail('administration', 'customer','Pro_Pri', 'update');
+          return true;
         },
         width: 250,
         filter: true,
@@ -553,7 +553,7 @@ export class CustomersComponent implements CanComponentDeactivate {s
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermissionDetail('administration', 'customer','Pro_Pri', 'update');
+          return true;
         },
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
@@ -567,7 +567,7 @@ export class CustomersComponent implements CanComponentDeactivate {s
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermissionDetail('administration', 'customer','Pro_Pri', 'update');
+          return true;
         },
         filterParams: {
           // can be 'windows' or 'mac'
@@ -589,7 +589,7 @@ export class CustomersComponent implements CanComponentDeactivate {s
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermissionDetail('administration', 'customer','Pro_Pri', 'update');
+          return true;
         },
         filter: true,
         width: 300,
@@ -618,7 +618,7 @@ export class CustomersComponent implements CanComponentDeactivate {s
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermissionDetail('administration', 'customer','Pro_Pri', 'update');
+          return true;
         },
         width: 120,
         valueSetter: (params) => {
@@ -644,7 +644,7 @@ export class CustomersComponent implements CanComponentDeactivate {s
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermissionDetail('administration', 'customer','Pro_Pri', 'update');
+          return true;
         },
         hide: true,
         width: 100,
@@ -654,7 +654,7 @@ export class CustomersComponent implements CanComponentDeactivate {s
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermissionDetail('administration', 'customer','Pro_Pri', 'update');
+          return true;
         }, width: 90 , hide: this.type != 'CUSTOMERS'},
       /*{
         field: 'latitud',
@@ -663,7 +663,7 @@ export class CustomersComponent implements CanComponentDeactivate {s
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermissionDetail('administration', 'customer','Pro_Pri', 'update');
+          return true;
         },
         width: 110,
         filter: true,
@@ -675,7 +675,7 @@ export class CustomersComponent implements CanComponentDeactivate {s
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermissionDetail('administration', 'customer','Pro_Pri', 'update');
+          return true;
         },
         width: 120,
         filter: true,
@@ -690,7 +690,7 @@ export class CustomersComponent implements CanComponentDeactivate {s
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermissionDetail('administration', 'customer','Pro_Pri', 'update');
+          return true;
         },
         cellEditorParams: {
           useFormatter: true,

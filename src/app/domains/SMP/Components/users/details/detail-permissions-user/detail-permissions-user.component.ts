@@ -133,7 +133,7 @@ export class DetailPermissionsUserComponent implements ICellRendererAngularComp 
   };
   modificar(){
     const newal = true
-    if(this.authService.getCrudPermission('setup', 'users','','','', 'create')){
+    //if(this.authService.getCrudPermission('setup', 'users','','','', 'create')){
        this.permitionsService.getPermitionsDetail(this.idEmpresa, this.idUser, this.idBranch, this.idRole, this.idPosicion)
       .subscribe((data: any) => {
         this.rowData = [];
@@ -141,9 +141,9 @@ export class DetailPermissionsUserComponent implements ICellRendererAngularComp 
         this.rowData = data;
         console.log("algo aqui", this.rowData)
       });
-    }else if(this.authService.getCrudPermission('setup', 'users','','','', 'update')){
+    /*}else if(this.authService.getCrudPermission('setup', 'users','','','', 'update')){
        this.editable = true
-    }
+    }*/
        
   }
 

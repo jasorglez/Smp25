@@ -29,21 +29,21 @@ import { ProvidersService } from 'app/services/providers.service';
               class="btn btn-sm btn-success me-2" 
               (click)="addDetallesCuentas()"
               [disabled]="!DetallesCuentasGridApi"
-              *ngIf="authService.getCrudPermission('shoppingDelison', 'providers', '','','','create')">
+              >
               <i class="bi bi-plus-circle"></i> Agregar
             </button>
             <button 
               class="btn btn-sm btn-primary me-2" 
               (click)="saveDetallesCuentass()"
               [disabled]="!hasDetallesCuentasChanges"
-              *ngIf="authService.getCrudPermission('shoppingDelison', 'providers', '','','','create') || authService.getCrudPermission('shoppingDelison', 'providers', '','','','update')">
+              >
               <i class="bi bi-floppy"></i> Guardar
             </button>
             <button 
               class="btn btn-sm btn-danger" 
               (click)="deleteSelectedDetallesCuentas()"
               [disabled]="!selectedDetallesCuentas"
-              *ngIf="authService.getCrudPermission('shoppingDelison', 'providers', '','','','create')">
+              >
               <i class="bi bi-trash"></i> Borrar
             </button>
           </div>
@@ -93,7 +93,7 @@ export class DetallesComponentCuentasAbono implements ICellRendererAngularComp {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('shoppingDelison', 'providers', '','','','update');
+          return true
         }, 
       flex: 1,
       cellEditor: 'agDateCellEditor',
@@ -167,7 +167,7 @@ export class DetallesComponentCuentasAbono implements ICellRendererAngularComp {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('shoppingDelison', 'providers', '','','','update');
+          return true
         }, flex: 1, 
       valueSetter: (params) => {
         const nuevoValor = Number(params.newValue);
@@ -191,7 +191,7 @@ export class DetallesComponentCuentasAbono implements ICellRendererAngularComp {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('shoppingDelison', 'providers', '','','','update');
+          return true
         }, flex: 1 },
   ];
 

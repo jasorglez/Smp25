@@ -24,21 +24,21 @@ import { CommonModule } from '@angular/common';
               class="btn btn-sm btn-success me-2" 
               (click)="addContact()"
               [disabled]="!contactGridApi"
-              *ngIf="authService.getCrudPermission('shoppingDelison', 'providers','','','', 'create')">
+             >
               <i class="bi bi-person-plus"></i> Agregar
             </button>
             <button 
               class="btn btn-sm btn-primary me-2" 
               (click)="saveContacts()"
               [disabled]="!hasContactChanges"
-              *ngIf="authService.getCrudPermission('shoppingDelison', 'providers','','','', 'create') || authService.getCrudPermission('shoppingDelison', 'providers','','','', 'update')">
+              >
               <i class="bi bi-floppy"></i> Guardar
             </button>
             <button 
               class="btn btn-sm btn-danger" 
               (click)="deleteSelectedContact()"
               [disabled]="!selectedContact" 
-              *ngIf="authService.getCrudPermission('shoppingDelison', 'providers','','','', 'delete')">
+              >
               <i class="bi bi-trash"></i> Borrar
             </button>
           </div>
@@ -116,7 +116,7 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('shoppingDelison', 'providers','','','', 'update');
+          return true
         },
       width: 150,
       flex: 1
@@ -128,7 +128,7 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('shoppingDelison', 'providers','','','', 'update');
+          return true
         },
       width: 120,
       flex: 1
@@ -140,7 +140,7 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('shoppingDelison', 'providers','','','', 'update');
+          return true
         },
       width: 100
     },
@@ -151,7 +151,7 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('shoppingDelison', 'providers','','','', 'update');
+          return true
         },
       width: 140,
       flex: 1
@@ -163,7 +163,7 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('shoppingDelison', 'providers','','','', 'update');
+          return true
         },
       width: 140
     },

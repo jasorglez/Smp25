@@ -124,7 +124,7 @@ export class AccountbanksComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('administration', 'bank','','','', 'update');
+          return true;
         },
         width: 150,
         cellEditor: 'agSelectCellEditor',
@@ -145,7 +145,7 @@ export class AccountbanksComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('administration', 'bank','','','', 'update');
+          return true;
         },
         filter: true,
         width: 200,
@@ -158,7 +158,7 @@ export class AccountbanksComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('administration', 'bank','','','', 'update');
+          return true;
         },
         width: 200,
         filter: true,
@@ -171,7 +171,7 @@ export class AccountbanksComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('administration', 'bank','','','', 'update');
+          return true;
         },
         width: 160,
       },
@@ -183,7 +183,7 @@ export class AccountbanksComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('administration', 'bank','','','', 'update');
+          return true;
         },
         width: 129,
         cellEditorParams: {
@@ -198,7 +198,7 @@ export class AccountbanksComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('administration', 'bank','','','', 'update');
+          return true;
         },
         width: 140,
       },
@@ -210,7 +210,7 @@ export class AccountbanksComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('administration', 'bank','','','', 'update');
+          return true;
         },
         width: 105,
         valueFormatter: (params) =>
@@ -226,7 +226,7 @@ export class AccountbanksComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('administration', 'bank','','','', 'update');
+          return true;
         },
         width: 105,
         valueFormatter: (params) =>
@@ -242,7 +242,7 @@ export class AccountbanksComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('administration', 'bank','','','', 'update');
+          return true;
         },
         width: 110,
         valueFormatter: (params) =>
@@ -375,12 +375,9 @@ export class AccountbanksComponent implements CanComponentDeactivate {
     this.administrationService
       .getAccountBanks(parseInt(localStorage.getItem('company')))
       .subscribe((response: any) => {
-        if(this.authService.getCrudPermission('administration', 'bank','','','', 'read')){
+        
         this.rowMaster = response;
-        }
-        else{
-          this.rowMaster = []
-        }
+        
         if (!response || response.length === 0) {
           alerts.basicAlert('Aviso', 'No hay datos disponibles', 'info');
         }

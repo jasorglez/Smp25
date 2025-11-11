@@ -171,7 +171,7 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('setup', 'users','','','', 'update');
+          return true
         },
           flex: 1
         }
@@ -193,7 +193,7 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('setup', 'users','','','', 'update');
+          return true
         },
           suppressMovable: true,
           filter: false,
@@ -342,7 +342,7 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
           this.trackingService.getEmail()
         );
       });
-    } else //if (this.authService.getCrudPermission('setup', 'users','','','', 'read')){
+    } else 
       // Para usuarios normales, cargar sucursales
       this.branchesService.getBranchesByUserAndCompany(this.userId, this.idRoot).subscribe(
         (data: any) => {
@@ -371,7 +371,6 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
           console.error('Error fetching branches data:', error);
         }
       );
-   // }
   }
 
   onPermissionsGridReady(params: any) {

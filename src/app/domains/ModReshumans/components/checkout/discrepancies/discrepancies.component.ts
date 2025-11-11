@@ -238,7 +238,7 @@ export default class DiscrepanciesComponent implements OnInit {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'clock','','','', 'update');
+          return true
         },
         width: 150,
         cellEditor: 'agSelectCellEditor',
@@ -281,11 +281,8 @@ export default class DiscrepanciesComponent implements OnInit {
   obtenerDatos() {
     this.clockService.getHourDiscrepancies(this.idBranch).subscribe((data: any) => {
       this.rowData = [];
-      if(this.authService.getCrudPermission('hr', 'clock','','','', 'read')){
+      
       this.rowData = data;
-      }else{
-        this.rowData = []
-      }
       console.log(this.rowData);
       this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Diferencias de Checador', 'Menu Recursos Humanos Diferencias de Checador',  this.trackingService.getEmail());
       // Esperar a que el grid se actualice y luego ajustar las columnas

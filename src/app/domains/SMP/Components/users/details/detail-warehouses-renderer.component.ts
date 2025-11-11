@@ -161,7 +161,7 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('setup', 'users','','','', 'update');
+          return true
         },
         suppressMovable: true,
         filter: false,
@@ -216,7 +216,7 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('setup', 'users','','','', 'update');
+          return true
         },
         suppressMovable: true,
         filter: 'agNumberColumnFilter', // Opcional: Ocultar el botón de filtro si no es para el usuario
@@ -352,13 +352,12 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
     });
   }
   obternerDatos(){
-    //if(this.authService.getCrudPermission('setup', 'users','','','', 'read')){
+    
     this.permitionsService.getRolYPosicion(this.userId, this.branchId).subscribe(
       (data: any) => {
         console.log(data)
         this.warehousesRowData =data 
       })
-    //}
   }
 
   async loadCatalogs() {

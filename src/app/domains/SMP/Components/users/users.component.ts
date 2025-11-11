@@ -157,7 +157,7 @@ constructor() {
       next: (response: any) => {
         if (response && response.code === 200 && response.data) {
           console.log('Response USER COMPONENT', response.data);
-          //if(this.authService.getCrudPermission('setup', 'users','','','', 'read')){
+          
           this.rowData = response.data.map((item: any) => {
             return { id: item.id, ...item };
           });
@@ -322,7 +322,7 @@ constructor() {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('setup', 'users','','','', 'update');
+          return true
         },
         filter: true,
         cellEditor: 'autocompleteEditor',
@@ -373,7 +373,7 @@ constructor() {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('setup', 'users','','','', 'update');
+          return true
         },
         cellEditorParams: {
           useFormatter: true,
@@ -443,7 +443,7 @@ constructor() {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('setup', 'users','','','', 'update');
+          return true
         },
       },
       /*{
@@ -514,7 +514,7 @@ constructor() {
         headerName: 'Imagen de perfil',
         cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
         cellRendererParams: (params) => {
-          const canEditImage = params.data.__isNew || this.authService.getCrudPermission('setup', 'users','','','', 'update');
+          const canEditImage = params.data.__isNew || true
           return {
           clicked: canEditImage ? this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService) : null,
           field: 'picture'
@@ -528,7 +528,7 @@ constructor() {
         headerName: 'Firma',
         cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
         cellRendererParams: (params) => {
-          const canEditImage = params.data.__isNew || this.authService.getCrudPermission('setup', 'users','','','', 'update');
+          const canEditImage = params.data.__isNew || true
           return {
             clicked: canEditImage ? this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService) : null,
             field: 'signature'
@@ -545,7 +545,7 @@ constructor() {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('setup', 'users','','','', 'update');
+          return true
         },
         width: 90,
         hide: !this.authorizedPass

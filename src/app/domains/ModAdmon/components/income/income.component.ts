@@ -216,14 +216,11 @@ export class IncomeComponent {
     this.incomesAndExpensesService.getIncomesAndExpenses(this.root).subscribe({
       next: (incomes) => {
         // Filtrado y manejo de caso sin datos
-        if(this.authService.getCrudPermission('administration', 'income', '','','','read')){
+        
         const filtered = incomes?.filter(income => {
           return income.type === "DEPOSITO" && income.idAccount === this.idAccount
         }) || [];
         this.incomes = filtered;
-        }else{
-          this.incomes =[]
-        }
         
       },
       error: (err) => {

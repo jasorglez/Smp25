@@ -31,9 +31,9 @@ export class ClockComponent {
   }
 
   myForm: FormGroup = this.formBuilder.group({
-    delay1: [ { value: '', disabled: !this.authService.getCrudPermission('hr', 'setup','','','', 'update') && !this.authService.getCrudPermission('hr', 'setup','','','', 'create') }, [Validators.required, Validators.min(0), Validators.max(60)]],
-    delay2: [ { value: '', disabled: !this.authService.getCrudPermission('hr', 'setup','','','', 'update') && !this.authService.getCrudPermission('hr', 'setup','','','', 'create') }, [Validators.required, Validators.min(0), Validators.max(60)]],
-    settingToleranceTime: [ { value: '', disabled: !this.authService.getCrudPermission('hr', 'setup','','','', 'update') && !this.authService.getCrudPermission('hr', 'setup','','','', 'create') }, [Validators.required]],
+    delay1: [ { value: ''/*, disabled: !this.authService.getCrudPermission('hr', 'setup','','','', 'update') && !this.authService.getCrudPermission('hr', 'setup','','','', 'create')*/ }, [Validators.required, Validators.min(0), Validators.max(60)]],
+    delay2: [ { value: ''/*, disabled: !this.authService.getCrudPermission('hr', 'setup','','','', 'update') && !this.authService.getCrudPermission('hr', 'setup','','','', 'create')*/ }, [Validators.required, Validators.min(0), Validators.max(60)]],
+    settingToleranceTime: [ { value: ''/*, disabled: !this.authService.getCrudPermission('hr', 'setup','','','', 'update') && !this.authService.getCrudPermission('hr', 'setup','','','', 'create')*/ }, [Validators.required]],
   });
 
   getData() {

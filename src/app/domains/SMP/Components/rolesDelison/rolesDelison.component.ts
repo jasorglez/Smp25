@@ -130,7 +130,7 @@ constructor(private currencyPipe: CurrencyPipe) {
 
 
   obtenerDatos() {
-    if(this.authService.getCrudPermission('setup', 'roles','','','', 'read')){
+    
      this.rolesService.getRoles(this.idRoot).subscribe(
       (data: any) => {
         this.rowData = data.data;
@@ -141,7 +141,7 @@ constructor(private currencyPipe: CurrencyPipe) {
         console.error('Error fetching data:', error);
       }
     );
-    }
+    
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -229,7 +229,7 @@ constructor(private currencyPipe: CurrencyPipe) {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('setup', 'roles','','','', 'update');
+          return true
         },
         filter: true,
         cellEditor: 'autocompleteEditor',
