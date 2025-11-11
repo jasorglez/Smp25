@@ -514,6 +514,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       },
       context: {
         idRoot: this.idRoot, // Pasar idRoot al detail renderer
+        componentParent: this, // Referencia al componente padre
         MATERIAL: {
           load: (materialId: number, type: string, callback: (data: any[]) => void) => {
             this.loadMaterialXTableData(materialId, type, callback);
@@ -525,6 +526,33 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
             this.deleteDetailRow(params, callback, 'MATERIAL');
           }
         }
+      }
+    });
+  }
+
+  // Método para actualizar el subfamilyCount de un material específico
+  updateSubfamilyCount(materialId: number) {
+    this.materialsService.getMaterialsxview(this.idRoot).subscribe({
+      next: (data) => {
+        // Buscar solo el material actualizado
+        const updatedMaterial = data.find(m => m.id === materialId);
+        if (updatedMaterial && this.gridApi) {
+          // Actualizar solo la fila específica
+          this.gridApi.forEachNode((node) => {
+            if (node.data && node.data.id === materialId) {
+              node.data.subfamilyCount = updatedMaterial.subfamilyCount;
+              this.gridApi.refreshCells({
+                rowNodes: [node],
+                columns: ['subfamilyCount'],
+                force: true
+              });
+              console.log(`✅ Actualizado "Donde usa" para material ${materialId}: ${updatedMaterial.subfamilyCount}`);
+            }
+          });
+        }
+      },
+      error: (error) => {
+        console.error('❌ Error al actualizar subfamilyCount:', error);
       }
     });
   }

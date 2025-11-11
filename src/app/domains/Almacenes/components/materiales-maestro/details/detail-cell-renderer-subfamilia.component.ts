@@ -1,4 +1,4 @@
-import { Component, inject, OnDestroy } from '@angular/core';
+import { Component, inject, OnDestroy, NgZone } from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams, ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -60,6 +60,7 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
 
   private materialsService = inject(MaterialsService);
   private modalService = inject(SubfamiliaModalService);
+  private ngZone = inject(NgZone);
   private modalSubscription?: Subscription;
 
   params: any;
@@ -233,15 +234,63 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
         headerName: 'Se usa aquí',
         field: 'seUsaAqui',
         width: 120,
-        editable: true,
-        cellRenderer: 'agCheckboxCellRenderer',
-        cellEditor: 'agCheckboxCellEditor',
-        onCellValueChanged: (params: any) => {
-          // Solo procesar cambios de filas de datos
-          if (params.node && params.node.group) {
-            return;
+        cellRenderer: (params: any) => {
+          // No renderizar checkbox en grupos
+          if (params.node.group) {
+            return '';
           }
-          this.onSeUsaAquiChanged(params);
+
+          // Crear checkbox HTML
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.checked = params.value === true;
+          checkbox.style.cursor = 'pointer';
+          checkbox.style.width = '18px';
+          checkbox.style.height = '18px';
+
+          // Manejar el clic del checkbox
+          checkbox.addEventListener('click', (event) => {
+            event.stopPropagation();
+
+            // Ejecutar dentro de la zona de Angular para que detecte cambios
+            this.ngZone.run(() => {
+              const oldValue = params.data.seUsaAqui;
+              const newValue = !oldValue;
+
+              console.log('🔔 Checkbox clickeado:', {
+                presentation: params.data.presentation,
+                oldValue,
+                newValue
+              });
+
+              // Actualizar el valor en los datos
+              params.data.seUsaAqui = newValue;
+
+              // Llamar al handler de cambios
+              this.onSeUsaAquiChanged({
+                data: params.data,
+                oldValue,
+                newValue,
+                node: params.node
+              });
+
+              // Refrescar solo esta celda
+              params.api.refreshCells({
+                rowNodes: [params.node],
+                columns: ['seUsaAqui'],
+                force: true
+              });
+            });
+          });
+
+          const wrapper = document.createElement('div');
+          wrapper.style.display = 'flex';
+          wrapper.style.justifyContent = 'center';
+          wrapper.style.alignItems = 'center';
+          wrapper.style.height = '100%';
+          wrapper.appendChild(checkbox);
+
+          return wrapper;
         }
       }
     ];
@@ -331,6 +380,12 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
       alerts.basicAlert('Éxito', 'Cambios guardados correctamente.', 'success');
       this.hasUnsavedChanges = false;
       await this.loadCatalogData();
+
+      // Notificar al componente padre para actualizar "Donde usa"
+      if (this.params?.context?.componentParent?.updateSubfamilyCount) {
+        console.log(`📢 Notificando al padre para actualizar "Donde usa" del material ${this.materialId}`);
+        this.params.context.componentParent.updateSubfamilyCount(this.materialId);
+      }
     } catch (error: any) {
       console.error('❌ Error al guardar cambios:', error);
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
@@ -495,15 +550,8 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
 
     console.log(`📝 Cambio marcado localmente (no guardado aún)`);
 
-    // Reordenar y expandir después de marcar/desmarcar
-    this.reorderMarkedItemsFirst();
-
-    // Refrescar el grid
-    if (this.gridApi) {
-      this.gridApi.setGridOption('rowData', this.flattenTreeData());
-      // Expandir grupos con items marcados
-      this.expandGroupsWithMarkedItems();
-    }
+    // NO refrescar el grid aquí para evitar perder el estado editable
+    // El reordenamiento y expansión se harán solo al guardar o al cargar inicial
   }
 
   // Catalog/expansion helper methods removed - not used in flat structure
