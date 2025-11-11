@@ -1,11 +1,11 @@
-import { Component, inject, OnDestroy } from '@angular/core';
+import { Component, inject, OnDestroy, NgZone } from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams, ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
-import { CatalogsService } from 'app/services/catalogs.service';
+import { MaterialsService } from 'app/services/materials.service';
 import { lastValueFrom, Subscription } from 'rxjs';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { SubfamiliaModalService } from '../services/subfamilia-modal.service';
@@ -21,12 +21,6 @@ import { SubfamiliaModalService } from '../services/subfamilia-modal.service';
       <strong><i class="bi bi-cup-straw"></i> Variantes de: {{ materialName }}</strong>
       <div class="d-flex gap-2">
         <button
-          class="btn btn-sm btn-success me-2"
-          (click)="addCatalogItem()"
-          [disabled]="!gridApi">
-          <i class="bi bi-plus-lg"></i> Agregar
-        </button>
-        <button
           class="btn btn-sm btn-primary me-2 position-relative"
           (click)="saveChanges()"
           [disabled]="!hasUnsavedChanges">
@@ -40,12 +34,6 @@ import { SubfamiliaModalService } from '../services/subfamilia-modal.service';
           class="btn btn-sm btn-warning me-2"
           (click)="revertChanges()">
           <i class="bi bi-arrow-clockwise"></i> Deshacer
-        </button>
-        <button
-          class="btn btn-sm btn-danger"
-          (click)="deleteSelectedItem()"
-          [disabled]="!selectedRowData">
-          <i class="bi bi-trash"></i> Borrar
         </button>
       </div>
     </div>
@@ -70,28 +58,24 @@ import { SubfamiliaModalService } from '../services/subfamilia-modal.service';
 })
 export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngularComp, OnDestroy {
 
-  private catalogsService = inject(CatalogsService);
+  private materialsService = inject(MaterialsService);
   private modalService = inject(SubfamiliaModalService);
+  private ngZone = inject(NgZone);
   private modalSubscription?: Subscription;
 
   params: any;
   materialId: number;
   materialName: string;
   idRoot: number;
-  idFamilia: number; // La subfamilia base viene del idFamilia del material
+  idFamilia: number;
 
   gridApi!: GridApi;
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
-  // Datos del catálogo jerárquico
+  // Datos planos de productos finales
   treeData: any[] = [];
   originalTreeData: any[] = []; // Para revertir cambios
-  selectedRowData: any = null;
-  selectedNodeLevel: 'subfamilia' | 'flavor' | 'presentation' | null = null;
   hasUnsavedChanges: boolean = false;
-
-  // Estado de expansión para persistir
-  private expansionState: Map<string, { subfamilia: boolean, flavors: Map<string, boolean> }> = new Map();
 
   agInit(params: ICellRendererParams): void {
     this.params = params;
@@ -126,7 +110,7 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
     }
   }
 
-  // Cargar datos del catálogo (3 niveles: Subfamilia → Flavor → Presentation)
+  // Cargar datos directamente desde getFinalProduct (sin jerarquía)
   async loadCatalogData() {
     console.log('🔍 loadCatalogData - Parámetros:', {
       idRoot: this.idRoot,
@@ -141,630 +125,211 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
     }
 
     try {
-      // Guardar estado de expansión antes de recargar
-      this.saveExpansionState();
+      console.log('📡 Cargando productos finales desde getFinalProduct...');
 
-      console.log('📡 Cargando subfamilias, flavors y presentations...');
-
-      // Cargar subfamilias del endpoint correcto
-      const subfamilias = await lastValueFrom(
-        this.catalogsService.getCatalogsxSubfamily(this.idRoot, this.idFamilia)
+      // Cargar productos finales desde el endpoint
+      const finalProducts = await lastValueFrom(
+        this.materialsService.getFinalProduct(this.idRoot)
       );
 
-      // Cargar flavors y presentations (pueden no existir aún, manejar 404)
-      let flavors: any[] = [];
-      let presentations: any[] = [];
-
-      try {
-        flavors = await lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'FLAVOR'));
-      } catch (error: any) {
-        if (error.status === 404) {
-          console.log('ℹ️ No hay flavors registrados todavía');
-          flavors = [];
-        } else {
-          throw error; // Re-lanzar si es otro tipo de error
-        }
+      console.log('✅ Productos finales recibidos:', finalProducts.length);
+      if (finalProducts.length > 0) {
+        console.log('🔍 Ejemplo de producto:', finalProducts[0]);
       }
 
-      try {
-        presentations = await lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'PRESENTATI'));
-      } catch (error: any) {
-        if (error.status === 404) {
-          console.log('ℹ️ No hay presentations registradas todavía');
-          presentations = [];
-        } else {
-          throw error; // Re-lanzar si es otro tipo de error
-        }
-      }
+      // Asignar directamente como filas planas
+      this.treeData = finalProducts.map(product => ({
+        ...product,
+        originalId: product.id,
+        seUsaAqui: false,
+        isLoadingSeUsa: true
+      }));
 
-      console.log('✅ Datos recibidos de la BD:', {
-        subfamilias: subfamilias.length,
-        flavors: flavors.length,
-        presentations: presentations.length
-      });
+      console.log('📋 TreeData asignado (filas planas):', this.treeData.length);
 
-      // Construir estructura jerárquica
-      this.buildTreeStructure(subfamilias, flavors, presentations);
-
-      console.log('🌲 TreeData construido:', this.treeData);
-
-      // Restaurar estado de expansión
-      this.restoreExpansionState();
+      // Cargar el estado "Se usa aquí" para todas las filas
+      await this.loadSeUsaAquiStatus();
 
     } catch (error) {
-      console.error('❌ Error al cargar datos del catálogo:', error);
+      console.error('❌ Error al cargar datos de productos finales:', error);
       this.treeData = [];
       alerts.basicAlert('Error', 'Error al cargar los datos.', 'error');
     }
   }
 
-  // Construir estructura plana para 3 columnas con control de expansión
-  private buildTreeStructure(subfamilias: any[], flavors: any[], presentations: any[]) {
-    this.treeData = [];
+  // Hierarchical methods removed - not used in flat structure
 
-    console.log('🏗️ Construyendo estructura con:', {
-      'Total subfamilias': subfamilias.length,
-      'Total flavors': flavors.length,
-      'Total presentations': presentations.length
-    });
 
-    // Agregar TODAS las subfamilias (nivel 1) - siempre visibles
-    subfamilias.forEach(subfamilia => {
-      const subfamiliaNode = {
-        ...subfamilia,
-        nodeLevel: 'subfamilia',
-        originalId: subfamilia.id,
-        isExpanded: false,
-        isVisible: true
-      };
-      this.treeData.push(subfamiliaNode);
-
-      // Buscar flavors de esta subfamilia (nivel 2)
-      // Los flavors tienen: parentId = subfamiliaId, subParentId = 0
-      const subfamiliaFlavors = flavors.filter(flavor =>
-        flavor.parentId === subfamilia.id && (flavor.subParentId === 0 || !flavor.subParentId)
-      );
-
-      console.log(`  📦 Subfamilia "${subfamilia.description}" tiene ${subfamiliaFlavors.length} flavors`);
-
-      subfamiliaFlavors.forEach(flavor => {
-        const flavorNode = {
-          ...flavor,
-          nodeLevel: 'flavor',
-          originalId: flavor.id,
-          parentSubfamiliaId: subfamilia.id,
-          isExpanded: false,
-          isVisible: false // Ocultas por defecto
-        };
-        this.treeData.push(flavorNode);
-
-        // Buscar presentations de este flavor (nivel 3)
-        // Las presentations tienen: parentId = subfamiliaId, subParentId = flavorId
-        const flavorPresentations = presentations.filter(presentation =>
-          presentation.parentId === subfamilia.id && presentation.subParentId === flavor.id
-        );
-
-        console.log(`    🎁 Flavor "${flavor.description}" tiene ${flavorPresentations.length} presentations`);
-
-        flavorPresentations.forEach(presentation => {
-          const presentationNode = {
-            ...presentation,
-            nodeLevel: 'presentation',
-            originalId: presentation.id,
-            parentSubfamiliaId: subfamilia.id,
-            parentFlavorId: flavor.id,
-            isVisible: false // Ocultas por defecto
-          };
-          this.treeData.push(presentationNode);
-        });
-      });
-    });
-
-    console.log(`✅ Estructura construida con ${this.treeData.length} nodos`);
-
-    // Guardar copia para revertir cambios
-    this.originalTreeData = JSON.parse(JSON.stringify(this.treeData));
-    this.hasUnsavedChanges = false;
-  }
-
-  // Configuración del grid
+  // Configuración del grid con grupos separados y filtros independientes
   get gridOptions(): any {
     return {
       headerHeight: 30,
       rowHeight: 30,
       animateRows: true,
-      treeData: false,
-      suppressClickEdit: true,
+      suppressClickEdit: false, // Cambié a false para permitir edición
       singleClickEdit: false,
       stopEditingWhenCellsLoseFocus: true,
       localeText: this.AG_GRID_LOCALE_ES,
-      onRowSelected: (event: any) => {
-        if (event.node.isSelected()) {
-          this.onRowSelected(event);
+      // Agrupación jerárquica con columnas visibles y filtros independientes
+      groupDefaultExpanded: 0,
+      suppressAggFuncInHeader: true,
+      autoGroupColumnDef: {
+        headerName: 'Grupos',
+        minWidth: 200,
+        cellRendererParams: {
+          suppressCount: false
         }
       }
-      // onCellDoubleClicked está en cada columna individualmente
     };
   }
 
-  // Definición de 3 columnas separadas con chevrons funcionales
+  // Definición de columnas con grupos separados y filtros independientes
   get columnDefs(): ColDef[] {
     return [
       {
-        headerName: 'Producto/Area',
-        field: 'subfamiliaDisplay',
-        width: 200,
-        cellRenderer: (params: any) => {
-          if (params.data.nodeLevel === 'subfamilia') {
-            const isExpanded = params.data.isExpanded || false;
-            const chevron = isExpanded ? '▼' : '▶';
-            const description = params.data.description;
-            const displayText = `${description} (${this.getFlavorCountForSubfamilia(params.data.originalId)})`;
-
-            return `<span class="chevron-icon" data-action="toggle" style="cursor: pointer; margin-right: 5px;">${chevron}</span> ${displayText}`;
-          }
-          return '';
+        // Columna de categoría - agrupación principal
+        headerName: 'Categoría',
+        field: 'category',
+        rowGroup: true,
+        hide: false, // Mostrar como columna
+        filter: 'agSetColumnFilter',
+        filterParams: {
+          buttons: ['reset', 'apply'],
+          closeOnApply: true,
+          caseSensitive: false
         },
-        onCellClicked: (event: any) => {
-          // Solo expandir si el click es en el chevron
-          if (event.event.target.classList.contains('chevron-icon') ||
-              event.event.target.getAttribute('data-action') === 'toggle') {
-            this.toggleSubfamiliaExpansion(event.data);
-            event.event.stopPropagation(); // Evitar que dispare otros eventos
-          }
-        },
-        onCellDoubleClicked: (event: any) => {
-          // Doble click para editar (solo si NO es en el chevron)
-          if (!event.event.target.classList.contains('chevron-icon') &&
-              event.event.target.getAttribute('data-action') !== 'toggle') {
-            this.openEditModal(event.data);
-          }
-        }
+        width: 150,
+        resizable: true,
+        cellClass: 'group-cell'
       },
       {
+        // Columna de sabor - agrupación secundaria
         headerName: 'Sabor',
-        field: 'flavorDisplay',
-        width: 200,
-        cellRenderer: (params: any) => {
-          if (params.data.nodeLevel === 'flavor') {
-            const childCount = this.getPresentationCountForFlavor(params.data.originalId);
-            const isExpanded = params.data.isExpanded || false;
-            const chevron = isExpanded ? '▼' : '▶';
-            return `<span class="chevron-icon" data-action="toggle" style="cursor: pointer; margin-right: 5px;">${chevron}</span> ${params.data.description} (${childCount})`;
-          }
-          return '';
+        field: 'flavor',
+        rowGroup: true,
+        hide: false, // Mostrar como columna
+        filter: 'agSetColumnFilter',
+        filterParams: {
+          buttons: ['reset', 'apply'],
+          closeOnApply: true,
+          caseSensitive: false
         },
-        onCellClicked: (event: any) => {
-          // Solo expandir si el click es en el chevron
-          if (event.event.target.classList.contains('chevron-icon') ||
-              event.event.target.getAttribute('data-action') === 'toggle') {
-            this.toggleFlavorExpansion(event.data);
-            event.event.stopPropagation(); // Evitar que dispare otros eventos
-          }
-        },
-        onCellDoubleClicked: (event: any) => {
-          // Doble click para editar (solo si NO es en el chevron)
-          if (!event.event.target.classList.contains('chevron-icon') &&
-              event.event.target.getAttribute('data-action') !== 'toggle') {
-            this.openEditModal(event.data);
-          }
-        }
+        width: 150,
+        resizable: true,
+        cellClass: 'group-cell'
       },
       {
-        headerName: 'Presentacion',
-        field: 'presentationDisplay',
-        width: 200,
-        cellRenderer: (params: any) => {
-          if (params.data.nodeLevel === 'presentation') {
-            return `<span style="margin-right: 15px;"></span> ${params.data.description}`;
-          }
-          return '';
+        headerName: 'Presentación',
+        field: 'presentation',
+        filter: 'agSetColumnFilter',
+        filterParams: {
+          buttons: ['reset', 'apply'],
+          closeOnApply: true,
+          caseSensitive: false
         },
-        onCellDoubleClicked: (event: any) => {
-          // Doble click para editar presentations
-          if (event.data && event.data.nodeLevel === 'presentation') {
-            this.openEditModal(event.data);
-          }
-        }
+        width: 300,
+        resizable: true
       },
       {
-        headerName: 'Activo',
-        field: 'active',
-        width: 80,
-        cellRenderer: 'agCheckboxCellRenderer',
+        headerName: 'Se usa aquí',
+        field: 'seUsaAqui',
+        width: 120,
+        cellRenderer: (params: any) => {
+          // No renderizar checkbox en grupos
+          if (params.node.group) {
+            return '';
+          }
+
+          // Crear checkbox HTML
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.checked = params.value === true;
+          checkbox.style.cursor = 'pointer';
+          checkbox.style.width = '18px';
+          checkbox.style.height = '18px';
+
+          // Manejar el clic del checkbox
+          checkbox.addEventListener('click', (event) => {
+            event.stopPropagation();
+
+            // Ejecutar dentro de la zona de Angular para que detecte cambios
+            this.ngZone.run(() => {
+              const oldValue = params.data.seUsaAqui;
+              const newValue = !oldValue;
+
+              console.log('🔔 Checkbox clickeado:', {
+                presentation: params.data.presentation,
+                oldValue,
+                newValue
+              });
+
+              // Actualizar el valor en los datos
+              params.data.seUsaAqui = newValue;
+
+              // Llamar al handler de cambios
+              this.onSeUsaAquiChanged({
+                data: params.data,
+                oldValue,
+                newValue,
+                node: params.node
+              });
+
+              // Refrescar solo esta celda
+              params.api.refreshCells({
+                rowNodes: [params.node],
+                columns: ['seUsaAqui'],
+                force: true
+              });
+            });
+          });
+
+          const wrapper = document.createElement('div');
+          wrapper.style.display = 'flex';
+          wrapper.style.justifyContent = 'center';
+          wrapper.style.alignItems = 'center';
+          wrapper.style.height = '100%';
+          wrapper.appendChild(checkbox);
+
+          return wrapper;
+        }
       }
     ];
   }
 
-  // Retornar datos filtrados por visibilidad para AG-Grid
+  // Retornar todos los datos (ya son planos)
   flattenTreeData(): any[] {
-    return this.treeData.filter(item => item.isVisible);
+    return this.treeData;
   }
 
-  // Métodos para manejar expand/collapse
-  toggleSubfamiliaExpansion(subfamiliaData: any) {
-    const subfamilia = this.treeData.find(item =>
-      item.nodeLevel === 'subfamilia' && item.originalId === subfamiliaData.originalId
-    );
+  // Expand/collapse methods removed - not used in flat structure
 
-    if (subfamilia) {
-      subfamilia.isExpanded = !subfamilia.isExpanded;
-
-      // Mostrar/ocultar flavors de esta subfamilia
-      this.treeData.forEach(item => {
-        if (item.nodeLevel === 'flavor' && item.parentSubfamiliaId === subfamilia.originalId) {
-          item.isVisible = subfamilia.isExpanded;
-
-          // Si ocultamos el flavor, también ocultar sus presentations
-          if (!subfamilia.isExpanded) {
-            this.treeData.forEach(subItem => {
-              if (subItem.nodeLevel === 'presentation' && subItem.parentFlavorId === item.originalId) {
-                subItem.isVisible = false;
-              }
-            });
-          } else {
-            // Si mostramos el flavor, mostrar presentations solo si el flavor está expandido
-            if (item.isExpanded) {
-              this.treeData.forEach(subItem => {
-                if (subItem.nodeLevel === 'presentation' && subItem.parentFlavorId === item.originalId) {
-                  subItem.isVisible = true;
-                }
-              });
-            }
-          }
-        }
-      });
-
-      // Refrescar el grid
-      if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', this.flattenTreeData());
-      }
-    }
-  }
-
-  toggleFlavorExpansion(flavorData: any) {
-    const flavor = this.treeData.find(item =>
-      item.nodeLevel === 'flavor' && item.originalId === flavorData.originalId
-    );
-
-    if (flavor) {
-      flavor.isExpanded = !flavor.isExpanded;
-
-      // Mostrar/ocultar presentations de este flavor
-      this.treeData.forEach(item => {
-        if (item.nodeLevel === 'presentation' && item.parentFlavorId === flavor.originalId) {
-          item.isVisible = flavor.isExpanded;
-        }
-      });
-
-      // Refrescar el grid
-      if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', this.flattenTreeData());
-      }
-    }
-  }
-
-  // Selección de filas
+  // Selección de filas (no usado en estructura plana)
   onRowSelected(event: any) {
-    this.selectedRowData = event.data;
-    if (event.data) {
-      this.selectedNodeLevel = event.data.nodeLevel || 'subfamilia';
-    } else {
-      this.selectedNodeLevel = null;
-    }
+    // Método mantenido por compatibilidad pero no usado
   }
 
   // Grid listo
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+
+    // Autoajustar columnas al contenido o al header (lo que sea más largo)
+    setTimeout(() => {
+      if (this.gridApi) {
+        this.gridApi.sizeColumnsToFit();
+      }
+    }, 100);
   }
 
-  // Agregar nuevo elemento según nivel seleccionado
-  addCatalogItem() {
-    if (!this.selectedRowData) {
-      this.openAddSubfamiliaModal(); // Si no hay selección, agregar subfamilia
-      return;
-    }
+  // Métodos de catálogo no usados en estructura plana (removidos)
 
-    switch (this.selectedNodeLevel) {
-      case 'subfamilia':
-        this.openAddFlavorModal();
-        break;
-      case 'flavor':
-        this.openAddPresentationModal();
-        break;
-      case 'presentation':
-        alerts.basicAlert('Nivel máximo', 'No se pueden agregar elementos debajo de una presentación.', 'warning');
-        break;
-      default:
-        this.openAddSubfamiliaModal();
-    }
-  }
-
-  // Eliminar elemento seleccionado
-  async deleteSelectedItem() {
-    if (!this.selectedRowData) {
-      alerts.basicAlert('Eliminar', 'Por favor, seleccione un elemento para eliminar.', 'error');
-      return;
-    }
-
-    if (!this.selectedRowData.originalId) {
-      alerts.basicAlert('Error', 'No se puede identificar el registro a eliminar.', 'error');
-      return;
-    }
-
-    const result = await alerts.confirmAlert(
-      'Confirmar eliminación',
-      `¿Está seguro de que desea eliminar "${this.selectedRowData.description}"?`,
-      'warning',
-      'Sí, eliminar'
-    );
-
-    if (!result.isConfirmed) return;
-
-    try {
-      await lastValueFrom(this.catalogsService.deleteCatalog(this.selectedRowData.originalId));
-      alerts.basicAlert('Eliminado', 'Elemento eliminado satisfactoriamente.', 'success');
-      this.loadCatalogData();
-      this.selectedRowData = null;
-      this.selectedNodeLevel = null;
-    } catch (error: any) {
-      console.error('Error al eliminar:', error);
-      const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
-      alerts.basicAlert('Error', `Error al eliminar el elemento: ${errorMsg}`, 'error');
-    }
-  }
-
-  // ========== MÉTODOS HELPER PARA CONTADORES ==========
-
-  private getFlavorCountForSubfamilia(subfamiliaId: string | number): number {
-    if (!this.treeData || !subfamiliaId) return 0;
-    return this.treeData.filter(item =>
-      item.nodeLevel === 'flavor' && item.parentSubfamiliaId === subfamiliaId
-    ).length;
-  }
-
-  private getPresentationCountForFlavor(flavorId: string | number): number {
-    if (!this.treeData || !flavorId) return 0;
-    return this.treeData.filter(item =>
-      item.nodeLevel === 'presentation' && item.parentFlavorId === flavorId
-    ).length;
-  }
-
-  // ========== MÉTODOS PARA MODALES ==========
+  // ========== MÉTODOS PARA MODALES (no usados en estructura plana) ==========
 
   handleModalSave(data: any) {
-    console.log('💾 handleModalSave - Procesando datos:', data);
-
-    if (!data || !data.type) {
-      console.error('❌ Datos inválidos recibidos del modal');
-      return;
-    }
-
-    switch (data.type) {
-      case 'subfamilia':
-        this.handleSaveSubfamilia(data);
-        break;
-      case 'flavor':
-        this.handleSaveFlavor(data);
-        break;
-      case 'presentation':
-        this.handleSavePresentation(data);
-        break;
-      default:
-        console.error('❌ Tipo de modal desconocido:', data.type);
-    }
+    // Método mantenido por compatibilidad con modal service pero no usado
+    console.log('💾 handleModalSave - No implementado para estructura plana:', data);
   }
 
-  private async handleSaveSubfamilia(data: any) {
-    if (data.mode === 'add') {
-      // Preparar datos para guardar en BD
-      const newSubfamilia = this.cleanDataForServer({
-        description: data.description,
-        type: 'SUB-FAM',
-        parentId: this.idFamilia, // La familia del material
-        subParentId: 0,
-        active: data.active ? 1 : 0
-      });
-
-      try {
-        const response = await lastValueFrom(this.catalogsService.addCatalog(newSubfamilia));
-        console.log('✅ Subfamilia guardada en BD:', response);
-        alerts.basicAlert('Éxito', 'Subfamilia creada correctamente.', 'success');
-
-        // Recargar datos del servidor
-        await this.loadCatalogData();
-      } catch (error: any) {
-        console.error('❌ Error al crear subfamilia:', error);
-        const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
-        alerts.basicAlert('Error', `Error al crear la subfamilia: ${errorMsg}`, 'error');
-      }
-    } else if (data.mode === 'edit' && data.data) {
-      // Editar subfamilia existente
-      const item = this.treeData.find(i => i.originalId === data.data.originalId);
-      if (item) {
-        item.description = data.description;
-        item.active = data.active ? 1 : 0;
-        item.__modified = true;
-        this.hasUnsavedChanges = true;
-
-        if (this.gridApi) {
-          this.gridApi.setGridOption('rowData', this.flattenTreeData());
-        }
-
-        alerts.basicAlert('Éxito', 'Subfamilia actualizada. Haz clic en Guardar para aplicar los cambios.', 'success');
-      }
-    }
-  }
-
-  private async handleSaveFlavor(data: any) {
-    if (data.mode === 'add' && data.parentData?.subfamiliaId) {
-      // Preparar datos para guardar en BD
-      const newFlavor = this.cleanDataForServer({
-        description: data.description,
-        type: 'FLAVOR',
-        parentId: data.parentData.subfamiliaId, // ID de la subfamilia padre
-        subParentId: 0,
-        active: data.active ? 1 : 0
-      });
-
-      try {
-        const response = await lastValueFrom(this.catalogsService.addCatalog(newFlavor));
-        console.log('✅ Flavor guardado en BD:', response);
-        alerts.basicAlert('Éxito', 'Sabor creado correctamente.', 'success');
-
-        // Guardar el ID de la subfamilia que debe expandirse
-        const subfamiliaToExpand = data.parentData.subfamiliaId;
-
-        // Recargar datos del servidor
-        await this.loadCatalogData();
-
-        // Expandir automáticamente la subfamilia padre después de recargar
-        const parentSubfamilia = this.treeData.find(
-          item => item.nodeLevel === 'subfamilia' && item.originalId === subfamiliaToExpand
-        );
-        if (parentSubfamilia && !parentSubfamilia.isExpanded) {
-          this.toggleSubfamiliaExpansion(parentSubfamilia);
-        }
-      } catch (error: any) {
-        console.error('❌ Error al crear flavor:', error);
-        const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
-        alerts.basicAlert('Error', `Error al crear el sabor: ${errorMsg}`, 'error');
-      }
-    } else if (data.mode === 'edit' && data.data) {
-      // Editar flavor existente
-      const item = this.treeData.find(i => i.originalId === data.data.originalId);
-      if (item) {
-        item.description = data.description;
-        item.active = data.active ? 1 : 0;
-        item.__modified = true;
-        this.hasUnsavedChanges = true;
-
-        if (this.gridApi) {
-          this.gridApi.setGridOption('rowData', this.flattenTreeData());
-        }
-
-        alerts.basicAlert('Éxito', 'Sabor actualizado. Haz clic en Guardar para aplicar los cambios.', 'success');
-      }
-    }
-  }
-
-  private async handleSavePresentation(data: any) {
-    if (data.mode === 'add' && data.parentData?.flavorId) {
-      // Preparar datos para guardar en BD
-      const newPresentation = this.cleanDataForServer({
-        description: data.description,
-        type: 'PRESENTATI',
-        parentId: data.parentData.subfamiliaId, // ID de la subfamilia raíz
-        subParentId: data.parentData.flavorId, // ID del flavor padre
-        active: data.active ? 1 : 0
-      });
-
-      try {
-        const response = await lastValueFrom(this.catalogsService.addCatalog(newPresentation));
-        console.log('✅ Presentation guardada en BD:', response);
-        alerts.basicAlert('Éxito', 'Presentación creada correctamente.', 'success');
-
-        // Guardar los IDs que deben expandirse
-        const subfamiliaToExpand = data.parentData.subfamiliaId;
-        const flavorToExpand = data.parentData.flavorId;
-
-        // Recargar datos del servidor
-        await this.loadCatalogData();
-
-        // Expandir automáticamente la subfamilia padre
-        const parentSubfamilia = this.treeData.find(
-          item => item.nodeLevel === 'subfamilia' && item.originalId === subfamiliaToExpand
-        );
-        if (parentSubfamilia && !parentSubfamilia.isExpanded) {
-          this.toggleSubfamiliaExpansion(parentSubfamilia);
-        }
-
-        // Expandir automáticamente el flavor padre
-        const parentFlavor = this.treeData.find(
-          item => item.nodeLevel === 'flavor' && item.originalId === flavorToExpand
-        );
-        if (parentFlavor && !parentFlavor.isExpanded) {
-          this.toggleFlavorExpansion(parentFlavor);
-        }
-      } catch (error: any) {
-        console.error('❌ Error al crear presentation:', error);
-        const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
-        alerts.basicAlert('Error', `Error al crear la presentación: ${errorMsg}`, 'error');
-      }
-    } else if (data.mode === 'edit' && data.data) {
-      // Editar presentation existente
-      const item = this.treeData.find(i => i.originalId === data.data.originalId);
-      if (item) {
-        item.description = data.description;
-        item.active = data.active ? 1 : 0;
-        item.__modified = true;
-        this.hasUnsavedChanges = true;
-
-        if (this.gridApi) {
-          this.gridApi.setGridOption('rowData', this.flattenTreeData());
-        }
-
-        alerts.basicAlert('Éxito', 'Presentación actualizada. Haz clic en Guardar para aplicar los cambios.', 'success');
-      }
-    }
-  }
-
-  openAddSubfamiliaModal() {
-    console.log('🔵 Abriendo modal Subfamilia');
-    this.modalService.openModal({
-      type: 'subfamilia',
-      mode: 'add',
-      parentData: {
-        idRoot: this.idRoot,
-        idFamilia: this.idFamilia,
-        materialId: this.materialId,
-        materialName: this.materialName
-      }
-    });
-  }
-
-  openAddFlavorModal() {
-    if (!this.selectedRowData || this.selectedNodeLevel !== 'subfamilia') {
-      alerts.basicAlert('Error', 'Seleccione una subfamilia para agregar un sabor.', 'warning');
-      return;
-    }
-    console.log('🔵 Abriendo modal Flavor para subfamilia:', this.selectedRowData);
-    this.modalService.openModal({
-      type: 'flavor',
-      mode: 'add',
-      parentData: {
-        subfamiliaId: this.selectedRowData.originalId,
-        subfamiliaName: this.selectedRowData.description
-      }
-    });
-  }
-
-  openAddPresentationModal() {
-    if (!this.selectedRowData || this.selectedNodeLevel !== 'flavor') {
-      alerts.basicAlert('Error', 'Seleccione un flavor para agregar una presentación.', 'warning');
-      return;
-    }
-    console.log('🔵 Abriendo modal Presentation para flavor:', this.selectedRowData);
-    this.modalService.openModal({
-      type: 'presentation',
-      mode: 'add',
-      parentData: {
-        flavorId: this.selectedRowData.originalId,
-        flavorName: this.selectedRowData.description,
-        subfamiliaId: this.selectedRowData.parentSubfamiliaId
-      }
-    });
-  }
-
-  openEditModal(item: any) {
-    console.log('🔵 Abriendo modal Editar para:', item);
-    this.modalService.openModal({
-      type: item.nodeLevel,
-      mode: 'edit',
-      data: item
-    });
-  }
+  // Modal handlers removed - not used in flat structure
 
   async saveChanges() {
     if (!this.hasUnsavedChanges) {
@@ -773,43 +338,54 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
     }
 
     try {
-      const itemsToSave = this.treeData.filter(item => item.__isNew || item.__modified);
+      // Filtrar productos con cambios en "Se usa aquí"
+      const productsToSave = this.treeData.filter(item => item.__seUsaAquiModified);
 
-      console.log(`💾 Guardando ${itemsToSave.length} cambios...`);
+      console.log(`💾 Guardando cambios...`);
+      console.log(`   - Productos con cambios: ${productsToSave.length}`);
 
-      for (const item of itemsToSave) {
-        if (item.__isNew) {
-          // Guardar nuevo item
-          const dataToSave = this.cleanDataForServer({
-            description: item.description,
-            type: item.nodeLevel === 'subfamilia' ? 'SUB-FAM' :
-                  item.nodeLevel === 'flavor' ? 'FLAVOR' : 'PRESENTATI',
-            parentId: item.parentSubfamiliaId || this.idFamilia,
-            subParentId: item.parentFlavorId || 0,
-            active: item.active
-          });
-          await lastValueFrom(this.catalogsService.addCatalog(dataToSave));
-        } else if (item.__modified) {
-          // Actualizar item existente
-          const dataToSave = this.cleanDataForServer({
-            description: item.description,
-            valueAddition: item.valueAddition,
-            valueAddition2: item.valueAddition2,
-            valueAdditionBit: item.valueAdditionBit,
-            valueAdditionBit2: item.valueAdditionBit2,
-            vigente: item.vigente,
-            type: item.type,
-            parentId: item.parentId,
-            subParentId: item.subParentId,
-            price: item.price,
-            active: item.active
-          });
-          await lastValueFrom(this.catalogsService.updateCatalog(item.originalId, dataToSave));
+      // Guardar cambios de "Se usa aquí" (MaterialxFinalProduct)
+      for (const product of productsToSave) {
+        const originalValue = product.__originalSeUsaAqui ?? false;
+        const currentValue = product.seUsaAqui;
+
+        console.log(`   Procesando "${product.presentation}": ${originalValue} → ${currentValue}`);
+
+        if (currentValue === true && originalValue === false) {
+          // Agregar relación
+          console.log(`   ➕ Agregando material a producto ${product.originalId}`);
+          await lastValueFrom(
+            this.materialsService.addMaterialToFinalProduct(
+              this.materialId,
+              product.originalId,
+              {}
+            )
+          );
+        } else if (currentValue === false && originalValue === true) {
+          // Eliminar relación
+          console.log(`   ➖ Eliminando material de producto ${product.originalId}`);
+          await lastValueFrom(
+            this.materialsService.removeMaterialFromFinalProduct(
+              this.materialId,
+              product.originalId
+            )
+          );
         }
+
+        // Limpiar flags de modificación
+        delete product.__seUsaAquiModified;
+        delete product.__originalSeUsaAqui;
       }
 
       alerts.basicAlert('Éxito', 'Cambios guardados correctamente.', 'success');
+      this.hasUnsavedChanges = false;
       await this.loadCatalogData();
+
+      // Notificar al componente padre para actualizar "Donde usa"
+      if (this.params?.context?.componentParent?.updateSubfamilyCount) {
+        console.log(`📢 Notificando al padre para actualizar "Donde usa" del material ${this.materialId}`);
+        this.params.context.componentParent.updateSubfamilyCount(this.materialId);
+      }
     } catch (error: any) {
       console.error('❌ Error al guardar cambios:', error);
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
@@ -828,86 +404,155 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
 
     if (this.gridApi) {
       this.gridApi.setGridOption('rowData', this.flattenTreeData());
+      // Reajustar columnas después de revertir
+      setTimeout(() => this.gridApi?.sizeColumnsToFit(), 50);
     }
 
     alerts.basicAlert('Éxito', 'Cambios revertidos correctamente.', 'success');
   }
 
-  private cleanDataForServer(data: any): any {
-    const cleanData = {
-      idCompany: Number(this.idRoot),
-      description: String(data.description || '').trim(),
-      valueAddition: String(data.valueAddition || 'NA'),
-      valueAddition2: String(data.valueAddition2 || 'NA'),
-      valueAdditionBit: Boolean(data.valueAdditionBit || false),
-      valueAdditionBit2: Boolean(data.valueAdditionBit2 || false),
-      vigente: Boolean(data.vigente !== false),
-      type: String(data.type),
-      parentId: Number(data.parentId || 0),
-      subParentId: Number(data.subParentId || 0),
-      price: Number(data.price || 0),
-      active: Number(data.active || 1)
-    };
+  // Cargar el estado "Se usa aquí" para todas las filas
+  private async loadSeUsaAquiStatus() {
+    console.log('🔍 Cargando estado "Se usa aquí" para todos los productos...');
 
-    return cleanData;
-  }
+    console.log(`📊 Total de productos a verificar: ${this.treeData.length}`);
 
-  // Guardar estado de expansión actual
-  private saveExpansionState() {
-    this.expansionState.clear();
+    if (this.treeData.length === 0) {
+      console.log('⚠️ No hay productos para verificar');
+      return;
+    }
 
-    this.treeData.forEach(item => {
-      if (item.nodeLevel === 'subfamilia') {
-        const flavorsMap = new Map<string, boolean>();
-
-        this.treeData.forEach(flavor => {
-          if (flavor.nodeLevel === 'flavor' && flavor.parentSubfamiliaId === item.originalId) {
-            flavorsMap.set(String(flavor.originalId), flavor.isExpanded || false);
-          }
-        });
-
-        this.expansionState.set(String(item.originalId), {
-          subfamilia: item.isExpanded || false,
-          flavors: flavorsMap
-        });
-      }
-    });
-  }
-
-  // Restaurar estado de expansión después de reconstruir
-  private restoreExpansionState() {
-    if (this.expansionState.size === 0) return;
-
-    this.treeData.forEach(item => {
-      if (item.nodeLevel === 'subfamilia') {
-        const state = this.expansionState.get(String(item.originalId));
-        if (state) {
-          item.isExpanded = state.subfamilia;
-
-          this.treeData.forEach(flavor => {
-            if (flavor.nodeLevel === 'flavor' && flavor.parentSubfamiliaId === item.originalId) {
-              flavor.isVisible = state.subfamilia;
-
-              const flavorExpanded = state.flavors.get(String(flavor.originalId));
-              if (flavorExpanded !== undefined) {
-                flavor.isExpanded = flavorExpanded;
-
-                if (flavor.isVisible) {
-                  this.treeData.forEach(presentation => {
-                    if (presentation.nodeLevel === 'presentation' && presentation.parentFlavorId === flavor.originalId) {
-                      presentation.isVisible = flavorExpanded;
-                    }
-                  });
-                }
-              }
-            }
-          });
-        }
+    // Cargar el estado para cada producto
+    const promises = this.treeData.map(async (product) => {
+      try {
+        const exists = await lastValueFrom(
+          this.materialsService.checkMaterialExistsInFinalProduct(this.materialId, product.originalId)
+        );
+        product.seUsaAqui = exists;
+        product.isLoadingSeUsa = false;
+        console.log(`✅ Producto "${product.presentation}" (ID=${product.originalId}): ${exists ? 'SÍ se usa' : 'NO se usa'}`);
+      } catch (error) {
+        console.error(`❌ Error al verificar producto "${product.presentation}":`, error);
+        product.seUsaAqui = false;
+        product.isLoadingSeUsa = false;
       }
     });
 
+    // Esperar a que todas las consultas terminen
+    await Promise.all(promises);
+
+    console.log('✅ Estado "Se usa aquí" cargado para todos los productos');
+
+    // Reordenar: items marcados primero
+    this.reorderMarkedItemsFirst();
+
+    // IMPORTANTE: Guardar copia para revertir cambios DESPUÉS de cargar todo
+    this.originalTreeData = JSON.parse(JSON.stringify(this.treeData));
+    console.log('📋 Copia de seguridad creada para Deshacer');
+
+    // Refrescar el grid para mostrar los checkboxes actualizados
     if (this.gridApi) {
       this.gridApi.setGridOption('rowData', this.flattenTreeData());
+      // Expandir automáticamente los grupos que tienen items marcados
+      this.expandGroupsWithMarkedItems();
     }
   }
+
+  // Reordenar para que items marcados aparezcan primero
+  private reorderMarkedItemsFirst() {
+    console.log('🔄 Reordenando productos: marcados primero...');
+
+    // Separar productos marcados y no marcados
+    const markedProducts = this.treeData.filter(item => item.seUsaAqui === true);
+    const unmarkedProducts = this.treeData.filter(item => item.seUsaAqui !== true);
+
+    console.log(`📌 Productos marcados: ${markedProducts.length}`);
+    console.log(`📋 Productos no marcados: ${unmarkedProducts.length}`);
+
+    // Reordenar: marcados primero, luego no marcados
+    this.treeData = [...markedProducts, ...unmarkedProducts];
+
+    console.log('✅ Reordenamiento completado');
+  }
+
+  // Expandir automáticamente grupos que contienen items marcados
+  private expandGroupsWithMarkedItems() {
+    if (!this.gridApi) return;
+
+    console.log('📂 Expandiendo grupos con items marcados...');
+
+    // Obtener combinaciones únicas de category + flavor que tienen items marcados
+    const groupsToExpand = new Set<string>();
+
+    this.treeData.forEach(product => {
+      if (product.seUsaAqui === true) {
+        // Agregar la categoría
+        groupsToExpand.add(product.category);
+        // Agregar la combinación categoría + sabor
+        groupsToExpand.add(`${product.category}|${product.flavor}`);
+      }
+    });
+
+    console.log(`🔓 Grupos a expandir: ${groupsToExpand.size}`);
+
+    // Usar setTimeout para asegurar que el grid ya procesó los datos
+    setTimeout(() => {
+      this.gridApi.forEachNode((node) => {
+        if (node.group) {
+          // Para grupos de nivel 1 (categoría)
+          if (node.level === 0 && groupsToExpand.has(node.key)) {
+            node.setExpanded(true);
+            console.log(`  ✅ Expandido: ${node.key} (Nivel 1 - Categoría)`);
+          }
+          // Para grupos de nivel 2 (sabor)
+          else if (node.level === 1) {
+            // Obtener la categoría padre
+            const parentKey = node.parent?.key || '';
+            const groupKey = `${parentKey}|${node.key}`;
+            if (groupsToExpand.has(groupKey)) {
+              node.setExpanded(true);
+              console.log(`  ✅ Expandido: ${node.key} (Nivel 2 - Sabor)`);
+            }
+          }
+        }
+      });
+    }, 100);
+  }
+
+  // Manejar cambios en el checkbox "Se usa aquí" (solo marcar, no guardar)
+  onSeUsaAquiChanged(params: any) {
+    const product = params.data;
+    const newValue = params.newValue;
+    const oldValue = params.oldValue;
+
+    console.log(`🔄 Checkbox cambiado para "${product.presentation}":`, {
+      oldValue,
+      newValue,
+      materialId: this.materialId,
+      productId: product.originalId
+    });
+
+    // Si no cambió realmente, no hacer nada
+    if (newValue === oldValue) {
+      return;
+    }
+
+    // Guardar el valor original si no existe
+    if (product.__originalSeUsaAqui === undefined) {
+      product.__originalSeUsaAqui = oldValue;
+    }
+
+    // Marcar como modificado
+    product.__seUsaAquiModified = true;
+
+    // Actualizar el estado de "hasUnsavedChanges"
+    this.hasUnsavedChanges = true;
+
+    console.log(`📝 Cambio marcado localmente (no guardado aún)`);
+
+    // NO refrescar el grid aquí para evitar perder el estado editable
+    // El reordenamiento y expansión se harán solo al guardar o al cargar inicial
+  }
+
+  // Catalog/expansion helper methods removed - not used in flat structure
 }

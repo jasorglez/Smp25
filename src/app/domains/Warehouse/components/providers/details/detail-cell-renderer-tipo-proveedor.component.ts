@@ -7,12 +7,12 @@ import { CatalogsService } from 'app/services/catalogs.service';
 import { SignalsService } from 'app/services/signals.service';
 import { CustomersService } from 'app/services/customers.service';
 import { alerts } from 'app/helpers/alerts';
-import { SelectWithTooltipEditorComponent } from 'app/domains/Almacenes/components/materiales-maestro/editors/select-with-tooltip-editor.component';
+import { SelectWithTooltipEditorV2Component } from 'app/domains/Almacenes/components/materiales-maestro/editors/select-with-tooltip-editor-v2.component';
 
 @Component({
   selector: 'app-detail-cell-renderer-tipo-proveedor',
   standalone: true,
-  imports: [CommonModule, AgGridModule, SelectWithTooltipEditorComponent],
+  imports: [CommonModule, AgGridModule, SelectWithTooltipEditorV2Component],
   template: `
     <div style="padding: 10px; background-color: #e3f2fd; height: 100%; display: flex; flex-direction: column;">
       <!-- Título y botones -->
@@ -109,7 +109,7 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
       field: 'categoria',
       headerName: 'Categoría',
       editable: true,
-      cellEditor: SelectWithTooltipEditorComponent,
+      cellEditor: SelectWithTooltipEditorV2Component,
       cellEditorParams: () => {
         return {
           options: this.categorias.map(c => ({
@@ -120,14 +120,13 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
           }))
         };
       },
-      cellEditorPopup: true,
       width: 180
     },
     {
       field: 'familia',
       headerName: 'Familia',
       editable: true,
-      cellEditor: SelectWithTooltipEditorComponent,
+      cellEditor: SelectWithTooltipEditorV2Component,
       cellEditorParams: (params: any) => {
         // Filtrar familias según la categoría seleccionada en la fila
         const categoriaSeleccionada = params.data.categoria;
@@ -148,14 +147,13 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
 
         return { options: [] };
       },
-      cellEditorPopup: true,
       width: 180
     },
     {
       field: 'subfamilia',
       headerName: 'Subfamilia',
       editable: true,
-      cellEditor: SelectWithTooltipEditorComponent,
+      cellEditor: SelectWithTooltipEditorV2Component,
       cellEditorParams: (params: any) => {
         // Filtrar subfamilias según la familia seleccionada en la fila
         const familiaSeleccionada = params.data.familia;
@@ -176,7 +174,6 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
 
         return { options: [] };
       },
-      cellEditorPopup: true,
       width: 200
     },
     {
@@ -194,10 +191,7 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
     rowSelection: 'single',
     suppressCellFocus: false,
     stopEditingWhenCellsLoseFocus: true,
-    // Agregar soporte para componentes Angular como editores
-    frameworkComponents: {
-      selectWithTooltipEditor: SelectWithTooltipEditorComponent
-    },
+    singleClickEdit: false, // Doble-click para abrir el editor
     onFirstDataRendered: (params) => {
       console.log('onFirstDataRendered - autosizing columns...');
 
@@ -209,8 +203,8 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
 
       console.log('Columns to autosize:', allColumnIds);
 
-      // Autoajustar todas las columnas al contenido (skipHeader=true considera header y datos)
-      params.api.autoSizeColumns(allColumnIds, true);
+      // Autoajustar todas las columnas al contenido (skipHeader=false incluye header en el cálculo)
+      params.api.autoSizeColumns(allColumnIds, false);
 
       console.log('Autosize completed');
     }
@@ -421,11 +415,20 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
   }
 
   revertChanges(): void {
-    // Recargar datos originales
+    // Recargar datos originales desde tipoProveedorRows o typework
     if (this.params.data.tipoProveedorRows) {
       this.rowData = JSON.parse(JSON.stringify(this.params.data.tipoProveedorRows));
+    } else if (this.params.data.typework && this.params.data.typework.trim() !== '') {
+      // Si no hay tipoProveedorRows pero sí hay typework, parsearlo
+      this.parseTypeworkToRows(this.params.data.typework);
     } else {
+      // Si no hay ninguno, dejar vacío
       this.rowData = [];
+    }
+
+    // Refrescar el grid para mostrar los datos revertidos
+    if (this.gridApi) {
+      this.gridApi.setGridOption('rowData', this.rowData);
     }
 
     this.hasChanges = false;

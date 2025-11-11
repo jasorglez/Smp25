@@ -95,8 +95,8 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
 
       console.log('Columns to autosize:', allColumnIds);
 
-      // Autoajustar todas las columnas al contenido (skipHeader=true considera header y datos)
-      params.api.autoSizeColumns(allColumnIds, true);
+      // Autoajustar todas las columnas al contenido (skipHeader=false incluye header en el cálculo)
+      params.api.autoSizeColumns(allColumnIds, false);
 
       console.log('Autosize completed');
     }

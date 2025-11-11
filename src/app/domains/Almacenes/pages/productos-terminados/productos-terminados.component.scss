@@ -1,0 +1,45 @@
+/* Estilos para el componente Productos Terminados Grid */
+
+.card-header {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.card-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.card-tools {
+  float: right;
+}
+
+.card-tools .btn {
+  margin-left: 5px;
+}
+
+.ag-theme-alpine {
+  --ag-header-height: 35px;
+  --ag-row-height: 28px;
+}
+
+.ag-theme-alpine .ag-header-cell-text {
+  font-weight: 600;
+  color: #495057;
+}
+
+.ag-theme-alpine .ag-cell {
+  padding: 2px 4px;
+}
+
+/* Estilos para checkboxes */
+.ag-theme-alpine .ag-checkbox-input-wrapper {
+  margin-top: 2px;
+}
+
+/* Estilos para celdas editables */
+.ag-theme-alpine .ag-cell-inline-editing {
+  background-color: #fff3cd;
+  border: 1px solid #ffc107;
+}

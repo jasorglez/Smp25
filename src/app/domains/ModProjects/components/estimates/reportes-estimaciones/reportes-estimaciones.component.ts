@@ -901,28 +901,53 @@ export class ReportesEstimacionesComponent {
       return;
     }
 
-    console.log('Descargando multimedia para OT:', idOt);
-    alerts.basicAlert('Procesando', 'Preparando archivos multimedia...', 'info');
+    console.log('=== downloadMultimedia iniciado ===');
+    console.log('idOt:', idOt);
+    console.log('inmueble:', inmueble);
+
+    // Mostrar loading que no se puede cerrar
+    alerts.showLoading(
+      'Preparando archivos',
+      'Creando archivo ZIP con fotos y videos. Por favor espere...'
+    );
 
     this.logbookService.getMediaByOt(idOt).subscribe({
       next: (response) => {
-        console.log('Respuesta de getMediaByOt:', response);
+        console.log('=== Respuesta de getMediaByOt ===', response);
 
         if (response.success && response.data && response.data.downloadUrl) {
           const { downloadUrl, zipFileName, fileCount } = response.data;
 
-          // Abrir descarga directamente para evitar bloqueo del navegador
-          window.open(downloadUrl, '_blank');
+          console.log('downloadUrl:', downloadUrl);
+          console.log('zipFileName:', zipFileName);
+          console.log('fileCount:', fileCount);
 
-          alerts.basicAlert(
-            'Éxito',
-            `Descargando ${fileCount} archivo(s) multimedia del INMUEBLE ${inmueble}.`,
-            'success'
-          );
+          // Cerrar el loading
+          alerts.closeLoading();
 
-          // Recargar los datos de la tabla para actualizar el estado de downloaded
-          this.reloadTableData();
+          // Usar location.href para descargar en la misma pestaña
+          // Este método es el más confiable y funciona siempre
+          console.log('✓ Iniciando descarga con location.href');
+          window.location.href = downloadUrl;
+
+          // Mostrar mensaje de éxito
+          setTimeout(() => {
+            alerts.basicAlert(
+              'Éxito',
+              `Descargando ${fileCount} archivo(s) multimedia del INMUEBLE ${inmueble}.`,
+              'success'
+            );
+
+            // Recargar los datos de la tabla para actualizar el estado de downloaded
+            this.reloadTableData();
+          }, 300); // Delay para dar tiempo a que inicie la descarga
+
         } else {
+          console.warn('Respuesta sin datos de descarga:', response);
+
+          // Cerrar el loading
+          alerts.closeLoading();
+
           alerts.basicAlert(
             'Información',
             response.message || 'No hay archivos multimedia disponibles para esta OT.',
@@ -931,7 +956,10 @@ export class ReportesEstimacionesComponent {
         }
       },
       error: (error) => {
-        console.error('Error al descargar multimedia:', error);
+        console.error('=== Error en downloadMultimedia ===', error);
+
+        // Cerrar el loading en caso de error
+        alerts.closeLoading();
 
         // Verificar si es un error 404 (no hay archivos)
         if (error.status === 404) {

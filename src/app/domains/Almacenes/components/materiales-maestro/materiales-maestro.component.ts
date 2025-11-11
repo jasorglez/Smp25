@@ -9,7 +9,7 @@ import { DetailCellRendererProveedoresComponent } from './details/detail-cell-re
 import { DetailCellRendererFamiliaComponent } from './details/detail-cell-renderer-familia.component';
 import { DetailCellRendererSucursalComponent } from './details/detail-cell-renderer-sucursal.component';
 import { DetailCellRendererSubfamiliaComponent } from './details/detail-cell-renderer-subfamilia.component';
-import { SelectWithTooltipEditorComponent } from './editors/select-with-tooltip-editor.component';
+import { SelectWithTooltipEditorV2Component } from './editors/select-with-tooltip-editor-v2.component';
 import { ImageCellRendererComponent } from './renderers/image-cell-renderer.component';
 import { MaterialsService } from 'app/services/materials.service';
 import { MaterialsResponse } from 'app/interface/materials.interface';
@@ -33,7 +33,7 @@ import { SubfamiliaModalService, ModalData } from './services/subfamilia-modal.s
     DetailCellRendererFamiliaComponent,
     DetailCellRendererSucursalComponent,
     DetailCellRendererSubfamiliaComponent,
-    SelectWithTooltipEditorComponent,
+    SelectWithTooltipEditorV2Component,
     ImageCellRendererComponent
   ],
   templateUrl: './materiales-maestro.component.html',
@@ -108,6 +108,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       if (this.idRoot) {
         this.loadCatalogs();
         this.loadMaterials();
+        // Actualizar el contexto del grid cuando cambia idRoot
+        this.updateGridContext();
       }
     });
   }
@@ -194,7 +196,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     rowHeight: 35,
     animateRows: true,
     suppressClickEdit: false,
-    singleClickEdit: true,
+    singleClickEdit: false,
     stopEditingWhenCellsLoseFocus: true,
     masterDetail: true,
     detailRowHeight: 600, // Altura del detail row para subfamilias (ajustable)
@@ -278,7 +280,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         headerName: 'Categoria',
         width: 250,
         editable: true,
-        cellEditor: SelectWithTooltipEditorComponent,
+        cellEditor: SelectWithTooltipEditorV2Component,
         cellEditorParams: {
           options: this.categories.map(c => ({
             id: c.id,
@@ -287,7 +289,6 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
             valueAddition2: c.valueAddition2
           }))
         },
-        cellEditorPopup: true,
         valueFormatter: (params: any) => {
           const cat = this.categories.find(c => c.id === params.value);
           return cat ? cat.description : params.data.categoria || '';
@@ -311,7 +312,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           // Solo editable si hay una categoría seleccionada
           return params.data.idCategory != null;
         },
-        cellEditor: SelectWithTooltipEditorComponent,
+        cellEditor: SelectWithTooltipEditorV2Component,
         cellEditorParams: (params: any) => {
           // Obtener familias filtradas por la categoría seleccionada
           const familiesFiltered = this.getFamiliesByCategory(params.data.idCategory);
@@ -324,7 +325,6 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
             }))
           };
         },
-        cellEditorPopup: true,
         valueFormatter: (params: any) => {
           const fam = this.families.find(f => f.id === params.value);
           return fam ? fam.description : params.data.familia || '';
@@ -351,7 +351,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           // Solo editable si hay una familia seleccionada
           return params.data.idFamilia != null;
         },
-        cellEditor: SelectWithTooltipEditorComponent,
+        cellEditor: SelectWithTooltipEditorV2Component,
         cellEditorParams: (params: any) => {
           // Obtener subfamilias filtradas por la familia seleccionada
           const subfamiliesFiltered = this.getSubfamiliesByFamily(params.data.idFamilia);
@@ -364,7 +364,6 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
             }))
           };
         },
-        cellEditorPopup: true,
         valueFormatter: (params: any) => {
           const sf = this.subfamilies.find(sf => sf.id === params.value);
           return sf ? sf.description : params.data.subfamilia || '';
@@ -385,7 +384,6 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         field: 'subfamilyCount',
         headerName: 'Donde Usa',
         width: 150,
-        filter: true,
         cellRenderer: (params: any) => {
           const count = params.value || 0;
           return count;
@@ -396,7 +394,6 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         field: 'providerCount',
         headerName: 'Proveedor',
         width: 120,
-        filter: true,
         cellRenderer: (params: any) => {
           return params.value || 0;
         },
@@ -504,12 +501,20 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     this.gridApi = params.api;
 
     // Configurar master-detail después de que el grid esté listo
+    this.updateGridContext();
+  }
+
+  // Actualizar el contexto del grid (llamado cuando cambia idRoot o al inicializar el grid)
+  updateGridContext() {
+    if (!this.gridApi) return;
+
     this.gridApi.setGridOption('detailCellRendererParams', {
       getDetailRowData: (params) => {
         params.successCallback(params.data.detailData);
       },
       context: {
         idRoot: this.idRoot, // Pasar idRoot al detail renderer
+        componentParent: this, // Referencia al componente padre
         MATERIAL: {
           load: (materialId: number, type: string, callback: (data: any[]) => void) => {
             this.loadMaterialXTableData(materialId, type, callback);
@@ -521,6 +526,33 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
             this.deleteDetailRow(params, callback, 'MATERIAL');
           }
         }
+      }
+    });
+  }
+
+  // Método para actualizar el subfamilyCount de un material específico
+  updateSubfamilyCount(materialId: number) {
+    this.materialsService.getMaterialsxview(this.idRoot).subscribe({
+      next: (data) => {
+        // Buscar solo el material actualizado
+        const updatedMaterial = data.find(m => m.id === materialId);
+        if (updatedMaterial && this.gridApi) {
+          // Actualizar solo la fila específica
+          this.gridApi.forEachNode((node) => {
+            if (node.data && node.data.id === materialId) {
+              node.data.subfamilyCount = updatedMaterial.subfamilyCount;
+              this.gridApi.refreshCells({
+                rowNodes: [node],
+                columns: ['subfamilyCount'],
+                force: true
+              });
+              console.log(`✅ Actualizado "Donde usa" para material ${materialId}: ${updatedMaterial.subfamilyCount}`);
+            }
+          });
+        }
+      },
+      error: (error) => {
+        console.error('❌ Error al actualizar subfamilyCount:', error);
       }
     });
   }

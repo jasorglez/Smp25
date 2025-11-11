@@ -39,10 +39,10 @@ export class ProcalmacenesComponent {
       );
     }
 
-    if (tabName === 'compras') {
+    if (tabName === 'producto-terminado') {
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
-        'Click en la Pestaña Compras',
+        'Click en la Pestaña Productos Terminados',
         'Almacenes',
         this.trackingService.getEmail()
       );
@@ -66,4 +66,6 @@ export class ProcalmacenesComponent {
       );
     }
   }
+
+
 }
