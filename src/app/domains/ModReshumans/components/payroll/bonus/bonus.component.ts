@@ -268,10 +268,8 @@ export class BonusComponent implements CanComponentDeactivate {
       const data = await firstValueFrom(
         this.administrationService.getEmployeesBonus(this.fechaInicio, this.fechaFin, this.idBranch)
       );
-      if(this.authService.getCrudPermission('hr', 'payroll', 'read')){
       this.rowData = data;
-      }else
-        this.rowData = []
+      
       console.log("---- data de bonos empleados: ", this.rowData);
     } catch (err) {
       console.error('Error al obtener empleados con bonus:', err);
@@ -361,7 +359,7 @@ export class BonusComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'payroll', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'payroll','BonHis_prin' , 'update');
         },
         filterParams: {
           // can be 'windows' or 'mac'
@@ -390,7 +388,7 @@ export class BonusComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'payroll', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'payroll','BonHis_prin' , 'update');
         },
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
@@ -423,7 +421,7 @@ export class BonusComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'payroll', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'payroll','BonHis_prin' , 'update');
         },
         filter: true,
         width: 150,

@@ -3,20 +3,20 @@
       <div class="card-header p-2">
          <ul class="nav nav-pills">
 
-            <li class="nav-item">
+            <li class="nav-item" *ngIf="authService.hasSubDetailedPermission('hr', 'employees', 'Emp_prin')">
                <a class="nav-link green-tab" routerLink="employees-table" routerLinkActive="active"><i
                      class="bi bi-list-ul"></i> {{'employees' | translate}}</a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item" *ngIf="authService.hasSubDetailedPermission('hr', 'employees', 'Hor_prin')">
                <a class="nav-link green-tab" routerLink="clock" routerLinkActive="active"><i
                      class="bi bi-clock-history"></i> Horarios</a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item" *ngIf="authService.hasSubDetailedPermission('hr', 'employees', 'HisPre_prin')">
                <a class="nav-link green-tab" routerLink="history-loans" routerLinkActive="active"><i
                      class="bi bi-clock"></i>
                   Histórico Préstamos</a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item" *ngIf="authService.hasSubDetailedPermission('hr', 'employees', 'HisAho_prin')">
                <a class="nav-link green-tab" routerLink="history-savings" routerLinkActive="active"><i
                      class="bi bi-clock-history"></i>
                   Histórico Ahorros</a>

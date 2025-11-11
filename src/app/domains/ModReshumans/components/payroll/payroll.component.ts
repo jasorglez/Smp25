@@ -26,6 +26,7 @@ import {
   CellDoubleClickedEvent,
   ICellRendererParams,
 } from 'ag-grid-enterprise';
+import { AuthService } from 'app/services/auth.service';
 
 @Component({
   selector: 'app-payroll',
@@ -35,6 +36,9 @@ import {
   styleUrl: './payroll.component.scss',
 })
 export class PayrollComponent {
+
+  authService = inject(AuthService);
+  
   ngOnInit() {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
     this.obtenerDatos();

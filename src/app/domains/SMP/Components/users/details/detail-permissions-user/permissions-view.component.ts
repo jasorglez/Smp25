@@ -119,14 +119,14 @@ export class PermissionsViewByUserComponent implements OnInit {
     this.groupedPermissions = this.transformData(this.rawData);
   }
    modificar(){
-    //if(this.authService.getCrudPermission('setup', 'users', 'create')){
+    //if(this.authService.getCrudPermission('setup', 'users','','','', 'create')){
        this.permitionsService.getPermitionsDetail(this.idEmpresa, this.userId, this.branchId, this.idRole, this.idPosicion)
       .subscribe((data: any) => {
         //this.editable = true
         this.rawData = data;
         this.groupedPermissions = this.transformData(this.rawData);
       });
-    //}else if(this.authService.getCrudPermission('setup', 'users', 'update')){
+    //}else if(this.authService.getCrudPermission('setup', 'users','','','', 'update')){
        //this.editable = true
     //}/
        

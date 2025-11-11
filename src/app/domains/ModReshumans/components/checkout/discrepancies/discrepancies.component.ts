@@ -238,7 +238,7 @@ export default class DiscrepanciesComponent implements OnInit {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'clock', 'update');
+          return this.authService.getCrudPermission('hr', 'clock','','','', 'update');
         },
         width: 150,
         cellEditor: 'agSelectCellEditor',
@@ -281,7 +281,7 @@ export default class DiscrepanciesComponent implements OnInit {
   obtenerDatos() {
     this.clockService.getHourDiscrepancies(this.idBranch).subscribe((data: any) => {
       this.rowData = [];
-      if(this.authService.getCrudPermission('hr', 'clock', 'read')){
+      if(this.authService.getCrudPermission('hr', 'clock','','','', 'read')){
       this.rowData = data;
       }else{
         this.rowData = []

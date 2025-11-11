@@ -10,10 +10,10 @@
           <div class="row">
             <div class="col-auto">
               <div class="d-flex flex-column gap-0 me-0">
-                <button type="button" class="btn btn-primary" (click)="addRow('Master')">
+                <button type="button" class="btn btn-primary" (click)="addRow('Master')" *ngIf="authService.getCrudPermissionDetail('hr', 'clock','MaeChe_HorEsp', 'create')">
                   <i class="bi bi-plus-lg"></i>
                 </button>
-                <button type="button" class="btn btn-success position-relative" (click)="saveMasterChanges()">
+                <button type="button" class="btn btn-success position-relative" (click)="saveMasterChanges()" *ngIf="authService.getCrudPermissionDetail('hr', 'clock','MaeChe_HorEsp', 'create') || authService.getCrudPermissionDetail('hr', 'clock','MaeChe_HorEsp', 'update')">
                   <i class="bi bi-floppy"></i>
                   <span class="position-absolute top-0 end-0 translate-middle p-2 bg-danger border border-light rounded-circle"
                     *ngIf="masterNotSavedChanges">
@@ -23,7 +23,7 @@
                 <button type="button" class="btn btn-warning" (click)="revertMasterData()">
                   <i class="bi bi-arrow-clockwise"></i>
                 </button>
-                <button type="button" class="btn btn-danger" (click)="deleteMasterEntry()">
+                <button type="button" class="btn btn-danger" (click)="deleteMasterEntry()" *ngIf="authService.getCrudPermissionDetail('hr', 'clock','MaeChe_HorEsp', 'delete')">
                   <i class="bi bi-trash"></i>
                 </button>
               </div>

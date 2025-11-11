@@ -14,6 +14,7 @@ import { SpecialExtraHoursComponent } from "./special-extra-hours/special-extra-
 import { AdministrationService } from 'app/services/administration.service';
 import { HRService } from 'app/services/hr.service';
 import { firstValueFrom } from 'rxjs';
+import { AuthService } from 'app/services/auth.service';
 import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
@@ -32,6 +33,7 @@ export default class MasterClockComponent implements OnInit {
   private administrationService = inject(AdministrationService);
   private fb = inject(FormBuilder);
   private trackingService = inject(TrackingService);
+  authService = inject(AuthService);
 
   ngOnInit() {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
@@ -315,6 +317,7 @@ export default class MasterClockComponent implements OnInit {
       {
         field: 'baseHours',
         headerName: 'Horas base',
+        hide: !this.authService.hasSubDetailedPermission('hr', 'clock', 'MaeChe_Ajus'),
         cellStyle: (params) => {
           // Solo aplicar estilo si hay un valor numérico válido
           if (params.value !== null && params.value !== undefined && params.value !== '') {
@@ -353,6 +356,7 @@ export default class MasterClockComponent implements OnInit {
         field: 'specialExtraHours',
         headerName: 'Horas extra especiales',
         colId: 'specialExtraHours',
+        hide: !this.authService.hasSubDetailedPermission('hr', 'clock', 'MaeChe_HorEsp'),
         cellStyle: (params) => {
           // Solo aplicar estilo si hay un valor numérico válido
           if (params.value !== null && params.value !== undefined && params.value !== '') {
@@ -521,7 +525,7 @@ this.gridApi.setFilterModel(filterModel);
 
   // 🧠 Lógica de pestañas
   const colId = event.column.getColId();
-  if (colId === 'specialExtraHours') {
+  if (colId === 'specialExtraHours'  ) {
     if (!this.isOpen) {
       await this.adjustGridSize();
       this.showSpecialTimesTab = true;

@@ -84,12 +84,7 @@ export class LoansRegistryComponent {
   loadData() {
     this.employeesxloansService.getLoansRegistry(this.idBranch).subscribe(
       (maestroRowData: any[]) => {
-        if(this.authService.getCrudPermission('hr', 'employees', 'read')){
         this.maestroRowData = maestroRowData;
-        }
-        else{
-          this.maestroRowData = [];
-        }
       },
       (error) => {
         console.error('Error loading loans data:', error);

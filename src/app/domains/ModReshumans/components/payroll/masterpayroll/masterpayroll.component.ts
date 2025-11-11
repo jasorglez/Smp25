@@ -298,7 +298,7 @@ export class MasterPayrollComponent implements OnInit {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'payroll', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','payroll', 'update');
         },
         filter: true,
         width: 170,
@@ -346,7 +346,7 @@ export class MasterPayrollComponent implements OnInit {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'payroll', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','payroll', 'update');
         },
         suppressMovable: true,
         width: 120,
@@ -431,7 +431,7 @@ export class MasterPayrollComponent implements OnInit {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'payroll', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','payroll', 'update');
         },
       
         cellEditor: 'agDateCellEditor',
@@ -489,7 +489,7 @@ export class MasterPayrollComponent implements OnInit {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'payroll', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','payroll', 'update');
         },
         cellEditor: 'agDateCellEditor',
         valueGetter: (params) => {

@@ -2,9 +2,9 @@
     <div class="col-12">
         <div class="row mb-3" [ngStyle]="{ height: gridHeight }">
             <nav class="col-auto d-flex flex-column align-items-start">
-                <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addRow()" *ngIf="authService.getCrudPermission('setup', 'roles', 'create')"><i
+                <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addRow()" *ngIf="authService.getCrudPermission('setup', 'roles','','','', 'create')"><i
                         class="bi bi-plus-lg"></i></button>
-                <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChanges()" *ngIf="authService.getCrudPermission('setup', 'roles', 'create') || authService.getCrudPermission('setup', 'roles', 'update')">
+                <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChanges()" *ngIf="authService.getCrudPermission('setup', 'roles','','','', 'create') || authService.getCrudPermission('setup', 'roles','','','', 'update')">
                     <i class="bi bi-floppy"></i>
                     <span
                         class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
@@ -13,7 +13,7 @@
                 </button>
                 <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revert()"><i
                         class="bi bi-arrow-clockwise"></i></button>
-                <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteRol()" *ngIf="authService.getCrudPermission('setup', 'roles', 'delete')"><i
+                <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteRol()" *ngIf="authService.getCrudPermission('setup', 'roles','','','', 'delete')"><i
                         class="bi bi-trash"></i></button>
             </nav>
             <div class="col">

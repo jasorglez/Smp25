@@ -62,6 +62,9 @@ export class EmployeesxSavingsComponent {
   detailedNewlyAddedRows: string[] = [];
   private selectedLoanIdBeforeRefresh: number;
   modal:boolean = false;
+  seccion: string = 'employees'
+  subSeccion: string = 'Emp_Aho'
+  
 
   ngOnInit() {}
 
@@ -73,6 +76,8 @@ export class EmployeesxSavingsComponent {
       if (this.signalsService.getInitSaving()() == true) {
         this.obtenerAhorroEmpleado();
         this.modal = true; // Abrir modal si la señal está activa
+        this.seccion = 'payroll'
+        this.subSeccion = 'Nom_Aho'
         setTimeout(() => {
         this.addRow('Master'); // Espera a que se renderice el modal y grid
         this.signalsService.resetInitSaving();
@@ -254,7 +259,7 @@ export class EmployeesxSavingsComponent {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', this.seccion , this.subSeccion, 'update');
         },
     },
     {
@@ -275,7 +280,7 @@ export class EmployeesxSavingsComponent {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', this.seccion , this.subSeccion, 'update');
         },
     },
     {
@@ -336,7 +341,7 @@ export class EmployeesxSavingsComponent {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', this.seccion , this.subSeccion, 'update');
         },
     },
     {
@@ -357,7 +362,7 @@ export class EmployeesxSavingsComponent {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', this.seccion , this.subSeccion, 'update');
         },
     },
     {
@@ -368,7 +373,7 @@ export class EmployeesxSavingsComponent {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', this.seccion , this.subSeccion, 'update');
         },
     },
   ];

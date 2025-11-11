@@ -16,10 +16,10 @@
         <div class="row mt-4">
             <div class="col-auto">
                 <div class="d-flex flex-column gap-1">
-                  <button type="button" class="btn btn-primary ms-1 me-1 position-relative" (click)="addRow()" *ngIf="authService.getCrudPermission('hr', 'payroll', 'create')">
+                  <button type="button" class="btn btn-primary ms-1 me-1 position-relative" (click)="addRow()" *ngIf="authService.getCrudPermissionDetail('hr', 'payroll','BonHis_prin' ,'create')">
                     <i class="bi bi-plus-lg"></i>
                   </button>
-                  <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveChanges()" *ngIf="authService.getCrudPermission('hr', 'payroll', 'create') || authService.getCrudPermission('hr', 'payroll', 'update')" >
+                  <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveChanges()" *ngIf="authService.getCrudPermissionDetail('hr', 'payroll','BonHis_prin' ,'create') || authService.getCrudPermissionDetail('hr', 'payroll','BonHis_prin' ,'update')" >
                     <i class="bi bi-floppy"></i>
                     <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
                       *ngIf="notSavedChanges">
@@ -30,7 +30,7 @@
                     <button type="button" class="btn btn-warning ms-1 me-1" (click)="revert()">
                       <i class="bi bi-arrow-clockwise"></i>
                     </button>
-                    <button type="button" class="btn btn-danger ms-1 me-1" (click)="deleteEntry()" *ngIf="authService.getCrudPermission('hr', 'payroll', 'delete')">
+                    <button type="button" class="btn btn-danger ms-1 me-1" (click)="deleteEntry()" *ngIf="authService.getCrudPermissionDetail('hr', 'payroll','BonHis_prin' ,'delete')">
                       <i class="bi bi-trash"></i>
                     </button>
                 </div>

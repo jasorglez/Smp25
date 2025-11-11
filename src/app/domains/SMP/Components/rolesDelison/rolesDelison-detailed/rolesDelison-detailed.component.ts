@@ -209,7 +209,7 @@ export class RolesDetailedDelisonComponent implements OnInit {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('setup', 'roles', 'update');
+          return this.authService.getCrudPermission('setup', 'roles','','','', 'update');
         },
         cellRendererParams: {
           disabled: false,
@@ -223,7 +223,7 @@ export class RolesDetailedDelisonComponent implements OnInit {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('setup', 'roles', 'update');
+          return this.authService.getCrudPermission('setup', 'roles','','','', 'update');
         },
         cellRendererParams: {
           disabled: false,
@@ -237,7 +237,7 @@ export class RolesDetailedDelisonComponent implements OnInit {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('setup', 'roles', 'update');
+          return this.authService.getCrudPermission('setup', 'roles','','','', 'update');
         },
         cellRendererParams: {
           disabled: false,
@@ -251,7 +251,7 @@ export class RolesDetailedDelisonComponent implements OnInit {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('setup', 'roles', 'update');
+          return this.authService.getCrudPermission('setup', 'roles','','','', 'update');
         },
         cellRendererParams: {
           disabled: false,
@@ -263,7 +263,7 @@ export class RolesDetailedDelisonComponent implements OnInit {
   obtenerDatos(idRole: number, idPosicion: number) {
     this.rolesService.getPermissionsByRoles( this.idEmpresa , idRole, idPosicion)
       .subscribe((data: any) => {
-        if(this.authService.getCrudPermission('setup', 'roles', 'read')){
+        if(this.authService.getCrudPermission('setup', 'roles','','','', 'read')){
           // Obtenemos los masterPermissionName que tienen masterRead = false
           const mastersToFilter = data
             .filter(item => item.masterRead === false)

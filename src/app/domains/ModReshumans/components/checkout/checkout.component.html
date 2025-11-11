@@ -2,15 +2,15 @@
     <div class="card">
        <div class="card-header p-2">
           <ul class="nav nav-pills">
-              <li class="nav-item">
+              <li class="nav-item" *ngIf="authService.hasSubDetailedPermission('hr', 'clock', 'MaeChe_prin')">
                 <a class="nav-link green-tab" routerLink="master-clock" routerLinkActive="active"><i class="bi bi-stopwatch"></i>
                 Maestro Checador</a>
              </li>
-             <li class="nav-item">
+             <li class="nav-item" *ngIf="authService.hasSubDetailedPermission('hr', 'clock', 'AjuHor_prin')">
                <a class="nav-link green-tab" routerLink="discrepancies" routerLinkActive="active"><i class="bi bi-stopwatch"></i>
                Ajustes Horarios</a>
             </li>
-             <li class="nav-item">
+             <li class="nav-item" *ngIf="authService.hasSubDetailedPermission('hr', 'clock', 'DiaFes__prin')">
                <a class="nav-link green-tab" routerLink="holidays" routerLinkActive="active"><i class="bi bi-stopwatch"></i>
                Dias festivos global</a>
             </li>

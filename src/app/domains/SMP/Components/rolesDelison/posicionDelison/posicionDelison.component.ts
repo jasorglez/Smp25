@@ -29,21 +29,21 @@ import { PermissionsViewComponent } from '../rolesDelison-detailed/permissions-v
               class="btn btn-sm btn-success me-2" 
               (click)="addPosicion()"
               [disabled]="!posicionGridApi"
-              *ngIf="authService.getCrudPermission('setup', 'roles', 'create')">
+              *ngIf="authService.getCrudPermission('setup', 'roles','','','', 'create')">
               <i class="bi bi-plus-circle"></i> Agregar
             </button>
             <button 
               class="btn btn-sm btn-primary me-2" 
               (click)="savePosiciones()"
               [disabled]="!hasPosicionChanges"
-              *ngIf="authService.getCrudPermission('setup', 'roles', 'create') || authService.getCrudPermission('setup', 'roles', 'update')">
+              *ngIf="authService.getCrudPermission('setup', 'roles','','','', 'create') || authService.getCrudPermission('setup', 'roles','','','', 'update')">
               <i class="bi bi-floppy"></i> Guardar
             </button>
             <button 
               class="btn btn-sm btn-danger" 
               (click)="deleteSelectedPosicion()"
               [disabled]="!selectedPosicion"
-              *ngIf="authService.getCrudPermission('setup', 'roles', 'delete')">
+              *ngIf="authService.getCrudPermission('setup', 'roles','','','', 'delete')">
               <i class="bi bi-trash"></i> Borrar
             </button>
           </div>
@@ -117,7 +117,7 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('setup', 'roles', 'update');
+          return this.authService.getCrudPermission('setup', 'roles','','','', 'update');
         },
       flex: 1 
     },

@@ -262,7 +262,7 @@ export default class DetailClock2Component implements OnInit {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'clock', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'clock','MaeChe_Ajus', 'update');
         },
         cellEditor: 'agDateCellEditor',
         width: 120,
@@ -316,7 +316,7 @@ export default class DetailClock2Component implements OnInit {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'clock', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'clock','MaeChe_Ajus', 'update');
         },
         cellEditor: 'timeEditor',
         width: 200,
@@ -354,7 +354,7 @@ export default class DetailClock2Component implements OnInit {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'clock', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'clock','MaeChe_Ajus', 'update');
         },
         width: 100,
         cellEditor: 'agSelectCellEditor',
@@ -582,7 +582,7 @@ export default class DetailClock2Component implements OnInit {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'clock', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'clock','MaeChe_Ajus', 'update');
         },
         width: 100
       },
@@ -616,7 +616,7 @@ export default class DetailClock2Component implements OnInit {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'clock', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'clock','MaeChe_Ajus', 'update');
         },
         width: 200,
         cellEditor: 'agSelectCellEditor',
@@ -706,15 +706,10 @@ export default class DetailClock2Component implements OnInit {
       .subscribe((data: any) => {
         // Asegurarse de que las fechas estén en el formato correcto
         console.log('Datos obtenidos:', data);
-        if(this.authService.getCrudPermission('hr', 'clock', 'read')){
         this.rowData = data.map((item: any) => ({
           ...item,
           date: item.date ? new Date(item.date).toISOString().split('T')[0] : null
         }));
-      }
-        else{
-          this.rowData = []
-        }
         this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Detalle de Checador', 'Menu Recursos Humanos Detalle de Checador',  this.trackingService.getEmail());
         // Esperar a que el grid se actualice y luego ajustar las columnas
         setTimeout(() => {

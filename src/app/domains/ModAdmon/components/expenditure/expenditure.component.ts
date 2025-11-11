@@ -236,7 +236,7 @@ constructor() {
     this.incomesAndExpensesService.getIncomesAndExpenses(this.idRoot).subscribe({
       next: (incomes) => {
         // Filtrado y manejo de caso sin datos
-        if(this.authService.getCrudPermission('administration', 'expend', 'read')){
+        if(this.authService.getCrudPermission('administration', 'expend','','','', 'read')){
         const filtered = incomes?.filter(income => {
           return income.type === "GASTO" && income.idAccount === this.idAccount
         }) || [];
@@ -332,13 +332,13 @@ constructor() {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('administration', 'expend', 'update');
+          return this.authService.getCrudPermission('administration', 'expend','','','', 'update');
         }, filter: true, width: 50 },
       { field: 'numberDocument', headerName: '# Documento', editable: (params) => {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('administration', 'expend', 'update');
+          return this.authService.getCrudPermission('administration', 'expend','','','', 'update');
         }, filter: true, width: 150 },
       
       {
@@ -356,7 +356,7 @@ constructor() {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('administration', 'expend', 'update');
+          return this.authService.getCrudPermission('administration', 'expend','','','', 'update');
         },
               filter: true,
               width: 170,
@@ -399,7 +399,7 @@ constructor() {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('administration', 'expend', 'update');
+          return this.authService.getCrudPermission('administration', 'expend','','','', 'update');
         }, cellDataType: 'date', width: 125,
               valueFormatter: (params) => this.formatDate(params.value)
             },
@@ -409,7 +409,7 @@ constructor() {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('administration', 'expend', 'update');
+          return this.authService.getCrudPermission('administration', 'expend','','','', 'update');
         }, width: 195,
                 cellEditor: 'searchableSelect',
                 cellEditorParams: {
@@ -430,7 +430,7 @@ constructor() {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('administration', 'expend', 'update');
+          return this.authService.getCrudPermission('administration', 'expend','','','', 'update');
         }, width: 325, filter: true,
               cellEditor: 'agPopupTextCellEditor',
               cellEditorParams: {
@@ -492,7 +492,7 @@ constructor() {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('administration', 'expend', 'update');
+          return this.authService.getCrudPermission('administration', 'expend','','','', 'update');
         },
         width: 105,
         cellEditor: 'agSelectCellEditor',

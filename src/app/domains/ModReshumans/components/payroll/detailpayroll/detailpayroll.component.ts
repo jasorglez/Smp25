@@ -181,7 +181,7 @@ export class DetailpayrollComponent implements OnInit{
     {
       headerName: 'Descuento Real',
       width: 150,
-      editable: () => this.signalsService.getClosedPayroll()() ? this.authService.getCrudPermission('hr', 'payroll', 'update') : true,
+      editable: () => this.signalsService.getClosedPayroll()() ? this.authService.getCrudPermission('hr', 'payroll', '','','','update') : true,
       field: 'realDiscount',
       cellStyle: { backgroundColor: '#d4edda' },
       valueFormatter: (params) => {

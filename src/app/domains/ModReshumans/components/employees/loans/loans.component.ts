@@ -173,9 +173,9 @@ export class EmployeesxLoansComponent {
 
     this.employeesxloansService.getConceptsxLoansCredit(this.idLoan).subscribe(
       (detalleRowData) => {
-        if (!detalleRowData || detalleRowData.length === 0 && !this.authService.getCrudPermission('hr', 'employees', 'read')) {
+        
           this.detalleRowData = [];
-        } else {
+
           this.detalleRowData = detalleRowData;
           // Seleccionar la primera fila después de cargar los datos de detalle
           setTimeout(() => {
@@ -183,7 +183,7 @@ export class EmployeesxLoansComponent {
               this.detalleGridApi.getDisplayedRowAtIndex(0)?.setSelected(true);
             }
           });
-        }
+
         this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Detalle de Prestamos', 'Menu Recursos Humanos Prestamos',  this.trackingService.getEmail());
       },
       (error) => {
@@ -229,7 +229,7 @@ export class EmployeesxLoansComponent {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_Pre','update');
         },
     },
     {
@@ -250,7 +250,7 @@ export class EmployeesxLoansComponent {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_Pre','update');
         },
     },
     {
@@ -291,7 +291,7 @@ export class EmployeesxLoansComponent {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_Pre','update');
         },
     }
   ];
@@ -322,7 +322,7 @@ export class EmployeesxLoansComponent {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_Pre','update');
         },
     },
     {
@@ -343,7 +343,7 @@ export class EmployeesxLoansComponent {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_Pre','update');
         },
     },
     {
@@ -354,7 +354,7 @@ export class EmployeesxLoansComponent {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermission('hr', 'employees', 'update');
+          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_Pre','update');
         },
     },
   ];
