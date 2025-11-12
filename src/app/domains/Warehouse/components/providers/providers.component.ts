@@ -224,11 +224,13 @@ export class ProvidersComponent implements CanComponentDeactivate {
   detailCellRendererSelector: (params) => {
     // Decide qué renderizador usar basado en la propiedad 'detailType'
     if (params.data.detailType === 'contact') {
+      params.node.setRowHeight(550);
       return { component: 'detailCellRenderer' };
     } else if (params.data.detailType === 'bank') {
+      params.node.setRowHeight(550);
       return { component: 'detailCellRendererBanck' };
     } else if (params.data.detailType === 'Cuentas') {
-      params.node.setRowHeight(700);
+      params.node.setRowHeight(550);
       return { component: 'detailCellRendererCuentas' };
     } else if (params.data.detailType === 'tipoProveedor') {
       params.node.setRowHeight(250);
