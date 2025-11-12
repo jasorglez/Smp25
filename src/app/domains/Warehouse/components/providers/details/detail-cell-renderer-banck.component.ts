@@ -34,6 +34,12 @@ import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/auto
               <i class="bi bi-floppy"></i> Guardar
             </button>
             <button 
+              class="btn btn-sm btn-warning me-2" 
+              (click)="refresBanks()"
+              >
+              <i class="bi bi-arrow-clockwise"></i> Deshacer
+            </button>
+            <button 
               class="btn btn-sm btn-danger" 
               (click)="deleteSelectedBank()"
               [disabled]="!selectedBank"
@@ -199,8 +205,13 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
     if (this.params && this.params.context.BANK && this.params.context.BANK.load) {
       this.params.context.BANK.load(this.providerId, 'BANK', (data: any) => {
         this.bankRowData = data;
+        console.log(data)
       });
     }
+  }
+
+  refresBanks(){
+    this.loadBankData();
   }
   getBanks() {
     this.administrationService.get2fieldsBanks().subscribe(
@@ -220,6 +231,8 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
       id: `temp_bank_${Date.now()}`,
       idTabla: this.providerId,
       type: 'BANK',
+      vigente: true,
+      principal: false,
       __isNew: true
     };
     this.bankRowData = [newBank, ...this.bankRowData];

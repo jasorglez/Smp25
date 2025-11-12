@@ -8,7 +8,9 @@ import { alerts } from 'app/helpers/alerts';
 import { DetailCellRendererProveedoresComponent } from './details/detail-cell-renderer-proveedores.component';
 import { DetailCellRendererFamiliaComponent } from './details/detail-cell-renderer-familia.component';
 import { DetailCellRendererSucursalComponent } from './details/detail-cell-renderer-sucursal.component';
+import { DetailCellRendererCostosComponent } from './details/detail-cell-renderer-costos.component';
 import { DetailCellRendererSubfamiliaComponent } from './details/detail-cell-renderer-subfamilia.component';
+import { DetailCellRendererProveedorSucursalComponent } from './details/detail-cell-renderer-proveedor-sucursal.component';
 import { SelectWithTooltipEditorV2Component } from './editors/select-with-tooltip-editor-v2.component';
 import { ImageCellRendererComponent } from './renderers/image-cell-renderer.component';
 import { MaterialsService } from 'app/services/materials.service';
@@ -32,7 +34,9 @@ import { SubfamiliaModalService, ModalData } from './services/subfamilia-modal.s
     DetailCellRendererProveedoresComponent,
     DetailCellRendererFamiliaComponent,
     DetailCellRendererSucursalComponent,
+    DetailCellRendererCostosComponent,
     DetailCellRendererSubfamiliaComponent,
+    DetailCellRendererProveedorSucursalComponent,
     SelectWithTooltipEditorV2Component,
     ImageCellRendererComponent
   ],
@@ -173,7 +177,11 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
     this.materialsService.getMaterialsxview(this.idRoot).subscribe({
       next: (data) => {
-        this.rowData = data;
+        // Agregar datos falsos para la columna de costos
+        this.rowData = data.map(material => ({
+          ...material,
+          costo: Math.floor(Math.random() * (500 - 50 + 1)) + 50 // Costo aleatorio entre 50 y 500
+        }));
         console.log('Materials loaded:', data);
       },
       error: (error) => {
@@ -188,7 +196,9 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     detailCellRendererProveedores: DetailCellRendererProveedoresComponent,
     detailCellRendererFamilia: DetailCellRendererFamiliaComponent,
     detailCellRendererSucursal: DetailCellRendererSucursalComponent,
-    detailCellRendererSubfamilia: DetailCellRendererSubfamiliaComponent
+    detailCellRendererCostos: DetailCellRendererCostosComponent,
+    detailCellRendererSubfamilia: DetailCellRendererSubfamiliaComponent,
+    detailCellRendererProveedorSucursal: DetailCellRendererProveedorSucursalComponent
   };
 
   public gridOptions: any = {
@@ -212,6 +222,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         return { component: 'detailCellRendererSucursal' };
       } else if (params.data.detailType === 'subfamilia') {
         return { component: 'detailCellRendererSubfamilia' };
+      } else if (params.data.detailType === 'costos') {
+        return { component: 'detailCellRendererCostos' };
       }
       return undefined;
     },
@@ -247,7 +259,10 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
       event.data.__modified = true;
       this.hasUnsavedChanges = true;
-      this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
+      // Envolver en setTimeout para evitar conflictos de renderizado
+      setTimeout(() => {
+        this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
+      }, 0);
     }
   };
 
@@ -301,8 +316,10 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           params.data.idSubfamilia = null;
           params.data.subfamilia = '';
           this.hasUnsavedChanges = true;
-          // Refrescar la fila para actualizar el combo de familia
-          params.api.refreshCells({ rowNodes: [params.node], force: true });
+          // Refrescar la fila para actualizar el combo de familia usando setTimeout
+          setTimeout(() => {
+            params.api.refreshCells({ rowNodes: [params.node], force: true });
+          }, 0);
         }
       },
       {
@@ -314,18 +331,17 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           return params.data.idCategory != null;
         },
         cellEditor: SelectWithTooltipEditorV2Component,
-        cellEditorParams: (params: any) => {
-          // Obtener familias filtradas por la categoría seleccionada
-          const familiesFiltered = this.getFamiliesByCategory(params.data.idCategory);
-          return {
-            options: familiesFiltered.map(f => ({
-              id: f.id,
-              description: f.description,
-              valueAddition: f.valueAddition,
-              valueAddition2: f.valueAddition2
-            }))
-          };
-        },
+        cellEditorParams: (params: any) => ({
+            getOptions: () => {
+              const familiesFiltered = this.getFamiliesByCategory(params.data.idCategory);
+              return familiesFiltered.map(f => ({
+                id: f.id,
+                description: f.description,
+                valueAddition: f.valueAddition,
+                valueAddition2: f.valueAddition2
+              }));
+            }
+        }),
         valueFormatter: (params: any) => {
           const fam = this.families.find(f => f.id === params.value);
           return fam ? fam.description : params.data.familia || '';
@@ -335,7 +351,9 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           params.data.idSubfamilia = null;
           params.data.subfamilia = '';
           this.hasUnsavedChanges = true;
-          params.api.refreshCells({ rowNodes: [params.node], force: true });
+          setTimeout(() => {
+            params.api.refreshCells({ rowNodes: [params.node], force: true });
+          }, 0);
         },
         cellStyle: (params: any) => {
           if (!params.data.idCategory) {
@@ -353,25 +371,26 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           return params.data.idFamilia != null;
         },
         cellEditor: SelectWithTooltipEditorV2Component,
-        cellEditorParams: (params: any) => {
-          // Obtener subfamilias filtradas por la familia seleccionada
-          const subfamiliesFiltered = this.getSubfamiliesByFamily(params.data.idFamilia);
-          return {
-            options: subfamiliesFiltered.map(sf => ({
-              id: sf.id,
-              description: sf.description,
-              valueAddition: sf.valueAddition,
-              valueAddition2: sf.valueAddition2
-            }))
-          };
-        },
+        cellEditorParams: (params: any) => ({
+            getOptions: () => {
+              const subfamiliesFiltered = this.getSubfamiliesByFamily(params.data.idFamilia);
+              return subfamiliesFiltered.map(sf => ({
+                id: sf.id,
+                description: sf.description,
+                valueAddition: sf.valueAddition,
+                valueAddition2: sf.valueAddition2
+              }));
+            }
+        }),
         valueFormatter: (params: any) => {
           const sf = this.subfamilies.find(sf => sf.id === params.value);
           return sf ? sf.description : params.data.subfamilia || '';
         },
         onCellValueChanged: (params: any) => {
           this.hasUnsavedChanges = true;
-          params.api.refreshCells({ rowNodes: [params.node], force: true });
+          setTimeout(() => {
+            params.api.refreshCells({ rowNodes: [params.node], force: true });
+          }, 0);
         },
         cellStyle: (params: any) => {
           if (!params.data.idFamilia) {
@@ -379,6 +398,21 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           }
           return null;
         }
+      },
+
+      {
+        field: 'costo',
+        headerName: 'Materiales',
+        width: 150,
+        valueFormatter: (params: any) => {
+          return params.value ? `$${params.value.toFixed(2)}` : '$0.00';
+        },
+        cellRenderer: (params: any) => {
+          // Este renderer es necesario para que el clic funcione igual que en las otras columnas de detalle.
+          // Muestra el valor formateado.
+          return params.value ? `$${params.value.toFixed(2)}` : '$0.00';
+        },
+        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
       },
       
       {
@@ -400,6 +434,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         },
         cellStyle: { backgroundColor: '#e3f2fd', cursor: 'pointer', textDecoration: 'underline' }
       },
+ 
       {
         field: 'picture',
         headerName: 'Imagen',
@@ -418,6 +453,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   getDetailTypeFromColId(colId: string): string | null {
     if (colId === 'providerCount') return 'proveedores';
     if (colId === 'subfamilyCount') return 'subfamilia';
+    if (colId === 'costo') return 'costos';
     return null;
   }
 
@@ -445,7 +481,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     event.node.setSelected(true);
 
     const colId = event.column.getColId();
-    const isDetailColumn = colId === 'providerCount' || colId === 'subfamilyCount';
+    const isDetailColumn = colId === 'providerCount' || colId === 'subfamilyCount' || colId === 'costo';
 
     if (isDetailColumn) {
       const node = event.node;

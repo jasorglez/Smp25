@@ -35,6 +35,12 @@ import { CommonModule } from '@angular/common';
               <i class="bi bi-floppy"></i> Guardar
             </button>
             <button 
+              class="btn btn-sm btn-warning me-2" 
+              (click)="refresContacts()"
+              >
+              <i class="bi bi-arrow-clockwise"></i>  Deshacer
+            </button>
+            <button 
               class="btn btn-sm btn-danger" 
               (click)="deleteSelectedContact()"
               [disabled]="!selectedContact" 
@@ -212,9 +218,15 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
     if (this.params && this.params.context && this.params.context.CONTACT && this.params.context.CONTACT.load) {
       this.params.context.CONTACT.load(this.providerId, 'CONTACT', (data: any) => {
         this.contactRowData = data;
+        console.log(data)
       });
     }
   }
+
+  refresContacts(){
+    this.loadContactData();
+  }
+  
 
   addContact() {
     if (!this.contactGridApi) {
@@ -235,6 +247,8 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
       campo7: true,
       type: 'CONTACT',
       active: true,
+      vigente: true,
+      principal: false,
       __isNew: true
     };
 
