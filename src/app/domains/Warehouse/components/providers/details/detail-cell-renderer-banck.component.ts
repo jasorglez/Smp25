@@ -5,12 +5,13 @@ import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 import { AuthService } from 'app/services/auth.service';
 import { AdministrationService } from 'app/services/administration.service';
+import { SelectWithTooltipEditorV2Component } from 'app/domains/Almacenes/components/materiales-maestro/editors/select-with-tooltip-editor-v2.component';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 
 @Component({
   selector: 'app-detail-cell-renderer-banck',
   standalone: true,
-  imports: [AgGridModule, CommonModule],
+  imports: [AgGridModule, CommonModule, SelectWithTooltipEditorV2Component],
   template: `
     <div 
       style="padding: 10px; background-color: #f8f9fa; height: 100%; display: flex; flex-direction: column;">
@@ -78,7 +79,7 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
   bankGridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
-    suppressEnterWhenEditing: false,
+    //suppressEnterWhenEditing: false,
     rowSelection: 'single',
     onFirstDataRendered: (params) => {
       console.log('onFirstDataRendered - autosizing columns...');
@@ -100,6 +101,7 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
 
   components = {
     autocompleteEditor: AutocompleteEditorComponent,
+    selectWithTooltipEditor: SelectWithTooltipEditorV2Component
   };
 
   bankColumnDefs = [
@@ -115,36 +117,68 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
           }
           return true
         }, width: 190 },
-    { field: 'campo3', 
-      headerName: 'Banco', 
-      editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return true
-        },
-      suppressMovable: true,
-          filter: true,
-          filterParams: {
-            // can be 'windows' or 'mac'
-            defaultToNothingSelected: true,
-            //excelMode: 'mac',
-          },
-          width: 200,
-          cellEditor: 'autocompleteEditor',
-          cellEditorParams: (params) => {
-            return {
-              filterList: this.banks ? this.banks.map((b) => b.name) : [],
-              placeholder: 'Buscar banco...',
-              minLength: 1
-            };
-          },
-          // valueSetter se asegura de que el valor seleccionado (el nombre) se guarde en el campo 'campo3'
-          valueSetter: (params) => {
-            params.data.campo3 = params.newValue;
-            return true;
-          }
-    },
+   // ...existing code...
+{
+  field: 'campo3',
+  headerName: 'Banco',
+  width: 200,
+  editable: (params: any) => true,
+  cellEditor: 'selectWithTooltipEditor',
+  cellEditorParams: (params: any) => ({
+    options: (this.banks || [])
+      .filter(b => b.active)
+      .map(b => ({ id: b.id, description: b.name }))
+  }),
+
+  valueFormatter: (params: any) => {
+    // Preferir el nombre guardado en la fila si existe
+    if (params?.data?.nombreBanco) return params.data.nombreBanco;
+    const bank = this.banks?.find(b => String(b.id) === String(params.value) || b.name === params.value);
+    return bank ? bank.name : (params.value ?? '');
+  },
+
+  valueSetter: (params: any) => {
+    // Depurar temporalmente si hace falta:
+    // console.log('campo3 valueSetter newValue=', params.newValue);
+
+    let newValue = params.newValue;
+
+    // Si el editor devuelve un objeto con distintas formas, extraer id/valor y descripción
+    if (newValue && typeof newValue === 'object') {
+      // cubrir casos comunes: { id, description }, { value, description }, { value }
+      const possibleId = newValue.id ?? newValue.value ?? newValue.code ?? null;
+      const possibleDesc = newValue.description ?? newValue.label ?? newValue.text ?? null;
+      newValue = possibleId ?? possibleDesc ?? newValue;
+      // si ahora newValue es object sin id/desc, dejamos como está y se tratará abajo
+      if (possibleId || possibleDesc) {
+        // reemplazar newValue por id si existe, si no por la descripción
+        newValue = possibleId ?? possibleDesc;
+      }
+    }
+
+    // Buscar banco por id o por nombre
+    const selectedBank = this.banks?.find(b => String(b.id) === String(newValue) || b.name === newValue);
+
+    // Guardar siempre campo3 (id o el valor elegido) y nombre legible en nombreBanco
+    params.data.campo3 = selectedBank ? selectedBank.id : newValue;
+    params.data.nombreBanco = selectedBank ? selectedBank.name : (typeof newValue === 'string' ? newValue : '');
+
+    return true;
+  },
+
+  cellStyle: (params: any) => {
+    if (!params.value && !params?.data?.nombreBanco) {
+      return { backgroundColor: '#f9f9f9', color: '#777' };
+    }
+    return null;
+  },
+  suppressMovable: true,
+  filter: true,
+  filterParams: {
+    defaultToNothingSelected: true
+  }
+},
+// ...existing code...
     { field: 'campo4', headerName: 'Numero Cuenta', editable: (params) => {
           if (params.data.__isNew) {
             return true;
@@ -216,15 +250,21 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
   getBanks() {
     this.administrationService.get2fieldsBanks().subscribe(
       (data: any) => {
-        this.banks = [{ idBank: '', name: 'EFECTIVO' }, ...data];
-      },      
+        // Normalizar la estructura recibida para evitar mismatch de propiedades
+        const normalized = (data || []).map((b: any) => ({
+          id: b.id ?? b.idBank ?? b.ID ?? b.value ?? '',
+          name: b.name ?? b.nombre ?? b.descripcion ?? b.text ?? String(b.id ?? b.idBank ?? ''),
+          active: (b.active ?? b.vigente ?? true) // trata distintos nombres posibles
+        }));
+        this.banks = [{ id: '', name: 'EFECTIVO', active: true }, ...normalized];
+        console.log(this.banks);
+      },
       (error) => {
-        if (error.status == 404) this.banks = [];
+        if (error.status == 404) this.banks = [{ id: '', name: 'EFECTIVO', active: true }];
         console.error('Error fetching data:', error);
       }
     );
   }
-
 
   addBank() {
     const newBank = {

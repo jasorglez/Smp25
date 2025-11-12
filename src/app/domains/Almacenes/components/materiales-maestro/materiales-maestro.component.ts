@@ -317,9 +317,9 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           params.data.subfamilia = '';
           this.hasUnsavedChanges = true;
           // Refrescar la fila para actualizar el combo de familia usando setTimeout
-          setTimeout(() => {
+          //setTimeout(() => {
             params.api.refreshCells({ rowNodes: [params.node], force: true });
-          }, 0);
+          //}, 0);
         }
       },
       {
@@ -331,17 +331,18 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           return params.data.idCategory != null;
         },
         cellEditor: SelectWithTooltipEditorV2Component,
-        cellEditorParams: (params: any) => ({
-            getOptions: () => {
-              const familiesFiltered = this.getFamiliesByCategory(params.data.idCategory);
-              return familiesFiltered.map(f => ({
-                id: f.id,
-                description: f.description,
-                valueAddition: f.valueAddition,
-                valueAddition2: f.valueAddition2
-              }));
-            }
-        }),
+        cellEditorParams: (params: any) => {
+          // Obtener familias filtradas por la categoría seleccionada
+          const familiesFiltered = this.getFamiliesByCategory(params.data.idCategory);
+          return {
+            options: familiesFiltered.map(f => ({
+              id: f.id,
+              description: f.description,
+              valueAddition: f.valueAddition,
+              valueAddition2: f.valueAddition2
+            }))
+          };
+        },
         valueFormatter: (params: any) => {
           const fam = this.families.find(f => f.id === params.value);
           return fam ? fam.description : params.data.familia || '';
@@ -351,9 +352,9 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           params.data.idSubfamilia = null;
           params.data.subfamilia = '';
           this.hasUnsavedChanges = true;
-          setTimeout(() => {
+          //setTimeout(() => {
             params.api.refreshCells({ rowNodes: [params.node], force: true });
-          }, 0);
+          //}, 0);
         },
         cellStyle: (params: any) => {
           if (!params.data.idCategory) {
@@ -371,26 +372,27 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           return params.data.idFamilia != null;
         },
         cellEditor: SelectWithTooltipEditorV2Component,
-        cellEditorParams: (params: any) => ({
-            getOptions: () => {
-              const subfamiliesFiltered = this.getSubfamiliesByFamily(params.data.idFamilia);
-              return subfamiliesFiltered.map(sf => ({
-                id: sf.id,
-                description: sf.description,
-                valueAddition: sf.valueAddition,
-                valueAddition2: sf.valueAddition2
-              }));
-            }
-        }),
+        cellEditorParams: (params: any) => {
+          // Obtener subfamilias filtradas por la familia seleccionada
+          const subfamiliesFiltered = this.getSubfamiliesByFamily(params.data.idFamilia);
+          return {
+            options: subfamiliesFiltered.map(sf => ({
+              id: sf.id,
+              description: sf.description,
+              valueAddition: sf.valueAddition,
+              valueAddition2: sf.valueAddition2
+            }))
+          };
+        },
         valueFormatter: (params: any) => {
           const sf = this.subfamilies.find(sf => sf.id === params.value);
           return sf ? sf.description : params.data.subfamilia || '';
         },
         onCellValueChanged: (params: any) => {
           this.hasUnsavedChanges = true;
-          setTimeout(() => {
+          //setTimeout(() => {
             params.api.refreshCells({ rowNodes: [params.node], force: true });
-          }, 0);
+          //}, 0);
         },
         cellStyle: (params: any) => {
           if (!params.data.idFamilia) {
