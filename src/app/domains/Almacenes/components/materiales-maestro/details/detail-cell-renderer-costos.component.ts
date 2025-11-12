@@ -39,7 +39,8 @@ import { Parser } from 'expr-eval';
           (cellValueChanged)="onCellValueChanged($event)"
           (gridReady)="onGridReady($event)"
           (cellFocused)="onCellFocused($event)"
-          (cellKeyDown)="onCellKeyDown($event)">
+          (cellKeyDown)="onCellKeyDown($event)"
+          (fillEnd)="onFillEnd($event)">
         </ag-grid-angular>
       </div>
     </div>
@@ -67,6 +68,7 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
   private focusedCell: { rowIndex: number, colId: string } | null = null;
   private highlightedCols: string[] = [];
   // -------------------------------------------
+  private numericTotals: any = {}; // Almacenar totales numéricos
   public pinnedBottomRowData: any[] = [];
 
   public costosRowData: any[] = [];
@@ -90,6 +92,14 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
     },
     fillOperation: (params: any) => {
       const { event, values, initialValues, sourceRowNode, startRow, endRow, column } = params;
+
+      // --- DEFENSA CONTRA EL ERROR ---
+      // Si sourceRowNode no está definido, no podemos continuar.
+      if (!sourceRowNode) {
+        // Devolver el valor de la celda de origen, que está en initialValues[0].
+        // Esto asegura que se copie el valor incluso si el nodo de origen no está disponible.
+        return initialValues[0];
+      }
       const field = column.getColId();
       const formulaField = `formula${field.charAt(0).toUpperCase() + field.slice(1)}`;
       const sourceFormula = sourceRowNode.data[formulaField];
@@ -126,10 +136,13 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
         return `=${adjustedFormula}`; // Añadir el '=' de nuevo a la fórmula ajustada
       }
 
+       // Si no es una fórmula, devuelve el valor de la celda de origen para que se copie.
+       // initialValues[0] contiene el valor de la celda desde la que se inició el arrastre.
+       return initialValues[0];
+
       // Si no es una fórmula, devuelve el valor de la celda de origen para que se copie.
       // initialValues[0] contiene el valor de la celda desde la que se inició el arrastre.
-      return initialValues[0];
-    },
+     },
     context: {} // Declarar explícitamente la propiedad context
   };
   public costosColumnDefs: ColDef[] = [];
@@ -240,6 +253,15 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
     this.calculateTotals(); // Recalcular totales después de cualquier cambio de celda
     setTimeout(() => {
       this.gridApi.refreshCells({ force: true });
+    }, 0);
+  }
+
+  onFillEnd(event: any) {
+    // Forzar un refresco completo para asegurar que las fórmulas copiadas se re-evalúen.
+    setTimeout(() => {
+      if (this.gridApi && !this.gridApi.isDestroyed()) {
+        this.gridApi.refreshCells({ force: true });
+      }
     }, 0);
   }
 
@@ -387,6 +409,7 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
       return;
     }
 
+    this.numericTotals = {}; // Reiniciar totales numéricos
     const totalRow: any = {
       col1: 'TOTAL', // Label for the total row
     };
@@ -426,6 +449,7 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
           value = Number(value);
           if (!isNaN(value) && value !== null) {
             totalRow[field] += value;
+            this.numericTotals[field] = totalRow[field]; // Guardar total numérico
           }
         }
       });
@@ -436,9 +460,10 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
       const field = colDef.field!; // Aseguramos que field no es undefined
       if (field && colDef.valueFormatter && (colDef.type === 'numericColumn' || field === 'col9')) {        
         // Solo aplicar si valueFormatter es una función
-        if (typeof colDef.valueFormatter === 'function') {
+        const formatter = colDef.valueFormatter;
+        if (typeof formatter === 'function') {
           const formatterParams: ValueFormatterParams = {
-            value: totalRow[field],
+            value: this.numericTotals[field], // Usar el valor numérico para formatear
             data: totalRow,
             node: { rowPinned: 'bottom' } as IRowNode, // Cast a IRowNode
             colDef: colDef,
@@ -446,12 +471,12 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
             api: this.gridApi,
             context: this.gridOptions.context // El contexto es requerido por ValueFormatterParams
           };
-          totalRow[field] = colDef.valueFormatter(formatterParams);
+          totalRow[field] = formatter(formatterParams);
         }
       }
     });
 
-    this.gridApi.setGridOption('pinnedBottomRowData', [totalRow]); // Usar setGridOption
+    this.gridApi.setGridOption('pinnedBottomRowData', [totalRow]);
   }
 
   private generateFakeCostData(rowCount: number): any[] {
