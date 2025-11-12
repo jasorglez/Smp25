@@ -11,7 +11,7 @@ export interface ICustomer {
   mobile: string;
   email: string;
   address: string;
-  addressfiscal: string;
+  addressFiscal: string;
   state: string;
   total: number;
   radio: number;
@@ -22,6 +22,11 @@ export interface ICustomer {
   idTypecop: number;
   type: string;
   active: boolean;
+  typeCustomer: string;
+  fieldContact: number;
+  fieldBank: number;
+  fieldCuenta: number;
+  typework: string;
   __isNew?: boolean;
   __modified?: boolean;
 }

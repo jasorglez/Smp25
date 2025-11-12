@@ -65,5 +65,26 @@ export class ProvidersService {
   updateAbonoProviderXTable(id: number, table: number) {
     return this.http.put(`${environment.urlWarehouse}/ProveedorXTabla/abonoTabla/${id}/${table}`, {}, { headers: this.trackingService.getHeaders() });
   }
-  
+
+  getProviderType(idProvider: number) {
+    return this.http.get(`${environment.urlWarehouse}/ProviderType/provider/${idProvider}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  // SubfamilyxProvider endpoints
+  getSubfamilyxProviderByProvider(idProvider: number) {
+    return this.http.get(`${environment.urlWarehouse}/SubfamilyxProvider/provider/${idProvider}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  addSubfamilyxProvider(data: any) {
+    return this.http.post(`${environment.urlWarehouse}/SubfamilyxProvider`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateSubfamilyxProvider(id: number, data: any) {
+    return this.http.put(`${environment.urlWarehouse}/SubfamilyxProvider/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteSubfamilyxProvider(id: number) {
+    return this.http.delete(`${environment.urlWarehouse}/SubfamilyxProvider/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
 }

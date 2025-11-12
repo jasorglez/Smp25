@@ -66,9 +66,13 @@ export class CustomersService {
   addCustomer(data: any): Observable<ICustomer> {
     return this.http.post<ICustomer>(`${environment.urlAdministration}/Customer`, data, { headers: this.trackingService.getHeaders() });
   }
+
+  getCustomerById(id: number): Observable<ICustomer> {
+    return this.http.get<ICustomer>(`${environment.urlAdministration}/Customer/${id}`, { headers: this.trackingService.getHeaders() });
+  }
   
 
-  updateCustomer(id: string, data: any): Observable<ICustomer> {
+  updateCustomer(id: number, data: any): Observable<ICustomer> {
     return this.http.put<ICustomer>(`${environment.urlAdministration}/Customer/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
