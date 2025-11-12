@@ -7,6 +7,7 @@ import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/auto
 import { CustomersService } from 'app/services/customers.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { SignalsService } from 'app/services/signals.service';
+import { DetailCellRendererProveedorSucursalComponent } from './detail-cell-renderer-proveedor-sucursal.component';
 
 @Component({
   selector: 'app-detail-cell-renderer-proveedores',
@@ -59,7 +60,8 @@ import { SignalsService } from 'app/services/signals.service';
           (gridReady)="onProveedorGridReady($event)"
           (cellValueChanged)="onProveedorCellValueChanged($event)"
           (selectionChanged)="onProveedorSelectionChanged($event)">
-        </ag-grid-angular>
+        </ag-grid-angular> <!-- (cellClicked)="onCellClicked($event)" -->
+
       </div>
     </div>
   `
@@ -88,11 +90,25 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
   proveedorGridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
-    rowSelection: 'single'
+    rowSelection: 'single',
+    masterDetail: true,
+    detailRowHeight: 300,
+    isRowMaster: (dataItem: any) => {
+      // Cada fila de proveedor puede tener un detalle de sucursal
+      return true;
+    },
+    detailCellRendererSelector: (params: any) => {
+      if (params.data.detailType === 'proveedorSucursal') {
+        return { component: 'detailCellRendererProveedorSucursal' };
+      }
+      return undefined;
+    },
+    onCellClicked: this.onCellClicked.bind(this)
   };
 
   components = {
-    autocompleteEditor: AutocompleteEditorComponent
+    autocompleteEditor: AutocompleteEditorComponent,
+    detailCellRendererProveedorSucursal: DetailCellRendererProveedorSucursalComponent
   };
 
   proveedorColumnDefs = [
@@ -195,38 +211,14 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
     {
       field: 'branchName',
       headerName: 'Sucursal',
-      editable: true,
       width: 150,
       flex: 1,
-      cellEditor: 'agSelectCellEditor',
-      cellEditorParams: (params: any) => {
-        const values = this.branches ? this.branches.map((b: any) => b.name) : [];
-        return {
-          values: values
-        };
-      },
-      valueGetter: (params: any) => {
-        if (params.data.branchName) {
-          return params.data.branchName;
-        }
-        if (params.data.campo10) {
-          const branch = this.branches.find((b: any) => b.id === params.data.campo10);
-          if (branch) {
-            params.data.branchName = branch.name;
-            return params.data.branchName;
-          }
-        }
-        return '';
-      },
-      valueSetter: (params: any) => {
-        const branch = this.branches.find((b: any) => b.name === params.newValue);
-        if (branch) {
-          params.data.campo10 = branch.id;
-          params.data.branchName = branch.name;
-        } else {
-          params.data.branchName = params.newValue;
-        }
-        return true;
+      cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' },
+      cellRenderer: (params: any) => {
+        // Mostrar siempre "Ver"
+        const div = document.createElement('div');
+        div.innerText = 'Ver';
+        return div;
       }
     }
   ];
@@ -240,6 +232,45 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
     this.loadProviders();
     this.loadBranches();
     this.loadProveedorData();
+
+    // Pasar el contexto del componente padre (MaterialesMaestroComponent) al siguiente nivel de detalle
+    this.proveedorGridOptions.context = {
+      ...params.context,
+      componentParent: this // Ahora este componente es el padre del detalle de sucursal
+    };
+  }
+
+  onCellClicked(event: any): void {
+    const colId = event.column.getColId();
+
+    if (colId === 'branchName') {
+      const node = event.node;
+      const api = event.api;
+      const detailType = 'proveedorSucursal';
+
+      const isCurrentlyExpanded = node.expanded && event.data.detailType === detailType;
+
+      if (isCurrentlyExpanded) {
+        node.setExpanded(false);
+      } else {
+        // Colapsar cualquier otra fila de proveedor expandida
+        api.forEachNode((otherNode: any) => {
+          if (otherNode.expanded && otherNode.id !== node.id) {
+            otherNode.setExpanded(false);
+          }
+        });
+
+        // Asignar el tipo de detalle y expandir
+        event.data.detailType = detailType;
+
+        // Simular datos para el siguiente nivel
+        event.data.sucursalDetailData = this.generateFakeSucursalData();
+
+        setTimeout(() => {
+          node.setExpanded(true);
+        }, 0);
+      }
+    }
   }
 
   refresh(): boolean {
@@ -281,6 +312,10 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
         this.proveedorRowData = data;
       });
     }
+  }
+
+  onGridReady(params: any) {
+    this.proveedorGridApi = params.api;
   }
 
   onProveedorGridReady(params: any) {
@@ -367,5 +402,23 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
         }
       );
     }
+  }
+
+  private generateFakeSucursalData(): any[] {
+    const sucursalNombres = ['BODEGAS', 'DELI', 'TIENDA 1'];
+    const data = [];
+    for (let i = 0; i < sucursalNombres.length; i++) {
+      data.push({
+        id: i + 1,
+        sucursal: sucursalNombres[i],
+        fechaAlta: new Date(2023, i, 15).toISOString().split('T')[0],
+        stockMinimo: Math.floor(Math.random() * 50) + 10,
+        resurtido: Math.floor(Math.random() * 100) + 20,
+        capacidadMaxAlmacen: Math.floor(Math.random() * 500) + 200,
+        tiempoDeEntrega: `${Math.floor(Math.random() * 5) + 1} días`,
+        activo: Math.random() > 0.5
+      });
+    }
+    return data;
   }
 }

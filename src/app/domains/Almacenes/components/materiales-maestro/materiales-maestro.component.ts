@@ -10,6 +10,7 @@ import { DetailCellRendererFamiliaComponent } from './details/detail-cell-render
 import { DetailCellRendererSucursalComponent } from './details/detail-cell-renderer-sucursal.component';
 import { DetailCellRendererCostosComponent } from './details/detail-cell-renderer-costos.component';
 import { DetailCellRendererSubfamiliaComponent } from './details/detail-cell-renderer-subfamilia.component';
+import { DetailCellRendererProveedorSucursalComponent } from './details/detail-cell-renderer-proveedor-sucursal.component';
 import { SelectWithTooltipEditorV2Component } from './editors/select-with-tooltip-editor-v2.component';
 import { ImageCellRendererComponent } from './renderers/image-cell-renderer.component';
 import { MaterialsService } from 'app/services/materials.service';
@@ -35,6 +36,7 @@ import { SubfamiliaModalService, ModalData } from './services/subfamilia-modal.s
     DetailCellRendererSucursalComponent,
     DetailCellRendererCostosComponent,
     DetailCellRendererSubfamiliaComponent,
+    DetailCellRendererProveedorSucursalComponent,
     SelectWithTooltipEditorV2Component,
     ImageCellRendererComponent
   ],
@@ -195,7 +197,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     detailCellRendererFamilia: DetailCellRendererFamiliaComponent,
     detailCellRendererSucursal: DetailCellRendererSucursalComponent,
     detailCellRendererCostos: DetailCellRendererCostosComponent,
-    detailCellRendererSubfamilia: DetailCellRendererSubfamiliaComponent
+    detailCellRendererSubfamilia: DetailCellRendererSubfamiliaComponent,
+    detailCellRendererProveedorSucursal: DetailCellRendererProveedorSucursalComponent
   };
 
   public gridOptions: any = {
@@ -256,7 +259,10 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
       event.data.__modified = true;
       this.hasUnsavedChanges = true;
-      this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
+      // Envolver en setTimeout para evitar conflictos de renderizado
+      setTimeout(() => {
+        this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
+      }, 0);
     }
   };
 
@@ -310,8 +316,10 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           params.data.idSubfamilia = null;
           params.data.subfamilia = '';
           this.hasUnsavedChanges = true;
-          // Refrescar la fila para actualizar el combo de familia
-          params.api.refreshCells({ rowNodes: [params.node], force: true });
+          // Refrescar la fila para actualizar el combo de familia usando setTimeout
+          setTimeout(() => {
+            params.api.refreshCells({ rowNodes: [params.node], force: true });
+          }, 0);
         }
       },
       {
@@ -323,18 +331,17 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           return params.data.idCategory != null;
         },
         cellEditor: SelectWithTooltipEditorV2Component,
-        cellEditorParams: (params: any) => {
-          // Obtener familias filtradas por la categoría seleccionada
-          const familiesFiltered = this.getFamiliesByCategory(params.data.idCategory);
-          return {
-            options: familiesFiltered.map(f => ({
-              id: f.id,
-              description: f.description,
-              valueAddition: f.valueAddition,
-              valueAddition2: f.valueAddition2
-            }))
-          };
-        },
+        cellEditorParams: (params: any) => ({
+            getOptions: () => {
+              const familiesFiltered = this.getFamiliesByCategory(params.data.idCategory);
+              return familiesFiltered.map(f => ({
+                id: f.id,
+                description: f.description,
+                valueAddition: f.valueAddition,
+                valueAddition2: f.valueAddition2
+              }));
+            }
+        }),
         valueFormatter: (params: any) => {
           const fam = this.families.find(f => f.id === params.value);
           return fam ? fam.description : params.data.familia || '';
@@ -344,7 +351,9 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           params.data.idSubfamilia = null;
           params.data.subfamilia = '';
           this.hasUnsavedChanges = true;
-          params.api.refreshCells({ rowNodes: [params.node], force: true });
+          setTimeout(() => {
+            params.api.refreshCells({ rowNodes: [params.node], force: true });
+          }, 0);
         },
         cellStyle: (params: any) => {
           if (!params.data.idCategory) {
@@ -362,25 +371,26 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           return params.data.idFamilia != null;
         },
         cellEditor: SelectWithTooltipEditorV2Component,
-        cellEditorParams: (params: any) => {
-          // Obtener subfamilias filtradas por la familia seleccionada
-          const subfamiliesFiltered = this.getSubfamiliesByFamily(params.data.idFamilia);
-          return {
-            options: subfamiliesFiltered.map(sf => ({
-              id: sf.id,
-              description: sf.description,
-              valueAddition: sf.valueAddition,
-              valueAddition2: sf.valueAddition2
-            }))
-          };
-        },
+        cellEditorParams: (params: any) => ({
+            getOptions: () => {
+              const subfamiliesFiltered = this.getSubfamiliesByFamily(params.data.idFamilia);
+              return subfamiliesFiltered.map(sf => ({
+                id: sf.id,
+                description: sf.description,
+                valueAddition: sf.valueAddition,
+                valueAddition2: sf.valueAddition2
+              }));
+            }
+        }),
         valueFormatter: (params: any) => {
           const sf = this.subfamilies.find(sf => sf.id === params.value);
           return sf ? sf.description : params.data.subfamilia || '';
         },
         onCellValueChanged: (params: any) => {
           this.hasUnsavedChanges = true;
-          params.api.refreshCells({ rowNodes: [params.node], force: true });
+          setTimeout(() => {
+            params.api.refreshCells({ rowNodes: [params.node], force: true });
+          }, 0);
         },
         cellStyle: (params: any) => {
           if (!params.data.idFamilia) {
@@ -395,6 +405,11 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         headerName: 'Costos',
         width: 150,
         valueFormatter: (params: any) => {
+          return params.value ? `$${params.value.toFixed(2)}` : '$0.00';
+        },
+        cellRenderer: (params: any) => {
+          // Este renderer es necesario para que el clic funcione igual que en las otras columnas de detalle.
+          // Muestra el valor formateado.
           return params.value ? `$${params.value.toFixed(2)}` : '$0.00';
         },
         cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
