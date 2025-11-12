@@ -139,9 +139,9 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     try {
       // Cargar categorías, familias y subfamilias en paralelo
       [this.categories, this.families, this.subfamilies] = await Promise.all([
-        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'CATEGORY')),
-        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'FAM-CAT')),
-        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'SUB-FAM'))
+        lastValueFrom(this.catalogsService.getCatalogsMaterialBit(this.idRoot, 'CATEGORY')),
+        lastValueFrom(this.catalogsService.getCatalogsMaterialBit(this.idRoot, 'FAM-CAT')),
+        lastValueFrom(this.catalogsService.getCatalogsMaterialBit(this.idRoot, 'SUB-FAM'))
       ]);
 
       console.log('Catalogs loaded:', {
@@ -153,10 +153,10 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       console.error('Error loading catalogs:', error);
     }
   }
-
+  
   // Obtener familias de una categoría específica
   getFamiliesByCategory(categoryId: number): any[] {
-    return this.families.filter(f => f.parentId === categoryId);
+    return this.families.filter(f => f.parentId === categoryId );
   }
 
   // Obtener subfamilias de una familia específica
@@ -286,7 +286,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
             id: c.id,
             description: c.description,
             valueAddition: c.valueAddition,
-            valueAddition2: c.valueAddition2
+            valueAddition2: c.valueAddition2,
+            valueAdditionBit: c.valueAdditionBit
           }))
         },
         valueFormatter: (params: any) => {
