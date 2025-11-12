@@ -8,6 +8,7 @@ import { alerts } from 'app/helpers/alerts';
 import { DetailCellRendererProveedoresComponent } from './details/detail-cell-renderer-proveedores.component';
 import { DetailCellRendererFamiliaComponent } from './details/detail-cell-renderer-familia.component';
 import { DetailCellRendererSucursalComponent } from './details/detail-cell-renderer-sucursal.component';
+import { DetailCellRendererCostosComponent } from './details/detail-cell-renderer-costos.component';
 import { DetailCellRendererSubfamiliaComponent } from './details/detail-cell-renderer-subfamilia.component';
 import { SelectWithTooltipEditorV2Component } from './editors/select-with-tooltip-editor-v2.component';
 import { ImageCellRendererComponent } from './renderers/image-cell-renderer.component';
@@ -32,6 +33,7 @@ import { SubfamiliaModalService, ModalData } from './services/subfamilia-modal.s
     DetailCellRendererProveedoresComponent,
     DetailCellRendererFamiliaComponent,
     DetailCellRendererSucursalComponent,
+    DetailCellRendererCostosComponent,
     DetailCellRendererSubfamiliaComponent,
     SelectWithTooltipEditorV2Component,
     ImageCellRendererComponent
@@ -173,7 +175,11 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
     this.materialsService.getMaterialsxview(this.idRoot).subscribe({
       next: (data) => {
-        this.rowData = data;
+        // Agregar datos falsos para la columna de costos
+        this.rowData = data.map(material => ({
+          ...material,
+          costo: Math.floor(Math.random() * (500 - 50 + 1)) + 50 // Costo aleatorio entre 50 y 500
+        }));
         console.log('Materials loaded:', data);
       },
       error: (error) => {
@@ -188,6 +194,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     detailCellRendererProveedores: DetailCellRendererProveedoresComponent,
     detailCellRendererFamilia: DetailCellRendererFamiliaComponent,
     detailCellRendererSucursal: DetailCellRendererSucursalComponent,
+    detailCellRendererCostos: DetailCellRendererCostosComponent,
     detailCellRendererSubfamilia: DetailCellRendererSubfamiliaComponent
   };
 
@@ -212,6 +219,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         return { component: 'detailCellRendererSucursal' };
       } else if (params.data.detailType === 'subfamilia') {
         return { component: 'detailCellRendererSubfamilia' };
+      } else if (params.data.detailType === 'costos') {
+        return { component: 'detailCellRendererCostos' };
       }
       return undefined;
     },
@@ -379,6 +388,16 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           return null;
         }
       },
+
+      {
+        field: 'costo',
+        headerName: 'Costos',
+        width: 150,
+        valueFormatter: (params: any) => {
+          return params.value ? `$${params.value.toFixed(2)}` : '$0.00';
+        },
+        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
+      },
       
       {
         field: 'subfamilyCount',
@@ -399,6 +418,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         },
         cellStyle: { backgroundColor: '#e3f2fd', cursor: 'pointer', textDecoration: 'underline' }
       },
+ 
       {
         field: 'picture',
         headerName: 'Imagen',
@@ -417,6 +437,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   getDetailTypeFromColId(colId: string): string | null {
     if (colId === 'providerCount') return 'proveedores';
     if (colId === 'subfamilyCount') return 'subfamilia';
+    if (colId === 'costo') return 'costos';
     return null;
   }
 
@@ -444,7 +465,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     event.node.setSelected(true);
 
     const colId = event.column.getColId();
-    const isDetailColumn = colId === 'providerCount' || colId === 'subfamilyCount';
+    const isDetailColumn = colId === 'providerCount' || colId === 'subfamilyCount' || colId === 'costo';
 
     if (isDetailColumn) {
       const node = event.node;
