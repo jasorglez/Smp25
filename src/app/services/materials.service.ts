@@ -106,4 +106,11 @@ export class MaterialsService {
       { headers: this.trackingService.getHeaders() }
     );
   }
+  catalogBymaterial( idCatalog: number): Observable<any> {
+    return this.http.get<any[]>(
+      `${environment.urlWarehouse}/Material/catalogBymaterial?idCatalog=${idCatalog}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+    
+  }
 }

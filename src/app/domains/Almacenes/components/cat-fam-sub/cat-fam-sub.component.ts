@@ -8,6 +8,7 @@ import { FormsModule } from '@angular/forms';
 import { SignalsService } from 'app/services/signals.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { CatalogsService } from 'app/services/catalogs.service';
+import { MaterialsService } from 'app/services/materials.service';
 
 @Component({
   selector: 'app-cat-fam-sub',
@@ -21,6 +22,7 @@ export class CatFamSubComponent {
   private catalogsService = inject(CatalogsService);
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
+  private materialsService = inject(MaterialsService);
 
   constructor() {
     effect(() => {
@@ -337,14 +339,7 @@ export class CatFamSubComponent {
         headerName: 'Materia Prima',
         field: 'valueAdditionBit',
         width: 120,
-        cellRenderer: (params: any) => {
-          if (params.data.nodeLevel === 'subfamily') {
-            const value = params.data.valueAdditionBit || false;
-            const checked = value ? 'checked' : '';
-            return `<input type="checkbox" ${checked} disabled style="cursor: pointer;">`;
-          }
-          return '';
-        },
+        editable: true,
         onCellClicked: (params: any) => {
           if (params.data.nodeLevel === 'subfamily') {
             // Leer la tabla DEPARTAMENT cuando se haga click en Materia Prima
@@ -389,6 +384,33 @@ export class CatFamSubComponent {
   // Cambios en celdas
   onCellValueChanged(event: any) {
     console.log('Dato cambiado:', event.data);
+    if (event.colDef.field === 'valueAdditionBit') {
+      this.catalogsService.updateValueBit(
+        event.data.originalId,
+        event.data.valueAdditionBit,
+        "MATERIAL"
+      ).subscribe({
+        next: (result) => {
+          console.log(result)
+          if (result) {
+            alerts.basicAlert(
+              'Guardado exitoso',
+              `Se han realizado los cambios correctamente.`,
+              'success'
+            );
+          } else {
+            alerts.basicAlert(
+              'Error',
+              'Error al guardar los cambios. Por favor, intente nuevamente.',
+              'error'
+            );
+          }
+        },
+        error: (err) => {
+          console.error("Error al actualizar el valor:", err);
+        }
+      });
+    }
 
     // Si se cambió la columna vigente
     if (event.colDef.field === 'vigente') {
@@ -420,6 +442,7 @@ export class CatFamSubComponent {
             });
           }
         });
+      
 
         this.gridApi.refreshCells({ force: true });
       }
@@ -830,15 +853,27 @@ export class CatFamSubComponent {
     if (!result.isConfirmed) return;
 
     try {
-      console.log('Eliminando registro ID:', this.selectedRowData.originalId);
-      const response = await lastValueFrom(this.catalogsService.deleteCatalog(this.selectedRowData.originalId));
-      console.log('Respuesta del servidor (eliminación):', response);
+      console.log( this.selectedRowData.originalId, this.selectedRowData.nodeLevel)
 
-      alerts.basicAlert(
+      console.log('Eliminando registro ID:', this.selectedRowData.originalId);
+      const res = await lastValueFrom(this.materialsService.catalogBymaterial(this.selectedRowData.originalId))
+      
+      if(res){
+        alerts.basicAlert(
+        'Error',
+        'No se puede eliminar, este elemeto se encuentra cargado en un material',
+        'error'
+      );
+      }else{
+        const response = await lastValueFrom(this.catalogsService.deleteCatalog(this.selectedRowData.originalId));
+        alerts.basicAlert(
         'Eliminado',
         'Elemento eliminado satisfactoriamente.',
         'success'
       );
+      }
+
+      
 
       this.loadCatalogData(); // Recargar datos
       this.selectedRowData = null;
@@ -986,6 +1021,7 @@ export class CatFamSubComponent {
       valueAddition: this.modalForm.valueAddition,
       description: this.modalForm.description,
       valueAddition2: this.modalForm.valueAddition2,
+      valueAdditionBit: this.modalForm.valueAdditionBit,
       type: 'CATEGORY',
       active: this.modalForm.active ? 1 : 0
     });
@@ -1014,6 +1050,7 @@ export class CatFamSubComponent {
       valueAddition: this.modalForm.valueAddition,
       description: this.modalForm.description,
       valueAddition2: this.modalForm.valueAddition2,
+      valueAdditionBit: this.modalForm.valueAdditionBit,
       type: 'FAM-CAT',
       parentId: this.selectedRowData.originalId,
       active: this.modalForm.active ? 1 : 0
@@ -1043,6 +1080,7 @@ export class CatFamSubComponent {
       valueAddition: this.modalForm.valueAddition,
       description: this.modalForm.description,
       valueAddition2: this.modalForm.valueAddition2,
+      valueAdditionBit: this.modalForm.valueAdditionBit,
       type: 'SUB-FAM',
       parentId: this.selectedRowData.parentCategoryId,
       subParentId: this.selectedRowData.originalId,
