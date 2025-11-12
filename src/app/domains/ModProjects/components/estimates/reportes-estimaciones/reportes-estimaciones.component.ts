@@ -877,6 +877,15 @@ export class ReportesEstimacionesComponent {
         disabled: !params.node?.data?.idOt,
         cssClasses: ['custom-menu-item']
       },
+      {
+        name: 'Reabrir OT',
+        action: () => {
+          console.log('Acción Reabrir OT ejecutada');
+          this.reopenOt(params.node.data);
+        },
+        disabled: !params.node?.data?.idOt,
+        cssClasses: ['custom-menu-item']
+      },
       'separator',
       'copy',
       'copyWithHeaders',
@@ -977,6 +986,69 @@ export class ReportesEstimacionesComponent {
             'error'
           );
         }
+      }
+    });
+  }
+
+  /**
+   * Reabre una OT cerrada
+   */
+  reopenOt(rowData: any) {
+    const idOt = rowData.idOt;
+    const otNumber = rowData.otNumber || 'N/A';
+
+    if (!idOt) {
+      alerts.basicAlert('Error', 'No se encontró el ID de la OT.', 'error');
+      return;
+    }
+
+    console.log('=== reopenOt iniciado ===');
+    console.log('idOt:', idOt);
+    console.log('otNumber:', otNumber);
+
+    // Confirmar con el usuario antes de reabrir
+    alerts.confirmAlert(
+      'Confirmar reapertura',
+      `¿Está seguro de que desea reabrir la OT ${otNumber}?`,
+      'question',
+      'Sí, reabrir'
+    ).then((result) => {
+      if (result.isConfirmed) {
+        // Mostrar loading
+        alerts.showLoading('Reabriendo OT', 'Por favor espere...');
+
+        this.otService.reopenOt(idOt).subscribe({
+          next: (response) => {
+            console.log('=== Respuesta de reopenOt ===', response);
+
+            // Cerrar el loading
+            alerts.closeLoading();
+
+            // Mostrar mensaje de éxito
+            alerts.basicAlert(
+              'Éxito',
+              `La OT ${otNumber} ha sido reabierta correctamente.`,
+              'success'
+            );
+
+            // Recargar los datos de la tabla
+            this.reloadTableData();
+          },
+          error: (error) => {
+            console.error('=== Error en reopenOt ===', error);
+
+            // Cerrar el loading
+            alerts.closeLoading();
+
+            // Mostrar mensaje de error
+            const errorMessage = error.error?.message || error.message || 'Error al reabrir la OT.';
+            alerts.basicAlert(
+              'Error',
+              errorMessage,
+              'error'
+            );
+          }
+        });
       }
     });
   }

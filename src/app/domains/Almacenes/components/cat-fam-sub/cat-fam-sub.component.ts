@@ -335,10 +335,23 @@ export class CatFamSubComponent {
           return null;
         }
       },
+ {
+        headerName: 'MM Materiales',
+        field: 'valueAdditionBit2',
+        width: 160,
+        editable: true,
+        onCellClicked: (params: any) => {
+          if (params.data.nodeLevel === 'subfamily') {
+            // Leer la tabla DEPARTAMENT cuando se haga click en Materia Prima            
+            this.loadDepartmentsForSubfamily(params.data);
+          }
+        }
+      },
+
       {
-        headerName: 'Materia Prima',
+        headerName: 'Material Maestro(MN)',
         field: 'valueAdditionBit',
-        width: 120,
+        width: 210,
         editable: true,
         onCellClicked: (params: any) => {
           if (params.data.nodeLevel === 'subfamily') {

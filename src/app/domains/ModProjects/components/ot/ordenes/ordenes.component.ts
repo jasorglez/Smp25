@@ -29,6 +29,7 @@ import { ProjectsService } from 'app/services/projects.service';
 import { AuthService } from 'app/services/auth.service';
 import * as bootstrap from 'bootstrap';
 import { firstValueFrom, lastValueFrom, EMPTY, catchError, first, Observable, tap, of } from 'rxjs';
+import Swal from 'sweetalert2';
 
 
 @Pipe({
@@ -378,76 +379,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const confirmResult = await alerts.confirmAlert(
-      'Eliminar OTs',
-      `¿Está seguro de que desea eliminar ${selectedRows.length} OT(s) seleccionada(s)?`,
-      'warning',
-      'Sí, Eliminar'
-    );
-
-    if (!confirmResult.isConfirmed) {
-      return;
-    }
-
-    this.isDeleting = true;
-    this.deleteProgress = 0;
-    const errors: string[] = [];
-    const totalToDelete = selectedRows.length;
-
-    for (const [index, ot] of selectedRows.entries()) {
-      // Actualizar mensaje y progreso
-      this.deleteProgressMessage = `Procesando OT ${index + 1} de ${totalToDelete}: "${ot.otNumber}"`;
-      this.deleteProgress = ((index + 1) / totalToDelete) * 100;
-
-      try {
-        // 1. Verificar si la OT tiene reportes diarios asociados
-        const reportResponse = await firstValueFrom(this.dailyReportService.getDailyReportsByOt(ot.id));
-
-        // Pequeña pausa para que la UI se actualice en cada paso
-        await new Promise(resolve => setTimeout(resolve, 50));
-
-        if (reportResponse.success && reportResponse.data && reportResponse.data.length > 0) {
-          // 2. Si hay reportes, no permitir el borrado y registrar el error
-          errors.push(`OT "${ot.otNumber}": No se puede eliminar, tiene ${reportResponse.data.length} reporte(s) asociado(s).`);
-          continue; // Pasar a la siguiente OT
-        }
-
-        // 3. Si no hay reportes, proceder con la eliminación
-        await firstValueFrom(this.otService.deleteOt(ot.id));
-        this.trackingService.addLog(
-          this.trackingService.getnameComp(),
-          `Delete Registro en OT: ${ot.otNumber}`,
-          'Menu Administracion OT',
-          this.trackingService.getEmail()
-        );
-
-      } catch (error: any) {
-        console.error(`Error al intentar eliminar la OT ${ot.otNumber}:`, error);
-        errors.push(`OT "${ot.otNumber}": ${error?.error?.message || 'Error desconocido.'}`);
-      }
-    }
-
-    // Finalizar la barra de progreso
-    this.deleteProgressMessage = 'Proceso finalizado.';
-    setTimeout(() => {
-      this.isDeleting = false;
-    }, 2000); // Ocultar la barra después de 2 segundos
-
-    // 4. Refrescar datos y mostrar resumen
-    this.obtenerDatos();
-    this.signalsService.triggerUpdateBranchList();
-    this.masterNotSavedChanges = false;
-
-    if (errors.length === 0) {
-      alerts.basicAlert('Éxito', `Se eliminaron ${selectedRows.length} OT(s) correctamente.`, 'success');
-    } else {
-      const successCount = selectedRows.length - errors.length;
-      let message = `Proceso finalizado.<br><br>✅ ${successCount} OT(s) eliminada(s) con éxito.`;
-      if (errors.length > 0) {
-        message += `<br><br>❌ ${errors.length} OT(s) no se pudieron eliminar:<br><ul>${errors.map(e => `<li>${e}</li>`).join('')}</ul>`;
-      }
-      alerts.basicAlert('Proceso Terminado con Observaciones', message, 'warning');
-    }
+    // Llamar a la función unificada de eliminación
+    await this.deleteOTsWithValidation(selectedRows);
   }
 
   onTipoReporteChange() {
@@ -2244,14 +2177,23 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       // Pequeña pausa para asegurar que la UI se actualice antes del diálogo
       await new Promise(resolve => setTimeout(resolve, 50));
 
-      const confirmResult = await alerts.confirmAlert(
-        'Cerrar OTs del Grupo',
-        `¿Deseas cerrar las ${childOts.length} OTs de este grupo?`,
-        'question',
-        'Sí, cerrar todas'
-      );
+      // Mostrar diálogo con opciones de Cerrar o Eliminar
+      const actionResult = await Swal.fire({
+        title: 'Acción sobre OTs del Grupo',
+        text: `Tienes ${childOts.length} OT(s) seleccionadas. ¿Qué deseas hacer?`,
+        icon: 'question',
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: '<i class="bi bi-lock"></i> Cerrar todas',
+        denyButtonText: '<i class="bi bi-trash"></i> Eliminar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#0d6efd',
+        denyButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d'
+      });
 
-      if (confirmResult.isConfirmed) {
+      if (actionResult.isConfirmed) {
+        // Usuario eligió CERRAR
         // Marcar todas las OTs como cerradas
         childOts.forEach(ot => {
           ot.closed = true;
@@ -2259,9 +2201,12 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         });
         // Guardar los cambios y eliminarlas de la vista
         await this.saveOtsInBatch(childOts, true);
+      } else if (actionResult.isDenied) {
+        // Usuario eligió ELIMINAR
+        await this.deleteOTsWithValidation(childOts);
       } else {
-        // Si el usuario cancela, deseleccionar el grupo para evitar confusiones
-        groupNode.setSelected(false, true); // El segundo parámetro evita un bucle infinito de eventos
+        // Usuario canceló
+        groupNode.setSelected(false, true);
       }
     }
   }
@@ -2284,6 +2229,207 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     } catch (error) {
       alerts.basicAlert('Error', 'Ocurrió un error al actualizar las OTs.', 'error');
       console.error('Error en guardado por lotes:', error);
+    }
+  }
+
+  /**
+   * Elimina OTs (individuales o grupales), pero solo aquellas que NO tienen reportes diarios asociados.
+   * Esta función verifica primero qué OTs tienen reportes, muestra un resumen al usuario,
+   * y solo procede con la eliminación de las OTs que no tienen reportes asociados.
+   * @param otsToDelete - Array de OTs a eliminar.
+   */
+  async deleteOTsWithValidation(otsToDelete: OrdenesData[]) {
+    if (!otsToDelete || otsToDelete.length === 0) return;
+
+    // Mostrar loading mientras verificamos los reportes
+    Swal.fire({
+      title: 'Verificando OTs...',
+      text: 'Por favor espere mientras verificamos qué OTs pueden eliminarse',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      allowEnterKey: false,
+      showConfirmButton: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
+
+    try {
+      // 1. Verificar qué OTs tienen reportes diarios y cuáles no
+      const verificaciones = await Promise.all(
+        otsToDelete.map(async (ot) => {
+          try {
+            const reportResponse = await firstValueFrom(this.dailyReportService.getDailyReportsByOt(Number(ot.id)));
+            const tieneReportes = reportResponse.success && reportResponse.data && reportResponse.data.length > 0;
+            return {
+              ot,
+              tieneReportes,
+              cantidadReportes: tieneReportes ? reportResponse.data.length : 0
+            };
+          } catch (error) {
+            console.error(`Error al verificar reportes de OT ${ot.otNumber}:`, error);
+            return { ot, tieneReportes: false, cantidadReportes: 0 };
+          }
+        })
+      );
+
+      // 2. Separar OTs que se pueden eliminar de las que no
+      const otsEliminables = verificaciones.filter(v => !v.tieneReportes).map(v => v.ot);
+      const otsNoEliminables = verificaciones.filter(v => v.tieneReportes);
+
+      // Cerrar el loading
+      Swal.close();
+
+      // 3. Mostrar resumen al usuario
+      if (otsEliminables.length === 0) {
+        // Todas las OTs tienen reportes, ninguna puede eliminarse
+        await Swal.fire({
+          title: 'No se puede eliminar ninguna OT',
+          html: `
+            <p class="mb-3">Todas las OTs seleccionadas (${otsToDelete.length}) tienen reportes diarios asociados y no pueden eliminarse.</p>
+            <div class="alert alert-info text-start">
+              <small><strong>OTs con reportes:</strong></small>
+              <ul class="mb-0 small" style="max-height: 200px; overflow-y: auto;">
+                ${otsNoEliminables.map(v => `<li>OT ${v.ot.otNumber} - ${v.cantidadReportes} reporte(s)</li>`).join('')}
+              </ul>
+            </div>
+          `,
+          icon: 'warning',
+          confirmButtonText: 'Entendido'
+        });
+        return;
+      }
+
+      // 4. Construir mensaje de confirmación
+      let mensajeConfirmacion = '';
+      if (otsNoEliminables.length > 0) {
+        mensajeConfirmacion = `
+          <div class="mb-3">
+            <p><strong>Se eliminarán ${otsEliminables.length} de ${otsToDelete.length} OTs:</strong></p>
+          </div>
+          <div class="alert alert-success text-start mb-2">
+            <small><strong>✓ OTs que se eliminarán (${otsEliminables.length}):</strong></small>
+            <ul class="mb-0 small" style="max-height: 150px; overflow-y: auto;">
+              ${otsEliminables.map(ot => `<li>OT ${ot.otNumber}</li>`).join('')}
+            </ul>
+          </div>
+          <div class="alert alert-warning text-start mb-0">
+            <small><strong>✗ OTs que NO se pueden eliminar (${otsNoEliminables.length}):</strong></small>
+            <ul class="mb-0 small" style="max-height: 150px; overflow-y: auto;">
+              ${otsNoEliminables.map(v => `<li>OT ${v.ot.otNumber} - tiene ${v.cantidadReportes} reporte(s)</li>`).join('')}
+            </ul>
+          </div>
+        `;
+      } else {
+        mensajeConfirmacion = `
+          <p>Se eliminarán <strong>${otsEliminables.length} OT(s)</strong> del sistema.</p>
+          <ul class="text-start" style="max-height: 200px; overflow-y: auto;">
+            ${otsEliminables.map(ot => `<li>OT ${ot.otNumber} - ${ot.description}</li>`).join('')}
+          </ul>
+        `;
+      }
+
+      const confirmResult = await Swal.fire({
+        title: 'Confirmar Eliminación',
+        html: mensajeConfirmacion,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: `Sí, eliminar ${otsEliminables.length} OT(s)`,
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d'
+      });
+
+      if (!confirmResult.isConfirmed) {
+        return;
+      }
+
+      // 5. Proceder con la eliminación
+      Swal.fire({
+        title: 'Eliminando OTs...',
+        html: `<p>Eliminando <strong>0</strong> de <strong>${otsEliminables.length}</strong> OTs...</p>`,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        allowEnterKey: false,
+        showConfirmButton: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
+      const errors: string[] = [];
+      const eliminadas: OrdenesData[] = [];
+
+      for (const [index, ot] of otsEliminables.entries()) {
+        // Actualizar progreso
+        Swal.update({
+          html: `<p>Eliminando <strong>${index + 1}</strong> de <strong>${otsEliminables.length}</strong> OTs...</p>
+                 <small>OT actual: ${ot.otNumber}</small>`
+        });
+
+        try {
+          await firstValueFrom(this.otService.deleteOt(Number(ot.id)));
+          eliminadas.push(ot);
+
+          // Log de auditoría
+          this.trackingService.addLog(
+            this.trackingService.getnameComp(),
+            `Delete Registro en OT (Grupo): ${ot.otNumber}`,
+            'Menu Administracion OT',
+            this.trackingService.getEmail()
+          );
+
+          // Pequeña pausa para actualización visual
+          await new Promise(resolve => setTimeout(resolve, 50));
+        } catch (error) {
+          console.error(`Error al eliminar OT ${ot.otNumber}:`, error);
+          errors.push(`OT "${ot.otNumber}": Error al eliminar del servidor.`);
+        }
+      }
+
+      // 6. Actualizar la grilla y recargar datos
+      if (eliminadas.length > 0) {
+        this.gridApi.applyTransaction({ remove: eliminadas });
+        // Refrescar datos desde el servidor para mantener consistencia
+        this.obtenerDatos();
+        this.signalsService.triggerUpdateBranchList();
+        this.masterNotSavedChanges = false;
+      }
+
+      // 7. Mostrar resultado final
+      Swal.close();
+
+      if (errors.length === 0 && eliminadas.length > 0) {
+        await Swal.fire({
+          title: 'Eliminación Exitosa',
+          html: `
+            <p>Se eliminaron correctamente <strong>${eliminadas.length} OT(s)</strong>.</p>
+            ${otsNoEliminables.length > 0 ? `<p class="text-muted small">Nota: ${otsNoEliminables.length} OT(s) no se eliminaron porque tienen reportes asociados.</p>` : ''}
+          `,
+          icon: 'success',
+          confirmButtonText: 'Aceptar'
+        });
+      } else if (errors.length > 0) {
+        await Swal.fire({
+          title: 'Eliminación Parcial',
+          html: `
+            <p>Se eliminaron <strong>${eliminadas.length}</strong> de <strong>${otsEliminables.length}</strong> OTs.</p>
+            <div class="alert alert-danger text-start">
+              <small><strong>Errores encontrados:</strong></small>
+              <ul class="mb-0 small">
+                ${errors.map(err => `<li>${err}</li>`).join('')}
+              </ul>
+            </div>
+          `,
+          icon: 'warning',
+          confirmButtonText: 'Aceptar'
+        });
+      }
+
+    } catch (error) {
+      Swal.close();
+      console.error('Error en deleteOTsWithValidation:', error);
+      alerts.basicAlert('Error', 'Ocurrió un error al procesar la eliminación de OTs.', 'error');
     }
   }
 

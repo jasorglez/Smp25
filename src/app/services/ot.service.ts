@@ -165,4 +165,8 @@ export class OtService {
       return this.http.post(`${environment.urlSmp}/ProcesadorExcel/procesarInt`, formData, { headers });
     }
 
+    reopenOt(idOt: number): Observable<any> {
+      return this.http.put(`${environment.urlSmp}/OT/${idOt}/reopen`, { headers: this.trackingService.getHeaders() });
+    }
+
   }
