@@ -17,6 +17,7 @@ export class CatalogsService {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/getCatalogs?idCompany=${idRoot}&type=${type}`, { headers: this.trackingService.getHeaders() });
   }
 
+
   getCatalogsxSubfamily(idRoot, idFamily: number): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/getSubfamily?idCompany=${idRoot}&idFam=${idFamily}`, { headers: this.trackingService.getHeaders() });
   }  
@@ -103,6 +104,13 @@ export class CatalogsService {
 
   updatePermission(catalog: any): Observable<any> {
     return this.http.put<any>(`${environment.urlWarehouse}/Catalog/update-permission/${catalog.id}`, catalog, { headers: this.trackingService.getHeaders() });  
+  }
+
+  updateValueBit(id: number, value: boolean, type: string): Observable<any> {
+    return this.http.put<any>(`${environment.urlWarehouse}/Catalog/updateValueBit/${id}/${value}/${type}`, {}, { headers: this.trackingService.getHeaders() });  
+  }
+  getCatalogsMaterialBit(idRoot: number, type: string): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/getCatalogsMaterialBit?idCompany=${idRoot}&type=${type}`, { headers: this.trackingService.getHeaders() });
   }
 
 
