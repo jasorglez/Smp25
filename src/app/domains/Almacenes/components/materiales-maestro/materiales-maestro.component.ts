@@ -402,7 +402,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
       {
         field: 'costo',
-        headerName: 'Costos',
+        headerName: 'Materiales',
         width: 150,
         valueFormatter: (params: any) => {
           return params.value ? `$${params.value.toFixed(2)}` : '$0.00';
