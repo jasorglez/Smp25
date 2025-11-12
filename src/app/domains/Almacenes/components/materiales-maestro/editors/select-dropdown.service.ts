@@ -22,9 +22,6 @@ export class SelectDropdownService {
   private options: SelectOption[] = [];
   private filteredOptions: SelectOption[] = [];
   private selectedValue: any = null;
-  private hoveredOption: SelectOption | null = null;
-  private tooltipPosition = { top: 0, left: 0 };
-  private showTooltip = false;
   private searchText: string = '';
 
   constructor(rendererFactory: RendererFactory2) {
@@ -152,7 +149,6 @@ export class SelectDropdownService {
     this.renderer.setStyle(optionsContainer, 'flex-grow', '1');
 
     this.renderer.listen(optionsContainer, 'scroll', () => {
-      this.showTooltip = false;
       this.removeTooltipFromBody();
     });
 
@@ -237,12 +233,19 @@ export class SelectDropdownService {
         if (option.id !== this.selectedValue) {
           this.renderer.setStyle(optionElement, 'background-color', '#e3f2fd');
         }
+
+        // Crear y mostrar tooltip
+        const rect = optionElement.getBoundingClientRect();
+        this.createTooltip(option, rect);
       });
 
       this.renderer.listen(optionElement, 'mouseleave', () => {
         if (option.id !== this.selectedValue) {
           this.renderer.setStyle(optionElement, 'background-color', 'transparent');
         }
+
+        // Ocultar tooltip
+        this.removeTooltipFromBody();
       });
 
       this.renderer.appendChild(optionsContainer, optionElement);
@@ -291,5 +294,180 @@ export class SelectDropdownService {
       this.renderer.removeChild(document.body, this.tooltipElement);
       this.tooltipElement = null;
     }
+  }
+
+  private createTooltip(option: SelectOption, optionRect: DOMRect): void {
+    // Remover tooltip anterior si existe
+    this.removeTooltipFromBody();
+
+    // Siempre mostrar tooltip (incluso si los campos están vacíos o NA)
+    const description = option.valueAddition || 'NA';
+    const abbreviation = option.valueAddition2 || 'NA';
+
+    // Crear contenedor del tooltip
+    this.tooltipElement = this.renderer.createElement('div');
+    this.renderer.addClass(this.tooltipElement, 'select-editor-tooltip');
+    this.renderer.setStyle(this.tooltipElement, 'position', 'fixed');
+    this.renderer.setStyle(this.tooltipElement, 'z-index', '10001');
+    this.renderer.setStyle(this.tooltipElement, 'pointer-events', 'none');
+    this.renderer.setStyle(this.tooltipElement, 'min-width', '280px');
+    this.renderer.setStyle(this.tooltipElement, 'max-width', '400px');
+    this.renderer.setStyle(this.tooltipElement, 'animation', 'tooltipFadeIn 0.3s ease-out forwards');
+
+    // Crear flecha del tooltip (apuntando a la izquierda para posición derecha)
+    const arrow = this.renderer.createElement('div');
+    this.renderer.addClass(arrow, 'tooltip-arrow');
+    this.renderer.setStyle(arrow, 'position', 'absolute');
+    this.renderer.setStyle(arrow, 'left', '-8px');
+    this.renderer.setStyle(arrow, 'top', '20px');
+    this.renderer.setStyle(arrow, 'width', '0');
+    this.renderer.setStyle(arrow, 'height', '0');
+    this.renderer.setStyle(arrow, 'border-top', '8px solid transparent');
+    this.renderer.setStyle(arrow, 'border-bottom', '8px solid transparent');
+    this.renderer.setStyle(arrow, 'border-right', '8px solid #1e40af');
+    this.renderer.appendChild(this.tooltipElement, arrow);
+
+    // Crear contenido del tooltip
+    const content = this.renderer.createElement('div');
+    this.renderer.addClass(content, 'tooltip-content');
+    this.renderer.setStyle(content, 'border-radius', '8px');
+    this.renderer.setStyle(content, 'box-shadow', '0 8px 24px rgba(0, 0, 0, 0.4)');
+    this.renderer.setStyle(content, 'overflow', 'hidden');
+    this.renderer.setStyle(content, 'border', '1px solid rgba(255, 255, 255, 0.1)');
+    this.renderer.setStyle(content, 'background', 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)');
+
+    // Crear header
+    const header = this.renderer.createElement('div');
+    this.renderer.setStyle(header, 'background', 'rgba(255, 255, 255, 0.15)');
+    this.renderer.setStyle(header, 'padding', '10px 14px');
+    this.renderer.setStyle(header, 'border-bottom', '1px solid rgba(255, 255, 255, 0.2)');
+    this.renderer.setStyle(header, 'color', '#ffffff');
+    this.renderer.setStyle(header, 'font-size', '13px');
+    this.renderer.setStyle(header, 'display', 'flex');
+    this.renderer.setStyle(header, 'align-items', 'center');
+    this.renderer.setStyle(header, 'gap', '8px');
+    this.renderer.setStyle(header, 'font-weight', '600');
+
+    const headerIcon = this.renderer.createElement('i');
+    this.renderer.addClass(headerIcon, 'bi');
+    this.renderer.addClass(headerIcon, 'bi-info-circle');
+    this.renderer.setStyle(headerIcon, 'font-size', '16px');
+    this.renderer.appendChild(header, headerIcon);
+
+    const headerText = this.renderer.createElement('strong');
+    const headerTextNode = this.renderer.createText(option.description);
+    this.renderer.appendChild(headerText, headerTextNode);
+    this.renderer.appendChild(header, headerText);
+
+    this.renderer.appendChild(content, header);
+
+    // Crear body
+    const body = this.renderer.createElement('div');
+    this.renderer.setStyle(body, 'padding', '12px 14px');
+    this.renderer.setStyle(body, 'color', '#e2e8f0');
+    this.renderer.setStyle(body, 'font-size', '12px');
+
+    // Agregar descripción (siempre)
+    const descRow = this.renderer.createElement('div');
+    this.renderer.setStyle(descRow, 'display', 'flex');
+    this.renderer.setStyle(descRow, 'align-items', 'flex-start');
+    this.renderer.setStyle(descRow, 'margin-bottom', '10px');
+    this.renderer.setStyle(descRow, 'gap', '8px');
+
+    const descLabel = this.renderer.createElement('span');
+    this.renderer.setStyle(descLabel, 'color', 'rgba(255, 255, 255, 0.8)');
+    this.renderer.setStyle(descLabel, 'font-weight', '600');
+    this.renderer.setStyle(descLabel, 'min-width', '100px');
+    this.renderer.setStyle(descLabel, 'display', 'flex');
+    this.renderer.setStyle(descLabel, 'align-items', 'center');
+    this.renderer.setStyle(descLabel, 'gap', '5px');
+    this.renderer.setStyle(descLabel, 'flex-shrink', '0');
+
+    const descIcon = this.renderer.createElement('i');
+    this.renderer.addClass(descIcon, 'bi');
+    this.renderer.addClass(descIcon, 'bi-pencil');
+    this.renderer.setStyle(descIcon, 'font-size', '12px');
+    this.renderer.appendChild(descLabel, descIcon);
+
+    const descLabelText = this.renderer.createText('Descripción:');
+    this.renderer.appendChild(descLabel, descLabelText);
+    this.renderer.appendChild(descRow, descLabel);
+
+    const descValue = this.renderer.createElement('span');
+    this.renderer.setStyle(descValue, 'color', '#ffffff');
+    this.renderer.setStyle(descValue, 'word-break', 'break-word');
+    this.renderer.setStyle(descValue, 'line-height', '1.4');
+    const descValueText = this.renderer.createText(description);
+    this.renderer.appendChild(descValue, descValueText);
+    this.renderer.appendChild(descRow, descValue);
+
+    this.renderer.appendChild(body, descRow);
+
+    // Agregar abreviatura (siempre)
+    const abbrRow = this.renderer.createElement('div');
+    this.renderer.setStyle(abbrRow, 'display', 'flex');
+    this.renderer.setStyle(abbrRow, 'align-items', 'flex-start');
+    this.renderer.setStyle(abbrRow, 'margin-bottom', '0');
+    this.renderer.setStyle(abbrRow, 'gap', '8px');
+
+    const abbrLabel = this.renderer.createElement('span');
+    this.renderer.setStyle(abbrLabel, 'color', 'rgba(255, 255, 255, 0.8)');
+    this.renderer.setStyle(abbrLabel, 'font-weight', '600');
+    this.renderer.setStyle(abbrLabel, 'min-width', '100px');
+    this.renderer.setStyle(abbrLabel, 'display', 'flex');
+    this.renderer.setStyle(abbrLabel, 'align-items', 'center');
+    this.renderer.setStyle(abbrLabel, 'gap', '5px');
+    this.renderer.setStyle(abbrLabel, 'flex-shrink', '0');
+
+    const abbrIcon = this.renderer.createElement('i');
+    this.renderer.addClass(abbrIcon, 'bi');
+    this.renderer.addClass(abbrIcon, 'bi-fonts');
+    this.renderer.setStyle(abbrIcon, 'font-size', '12px');
+    this.renderer.appendChild(abbrLabel, abbrIcon);
+
+    const abbrLabelText = this.renderer.createText('Abreviatura:');
+    this.renderer.appendChild(abbrLabel, abbrLabelText);
+    this.renderer.appendChild(abbrRow, abbrLabel);
+
+    const abbrValue = this.renderer.createElement('span');
+    this.renderer.setStyle(abbrValue, 'color', '#ffffff');
+    this.renderer.setStyle(abbrValue, 'word-break', 'break-word');
+    this.renderer.setStyle(abbrValue, 'line-height', '1.4');
+    const abbrValueText = this.renderer.createText(abbreviation);
+    this.renderer.appendChild(abbrValue, abbrValueText);
+    this.renderer.appendChild(abbrRow, abbrValue);
+
+    this.renderer.appendChild(body, abbrRow);
+
+    this.renderer.appendChild(content, body);
+    this.renderer.appendChild(this.tooltipElement, content);
+
+    // Agregar al body
+    this.renderer.appendChild(document.body, this.tooltipElement);
+
+    // Posicionar tooltip
+    this.positionTooltip(optionRect);
+
+    // Agregar animación de entrada
+    this.renderer.setStyle(this.tooltipElement, 'opacity', '0');
+    this.renderer.setStyle(this.tooltipElement, 'visibility', 'hidden');
+    setTimeout(() => {
+      if (this.tooltipElement) {
+        this.renderer.setStyle(this.tooltipElement, 'opacity', '1');
+        this.renderer.setStyle(this.tooltipElement, 'visibility', 'visible');
+        this.renderer.setStyle(this.tooltipElement, 'transition', 'opacity 0.3s ease, visibility 0.3s ease');
+      }
+    }, 10);
+  }
+
+  private positionTooltip(optionRect: DOMRect): void {
+    if (!this.tooltipElement) return;
+
+    // Posicionar el tooltip a la derecha de la opción
+    const top = optionRect.top;
+    const left = optionRect.right + 8;
+
+    this.renderer.setStyle(this.tooltipElement, 'top', `${top}px`);
+    this.renderer.setStyle(this.tooltipElement, 'left', `${left}px`);
   }
 }
