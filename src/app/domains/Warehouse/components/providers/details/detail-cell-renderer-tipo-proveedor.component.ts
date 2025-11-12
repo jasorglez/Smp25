@@ -5,6 +5,7 @@ import { CommonModule } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { SignalsService } from 'app/services/signals.service';
+import { ProvidersService } from 'app/services/providers.service';
 import { CustomersService } from 'app/services/customers.service';
 import { alerts } from 'app/helpers/alerts';
 import { SelectWithTooltipEditorV2Component } from 'app/domains/Almacenes/components/materiales-maestro/editors/select-with-tooltip-editor-v2.component';
@@ -82,6 +83,7 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
 
   private catalogsService = inject(CatalogsService);
   private signalsService = inject(SignalsService);
+  private providersService = inject(ProvidersService);
   private customersService = inject(CustomersService);
 
   params: any;
@@ -99,11 +101,36 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
 
   // Column Defs con combo boxes en cascada
   columnDefs: any[] = [
-     {
-      field: 'vigente', //seran chechbox
+    {
+      field: 'vigente',
       headerName: 'Activo',
-      editable: true,      
-      width: 50
+      cellRenderer: 'agCheckboxCellRenderer',
+      cellEditor: 'agCheckboxCellEditor',
+      editable: true,
+      width: 80,
+      onCellValueChanged: (params: any) => {
+        // Si se desmarca como vigente, también desmarcar como principal
+        if (params.newValue === false && params.data.principal === true) {
+          params.data.principal = false;
+          // Buscar y marcar otro como principal si es necesario
+          const activeRows = this.rowData.filter(row => row.vigente && row.id !== params.data.id);
+          if (activeRows.length > 0) {
+            activeRows[0].principal = true;
+          }
+          // Refrescar grid para mostrar los cambios
+          this.gridApi?.setGridOption('rowData', this.rowData);
+        }
+
+        // Si se marca como vigente, refrescar las celdas para que 'principal' sea editable
+        if (params.newValue === true) {
+          // Refrescar las celdas de esta fila para actualizar el estado editable
+          this.gridApi?.refreshCells({
+            rowNodes: [params.node],
+            columns: ['principal'],
+            force: true
+          });
+        }
+      }
     },
     {
       field: 'categoria',
@@ -177,10 +204,58 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
       width: 200
     },
     {
-      field: 'vigente',
-      headerName: 'Principal', //seran chechbox
-      editable: true,      
-      width: 50
+      field: 'principal',
+      headerName: 'Principal',
+      cellRenderer: 'agCheckboxCellRenderer',
+      cellEditor: 'agCheckboxCellEditor',
+      editable: (params: any) => {
+        // Solo editable si la fila está activa (vigente)
+        return params.data.vigente === true;
+      },
+      width: 80,
+      onCellValueChanged: (params: any) => {
+        // Si se intenta marcar como principal pero no está vigente, revertir
+        if (params.newValue === true && params.data.vigente === false) {
+          params.data.principal = false;
+          this.gridApi?.setGridOption('rowData', this.rowData);
+          alerts.basicAlert(
+            'No permitido',
+            'No se puede marcar como principal una fila inactiva.',
+            'warning'
+          );
+          return;
+        }
+
+        // Si se intenta desmarcar como principal
+        if (params.newValue === false && params.data.principal === false) {
+          // Contar cuántos activos hay
+          const activeRows = this.rowData.filter(row => row.vigente === true);
+          const principalRows = activeRows.filter(row => row.principal === true);
+
+          // Si no hay ningún principal activo, forzar a mantener este como principal
+          if (principalRows.length === 0 && activeRows.length > 0) {
+            params.data.principal = true;
+            this.gridApi?.setGridOption('rowData', this.rowData);
+            alerts.basicAlert(
+              'No permitido',
+              'Debe haber al menos un registro principal. Marque otro como principal antes de desmarcar este.',
+              'warning'
+            );
+            return;
+          }
+        }
+
+        // Si se marca como principal, desmarcar todos los demás
+        if (params.newValue === true) {
+          this.rowData.forEach(row => {
+            if (row.id !== params.data.id) {
+              row.principal = false;
+            }
+          });
+          // Refrescar grid para mostrar los cambios
+          this.gridApi?.setGridOption('rowData', this.rowData);
+        }
+      }
     },
   ];
 
@@ -214,44 +289,18 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
     this.params = params;
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
 
-    // Cargar catálogos desde el API
-    this.loadCatalogs();
-
-    // Cargar datos existentes si hay (desde tipoProveedorRows o parsear typework)
-    if (params.data.tipoProveedorRows) {
-      this.rowData = JSON.parse(JSON.stringify(params.data.tipoProveedorRows));
-    } else if (params.data.typework && params.data.typework.trim() !== '') {
-      // Si viene typework desde la BD, parsearlo para reconstruir las filas
-      this.parseTypeworkToRows(params.data.typework);
-    }
+    // Cargar catálogos y datos del proveedor
+    this.loadData();
   }
 
-  // Método para parsear el campo typework y reconstruir las filas del grid
-  parseTypeworkToRows(typework: string): void {
-    if (!typework) return;
-
-    // Split por " | " para obtener cada combinación
-    const combinations = typework.split(' | ');
-
-    this.rowData = combinations.map((combo, index) => {
-      // Split por "/" para obtener categoria/familia/subfamilia
-      const parts = combo.split('/');
-      return {
-        id: `parsed_${index}`,
-        categoria: parts[0] || '',
-        familia: parts[1] || '',
-        subfamilia: parts[2] || ''
-      };
-    });
-  }
-
-  async loadCatalogs(): Promise<void> {
+  async loadData(): Promise<void> {
     try {
-      // Cargar en paralelo las 3 tablas
-      const [categorias, familias, subfamilias] = await Promise.all([
+      // Cargar catálogos y datos del proveedor en paralelo
+      const [categorias, familias, subfamilias, providerTypes] = await Promise.all([
         this.catalogsService.getCatalogs(this.idRoot, 'CATEGORY').toPromise(),
         this.catalogsService.getCatalogs(this.idRoot, 'FAM-CAT').toPromise(),
-        this.catalogsService.getCatalogs(this.idRoot, 'SUB-FAM').toPromise()
+        this.catalogsService.getCatalogs(this.idRoot, 'SUB-FAM').toPromise(),
+        this.providersService.getProviderType(this.params.data.id).toPromise()
       ]);
 
       this.categorias = categorias || [];
@@ -264,21 +313,94 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
         subfamilias: this.subfamilias.length
       });
 
-      // Verificar si tienen valueAddition y valueAddition2
-      console.log('Ejemplo de categoría:', this.categorias[0]);
-      console.log('Ejemplo de familia:', this.familias[0]);
-      console.log('Ejemplo de subfamilia:', this.subfamilias[0]);
+      console.log('Provider Types cargados:', providerTypes);
+
+      // Convertir datos del endpoint a formato del grid
+      this.rowData = (providerTypes as any[]).map((item: any) => ({
+        id: item.id,
+        categoria: item.nameParent || '',
+        familia: item.nameSubparent || '',
+        subfamilia: item.nameProduct || '',
+        vigente: item.vigente || false,
+        principal: item.principal || false,
+        idParent: item.idParent,
+        idSubparent: item.idSubparent
+      }));
+
+      // Si solo hay un registro, marcarlo como principal automáticamente
+      this.ensureSinglePrincipal();
+
+      // Refrescar el grid si ya existe
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', this.rowData);
+      }
 
     } catch (error) {
-      console.error('Error al cargar catálogos:', error);
+      console.error('Error al cargar datos:', error);
       this.categorias = [];
       this.familias = [];
       this.subfamilias = [];
+      this.rowData = [];
     }
   }
 
   refresh(): boolean {
     return false;
+  }
+
+  // Asegurar que siempre haya un único registro principal (solo entre activos)
+  private ensureSinglePrincipal(): void {
+    if (this.rowData.length === 0) {
+      return;
+    }
+
+    // Filtrar solo registros activos (vigente = true)
+    const activeRows = this.rowData.filter(row => row.vigente === true);
+
+    if (activeRows.length === 0) {
+      // Si no hay registros activos, no hacer nada
+      return;
+    }
+
+    // Si solo hay un registro activo, marcarlo como principal
+    if (activeRows.length === 1) {
+      activeRows[0].principal = true;
+      // Asegurar que los inactivos no sean principales
+      this.rowData.forEach(row => {
+        if (row.vigente === false) {
+          row.principal = false;
+        }
+      });
+      return;
+    }
+
+    // Si hay múltiples registros activos, verificar que solo haya uno marcado como principal
+    const principalRows = activeRows.filter(row => row.principal === true);
+
+    // Si no hay ninguno marcado como principal, marcar el primer activo
+    if (principalRows.length === 0) {
+      activeRows[0].principal = true;
+    }
+    // Si hay más de uno marcado, dejar solo el primero marcado
+    else if (principalRows.length > 1) {
+      let firstFound = false;
+      activeRows.forEach(row => {
+        if (row.principal === true) {
+          if (!firstFound) {
+            firstFound = true;
+          } else {
+            row.principal = false;
+          }
+        }
+      });
+    }
+
+    // Asegurar que ningún registro inactivo esté marcado como principal
+    this.rowData.forEach(row => {
+      if (row.vigente === false && row.principal === true) {
+        row.principal = false;
+      }
+    });
   }
 
   onGridReady(params: GridReadyEvent): void {
@@ -320,11 +442,21 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
       categoria: '',
       familia: '',
       subfamilia: '',
+      vigente: true,
+      principal: false,
       __isNew: true
     };
 
     this.rowData = [newRow, ...this.rowData];
     this.hasChanges = true;
+
+    // Si es el único registro, marcarlo como principal
+    this.ensureSinglePrincipal();
+
+    // Refrescar el grid
+    if (this.gridApi) {
+      this.gridApi.setGridOption('rowData', this.rowData);
+    }
 
     setTimeout(() => {
       this.gridApi.startEditingCell({
@@ -334,14 +466,56 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
     }, 100);
   }
 
-  deleteSelected(): void {
+  async deleteSelected(): Promise<void> {
     if (!this.selectedRow) {
       return;
     }
 
-    this.rowData = this.rowData.filter(row => row.id !== this.selectedRow.id);
-    this.selectedRow = null;
-    this.hasChanges = true;
+    // Si la fila es nueva (no está en BD), solo eliminarla del grid
+    if (this.selectedRow.__isNew) {
+      this.rowData = this.rowData.filter(row => row.id !== this.selectedRow.id);
+      this.selectedRow = null;
+
+      // Después de eliminar, asegurar que haya un principal
+      this.ensureSinglePrincipal();
+
+      // Refrescar el grid
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', this.rowData);
+      }
+      return;
+    }
+
+    // Si la fila existe en BD, hacer soft delete
+    try {
+      console.log('Eliminando registro ID:', this.selectedRow.id);
+
+      await new Promise((resolve, reject) => {
+        this.providersService.deleteSubfamilyxProvider(this.selectedRow.id).subscribe({
+          next: resolve,
+          error: reject
+        });
+      });
+
+      // Recargar datos desde el servidor
+      await this.loadData();
+
+      alerts.basicAlert(
+        'Eliminado exitoso',
+        'El registro se ha eliminado correctamente.',
+        'success'
+      );
+
+      this.selectedRow = null;
+
+    } catch (error) {
+      console.error('Error al eliminar:', error);
+      alerts.basicAlert(
+        'Error',
+        'No se pudo eliminar. Por favor, intente nuevamente.',
+        'error'
+      );
+    }
   }
 
   async saveChanges(): Promise<void> {
@@ -351,86 +525,158 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
     );
 
     if (incompleteRows.length > 0) {
-      alert('Por favor complete todas las filas antes de guardar.');
+      alerts.basicAlert(
+        'Validación',
+        'Por favor complete todas las filas antes de guardar.',
+        'warning'
+      );
       return;
     }
 
-    // Concatenar todas las filas con "/"
-    const concatenatedString = this.rowData
-      .map(row => `${row.categoria}/${row.familia}/${row.subfamilia}`)
-      .join(' | ');
-
-    // Actualizar en memoria
-    this.params.data.typeProvider = concatenatedString;
-    this.params.data.typework = concatenatedString;  // Campo real en la BD
-    this.params.data.tipoProveedorRows = JSON.parse(JSON.stringify(this.rowData));
-
-    // Preparar datos para enviar a BD (solo campos necesarios)
-    const dataToSave = this.cleanDataForServer(this.params.data);
-
-    console.log('Guardando typework en BD:', dataToSave.typework);
+    console.log('Datos a guardar:', this.rowData);
 
     try {
-      // Guardar directamente en BD
-      await this.customersService.updateCustomer(this.params.data.id, dataToSave).toPromise();
+      // Separar filas nuevas y modificadas
+      const newRows = this.rowData.filter(row => row.__isNew);
+      const modifiedRows = this.rowData.filter(row => row.__modified && !row.__isNew);
+
+      console.log('Filas nuevas:', newRows.length);
+      console.log('Filas modificadas:', modifiedRows.length);
+
+      // Procesar filas nuevas (POST)
+      for (const row of newRows) {
+        // Buscar el ID de la subfamilia por su descripción
+        const subfam = this.subfamilias.find(s => s.description === row.subfamilia);
+
+        if (!subfam) {
+          console.error('Subfamilia no encontrada:', row.subfamilia);
+          continue;
+        }
+
+        const dataToCreate = {
+          idSubfamily: subfam.id,
+          idProvider: this.params.data.id,
+          vigente: row.vigente || false,
+          principal: row.principal || false
+        };
+
+        console.log('Creando registro:', dataToCreate);
+        await new Promise((resolve, reject) => {
+          this.providersService.addSubfamilyxProvider(dataToCreate).subscribe({
+            next: resolve,
+            error: reject
+          });
+        });
+      }
+
+      // Procesar filas modificadas (PUT)
+      for (const row of modifiedRows) {
+        // Buscar el ID de la subfamilia por su descripción
+        const subfam = this.subfamilias.find(s => s.description === row.subfamilia);
+
+        if (!subfam || !row.id) {
+          console.error('Subfamilia no encontrada o ID inválido:', row);
+          continue;
+        }
+
+        const dataToUpdate = {
+          idSubfamily: subfam.id,
+          idProvider: this.params.data.id,
+          vigente: row.vigente || false,
+          principal: row.principal || false
+        };
+
+        console.log('Actualizando registro ID:', row.id, dataToUpdate);
+        await new Promise((resolve, reject) => {
+          this.providersService.updateSubfamilyxProvider(row.id, dataToUpdate).subscribe({
+            next: resolve,
+            error: reject
+          });
+        });
+      }
+
+      // Recargar datos desde el servidor
+      await this.loadData();
+
+      // Buscar el registro marcado como principal y actualizar el campo typeProvider en la tabla padre
+      const principalRow = this.rowData.find(row => row.principal === true);
+
+      if (principalRow) {
+        const tipoProveedorConcatenado = `${principalRow.categoria}/${principalRow.familia}/${principalRow.subfamilia}`;
+
+        console.log('🔍 OBTENIENDO DATOS DEL PROVIDER');
+        console.log('🔍 Tipo concatenado:', tipoProveedorConcatenado);
+        console.log('🔍 ID del Provider:', this.params.data.id);
+
+        try {
+          // Consultar con getCustomerById
+          console.log('\n📡 Consultando getCustomerById(' + this.params.data.id + ')...');
+          const providerData: any = await new Promise((resolve, reject) => {
+            this.customersService.getCustomerById(this.params.data.id).subscribe({
+              next: resolve,
+              error: reject
+            });
+          });
+
+          console.log('✅ Respuesta de getCustomerById:', providerData);
+          console.log('📊 typework actual:', providerData?.typework);
+
+          // Actualizar solo el campo typework
+          providerData.typework = tipoProveedorConcatenado;
+          console.log('📝 Actualizando typework a:', tipoProveedorConcatenado);
+
+          // Guardar con updateCustomer
+          console.log('💾 Guardando en DB Administration.Customer...');
+          await new Promise((resolve, reject) => {
+            this.customersService.updateCustomer(this.params.data.id.toString(), providerData).subscribe({
+              next: resolve,
+              error: reject
+            });
+          });
+
+          console.log('✅ typework actualizado exitosamente en DB Administration.Customer');
+
+          // Actualizar los datos locales en el objeto del grid padre
+          this.params.data.typework = tipoProveedorConcatenado;
+          this.params.data.typeProvider = tipoProveedorConcatenado;
+
+        } catch (error) {
+          console.error('❌ Error al actualizar typework en DB:', error);
+          console.error('Detalle del error:', JSON.stringify(error, null, 2));
+          alerts.basicAlert(
+            'Advertencia',
+            'Los datos de subfamilia se guardaron correctamente, pero hubo un error al actualizar el tipo de proveedor en la tabla principal.',
+            'warning'
+          );
+        }
+      }
 
       alerts.basicAlert(
-        'Tipo de Proveedor Guardado',
-        'Se ha guardado correctamente el tipo de proveedor.',
+        'Guardado exitoso',
+        'Los cambios se han guardado correctamente.',
         'success'
       );
+
+      this.hasChanges = false;
 
       // Notificar al grid padre para actualizar visualización
       if (this.params.api) {
         this.params.api.applyTransaction({ update: [this.params.data] });
       }
 
-      // Colapsar la fila
-      if (this.params.node) {
-        this.params.node.setExpanded(false);
-      }
-
-      this.hasChanges = false;
-
     } catch (error) {
-      console.error('Error al guardar typework:', error);
+      console.error('Error al guardar:', error);
       alerts.basicAlert(
         'Error',
-        'No se pudo guardar el tipo de proveedor. Por favor, intente nuevamente.',
+        'No se pudo guardar. Por favor, intente nuevamente.',
         'error'
       );
     }
   }
 
-  // Método para limpiar datos antes de enviar a servidor
-  private cleanDataForServer(data: any): any {
-    const cleanedData = { ...data };
-    delete cleanedData.__isNew;
-    delete cleanedData.__modified;
-    delete cleanedData.type; // No actualizar el campo 'type' en ediciones
-    delete cleanedData.typeProvider; // Solo para visualización
-    delete cleanedData.tipoProveedorRows; // Solo para reconstruir grid
-    delete cleanedData.detailType; // Propiedad interna del grid
-    return cleanedData;
-  }
-
-  revertChanges(): void {
-    // Recargar datos originales desde tipoProveedorRows o typework
-    if (this.params.data.tipoProveedorRows) {
-      this.rowData = JSON.parse(JSON.stringify(this.params.data.tipoProveedorRows));
-    } else if (this.params.data.typework && this.params.data.typework.trim() !== '') {
-      // Si no hay tipoProveedorRows pero sí hay typework, parsearlo
-      this.parseTypeworkToRows(this.params.data.typework);
-    } else {
-      // Si no hay ninguno, dejar vacío
-      this.rowData = [];
-    }
-
-    // Refrescar el grid para mostrar los datos revertidos
-    if (this.gridApi) {
-      this.gridApi.setGridOption('rowData', this.rowData);
-    }
-
+  async revertChanges(): Promise<void> {
+    // Recargar datos desde el endpoint
+    await this.loadData();
     this.hasChanges = false;
     this.selectedRow = null;
   }
