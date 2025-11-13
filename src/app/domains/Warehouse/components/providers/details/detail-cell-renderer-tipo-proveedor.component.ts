@@ -267,6 +267,13 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
     suppressCellFocus: false,
     stopEditingWhenCellsLoseFocus: true,
     singleClickEdit: false, // Doble-click para abrir el editor
+    getRowStyle: (params: any) => {
+      // Si la fila NO está activa (vigente=false), aplicar fondo rojo claro
+      if (params.data.vigente === false) {
+        return { background: '#ffcccc' };
+      }
+      return undefined;
+    },
     onFirstDataRendered: (params) => {
       console.log('onFirstDataRendered - autosizing columns...');
 
