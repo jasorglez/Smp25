@@ -1,5 +1,4 @@
 import { Component ,inject} from '@angular/core';
-import { SignalsService } from 'app/services/signals.service';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -66,7 +65,6 @@ import { alerts } from 'app/helpers/alerts';
   `
 })
 export class DetailCellRendererComponentContact implements ICellRendererAngularComp {
-   private signalsService = inject(SignalsService);
    private customersService = inject(CustomersService);
    authService = inject(AuthService);
 
@@ -86,7 +84,6 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
     rowHeight: 20,
     suppressEnterWhenEditing: false,
     rowSelection: 'single',
-    singleClickEdit: true, // Permitir edición con un solo click (necesario para checkboxes)
     getRowStyle: (params: any) => {
       // Si la fila NO está activa (vigente=false), aplicar fondo rojo claro
       if (params.data.vigente === false) {
@@ -494,6 +491,9 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
         // Actualizar campos del contacto principal en la tabla padre (Customer)
         await this.updatePrincipalContactInParent();
 
+        // Actualizar el contador de contactos en el grid padre
+        await this.updateContactCountInParent();
+
       } catch (error) {
         console.error('❌ Error al guardar contactos:', error);
       }
@@ -511,10 +511,15 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
     if (this.params && this.params.context && this.params.context.CONTACT && this.params.context.CONTACT.delete) {
       this.params.context.CONTACT.delete(
         { data: this.selectedContact, api: this.contactGridApi },
-        () => {
+        async () => {
           this.loadContactData();
           this.selectedContact = null;
-          this.signalsService.triggerRefreshEmployees();
+
+          // Actualizar contador sin recargar toda la tabla
+          await this.updateContactCountInParent();
+
+          // NO llamar a triggerRefreshEmployees() - cierra el panel
+          // this.signalsService.triggerRefreshEmployees();
         }
       );
     }
@@ -582,6 +587,37 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
         'Los contactos se guardaron correctamente, pero hubo un error al actualizar los datos del contacto principal en la tabla de proveedores.',
         'warning'
       );
+    }
+  }
+
+  // Actualizar el contador de contactos en la fila del grid padre
+  private async updateContactCountInParent(): Promise<void> {
+    try {
+      console.log('🔢 Actualizando contador de contactos en grid padre...');
+
+      // Esperar un poco para que los datos se actualicen
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Contar los contactos localmente desde contactRowData
+      const contactCount = this.contactRowData.length;
+      console.log('📊 Total de contactos en memoria:', contactCount);
+
+      // Actualizar el contador en la fila del grid padre
+      this.params.data.fieldContact = contactCount;
+
+      // Refrescar la celda específica en el grid padre
+      if (this.params.api) {
+        this.params.api.refreshCells({
+          rowNodes: [this.params.node],
+          columns: ['fieldContact'],
+          force: true
+        });
+
+        console.log('✅ Contador de contactos actualizado en grid padre:', this.params.data.fieldContact);
+      }
+
+    } catch (error) {
+      console.error('❌ Error al actualizar contador de contactos:', error);
     }
   }
 

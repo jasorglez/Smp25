@@ -143,7 +143,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
   }
   
   type: string = ''; // Para almacenar el tipo (CUSTOMERS o PROVIDERS)
-  gridHeight: string = '90vh';
+  gridHeight: string = '70vh';
   showCreditsTab: boolean = false;
   private gridApi: GridApi;
   notSavedChanges: boolean = false;

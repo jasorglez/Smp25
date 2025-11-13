@@ -81,7 +81,6 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
     rowHeight: 20,
     suppressEnterWhenEditing: false,
     rowSelection: 'single',
-    singleClickEdit: true, // Permitir edición con un solo click (necesario para checkboxes)
     getRowStyle: (params: any) => {
       // Si la fila NO está activa (vigente=false), aplicar fondo rojo claro
       if (params.data.vigente === false) {
@@ -427,10 +426,26 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
     }, 100);
   }
 
-  saveBanks() {
+  async saveBanks() {
     if (this.params && this.params.context.BANK && this.params.context.BANK.save) {
-      this.params.context.BANK.save(this.providerId, this.bankRowData, 'BANK');
-      this.hasBankChanges = false;
+      try {
+        // Guardar los bancos
+        await this.params.context.BANK.save(this.providerId, this.bankRowData, 'BANK');
+
+        // Pequeña pausa para que el servidor procese
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        this.hasBankChanges = false;
+
+        // Recargar datos
+        this.loadBankData();
+
+        // Actualizar contador en grid padre
+        await this.updateBankCountInParent();
+
+      } catch (error) {
+        console.error('❌ Error al guardar bancos:', error);
+      }
     }
   }
 
@@ -441,12 +456,45 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
 
     if (this.params && this.params.context.BANK && this.params.context.BANK.delete) {
       this.params.context.BANK.delete(
-        { data: this.selectedBank, api: this.bankGridApi }, 
-        () => {
+        { data: this.selectedBank, api: this.bankGridApi },
+        async () => {
           this.loadBankData();
           this.selectedBank = null;
+          // Actualizar contador después de eliminar
+          await this.updateBankCountInParent();
         }
       );
+    }
+  }
+
+  // Actualizar el contador de bancos en la fila del grid padre
+  private async updateBankCountInParent(): Promise<void> {
+    try {
+      console.log('🔢 Actualizando contador de bancos en grid padre...');
+
+      // Esperar un poco para que los datos se actualicen
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Contar los bancos localmente desde bankRowData
+      const bankCount = this.bankRowData.length;
+      console.log('📊 Total de bancos en memoria:', bankCount);
+
+      // Actualizar el contador en la fila del grid padre
+      this.params.data.fieldBank = bankCount;
+
+      // Refrescar la celda específica en el grid padre
+      if (this.params.api) {
+        this.params.api.refreshCells({
+          rowNodes: [this.params.node],
+          columns: ['fieldBank'],
+          force: true
+        });
+
+        console.log('✅ Contador de bancos actualizado en grid padre:', this.params.data.fieldBank);
+      }
+
+    } catch (error) {
+      console.error('❌ Error al actualizar contador de bancos:', error);
     }
   }
 
