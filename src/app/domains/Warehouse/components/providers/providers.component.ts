@@ -1206,19 +1206,40 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
   }
 
   async saveProviderDetailsById(providerId: number, data: any[], type: string) {
-    console.log(`Saving details for provider ${providerId}, type: ${type}`, data);
+    console.log(`💾 Saving details for provider ${providerId}, type: ${type}`, data);
     const newDetails = data.filter((row: any) => row.__isNew);
     const modifiedDetails = data.filter((row: any) => row.__modified && !row.__isNew);
 
+    console.log(`📊 Filas nuevas: ${newDetails.length}, Filas modificadas: ${modifiedDetails.length}`);
+    console.log('📋 Lista de IDs modificados:', modifiedDetails.map((r: any) => `${r.id} (${r.campo2})`).join(', '));
+
     try {
       for (const row of newDetails) {
+        const cleanedData = this.cleanDataForServer(row);
+        console.log(`➕ AGREGAR contacto:`, {
+          campo2: row.campo2,
+          campo7_principal_antes: row.campo7,
+          principal_antes: row.principal,
+          cleanedData
+        });
         this.customerService.updateFiel(row.idTabla, row.type, "SUMA").subscribe();
-        await lastValueFrom(this.providersService.addProviderXTable(this.cleanDataForServer(row))); 
-        this.obtenerDatos(); 
+        await lastValueFrom(this.providersService.addProviderXTable(cleanedData));
+        // NO recargar toda la tabla aquí - causaba que se cierre el detalle
+        // this.obtenerDatos();
       }
 
       for (const row of modifiedDetails) {
-        await lastValueFrom(this.providersService.updateProviderXTable(row.id, this.cleanDataForServer(row)));
+        const cleanedData = this.cleanDataForServer(row);
+        console.log(`✏️ ACTUALIZAR contacto ID ${row.id}:`, {
+          campo2: row.campo2,
+          campo7_EN_cleanedData: cleanedData.campo7,
+          principal_EN_cleanedData: cleanedData.principal,
+          cleanedData_completo: cleanedData
+        });
+
+        console.log('🌐 Enviando al servidor updateProviderXTable...');
+        const resultado = await lastValueFrom(this.providersService.updateProviderXTable(row.id, cleanedData));
+        console.log('✅ Respuesta del servidor:', resultado);
       }
 
       if (newDetails.length > 0 || modifiedDetails.length > 0) {
