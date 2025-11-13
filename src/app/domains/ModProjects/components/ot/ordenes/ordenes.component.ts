@@ -702,13 +702,13 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       {
         field: 'idProject',
         headerName: 'Proyecto',
-        sortable: true,
+        
         filter: true,
         filterParams: {
           excelMode: 'mac'
         },
-        resizable: true,
-        flex: 2.5,
+        
+        width: 100,
         hide: !this.authService.hasDetailedPermission('projects', 'get-all-ot'),
         editable: true,
         rowGroup: this.authService.hasDetailedPermission('projects', 'get-all-ot'),
@@ -735,10 +735,10 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       {
         field: 'cdc',
         headerName: 'CDC',
-        sortable: true,
+        
         filter: true,
-        resizable: true,
-        flex: 2.5,
+        
+        width: 100,
         editable: false,
         onCellValueChanged: (params: any) => {
           if (this.selectedOt && params.data.id === this.selectedOt.id) {
@@ -749,22 +749,22 @@ export class OrdenesComponent implements OnInit, OnDestroy {
        {
          field: 'cuentaHoja',
          headerName: 'Hoja',
-         sortable: true,
+         
          filter: true,
-         resizable: true,
-         flex: 2.5,         
+         
+         width: 100,         
          editable: false,      
        },
       {
         field: 'otNumber',
         headerName: 'OT',
-        sortable: true,
+        
         filter: true,
         filterParams: {
           excelMode: 'mac'
         },
-        resizable: true,
-        flex: 2.5,
+        
+        width: 100,
         editable: false,
         onCellValueChanged: (params: any) => {
           if (this.selectedOt && params.data.id === this.selectedOt.id) {
@@ -775,19 +775,19 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       {
         field: 'package',
         headerName: 'Paquete',
-        sortable: true,
+        
         filter: true,
-        resizable: true,
-        flex: 2.5,         
+        
+        width: 300,         
         editable: false,      
       },
       {
         field: 'results',
         headerName: 'Resultados',
-        sortable: true,
+        
         filter: true,
-        resizable: true,
-        flex: 3,
+        
+        width: 100,
         editable: true,
         onCellValueChanged: async (params: any) => {
           if (params.newValue === params.oldValue) {
@@ -839,10 +839,10 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       {
         field: 'area',
         headerName: 'Area',
-        sortable: true,
+        
         filter: true,
-        resizable: true,
-        flex: 2.5,
+        
+        width: 100,
         editable: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
@@ -852,10 +852,10 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       {
         field: 'closedApp',
         headerName: 'APP',
-        sortable: true,
+        
         filter: true,
-        resizable: true,
-        flex: 2.5,
+        
+        width: 100,
         editable: true,
         cellRenderer: 'agCheckboxCellRenderer',
         cellEditor: 'agCheckboxCellEditor'
@@ -863,10 +863,10 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       {
         field: 'closed',
         headerName: 'Web',
-        sortable: true,
+        
         filter: true,
-        resizable: true,
-        flex: 2.5,
+        
+        width: 100,
         editable: true,
         cellRenderer: 'agCheckboxCellRenderer',
         cellEditor: 'agCheckboxCellEditor'
@@ -2131,8 +2131,9 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     headerHeight: 35,
     rowHeight: 25,
     suppressDragLeaveHidesColumns: true,
-    suppressHorizontalScroll: true,
     animateRows: true,
+    maintainColumnOrder: true,
+    suppressColumnVirtualisation: true,
     pagination: false,
     domLayout: 'normal',
     groupDefaultExpanded: 0,
@@ -2141,7 +2142,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     autoGroupColumnDef: {
       headerName: 'Grupo',
       field: 'ag-Grid-AutoColumn',
-      width: 170,
       checkboxSelection: true,
       cellRendererParams: {
         suppressCount: false

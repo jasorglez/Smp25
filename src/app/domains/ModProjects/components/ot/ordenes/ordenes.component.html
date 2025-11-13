@@ -61,10 +61,11 @@
                 </div>
                 
                 <!-- Lista de OTs -->
-                <div class="col overflow-auto">
+                <div class="col ">
                   <ag-grid-angular 
-                    [ngStyle]="{ height: gridHeight, width: gridWidth }"
+                    [ngStyle]="{ height: gridHeight }"
                     class="ag-theme-quartz small-text-ag-grid"
+                    style="width: 100%"
                     [rowData]="rowData"
                     [columnDefs]="oTcolumnDefs"
                     [gridOptions]="gridOptions"
