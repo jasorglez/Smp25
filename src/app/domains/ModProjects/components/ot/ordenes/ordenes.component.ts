@@ -6349,6 +6349,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       alert(errorMessage);
     } finally {
       this.isUploading = false;
+      // Limpiar el input para permitir seleccionar el mismo archivo nuevamente
+      (event.target as HTMLInputElement).value = '';
     }
   }
   triggerFileInput(fileInput: HTMLInputElement) {

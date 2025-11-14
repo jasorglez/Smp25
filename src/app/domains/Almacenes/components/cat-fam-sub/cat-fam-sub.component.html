@@ -1,22 +1,19 @@
 <div class="row p-2">
   <div class="col-12">
-
-
     <div class="row">
       <!-- Botones de acción -->
       <nav class="col-auto d-flex flex-column align-items-start">
         <div class="mb-2 small text-primary fw-bold">
           <i class="bi bi-diagram-3"></i> CATÁLOGO
         </div>
-        
+
         <button 
           type="button" 
           class="btn btn-primary me-1 mb-2" 
           (click)="addCatalogItem()"
           title="Agregar elemento según selección">
           <i class="bi bi-plus-lg"></i>
-        </button>
-        
+        </button>        
         
         <button 
           type="button" 
@@ -32,6 +29,8 @@
           [disabled]="!selectedRowData">
           <i class="bi bi-trash"></i>
         </button>
+
+    
 
         <!-- Indicador de selección -->
         <div class="mt-3 small text-muted" *ngIf="selectedRowData" style="max-width: 120px;">
