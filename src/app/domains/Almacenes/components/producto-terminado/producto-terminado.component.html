@@ -154,7 +154,7 @@
     <div class="modal-content">
       <div class="modal-header bg-info text-white">
         <h5 class="modal-title">
-          <i class="bi bi-collection-plus"></i> Nueva Presentación
+          <i class="bi bi-collection-plus"></i> Nuevo Sabor
         </h5>
         <button type="button" class="btn-close btn-close-white" (click)="closeModals()"></button>
       </div>
@@ -162,13 +162,15 @@
         <!-- Mostrar categoría padre -->
         <div class="alert alert-info mb-3" *ngIf="selectedRowData">
           <strong>Categoría padre:</strong>
-          <span class="badge bg-primary ms-2">{{ selectedRowData.description }}</span>
+          <span class="badge bg-primary ms-2">
+            {{ selectedNodeLevel === 'category' ? selectedRowData.description : getCategoryName(selectedRowData.parentCategoryId) }}
+          </span>
         </div>
 
         <form (ngSubmit)="saveNewFamily()">
           <div class="mb-3">
             <label for="familyDescription" class="form-label">
-              <i class="bi bi-tag"></i> Nombre
+              <i class="bi bi-tag"></i> Nombre del Sabor
             </label>
             <input
               type="text"
@@ -176,7 +178,7 @@
               id="familyDescription"
               [(ngModel)]="modalForm.description"
               name="description"
-              placeholder="Ingrese el nombre de la presentación..."
+              placeholder="Ingrese el nombre del sabor..."
               maxlength="100"
               (input)="toUpperCase($event, 'description')"
               required>
@@ -201,7 +203,7 @@
         </button>
         <button type="button" class="btn btn-info" (click)="saveNewFamily()"
                 [disabled]="!modalForm.description.trim()">
-          <i class="bi bi-check-circle"></i> Guardar Presentación
+          <i class="bi bi-check-circle"></i> Guardar Sabor
         </button>
       </div>
     </div>
@@ -215,7 +217,7 @@
     <div class="modal-content">
       <div class="modal-header bg-secondary text-white">
         <h5 class="modal-title">
-          <i class="bi bi-file-earmark-plus"></i> Nuevo Nombre
+          <i class="bi bi-file-earmark-plus"></i> Nueva Presentación
         </h5>
         <button type="button" class="btn-close btn-close-white" (click)="closeModals()"></button>
       </div>
@@ -225,13 +227,15 @@
           <strong>Jerarquía:</strong><br>
           <span class="badge bg-primary me-1">{{ getCategoryName(selectedRowData.parentCategoryId) }}</span>
           →
-          <span class="badge bg-info ms-1">{{ selectedRowData.description }}</span>
+          <span class="badge bg-info ms-1">
+            {{ selectedNodeLevel === 'family' ? selectedRowData.description : getFamilyName(selectedRowData.parentFamilyId) }}
+          </span>
         </div>
 
         <form (ngSubmit)="saveNewSubfamily()">
           <div class="mb-3">
             <label for="subfamilyDescription" class="form-label">
-              <i class="bi bi-tag"></i> Nombre
+              <i class="bi bi-tag"></i> Nombre de la Presentación
             </label>
             <input
               type="text"
@@ -239,7 +243,7 @@
               id="subfamilyDescription"
               [(ngModel)]="modalForm.description"
               name="description"
-              placeholder="Ingrese el nombre del producto..."
+              placeholder="Ingrese el nombre de la presentación..."
               maxlength="100"
               (input)="toUpperCase($event, 'description')"
               required>
@@ -264,7 +268,7 @@
         </button>
         <button type="button" class="btn btn-secondary" (click)="saveNewSubfamily()"
                 [disabled]="!modalForm.description.trim()">
-          <i class="bi bi-check-circle"></i> Guardar Nombre
+          <i class="bi bi-check-circle"></i> Guardar Presentación
         </button>
       </div>
     </div>
