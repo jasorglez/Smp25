@@ -206,6 +206,14 @@ export const routes: Routes = [
                 canDeactivate: [UnsavedChangesGuard],
               },
               {
+                path: 'fam-sub',
+                loadComponent: () =>
+                  import(
+                    './domains/Almacenes/components/FamilySubFamily/FamilySubFamily.component'
+                  ).then((m) => m.FamilySubFamilyComponent),
+                canDeactivate: [UnsavedChangesGuard],
+              },
+              {
                 path: 'cat-fam-sub',
                 loadComponent: () =>
                   import(
@@ -1631,6 +1639,30 @@ export const routes: Routes = [
             ],
           }
         ],
+      },
+      {
+         path: 'shoppingTD',
+        loadComponent: () =>
+          import(
+            './domains/ModShoppingTD/pages/procshoppingTD.component'
+          ).then((a) => a.ProcShoppingTDComponent),
+        canActivate: [MasterPermissionsGuard],
+        data: { permissions: { master: 'shoppingTD' } },
+        children: [
+          { path: '', redirectTo: '', pathMatch: 'full' },
+        ]
+      },
+      {
+         path: 'warehousesTD',
+        loadComponent: () =>
+          import(
+            './domains/ModWareHousesTD/pages/procwarehousesTD.component'
+          ).then((a) => a.ProcWarehousesTDComponent),
+        canActivate: [MasterPermissionsGuard],
+        data: { permissions: { master: 'warehousesTD' } },
+        children: [
+          { path: '', redirectTo: '', pathMatch: 'full' },
+        ]
       },
       {
         path: 'shoppingDelison',
