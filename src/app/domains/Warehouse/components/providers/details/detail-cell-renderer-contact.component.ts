@@ -178,7 +178,30 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
           }
           return true
         },
-      width: 100
+      width: 100,
+      valueSetter: (params) => {
+        const rawValue = params.newValue;
+        if (!rawValue || typeof rawValue !== 'string') {
+          alerts.basicAlert('Campo requerido', 'El teléfono es obligatorio', 'error');
+          return false;
+        }
+
+        const normalizedValue = rawValue.trim();
+
+        // Validar formato internacional mexicano: +52 XXX XXX XXXX
+        const phoneRegex = /^\+52\s\d{3}\s\d{3}\s\d{4}$/;
+        if (!phoneRegex.test(normalizedValue)) {
+          alerts.basicAlert(
+            'Formato inválido',
+            'El teléfono debe tener el formato internacional: +52 XXX XXX XXXX (ejemplo: +52 229 206 3214)',
+            'error'
+          );
+          return false;
+        }
+
+        params.data[params.colDef.field] = normalizedValue;
+        return true;
+      },
     },
     {
       field: 'campo5',
@@ -190,7 +213,30 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
           return true
         },
       width: 140,
-      flex: 1
+      flex: 1,
+      valueSetter: (params) => {
+        const rawValue = params.newValue;
+        if (!rawValue || typeof rawValue !== 'string') {
+          alerts.basicAlert('Campo requerido', 'El email es obligatorio', 'error');
+          return false;
+        }
+
+        const normalizedValue = rawValue.trim().toLowerCase();
+
+        // Validar formato de email
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(normalizedValue)) {
+          alerts.basicAlert(
+            'Email inválido',
+            'Por favor ingrese un email válido (ejemplo: usuario@dominio.com)',
+            'error'
+          );
+          return false;
+        }
+
+        params.data[params.colDef.field] = normalizedValue;
+        return true;
+      },
     },
     {
       field: 'campo6',

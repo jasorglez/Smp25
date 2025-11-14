@@ -32,6 +32,7 @@ import { DetailCellRendererComponentContact } from './details/detail-cell-render
 import { DetailCellRendererComponentBanck } from './details/detail-cell-renderer-banck.component'; // This will be for banks
 import { DetailCellRendererComponentCuentas } from './details/detail-cell-renderer-cuentas.component';
 import { DetailCellRendererTipoProveedorComponent } from './details/detail-cell-renderer-tipo-proveedor.component';
+import { DetailCellRendererComponentMateriales } from './details/detail-cell-renderer-materiales.component';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { RadiusinfluenceComponent } from 'app/domains/ModAdmon/components/radiusinfluence/radiusinfluence.component';
 import { CustomersService } from 'app/services/customers.service';
@@ -65,8 +66,9 @@ import { TrackingService } from 'app/services/tracking.service';
     DetailCellRendererComponentContact,
     DetailCellRendererComponentBanck,
     DetailCellRendererComponentCuentas,
-    DetailCellRendererTipoProveedorComponent
-],
+    DetailCellRendererTipoProveedorComponent,
+    DetailCellRendererComponentMateriales
+  ],
   templateUrl: './providers.component.html',
   styleUrls: ['./providers.component.scss'],
 })
@@ -207,7 +209,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
     detailCellRenderer: DetailCellRendererComponentContact,
     detailCellRendererBanck: DetailCellRendererComponentBanck,
     detailCellRendererCuentas: DetailCellRendererComponentCuentas,
-    detailCellRendererTipoProveedor: DetailCellRendererTipoProveedorComponent
+    detailCellRendererTipoProveedor: DetailCellRendererTipoProveedorComponent,
+    detailCellRendererMateriales: DetailCellRendererComponentMateriales
   };
 
   idClient = this.signalsService.getIdClient();
@@ -235,6 +238,9 @@ export class ProvidersComponent implements CanComponentDeactivate {
     } else if (params.data.detailType === 'tipoProveedor') {
       params.node.setRowHeight(250);
       return { component: 'detailCellRendererTipoProveedor' };
+    } else if (params.data.detailType === 'materiales') {
+      params.node.setRowHeight(550);
+      return { component: 'detailCellRendererMateriales' };
     }
     return undefined; // No mostrar detalle si no hay tipo
   },
@@ -426,6 +432,29 @@ export class ProvidersComponent implements CanComponentDeactivate {
           }
           return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers','Pro_Pri', 'update');
         },
+        valueSetter: (params) => {
+          const rawValue = params.newValue;
+          if (!rawValue || typeof rawValue !== 'string') {
+            alerts.basicAlert('Campo requerido', 'El teléfono es obligatorio', 'error');
+            return false;
+          }
+
+          const normalizedValue = rawValue.trim();
+
+          // Validar formato internacional mexicano: +52 XXX XXX XXXX
+          const phoneRegex = /^\+52\s\d{3}\s\d{3}\s\d{4}$/;
+          if (!phoneRegex.test(normalizedValue)) {
+            alerts.basicAlert(
+              'Formato inválido',
+              'El teléfono debe tener el formato internacional: +52 XXX XXX XXXX (ejemplo: +52 229 206 3214)',
+              'error'
+            );
+            return false;
+          }
+
+          params.data[params.colDef.field] = normalizedValue;
+          return true;
+        },
       },
 
       {
@@ -436,6 +465,29 @@ export class ProvidersComponent implements CanComponentDeactivate {
             return true;
           }
           return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers','Pro_Pri', 'update');
+        },
+        valueSetter: (params) => {
+          const rawValue = params.newValue;
+          if (!rawValue || typeof rawValue !== 'string') {
+            alerts.basicAlert('Campo requerido', 'El email es obligatorio', 'error');
+            return false;
+          }
+
+          const normalizedValue = rawValue.trim().toLowerCase();
+
+          // Validar formato de email
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(normalizedValue)) {
+            alerts.basicAlert(
+              'Email inválido',
+              'Por favor ingrese un email válido (ejemplo: usuario@dominio.com)',
+              'error'
+            );
+            return false;
+          }
+
+          params.data[params.colDef.field] = normalizedValue;
+          return true;
         },
       },
 
@@ -465,7 +517,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
       {
         field: 'fieldMaterial',
-        headerName: 'Materiales',
+        headerName: 'Materiales y Sucursales',
+        cellRenderer: this.createDetailToggleCellRenderer('materiales'),
         editable: false,
         cellStyle: { backgroundColor: '#d4edda' },
       },
@@ -530,6 +583,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
     if (colId === 'fieldBank') return 'bank';
     if (colId === 'fieldCuenta') return 'Cuentas';
     if (colId === 'typeProvider') return 'tipoProveedor';
+    if (colId === 'fieldMaterial') return 'materiales';
     return null;
   }
 
@@ -551,6 +605,9 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
         const isNumeric = params.data.fieldCuenta !== null && params.data.fieldCuenta !== '' && !isNaN(Number(params.data.fieldCuenta));
         const value = isNumeric ? this.currencyPipe.transform(params.data.fieldCuenta, '','symbol', '1.2-2') : '$0.00';
         div.innerText = value;
+        break;
+      case 'materiales':
+        div.innerText = params.data.fieldMaterial || '0';
         break;
       }
     // Usamos innerHTML para poder renderizar el ícono
@@ -669,11 +726,11 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
   }
 
   onCellClicked(event: any): void {
-  event.node.setSelected(true);
-  console.log('Celda clickeada:', event);
+   event.node.setSelected(true);
+   console.log('Celda clickeada:', event);
 
-  const colId = event.column.getColId();
-  const isDetailColumn = colId === 'fieldContact' || colId === 'fieldBank' || colId === 'fieldCuenta' || colId === 'typeProvider';
+   const colId = event.column.getColId();
+   const isDetailColumn = colId === 'fieldContact' || colId === 'fieldBank' || colId === 'fieldCuenta' || colId === 'typeProvider' || colId === 'fieldMaterial';
 
   if (isDetailColumn) {
     const node = event.node;
@@ -786,6 +843,23 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
           },
           delete: (params: any, callback: any) => {
             this.deleteDetailRow(params, callback, 'CUENTA');
+          }
+        },
+        MATERIAL: { // Para la grilla de Materiales
+          load: (providerId: number, type: string, callback: (data: any[]) => void) => {
+            // For materiales, we generate fake data instead of loading from server
+            const fakeData = this.generateFakeMaterialsForProvider(providerId);
+            callback(fakeData);
+          },
+          save: (providerId: number, data: any[], type: string) => {
+            // For fake data, just simulate save
+            console.log('Simulating save for materiales:', data);
+            // Could implement local storage or just log
+          },
+          delete: (params: any, callback: () => void) => {
+            // For fake data, just simulate delete
+            console.log('Simulating delete for material:', params.data);
+            callback();
           }
         }
       }
@@ -1329,5 +1403,50 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
 
   async canDeactivate(): Promise<boolean> {
     return confirmExitIfUnsaved(this.notSavedChanges);
+  }
+
+  // Generate fake materials data for a provider
+  private generateFakeMaterialsForProvider(providerId: number): any[] {
+    const categories = ['Electrónica', 'Mecánica', 'Química', 'Textil', 'Construcción', 'Automotriz'];
+    const subcategories = {
+      'Electrónica': ['Circuitos', 'Sensores', 'Baterías', 'Cables'],
+      'Mecánica': ['Engranajes', 'Ejes', 'Rodamientos', 'Sellos'],
+      'Química': ['Ácidos', 'Bases', 'Solventes', 'Catalizadores'],
+      'Textil': ['Telas', 'Hilos', 'Tintes', 'Aditivos'],
+      'Construcción': ['Cemento', 'Acero', 'Madera', 'Vidrio'],
+      'Automotriz': ['Frenos', 'Motor', 'Suspensión', 'Eléctrica']
+    };
+    const units = ['Pieza', 'Kg', 'Litro', 'Metro', 'Caja', 'Paquete'];
+    const names = [
+      'Resistor 10K', 'Capacitor 100uF', 'Tornillo M8', 'Acido Sulfúrico', 'Tela Algodón',
+      'Cemento Portland', 'Batería 12V', 'Engranaje Helicoidal', 'Solvente Orgánico', 'Cable USB'
+    ];
+
+    const materials = [];
+    const count = Math.floor(Math.random() * 8) + 3; // 3-10 materials
+
+    for (let i = 0; i < count; i++) {
+      const category = categories[Math.floor(Math.random() * categories.length)];
+      const subcategory = subcategories[category][Math.floor(Math.random() * subcategories[category].length)];
+      const unit = units[Math.floor(Math.random() * units.length)];
+      const price = Math.floor(Math.random() * 1000) + 10;
+
+      materials.push({
+        id: `mat_${providerId}_${i + 1}`,
+        idTabla: providerId,
+        codigo: `MAT${String(i + 1).padStart(3, '0')}`,
+        nombre: names[Math.floor(Math.random() * names.length)],
+        descripcion: `Descripción del material ${i + 1}`,
+        categoria: category,
+        subcategoria: subcategory,
+        unidad: unit,
+        precio: price,
+        vigente: Math.random() > 0.2, // 80% active
+        type: 'MATERIAL',
+        active: true
+      });
+    }
+
+    return materials;
   }
 }
