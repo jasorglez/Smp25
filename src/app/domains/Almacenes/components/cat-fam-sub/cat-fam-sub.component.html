@@ -53,16 +53,15 @@
         </div>
 
         <!-- Ayuda contextual -->
-        <div class="mt-4 small text-muted" style="max-width: 140px;">
+        <div class="mt-4 small text-muted" style="max-width: 160px;">
           <div class="mb-2">
             <strong>💡 Flujo con modales:</strong>
           </div>
           <div style="font-size: 0.7rem;">
-            <strong>Agregar:</strong><br>
-            1. Selecciona nivel<br>
-            2. Click <span class="badge bg-primary">+</span><br>
-            3. Modal → Escribir<br>
-            4. Guardar<br>
+            <strong>Agregar elemento:</strong><br>
+            • Click columna vacía → Crear hijo<br>
+            • Click elemento → Crear hermano<br>
+            • Click <span class="badge bg-primary">+</span> → Abrir modal<br>
             <br>
             <strong>Editar:</strong><br>
             Doble-click → Modal
@@ -217,8 +216,10 @@
       <div class="modal-body">
         <!-- Mostrar categoría padre -->
         <div class="alert alert-info mb-3" *ngIf="selectedRowData">
-          <strong>Categoría padre:</strong> 
-          <span class="badge bg-primary ms-2">{{ selectedRowData.description }}</span>
+          <strong>Categoría padre:</strong>
+          <span class="badge bg-primary ms-2">
+            {{ selectedNodeLevel === 'category' ? selectedRowData.description : getCategoryName(selectedRowData.parentCategoryId) }}
+          </span>
         </div>
         
         <form (ngSubmit)="saveNewFamily()">
@@ -333,9 +334,13 @@
         <!-- Mostrar jerarquía padre -->
         <div class="alert alert-secondary mb-3" *ngIf="selectedRowData">
           <strong>Jerarquía:</strong><br>
-          <span class="badge bg-primary me-1">{{ getCategoryName(selectedRowData.parentCategoryId) }}</span>
+          <span class="badge bg-primary me-1">
+            {{ getCategoryName(selectedRowData.parentCategoryId) }}
+          </span>
           →
-          <span class="badge bg-info ms-1">{{ selectedRowData.description }}</span>
+          <span class="badge bg-info ms-1">
+            {{ selectedNodeLevel === 'family' ? selectedRowData.description : getFamilyName(selectedRowData.parentFamilyId) }}
+          </span>
         </div>
 
         <form (ngSubmit)="saveNewSubfamily()">

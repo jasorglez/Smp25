@@ -21,7 +21,6 @@ import { ProvidersService } from 'app/services/providers.service';
 import { CustomersService } from 'app/services/customers.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { lastValueFrom, Subscription } from 'rxjs';
-import { environment } from '@env/environment';
 import { SubfamiliaModalService, ModalData } from './services/subfamilia-modal.service';
 
 @Component({
@@ -592,6 +591,33 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       },
       error: (error) => {
         console.error('❌ Error al actualizar subfamilyCount:', error);
+      }
+    });
+  }
+
+  // Método para actualizar el providerCount de un material específico
+  updateProviderCount(materialId: number) {
+    this.materialsService.getMaterialsxview(this.idRoot).subscribe({
+      next: (data) => {
+        // Buscar solo el material actualizado
+        const updatedMaterial = data.find(m => m.id === materialId);
+        if (updatedMaterial && this.gridApi) {
+          // Actualizar solo la fila específica
+          this.gridApi.forEachNode((node) => {
+            if (node.data && node.data.id === materialId) {
+              node.data.providerCount = updatedMaterial.providerCount;
+              this.gridApi.refreshCells({
+                rowNodes: [node],
+                columns: ['providerCount'],
+                force: true
+              });
+              console.log(`✅ Actualizado "Proveedor" para material ${materialId}: ${updatedMaterial.providerCount}`);
+            }
+          });
+        }
+      },
+      error: (error) => {
+        console.error('❌ Error al actualizar providerCount:', error);
       }
     });
   }

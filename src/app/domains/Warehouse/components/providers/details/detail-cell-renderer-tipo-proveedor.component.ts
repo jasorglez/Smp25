@@ -268,8 +268,8 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
     stopEditingWhenCellsLoseFocus: true,
     singleClickEdit: false, // Doble-click para abrir el editor
     getRowStyle: (params: any) => {
-      // Si la fila NO está activa (vigente=false), aplicar fondo rojo claro
-      if (params.data.vigente === false) {
+      // Si la fila es principal (principal=true), aplicar fondo rojo claro
+      if (params.data.principal === true) {
         return { background: '#ffcccc' };
       }
       return undefined;

@@ -76,6 +76,7 @@ export class CatFamSubComponent {
   treeData: any[] = [];
   selectedRowData: any = null;
   selectedNodeLevel: 'category' | 'family' | 'subfamily' | null = null;
+  selectedColumnContext: 'category' | 'family' | 'subfamily' | null = null; // Columna clickeada
 
   // Estado de expansión para persistir
   private expansionState: Map<string, { category: boolean, families: Map<string, boolean> }> = new Map();
@@ -254,6 +255,9 @@ export class CatFamSubComponent {
         onCellClicked: (event: any) => {
           if (this.isDoubleClicking) return;
 
+          // Actualizar contexto de columna al hacer clic
+          this.selectedColumnContext = 'category';
+
           if (event.event.target.classList.contains('chevron-icon') ||
               event.event.target.getAttribute('data-action') === 'toggle') {
             this.toggleCategoryExpansion(event.data);
@@ -297,6 +301,9 @@ export class CatFamSubComponent {
         onCellClicked: (event: any) => {
           if (this.isDoubleClicking) return;
 
+          // Actualizar contexto de columna al hacer clic
+          this.selectedColumnContext = 'family';
+
           if (event.event.target.classList.contains('chevron-icon') ||
               event.event.target.getAttribute('data-action') === 'toggle') {
             this.toggleFamilyExpansion(event.data);
@@ -333,6 +340,12 @@ export class CatFamSubComponent {
             return tooltip;
           }
           return null;
+        },
+        onCellClicked: () => {
+          if (this.isDoubleClicking) return;
+
+          // Actualizar contexto de columna al hacer clic
+          this.selectedColumnContext = 'subfamily';
         }
       },
  {
@@ -747,19 +760,32 @@ export class CatFamSubComponent {
       return;
     }
 
+    // Lógica basada en el contexto de columna clickeada
+    // Si hice clic en la columna de familia de una categoría → crear primera familia
+    if (this.selectedColumnContext === 'family' && this.selectedNodeLevel === 'category') {
+      this.openAddFamilyModal();
+      return;
+    }
+
+    // Si hice clic en la columna de subfamilia de una familia → crear primera subfamilia
+    if (this.selectedColumnContext === 'subfamily' && this.selectedNodeLevel === 'family') {
+      this.openAddSubfamilyModal();
+      return;
+    }
+
+    // Lógica por defecto: crear hermano del mismo nivel
     switch (this.selectedNodeLevel) {
       case 'category':
-        this.openAddFamilyModal();
+        // Crear una nueva categoría hermana
+        this.openAddCategoryModal();
         break;
       case 'family':
-        this.openAddSubfamilyModal();
+        // Crear una nueva familia hermana (misma categoría padre)
+        this.openAddFamilyModal();
         break;
       case 'subfamily':
-        alerts.basicAlert(
-          'Nivel máximo',
-          'No se pueden agregar elementos debajo de una subfamilia.',
-          'warning'
-        );
+        // Crear una nueva subfamilia hermana (misma familia padre)
+        this.openAddSubfamilyModal();
         break;
       default:
         this.openAddCategoryModal();
@@ -946,6 +972,17 @@ export class CatFamSubComponent {
     return category?.description || 'N/A';
   }
 
+  // Obtener el nombre de la familia por ID
+  getFamilyName(familyId: string | number): string {
+    if (!this.treeData || !familyId) return 'N/A';
+
+    const family = this.treeData.find(item =>
+      item.nodeLevel === 'family' && item.originalId === familyId
+    );
+
+    return family?.description || 'N/A';
+  }
+
   // ========== MÉTODOS PARA MODALES ==========
   
   // Abrir modal para nueva categoría
@@ -956,20 +993,12 @@ export class CatFamSubComponent {
   
   // Abrir modal para nueva familia
   openAddFamilyModal() {
-    if (!this.selectedRowData || this.selectedNodeLevel !== 'category') {
-      alerts.basicAlert('Error', 'Seleccione una categoría para agregar una familia.', 'warning');
-      return;
-    }
     this.resetModalForm();
     this.showAddFamilyModal = true;
   }
-  
+
   // Abrir modal para nueva subfamilia
   openAddSubfamilyModal() {
-    if (!this.selectedRowData || this.selectedNodeLevel !== 'family') {
-      alerts.basicAlert('Error', 'Seleccione una familia para agregar una subfamilia.', 'warning');
-      return;
-    }
     this.resetModalForm();
     this.showAddSubfamilyModal = true;
   }
@@ -1059,13 +1088,27 @@ export class CatFamSubComponent {
       return;
     }
 
+    // Determinar el parentId según el nivel del elemento seleccionado
+    let parentId: number;
+
+    if (this.selectedNodeLevel === 'category') {
+      // Si seleccioné una categoría (primera familia), usar su ID como padre
+      parentId = this.selectedRowData.originalId;
+    } else if (this.selectedNodeLevel === 'family') {
+      // Si seleccioné una familia (hermana), usar su categoría padre
+      parentId = this.selectedRowData.parentCategoryId;
+    } else {
+      alerts.basicAlert('Error', 'Seleccione una categoría o familia.', 'warning');
+      return;
+    }
+
     const newFamily = this.cleanDataForServer({
       valueAddition: this.modalForm.valueAddition,
       description: this.modalForm.description,
       valueAddition2: this.modalForm.valueAddition2,
       valueAdditionBit: this.modalForm.valueAdditionBit,
       type: 'FAM-CAT',
-      parentId: this.selectedRowData.originalId,
+      parentId: parentId,
       active: this.modalForm.active ? 1 : 0
     });
 
@@ -1089,14 +1132,31 @@ export class CatFamSubComponent {
       return;
     }
 
+    // Determinar el parentId y subParentId según el nivel del elemento seleccionado
+    let parentId: number; // Categoría padre
+    let subParentId: number; // Familia padre
+
+    if (this.selectedNodeLevel === 'family') {
+      // Si seleccioné una familia (primera subfamilia), usar sus IDs
+      parentId = this.selectedRowData.parentCategoryId;
+      subParentId = this.selectedRowData.originalId;
+    } else if (this.selectedNodeLevel === 'subfamily') {
+      // Si seleccioné una subfamilia (hermana), usar sus padres
+      parentId = this.selectedRowData.parentCategoryId;
+      subParentId = this.selectedRowData.parentFamilyId;
+    } else {
+      alerts.basicAlert('Error', 'Seleccione una familia o subfamilia.', 'warning');
+      return;
+    }
+
     const newSubfamily = this.cleanDataForServer({
       valueAddition: this.modalForm.valueAddition,
       description: this.modalForm.description,
       valueAddition2: this.modalForm.valueAddition2,
       valueAdditionBit: this.modalForm.valueAdditionBit,
       type: 'SUB-FAM',
-      parentId: this.selectedRowData.parentCategoryId,
-      subParentId: this.selectedRowData.originalId,
+      parentId: parentId,
+      subParentId: subParentId,
       active: this.modalForm.active ? 1 : 0
     });
 

@@ -82,8 +82,8 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
     suppressEnterWhenEditing: false,
     rowSelection: 'single',
     getRowStyle: (params: any) => {
-      // Si la fila NO está activa (vigente=false), aplicar fondo rojo claro
-      if (params.data.vigente === false) {
+      // Si la fila es el banco principal, aplicar fondo rojo claro
+      if (params.data.principal === true) {
         return { background: '#ffcccc' };
       }
       return undefined;
@@ -406,17 +406,24 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
   }
 
   addBank() {
+    // Verificar si es el primer banco (tabla vacía)
+    const isFirstBank = this.bankRowData.length === 0;
+
     const newBank = {
       id: `temp_bank_${Date.now()}`,
       idTabla: this.providerId,
       type: 'BANK',
       vigente: true,
-      principal: false,
-      campo7: false, // Sincronizar con principal (para backend)
+      principal: isFirstBank, // Si es el primero, marcar como principal
+      campo7: isFirstBank, // Sincronizar con principal (para backend)
       __isNew: true
     };
     this.bankRowData = [newBank, ...this.bankRowData];
     this.hasBankChanges = true;
+
+    if (isFirstBank) {
+      console.log('✅ Primer banco marcado automáticamente como principal');
+    }
 
     setTimeout(() => {
       this.bankGridApi.startEditingCell({

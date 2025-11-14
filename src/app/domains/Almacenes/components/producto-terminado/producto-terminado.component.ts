@@ -80,6 +80,7 @@ export class ProductoTerminadoComponent {
     treeData: any[] = [];
     selectedRowData: any = null;
     selectedNodeLevel: 'category' | 'family' | 'subfamily' | null = null;
+    selectedColumnContext: 'category' | 'family' | 'subfamily' | null = null; // Columna clickeada
   
     // Estado de expansión para persistir
     private expansionState: Map<string, { category: boolean, families: Map<string, boolean> }> = new Map();
@@ -262,7 +263,10 @@ export class ProductoTerminadoComponent {
           },
           onCellClicked: (event: any) => {
             if (this.isDoubleClicking) return;
-  
+
+            // Actualizar contexto de columna al hacer clic
+            this.selectedColumnContext = 'category';
+
             if (event.event.target.classList.contains('chevron-icon') ||
                 event.event.target.getAttribute('data-action') === 'toggle') {
               this.toggleCategoryExpansion(event.data);
@@ -284,7 +288,10 @@ export class ProductoTerminadoComponent {
           },
           onCellClicked: (event: any) => {
             if (this.isDoubleClicking) return;
-  
+
+            // Actualizar contexto de columna al hacer clic
+            this.selectedColumnContext = 'family';
+
             if (event.event.target.classList.contains('chevron-icon') ||
                 event.event.target.getAttribute('data-action') === 'toggle') {
               this.toggleFamilyExpansion(event.data);
@@ -300,6 +307,12 @@ export class ProductoTerminadoComponent {
               return `<span style="margin-right: 15px;"></span> ${params.data.description}`;
             }
             return '';
+          },
+          onCellClicked: () => {
+            if (this.isDoubleClicking) return;
+
+            // Actualizar contexto de columna al hacer clic
+            this.selectedColumnContext = 'subfamily';
           }
         },
 
@@ -647,20 +660,33 @@ export class ProductoTerminadoComponent {
         this.openAddCategoryModal(); // Si no hay selección, agregar categoría
         return;
       }
-  
+
+      // Lógica basada en el contexto de columna clickeada
+      // Si hice clic en la columna de sabor de una categoría → crear primer sabor
+      if (this.selectedColumnContext === 'family' && this.selectedNodeLevel === 'category') {
+        this.openAddFamilyModal();
+        return;
+      }
+
+      // Si hice clic en la columna de presentación de un sabor → crear primera presentación
+      if (this.selectedColumnContext === 'subfamily' && this.selectedNodeLevel === 'family') {
+        this.openAddSubfamilyModal();
+        return;
+      }
+
+      // Lógica por defecto: crear hermano del mismo nivel
       switch (this.selectedNodeLevel) {
         case 'category':
-          this.openAddFamilyModal();
+          // Crear una nueva categoría hermana
+          this.openAddCategoryModal();
           break;
         case 'family':
-          this.openAddSubfamilyModal();
+          // Crear un nuevo sabor hermano (misma categoría padre)
+          this.openAddFamilyModal();
           break;
         case 'subfamily':
-          alerts.basicAlert(
-            'Nivel máximo',
-            'No se pueden agregar elementos debajo de un nombre de producto.',
-            'warning'
-          );
+          // Crear una nueva presentación hermana (mismo sabor padre)
+          this.openAddSubfamilyModal();
           break;
         default:
           this.openAddCategoryModal();
@@ -835,6 +861,17 @@ export class ProductoTerminadoComponent {
       return category?.description || 'N/A';
     }
 
+    // Obtener el nombre del sabor por ID
+    getFamilyName(familyId: string | number): string {
+      if (!this.treeData || !familyId) return 'N/A';
+
+      const family = this.treeData.find(item =>
+        item.nodeLevel === 'family' && item.originalId === familyId
+      );
+
+      return family?.description || 'N/A';
+    }
+
     // ========== MÉTODOS PARA MODALES ==========
     
     // Abrir modal para nueva categoría
@@ -845,20 +882,12 @@ export class ProductoTerminadoComponent {
     
     // Abrir modal para nueva presentación
     openAddFamilyModal() {
-      if (!this.selectedRowData || this.selectedNodeLevel !== 'category') {
-        alerts.basicAlert('Error', 'Seleccione una categoría para agregar una presentación.', 'warning');
-        return;
-      }
       this.resetModalForm();
       this.showAddFamilyModal = true;
     }
 
     // Abrir modal para nuevo nombre
     openAddSubfamilyModal() {
-      if (!this.selectedRowData || this.selectedNodeLevel !== 'family') {
-        alerts.basicAlert('Error', 'Seleccione una presentación para agregar un nombre.', 'warning');
-        return;
-      }
       this.resetModalForm();
       this.showAddSubfamilyModal = true;
     }
@@ -946,26 +975,40 @@ export class ProductoTerminadoComponent {
         alerts.basicAlert('Error', 'El nombre es obligatorio.', 'warning');
         return;
       }
-  
+
+      // Determinar el parentId según el nivel del elemento seleccionado
+      let parentId: number;
+
+      if (this.selectedNodeLevel === 'category') {
+        // Si seleccioné una categoría (primer sabor), usar su ID como padre
+        parentId = this.selectedRowData.originalId;
+      } else if (this.selectedNodeLevel === 'family') {
+        // Si seleccioné un sabor (hermano), usar su categoría padre
+        parentId = this.selectedRowData.parentCategoryId;
+      } else {
+        alerts.basicAlert('Error', 'Seleccione una categoría o sabor.', 'warning');
+        return;
+      }
+
       const newFamily = this.cleanDataForServer({
         valueAddition: this.modalForm.valueAddition,
         description: this.modalForm.description,
         valueAddition2: this.modalForm.valueAddition2,
         type: 'PRESENT-PROD',
-        parentId: this.selectedRowData.originalId,
+        parentId: parentId,
         active: this.modalForm.active ? 1 : 0
       });
-  
+
       try {
         const response = await lastValueFrom(this.catalogsService.addCatalog(newFamily));
-        console.log('Respuesta del servidor (nueva presentación):', response);
-        alerts.basicAlert('Éxito', 'Presentación creada correctamente.', 'success');
+        console.log('Respuesta del servidor (nuevo sabor):', response);
+        alerts.basicAlert('Éxito', 'Sabor creado correctamente.', 'success');
         this.closeModals();
         this.loadCatalogData();
       } catch (error: any) {
-        console.error('Error al crear presentación:', error);
+        console.error('Error al crear sabor:', error);
         const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
-        alerts.basicAlert('Error', `Error al crear la presentación: ${errorMsg}`, 'error');
+        alerts.basicAlert('Error', `Error al crear el sabor: ${errorMsg}`, 'error');
       }
     }
 
@@ -976,26 +1019,43 @@ export class ProductoTerminadoComponent {
         return;
       }
 
+      // Determinar el parentId y subParentId según el nivel del elemento seleccionado
+      let parentId: number; // Categoría padre
+      let subParentId: number; // Sabor padre
+
+      if (this.selectedNodeLevel === 'family') {
+        // Si seleccioné un sabor (primera presentación), usar sus IDs
+        parentId = this.selectedRowData.parentCategoryId;
+        subParentId = this.selectedRowData.originalId;
+      } else if (this.selectedNodeLevel === 'subfamily') {
+        // Si seleccioné una presentación (hermana), usar sus padres
+        parentId = this.selectedRowData.parentCategoryId;
+        subParentId = this.selectedRowData.parentFamilyId;
+      } else {
+        alerts.basicAlert('Error', 'Seleccione un sabor o presentación.', 'warning');
+        return;
+      }
+
       const newSubfamily = this.cleanDataForServer({
         valueAddition: this.modalForm.valueAddition,
         description: this.modalForm.description,
         valueAddition2: this.modalForm.valueAddition2,
         type: 'NAME-PROD',
-        parentId: this.selectedRowData.parentCategoryId,
-        subParentId: this.selectedRowData.originalId,
+        parentId: parentId,
+        subParentId: subParentId,
         active: this.modalForm.active ? 1 : 0
       });
 
       try {
         const response = await lastValueFrom(this.catalogsService.addCatalog(newSubfamily));
-        console.log('Respuesta del servidor (nuevo nombre):', response);
-        alerts.basicAlert('Éxito', 'Nombre creado correctamente.', 'success');
+        console.log('Respuesta del servidor (nueva presentación):', response);
+        alerts.basicAlert('Éxito', 'Presentación creada correctamente.', 'success');
         this.closeModals();
         this.loadCatalogData();
       } catch (error: any) {
-        console.error('Error al crear nombre:', error);
+        console.error('Error al crear presentación:', error);
         const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
-        alerts.basicAlert('Error', `Error al crear el nombre: ${errorMsg}`, 'error');
+        alerts.basicAlert('Error', `Error al crear la presentación: ${errorMsg}`, 'error');
       }
     }
     
