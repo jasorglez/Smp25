@@ -136,12 +136,6 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
         return `=${adjustedFormula}`; // Añadir el '=' de nuevo a la fórmula ajustada
       }
 
-       // Si no es una fórmula, devuelve el valor de la celda de origen para que se copie.
-       // initialValues[0] contiene el valor de la celda desde la que se inició el arrastre.
-       return initialValues[0];
-
-      // Si no es una fórmula, devuelve el valor de la celda de origen para que se copie.
-      // initialValues[0] contiene el valor de la celda desde la que se inició el arrastre.
       // Si la celda de origen tiene una fórmula (incluso sin referencias A1), la copiamos.
       // Si no tiene fórmula, copiamos el valor simple (initialValues[0]).
       return sourceFormula || initialValues[0];
