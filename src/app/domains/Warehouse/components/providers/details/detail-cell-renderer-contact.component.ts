@@ -85,8 +85,8 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
     suppressEnterWhenEditing: false,
     rowSelection: 'single',
     getRowStyle: (params: any) => {
-      // Si la fila NO está activa (vigente=false), aplicar fondo rojo claro
-      if (params.data.vigente === false) {
+      // Si la fila es principal (principal=true), aplicar fondo rojo claro
+      if (params.data.principal === true) {
         return { background: '#ffcccc' };
       }
       return undefined;

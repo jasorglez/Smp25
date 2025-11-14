@@ -7,6 +7,7 @@ import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/auto
 import { CustomersService } from 'app/services/customers.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { SignalsService } from 'app/services/signals.service';
+import { ProvidersService } from 'app/services/providers.service';
 import { DetailCellRendererProveedorSucursalComponent } from './detail-cell-renderer-proveedor-sucursal.component';
 
 @Component({
@@ -71,21 +72,32 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
   private customersService = inject(CustomersService);
   private branchsService = inject(BranchsService);
   private signalsService = inject(SignalsService);
+  private providersService = inject(ProvidersService);
 
   params: any;
   materialId: number;
   materialName: string;
+  materialSubfamilyId: number; // ID de la subfamilia del material
   proveedorRowData: any[] = [];
   proveedorGridApi: any;
   selectedProveedor: any = null;
   hasProveedorChanges: boolean = false;
 
   // Catálogos
-  providers: any[] = [];
+  providers: any[] = []; // Todos los proveedores
+  filteredProviders: any[] = []; // Proveedores filtrados por subfamilia
   branches: any[] = [];
   idRoot: number;
 
   constructor(private currencyPipe: CurrencyPipe) {}
+
+  // Helper para formatear nombre de proveedor sin "undefined"
+  private getProviderDisplayName(provider: any): string {
+    if (!provider) return '';
+    const name = provider.name || '';
+    const description = provider.description || '';
+    return `${name} ${description}`.trim();
+  }
 
   proveedorGridOptions: any = {
     headerHeight: 25,
@@ -113,10 +125,37 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
 
   proveedorColumnDefs = [
       {
-        field: 'active',
+        field: 'principal',
         headerName: 'Principal',
         editable: true,
         width: 111,
+        cellRenderer: 'agCheckboxCellRenderer',
+        cellEditor: 'agCheckboxCellEditor',
+        onCellValueChanged: (params: any) => {
+          // Si se marca como principal, desmarcar todos los demás
+          if (params.newValue === true || params.newValue === 1) {
+            this.proveedorRowData.forEach((row: any) => {
+              if (row !== params.data) {
+                row.principal = false;
+                // Marcar como modificado si no es nuevo
+                if (!row.__isNew) {
+                  row.__modified = true;
+                }
+              }
+            });
+            // Marcar el actual como modificado si no es nuevo
+            if (!params.data.__isNew) {
+              params.data.__modified = true;
+            }
+            // Activar el botón de guardar
+            this.hasProveedorChanges = true;
+            // Refrescar el grid para mostrar los cambios
+            if (this.proveedorGridApi) {
+              this.proveedorGridApi.refreshCells({ force: true });
+            }
+            console.log('✅ Proveedor marcado como principal, los demás desmarcados');
+          }
+        }
       },
 
     {
@@ -127,7 +166,8 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
       flex: 1,
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: (params: any) => {
-        const values = this.providers ? this.providers.map((p: any) => `${p.name} ${p.description}`.trim()) : [];
+        // Usar filteredProviders en lugar de providers
+        const values = this.filteredProviders ? this.filteredProviders.map((p: any) => this.getProviderDisplayName(p)) : [];
         return {
           values: values
         };
@@ -137,19 +177,22 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
           return params.data.providerName;
         }
         if (params.data.idTabla) {
-          const provider = this.providers.find((p: any) => p.id === params.data.idTabla);
+          // Buscar primero en filteredProviders, luego en providers (por si es un dato existente)
+          const provider = this.filteredProviders.find((p: any) => p.id === params.data.idTabla)
+                        || this.providers.find((p: any) => p.id === params.data.idTabla);
           if (provider) {
-            params.data.providerName = `${provider.name} ${provider.description}`.trim();
+            params.data.providerName = this.getProviderDisplayName(provider);
             return params.data.providerName;
           }
         }
         return '';
       },
       valueSetter: (params: any) => {
-        const provider = this.providers.find((p: any) => `${p.name} ${p.description}`.trim() === params.newValue);
+        // Buscar en filteredProviders
+        const provider = this.filteredProviders.find((p: any) => this.getProviderDisplayName(p) === params.newValue);
         if (provider) {
           params.data.idTabla = provider.id;
-          params.data.providerName = `${provider.name} ${provider.description}`.trim();
+          params.data.providerName = this.getProviderDisplayName(provider);
         } else {
           params.data.providerName = params.newValue;
         }
@@ -227,7 +270,22 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
     this.params = params;
     this.materialId = params.data.id;
     this.materialName = params.data.articulo || params.data.insumo;
+    this.materialSubfamilyId = params.data.idSubfamilia; // CORRECTO: usar idSubfamilia, no idFamilia
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+
+    console.log('🔍 Material init - TODOS LOS DATOS:');
+    console.log('📋 params.data completo:', JSON.parse(JSON.stringify(params.data)));
+    console.log('🔑 Campos extraídos:', {
+      materialId: this.materialId,
+      materialName: this.materialName,
+      categoria: params.data.categoria,
+      idCategory: params.data.idCategory,
+      familia: params.data.familia,
+      idFamilia: params.data.idFamilia,
+      subfamilia: params.data.subfamilia,
+      idSubfamilia: this.materialSubfamilyId,
+      idRoot: this.idRoot
+    });
 
     this.loadProviders();
     this.loadBranches();
@@ -277,21 +335,70 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
     return false;
   }
 
-  loadProviders() {
-    this.customersService.getCustomersByCompany(this.idRoot, 'PROVIDERS').subscribe({
-      next: (data: any) => {
-        // Filtrar solo proveedores vigentes
-        this.providers = data.filter((p: any) => p.vigente === true || p.vigente === 1);
-        // Refrescar el grid para que los combos se actualicen con los proveedores
-        if (this.proveedorGridApi) {
-          this.proveedorGridApi.refreshCells({ force: true });
+  async loadProviders() {
+    try {
+      // 1. Cargar todos los proveedores vigentes
+      const allProviders: any = await this.customersService.getCustomersByCompany(this.idRoot, 'PROVIDERS').toPromise();
+      this.providers = allProviders.filter((p: any) => p.vigente === true || p.vigente === 1);
+
+      console.log('📦 Total proveedores vigentes:', this.providers.length);
+
+      // 2. Filtrar proveedores que manejan la subfamilia del material
+      if (this.materialSubfamilyId) {
+        console.log('🔍 Filtrando proveedores por subfamilyId:', this.materialSubfamilyId);
+
+        try {
+          // Obtener todos los proveedores y sus subfamilias asociadas
+          const providerSubfamilyPromises = this.providers.map(async (provider: any) => {
+            try {
+              const subfamilies: any = await this.providersService.getSubfamilyxProviderByProvider(provider.id).toPromise();
+              return {
+                providerId: provider.id,
+                providerName: this.getProviderDisplayName(provider),
+                hasSubfamily: subfamilies.some((s: any) => s.idSubfamily === this.materialSubfamilyId)
+              };
+            } catch (error) {
+              console.error(`Error obteniendo subfamilias del proveedor ${provider.id}:`, error);
+              return { providerId: provider.id, providerName: this.getProviderDisplayName(provider), hasSubfamily: false };
+            }
+          });
+
+          const results = await Promise.all(providerSubfamilyPromises);
+
+          console.log('📊 Resultados de búsqueda:', results);
+
+          const providerIdsWithSubfamily = results
+            .filter(r => r.hasSubfamily)
+            .map(r => r.providerId);
+
+          console.log('🔑 IDs de proveedores que manejan la subfamilia:', providerIdsWithSubfamily);
+
+          // Filtrar solo los proveedores que manejan la subfamilia del material
+          this.filteredProviders = this.providers.filter(p => providerIdsWithSubfamily.includes(p.id));
+
+          console.log('✅ Proveedores filtrados por subfamilia:', this.filteredProviders.length);
+          console.log('📋 Lista de proveedores filtrados:', this.filteredProviders.map(p => this.getProviderDisplayName(p)));
+        } catch (error) {
+          console.error('❌ Error filtrando proveedores por subfamilia:', error);
+          // Si hay error, mostrar todos los proveedores
+          this.filteredProviders = this.providers;
         }
-      },
-      error: (error) => {
-        console.error('Error loading providers:', error);
-        this.providers = [];
+      } else {
+        // Si no hay subfamilia, mostrar todos los proveedores
+        this.filteredProviders = this.providers;
+        console.log('⚠️ Material sin subfamilia, mostrando todos los proveedores');
       }
-    });
+
+      // Refrescar el grid para que los combos se actualicen
+      if (this.proveedorGridApi) {
+        this.proveedorGridApi.refreshCells({ force: true });
+      }
+
+    } catch (error) {
+      console.error('❌ Error loading providers:', error);
+      this.providers = [];
+      this.filteredProviders = [];
+    }
   }
 
   loadBranches() {
@@ -344,6 +451,9 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
       return;
     }
 
+    // Verificar si es el primer proveedor (tabla vacía)
+    const isFirstProvider = this.proveedorRowData.length === 0;
+
     const tempId = `temp_proveedor_${Date.now()}`;
     const newProveedor = {
       id: tempId,
@@ -361,11 +471,16 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
       branchName: '',          // Nombre de sucursal (para mostrar en combo)
       type: 'MATERIAL',
       active: true,
+      principal: isFirstProvider, // Si es el primero, marcar como principal
       __isNew: true
     };
 
     this.proveedorRowData = [newProveedor, ...this.proveedorRowData];
     this.hasProveedorChanges = true;
+
+    if (isFirstProvider) {
+      console.log('✅ Primer proveedor marcado automáticamente como principal');
+    }
 
     setTimeout(() => {
       this.proveedorGridApi.startEditingCell({
@@ -375,10 +490,44 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
     }, 100);
   }
 
-  saveProveedores() {
+  async saveProveedores() {
     if (this.params && this.params.context && this.params.context.MATERIAL && this.params.context.MATERIAL.save) {
-      this.params.context.MATERIAL.save(this.materialId, this.proveedorRowData, 'MATERIAL');
-      this.hasProveedorChanges = false;
+      try {
+        // Guardar los cambios
+        await this.params.context.MATERIAL.save(this.materialId, this.proveedorRowData, 'MATERIAL');
+
+        console.log('✅ Proveedores guardados, recargando datos...');
+
+        // Esperar un poco para que el servidor procese
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        this.hasProveedorChanges = false;
+
+        // Recargar datos desde el servidor para obtener IDs reales
+        this.loadProveedorData();
+
+        // Actualizar el contador de proveedores en el grid padre
+        this.updateProviderCountInParent();
+
+      } catch (error) {
+        console.error('❌ Error al guardar proveedores:', error);
+      }
+    }
+  }
+
+  // Método para actualizar el contador de proveedores en el grid padre
+  updateProviderCountInParent(): void {
+    // Acceder al componente padre (MaterialesMaestroComponent) a través del contexto
+    if (this.params && this.params.context && this.params.context.componentParent) {
+      const parentComponent = this.params.context.componentParent;
+      if (typeof parentComponent.updateProviderCount === 'function') {
+        parentComponent.updateProviderCount(this.materialId);
+        console.log('✅ Solicitada actualización de providerCount para material:', this.materialId);
+      } else {
+        console.warn('⚠️ El componente padre no tiene el método updateProviderCount');
+      }
+    } else {
+      console.warn('⚠️ No se encontró el componente padre en el contexto');
     }
   }
 
@@ -397,8 +546,17 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
       this.params.context.MATERIAL.delete(
         { data: this.selectedProveedor, api: this.proveedorGridApi },
         () => {
+          console.log('✅ Proveedor eliminado, recargando datos...');
           this.loadProveedorData();
           this.selectedProveedor = null;
+
+          // Limpiar la bandera de cambios pendientes
+          this.hasProveedorChanges = false;
+
+          // Actualizar el contador de proveedores en el grid padre
+          setTimeout(() => {
+            this.updateProviderCountInParent();
+          }, 500);
         }
       );
     }
