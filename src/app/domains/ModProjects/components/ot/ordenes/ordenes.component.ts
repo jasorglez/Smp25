@@ -2205,8 +2205,11 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         // Usuario eligió ELIMINAR
         await this.deleteOTsWithValidation(childOts);
       } else {
-        // Usuario canceló
-        groupNode.setSelected(false, true);
+        // Si el usuario cancela, mantener la selección del grupo y actualizar idProject
+        // para permitir subir PDF correctamente
+        if (childOts.length > 0 && childOts[0].idProject) {
+          this.idProject = childOts[0].idProject;
+        }
       }
     }
   }
