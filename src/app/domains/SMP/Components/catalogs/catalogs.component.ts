@@ -10,6 +10,7 @@ import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { CatFamSubComponent } from 'app/domains/Almacenes/components/cat-fam-sub/cat-fam-sub.component';
+import { EleccionFamiliasComponent } from './eleccion-familias.component';
 import {
   ColDef,
   GridApi,
@@ -39,7 +40,7 @@ import { SubatalogsComponent } from "../../../Warehouse/components/catalogs/cata
     SharedModule,
     TranslateModule,
     SubatalogsComponent,
-    CatFamSubComponent
+    CatFamSubComponent, EleccionFamiliasComponent
 ],
   templateUrl: './catalogs.component.html',
   styleUrl: './catalogs.component.scss',
@@ -65,6 +66,8 @@ export class CatalogsComponent implements CanComponentDeactivate {
   private gridApi: GridApi;
   select: string;
   active: string = ""
+   // --- Propiedades para el nuevo modal de Elección de Familias ---
+  public showEleccionFamiliasModal = false;
 
   menuSelect: number;
   showWarehTab: Signal<boolean>;
@@ -118,6 +121,15 @@ export class CatalogsComponent implements CanComponentDeactivate {
       this.gridApi.setFilterModel(null);
       this.gridApi.onFilterChanged();
     }
+  }
+
+    // --- Métodos para el nuevo modal de Elección de Familias ---
+  openEleccionFamiliasModal() {
+    this.showEleccionFamiliasModal = true;
+  }
+
+  closeEleccionFamiliasModal() {
+    this.showEleccionFamiliasModal = false;
   }
 
   refres(open: boolean){
