@@ -191,6 +191,7 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
           return true
         },
       width: 100,
+<<<<<<< HEAD
       valueSetter: (params: any) => {
         // Solo permitir: números (0-9), espacios, paréntesis (), guiones (-), y el signo más (+)
         // Convertir a mayúsculas (aunque en números no afecta, mantiene consistencia)
@@ -200,6 +201,31 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
         this.hasContactChanges = true;
         return true;
       }
+=======
+      valueSetter: (params) => {
+        const rawValue = params.newValue;
+        if (!rawValue || typeof rawValue !== 'string') {
+          alerts.basicAlert('Campo requerido', 'El teléfono es obligatorio', 'error');
+          return false;
+        }
+
+        const normalizedValue = rawValue.trim();
+
+        // Validar formato internacional mexicano: +52 XXX XXX XXXX
+        const phoneRegex = /^\+52\s\d{3}\s\d{3}\s\d{4}$/;
+        if (!phoneRegex.test(normalizedValue)) {
+          alerts.basicAlert(
+            'Formato inválido',
+            'El teléfono debe tener el formato internacional: +52 XXX XXX XXXX (ejemplo: +52 229 206 3214)',
+            'error'
+          );
+          return false;
+        }
+
+        params.data[params.colDef.field] = normalizedValue;
+        return true;
+      },
+>>>>>>> 21e44b9e95cb228aad30175136c206f1c9344c15
     },
     {
       field: 'campo5',
@@ -212,6 +238,7 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
         },
       width: 140,
       flex: 1,
+<<<<<<< HEAD
       valueSetter: (params: any) => {
         const newValue = params.newValue ? params.newValue.trim() : '';
 
@@ -242,6 +269,31 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
           return false;
         }
       }
+=======
+      valueSetter: (params) => {
+        const rawValue = params.newValue;
+        if (!rawValue || typeof rawValue !== 'string') {
+          alerts.basicAlert('Campo requerido', 'El email es obligatorio', 'error');
+          return false;
+        }
+
+        const normalizedValue = rawValue.trim().toLowerCase();
+
+        // Validar formato de email
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(normalizedValue)) {
+          alerts.basicAlert(
+            'Email inválido',
+            'Por favor ingrese un email válido (ejemplo: usuario@dominio.com)',
+            'error'
+          );
+          return false;
+        }
+
+        params.data[params.colDef.field] = normalizedValue;
+        return true;
+      },
+>>>>>>> 21e44b9e95cb228aad30175136c206f1c9344c15
     },
     {
       field: 'campo6',

@@ -58,7 +58,13 @@ export class CatFamSubComponent {
   showAddFamilyModal = false;
   showAddSubfamilyModal = false;
   showEditModal = false;
-  
+  // Datos del catálogo jerárquico
+  treeData: any[] = [];
+  selectedRowData: any = null;
+  selectedNodeLevel: 'category' | 'family' | 'subfamily' | null = null;
+  selectedColumnContext: 'category' | 'family' | 'subfamily' | null = null; // Columna clickeada
+
+  // Estado de expansión para persistir
   // Datos del formulario modal
   modalForm = {
     valueAddition: '',
@@ -71,12 +77,6 @@ export class CatFamSubComponent {
   
   // Datos para edición
   editingItem: any = null;
-
-  // Datos del catálogo jerárquico
-  treeData: any[] = [];
-  selectedRowData: any = null;
-  selectedNodeLevel: 'category' | 'family' | 'subfamily' | null = null;
-  selectedColumnContext: 'category' | 'family' | 'subfamily' | null = null; // Columna clickeada
 
   // Estado de expansión para persistir
   private expansionState: Map<string, { category: boolean, families: Map<string, boolean> }> = new Map();
@@ -355,8 +355,7 @@ export class CatFamSubComponent {
         editable: true,
         onCellClicked: (params: any) => {
           if (params.data.nodeLevel === 'subfamily') {
-            // Leer la tabla DEPARTAMENT cuando se haga click en Materia Prima            
-            this.loadDepartmentsForSubfamily(params.data);
+            this.openMaterialsModal(params.data);
           }
         }
       },
@@ -368,9 +367,7 @@ export class CatFamSubComponent {
         editable: true,
         onCellClicked: (params: any) => {
           if (params.data.nodeLevel === 'subfamily') {
-            // Leer la tabla DEPARTAMENT cuando se haga click en Materia Prima
-            console.log('Click en Materia Prima para subfamilia:', params.data);
-            this.loadDepartmentsForSubfamily(params.data);
+            this.openMaterialsModal(params.data);
           }
         }
       },
@@ -1332,5 +1329,12 @@ export class CatFamSubComponent {
     if (this.gridApi) {
       this.gridApi.setGridOption('rowData', this.flattenTreeData());
     }
+  }
+
+  // Método para abrir el modal de materiales (placeholder)
+  // TODO: Implementar la lógica del modal de materiales como se solicitó para proveedores.
+  openMaterialsModal(subfamilyData: any) {
+    console.log('Abriendo modal de materiales para:', subfamilyData.description);
+    this.loadDepartmentsForSubfamily(subfamilyData); // Reutilizando la lógica existente por ahora
   }
 }
