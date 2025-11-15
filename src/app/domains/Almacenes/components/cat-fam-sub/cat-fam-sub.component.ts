@@ -348,20 +348,9 @@ export class CatFamSubComponent {
           this.selectedColumnContext = 'subfamily';
         }
       },
- {
-        headerName: 'MM Materiales',
-        field: 'valueAdditionBit2',
-        width: 160,
-        editable: true,
-        onCellClicked: (params: any) => {
-          if (params.data.nodeLevel === 'subfamily') {
-            this.openMaterialsModal(params.data);
-          }
-        }
-      },
-
+ 
       {
-        headerName: 'Material Maestro(MN)',
+        headerName: 'Material Maestro',
         field: 'valueAdditionBit',
         width: 210,
         editable: true,

@@ -11,6 +11,7 @@ import { DetailCellRendererSucursalComponent } from './details/detail-cell-rende
 import { DetailCellRendererCostosComponent } from './details/detail-cell-renderer-costos.component';
 import { DetailCellRendererSubfamiliaComponent } from './details/detail-cell-renderer-subfamilia.component';
 import { DetailCellRendererProveedorSucursalComponent } from './details/detail-cell-renderer-proveedor-sucursal.component';
+import { DetailCellRendererParametrosComponent } from './details/detail-cell-renderer-parametros.component';
 import { SelectWithTooltipEditorV2Component } from './editors/select-with-tooltip-editor-v2.component';
 import { ImageCellRendererComponent } from './renderers/image-cell-renderer.component';
 import { MaterialsService } from 'app/services/materials.service';
@@ -36,6 +37,7 @@ import { SubfamiliaModalService, ModalData } from './services/subfamilia-modal.s
     DetailCellRendererCostosComponent,
     DetailCellRendererSubfamiliaComponent,
     DetailCellRendererProveedorSucursalComponent,
+    DetailCellRendererParametrosComponent,
     SelectWithTooltipEditorV2Component,
     ImageCellRendererComponent
   ],
@@ -197,7 +199,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     detailCellRendererSucursal: DetailCellRendererSucursalComponent,
     detailCellRendererCostos: DetailCellRendererCostosComponent,
     detailCellRendererSubfamilia: DetailCellRendererSubfamiliaComponent,
-    detailCellRendererProveedorSucursal: DetailCellRendererProveedorSucursalComponent
+    detailCellRendererProveedorSucursal: DetailCellRendererProveedorSucursalComponent,
+    detailCellRendererParametros: DetailCellRendererParametrosComponent
   };
 
   public gridOptions: any = {
@@ -223,6 +226,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         return { component: 'detailCellRendererSubfamilia' };
       } else if (params.data.detailType === 'costos') {
         return { component: 'detailCellRendererCostos' };
+      } else if (params.data.detailType === 'parametros') {
+        return { component: 'detailCellRendererParametros' };
       }
       return undefined;
     },
@@ -553,6 +558,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       context: {
         idRoot: this.idRoot, // Pasar idRoot al detail renderer
         componentParent: this, // Referencia al componente padre
+        gridApi: this.gridApi, // Pasar la API del grid principal
         MATERIAL: {
           load: (materialId: number, type: string, callback: (data: any[]) => void) => {
             this.loadMaterialXTableData(materialId, type, callback);
