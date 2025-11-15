@@ -84,11 +84,29 @@ export class DetailCellRendererProveedorSucursalComponent implements ICellRender
           cellEditor: 'agSelectCellEditor',
           cellEditorParams: { values: this.allBranches.map(b => b.name) }
         },
-        { field: 'fechaAlta', headerName: 'Fecha Alta', width: 120, editable: true },
+        {
+          field: 'fechaAlta',
+          headerName: 'Fecha Alta',
+          width: 120,
+          editable: true,
+          valueSetter: (params: any) => {
+            params.data.fechaAlta = params.newValue ? params.newValue.toUpperCase() : '';
+            return true;
+          }
+        },
         { field: 'stockMinimo', headerName: 'Stock Minimo', width: 120, editable: true, type: 'numericColumn' },
         { field: 'resurtido', headerName: 'Resurtido', width: 120, editable: true, type: 'numericColumn' },
         { field: 'capacidadMaxAlmacen', headerName: 'Capacidad Max. Almacen', width: 180, editable: true, type: 'numericColumn' },
-        { field: 'tiempoDeEntrega', headerName: 'Tiempo de Entrega', width: 150, editable: true },
+        {
+          field: 'tiempoDeEntrega',
+          headerName: 'Tiempo de Entrega',
+          width: 150,
+          editable: true,
+          valueSetter: (params: any) => {
+            params.data.tiempoDeEntrega = params.newValue ? params.newValue.toUpperCase() : '';
+            return true;
+          }
+        },
         {
           field: 'activo', headerName: 'Activo', width: 100, editable: true,
           cellRenderer: 'agCheckboxCellRenderer', cellEditor: 'agCheckboxCellEditor'

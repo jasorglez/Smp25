@@ -150,8 +150,26 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
 
     // Definir columnas con soporte para fórmulas en todas
     this.costosColumnDefs = [
-      { headerName: 'Col 1', field: 'col1', editable: true, cellStyle: { textAlign: 'center' } },
-      { headerName: 'Col 2', field: 'col2', editable: true, cellStyle: { textAlign: 'center' } },
+      {
+        headerName: 'Col 1',
+        field: 'col1',
+        editable: true,
+        cellStyle: { textAlign: 'center' },
+        valueSetter: (params: any) => {
+          params.data.col1 = params.newValue ? params.newValue.toUpperCase() : '';
+          return true;
+        }
+      },
+      {
+        headerName: 'Col 2',
+        field: 'col2',
+        editable: true,
+        cellStyle: { textAlign: 'center' },
+        valueSetter: (params: any) => {
+          params.data.col2 = params.newValue ? params.newValue.toUpperCase() : '';
+          return true;
+        }
+      },
       { headerName: 'Col 3', field: 'col3', editable: true, type: 'numericColumn', valueParser: params => Number(params.newValue), cellStyle: { textAlign: 'center' } },
       { headerName: 'Col 4', field: 'col4', editable: true, type: 'numericColumn', valueParser: params => Number(params.newValue), cellStyle: { textAlign: 'center' } },
       { headerName: 'Col 5', field: 'col5', editable: true, type: 'numericColumn', valueParser: params => Number(params.newValue), cellStyle: { textAlign: 'center' } },
@@ -192,8 +210,26 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
         valueFormatter: params => this.currencyPipe.transform(params.value, 'MXN', 'symbol', '1.2-2') || '$0.00',
         cellStyle: { textAlign: 'center' }
       },
-      { headerName: 'Col 10', field: 'col10', editable: true, cellStyle: { textAlign: 'center' } },
-      { headerName: 'Col 11', field: 'col11', editable: true, cellStyle: { textAlign: 'center' } },
+      {
+        headerName: 'Col 10',
+        field: 'col10',
+        editable: true,
+        cellStyle: { textAlign: 'center' },
+        valueSetter: (params: any) => {
+          params.data.col10 = params.newValue ? params.newValue.toUpperCase() : '';
+          return true;
+        }
+      },
+      {
+        headerName: 'Col 11',
+        field: 'col11',
+        editable: true,
+        cellStyle: { textAlign: 'center' },
+        valueSetter: (params: any) => {
+          params.data.col11 = params.newValue ? params.newValue.toUpperCase() : '';
+          return true;
+        }
+      },
     ].map(col => this.addFormulaSupport(col)).map(col => ({ ...col, flex: 1, minWidth: 100 })); // Aplicar flex y minWidth a todas
     
     // Añadir dinámicamente la lógica de cellClass para el resaltado

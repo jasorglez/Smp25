@@ -107,6 +107,7 @@ export class AuthService {
       localStorage.removeItem('branch');
       localStorage.removeItem('mail');
       localStorage.removeItem('sqlToken');
+      localStorage.removeItem('userRoot'); // Limpiar userRoot al cerrar sesión
       this.signalsService.deleteSignals(); // Borramos todas las signals
       this.router.navigateByUrl('/login');
 

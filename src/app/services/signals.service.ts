@@ -56,7 +56,12 @@ getMasterUpdateTrigger() {
 
   private emailChoose           = signal<string | null>(null);
 
-  private rootChoose            = signal<boolean>(false);
+  private rootChoose            = signal<boolean>(
+    // Restaurar desde localStorage si existe, sino false por defecto
+    typeof localStorage !== 'undefined' && localStorage.getItem('userRoot')
+      ? localStorage.getItem('userRoot') === 'true'
+      : false
+  );
 
   private isAdvanced            = signal<boolean>(false);
   

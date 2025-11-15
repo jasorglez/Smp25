@@ -125,6 +125,8 @@ export class ComploginComponent implements OnInit {
               this.signalsService.setemailChoose(this.emailcapt) ;
 
                this.signalsService.setrootChoose(datauser.userRoot) ;
+               // Guardar userRoot en localStorage para persistir al recargar
+               localStorage.setItem('userRoot', datauser.userRoot.toString());
 
               // Refactorización: Encadenar observables con switchMap
               this.auth.getUserId(this.emailcapt).pipe(
