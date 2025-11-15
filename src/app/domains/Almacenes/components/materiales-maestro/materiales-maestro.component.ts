@@ -439,6 +439,18 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         },
         cellStyle: { backgroundColor: '#fff3e0', cursor: 'pointer', textDecoration: 'underline' }
       },
+
+     {
+        field: 'subfamilyCount',
+        headerName: 'Historico',
+        width: 150,
+        cellRenderer: (params: any) => {
+          const count = params.value || 0;
+          return count;
+        },
+        cellStyle: { backgroundColor: '#fff3e0', cursor: 'pointer', textDecoration: 'underline' }
+      },
+
       {
         field: 'providerCount',
         headerName: 'Proveedor',
