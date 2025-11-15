@@ -155,7 +155,13 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
           return true
         },
       width: 150,
-      flex: 1
+      flex: 1,
+      valueSetter: (params: any) => {
+        params.data.campo2 = params.newValue ? params.newValue.toUpperCase() : '';
+        params.data.__modified = true;
+        this.hasContactChanges = true;
+        return true;
+      }
     },
     {
       field: 'campo3',
@@ -167,7 +173,13 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
           return true
         },
       width: 120,
-      flex: 1
+      flex: 1,
+      valueSetter: (params: any) => {
+        params.data.campo3 = params.newValue ? params.newValue.toUpperCase() : '';
+        params.data.__modified = true;
+        this.hasContactChanges = true;
+        return true;
+      }
     },
     {
       field: 'campo4',
@@ -214,29 +226,36 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
         },
       width: 140,
       flex: 1,
-      valueSetter: (params) => {
-        const rawValue = params.newValue;
-        if (!rawValue || typeof rawValue !== 'string') {
-          alerts.basicAlert('Campo requerido', 'El email es obligatorio', 'error');
-          return false;
-        }
+      valueSetter: (params: any) => {
+        const newValue = params.newValue ? params.newValue.trim() : '';
 
-        const normalizedValue = rawValue.trim().toLowerCase();
+        // Si el campo está vacío, permitirlo
+        if (newValue === '') {
+          params.data.campo5 = '';
+          params.data.__modified = true;
+          this.hasContactChanges = true;
+          return true;
+        }
 
         // Validar formato de email
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(normalizedValue)) {
+        const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+        if (emailRegex.test(newValue)) {
+          params.data.campo5 = newValue.toLowerCase();
+          params.data.__modified = true;
+          this.hasContactChanges = true;
+          return true;
+        } else {
+          // Si el email no es válido, mostrar alerta y no guardar el cambio
           alerts.basicAlert(
-            'Email inválido',
-            'Por favor ingrese un email válido (ejemplo: usuario@dominio.com)',
-            'error'
+            'Email Inválido',
+            'Por favor ingrese un correo electrónico válido (ejemplo: usuario@dominio.com)',
+            'warning'
           );
+          // Mantener el valor anterior
           return false;
         }
-
-        params.data[params.colDef.field] = normalizedValue;
-        return true;
-      },
+      }
     },
     {
       field: 'campo6',
@@ -247,7 +266,13 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
           }
           return true
         },
-      width: 140
+      width: 140,
+      valueSetter: (params: any) => {
+        params.data.campo6 = params.newValue ? params.newValue.toUpperCase() : '';
+        params.data.__modified = true;
+        this.hasContactChanges = true;
+        return true;
+      }
     },
      {
       field: 'principal',

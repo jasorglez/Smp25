@@ -285,14 +285,22 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         headerName: 'Num Mat',
         width: 130,
         filter: true,
-        editable: true
+        editable: true,
+        valueSetter: (params: any) => {
+          params.data.insumo = params.newValue ? params.newValue.toUpperCase() : '';
+          return true;
+        }
       },
       {
         field: 'articulo',
         headerName: 'Artículo',
         width: 250,
         filter: true,
-        editable: true
+        editable: true,
+        valueSetter: (params: any) => {
+          params.data.articulo = params.newValue ? params.newValue.toUpperCase() : '';
+          return true;
+        }
       },
       {
         field: 'idCategory',

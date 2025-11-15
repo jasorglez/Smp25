@@ -217,15 +217,20 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
       headerName: 'Descripción Empaque',
       editable: true,
       width: 180,
-      flex: 1
+      flex: 1,
+      valueSetter: (params: any) => {
+        params.data.campo2 = params.newValue ? params.newValue.toUpperCase() : '';
+        return true;
+      }
     },
     {
       field: 'campo3',
       headerName: 'Pieza x Paquete',
       editable: true,
       width: 120,
-      valueParser: (params: any) => {
-        return params.newValue || '';
+      valueSetter: (params: any) => {
+        params.data.campo3 = params.newValue ? params.newValue.toUpperCase() : '';
+        return true;
       }
     },
     {
@@ -233,13 +238,21 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
       headerName: 'Medidas',
       editable: true,
       width: 120,
-      flex: 1
+      flex: 1,
+      valueSetter: (params: any) => {
+        params.data.campo4 = params.newValue ? params.newValue.toUpperCase() : '';
+        return true;
+      }
     },
     {
       field: 'campo5',
       headerName: 'Peso/Volumen',
       editable: true,
-      width: 140
+      width: 140,
+      valueSetter: (params: any) => {
+        params.data.campo5 = params.newValue ? params.newValue.toUpperCase() : '';
+        return true;
+      }
     },
     {
       field: 'campo6',
@@ -247,8 +260,9 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
       editable: true,
       width: 160,
       flex: 1,
-      valueParser: (params: any) => {
-        return params.newValue || '';
+      valueSetter: (params: any) => {
+        params.data.campo6 = params.newValue ? params.newValue.toUpperCase() : '';
+        return true;
       }
     },
     {
