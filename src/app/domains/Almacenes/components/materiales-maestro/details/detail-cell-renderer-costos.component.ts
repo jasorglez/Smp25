@@ -150,37 +150,11 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
 
     // Definir columnas con soporte para fórmulas en todas
     this.costosColumnDefs = [
-<<<<<<< HEAD
-      {
-        headerName: 'Col 1',
-        field: 'col1',
-        editable: true,
-        cellStyle: { textAlign: 'center' },
-        valueSetter: (params: any) => {
-          params.data.col1 = params.newValue ? params.newValue.toUpperCase() : '';
-          return true;
-        }
-      },
-      {
-        headerName: 'Col 2',
-        field: 'col2',
-        editable: true,
-        cellStyle: { textAlign: 'center' },
-        valueSetter: (params: any) => {
-          params.data.col2 = params.newValue ? params.newValue.toUpperCase() : '';
-          return true;
-        }
-      },
-      { headerName: 'Col 3', field: 'col3', editable: true, type: 'numericColumn', valueParser: params => Number(params.newValue), cellStyle: { textAlign: 'center' } },
-      { headerName: 'Col 4', field: 'col4', editable: true, type: 'numericColumn', valueParser: params => Number(params.newValue), cellStyle: { textAlign: 'center' } },
-      { headerName: 'Col 5', field: 'col5', editable: true, type: 'numericColumn', valueParser: params => Number(params.newValue), cellStyle: { textAlign: 'center' } },
-=======
       { headerName: 'Articulos', field: 'col1', editable: true, cellStyle: { textAlign: 'center' } },
       { headerName: 'Costo Unitario', field: 'col2', editable: true, cellStyle: { textAlign: 'center' } },
       { headerName: 'Cantidad a Utilizar', field: 'col3', editable: true, type: 'numericColumn', valueParser: params => Number(params.newValue), cellStyle: { textAlign: 'center' } },
       { headerName: 'Check', field: 'col4', editable: true, type: 'numericColumn', valueParser: params => Number(params.newValue), cellStyle: { textAlign: 'center' } },
       { headerName: 'Proporcion', field: 'col5', editable: true, type: 'numericColumn', valueParser: params => Number(params.newValue), cellStyle: { textAlign: 'center' } },
->>>>>>> 21e44b9e95cb228aad30175136c206f1c9344c15
       {
         headerName: 'Costo Total',
         field: 'col6',
@@ -221,31 +195,8 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
         valueFormatter: params => this.currencyPipe.transform(params.value, 'MXN', 'symbol', '1.2-2') || '$0.00',
         cellStyle: { textAlign: 'center' }
       },
-<<<<<<< HEAD
-      {
-        headerName: 'Col 10',
-        field: 'col10',
-        editable: true,
-        cellStyle: { textAlign: 'center' },
-        valueSetter: (params: any) => {
-          params.data.col10 = params.newValue ? params.newValue.toUpperCase() : '';
-          return true;
-        }
-      },
-      {
-        headerName: 'Col 11',
-        field: 'col11',
-        editable: true,
-        cellStyle: { textAlign: 'center' },
-        valueSetter: (params: any) => {
-          params.data.col11 = params.newValue ? params.newValue.toUpperCase() : '';
-          return true;
-        }
-      },
-=======
       { headerName: 'Col 10', field: 'col10', hide: true, editable: true, cellStyle: { textAlign: 'center' } },
       { headerName: 'Col 11', field: 'col11', hide: true, editable: true, cellStyle: { textAlign: 'center' } },
->>>>>>> 21e44b9e95cb228aad30175136c206f1c9344c15
     ].map(col => this.addFormulaSupport(col)).map(col => ({ ...col, flex: 1, minWidth: 100 })); // Aplicar flex y minWidth a todas
     
     // Añadir dinámicamente la lógica de cellClass para el resaltado
