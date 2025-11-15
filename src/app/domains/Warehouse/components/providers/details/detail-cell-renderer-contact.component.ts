@@ -191,17 +191,6 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
           return true
         },
       width: 100,
-<<<<<<< HEAD
-      valueSetter: (params: any) => {
-        // Solo permitir: números (0-9), espacios, paréntesis (), guiones (-), y el signo más (+)
-        // Convertir a mayúsculas (aunque en números no afecta, mantiene consistencia)
-        const sanitizedValue = params.newValue ? params.newValue.toUpperCase().replace(/[^0-9\s()\-+]/g, '') : '';
-        params.data.campo4 = sanitizedValue;
-        params.data.__modified = true;
-        this.hasContactChanges = true;
-        return true;
-      }
-=======
       valueSetter: (params) => {
         const rawValue = params.newValue;
         if (!rawValue || typeof rawValue !== 'string') {
@@ -225,7 +214,6 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
         params.data[params.colDef.field] = normalizedValue;
         return true;
       },
->>>>>>> 21e44b9e95cb228aad30175136c206f1c9344c15
     },
     {
       field: 'campo5',
@@ -238,7 +226,6 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
         },
       width: 140,
       flex: 1,
-<<<<<<< HEAD
       valueSetter: (params: any) => {
         const newValue = params.newValue ? params.newValue.trim() : '';
 
@@ -269,31 +256,6 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
           return false;
         }
       }
-=======
-      valueSetter: (params) => {
-        const rawValue = params.newValue;
-        if (!rawValue || typeof rawValue !== 'string') {
-          alerts.basicAlert('Campo requerido', 'El email es obligatorio', 'error');
-          return false;
-        }
-
-        const normalizedValue = rawValue.trim().toLowerCase();
-
-        // Validar formato de email
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(normalizedValue)) {
-          alerts.basicAlert(
-            'Email inválido',
-            'Por favor ingrese un email válido (ejemplo: usuario@dominio.com)',
-            'error'
-          );
-          return false;
-        }
-
-        params.data[params.colDef.field] = normalizedValue;
-        return true;
-      },
->>>>>>> 21e44b9e95cb228aad30175136c206f1c9344c15
     },
     {
       field: 'campo6',
