@@ -4,28 +4,28 @@
             <ul class="nav nav-pills">                            
 
                <li class="nav-item">
-                  <a class="nav-link green-tab" routerLink="setup-st" routerLinkActive="active">
-                     <i class="bi bi-gear-fill"></i> {{'setting' | translate}}
+                  <a class="nav-link green-tab" routerLink="menuasig" routerLinkActive="active">
+                     <i class="bi bi-gear-fill"></i> {{'main' | translate}}
                   </a>
                </li>
 
                <li class="nav-item">
                   <a class="nav-link" routerLink="materiales-st" routerLinkActive="active">
-                     <i class="bi bi-palette2"></i> {{'materials' | translate}}
+                     <i class="bi bi-palette2"></i> {{'perm' | translate}}
                   </a>
                </li>
 
                <li class="nav-item">
                   <a class="nav-link green-tab" routerLink="entry-st" routerLinkActive="active">
-                     <i class="bi bi-inbox-fill"></i> {{'entry' | translate}}
+                     <i class="bi bi-inbox-fill"></i> {{'general' | translate}}
                   </a>
                </li>               
 
-               <li class="nav-item">
-                  <a class="nav-link green-tab" routerLink="outings-st" routerLinkActive="active">
-                     <i class="bi bi-upload"></i> {{'outings' | translate}}
-                  </a>
-               </li>
+               <li class="nav-item" *ngIf="isRoot">
+               <a class="nav-link green-tab" routerLink="columnHider" routerLinkActive="active">
+                  <i class="bi bi-columns"></i>Ocultador de columnas</a>
+              </li>
+                        
 
             </ul>
    

@@ -1,5 +1,4 @@
 import {
-  ChangeDetectionStrategy,
   Component,
   effect,
   HostListener,
@@ -7,7 +6,6 @@ import {
 } from '@angular/core';
 import { SignalsService } from 'app/services/signals.service';
 import { AgGridModule } from 'ag-grid-angular';
-import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, concat, EMPTY, lastValueFrom, toArray, tap } from 'rxjs';
@@ -26,6 +24,7 @@ import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { TrackingService } from 'app/services/tracking.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { CatalogsService } from 'app/services/catalogs.service';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'storeComponent',
@@ -120,7 +119,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
       },
       (error) => console.error('Error fetching data:', error)
     );
-  
   }
 
   obtenerUnidades(){
@@ -131,7 +129,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
       },
       (error) => console.error('Error fetching data:', error)
     );
-  
   }
   
 
@@ -185,7 +182,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
         params.event.preventDefault(); // Prevenir comportamiento por defecto
       }
     },
-    onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
   };
   onMasterSelectionChanged(event: any) {}
 
@@ -463,6 +459,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
           }
         }*/
       }
+
       // Determinar qué ID vamos a seleccionar después de recargar
       if (modifiedRows.length > 0) {
         // Si hay filas modificadas, guardamos el ID de la última modificada
