@@ -1682,7 +1682,21 @@ export const routes: Routes = [
               ),
           },
           {
-            path: 'materiales-st',
+            path: 'warehouses', 
+            loadComponent: () => import('./domains/Warehouse/components/warehouses/warehouses.component').then((w) => w.WarehousesComponent),
+            canDeactivate: [UnsavedChangesGuard],
+          },
+          {
+            path: 'materials-st',
+            loadComponent: () => import('./domains/ModProjects/components/materials/materials.component').then((c) => c.MaterialsComponent),
+          },         
+          {
+             path: 'providers-st', loadComponent: () => import('./domains/Warehouse/components/providers/providers.component').then((e) => e.ProvidersComponent),
+                data: { type: 'PROVIDERS' }, // Parámetro para proveedores
+                canDeactivate: [UnsavedChangesGuard],
+          },
+          {
+            path: 'materiales-st2',
             loadComponent: () => import('./domains/ModWareHousesTD/components/materiales-st/materiales-st.component').then(c => c.MaterialesStComponent)
           },
           {

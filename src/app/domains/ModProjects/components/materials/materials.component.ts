@@ -341,15 +341,11 @@ export class MaterialsComponent implements CanComponentDeactivate {
         width: 150,
       },
       {
-        field: 'picture',
-        headerName: 'Imagen',
-        cellRenderer: (params: ICellRendererParams) => {
-          if (params.value) {
-            return `<img src="${params.value}" style="width: 50px; height: 50px; object-fit: cover;" />`;
-          }
-          return '';
-        },
-        width: 80,
+        field: 'existencia',
+        headerName: 'Existencia',
+        editable: false,
+        width: 100,
+        valueGetter: () => 0,
       },
       {
         field: 'costoMN',
@@ -376,6 +372,17 @@ export class MaterialsComponent implements CanComponentDeactivate {
         headerName: 'Stock Máximo',
         editable: true,
         width: 120,
+      },
+      {
+        field: 'picture',
+        headerName: 'Imagen',
+        cellRenderer: (params: ICellRendererParams) => {
+          if (params.value) {
+            return `<img src="${params.value}" style="width: 50px; height: 50px; object-fit: cover;" />`;
+          }
+          return '';
+        },
+        width: 80,
       },
     ];
   }
