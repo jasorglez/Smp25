@@ -36,6 +36,13 @@ export class MaterialsService {
     );
   }
 
+  getAllMaterialsxFamilyview(id: number): Observable<MaterialsResponse[]> {
+    return this.http.get<MaterialsResponse[]>(`${environment.urlWarehouse}/Material/with-families/${id}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+  
+
   addMaterial(data: any): Observable<any> {
     console.log('Adding new material:', data);
     return this.http.post(`${environment.urlWarehouse}/Material`, data, {
