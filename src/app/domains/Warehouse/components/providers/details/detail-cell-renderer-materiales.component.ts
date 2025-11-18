@@ -4,8 +4,11 @@ import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { AuthService } from 'app/services/auth.service';
 import { CustomersService } from 'app/services/customers.service';
+import { CatalogsService } from 'app/services/catalogs.service';
 import { CommonModule } from '@angular/common';
 import { alerts } from 'app/helpers/alerts';
+import { SelectWithTooltipEditorV2Component } from '../editors/select-with-tooltip-editor-v2.component';
+import { lastValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-detail-cell-renderer-materiales',
@@ -66,11 +69,13 @@ import { alerts } from 'app/helpers/alerts';
 })
 export class DetailCellRendererComponentMateriales implements ICellRendererAngularComp {
   private customersService = inject(CustomersService);
+  private catalogsService = inject(CatalogsService);
   authService = inject(AuthService);
 
   params: any;
   providerId: number;
   providerName: string;
+  idRoot: number | null = null;
 
   // Material grid properties
   materialRowData: any[] = [];
@@ -78,10 +83,10 @@ export class DetailCellRendererComponentMateriales implements ICellRendererAngul
   materialGridApi: any;
   selectedMaterial: any = null;
 
-  // Cascading data
+  // Cascading data - Catálogos reales
   categories: any[] = [];
-  subcategories: any[] = [];
-  units: any[] = [];
+  families: any[] = [];
+  subfamilies: any[] = [];
 
   materialGridOptions: any = {
     headerHeight: 25,
@@ -130,54 +135,113 @@ export class DetailCellRendererComponentMateriales implements ICellRendererAngul
     },
     
     {
-      field: 'categoria',
+      field: 'idCategory',
       headerName: 'Categoría',
+      width: 180,
       editable: true,
-      cellEditor: 'agSelectCellEditor',
-      cellEditorParams: {
-        values: ['Electrónica', 'Mecánica', 'Química', 'Textil', 'Construcción', 'Automotriz']
+      cellEditor: 'selectWithTooltipEditor',
+      cellEditorParams: (params: any) => {
+        return {
+          options: this.categories.map(c => ({
+            id: c.id,
+            description: c.description,
+            valueAddition: c.valueAddition,
+            valueAddition2: c.valueAddition2,
+            valueAdditionBit: c.valueAdditionBit
+          }))
+        };
       },
-      width: 120,
+      valueFormatter: (params: any) => {
+        const cat = this.categories.find(c => c.id === params.value);
+        return cat ? cat.description : params.data.categoria || '';
+      },
       onCellValueChanged: (params: any) => {
-        // Cascade to subcategory
-        this.updateSubcategories(params.newValue);
-        params.data.subcategoria = '';
-        this.materialGridApi?.refreshCells({
-          rowNodes: [params.node],
-          columns: ['subcategoria'],
-          force: true
-        });
+        // Cuando cambia la categoría, resetear familia y subfamilia
+        params.data.idFamilia = null;
+        params.data.familia = '';
+        params.data.idSubfamilia = null;
+        params.data.subfamilia = '';
         params.data.__modified = true;
         this.hasMaterialChanges = true;
+        // Refrescar la fila para actualizar el combo de familia
+        params.api.refreshCells({ rowNodes: [params.node], force: true });
       }
     },
     {
-      field: 'familia',
+      field: 'idFamilia',
       headerName: 'Familia',
-      editable: true,
-      cellEditor: 'agSelectCellEditor',
-      cellEditorParams: (params: any) => ({
-        values: this.getSubcategoriesForCategory(params.data.categoria)
-      }),
-      width: 130,
+      width: 180,
+      editable: (params: any) => {
+        // Solo editable si hay una categoría seleccionada
+        return params.data.idCategory != null;
+      },
+      cellEditor: 'selectWithTooltipEditor',
+      cellEditorParams: (params: any) => {
+        // Obtener familias filtradas por la categoría seleccionada
+        const familiesFiltered = this.getFamiliesByCategory(params.data.idCategory);
+        return {
+          options: familiesFiltered.map(f => ({
+            id: f.id,
+            description: f.description,
+            valueAddition: f.valueAddition,
+            valueAddition2: f.valueAddition2
+          }))
+        };
+      },
+      valueFormatter: (params: any) => {
+        const fam = this.families.find(f => f.id === params.value);
+        return fam ? fam.description : params.data.familia || '';
+      },
       onCellValueChanged: (params: any) => {
+        // Cuando cambia la familia, resetear subfamilia
+        params.data.idSubfamilia = null;
+        params.data.subfamilia = '';
         params.data.__modified = true;
         this.hasMaterialChanges = true;
+        params.api.refreshCells({ rowNodes: [params.node], force: true });
+      },
+      cellStyle: (params: any) => {
+        if (!params.data.idCategory) {
+          return { backgroundColor: '#f0f0f0', color: '#999' };
+        }
+        return null;
       }
     },
-     
     {
-      field: 'familia',
+      field: 'idSubfamilia',
       headerName: 'SubFamilia',
-      editable: true,
-      cellEditor: 'agSelectCellEditor',
-      cellEditorParams: (params: any) => ({
-        values: this.getSubcategoriesForCategory(params.data.categoria)
-      }),
-      width: 130,
+      width: 180,
+      editable: (params: any) => {
+        // Solo editable si hay una familia seleccionada
+        return params.data.idFamilia != null;
+      },
+      cellEditor: 'selectWithTooltipEditor',
+      cellEditorParams: (params: any) => {
+        // Obtener subfamilias filtradas por la familia seleccionada
+        const subfamiliesFiltered = this.getSubfamiliesByFamily(params.data.idFamilia);
+        return {
+          options: subfamiliesFiltered.map(sf => ({
+            id: sf.id,
+            description: sf.description,
+            valueAddition: sf.valueAddition,
+            valueAddition2: sf.valueAddition2
+          }))
+        };
+      },
+      valueFormatter: (params: any) => {
+        const sf = this.subfamilies.find(sf => sf.id === params.value);
+        return sf ? sf.description : params.data.subfamilia || '';
+      },
       onCellValueChanged: (params: any) => {
         params.data.__modified = true;
         this.hasMaterialChanges = true;
+        params.api.refreshCells({ rowNodes: [params.node], force: true });
+      },
+      cellStyle: (params: any) => {
+        if (!params.data.idFamilia) {
+          return { backgroundColor: '#f0f0f0', color: '#999' };
+        }
+        return null;
       }
     },
     {
@@ -197,15 +261,22 @@ export class DetailCellRendererComponentMateriales implements ICellRendererAngul
     }
   ];
 
-  components = {};
+  components = {
+    selectWithTooltipEditor: SelectWithTooltipEditorV2Component
+  };
 
   agInit(params: ICellRendererParams): void {
     this.params = params;
     this.providerId = params.data.id;
     this.providerName = params.data.company || params.data.nameContact;
 
-    // Load fake data for materials
-    this.loadMaterialData();
+    // Obtener idRoot del contexto
+    this.idRoot = this.params.context?.idRoot;
+
+    // Cargar catálogos primero, luego materiales
+    this.loadCatalogs().then(() => {
+      this.loadMaterialData();
+    });
   }
 
   refresh(): boolean {
@@ -240,16 +311,6 @@ export class DetailCellRendererComponentMateriales implements ICellRendererAngul
   }
 
   private generateFakeMaterials(): any[] {
-    const categories = ['Electrónica', 'Mecánica', 'Química', 'Textil', 'Construcción', 'Automotriz'];
-    const subcategories = {
-      'Electrónica': ['Circuitos', 'Sensores', 'Baterías', 'Cables'],
-      'Mecánica': ['Engranajes', 'Ejes', 'Rodamientos', 'Sellos'],
-      'Química': ['Ácidos', 'Bases', 'Solventes', 'Catalizadores'],
-      'Textil': ['Telas', 'Hilos', 'Tintes', 'Aditivos'],
-      'Construcción': ['Cemento', 'Acero', 'Madera', 'Vidrio'],
-      'Automotriz': ['Frenos', 'Motor', 'Suspensión', 'Eléctrica']
-    };
-    const units = ['Pieza', 'Kg', 'Litro', 'Metro', 'Caja', 'Paquete'];
     const names = [
       'Resistor 10K', 'Capacitor 100uF', 'Tornillo M8', 'Acido Sulfúrico', 'Tela Algodón',
       'Cemento Portland', 'Batería 12V', 'Engranaje Helicoidal', 'Solvente Orgánico', 'Cable USB'
@@ -259,10 +320,24 @@ export class DetailCellRendererComponentMateriales implements ICellRendererAngul
     const count = Math.floor(Math.random() * 8) + 3; // 3-10 materials
 
     for (let i = 0; i < count; i++) {
-      const category = categories[Math.floor(Math.random() * categories.length)];
-      const subcategory = subcategories[category][Math.floor(Math.random() * subcategories[category].length)];
-      const unit = units[Math.floor(Math.random() * units.length)];
       const price = Math.floor(Math.random() * 1000) + 10;
+
+      // Seleccionar categoría aleatoria
+      const category = this.categories.length > 0
+        ? this.categories[Math.floor(Math.random() * this.categories.length)]
+        : null;
+
+      // Seleccionar familia aleatoria de esa categoría
+      const familiesFiltered = category ? this.getFamiliesByCategory(category.id) : [];
+      const family = familiesFiltered.length > 0
+        ? familiesFiltered[Math.floor(Math.random() * familiesFiltered.length)]
+        : null;
+
+      // Seleccionar subfamilia aleatoria de esa familia
+      const subfamiliesFiltered = family ? this.getSubfamiliesByFamily(family.id) : [];
+      const subfamily = subfamiliesFiltered.length > 0
+        ? subfamiliesFiltered[Math.floor(Math.random() * subfamiliesFiltered.length)]
+        : null;
 
       materials.push({
         id: `mat_${this.providerId}_${i + 1}`,
@@ -270,9 +345,14 @@ export class DetailCellRendererComponentMateriales implements ICellRendererAngul
         codigo: `MAT${String(i + 1).padStart(3, '0')}`,
         nombre: names[Math.floor(Math.random() * names.length)],
         descripcion: `Descripción del material ${i + 1}`,
-        categoria: category,
-        subcategoria: subcategory,
-        unidad: unit,
+        // Usar IDs en lugar de strings
+        idCategory: category?.id || null,
+        categoria: category?.description || '',
+        idFamilia: family?.id || null,
+        familia: family?.description || '',
+        idSubfamilia: subfamily?.id || null,
+        subfamilia: subfamily?.description || '',
+        unidad: 'Pieza',
         precio: price,
         vigente: Math.random() > 0.2, // 80% active
         type: 'MATERIAL',
@@ -283,20 +363,40 @@ export class DetailCellRendererComponentMateriales implements ICellRendererAngul
     return materials;
   }
 
-  private getSubcategoriesForCategory(category: string): string[] {
-    const subcategories = {
-      'Electrónica': ['Circuitos', 'Sensores', 'Baterías', 'Cables'],
-      'Mecánica': ['Engranajes', 'Ejes', 'Rodamientos', 'Sellos'],
-      'Química': ['Ácidos', 'Bases', 'Solventes', 'Catalizadores'],
-      'Textil': ['Telas', 'Hilos', 'Tintes', 'Aditivos'],
-      'Construcción': ['Cemento', 'Acero', 'Madera', 'Vidrio'],
-      'Automotriz': ['Frenos', 'Motor', 'Suspensión', 'Eléctrica']
-    };
-    return subcategories[category] || [];
+  // ========== MÉTODOS DE CATÁLOGOS ==========
+  async loadCatalogs() {
+    if (!this.idRoot) {
+      console.warn('No idRoot available for loading catalogs');
+      return;
+    }
+
+    try {
+      // Cargar categorías, familias y subfamilias en paralelo
+      [this.categories, this.families, this.subfamilies] = await Promise.all([
+        lastValueFrom(this.catalogsService.getCatalogsMaterialBit(this.idRoot, 'CATEGORY')),
+        lastValueFrom(this.catalogsService.getCatalogsMaterialBit(this.idRoot, 'FAM-CAT')),
+        lastValueFrom(this.catalogsService.getCatalogsMaterialBit(this.idRoot, 'SUB-FAM'))
+      ]);
+
+      console.log('Catalogs loaded in detail renderer:', {
+        categories: this.categories.length,
+        families: this.families.length,
+        subfamilies: this.subfamilies.length
+      });
+    } catch (error) {
+      console.error('Error loading catalogs in detail renderer:', error);
+    }
   }
 
-  private updateSubcategories(category: string) {
-    // This would be used for dynamic cascading, but for now static
+  // Obtener familias de una categoría específica
+  getFamiliesByCategory(categoryId: number): any[] {
+    return this.families.filter(f => f.parentId === categoryId);
+  }
+
+  // Obtener subfamilias de una familia específica
+  getSubfamiliesByFamily(familyId: number): any[] {
+    if (!familyId) return [];
+    return this.subfamilies.filter(sf => sf.subParentId === familyId);
   }
 
   refreshMaterials() {
@@ -317,8 +417,13 @@ export class DetailCellRendererComponentMateriales implements ICellRendererAngul
       codigo: '',
       nombre: '',
       descripcion: '',
+      // Inicializar con IDs null en lugar de strings vacíos
+      idCategory: null,
       categoria: '',
-      subcategoria: '',
+      idFamilia: null,
+      familia: '',
+      idSubfamilia: null,
+      subfamilia: '',
       unidad: '',
       precio: 0,
       vigente: true,

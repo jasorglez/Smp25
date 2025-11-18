@@ -812,6 +812,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
         params.successCallback(params.data.detailData);
       },
       context: { // Pasamos las funciones de CRUD a los componentes de detalle
+        idRoot: this.idRoot, // ⭐ Pasar idRoot al contexto para los detail renderers
         CONTACT: { // Para la grilla de Contactos
           load: (providerId: number, type: string, callback: (data: any[]) => void) => {
             this.loadProviderXTableData(providerId, type, callback);
