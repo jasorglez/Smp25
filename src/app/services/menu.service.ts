@@ -19,6 +19,11 @@ export class MenuService {
   getMenu(idCompany: number): Observable<any> {
     return this.http.get(`${environment.urlSecurity}/MenuXCompany/${idCompany}`, { headers: this.trackingService.getHeaders() });
   }
+
+  getDetails(idCompany: number): Observable<any> {
+    return this.http.get(`${environment.urlSecurity}/DetailedPermissions`, { headers: this.trackingService.getHeaders() });
+  } 
+
   getMasterMenu(): Observable<any> {
     return this.http.get(`${environment.urlSecurity}/MenuXCompany`, { headers: this.trackingService.getHeaders() });
   }

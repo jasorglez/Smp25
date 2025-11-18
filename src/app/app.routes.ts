@@ -730,11 +730,11 @@ export const routes: Routes = [
                   ).then((m) => m.menuComponent),
               },
               {
-                path: 'catastrales',
+                path: 'permisos',
                 loadComponent: () =>
                   import(
-                    './domains/ModProjects/components/ot/OtManuals/historicoOT.component'
-                  ).then((c) => c.HistoricoOTComponent),
+                    './domains/SMP/Components/permission/permission.component'
+                  ).then((p) => p.PermissionComponent),            
               },
               {
                 path: 'columnHider',
