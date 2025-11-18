@@ -709,7 +709,7 @@ export const routes: Routes = [
           {
             path: 'menu',
             loadComponent: () =>
-              import('./domains/SMP/pages/proccreatemenus/proccreatemenus.component').then(
+              import('./domains/SMP/Pages/proccreatemenus/proccreatemenus.component').then(
                 (r) => r.ProccreatemenusComponent
               ),
            canActivate: [TrackingGuard],
