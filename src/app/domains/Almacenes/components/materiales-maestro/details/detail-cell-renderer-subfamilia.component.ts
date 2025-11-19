@@ -191,7 +191,7 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
         headerName: 'Categoría',
         field: 'category',
         rowGroup: true,
-        hide: false, // Mostrar como columna
+        hide: true, // Mostrar como columna
         filter: 'agSetColumnFilter',
         filterParams: {
           buttons: ['reset', 'apply'],

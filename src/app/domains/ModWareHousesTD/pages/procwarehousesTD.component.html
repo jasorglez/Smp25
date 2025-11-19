@@ -1,12 +1,50 @@
 <div class="col-md-12">
       <div class="card">
          <div class="card-header p-2">
-            <ul class="nav nav-pills">
-   
-              <li class="nav-item">
-                  <a class="nav-link green-tab" routerLink="setup" routerLinkActive="active"><i
-                        class="bi bi-list-ul"></i> {{'setting' | translate}}</a>
+            <ul class="nav nav-pills">     
+               
+               <li class="nav-item">
+                  <a class="nav-link" routerLink="warehouses" routerLinkActive="active">
+                     <i class="bi bi-people-fill"></i> {{'warehouses' | translate}}
+                  </a>
                </li>
+
+             <li class="nav-item" >
+                <a class="nav-link modern-tab" routerLink="materials-st" routerLinkActive="active">
+                  <i class="bi bi-box-seam"></i>{{ 'materials' | translate}}
+                </a>
+             </li>               
+               
+               <li class="nav-item">
+                  <a class="nav-link" routerLink="providers-st" routerLinkActive="active">
+                     <i class="bi bi-people-fill"></i> {{'providers' | translate}}
+                  </a>
+               </li>
+
+               <li class="nav-item">
+                  <a class="nav-link" routerLink="materiales-st" routerLinkActive="active">
+                     <i class="bi bi-palette2"></i> {{'materials' | translate}}
+                  </a>
+               </li>
+
+               <li class="nav-item">
+                  <a class="nav-link green-tab" routerLink="entry-st" routerLinkActive="active">
+                     <i class="bi bi-inbox-fill"></i> {{'entrances' | translate}}
+                  </a>
+               </li>               
+
+               <li class="nav-item">
+                  <a class="nav-link green-tab" routerLink="outings-st" routerLinkActive="active">
+                     <i class="bi bi-upload"></i> {{'outings' | translate}}
+                  </a>
+               </li>
+
+              <li class="nav-item">
+                  <a class="nav-link green-tab" routerLink="setup-st" routerLinkActive="active">
+                     <i class="bi bi-gear-fill"></i> {{'setting' | translate}}
+                  </a>
+               </li>
+
             </ul>
    
             <router-outlet></router-outlet>

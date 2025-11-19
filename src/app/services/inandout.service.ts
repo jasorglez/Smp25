@@ -33,8 +33,8 @@ export class InandoutService {
     return this.http.delete<any[]>(`${environment.urlWarehouse}/Inandout/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
-  getInAndOutItems(idRequisition: number): Observable<any> {
-    return this.http.get<any[]>(`${environment.urlWarehouse}/Detailsinandout/${idRequisition}`, { headers: this.trackingService.getHeaders() });
+  getInAndOutItems(idParam: number): Observable<any> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Detailsinandout/${idParam}`, { headers: this.trackingService.getHeaders() });
   }
 
   addInAndOutItem(data: any): Observable<any> {

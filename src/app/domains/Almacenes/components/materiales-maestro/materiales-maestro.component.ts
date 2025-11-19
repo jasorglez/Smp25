@@ -11,6 +11,8 @@ import { DetailCellRendererSucursalComponent } from './details/detail-cell-rende
 import { DetailCellRendererCostosComponent } from './details/detail-cell-renderer-costos.component';
 import { DetailCellRendererSubfamiliaComponent } from './details/detail-cell-renderer-subfamilia.component';
 import { DetailCellRendererProveedorSucursalComponent } from './details/detail-cell-renderer-proveedor-sucursal.component';
+import { DetailCellRendererParametrosComponent } from './details/detail-cell-renderer-parametros.component';
+import { DetailCellRendererHistoricoComponent } from './details/detail-cell-renderer-historico.component';
 import { SelectWithTooltipEditorV2Component } from './editors/select-with-tooltip-editor-v2.component';
 import { ImageCellRendererComponent } from './renderers/image-cell-renderer.component';
 import { MaterialsService } from 'app/services/materials.service';
@@ -36,6 +38,8 @@ import { SubfamiliaModalService, ModalData } from './services/subfamilia-modal.s
     DetailCellRendererCostosComponent,
     DetailCellRendererSubfamiliaComponent,
     DetailCellRendererProveedorSucursalComponent,
+    DetailCellRendererParametrosComponent,
+    DetailCellRendererHistoricoComponent,
     SelectWithTooltipEditorV2Component,
     ImageCellRendererComponent
   ],
@@ -197,7 +201,9 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     detailCellRendererSucursal: DetailCellRendererSucursalComponent,
     detailCellRendererCostos: DetailCellRendererCostosComponent,
     detailCellRendererSubfamilia: DetailCellRendererSubfamiliaComponent,
-    detailCellRendererProveedorSucursal: DetailCellRendererProveedorSucursalComponent
+    detailCellRendererProveedorSucursal: DetailCellRendererProveedorSucursalComponent,
+    detailCellRendererParametros: DetailCellRendererParametrosComponent,
+    detailCellRendererHistorico: DetailCellRendererHistoricoComponent
   };
 
   public gridOptions: any = {
@@ -223,6 +229,10 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         return { component: 'detailCellRendererSubfamilia' };
       } else if (params.data.detailType === 'costos') {
         return { component: 'detailCellRendererCostos' };
+      } else if (params.data.detailType === 'parametros') {
+        return { component: 'detailCellRendererParametros' };
+      } else if (params.data.detailType === 'historico') {
+        return { component: 'detailCellRendererHistorico' };
       }
       return undefined;
     },
@@ -280,14 +290,22 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         headerName: 'Num Mat',
         width: 130,
         filter: true,
-        editable: true
+        editable: true,
+        valueSetter: (params: any) => {
+          params.data.insumo = params.newValue ? params.newValue.toUpperCase() : '';
+          return true;
+        }
       },
       {
         field: 'articulo',
         headerName: 'Artículo',
         width: 250,
         filter: true,
-        editable: true
+        editable: true,
+        valueSetter: (params: any) => {
+          params.data.articulo = params.newValue ? params.newValue.toUpperCase() : '';
+          return true;
+        }
       },
       {
         field: 'idCategory',
@@ -426,6 +444,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         },
         cellStyle: { backgroundColor: '#fff3e0', cursor: 'pointer', textDecoration: 'underline' }
       },
+ 
       {
         field: 'providerCount',
         headerName: 'Proveedor',
@@ -434,6 +453,17 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           return params.value || 0;
         },
         cellStyle: { backgroundColor: '#e3f2fd', cursor: 'pointer', textDecoration: 'underline' }
+      },
+
+     {
+        field: 'historico',
+        headerName: 'Historico',
+        width: 150,
+        cellRenderer: (params: any) => {
+          const count = params.value || 0;
+          return count;
+        },
+        cellStyle: { backgroundColor: '#fff3e0', cursor: 'pointer', textDecoration: 'underline' }
       },
  
       {
@@ -455,6 +485,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     if (colId === 'providerCount') return 'proveedores';
     if (colId === 'subfamilyCount') return 'subfamilia';
     if (colId === 'costo') return 'costos';
+    if (colId === 'historico') return 'historico';
     return null;
   }
 
@@ -482,7 +513,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     event.node.setSelected(true);
 
     const colId = event.column.getColId();
-    const isDetailColumn = colId === 'providerCount' || colId === 'subfamilyCount' || colId === 'costo';
+    const isDetailColumn = colId === 'providerCount' || colId === 'subfamilyCount' || colId === 'costo' || colId === 'historico';
 
     if (isDetailColumn) {
       const node = event.node;
@@ -553,6 +584,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       context: {
         idRoot: this.idRoot, // Pasar idRoot al detail renderer
         componentParent: this, // Referencia al componente padre
+        gridApi: this.gridApi, // Pasar la API del grid principal
         MATERIAL: {
           load: (materialId: number, type: string, callback: (data: any[]) => void) => {
             this.loadMaterialXTableData(materialId, type, callback);

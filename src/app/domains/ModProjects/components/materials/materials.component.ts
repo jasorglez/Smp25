@@ -1,13 +1,11 @@
 import {
-  ChangeDetectionStrategy,
   Component,
   effect,
   HostListener,
   inject,
 } from '@angular/core';
 import { SignalsService } from 'app/services/signals.service';
-import { AgGridModule } from 'ag-grid-angular';
-import { CommonModule } from '@angular/common';
+import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, concat, EMPTY, lastValueFrom, toArray, tap } from 'rxjs';
@@ -26,12 +24,81 @@ import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { TrackingService } from 'app/services/tracking.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { CatalogsService } from 'app/services/catalogs.service';
+import { CommonModule } from '@angular/common';
+
+@Component({
+  selector: 'custom-group-renderer',
+  standalone: true,
+  template: `
+    <div class="ag-group-row">
+      <span
+        class="ag-group-expanded"
+        [class.ag-group-contracted]="!params.node.expanded"
+        (click)="onToggleExpand()"
+      ></span>
+      <span>{{ displayText }}</span>
+    </div>
+  `,
+  styles: [`
+    .ag-group-row {
+      display: flex;
+      align-items: center;
+    }
+    .ag-group-expanded {
+      width: 12px;
+      height: 12px;
+      margin-right: 4px;
+      cursor: pointer;
+      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12"><path d="M4 6L0 2h8z"/></svg>') no-repeat center;
+      background-size: 12px;
+    }
+    .ag-group-contracted {
+      transform: rotate(-90deg);
+    }
+  `]
+})
+export class CustomGroupRendererComponent implements ICellRendererAngularComp {
+  params: any;
+  displayText: string = '';
+
+  agInit(params: any): void {
+    this.params = params;
+    const field = params.node.rowGroupColumn?.getColDef()?.field;
+    if (field === 'familiaDescription') {
+      this.displayText = `Familia: ${params.value}`;
+    } else if (field === 'subfamiliaDescription') {
+      this.displayText = `Subfamilia: ${params.value}`;
+    } else {
+      this.displayText = params.value;
+    }
+  }
+
+  onToggleExpand(): void {
+    this.params.node.setExpanded(!this.params.node.expanded);
+  }
+
+  refresh(params: any): boolean {
+    this.params = params;
+    return true;
+  }
+}
 
 @Component({
   selector: 'storeComponent',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [CommonModule, FormsModule, AgGridModule, CustomGroupRendererComponent],
   templateUrl: './materials.component.html',
+  styles: `
+    ::ng-deep .small-text-ag-grid {
+      font-size: 12px;
+    }
+    ::ng-deep .small-text-ag-grid .ag-header-cell-text {
+      font-size: 11px;
+    }
+    ::ng-deep .small-text-ag-grid .ag-cell-value {
+      font-size: 11px;
+    }
+  `
 })
 export class MaterialsComponent implements CanComponentDeactivate {
   idcompany: number = null;
@@ -50,6 +117,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
   private lastEditedRowId: number | string | null = null;
   newlyAddedRows: string[] = [];
   unitsCatalog: any[] = [];
+  selectedImage: string = '';
 
 
   private gridApi: GridApi;
@@ -63,6 +131,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
   components = {
     multiLineEditor: MultiLineEditorComponent,
     autocompleteEditor: AutocompleteEditorComponent,
+    customGroupRenderer: CustomGroupRendererComponent,
   };
 
   public defaultColDef: ColDef = {
@@ -75,30 +144,15 @@ export class MaterialsComponent implements CanComponentDeactivate {
   };
   private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };
-    
+
     // Eliminar siempre estos campos internos
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
     delete cleanedData.id;
-    
-    // Eliminar SIEMPRE el ID para updates (el servidor no lo necesita)
-    
+
     // Mapear campos requeridos por el servidor
-    if (cleanedData.articulo) {
-      cleanedData.material = cleanedData.articulo;
-    } else if (cleanedData.insumo) {
-      cleanedData.material = cleanedData.insumo;
-    } else {
-      cleanedData.material = cleanedData.description || '';
-    }
-    
-    
-    // Eliminar campos que no acepta el servidor
-    delete cleanedData.idBranch;
-    delete cleanedData.idCustomer;
-    delete cleanedData.pricePresentations;
-    delete cleanedData.barcode; // Eliminar el campo duplicado incorrecto
-    
+    cleanedData.material = cleanedData.insumo || cleanedData.materialDescription || '';
+
     console.log('Datos limpiados para servidor:', cleanedData);
     return cleanedData;
   }
@@ -113,14 +167,13 @@ export class MaterialsComponent implements CanComponentDeactivate {
     });
   }
   obtenerDatos(){
-    return this.materialsService.getMaterials(this.idcompany, 'CONSUMABLE').subscribe(
+    return this.materialsService.getAllMaterialsxFamilyview(this.idcompany).subscribe(
       (data: any) => {
         this.rowData = data;
         console.log(this.rowData)
       },
       (error) => console.error('Error fetching data:', error)
     );
-  
   }
 
   obtenerUnidades(){
@@ -131,18 +184,18 @@ export class MaterialsComponent implements CanComponentDeactivate {
       },
       (error) => console.error('Error fetching data:', error)
     );
-  
   }
   
 
  
   public gridOptions: any = {
-    headerHeight: 25,
+    headerHeight: 50,
     rowHeight: 20,
     groupDefaultExpanded: -1, // -1 significa expandir todos los niveles
     suppressDragLeaveHidesColumns: true,
     suppressMakeColumnVisibleAfterUnGroup: true,
     rowBuffer: 20,
+    masterDetail: false, // No master-detail por ahora
     getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -185,7 +238,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
         params.event.preventDefault(); // Prevenir comportamiento por defecto
       }
     },
-    onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
   };
   onMasterSelectionChanged(event: any) {}
 
@@ -200,13 +252,27 @@ export class MaterialsComponent implements CanComponentDeactivate {
   }
 
   onMasterRowSelected(event: any) {
-    this.id = event.data.id;
+    if (event.data && event.data.id) {
+      this.id = event.data.id;
+    }
   }
 
   async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
     const colId = event.column.getColId();
     const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
     const selectedId = selectedRowData.id; // Obtener el ID del registro
+
+    if (colId === 'picture' && selectedRowData.picture) {
+      if (this.notSavedChanges) {
+        alerts.basicAlert('Cambios sin guardar', 'Guarde los cambios antes de ver la imagen.', 'warning');
+        return;
+      }
+      this.selectedImage = selectedRowData.picture;
+      // Open modal using Bootstrap
+      const modal = new (window as any).bootstrap.Modal(document.getElementById('imageModal'));
+      modal.show();
+      return;
+    }
 
     this.notSavedChanges = true;
 
@@ -245,103 +311,79 @@ export class MaterialsComponent implements CanComponentDeactivate {
   get colMaster(): ColDef[] {
     return [
       {
-        field: 'barCode',
-        headerName: 'Numero del articulo',
-        editable: true,
-        width: 250,
+        field: 'familiaDescription',
+        headerName: 'Familia',
+        rowGroup: true,
+        hide: true,
       },
       {
-        field: 'description',
-        headerName: 'Descripción',
-        editable: true,
-        width: 250,
+        field: 'subfamiliaDescription',
+        headerName: 'Subfamilia',
+        rowGroup: true,
+        hide: true,
       },
       {
-        field: 'date',
-        headerName: 'Fecha',
+        field: 'insumo',
+        headerName: 'Insumo',
         editable: true,
-        filter: 'agDateColumnFilter',
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
         width: 150,
-        cellRenderer: 'agDateCellRenderer',
-        cellEditor: 'agDateCellEditor',
-        valueGetter: (params) => {
-          // Si no hay fecha, usar fecha actual
-          if (!params.data.date) {
-            return new Date().toISOString();
-          }
-          return params.data.date;
-        },
-        valueSetter: (params) => {
-          if (!params.newValue) {
-            params.data.date = new Date().toISOString();
-            return true;
-          }
-        
-          let date;
-          // Si viene en formato "2025-07-29T00:00:00" del agDateCellEditor
-          console.log('Valor recibido en valueSetter:', params.newValue);
-          if (typeof params.newValue === 'string' && params.newValue.includes('T') && !params.newValue.includes('Z')) {
-            // Agregar 'Z' para que sea UTC y crear la fecha
-            date = new Date(params.newValue + 'Z');
-          } else {
-            date = new Date(params.newValue);
-          }
-          
-          if (isNaN(date.getTime())) {
-            alerts.basicAlert('Error', 'Fecha inválida', 'error');
-            return false;
-          } 
-        
-          // Asegurar que la fecha se guarde en el formato ISO correcto
-          params.data.date = date.toISOString();
-          // Marcar como modificado para que se incluya en el save
-          params.data.__modified = true;
-          return true;
-        },
-        valueFormatter: (params) => {
-          try {
-            // Si no hay valor, usar fecha actual
-            const dateValue = params.value || new Date().toISOString();
-            const date = new Date(dateValue);
-            if (isNaN(date.getTime())) return '';
-            return `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
-          } catch {
-            return '';
-          }
-        },
-
-
       },
       {
-      field: 'idMedida',
-      headerName: 'Unidad',
-      editable: true,
-      width: 250,
-      cellEditor: 'agSelectCellEditor',
-      cellEditorParams: {
-        values: this.unitsCatalog ? this.unitsCatalog.map((item) => item.id) : [],
+        field: 'materialDescription',
+        headerName: 'Descripción del Material',
+        editable: true,
+        width: 250,
       },
-      valueFormatter: (params) => {
-        const foundItem = this.unitsCatalog?.find(item => item.id === params.value);
-        return foundItem ? foundItem.description : params.value;
+      {
+        field: 'barcode',
+        headerName: 'Código de Barras',
+        editable: true,
+        width: 150,
       },
-    
-      // Este valor es el que edita la celda (id)
-      valueGetter: (params) => {
-        return params.data?.idMedida ?? ''; // id_medida es el valor real
+      {
+        field: 'existencia',
+        headerName: 'Existencia',
+        editable: false,
+        width: 100,
+        valueGetter: () => 0,
       },
-    
-      // Cuando el usuario selecciona un description, lo convertimos a id
-      valueParser: (params) => {
-        const foundItem = this.unitsCatalog?.find(item => item.description === params.newValue);
-        return foundItem ? foundItem.id : params.newValue;
-      }
-    }
+      {
+        field: 'costoMN',
+        headerName: 'Costo MN',
+        editable: true,
+        width: 100,
+        valueFormatter: (params) => params.value ? `$${params.value.toFixed(2)}` : '$0.00',
+      },
+      {
+        field: 'ventaMN',
+        headerName: 'Venta MN',
+        editable: true,
+        width: 100,
+        valueFormatter: (params) => params.value ? `$${params.value.toFixed(2)}` : '$0.00',
+      },
+      {
+        field: 'stockMin',
+        headerName: 'Stock Mínimo',
+        editable: true,
+        width: 120,
+      },
+      {
+        field: 'stockMax',
+        headerName: 'Stock Máximo',
+        editable: true,
+        width: 120,
+      },
+      {
+        field: 'picture',
+        headerName: 'Imagen',
+        cellRenderer: (params: ICellRendererParams) => {
+          if (params.value) {
+            return `<img src="${params.value}" style="width: 50px; height: 50px; object-fit: cover;" />`;
+          }
+          return '';
+        },
+        width: 80,
+      },
     ];
   }
 
@@ -356,31 +398,20 @@ export class MaterialsComponent implements CanComponentDeactivate {
   }
 
   addMasterRow() {
-  const tempId = `temp_${this.tempIdCounter++}`;
+    const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
       idCompany: this.idcompany,
-      idBranch: this.idBranch,
-      idCustomer: null,
       insumo: '',
-      articulo: '',
-      barCode: '',
-      idFamilia: 1, // Valor por defecto válido, debe configurarse según necesidad
-      idSubfamilia: null,
-      idMedida: '', // Valor por defecto válido, debe configurarse según necesidad
-      idUbication: 1, // Valor por defecto válido, debe configurarse según necesidad
-      description: '',
-      date: new Date().toISOString(), // Formato completo DateTime
-      aplicaResg: false,
-      costoMN: 0.00,
-      costoDLL: 0.00,
-      ventaMN: 0.00,
-      ventaDLL: 0.00,
-      stockMin: 0,
-      stockMax: 0,
+      materialDescription: '',
+      familiaDescription: '',
+      subfamiliaDescription: '',
+      barcode: '',
       picture: '',
-      typeMaterial: 'CONSUMABLE',
-      vigente: true,
+      costoMN: 0,
+      ventaMN: 0,
+      stockMin: 1,
+      stockMax: 30,
       active: true,
       __isNew: true,
     };
@@ -397,10 +428,9 @@ export class MaterialsComponent implements CanComponentDeactivate {
 
       this.gridApi.startEditingCell({
         rowIndex: firstRowIndex,
-        colKey: 'barCode'
+        colKey: 'insumo'
       });
-    }, 0);// Un pequeño retraso de 50ms 
-  
+    }, 0);
   }
 
   async saveMasterChanges() {
@@ -463,6 +493,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
           }
         }*/
       }
+
       // Determinar qué ID vamos a seleccionar después de recargar
       if (modifiedRows.length > 0) {
         // Si hay filas modificadas, guardamos el ID de la última modificada
@@ -589,6 +620,18 @@ export class MaterialsComponent implements CanComponentDeactivate {
         }
       });
     }, 100);
+  }
+
+  onAdd() {
+    this.addMasterRow();
+  }
+
+  onEdit() {
+    this.saveMasterChanges();
+  }
+
+  onDelete() {
+    this.deleteMasterEntry();
   }
 
   // ==================== GUARD ALERT UNSAVED CHANGES ====================

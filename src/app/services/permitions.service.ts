@@ -15,7 +15,9 @@ export class PermitionsService {
    private trackingService = inject(TrackingService);
    private http = inject(HttpClient);
 
-   addPermitions(data: any): Observable<any> {
+
+
+  addPermitions(data: any): Observable<any> {
       return this.http.post(`${environment.urlSecurity}/CrudPremissionsDelison`, data, { headers: this.trackingService.getHeaders() });
     }
 
@@ -26,6 +28,10 @@ export class PermitionsService {
   addPermitionsDetailBydescription(data: any): Observable<any> {
     return this.http.post(`${environment.urlSecurity}/CrudPremissionsDelison/bydescription`, data, { headers: this.trackingService.getHeaders() });
   }
+
+  getPermisionswarehousexEmail(email: string): Observable<any> {
+      return this.http.get(`${environment.urlSecurity}/WarehousePermissions/email/${email}`, { headers: this.trackingService.getHeaders() });
+    }
 
   getRolYPosicion(idUser: number, idBranch: number): Observable<any> {
     return this.http.get(`${environment.urlSecurity}/CrudPremissionsDelison/${idUser}/${idBranch}`, { headers: this.trackingService.getHeaders() });

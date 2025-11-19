@@ -150,12 +150,21 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
         this.hasBankChanges = true;
       }
     },
-    { field: 'campo2', headerName: 'Nombre Titular', editable: (params) => {
+    {
+      field: 'campo2',
+      headerName: 'Nombre Titular',
+      editable: (params) => {
           if (params.data.__isNew) {
             return true;
           }
           return true
-        }, width: 190 },
+        },
+      width: 190,
+      valueSetter: (params: any) => {
+        params.data.campo2 = params.newValue ? params.newValue.toUpperCase() : '';
+        return true;
+      }
+    },
    // ...existing code...
 {
   field: 'campo3',
@@ -219,26 +228,49 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
   }
 },
 // ...existing code...
-    { field: 'campo4', headerName: 'Numero Cuenta', editable: (params) => {
+    {
+      field: 'campo4',
+      headerName: 'Numero Cuenta',
+      editable: (params) => {
           if (params.data.__isNew) {
             return true;
           }
           return true
-        },width: 190 },
+        },
+      width: 190,
+      valueSetter: (params: any) => {
+        params.data.campo4 = params.newValue ? params.newValue.toUpperCase() : '';
+        return true;
+      }
+    },
     
-    { field: 'campo5', headerName: 'Clabe', editable: (params) => {
+    {
+      field: 'campo5',
+      headerName: 'Clabe',
+      editable: (params) => {
           if (params.data.__isNew) {
             return true;
           }
           return true
-        },width: 190 
+        },
+      width: 190,
+      valueSetter: (params: any) => {
+        // Solo permitir números para CLABE
+        const sanitizedValue = params.newValue ? params.newValue.replace(/[^0-9]/g, '') : '';
+        params.data.campo5 = sanitizedValue;
+        return true;
+      }
     },
     
     {
       field: 'campo6',
       headerName: 'Comentario',
       editable: true,
-      width: 250
+      width: 250,
+      valueSetter: (params: any) => {
+        params.data.campo6 = params.newValue ? params.newValue.toUpperCase() : '';
+        return true;
+      }
     },
 
     {

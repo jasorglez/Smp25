@@ -705,25 +705,12 @@ export const routes: Routes = [
               }
             }
           },
-          {
-            path: 'columnHider',
-            loadComponent: () =>
-              import('./domains/SMP/Components/columnHider/columnHider.component').then(
-                (r) => r.columnHiderComponent
-              ),
-           canActivate: [TrackingGuard],
-            data: {
-              tracking: {
-                logMessage: 'Click en Pestaña Configuración Módulo columnHider',
-                category: 'Setup'
-              }
-            }
-          },
+       
           {
             path: 'menu',
             loadComponent: () =>
-              import('./domains/SMP/Components/menus/menu.component').then(
-                (r) => r.menuComponent
+              import('./domains/SMP/Pages/proccreatemenus/proccreatemenus.component').then(
+                (r) => r.ProccreatemenusComponent
               ),
            canActivate: [TrackingGuard],
             data: {
@@ -731,7 +718,32 @@ export const routes: Routes = [
                 logMessage: 'Click en Pestaña Configuración Módulo Menu',
                 category: 'Setup'
               }
-            }
+            },
+             children: [
+              { path: '', redirectTo: '', pathMatch: 'full' },
+              ...SharedModule.getRoutes(),
+              {
+                path: 'menuasig',
+                loadComponent: () =>
+                  import(
+                    './domains/SMP/Components/menus/menu.component'
+                  ).then((m) => m.menuComponent),
+              },
+              {
+                path: 'permisos',
+                loadComponent: () =>
+                  import(
+                    './domains/SMP/Components/permission/permission.component'
+                  ).then((p) => p.PermissionComponent),            
+              },
+              {
+                path: 'columnHider',
+                loadComponent: () =>
+                        import('./domains/SMP/Components/columnHider/columnHider.component').then(
+                (r) => r.columnHiderComponent),
+              }
+            ],
+
           },
           {
             path: 'roles',
@@ -1661,7 +1673,40 @@ export const routes: Routes = [
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'warehousesTD' } },
         children: [
-          { path: '', redirectTo: '', pathMatch: 'full' },
+          { path: '', redirectTo: 'setup-st', pathMatch: 'full' },
+          {
+            path: 'setup-st',
+            loadComponent: () =>
+              import('./domains/ModWareHousesTD/components/setup-ts/setup-st.component').then(
+                (c) => c.SetupStComponent
+              ),
+          },
+          {
+            path: 'warehouses', 
+            loadComponent: () => import('./domains/Warehouse/components/warehouses/warehouses.component').then((w) => w.WarehousesComponent),
+            canDeactivate: [UnsavedChangesGuard],
+          },
+          {
+            path: 'materials-st',
+            loadComponent: () => import('./domains/ModProjects/components/materials/materials.component').then((c) => c.MaterialsComponent),
+          },         
+          {
+             path: 'providers-st', loadComponent: () => import('./domains/Warehouse/components/providers/providers.component').then((e) => e.ProvidersComponent),
+                data: { type: 'PROVIDERS' }, // Parámetro para proveedores
+                canDeactivate: [UnsavedChangesGuard],
+          },
+          {
+            path: 'materiales-st2',
+            loadComponent: () => import('./domains/ModWareHousesTD/components/materiales-st/materiales-st.component').then(c => c.MaterialesStComponent)
+          },
+          {
+            path: 'entry-st',
+            loadComponent: () => import('./domains/ModWareHousesTD/components/entry-st/entry-st.component').then(c => c.EntryStComponent)
+          },
+          {
+            path: 'outings-st',
+            loadComponent: () => import('./domains/ModWareHousesTD/components/outings-st/outings-st.component').then(c => c.OutingsStComponent)
+          }
         ]
       },
       {
