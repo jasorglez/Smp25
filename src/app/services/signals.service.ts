@@ -766,6 +766,7 @@ getMasterUpdateTrigger() {
   private refreshClock = signal<boolean>(false);
   private refresCantidadPermisos = signal<boolean>(false);
   private refresSecurity = signal<boolean>(false);
+  private masterCatalog = signal<number>(null); 
 
 
   setIdCatalogFamily(id: number){
@@ -845,5 +846,13 @@ getMasterUpdateTrigger() {
   }
   getRefresSecurity() {
     return this.refresSecurity;
+  }
+
+  setMasterCatalog(value: number){
+    this.masterCatalog.set(value);
+  }
+
+  getMasterCatalog() {
+    return this.masterCatalog;
   }
 }

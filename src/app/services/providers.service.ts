@@ -49,6 +49,9 @@ export class ProvidersService {
   getProviderByType(type: string) {
     return this.http.get(`${environment.urlSmp}/Providers/3fields?type=${type}`, { headers: this.trackingService.getHeaders() });
   }
+  getCantidadProviderXTable(id: string) {
+    return this.http.get(`${environment.urlWarehouse}/ProveedorXTabla/cantidad-by-proveedor/${id}`, { headers: this.trackingService.getHeaders() });
+  }
 
   addProviderXTable(data: any) {
     return this.http.post(`${environment.urlWarehouse}/ProveedorXTabla`, data, { headers: this.trackingService.getHeaders() });

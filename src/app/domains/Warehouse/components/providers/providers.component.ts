@@ -1222,7 +1222,9 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
           principal_antes: row.principal,
           cleanedData
         });
+
         this.customerService.updateFiel(row.idTabla, row.type, "SUMA").subscribe();
+        
         await lastValueFrom(this.providersService.addProviderXTable(cleanedData));
         // NO recargar toda la tabla aquí - causaba que se cierre el detalle
         // this.obtenerDatos();
@@ -1251,6 +1253,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
 
         // No es necesario recargar aquí, el componente hijo lo hace.
         // Simplemente limpiamos los flags.
+        this.updateCantidad(providerId);
         data.forEach(row => {
           delete row.__isNew;
           delete row.__modified;
@@ -1323,6 +1326,11 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
         'error'
       );
     }
+  }
+
+  updateCantidad(id){
+    alert('Actualizar cantidad de contactos para proveedor ID:' + id);
+
   }
 
   // ==================== GUARD ALERT UNSAVED CHANGES ====================
