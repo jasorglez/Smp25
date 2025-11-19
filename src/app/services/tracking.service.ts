@@ -63,6 +63,10 @@ export class TrackingService {
   }
 
   getEmail(): string {
+    if (!this.emailser) {
+      const storedEmail = localStorage.getItem('mail');
+      this.emailser = storedEmail !== null ? storedEmail : '';
+    }
     return this.emailser;
   }
 

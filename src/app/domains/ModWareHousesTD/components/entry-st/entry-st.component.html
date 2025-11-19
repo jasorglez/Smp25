@@ -1,6 +1,81 @@
-<div class="card mt-3">
-  <div class="card-body text-center">
-    <h5 class="card-title">Módulo de Entradas</h5>
-    <p class="card-text">-- En construcción --</p>
+<div class="container-fluid mt-3">
+  <!-- Top: Warehouse Selector -->
+  <div class="row mb-3">
+    <div class="col-12">
+      <div class="form-group">
+        <label for="warehouseSelect">Seleccionar Almacén:</label>
+        <select
+          id="warehouseSelect"
+          class="form-control"
+          [(ngModel)]="selectedWarehouse"
+          (change)="onWarehouseChange()">
+          <option *ngFor="let wh of warehouses" [ngValue]="wh">
+            {{ wh.name }}
+          </option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Catalog Selector -->
+  <div class="row mb-3">
+    <div class="col-12">
+      <div class="form-group">
+        <label for="catalogSelect">Tipo de Entrada:</label>
+        <select
+          id="catalogSelect"
+          class="form-control"
+          [(ngModel)]="selectedCatalog"
+          (change)="onCatalogChange()">
+          <option *ngFor="let cat of catalogs" [ngValue]="cat">
+            {{ cat.description }}
+          </option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content: Buttons Left, Grid Right -->
+  <div class="row">
+    <!-- Left Panel: CRUD Buttons -->
+    <nav class="col-auto d-flex flex-column align-items-start">
+      <button type="button" class="btn btn-primary me-1 mb-2" (click)="addEntry()">
+        <i class="bi bi-plus-lg" style="font-size: 1rem;"></i>
+      </button>
+
+      <button type="button" class="btn btn-success position-relative mb-2" (click)="saveChanges()">
+        <i class="bi bi-floppy" style="font-size: 1rem;"></i>
+        <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+          *ngIf="hasUnsavedChanges">
+          <span class="visually-hidden">Hay cambios sin guardar</span>
+        </span>
+      </button>
+
+      <button type="button" class="btn btn-warning mb-2" (click)="refreshData()">
+        <i class="bi bi-arrow-clockwise" style="font-size: 1rem;"></i>
+      </button>
+
+      <button type="button" class="btn btn-danger mb-2" (click)="deleteEntry()">
+        <i class="bi bi-trash" style="font-size: 1rem;"></i>
+      </button>
+    </nav>
+
+    <!-- Right Panel: Grid -->
+    <div class="col">
+      <ag-grid-angular
+        style="width: 100%;"
+        [ngStyle]="{'height': gridHeight}"
+        class="ag-theme-quartz small-text-ag-grid"
+        [columnDefs]="colMaster"
+        [rowData]="rowData"
+        [gridOptions]="gridOptions"
+        [localeText]="AG_GRID_LOCALE_ES"
+        (gridReady)="onGridReady($event)"
+        (selectionChanged)="onSelectionChanged($event)"
+        (cellValueChanged)="onCellValueChanged($event)"
+        (cellEditingStopped)="onCellEditingStopped($event)"
+        (cellDoubleClicked)="onCellDoubleClicked($event)">
+      </ag-grid-angular>
+    </div>
   </div>
 </div>
