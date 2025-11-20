@@ -599,7 +599,17 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
         div.innerText = params.data.fieldContact;
         break;
       case 'bank':
-        div.innerText = params.data.fieldBank;
+        // Mostrar el nombre del banco principal seguido del número de bancos activos entre paréntesis
+        const bankCount = params.data.fieldBank || 0;
+        const principalName = params.data.principalBankName || '';
+
+        if (principalName && bankCount > 0) {
+          div.innerText = `${principalName} (${bankCount})`;
+        } else if (bankCount > 0) {
+          div.innerText = `(${bankCount})`;
+        } else {
+          div.innerText = '0';
+        }
         break;
       case 'Cuentas':
         const isNumeric = params.data.fieldCuenta !== null && params.data.fieldCuenta !== '' && !isNaN(Number(params.data.fieldCuenta));
