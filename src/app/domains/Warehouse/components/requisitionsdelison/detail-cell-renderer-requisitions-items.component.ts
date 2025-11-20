@@ -100,9 +100,9 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
       { id: 1, description: 'Tornillos M8 x 50mm', code: 'TOR-M8-50', measure: 'Pieza', active: true },
       { id: 2, description: 'Tuercas M8', code: 'TUE-M8', measure: 'Pieza', active: true },
       { id: 3, description: 'Arandelas planas M8', code: 'ARA-PL-M8', measure: 'Pieza', active: true },
-      { id: 4, description: 'Cemento Portland 50kg', code: 'CEM-POR-50', measure: 'Saco', active: true },
+      { id: 4, description: 'Jugo de Blue Berry', code: 'CEM-POR-50', measure: 'Saco', active: true },
       { id: 5, description: 'Arena fina', code: 'ARE-FIN', measure: 'm³', active: true },
-      { id: 6, description: 'Grava 3/4"', code: 'GRA-34', measure: 'm³', active: true },
+      { id: 6, description: 'Jugo Manzana', code: 'GRA-34', measure: 'm³', active: true },
       { id: 7, description: 'Varilla de acero 1/2"', code: 'VAR-12', measure: 'Metro', active: true },
       { id: 8, description: 'Varilla de acero 3/8"', code: 'VAR-38', measure: 'Metro', active: true },
       { id: 9, description: 'Alambre recocido #16', code: 'ALA-REC-16', measure: 'Kg', active: true },
@@ -239,6 +239,30 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
         }
       },
       {
+        field: 'internalProvider',
+        headerName: 'Proveedor Interno',
+        width: 200,
+        editable: true,
+        valueSetter: (params: any) => {
+          params.data.internalProvider = params.newValue ? params.newValue.toUpperCase() : '';
+          return true;
+        }
+      },
+      {
+        field: 'priorityType',
+        headerName: 'Tipo Prioridad',
+        width: 120,
+        editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: ['Normal', 'Urgente']
+        },
+        valueSetter: (params: any) => {
+          params.data.priorityType = params.newValue;
+          return true;
+        }
+      },
+      {
         field: 'comment',
         headerName: 'Observaciones',
         width: 300,
@@ -274,6 +298,8 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
       quantity: 1,
       recurrent: 'Recurrente',
       type: 'Interno',
+      internalProvider: '',
+      priorityType: 'Normal',
       comment: '',
       __isNew: true,
       __modified: false

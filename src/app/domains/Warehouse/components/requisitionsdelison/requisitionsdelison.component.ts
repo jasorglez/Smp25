@@ -368,7 +368,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       },
       {
         field: 'comments',
-        headerName: 'Comentarios',
+        headerName: 'Cumplimiento',
         width: 300,
         editable: true,
         valueSetter: (params: any) => {
