@@ -1,0 +1,46 @@
+// Estilos para eliminar padding extra en el contenedor de detalles de AG Grid
+::ng-deep {
+  // Eliminar padding del contenedor de detalles
+  .ag-details-row {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+  }
+
+  // Eliminar padding de la celda de detalles
+  .ag-details-row .ag-cell-wrapper {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+  }
+
+  // Asegurar que el contenido del detalle ocupe todo el espacio
+  .ag-full-width-row {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+  }
+
+  // Eliminar padding del contenedor interno
+  .ag-full-width-container {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+  }
+
+  // Eliminar cualquier gap o spacing del grid padre
+  .ag-center-cols-container {
+    gap: 0 !important;
+  }
+
+  // Asegurar que el detail cell renderer ocupe todo el espacio pero sin overflow
+  app-detail-cell-renderer-tipo-proveedor {
+    display: block !important;
+    height: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    max-height: 100% !important;
+  }
+}
