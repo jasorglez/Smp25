@@ -662,6 +662,8 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
   }
 
   // Actualizar el contador de contactos en la fila del grid padre
+  // NOTA: Esta función actualiza temporalmente el contador en memoria.
+  // El valor persistente viene del backend (vista SQL proveedoresxtype).
   private async updateContactCountInParent(): Promise<void> {
     try {
       console.log('🔢 Actualizando contador de contactos en grid padre...');
@@ -669,12 +671,15 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
       // Esperar un poco para que los datos se actualicen
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      // Contar los contactos localmente desde contactRowData
-      const contactCount = this.contactRowData.length;
-      console.log('📊 Total de contactos en memoria:', contactCount);
+      // Contar SOLO contactos activos (vigente = true)
+      const activeContacts = this.contactRowData.filter(contact => contact.vigente === true);
+      const activeContactCount = activeContacts.length;
 
-      // Actualizar el contador en la fila del grid padre
-      this.params.data.fieldContact = contactCount;
+      console.log('📊 Total de contactos activos:', activeContactCount);
+      console.log('📊 Total de contactos en memoria (incluyendo inactivos):', this.contactRowData.length);
+
+      // Actualizar el contador en la fila del grid padre (temporal, en memoria)
+      this.params.data.fieldContact = activeContactCount;
 
       // Refrescar la celda específica en el grid padre
       if (this.params.api) {

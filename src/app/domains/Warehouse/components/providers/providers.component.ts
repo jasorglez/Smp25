@@ -73,7 +73,7 @@ import { TrackingService } from 'app/services/tracking.service';
   styleUrls: ['./providers.component.scss'],
 })
 export class ProvidersComponent implements CanComponentDeactivate {
-  
+
   private trackingService = inject(TrackingService);
   private customerService = inject(CustomersService);
   private providersService = inject(ProvidersService);
@@ -90,7 +90,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
   private http = inject(HttpClient);
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
-  
+
 
   constructor(private currencyPipe: CurrencyPipe) {
     effect(async () => {
@@ -143,7 +143,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
         'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
     }
   }
-  
+
   type: string = ''; // Para almacenar el tipo (CUSTOMERS o PROVIDERS)
   gridHeight: string = '70vh';
   showCreditsTab: boolean = false;
@@ -163,7 +163,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
   estadobanck: boolean = false;
   estadoid: number = 0;
-  
+
   // Agregar esta nueva variable para almacenar el ID de la última fila editada
   private lastEditedRowId: number | string | null = null;
 
@@ -173,7 +173,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
   rowData: any;
   contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
-  providersXTableData: { [key: number]: any[] } = {};  
+  providersXTableData: { [key: number]: any[] } = {};
   expandedProviders: Set<number> = new Set();
 
   id: string;
@@ -184,7 +184,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
   idCompany: number = null;
   idEmployee: number;
   infoCp: any;
-  
+
 
   private estados: string[] = []; // Agregar esta variable para almacenar los estados
 
@@ -217,67 +217,88 @@ export class ProvidersComponent implements CanComponentDeactivate {
   nameClient = this.signalsService.getNameClient()();
 
   public gridOptions: any = {
-  headerHeight: 25,
-  rowHeight: 20,
-  rowBuffer: 20,
-  masterDetail: true,
-  isRowMaster: (dataItem) => {
-    return true; // Todas las filas de proveedores son maestras
-  },
-  detailCellRendererSelector: (params) => {
-    // Decide qué renderizador usar basado en la propiedad 'detailType'
-    if (params.data.detailType === 'contact') {
-      params.node.setRowHeight(550);
-      return { component: 'detailCellRenderer' };
-    } else if (params.data.detailType === 'bank') {
-      params.node.setRowHeight(550);
-      return { component: 'detailCellRendererBanck' };
-    } else if (params.data.detailType === 'Cuentas') {
-      params.node.setRowHeight(550);
-      return { component: 'detailCellRendererCuentas' };
-    } else if (params.data.detailType === 'tipoProveedor') {
-      params.node.setRowHeight(250);
-      return { component: 'detailCellRendererTipoProveedor' };
-    } else if (params.data.detailType === 'materiales') {
-      params.node.setRowHeight(550);
-      return { component: 'detailCellRendererMateriales' };
-    }
-    return undefined; // No mostrar detalle si no hay tipo
-  },
+    headerHeight: 25,
+    rowHeight: 20,
+    rowBuffer: 20,
+    masterDetail: true,
+    isRowMaster: (dataItem) => {
+      return true; // Todas las filas de proveedores son maestras
+    },
+    detailCellRendererSelector: (params) => {
+      // Función helper para calcular altura dinámica
+      const calculateDynamicHeight = (defaultHeight: number = 300): number => {
+        const gridElement = document.querySelector('.ag-theme-quartz') as HTMLElement;
+        const bodyViewport = gridElement?.querySelector('.ag-body-viewport') as HTMLElement;
 
-  getRowClass: (params) => {
-    if (params.node.isSelected()) {
-      return 'selected-row';
-    }
-    return '';
-  },
-  onRowSelected: (event) => {
-    if (event.node.isSelected()) {
-      this.gridApi.forEachNode((node) => {
-        if (node.id !== event.node.id) {
-          node.setSelected(false);
-        }
+        if (!bodyViewport) return defaultHeight;
+
+        const viewportHeight = bodyViewport.clientHeight;
+        const hasHorizontalScroll = bodyViewport.scrollWidth > bodyViewport.clientWidth;
+        const scrollbarHeight = hasHorizontalScroll ? 17 : 0;
+
+        const rowIndex = params.node.rowIndex || 0;
+        const rowHeight = 20;
+        const headerHeight = 25;
+
+        const spaceUsedAbove = headerHeight + ((rowIndex + 1) * rowHeight);
+        const availableHeight = viewportHeight - spaceUsedAbove - scrollbarHeight + 40;
+
+        return Math.max(250, Math.min(availableHeight, 600));
+      };
+
+      // Decide qué renderizador usar basado en la propiedad 'detailType'
+      if (params.data.detailType === 'contact') {
+        params.node.setRowHeight(calculateDynamicHeight());
+        return { component: 'detailCellRenderer' };
+      } else if (params.data.detailType === 'bank') {
+        params.node.setRowHeight(calculateDynamicHeight());
+        return { component: 'detailCellRendererBanck' };
+      } else if (params.data.detailType === 'Cuentas') {
+        params.node.setRowHeight(calculateDynamicHeight());
+        return { component: 'detailCellRendererCuentas' };
+      } else if (params.data.detailType === 'tipoProveedor') {
+        params.node.setRowHeight(calculateDynamicHeight());
+        return { component: 'detailCellRendererTipoProveedor' };
+      } else if (params.data.detailType === 'materiales') {
+        params.node.setRowHeight(calculateDynamicHeight());
+        return { component: 'detailCellRendererMateriales' };
+      }
+      return undefined; // No mostrar detalle si no hay tipo
+    },
+
+    getRowClass: (params) => {
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onRowSelected: (event) => {
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    },
+    onFirstDataRendered: (params) => {
+      console.log('onFirstDataRendered - autosizing columns...');
+
+      // Obtener todas las columnas
+      const allColumnIds: string[] = [];
+      params.api.getColumns()?.forEach((column: any) => {
+        allColumnIds.push(column.getId());
       });
-    }
-  },
-  onFirstDataRendered: (params) => {
-    console.log('onFirstDataRendered - autosizing columns...');
 
-    // Obtener todas las columnas
-    const allColumnIds: string[] = [];
-    params.api.getColumns()?.forEach((column: any) => {
-      allColumnIds.push(column.getId());
-    });
+      console.log('Columns to autosize:', allColumnIds);
 
-    console.log('Columns to autosize:', allColumnIds);
+      // Autoajustar todas las columnas al contenido (considera header y datos)
+      params.api.autoSizeColumns(allColumnIds, false);
 
-    // Autoajustar todas las columnas al contenido (considera header y datos)
-    params.api.autoSizeColumns(allColumnIds, false);
+      console.log('Autosize completed');
+    },
 
-    console.log('Autosize completed');
-  },
-
-};
+  };
 
   get colMaster(): ColDef[] {
     return [
@@ -294,7 +315,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers','Pro_Pri', 'update');
+          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers', 'Pro_Pri', 'update');
         },
       },
 
@@ -305,7 +326,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers','Pro_Pri', 'update');
+          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers', 'Pro_Pri', 'update');
         },
       },
 
@@ -316,7 +337,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers','Pro_Pri', 'update');
+          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers', 'Pro_Pri', 'update');
         },
         filter: true,
         cellEditor: 'autocompleteEditor',
@@ -343,7 +364,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
           placeholder: 'Nombre Contacto',
           minLength: 1
         },
-        
+
         valueSetter: (params) => {
           const rawValue = params.newValue;
           if (!rawValue || typeof rawValue !== 'string') {
@@ -390,8 +411,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-     //     return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers','Pro_Pri', 'update');
-         return false;
+          //     return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers','Pro_Pri', 'update');
+          return false;
         },
       },
 
@@ -430,7 +451,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers','Pro_Pri', 'update');
+          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers', 'Pro_Pri', 'update');
         },
         valueSetter: (params) => {
           const rawValue = params.newValue;
@@ -464,7 +485,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers','Pro_Pri', 'update');
+          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers', 'Pro_Pri', 'update');
         },
         valueSetter: (params) => {
           const rawValue = params.newValue;
@@ -498,7 +519,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
         editable: false,
         cellStyle: { backgroundColor: '#d4edda' },
       },
-  
+
       {
         field: 'fieldBank',
         headerName: 'Bancos',
@@ -506,7 +527,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
         cellRenderer: this.createDetailToggleCellRenderer('bank'),
         cellStyle: { backgroundColor: '#d4edda' },
       },
-  
+
       {
         field: 'fieldCuenta',
         headerName: 'Cuentas x Pagar',
@@ -531,7 +552,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers','Pro_Pri', 'update');
+          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers', 'Pro_Pri', 'update');
         },
       },
       {
@@ -541,7 +562,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers','Pro_Pri', 'update');
+          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers', 'Pro_Pri', 'update');
         },
       },
       {
@@ -551,7 +572,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers','Pro_Pri', 'update');
+          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers', 'Pro_Pri', 'update');
         },
       },
       {
@@ -561,7 +582,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers','Pro_Pri', 'update');
+          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers', 'Pro_Pri', 'update');
         },
       },
       {
@@ -571,7 +592,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers','Pro_Pri', 'update');
+          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers', 'Pro_Pri', 'update');
         },
       },
     ];
@@ -589,43 +610,53 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
 
 
-createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement {
-  return (params: any): HTMLElement => {
-    const div = document.createElement('div');
-    //console.log(params.data.id)
-    switch
-      (detailType){
-      case 'contact':
-        div.innerText = params.data.fieldContact;
-        break;
-      case 'bank':
-        div.innerText = params.data.fieldBank;
-        break;
-      case 'Cuentas':
-        const isNumeric = params.data.fieldCuenta !== null && params.data.fieldCuenta !== '' && !isNaN(Number(params.data.fieldCuenta));
-        const value = isNumeric ? this.currencyPipe.transform(params.data.fieldCuenta, '','symbol', '1.2-2') : '$0.00';
-        div.innerText = value;
-        break;
-      case 'materiales':
-        div.innerText = params.data.fieldMaterial || '0';
-        break;
+  createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement {
+    return (params: any): HTMLElement => {
+      const div = document.createElement('div');
+      //console.log(params.data.id)
+      switch
+      (detailType) {
+        case 'contact':
+          div.innerText = params.data.fieldContact;
+          break;
+        case 'bank':
+          // Mostrar el nombre del banco principal seguido del número de bancos activos entre paréntesis
+          const bankCount = params.data.fieldBank || 0;
+          const principalName = params.data.principalBankName || '';
+
+          if (principalName && bankCount > 0) {
+            div.innerText = `${principalName} (${bankCount})`;
+          } else if (bankCount > 0) {
+            div.innerText = `(${bankCount})`;
+          } else {
+            div.innerText = '0';
+          }
+          break;
+        case 'Cuentas':
+          const isNumeric = params.data.fieldCuenta !== null && params.data.fieldCuenta !== '' && !isNaN(Number(params.data.fieldCuenta));
+          const value = isNumeric ? this.currencyPipe.transform(params.data.fieldCuenta, '', 'symbol', '1.2-2') : '$0.00';
+          div.innerText = value;
+          break;
+        case 'materiales':
+          div.innerText = params.data.fieldMaterial || '0';
+          break;
       }
-    // Usamos innerHTML para poder renderizar el ícono
-    //div.innerHTML = params.data.id;
-    div.style.cursor = 'pointer';
-    div.style.textDecoration = 'underline';
-    div.style.background = '#d4edda';
+      // Usamos innerHTML para poder renderizar el ícono
+      //div.innerHTML = params.data.id;
+      div.style.cursor = 'pointer';
+      div.style.textDecoration = 'underline';
+      div.style.background = '#d4edda';
 
-    const node = params.node;
-    const api = params.api;
-
-
-    return div;
-  };
-}
+      const node = params.node;
+      const api = params.api;
 
 
-  
+      return div;
+    };
+  }
+
+
+
 
   obtenerDatos() {
     if (!this.idRoot) {
@@ -634,7 +665,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
     }
 
     this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Proveedores`, 'Menu Administracion Proveedores ',
-          this.trackingService.getEmail() );
+      this.trackingService.getEmail());
 
     return new Promise((resolve) => {
       this.materialsService
@@ -657,7 +688,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
 
   obtenerBranchs() {
     this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Sucursales`, 'Menu Administracion Proveedores ',
-          this.trackingService.getEmail() );
+      this.trackingService.getEmail());
 
     this.branchesService.getBrancheswoa(this.idRoot).subscribe(
       (data: any) => {
@@ -719,58 +750,58 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
           event.data.state = cpData.estado;
           event.data.city = cpData.ciudad || 'N/A';
 
-          this.gridApi.applyTransaction({ update: [event.data ] });
+          this.gridApi.applyTransaction({ update: [event.data] });
         }
       }, 500);
     }
   }
 
   onCellClicked(event: any): void {
-   event.node.setSelected(true);
-   console.log('Celda clickeada:', event);
+    event.node.setSelected(true);
+    console.log('Celda clickeada:', event);
 
-   const colId = event.column.getColId();
-   const isDetailColumn = colId === 'fieldContact' || colId === 'fieldBank' || colId === 'fieldCuenta' || colId === 'typeProvider' || colId === 'fieldMaterial';
+    const colId = event.column.getColId();
+    const isDetailColumn = colId === 'fieldContact' || colId === 'fieldBank' || colId === 'fieldCuenta' || colId === 'typeProvider' || colId === 'fieldMaterial';
 
-  if (isDetailColumn) {
-    const node = event.node;
-    const api = event.api;
-    const detailType = this.getDetailTypeFromColId(colId);
+    if (isDetailColumn) {
+      const node = event.node;
+      const api = event.api;
+      const detailType = this.getDetailTypeFromColId(colId);
 
-    // Determinar si la fila actual ya está expandida CON ESTE MISMO tipo de detalle
-    const isCurrentlyExpanded = node.expanded && event.data.detailType === detailType;
+      // Determinar si la fila actual ya está expandida CON ESTE MISMO tipo de detalle
+      const isCurrentlyExpanded = node.expanded && event.data.detailType === detailType;
 
-    // Colapsar TODAS las filas expandidas (incluida la actual)
-    api.forEachNode(otherNode => {
-      if (otherNode.expanded) {
-        otherNode.setExpanded(false);
+      // Colapsar TODAS las filas expandidas (incluida la actual)
+      api.forEachNode(otherNode => {
+        if (otherNode.expanded) {
+          otherNode.setExpanded(false);
+        }
+      });
+
+      if (isCurrentlyExpanded) {
+        // Si se hace clic en la misma celda que ya está abierta...
+        // ...ya se cerró arriba, solo limpiar el filtro.
+        api.setFilterModel(null);
+        api.onFilterChanged();
+      } else {
+        // Si se hace clic en una celda diferente (o la fila está cerrada)...
+        // ...se establece el nuevo tipo de detalle y se expande la fila.
+
+        // Limpiar filtro antes de aplicar uno nuevo
+        api.setFilterModel(null);
+
+        // Aplicar filtro por ID para enfocar la fila actual.
+        const filterModel = {
+          id: { filterType: 'number', type: 'equals', filter: event.data.id },
+        };
+        api.setFilterModel(filterModel);
+
+        // Expandir la fila con el detalle correcto
+        event.data.detailType = detailType;
+        node.setExpanded(true);
       }
-    });
-
-    if (isCurrentlyExpanded) {
-      // Si se hace clic en la misma celda que ya está abierta...
-      // ...ya se cerró arriba, solo limpiar el filtro.
-      api.setFilterModel(null);
-      api.onFilterChanged();
-    } else {
-      // Si se hace clic en una celda diferente (o la fila está cerrada)...
-      // ...se establece el nuevo tipo de detalle y se expande la fila.
-
-      // Limpiar filtro antes de aplicar uno nuevo
-      api.setFilterModel(null);
-
-      // Aplicar filtro por ID para enfocar la fila actual.
-      const filterModel = {
-        id: { filterType: 'number', type: 'equals', filter: event.data.id },
-      };
-      api.setFilterModel(filterModel);
-
-      // Expandir la fila con el detalle correcto
-      event.data.detailType = detailType;
-      node.setExpanded(true);
     }
   }
-}
 
   getCoordinatesFromCP(cp: string) {
     const url = `https://nominatim.openstreetmap.org/search?postalcode=${cp}&country=MX&format=json`;
@@ -787,7 +818,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
     try {
       const data = await lastValueFrom(this.inegiService.getZipCodeData(cp));
       this.infoCp = data;
-      
+
       return data;
     } catch (error) {
       if (error.status === 404) {
@@ -871,7 +902,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
 
   addRow() {
     this.trackingService.addLog(this.trackingService.getnameComp(), `Agregar Proveedores`, 'Menu Administracion Proveedores ',
-          this.trackingService.getEmail() );
+      this.trackingService.getEmail());
 
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
@@ -896,7 +927,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
       latitud: '',
       longitud: '',
       idTypecop: 0,
-     // type: this.type,
+      // type: this.type,
       fieldContact: 1,
       fieldBank: 0,
       fieldCuenta: 0,
@@ -918,7 +949,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
       : null;
 
     // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
-    
+
     setTimeout(() => {
       const firstRowIndex = 0;
 
@@ -934,12 +965,12 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
   async saveChanges() {
 
     this.trackingService.addLog(this.trackingService.getnameComp(), `Guardar Proveedores`, 'Menu Administracion Proveedores ',
-          this.trackingService.getEmail() );
+      this.trackingService.getEmail());
 
     const isValid = this.rowData.every(
-      (item) => (item.nameContact || item.company) && 
+      (item) => (item.nameContact || item.company) &&
         (this.type == 'PROVIDERS') || (this.type == 'CUSTOMERS' && item.idTypecop)
-        
+
     );
     if (!isValid) {
       alerts.basicAlert(
@@ -1029,12 +1060,12 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
   }
 
   private selectRowById(id: number | string) {
-    
+
     if (!this.gridApi) {
       console.error('Grid API no disponible');
       return;
     }
-    
+
     // Dar tiempo al grid para que se actualice
     setTimeout(() => {
       this.gridApi.forEachNode((node) => {
@@ -1054,7 +1085,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
 
   async deleteEntry() {
     this.trackingService.addLog(this.trackingService.getnameComp(), `Eliminar Proveedores`, 'Menu Administracion Proveedores ',
-          this.trackingService.getEmail() );
+      this.trackingService.getEmail());
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert(
@@ -1168,7 +1199,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
 
     // Filtrar el grid para mostrar solo el registro con el ID seleccionado solo si la columna es "total"
     if (colId === 'total') {
-      if(this.gridApi) {
+      if (this.gridApi) {
         const filterModel = {
           id: {
             filterType: 'number',
@@ -1253,7 +1284,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
   async deleteDetailRow(params: any, successCallback: () => void, type: string) {
     const providerId = params.data.idTabla;
     const detailId = params.data.id;
-    
+
     if (params.data.__isNew) {
       // Si es una fila nueva, solo removerla del array local
       this.providersXTableData[providerId] = (this.providersXTableData[providerId] || []).filter(
@@ -1299,7 +1330,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
         });
 
         this.customerService.updateFiel(row.idTabla, row.type, "SUMA").subscribe();
-        
+
         await lastValueFrom(this.providersService.addProviderXTable(cleanedData));
         // NO recargar toda la tabla aquí - causaba que se cierre el detalle
         // this.obtenerDatos();
@@ -1347,7 +1378,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
 
   async saveProviderXTableChanges() {
     const allDetailChanges = [];
-    
+
     // Handle contact data
     for (const [providerId, details] of Object.entries(this.providersXTableData)) {
       const newDetails = details.filter((row: any) => row.__isNew);
@@ -1403,7 +1434,7 @@ createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement
     }
   }
 
-  updateCantidad(id){
+  updateCantidad(id) {
     alert('Actualizar cantidad de contactos para proveedor ID:' + id);
 
   }

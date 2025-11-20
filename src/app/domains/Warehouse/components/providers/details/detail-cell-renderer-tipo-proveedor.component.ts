@@ -15,9 +15,9 @@ import { SelectWithTooltipEditorV2Component } from 'app/domains/Almacenes/compon
   standalone: true,
   imports: [CommonModule, AgGridModule, SelectWithTooltipEditorV2Component],
   template: `
-    <div style="padding: 10px; background-color: #e3f2fd; height: 100%; display: flex; flex-direction: column;">
+    <div style="padding: 5px; background-color: #e3f2fd; height: 100%; max-height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
       <!-- Título y botones -->
-      <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+      <div style="margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
         <strong>Configurar Tipo de Proveedor (Cascada)</strong>
         <div class="d-flex gap-2">
           <button
@@ -51,31 +51,38 @@ import { SelectWithTooltipEditorV2Component } from 'app/domains/Almacenes/compon
       </div>
 
       <!-- Grid único con 3 columnas -->
-      <ag-grid-angular
-        class="ag-theme-quartz small-text-ag-grid"
-        style="width: 100%; flex-grow: 1;"
-        [rowData]="rowData"
-        [columnDefs]="columnDefs"
-        [gridOptions]="gridOptions"
-        (gridReady)="onGridReady($event)"
-        (cellValueChanged)="onCellValueChanged($event)"
-        (selectionChanged)="onSelectionChanged($event)">
-      </ag-grid-angular>
+      <div style="flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden;">
+        <ag-grid-angular
+          class="ag-theme-quartz small-text-ag-grid"
+          style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; right: 0; bottom: 0;"
+          [rowData]="rowData"
+          [columnDefs]="columnDefs"
+          [gridOptions]="gridOptions"
+          (gridReady)="onGridReady($event)"
+          (cellValueChanged)="onCellValueChanged($event)"
+          (selectionChanged)="onSelectionChanged($event)">
+        </ag-grid-angular>
+      </div>
 
       <!-- Previsualización de la cadena concatenada -->
-      <div class="mt-2" *ngIf="getPreviewString()">
-        <div class="alert alert-info py-2 mb-0">
-          <small>
-            <strong>Vista previa:</strong> {{ getPreviewString() }}
-          </small>
+      <ng-container *ngIf="getPreviewString()">
+        <div style="margin-top: 5px; flex-shrink: 0;">
+          <div class="alert alert-info py-1 mb-0" style="font-size: 0.85rem;">
+            <small>
+              <strong>Vista previa:</strong> {{ getPreviewString() }}
+            </small>
+          </div>
         </div>
-      </div>
+      </ng-container>
     </div>
   `,
   styles: [`
     :host {
       display: block;
       height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
     }
   `]
 })
@@ -183,18 +190,38 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
       cellEditor: SelectWithTooltipEditorV2Component,
       cellEditorParams: (params: any) => {
         // Filtrar subfamilias según la familia seleccionada en la fila
+        const categoriaSeleccionada = params.data.categoria;
         const familiaSeleccionada = params.data.familia;
         const familiaObj = this.familias.find(f => f.description === familiaSeleccionada);
 
         if (familiaObj) {
-          const subfamiliasFiltradas = this.subfamilias
-            .filter(s => s.subParentId === familiaObj.id)
+          // Obtener todas las subfamilias que pertenecen a esta familia
+          let subfamiliasFiltradas = this.subfamilias
+            .filter(s => s.subParentId === familiaObj.id);
+
+          // Excluir subfamilias que ya existen con la misma combinación Categoría-Familia
+          // en otras filas (excepto la fila actual que se está editando)
+          const existingCombinations = this.rowData
+            .filter(row =>
+              row.id !== params.data.id && // Excluir la fila actual
+              row.categoria === categoriaSeleccionada && // Misma categoría
+              row.familia === familiaSeleccionada // Misma familia
+            )
+            .map(row => row.subfamilia);
+
+          console.log('🔍 Combinaciones existentes para', `${categoriaSeleccionada}/${familiaSeleccionada}:`, existingCombinations);
+
+          // Filtrar subfamilias que NO estén en las combinaciones existentes
+          subfamiliasFiltradas = subfamiliasFiltradas
+            .filter(s => !existingCombinations.includes(s.description))
             .map(s => ({
               id: s.description,
               description: s.description,
               valueAddition: s.valueAddition,
               valueAddition2: s.valueAddition2
             }));
+
+          console.log('✅ Subfamilias disponibles:', subfamiliasFiltradas.length);
 
           return { options: subfamiliasFiltradas };
         }
@@ -267,6 +294,8 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
     suppressCellFocus: false,
     stopEditingWhenCellsLoseFocus: true,
     singleClickEdit: false, // Doble-click para abrir el editor
+    domLayout: 'normal', // El grid se ajusta al contenedor y permite scroll
+    suppressHorizontalScroll: false,
     getRowStyle: (params: any) => {
       // Si la fila es principal (principal=true), aplicar fondo rojo claro
       if (params.data.principal === true) {
@@ -536,6 +565,28 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
         'Validación',
         'Por favor complete todas las filas antes de guardar.',
         'warning'
+      );
+      return;
+    }
+
+    // Validar que no haya combinaciones duplicadas Categoría-Familia-Subfamilia
+    const combinations = this.rowData.map(row =>
+      `${row.categoria}|${row.familia}|${row.subfamilia}`
+    );
+
+    const duplicates = combinations.filter((item, index) =>
+      combinations.indexOf(item) !== index
+    );
+
+    if (duplicates.length > 0) {
+      const duplicateList = duplicates
+        .map(d => d.replace(/\|/g, ' / '))
+        .join('\n');
+
+      alerts.basicAlert(
+        'Combinaciones Duplicadas',
+        `Las siguientes combinaciones están duplicadas:\n\n${duplicateList}\n\nPor favor, elimine o modifique las filas duplicadas.`,
+        'error'
       );
       return;
     }

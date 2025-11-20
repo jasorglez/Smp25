@@ -507,6 +507,8 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
   }
 
   // Actualizar el contador de bancos en la fila del grid padre
+  // NOTA: Esta función actualiza temporalmente el contador en memoria.
+  // El valor persistente viene del backend (vista SQL proveedoresxtype).
   private async updateBankCountInParent(): Promise<void> {
     try {
       console.log('🔢 Actualizando contador de bancos en grid padre...');
@@ -514,12 +516,27 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
       // Esperar un poco para que los datos se actualicen
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      // Contar los bancos localmente desde bankRowData
-      const bankCount = this.bankRowData.length;
-      console.log('📊 Total de bancos en memoria:', bankCount);
+      // Contar solo los bancos activos (vigente = true)
+      const activeBanks = this.bankRowData.filter(bank => bank.vigente === true);
+      const activeBankCount = activeBanks.length;
 
-      // Actualizar el contador en la fila del grid padre
-      this.params.data.fieldBank = bankCount;
+      // Encontrar el banco principal entre los activos
+      const principalBank = activeBanks.find(bank => bank.principal === true);
+
+      // Buscar el nombre del banco en el catálogo de bancos
+      let principalBankName = '';
+      if (principalBank) {
+        const bankId = principalBank.campo3; // El ID del banco está en campo3
+        const bank = this.banks?.find(b => String(b.id) === String(bankId));
+        principalBankName = bank?.name || principalBank.nombreBanco || '';
+      }
+
+      console.log('📊 Total de bancos activos:', activeBankCount);
+      console.log('🏦 Banco principal:', principalBankName);
+
+      // Actualizar el contador en la fila del grid padre (temporal, en memoria)
+      this.params.data.fieldBank = activeBankCount;
+      this.params.data.principalBankName = principalBankName;
 
       // Refrescar la celda específica en el grid padre
       if (this.params.api) {
@@ -530,6 +547,7 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
         });
 
         console.log('✅ Contador de bancos actualizado en grid padre:', this.params.data.fieldBank);
+        console.log('✅ Banco principal guardado:', this.params.data.principalBankName);
       }
 
     } catch (error) {
