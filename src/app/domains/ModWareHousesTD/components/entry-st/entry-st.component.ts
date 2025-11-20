@@ -117,7 +117,7 @@ export class EntryStComponent implements OnInit {
       next: (data: any[]) => {
         this.rowData = data.map(entry => ({
           ...entry,
-          fieldItems: 0,
+          countrow: entry.countRow || 0,
           detailType: null,
           detailData: []
         }));
@@ -178,14 +178,14 @@ export class EntryStComponent implements OnInit {
   get colMaster(): ColDef[] {
     return [
       {
-        field: 'fieldItems',
+        field: 'countrow',
         headerName: 'Items',
         width: 90,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleCascade(node),
         },
-        valueGetter: params => params.data.fieldItems || 0,
+        valueGetter: params => params.data.countrow || 0,
         editable: false,
         cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
       },
@@ -287,7 +287,7 @@ export class EntryStComponent implements OnInit {
     event.node.setSelected(true);
 
     const colId = event.column.getColId();
-    const isDetailColumn = colId === 'fieldItems';
+    const isDetailColumn = colId === 'countrow';
 
     if (isDetailColumn) {
       const node = event.node;
@@ -342,7 +342,7 @@ export class EntryStComponent implements OnInit {
       node: node,
       api: this.gridApi,
       data: node.data,
-      column: { getColId: () => 'fieldItems' }
+      column: { getColId: () => 'countrow' }
     };
     this.onCellClicked(event);
   }
@@ -422,7 +422,7 @@ export class EntryStComponent implements OnInit {
       active: true,
       directEntry: false,
       ocList: '',
-      fieldItems: 0,
+      countrow: 0,
       detailType: null,
       detailData: [],
       __isNew: true,
@@ -540,7 +540,8 @@ export class EntryStComponent implements OnInit {
       type: 'IN',
       active: row.active ?? true,
       directEntry: row.directEntry === true || row.directEntry === 1 ? true : false,
-      ocList: row.ocList || ''
+      ocList: row.ocList || '',
+      countrow: row.countrow || 0
     };
   }
 
@@ -587,8 +588,17 @@ export class EntryStComponent implements OnInit {
           'success'
         );
 
-        // Actualizar el contador de items
+        // Actualizar el contador de items localmente
         this.updateEntryItemsCount(entryId, data.length);
+
+        // Persistir el countrow en el backend
+        const masterEntry = this.rowData.find(entry => entry.id === entryId);
+        if (masterEntry) {
+          masterEntry.countrow = data.length;
+          const entryData = this.prepareEntryData(masterEntry);
+          await lastValueFrom(this.inandoutService.updateInAndOut(String(entryId), entryData));
+          console.log(`✅ Persistido countrow=${data.length} para entrada ${entryId}`);
+        }
 
         // Limpiar los flags
         data.forEach(row => {
@@ -615,7 +625,6 @@ export class EntryStComponent implements OnInit {
       params.api.applyTransaction({ remove: [params.data] });
       this.hasUnsavedChanges = true;
       // Update count in master grid
-      const entryId = params.data.idInandout;
       const currentCount = params.api.getDisplayedRowCount();
       this.updateEntryItemsCount(entryId, currentCount - 1);
       successCallback();
@@ -647,15 +656,15 @@ export class EntryStComponent implements OnInit {
     return cleanedData;
   }
 
-  // Método para actualizar el fieldItems count de una entrada específica
+  // Método para actualizar el countrow count de una entrada específica
   updateEntryItemsCount(entryId: number, count: number) {
     if (this.gridApi) {
       this.gridApi.forEachNode((node) => {
         if (node.data && node.data.id === entryId) {
-          node.data.fieldItems = count;
+          node.data.countrow = count;
           this.gridApi.refreshCells({
             rowNodes: [node],
-            columns: ['fieldItems'],
+            columns: ['countrow'],
             force: true
           });
           console.log(`✅ Actualizado "Items" para entrada ${entryId}: ${count}`);

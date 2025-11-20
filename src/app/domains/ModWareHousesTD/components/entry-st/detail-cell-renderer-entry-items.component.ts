@@ -105,6 +105,13 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
   get colDefs(): ColDef[] {
     return [
       {
+        headerName: '#',
+        width: 50,
+        valueGetter: (params) => params.node.rowIndex + 1,
+        pinned: 'left',
+        cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' }
+      },
+      {
         field: 'code',
         headerName: 'Código',
         width: 100,
