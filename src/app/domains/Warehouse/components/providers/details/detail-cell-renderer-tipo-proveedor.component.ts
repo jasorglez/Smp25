@@ -183,18 +183,38 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
       cellEditor: SelectWithTooltipEditorV2Component,
       cellEditorParams: (params: any) => {
         // Filtrar subfamilias según la familia seleccionada en la fila
+        const categoriaSeleccionada = params.data.categoria;
         const familiaSeleccionada = params.data.familia;
         const familiaObj = this.familias.find(f => f.description === familiaSeleccionada);
 
         if (familiaObj) {
-          const subfamiliasFiltradas = this.subfamilias
-            .filter(s => s.subParentId === familiaObj.id)
+          // Obtener todas las subfamilias que pertenecen a esta familia
+          let subfamiliasFiltradas = this.subfamilias
+            .filter(s => s.subParentId === familiaObj.id);
+
+          // Excluir subfamilias que ya existen con la misma combinación Categoría-Familia
+          // en otras filas (excepto la fila actual que se está editando)
+          const existingCombinations = this.rowData
+            .filter(row =>
+              row.id !== params.data.id && // Excluir la fila actual
+              row.categoria === categoriaSeleccionada && // Misma categoría
+              row.familia === familiaSeleccionada // Misma familia
+            )
+            .map(row => row.subfamilia);
+
+          console.log('🔍 Combinaciones existentes para', `${categoriaSeleccionada}/${familiaSeleccionada}:`, existingCombinations);
+
+          // Filtrar subfamilias que NO estén en las combinaciones existentes
+          subfamiliasFiltradas = subfamiliasFiltradas
+            .filter(s => !existingCombinations.includes(s.description))
             .map(s => ({
               id: s.description,
               description: s.description,
               valueAddition: s.valueAddition,
               valueAddition2: s.valueAddition2
             }));
+
+          console.log('✅ Subfamilias disponibles:', subfamiliasFiltradas.length);
 
           return { options: subfamiliasFiltradas };
         }
@@ -536,6 +556,28 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
         'Validación',
         'Por favor complete todas las filas antes de guardar.',
         'warning'
+      );
+      return;
+    }
+
+    // Validar que no haya combinaciones duplicadas Categoría-Familia-Subfamilia
+    const combinations = this.rowData.map(row =>
+      `${row.categoria}|${row.familia}|${row.subfamilia}`
+    );
+
+    const duplicates = combinations.filter((item, index) =>
+      combinations.indexOf(item) !== index
+    );
+
+    if (duplicates.length > 0) {
+      const duplicateList = duplicates
+        .map(d => d.replace(/\|/g, ' / '))
+        .join('\n');
+
+      alerts.basicAlert(
+        'Combinaciones Duplicadas',
+        `Las siguientes combinaciones están duplicadas:\n\n${duplicateList}\n\nPor favor, elimine o modifique las filas duplicadas.`,
+        'error'
       );
       return;
     }
