@@ -1351,7 +1351,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
       }
 
       if (newDetails.length > 0 || modifiedDetails.length > 0) {
-        alerts.basicAlert(
+        // Esperar a que el alert se cierre antes de continuar
+        await alerts.basicAlert(
           'Detalles guardados',
           'Se han guardado los detalles correctamente.',
           'success'
@@ -1368,7 +1369,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
     } catch (error) {
       console.error('Error saving contacts:', error);
-      alerts.basicAlert(
+      await alerts.basicAlert(
         'Error',
         'Error al guardar los detalles.',
         'error'

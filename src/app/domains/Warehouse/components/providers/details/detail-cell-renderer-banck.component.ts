@@ -119,7 +119,12 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
       cellEditor: 'agCheckboxCellEditor',
       editable: true,
       width: 66,
-      onCellValueChanged: (params: any) => {
+      onCellValueChanged: async (params: any) => {
+        // Guardar ID de la fila modificada para restaurar focus
+        const modifiedRowId = params.data.id;
+        const modifiedRowName = params.data.campo2;
+        const modifiedRowNumber = params.data.campo4;
+
         // Si se desmarca como vigente, también desmarcar como principal
         if (params.newValue === false && params.data.principal === true) {
           params.data.principal = false;
@@ -131,8 +136,33 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
             activeRows[0].campo7 = true;
             activeRows[0].__modified = true;
           }
-          // Refrescar grid para mostrar los cambios
+
+          // Ordenar localmente por vigente y principal
+          this.bankRowData.sort((a, b) => {
+            if (a.vigente !== b.vigente) return b.vigente ? 1 : -1;
+            if (a.principal !== b.principal) return b.principal ? 1 : -1;
+            return (a.id || 0) - (b.id || 0);
+          });
+
+          // Refrescar grid con datos ordenados
           this.bankGridApi?.setGridOption('rowData', this.bankRowData);
+
+          // Restaurar focus a la fila modificada
+          await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
+          if (this.bankGridApi) {
+            let rowToSelect = this.bankRowData.find(r => r.id === modifiedRowId);
+            if (!rowToSelect) {
+              rowToSelect = this.bankRowData.find(r => r.campo2 === modifiedRowName && r.campo4 === modifiedRowNumber);
+            }
+            if (rowToSelect) {
+              const rowIndex = this.bankRowData.indexOf(rowToSelect);
+              const rowNode = this.bankGridApi.getDisplayedRowAtIndex(rowIndex);
+              if (rowNode) {
+                rowNode.setSelected(true);
+                this.bankGridApi.ensureIndexVisible(rowIndex, 'middle');
+              }
+            }
+          }
         }
 
         // Si se marca como vigente, refrescar las celdas para que 'principal' sea editable
@@ -161,7 +191,9 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
         },
       width: 190,
       valueSetter: (params: any) => {
-        params.data.campo2 = params.newValue ? params.newValue.toUpperCase() : '';
+        // Solo permitir letras, espacios y caracteres especiales (NO números)
+        const sanitizedValue = params.newValue ? params.newValue.replace(/[0-9]/g, '') : '';
+        params.data.campo2 = sanitizedValue.toUpperCase();
         return true;
       }
     },
@@ -239,7 +271,9 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
         },
       width: 190,
       valueSetter: (params: any) => {
-        params.data.campo4 = params.newValue ? params.newValue.toUpperCase() : '';
+        // Solo permitir números
+        const sanitizedValue = params.newValue ? params.newValue.replace(/[^0-9]/g, '') : '';
+        params.data.campo4 = sanitizedValue;
         return true;
       }
     },
@@ -283,7 +317,7 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
         return params.data.vigente === true;
       },
       width: 66,
-      onCellValueChanged: (params: any) => {
+      onCellValueChanged: async (params: any) => {
         console.log('🔔 Principal checkbox changed:', {
           id: params.data.id,
           campo2: params.data.campo2,
@@ -292,11 +326,39 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
           vigente: params.data.vigente
         });
 
+        // Guardar ID de la fila modificada para restaurar focus
+        const modifiedRowId = params.data.id;
+        const modifiedRowName = params.data.campo2;
+        const modifiedRowNumber = params.data.campo4;
+
         // Si se intenta marcar como principal pero no está vigente, revertir
         if (params.newValue === true && params.data.vigente === false) {
           console.log('❌ Revirtiendo: No se puede marcar como principal si no está vigente');
           params.data.principal = false;
+
+          // Ordenar y restaurar focus
+          this.bankRowData.sort((a, b) => {
+            if (a.vigente !== b.vigente) return b.vigente ? 1 : -1;
+            if (a.principal !== b.principal) return b.principal ? 1 : -1;
+            return (a.id || 0) - (b.id || 0);
+          });
           this.bankGridApi?.setGridOption('rowData', this.bankRowData);
+
+          await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
+          if (this.bankGridApi) {
+            let rowToSelect = this.bankRowData.find(r => r.id === modifiedRowId);
+            if (!rowToSelect) {
+              rowToSelect = this.bankRowData.find(r => r.campo2 === modifiedRowName && r.campo4 === modifiedRowNumber);
+            }
+            if (rowToSelect) {
+              const rowIndex = this.bankRowData.indexOf(rowToSelect);
+              const rowNode = this.bankGridApi.getDisplayedRowAtIndex(rowIndex);
+              if (rowNode) {
+                rowNode.setSelected(true);
+                this.bankGridApi.ensureIndexVisible(rowIndex, 'middle');
+              }
+            }
+          }
           return;
         }
 
@@ -312,7 +374,30 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
           if (principalRows.length === 0 && activeRows.length > 0) {
             console.log('⚠️ Forzando a mantener como principal (es el único)');
             params.data.principal = true;
+
+            // Ordenar y restaurar focus
+            this.bankRowData.sort((a, b) => {
+              if (a.vigente !== b.vigente) return b.vigente ? 1 : -1;
+              if (a.principal !== b.principal) return b.principal ? 1 : -1;
+              return (a.id || 0) - (b.id || 0);
+            });
             this.bankGridApi?.setGridOption('rowData', this.bankRowData);
+
+            await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
+            if (this.bankGridApi) {
+              let rowToSelect = this.bankRowData.find(r => r.id === modifiedRowId);
+              if (!rowToSelect) {
+                rowToSelect = this.bankRowData.find(r => r.campo2 === modifiedRowName && r.campo4 === modifiedRowNumber);
+              }
+              if (rowToSelect) {
+                const rowIndex = this.bankRowData.indexOf(rowToSelect);
+                const rowNode = this.bankGridApi.getDisplayedRowAtIndex(rowIndex);
+                if (rowNode) {
+                  rowNode.setSelected(true);
+                  this.bankGridApi.ensureIndexVisible(rowIndex, 'middle');
+                }
+              }
+            }
             return;
           }
         }
@@ -355,8 +440,32 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
             console.log(`  ID ${r.id} (${r.campo2}): principal=${r.principal}, campo7=${r.campo7}, __modified=${r.__modified}`);
           });
 
+          // Ordenar localmente por vigente y principal
+          this.bankRowData.sort((a, b) => {
+            if (a.vigente !== b.vigente) return b.vigente ? 1 : -1;
+            if (a.principal !== b.principal) return b.principal ? 1 : -1;
+            return (a.id || 0) - (b.id || 0);
+          });
+
           // Refrescar grid para mostrar los cambios
           this.bankGridApi?.setGridOption('rowData', this.bankRowData);
+
+          // Restaurar focus a la fila modificada
+          await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
+          if (this.bankGridApi) {
+            let rowToSelect = this.bankRowData.find(r => r.id === modifiedRowId);
+            if (!rowToSelect) {
+              rowToSelect = this.bankRowData.find(r => r.campo2 === modifiedRowName && r.campo4 === modifiedRowNumber);
+            }
+            if (rowToSelect) {
+              const rowIndex = this.bankRowData.indexOf(rowToSelect);
+              const rowNode = this.bankGridApi.getDisplayedRowAtIndex(rowIndex);
+              if (rowNode) {
+                rowNode.setSelected(true);
+                this.bankGridApi.ensureIndexVisible(rowIndex, 'middle');
+              }
+            }
+          }
         }
 
         // Marcar como modificado
@@ -395,11 +504,16 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
     this.hasBankChanges = true;
   }
 
-  loadBankData() {
+  loadBankData(onComplete?: () => void) {
     if (this.params && this.params.context.BANK && this.params.context.BANK.load) {
       this.params.context.BANK.load(this.providerId, 'BANK', (data: any) => {
         this.bankRowData = data;
-        console.log(data)
+        console.log(data);
+
+        // Ejecutar callback si existe
+        if (onComplete) {
+          setTimeout(() => onComplete(), 100);
+        }
       });
     }
   }
@@ -468,18 +582,88 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
   async saveBanks() {
     if (this.params && this.params.context.BANK && this.params.context.BANK.save) {
       try {
-        // Guardar los bancos
-        await this.params.context.BANK.save(this.providerId, this.bankRowData, 'BANK');
+        // Guardar la fila seleccionada actual para restaurarla después
+        const selectedRow = this.selectedBank;
+        const selectedBankId = selectedRow?.id;
+        const selectedBankName = selectedRow?.campo2; // Nombre titular como respaldo
+        const selectedBankNumber = selectedRow?.campo4; // Numero cuenta como respaldo
 
-        // Pequeña pausa para que el servidor procese
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Guardar los bancos (ESPERA a que el usuario cierre el alert)
+        await this.params.context.BANK.save(this.providerId, this.bankRowData, 'BANK');
 
         this.hasBankChanges = false;
 
-        // Recargar datos
-        this.loadBankData();
+        // Limpiar los flags de las filas guardadas SIN recargar desde el servidor
+        this.bankRowData.forEach(row => {
+          delete row.__isNew;
+          delete row.__modified;
+        });
 
-        // Actualizar contador en grid padre
+        // Ordenar localmente por vigente (activos primero) y principal (principal primero)
+        this.bankRowData.sort((a, b) => {
+          // Primero por vigente (activos primero)
+          if (a.vigente !== b.vigente) {
+            return b.vigente ? 1 : -1; // true antes que false
+          }
+          // Luego por principal (principal primero)
+          if (a.principal !== b.principal) {
+            return b.principal ? 1 : -1; // true antes que false
+          }
+          // Finalmente por ID para mantener consistencia
+          return (a.id || 0) - (b.id || 0);
+        });
+
+        // Actualizar el grid con los datos ordenados
+        this.bankGridApi?.setGridOption('rowData', this.bankRowData);
+
+        // PRIMERO restaurar el focus ANTES de actualizar el grid padre
+        // Esperar solo un ciclo de renderizado para asegurar que los cambios se reflejen
+        await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
+
+        if (this.bankGridApi && selectedRow) {
+          let rowToSelect = null;
+
+          console.log('🔍 Buscando fila para restaurar (sin reload)...', {
+            selectedBankId,
+            selectedBankName,
+            selectedBankNumber,
+            totalRows: this.bankRowData.length
+          });
+
+          // Intentar encontrar por ID original (si no era temporal)
+          if (selectedBankId && !String(selectedBankId).startsWith('temp_')) {
+            rowToSelect = this.bankRowData.find(r => r.id === selectedBankId);
+            console.log('Búsqueda por ID:', rowToSelect ? '✅ Encontrado' : '❌ No encontrado');
+          }
+
+          // Si no se encontró, buscar por nombre titular y número de cuenta
+          if (!rowToSelect && selectedBankName) {
+            rowToSelect = this.bankRowData.find(r =>
+              r.campo2 === selectedBankName &&
+              r.campo4 === selectedBankNumber
+            );
+            console.log('Búsqueda por nombre/número:', rowToSelect ? '✅ Encontrado' : '❌ No encontrado');
+          }
+
+          // Si se encontró la fila, seleccionarla y hacer scroll
+          if (rowToSelect) {
+            const rowIndex = this.bankRowData.indexOf(rowToSelect);
+            console.log('📍 Índice de la fila:', rowIndex);
+
+            const rowNode = this.bankGridApi.getDisplayedRowAtIndex(rowIndex);
+            if (rowNode) {
+              rowNode.setSelected(true);
+              this.bankGridApi.ensureIndexVisible(rowIndex, 'middle');
+              console.log('✅ Fila restaurada después de guardar (sin reload):', rowToSelect);
+            } else {
+              console.error('❌ No se pudo obtener el rowNode en el índice:', rowIndex);
+            }
+          } else {
+            console.error('❌ No se encontró la fila para restaurar');
+          }
+        }
+
+        // AHORA actualizar contador en grid padre (esto puede destruir el detail grid, pero ya restauramos el focus)
         await this.updateBankCountInParent();
 
       } catch (error) {
@@ -538,17 +722,10 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
       this.params.data.fieldBank = activeBankCount;
       this.params.data.principalBankName = principalBankName;
 
-      // Refrescar la celda específica en el grid padre
-      if (this.params.api) {
-        this.params.api.refreshCells({
-          rowNodes: [this.params.node],
-          columns: ['fieldBank'],
-          force: true
-        });
-
-        console.log('✅ Contador de bancos actualizado en grid padre:', this.params.data.fieldBank);
-        console.log('✅ Banco principal guardado:', this.params.data.principalBankName);
-      }
+      // NO usar refreshCells porque destruye el detail grid
+      // En su lugar, solo actualizar los datos - el grid padre se actualizará automáticamente
+      console.log('✅ Contador de bancos actualizado en grid padre:', this.params.data.fieldBank);
+      console.log('✅ Banco principal guardado:', this.params.data.principalBankName);
 
     } catch (error) {
       console.error('❌ Error al actualizar contador de bancos:', error);

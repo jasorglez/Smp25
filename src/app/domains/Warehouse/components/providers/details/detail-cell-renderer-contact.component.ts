@@ -117,7 +117,11 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
       cellEditor: 'agCheckboxCellEditor',
       editable: true,
       width: 66,
-      onCellValueChanged: (params: any) => {
+      onCellValueChanged: async (params: any) => {
+        // Guardar ID de la fila modificada para restaurar focus
+        const modifiedRowId = params.data.id;
+        const modifiedRowName = params.data.campo2;
+
         // Si se desmarca como vigente, también desmarcar como principal
         if (params.newValue === false && params.data.principal === true) {
           params.data.principal = false;
@@ -126,8 +130,33 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
           if (activeRows.length > 0) {
             activeRows[0].principal = true;
           }
-          // Refrescar grid para mostrar los cambios
+
+          // Ordenar localmente por vigente y principal
+          this.contactRowData.sort((a, b) => {
+            if (a.vigente !== b.vigente) return b.vigente ? 1 : -1;
+            if (a.principal !== b.principal) return b.principal ? 1 : -1;
+            return (a.id || 0) - (b.id || 0);
+          });
+
+          // Refrescar grid con datos ordenados
           this.contactGridApi?.setGridOption('rowData', this.contactRowData);
+
+          // Restaurar focus a la fila modificada
+          await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
+          if (this.contactGridApi) {
+            let rowToSelect = this.contactRowData.find(r => r.id === modifiedRowId);
+            if (!rowToSelect) {
+              rowToSelect = this.contactRowData.find(r => r.campo2 === modifiedRowName);
+            }
+            if (rowToSelect) {
+              const rowIndex = this.contactRowData.indexOf(rowToSelect);
+              const rowNode = this.contactGridApi.getDisplayedRowAtIndex(rowIndex);
+              if (rowNode) {
+                rowNode.setSelected(true);
+                this.contactGridApi.ensureIndexVisible(rowIndex, 'middle');
+              }
+            }
+          }
         }
 
         // Si se marca como vigente, refrescar las celdas para que 'principal' sea editable
@@ -284,7 +313,7 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
         return params.data.vigente === true;
       },
       width: 66,
-      onCellValueChanged: (params: any) => {
+      onCellValueChanged: async (params: any) => {
         console.log('🔔 Principal checkbox changed:', {
           id: params.data.id,
           campo2: params.data.campo2,
@@ -293,11 +322,38 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
           vigente: params.data.vigente
         });
 
+        // Guardar ID de la fila modificada para restaurar focus
+        const modifiedRowId = params.data.id;
+        const modifiedRowName = params.data.campo2;
+
         // Si se intenta marcar como principal pero no está vigente, revertir
         if (params.newValue === true && params.data.vigente === false) {
           console.log('❌ Revirtiendo: No se puede marcar como principal si no está vigente');
           params.data.principal = false;
+
+          // Ordenar y restaurar focus
+          this.contactRowData.sort((a, b) => {
+            if (a.vigente !== b.vigente) return b.vigente ? 1 : -1;
+            if (a.principal !== b.principal) return b.principal ? 1 : -1;
+            return (a.id || 0) - (b.id || 0);
+          });
           this.contactGridApi?.setGridOption('rowData', this.contactRowData);
+
+          await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
+          if (this.contactGridApi) {
+            let rowToSelect = this.contactRowData.find(r => r.id === modifiedRowId);
+            if (!rowToSelect) {
+              rowToSelect = this.contactRowData.find(r => r.campo2 === modifiedRowName);
+            }
+            if (rowToSelect) {
+              const rowIndex = this.contactRowData.indexOf(rowToSelect);
+              const rowNode = this.contactGridApi.getDisplayedRowAtIndex(rowIndex);
+              if (rowNode) {
+                rowNode.setSelected(true);
+                this.contactGridApi.ensureIndexVisible(rowIndex, 'middle');
+              }
+            }
+          }
           return;
         }
 
@@ -313,7 +369,30 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
           if (principalRows.length === 0 && activeRows.length > 0) {
             console.log('⚠️ Forzando a mantener como principal (es el único)');
             params.data.principal = true;
+
+            // Ordenar y restaurar focus
+            this.contactRowData.sort((a, b) => {
+              if (a.vigente !== b.vigente) return b.vigente ? 1 : -1;
+              if (a.principal !== b.principal) return b.principal ? 1 : -1;
+              return (a.id || 0) - (b.id || 0);
+            });
             this.contactGridApi?.setGridOption('rowData', this.contactRowData);
+
+            await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
+            if (this.contactGridApi) {
+              let rowToSelect = this.contactRowData.find(r => r.id === modifiedRowId);
+              if (!rowToSelect) {
+                rowToSelect = this.contactRowData.find(r => r.campo2 === modifiedRowName);
+              }
+              if (rowToSelect) {
+                const rowIndex = this.contactRowData.indexOf(rowToSelect);
+                const rowNode = this.contactGridApi.getDisplayedRowAtIndex(rowIndex);
+                if (rowNode) {
+                  rowNode.setSelected(true);
+                  this.contactGridApi.ensureIndexVisible(rowIndex, 'middle');
+                }
+              }
+            }
             return;
           }
         }
@@ -356,8 +435,32 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
             console.log(`  ID ${r.id} (${r.campo2}): principal=${r.principal}, campo7=${r.campo7}, __modified=${r.__modified}`);
           });
 
+          // Ordenar localmente por vigente y principal
+          this.contactRowData.sort((a, b) => {
+            if (a.vigente !== b.vigente) return b.vigente ? 1 : -1;
+            if (a.principal !== b.principal) return b.principal ? 1 : -1;
+            return (a.id || 0) - (b.id || 0);
+          });
+
           // Refrescar grid para mostrar los cambios
           this.contactGridApi?.setGridOption('rowData', this.contactRowData);
+
+          // Restaurar focus a la fila modificada
+          await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
+          if (this.contactGridApi) {
+            let rowToSelect = this.contactRowData.find(r => r.id === modifiedRowId);
+            if (!rowToSelect) {
+              rowToSelect = this.contactRowData.find(r => r.campo2 === modifiedRowName);
+            }
+            if (rowToSelect) {
+              const rowIndex = this.contactRowData.indexOf(rowToSelect);
+              const rowNode = this.contactGridApi.getDisplayedRowAtIndex(rowIndex);
+              if (rowNode) {
+                rowNode.setSelected(true);
+                this.contactGridApi.ensureIndexVisible(rowIndex, 'middle');
+              }
+            }
+          }
         }
 
         // Marcar como modificado
@@ -400,7 +503,7 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
     this.hasContactChanges = true;
   }
 
-  loadContactData() {
+  loadContactData(onComplete?: () => void) {
     if (this.params && this.params.context && this.params.context.CONTACT && this.params.context.CONTACT.load) {
       this.params.context.CONTACT.load(this.providerId, 'CONTACT', (data: any) => {
         console.log('📥 DATOS RECIBIDOS DEL SERVIDOR:');
@@ -422,6 +525,11 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
         // Refrescar el grid si ya existe
         if (this.contactGridApi) {
           this.contactGridApi.setGridOption('rowData', this.contactRowData);
+        }
+
+        // Ejecutar callback si existe
+        if (onComplete) {
+          setTimeout(() => onComplete(), 100);
         }
       });
     }
@@ -544,25 +652,74 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
       });
 
       try {
-        // Esperar a que se complete el guardado
+        // Guardar la fila seleccionada actual para restaurarla después
+        const selectedRow = this.selectedContact;
+        const selectedContactId = selectedRow?.id;
+        const selectedContactName = selectedRow?.campo2; // Nombre contacto como respaldo
+        const selectedContactPhone = selectedRow?.campo4; // Teléfono como respaldo
+
+        // Guardar (ESPERA a que el usuario cierre el alert)
         await this.params.context.CONTACT.save(this.providerId, this.contactRowData, 'CONTACT');
 
-        console.log('✅ Guardado completado, esperando 500ms antes de recargar...');
-
-        // Pequeña pausa para asegurar que el servidor haya procesado todo
-        await new Promise(resolve => setTimeout(resolve, 500));
+        console.log('✅ Guardado completado (incluyendo alert cerrado por usuario)');
 
         this.hasContactChanges = false;
 
-        console.log('🔄 Recargando datos desde el servidor...');
+        // Limpiar los flags de las filas guardadas SIN recargar desde el servidor
+        this.contactRowData.forEach(row => {
+          delete row.__isNew;
+          delete row.__modified;
+        });
 
-        // Recargar solo los datos de contactos, NO toda la tabla
-        this.loadContactData();
+        // PRIMERO restaurar el focus ANTES de actualizar el grid padre
+        // Esperar solo un ciclo de renderizado para asegurar que los cambios se reflejen
+        await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
 
-        // Actualizar campos del contacto principal en la tabla padre (Customer)
+        if (this.contactGridApi && selectedRow) {
+          let rowToSelect = null;
+
+          console.log('🔍 Buscando contacto para restaurar (sin reload)...', {
+            selectedContactId,
+            selectedContactName,
+            selectedContactPhone,
+            totalRows: this.contactRowData.length
+          });
+
+          // Intentar encontrar por ID original (si no era temporal)
+          if (selectedContactId && !String(selectedContactId).startsWith('temp_')) {
+            rowToSelect = this.contactRowData.find(r => r.id === selectedContactId);
+            console.log('Búsqueda por ID:', rowToSelect ? '✅ Encontrado' : '❌ No encontrado');
+          }
+
+          // Si no se encontró, buscar por nombre y teléfono
+          if (!rowToSelect && selectedContactName) {
+            rowToSelect = this.contactRowData.find(r =>
+              r.campo2 === selectedContactName &&
+              r.campo4 === selectedContactPhone
+            );
+            console.log('Búsqueda por nombre/teléfono:', rowToSelect ? '✅ Encontrado' : '❌ No encontrado');
+          }
+
+          // Si se encontró la fila, seleccionarla y hacer scroll
+          if (rowToSelect) {
+            const rowIndex = this.contactRowData.indexOf(rowToSelect);
+            console.log('📍 Índice de la fila:', rowIndex);
+
+            const rowNode = this.contactGridApi.getDisplayedRowAtIndex(rowIndex);
+            if (rowNode) {
+              rowNode.setSelected(true);
+              this.contactGridApi.ensureIndexVisible(rowIndex, 'middle');
+              console.log('✅ Fila restaurada después de guardar (sin reload):', rowToSelect);
+            } else {
+              console.error('❌ No se pudo obtener el rowNode en el índice:', rowIndex);
+            }
+          } else {
+            console.error('❌ No se encontró la fila para restaurar');
+          }
+        }
+
+        // AHORA actualizar campos del contacto principal y contador en el grid padre
         await this.updatePrincipalContactInParent();
-
-        // Actualizar el contador de contactos en el grid padre
         await this.updateContactCountInParent();
 
       } catch (error) {
@@ -681,16 +838,9 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
       // Actualizar el contador en la fila del grid padre (temporal, en memoria)
       this.params.data.fieldContact = activeContactCount;
 
-      // Refrescar la celda específica en el grid padre
-      if (this.params.api) {
-        this.params.api.refreshCells({
-          rowNodes: [this.params.node],
-          columns: ['fieldContact'],
-          force: true
-        });
-
-        console.log('✅ Contador de contactos actualizado en grid padre:', this.params.data.fieldContact);
-      }
+      // NO usar refreshCells porque destruye el detail grid
+      // En su lugar, solo actualizar los datos - el grid padre se actualizará automáticamente
+      console.log('✅ Contador de contactos actualizado en grid padre:', this.params.data.fieldContact);
 
     } catch (error) {
       console.error('❌ Error al actualizar contador de contactos:', error);

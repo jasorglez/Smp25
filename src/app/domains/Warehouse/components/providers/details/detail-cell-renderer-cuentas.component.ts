@@ -362,10 +362,15 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
     }
   }
 
-  loadCuentaData() {
+  loadCuentaData(onComplete?: () => void) {
     if (this.params && this.params.context && this.params.context.CUENTA && this.params.context.CUENTA.load) {
       this.params.context.CUENTA.load(this.providerId, 'CUENTA', (data: any) => {
         this.cuentaRowData = data;
+
+        // Ejecutar callback si existe
+        if (onComplete) {
+          setTimeout(() => onComplete(), 100);
+        }
       });
     }
   }
@@ -392,10 +397,76 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
     this.hasCuentaChanges = true;
   }
 
-  saveCuentas() {
+  async saveCuentas() {
     if (this.params && this.params.context && this.params.context.CUENTA.save) {
-      this.params.context.CUENTA.save(this.providerId, this.cuentaRowData, 'CUENTA');
-      this.hasCuentaChanges = false;
+      try {
+        // Guardar la fila seleccionada actual para restaurarla después
+        const selectedRow = this.selectedCuenta;
+        const selectedCuentaId = selectedRow?.id;
+        const selectedCuentaFecha = selectedRow?.campo3; // Fecha requisicion como respaldo
+        const selectedCuentaNumero = selectedRow?.campo1; // Numero factura/nota como respaldo
+
+        // Guardar (ESPERA a que el usuario cierre el alert)
+        await this.params.context.CUENTA.save(this.providerId, this.cuentaRowData, 'CUENTA');
+
+        this.hasCuentaChanges = false;
+
+        // Limpiar los flags de las filas guardadas SIN recargar desde el servidor
+        this.cuentaRowData.forEach(row => {
+          delete row.__isNew;
+          delete row.__modified;
+        });
+
+        // NO recargar datos - mantener el grid intacto y restaurar inmediatamente
+        // Esperar solo un ciclo de renderizado para asegurar que los cambios se reflejen
+        await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
+
+        if (this.cuentaGridApi && selectedRow) {
+          let rowToSelect = null;
+
+          console.log('🔍 Buscando cuenta para restaurar (sin reload)...', {
+            selectedCuentaId,
+            selectedCuentaFecha,
+            selectedCuentaNumero,
+            totalRows: this.cuentaRowData.length
+          });
+
+          // Intentar encontrar por ID original (si no era temporal)
+          if (selectedCuentaId && !String(selectedCuentaId).startsWith('temp_')) {
+            rowToSelect = this.cuentaRowData.find(r => r.id === selectedCuentaId);
+            console.log('Búsqueda por ID:', rowToSelect ? '✅ Encontrado' : '❌ No encontrado');
+          }
+
+          // Si no se encontró, buscar por fecha y número
+          if (!rowToSelect && selectedCuentaNumero) {
+            rowToSelect = this.cuentaRowData.find(r =>
+              r.campo3 === selectedCuentaFecha &&
+              r.campo1 === selectedCuentaNumero
+            );
+            console.log('Búsqueda por fecha/número:', rowToSelect ? '✅ Encontrado' : '❌ No encontrado');
+          }
+
+          // Si se encontró la fila, seleccionarla y hacer scroll
+          if (rowToSelect) {
+            const rowIndex = this.cuentaRowData.indexOf(rowToSelect);
+            console.log('📍 Índice de la fila:', rowIndex);
+
+            const rowNode = this.cuentaGridApi.getDisplayedRowAtIndex(rowIndex);
+            if (rowNode) {
+              rowNode.setSelected(true);
+              this.cuentaGridApi.ensureIndexVisible(rowIndex, 'middle');
+              console.log('✅ Fila restaurada después de guardar (sin reload):', rowToSelect);
+            } else {
+              console.error('❌ No se pudo obtener el rowNode en el índice:', rowIndex);
+            }
+          } else {
+            console.error('❌ No se encontró la fila para restaurar');
+          }
+        }
+
+      } catch (error) {
+        console.error('❌ Error al guardar cuentas:', error);
+      }
     }
   }
 
