@@ -18,6 +18,9 @@ export class OtService {
       return this.http.get(`${environment.urlSmp}/OT`, { headers: this.trackingService.getHeaders() });
     }
     
+   get2fieldsByPect(idProject: number): Observable<any> {
+      return this.http.get(`${environment.urlSmp}/OT/2fields?idProject=${idProject}`, { headers: this.trackingService.getHeaders() });
+    }
 
    getOtListByProject(idProject: number, close: boolean): Observable<any> {
       return this.http.get(`${environment.urlSmp}/OT/projects/${idProject}?close=${close}`, { headers: this.trackingService.getHeaders() });

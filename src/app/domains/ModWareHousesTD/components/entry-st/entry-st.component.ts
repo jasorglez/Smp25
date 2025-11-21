@@ -10,6 +10,7 @@ import { TrackingService } from 'app/services/tracking.service';
 import { InandoutService } from 'app/services/inandout.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { MaterialsService } from 'app/services/materials.service';
+import { OtService } from 'app/services/ot.service';
 import { DetailCellRendererEntryItemsComponent } from './detail-cell-renderer-entry-items.component';
 import { alerts } from 'app/helpers/alerts';
 import { ButtonCellRendererComponent } from './button-cell-renderer.component';
@@ -30,19 +31,23 @@ export class EntryStComponent implements OnInit {
   private inandoutService = inject(InandoutService);
   private catalogsService = inject(CatalogsService);
   private materialsService = inject(MaterialsService);
+  private otService = inject(OtService);
 
   rowData: any[] = [];
   selectedWarehouse: any = null;
   warehouses: any[] = [];
-  gridHeight: string = '80vh';
+  gridHeight: string = '78vh';
   selectedEntry: any = null;
   hasUnsavedChanges: boolean = false;
   idRoot: number | null = null;
+  projectId: number | null = null;
   newlyAddedRows: string[] = [];
   private tempIdCounter: number = 0;
 
   catalogs: any[] = [];
   selectedCatalog: any = null;
+  otList: any[] = [];
+  selectedOt: any = null;
   isDirectEntryMode: boolean = false;
 
   public rowSelection: 'single' | 'multiple' = 'single';
@@ -59,6 +64,14 @@ export class EntryStComponent implements OnInit {
         this.loadCatalogs();
       }
     });
+
+    effect(() => {
+      this.projectId = this.signalsService.getProjectSelectedBySidebar()();
+      const email = this.trackingService.getEmail();
+      if (this.projectId && email) {
+        this.loadOts();
+      }
+    });
   }
 
   ngOnInit() {
@@ -66,6 +79,9 @@ export class EntryStComponent implements OnInit {
     if (this.idRoot && email) {
       this.loadWarehouses(email);
       this.loadCatalogs();
+    }
+    if (this.projectId && email) {
+      this.loadOts();
     }
   }
 
@@ -102,6 +118,23 @@ export class EntryStComponent implements OnInit {
     });
   }
 
+  loadOts() {
+    if (!this.projectId) return;
+
+    this.otService.get2fieldsByPect(this.projectId).subscribe({
+      next: (data) => {
+        this.otList = data;
+        if (this.otList.length > 0) {
+          this.selectedOt = this.otList[0];
+        }
+        console.log('OTs loaded:', this.otList);
+      },
+      error: (error) => {
+        console.error('Error loading OTs:', error);
+      }
+    });
+  }
+
   onWarehouseChange() {
     this.loadEntries();
   }
@@ -109,6 +142,11 @@ export class EntryStComponent implements OnInit {
   onCatalogChange() {
     this.loadEntries();
   }
+
+  onOtChange() {
+    this.loadEntries();
+  }
+
 
   loadEntries() {
     if (!this.selectedWarehouse || !this.idRoot) return;

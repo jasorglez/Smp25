@@ -6,6 +6,7 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ButtonCellRendererComponent } from '../../../ModWareHousesTD/components/entry-st/button-cell-renderer.component';
 import { DetailCellRendererRequisitionsItemsComponent } from './detail-cell-renderer-requisitions-items.component';
+import { DetailCellRendererRequisitionsPurchasesComponent } from './detail-cell-renderer-requisitions-purchases.component';
 import { SelectDepartmentEditorComponent } from './select-department-editor.component';
 import { SelectPersonEditorComponent } from './select-person-editor.component';
 import { alerts } from 'app/helpers/alerts';
@@ -13,7 +14,7 @@ import { alerts } from 'app/helpers/alerts';
 @Component({
   selector: 'app-requisitionsdelison',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, ButtonCellRendererComponent, DetailCellRendererRequisitionsItemsComponent, SelectDepartmentEditorComponent, SelectPersonEditorComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, ButtonCellRendererComponent, DetailCellRendererRequisitionsItemsComponent, DetailCellRendererRequisitionsPurchasesComponent, SelectDepartmentEditorComponent, SelectPersonEditorComponent],
   templateUrl: './requisitionsdelison.component.html',
   styleUrl: './requisitionsdelison.component.scss'
 })
@@ -22,10 +23,12 @@ export class RequisitionsDelisonComponent implements OnInit {
   private gridApi!: GridApi;
 
   rowData: any[] = [];
+  fullRowData: any[] = []; // Store original unfiltered data
   gridHeight: string = '80vh';
   hasUnsavedChanges: boolean = false;
   tempIdCounter: number = 0;
   expandedRowId: string | null = null;
+  selectedBranchFilter: string = '';
 
   departments: any[] = [];
   persons: any[] = [];
@@ -61,9 +64,10 @@ export class RequisitionsDelisonComponent implements OnInit {
 
   loadRequisitions() {
     // Mock data for requisitions - 10 records
-    this.rowData = [
+    this.fullRowData = [
       {
         id: 1,
+        branch: 'BODEGAS',
         requisitionNumber: 'REQ001',
         requestDate: new Date().toISOString(),
         departmentId: 1,
@@ -74,14 +78,20 @@ export class RequisitionsDelisonComponent implements OnInit {
         articleNumber: 'ART001',
         comments: 'Comentario 1',
         column8: 'Valor 8',
+        purchasesCount: 2,
         detailType: null,
         detailData: [
           { id: 1, article: 'Artículo 1', quantity: 10, recurrent: 'Recurrente', comment: 'Comentario detalle 1' },
           { id: 2, article: 'Artículo 2', quantity: 5, recurrent: 'Nuevo', comment: 'Comentario detalle 2' }
+        ],
+        purchasesData: [
+          { id: 1, supplier: 'PROVEEDOR A', amount: 15000 },
+          { id: 2, supplier: 'PROVEEDOR B', amount: 25000 }
         ]
       },
       {
         id: 2,
+        branch: 'DELI',
         requisitionNumber: 'REQ002',
         requestDate: new Date().toISOString(),
         departmentId: 2,
@@ -99,6 +109,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       },
       {
         id: 3,
+        branch: 'TIENDA 1',
         requisitionNumber: 'REQ003',
         requestDate: new Date().toISOString(),
         departmentId: 1,
@@ -118,6 +129,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       },
       {
         id: 4,
+        branch: 'TIENDA DELI',
         requisitionNumber: 'REQ004',
         requestDate: new Date().toISOString(),
         departmentId: 3,
@@ -135,6 +147,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       },
       {
         id: 5,
+        branch: 'BODEGAS',
         requisitionNumber: 'REQ005',
         requestDate: new Date().toISOString(),
         departmentId: 2,
@@ -153,6 +166,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       },
       {
         id: 6,
+        branch: 'DELI',
         requisitionNumber: 'REQ006',
         requestDate: new Date().toISOString(),
         departmentId: 1,
@@ -170,6 +184,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       },
       {
         id: 7,
+        branch: 'TIENDA 1',
         requisitionNumber: 'REQ007',
         requestDate: new Date().toISOString(),
         departmentId: 3,
@@ -190,6 +205,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       },
       {
         id: 8,
+        branch: 'TIENDA DELI',
         requisitionNumber: 'REQ008',
         requestDate: new Date().toISOString(),
         departmentId: 2,
@@ -207,6 +223,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       },
       {
         id: 9,
+        branch: 'BODEGAS',
         requisitionNumber: 'REQ009',
         requestDate: new Date().toISOString(),
         departmentId: 1,
@@ -225,6 +242,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       },
       {
         id: 10,
+        branch: 'DELI',
         requisitionNumber: 'REQ010',
         requestDate: new Date().toISOString(),
         departmentId: 3,
@@ -243,6 +261,23 @@ export class RequisitionsDelisonComponent implements OnInit {
         ]
       }
     ];
+    this.applyBranchFilter();
+  }
+
+  applyBranchFilter() {
+    if (this.selectedBranchFilter) {
+      this.rowData = this.fullRowData.filter(item => item.branch === this.selectedBranchFilter);
+    } else {
+      this.rowData = [...this.fullRowData];
+    }
+  }
+
+  onBranchFilterChange(branch: string) {
+    this.selectedBranchFilter = branch;
+    this.applyBranchFilter();
+    if (this.gridApi) {
+      this.gridApi.setGridOption('rowData', this.rowData);
+    }
   }
 
   public gridOptions: any = {
@@ -285,6 +320,20 @@ export class RequisitionsDelisonComponent implements OnInit {
 
   get colMaster(): ColDef[] {
     return [
+      {
+        field: 'branch',
+        headerName: 'Sucursal',
+        width: 120,
+        editable: (params: any) => params.data.__isNew === true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: ['BODEGAS', 'DELI', 'TIENDA 1', 'TIENDA DELI']
+        },
+        valueSetter: (params: any) => {
+          params.data.branch = params.newValue;
+          return true;
+        }
+      },
       {
         field: 'requisitionNumber',
         headerName: '# Requisicion',
@@ -385,7 +434,7 @@ export class RequisitionsDelisonComponent implements OnInit {
           params.data.column8 = params.newValue ? params.newValue.toUpperCase() : '';
           return true;
         }
-      }
+      },
     ];
   }
 
@@ -399,10 +448,11 @@ export class RequisitionsDelisonComponent implements OnInit {
       const node = event.node;
       const api = event.api;
 
-      if (this.expandedRowId === node.id) {
+      if (this.expandedRowId === node.id && event.data.detailType === 'items') {
         // Si ya está expandido, colapsarlo y mostrar todas las filas
         node.setExpanded(false);
         this.expandedRowId = null;
+        event.data.detailType = null;
 
         api.forEachNode((otherNode: any) => {
           otherNode.setRowHeight(undefined);
@@ -452,6 +502,8 @@ export class RequisitionsDelisonComponent implements OnInit {
     this.onCellClicked(event);
   }
 
+
+
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
 
@@ -487,6 +539,27 @@ export class RequisitionsDelisonComponent implements OnInit {
               this.gridApi.refreshCells({ force: true });
             }
           }
+        },
+        PURCHASES: {
+          load: (requisitionId: number, callback: (data: any[]) => void) => {
+            const row = this.rowData.find(r => r.id === requisitionId);
+            callback(row ? row.purchasesData || [] : []);
+          },
+          save: (requisitionId: number, data: any[]) => {
+            const row = this.rowData.find(r => r.id === requisitionId);
+            if (row) {
+              row.purchasesData = data;
+              this.gridApi.refreshCells({ force: true });
+              alerts.basicAlert('Guardado', 'Las compras han sido guardadas correctamente', 'success');
+            }
+          },
+          delete: (params: any, callback: () => void) => {
+            // Mock delete
+            callback();
+          },
+          updateCount: (requisitionId: number, count: number) => {
+            // Update count if needed
+          }
         }
       }
     });
@@ -504,6 +577,7 @@ export class RequisitionsDelisonComponent implements OnInit {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
+      branch: 'BODEGAS',
       requisitionNumber: '',
       requestDate: new Date().toISOString(),
       departmentId: null,

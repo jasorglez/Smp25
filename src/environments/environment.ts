@@ -28,7 +28,6 @@ export const environment = {
   // urlWarehouse  : 'https://bi2.centralus.cloudapp.azure.com/warehouse/api',
 
 
-  //urlSecurity       : 'http://198.71.49.16:5003/api', // 5003
   urlSecurity: 'https://bi2.com.mx/api', // 5003
   //urlSecurity     : 'http://localhost:5260/api',
 
@@ -66,7 +65,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.55.15 (20 Noviembre 2025 12:55)'
+  version: '2.55.15 (21 Noviembre 2025 12:55)'
 
 };
 

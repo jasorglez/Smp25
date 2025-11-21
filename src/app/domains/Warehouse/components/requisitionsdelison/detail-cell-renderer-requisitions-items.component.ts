@@ -6,11 +6,13 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
 import { SelectMaterialEditorComponent } from '../../../ModWareHousesTD/components/entry-st/select-material-editor.component';
+import { ButtonCellRendererComponent } from '../../../ModWareHousesTD/components/entry-st/button-cell-renderer.component';
+import { DetailCellRendererRequisitionsPurchasesComponent } from './detail-cell-renderer-requisitions-purchases.component';
 
 @Component({
   selector: 'app-detail-cell-renderer-requisitions-items',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, SelectMaterialEditorComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, SelectMaterialEditorComponent, ButtonCellRendererComponent],
   template: `
     <div class="detail-grid-container">
       <div class="detail-actions d-flex justify-content-end mb-2">
@@ -40,6 +42,7 @@ import { SelectMaterialEditorComponent } from '../../../ModWareHousesTD/componen
         [localeText]="AG_GRID_LOCALE_ES"
         (gridReady)="onGridReady($event)"
         (cellValueChanged)="onCellValueChanged($event)"
+        (cellClicked)="onCellClicked($event)"
         [components]="components"
         style="height: 300px; width: 100%;">
       </ag-grid-angular>
@@ -62,6 +65,12 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
   tempIdCounter: number = 0;
   materials: any[] = [];
 
+  // Purchases related properties
+  purchasesData: any[] = [];
+  hasPurchaseUnsavedChanges: boolean = false;
+  purchasesTempIdCounter: number = 0;
+  purchasesGridApi!: any;
+
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   ngOnInit() {
@@ -73,6 +82,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
     this.context = params.context;
     this.loadMaterials();
     this.loadData();
+    this.loadPurchasesData();
   }
 
   loadData() {
@@ -81,6 +91,24 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
       this.context.ITEMS.load(requisitionId, (data: any[]) => {
         this.rowData = data.map(item => ({
           ...item,
+          purchasesData: item.purchasesData || [
+            {
+              id: 1,
+              quoteRequestDate: new Date().toISOString(),
+              quoteReceptionDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days later
+              supplier: 'PROVEEDOR ' + item.article?.substring(0, 3).toUpperCase(),
+              unitCost: Math.floor(Math.random() * 1000) + 100,
+              minimumPurchase: Math.floor(Math.random() * 100) + 10,
+              deliveryTime: '7-10 días hábiles',
+              status: 'Pendiente',
+              confirmedQuantity: item.quantity,
+              totalCost: (Math.floor(Math.random() * 1000) + 100) * item.quantity,
+              authorized: 'Pendiente',
+              __isNew: false,
+              __modified: false
+            }
+          ],
+          purchasesExpanded: false,
           __isNew: false,
           __modified: false
         }));
@@ -122,6 +150,37 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+
+    this.gridApi.setGridOption('detailCellRendererParams', {
+      getDetailRowData: (params: any) => {
+        params.successCallback(params.data.purchasesData || []);
+      },
+      context: {
+        componentParent: this,
+        gridApi: this.gridApi,
+        PURCHASES: {
+          load: (articleId: number, callback: (data: any[]) => void) => {
+            const article = this.rowData.find(r => r.id === articleId);
+            callback(article ? article.purchasesData || [] : []);
+          },
+          save: (articleId: number, data: any[]) => {
+            const article = this.rowData.find(r => r.id === articleId);
+            if (article) {
+              article.purchasesData = data;
+              this.gridApi.refreshCells({ force: true });
+              alerts.basicAlert('Guardado', 'Las compras han sido guardadas correctamente', 'success');
+            }
+          },
+          delete: (params: any, callback: () => void) => {
+            // Mock delete
+            callback();
+          },
+          updateCount: (articleId: number, count: number) => {
+            // Update count if needed
+          }
+        }
+      }
+    });
   }
 
   get colDefs(): ColDef[] {
@@ -271,6 +330,18 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
           params.data.comment = params.newValue ? params.newValue.toUpperCase() : '';
           return true;
         }
+      },
+      {
+        field: 'purchases',
+        headerName: 'Compras',
+        width: 120,
+        cellRenderer: ButtonCellRendererComponent,
+        cellRendererParams: {
+          onClick: (node: any) => this.togglePurchasesCascade(node),
+        },
+        valueGetter: params => params.data.purchasesCount || 0,
+        editable: false,
+        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
       }
     ];
   }
@@ -279,12 +350,60 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
     headerHeight: 35,
     rowHeight: 35,
     animateRows: true,
+    masterDetail: true,
+    detailRowHeight: 400,
+    isRowMaster: (dataItem: any) => true,
+    detailCellRenderer: DetailCellRendererRequisitionsPurchasesComponent,
     rowSelection: 'single',
     onCellValueChanged: (event: any) => {
       event.data.__modified = true;
       this.hasUnsavedChanges = true;
     }
   };
+
+  public purchasesGridOptions: any = {
+    headerHeight: 35,
+    rowHeight: 35,
+    animateRows: true,
+    rowSelection: 'single',
+    onCellValueChanged: (event: any) => {
+      event.data.__modified = true;
+      this.hasPurchaseUnsavedChanges = true;
+    }
+  };
+
+  get purchasesColDefs(): ColDef[] {
+    return [
+      {
+        headerName: '#',
+        width: 50,
+        valueGetter: (params) => params.node.rowIndex + 1,
+        pinned: 'left',
+        cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' }
+      },
+      {
+        field: 'supplier',
+        headerName: 'Proveedor',
+        width: 250,
+        editable: true,
+        valueSetter: (params: any) => {
+          params.data.supplier = params.newValue ? params.newValue.toUpperCase() : '';
+          return true;
+        }
+      },
+      {
+        field: 'amount',
+        headerName: 'Monto',
+        width: 150,
+        editable: true,
+        type: 'numericColumn',
+        valueFormatter: (params: any) => {
+          if (!params.value) return '';
+          return `$${params.value.toLocaleString()}`;
+        }
+      }
+    ];
+  }
 
   components = {
     selectMaterialEditor: SelectMaterialEditorComponent
@@ -371,4 +490,150 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
     event.data.__modified = true;
     this.hasUnsavedChanges = true;
   }
+
+  onCellClicked(event: any): void {
+    event.node.setSelected(true);
+
+    const colId = event.column.getColId();
+    const isPurchasesColumn = colId === 'purchases';
+
+    if (isPurchasesColumn) {
+      const node = event.node;
+      const api = event.api;
+
+      if (event.data.purchasesExpanded) {
+        // Close purchases cascade and show all rows
+        node.setExpanded(false);
+        event.data.purchasesExpanded = false;
+
+        // Restore all row heights
+        api.forEachNode((otherNode: any) => {
+          otherNode.setRowHeight(undefined);
+        });
+        api.onRowHeightChanged();
+        api.redrawRows();
+      } else {
+        // Close any other expanded purchases cascades
+        api.forEachNode((otherNode: any) => {
+          if (otherNode.data.purchasesExpanded && otherNode.id !== node.id) {
+            otherNode.setExpanded(false);
+            otherNode.data.purchasesExpanded = false;
+          }
+        });
+
+        // Hide all other rows (set height to 0)
+        api.forEachNode((otherNode: any) => {
+          if (otherNode.id !== node.id) {
+            otherNode.setRowHeight(0);
+          }
+        });
+
+        // Open purchases cascade for this row
+        event.data.purchasesExpanded = true;
+        node.setExpanded(true);
+
+        // Apply height changes
+        api.onRowHeightChanged();
+        api.redrawRows();
+      }
+    }
+  }
+
+  togglePurchasesCascade(node: any) {
+    const event = {
+      node: node,
+      api: this.gridApi,
+      data: node.data,
+      column: { getColId: () => 'purchases' }
+    };
+    this.onCellClicked(event);
+  }
+
+  // Purchases methods
+  onPurchasesGridReady(params: GridReadyEvent) {
+    this.purchasesGridApi = params.api;
+  }
+
+  addPurchase() {
+    const tempId = `temp_purchase_${this.purchasesTempIdCounter++}`;
+    const newPurchase = {
+      id: tempId,
+      supplier: '',
+      amount: 0,
+      __isNew: true,
+      __modified: false
+    };
+
+    this.purchasesData = [...this.purchasesData, newPurchase];
+    this.hasPurchaseUnsavedChanges = true;
+    this.purchasesGridApi.setGridOption('rowData', this.purchasesData);
+
+    setTimeout(() => {
+      const lastRowIndex = this.purchasesData.length - 1;
+      this.purchasesGridApi.ensureIndexVisible(lastRowIndex);
+      this.purchasesGridApi.startEditingCell({
+        rowIndex: lastRowIndex,
+        colKey: 'supplier'
+      });
+    }, 0);
+  }
+
+  deleteSelectedPurchase() {
+    const selectedRows = this.purchasesGridApi.getSelectedRows();
+    if (selectedRows.length === 0) {
+      alerts.basicAlert('Selección requerida', 'Por favor seleccione una compra para eliminar', 'warning');
+      return;
+    }
+
+    const selectedPurchase = selectedRows[0];
+    // Mock delete - in real implementation, call service
+    this.purchasesData = this.purchasesData.filter(item => item.id !== selectedPurchase.id);
+    this.purchasesGridApi.setGridOption('rowData', this.purchasesData);
+    this.hasPurchaseUnsavedChanges = true;
+  }
+
+  savePurchaseChanges() {
+    if (!this.hasPurchaseUnsavedChanges) {
+      alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
+      return;
+    }
+
+    if (this.context && this.context.PURCHASES && this.context.PURCHASES.save) {
+      const requisitionId = this.params.data.id;
+      this.context.PURCHASES.save(requisitionId, this.purchasesData);
+      this.hasPurchaseUnsavedChanges = false;
+    }
+  }
+
+  discardPurchaseChanges() {
+    if (!this.hasPurchaseUnsavedChanges) {
+      alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por descartar', 'info');
+      return;
+    }
+
+    this.loadPurchasesData();
+    this.hasPurchaseUnsavedChanges = false;
+  }
+
+  onPurchaseCellValueChanged(event: any) {
+    event.data.__modified = true;
+    this.hasPurchaseUnsavedChanges = true;
+  }
+
+  loadPurchasesData() {
+    if (this.context && this.context.PURCHASES && this.context.PURCHASES.load) {
+      const requisitionId = this.params.data.id;
+      this.context.PURCHASES.load(requisitionId, (data: any[]) => {
+        this.purchasesData = data.map(item => ({
+          ...item,
+          __isNew: false,
+          __modified: false
+        }));
+        if (this.purchasesGridApi) {
+          this.purchasesGridApi.setGridOption('rowData', this.purchasesData);
+        }
+      });
+    }
+  }
+
 }
