@@ -116,6 +116,18 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
       editable: true,
       width: 80,
       onCellValueChanged: async (params: any) => {
+        // 🔍 DEBUG: Cambio en checkbox VIGENTE
+        console.log('═══════════════════════════════════════════');
+        console.log('✓ CHECKBOX VIGENTE (ACTIVO) CAMBIÓ:');
+        console.log('   Valor anterior:', params.oldValue);
+        console.log('   Valor nuevo:', params.newValue);
+        console.log('   ID:', params.data.id);
+        console.log('   Categoría:', params.data.categoria);
+        console.log('   Familia:', params.data.familia);
+        console.log('   Subfamilia:', params.data.subfamilia);
+        console.log('   Principal:', params.data.principal);
+        console.log('═══════════════════════════════════════════');
+
         // Guardar ID de la fila modificada para restaurar focus
         const modifiedRowId = params.data.id;
         const modifiedRowCategoria = params.data.categoria;
@@ -275,6 +287,18 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
       },
       width: 80,
       onCellValueChanged: async (params: any) => {
+        // 🔍 DEBUG: Cambio en checkbox PRINCIPAL
+        console.log('═══════════════════════════════════════════');
+        console.log('★ CHECKBOX PRINCIPAL CAMBIÓ:');
+        console.log('   Valor anterior:', params.oldValue);
+        console.log('   Valor nuevo:', params.newValue);
+        console.log('   ID:', params.data.id);
+        console.log('   Categoría:', params.data.categoria);
+        console.log('   Familia:', params.data.familia);
+        console.log('   Subfamilia:', params.data.subfamilia);
+        console.log('   Vigente:', params.data.vigente);
+        console.log('═══════════════════════════════════════════');
+
         // Guardar ID de la fila modificada para restaurar focus
         const modifiedRowId = params.data.id;
         const modifiedRowCategoria = params.data.categoria;
@@ -590,6 +614,23 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
   onSelectionChanged(event: any): void {
     const selectedRows = event.api.getSelectedRows();
     this.selectedRow = selectedRows.length > 0 ? selectedRows[0] : null;
+
+    // 🔍 DEBUG: Mostrar datos de la fila seleccionada
+    if (this.selectedRow) {
+      console.log('═══════════════════════════════════════════');
+      console.log('📍 FILA SELECCIONADA:');
+      console.log('   ID:', this.selectedRow.id);
+      console.log('   Categoría:', this.selectedRow.categoria);
+      console.log('   Familia:', this.selectedRow.familia);
+      console.log('   Subfamilia:', this.selectedRow.subfamilia);
+      console.log('   Vigente (activo):', this.selectedRow.vigente);
+      console.log('   Principal:', this.selectedRow.principal);
+      console.log('   idSubfamily:', this.selectedRow.idSubfamily);
+      console.log('   __originalSubfamilia:', this.selectedRow.__originalSubfamilia);
+      console.log('   __isNew:', this.selectedRow.__isNew);
+      console.log('   __modified:', this.selectedRow.__modified);
+      console.log('═══════════════════════════════════════════');
+    }
   }
 
   addRow(): void {
@@ -899,21 +940,7 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
         }
       }
 
-      // Esperar a que el usuario cierre el alert
-      await alerts.basicAlert(
-        'Guardado exitoso',
-        'Los cambios se han guardado correctamente.',
-        'success'
-      );
-
-      this.hasChanges = false;
-
-      // Notificar al grid padre para actualizar visualización
-      if (this.params.api) {
-        this.params.api.applyTransaction({ update: [this.params.data] });
-      }
-
-      // Restaurar focus después de cerrar el alert
+      // Restaurar focus ANTES de mostrar el alert (para que no se pierda al cerrar el alert)
       await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
 
       if (this.gridApi && selectedRow) {
@@ -944,17 +971,46 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
           const rowIndex = this.rowData.indexOf(rowToSelect);
           console.log('📍 Índice de la fila:', rowIndex);
 
-          const rowNode = this.gridApi.getDisplayedRowAtIndex(rowIndex);
+          // Intentar obtener el rowNode - si falla, iterar todos los nodos
+          let rowNode = this.gridApi.getDisplayedRowAtIndex(rowIndex);
+
+          if (!rowNode) {
+            console.log('⚠️ No se pudo obtener por índice, iterando todos los nodos...');
+            // Iterar sobre todos los nodos para encontrar el correcto
+            this.gridApi.forEachNode((node) => {
+              if (node.data && node.data.id === rowToSelect.id) {
+                rowNode = node;
+                console.log('✅ Nodo encontrado iterando:', node.rowIndex);
+              }
+            });
+          }
+
           if (rowNode) {
             rowNode.setSelected(true);
-            this.gridApi.ensureIndexVisible(rowIndex, 'middle');
+            this.gridApi.ensureIndexVisible(rowNode.rowIndex!, 'middle');
             console.log('✅ Fila restaurada después de guardar:', rowToSelect);
           } else {
-            console.error('❌ No se pudo obtener el rowNode en el índice:', rowIndex);
+            console.error('❌ No se pudo obtener el rowNode');
           }
         } else {
           console.error('❌ No se encontró la fila para restaurar');
         }
+      }
+
+      // AHORA mostrar el alert (después de restaurar el focus)
+      await alerts.basicAlert(
+        'Guardado exitoso',
+        'Los cambios se han guardado correctamente.',
+        'success'
+      );
+
+      this.hasChanges = false;
+
+      // Actualizar los datos del nodo padre SIN usar applyTransaction (para no destruir el detail grid)
+      // Solo actualizar los datos en memoria
+      if (this.params.data) {
+        // Los datos del nodo padre ya se actualizaron en las líneas 927-928
+        // No necesitamos hacer nada más aquí
       }
 
     } catch (error) {
