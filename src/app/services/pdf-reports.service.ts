@@ -188,7 +188,8 @@ export class PdfReportsService {
                   body: [
                     ['Fecha Entrega', entryData.deliveryDate ? new Date(entryData.deliveryDate).toLocaleDateString('es-MX') : 'N/A'],
                     ['Tipo Entrada', entryData.directEntry ? 'Directa' : 'Normal'],
-                    ['Factura', entryData.numBill || 'N/A']
+                    ['Factura', entryData.numBill || 'N/A'],
+                    ['OT', entryData.otName || 'N/A']
                   ]
                 },
                 layout: {

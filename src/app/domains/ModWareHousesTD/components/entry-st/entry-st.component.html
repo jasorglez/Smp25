@@ -7,6 +7,7 @@
         <select
           id="warehouseSelect"
           class="form-control"
+          style="font-size: 0.9em;"
           [(ngModel)]="selectedWarehouse"
           (change)="onWarehouseChange()">
           <option *ngFor="let wh of warehouses" [ngValue]="wh">
@@ -21,6 +22,7 @@
         <select
           id="catalogSelect"
           class="form-control"
+          style="font-size: 0.9em;"
           [(ngModel)]="selectedCatalog"
           (change)="onCatalogChange()">
           <option *ngFor="let cat of catalogs" [ngValue]="cat">
@@ -35,6 +37,7 @@
         <select
           id="otSelect"
           class="form-control"
+          style="font-size: 0.9em;"
           [(ngModel)]="selectedOt"
           (change)="onOtChange()">
           <option *ngFor="let ot of otList" [ngValue]="ot">
@@ -85,7 +88,8 @@
         (selectionChanged)="onSelectionChanged($event)"
         (cellValueChanged)="onCellValueChanged($event)"
         (cellEditingStopped)="onCellEditingStopped($event)"
-        (cellDoubleClicked)="onCellDoubleClicked($event)">
+        (cellDoubleClicked)="onCellDoubleClicked($event)"
+        (cellMouseOver)="onCellMouseOver($event)">
       </ag-grid-angular>
     </div>
   </div>

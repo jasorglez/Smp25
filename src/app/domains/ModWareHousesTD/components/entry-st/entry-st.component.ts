@@ -60,7 +60,6 @@ export class EntryStComponent implements OnInit {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       const email = this.trackingService.getEmail();
       if (this.idRoot && email) {
-        this.loadWarehouses(email);
         this.loadCatalogs();
       }
     });
@@ -69,6 +68,7 @@ export class EntryStComponent implements OnInit {
       this.projectId = this.signalsService.getProjectSelectedBySidebar()();
       const email = this.trackingService.getEmail();
       if (this.projectId && email) {
+        this.loadWarehouses(email);
         this.loadOts();
       }
     });
@@ -77,10 +77,10 @@ export class EntryStComponent implements OnInit {
   ngOnInit() {
     const email = this.trackingService.getEmail();
     if (this.idRoot && email) {
-      this.loadWarehouses(email);
       this.loadCatalogs();
     }
     if (this.projectId && email) {
+      this.loadWarehouses(email);
       this.loadOts();
     }
   }
@@ -149,9 +149,9 @@ export class EntryStComponent implements OnInit {
 
 
   loadEntries() {
-    if (!this.selectedWarehouse || !this.idRoot) return;
+    if (!this.selectedWarehouse || !this.projectId) return;
 
-    this.inandoutService.getInAndOuts(this.idRoot, this.selectedWarehouse.idAlmacen, 'IN').subscribe({
+    this.inandoutService.getInAndOuts(this.projectId, this.selectedWarehouse.idAlmacen, 'IN').subscribe({
       next: (data: any[]) => {
         this.rowData = data.map(entry => ({
           ...entry,
@@ -230,12 +230,9 @@ export class EntryStComponent implements OnInit {
       {
         field: 'pdfReport',
         headerName: 'PDF',
-        width: 70,
-        cellRenderer: 'agGroupCellRenderer',
-        cellRendererParams: {
-          innerRenderer: (params: any) => {
-            return '<i class="bi bi-file-earmark-pdf" style="font-size: 1.2rem; color: #dc3545; cursor: pointer;"></i>';
-          },
+        width: 90,
+        cellRenderer: (params: any) => {
+          return '<i class="bi bi-file-earmark-pdf" style="font-size: 1.2rem; color: #dc3545; cursor: pointer;"></i>';
         },
         editable: false,
         cellStyle: { textAlign: 'center', cursor: 'pointer' },
@@ -269,29 +266,22 @@ export class EntryStComponent implements OnInit {
         }
       },
       {
-        field: 'ocList',
-        headerValueGetter: () => this.isDirectEntryMode ? 'Cliente' : 'OC',
-        width: 150,
-        editable: true,
-        cellStyle: { backgroundColor: this.isDirectEntryMode ? '#fff3e0' : '#e3f2fd' },
-        valueSetter: (params: any) => {
-          params.data.ocList = params.newValue ? params.newValue.toUpperCase() : '';
-          return true;
-        }
+        field: 'idWarehouse',
+        headerName: 'Almacén ID',
+        width: 100,
+        editable: false
       },
       {
-        field: 'deliveryDate',
-        headerName: 'Fecha Entrega',
-        width: 180,
-        editable: true,
-        valueFormatter: (params: any) => {
-          if (!params.value) return '';
-          return new Date(params.value).toLocaleDateString();
-        },
-        valueSetter: (params: any) => {
-          params.data.deliveryDate = params.newValue;
-          return true;
-        }
+        field: 'idType',
+        headerName: 'Tipo ID',
+        width: 100,
+        editable: false
+      },
+      {
+        field: 'idOt',
+        headerName: 'OT ID',
+        width: 100,
+        editable: false
       },
       {
         field: 'numBill',
@@ -508,6 +498,14 @@ export class EntryStComponent implements OnInit {
     }
   }
 
+  onCellMouseOver(event: any): void {
+    if (event.data) {
+      this.selectedWarehouse = this.warehouses.find(wh => wh.idAlmacen === event.data.idWarehouse);
+      this.selectedCatalog = this.catalogs.find(cat => cat.id === event.data.idType);
+      this.selectedOt = this.otList.find(ot => ot.id === event.data.idOt);
+    }
+  }
+
   onCellValueChanged(event: any): void {
     if (event.colDef.field === 'directEntry') {
       this.isDirectEntryMode = event.newValue;
@@ -534,7 +532,7 @@ export class EntryStComponent implements OnInit {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idProject: this.idRoot,
+      idProject: this.projectId,
       idWarehouse: this.selectedWarehouse.idAlmacen,
       idType: this.selectedCatalog?.id || 0,
       idOt: this.selectedOt?.id || 0,
@@ -654,7 +652,7 @@ export class EntryStComponent implements OnInit {
 
   private prepareEntryData(row: any): any {
     return {
-      idProject: this.idRoot,
+      idProject: this.projectId,
       idWarehouse: this.selectedWarehouse.idAlmacen,
       idType: this.selectedCatalog?.id || 0,
       folio: row.folio || '',
