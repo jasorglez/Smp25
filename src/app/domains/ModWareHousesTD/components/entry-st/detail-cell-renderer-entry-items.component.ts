@@ -473,8 +473,19 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
       // Get items data from the rowData (same data displayed in the grid cascade)
       const itemsData = this.rowData || [];
 
+      // Find OT Name
+      let otName = 'N/A';
+      const otId = this.entryData.idOt || this.entryData.id_ot;
+
+      if (otId && this.context?.componentParent?.otList) {
+        const ot = this.context.componentParent.otList.find((o: any) => o.id === otId);
+        if (ot) otName = ot.name;
+      }
+
+      const reportEntryData = { ...this.entryData, otName };
+
       // Generate PDF using the service
-      const pdfUrl = await this.pdfReportsService.generateEntryReport(this.entryData, itemsData, idRoot);
+      const pdfUrl = await this.pdfReportsService.generateEntryReport(reportEntryData, itemsData, idRoot);
 
       // Clean up previous URL
       if (this.originalPdfUrl) {
