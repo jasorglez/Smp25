@@ -7,13 +7,16 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
 import { SelectWithTooltipEditorV2Component } from 'app/domains/Almacenes/components/materiales-maestro/editors/select-with-tooltip-editor-v2.component';
 import { SelectMaterialEditorComponent } from './select-material-editor.component';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { PdfReportsService } from 'app/services/pdf-reports.service';
 
 @Component({
   selector: 'app-detail-cell-renderer-entry-items',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component, SelectMaterialEditorComponent],
   template: `
-    <div class="detail-grid-container">
+    <!-- Items Grid View -->
+    <div class="detail-grid-container" *ngIf="detailType === 'items'">
       <div class="detail-actions d-flex justify-content-end mb-2">
         <button class="btn btn-primary btn-sm me-2" (click)="addItem()">
           <i class="bi bi-plus-lg"></i> Agregar
@@ -45,6 +48,31 @@ import { SelectMaterialEditorComponent } from './select-material-editor.componen
         style="height: 300px; width: 100%;">
       </ag-grid-angular>
     </div>
+
+    <!-- PDF Report View -->
+    <div class="report-detail-container" *ngIf="detailType === 'report'">
+      <div class="report-header d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Vista Previa del Reporte - Folio: {{ entryData?.folio || 'Sin Folio' }}</h5>
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="closeReport()">
+          <i class="bi bi-x-lg"></i> Cerrar
+        </button>
+      </div>
+      <div class="report-content" style="height: 700px; border: 1px solid #dee2e6; border-radius: 0.375rem;">
+        <iframe
+          *ngIf="pdfUrl"
+          [src]="pdfUrl"
+          style="width: 100%; height: 100%; border: none; border-radius: 0.375rem; zoom: 80%;">
+        </iframe>
+        <div *ngIf="!pdfUrl" class="d-flex justify-content-center align-items-center h-100">
+          <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Generando reporte...</span>
+            </div>
+            <p class="mt-2 text-muted">Generando reporte PDF...</p>
+          </div>
+        </div>
+      </div>
+    </div>
   `,
   styles: [`
     .detail-grid-container {
@@ -57,11 +85,19 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
   private context: any;
+  private sanitizer = inject(DomSanitizer);
+  private pdfReportsService = inject(PdfReportsService);
 
   rowData: any[] = [];
   hasUnsavedChanges: boolean = false;
   tempIdCounter: number = 0;
   materials: any[] = [];
+
+  // Report properties
+  detailType: string = 'items';
+  entryData: any = null;
+  pdfUrl: SafeResourceUrl | null = null;
+  private originalPdfUrl: string | null = null;
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
@@ -73,8 +109,16 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
   agInit(params: ICellRendererParams): void {
     this.params = params;
     this.context = params.context;
-    this.loadMaterials();
-    this.loadData();
+    this.entryData = params.data;
+    this.detailType = params.data.detailType || 'items';
+
+    if (this.detailType === 'items') {
+      this.loadMaterials();
+      this.loadData();
+    } else if (this.detailType === 'report') {
+      // Load data first, then generate report
+      this.loadDataForReport();
+    }
   }
 
   loadData() {
@@ -95,6 +139,25 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
           this.context.ITEMS.updateCount(entryId, this.rowData.length);
         }
       });
+    }
+  }
+
+  loadDataForReport() {
+    if (this.context && this.context.ITEMS && this.context.ITEMS.load) {
+      const entryId = this.params.data.id;
+      this.context.ITEMS.load(entryId, (data: any[]) => {
+        this.rowData = data.map(item => ({
+          ...item,
+          materialName: item.description || '',
+          __isNew: false,
+          __modified: false
+        }));
+        // Generate report after data is loaded
+        this.generateReport();
+      });
+    } else {
+      // If no data loader available, generate report anyway
+      this.generateReport();
     }
   }
 
@@ -387,5 +450,51 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
 
   refreshByParent() {
     this.loadData();
+  }
+
+  closeReport() {
+    // Emit event to parent component to handle collapse
+    if (this.context && this.context.componentParent) {
+      this.context.componentParent.collapseReportDetail(this.entryData.id);
+    }
+  }
+
+  private async generateReport() {
+    if (!this.entryData) return;
+
+    try {
+      // Get the idRoot from context
+      const idRoot = this.context?.idRoot;
+      if (!idRoot) {
+        console.error('No idRoot available for PDF generation');
+        return;
+      }
+
+      // Get items data from the rowData (same data displayed in the grid cascade)
+      const itemsData = this.rowData || [];
+
+      // Generate PDF using the service
+      const pdfUrl = await this.pdfReportsService.generateEntryReport(this.entryData, itemsData, idRoot);
+
+      // Clean up previous URL
+      if (this.originalPdfUrl) {
+        URL.revokeObjectURL(this.originalPdfUrl);
+      }
+
+      // Set the new URL
+      this.originalPdfUrl = pdfUrl;
+      this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(pdfUrl);
+
+    } catch (error) {
+      console.error('Error generating report PDF:', error);
+    }
+  }
+
+  ngOnDestroy() {
+    // Clean up blob URL when component is destroyed
+    if (this.originalPdfUrl) {
+      URL.revokeObjectURL(this.originalPdfUrl);
+      this.originalPdfUrl = null;
+    }
   }
 }
