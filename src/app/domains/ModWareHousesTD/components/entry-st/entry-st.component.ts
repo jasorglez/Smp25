@@ -173,7 +173,7 @@ export class EntryStComponent implements OnInit {
     rowHeight: 35,
     animateRows: true,
     masterDetail: true,
-    detailRowHeight: 400,
+    detailRowHeight: 700,
     isRowMaster: (dataItem: any) => true,
     detailCellRenderer: DetailCellRendererEntryItemsComponent,
     getRowClass: (params: any) => {
@@ -228,6 +228,22 @@ export class EntryStComponent implements OnInit {
         cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
       },
       {
+        field: 'pdfReport',
+        headerName: 'PDF',
+        width: 70,
+        cellRenderer: 'agGroupCellRenderer',
+        cellRendererParams: {
+          innerRenderer: (params: any) => {
+            return '<i class="bi bi-file-earmark-pdf" style="font-size: 1.2rem; color: #dc3545; cursor: pointer;"></i>';
+          },
+        },
+        editable: false,
+        cellStyle: { textAlign: 'center', cursor: 'pointer' },
+        onCellClicked: (params: any) => {
+          this.toggleReportDetail(params.node);
+        }
+      },
+      {
         field: 'folio',
         headerName: 'Folio',
         width: 120,
@@ -250,17 +266,6 @@ export class EntryStComponent implements OnInit {
         valueSetter: (params: any) => {
           params.data.date = params.newValue;
           return true;
-        }
-      },
-      {
-        field: 'directEntry',
-        headerName: 'Entrada Directa',
-        width: 120,
-        editable: true,
-        cellRenderer: 'agCheckboxCellRenderer',
-        cellEditor: 'agCheckboxCellEditor',
-        onCellValueChanged: (params: any) => {
-          this.isDirectEntryMode = params.newValue;
         }
       },
       {
@@ -385,6 +390,69 @@ export class EntryStComponent implements OnInit {
     this.onCellClicked(event);
   }
 
+  toggleReportDetail(node: any) {
+    const api = this.gridApi;
+    const isCurrentlyExpanded = node.expanded && node.data.detailType === 'report';
+
+    if (isCurrentlyExpanded) {
+      // Si ya está expandido con el reporte, colapsarlo
+      node.setExpanded(false);
+
+      // Restaurar alturas de todas las filas
+      api.forEachNode((otherNode: any) => {
+        otherNode.setRowHeight(undefined);
+      });
+      api.onRowHeightChanged();
+    } else {
+      // Colapsar cualquier otra fila expandida
+      api.forEachNode((otherNode: any) => {
+        if (otherNode.expanded && otherNode.id !== node.id) {
+          otherNode.setExpanded(false);
+        }
+      });
+
+      // Ocultar todas las demás filas
+      api.forEachNode((otherNode: any) => {
+        if (otherNode.id !== node.id) {
+          otherNode.setRowHeight(0);
+        }
+      });
+
+      // Si la fila está expandida con otro tipo de detalle, cerrarla
+      if (node.expanded && node.data.detailType !== 'report') {
+        node.setExpanded(false);
+      }
+
+      // Cambiar el tipo de detalle a 'report'
+      node.data.detailType = 'report';
+
+      // Aplicar cambios de altura
+      api.onRowHeightChanged();
+
+      // Expandir con el reporte
+      setTimeout(() => {
+        node.setExpanded(true);
+      }, 0);
+    }
+  }
+
+  collapseReportDetail(entryId: number) {
+    if (this.gridApi) {
+      this.gridApi.forEachNode((node) => {
+        if (node.data && node.data.id === entryId) {
+          node.setExpanded(false);
+          node.data.detailType = null;
+        }
+      });
+
+      // Restaurar alturas
+      this.gridApi.forEachNode((node) => {
+        node.setRowHeight(undefined);
+      });
+      this.gridApi.onRowHeightChanged();
+    }
+  }
+
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
 
@@ -418,6 +486,26 @@ export class EntryStComponent implements OnInit {
   onSelectionChanged(event: any): void {
     const selectedRows = event.api.getSelectedRows();
     this.selectedEntry = selectedRows.length > 0 ? selectedRows[0] : null;
+
+    // Sincronizar los combo boxes con la fila seleccionada
+    if (this.selectedEntry) {
+      console.log('🔍 Fila seleccionada:', this.selectedEntry);
+      console.log('📦 Warehouses disponibles:', this.warehouses);
+      console.log('📋 Catalogs disponibles:', this.catalogs);
+      console.log('🔧 OTs disponibles:', this.otList);
+
+      // Sincronizar Almacén
+      this.selectedWarehouse = this.warehouses.find(wh => wh.idAlmacen === this.selectedEntry.idWarehouse);
+      console.log('✅ Warehouse sincronizado:', this.selectedWarehouse);
+
+      // Sincronizar Catálogo/Tipo de Entrada
+      this.selectedCatalog = this.catalogs.find(cat => cat.id === this.selectedEntry.idType);
+      console.log('✅ Catalog sincronizado:', this.selectedCatalog);
+
+      // Sincronizar OT
+      this.selectedOt = this.otList.find(ot => ot.id === this.selectedEntry.idOt);
+      console.log('✅ OT sincronizado:', this.selectedOt);
+    }
   }
 
   onCellValueChanged(event: any): void {
@@ -449,6 +537,7 @@ export class EntryStComponent implements OnInit {
       idProject: this.idRoot,
       idWarehouse: this.selectedWarehouse.idAlmacen,
       idType: this.selectedCatalog?.id || 0,
+      idOt: this.selectedOt?.id || 0,
       folio: '',
       date: new Date().toISOString(),
       deliveryDate: new Date().toISOString(),
