@@ -101,12 +101,13 @@ export const routes: Routes = [
             canDeactivate: [UnsavedChangesGuard],
           },
           {
-            path: 'outings',
+            path: 'outings-st',
             loadComponent: () =>
               import(
-                './domains/Warehouse/components/outings/outings.component'
-              ).then((i) => i.OutingsComponent),
+                './domains/ModWareHousesTD/components/inandout-st/inandout-st.component'
+              ).then((i) => i.InandoutStComponent),
             canDeactivate: [UnsavedChangesGuard],
+            data: { movementType: 'OUT' }
           },
           {
             path: 'requisitions',
@@ -1696,16 +1697,18 @@ export const routes: Routes = [
                 canDeactivate: [UnsavedChangesGuard],
           },
           {
-            path: 'materiales-st2',
-            loadComponent: () => import('./domains/ModWareHousesTD/components/materiales-st/materiales-st.component').then(c => c.MaterialesStComponent)
+            path: 'inventory-st',
+            loadComponent: () => import('./domains/ModWareHousesTD/components/inventory-st/inventory-st.component').then(c => c.InventoryStComponent)
           },
           {
             path: 'entry-st',
-            loadComponent: () => import('./domains/ModWareHousesTD/components/entry-st/entry-st.component').then(c => c.EntryStComponent)
+            loadComponent: () => import('./domains/ModWareHousesTD/components/inandout-st/inandout-st.component').then(c => c.InandoutStComponent),
+            data: { movementType: 'IN' }
           },
           {
-            path: 'outings-st',
-            loadComponent: () => import('./domains/ModWareHousesTD/components/outings-st/outings-st.component').then(c => c.OutingsStComponent)
+             path: 'outings-st',
+             loadComponent: () => import('./domains/ModWareHousesTD/components/inandout-st/inandout-st.component').then(c => c.InandoutStComponent),
+             data: { movementType: 'OUT' }
           }
         ]
       },

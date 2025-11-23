@@ -4,7 +4,7 @@ import { Component } from '@angular/core';
   selector: 'app-materiales-st',
   standalone: true,
   imports: [],
-  templateUrl: './materiales-st.component.html',
+  templateUrl: './inventory-st.component.html',
 })
-export class MaterialesStComponent {
+export class InventoryStComponent {
 }

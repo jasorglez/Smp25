@@ -70,6 +70,9 @@ export class DetailCellRendererEntryReportComponent implements OnInit, ICellRend
   private async generateReport() {
     if (!this.entryData) return;
 
+    console.log('Entry data type:', this.entryData.type);
+    console.log(`Generating report for ${this.entryData.type === 'IN' ? 'ENTRADA' : 'SALIDA'}`);
+
     try {
       // Configure fonts for pdfMake
       pdfMake.fonts = {
@@ -120,11 +123,11 @@ export class DetailCellRendererEntryReportComponent implements OnInit, ICellRend
         },
         content: [
           {
-            text: `Reporte de Entrada - Folio: ${this.entryData.folio || 'Sin Folio'}`,
+            text: `Vale de ${this.entryData.type === 'IN' ? 'Entrada' : 'Salida'} - Folio: ${this.entryData.folio || 'Sin Folio'}`,
             style: 'header'
           },
           {
-            text: 'Información General',
+            text: `Detalles de ${this.entryData.type === 'IN' ? 'Entrada' : 'Salida'}`,
             style: 'subheader'
           },
           {
