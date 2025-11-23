@@ -149,7 +149,7 @@ export class PdfReportsService {
                 width: '30%',
                 stack: [
                   {
-                    text: 'VALE DE ENTRADA',
+                    text: entryData.type === 'IN' ? 'VALE DE ENTRADA' : 'VALE DE SALIDA',
                     style: 'header',
                     alignment: 'right',
                     margin: [0, 0, 0, 10]
@@ -173,7 +173,7 @@ export class PdfReportsService {
         },
         content: [
           {
-            text: 'DETALLES DE LA ENTRADA',
+            text: entryData.type === 'IN' ? 'DETALLES DE LA ENTRADA' : 'DETALLES DE LA SALIDA',
             style: 'subheader',
             alignment: 'right',
             margin: [0, 20, 0, 10]

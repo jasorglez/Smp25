@@ -5,8 +5,8 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
-import { SelectMaterialEditorComponent } from '../../../ModWareHousesTD/components/entry-st/select-material-editor.component';
-import { ButtonCellRendererComponent } from '../../../ModWareHousesTD/components/entry-st/button-cell-renderer.component';
+import { SelectMaterialEditorComponent } from '../../../ModWareHousesTD/components/inandout-st/select-material-editor.component';
+import { ButtonCellRendererComponent } from '../../../ModWareHousesTD/components/inandout-st/button-cell-renderer.component';
 import { DetailCellRendererRequisitionsPurchasesComponent } from './detail-cell-renderer-requisitions-purchases.component';
 
 @Component({

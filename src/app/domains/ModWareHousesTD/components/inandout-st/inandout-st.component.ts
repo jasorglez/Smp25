@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, effect } from '@angular/core';
+import { Component, OnInit, inject, effect, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -15,14 +15,16 @@ import { DetailCellRendererEntryItemsComponent } from './detail-cell-renderer-en
 import { alerts } from 'app/helpers/alerts';
 import { ButtonCellRendererComponent } from './button-cell-renderer.component';
 import { lastValueFrom } from 'rxjs';
+import { ActivatedRoute } from '@angular/router';
+import { UsersService } from 'app/services/users.service';
 
 @Component({
-  selector: 'app-entry-st',
+  selector: 'app-inandout-st',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, DetailCellRendererEntryItemsComponent],
-  templateUrl: './entry-st.component.html'
+  templateUrl: './inandout-st.component.html',
 })
-export class EntryStComponent implements OnInit {
+export class InandoutStComponent implements OnInit {
 
   private gridApi!: GridApi;
   private signalsService = inject(SignalsService);
@@ -32,6 +34,8 @@ export class EntryStComponent implements OnInit {
   private catalogsService = inject(CatalogsService);
   private materialsService = inject(MaterialsService);
   private otService = inject(OtService);
+  private route = inject(ActivatedRoute);
+  private usersService = inject(UsersService);
 
   rowData: any[] = [];
   selectedWarehouse: any = null;
@@ -40,7 +44,9 @@ export class EntryStComponent implements OnInit {
   selectedEntry: any = null;
   hasUnsavedChanges: boolean = false;
   idRoot: number | null = null;
+  idBranch: number | null = null;
   projectId: number | null = null;
+  movementType: 'IN' | 'OUT' = 'IN';
   newlyAddedRows: string[] = [];
   private tempIdCounter: number = 0;
 
@@ -48,6 +54,7 @@ export class EntryStComponent implements OnInit {
   selectedCatalog: any = null;
   otList: any[] = [];
   selectedOt: any = null;
+  users: any[] = [];
   isDirectEntryMode: boolean = false;
 
   public rowSelection: 'single' | 'multiple' = 'single';
@@ -58,14 +65,22 @@ export class EntryStComponent implements OnInit {
   constructor() {
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+      console.log('idRoot set to:', this.idRoot);
       const email = this.trackingService.getEmail();
       if (this.idRoot && email) {
         this.loadCatalogs();
+        this.loadUsers();
       }
     });
 
     effect(() => {
+      this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      console.log('idBranch set to:', this.idBranch);
+    });
+
+    effect(() => {
       this.projectId = this.signalsService.getProjectSelectedBySidebar()();
+      console.log('projectId set to:', this.projectId);
       const email = this.trackingService.getEmail();
       if (this.projectId && email) {
         this.loadWarehouses(email);
@@ -75,6 +90,12 @@ export class EntryStComponent implements OnInit {
   }
 
   ngOnInit() {
+    console.log('ngOnInit called');
+    this.movementType = this.route.snapshot.data['movementType'] || 'IN';
+    console.log('movementType:', this.movementType);
+
+    this.loadUsers();
+
     const email = this.trackingService.getEmail();
     if (this.idRoot && email) {
       this.loadCatalogs();
@@ -104,7 +125,7 @@ export class EntryStComponent implements OnInit {
   loadCatalogs() {
     if (!this.idRoot) return;
 
-    this.catalogsService.getCatalogs(this.idRoot, 'INPUT').subscribe({
+    this.catalogsService.getCatalogs(this.idRoot, this.movementType).subscribe({
       next: (data) => {
         this.catalogs = data;
         if (this.catalogs.length > 0) {
@@ -135,6 +156,25 @@ export class EntryStComponent implements OnInit {
     });
   }
 
+  loadUsers() {
+    if (!this.idRoot) return;
+
+    this.usersService.get2fieldsUsers(this.idRoot).subscribe({
+      next: (data) => {
+        console.log('Users response:', data);
+        this.users = data.data || data;
+        console.log('Users loaded:', this.users);
+        // Update columnDefs to refresh the combo options
+        if (this.gridApi) {
+          this.gridApi.setGridOption('columnDefs', this.colMaster);
+        }
+      },
+      error: (error) => {
+        console.error('Error loading users:', error);
+      }
+    });
+  }
+
   onWarehouseChange() {
     this.loadEntries();
   }
@@ -151,7 +191,7 @@ export class EntryStComponent implements OnInit {
   loadEntries() {
     if (!this.selectedWarehouse || !this.projectId) return;
 
-    this.inandoutService.getInAndOuts(this.projectId, this.selectedWarehouse.idAlmacen, 'IN').subscribe({
+    this.inandoutService.getInAndOuts(this.projectId, this.selectedWarehouse.idAlmacen, this.movementType).subscribe({
       next: (data: any[]) => {
         this.rowData = data.map(entry => ({
           ...entry,
@@ -159,11 +199,11 @@ export class EntryStComponent implements OnInit {
           detailType: null,
           detailData: []
         }));
-        console.log('Entries loaded:', this.rowData);
+        console.log(`${this.movementType === 'IN' ? 'Entries' : 'Exits'} loaded:`, this.rowData);
       },
       error: (error) => {
-        console.error('Error loading entries:', error);
-        alerts.basicAlert('Error', 'Error al cargar entradas', 'error');
+        console.error(`Error loading ${this.movementType === 'IN' ? 'entries' : 'exits'}:`, error);
+        alerts.basicAlert('Error', `Error al cargar ${this.movementType === 'IN' ? 'entradas' : 'salidas'}`, 'error');
       }
     });
   }
@@ -203,6 +243,10 @@ export class EntryStComponent implements OnInit {
       if (event.colDef.field === 'directEntry') {
         event.data.directEntry = event.newValue === true || event.newValue === 1 ? true : false;
         console.log('Direct Entry changed to:', event.data.directEntry);
+      }
+
+      if (event.colDef.field === 'idAutoriza') {
+        console.log('idAutoriza changed to:', event.newValue, 'for row:', event.data.id);
       }
 
       event.data.__modified = true;
@@ -269,18 +313,21 @@ export class EntryStComponent implements OnInit {
         field: 'idWarehouse',
         headerName: 'Almacén ID',
         width: 100,
+        hide : true,
         editable: false
       },
       {
         field: 'idType',
         headerName: 'Tipo ID',
         width: 100,
+        hide : true,
         editable: false
       },
       {
         field: 'idOt',
         headerName: 'OT ID',
         width: 100,
+        hide : true,
         editable: false
       },
       {
@@ -300,6 +347,30 @@ export class EntryStComponent implements OnInit {
         editable: true,
         valueSetter: (params: any) => {
           params.data.deliverName = params.newValue ? params.newValue.toUpperCase() : '';
+          return true;
+        }
+      },
+      {
+        field: 'idAutoriza',
+        headerName: 'Autorizado Por:',
+        width: 200,
+        editable: true,
+        cellDataType: false,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.users.map(u => u.displayName)
+        },
+        valueFormatter: (params: any) => {
+          const user = this.users.find(u => u.id === params.value);
+          return user ? user.displayName : params.value;
+        },
+        valueSetter: (params: any) => {
+          const user = this.users.find(u => u.displayName === params.newValue);
+          if (user) {
+            console.log('Setting idAutoriza to:', user.id);
+            params.data.idAutoriza = user.id;
+            params.data.__modified = true;
+          }
           return true;
         }
       },
@@ -446,6 +517,9 @@ export class EntryStComponent implements OnInit {
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
 
+    // Update columnDefs to ensure combo options are set
+    this.gridApi.setGridOption('columnDefs', this.colMaster);
+
     this.gridApi.setGridOption('detailCellRendererParams', {
       getDetailRowData: (params) => {
         params.successCallback(params.data.detailData);
@@ -454,6 +528,7 @@ export class EntryStComponent implements OnInit {
         idRoot: this.idRoot,
         componentParent: this,
         gridApi: this.gridApi,
+        movementType: this.movementType,
         ITEMS: {
           load: (entryId: number, callback: (data: any[]) => void) => {
             this.loadEntryItemsData(entryId, callback);
@@ -532,6 +607,7 @@ export class EntryStComponent implements OnInit {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
+      idBranch: this.idBranch,
       idProject: this.projectId,
       idWarehouse: this.selectedWarehouse.idAlmacen,
       idType: this.selectedCatalog?.id || 0,
@@ -540,13 +616,14 @@ export class EntryStComponent implements OnInit {
       date: new Date().toISOString(),
       deliveryDate: new Date().toISOString(),
       idOc: 0,
-      numBill: '',
+      numBill: 'SIN FACTURA',
       deliverName: 'POR CLIENTE',
+      idAutoriza: 0,
       comment: '',
-      type: 'IN',
+      type: this.movementType,
       active: true,
       directEntry: false,
-      ocList: '',
+      //ocList: '',
       countrow: 0,
       detailType: null,
       detailData: [],
@@ -615,6 +692,7 @@ export class EntryStComponent implements OnInit {
   }
 
   async saveChanges(): Promise<void> {
+    console.log('🚀 saveChanges called');
     if (!this.hasUnsavedChanges) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;
@@ -622,6 +700,9 @@ export class EntryStComponent implements OnInit {
 
     const newRows = this.rowData.filter((row: any) => row.__isNew);
     const modifiedRows = this.rowData.filter((row: any) => row.__modified && !row.__isNew);
+
+    console.log('📝 newRows:', newRows);
+    console.log('✏️ modifiedRows:', modifiedRows);
 
     if (newRows.length === 0 && modifiedRows.length === 0) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
@@ -652,6 +733,7 @@ export class EntryStComponent implements OnInit {
 
   private prepareEntryData(row: any): any {
     return {
+      idBranch: this.idBranch,
       idProject: this.projectId,
       idWarehouse: this.selectedWarehouse.idAlmacen,
       idType: this.selectedCatalog?.id || 0,
@@ -661,8 +743,9 @@ export class EntryStComponent implements OnInit {
       idOc: 0,
       numBill: row.numBill || '',
       deliverName: row.deliverName || '',
+      idAutoriza: row.idAutoriza || 0,
       comment: row.comment || '',
-      type: 'IN',
+      type: this.movementType,
       active: row.active ?? true,
       directEntry: row.directEntry === true || row.directEntry === 1 ? true : false,
       ocList: row.ocList || '',
