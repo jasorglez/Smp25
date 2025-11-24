@@ -8,7 +8,7 @@ export class alerts{
 
 	static basicAlert(title:string, text:string, icon:SweetAlertIcon){
 
-		Swal.fire(title, text, icon);
+		return Swal.fire(title, text, icon);
 
 	}
 

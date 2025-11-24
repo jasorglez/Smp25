@@ -160,18 +160,18 @@ export class WarehousesComponent implements CanComponentDeactivate {
         field: 'state',
         headerName: 'Estado',
         editable: true,
-        width: 235,
+        width: 150,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.estados,
         },
       },
-      { field: 'city', headerName: 'Ciudad', editable: true, width: 200 },
+      { field: 'city', headerName: 'Ciudad', editable: true, width: 100 },
       {
         field: 'codePostal',
-        headerName: 'Codigo Postal',
+        headerName: 'CP',
         editable: true,
-        width: 150,
+        width: 70,
       },
       { field: 'place', headerName: 'Lugar', editable: true, width: 185 },
       {
@@ -183,7 +183,14 @@ export class WarehousesComponent implements CanComponentDeactivate {
           maxLength: 10,
         },
       },
-      { field: 'leader', headerName: 'Lider', editable: true, width: 285 },
+      { field: 'leader', headerName: 'Lider', editable: true, width: 238 },
+      {
+        field: 'principal',
+        headerName: 'Principal',
+        editable: true,
+        width: 100,
+        cellEditor: 'agCheckboxCellEditor'
+      },
     ];
   }
 
@@ -229,6 +236,18 @@ export class WarehousesComponent implements CanComponentDeactivate {
 
   onCellValueChanged(event: any) {
     console.log('Dato cambiado:', event.data);
+
+    if (event.colDef.field === 'principal' && event.newValue === true) {
+      // Ensure only one warehouse is principal
+      this.rowData.forEach(row => {
+        if (row.id !== event.data.id) {
+          row.principal = false;
+          row.__modified = true; // Mark others as modified too
+        }
+      });
+      this.gridApi.refreshCells();
+    }
+
     event.data.__modified = true;
     this.notSavedChanges = true;
   }
@@ -238,6 +257,11 @@ export class WarehousesComponent implements CanComponentDeactivate {
   }
 
   addRow() {
+    if (!this.idBranch) {
+      alerts.basicAlert('Error', 'Debe seleccionar una sucursal primero.', 'error');
+      return;
+    }
+
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
@@ -251,6 +275,7 @@ export class WarehousesComponent implements CanComponentDeactivate {
       phone: '',
       active: true,
       leader: '',
+      principal: false,
       __isNew: true,
     };
 
@@ -277,11 +302,13 @@ export class WarehousesComponent implements CanComponentDeactivate {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      console.log('Data to POST for new warehouse:', cleanedData);
       return this.warehouseService.addWarehouse(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      console.log('Data to PUT for modified warehouse:', row.id, cleanedData);
       return this.warehouseService.updateWarehouse(row.id, cleanedData);
     });
 
@@ -299,10 +326,11 @@ export class WarehousesComponent implements CanComponentDeactivate {
       this.newlyAddedRows = [];
       this.obtenerDatos(); // Refrescar los datos
     } catch (error) {
-      console.error(error);
+      console.error('Error saving warehouses:', error);
+      const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
       alerts.basicAlert(
         'Error',
-        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
+        `Ocurrió un error al actualizar los datos: ${errorMsg}`,
         'error'
       );
     }

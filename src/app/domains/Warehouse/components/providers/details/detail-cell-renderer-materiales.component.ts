@@ -299,7 +299,7 @@ export class DetailCellRendererComponentMateriales implements ICellRendererAngul
     this.hasMaterialChanges = true;
   }
 
-  loadMaterialData() {
+  loadMaterialData(onComplete?: () => void) {
     // Generate fake data for materials
     const fakeMaterials = this.generateFakeMaterials();
     this.materialRowData = fakeMaterials;
@@ -307,6 +307,11 @@ export class DetailCellRendererComponentMateriales implements ICellRendererAngul
     // Refresh grid if exists
     if (this.materialGridApi) {
       this.materialGridApi.setGridOption('rowData', this.materialRowData);
+    }
+
+    // Ejecutar callback si existe
+    if (onComplete) {
+      setTimeout(() => onComplete(), 100);
     }
   }
 
@@ -451,16 +456,71 @@ export class DetailCellRendererComponentMateriales implements ICellRendererAngul
   async saveMaterials() {
     if (this.params && this.params.context && this.params.context.MATERIAL && this.params.context.MATERIAL.save) {
       try {
-        await this.params.context.MATERIAL.save(this.providerId, this.materialRowData, 'MATERIAL');
+        // Guardar la fila seleccionada actual para restaurarla después
+        const selectedRow = this.selectedMaterial;
+        const selectedMaterialId = selectedRow?.id;
+        const selectedMaterialCode = selectedRow?.codigo; // Código como respaldo
+        const selectedMaterialName = selectedRow?.nombre; // Nombre como respaldo
 
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Guardar (ESPERA a que el usuario cierre el alert)
+        await this.params.context.MATERIAL.save(this.providerId, this.materialRowData, 'MATERIAL');
 
         this.hasMaterialChanges = false;
 
-        // Reload data
-        this.loadMaterialData();
+        // Limpiar los flags de las filas guardadas SIN recargar desde el servidor
+        this.materialRowData.forEach(row => {
+          delete row.__isNew;
+          delete row.__modified;
+        });
 
-        // Update material count in parent
+        // PRIMERO restaurar el focus ANTES de actualizar el grid padre
+        // Esperar solo un ciclo de renderizado para asegurar que los cambios se reflejen
+        await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
+
+        if (this.materialGridApi && selectedRow) {
+          let rowToSelect = null;
+
+          console.log('🔍 Buscando material para restaurar (sin reload)...', {
+            selectedMaterialId,
+            selectedMaterialCode,
+            selectedMaterialName,
+            totalRows: this.materialRowData.length
+          });
+
+          // Intentar encontrar por ID original (si no era temporal)
+          if (selectedMaterialId && !String(selectedMaterialId).startsWith('temp_')) {
+            rowToSelect = this.materialRowData.find(r => r.id === selectedMaterialId);
+            console.log('Búsqueda por ID:', rowToSelect ? '✅ Encontrado' : '❌ No encontrado');
+          }
+
+          // Si no se encontró, buscar por código y nombre
+          if (!rowToSelect && selectedMaterialCode) {
+            rowToSelect = this.materialRowData.find(r =>
+              r.codigo === selectedMaterialCode &&
+              r.nombre === selectedMaterialName
+            );
+            console.log('Búsqueda por código/nombre:', rowToSelect ? '✅ Encontrado' : '❌ No encontrado');
+          }
+
+          // Si se encontró la fila, seleccionarla y hacer scroll
+          if (rowToSelect) {
+            const rowIndex = this.materialRowData.indexOf(rowToSelect);
+            console.log('📍 Índice de la fila:', rowIndex);
+
+            const rowNode = this.materialGridApi.getDisplayedRowAtIndex(rowIndex);
+            if (rowNode) {
+              rowNode.setSelected(true);
+              this.materialGridApi.ensureIndexVisible(rowIndex, 'middle');
+              console.log('✅ Fila restaurada después de guardar (sin reload):', rowToSelect);
+            } else {
+              console.error('❌ No se pudo obtener el rowNode en el índice:', rowIndex);
+            }
+          } else {
+            console.error('❌ No se encontró la fila para restaurar');
+          }
+        }
+
+        // AHORA actualizar contador en el grid padre
         await this.updateMaterialCountInParent();
 
       } catch (error) {
@@ -500,15 +560,9 @@ export class DetailCellRendererComponentMateriales implements ICellRendererAngul
 
       this.params.data.fieldMaterial = materialCount;
 
-      if (this.params.api) {
-        this.params.api.refreshCells({
-          rowNodes: [this.params.node],
-          columns: ['fieldMaterial'],
-          force: true
-        });
-
-        console.log('Material count updated in parent grid:', this.params.data.fieldMaterial);
-      }
+      // NO usar refreshCells porque destruye el detail grid
+      // En su lugar, solo actualizar los datos - el grid padre se actualizará automáticamente
+      console.log('Material count updated in parent grid:', this.params.data.fieldMaterial);
 
     } catch (error) {
       console.error('Error updating material count:', error);

@@ -1,1 +1,65 @@
-<p>requisitionsdelison works!</p>
+<div class="container-fluid mt-3">
+  <!-- Branch Filter -->
+  <div class="row mb-3">
+    <div class="col-12">
+      <div class="form-group">
+        <label for="branchFilter">Filtrar por Sucursal:</label>
+        <select
+          id="branchFilter"
+          class="form-control"
+          [(ngModel)]="selectedBranchFilter"
+          (ngModelChange)="onBranchFilterChange($event)">
+          <option value="">Todas las sucursales</option>
+          <option value="BODEGAS">BODEGAS</option>
+          <option value="DELI">DELI</option>
+          <option value="TIENDA 1">TIENDA 1</option>
+          <option value="TIENDA DELI">TIENDA DELI</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content: Buttons Left, Grid Right -->
+  <div class="row">
+    <!-- Left Panel: CRUD Buttons -->
+    <nav class="col-auto d-flex flex-column align-items-start">
+      <button type="button" class="btn btn-primary me-1 mb-2" (click)="addRequisition()">
+        <i class="bi bi-plus-lg" style="font-size: 1rem;"></i>
+      </button>
+
+      <button type="button" class="btn btn-success position-relative mb-2" (click)="saveChanges()">
+        <i class="bi bi-floppy" style="font-size: 1rem;"></i>
+        <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+          *ngIf="hasUnsavedChanges">
+          <span class="visually-hidden">Hay cambios sin guardar</span>
+        </span>
+      </button>
+
+      <button type="button" class="btn btn-warning mb-2" (click)="refreshData()">
+        <i class="bi bi-arrow-clockwise" style="font-size: 1rem;"></i>
+      </button>
+
+      <button type="button" class="btn btn-danger mb-2" (click)="deleteRequisition()">
+        <i class="bi bi-trash" style="font-size: 1rem;"></i>
+      </button>
+    </nav>
+
+    <!-- Right Panel: Grid -->
+    <div class="col">
+      <ag-grid-angular
+        style="width: 100%;"
+        [ngStyle]="{'height': gridHeight}"
+        class="ag-theme-quartz small-text-ag-grid"
+        [columnDefs]="colMaster"
+        [rowData]="rowData"
+        [gridOptions]="gridOptions"
+        [localeText]="AG_GRID_LOCALE_ES"
+        [components]="components"
+        (gridReady)="onGridReady($event)"
+        (selectionChanged)="onSelectionChanged($event)"
+        (cellValueChanged)="onCellValueChanged($event)"
+        (cellClicked)="onCellClicked($event)">
+      </ag-grid-angular>
+    </div>
+  </div>
+</div>

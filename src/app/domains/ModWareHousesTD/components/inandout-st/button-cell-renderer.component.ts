@@ -6,6 +6,8 @@ import { CommonModule } from '@angular/common';
 // Creamos una interfaz personalizada que extiende la de ag-Grid
 export interface IButtonCellRendererParams extends ICellRendererParams {
   onClick: (node: IRowNode) => void;
+  icon?: string;
+  title?: string;
 }
 
 @Component({
@@ -13,8 +15,8 @@ export interface IButtonCellRendererParams extends ICellRendererParams {
   standalone: true,
   imports: [CommonModule],
   template: `
-    <button class="btn btn-sm btn-outline-primary w-100" (click)="onClick($event)" title="Hacer clic para ver el detalle">
-      <i class="bi bi-folder2-open me-1"></i>
+    <button class="btn btn-sm btn-outline-primary w-100" (click)="onClick($event)" [title]="params.title || 'Hacer clic para ver el detalle'">
+      <i [class]="iconClass" class="me-1"></i>
       <span>{{ value }}</span>
     </button>
   `
@@ -22,10 +24,12 @@ export interface IButtonCellRendererParams extends ICellRendererParams {
 export class ButtonCellRendererComponent implements ICellRendererAngularComp {
   public params!: IButtonCellRendererParams; // Usamos nuestra interfaz personalizada
   public value: string | number;
+  public iconClass: string;
 
   agInit(params: IButtonCellRendererParams): void { // Usamos nuestra interfaz personalizada
     this.params = params;
     this.value = this.params.value || 0;
+    this.iconClass = this.params.icon || 'bi-folder2-open';
   }
 
   refresh(params: IButtonCellRendererParams): boolean { // Asegurarse de que el refresco actualice el valor

@@ -15,9 +15,9 @@ import { SelectWithTooltipEditorV2Component } from 'app/domains/Almacenes/compon
   standalone: true,
   imports: [CommonModule, AgGridModule, SelectWithTooltipEditorV2Component],
   template: `
-    <div style="padding: 10px; background-color: #e3f2fd; height: 100%; display: flex; flex-direction: column;">
+    <div style="padding: 5px; background-color: #e3f2fd; height: 100%; max-height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
       <!-- Título y botones -->
-      <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+      <div style="margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
         <strong>Configurar Tipo de Proveedor (Cascada)</strong>
         <div class="d-flex gap-2">
           <button
@@ -51,31 +51,38 @@ import { SelectWithTooltipEditorV2Component } from 'app/domains/Almacenes/compon
       </div>
 
       <!-- Grid único con 3 columnas -->
-      <ag-grid-angular
-        class="ag-theme-quartz small-text-ag-grid"
-        style="width: 100%; flex-grow: 1;"
-        [rowData]="rowData"
-        [columnDefs]="columnDefs"
-        [gridOptions]="gridOptions"
-        (gridReady)="onGridReady($event)"
-        (cellValueChanged)="onCellValueChanged($event)"
-        (selectionChanged)="onSelectionChanged($event)">
-      </ag-grid-angular>
+      <div style="flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden;">
+        <ag-grid-angular
+          class="ag-theme-quartz small-text-ag-grid"
+          style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; right: 0; bottom: 0;"
+          [rowData]="rowData"
+          [columnDefs]="columnDefs"
+          [gridOptions]="gridOptions"
+          (gridReady)="onGridReady($event)"
+          (cellValueChanged)="onCellValueChanged($event)"
+          (selectionChanged)="onSelectionChanged($event)">
+        </ag-grid-angular>
+      </div>
 
       <!-- Previsualización de la cadena concatenada -->
-      <div class="mt-2" *ngIf="getPreviewString()">
-        <div class="alert alert-info py-2 mb-0">
-          <small>
-            <strong>Vista previa:</strong> {{ getPreviewString() }}
-          </small>
+      <ng-container *ngIf="getPreviewString()">
+        <div style="margin-top: 5px; flex-shrink: 0;">
+          <div class="alert alert-info py-1 mb-0" style="font-size: 0.85rem;">
+            <small>
+              <strong>Vista previa:</strong> {{ getPreviewString() }}
+            </small>
+          </div>
         </div>
-      </div>
+      </ng-container>
     </div>
   `,
   styles: [`
     :host {
       display: block;
       height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
     }
   `]
 })
@@ -108,7 +115,24 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
       cellEditor: 'agCheckboxCellEditor',
       editable: true,
       width: 80,
-      onCellValueChanged: (params: any) => {
+      onCellValueChanged: async (params: any) => {
+        // 🔍 DEBUG: Cambio en checkbox VIGENTE
+        console.log('═══════════════════════════════════════════');
+        console.log('✓ CHECKBOX VIGENTE (ACTIVO) CAMBIÓ:');
+        console.log('   Valor anterior:', params.oldValue);
+        console.log('   Valor nuevo:', params.newValue);
+        console.log('   ID:', params.data.id);
+        console.log('   Categoría:', params.data.categoria);
+        console.log('   Familia:', params.data.familia);
+        console.log('   Subfamilia:', params.data.subfamilia);
+        console.log('   Principal:', params.data.principal);
+        console.log('═══════════════════════════════════════════');
+
+        // Guardar ID de la fila modificada para restaurar focus
+        const modifiedRowId = params.data.id;
+        const modifiedRowCategoria = params.data.categoria;
+        const modifiedRowFamilia = params.data.familia;
+
         // Si se desmarca como vigente, también desmarcar como principal
         if (params.newValue === false && params.data.principal === true) {
           params.data.principal = false;
@@ -117,8 +141,33 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
           if (activeRows.length > 0) {
             activeRows[0].principal = true;
           }
-          // Refrescar grid para mostrar los cambios
+
+          // Ordenar localmente por vigente y principal
+          this.rowData.sort((a, b) => {
+            if (a.vigente !== b.vigente) return b.vigente ? 1 : -1;
+            if (a.principal !== b.principal) return b.principal ? 1 : -1;
+            return (a.id || 0) - (b.id || 0);
+          });
+
+          // Refrescar grid con datos ordenados
           this.gridApi?.setGridOption('rowData', this.rowData);
+
+          // Restaurar focus a la fila modificada
+          await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
+          if (this.gridApi) {
+            let rowToSelect = this.rowData.find(r => r.id === modifiedRowId);
+            if (!rowToSelect) {
+              rowToSelect = this.rowData.find(r => r.categoria === modifiedRowCategoria && r.familia === modifiedRowFamilia);
+            }
+            if (rowToSelect) {
+              const rowIndex = this.rowData.indexOf(rowToSelect);
+              const rowNode = this.gridApi.getDisplayedRowAtIndex(rowIndex);
+              if (rowNode) {
+                rowNode.setSelected(true);
+                this.gridApi.ensureIndexVisible(rowIndex, 'middle');
+              }
+            }
+          }
         }
 
         // Si se marca como vigente, refrescar las celdas para que 'principal' sea editable
@@ -130,6 +179,10 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
             force: true
           });
         }
+
+        // Marcar como modificado
+        params.data.__modified = true;
+        this.hasChanges = true;
       }
     },
     {
@@ -183,18 +236,38 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
       cellEditor: SelectWithTooltipEditorV2Component,
       cellEditorParams: (params: any) => {
         // Filtrar subfamilias según la familia seleccionada en la fila
+        const categoriaSeleccionada = params.data.categoria;
         const familiaSeleccionada = params.data.familia;
         const familiaObj = this.familias.find(f => f.description === familiaSeleccionada);
 
         if (familiaObj) {
-          const subfamiliasFiltradas = this.subfamilias
-            .filter(s => s.subParentId === familiaObj.id)
+          // Obtener todas las subfamilias que pertenecen a esta familia
+          let subfamiliasFiltradas = this.subfamilias
+            .filter(s => s.subParentId === familiaObj.id);
+
+          // Excluir subfamilias que ya existen con la misma combinación Categoría-Familia
+          // en otras filas (excepto la fila actual que se está editando)
+          const existingCombinations = this.rowData
+            .filter(row =>
+              row.id !== params.data.id && // Excluir la fila actual
+              row.categoria === categoriaSeleccionada && // Misma categoría
+              row.familia === familiaSeleccionada // Misma familia
+            )
+            .map(row => row.subfamilia);
+
+          console.log('🔍 Combinaciones existentes para', `${categoriaSeleccionada}/${familiaSeleccionada}:`, existingCombinations);
+
+          // Filtrar subfamilias que NO estén en las combinaciones existentes
+          subfamiliasFiltradas = subfamiliasFiltradas
+            .filter(s => !existingCombinations.includes(s.description))
             .map(s => ({
               id: s.description,
               description: s.description,
               valueAddition: s.valueAddition,
               valueAddition2: s.valueAddition2
             }));
+
+          console.log('✅ Subfamilias disponibles:', subfamiliasFiltradas.length);
 
           return { options: subfamiliasFiltradas };
         }
@@ -213,16 +286,57 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
         return params.data.vigente === true;
       },
       width: 80,
-      onCellValueChanged: (params: any) => {
+      onCellValueChanged: async (params: any) => {
+        // 🔍 DEBUG: Cambio en checkbox PRINCIPAL
+        console.log('═══════════════════════════════════════════');
+        console.log('★ CHECKBOX PRINCIPAL CAMBIÓ:');
+        console.log('   Valor anterior:', params.oldValue);
+        console.log('   Valor nuevo:', params.newValue);
+        console.log('   ID:', params.data.id);
+        console.log('   Categoría:', params.data.categoria);
+        console.log('   Familia:', params.data.familia);
+        console.log('   Subfamilia:', params.data.subfamilia);
+        console.log('   Vigente:', params.data.vigente);
+        console.log('═══════════════════════════════════════════');
+
+        // Guardar ID de la fila modificada para restaurar focus
+        const modifiedRowId = params.data.id;
+        const modifiedRowCategoria = params.data.categoria;
+        const modifiedRowFamilia = params.data.familia;
+
         // Si se intenta marcar como principal pero no está vigente, revertir
         if (params.newValue === true && params.data.vigente === false) {
           params.data.principal = false;
+
+          // Ordenar y restaurar focus
+          this.rowData.sort((a, b) => {
+            if (a.vigente !== b.vigente) return b.vigente ? 1 : -1;
+            if (a.principal !== b.principal) return b.principal ? 1 : -1;
+            return (a.id || 0) - (b.id || 0);
+          });
           this.gridApi?.setGridOption('rowData', this.rowData);
-          alerts.basicAlert(
+
+          await alerts.basicAlert(
             'No permitido',
             'No se puede marcar como principal una fila inactiva.',
             'warning'
           );
+
+          await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
+          if (this.gridApi) {
+            let rowToSelect = this.rowData.find(r => r.id === modifiedRowId);
+            if (!rowToSelect) {
+              rowToSelect = this.rowData.find(r => r.categoria === modifiedRowCategoria && r.familia === modifiedRowFamilia);
+            }
+            if (rowToSelect) {
+              const rowIndex = this.rowData.indexOf(rowToSelect);
+              const rowNode = this.gridApi.getDisplayedRowAtIndex(rowIndex);
+              if (rowNode) {
+                rowNode.setSelected(true);
+                this.gridApi.ensureIndexVisible(rowIndex, 'middle');
+              }
+            }
+          }
           return;
         }
 
@@ -235,12 +349,36 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
           // Si no hay ningún principal activo, forzar a mantener este como principal
           if (principalRows.length === 0 && activeRows.length > 0) {
             params.data.principal = true;
+
+            // Ordenar y restaurar focus
+            this.rowData.sort((a, b) => {
+              if (a.vigente !== b.vigente) return b.vigente ? 1 : -1;
+              if (a.principal !== b.principal) return b.principal ? 1 : -1;
+              return (a.id || 0) - (b.id || 0);
+            });
             this.gridApi?.setGridOption('rowData', this.rowData);
-            alerts.basicAlert(
+
+            await alerts.basicAlert(
               'No permitido',
               'Debe haber al menos un registro principal. Marque otro como principal antes de desmarcar este.',
               'warning'
             );
+
+            await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
+            if (this.gridApi) {
+              let rowToSelect = this.rowData.find(r => r.id === modifiedRowId);
+              if (!rowToSelect) {
+                rowToSelect = this.rowData.find(r => r.categoria === modifiedRowCategoria && r.familia === modifiedRowFamilia);
+              }
+              if (rowToSelect) {
+                const rowIndex = this.rowData.indexOf(rowToSelect);
+                const rowNode = this.gridApi.getDisplayedRowAtIndex(rowIndex);
+                if (rowNode) {
+                  rowNode.setSelected(true);
+                  this.gridApi.ensureIndexVisible(rowIndex, 'middle');
+                }
+              }
+            }
             return;
           }
         }
@@ -252,9 +390,38 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
               row.principal = false;
             }
           });
+
+          // Ordenar localmente por vigente y principal
+          this.rowData.sort((a, b) => {
+            if (a.vigente !== b.vigente) return b.vigente ? 1 : -1;
+            if (a.principal !== b.principal) return b.principal ? 1 : -1;
+            return (a.id || 0) - (b.id || 0);
+          });
+
           // Refrescar grid para mostrar los cambios
           this.gridApi?.setGridOption('rowData', this.rowData);
+
+          // Restaurar focus a la fila modificada
+          await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
+          if (this.gridApi) {
+            let rowToSelect = this.rowData.find(r => r.id === modifiedRowId);
+            if (!rowToSelect) {
+              rowToSelect = this.rowData.find(r => r.categoria === modifiedRowCategoria && r.familia === modifiedRowFamilia);
+            }
+            if (rowToSelect) {
+              const rowIndex = this.rowData.indexOf(rowToSelect);
+              const rowNode = this.gridApi.getDisplayedRowAtIndex(rowIndex);
+              if (rowNode) {
+                rowNode.setSelected(true);
+                this.gridApi.ensureIndexVisible(rowIndex, 'middle');
+              }
+            }
+          }
         }
+
+        // Marcar como modificado
+        params.data.__modified = true;
+        this.hasChanges = true;
       }
     },
   ];
@@ -267,6 +434,8 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
     suppressCellFocus: false,
     stopEditingWhenCellsLoseFocus: true,
     singleClickEdit: false, // Doble-click para abrir el editor
+    domLayout: 'normal', // El grid se ajusta al contenedor y permite scroll
+    suppressHorizontalScroll: false,
     getRowStyle: (params: any) => {
       // Si la fila es principal (principal=true), aplicar fondo rojo claro
       if (params.data.principal === true) {
@@ -331,7 +500,9 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
         vigente: item.vigente || false,
         principal: item.principal || false,
         idParent: item.idParent,
-        idSubparent: item.idSubparent
+        idSubparent: item.idSubparent,
+        idSubfamily: item.idSubfamily,  // Guardar el ID original para detectar cambios
+        __originalSubfamilia: item.nameProduct || ''  // Guardar el valor original
       }));
 
       // Si solo hay un registro, marcarlo como principal automáticamente
@@ -421,21 +592,45 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
       event.data.familia = '';
       event.data.subfamilia = '';
       this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
+      event.data.__modified = true;
+      this.hasChanges = true;
     }
-
     // Cuando cambia la familia, limpiar subfamilia
-    if (event.colDef.field === 'familia') {
+    else if (event.colDef.field === 'familia') {
       event.data.subfamilia = '';
       this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
+      event.data.__modified = true;
+      this.hasChanges = true;
     }
-
-    event.data.__modified = true;
-    this.hasChanges = true;
+    // Cuando cambia la subfamilia
+    else if (event.colDef.field === 'subfamilia') {
+      event.data.__modified = true;
+      this.hasChanges = true;
+    }
+    // Los checkboxes (vigente/principal) NO marcan como __modified
+    // porque tienen sus propios handlers que gestionan el estado
   }
 
   onSelectionChanged(event: any): void {
     const selectedRows = event.api.getSelectedRows();
     this.selectedRow = selectedRows.length > 0 ? selectedRows[0] : null;
+
+    // 🔍 DEBUG: Mostrar datos de la fila seleccionada
+    if (this.selectedRow) {
+      console.log('═══════════════════════════════════════════');
+      console.log('📍 FILA SELECCIONADA:');
+      console.log('   ID:', this.selectedRow.id);
+      console.log('   Categoría:', this.selectedRow.categoria);
+      console.log('   Familia:', this.selectedRow.familia);
+      console.log('   Subfamilia:', this.selectedRow.subfamilia);
+      console.log('   Vigente (activo):', this.selectedRow.vigente);
+      console.log('   Principal:', this.selectedRow.principal);
+      console.log('   idSubfamily:', this.selectedRow.idSubfamily);
+      console.log('   __originalSubfamilia:', this.selectedRow.__originalSubfamilia);
+      console.log('   __isNew:', this.selectedRow.__isNew);
+      console.log('   __modified:', this.selectedRow.__modified);
+      console.log('═══════════════════════════════════════════');
+    }
   }
 
   addRow(): void {
@@ -507,7 +702,7 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
       // Recargar datos desde el servidor
       await this.loadData();
 
-      alerts.basicAlert(
+      await alerts.basicAlert(
         'Eliminado exitoso',
         'El registro se ha eliminado correctamente.',
         'success'
@@ -517,7 +712,7 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
 
     } catch (error) {
       console.error('Error al eliminar:', error);
-      alerts.basicAlert(
+      await alerts.basicAlert(
         'Error',
         'No se pudo eliminar. Por favor, intente nuevamente.',
         'error'
@@ -536,6 +731,28 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
         'Validación',
         'Por favor complete todas las filas antes de guardar.',
         'warning'
+      );
+      return;
+    }
+
+    // Validar que no haya combinaciones duplicadas Categoría-Familia-Subfamilia
+    const combinations = this.rowData.map(row =>
+      `${row.categoria}|${row.familia}|${row.subfamilia}`
+    );
+
+    const duplicates = combinations.filter((item, index) =>
+      combinations.indexOf(item) !== index
+    );
+
+    if (duplicates.length > 0) {
+      const duplicateList = duplicates
+        .map(d => d.replace(/\|/g, ' / '))
+        .join('\n');
+
+      alerts.basicAlert(
+        'Combinaciones Duplicadas',
+        `Las siguientes combinaciones están duplicadas:\n\n${duplicateList}\n\nPor favor, elimine o modifique las filas duplicadas.`,
+        'error'
       );
       return;
     }
@@ -586,6 +803,7 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
           continue;
         }
 
+        // Actualizar el registro (el backend permite cambiar la subfamilia manteniendo el ID)
         const dataToUpdate = {
           idSubfamily: subfam.id,
           idProvider: this.params.data.id,
@@ -602,8 +820,72 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
         });
       }
 
-      // Recargar datos desde el servidor
-      await this.loadData();
+      // Guardar la fila seleccionada actual para restaurarla después
+      const selectedRow = this.selectedRow;
+      const selectedRowId = selectedRow?.id;
+      const selectedRowCombination = selectedRow
+        ? `${selectedRow.categoria}|${selectedRow.familia}|${selectedRow.subfamilia}`
+        : null;
+
+      // Si hubo filas nuevas, recargar datos del servidor para obtener los IDs reales
+      // Si solo hubo modificaciones, limpiar flags localmente
+      if (newRows.length > 0) {
+        console.log('🔄 Recargando datos del servidor para obtener IDs reales de las filas nuevas...');
+
+        // Recargar datos desde el servidor
+        const providerTypes: any = await new Promise((resolve, reject) => {
+          this.providersService.getProviderType(this.params.data.id).subscribe({
+            next: resolve,
+            error: reject
+          });
+        });
+
+        // Mapear datos
+        this.rowData = (providerTypes || []).map((pt: any) => {
+          const subfam = this.subfamilias.find(s => s.id === pt.idSubfamily);
+          const fam = this.familias.find(f => f.id === subfam?.idFamily);
+          const cat = this.categorias.find(c => c.id === fam?.idCategory);
+
+          return {
+            id: pt.id,
+            categoria: cat?.description || '',
+            familia: fam?.description || '',
+            subfamilia: subfam?.description || '',
+            vigente: pt.vigente ?? false,
+            principal: pt.principal ?? false,
+            idSubfamily: pt.idSubfamily
+          };
+        });
+
+        // Ordenar por vigente y principal
+        this.rowData.sort((a, b) => {
+          if (a.vigente !== b.vigente) return b.vigente ? 1 : -1;
+          if (a.principal !== b.principal) return b.principal ? 1 : -1;
+          return (a.id || 0) - (b.id || 0);
+        });
+
+        // Actualizar el grid
+        this.gridApi?.setGridOption('rowData', this.rowData);
+      } else {
+        // Solo hubo modificaciones - limpiar flags y actualizar valores originales localmente SIN recargar
+        console.log('✅ Solo modificaciones - limpiando flags sin recargar');
+        this.rowData.forEach(row => {
+          delete row.__isNew;
+          delete row.__modified;
+          // Actualizar el valor original para que coincida con el nuevo
+          row.__originalSubfamilia = row.subfamilia;
+        });
+
+        // Ordenar localmente por vigente y principal
+        this.rowData.sort((a, b) => {
+          if (a.vigente !== b.vigente) return b.vigente ? 1 : -1;
+          if (a.principal !== b.principal) return b.principal ? 1 : -1;
+          return (a.id || 0) - (b.id || 0);
+        });
+
+        // Actualizar el grid con los datos ordenados (NO recarga desde servidor)
+        this.gridApi?.setGridOption('rowData', this.rowData);
+      }
 
       // Buscar el registro marcado como principal y actualizar el campo typeProvider en la tabla padre
       const principalRow = this.rowData.find(row => row.principal === true);
@@ -650,7 +932,7 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
         } catch (error) {
           console.error('❌ Error al actualizar typework en DB:', error);
           console.error('Detalle del error:', JSON.stringify(error, null, 2));
-          alerts.basicAlert(
+          await alerts.basicAlert(
             'Advertencia',
             'Los datos de subfamilia se guardaron correctamente, pero hubo un error al actualizar el tipo de proveedor en la tabla principal.',
             'warning'
@@ -658,7 +940,65 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
         }
       }
 
-      alerts.basicAlert(
+      // Restaurar focus ANTES de mostrar el alert (para que no se pierda al cerrar el alert)
+      await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
+
+      if (this.gridApi && selectedRow) {
+        let rowToSelect = null;
+
+        console.log('🔍 Buscando tipo proveedor para restaurar...', {
+          selectedRowId,
+          selectedRowCombination,
+          totalRows: this.rowData.length
+        });
+
+        // Intentar encontrar por ID original (si no era temporal)
+        if (selectedRowId && !String(selectedRowId).startsWith('temp_')) {
+          rowToSelect = this.rowData.find(r => r.id === selectedRowId);
+          console.log('Búsqueda por ID:', rowToSelect ? '✅ Encontrado' : '❌ No encontrado');
+        }
+
+        // Si no se encontró, buscar por combinación categoria/familia/subfamilia
+        if (!rowToSelect && selectedRowCombination) {
+          rowToSelect = this.rowData.find(r =>
+            `${r.categoria}|${r.familia}|${r.subfamilia}` === selectedRowCombination
+          );
+          console.log('Búsqueda por combinación:', rowToSelect ? '✅ Encontrado' : '❌ No encontrado');
+        }
+
+        // Si se encontró la fila, seleccionarla
+        if (rowToSelect) {
+          const rowIndex = this.rowData.indexOf(rowToSelect);
+          console.log('📍 Índice de la fila:', rowIndex);
+
+          // Intentar obtener el rowNode - si falla, iterar todos los nodos
+          let rowNode = this.gridApi.getDisplayedRowAtIndex(rowIndex);
+
+          if (!rowNode) {
+            console.log('⚠️ No se pudo obtener por índice, iterando todos los nodos...');
+            // Iterar sobre todos los nodos para encontrar el correcto
+            this.gridApi.forEachNode((node) => {
+              if (node.data && node.data.id === rowToSelect.id) {
+                rowNode = node;
+                console.log('✅ Nodo encontrado iterando:', node.rowIndex);
+              }
+            });
+          }
+
+          if (rowNode) {
+            rowNode.setSelected(true);
+            this.gridApi.ensureIndexVisible(rowNode.rowIndex!, 'middle');
+            console.log('✅ Fila restaurada después de guardar:', rowToSelect);
+          } else {
+            console.error('❌ No se pudo obtener el rowNode');
+          }
+        } else {
+          console.error('❌ No se encontró la fila para restaurar');
+        }
+      }
+
+      // AHORA mostrar el alert (después de restaurar el focus)
+      await alerts.basicAlert(
         'Guardado exitoso',
         'Los cambios se han guardado correctamente.',
         'success'
@@ -666,14 +1006,16 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
 
       this.hasChanges = false;
 
-      // Notificar al grid padre para actualizar visualización
-      if (this.params.api) {
-        this.params.api.applyTransaction({ update: [this.params.data] });
+      // Actualizar los datos del nodo padre SIN usar applyTransaction (para no destruir el detail grid)
+      // Solo actualizar los datos en memoria
+      if (this.params.data) {
+        // Los datos del nodo padre ya se actualizaron en las líneas 927-928
+        // No necesitamos hacer nada más aquí
       }
 
     } catch (error) {
       console.error('Error al guardar:', error);
-      alerts.basicAlert(
+      await alerts.basicAlert(
         'Error',
         'No se pudo guardar. Por favor, intente nuevamente.',
         'error'

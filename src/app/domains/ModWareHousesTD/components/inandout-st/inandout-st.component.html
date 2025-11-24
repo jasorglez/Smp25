@@ -1,12 +1,13 @@
 <div class="container-fluid mt-3">
-  <!-- Top: Warehouse Selector -->
-  <div class="row mb-3">
-    <div class="col-12">
+  <!-- Top: Warehouse, Catalog and OT Selectors -->
+  <div class="row">
+    <div class="col-4">
       <div class="form-group">
         <label for="warehouseSelect">Seleccionar Almacén:</label>
         <select
           id="warehouseSelect"
           class="form-control"
+          style="font-size: 0.9em;"
           [(ngModel)]="selectedWarehouse"
           (change)="onWarehouseChange()">
           <option *ngFor="let wh of warehouses" [ngValue]="wh">
@@ -15,16 +16,13 @@
         </select>
       </div>
     </div>
-  </div>
-
-  <!-- Catalog Selector -->
-  <div class="row mb-3">
-    <div class="col-12">
+    <div class="col-4">
       <div class="form-group">
-        <label for="catalogSelect">Tipo de Entrada:</label>
+        <label for="catalogSelect">Tipo de Movimiento:</label>
         <select
           id="catalogSelect"
           class="form-control"
+          style="font-size: 0.9em;"
           [(ngModel)]="selectedCatalog"
           (change)="onCatalogChange()">
           <option *ngFor="let cat of catalogs" [ngValue]="cat">
@@ -33,6 +31,22 @@
         </select>
       </div>
     </div>
+    <div class="col-4">
+      <div class="form-group">
+        <label for="otSelect">Orden de Trabajo:</label>
+        <select
+          id="otSelect"
+          class="form-control"
+          style="font-size: 0.9em;"
+          [(ngModel)]="selectedOt"
+          (change)="onOtChange()">
+          <option *ngFor="let ot of otList" [ngValue]="ot">
+            {{ ot.description }}
+          </option>
+        </select>
+      </div>
+    </div>
+  
   </div>
 
   <!-- Main Content: Buttons Left, Grid Right -->
@@ -74,7 +88,8 @@
         (selectionChanged)="onSelectionChanged($event)"
         (cellValueChanged)="onCellValueChanged($event)"
         (cellEditingStopped)="onCellEditingStopped($event)"
-        (cellDoubleClicked)="onCellDoubleClicked($event)">
+        (cellDoubleClicked)="onCellDoubleClicked($event)"
+        (cellMouseOver)="onCellMouseOver($event)">
       </ag-grid-angular>
     </div>
   </div>
