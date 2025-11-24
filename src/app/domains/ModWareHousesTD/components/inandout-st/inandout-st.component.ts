@@ -525,10 +525,13 @@ export class InandoutStComponent implements OnInit {
         params.successCallback(params.data.detailData);
       },
       context: {
+        movementType: this.movementType,
         idRoot: this.idRoot,
+        projectId: this.projectId,
+        idWarehouse: this.selectedWarehouse?.idAlmacen,
+        inandoutService: this.inandoutService,
         componentParent: this,
         gridApi: this.gridApi,
-        movementType: this.movementType,
         ITEMS: {
           load: (entryId: number, callback: (data: any[]) => void) => {
             this.loadEntryItemsData(entryId, callback);

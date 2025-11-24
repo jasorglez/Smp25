@@ -163,6 +163,8 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+    // Ensure columnDefs are updated with loaded materials
+    this.gridApi.setGridOption('columnDefs', this.colDefs);
   }
 
   get colDefs(): ColDef[] {
@@ -259,11 +261,21 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
         headerName: 'Cantidad',
         width: 100,
         editable: true,
-        type: 'numericColumn'
+        type: 'numericColumn',
+        valueSetter: (params: any) => {
+          const newValue = params.newValue;
+          if (this.context.movementType === 'OUT' && newValue > params.data.pending) {
+            alerts.basicAlert('Cantidad excedida', `La cantidad no puede ser mayor al total de entradas disponibles (${params.data.pending})`, 'warning');
+            return false;
+          }
+          params.data.quantity = newValue;
+          params.data.total = newValue;
+          return true;
+        }
       },
       {
         field: 'pending',
-        headerName: 'Pendiente',
+        headerName: this.context.movementType === 'OUT' ? 'Total Entradas' : 'Pendiente',
         width: 100,
         editable: true,
         type: 'numericColumn'
@@ -388,6 +400,25 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
     if (event.colDef.field === 'quantity') {
       event.data.total = event.newValue;
     }
+
+    if (event.colDef.field === 'description' && this.context.movementType === 'OUT' && event.data.idProduct) {
+      const idWarehouse = this.entryData.idWarehouse;
+      console.log('Calling getSumaIn with idProduct:', event.data.idProduct, 'idWarehouse:', idWarehouse);
+      this.context.inandoutService.getSumaIn(event.data.idProduct, idWarehouse).subscribe({
+        next: (data: any) => {
+          console.log('getSumaIn response:', data);
+          event.data.pending = data || 0;
+          if (this.gridApi) {
+            this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['pending'] });
+          }
+        },
+        error: (error) => {
+          console.error('Error in getSumaIn:', error);
+          event.data.pending = 0;
+        }
+      });
+    }
+
     event.data.__modified = true;
     this.hasUnsavedChanges = true;
   }
