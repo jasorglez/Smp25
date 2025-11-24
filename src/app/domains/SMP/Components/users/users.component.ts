@@ -512,13 +512,29 @@ constructor() {
       {
         field: 'picture',
         headerName: 'Imagen de perfil',
-        cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
-        cellRendererParams: (params) => {
-          const canEditImage = params.data.__isNew || true
-          return {
-          clicked: canEditImage ? this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService) : null,
-          field: 'picture'
-          };
+        cellRenderer: (params) => {
+          const imgSrc = params.value || './assets/img/profile.png';
+          return `<img src="${imgSrc}" style="width: 50px; height: 50px; object-fit: cover; cursor: pointer;" />`;
+        },
+        onCellClicked: (params) => {
+          if (params.data.__isNew || true) {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = (event) => {
+              const file = (event.target as HTMLInputElement).files[0];
+              if (file) {
+                const reader = new FileReader();
+                reader.onload = () => {
+                  params.data.picture = reader.result as string;
+                  params.data.__modified = true;
+                  this.gridApi.refreshCells({ rowNodes: [params.node] });
+                };
+                reader.readAsDataURL(file);
+              }
+            };
+            input.click();
+          }
         },
         editable: false,
         flex: 1
@@ -526,13 +542,33 @@ constructor() {
       {
         field: 'signature',
         headerName: 'Firma',
-        cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
-        cellRendererParams: (params) => {
-          const canEditImage = params.data.__isNew || true
-          return {
-            clicked: canEditImage ? this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService) : null,
-            field: 'signature'
-          };
+        cellRenderer: (params) => {
+          const imgSrc = params.value || '';
+          if (imgSrc) {
+            return `<img src="${imgSrc}" style="width: 100px; height: 50px; object-fit: contain; cursor: pointer;" />`;
+          } else {
+            return `<div style="width: 100px; height: 50px; border: 1px dashed #ccc; display: flex; align-items: center; justify-content: center; cursor: pointer;">Firma</div>`;
+          }
+        },
+        onCellClicked: (params) => {
+          if (params.data.__isNew || true) {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = (event) => {
+              const file = (event.target as HTMLInputElement).files[0];
+              if (file) {
+                const reader = new FileReader();
+                reader.onload = () => {
+                  params.data.signature = reader.result as string;
+                  params.data.__modified = true;
+                  this.gridApi.refreshCells({ rowNodes: [params.node] });
+                };
+                reader.readAsDataURL(file);
+              }
+            };
+            input.click();
+          }
         },
         editable: false,
         flex: 1
