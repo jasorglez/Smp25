@@ -3,9 +3,15 @@ import { Component, ElementRef, ViewChild, inject } from '@angular/core';
 import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
 import { CellFocusedEvent, ColDef, GridApi, GridReadyEvent, ValueGetterParams, ValueSetterParams, CellKeyDownEvent, Column, IRowNode, ValueFormatterParams } from 'ag-grid-community';
 import { ICellRendererParams } from 'ag-grid-community';
+import { FamilySubFamily } from 'app/services/familySubFamily.service';
 import { FormulaEditorComponent } from '../formula-editor.component';
 import { Parser } from 'expr-eval';
+import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { DetailCellRendererParametrosComponent } from './detail-cell-renderer-parametros.component';
+import { alerts } from 'app/helpers/alerts';
+import { SelectWithTooltipEditorV2Component } from '../editors/select-with-tooltip-editor-v2.component';
+import { RawMaterialsService } from 'app/services/raw-materials.service';
+import { MateriaByCatalogService } from 'app/services/MateriaByCatalog.service';
 
 @Component({
   selector: 'app-detail-cell-renderer-costos',
@@ -53,7 +59,8 @@ import { DetailCellRendererParametrosComponent } from './detail-cell-renderer-pa
           (cellFocused)="onCellFocused($event)"
           (cellKeyDown)="onCellKeyDown($event)"
           (cellClicked)="onCellClicked($event)"
-          (fillEnd)="onFillEnd($event)">
+          (fillEnd)="onFillEnd($event)"
+          >
         </ag-grid-angular>
       </div>
     </div>
@@ -69,14 +76,22 @@ import { DetailCellRendererParametrosComponent } from './detail-cell-renderer-pa
 })
 export class DetailCellRendererCostosComponent implements ICellRendererAngularComp {
   private currencyPipe = inject(CurrencyPipe);
+  private rawMaterialsService = inject(RawMaterialsService);
+  private materiaByCatalogService = inject(MateriaByCatalogService);
   @ViewChild('formulaBar') formulaBar!: ElementRef<HTMLInputElement>;
 
   public params!: ICellRendererParams;
   public materialName: string = '';
+  private familySubFamily = inject(FamilySubFamily);
   private gridApi!: GridApi;
+  
 
   // --- Propiedades para la barra de fórmulas ---
   public formulaBarValue: string = '';
+  families:any[];
+  idRoot: number;
+  familiasVigente: any[];
+  data: any[] = [];
   public isFormulaValid: boolean = true;
   private focusedCell: { rowIndex: number, colId: string } | null = null;
   private highlightedCols: string[] = [];
@@ -87,6 +102,7 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
     headerHeight: 25,
     rowHeight: 20,
     suppressClickEdit: false,
+    
     singleClickEdit: true,
     enableRangeSelection: true, // Habilita la selección de rangos (como en Excel)
     enableFillHandle: true,     // Habilita el cuadro de arrastre para copiar/rellenar
@@ -165,10 +181,16 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
   };
 
   public costosColumnDefs: ColDef[] = [];
+  
 
   agInit(params: ICellRendererParams): void {
     this.params = params;
     this.materialName = params.data.articulo || 'N/A';
+    this.idRoot = params.context.idRoot;
+    this.data = params.data;
+    console.log('ID Root en Costos:', params.context);
+    this.familias(this.data);
+    this.familiasVigentes(this.data);
 
     // Definir columnas con soporte para fórmulas en todas
     this.costosColumnDefs = [
@@ -180,7 +202,69 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
         cellStyle: { textAlign: 'center', paddingTop: '0px', paddingBottom: '0px' },        
         showDisabledCheckboxes: true,
       },
-      { headerName: 'Articulos', field: 'col1', editable: true, cellStyle: { textAlign: 'center' } },
+      {
+        headerName: 'Artículos',
+        field: 'idSubfamily',
+        editable: true,
+
+        cellEditor: SelectWithTooltipEditorV2Component,
+
+        cellEditorParams: () => {
+          // Mapear al shape que espera SelectDropdownService: { id, description }
+          const opts = (this.families || []).map(f => ({
+            id: f.idSubfamily,
+            description: f.subfamilia,
+            // opcionales: agregar campos auxiliares si los necesita el tooltip
+            valueAddition: f.someExtraInfo ?? '',
+            valueAddition2: f.someAbbr ?? ''
+          }));
+
+          console.log("OPCIONES EN EL EDITOR:", opts);
+          return { options: opts };
+        },
+      
+        valueFormatter: (params) => {
+          // Aceptar que el valor pueda ser un objeto (editor devuelve {value,label})
+          const raw = params.value;
+          const val = (raw && typeof raw === 'object') ? (raw.value ?? raw.id) : raw;
+          console.log('Valor en valueFormatter:', val);
+          const fam = this.familiasVigente?.find(f => f.idSubfamily === val);
+          // Si no encontramos la familia pero el raw es objeto, mostrar su label como respaldo
+          if (fam) return fam.subfamilia;
+          if (raw && typeof raw === 'object') return raw.label ?? '';
+          return '';
+        },
+      
+        valueSetter: (params) => {
+          const editorValue = params.newValue;
+          // El editor puede devolver: raw id, o un objeto { value, label } o { id, label }
+          let value: any = editorValue;
+          if (editorValue && typeof editorValue === 'object') {
+            value = editorValue.id ?? editorValue.value ?? editorValue;
+          }
+
+          if (value === undefined || value === null || value === '') {
+            alerts.basicAlert('Campo requerido', 'La subfamilia es obligatoria', 'error');
+            return false;
+          }
+
+          const duplicateExists = this.costosRowData.some((row, i) =>
+            i !== params.node.rowIndex && row.idSubfamily === value
+          );
+
+          if (duplicateExists) {
+            alerts.basicAlert('Valor duplicado', 'Ya existe esa subfamilia.', 'error');
+            return false;
+          }
+
+          params.data.idSubfamily = value;
+
+          const fam = this.familiasVigente.find(f => f.idSubfamily === value);
+          params.data.subfamilia = fam?.subfamilia || (editorValue && editorValue.label) || '';
+
+          return true;
+        }
+      },
       { 
         headerName: 'Costo Unitario', 
         field: 'col2', 
@@ -261,41 +345,101 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
       };
     });
     
-    // Generar datos falsos para el grid de costos
-    this.costosRowData = this.generateFakeCostData(5); // Generar 5 filas de ejemplo    
+    // Generar datos falsos para el grid de costos 
     this.gridOptions.context = this.params.context; // Inicializar el contexto del grid
   }
 
   private addFormulaSupport(col: ColDef): ColDef {
     const field = col.field!;
     const formulaField = `formula${field.charAt(0).toUpperCase() + field.slice(1)}`; // e.g., formulaCol1
+
+    // Preserve any existing handlers/editors so we don't inadvertently remove custom
+    // behavior (like the SelectWithTooltipEditorV2Component and its valueSetter).
+    const originalValueGetter = col.valueGetter as ((params: ValueGetterParams) => any) | undefined;
+    const originalValueSetter = col.valueSetter as ((params: ValueSetterParams) => boolean) | undefined;
+    const originalCellEditor = col.cellEditor;
+
     return {
       ...col,
-      cellEditor: FormulaEditorComponent,
-      cellEditorPopup: true,
-      cellEditorParams: { formulaField },
+      // If a custom editor already exists (e.g. select editor), keep it. Otherwise use the formula editor.
+      cellEditor: originalCellEditor ?? FormulaEditorComponent,
+      // Only enable popup if not already defined by the original column
+      cellEditorPopup: (col.cellEditorPopup !== undefined) ? col.cellEditorPopup : true,
+      // Preserve original behavior: if the original cellEditorParams is a function,
+      // call it (AG Grid expects either an object or a function). Merge its result
+      // with `formulaField`. This ensures any console.log inside the original
+      // function (like the options builder) still runs.
+      cellEditorParams: (paramsInner: any) => {
+        let baseParams: any = {};
+        try {
+          if (typeof col.cellEditorParams === 'function') {
+            // Call the original function with the params AG Grid provides
+            baseParams = (col.cellEditorParams as Function)(paramsInner) || {};
+          } else {
+            baseParams = col.cellEditorParams || {};
+          }
+        } catch (e) {
+          // If the original function throws, fallback to empty base params
+          console.error('Error calling original cellEditorParams function:', e);
+          baseParams = {};
+        }
+        return { ...baseParams, formulaField };
+      },
       valueGetter: (params: ValueGetterParams) => {
-        // console.log(`valueGetter for ${field} (row ${params.node.rowIndex}) called. Formula: ${params.data[formulaField]}, Direct: ${params.data[field]}`);
-        if (params.data[formulaField]) {
+        // If this row has a formula for this field, evaluate it and return the result.
+        if (params.data && params.data[formulaField]) {
           const result = this.evaluateFormula(params.data[formulaField], params.data, params.node.rowIndex);
-          // console.log(`  -> Evaluated result: ${result}`);
           return result;
         }
-        return params.data[field];
+
+        // Otherwise delegate to the original valueGetter if present, or return the raw data value.
+        if (typeof originalValueGetter === 'function') {
+          return originalValueGetter(params);
+        }
+        return params.data ? params.data[field] : undefined;
       },
       valueSetter: (params: ValueSetterParams) => {
-        // console.log(`valueSetter for ${field} (row ${params.node.rowIndex}) called. NewValue: ${params.newValue}`);
         const value = params.newValue;
+
+        // If the user entered a formula (starts with '='), store it in the formula field and
+        // evaluate immediately to update the visible value.
         if (typeof value === 'string' && value.startsWith('=')) {
           params.data[formulaField] = value;
-          params.data[field] = this.evaluateFormula(value, params.data, params.node.rowIndex); // Store evaluated result
-        } else {
-          params.data[formulaField] = undefined;
-          params.data[field] = value;
+          params.data[field] = this.evaluateFormula(value, params.data, params.node.rowIndex);
+          return true;
         }
+
+        // If there was an original valueSetter (like the custom one for the select), call it.
+        if (typeof originalValueSetter === 'function') {
+          return originalValueSetter(params);
+        }
+
+        // Default fallback behavior: clear any formula and set the raw value.
+        params.data[formulaField] = undefined;
+        params.data[field] = value;
         return true;
       }
     };
+  }
+
+    familias(idFamilia:any){
+      console.log(idFamilia.idFamilia);
+    this.familySubFamily.getCatalogsMasterByFamily(idFamilia.idFamilia).subscribe(
+      (data: any) => {
+        this.families = data;
+        console.log(data)
+      },
+      (error) => console.error('Error fetching data:', error)
+    );
+  }
+  familiasVigentes(idFamilia:any){
+    this.familySubFamily.getCatalogsMasterByFamilyVigentes(idFamilia.idFamilia).subscribe(
+      (data: any) => {
+        this.familiasVigente = data;
+        console.log(data)
+      },
+      (error) => console.error('Error fetching data:', error)
+    );
   }
 
   onCellClicked(event: any) {
@@ -332,7 +476,7 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
     this.gridApi.applyTransaction({ remove: selectedData });
   }
 
-  onStartEditing() {
+  async onStartEditing() {
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (!selectedNodes || selectedNodes.length === 0) {
       return;
@@ -345,6 +489,92 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
         colKey: firstEditableCol.field!
       });
     }
+
+    /*const isValid = this.costosRowData.every(
+          (item) =>
+            item.name &&
+            item.idBranch &&
+            (item.employeeCode || item.email )&&
+            item.idDepto && // se agregan dos inputs para la validación de los campos requeridos
+            item.idPosition &&
+            (item.priceXHour || this.idRoot == 18)
+        );
+        if (!isValid) {
+          alerts.basicAlert(
+            'Añadir entrada',
+            'Debe llenar los campos obligatorios antes de guardar.',
+            'error'
+          );
+          return;
+        }*/
+    
+        const newRows = this.costosRowData.filter((row) => row.__isNew);
+        const modifiedRows = this.costosRowData.filter(
+          (row) => row.__modified && !row.__isNew
+        );
+    
+        const addObservables = newRows.map((row) => {
+          const cleanedData = this.cleanDataForServer(row);
+          return this.materiaByCatalogService.addMateriaByCatalog(cleanedData);
+        });
+    
+        const updateObservables = modifiedRows.map((row) => {
+          const cleanedData = this.cleanDataForServer(row);
+          return this.materiaByCatalogService.updateMateriaByCatalog(row.id, cleanedData);
+        });
+    
+        try {
+          await lastValueFrom(
+            concat(...addObservables, ...updateObservables).pipe(toArray())
+          );
+          /*
+          // Determinar qué ID vamos a seleccionar después de recargar
+          if (modifiedRows.length > 0) {
+            // Si hay filas modificadas, guardamos el ID de la última modificada
+            this.lastEditedRowId = modifiedRows[modifiedRows.length - 1].id;
+          } else if (newRows.length > 0) {
+            // Si hay filas nuevas, marcaremos que necesitamos seleccionar el ID máximo
+            this.lastEditedRowId = 'SELECT_MAX_ID';
+          }
+          */
+          alerts.basicAlert(
+            'Datos actualizados',
+            'Se han actualizado los datos correctamente.',
+            'success'
+          );
+          
+    
+          //await this.obtenerDatos(); // Esperar a que se actualicen los datos
+          /*
+          // Seleccionar la fila apropiada después de recargar
+          if (this.lastEditedRowId) {
+            if (this.lastEditedRowId === 'SELECT_MAX_ID') {
+              // Encontrar el ID máximo en los datos actuales
+              const maxId = Math.max(...this.rowData.map((row) => Number(row.id)));
+              this.selectRowById(maxId);
+            } else {
+              this.selectRowById(this.lastEditedRowId);
+            }
+            this.lastEditedRowId = null; // Resetear el ID
+          }*/
+        } catch (error) {
+          console.error(error);
+          alerts.basicAlert(
+            'Error',
+            'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
+            'error'
+          );
+        }
+  }
+
+  private cleanDataForServer(data: any): any {
+    const cleanedData = { ...data };
+    delete cleanedData.__isNew;
+    delete cleanedData.__modified;
+    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
+      delete cleanedData.id;
+    }
+    return cleanedData;
   }
 
   onUndo() { this.gridApi.undoCellEditing(); }

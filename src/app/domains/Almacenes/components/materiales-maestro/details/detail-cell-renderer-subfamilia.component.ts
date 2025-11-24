@@ -164,6 +164,9 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
   get gridOptions(): any {
     return {
       headerHeight: 30,
+      groupDisplayType: 'multipleColumns',
+      suppressRowClickSelection: true,
+      rowSelection: 'multiple',
       rowHeight: 30,
       animateRows: true,
       suppressClickEdit: false, // Cambié a false para permitir edición
@@ -174,17 +177,29 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
       groupDefaultExpanded: 0,
       suppressAggFuncInHeader: true,
       autoGroupColumnDef: {
-        headerName: 'Grupos',
-        minWidth: 200,
-        cellRendererParams: {
-          suppressCount: false
+    minWidth: 200,
+    cellRendererParams: {
+        suppressCount: false,
+        innerRenderer: function(params) {
+            // Si es grupo de categoría
+            if (params.node.level === 0) {
+                return params.value; // Categoría
+            }
+            // Si es grupo de sabor
+            else if (params.node.level === 1) {
+                return params.value; // Sabor
+            }
+            return '';
         }
-      }
+    }
+}
+
     };
   }
 
   // Definición de columnas con grupos separados y filtros independientes
   get columnDefs(): ColDef[] {
+    
     return [
       {
         // Columna de categoría - agrupación principal
@@ -200,14 +215,15 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
         },
         width: 150,
         resizable: true,
-        cellClass: 'group-cell'
+        cellClass: 'group-cell',
+        showRowGroup: false
       },
       {
         // Columna de sabor - agrupación secundaria
         headerName: 'Sabor',
         field: 'flavor',
         rowGroup: true,
-        hide: false, // Mostrar como columna
+        hide: true, // Mostrar como columna
         filter: 'agSetColumnFilter',
         filterParams: {
           buttons: ['reset', 'apply'],

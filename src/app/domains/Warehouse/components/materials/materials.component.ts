@@ -1784,7 +1784,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
   }
 
   async saveChanges() {
-    const isValid = this.rowData.every(
+    /*const isValid = this.rowData.every(
       (item) => item.insumo && item.description
     );
     if (!isValid) {
@@ -1794,7 +1794,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
         'error'
       );
       return;
-    }
+    }*/
 
     const newRows = this.rowData.filter((row) => row.__isNew);
     const modifiedRows = this.rowData.filter(
