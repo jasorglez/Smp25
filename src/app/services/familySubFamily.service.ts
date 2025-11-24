@@ -40,4 +40,10 @@ export class FamilySubFamily {
   getCatalogsFamily(idCompany: number): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlWarehouse}/FamilySubFamilyDelison/GetCatalog?idCompany=${idCompany}`, { headers: this.trackingService.getHeaders() });
   }
+  getCatalogsMasterByFamily(id: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/FamilySubFamilyDelison/GetSubFamilyByMaster/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+  getCatalogsMasterByFamilyVigentes(id: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/FamilySubFamilyDelison/GetSubFamilyByMasterVigentes/${id}`, { headers: this.trackingService.getHeaders() });
+  }
 }

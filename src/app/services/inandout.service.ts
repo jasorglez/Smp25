@@ -17,6 +17,10 @@ export class InandoutService {
     return this.http.get(`${environment.urlWarehouse}/Inandout?idProject=${idProject}&idWarehouse=${idWarehouse}&type=${type}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getSumaIn(idProduct: number, idWarehouse: number) {
+    return this.http.get(`${environment.urlWarehouse}/Detailsinandout/sumentrada/${idProduct}/${idWarehouse}`, { headers: this.trackingService.getHeaders() });
+  }
+  
   getDetailedInOut(id: number): Observable<any> {
     return this.http.get(`${environment.urlWarehouse}/Inandout/${id}`, { headers: this.trackingService.getHeaders() });
   }
