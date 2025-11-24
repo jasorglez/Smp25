@@ -65,7 +65,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   idRoot: number | null = null;
   newlyAddedRows: string[] = [];
   private tempIdCounter: number = 0;
-
+  data: any[] = [];
   // Catálogos para los combos
   categories: any[] = [];
   families: any[] = [];
@@ -511,6 +511,11 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
   onCellClicked(event: any): void {
     event.node.setSelected(true);
+    this.data = event.data;
+    // Actualizar el contexto del grid con los datos recién seleccionados
+    // para que los detail renderers reciban la información correcta.
+    this.updateGridContext();
+    console.log('Fila seleccionada:', this.data);
 
     const colId = event.column.getColId();
     const isDetailColumn = colId === 'providerCount' || colId === 'subfamilyCount' || colId === 'costo' || colId === 'historico';
@@ -583,6 +588,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       },
       context: {
         idRoot: this.idRoot, // Pasar idRoot al detail renderer
+        data: this.data, // Pasar los datos de materiales por tabla
         componentParent: this, // Referencia al componente padre
         gridApi: this.gridApi, // Pasar la API del grid principal
         MATERIAL: {
