@@ -126,8 +126,8 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
     // Mock data for 20 materials
     this.materials = [
       { id: 1, description: 'Tornillos M8 x 50mm', code: 'TOR-M8-50', measure: 'Pieza', active: true },
-      { id: 2, description: 'Tuercas M8', code: 'TUE-M8', measure: 'Pieza', active: true },
-      { id: 3, description: 'Arandelas planas M8', code: 'ARA-PL-M8', measure: 'Pieza', active: true },
+      { id: 2, description: 'Jugo de Fresa', code: 'TUE-M8', measure: 'Pieza', active: true },
+      { id: 3, description: 'Jugo de Naranja', code: 'ARA-PL-M8', measure: 'Pieza', active: true },
       { id: 4, description: 'Jugo de Blue Berry', code: 'CEM-POR-50', measure: 'Saco', active: true },
       { id: 5, description: 'Arena fina', code: 'ARE-FIN', measure: 'm³', active: true },
       { id: 6, description: 'Jugo Manzana', code: 'GRA-34', measure: 'm³', active: true },

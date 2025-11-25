@@ -1,6 +1,237 @@
-<div class="card mt-3">
-  <div class="card-body text-center">
-    <h5 class="card-title">Módulo de Inventario</h5>
-    <p class="card-text">-- En construcción --</p>
+<div class="container-fluid mt-3">
+  <div class="card">
+    <div class="card-header">
+      <h5 class="card-title mb-0">🏭 Sistema de Inventario</h5>
+      <small class="text-muted">Gestión completa de stock y existencias</small>
+    </div>
+    <div class="card-body">
+      <!-- Pestañas -->
+      <ul class="nav nav-tabs" id="inventory-tabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="total-tab" data-bs-toggle="tab" data-bs-target="#total" type="button" role="tab" aria-controls="total" aria-selected="true">
+            📊 Total
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="warehouses-tab" data-bs-toggle="tab" data-bs-target="#warehouses" type="button" role="tab" aria-controls="warehouses" aria-selected="false">
+            🏭 Almacenes
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="families-tab" data-bs-toggle="tab" data-bs-target="#families" type="button" role="tab" aria-controls="families" aria-selected="false">
+            📦 Familias
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="individual-tab" data-bs-toggle="tab" data-bs-target="#individual" type="button" role="tab" aria-controls="individual" aria-selected="false">
+            📦 Individual
+          </button>
+        </li>
+      </ul>
+
+      <!-- Contenido de pestañas -->
+      <div class="tab-content mt-3" id="inventory-tab-content">
+        <!-- Pestaña Total -->
+        <div class="tab-pane fade show active" id="total" role="tabpanel" aria-labelledby="total-tab">
+          <div class="row mb-4">
+            <div class="col-md-4">
+              <div class="card bg-success text-white">
+                <div class="card-body">
+                  <h5 class="card-title">Total en Inventario</h5>
+                  <h2>{{ totalInventory }}</h2>
+                  <p class="mb-0">Productos activos</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card bg-primary text-white">
+                <div class="card-body">
+                  <h5 class="card-title">Valor Total</h5>
+                  <h2>${{ totalValue }}</h2>
+                  <p class="mb-0">Valor en stock</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card bg-warning text-white">
+                <div class="card-body">
+                  <h5 class="card-title">Stock Mínimo</h5>
+                  <h2>{{ lowStockCount }}</h2>
+                  <p class="mb-0">Productos por reabastecer</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Producto</th>
+                  <th>Descripción</th>
+                  <th>Entradas</th>
+                  <th>Salidas</th>
+                  <th>Existencia</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let item of totalInventoryData">
+                  <td>{{ item.id }}</td>
+                  <td>{{ item.product }}</td>
+                  <td>{{ item.description }}</td>
+                  <td>{{ item.entradas }}</td>
+                  <td>{{ item.salidas }}</td>
+                  <td>{{ item.existencia }}</td>
+                  <td>
+                    <span class="badge" [ngClass]="getStatusClass(item.status)">{{ item.status }}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Pestaña Almacenes -->
+        <div class="tab-pane fade" id="warehouses" role="tabpanel" aria-labelledby="warehouses-tab">
+          <div class="row mb-4">
+            <div class="col-md-6">
+              <div class="card bg-info text-white">
+                <div class="card-body">
+                  <h5 class="card-title">Total Almacenes</h5>
+                  <h2>{{ totalWarehouses }}</h2>
+                  <p class="mb-0">Almacenes activos</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="card bg-secondary text-white">
+                <div class="card-body">
+                  <h5 class="card-title">Capacidad Total</h5>
+                  <h2>{{ totalCapacity }}%</h2>
+                  <p class="mb-0">Capacidad utilizada</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Almacén</th>
+                  <th>Producto</th>
+                  <th>Entradas</th>
+                  <th>Salidas</th>
+                  <th>Existencia</th>
+                  <th>Ubicación</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let item of warehouseInventoryData">
+                  <td><strong>{{ item.warehouse }}</strong></td>
+                  <td>{{ item.product }}</td>
+                  <td>{{ item.entradas }}</td>
+                  <td>{{ item.salidas }}</td>
+                  <td>{{ item.existencia }}</td>
+                  <td>{{ item.location }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Pestaña Familias -->
+        <div class="tab-pane fade" id="families" role="tabpanel" aria-labelledby="families-tab">
+          <div class="row mb-4">
+            <div class="col-md-6">
+              <div class="card bg-danger text-white">
+                <div class="card-body">
+                  <h5 class="card-title">Total Familias</h5>
+                  <h2>{{ totalFamilies }}</h2>
+                  <p class="mb-0">Familias de productos</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="card bg-dark text-white">
+                <div class="card-body">
+                  <h5 class="card-title">Familia Mayor</h5>
+                  <h2>{{ topFamily }}</h2>
+                  <p class="mb-0">{{ topFamilyPercentage }}% del inventario</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Familia</th>
+                  <th>Productos</th>
+                  <th>Stock Total</th>
+                  <th>Valor</th>
+                  <th>Rotación</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let item of familyInventoryData">
+                  <td><strong>{{ item.family }}</strong></td>
+                  <td>{{ item.products }}</td>
+                  <td>{{ item.stock }}</td>
+                  <td>${{ item.value }}</td>
+                  <td>{{ item.rotation }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Pestaña Individual -->
+        <div class="tab-pane fade" id="individual" role="tabpanel" aria-labelledby="individual-tab">
+          <div class="row mb-4">
+            <div class="col-md-12">
+              <div class="card bg-light">
+                <div class="card-body">
+                  <h5 class="card-title">Vista Individual de Productos</h5>
+                  <p class="mb-0">Detalle específico de cada producto en inventario</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>ID Producto</th>
+                  <th>Nombre</th>
+                  <th>Código</th>
+                  <th>Medida</th>
+                  <th>Stock Actual</th>
+                  <th>Precio Unitario</th>
+                  <th>Valor Total</th>
+                  <th>Última Actualización</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let item of individualInventoryData">
+                  <td>{{ item.id }}</td>
+                  <td>{{ item.name }}</td>
+                  <td>{{ item.code }}</td>
+                  <td>{{ item.measure }}</td>
+                  <td>{{ item.stock }}</td>
+                  <td>${{ item.unitPrice }}</td>
+                  <td>${{ item.totalValue }}</td>
+                  <td>{{ item.lastUpdate }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
