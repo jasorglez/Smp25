@@ -1480,7 +1480,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
   }
 
   updateCantidad(id) {
-    alert('Actualizar cantidad de contactos para proveedor ID:' + id);
+   // alert('Actualizar cantidad de contactos para proveedor ID:' + id);
 
   }
 

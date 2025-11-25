@@ -1666,6 +1666,12 @@ export const routes: Routes = [
             canDeactivate: [UnsavedChangesGuard],
           },
 
+            {
+            path: 'quotes-st',
+            loadComponent: () => import('./domains/ModWarehouse/components/quote/quote.component').then((q) => q.QuoteComponent),
+            canDeactivate: [UnsavedChangesGuard],
+          },
+
           {
             path: 'purchaseorder-st',
             loadComponent: () => import('./domains/ModWarehouse/components/purchaseorder/purchaseorder.component').then((p) => p.PurchaseOrderComponent),
