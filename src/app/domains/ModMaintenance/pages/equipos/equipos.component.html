@@ -1,0 +1,132 @@
+<div class="equipos-container">
+  <!-- Header -->
+  <div class="header">
+    <div class="header-content">
+      <div class="header-left">
+        <i class="fas fa-users header-icon"></i>
+        <div>
+          <h1 class="header-title">Gestión de Equipos</h1>
+          <p class="header-subtitle">Equipos de mantenimiento y técnicos especializados</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <button class="btn btn-primary" (click)="toggleForm()">
+          <i class="fas fa-plus"></i> Nuevo Equipo
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Teams Grid -->
+  <div class="teams-grid">
+    <div class="team-card" *ngFor="let team of teams">
+      <div class="team-header">
+        <div class="team-info">
+          <h3 class="team-name">{{ team.name }}</h3>
+          <p class="team-id">{{ team.id }}</p>
+        </div>
+        <span [class]="'status-badge ' + getStatusClass(team.status)">
+          {{ team.status }}
+        </span>
+      </div>
+
+      <div class="team-details">
+        <div class="detail-item">
+          <i class="fas fa-user-tie icon-small"></i>
+          <span><strong>Líder:</strong> {{ team.leader }}</span>
+        </div>
+        <div class="detail-item">
+          <i class="fas fa-tools icon-small"></i>
+          <span><strong>Especialidad:</strong> {{ team.specialty }}</span>
+        </div>
+        <div class="detail-item">
+          <i class="fas fa-users icon-small"></i>
+          <span><strong>Miembros:</strong> {{ team.members.length }}</span>
+        </div>
+      </div>
+
+      <div class="team-members">
+        <h4 class="members-title">Miembros del Equipo:</h4>
+        <ul class="members-list">
+          <li *ngFor="let member of team.members">{{ member }}</li>
+        </ul>
+      </div>
+
+      <div class="team-actions">
+        <button class="btn btn-sm btn-outline-primary action-btn">
+          <i class="fas fa-eye"></i> Ver Detalles
+        </button>
+        <button class="btn btn-sm btn-outline-secondary action-btn">
+          <i class="fas fa-edit"></i> Editar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Team Form Modal -->
+  <div class="modal-backdrop" *ngIf="showForm" (click)="toggleForm()"></div>
+  <div class="team-form-modal" *ngIf="showForm">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2 class="modal-title">Crear Nuevo Equipo</h2>
+        <button class="btn btn-sm btn-outline-secondary close-btn" (click)="toggleForm()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <form (ngSubmit)="handleSubmit()">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Nombre del Equipo *</label>
+              <input type="text" class="form-control" [(ngModel)]="formData.name" name="name" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Especialidad *</label>
+              <select class="form-select" [(ngModel)]="formData.specialty" name="specialty" required>
+                <option value="">Seleccionar especialidad...</option>
+                <option *ngFor="let spec of specialties" [value]="spec">{{ spec }}</option>
+              </select>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Líder del Equipo *</label>
+              <select class="form-select" [(ngModel)]="formData.leader" name="leader" required>
+                <option value="">Seleccionar líder...</option>
+                <option *ngFor="let tech of technicians" [value]="tech">{{ tech }}</option>
+              </select>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Estado</label>
+              <select class="form-select" [(ngModel)]="formData.status" name="status">
+                <option value="Activo">Activo</option>
+                <option value="Inactivo">Inactivo</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Miembros del Equipo</label>
+            <div class="members-inputs">
+              <div class="input-group mb-2" *ngFor="let member of formData.members; let i = index">
+                <input type="text" class="form-control" [(ngModel)]="formData.members[i]" [name]="'member' + i"
+                       placeholder="Nombre del miembro">
+                <button type="button" class="btn btn-outline-danger" (click)="removeMember(i)"
+                        [disabled]="formData.members.length === 1">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+              <button type="button" class="btn btn-outline-primary btn-sm" (click)="addMember()">
+                <i class="fas fa-plus"></i> Agregar Miembro
+              </button>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" (click)="toggleForm()">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Crear Equipo</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,105 @@
+.programacion-container {
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  margin: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.programacion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.programacion-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #333;
+}
+
+.btn-primary {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 0.3s ease;
+}
+
+.btn-primary:hover {
+  background-color: #0056b3;
+}
+
+.table-responsive {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #fff;
+}
+
+.table th, .table td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.table th {
+  background-color: #f2f2f2;
+  font-weight: 600;
+  color: #555;
+}
+
+.status {
+  padding: 5px 10px;
+  border-radius: 15px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #fff;
+  text-transform: capitalize;
+}
+
+.status.programado { background-color: #17a2b8; }
+.status.en-progreso { background-color: #ffc107; color: #333; }
+.status.completado { background-color: #28a745; }
+.status.cancelado { background-color: #dc3545; }
+
+.actions {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-action {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 5px;
+}
+
+.btn-edit {
+  color: #007bff;
+}
+
+.btn-edit:hover {
+  color: #0056b3;
+}
+
+.btn-delete {
+  color: #dc3545;
+}
+
+.btn-delete:hover {
+  color: #a71d2a;
+}

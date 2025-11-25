@@ -1,0 +1,68 @@
+<!-- Dashboard Content -->
+<div class="main-content">
+  <!-- Stats Cards -->
+  <div class="stats-grid">
+    <div class="stat-card" *ngFor="let stat of stats">
+      <div class="stat-content">
+        <div class="stat-info">
+          <p class="stat-label">{{ stat.label }}</p>
+          <p class="stat-value">{{ stat.value }}</p>
+        </div>
+        <i [class]="'fas fa-' + stat.icon + ' stat-icon ' + stat.color"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Orders and Upcoming Maintenance -->
+  <div class="cards-grid">
+    <!-- Recent Orders -->
+    <div class="card">
+      <h3 class="card-title">
+        <i class="fas fa-clipboard-list icon-title"></i>
+        Órdenes de Trabajo Recientes
+      </h3>
+      <div class="orders-list">
+        <div class="order-item" *ngFor="let order of recentOrders">
+          <div class="order-header">
+            <div>
+              <p class="order-id">{{ order.id }}</p>
+              <p class="order-asset">{{ order.asset }}</p>
+            </div>
+            <span [class]="'priority-badge ' + getPriorityClass(order.priority)">
+              {{ order.priority }}
+            </span>
+          </div>
+          <div class="order-footer">
+            <span class="order-type">{{ order.type }}</span>
+            <span [class]="'status-badge ' + getStatusClass(order.status)">
+              {{ order.status }}
+            </span>
+          </div>
+          <p class="order-technician">Técnico: {{ order.technician }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Upcoming Maintenance -->
+    <div class="card">
+      <h3 class="card-title">
+        <i class="fas fa-calendar icon-title"></i>
+        Próximos Mantenimientos
+      </h3>
+      <div class="maintenance-list">
+        <div class="maintenance-item" *ngFor="let maint of upcomingMaintenance">
+          <div class="maintenance-content">
+            <div>
+              <p class="maintenance-asset">{{ maint.asset }}</p>
+              <p class="maintenance-type">{{ maint.type }}</p>
+            </div>
+            <div class="maintenance-schedule">
+              <p class="maintenance-date">{{ maint.date }}</p>
+              <p class="maintenance-hours">{{ maint.hours }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

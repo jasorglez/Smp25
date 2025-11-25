@@ -1,0 +1,38 @@
+<div class="programacion-container">
+  <div class="programacion-header">
+    <h2>Últimas Programaciones de Mantenimiento</h2>
+    <button class="btn btn-primary" (click)="nuevaProgramacion()">
+      <i class="fas fa-plus"></i> Nueva Programación
+    </button>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Equipo</th>
+          <th>Fecha Programada</th>
+          <th>Tipo de Mantenimiento</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let prog of programaciones">
+          <td>{{ prog.id }}</td>
+          <td>{{ prog.equipo }}</td>
+          <td>{{ prog.fechaProgramada | date:'dd/MM/yyyy' }}</td>
+          <td>{{ prog.tipoMantenimiento }}</td>
+          <td>
+            <span class="status" [ngClass]="prog.estado.toLowerCase().replace(' ', '-')">{{ prog.estado }}</span>
+          </td>
+          <td class="actions">
+            <button class="btn-action btn-edit"><i class="fas fa-edit"></i></button>
+            <button class="btn-action btn-delete"><i class="fas fa-trash"></i></button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
