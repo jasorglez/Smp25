@@ -69,12 +69,17 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
   providerId: number;
   providerName: string;
   authService = inject(AuthService);
-  
+
   bankRowData: any[] = [];
   hasBankChanges: boolean = false;
   bankGridApi: any;
   selectedBank: any = null;
   banks: any[] = [];
+
+  // ✅ NUEVO: Rastrear la última fila editada/modificada
+  private lastEditedRowId: string | null = null;
+  private lastEditedRowName: string | null = null;
+  private lastEditedRowNumber: string | null = null;
   
   bankGridOptions: any = {
     headerHeight: 25,
@@ -120,6 +125,11 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
       editable: true,
       width: 66,
       onCellValueChanged: async (params: any) => {
+        // ✅ Rastrear la última fila editada (checkbox vigente)
+        this.lastEditedRowId = params.data.id;
+        this.lastEditedRowName = params.data.campo2;
+        this.lastEditedRowNumber = params.data.campo4;
+
         // Guardar ID de la fila modificada para restaurar focus
         const modifiedRowId = params.data.id;
         const modifiedRowName = params.data.campo2;
@@ -326,6 +336,11 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
           vigente: params.data.vigente
         });
 
+        // ✅ Rastrear la última fila editada (checkbox principal)
+        this.lastEditedRowId = params.data.id;
+        this.lastEditedRowName = params.data.campo2;
+        this.lastEditedRowNumber = params.data.campo4;
+
         // Guardar ID de la fila modificada para restaurar focus
         const modifiedRowId = params.data.id;
         const modifiedRowName = params.data.campo2;
@@ -502,6 +517,17 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
   onBankCellValueChanged(event: any) {
     event.data.__modified = true;
     this.hasBankChanges = true;
+
+    // ✅ NUEVO: Rastrear la última fila editada para restaurar focus después de guardar
+    this.lastEditedRowId = event.data.id;
+    this.lastEditedRowName = event.data.campo2;
+    this.lastEditedRowNumber = event.data.campo4;
+
+    console.log('📝 Última fila editada:', {
+      id: this.lastEditedRowId,
+      nombre: this.lastEditedRowName,
+      numero: this.lastEditedRowNumber
+    });
   }
 
   loadBankData(onComplete?: () => void) {
@@ -582,11 +608,17 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
   async saveBanks() {
     if (this.params && this.params.context.BANK && this.params.context.BANK.save) {
       try {
-        // Guardar la fila seleccionada actual para restaurarla después
-        const selectedRow = this.selectedBank;
-        const selectedBankId = selectedRow?.id;
-        const selectedBankName = selectedRow?.campo2; // Nombre titular como respaldo
-        const selectedBankNumber = selectedRow?.campo4; // Numero cuenta como respaldo
+        // ✅ USAR la última fila editada en lugar de la seleccionada
+        const targetBankId = this.lastEditedRowId || this.selectedBank?.id;
+        const targetBankName = this.lastEditedRowName || this.selectedBank?.campo2;
+        const targetBankNumber = this.lastEditedRowNumber || this.selectedBank?.campo4;
+
+        console.log('💾 Guardando con foco en:', {
+          id: targetBankId,
+          nombre: targetBankName,
+          numero: targetBankNumber,
+          source: this.lastEditedRowId ? 'última editada' : 'seleccionada'
+        });
 
         // Guardar los bancos (ESPERA a que el usuario cierre el alert)
         await this.params.context.BANK.save(this.providerId, this.bankRowData, 'BANK');
@@ -620,27 +652,27 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
         // Esperar solo un ciclo de renderizado para asegurar que los cambios se reflejen
         await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
 
-        if (this.bankGridApi && selectedRow) {
+        if (this.bankGridApi && (targetBankId || targetBankName)) {
           let rowToSelect = null;
 
-          console.log('🔍 Buscando fila para restaurar (sin reload)...', {
-            selectedBankId,
-            selectedBankName,
-            selectedBankNumber,
+          console.log('🔍 Buscando fila para restaurar (última editada)...', {
+            targetBankId,
+            targetBankName,
+            targetBankNumber,
             totalRows: this.bankRowData.length
           });
 
           // Intentar encontrar por ID original (si no era temporal)
-          if (selectedBankId && !String(selectedBankId).startsWith('temp_')) {
-            rowToSelect = this.bankRowData.find(r => r.id === selectedBankId);
+          if (targetBankId && !String(targetBankId).startsWith('temp_')) {
+            rowToSelect = this.bankRowData.find(r => r.id === targetBankId);
             console.log('Búsqueda por ID:', rowToSelect ? '✅ Encontrado' : '❌ No encontrado');
           }
 
           // Si no se encontró, buscar por nombre titular y número de cuenta
-          if (!rowToSelect && selectedBankName) {
+          if (!rowToSelect && targetBankName) {
             rowToSelect = this.bankRowData.find(r =>
-              r.campo2 === selectedBankName &&
-              r.campo4 === selectedBankNumber
+              r.campo2 === targetBankName &&
+              r.campo4 === targetBankNumber
             );
             console.log('Búsqueda por nombre/número:', rowToSelect ? '✅ Encontrado' : '❌ No encontrado');
           }
@@ -654,7 +686,7 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
             if (rowNode) {
               rowNode.setSelected(true);
               this.bankGridApi.ensureIndexVisible(rowIndex, 'middle');
-              console.log('✅ Fila restaurada después de guardar (sin reload):', rowToSelect);
+              console.log('✅ Fila restaurada después de guardar (última editada):', rowToSelect);
             } else {
               console.error('❌ No se pudo obtener el rowNode en el índice:', rowIndex);
             }
@@ -662,6 +694,11 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
             console.error('❌ No se encontró la fila para restaurar');
           }
         }
+
+        // ✅ Limpiar el rastreador de última fila editada después de restaurar
+        this.lastEditedRowId = null;
+        this.lastEditedRowName = null;
+        this.lastEditedRowNumber = null;
 
         // AHORA actualizar contador en grid padre (esto puede destruir el detail grid, pero ya restauramos el focus)
         await this.updateBankCountInParent();
