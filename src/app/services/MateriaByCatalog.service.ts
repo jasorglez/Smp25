@@ -13,8 +13,8 @@ export class MateriaByCatalogService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
-  getMateriaByCatalog(idCompany: number, idMaterial: string ) {
-    return this.http.get(`${environment.urlWarehouse}/byIdCompany/${idCompany}/${idMaterial} `, { headers: this.trackingService.getHeaders() });
+  getMateriaByCatalog(idCompany: number, idMaterial: number ) {
+    return this.http.get(`${environment.urlWarehouse}/MateriaByCatalog/byIdCompany/${idCompany}/${idMaterial} `, { headers: this.trackingService.getHeaders() });
   }
 
   addMateriaByCatalog(data: any) {
