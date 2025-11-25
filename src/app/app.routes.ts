@@ -1173,11 +1173,58 @@ export const routes: Routes = [
           import(
             './domains/ModMaintenance/pages/procmodmaintenance/procmodmaintenance.component'
           ).then((m) => m.ProcmodmaintenanceComponent),
-        canActivate: [MasterPermissionsGuard],
-        data: { permissions: { master: 'maintenance' } },
         children: [
-          { path: '', redirectTo: 'ModMaintenance', pathMatch: 'full' },
+          { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
           ...SharedModule.getRoutes(),
+          {
+            path: 'dashboard',
+            loadComponent: () =>
+              import(
+                './domains/ModMaintenance/pages/dashboard/dashboard.component'
+              ).then((d) => d.DashboardComponent),
+          },
+          {
+            path: 'assets',
+            loadComponent: () =>
+              import(
+                './domains/ModMaintenance/pages/assets/assets.component'
+              ).then((a) => a.AssetsComponent),
+          },
+          {
+            path: 'workorders',
+            loadComponent: () =>
+              import(
+                './domains/ModMaintenance/pages/workorders/workorders.component'
+              ).then((w) => w.WorkordersComponent),
+          },
+          {
+            path: 'newworkorder',
+            loadComponent: () =>
+              import(
+                './domains/ModMaintenance/pages/newworkorder/newworkorder.component'
+              ).then((n) => n.NewworkorderComponent),
+          },
+          {
+            path: 'equipos',
+            loadComponent: () =>
+              import(
+                './domains/ModMaintenance/pages/equipos/equipos.component'
+              ).then((e) => e.EquiposComponent),
+          },
+          {
+            path: 'reportes',
+            loadComponent: () =>
+              import(
+                './domains/ModMaintenance/pages/reportes/reportes.component'
+              ).then((r) => r.ReportesComponent),
+          },
+          {
+            path: 'newasset',
+            loadComponent: () =>
+              import(
+                './domains/ModMaintenance/pages/newasset/newasset.component'
+              ).then((n) => n.NewassetComponent),
+          },
           {
             path: 'setup',
             loadComponent: () =>

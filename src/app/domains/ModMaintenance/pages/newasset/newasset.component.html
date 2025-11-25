@@ -1,0 +1,161 @@
+<div class="container-fluid bg-light min-vh-100 p-6">
+  <div class="container">
+    <!-- Header -->
+    <div class="card mb-4">
+      <div class="card-header bg-primary text-white">
+        <div class="d-flex align-items-center">
+          <i class="fas fa-cogs fs-4 me-3"></i>
+          <div>
+            <h4 class="card-title mb-0">Nuevo Activo</h4>
+            <p class="mb-0 opacity-75">Registra un nuevo activo en el sistema</p>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <button class="btn btn-outline-secondary position-absolute top-0 end-0 m-3" (click)="handleCancel()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </div>
+
+    <form (ngSubmit)="handleSubmit()">
+      <!-- Información Básica -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="card-title mb-0 d-flex align-items-center">
+            <i class="fas fa-info-circle me-2 text-primary"></i>
+            Información Básica
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Nombre del Activo *</label>
+              <input type="text" class="form-control" name="name" [(ngModel)]="formData.name"
+                     placeholder="Ej: Torno CNC-01" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Categoría *</label>
+              <select class="form-select" name="category" [(ngModel)]="formData.category" required>
+                <option value="">Seleccionar categoría...</option>
+                <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
+              </select>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Ubicación *</label>
+              <select class="form-select" name="location" [(ngModel)]="formData.location" required>
+                <option value="">Seleccionar ubicación...</option>
+                <option *ngFor="let loc of locations" [value]="loc">{{ loc }}</option>
+              </select>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Estado *</label>
+              <select class="form-select" name="status" [(ngModel)]="formData.status" required>
+                <option *ngFor="let status of statuses" [value]="status.value">{{ status.label }}</option>
+              </select>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Descripción</label>
+            <textarea class="form-control" name="description" [(ngModel)]="formData.description" rows="3"
+                      placeholder="Describe el activo..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Información Técnica -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="card-title mb-0 d-flex align-items-center">
+            <i class="fas fa-cogs me-2 text-primary"></i>
+            Información Técnica
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Fabricante</label>
+              <input type="text" class="form-control" name="manufacturer" [(ngModel)]="formData.manufacturer"
+                     placeholder="Ej: Siemens">
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Modelo</label>
+              <input type="text" class="form-control" name="model" [(ngModel)]="formData.model"
+                     placeholder="Ej: SINUMERIK 840D">
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Número de Serie</label>
+              <input type="text" class="form-control" name="serialNumber" [(ngModel)]="formData.serialNumber"
+                     placeholder="Ej: SN123456789">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Información de Adquisición -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="card-title mb-0 d-flex align-items-center">
+            <i class="fas fa-shopping-cart me-2 text-primary"></i>
+            Información de Adquisición
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Fecha de Compra</label>
+              <input type="date" class="form-control" name="purchaseDate" [(ngModel)]="formData.purchaseDate">
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Costo de Compra</label>
+              <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input type="number" class="form-control" name="purchaseCost" [(ngModel)]="formData.purchaseCost"
+                       placeholder="0.00" step="0.01" min="0">
+              </div>
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Vencimiento de Garantía</label>
+              <input type="date" class="form-control" name="warrantyExpiration" [(ngModel)]="formData.warrantyExpiration">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notas Adicionales -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="card-title mb-0 d-flex align-items-center">
+            <i class="fas fa-sticky-note me-2 text-primary"></i>
+            Notas Adicionales
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label">Observaciones</label>
+            <textarea class="form-control" name="notes" [(ngModel)]="formData.notes" rows="3"
+                      placeholder="Notas adicionales sobre el activo..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Botones de Acción -->
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-outline-secondary" (click)="handleCancel()">
+              Cancelar
+            </button>
+            <button type="button" class="btn btn-secondary">
+              Guardar como Borrador
+            </button>
+            <button type="submit" class="btn btn-primary d-flex align-items-center">
+              <i class="fas fa-save me-1"></i>
+              Crear Activo
+            </button>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
