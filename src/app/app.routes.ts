@@ -84,45 +84,35 @@ export const routes: Routes = [
                 './domains/Warehouse/components/raw-materials/raw-materials.component'
               ).then((s) => s.RawMaterialsComponent)
           },
+          
           {
             path: 'purchaseorder',
-            loadComponent: () =>
-              import(
-                './domains/Warehouse/components/purchaseorder/purchaseorder.component'
-              ).then((p) => p.PurchaseOrderComponent),
+            loadComponent: () => import('./domains/Warehouse/components/purchaseorder/purchaseorder.component').then((p) => p.PurchaseOrderComponent),
             canDeactivate: [UnsavedChangesGuard],
           },
+
           {
             path: 'entrances',
-            loadComponent: () =>
-              import(
-                './domains/Warehouse/components/entrances/entrances.component'
-              ).then((i) => i.EntrancesComponent),
+            loadComponent: () => import('./domains/Warehouse/components/entrances/entrances.component').then((i) => i.EntrancesComponent),
             canDeactivate: [UnsavedChangesGuard],
           },
+          
           {
             path: 'outings-st',
-            loadComponent: () =>
-              import(
-                './domains/ModWareHousesTD/components/inandout-st/inandout-st.component'
-              ).then((i) => i.InandoutStComponent),
+            loadComponent: () => import('./domains/ModWareHousesTD/components/inandout-st/inandout-st.component').then((i) => i.InandoutStComponent),
             canDeactivate: [UnsavedChangesGuard],
             data: { movementType: 'OUT' }
           },
+
           {
             path: 'requisitions',
-            loadComponent: () =>
-              import(
-                './domains/Warehouse/components/requisitions/requisitions.component'
-              ).then((r) => r.RequisitionsComponent),
+            loadComponent: () => import('./domains/Warehouse/components/requisitions/requisitions.component').then((r) => r.RequisitionsComponent),
             canDeactivate: [UnsavedChangesGuard],
           },
 
           {
             path: 'catalogs',
-            loadComponent: () =>
-              import('./domains/SMP/Components/catalogs/catalogs.component')
-                .then((s) => s.CatalogsComponent),
+            loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then((s) => s.CatalogsComponent),
             canDeactivate: [UnsavedChangesGuard],
             children: [
               {
@@ -135,6 +125,7 @@ export const routes: Routes = [
               },*/
             ],
           },
+
           {
             path: 'page03',
             loadComponent: () =>
@@ -1663,6 +1654,42 @@ export const routes: Routes = [
         data: { permissions: { master: 'shoppingTD' } },
         children: [
           { path: '', redirectTo: '', pathMatch: 'full' },
+
+          {
+            path: 'materials-st',
+            loadComponent: () => import('./domains/ModProjects/components/materials/materials.component').then((c) => c.MaterialsComponent),
+          },   
+
+          {
+            path: 'requisitions-st',
+            loadComponent: () => import('./domains/Warehouse/components/requisitions/requisitions.component').then((r) => r.RequisitionsComponent),
+            canDeactivate: [UnsavedChangesGuard],
+          },
+
+          {
+            path: 'purchaseorder-st',
+            loadComponent: () => import('./domains/Warehouse/components/purchaseorder/purchaseorder.component').then((p) => p.PurchaseOrderComponent),
+            canDeactivate: [UnsavedChangesGuard],
+          },
+
+          {
+            path: 'providers-st',
+            loadComponent: () => import('./domains/Warehouse/components/providers/providers.component').then((p) => p.ProvidersComponent),
+            canDeactivate: [UnsavedChangesGuard],                       
+          },
+
+          {
+            path: 'setupwarehouse',
+            loadComponent: () => import('./domains/Warehouse/components/setupwarehouse/setupwarehouse.component').then((s) => s.SetupwarehouseComponent),
+            canDeactivate: [UnsavedChangesGuard],                       
+          },
+
+          {
+            path: 'catalogs',
+            loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then((s) => s.CatalogsComponent),
+            canDeactivate: [UnsavedChangesGuard],                       
+          },
+
         ]
       },
       {
