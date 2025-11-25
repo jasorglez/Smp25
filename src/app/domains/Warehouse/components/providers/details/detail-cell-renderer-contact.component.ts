@@ -186,7 +186,26 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
       width: 150,
       flex: 1,
       valueSetter: (params: any) => {
-        params.data.campo2 = params.newValue ? params.newValue.toUpperCase() : '';
+        const rawValue = params.newValue;
+        if (!rawValue || typeof rawValue !== 'string') {
+          alerts.basicAlert('Campo requerido', 'El nombre del contacto es obligatorio', 'error');
+          return false;
+        }
+
+        const normalizedValue = rawValue.trim();
+
+        // Validar que solo contenga letras (incluyendo espacios, acentos y ñ)
+        const nameRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/;
+        if (!nameRegex.test(normalizedValue)) {
+          alerts.basicAlert(
+            'Formato inválido',
+            'El nombre del contacto solo puede contener letras',
+            'error'
+          );
+          return false;
+        }
+
+        params.data.campo2 = normalizedValue.toUpperCase();
         params.data.__modified = true;
         this.hasContactChanges = true;
         return true;
@@ -229,18 +248,21 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
 
         const normalizedValue = rawValue.trim();
 
-        // Validar formato internacional mexicano: +52 XXX XXX XXXX
-        const phoneRegex = /^\+52\s\d{3}\s\d{3}\s\d{4}$/;
+        // Validar que solo contenga caracteres alfanuméricos, espacios, guiones, paréntesis y +
+        // Máximo 20 caracteres
+        const phoneRegex = /^[a-zA-Z0-9\s\-\(\)\+]{1,20}$/;
         if (!phoneRegex.test(normalizedValue)) {
           alerts.basicAlert(
             'Formato inválido',
-            'El teléfono debe tener el formato internacional: +52 XXX XXX XXXX (ejemplo: +52 229 206 3214)',
+            'El teléfono puede contener hasta 20 caracteres alfanuméricos, espacios, guiones, paréntesis y el signo +',
             'error'
           );
           return false;
         }
 
-        params.data[params.colDef.field] = normalizedValue;
+        params.data.campo4 = normalizedValue;
+        params.data.__modified = true;
+        this.hasContactChanges = true;
         return true;
       },
     },

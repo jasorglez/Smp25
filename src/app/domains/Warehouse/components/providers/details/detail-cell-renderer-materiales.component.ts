@@ -3,11 +3,8 @@ import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { AuthService } from 'app/services/auth.service';
-import { CustomersService } from 'app/services/customers.service';
-import { CatalogsService } from 'app/services/catalogs.service';
+import { MaterialsService } from 'app/services/materials.service';
 import { CommonModule } from '@angular/common';
-import { alerts } from 'app/helpers/alerts';
-import { SelectWithTooltipEditorV2Component } from '../editors/select-with-tooltip-editor-v2.component';
 import { lastValueFrom } from 'rxjs';
 
 @Component({
@@ -19,37 +16,16 @@ import { lastValueFrom } from 'rxjs';
       style="padding: 10px; background-color: #e9ecef; height: 100%; display: flex; flex-direction: column;"
       (mouseenter)="params.onMouseEnter && params.onMouseEnter()"
       (mouseleave)="params.onMouseLeave && params.onMouseLeave()">
-      <!-- Grid de Materiales -->
+      <!-- Grid de Materiales (Solo Lectura) -->
       <div style="margin-bottom: 15px; flex-grow: 1; display: flex; flex-direction: column;">
         <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
           <strong>Materiales de: {{ providerName }}</strong>
           <div>
             <button
-              class="btn btn-sm btn-success me-2"
-              (click)="addMaterial()"
-              [disabled]="!materialGridApi"
-            >
-              <i class="bi bi-plus-circle"></i> Agregar
-            </button>
-            <button
               class="btn btn-sm btn-primary me-2"
-              (click)="saveMaterials()"
-              [disabled]="!hasMaterialChanges"
-            >
-              <i class="bi bi-floppy"></i> Guardar
-            </button>
-            <button
-              class="btn btn-sm btn-warning me-2"
               (click)="refreshMaterials()"
             >
-              <i class="bi bi-arrow-clockwise"></i> Deshacer
-            </button>
-            <button
-              class="btn btn-sm btn-danger"
-              (click)="deleteSelectedMaterial()"
-              [disabled]="!selectedMaterial"
-            >
-              <i class="bi bi-trash"></i> Borrar
+              <i class="bi bi-arrow-clockwise"></i> Actualizar
             </button>
           </div>
         </div>
@@ -59,17 +35,14 @@ import { lastValueFrom } from 'rxjs';
           [columnDefs]="materialColumnDefs"
           [rowData]="materialRowData"
           [gridOptions]="materialGridOptions"
-          (gridReady)="onMaterialGridReady($event)"
-          (cellValueChanged)="onMaterialCellValueChanged($event)"
-          [components]="components">
+          (gridReady)="onMaterialGridReady($event)">
         </ag-grid-angular>
       </div>
     </div>
   `
 })
 export class DetailCellRendererComponentMateriales implements ICellRendererAngularComp {
-  private customersService = inject(CustomersService);
-  private catalogsService = inject(CatalogsService);
+  private materialsService = inject(MaterialsService);
   authService = inject(AuthService);
 
   params: any;
@@ -77,21 +50,14 @@ export class DetailCellRendererComponentMateriales implements ICellRendererAngul
   providerName: string;
   idRoot: number | null = null;
 
-  // Material grid properties
+  // Material grid properties (Read-only)
   materialRowData: any[] = [];
-  hasMaterialChanges: boolean = false;
   materialGridApi: any;
-  selectedMaterial: any = null;
-
-  // Cascading data - Catálogos reales
-  categories: any[] = [];
-  families: any[] = [];
-  subfamilies: any[] = [];
 
   materialGridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
-    suppressEnterWhenEditing: false,
+    suppressClickEdit: true,
     rowSelection: 'single',
     onFirstDataRendered: (params) => {
       console.log('onFirstDataRendered - autosizing columns...');
@@ -109,161 +75,50 @@ export class DetailCellRendererComponentMateriales implements ICellRendererAngul
 
   materialColumnDefs = [
     {
-      field: 'vigente',
-      headerName: 'Activo',
-      cellRenderer: 'agCheckboxCellRenderer',
-      cellEditor: 'agCheckboxCellEditor',
-      editable: true,
-      width: 70,
-      onCellValueChanged: (params: any) => {
-        params.data.__modified = true;
-        this.hasMaterialChanges = true;
-      }
-    },
-    {
       field: 'codigo',
       headerName: 'Num. Material',
-      editable: (params) => params.data.__isNew || true,
+      editable: false,
       width: 100
     },
     {
       field: 'nombre',
       headerName: 'Articulo',
-      editable: true,
+      editable: false,
       width: 150,
       flex: 1
     },
-    
     {
-      field: 'idCategory',
+      field: 'categoria',
       headerName: 'Categoría',
       width: 180,
-      editable: true,
-      cellEditor: 'selectWithTooltipEditor',
-      cellEditorParams: (params: any) => {
-        return {
-          options: this.categories.map(c => ({
-            id: c.id,
-            description: c.description,
-            valueAddition: c.valueAddition,
-            valueAddition2: c.valueAddition2,
-            valueAdditionBit: c.valueAdditionBit
-          }))
-        };
-      },
-      valueFormatter: (params: any) => {
-        const cat = this.categories.find(c => c.id === params.value);
-        return cat ? cat.description : params.data.categoria || '';
-      },
-      onCellValueChanged: (params: any) => {
-        // Cuando cambia la categoría, resetear familia y subfamilia
-        params.data.idFamilia = null;
-        params.data.familia = '';
-        params.data.idSubfamilia = null;
-        params.data.subfamilia = '';
-        params.data.__modified = true;
-        this.hasMaterialChanges = true;
-        // Refrescar la fila para actualizar el combo de familia
-        params.api.refreshCells({ rowNodes: [params.node], force: true });
-      }
+      editable: false
     },
     {
-      field: 'idFamilia',
+      field: 'familia',
       headerName: 'Familia',
       width: 180,
-      editable: (params: any) => {
-        // Solo editable si hay una categoría seleccionada
-        return params.data.idCategory != null;
-      },
-      cellEditor: 'selectWithTooltipEditor',
-      cellEditorParams: (params: any) => {
-        // Obtener familias filtradas por la categoría seleccionada
-        const familiesFiltered = this.getFamiliesByCategory(params.data.idCategory);
-        return {
-          options: familiesFiltered.map(f => ({
-            id: f.id,
-            description: f.description,
-            valueAddition: f.valueAddition,
-            valueAddition2: f.valueAddition2
-          }))
-        };
-      },
-      valueFormatter: (params: any) => {
-        const fam = this.families.find(f => f.id === params.value);
-        return fam ? fam.description : params.data.familia || '';
-      },
-      onCellValueChanged: (params: any) => {
-        // Cuando cambia la familia, resetear subfamilia
-        params.data.idSubfamilia = null;
-        params.data.subfamilia = '';
-        params.data.__modified = true;
-        this.hasMaterialChanges = true;
-        params.api.refreshCells({ rowNodes: [params.node], force: true });
-      },
-      cellStyle: (params: any) => {
-        if (!params.data.idCategory) {
-          return { backgroundColor: '#f0f0f0', color: '#999' };
-        }
-        return null;
-      }
+      editable: false
     },
     {
-      field: 'idSubfamilia',
+      field: 'subfamilia',
       headerName: 'SubFamilia',
       width: 180,
-      editable: (params: any) => {
-        // Solo editable si hay una familia seleccionada
-        return params.data.idFamilia != null;
-      },
-      cellEditor: 'selectWithTooltipEditor',
-      cellEditorParams: (params: any) => {
-        // Obtener subfamilias filtradas por la familia seleccionada
-        const subfamiliesFiltered = this.getSubfamiliesByFamily(params.data.idFamilia);
-        return {
-          options: subfamiliesFiltered.map(sf => ({
-            id: sf.id,
-            description: sf.description,
-            valueAddition: sf.valueAddition,
-            valueAddition2: sf.valueAddition2
-          }))
-        };
-      },
-      valueFormatter: (params: any) => {
-        const sf = this.subfamilies.find(sf => sf.id === params.value);
-        return sf ? sf.description : params.data.subfamilia || '';
-      },
-      onCellValueChanged: (params: any) => {
-        params.data.__modified = true;
-        this.hasMaterialChanges = true;
-        params.api.refreshCells({ rowNodes: [params.node], force: true });
-      },
-      cellStyle: (params: any) => {
-        if (!params.data.idFamilia) {
-          return { backgroundColor: '#f0f0f0', color: '#999' };
-        }
-        return null;
-      }
+      editable: false
     },
     {
       field: 'unidad',
       headerName: 'Sucursal',
-      editable: true,
-      cellEditor: 'agSelectCellEditor',
+      editable: false,
       width: 100
     },
     {
       field: 'precio',
       headerName: 'Precio Unitario',
-      editable: true,
-      cellEditor: 'agNumberCellEditor',
+      editable: false,
       valueFormatter: (params) => params.value ? `$${params.value.toFixed(2)}` : '$0.00',
       width: 120
     }
   ];
-
-  components = {
-    selectWithTooltipEditor: SelectWithTooltipEditorV2Component
-  };
 
   agInit(params: ICellRendererParams): void {
     this.params = params;
@@ -273,10 +128,8 @@ export class DetailCellRendererComponentMateriales implements ICellRendererAngul
     // Obtener idRoot del contexto
     this.idRoot = this.params.context?.idRoot;
 
-    // Cargar catálogos primero, luego materiales
-    this.loadCatalogs().then(() => {
-      this.loadMaterialData();
-    });
+    // Cargar materiales directamente (no se necesitan catálogos en modo solo lectura)
+    this.loadMaterialData();
   }
 
   refresh(): boolean {
@@ -287,285 +140,58 @@ export class DetailCellRendererComponentMateriales implements ICellRendererAngul
   onMaterialGridReady(params: any) {
     this.materialGridApi = params.api;
     params.api.sizeColumnsToFit();
-
-    params.api.addEventListener('selectionChanged', () => {
-      const selectedNodes = params.api.getSelectedNodes();
-      this.selectedMaterial = selectedNodes.length > 0 ? selectedNodes[0].data : null;
-    });
   }
 
-  onMaterialCellValueChanged(event: any) {
-    event.data.__modified = true;
-    this.hasMaterialChanges = true;
-  }
-
-  loadMaterialData(onComplete?: () => void) {
-    // Generate fake data for materials
-    const fakeMaterials = this.generateFakeMaterials();
-    this.materialRowData = fakeMaterials;
-
-    // Refresh grid if exists
-    if (this.materialGridApi) {
-      this.materialGridApi.setGridOption('rowData', this.materialRowData);
-    }
-
-    // Ejecutar callback si existe
-    if (onComplete) {
-      setTimeout(() => onComplete(), 100);
-    }
-  }
-
-  private generateFakeMaterials(): any[] {
-    const names = [
-      'Resistor 10K', 'Capacitor 100uF', 'Tornillo M8', 'Acido Sulfúrico', 'Tela Algodón',
-      'Cemento Portland', 'Batería 12V', 'Engranaje Helicoidal', 'Solvente Orgánico', 'Cable USB'
-    ];
-
-    const materials = [];
-    const count = Math.floor(Math.random() * 8) + 3; // 3-10 materials
-
-    for (let i = 0; i < count; i++) {
-      const price = Math.floor(Math.random() * 1000) + 10;
-
-      // Seleccionar categoría aleatoria
-      const category = this.categories.length > 0
-        ? this.categories[Math.floor(Math.random() * this.categories.length)]
-        : null;
-
-      // Seleccionar familia aleatoria de esa categoría
-      const familiesFiltered = category ? this.getFamiliesByCategory(category.id) : [];
-      const family = familiesFiltered.length > 0
-        ? familiesFiltered[Math.floor(Math.random() * familiesFiltered.length)]
-        : null;
-
-      // Seleccionar subfamilia aleatoria de esa familia
-      const subfamiliesFiltered = family ? this.getSubfamiliesByFamily(family.id) : [];
-      const subfamily = subfamiliesFiltered.length > 0
-        ? subfamiliesFiltered[Math.floor(Math.random() * subfamiliesFiltered.length)]
-        : null;
-
-      materials.push({
-        id: `mat_${this.providerId}_${i + 1}`,
-        idTabla: this.providerId,
-        codigo: `MAT${String(i + 1).padStart(3, '0')}`,
-        nombre: names[Math.floor(Math.random() * names.length)],
-        descripcion: `Descripción del material ${i + 1}`,
-        // Usar IDs en lugar de strings
-        idCategory: category?.id || null,
-        categoria: category?.description || '',
-        idFamilia: family?.id || null,
-        familia: family?.description || '',
-        idSubfamilia: subfamily?.id || null,
-        subfamilia: subfamily?.description || '',
-        unidad: 'Pieza',
-        precio: price,
-        vigente: Math.random() > 0.2, // 80% active
-        type: 'MATERIAL',
-        active: true
-      });
-    }
-
-    return materials;
-  }
-
-  // ========== MÉTODOS DE CATÁLOGOS ==========
-  async loadCatalogs() {
-    if (!this.idRoot) {
-      console.warn('No idRoot available for loading catalogs');
-      return;
-    }
-
+  async loadMaterialData(onComplete?: () => void) {
     try {
-      // Cargar categorías, familias y subfamilias en paralelo
-      [this.categories, this.families, this.subfamilies] = await Promise.all([
-        lastValueFrom(this.catalogsService.getCatalogsMaterialBit(this.idRoot, 'CATEGORY')),
-        lastValueFrom(this.catalogsService.getCatalogsMaterialBit(this.idRoot, 'FAM-CAT')),
-        lastValueFrom(this.catalogsService.getCatalogsMaterialBit(this.idRoot, 'SUB-FAM'))
-      ]);
+      // Cargar materiales reales desde el endpoint
+      const materials = await lastValueFrom(
+        this.materialsService.getMaterialsByProvider(this.providerId)
+      );
 
-      console.log('Catalogs loaded in detail renderer:', {
-        categories: this.categories.length,
-        families: this.families.length,
-        subfamilies: this.subfamilies.length
-      });
+      // Mapear los datos del endpoint al formato del grid
+      this.materialRowData = materials.map(m => ({
+        id: m.id,
+        idTabla: m.idProvider,
+        idMaterial: m.idMaterial,
+        codigo: m.codigo,
+        nombre: m.nombre,
+        descripcion: m.nombre,
+        idCategory: m.idCategory,
+        categoria: m.categoria,
+        idFamilia: m.idFamilia,
+        familia: m.familia,
+        idSubfamilia: m.idSubfamilia,
+        subfamilia: m.subfamilia,
+        unidad: 'Pieza', // TODO: Agregar a la vista cuando esté disponible
+        precio: m.precio,
+        vigente: m.vigente,
+        type: 'MATERIAL',
+        active: m.active,
+        picture: m.picture
+      }));
+
+      console.log('✅ Materiales cargados desde endpoint:', this.materialRowData);
+
+      // Refresh grid if exists
+      if (this.materialGridApi) {
+        this.materialGridApi.setGridOption('rowData', this.materialRowData);
+      }
+
+      // Ejecutar callback si existe
+      if (onComplete) {
+        setTimeout(() => onComplete(), 100);
+      }
     } catch (error) {
-      console.error('Error loading catalogs in detail renderer:', error);
-    }
-  }
-
-  // Obtener familias de una categoría específica
-  getFamiliesByCategory(categoryId: number): any[] {
-    return this.families.filter(f => f.parentId === categoryId);
-  }
-
-  // Obtener subfamilias de una familia específica
-  getSubfamiliesByFamily(familyId: number): any[] {
-    if (!familyId) return [];
-    return this.subfamilies.filter(sf => sf.subParentId === familyId);
-  }
-
-  refreshMaterials() {
-    this.loadMaterialData();
-    this.hasMaterialChanges = false;
-  }
-
-  addMaterial() {
-    if (!this.materialGridApi) {
-      console.error('Material grid API not ready');
-      return;
-    }
-
-    const tempId = `temp_material_${Date.now()}`;
-    const newMaterial = {
-      id: tempId,
-      idTabla: this.providerId,
-      codigo: '',
-      nombre: '',
-      descripcion: '',
-      // Inicializar con IDs null en lugar de strings vacíos
-      idCategory: null,
-      categoria: '',
-      idFamilia: null,
-      familia: '',
-      idSubfamilia: null,
-      subfamilia: '',
-      unidad: '',
-      precio: 0,
-      vigente: true,
-      type: 'MATERIAL',
-      active: true,
-      __isNew: true
-    };
-
-    this.materialRowData = [newMaterial, ...this.materialRowData];
-    this.hasMaterialChanges = true;
-
-    // Refresh grid
-    if (this.materialGridApi) {
-      this.materialGridApi.setGridOption('rowData', this.materialRowData);
-    }
-
-    setTimeout(() => {
-      this.materialGridApi.startEditingCell({
-        rowIndex: 0,
-        colKey: 'codigo'
-      });
-    }, 100);
-  }
-
-  async saveMaterials() {
-    if (this.params && this.params.context && this.params.context.MATERIAL && this.params.context.MATERIAL.save) {
-      try {
-        // Guardar la fila seleccionada actual para restaurarla después
-        const selectedRow = this.selectedMaterial;
-        const selectedMaterialId = selectedRow?.id;
-        const selectedMaterialCode = selectedRow?.codigo; // Código como respaldo
-        const selectedMaterialName = selectedRow?.nombre; // Nombre como respaldo
-
-        // Guardar (ESPERA a que el usuario cierre el alert)
-        await this.params.context.MATERIAL.save(this.providerId, this.materialRowData, 'MATERIAL');
-
-        this.hasMaterialChanges = false;
-
-        // Limpiar los flags de las filas guardadas SIN recargar desde el servidor
-        this.materialRowData.forEach(row => {
-          delete row.__isNew;
-          delete row.__modified;
-        });
-
-        // PRIMERO restaurar el focus ANTES de actualizar el grid padre
-        // Esperar solo un ciclo de renderizado para asegurar que los cambios se reflejen
-        await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
-
-        if (this.materialGridApi && selectedRow) {
-          let rowToSelect = null;
-
-          console.log('🔍 Buscando material para restaurar (sin reload)...', {
-            selectedMaterialId,
-            selectedMaterialCode,
-            selectedMaterialName,
-            totalRows: this.materialRowData.length
-          });
-
-          // Intentar encontrar por ID original (si no era temporal)
-          if (selectedMaterialId && !String(selectedMaterialId).startsWith('temp_')) {
-            rowToSelect = this.materialRowData.find(r => r.id === selectedMaterialId);
-            console.log('Búsqueda por ID:', rowToSelect ? '✅ Encontrado' : '❌ No encontrado');
-          }
-
-          // Si no se encontró, buscar por código y nombre
-          if (!rowToSelect && selectedMaterialCode) {
-            rowToSelect = this.materialRowData.find(r =>
-              r.codigo === selectedMaterialCode &&
-              r.nombre === selectedMaterialName
-            );
-            console.log('Búsqueda por código/nombre:', rowToSelect ? '✅ Encontrado' : '❌ No encontrado');
-          }
-
-          // Si se encontró la fila, seleccionarla y hacer scroll
-          if (rowToSelect) {
-            const rowIndex = this.materialRowData.indexOf(rowToSelect);
-            console.log('📍 Índice de la fila:', rowIndex);
-
-            const rowNode = this.materialGridApi.getDisplayedRowAtIndex(rowIndex);
-            if (rowNode) {
-              rowNode.setSelected(true);
-              this.materialGridApi.ensureIndexVisible(rowIndex, 'middle');
-              console.log('✅ Fila restaurada después de guardar (sin reload):', rowToSelect);
-            } else {
-              console.error('❌ No se pudo obtener el rowNode en el índice:', rowIndex);
-            }
-          } else {
-            console.error('❌ No se encontró la fila para restaurar');
-          }
-        }
-
-        // AHORA actualizar contador en el grid padre
-        await this.updateMaterialCountInParent();
-
-      } catch (error) {
-        console.error('Error saving materials:', error);
+      console.error('❌ Error cargando materiales:', error);
+      this.materialRowData = [];
+      if (this.materialGridApi) {
+        this.materialGridApi.setGridOption('rowData', this.materialRowData);
       }
     }
   }
 
-  deleteSelectedMaterial() {
-    if (!this.selectedMaterial || !this.params.context.MATERIAL.delete) {
-      return;
-    }
-
-    if (this.params && this.params.context && this.params.context.MATERIAL && this.params.context.MATERIAL.delete) {
-      this.params.context.MATERIAL.delete(
-        { data: this.selectedMaterial, api: this.materialGridApi },
-        async () => {
-          this.loadMaterialData();
-          this.selectedMaterial = null;
-
-          // Update count
-          await this.updateMaterialCountInParent();
-        }
-      );
-    }
-  }
-
-  // Update material count in parent grid
-  private async updateMaterialCountInParent(): Promise<void> {
-    try {
-      console.log('Updating material count in parent grid...');
-
-      await new Promise(resolve => setTimeout(resolve, 300));
-
-      const materialCount = this.materialRowData.length;
-      console.log('Total materials in memory:', materialCount);
-
-      this.params.data.fieldMaterial = materialCount;
-
-      // NO usar refreshCells porque destruye el detail grid
-      // En su lugar, solo actualizar los datos - el grid padre se actualizará automáticamente
-      console.log('Material count updated in parent grid:', this.params.data.fieldMaterial);
-
-    } catch (error) {
-      console.error('Error updating material count:', error);
-    }
+  refreshMaterials() {
+    this.loadMaterialData();
   }
 }
