@@ -90,8 +90,9 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
   public formulaBarValue: string = '';
   families:any[];
   idRoot: number;
+  idSelect:number;
   familiasVigente: any[];
-  data: any[] = [];
+  data: any;
   public isFormulaValid: boolean = true;
   private focusedCell: { rowIndex: number, colId: string } | null = null;
   private highlightedCols: string[] = [];
@@ -188,7 +189,9 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
     this.materialName = params.data.articulo || 'N/A';
     this.idRoot = params.context.idRoot;
     this.data = params.data;
+    this.idSelect = params.context.select;
     console.log('ID Root en Costos:', params.context);
+    this.obtenerDatos();
     this.familias(this.data);
     this.familiasVigentes(this.data);
 
@@ -196,7 +199,7 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
     this.costosColumnDefs = [
       { 
         headerName: 'Check', 
-        field: 'col4', 
+        field: 'check', 
         editable: true, 
         cellRenderer: 'agCheckboxCellRenderer', 
         cellStyle: { textAlign: 'center', paddingTop: '0px', paddingBottom: '0px' },        
@@ -204,7 +207,7 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
       },
       {
         headerName: 'Artículos',
-        field: 'idSubfamily',
+        field: 'idCatalog',
         editable: true,
 
         cellEditor: SelectWithTooltipEditorV2Component,
@@ -249,7 +252,7 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
           }
 
           const duplicateExists = this.costosRowData.some((row, i) =>
-            i !== params.node.rowIndex && row.idSubfamily === value
+            i !== params.node.rowIndex && row.idCatalog === value
           );
 
           if (duplicateExists) {
@@ -257,7 +260,7 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
             return false;
           }
 
-          params.data.idSubfamily = value;
+          params.data.idCatalog = value;
 
           const fam = this.familiasVigente.find(f => f.idSubfamily === value);
           params.data.subfamilia = fam?.subfamilia || (editorValue && editorValue.label) || '';
@@ -267,18 +270,18 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
       },
       { 
         headerName: 'Costo Unitario', 
-        field: 'col2', 
+        field: 'costoUni', 
         editable: true, 
         type: 'numericColumn', 
         valueParser: params => Number(params.newValue), 
         valueFormatter: params => this.currencyPipe.transform(params.value, 'MXN', 'symbol', '1.2-2') || '$0.00',
         cellStyle: { textAlign: 'center' } 
       },
-      { headerName: 'Cantidad a Utilizar', field: 'col3', editable: true, type: 'numericColumn', valueParser: params => Number(params.newValue), cellStyle: { textAlign: 'center' } },
-      { headerName: 'Proporcion', field: 'col5', editable: true, type: 'numericColumn', valueParser: params => Number(params.newValue), cellStyle: { textAlign: 'center' } },
+      { headerName: 'Cantidad a Utilizar', field: 'cantidad', editable: true, type: 'numericColumn', valueParser: params => Number(params.newValue), cellStyle: { textAlign: 'center' } },
+      { headerName: 'Proporcion', field: 'proporcion', editable: true, type: 'numericColumn', valueParser: params => Number(params.newValue), cellStyle: { textAlign: 'center' } },
       {
         headerName: 'Costo Total',
-        field: 'col6',
+        field: 'costoTot',
         width: 120,
         editable: true,
         type: 'numericColumn',
@@ -286,20 +289,25 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
         valueFormatter: params => this.currencyPipe.transform(params.value, 'MXN', 'symbol', '1.2-2') || '$0.00',
         cellStyle: { textAlign: 'center' }
       },      
-      { headerName: 'Merma', field: 'col12', editable: true, type: 'numericColumn', valueParser: params => Number(params.newValue), cellStyle: { textAlign: 'center' } },
+      { headerName: 'Merma', field: 'merma', editable: true, type: 'numericColumn', valueParser: params => Number(params.newValue), cellStyle: { textAlign: 'center' } },
       {
         headerName: 'Costo Final',
-        field: 'col7',
+        field: 'costoFin',
         width: 150,
-        editable: true,
+        editable: false,
         type: 'numericColumn',
-        valueParser: params => Number(params.newValue),
-        valueFormatter: params => this.currencyPipe.transform(params.value, 'MXN', 'symbol', '1.2-2') || '$0.00',
+        valueGetter: params => {
+          const u = Number(params.data.costoUni);
+          const q = Number(params.data.costoTot); // ejemplo
+          return u * q;
+        },
+        valueFormatter: params =>
+          this.currencyPipe.transform(params.value, 'MXN', 'symbol', '1.2-2'),
         cellStyle: { textAlign: 'center' }
       },
       {
         headerName: 'Fecha Cambio',
-        field: 'col8',
+        field: 'fechaCambio',
         editable: true,
         cellEditor: 'agDateCellEditor',
         valueFormatter: (params) => {
@@ -319,7 +327,7 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
       },
       {
         headerName: 'Total (Fórmula)',
-        field: 'col9',
+        field: 'total',
         hide : true,
         width: 200,
         editable: true,
@@ -328,16 +336,22 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
         valueFormatter: params => this.currencyPipe.transform(params.value, 'MXN', 'symbol', '1.2-2') || '$0.00',
         cellStyle: { textAlign: 'center' }
       },
-      { headerName: 'Col 10', field: 'col10', hide: true, editable: true, cellStyle: { textAlign: 'center' } },
-      { headerName: 'Col 11', field: 'col11', hide: true, editable: true, cellStyle: { textAlign: 'center' } },
     ].map(col => this.addFormulaSupport(col)).map(col => ({ ...col, flex: 1, minWidth: 100 })); // Aplicar flex y minWidth a todas
-    this.costosColumnDefs.find(c => c.field === 'col4')!.flex = 0.5; // Hacer la columna de checkbox más pequeña
+    const checkboxCol = this.costosColumnDefs.find(c => c.field === 'check');
+    if (checkboxCol) {
+      checkboxCol.flex = 0.5; // Hacer la columna de checkbox más pequeña
+    }
     
     // Añadir dinámicamente la lógica de cellClass para el resaltado
     this.costosColumnDefs.forEach(colDef => {
       colDef.cellClass = params => {
-        if (!params.data.highlightedColumns) return null;
-        const colIndex = parseInt(params.colDef.field!.replace('col', ''));
+        if (!params.data || !params.data.highlightedColumns) return null;
+        const field = params.colDef.field || '';
+        // Only handle fields that follow the 'colN' pattern (e.g., 'col1', 'col2')
+        const match = field.match(/^col(\d+)$/);
+        if (!match) return null;
+        const colIndex = parseInt(match[1], 10);
+        if (isNaN(colIndex)) return null;
         const colLetter = String.fromCharCode(65 + colIndex - 1);
         const rowNum = params.node.rowIndex + 1;
         const cellRef = colLetter + rowNum;
@@ -421,6 +435,28 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
       }
     };
   }
+  obtenerDatos() {
+    return new Promise((resolve) => {
+      this.materiaByCatalogService.getMateriaByCatalog(this.idRoot, this.idSelect).subscribe(
+        (data: any) => {
+            this.costosRowData = data;
+          console.log('Datos obtenidos del servidor:', this.costosRowData);
+
+          // Actualizar el grid y esperar a que termine
+          this.gridApi.setGridOption('rowData', this.costosRowData);
+
+          // Dar tiempo al grid para actualizar los datos
+          setTimeout(() => {
+            resolve(true);
+          }, 100);
+        },
+        (error) => {
+          console.error('Error fetching data:', error);
+          resolve(false);
+        }
+      );
+    });
+  }
 
     familias(idFamilia:any){
       console.log(idFamilia.idFamilia);
@@ -454,60 +490,111 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
 
   onAddRow() {
     const newRow = {
-      col1: '',
-      col2: '',
-      col3: 0,
-      col4: 0,
-      col5: 0,
-      col6: 0,
-      col7: 0,
-      col8: new Date().toISOString().split('T')[0], // Default to today's date
-      parametros: 'Ver parámetros',
-      col12: 0,
-      detailRowData: [],
-      highlightedColumns: []
+    idCompany: this.idRoot,
+    check: false,
+    idConcep: this.idSelect,
+    idCatalog: 0,
+    costoUni: 0,
+    cantidad: 0,
+    proporcion: 0,
+    costoTot: 0,
+    merma: 0,
+    costoFin: 0,
+    parametros: 0,
+    total: 0,
+    active: true,
+    fechaCambio: new Date().toISOString().split('T')[0], // Default to today's date
+      __isNew: true // Marcar la fila como nueva
     };
     this.gridApi.applyTransaction({ add: [newRow] });
+    this.costosRowData = [...this.costosRowData, newRow];
+
+    // Defer collecting data until after the transaction / render cycle completes
   }
 
   onRemoveSelected() {
-    const selectedData = this.gridApi.getSelectedRows();
-    if (!selectedData || selectedData.length === 0) return;
-    this.gridApi.applyTransaction({ remove: selectedData });
+    // Asegurarnos de que la API del grid esté lista
+    if (!this.gridApi) {
+      alerts.basicAlert('Error', 'Grid no inicializado.', 'error');
+      return;
+    }
+
+    const selectedNodes = this.gridApi.getSelectedNodes();
+    if (!selectedNodes || selectedNodes.length === 0) {
+      alerts.basicAlert(
+        'Eliminar entrada',
+        'Por favor, seleccione una entrada para eliminar.',
+        'error'
+      );
+      return;
+    }
+
+    const node = selectedNodes[0];
+    const selectedData = node?.data;
+    console.log('Datos seleccionados para eliminar:', selectedData);
+    if (!selectedData) {
+      alerts.basicAlert('Eliminar entrada', 'No se encontró la fila seleccionada.', 'error');
+      return;
+    }
+
+    // Confirmación antes de eliminar
+    alerts
+      .confirmAlert(
+        'Eliminar entrada',
+        '¿Está seguro que desea eliminar esta entrada?',
+        'warning',
+        'Sí, eliminar'
+      )
+      .then((result) => {
+        if (!result.isConfirmed) return;
+
+        // Determinar el id real (puede venir como 'id' o 'Id' según el backend)
+        const realId = selectedData.id ?? selectedData.Id ?? null;
+
+        // Si la fila es nueva (no guardada en servidor) o no tiene id, la eliminamos localmente
+        if (selectedData.__isNew || !realId) {
+          this.gridApi.applyTransaction({ remove: [selectedData] });
+          // Mantener costosRowData sincronizado
+          this.costosRowData = this.costosRowData.filter((r) => r !== selectedData);
+          alerts.basicAlert('Entrada eliminada', 'La entrada se eliminó localmente.', 'success');
+          return;
+        }
+
+        // Si la fila existe en servidor, llamamos al servicio para eliminarla
+        const id = realId;
+        this.materiaByCatalogService
+          .deleteMateriaByCatalog(id)
+          .pipe(
+            catchError((error) => {
+              alerts.basicAlert(
+                'Eliminar entrada',
+                'Error al eliminar la entrada.',
+                'error'
+              );
+              console.error(error);
+              return EMPTY;
+            })
+          )
+          .subscribe(() => {
+            alerts.basicAlert(
+              'Entrada eliminada',
+              'La entrada se eliminó correctamente.',
+              'success'
+            );
+            // Recargar datos desde el servidor para mantener consistencia
+            this.obtenerDatos().then(() => {
+              // Deseleccionar para evitar estados raros
+              setTimeout(() => {
+                if (this.gridApi && !this.gridApi.isDestroyed()) {
+                  try { this.gridApi.deselectAll(); } catch (e) { /* noop */ }
+                }
+              }, 50);
+            });
+          });
+      });
   }
 
   async onStartEditing() {
-    const selectedNodes = this.gridApi.getSelectedNodes();
-    if (!selectedNodes || selectedNodes.length === 0) {
-      return;
-    }
-    const nodeToEdit = selectedNodes[0];
-    const firstEditableCol = this.costosColumnDefs.find(c => c.editable);
-    if (firstEditableCol) {
-      this.gridApi.startEditingCell({
-        rowIndex: nodeToEdit.rowIndex!,
-        colKey: firstEditableCol.field!
-      });
-    }
-
-    /*const isValid = this.costosRowData.every(
-          (item) =>
-            item.name &&
-            item.idBranch &&
-            (item.employeeCode || item.email )&&
-            item.idDepto && // se agregan dos inputs para la validación de los campos requeridos
-            item.idPosition &&
-            (item.priceXHour || this.idRoot == 18)
-        );
-        if (!isValid) {
-          alerts.basicAlert(
-            'Añadir entrada',
-            'Debe llenar los campos obligatorios antes de guardar.',
-            'error'
-          );
-          return;
-        }*/
-    
         const newRows = this.costosRowData.filter((row) => row.__isNew);
         const modifiedRows = this.costosRowData.filter(
           (row) => row.__modified && !row.__isNew
@@ -577,10 +664,15 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
     return cleanedData;
   }
 
-  onUndo() { this.gridApi.undoCellEditing(); }
+  onUndo() { 
+    this.familias(this.data);
+    this.familiasVigentes(this.data);
+    this.obtenerDatos();
+  }
 
   onCellValueChanged(params: any) {
     // Refrescamos todas las celdas para recalcular fórmulas que dependan de esta celda.
+    params.data.__modified = true;
     setTimeout(() => {
       this.updatePinnedRowTotals();
       this.gridApi.refreshCells({ force: true });
@@ -697,10 +789,11 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
 
     // Guardar las columnas a resaltar en los datos de la fila y refrescar
     rowNode.data.highlightedColumns = this.highlightedCols;
-    this.gridApi.refreshCells({
-      rowNodes: [rowNode],
-      force: true
-    });
+    // Defer the refresh to avoid calling grid API during AG Grid's render cycle
+    setTimeout(() => {
+      if (!this.gridApi || this.gridApi.isDestroyed()) return;
+      this.gridApi.refreshCells({ rowNodes: [rowNode], force: true });
+    }, 0);
   }
 
   private clearCellHighlights() {
@@ -710,7 +803,11 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
       const rowNode = this.gridApi.getRowNode(String(this.focusedCell.rowIndex))!;
       if (rowNode) {
         delete rowNode.data.highlightedColumns;
-        this.gridApi.refreshCells({ rowNodes: [rowNode], force: true });
+        // Defer the refresh to avoid calling grid API during AG Grid's render cycle
+        setTimeout(() => {
+          if (!this.gridApi || this.gridApi.isDestroyed()) return;
+          this.gridApi.refreshCells({ rowNodes: [rowNode], force: true });
+        }, 0);
       }
     }
     this.highlightedCols = [];
@@ -722,51 +819,12 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-    this.gridApi.sizeColumnsToFit();
-    this.updatePinnedRowTotals();
-  }
-
-
-  private generateFakeCostData(rowCount: number): any[] {
-    const data = [];
-    for (let i = 0; i < rowCount; i++) {
-      const cantidad = Math.floor(Math.random() * 10) + 1;
-      const precio = Math.random() * 100 + 20;
-      const row: any = {
-        col1: `Dato ${i + 1}-1`,
-        col2: parseFloat((Math.random() * 50).toFixed(2)), // Costo unitario numérico
-        col3: Math.floor(Math.random() * 100) + 1, // Datos numéricos aleatorios
-        col4: Math.random() < 0.5, // Checkbox
-        col5: Math.floor(Math.random() * 100) + 1, // Datos numéricos aleatorios para col5
-        col6: cantidad,
-        col7: precio,
-        col12: parseFloat((Math.random() * 5).toFixed(2)), // Merma numérica
-        col8: new Date(new Date().setDate(new Date().getDate() - i)).toISOString().split('T')[0], // Fechas secuenciales hacia atrás
-        // col9 se calculará con el valueGetter
-        col10: `Dato ${i + 1}-10`,
-        col11: `Dato ${i + 1}-11`,
-        formulaCol1: undefined,
-        formulaCol2: undefined,
-        formulaCol3: undefined,
-        formulaCol4: undefined,
-        formulaCol5: undefined,
-        formulaCol6: undefined,
-        formulaCol7: undefined,
-        formulaCol8: undefined,
-        formulaCol9: '=col6*col7',
-        formulaCol10: undefined,
-        formulaCol11: undefined,
-        // Datos para el grid de detalle de parámetros
-        detailRowData: [
-          { parametro: `Parámetro A-Fila${i+1}`, minimo: Math.random() * 10, objetivo: Math.random() * 20 + 10 },
-          { parametro: `Parámetro B-Fila${i+1}`, minimo: Math.random() * 10, objetivo: Math.random() * 20 + 10 },
-        ],
-        parametros: 'Ver parámetros', // Texto a mostrar en la celda master
-        highlightedColumns: [] // Campo para el resaltado de celdas
-      };
-      data.push(row);
-    }
-    return data;
+    // Defer sizing and totals update until after AG Grid finishes the initial render
+    setTimeout(() => {
+      if (!this.gridApi || this.gridApi.isDestroyed()) return;
+      this.gridApi.sizeColumnsToFit();
+      this.updatePinnedRowTotals();
+    }, 0);
   }
 
   private updatePinnedRowTotals() {
@@ -776,13 +834,15 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
       col1: 'Totales', // Etiqueta para la fila de totales
     };
     // Columnas que deben ser sumadas. Se excluyen las que no son numéricas como fechas o checkboxes.
-    const fieldsToSum = ['col2', 'col3', 'col5', 'col6', 'col7', 'col12'];
+    const fieldsToSum = ['costoUni', 'costoFin', 'total'];
 
     fieldsToSum.forEach(field => {
       let sum = 0;
       this.gridApi.forEachNode(node => {
         // Usamos getValue para asegurarnos de obtener el valor calculado (ej. de una fórmula)
+
         const value = this.gridApi.getValue(field, node);
+        console.log(`Valor para suma en ${field} de fila ${node.rowIndex}:`, value);
         if (value && typeof value === 'number') {
           sum += value;
         } else if (node.data && typeof node.data[field] === 'number') {
@@ -793,7 +853,17 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
       totals[field] = sum;
     });
 
-    this.gridApi.setGridOption('pinnedBottomRowData', [totals]);
+    // Use setPinnedBottomRowData and defer the call slightly to avoid interfering with AG Grid's draw
+    setTimeout(() => {
+      if (!this.gridApi || this.gridApi.isDestroyed()) return;
+      // Prefer the API method for pinned rows when available
+      if ((this.gridApi as any).setPinnedBottomRowData) {
+        (this.gridApi as any).setPinnedBottomRowData([totals]);
+      } else {
+        // Fallback to setGridOption for older AG Grid versions
+        this.gridApi.setGridOption('pinnedBottomRowData', [totals]);
+      }
+    }, 0);
   }
   private evaluateFormula(formula: string, data: any, rowIndex: number): number | string {
     try {

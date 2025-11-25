@@ -70,6 +70,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   categories: any[] = [];
   families: any[] = [];
   subfamilies: any[] = [];
+  idSelect:number = 0;
 
   // Modal de subfamilias
   private modalSubscription?: Subscription;
@@ -512,6 +513,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   onCellClicked(event: any): void {
     event.node.setSelected(true);
     this.data = event.data;
+    this.idSelect = event.data.id; // Asignar el ID seleccionado
     // Actualizar el contexto del grid con los datos recién seleccionados
     // para que los detail renderers reciban la información correcta.
     this.updateGridContext();
@@ -588,7 +590,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       },
       context: {
         idRoot: this.idRoot, // Pasar idRoot al detail renderer
-        data: this.data, // Pasar los datos de materiales por tabla
+        data: this.data,
+        select: this.idSelect, // Pasar los datos de materiales por tabla
         componentParent: this, // Referencia al componente padre
         gridApi: this.gridApi, // Pasar la API del grid principal
         MATERIAL: {

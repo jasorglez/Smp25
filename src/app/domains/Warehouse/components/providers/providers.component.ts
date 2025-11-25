@@ -337,7 +337,18 @@ export class ProvidersComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
+          // ✅ No editable si tiene contactos registrados (fieldContact > 0)
+          if (params.data.fieldContact && params.data.fieldContact > 0) {
+            return false;
+          }
           return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers', 'Pro_Pri', 'update');
+        },
+        cellStyle: (params) => {
+          // ✅ Fondo gris claro si tiene contactos registrados
+          if (params.data.fieldContact && params.data.fieldContact > 0) {
+            return { backgroundColor: '#f0f0f0', color: '#666' };
+          }
+          return null;
         },
         filter: true,
         cellEditor: 'autocompleteEditor',
@@ -411,8 +422,19 @@ export class ProvidersComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
-          //     return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers','Pro_Pri', 'update');
+          // ✅ No editable si tiene contactos registrados (fieldContact > 0)
+          if (params.data.fieldContact && params.data.fieldContact > 0) {
+            return false;
+          }
+          // Deshabilitado por defecto según comentario original
           return false;
+        },
+        cellStyle: (params) => {
+          // ✅ Fondo gris claro si tiene contactos registrados
+          if (params.data.fieldContact && params.data.fieldContact > 0) {
+            return { backgroundColor: '#f0f0f0', color: '#666' };
+          }
+          return null;
         },
       },
 
@@ -451,7 +473,18 @@ export class ProvidersComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
+          // ✅ No editable si tiene contactos registrados (fieldContact > 0)
+          if (params.data.fieldContact && params.data.fieldContact > 0) {
+            return false;
+          }
           return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers', 'Pro_Pri', 'update');
+        },
+        cellStyle: (params) => {
+          // ✅ Fondo gris claro si tiene contactos registrados
+          if (params.data.fieldContact && params.data.fieldContact > 0) {
+            return { backgroundColor: '#f0f0f0', color: '#666' };
+          }
+          return null;
         },
         valueSetter: (params) => {
           const rawValue = params.newValue;
@@ -485,7 +518,18 @@ export class ProvidersComponent implements CanComponentDeactivate {
           if (params.data.__isNew) {
             return true;
           }
+          // ✅ No editable si tiene contactos registrados (fieldContact > 0)
+          if (params.data.fieldContact && params.data.fieldContact > 0) {
+            return false;
+          }
           return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers', 'Pro_Pri', 'update');
+        },
+        cellStyle: (params) => {
+          // ✅ Fondo gris claro si tiene contactos registrados
+          if (params.data.fieldContact && params.data.fieldContact > 0) {
+            return { backgroundColor: '#f0f0f0', color: '#666' };
+          }
+          return null;
         },
         valueSetter: (params) => {
           const rawValue = params.newValue;

@@ -71,13 +71,18 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
   params: any;
   providerId: number;
   providerName: string;
-  
+
   // Contact grid properties
   contactRowData: any[] = [];
   hasContactChanges: boolean = false;
   name: string = '';
   contactGridApi: any;
   selectedContact: any = null;
+
+  // ✅ NUEVO: Rastrear la última fila editada/modificada
+  private lastEditedRowId: string | null = null;
+  private lastEditedRowName: string | null = null;
+  private lastEditedRowPhone: string | null = null;
   
   contactGridOptions: any = {
     headerHeight: 25,
@@ -118,6 +123,11 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
       editable: true,
       width: 66,
       onCellValueChanged: async (params: any) => {
+        // ✅ Rastrear la última fila editada (checkbox vigente)
+        this.lastEditedRowId = params.data.id;
+        this.lastEditedRowName = params.data.campo2;
+        this.lastEditedRowPhone = params.data.campo4;
+
         // Guardar ID de la fila modificada para restaurar focus
         const modifiedRowId = params.data.id;
         const modifiedRowName = params.data.campo2;
@@ -186,7 +196,26 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
       width: 150,
       flex: 1,
       valueSetter: (params: any) => {
-        params.data.campo2 = params.newValue ? params.newValue.toUpperCase() : '';
+        const rawValue = params.newValue;
+        if (!rawValue || typeof rawValue !== 'string') {
+          alerts.basicAlert('Campo requerido', 'El nombre del contacto es obligatorio', 'error');
+          return false;
+        }
+
+        const normalizedValue = rawValue.trim();
+
+        // Validar que solo contenga letras (incluyendo espacios, acentos y ñ)
+        const nameRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/;
+        if (!nameRegex.test(normalizedValue)) {
+          alerts.basicAlert(
+            'Formato inválido',
+            'El nombre del contacto solo puede contener letras',
+            'error'
+          );
+          return false;
+        }
+
+        params.data.campo2 = normalizedValue.toUpperCase();
         params.data.__modified = true;
         this.hasContactChanges = true;
         return true;
@@ -229,18 +258,21 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
 
         const normalizedValue = rawValue.trim();
 
-        // Validar formato internacional mexicano: +52 XXX XXX XXXX
-        const phoneRegex = /^\+52\s\d{3}\s\d{3}\s\d{4}$/;
+        // Validar que solo contenga caracteres alfanuméricos, espacios, guiones, paréntesis y +
+        // Máximo 20 caracteres
+        const phoneRegex = /^[a-zA-Z0-9\s\-\(\)\+]{1,20}$/;
         if (!phoneRegex.test(normalizedValue)) {
           alerts.basicAlert(
             'Formato inválido',
-            'El teléfono debe tener el formato internacional: +52 XXX XXX XXXX (ejemplo: +52 229 206 3214)',
+            'El teléfono puede contener hasta 20 caracteres alfanuméricos, espacios, guiones, paréntesis y el signo +',
             'error'
           );
           return false;
         }
 
-        params.data[params.colDef.field] = normalizedValue;
+        params.data.campo4 = normalizedValue;
+        params.data.__modified = true;
+        this.hasContactChanges = true;
         return true;
       },
     },
@@ -321,6 +353,11 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
           newValue: params.newValue,
           vigente: params.data.vigente
         });
+
+        // ✅ Rastrear la última fila editada (checkbox principal)
+        this.lastEditedRowId = params.data.id;
+        this.lastEditedRowName = params.data.campo2;
+        this.lastEditedRowPhone = params.data.campo4;
 
         // Guardar ID de la fila modificada para restaurar focus
         const modifiedRowId = params.data.id;
@@ -501,6 +538,17 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
   onContactCellValueChanged(event: any) {
     event.data.__modified = true;
     this.hasContactChanges = true;
+
+    // ✅ NUEVO: Rastrear la última fila editada para restaurar focus después de guardar
+    this.lastEditedRowId = event.data.id;
+    this.lastEditedRowName = event.data.campo2;
+    this.lastEditedRowPhone = event.data.campo4;
+
+    console.log('📝 Última fila editada:', {
+      id: this.lastEditedRowId,
+      nombre: this.lastEditedRowName,
+      telefono: this.lastEditedRowPhone
+    });
   }
 
   loadContactData(onComplete?: () => void) {
@@ -652,11 +700,17 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
       });
 
       try {
-        // Guardar la fila seleccionada actual para restaurarla después
-        const selectedRow = this.selectedContact;
-        const selectedContactId = selectedRow?.id;
-        const selectedContactName = selectedRow?.campo2; // Nombre contacto como respaldo
-        const selectedContactPhone = selectedRow?.campo4; // Teléfono como respaldo
+        // ✅ USAR la última fila editada en lugar de la seleccionada
+        const targetContactId = this.lastEditedRowId || this.selectedContact?.id;
+        const targetContactName = this.lastEditedRowName || this.selectedContact?.campo2;
+        const targetContactPhone = this.lastEditedRowPhone || this.selectedContact?.campo4;
+
+        console.log('💾 Guardando con foco en:', {
+          id: targetContactId,
+          nombre: targetContactName,
+          telefono: targetContactPhone,
+          source: this.lastEditedRowId ? 'última editada' : 'seleccionada'
+        });
 
         // Guardar (ESPERA a que el usuario cierre el alert)
         await this.params.context.CONTACT.save(this.providerId, this.contactRowData, 'CONTACT');
@@ -675,27 +729,27 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
         // Esperar solo un ciclo de renderizado para asegurar que los cambios se reflejen
         await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
 
-        if (this.contactGridApi && selectedRow) {
+        if (this.contactGridApi && (targetContactId || targetContactName)) {
           let rowToSelect = null;
 
-          console.log('🔍 Buscando contacto para restaurar (sin reload)...', {
-            selectedContactId,
-            selectedContactName,
-            selectedContactPhone,
+          console.log('🔍 Buscando contacto para restaurar (última editada)...', {
+            targetContactId,
+            targetContactName,
+            targetContactPhone,
             totalRows: this.contactRowData.length
           });
 
           // Intentar encontrar por ID original (si no era temporal)
-          if (selectedContactId && !String(selectedContactId).startsWith('temp_')) {
-            rowToSelect = this.contactRowData.find(r => r.id === selectedContactId);
+          if (targetContactId && !String(targetContactId).startsWith('temp_')) {
+            rowToSelect = this.contactRowData.find(r => r.id === targetContactId);
             console.log('Búsqueda por ID:', rowToSelect ? '✅ Encontrado' : '❌ No encontrado');
           }
 
           // Si no se encontró, buscar por nombre y teléfono
-          if (!rowToSelect && selectedContactName) {
+          if (!rowToSelect && targetContactName) {
             rowToSelect = this.contactRowData.find(r =>
-              r.campo2 === selectedContactName &&
-              r.campo4 === selectedContactPhone
+              r.campo2 === targetContactName &&
+              r.campo4 === targetContactPhone
             );
             console.log('Búsqueda por nombre/teléfono:', rowToSelect ? '✅ Encontrado' : '❌ No encontrado');
           }
@@ -709,7 +763,7 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
             if (rowNode) {
               rowNode.setSelected(true);
               this.contactGridApi.ensureIndexVisible(rowIndex, 'middle');
-              console.log('✅ Fila restaurada después de guardar (sin reload):', rowToSelect);
+              console.log('✅ Fila restaurada después de guardar (última editada):', rowToSelect);
             } else {
               console.error('❌ No se pudo obtener el rowNode en el índice:', rowIndex);
             }
@@ -717,6 +771,11 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
             console.error('❌ No se encontró la fila para restaurar');
           }
         }
+
+        // ✅ Limpiar el rastreador de última fila editada después de restaurar
+        this.lastEditedRowId = null;
+        this.lastEditedRowName = null;
+        this.lastEditedRowPhone = null;
 
         // AHORA actualizar campos del contacto principal y contador en el grid padre
         await this.updatePrincipalContactInParent();
