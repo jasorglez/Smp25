@@ -27,7 +27,7 @@ import { AuthService } from 'app/services/auth.service';
 import { SharedModule } from 'app/shared/shared.module';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
-import { SubatalogsComponent } from "../../../Warehouse/components/catalogs/catalogs.component";
+import { SubatalogsComponent } from "../../../ModWarehouse/components/catalogs/catalogs.component";
 
 //soriano
 @Component({
