@@ -1,0 +1,268 @@
+<div class="assets-container">
+  <!-- Header -->
+  <div class="header">
+    <div class="header-content">
+      <div class="header-left">
+        <i class="fas fa-cogs header-icon"></i>
+        <div>
+          <h1 class="header-title">Gestión de Activos</h1>
+          <p class="header-subtitle">Catálogo completo de equipos y maquinaria</p>
+        </div>
+      </div>
+      <div class="header-stats">
+        <div class="stat-item">
+          <span class="stat-number">{{ assets.length }}</span>
+          <span class="stat-label">Total Activos</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number">{{ getOperationalCount() }}</span>
+          <span class="stat-label">Operativos</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number">{{ getMaintenanceCount() }}</span>
+          <span class="stat-label">En Mantenimiento</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters and Search -->
+  <div class="filters-section">
+    <div class="search-bar">
+      <i class="fas fa-search search-icon"></i>
+      <input
+        type="text"
+        class="form-control search-input"
+        placeholder="Buscar por nombre, ID o ubicación..."
+        [(ngModel)]="searchTerm"
+        (input)="onSearchChange()">
+    </div>
+
+    <div class="filters">
+      <select class="form-select filter-select" [(ngModel)]="selectedCategory" (change)="onFilterChange()">
+        <option value="">Todas las Categorías</option>
+        <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
+      </select>
+
+      <select class="form-select filter-select" [(ngModel)]="selectedStatus" (change)="onFilterChange()">
+        <option value="">Todos los Estados</option>
+        <option *ngFor="let status of statuses" [value]="status">{{ status }}</option>
+      </select>
+
+      <select class="form-select filter-select" [(ngModel)]="selectedCriticality" (change)="onFilterChange()">
+        <option value="">Toda Criticidad</option>
+        <option *ngFor="let crit of criticalities" [value]="crit">{{ crit }}</option>
+      </select>
+
+      <button class="btn btn-primary filter-btn" (click)="onNewAsset()">
+        <i class="fas fa-plus"></i> Nuevo Activo
+      </button>
+    </div>
+  </div>
+
+  <!-- Assets Grid -->
+  <div class="assets-grid">
+    <div class="asset-card" *ngFor="let asset of filteredAssets" (click)="viewAssetDetail(asset)">
+      <div class="asset-header">
+        <div class="asset-info">
+          <h3 class="asset-name">{{ asset.name }}</h3>
+          <p class="asset-id">{{ asset.id }}</p>
+        </div>
+        <div class="asset-status">
+          <span [class]="'status-badge ' + getStatusClass(asset.status)">
+            {{ asset.status }}
+          </span>
+        </div>
+      </div>
+
+      <div class="asset-details">
+        <div class="detail-item">
+          <i class="fas fa-tag icon-small"></i>
+          <span>{{ asset.category }}</span>
+        </div>
+        <div class="detail-item">
+          <i class="fas fa-map-marker-alt icon-small"></i>
+          <span>{{ asset.location }}</span>
+        </div>
+        <div class="detail-item">
+          <i class="fas fa-exclamation-triangle icon-small"></i>
+          <span [class]="'criticality-text ' + getCriticalityClass(asset.criticality)">
+            {{ asset.criticality }}
+          </span>
+        </div>
+      </div>
+
+      <div class="asset-maintenance">
+        <div class="maintenance-info">
+          <div class="maintenance-item">
+            <span class="maintenance-label">Último:</span>
+            <span class="maintenance-date">{{ asset.lastMaintenance }}</span>
+          </div>
+          <div class="maintenance-item">
+            <span class="maintenance-label">Próximo:</span>
+            <span class="maintenance-date" [class]="{'overdue': isMaintenanceOverdue(asset)}">
+              {{ asset.nextMaintenance }}
+            </span>
+            <span class="days-until" *ngIf="!isMaintenanceOverdue(asset)">
+              ({{ getDaysUntilMaintenance(asset) }} días)
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="asset-value">
+        <div class="value-info">
+          <span class="current-value">${{ calculateDepreciation(asset) | number:'1.0-0' }}</span>
+          <span class="original-value">${{ asset.purchaseValue | number:'1.0-0' }}</span>
+        </div>
+      </div>
+
+      <div class="asset-actions">
+        <button class="btn btn-sm btn-outline-primary action-btn">
+          <i class="fas fa-eye"></i>
+        </button>
+        <button class="btn btn-sm btn-outline-secondary action-btn">
+          <i class="fas fa-edit"></i>
+        </button>
+        <button class="btn btn-sm btn-outline-success action-btn">
+          <i class="fas fa-history"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Asset Detail Modal -->
+  <div class="modal-backdrop" *ngIf="showAssetDetail" (click)="closeAssetDetail()"></div>
+  <div class="asset-detail-modal" *ngIf="showAssetDetail">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2 class="modal-title">{{ selectedAsset?.name }}</h2>
+        <button class="btn btn-sm btn-outline-secondary close-btn" (click)="closeAssetDetail()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="modal-body" *ngIf="selectedAsset">
+        <div class="asset-detail-grid">
+          <!-- Basic Information -->
+          <div class="detail-section">
+            <h4 class="section-title">
+              <i class="fas fa-info-circle icon-section"></i>
+              Información Básica
+            </h4>
+            <div class="info-grid">
+              <div class="info-item">
+                <label>ID del Activo:</label>
+                <span>{{ selectedAsset.id }}</span>
+              </div>
+              <div class="info-item">
+                <label>Categoría:</label>
+                <span>{{ selectedAsset.category }}</span>
+              </div>
+              <div class="info-item">
+                <label>Ubicación:</label>
+                <span>{{ selectedAsset.location }}</span>
+              </div>
+              <div class="info-item">
+                <label>Estado:</label>
+                <span [class]="'status-text ' + getStatusClass(selectedAsset.status)">
+                  {{ selectedAsset.status }}
+                </span>
+              </div>
+              <div class="info-item">
+                <label>Criticidad:</label>
+                <span [class]="'criticality-text ' + getCriticalityClass(selectedAsset.criticality)">
+                  {{ selectedAsset.criticality }}
+                </span>
+              </div>
+              <div class="info-item">
+                <label>Fabricante:</label>
+                <span>{{ selectedAsset.manufacturer }}</span>
+              </div>
+              <div class="info-item">
+                <label>Modelo:</label>
+                <span>{{ selectedAsset.model }}</span>
+              </div>
+              <div class="info-item">
+                <label>Número de Serie:</label>
+                <span>{{ selectedAsset.serialNumber }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Financial Information -->
+          <div class="detail-section">
+            <h4 class="section-title">
+              <i class="fas fa-dollar-sign icon-section"></i>
+              Información Financiera
+            </h4>
+            <div class="financial-grid">
+              <div class="financial-item">
+                <label>Valor de Compra:</label>
+                <span class="financial-value">${{ selectedAsset.purchaseValue | number:'1.0-0' }}</span>
+                <small class="financial-date">{{ selectedAsset.purchaseDate }}</small>
+              </div>
+              <div class="financial-item">
+                <label>Valor Actual:</label>
+                <span class="financial-value">${{ calculateDepreciation(selectedAsset) | number:'1.0-0' }}</span>
+                <small class="financial-note">Calculado con depreciación</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Maintenance Information -->
+          <div class="detail-section">
+            <h4 class="section-title">
+              <i class="fas fa-tools icon-section"></i>
+              Información de Mantenimiento
+            </h4>
+            <div class="maintenance-detail-grid">
+              <div class="maintenance-detail-item">
+                <label>Último Mantenimiento:</label>
+                <span>{{ selectedAsset.lastMaintenance }}</span>
+              </div>
+              <div class="maintenance-detail-item">
+                <label>Próximo Mantenimiento:</label>
+                <span [class]="{'overdue-text': isMaintenanceOverdue(selectedAsset)}">
+                  {{ selectedAsset.nextMaintenance }}
+                </span>
+                <small *ngIf="!isMaintenanceOverdue(selectedAsset)">
+                  ({{ getDaysUntilMaintenance(selectedAsset) }} días restantes)
+                </small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Description -->
+          <div class="detail-section full-width">
+            <h4 class="section-title">
+              <i class="fas fa-file-alt icon-section"></i>
+              Descripción
+            </h4>
+            <p class="asset-description">{{ selectedAsset.description }}</p>
+          </div>
+        </div>
+
+        <!-- QR Code Section -->
+        <div class="qr-section">
+          <h4 class="section-title">
+            <i class="fas fa-qrcode icon-section"></i>
+            Código QR
+          </h4>
+          <div class="qr-code">
+            <div class="qr-placeholder">
+              <i class="fas fa-qrcode qr-icon"></i>
+              <p>{{ selectedAsset.qrCode }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeAssetDetail()">Cerrar</button>
+        <button class="btn btn-primary">Editar Activo</button>
+        <button class="btn btn-success">Ver Historial</button>
+      </div>
+    </div>
+  </div>
+</div>

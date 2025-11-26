@@ -1,0 +1,26 @@
+<div class="col-md-12">
+      <div class="card my-2">
+        <div class="card-header p-1">
+          <ul class="nav nav-pills justify-content-left">
+         
+            <li class="nav-item me-2">
+                  
+                  <li class="nav-item">
+                        <a class="nav-link green-tab d-flex align-items-center" routerLink="providers" routerLinkActive="active">
+                          <i class="bi bi-file-earmark-person-fill"></i>{{ 'providers' | translate }}
+                        </a>
+                  </li>
+             
+                  <li class="nav-item">
+                        <a class="nav-link green-tab d-flex align-items-center" routerLink="historical" routerLinkActive="active">
+                          <mat-icon>history</mat-icon> {{ 'historical' | translate }}
+                        </a>
+                  </li>
+
+          </ul>
+        </div>
+        <div class="card-body">
+          <router-outlet></router-outlet>
+        </div>
+      </div>
+    </div>

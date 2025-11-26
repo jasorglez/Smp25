@@ -1,0 +1,284 @@
+<div class="container-fluid bg-light min-vh-100 p-6">
+  <div class="container">
+    <!-- Header -->
+    <div class="card mb-4">
+      <div class="card-header bg-primary text-white">
+        <div class="d-flex align-items-center">
+          <i class="fas fa-clipboard-check fs-4 me-3"></i>
+          <div>
+            <h4 class="card-title mb-0">Nueva Orden de Trabajo</h4>
+            <p class="mb-0 opacity-75">Completa la información para crear la orden</p>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <button class="btn btn-outline-secondary position-absolute top-0 end-0 m-3" (click)="handleCancel()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </div>
+
+    <form (ngSubmit)="handleSubmit()">
+      <!-- Información General -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="card-title mb-0 d-flex align-items-center">
+            <i class="fas fa-file-alt me-2 text-primary"></i>
+            Información General
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Tipo de Mantenimiento *</label>
+              <select class="form-select" name="type" [(ngModel)]="formData.type" required>
+                <option value="preventivo">Preventivo</option>
+                <option value="correctivo">Correctivo</option>
+                <option value="predictivo">Predictivo</option>
+                <option value="inspeccion">Inspección</option>
+                <option value="mejora">Mejora</option>
+              </select>
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Prioridad *</label>
+              <select class="form-select" name="priority" [(ngModel)]="formData.priority" required>
+                <option value="baja">Baja</option>
+                <option value="media">Media</option>
+                <option value="alta">Alta</option>
+                <option value="urgente">Urgente</option>
+              </select>
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Departamento *</label>
+              <select class="form-select" name="department" [(ngModel)]="formData.department" required>
+                <option value="">Seleccionar...</option>
+                <option *ngFor="let dept of departments" [value]="dept">{{ dept }}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Activo y Ubicación -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="card-title mb-0 d-flex align-items-center">
+            <i class="fas fa-cogs me-2 text-primary"></i>
+            Activo y Ubicación
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Activo/Equipo *</label>
+              <select class="form-select" name="asset" [(ngModel)]="formData.asset" required>
+                <option value="">Seleccionar activo...</option>
+                <option *ngFor="let asset of assets" [value]="asset">{{ asset }}</option>
+              </select>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Ubicación Física *</label>
+              <input type="text" class="form-control" name="location" [(ngModel)]="formData.location"
+                     placeholder="Ej: Planta Alta, Área de Producción" required>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Asignación y Programación -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="card-title mb-0 d-flex align-items-center">
+            <i class="fas fa-user me-2 text-primary"></i>
+            Asignación y Programación
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Solicitado por *</label>
+              <input type="text" class="form-control" name="requestedBy" [(ngModel)]="formData.requestedBy"
+                     placeholder="Nombre del solicitante" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Asignado a *</label>
+              <select class="form-select" name="assignedTo" [(ngModel)]="formData.assignedTo" required>
+                <option value="">Seleccionar técnico...</option>
+                <option *ngFor="let tech of technicians" [value]="tech">{{ tech }}</option>
+              </select>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label d-flex align-items-center">
+                <i class="fas fa-calendar me-1"></i>
+                Fecha Programada *
+              </label>
+              <input type="date" class="form-control" name="scheduledDate" [(ngModel)]="formData.scheduledDate" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label d-flex align-items-center">
+                <i class="fas fa-clock me-1"></i>
+                Horas Estimadas
+              </label>
+              <input type="number" class="form-control" name="estimatedHours" [(ngModel)]="formData.estimatedHours"
+                     placeholder="Ej: 4" step="0.5" min="0">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Descripción del Trabajo -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="card-title mb-0 d-flex align-items-center">
+            <i class="fas fa-wrench me-2 text-primary"></i>
+            Descripción del Trabajo
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label">Descripción General *</label>
+            <textarea class="form-control" name="description" [(ngModel)]="formData.description" rows="3"
+                      placeholder="Describe el trabajo a realizar..." required></textarea>
+          </div>
+          <div class="mb-3" *ngIf="formData.type === 'correctivo'">
+            <label class="form-label text-danger d-flex align-items-center">
+              <i class="fas fa-exclamation-triangle me-1"></i>
+              Descripción de la Falla *
+            </label>
+            <textarea class="form-control border-danger" name="failureDescription" [(ngModel)]="formData.failureDescription"
+                      rows="2" placeholder="Describe la falla o problema detectado..." required></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Observaciones Adicionales</label>
+            <textarea class="form-control" name="observations" [(ngModel)]="formData.observations" rows="2"
+                      placeholder="Notas adicionales, precauciones, etc..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lista de Tareas -->
+      <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="card-title mb-0 d-flex align-items-center">
+            <i class="fas fa-check-square me-2 text-primary"></i>
+            Lista de Tareas/Checklist
+          </h5>
+          <button type="button" class="btn btn-primary btn-sm" (click)="addTask()">
+            <i class="fas fa-plus"></i> Agregar Tarea
+          </button>
+        </div>
+        <div class="card-body">
+          <div class="mb-3" *ngFor="let task of tasks; let i = index">
+            <div class="input-group">
+              <span class="input-group-text">{{ i + 1 }}.</span>
+              <input type="text" class="form-control" [(ngModel)]="task.description" placeholder="Descripción de la tarea...">
+              <button type="button" class="btn btn-outline-danger" (click)="removeTask(task.id)"
+                      [disabled]="tasks.length === 1">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Materiales y Repuestos -->
+      <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="card-title mb-0 d-flex align-items-center">
+            <i class="fas fa-box me-2 text-primary"></i>
+            Materiales y Repuestos
+          </h5>
+          <button type="button" class="btn btn-primary btn-sm" (click)="addMaterial()">
+            <i class="fas fa-plus"></i> Agregar Material
+          </button>
+        </div>
+        <div class="card-body">
+          <div class="mb-3" *ngFor="let material of materials; let i = index">
+            <div class="row">
+              <div class="col-md-5">
+                <input type="text" class="form-control" [(ngModel)]="material.material"
+                       placeholder="Material o repuesto...">
+              </div>
+              <div class="col-md-3">
+                <input type="number" class="form-control" [(ngModel)]="material.quantity"
+                       placeholder="Cant." min="0" step="0.01">
+              </div>
+              <div class="col-md-3">
+                <select class="form-select" [(ngModel)]="material.unit">
+                  <option value="pza">Pza</option>
+                  <option value="kg">Kg</option>
+                  <option value="lt">Lt</option>
+                  <option value="mt">Mt</option>
+                  <option value="caja">Caja</option>
+                </select>
+              </div>
+              <div class="col-md-1">
+                <button type="button" class="btn btn-outline-danger w-100" (click)="removeMaterial(material.id)"
+                        [disabled]="materials.length === 1">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Adjuntos -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="card-title mb-0 d-flex align-items-center">
+            <i class="fas fa-upload me-2 text-primary"></i>
+            Archivos Adjuntos
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <div class="border border-dashed border-secondary rounded p-4 text-center">
+              <input type="file" id="fileUpload" multiple (change)="handleFileUpload($event)" class="d-none">
+              <label for="fileUpload" class="cursor-pointer">
+                <i class="fas fa-upload fs-1 text-secondary mb-2"></i>
+                <p class="mb-1">Click para seleccionar archivos o arrastra aquí</p>
+                <p class="text-muted small">PDF, imágenes, documentos (máx. 10MB)</p>
+              </label>
+            </div>
+          </div>
+          <div *ngIf="attachments.length > 0">
+            <div class="mb-2" *ngFor="let file of attachments">
+              <div class="d-flex justify-content-between align-items-center p-2 border rounded">
+                <div class="d-flex align-items-center">
+                  <i class="fas fa-file me-2"></i>
+                  <div>
+                    <small class="fw-medium">{{ file.name }}</small>
+                    <br>
+                    <small class="text-muted">{{ file.size }}</small>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-danger" (click)="removeAttachment(file.id)">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Botones de Acción -->
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-outline-secondary" (click)="handleCancel()">
+              Cancelar
+            </button>
+            <button type="button" class="btn btn-secondary">
+              Guardar como Borrador
+            </button>
+            <button type="submit" class="btn btn-primary d-flex align-items-center">
+              <i class="fas fa-check-square me-1"></i>
+              Crear Orden de Trabajo
+            </button>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
