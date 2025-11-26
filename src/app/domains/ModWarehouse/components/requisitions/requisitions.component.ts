@@ -25,6 +25,8 @@ import { MaterialsService } from 'app/services/materials.service';
 import { SetupService } from 'app/services/setup.service';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
+import { ButtonCellRendererComponent } from './button-cell-renderer.component';
+import { DetailCellRendererRequisitionItemsComponent } from './detail-cell-renderer-requisition-items.component';
 
 interface Catalog {
   id: number;
@@ -39,7 +41,7 @@ interface Provider {
 @Component({
   selector: 'app-requisitions',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, DetailCellRendererRequisitionItemsComponent],
   templateUrl: './requisitions.component.html',
   styleUrl: './requisitions.component.scss',
 })
@@ -180,10 +182,21 @@ export class RequisitionsComponent implements CanComponentDeactivate {
   public gridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
+    animateRows: true,
+    masterDetail: true,
+    detailRowHeight: 400,
+    isRowMaster: (dataItem: any) => true,
+    detailCellRenderer: DetailCellRendererRequisitionItemsComponent,
     getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
         return 'selected-row';
+      }
+      if (params.data?.__isNew) {
+        return 'new-row-highlight';
+      }
+      if (params.data?.__modified) {
+        return 'modified-row';
       }
       return '';
     },
@@ -201,6 +214,13 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         });
       }
     },
+    onCellValueChanged: (event: any) => {
+      event.data.__modified = true;
+      this.masterNotSavedChanges = true;
+      setTimeout(() => {
+        this.masterGridApi.refreshCells({ rowNodes: [event.node], force: true });
+      }, 0);
+    }
   };
 
   getSetupData(): Promise<void> {
@@ -229,6 +249,18 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
   get colMaster(): ColDef[] {
     return [
+      {
+        field: 'countrow',
+        headerName: 'Items',
+        width: 60,
+        cellRenderer: ButtonCellRendererComponent,
+        cellRendererParams: {
+          onClick: (node: any) => this.toggleCascade(node),
+        },
+        valueGetter: params => params.data?.countrow || 0,
+        editable: false,
+        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer' }
+      },
       {
         field: 'folio',
         headerName: 'Número Doc',
@@ -413,7 +445,12 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       .getOcAndReqs(this.typeReference, this.idReference, 'REQUIS')
       .subscribe(
         (data: any) => {
-          this.masterRowData = data;
+          this.masterRowData = data.map((item: any) => ({
+            ...item,
+            countrow: item.countrow || 0,
+            detailType: null,
+            detailData: []
+          }));
           console.log(this.typeReference, this.idReference, this.masterRowData);
         },
         (error) => console.error('Error fetching data:', error)
@@ -535,6 +572,10 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
   onMasterGridReady(params: GridReadyEvent) {
     this.masterGridApi = params.api;
+    console.log('✅ Master Grid Ready - productos length:', this.productos.length);
+
+    // Configurar el context inicial
+    this.updateDetailContext();
   }
 
   onMasterRowSelected(event: any) {
@@ -704,9 +745,45 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     this.materialsService.getMaterials2Fields(this.idRoot).subscribe(
       (data: Catalog[]) => {
         this.productos = data;
+        console.log('✅ Productos cargados:', this.productos.length);
+        // Actualizar el context después de cargar productos
+        this.updateDetailContext();
       },
       (error) => console.error('Error fetching materials:', error)
     );
+  }
+
+  updateDetailContext() {
+    if (this.masterGridApi) {
+      this.masterGridApi.setGridOption('detailCellRendererParams', {
+        getDetailRowData: (params) => {
+          params.successCallback(params.data.detailData);
+        },
+        context: {
+          idRoot: this.idRoot,
+          typeReference: this.typeReference,
+          idReference: this.idReference,
+          productos: this.productos,
+          componentParent: this,
+          gridApi: this.masterGridApi,
+          ITEMS: {
+            load: (requisitionId: number, callback: (data: any[]) => void) => {
+              this.loadRequisitionItems(requisitionId, callback);
+            },
+            save: (requisitionId: number, data: any[]) => {
+              this.saveRequisitionItemsById(requisitionId, data);
+            },
+            delete: (params: any, callback: () => void) => {
+              this.deleteDetailRow(params, callback);
+            },
+            updateCount: (requisitionId: number, count: number) => {
+              this.updateRequisitionItemsCount(requisitionId, count);
+            }
+          }
+        }
+      });
+      console.log('✅ Context actualizado con productos');
+    }
   }
 
   updateTotal(data: any) {
@@ -867,6 +944,162 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
   onDetailsRowSelected(event: any) {
     this.id = event.data.id;
+  }
+
+  // ==================== MASTER-DETAIL CASCADE METHODS ====================
+
+  toggleCascade(node: any) {
+    const event = {
+      node: node,
+      api: this.masterGridApi,
+      data: node.data,
+      column: { getColId: () => 'countrow' }
+    };
+    this.onCellClickedCascade(event);
+  }
+
+  onCellClickedCascade(event: any): void {
+    event.node.setSelected(true);
+
+    const colId = event.column.getColId();
+    const isDetailColumn = colId === 'countrow';
+
+    if (isDetailColumn) {
+      const node = event.node;
+      const api = event.api;
+
+      const isCurrentlyExpanded = node.expanded && event.data.detailType === 'items';
+
+      if (isCurrentlyExpanded) {
+        // Si ya está expandido, colapsarlo y mostrar todas las filas
+        node.setExpanded(false);
+        event.data.detailType = null;
+
+        api.forEachNode((otherNode: any) => {
+          otherNode.setRowHeight(undefined);
+        });
+        api.onRowHeightChanged();
+      } else {
+        // Colapsar cualquier otra fila expandida y resetear alturas
+        api.forEachNode((otherNode: any) => {
+          if (otherNode.id !== node.id) {
+            if (otherNode.expanded) {
+              otherNode.setExpanded(false);
+              otherNode.data.detailType = null;
+            }
+            otherNode.setRowHeight(0);
+          } else {
+            otherNode.setRowHeight(undefined);
+          }
+        });
+
+        // Cambiar el tipo de detalle ANTES de expandir
+        event.data.detailType = 'items';
+
+        // Aplicar los cambios de altura
+        api.onRowHeightChanged();
+
+        // Expandir el nodo
+        node.setExpanded(true);
+      }
+    }
+  }
+
+  loadRequisitionItems(requisitionId: number, successCallback: any) {
+    this.requisitionsService.getReqItems(requisitionId).subscribe({
+      next: (data: any) => {
+        successCallback(data);
+      },
+      error: (error) => {
+        console.error('Error loading requisition items:', error);
+        successCallback([]);
+      }
+    });
+  }
+
+  async saveRequisitionItemsById(requisitionId: number, data: any[]) {
+    const newItems = data.filter((row: any) => row.__isNew);
+    const modifiedItems = data.filter((row: any) => row.__modified && !row.__isNew);
+
+    try {
+      for (const item of newItems) {
+        const cleaned = this.cleanDataForServer(item);
+        await lastValueFrom(this.requisitionsService.addReqItem(cleaned));
+      }
+
+      for (const item of modifiedItems) {
+        const cleaned = this.cleanDataForServer(item);
+        await lastValueFrom(this.requisitionsService.updateReqItem(item.id, cleaned));
+      }
+
+      if (newItems.length > 0 || modifiedItems.length > 0) {
+        alerts.basicAlert(
+          'Detalles guardados',
+          'Se han guardado los items correctamente.',
+          'success'
+        );
+
+        // Actualizar el contador de items localmente
+        this.updateRequisitionItemsCount(requisitionId, data.length);
+
+        // Limpiar los flags
+        data.forEach(row => {
+          delete row.__isNew;
+          delete row.__modified;
+        });
+      }
+
+    } catch (error) {
+      console.error('Error saving requisition items:', error);
+      alerts.basicAlert(
+        'Error',
+        'Error al guardar los items.',
+        'error'
+      );
+    }
+  }
+
+  async deleteDetailRow(params: any, successCallback: () => void) {
+    const requisitionId = params.data.idMovement;
+    const detailId = params.data.id;
+
+    if (params.data.__isNew) {
+      params.api.applyTransaction({ remove: [params.data] });
+      this.detailsNotSavedChanges = true;
+      // Update count in master grid
+      const currentCount = params.api.getDisplayedRowCount();
+      this.updateRequisitionItemsCount(requisitionId, currentCount - 1);
+      successCallback();
+    } else {
+      try {
+        await lastValueFrom(this.requisitionsService.deleteReqItem(detailId));
+        alerts.basicAlert('Item eliminado', 'El item se eliminó correctamente.', 'success');
+        successCallback();
+      } catch (error) {
+        console.error('Error deleting detail row:', error);
+        alerts.basicAlert(
+          'Error',
+          'Error al eliminar el item.',
+          'error'
+        );
+      }
+    }
+  }
+
+  updateRequisitionItemsCount(requisitionId: number, count: number) {
+    if (this.masterGridApi) {
+      this.masterGridApi.forEachNode((node) => {
+        if (node.data && node.data.id === requisitionId) {
+          node.data.countrow = count;
+          this.masterGridApi.refreshCells({
+            rowNodes: [node],
+            columns: ['countrow'],
+            force: true
+          });
+          console.log(`✅ Actualizado "Items" para requisición ${requisitionId}: ${count}`);
+        }
+      });
+    }
   }
 
   // ==================== UTILITY METHODS ====================

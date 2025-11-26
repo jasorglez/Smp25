@@ -1,19 +1,27 @@
 <app-multi-line-editor></app-multi-line-editor>
 <div class="col-12 py-3">
-  <!-- Botones y grid principal -->
+  <!-- Título de la sección -->
+  <div class="row mb-2">
+    <div class="col">
+      <h2>Requisiciones</h2>
+      <p class="text-muted">Haga clic en el botón "Items" para ver y editar los detalles de cada requisición</p>
+    </div>
+  </div>
+
+  <!-- Botones y grid principal con master-detail -->
   <div class="row mb-3">
     <div class="col-auto">
       <div class="d-flex flex-column gap-1">
-        <button type="button" class="btn btn-primary" (click)="addMasterRow()">
+        <button type="button" class="btn btn-primary" (click)="addMasterRow()" title="Agregar nueva requisición">
           <i class="bi bi-plus-lg"></i>
         </button>
-        
+
         <button *ngIf="idRequisition != null" type="button" class="btn btn-info position-relative"
-          (click)="createOC(idRequisition, 'open')">
+          (click)="createOC(idRequisition, 'open')" title="Generar PDF">
           <i class="bi bi-file-earmark-pdf"></i>
         </button>
 
-        <button type="button" class="btn btn-success position-relative" (click)="saveMasterChanges()">
+        <button type="button" class="btn btn-success position-relative" (click)="saveMasterChanges()" title="Guardar cambios">
           <i class="bi bi-floppy"></i>
           <span
             class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
@@ -21,74 +29,32 @@
             <span class="visually-hidden">Hay cambios sin guardar</span>
           </span>
         </button>
-        <button type="button" class="btn btn-warning" (click)="revertMasterData()">
+
+        <button type="button" class="btn btn-warning" (click)="revertMasterData()" title="Deshacer cambios">
           <i class="bi bi-arrow-clockwise"></i>
         </button>
-        <button type="button" class="btn btn-danger" (click)="deleteMasterEntry()">
+
+        <button type="button" class="btn btn-danger" (click)="deleteMasterEntry()" title="Eliminar requisición">
           <i class="bi bi-trash"></i>
         </button>
       </div>
     </div>
+
     <div class="col">
-      <ag-grid-angular style="width: 100%; height: 32vh;" class="ag-theme-quartz small-text-ag-grid" 
+      <ag-grid-angular
+        style="width: 100%; height: 75vh;"
+        class="ag-theme-quartz small-text-ag-grid"
         [rowData]="masterRowData"
         [columnDefs]="colMaster"
-        [gridOptions]="gridOptions" 
-        (selectionChanged)="onMasterSelectionChanged($event)"
-        (cellValueChanged)="onMasterCellValueChanged($event)" (rowSelected)="onMasterRowSelected($event)"
-        (gridReady)="onMasterGridReady($event)" 
-        [rowSelection]="rowSelection" 
-        [pivotPanelShow]="pivotPanelShow"
         [gridOptions]="gridOptions"
+        (selectionChanged)="onMasterSelectionChanged($event)"
+        (cellValueChanged)="onMasterCellValueChanged($event)"
+        (rowSelected)="onMasterRowSelected($event)"
+        (gridReady)="onMasterGridReady($event)"
+        [rowSelection]="rowSelection"
+        [pivotPanelShow]="pivotPanelShow"
         [stopEditingWhenCellsLoseFocus]="true">
       </ag-grid-angular>
-    </div>
-  </div>
-</div>
-
-<!-- Detalles de la orden de compra -->
-<div *ngIf="idRequisition != null">
-
-  <div cla
-  
-  
-  ss="col-12 py-3">
-    <!-- Repetir estructura similar para la grid de detalles -->
-    <div class="row mb-3">
-      <div class="col-auto">
-        <div class="d-flex flex-column gap-1">
-          <button type="button" class="btn btn-primary" (click)="addDetailsRow()"><i
-              class="bi bi-plus-lg"></i></button>
-          <button type="button" class="btn btn-success position-relative" (click)="saveDetailsChanges()">
-            <i class="bi bi-floppy"></i>
-            <span
-              class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-              *ngIf="detailsNotSavedChanges"><span class="visually-hidden">Hay cambios sin guardar</span>
-            </span>
-          </button>
-          <button type="button" class="btn btn-warning" (click)="revertDetailsData()"><i
-              class="bi bi-arrow-clockwise"></i></button>
-          <button type="button" class="btn btn-danger" (click)="deleteDetailsEntry()"><i
-              class="bi bi-trash"></i></button>
-        </div>
-      </div>
-      <div class="col">
-        <h2>Detalles de la orden de compra {{nameRequisition()}}</h2>
-        <ag-grid-angular style="width: 100%; height: 32vh;" 
-            class="ag-theme-quartz small-text-ag-grid" [rowData]="detailsRowData"
-            [columnDefs]="colDetails" 
-            (selectionChanged)="onDetailsSelectionChanged($event)"
-            (cellValueChanged)="onDetailsCellValueChanged($event)" 
-            (rowSelected)="onDetailsRowSelected($event)"
-            (gridReady)="onDetailsGridReady($event)" 
-            [rowSelection]="rowSelection" 
-                        
-            [paginationPageSize]="paginationPageSize"
-            [paginationPageSizeSelector]="paginationPageSizeSelector" 
-            [pagination]="true" 
-            [gridOptions]="gridOptions">
-        </ag-grid-angular>
-      </div>
     </div>
   </div>
 </div>
