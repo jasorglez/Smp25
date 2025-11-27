@@ -331,6 +331,26 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
           return true;
         }
       },
+
+      {
+      field: 'pedimiento',
+      headerName: 'Pedimiento',
+      width: 120,
+      editable: false,
+      cellRenderer: (params: any) => {
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.checked = params.value === true;
+
+        input.addEventListener('change', () => {
+          params.data.pedimiento = input.checked;
+          params.api.refreshCells({ rowNodes: [params.node], columns: ['pedimiento'] });
+        });
+
+        return input;
+      }
+      },
+
       {
         field: 'purchases',
         headerName: 'Compras',

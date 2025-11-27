@@ -417,7 +417,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       },
       {
         field: 'comments',
-        headerName: 'Cumplimiento',
+        headerName: 'Cumplimiento de Pedimento',
         width: 300,
         editable: true,
         valueSetter: (params: any) => {
@@ -427,7 +427,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       },
       {
         field: 'column8',
-        headerName: 'Column8',
+        headerName: 'Cumplimiento de Entrega',
         width: 120,
         editable: true,
         valueSetter: (params: any) => {
