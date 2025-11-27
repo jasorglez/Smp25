@@ -213,7 +213,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     animateRows: true,
     suppressClickEdit: false,
     singleClickEdit: false,
-    stopEditingWhenCellsLoseFocus: true,
+    stopEditingWhenCellsLoseFocus: false,
     masterDetail: true,
     detailRowHeight: 600, // Altura del detail row para subfamilias (ajustable)
     isRowMaster: (dataItem: any) => {
@@ -269,10 +269,16 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
       event.data.__modified = true;
       this.hasUnsavedChanges = true;
-      // Envolver en setTimeout para evitar conflictos de renderizado
-      setTimeout(() => {
-        this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
-      }, 0);
+
+      // ✅ No hacer refreshCells para columnas de texto editables (insumo, articulo)
+      // porque cierra el editor mientras el usuario está escribiendo
+      const editableTextColumns = ['insumo', 'articulo'];
+      if (!editableTextColumns.includes(event.colDef.field)) {
+        // Envolver en setTimeout para evitar conflictos de renderizado
+        setTimeout(() => {
+          this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
+        }, 0);
+      }
     }
   };
 
@@ -292,9 +298,9 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         width: 130,
         filter: true,
         editable: true,
-        valueSetter: (params: any) => {
-          params.data.insumo = params.newValue ? params.newValue.toUpperCase() : '';
-          return true;
+        cellEditor: 'agTextCellEditor',
+        valueParser: (params: any) => {
+          return params.newValue ? params.newValue.toUpperCase() : '';
         }
       },
       {
@@ -303,9 +309,9 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         width: 250,
         filter: true,
         editable: true,
-        valueSetter: (params: any) => {
-          params.data.articulo = params.newValue ? params.newValue.toUpperCase() : '';
-          return true;
+        cellEditor: 'agTextCellEditor',
+        valueParser: (params: any) => {
+          return params.newValue ? params.newValue.toUpperCase() : '';
         }
       },
       {
@@ -511,6 +517,14 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   }
 
   onCellClicked(event: any): void {
+    // ✅ Si estamos editando una celda, no hacer nada para evitar cerrar el editor
+    const editableColumns = ['insumo', 'articulo'];
+    const currentColId = event.column.getColId();
+    if (editableColumns.includes(currentColId) && this.gridApi.getEditingCells().length > 0) {
+      console.log('⚠️ Edición en progreso, ignorando onCellClicked');
+      return;
+    }
+
     event.node.setSelected(true);
     this.data = event.data;
     this.idSelect = event.data.id; // Asignar el ID seleccionado
