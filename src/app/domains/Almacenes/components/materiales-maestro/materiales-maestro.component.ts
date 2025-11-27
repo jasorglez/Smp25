@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, effect } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, effect, Input, Output, EventEmitter } from '@angular/core';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -24,6 +24,7 @@ import { CustomersService } from 'app/services/customers.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { lastValueFrom, Subscription } from 'rxjs';
 import { SubfamiliaModalService, ModalData } from './services/subfamilia-modal.service';
+import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 
 @Component({
   selector: 'app-materiales-maestro',
@@ -48,6 +49,12 @@ import { SubfamiliaModalService, ModalData } from './services/subfamilia-modal.s
 })
 export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
+  // ========== INPUTS/OUTPUTS PARA MODO MODAL ==========
+  @Input() isModalMode: boolean = false;
+  @Input() filterMaterialId: number | null = null;
+  @Input() idRootInput: number | null = null;
+  @Output() onSaveComplete = new EventEmitter<void>();
+
   private gridApi!: GridApi;
   private materialsService = inject(MaterialsService);
   private signalsService = inject(SignalsService);
@@ -56,6 +63,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   private customersService = inject(CustomersService);
   private branchsService = inject(BranchsService);
   private subfamiliaModalService = inject(SubfamiliaModalService);
+  public activeModal = inject(NgbActiveModal, { optional: true });
 
   rowData: any[] = [];
   allMaterialsData: MaterialsResponse[] = []; // Guarda todos los datos
@@ -123,7 +131,15 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    if (this.idRoot) {
+    // ✅ Si estamos en modo modal, usar idRootInput en lugar de signal
+    if (this.isModalMode && this.idRootInput) {
+      console.log('🔵 MODO MODAL ACTIVADO');
+      console.log('   filterMaterialId:', this.filterMaterialId);
+      console.log('   idRootInput:', this.idRootInput);
+      this.idRoot = this.idRootInput;
+      this.loadCatalogs();
+      this.loadMaterialByIdFilter();
+    } else if (this.idRoot) {
       this.loadCatalogs();
       this.loadMaterials();
     }
@@ -193,6 +209,41 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         alerts.basicAlert('Error', 'Error al cargar materiales', 'error');
       }
     });
+  }
+
+  // ✅ Método para cargar un material específico (modo modal)
+  async loadMaterialByIdFilter() {
+    if (!this.idRoot || !this.filterMaterialId) {
+      console.warn('⚠️ No idRoot o filterMaterialId disponible');
+      return;
+    }
+
+    try {
+      console.log('📡 Cargando material con ID:', this.filterMaterialId);
+
+      const allMaterials = await lastValueFrom(
+        this.materialsService.getMaterialsxview(this.idRoot)
+      );
+
+      console.log('✅ Todos los materiales recibidos:', allMaterials.length);
+
+      // Filtrar el material específico por ID
+      const filteredMaterial = allMaterials.find(m => m.id === this.filterMaterialId);
+
+      if (filteredMaterial) {
+        this.rowData = [{
+          ...filteredMaterial,
+          costo: Math.floor(Math.random() * (500 - 50 + 1)) + 50
+        }];
+        console.log('✅ Material filtrado cargado:', this.rowData);
+      } else {
+        console.warn('⚠️ No se encontró material con ID:', this.filterMaterialId);
+        this.rowData = [];
+      }
+    } catch (error) {
+      console.error('❌ Error cargando material filtrado:', error);
+      alerts.basicAlert('Error', 'Error al cargar el material', 'error');
+    }
   }
 
 
@@ -804,7 +855,18 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
       alerts.basicAlert('Guardado', 'Los cambios han sido guardados correctamente', 'success');
       this.hasUnsavedChanges = false;
-      this.loadMaterials(); // Recargar datos
+
+      // ✅ Si estamos en modo modal, emitir evento y cerrar
+      if (this.isModalMode) {
+        console.log('🔵 Modo modal: emitiendo evento onSaveComplete y cerrando modal');
+        this.onSaveComplete.emit();
+        if (this.activeModal) {
+          this.activeModal.close();
+        }
+      } else {
+        // En modo standalone, recargar normalmente
+        this.loadMaterials();
+      }
     } catch (error: any) {
       console.error('Error al guardar cambios:', error);
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
@@ -853,6 +915,18 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     this.selectedMaterial = null;
     this.hasUnsavedChanges = false;
     alerts.basicAlert('Recargado', 'Los datos han sido recargados', 'success');
+  }
+
+  // ✅ Método para cerrar el modal con confirmación
+  closeMainModal(): void {
+    if (this.hasUnsavedChanges) {
+      if (!confirm('¿Deseas cerrar sin guardar los cambios?')) {
+        return;
+      }
+    }
+    if (this.activeModal) {
+      this.activeModal.dismiss();
+    }
   }
 
   // ==================== MÉTODOS CRUD PARA PROVEEDORES DEL MATERIAL ====================
