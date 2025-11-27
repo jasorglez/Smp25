@@ -1,9 +1,10 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 import { alerts } from 'app/helpers/alerts';
+import { ColDef, GridApi, GridReadyEvent, ValueGetterParams, ValueSetterParams, IRowNode, ValueFormatterParams } from 'ag-grid-community';
 import { ParameterByMaterialDescriptionService } from 'app/services/parameterByMaterialDescription.service';
 import { SelectWithTooltipEditorV2Component } from '../editors/select-with-tooltip-editor-v2.component';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
@@ -45,7 +46,6 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
             <button
               class="btn btn-sm btn-danger"
               (click)="deleteSelectedParametro()"
-              [disabled]="!selectedParametro"
             >
               <i class="bi bi-trash"></i> Borrar
             </button>
@@ -72,12 +72,13 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
   materialName: string;
   parameterVigente: any[] = [];
   parameter: any[] = [];
+  private gridApi!: GridApi;
   // Parámetros grid properties
   parametrosRowData: any[] = [];
   hasParametrosChanges: boolean = false;
   parametrosGridApi: any;
 
-  selectedParametro: any = null;
+  selectedParametro = signal<any>(null);
 
   parametrosGridOptions: any = {
     headerHeight: 25,
@@ -282,7 +283,7 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
 
     params.api.addEventListener('selectionChanged', () => {
       const selectedNodes = params.api.getSelectedNodes();
-      this.selectedParametro = selectedNodes.length > 0 ? selectedNodes[0].data : null;
+      this.selectedParametro.set(selectedNodes.length > 0 ? selectedNodes[0].data : null);
     });
   }
 
@@ -349,7 +350,7 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
     setTimeout(() => {
       this.parametrosGridApi.startEditingCell({
         rowIndex: 0,
-        colKey: 'parametro'
+        colKey: 'idParameter'
       });
     }, 100);
   }
@@ -434,7 +435,8 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
       return;
     }
 
-    if (!this.selectedParametro) {
+    const selected = this.selectedParametro();
+    if (!selected) {
       alerts.basicAlert(
         'Eliminar parámetro',
         'Por favor, seleccione un parámetro para eliminar.',
@@ -455,14 +457,14 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
         if (!result.isConfirmed) return;
 
         // Determinar el id real
-        const realId = this.selectedParametro.id ?? null;
+        const realId = selected.id ?? null;
 
         // Si la fila es nueva (no guardada en servidor) o no tiene id, la eliminamos localmente
-        if (this.selectedParametro.__isNew || !realId) {
-          this.parametrosGridApi.applyTransaction({ remove: [this.selectedParametro] });
+        if (selected.__isNew || !realId) {
+          this.parametrosGridApi.applyTransaction({ remove: [selected] });
           // Mantener parametrosRowData sincronizado
-          this.parametrosRowData = this.parametrosRowData.filter((r) => r !== this.selectedParametro);
-          this.selectedParametro = null;
+          this.parametrosRowData = this.parametrosRowData.filter((r) => r !== selected);
+          this.selectedParametro.set(null);
           alerts.basicAlert('Parámetro eliminado', 'El parámetro se eliminó localmente.', 'success');
           return;
         }
@@ -489,7 +491,7 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
             );
             // Recargar datos desde el servidor para mantener consistencia
             this.refreshParametros();
-            this.selectedParametro = null;
+            this.selectedParametro.set(null);
           });
       });
   }
