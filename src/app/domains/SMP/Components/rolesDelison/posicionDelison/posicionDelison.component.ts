@@ -81,6 +81,8 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
   hasPosicionChanges: boolean = false;
   posicionGridApi: any;
   selectedPosicion: any = null;
+  idUser: number = null;
+  isAdvanced: boolean = false;
   permisos: boolean = false;
   
   posicionGridOptions: any = {
@@ -126,6 +128,7 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
       headerName: 'Permisos',
       cellStyle: { backgroundColor: '#d4edda' }, 
       flex: 1,
+      hide: !this.isAdvanced && this.idUser !== 42,
       cellRenderer: (params) => {
         // Hacemos que el texto parezca un enlace para indicar que es clickeable.
         return `<span style="cursor: pointer; text-decoration: underline; color: #0d6efd;">Ver Permisos</span>`;
@@ -180,6 +183,8 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
     this.roleId = params.data.id;
     this.roleName = params.data.description;
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+    this.idUser = this.signalsService.getIdUSer()();
+    this.isAdvanced = this.signalsService.getIsAdvanced();
     this.loadPosicionData();
   }
 

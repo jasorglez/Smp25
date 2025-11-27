@@ -50,7 +50,7 @@ export class UsersComponent {
   departamentos: any[] = [];
   position: any[] = [];
   rowData: any[] = [];
-  isAdvanced: boolean = false;
+  
   paginationPageSize = 20; // Tamaño de página
   pagination = true; // Habilitar paginación
   notSavedChanges: boolean = false;
@@ -61,6 +61,7 @@ export class UsersComponent {
   dataEmpleado: any = null;
   empleadoCatalgos: any[] = [];
   idUser: number = null;
+  isAdvanced: boolean = false;
 
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
