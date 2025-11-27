@@ -1,0 +1,24 @@
+<div class="row">
+  <div class="col-12 text-center py-3">
+    <img src="assets/img/logo/req_logo.png" alt="" srcset="" class="img-fluid" style="width:100px;">
+  </div>
+
+
+  <div class="col-12 text-center">
+    <p><strong>Nombre Req.</strong></p>
+    <p>{{requisitionName()}}</p>
+  </div>
+  <div class="col-12 text-center">
+    <p><strong>Solicita</strong></p>
+    <p>{{requisitionSolicitant()}}</p>
+  </div>
+  <div class="col-12 text-center">
+    <p><strong>Fecha solicitud</strong></p>
+    <p>{{requisitionDate().split('T')[0]}}</p>
+  </div>
+  <div class="col-12 text-center">
+    <button type="button" class="btn btn-primary btn-lg" style="font-size:2rem;" (click)="generateOC(idRequisition(), 'print')">
+      <i class="bi bi-printer" style="font-size:2rem;"></i>
+    </button>
+  </div>
+</div>

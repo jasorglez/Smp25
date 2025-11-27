@@ -1,14 +1,18 @@
-import { Component, inject } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 import { alerts } from 'app/helpers/alerts';
+import { ColDef, GridApi, GridReadyEvent, ValueGetterParams, ValueSetterParams, IRowNode, ValueFormatterParams } from 'ag-grid-community';
+import { ParameterByMaterialDescriptionService } from 'app/services/parameterByMaterialDescription.service';
+import { SelectWithTooltipEditorV2Component } from '../editors/select-with-tooltip-editor-v2.component';
+import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 
 @Component({
   selector: 'app-detail-cell-renderer-parametros',
   standalone: true,
-  imports: [AgGridModule, CommonModule],
+  imports: [AgGridModule, CommonModule, SelectWithTooltipEditorV2Component],
   template: `
     <div
       style="padding: 10px; background-color: #e9ecef; height: 100%; display: flex; flex-direction: column;"
@@ -42,7 +46,6 @@ import { alerts } from 'app/helpers/alerts';
             <button
               class="btn btn-sm btn-danger"
               (click)="deleteSelectedParametro()"
-              [disabled]="!selectedParametro"
             >
               <i class="bi bi-trash"></i> Borrar
             </button>
@@ -63,21 +66,23 @@ import { alerts } from 'app/helpers/alerts';
   `
 })
 export class DetailCellRendererParametrosComponent implements ICellRendererAngularComp {
-
+  private parameterByMaterialDescriptionService = inject(ParameterByMaterialDescriptionService);
   params: any;
   materialId: number;
   materialName: string;
-
+  parameterVigente: any[] = [];
+  parameter: any[] = [];
+  private gridApi!: GridApi;
   // Parámetros grid properties
   parametrosRowData: any[] = [];
   hasParametrosChanges: boolean = false;
   parametrosGridApi: any;
-  selectedParametro: any = null;
+
+  selectedParametro = signal<any>(null);
 
   parametrosGridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
-    suppressEnterWhenEditing: false,
     rowSelection: 'single',
     onFirstDataRendered: (params) => {
       console.log('onFirstDataRendered - autosizing columns...');
@@ -92,24 +97,69 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
       console.log('Autosize completed');
     }
   };
+   private cleanDataForServer(data: any): any {
+    const cleanedData = { ...data };
+    delete cleanedData.__isNew;
+    delete cleanedData.__modified;
+    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
+      delete cleanedData.id;
+    }
+    return cleanedData;
+  }
 
   parametrosColumnDefs = [
     {
-      field: 'parametro',
+      field: 'idParameter',
       headerName: 'Parámetros',
       editable: true,
-      cellEditor: 'agSelectCellEditor',
-      cellEditorParams: {
-        values: ['BRIX', 'PH', 'OH']
+      cellDataType: 'number',
+      cellEditor: SelectWithTooltipEditorV2Component,
+      cellEditorParams: () => {
+        // Mapear al shape que espera SelectDropdownService: { id, description }
+        const opts = (this.parameter || []).map(f => ({
+          id: f.id,
+          description: f.description,
+          // opcionales: agregar campos auxiliares si los necesita el tooltip
+          valueAddition: f.valueAddition ?? '',
+          valueAddition2: f.valueAddition2 ?? ''
+        }));
+        console.log("OPCIONES EN EL EDITOR:", opts);
+        return { options: opts };
       },
-      width: 120,
+    
+      valueFormatter: (params) => {
+        // Aceptar que el valor pueda ser un objeto (editor devuelve {value,label})
+        const raw = params.value;
+        const val = (raw && typeof raw === 'object') ? (raw.value ?? raw.id) : raw;
+        console.log('Valor en valueFormatter:', val);
+        const fam = this.parameterVigente?.find(f => f.id === val);
+        // Si no encontramos la familia pero el raw es objeto, mostrar su label como respaldo
+        if (fam) return fam.description;
+        if (raw && typeof raw === 'object') return raw.label ?? '';
+        return '';
+      },
+    
       valueSetter: (params) => {
-        const value = params.newValue;
-        if (!value || typeof value !== 'string') {
-          alerts.basicAlert('Campo requerido', 'El parámetro es obligatorio', 'error');
+        const editorValue = params.newValue;
+        // El editor puede devolver: raw id, o un objeto { value, label } o { id, label }
+        let value: any = editorValue;
+        if (editorValue && typeof editorValue === 'object') {
+          value = editorValue.id ?? editorValue.value ?? editorValue;
+        }
+        if (value === undefined || value === null || value === '') {
+          alerts.basicAlert('Campo requerido', 'La subfamilia es obligatoria', 'error');
           return false;
         }
-        params.data[params.colDef.field] = value;
+        const duplicateExists = this.parametrosRowData.some((row, i) =>
+          i !== params.node.rowIndex && row.idParameter === value
+        );
+        if (duplicateExists) {
+          alerts.basicAlert('Valor duplicado', 'Ya existe esa subfamilia.', 'error');
+          return false;
+        }
+        params.data.idParameter = value;
+        const fam = this.parameterVigente.find(f => f.idSubfamily === value);
+        params.data.description = fam?.description || (editorValue && editorValue.label) || '';
         return true;
       }
     },
@@ -177,7 +227,7 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
       }
     },
     {
-      field: 'activo',
+      field: 'vigente',
       headerName: 'Activo',
       cellRenderer: 'agCheckboxCellRenderer',
       cellEditor: 'agCheckboxCellEditor',
@@ -188,13 +238,38 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
 
   components = {};
 
-  agInit(params: ICellRendererParams): void {
+  agInit(params: any): void {
     this.params = params;
-    this.materialId = params.data.id;
-    this.materialName = params.data.articulo || params.data.insumo;
-
+    console.log('DetailCellRendererParametrosComponent initialized with params:', params);
+    this.materialId = params.masterData.id;
+    this.materialName = params.masterData.articulo || params.masterData.insumo;
+    this.parameterVigentes();
+    this.parameters();
     // Load fake data for parámetros
     this.loadParametrosData();
+  }
+   constructor() {
+      effect(() => {
+         this.refreshParametros()
+      });
+    }
+  parameters(){
+    this.parameterByMaterialDescriptionService.getParameterVigente(9).subscribe(
+      (data: any) => {
+        this.parameterVigente = data;
+        console.log(data)
+      },
+      (error) => console.error('Error fetching data:', error)
+    );
+  }
+  parameterVigentes(){
+    this.parameterByMaterialDescriptionService.getParameter(9, this.materialId).subscribe(
+      (data: any) => {
+        this.parameter= data;
+        console.log(data)
+      },
+      (error) => console.error('Error fetching data:', error)
+    );
   }
 
   refresh(): boolean {
@@ -208,7 +283,7 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
 
     params.api.addEventListener('selectionChanged', () => {
       const selectedNodes = params.api.getSelectedNodes();
-      this.selectedParametro = selectedNodes.length > 0 ? selectedNodes[0].data : null;
+      this.selectedParametro.set(selectedNodes.length > 0 ? selectedNodes[0].data : null);
     });
   }
 
@@ -218,59 +293,29 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
   }
 
   loadParametrosData() {
-    // Generate fake data for parámetros
-    const fakeParametros = this.generateFakeParametros();
-    this.parametrosRowData = fakeParametros;
+    return new Promise((resolve) => {
+      this.parameterByMaterialDescriptionService.getParameterByMaterialDescription(this.materialId).subscribe(
+        (data: any) => {
+            this.parametrosRowData = data;
+          console.log('Datos obtenidos del servidor:', this.parametrosRowData);
 
-    // Refresh grid if exists
-    if (this.parametrosGridApi) {
-      this.parametrosGridApi.setGridOption('rowData', this.parametrosRowData);
-    }
+          // Calcular y almacenar los valores calculados para cada fila
+        },
+        (error) => {
+          console.error('Error fetching data:', error);
+          resolve(false);
+        }
+      );
+    });
   }
 
-  private generateFakeParametros(): any[] {
-    const parametros = ['BRIX', 'PH', 'OH'];
-    const parametrosData = [];
-
-    // Generate 2-4 parameters per material
-    const count = Math.floor(Math.random() * 3) + 2;
-
-    for (let i = 0; i < count; i++) {
-      const parametro = parametros[Math.floor(Math.random() * parametros.length)];
-
-      let minimo, objetivo, maximo;
-
-      if (parametro === 'BRIX') {
-        minimo = Math.floor(Math.random() * 5) + 8; // 8-12
-        objetivo = Math.floor(Math.random() * 3) + 10; // 10-12
-        maximo = Math.floor(Math.random() * 3) + 12; // 12-14
-      } else if (parametro === 'PH') {
-        minimo = Math.floor(Math.random() * 2) + 3; // 3-4
-        objetivo = Math.floor(Math.random() * 2) + 4; // 4-5
-        maximo = Math.floor(Math.random() * 2) + 5; // 5-6
-      } else if (parametro === 'OH') {
-        minimo = Math.floor(Math.random() * 5) + 1; // 1-5
-        objetivo = Math.floor(Math.random() * 5) + 3; // 3-7
-        maximo = Math.floor(Math.random() * 5) + 6; // 6-10
-      }
-
-      parametrosData.push({
-        id: `param_${this.materialId}_${i + 1}`,
-        idMaterial: this.materialId,
-        parametro: parametro,
-        minimo: minimo,
-        objetivo: objetivo,
-        maximo: maximo,
-        activo: Math.random() > 0.2, // 80% active
-        type: 'PARAMETRO'
-      });
-    }
-
-    return parametrosData;
-  }
+  
 
   refreshParametros() {
+    this.parameterVigentes();
+    this.parameters();
     this.loadParametrosData();
+
     this.hasParametrosChanges = false;
   }
 
@@ -283,12 +328,13 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
     const tempId = `temp_parametro_${Date.now()}`;
     const newParametro = {
       id: tempId,
-      idMaterial: this.materialId,
-      parametro: '',
+      idMaster: this.materialId,
+      idParameter: null,
       minimo: 0,
       objetivo: 0,
       maximo: 0,
       activo: true,
+      vigente: true,
       type: 'PARAMETRO',
       __isNew: true
     };
@@ -304,12 +350,13 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
     setTimeout(() => {
       this.parametrosGridApi.startEditingCell({
         rowIndex: 0,
-        colKey: 'parametro'
+        colKey: 'idParameter'
       });
     }, 100);
   }
 
   async saveParametros() {
+    /*
     if (this.params && this.params.context && this.params.context.PARAMETROS && this.params.context.PARAMETROS.save) {
       try {
         await this.params.context.PARAMETROS.save(this.materialId, this.parametrosRowData, 'PARAMETROS');
@@ -324,22 +371,128 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
       } catch (error) {
         console.error('Error saving parámetros:', error);
       }
-    }
+    }*/
+    const newRows = this.parametrosRowData.filter((row) => row.__isNew);
+    const modifiedRows = this.parametrosRowData.filter(
+        (row) => row.__modified && !row.__isNew
+      );
+     
+      const addObservables = newRows.map((row) => {
+        const cleanedData = this.cleanDataForServer(row);
+        return this.parameterByMaterialDescriptionService.addParameterByMaterialDescription(cleanedData);
+      });
+     
+      const updateObservables = modifiedRows.map((row) => {
+        const cleanedData = this.cleanDataForServer(row);
+        return this.parameterByMaterialDescriptionService.updateParameterByMaterialDescription(row.id, cleanedData);
+      });
+     
+      try {
+        await lastValueFrom(
+          concat(...addObservables, ...updateObservables).pipe(toArray())
+        );
+        /*
+        // Determinar qué ID vamos a seleccionar después de recargar
+        if (modifiedRows.length > 0) {
+          // Si hay filas modificadas, guardamos el ID de la última modificada
+          this.lastEditedRowId = modifiedRows[modifiedRows.length - 1].id;
+        } else if (newRows.length > 0) {
+          // Si hay filas nuevas, marcaremos que necesitamos seleccionar el ID máximo
+          this.lastEditedRowId = 'SELECT_MAX_ID';
+        }
+        */
+        alerts.basicAlert(
+          'Datos actualizados',
+          'Se han actualizado los datos correctamente.',
+          'success'
+        ); 
+         this.refreshParametros() // Esperar a que se actualicen los datos
+        /*
+        // Seleccionar la fila apropiada después de recargar
+        if (this.lastEditedRowId) {
+          if (this.lastEditedRowId === 'SELECT_MAX_ID') {
+            // Encontrar el ID máximo en los datos actuales
+            const maxId = Math.max(...this.rowData.map((row) => Number(row.id)));
+            this.selectRowById(maxId);
+          } else {
+            this.selectRowById(this.lastEditedRowId);
+          }
+          this.lastEditedRowId = null; // Resetear el ID
+        }*/
+      } catch (error) {
+        console.error(error);
+        alerts.basicAlert(
+          'Error',
+          'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
+          'error'
+        );
+      }
   }
 
   deleteSelectedParametro() {
-    if (!this.selectedParametro || !this.params.context.PARAMETROS.delete) {
+    if (!this.parametrosGridApi) {
+      alerts.basicAlert('Error', 'Grid no inicializado.', 'error');
       return;
     }
 
-    if (this.params && this.params.context && this.params.context.PARAMETROS && this.params.context.PARAMETROS.delete) {
-      this.params.context.PARAMETROS.delete(
-        { data: this.selectedParametro, api: this.parametrosGridApi },
-        async () => {
-          this.loadParametrosData();
-          this.selectedParametro = null;
-        }
+    const selected = this.selectedParametro();
+    if (!selected) {
+      alerts.basicAlert(
+        'Eliminar parámetro',
+        'Por favor, seleccione un parámetro para eliminar.',
+        'error'
       );
+      return;
     }
+
+    // Confirmación antes de eliminar
+    alerts
+      .confirmAlert(
+        'Eliminar parámetro',
+        '¿Está seguro que desea eliminar este parámetro?',
+        'warning',
+        'Sí, eliminar'
+      )
+      .then((result) => {
+        if (!result.isConfirmed) return;
+
+        // Determinar el id real
+        const realId = selected.id ?? null;
+
+        // Si la fila es nueva (no guardada en servidor) o no tiene id, la eliminamos localmente
+        if (selected.__isNew || !realId) {
+          this.parametrosGridApi.applyTransaction({ remove: [selected] });
+          // Mantener parametrosRowData sincronizado
+          this.parametrosRowData = this.parametrosRowData.filter((r) => r !== selected);
+          this.selectedParametro.set(null);
+          alerts.basicAlert('Parámetro eliminado', 'El parámetro se eliminó localmente.', 'success');
+          return;
+        }
+
+        // Si la fila existe en servidor, llamamos al servicio para eliminarla
+        this.parameterByMaterialDescriptionService
+          .deleteParameterByMaterialDescription(realId)
+          .pipe(
+            catchError((error) => {
+              alerts.basicAlert(
+                'Eliminar parámetro',
+                'Error al eliminar el parámetro.',
+                'error'
+              );
+              console.error(error);
+              return EMPTY;
+            })
+          )
+          .subscribe(() => {
+            alerts.basicAlert(
+              'Parámetro eliminado',
+              'El parámetro se eliminó correctamente.',
+              'success'
+            );
+            // Recargar datos desde el servidor para mantener consistencia
+            this.refreshParametros();
+            this.selectedParametro.set(null);
+          });
+      });
   }
 }

@@ -23,7 +23,7 @@ export const routes: Routes = [
         path: 'proceswar',
         loadComponent: () =>
           import(
-            './domains/Warehouse/pages/procwareh/procwareh.component'
+            './domains/ModWarehouse/pages/procwareh/procwareh.component'
           ).then((w) => w.ProcwarehComponent),
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'shopping' } },
@@ -34,7 +34,7 @@ export const routes: Routes = [
             path: 'warehouses',
             loadComponent: () =>
               import(
-                './domains/Warehouse/components/warehouses/warehouses.component'
+                './domains/ModWarehouse/components/warehouses/warehouses.component'
               ).then((w) => w.WarehousesComponent),
             canDeactivate: [UnsavedChangesGuard],
           },
@@ -42,7 +42,7 @@ export const routes: Routes = [
             path: 'page02typemat',
             loadComponent: () =>
               import(
-                './domains/Warehouse/pages/page02typemat/page02typemat.component'
+                './domains/ModWarehouse/pages/page02typemat/page02typemat.component'
               ).then((p) => p.Page02typematComponent),
             children: [
               { path: '', redirectTo: 'materialsMaster', pathMatch: 'full' },
@@ -61,7 +61,7 @@ export const routes: Routes = [
                 path: 'materialsMaster',
                 loadComponent: () =>
                   import(
-                    './domains/Warehouse/components/materials/materials.component'
+                    './domains/ModWarehouse/components/materials/materials.component'
                   ).then((m) => m.MaterialsComponent),
                 data: { type: 'CONSUMABLE' }, // Paso el Parámetro para materials
                 canDeactivate: [UnsavedChangesGuard],
@@ -70,7 +70,7 @@ export const routes: Routes = [
                 path: 'materials',
                 loadComponent: () =>
                   import(
-                    './domains/Warehouse/components/detailMaterials/detailMaterials.component'
+                    './domains/ModWarehouse/components/detailMaterials/detailMaterials.component'
                   ).then((m) => m.DetailMaterialsComponent),
                 data: { type: 'CONSUMABLE' }, // Paso el Parámetro para materials
                 canDeactivate: [UnsavedChangesGuard],
@@ -81,48 +81,38 @@ export const routes: Routes = [
             path: 'raw-materials',
             loadComponent: () =>
               import(
-                './domains/Warehouse/components/raw-materials/raw-materials.component'
+                './domains/ModWarehouse/components/raw-materials/raw-materials.component'
               ).then((s) => s.RawMaterialsComponent)
           },
+          
           {
             path: 'purchaseorder',
-            loadComponent: () =>
-              import(
-                './domains/Warehouse/components/purchaseorder/purchaseorder.component'
-              ).then((p) => p.PurchaseOrderComponent),
+            loadComponent: () => import('./domains/ModWarehouse/components/purchaseorder/purchaseorder.component').then((p) => p.PurchaseOrderComponent),
             canDeactivate: [UnsavedChangesGuard],
           },
+
           {
             path: 'entrances',
-            loadComponent: () =>
-              import(
-                './domains/Warehouse/components/entrances/entrances.component'
-              ).then((i) => i.EntrancesComponent),
+            loadComponent: () => import('./domains/ModWarehouse/components/entrances/entrances.component').then((i) => i.EntrancesComponent),
             canDeactivate: [UnsavedChangesGuard],
           },
+          
           {
             path: 'outings-st',
-            loadComponent: () =>
-              import(
-                './domains/ModWareHousesTD/components/inandout-st/inandout-st.component'
-              ).then((i) => i.InandoutStComponent),
+            loadComponent: () => import('./domains/ModWareHousesTD/components/inandout-st/inandout-st.component').then((i) => i.InandoutStComponent),
             canDeactivate: [UnsavedChangesGuard],
             data: { movementType: 'OUT' }
           },
+
           {
             path: 'requisitions',
-            loadComponent: () =>
-              import(
-                './domains/Warehouse/components/requisitions/requisitions.component'
-              ).then((r) => r.RequisitionsComponent),
+            loadComponent: () => import('./domains/ModWarehouse/components/requisitions/requisitions.component').then((r) => r.RequisitionsComponent),
             canDeactivate: [UnsavedChangesGuard],
           },
 
           {
             path: 'catalogs',
-            loadComponent: () =>
-              import('./domains/SMP/Components/catalogs/catalogs.component')
-                .then((s) => s.CatalogsComponent),
+            loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then((s) => s.CatalogsComponent),
             canDeactivate: [UnsavedChangesGuard],
             children: [
               {
@@ -131,14 +121,15 @@ export const routes: Routes = [
               },
               /*{
                 path: 'MATERIALES2',
-                loadComponent: () => import('./domains/Warehouse/components/catalogs/catalogs.component').then(p => p.CatalogsComponent)
+                loadComponent: () => import('./domains/ModWarehouse/components/catalogs/catalogs.component').then(p => p.CatalogsComponent)
               },*/
             ],
           },
+
           {
             path: 'page03',
             loadComponent: () =>
-              import('./domains/Warehouse/pages/pages03/pages03.component').then(
+              import('./domains/ModWarehouse/pages/pages03/pages03.component').then(
                 (p) => p.Pages03Component
               ),
             children: [
@@ -148,7 +139,7 @@ export const routes: Routes = [
                 path: 'providers',
                 loadComponent: () =>
                   import(
-                    './domains/Warehouse/components/providers/providers.component'
+                    './domains/ModWarehouse/components/providers/providers.component'
                   ).then((e) => e.ProvidersComponent),
                 data: { type: 'PROVIDERS' }, // Parámetro para proveedores
                 canDeactivate: [UnsavedChangesGuard],
@@ -166,7 +157,7 @@ export const routes: Routes = [
             path: 'setupwh',
             loadComponent: () =>
               import(
-                './domains/Warehouse/components/configwarehouse/configwarehouse.component'
+                './domains/ModWarehouse/components/configwarehouse/configwarehouse.component'
               ).then((r) => r.ConfigwarehouseComponent),
           },
         ],
@@ -193,7 +184,7 @@ export const routes: Routes = [
                 path: 'proveedores',
                 loadComponent: () =>
                   import(
-                    './domains/Warehouse/components/providers/providers.component'
+                    './domains/ModWarehouse/components/providers/providers.component'
                   ).then((p) => p.ProvidersComponent),
                 data: { type: 'PROVIDERS' },
                 canDeactivate: [UnsavedChangesGuard],
@@ -234,7 +225,7 @@ export const routes: Routes = [
                 path: 'primera-fase',
                 loadComponent: () =>
                   import(
-                    './domains/Warehouse/components/materials/materials.component'
+                    './domains/ModWarehouse/components/materials/materials.component'
                   ).then((m) => m.MaterialsComponent),
                 data: { type: 'PRIMERA_FASE' },
                 canDeactivate: [UnsavedChangesGuard],
@@ -243,7 +234,7 @@ export const routes: Routes = [
                 path: 'primera-fase-historico',
                 loadComponent: () =>
                   import(
-                    './domains/Warehouse/components/materials/materials.component'
+                    './domains/ModWarehouse/components/materials/materials.component'
                   ).then((m) => m.MaterialsComponent),
                 data: { type: 'PRIMERA_FASE_HISTORICO' },
               },
@@ -251,7 +242,7 @@ export const routes: Routes = [
                 path: 'segunda-fase',
                 loadComponent: () =>
                   import(
-                    './domains/Warehouse/components/materials/materials.component'
+                    './domains/ModWarehouse/components/materials/materials.component'
                   ).then((m) => m.MaterialsComponent),
                 data: { type: 'SEGUNDA_FASE' },
                 canDeactivate: [UnsavedChangesGuard],
@@ -260,7 +251,7 @@ export const routes: Routes = [
                 path: 'segunda-fase-historico',
                 loadComponent: () =>
                   import(
-                    './domains/Warehouse/components/materials/materials.component'
+                    './domains/ModWarehouse/components/materials/materials.component'
                   ).then((m) => m.MaterialsComponent),
                 data: { type: 'SEGUNDA_FASE_HISTORICO' },
               },
@@ -344,7 +335,7 @@ export const routes: Routes = [
             path: 'configuracion',
             loadComponent: () =>
               import(
-                './domains/Warehouse/components/configwarehouse/configwarehouse.component'
+                './domains/ModWarehouse/components/configwarehouse/configwarehouse.component'
               ).then((c) => c.ConfigwarehouseComponent),
           },
         ],
@@ -1710,6 +1701,48 @@ export const routes: Routes = [
         data: { permissions: { master: 'shoppingTD' } },
         children: [
           { path: '', redirectTo: '', pathMatch: 'full' },
+
+          {
+            path: 'materials-st',
+            loadComponent: () => import('./domains/ModProjects/components/materials/materials.component').then((c) => c.MaterialsComponent),
+          },   
+
+          {
+            path: 'requisitions-st',
+            loadComponent: () => import('./domains/ModWarehouse/components/requisitions/requisitions.component').then((r) => r.RequisitionsComponent),
+            canDeactivate: [UnsavedChangesGuard],
+          },
+
+            {
+            path: 'quotes-st',
+            loadComponent: () => import('./domains/ModWarehouse/components/quote/quote.component').then((q) => q.QuoteComponent),
+            canDeactivate: [UnsavedChangesGuard],
+          },
+
+          {
+            path: 'purchaseorder-st',
+            loadComponent: () => import('./domains/ModWarehouse/components/purchaseorder/purchaseorder.component').then((p) => p.PurchaseOrderComponent),
+            canDeactivate: [UnsavedChangesGuard],
+          },
+
+          {
+            path: 'providers-st',
+            loadComponent: () => import('./domains/ModWarehouse/components/providers/providers.component').then((p) => p.ProvidersComponent),
+            canDeactivate: [UnsavedChangesGuard],                       
+          },
+
+          {
+            path: 'setupwarehouse',
+            loadComponent: () => import('./domains/ModWarehouse/components/setupwarehouse/setupwarehouse.component').then((s) => s.SetupwarehouseComponent),
+            canDeactivate: [UnsavedChangesGuard],                       
+          },
+
+          {
+            path: 'catalogs',
+            loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then((s) => s.CatalogsComponent),
+            canDeactivate: [UnsavedChangesGuard],                       
+          },
+
         ]
       },
       {
@@ -1731,7 +1764,7 @@ export const routes: Routes = [
           },
           {
             path: 'warehouses', 
-            loadComponent: () => import('./domains/Warehouse/components/warehouses/warehouses.component').then((w) => w.WarehousesComponent),
+            loadComponent: () => import('./domains/ModWarehouse/components/warehouses/warehouses.component').then((w) => w.WarehousesComponent),
             canDeactivate: [UnsavedChangesGuard],
           },
           {
@@ -1739,7 +1772,7 @@ export const routes: Routes = [
             loadComponent: () => import('./domains/ModProjects/components/materials/materials.component').then((c) => c.MaterialsComponent),
           },         
           {
-             path: 'providers-st', loadComponent: () => import('./domains/Warehouse/components/providers/providers.component').then((e) => e.ProvidersComponent),
+             path: 'providers-st', loadComponent: () => import('./domains/ModWarehouse/components/providers/providers.component').then((e) => e.ProvidersComponent),
                 data: { type: 'PROVIDERS' }, // Parámetro para proveedores
                 canDeactivate: [UnsavedChangesGuard],
           },
@@ -1773,7 +1806,7 @@ export const routes: Routes = [
             path: 'providers',
             loadComponent: () =>
               import(
-                './domains/Warehouse/components/providers/providers.component'
+                './domains/ModWarehouse/components/providers/providers.component'
               ).then((c) => c.ProvidersComponent),
                 data: { type: 'PROVIDERS' },
                 canDeactivate: [UnsavedChangesGuard],
@@ -1805,7 +1838,7 @@ export const routes: Routes = [
                 path: 'primera-fase',
                 loadComponent: () =>
                   import(
-                    './domains/Warehouse/components/materials/materials.component'
+                    './domains/ModWarehouse/components/materials/materials.component'
                   ).then((m) => m.MaterialsComponent),
                 data: { type: 'PRIMERA_FASE' },
                 canDeactivate: [UnsavedChangesGuard],
@@ -1814,7 +1847,7 @@ export const routes: Routes = [
                 path: 'primera-fase-historico',
                 loadComponent: () =>
                   import(
-                    './domains/Warehouse/components/materials/materials.component'
+                    './domains/ModWarehouse/components/materials/materials.component'
                   ).then((m) => m.MaterialsComponent),
                 data: { type: 'PRIMERA_FASE_HISTORICO' },
               },
@@ -1822,7 +1855,7 @@ export const routes: Routes = [
                 path: 'segunda-fase',
                 loadComponent: () =>
                   import(
-                    './domains/Warehouse/components/materials/materials.component'
+                    './domains/ModWarehouse/components/materials/materials.component'
                   ).then((m) => m.MaterialsComponent),
                 data: { type: 'SEGUNDA_FASE' },
                 canDeactivate: [UnsavedChangesGuard],
@@ -1831,7 +1864,7 @@ export const routes: Routes = [
                 path: 'segunda-fase-historico',
                 loadComponent: () =>
                   import(
-                    './domains/Warehouse/components/materials/materials.component'
+                    './domains/ModWarehouse/components/materials/materials.component'
                   ).then((m) => m.MaterialsComponent),
                 data: { type: 'SEGUNDA_FASE_HISTORICO' },
               },
@@ -1841,7 +1874,7 @@ export const routes: Routes = [
             path: 'requisitions',
             loadComponent: () =>
               import(
-                './domains/Warehouse/components/requisitionsdelison/requisitionsdelison.component'
+                './domains/ModWarehouse/components/requisitionsdelison/requisitionsdelison.component'
               ).then((c) => c.RequisitionsDelisonComponent),
                 canDeactivate: [UnsavedChangesGuard],
           },
@@ -1849,7 +1882,7 @@ export const routes: Routes = [
             path: 'purchas_eorder',
             loadComponent: () =>
               import(
-                './domains/Warehouse/components/purchaseorderdelison/purchaseorderdelison.component'
+                './domains/ModWarehouse/components/purchaseorderdelison/purchaseorderdelison.component'
               ).then((c) => c.PurchaseOrderDelisonComponent),
                 canDeactivate: [UnsavedChangesGuard],
           },
@@ -1880,7 +1913,7 @@ export const routes: Routes = [
             path: 'configuracion',
             loadComponent: () =>
               import(
-                './domains/Warehouse/components/configwarehouse/configwarehouse.component'
+                './domains/ModWarehouse/components/configwarehouse/configwarehouse.component'
               ).then((c) => c.ConfigwarehouseComponent),
           },
         ],

@@ -1,0 +1,205 @@
+<app-multi-line-editor></app-multi-line-editor>
+
+<section class="col-12 mt-3">
+  <div class="row">
+    <main class="col-12">
+      <div class="row">
+        <!-- Columna de botones -->
+        <nav class="col-auto d-flex flex-column align-items-start">
+          <button
+            type="button"
+            class="btn btn-primary ms-1 me-1"
+            (click)="addRow()"
+          >
+            <i class="bi bi-plus-lg"></i>
+          </button>
+          <button
+            type="button"
+            class="btn btn-success ms-1 me-1 position-relative"
+            (click)="saveChanges()"
+          >
+            <i class="bi bi-floppy"></i>
+            <span
+              class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+              *ngIf="notSavedChanges"
+            >
+              <span class="visually-hidden">Hay cambios sin guardar</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            class="btn btn-warning ms-1 me-1"
+            (click)="revert()"
+          >
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+          <button
+            type="button"
+            class="btn btn-danger ms-1 me-1"
+            (click)="deleteEntry()"
+          >
+            <i class="bi bi-trash"></i>
+          </button>
+        </nav>
+
+        <section class="col">
+          <ag-grid-angular
+            style="width: 100%"
+            class="ag-theme-quartz small-text-ag-grid"
+            [ngStyle]="{ height: gridHeight }"
+            [rowData]="rowData"
+            [columnDefs]="colMaster"
+            (selectionChanged)="onSelectionChanged($event)"
+            [gridOptions]="gridOptions"
+            (cellValueChanged)="onCellValueChanged($event)"
+            (rowSelected)="onSelectedRow($event)"
+            (gridReady)="onGridReady($event)"
+            [components]="components"
+            (cellDoubleClicked)="onCellDoubleClicked($event)"
+            [stopEditingWhenCellsLoseFocus]="true"
+            [localeText]="AG_GRID_LOCALE_ES"
+          >
+          </ag-grid-angular>
+        </section>
+      </div>
+    </main>
+  </div>
+</section>
+
+@if (showContainerTabs) {
+<!--<div class="row mt-2">
+  <section class="flex flex-row gap-2 ml-4">
+    <button
+      class="btn mr-2"
+      [class.btn-primary]="showMeasureTab"
+      [class.btn-link]="!showMeasureTab"
+      (click)="selectTab('showMeasureTab')"
+    >
+      Unidades de medidas
+    </button>
+    <button
+      class="btn mr-2"
+      [class.btn-primary]="showMeasureTab"
+      [class.btn-link]="!showMeasureTab"
+    >
+      Entradas
+    </button>
+    <button
+      class="btn mr-2"
+      [class.btn-primary]="showMeasureTab"
+      [class.btn-link]="!showMeasureTab"
+    >
+      Salidas
+    </button>
+  </section>
+</div>-->
+
+<div class="row mt-2">
+  <div class="col-12">
+    <ul class="nav nav-tabs" id="myTab" role="tablist"></ul>
+
+    <div class="tab-content" id="myTabContent">
+      @if (showMeasureTab) {
+      <div
+        class="tab-pane fade show active"
+        id="loans"
+        role="tabpanel"
+        aria-labelledby="loans-tab"
+      >
+        <price-products-presentations
+          [inputRowData]="priceXproductsData()"
+          [inputIdMaterial]="idMaterial()"
+          [inputMedidas]="medidas"
+        />
+      </div>
+      }
+    </div>
+  </div>
+</div>
+}
+<!--
+<div class="modal fade" id="addFamilyModal" tabindex="-1" aria-labelledby="addFamilyModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h3 class="modal-title" id="addFamilyModalLabel">Añadir Familia</h3>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form (ngSubmit)="onSubmitFamily()">
+          <div class="mb-3">
+            <label for="familyName" class="form-label fw-bold">Nombre de la Familia</label>
+            <input type="text" class="form-control mb-4" id="familyName" [(ngModel)]="newFamilyName" name="familyName"
+              placeholder="Ingrese el nombre de la familia" required>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary" [disabled]="!newFamilyName">Añadir Familia</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="addSubFamilyModal" tabindex="-1" aria-labelledby="addSubFamilyModalLabel"
+  aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="addSubFamilyModalLabel">Añadir Subfamilia</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form (ngSubmit)="onSubmitSubFamily()">
+          <div class="mb-3">
+            <label for="familySelect" class="form-label fw-bold">Familia principal</label>
+            <select class="form-select mb-4" id="familySelect" [(ngModel)]="selectedFamily" name="familySelect" required>
+              <option value="" disabled selected>Seleccione una familia...</option>
+              <option *ngFor="let item of familias" [value]="item.id">{{item.description}}</option>
+            </select>
+
+            <label for="subFamilyName" class="form-label fw-bold">Nombre de la subfamilia</label>
+            <input type="text" class="form-control mb-4" id="subFamilyName" [(ngModel)]="newSubFamilyName"
+              name="subFamilyName" placeholder="Ingrese el nombre de la subfamilia" required
+              [disabled]="!selectedFamily">
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary" [disabled]="!selectedFamily || !newSubFamilyName">
+              Añadir Subfamilia
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="addLocationModal" tabindex="-1" aria-labelledby="addLocationModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h3 class="modal-title" id="addLocationModalLabel">Añadir Ubicación</h3>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form (ngSubmit)="onSubmitLocation()">
+          <div class="mb-3">
+            <label for="locationName" class="form-label fw-bold">Nombre de la Ubicación</label>
+            <input type="text" class="form-control mb-4" id="locationName" [(ngModel)]="newLocationName" name="locationName"
+              placeholder="Ingrese el nombre de la ubicación" required>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary" [disabled]="!newLocationName">Añadir Ubicación</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>-->
+
+@if (showContainerTabsProveedoresByBranch) {
+    <app-provedoor-by-branch />
+}
