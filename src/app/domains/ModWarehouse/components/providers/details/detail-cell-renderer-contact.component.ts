@@ -28,12 +28,17 @@ import { alerts } from 'app/helpers/alerts';
              >
               <i class="bi bi-person-plus"></i> Agregar
             </button>
-            <button 
-              class="btn btn-sm btn-primary me-2" 
+            <button
+              class="btn btn-sm btn-primary me-2 position-relative"
               (click)="saveContacts()"
               [disabled]="!hasContactChanges"
               >
               <i class="bi bi-floppy"></i> Guardar
+              <span
+                class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+                *ngIf="hasContactChanges">
+                <span class="visually-hidden">Hay cambios sin guardar</span>
+              </span>
             </button>
             <button 
               class="btn btn-sm btn-warning me-2" 
@@ -645,6 +650,10 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
   }
 
   refresContacts(){
+    this.hasContactChanges = false;
+    this.lastEditedRowId = null;
+    this.lastEditedRowName = null;
+    this.lastEditedRowPhone = null;
     this.loadContactData();
   }
   
@@ -675,6 +684,11 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
 
     this.contactRowData = [newContact, ...this.contactRowData];
     this.hasContactChanges = true;
+
+    // ✅ Rastrear esta nueva fila para focus después de guardar
+    this.lastEditedRowId = tempId;
+    this.lastEditedRowName = '';
+    this.lastEditedRowPhone = '';
 
     // Si es el único registro, marcarlo como principal
     this.ensureSinglePrincipal();
@@ -719,67 +733,69 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
 
         this.hasContactChanges = false;
 
-        // Limpiar los flags de las filas guardadas SIN recargar desde el servidor
-        this.contactRowData.forEach(row => {
-          delete row.__isNew;
-          delete row.__modified;
+        // ✅ RECARGAR datos desde el servidor para obtener los IDs reales
+        await new Promise<void>((resolve) => {
+          this.loadContactData(() => {
+            console.log('✅ Datos recargados desde servidor');
+            resolve();
+          });
         });
 
-        // PRIMERO restaurar el focus ANTES de actualizar el grid padre
-        // Esperar solo un ciclo de renderizado para asegurar que los cambios se reflejen
-        await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
+        // ⏰ Esperar para asegurar que el grid se renderice
+        await new Promise(resolve => setTimeout(resolve, 200));
 
-        if (this.contactGridApi && (targetContactId || targetContactName)) {
-          let rowToSelect = null;
+        console.log('🔍 Determinando ID final a seleccionar...');
+        console.log('   targetContactId original:', targetContactId);
+        console.log('   Total filas en contactRowData:', this.contactRowData.length);
 
-          console.log('🔍 Buscando contacto para restaurar (última editada)...', {
-            targetContactId,
-            targetContactName,
-            targetContactPhone,
-            totalRows: this.contactRowData.length
-          });
+        // ✅ DETERMINAR el ID final a seleccionar
+        let finalIdToSelect: number;
 
-          // Intentar encontrar por ID original (si no era temporal)
-          if (targetContactId && !String(targetContactId).startsWith('temp_')) {
-            rowToSelect = this.contactRowData.find(r => r.id === targetContactId);
-            console.log('Búsqueda por ID:', rowToSelect ? '✅ Encontrado' : '❌ No encontrado');
-          }
-
-          // Si no se encontró, buscar por nombre y teléfono
-          if (!rowToSelect && targetContactName) {
-            rowToSelect = this.contactRowData.find(r =>
-              r.campo2 === targetContactName &&
-              r.campo4 === targetContactPhone
-            );
-            console.log('Búsqueda por nombre/teléfono:', rowToSelect ? '✅ Encontrado' : '❌ No encontrado');
-          }
-
-          // Si se encontró la fila, seleccionarla y hacer scroll
-          if (rowToSelect) {
-            const rowIndex = this.contactRowData.indexOf(rowToSelect);
-            console.log('📍 Índice de la fila:', rowIndex);
-
-            const rowNode = this.contactGridApi.getDisplayedRowAtIndex(rowIndex);
-            if (rowNode) {
-              rowNode.setSelected(true);
-              this.contactGridApi.ensureIndexVisible(rowIndex, 'middle');
-              console.log('✅ Fila restaurada después de guardar (última editada):', rowToSelect);
-            } else {
-              console.error('❌ No se pudo obtener el rowNode en el índice:', rowIndex);
-            }
-          } else {
-            console.error('❌ No se encontró la fila para restaurar');
-          }
+        if (String(targetContactId).startsWith('temp_')) {
+          // Si era un ID temporal (registro nuevo), buscar el ID MAYOR (más reciente)
+          finalIdToSelect = Math.max(...this.contactRowData.map(r => Number(r.id)));
+          console.log('🆕 Era registro nuevo (ID temporal), seleccionando ID mayor:', finalIdToSelect);
+        } else {
+          // Si era un ID real (registro editado), usar ese ID
+          finalIdToSelect = Number(targetContactId);
+          console.log('✏️ Era registro editado, seleccionando ID:', finalIdToSelect);
         }
-
-        // ✅ Limpiar el rastreador de última fila editada después de restaurar
-        this.lastEditedRowId = null;
-        this.lastEditedRowName = null;
-        this.lastEditedRowPhone = null;
 
         // AHORA actualizar campos del contacto principal y contador en el grid padre
         await this.updatePrincipalContactInParent();
         await this.updateContactCountInParent();
+
+        // ⏰ Esperar otros 200ms después de las actualizaciones
+        await new Promise(resolve => setTimeout(resolve, 200));
+
+        console.log('🔍 Procediendo a seleccionar fila con ID:', finalIdToSelect);
+        console.log('   Total filas después de actualizaciones:', this.contactRowData.length);
+
+        // ✅ FINALMENTE seleccionar la fila usando el ID determinado
+        if (this.contactGridApi && finalIdToSelect) {
+          let foundAndSelected = false;
+
+          this.contactGridApi.forEachNode((node: any, index: number) => {
+            if (Number(node.data.id) === Number(finalIdToSelect)) {
+              console.log('✅ Encontrado nodo con ID', finalIdToSelect, 'en índice:', index);
+              node.setSelected(true);
+              this.contactGridApi.ensureIndexVisible(index, 'middle');
+              foundAndSelected = true;
+              console.log('✅ Fila seleccionada y centrada en viewport');
+            }
+          });
+
+          if (!foundAndSelected) {
+            console.error('❌ No se encontró el nodo en el grid');
+            console.error('   Buscando ID:', finalIdToSelect);
+            console.error('   IDs disponibles:', this.contactRowData.map(r => r.id));
+          }
+        }
+
+        // ✅ Limpiar el rastreador de última fila editada
+        this.lastEditedRowId = null;
+        this.lastEditedRowName = null;
+        this.lastEditedRowPhone = null;
 
       } catch (error) {
         console.error('❌ Error al guardar contactos:', error);

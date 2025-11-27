@@ -120,6 +120,12 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
   constructor() {
     effect(() => {
+      // ✅ Solo ejecutar este effect si NO estamos en modo modal
+      if (this.isModalMode) {
+        console.log('⚠️ Effect ignorado porque estamos en modo modal');
+        return;
+      }
+
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       if (this.idRoot) {
         this.loadCatalogs();
@@ -215,29 +221,43 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   async loadMaterialByIdFilter() {
     if (!this.idRoot || !this.filterMaterialId) {
       console.warn('⚠️ No idRoot o filterMaterialId disponible');
+      console.warn('   idRoot:', this.idRoot);
+      console.warn('   filterMaterialId:', this.filterMaterialId);
       return;
     }
 
     try {
-      console.log('📡 Cargando material con ID:', this.filterMaterialId);
+      console.log('📡 Cargando material filtrado...');
+      console.log('   idRoot:', this.idRoot);
+      console.log('   filterMaterialId:', this.filterMaterialId);
+      console.log('   Tipo de filterMaterialId:', typeof this.filterMaterialId);
 
       const allMaterials = await lastValueFrom(
         this.materialsService.getMaterialsxview(this.idRoot)
       );
 
-      console.log('✅ Todos los materiales recibidos:', allMaterials.length);
+      console.log('✅ Total materiales recibidos:', allMaterials.length);
+      console.log('📋 Primeros 3 materiales (para debug):', allMaterials.slice(0, 3).map(m => ({ id: m.id, tipo: typeof m.id, nombre: m.articulo })));
 
-      // Filtrar el material específico por ID
-      const filteredMaterial = allMaterials.find(m => m.id === this.filterMaterialId);
+      // Filtrar el material específico por ID (comparar como números)
+      const filteredMaterial = allMaterials.find(m => {
+        const match = Number(m.id) === Number(this.filterMaterialId);
+        if (match) {
+          console.log('✅ MATCH ENCONTRADO:', m);
+        }
+        return match;
+      });
 
       if (filteredMaterial) {
         this.rowData = [{
           ...filteredMaterial,
           costo: Math.floor(Math.random() * (500 - 50 + 1)) + 50
         }];
-        console.log('✅ Material filtrado cargado:', this.rowData);
+        console.log('✅ Material filtrado cargado (1 elemento):', this.rowData);
+        console.log('   rowData.length:', this.rowData.length);
       } else {
         console.warn('⚠️ No se encontró material con ID:', this.filterMaterialId);
+        console.warn('   IDs disponibles (primeros 10):', allMaterials.slice(0, 10).map(m => m.id));
         this.rowData = [];
       }
     } catch (error) {
