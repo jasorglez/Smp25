@@ -208,6 +208,9 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
   constructor() {
     effect(() => {
        this.onUndo()
+       setTimeout(() => {
+        this.updatePinnedRowTotals();
+      }, 500); 
     });
   }
   agInit(params: ICellRendererParams): void {
@@ -220,6 +223,7 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
     this.obtenerDatos();
     this.familias(this.data);
     this.familiasVigentes(this.data);
+    this.updatePinnedRowTotals()
 
 
     // Definir columnas con soporte para fórmulas en todas
@@ -310,8 +314,8 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
         valueFormatter: params => this.currencyPipe.transform(params.value, 'MXN', 'symbol', '1.2-2') || '$0.00',
         cellStyle: { textAlign: 'center' }
       },
-      { headerName: 'Cantidad a Utilizar', field: 'cantidad', editable: true, type: 'numericColumn', valueParser: params => Number(params.newValue), cellStyle: { textAlign: 'center' } },
-      { headerName: 'Proporcion', field: 'proporcion', editable: true, type: 'numericColumn', valueParser: params => Number(params.newValue), cellStyle: { textAlign: 'center' } },
+      { headerName: 'Cantidad a Utilizar', field: 'cantidad',editable: params => params.data.idCatalog !== 'Totales', type: 'numericColumn', valueParser: params => Number(params.newValue), cellStyle: { textAlign: 'center' } },
+      { headerName: 'Proporcion', field: 'proporcion',editable: params => params.data.idCatalog !== 'Totales', type: 'numericColumn', valueParser: params => Number(params.newValue), cellStyle: { textAlign: 'center' } },
       {
         headerName: 'Costo Total',
         field: 'costoTot',
@@ -981,7 +985,7 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
       idCatalog: 'Totales', // Etiqueta para la fila de totales
     };
     // Columnas que deben ser sumadas. Se excluyen las que no son numéricas como fechas o checkboxes.
-    const fieldsToSum = ['costoUni', 'costoTot', 'costoFin'];
+    const fieldsToSum = ['costoUni','cantidad', 'proporcion', 'costoTot', 'costoFin'];
 
     fieldsToSum.forEach(field => {
       let sum = 0;

@@ -34,6 +34,15 @@ export class DetailFamilySubFamilyComponent implements OnInit {
   // params recibidos desde ag-Grid (detailCellRenderer params)
   params: any;
 
+  gridOptions: any = {
+  };
+  autoGroupColumnDef = {
+  cellRendererParams: {
+    suppressCount: true
+  }
+};
+
+
   constructor() {}
 
   ngOnInit() {
@@ -146,7 +155,7 @@ export class DetailFamilySubFamilyComponent implements OnInit {
           headerName: 'Familia',
           editable: true,
           rowGroup: true,
-          hide: true,
+          hide: true
         },
         {
           field: 'subfamilia',
@@ -172,7 +181,6 @@ export class DetailFamilySubFamilyComponent implements OnInit {
     }
 
     async save(){
-
           const newRows = this.rowData.filter((row) => row.__isNew);
           const modifiedRows = this.rowData.filter(
             (row) => row.__modified && !row.__isNew
@@ -244,6 +252,7 @@ export class DetailFamilySubFamilyComponent implements OnInit {
 
             // Marcar que no hay cambios pendientes
             this.notSavedChanges = false;
+            this.loadCatalogData();
 
             // Seleccionar la fila recién guardada (si determinamos un id)
             try {

@@ -114,19 +114,16 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
       editable: true,
       cellDataType: 'number',
       cellEditor: SelectWithTooltipEditorV2Component,
-      cellEditorParams: () => {
-        // Mapear al shape que espera SelectDropdownService: { id, description }
-        const opts = (this.parameter || []).map(f => ({
-          id: f.id,
-          description: f.description,
-          // opcionales: agregar campos auxiliares si los necesita el tooltip
-          valueAddition: f.valueAddition ?? '',
-          valueAddition2: f.valueAddition2 ?? ''
-        }));
-        console.log("OPCIONES EN EL EDITOR:", opts);
-        return { options: opts };
+      cellEditorParams: (params) => {
+        return {
+          options: this.parameter?.map(f => ({
+            id: f.id,
+            description: f.description,
+            valueAddition: f.valueAddition ?? '',
+            valueAddition2: f.valueAddition2 ?? ''
+          }))
+        };
       },
-    
       valueFormatter: (params) => {
         // Aceptar que el valor pueda ser un objeto (editor devuelve {value,label})
         const raw = params.value;
@@ -250,7 +247,11 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
   }
    constructor() {
       effect(() => {
-         this.refreshParametros()
+        this.gridApi.refreshCells({ force: true });
+        setTimeout(() => {
+        this.parameterVigentes();
+        this.parameters();
+      }, 500);
       });
     }
   parameters(){
@@ -320,40 +321,42 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
   }
 
   addParametro() {
-    if (!this.parametrosGridApi) {
-      console.error('Parámetros grid API not ready');
-      return;
-    }
-
-    const tempId = `temp_parametro_${Date.now()}`;
-    const newParametro = {
-      id: tempId,
-      idMaster: this.materialId,
-      idParameter: null,
-      minimo: 0,
-      objetivo: 0,
-      maximo: 0,
-      activo: true,
-      vigente: true,
-      type: 'PARAMETRO',
-      __isNew: true
-    };
-
-    this.parametrosRowData = [newParametro, ...this.parametrosRowData];
-    this.hasParametrosChanges = true;
-
-    // Refresh grid
-    if (this.parametrosGridApi) {
-      this.parametrosGridApi.setGridOption('rowData', this.parametrosRowData);
-    }
-
-    setTimeout(() => {
-      this.parametrosGridApi.startEditingCell({
-        rowIndex: 0,
-        colKey: 'idParameter'
-      });
-    }, 100);
+  if (!this.parametrosGridApi) {
+    console.error('Parámetros grid API not ready');
+    return;
   }
+
+  const tempId = `temp_parametro_${Date.now()}`;
+
+  const newParametro = {
+    id: tempId,
+    idMaster: this.materialId,
+    idParameter: null,
+    minimo: 0,
+    objetivo: 0,
+    maximo: 0,
+    activo: true,
+    vigente: true,
+    type: 'PARAMETRO',
+    __isNew: true
+  };
+
+  // 👇 ESTA ES LA FORMA CORRECTA
+  this.parametrosGridApi.applyTransaction({
+    add: [newParametro],
+    addIndex: 0
+  });
+
+  this.hasParametrosChanges = true;
+
+  setTimeout(() => {
+    this.parametrosGridApi.startEditingCell({
+      rowIndex: 0,
+      colKey: 'idParameter'
+    });
+  }, 100);
+}
+
 
   async saveParametros() {
     /*

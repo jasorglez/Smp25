@@ -32,9 +32,11 @@
           class="ag-theme-quartz catalog-grid"
           [rowData]="rowData"
           [columnDefs]="columnDefs"
+          [gridOptions]="gridOptions"
           (rowGroupOpened)="onRowGroupOpened($event)"
           (gridReady)="onGridReady($event)"
-          (cellValueChanged)="onCellValueChanged($event)">
+          (cellValueChanged)="onCellValueChanged($event)"
+          [autoGroupColumnDef]="autoGroupColumnDef">
         </ag-grid-angular>
       </div>
     </div>
