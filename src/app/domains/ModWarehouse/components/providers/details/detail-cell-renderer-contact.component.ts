@@ -88,6 +88,9 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
   private lastEditedRowId: string | null = null;
   private lastEditedRowName: string | null = null;
   private lastEditedRowPhone: string | null = null;
+
+  // ✅ NUEVO: ID pendiente de selección después de guardar
+  private pendingSelectionId: number | null = null;
   
   contactGridOptions: any = {
     headerHeight: 25,
@@ -116,6 +119,41 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
       params.api.autoSizeColumns(allColumnIds, false);
 
       console.log('Autosize completed');
+
+      // ✅ Verificar si hay un ID pendiente de selección en el context
+      const pendingId = this.params?.context?.pendingContactSelection?.[this.providerId];
+      console.log('🔍 Verificando pendingSelectionId en context:', pendingId);
+      console.log('   Provider ID:', this.providerId);
+
+      if (pendingId !== null && pendingId !== undefined) {
+        console.log('🎯 Ejecutando selección pendiente para ID:', pendingId);
+
+        setTimeout(() => {
+          let foundAndSelected = false;
+
+          params.api.forEachNode((node: any, index: number) => {
+            if (Number(node.data.id) === Number(pendingId)) {
+              console.log('✅ Encontrado nodo con ID', pendingId, 'en índice:', index);
+              node.setSelected(true);
+              params.api.ensureIndexVisible(index, 'middle');
+              foundAndSelected = true;
+              console.log('✅ Fila seleccionada y centrada en viewport');
+            }
+          });
+
+          if (!foundAndSelected) {
+            console.error('❌ No se encontró el nodo en el grid');
+            console.error('   Buscando ID:', pendingId);
+            console.error('   IDs disponibles:', this.contactRowData.map(r => r.id));
+          }
+
+          // Limpiar el ID pendiente del context
+          if (this.params?.context?.pendingContactSelection) {
+            delete this.params.context.pendingContactSelection[this.providerId];
+            console.log('🧹 ID pendiente limpiado del context');
+          }
+        }, 100);
+      }
     }
   };
 
@@ -761,36 +799,20 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
           console.log('✏️ Era registro editado, seleccionando ID:', finalIdToSelect);
         }
 
+        // ✅ GUARDAR el ID pendiente en el CONTEXT del grid padre
+        // IMPORTANTE: Guardamos en context porque updatePrincipalContactInParent() destruye este componente
+        // al hacer applyTransaction(), y todas las variables de instancia se pierden
+        if (!this.params.context.pendingContactSelection) {
+          this.params.context.pendingContactSelection = {};
+        }
+        this.params.context.pendingContactSelection[this.providerId] = finalIdToSelect;
+        console.log('📌 ID guardado en context para selección pendiente:', finalIdToSelect);
+        console.log('   Provider ID:', this.providerId);
+
         // AHORA actualizar campos del contacto principal y contador en el grid padre
+        // Estos métodos destruyen y recrean este componente, pero el ID está a salvo en context
         await this.updatePrincipalContactInParent();
         await this.updateContactCountInParent();
-
-        // ⏰ Esperar otros 200ms después de las actualizaciones
-        await new Promise(resolve => setTimeout(resolve, 200));
-
-        console.log('🔍 Procediendo a seleccionar fila con ID:', finalIdToSelect);
-        console.log('   Total filas después de actualizaciones:', this.contactRowData.length);
-
-        // ✅ FINALMENTE seleccionar la fila usando el ID determinado
-        if (this.contactGridApi && finalIdToSelect) {
-          let foundAndSelected = false;
-
-          this.contactGridApi.forEachNode((node: any, index: number) => {
-            if (Number(node.data.id) === Number(finalIdToSelect)) {
-              console.log('✅ Encontrado nodo con ID', finalIdToSelect, 'en índice:', index);
-              node.setSelected(true);
-              this.contactGridApi.ensureIndexVisible(index, 'middle');
-              foundAndSelected = true;
-              console.log('✅ Fila seleccionada y centrada en viewport');
-            }
-          });
-
-          if (!foundAndSelected) {
-            console.error('❌ No se encontró el nodo en el grid');
-            console.error('   Buscando ID:', finalIdToSelect);
-            console.error('   IDs disponibles:', this.contactRowData.map(r => r.id));
-          }
-        }
 
         // ✅ Limpiar el rastreador de última fila editada
         this.lastEditedRowId = null;
