@@ -6,6 +6,9 @@ import { AuthService } from 'app/services/auth.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { CommonModule } from '@angular/common';
 import { lastValueFrom } from 'rxjs';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { MaterialesMaestroComponent } from 'app/domains/Almacenes/components/materiales-maestro/materiales-maestro.component';
+import { SignalsService } from 'app/services/signals.service';
 
 @Component({
   selector: 'app-detail-cell-renderer-materiales',
@@ -43,6 +46,8 @@ import { lastValueFrom } from 'rxjs';
 })
 export class DetailCellRendererComponentMateriales implements ICellRendererAngularComp {
   private materialsService = inject(MaterialsService);
+  private modalService = inject(NgbModal);
+  private signalsService = inject(SignalsService);
   authService = inject(AuthService);
 
   params: any;
@@ -59,6 +64,10 @@ export class DetailCellRendererComponentMateriales implements ICellRendererAngul
     rowHeight: 20,
     suppressClickEdit: true,
     rowSelection: 'single',
+    onCellDoubleClicked: (event: any) => {
+      console.log('🔵 Doble click en material:', event.data);
+      this.openMaterialModal(event.data);
+    },
     onFirstDataRendered: (params) => {
       console.log('onFirstDataRendered - autosizing columns...');
 
@@ -193,5 +202,56 @@ export class DetailCellRendererComponentMateriales implements ICellRendererAngul
 
   refreshMaterials() {
     this.loadMaterialData();
+  }
+
+  // ✅ Método para abrir el modal con MaterialesMaestroComponent
+  openMaterialModal(materialData: any) {
+    console.log('🔵 Abriendo modal para editar material:', materialData);
+    console.log('   Material completo:', materialData);
+    console.log('   materialData.id:', materialData.id);
+    console.log('   materialData.idMaterial:', materialData.idMaterial);
+    console.log('   idRoot (params.context):', this.params.context?.idRoot);
+    console.log('   idRoot (local):', this.idRoot);
+
+    // ✅ Intentar obtener idRoot de múltiples fuentes
+    let rootId = this.params.context?.idRoot || this.idRoot;
+
+    // Si aún no hay idRoot, intentar obtenerlo de la señal
+    if (!rootId) {
+      rootId = this.signalsService.getRootSelectedBySidebar()();
+      console.log('   idRoot (señal):', rootId);
+    }
+
+    if (!rootId) {
+      console.error('❌ No se puede abrir el modal: idRoot no está disponible');
+      console.error('   Intentado desde: params.context, this.idRoot, y señal');
+      return;
+    }
+
+    // ✅ Usar idMaterial si existe, si no usar id
+    const materialId = materialData.idMaterial || materialData.id;
+    console.log('🔍 ID final a usar:', materialId);
+
+    const modalRef = this.modalService.open(MaterialesMaestroComponent, {
+      size: 'xl',
+      backdrop: 'static',
+      keyboard: false
+    });
+
+    // Pasar los inputs al componente del modal
+    modalRef.componentInstance.isModalMode = true;
+    modalRef.componentInstance.filterMaterialId = materialId;
+    modalRef.componentInstance.idRootInput = rootId;
+
+    console.log('✅ Modal configurado con:');
+    console.log('   isModalMode: true');
+    console.log('   filterMaterialId:', materialId);
+    console.log('   idRootInput:', rootId);
+
+    // Suscribirse al evento de guardado completo
+    modalRef.componentInstance.onSaveComplete.subscribe(() => {
+      console.log('✅ Material guardado, recargando lista de materiales...');
+      this.loadMaterialData();
+    });
   }
 }

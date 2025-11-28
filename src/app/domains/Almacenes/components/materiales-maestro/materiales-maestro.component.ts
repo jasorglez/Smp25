@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, effect } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, effect, Input, Output, EventEmitter } from '@angular/core';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -24,6 +24,7 @@ import { CustomersService } from 'app/services/customers.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { lastValueFrom, Subscription } from 'rxjs';
 import { SubfamiliaModalService, ModalData } from './services/subfamilia-modal.service';
+import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 
 @Component({
   selector: 'app-materiales-maestro',
@@ -48,6 +49,12 @@ import { SubfamiliaModalService, ModalData } from './services/subfamilia-modal.s
 })
 export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
+  // ========== INPUTS/OUTPUTS PARA MODO MODAL ==========
+  @Input() isModalMode: boolean = false;
+  @Input() filterMaterialId: number | null = null;
+  @Input() idRootInput: number | null = null;
+  @Output() onSaveComplete = new EventEmitter<void>();
+
   private gridApi!: GridApi;
   private materialsService = inject(MaterialsService);
   private signalsService = inject(SignalsService);
@@ -56,6 +63,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   private customersService = inject(CustomersService);
   private branchsService = inject(BranchsService);
   private subfamiliaModalService = inject(SubfamiliaModalService);
+  public activeModal = inject(NgbActiveModal, { optional: true });
 
   rowData: any[] = [];
   allMaterialsData: MaterialsResponse[] = []; // Guarda todos los datos
@@ -112,6 +120,12 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
   constructor() {
     effect(() => {
+      // ✅ Solo ejecutar este effect si NO estamos en modo modal
+      if (this.isModalMode) {
+        console.log('⚠️ Effect ignorado porque estamos en modo modal');
+        return;
+      }
+
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       if (this.idRoot) {
         this.loadCatalogs();
@@ -123,7 +137,15 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    if (this.idRoot) {
+    // ✅ Si estamos en modo modal, usar idRootInput en lugar de signal
+    if (this.isModalMode && this.idRootInput) {
+      console.log('🔵 MODO MODAL ACTIVADO');
+      console.log('   filterMaterialId:', this.filterMaterialId);
+      console.log('   idRootInput:', this.idRootInput);
+      this.idRoot = this.idRootInput;
+      this.loadCatalogs();
+      this.loadMaterialByIdFilter();
+    } else if (this.idRoot) {
       this.loadCatalogs();
       this.loadMaterials();
     }
@@ -195,6 +217,55 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     });
   }
 
+  // ✅ Método para cargar un material específico (modo modal)
+  async loadMaterialByIdFilter() {
+    if (!this.idRoot || !this.filterMaterialId) {
+      console.warn('⚠️ No idRoot o filterMaterialId disponible');
+      console.warn('   idRoot:', this.idRoot);
+      console.warn('   filterMaterialId:', this.filterMaterialId);
+      return;
+    }
+
+    try {
+      console.log('📡 Cargando material filtrado...');
+      console.log('   idRoot:', this.idRoot);
+      console.log('   filterMaterialId:', this.filterMaterialId);
+      console.log('   Tipo de filterMaterialId:', typeof this.filterMaterialId);
+
+      const allMaterials = await lastValueFrom(
+        this.materialsService.getMaterialsxview(this.idRoot)
+      );
+
+      console.log('✅ Total materiales recibidos:', allMaterials.length);
+      console.log('📋 Primeros 3 materiales (para debug):', allMaterials.slice(0, 3).map(m => ({ id: m.id, tipo: typeof m.id, nombre: m.articulo })));
+
+      // Filtrar el material específico por ID (comparar como números)
+      const filteredMaterial = allMaterials.find(m => {
+        const match = Number(m.id) === Number(this.filterMaterialId);
+        if (match) {
+          console.log('✅ MATCH ENCONTRADO:', m);
+        }
+        return match;
+      });
+
+      if (filteredMaterial) {
+        this.rowData = [{
+          ...filteredMaterial,
+          costo: Math.floor(Math.random() * (500 - 50 + 1)) + 50
+        }];
+        console.log('✅ Material filtrado cargado (1 elemento):', this.rowData);
+        console.log('   rowData.length:', this.rowData.length);
+      } else {
+        console.warn('⚠️ No se encontró material con ID:', this.filterMaterialId);
+        console.warn('   IDs disponibles (primeros 10):', allMaterials.slice(0, 10).map(m => m.id));
+        this.rowData = [];
+      }
+    } catch (error) {
+      console.error('❌ Error cargando material filtrado:', error);
+      alerts.basicAlert('Error', 'Error al cargar el material', 'error');
+    }
+  }
+
 
   components = {
     detailCellRendererProveedores: DetailCellRendererProveedoresComponent,
@@ -213,7 +284,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     animateRows: true,
     suppressClickEdit: false,
     singleClickEdit: false,
-    stopEditingWhenCellsLoseFocus: true,
+    stopEditingWhenCellsLoseFocus: false,
     masterDetail: true,
     detailRowHeight: 600, // Altura del detail row para subfamilias (ajustable)
     isRowMaster: (dataItem: any) => {
@@ -269,10 +340,16 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
       event.data.__modified = true;
       this.hasUnsavedChanges = true;
-      // Envolver en setTimeout para evitar conflictos de renderizado
-      setTimeout(() => {
-        this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
-      }, 0);
+
+      // ✅ No hacer refreshCells para columnas de texto editables (insumo, articulo)
+      // porque cierra el editor mientras el usuario está escribiendo
+      const editableTextColumns = ['insumo', 'articulo'];
+      if (!editableTextColumns.includes(event.colDef.field)) {
+        // Envolver en setTimeout para evitar conflictos de renderizado
+        setTimeout(() => {
+          this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
+        }, 0);
+      }
     }
   };
 
@@ -292,9 +369,9 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         width: 130,
         filter: true,
         editable: true,
-        valueSetter: (params: any) => {
-          params.data.insumo = params.newValue ? params.newValue.toUpperCase() : '';
-          return true;
+        cellEditor: 'agTextCellEditor',
+        valueParser: (params: any) => {
+          return params.newValue ? params.newValue.toUpperCase() : '';
         }
       },
       {
@@ -303,9 +380,9 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         width: 250,
         filter: true,
         editable: true,
-        valueSetter: (params: any) => {
-          params.data.articulo = params.newValue ? params.newValue.toUpperCase() : '';
-          return true;
+        cellEditor: 'agTextCellEditor',
+        valueParser: (params: any) => {
+          return params.newValue ? params.newValue.toUpperCase() : '';
         }
       },
       {
@@ -511,6 +588,14 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   }
 
   onCellClicked(event: any): void {
+    // ✅ Si estamos editando una celda, no hacer nada para evitar cerrar el editor
+    const editableColumns = ['insumo', 'articulo'];
+    const currentColId = event.column.getColId();
+    if (editableColumns.includes(currentColId) && this.gridApi.getEditingCells().length > 0) {
+      console.log('⚠️ Edición en progreso, ignorando onCellClicked');
+      return;
+    }
+
     event.node.setSelected(true);
     this.data = event.data;
     this.idSelect = event.data.id; // Asignar el ID seleccionado
@@ -790,7 +875,18 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
       alerts.basicAlert('Guardado', 'Los cambios han sido guardados correctamente', 'success');
       this.hasUnsavedChanges = false;
-      this.loadMaterials(); // Recargar datos
+
+      // ✅ Si estamos en modo modal, emitir evento y cerrar
+      if (this.isModalMode) {
+        console.log('🔵 Modo modal: emitiendo evento onSaveComplete y cerrando modal');
+        this.onSaveComplete.emit();
+        if (this.activeModal) {
+          this.activeModal.close();
+        }
+      } else {
+        // En modo standalone, recargar normalmente
+        this.loadMaterials();
+      }
     } catch (error: any) {
       console.error('Error al guardar cambios:', error);
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
@@ -839,6 +935,18 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     this.selectedMaterial = null;
     this.hasUnsavedChanges = false;
     alerts.basicAlert('Recargado', 'Los datos han sido recargados', 'success');
+  }
+
+  // ✅ Método para cerrar el modal con confirmación
+  closeMainModal(): void {
+    if (this.hasUnsavedChanges) {
+      if (!confirm('¿Deseas cerrar sin guardar los cambios?')) {
+        return;
+      }
+    }
+    if (this.activeModal) {
+      this.activeModal.dismiss();
+    }
   }
 
   // ==================== MÉTODOS CRUD PARA PROVEEDORES DEL MATERIAL ====================

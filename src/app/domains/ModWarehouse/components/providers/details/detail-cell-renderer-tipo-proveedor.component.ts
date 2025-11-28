@@ -891,52 +891,63 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
       const principalRow = this.rowData.find(row => row.principal === true);
 
       if (principalRow) {
-        const tipoProveedorConcatenado = `${principalRow.categoria}/${principalRow.familia}/${principalRow.subfamilia}`;
+        // ✅ Validar que el registro principal tenga todos los campos completos
+        const isComplete = principalRow.categoria && principalRow.familia && principalRow.subfamilia;
 
-        console.log('🔍 OBTENIENDO DATOS DEL PROVIDER');
-        console.log('🔍 Tipo concatenado:', tipoProveedorConcatenado);
-        console.log('🔍 ID del Provider:', this.params.data.id);
+        if (!isComplete) {
+          console.log('⚠️ El registro principal está incompleto. No se actualizará el campo typeProvider en el grid padre.');
+          console.log('   Categoría:', principalRow.categoria || '(vacío)');
+          console.log('   Familia:', principalRow.familia || '(vacío)');
+          console.log('   Subfamilia:', principalRow.subfamilia || '(vacío)');
+          // No actualizar typeProvider pero continuar con el resto del flujo
+        } else {
+          const tipoProveedorConcatenado = `${principalRow.categoria}/${principalRow.familia}/${principalRow.subfamilia}`;
 
-        try {
-          // Consultar con getCustomerById
-          console.log('\n📡 Consultando getCustomerById(' + this.params.data.id + ')...');
-          const providerData: any = await new Promise((resolve, reject) => {
-            this.customersService.getCustomerById(this.params.data.id).subscribe({
-              next: resolve,
-              error: reject
+          console.log('🔍 OBTENIENDO DATOS DEL PROVIDER');
+          console.log('🔍 Tipo concatenado:', tipoProveedorConcatenado);
+          console.log('🔍 ID del Provider:', this.params.data.id);
+
+          try {
+            // Consultar con getCustomerById
+            console.log('\n📡 Consultando getCustomerById(' + this.params.data.id + ')...');
+            const providerData: any = await new Promise((resolve, reject) => {
+              this.customersService.getCustomerById(this.params.data.id).subscribe({
+                next: resolve,
+                error: reject
+              });
             });
-          });
 
-          console.log('✅ Respuesta de getCustomerById:', providerData);
-          console.log('📊 typework actual:', providerData?.typework);
+            console.log('✅ Respuesta de getCustomerById:', providerData);
+            console.log('📊 typework actual:', providerData?.typework);
 
-          // Actualizar solo el campo typework
-          providerData.typework = tipoProveedorConcatenado;
-          console.log('📝 Actualizando typework a:', tipoProveedorConcatenado);
+            // Actualizar solo el campo typework
+            providerData.typework = tipoProveedorConcatenado;
+            console.log('📝 Actualizando typework a:', tipoProveedorConcatenado);
 
-          // Guardar con updateCustomer
-          console.log('💾 Guardando en DB Administration.Customer...');
-          await new Promise((resolve, reject) => {
-            this.customersService.updateCustomer(this.params.data.id.toString(), providerData).subscribe({
-              next: resolve,
-              error: reject
+            // Guardar con updateCustomer
+            console.log('💾 Guardando en DB Administration.Customer...');
+            await new Promise((resolve, reject) => {
+              this.customersService.updateCustomer(this.params.data.id.toString(), providerData).subscribe({
+                next: resolve,
+                error: reject
+              });
             });
-          });
 
-          console.log('✅ typework actualizado exitosamente en DB Administration.Customer');
+            console.log('✅ typework actualizado exitosamente en DB Administration.Customer');
 
-          // Actualizar los datos locales en el objeto del grid padre
-          this.params.data.typework = tipoProveedorConcatenado;
-          this.params.data.typeProvider = tipoProveedorConcatenado;
+            // Actualizar los datos locales en el objeto del grid padre
+            this.params.data.typework = tipoProveedorConcatenado;
+            this.params.data.typeProvider = tipoProveedorConcatenado;
 
-        } catch (error) {
-          console.error('❌ Error al actualizar typework en DB:', error);
-          console.error('Detalle del error:', JSON.stringify(error, null, 2));
-          await alerts.basicAlert(
-            'Advertencia',
-            'Los datos de subfamilia se guardaron correctamente, pero hubo un error al actualizar el tipo de proveedor en la tabla principal.',
-            'warning'
-          );
+          } catch (error) {
+            console.error('❌ Error al actualizar typework en DB:', error);
+            console.error('Detalle del error:', JSON.stringify(error, null, 2));
+            await alerts.basicAlert(
+              'Advertencia',
+              'Los datos de subfamilia se guardaron correctamente, pero hubo un error al actualizar el tipo de proveedor en la tabla principal.',
+              'warning'
+            );
+          }
         }
       }
 

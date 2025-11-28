@@ -3,10 +3,12 @@
     <!-- Botonera lateral -->
     <div class="col-auto">
       <div class="d-flex flex-column gap-1">
-        <button type="button" class="btn btn-success" (click)="addMaterial()" title="Agregar material">
+        <!-- Botón de agregar (solo en modo standalone) -->
+        <button *ngIf="!isModalMode" type="button" class="btn btn-success" (click)="addMaterial()" title="Agregar material">
           <i class="bi bi-plus-lg"></i>
         </button>
 
+        <!-- Botón de guardar (siempre visible) -->
         <button type="button" class="btn btn-primary position-relative" (click)="saveChanges()" [disabled]="!hasUnsavedChanges" title="Guardar cambios">
           <i class="bi bi-floppy"></i>
           <span
@@ -16,12 +18,19 @@
         </span>
         </button>
 
-        <button type="button" class="btn btn-warning" (click)="refreshData()" title="Recargar datos">
+        <!-- Botón de refrescar (solo en modo standalone) -->
+        <button *ngIf="!isModalMode" type="button" class="btn btn-warning" (click)="refreshData()" title="Recargar datos">
           <i class="bi bi-arrow-clockwise"></i>
         </button>
 
-        <button type="button" class="btn btn-danger" (click)="deleteMaterial()" [disabled]="!selectedMaterial" title="Eliminar material">
+        <!-- Botón de eliminar (solo en modo standalone) -->
+        <button *ngIf="!isModalMode" type="button" class="btn btn-danger" (click)="deleteMaterial()" [disabled]="!selectedMaterial" title="Eliminar material">
           <i class="bi bi-trash"></i>
+        </button>
+
+        <!-- Botón de cerrar (solo en modo modal) -->
+        <button *ngIf="isModalMode" type="button" class="btn btn-secondary" (click)="closeMainModal()" title="Cerrar modal">
+          <i class="bi bi-x-lg"></i>
         </button>
 
       </div>
