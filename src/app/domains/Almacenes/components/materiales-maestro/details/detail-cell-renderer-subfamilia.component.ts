@@ -44,7 +44,8 @@ import { SubfamiliaModalService } from '../services/subfamilia-modal.service';
       [rowData]="flattenTreeData()"
       [gridOptions]="gridOptions"
       [rowSelection]="'single'"
-      (gridReady)="onGridReady($event)">
+      (gridReady)="onGridReady($event)"
+      [autoGroupColumnDef]="autoGroupColumnDef">
     </ag-grid-angular>
   </div>
 </div>
@@ -68,6 +69,12 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
   materialName: string;
   idRoot: number;
   idFamilia: number;
+
+  autoGroupColumnDef = {
+    cellRendererParams: {
+      suppressCount: true
+    }
+  };
 
   gridApi!: GridApi;
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
@@ -199,118 +206,129 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
 
   // Definición de columnas con grupos separados y filtros independientes
   get columnDefs(): ColDef[] {
-    
-    return [
-      {
-        // Columna de categoría - agrupación principal
-        headerName: 'Categoría',
-        field: 'category',
-        rowGroup: true,
-        hide: true, // Mostrar como columna
-        filter: 'agSetColumnFilter',
-        filterParams: {
-          buttons: ['reset', 'apply'],
-          closeOnApply: true,
-          caseSensitive: false
-        },
-        width: 150,
-        resizable: true,
-        cellClass: 'group-cell',
-        showRowGroup: false
-      },
-      {
-        // Columna de sabor - agrupación secundaria
-        headerName: 'Sabor',
-        field: 'flavor',
-        rowGroup: true,
-        hide: true, // Mostrar como columna
-        filter: 'agSetColumnFilter',
-        filterParams: {
-          buttons: ['reset', 'apply'],
-          closeOnApply: true,
-          caseSensitive: false
-        },
-        width: 150,
-        resizable: true,
-        cellClass: 'group-cell'
-      },
-      {
-        headerName: 'Presentación',
-        field: 'presentation',
-        filter: 'agSetColumnFilter',
-        filterParams: {
-          buttons: ['reset', 'apply'],
-          closeOnApply: true,
-          caseSensitive: false
-        },
-        width: 300,
-        resizable: true
-      },
-      {
-        headerName: 'Se usa aquí',
-        field: 'seUsaAqui',
-        width: 120,
-        cellRenderer: (params: any) => {
-          // No renderizar checkbox en grupos
-          if (params.node.group) {
-            return '';
-          }
-
-          // Crear checkbox HTML
-          const checkbox = document.createElement('input');
-          checkbox.type = 'checkbox';
-          checkbox.checked = params.value === true;
-          checkbox.style.cursor = 'pointer';
-          checkbox.style.width = '18px';
-          checkbox.style.height = '18px';
-
-          // Manejar el clic del checkbox
-          checkbox.addEventListener('click', (event) => {
-            event.stopPropagation();
-
-            // Ejecutar dentro de la zona de Angular para que detecte cambios
-            this.ngZone.run(() => {
-              const oldValue = params.data.seUsaAqui;
-              const newValue = !oldValue;
-
-              console.log('🔔 Checkbox clickeado:', {
-                presentation: params.data.presentation,
-                oldValue,
-                newValue
-              });
-
-              // Actualizar el valor en los datos
-              params.data.seUsaAqui = newValue;
-
-              // Llamar al handler de cambios
-              this.onSeUsaAquiChanged({
-                data: params.data,
-                oldValue,
-                newValue,
-                node: params.node
-              });
-
-              // Refrescar solo esta celda
-              params.api.refreshCells({
-                rowNodes: [params.node],
-                columns: ['seUsaAqui'],
-                force: true
-              });
-            });
+  return [
+    {
+      headerName: 'Categoría',
+      field: 'category',
+      rowGroup: true,
+      rowGroupIndex: 0,
+      cellRenderer: (params: any) => {
+        // category: nivel 0 (top-level group)
+        if (params.node.group && params.node.level === 0) {
+          // Los children de category son nodos "flavor" (nivel 1).
+          let totalCount = 0;
+          let checkedCount = 0;
+          params.node.childrenAfterFilter?.forEach((flavorNode: any) => {
+            // Cada flavorNode tiene sus hijos reales (las filas)
+            const flavorChecked = flavorNode.childrenAfterFilter?.filter((child: any) => child.data?.seUsaAqui === true).length || 0;
+            const flavorTotal = flavorNode.allChildrenCount || 0;
+            checkedCount += flavorChecked;
+            totalCount += flavorTotal;
           });
-
-          const wrapper = document.createElement('div');
-          wrapper.style.display = 'flex';
-          wrapper.style.justifyContent = 'center';
-          wrapper.style.alignItems = 'center';
-          wrapper.style.height = '100%';
-          wrapper.appendChild(checkbox);
-
-          return wrapper;
+          return `${params.node.key} (${checkedCount})`;
+        } else if (params.node.group && params.node.level === 1) {
+          // Si por alguna razón llegas a ver el nodo de sabor aquí (no debería si agrupas),
+          // muestra solo la key del flavor.
+          return params.node.key;
+        } else {
+          return params.value || '';
         }
+      },
+      hide: true
+    },
+
+    {
+      headerName: 'Sabor',
+      field: 'flavor',
+      rowGroup: true,
+      rowGroupIndex: 1,
+      cellRenderer: (params: any) => {
+        // flavor: nivel 1 (segundo nivel)
+        if (params.node.group && params.node.level === 1) {
+          // Este nodo tiene children que son las filas; contamos aquí mismo.
+          const total = params.node.allChildrenCount || 0;
+          const checked = params.node.childrenAfterFilter?.filter((child: any) => child.data?.seUsaAqui === true).length || 0;
+          return `${params.node.key} (${checked})`;
+        } else if (params.node.group && params.node.level === 0) {
+          // Nivel categoria: lo gestionamos en la columna 'Categoría' (arriba).
+          return '';
+        } else {
+          return params.value || '';
+        }
+      },
+      hide: true
+    },
+
+    {
+      headerName: 'Presentación',
+      field: 'presentation',
+      filter: 'agSetColumnFilter',
+      filterParams: {
+        buttons: ['reset', 'apply'],
+        closeOnApply: true,
+        caseSensitive: false
+      },
+      width: 300,
+      resizable: true
+    },
+
+    {
+      headerName: 'Se usa aquí',
+      field: 'seUsaAqui',
+      width: 120,
+      cellRenderer: (params: any) => {
+        if (params.node.group) return '';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = params.value === true;
+        checkbox.style.cursor = 'pointer';
+        checkbox.style.width = '18px';
+        checkbox.style.height = '18px';
+
+        checkbox.addEventListener('click', (event) => {
+          event.stopPropagation(); // evita expandir/select
+          // Ejecutar la mutación dentro de Angular zone si hace falta (tu código original lo hacía)
+          this.ngZone.run(() => {
+            const oldValue = params.data.seUsaAqui;
+            const newValue = !oldValue;
+            params.data.seUsaAqui = newValue;
+
+            // 1) Notificar al componente (tu handler)
+            this.onSeUsaAquiChanged({ data: params.data, oldValue, newValue, node: params.node });
+
+            // 2) Informar a ag-Grid sobre el cambio de datos para que lo procese bien
+            // Usar applyTransaction para que ag-Grid gestione el rowModel y cambios
+            params.api.applyTransaction({ update: [params.data] });
+
+            // 3) Redibujar nodos de grupo para actualizar los contadores visibles
+            const groupNodes: any[] = [];
+            params.api.forEachNode((n: any) => {
+              if (n.group && (n.level === 0 || n.level === 1)) {
+                groupNodes.push(n);
+              }
+            });
+            if (groupNodes.length) {
+              // redrawRows acepta array de RowNode
+              params.api.redrawRows(groupNodes);
+            } else {
+              // fallback: refrescar toda la vista de celdas
+              params.api.refreshCells({ force: true });
+            }
+          });
+        });
+
+        const wrapper = document.createElement('div');
+        wrapper.style.display = 'flex';
+        wrapper.style.justifyContent = 'center';
+        wrapper.style.alignItems = 'center';
+        wrapper.style.height = '100%';
+        wrapper.appendChild(checkbox);
+        return wrapper;
       }
-    ];
-  }
+    }
+  ];
+}
+
 
   // Retornar todos los datos (ya son planos)
   flattenTreeData(): any[] {
