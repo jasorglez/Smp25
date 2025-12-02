@@ -11,10 +11,8 @@
       <div class="col">
         <ag-grid-angular [columnDefs]="colMaster" [defaultColDef]="defaultColDef" [rowSelection]="rowSelection"
           [rowData]="project" (selectionChanged)="onSelectionChanged($event)" class="ag-theme-quartz small-text-ag-grid"
-          [rowGroupPanelShow]="rowGroupPanelShow" [pivotPanelShow]="pivotPanelShow" [gridOptions]="gridOptions"
-          [groupDefaultExpanded]="groupDefaultExpanded" [pagination]="true" (gridReady)="onGridReady($event)"
-          [paginationPageSize]="paginationPageSize" [paginationPageSizeSelector]="paginationPageSizeSelector"
-          [statusBar]="statusBar" [stopEditingWhenCellsLoseFocus]="true">
+          [rowGroupPanelShow]="rowGroupPanelShow" [pivotPanelShow]="pivotPanelShow" [gridOptions]="gridOptions" [pagination]="true" (gridReady)="onGridReady($event)" [paginationPageSizeSelector]="paginationPageSizeSelector"
+          (cellDoubleClicked)="onCellDoubleClicked($event)" [components]="components" [stopEditingWhenCellsLoseFocus]="true">
         </ag-grid-angular>
       </div>
     </div>

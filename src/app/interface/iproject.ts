@@ -25,4 +25,5 @@ export interface Iproject {
   classification: string;
   typeConstruction: string;
   state: string;
+  detailType?: string; // Added for master-detail functionality
 }

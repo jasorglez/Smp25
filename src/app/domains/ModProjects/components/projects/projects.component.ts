@@ -4,14 +4,17 @@ import { RouterOutlet } from '@angular/router';
 import { NgbModal, NgbModalOptions } from '@ng-bootstrap/ng-bootstrap';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { FollowprojectsService } from '../../../../services/followprojects.service';
-import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { ColDef, GridApi, GridReadyEvent, CellDoubleClickedEvent} from 'ag-grid-enterprise';
 import { AbstractControl, FormControl, FormGroup, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, EMPTY, forkJoin } from 'rxjs';
+import { DetailPersonalByProyectComponent } from './personal/detail-personal-by-proyect.component';
 import { Iproject } from 'app/interface/iproject';
 import { ProjectsService } from 'app/services/projects.service';
 import { OilfieldService } from 'app/services/oilfield.service';
 import { SignalsService } from 'app/services/signals.service';
+import { PersonalByProyectService } from 'app/services/personalByProyect.service';
+
 
 // Esta funcion valida que programStart sea siempre menor a programEnd
 export function dateRangeValidator(): ValidatorFn {
@@ -20,10 +23,11 @@ export function dateRangeValidator(): ValidatorFn {
     const programEnd = control.get('programEnd')?.value;
     const realPronosticLPO = control.get('realPronosticLPO')?.value;
     const realPronosticTTT = control.get('realPronosticTTT')?.value;
-    if (programStart && programEnd
-      && programStart > programEnd
-      && realPronosticLPO && realPronosticTTT
-      && realPronosticLPO > realPronosticTTT) {
+
+    const programDatesInvalid = programStart && programEnd && programStart > programEnd;
+    const pronosticDatesInvalid = realPronosticLPO && realPronosticTTT && realPronosticLPO > realPronosticTTT;
+
+    if (programDatesInvalid || pronosticDatesInvalid) {
       return { dateRangeInvalid: true };
     }
 
@@ -89,6 +93,7 @@ export class ProjectsComponent {
   private followprojectsService = inject(FollowprojectsService);
   private oilfieldsService = inject(OilfieldService);
   private signalsService = inject(SignalsService);
+  private personalByProyectService = inject(PersonalByProyectService);
 
   public project: Iproject[] = [];
   private gridApi!: GridApi<Iproject>;
@@ -100,40 +105,116 @@ export class ProjectsComponent {
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
   public groupDefaultExpanded = 0;
+  private collapseTimer: any = null;
 
+  components = {
+        detailPersonalByProyect: DetailPersonalByProyectComponent
+    };
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
-    headerHeight: 30,
-    rowHeight: 30,
-    getRowClass: (params) => {
-      // Verificar si la fila está seleccionada
-      if (params.node.isSelected()) {
-        return 'selected-row';
-      }
-      return '';
-    },
-    onRowClicked: (event) => {
-      // Seleccionar la fila al hacer clic en cualquier celda
-      event.node.setSelected(true);
-    },
-    onRowSelected: (event) => {
-      // Deseleccionar otras filas cuando se selecciona una nueva
-      if (event.node.isSelected()) {
-        this.gridApi.forEachNode((node) => {
-          if (node.id !== event.node.id) {
-            node.setSelected(false);
-          }
+  headerHeight: 30,
+  rowHeight: 30,
+  masterDetail: true,
+  detailCellRenderer: 'detailPersonalByProyect',
+
+  // Altura por defecto del detalle
+  detailRowHeight: 400,
+
+  detailCellRendererParams: {
+    detailGridOptions: {
+      columnDefs: [
+        {
+          field: 'id',
+          headerName: 'ID',
+          width: 80,
+          hide: true
+        },
+        {
+          field: 'name',
+          headerName: 'Nombre',
+          flex: 2
+        },
+        {
+          field: 'role',
+          headerName: 'Rol/Puesto',
+          flex: 2
+        },
+        {
+          field: 'email',
+          headerName: 'Email',
+          flex: 2
+        },
+        {
+          field: 'phone',
+          headerName: 'Teléfono',
+          flex: 1
+        },
+        {
+          field: 'active',
+          headerName: 'Activo',
+          cellRenderer: 'agCheckboxCellRenderer',
+          width: 80
+        }
+      ],
+      defaultColDef: {
+        sortable: true,
+        filter: true,
+        resizable: true,
+        flex: 1
+      },
+      onFirstDataRendered: (params) => {
+        const allColumnIds: string[] = [];
+        params.api.getColumns()?.forEach((column: any) => {
+          allColumnIds.push(column.getId());
         });
+        params.api.autoSizeColumns(allColumnIds, false);
       }
     },
-  };
+    getDetailRowData: (params) => {
+      // Load personal data for the project
+      this.personalByProyectService.getPersonalByProyect(params.data.id).subscribe(
+        (data: any) => {
+          params.successCallback(data);
+        },
+        (error) => {
+          console.error('Error fetching personal data:', error);
+          params.successCallback([]);
+        }
+      );
+    }
+  },
+
+  getRowClass: (params) => {
+    return params.node.isSelected() ? 'selected-row' : '';
+  },
+
+  onRowClicked: (event) => {
+    event.node.setSelected(true);
+  },
+
+  onRowSelected: (event) => {
+    if (event.node.isSelected()) {
+      this.gridApi.forEachNode((node) => {
+        if (node.id !== event.node.id) {
+          node.setSelected(false);
+        }
+      });
+    }
+  }
+};
+
 
   colMaster: ColDef[] = [
+    { field: 'id', headerName: 'id', flex: 1 , hide: true, filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
+        filterParams: {
+          filterOptions: ['equals'], // Opciones de filtro
+        }},
     { field: 'number', headerName: 'Proyecto', flex: 1 },
     { field: 'name', headerName: 'Nombre', width: 100, filter: true, flex: 2 },
     { field: 'idConsecutivo', headerName: 'ID PEMEX', flex: 1 },
     { field: 'year', headerName: 'Year', flex: 1 },
     { field: 'description', headerName: 'Descripcion', flex: 4 },
+    { field: 'personal', headerName: 'Equipo', flex: 1.5 },
     { field: 'state', headerName: 'Estado', flex: 1 },
     { field: 'classification', headerName: 'Clasificación', width: 100, filter: true, flex: 2 }
   ];
@@ -179,6 +260,7 @@ export class ProjectsComponent {
     this.projectsService.getProjectListByCompany(this.idCompany).subscribe(
       (resp: any) => {
         this.project = this.mapProject(resp);
+        console.log('Projects loaded:', this.project);
       },
       (error) => {
         console.error('Error fetching projects', error);
@@ -305,6 +387,46 @@ export class ProjectsComponent {
     const date = new Date(dateString);
     return date.toISOString().split('T')[0];
   }
+
+  async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
+      // Verificar que event.data esté disponible antes de acceder a sus propiedades
+      if (!event.data) {
+        console.warn('No hay datos en la fila seleccionada');
+        return;
+      }
+
+      const colId = event.column.getColId();
+      const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
+      const selectedId = selectedRowData.id; // Obtener el ID del registro
+
+      this.notSavedChanges = true;
+      this.selectedRowData = selectedRowData;
+
+      //console.log(`Doble clic en la columna: ${colId}, ID del proyecto: ${selectedId}`);
+      if (colId === 'personal') {
+        // Check current filter state
+        const currentFilterModel = this.gridApi.getFilterModel();
+        const isCurrentlyFiltered = currentFilterModel && currentFilterModel['id'] && currentFilterModel['id'].filter === selectedId;
+
+        if (isCurrentlyFiltered) {
+          // If already filtered to this project, clear filter and collapse
+          this.gridApi.setFilterModel(null);
+          this.gridApi.onFilterChanged();
+          event.node.setExpanded(false);
+        } else {
+          // Apply filter to show only the selected project and expand
+          const filterModel = {
+            id: {
+              type: 'equals',
+              filter: selectedId,
+            },
+          };
+          this.gridApi.setFilterModel(filterModel);
+          this.gridApi.onFilterChanged();
+          event.node.setExpanded(true);
+        }
+      }
+   }
 
   openModal() {
     forkJoin({
