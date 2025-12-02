@@ -12,7 +12,7 @@
         <ag-grid-angular [columnDefs]="colMaster" [defaultColDef]="defaultColDef" [rowSelection]="rowSelection"
           [rowData]="project" (selectionChanged)="onSelectionChanged($event)" class="ag-theme-quartz small-text-ag-grid"
           [rowGroupPanelShow]="rowGroupPanelShow" [pivotPanelShow]="pivotPanelShow" [gridOptions]="gridOptions" [pagination]="true" (gridReady)="onGridReady($event)" [paginationPageSizeSelector]="paginationPageSizeSelector"
-          (cellDoubleClicked)="onCellDoubleClicked($event)" [components]="components" [stopEditingWhenCellsLoseFocus]="true">
+          (cellDoubleClicked)="onCellDoubleClicked($event)" [components]="components" [stopEditingWhenCellsLoseFocus]="true" [context]="{ componentParent: this }">
         </ag-grid-angular>
       </div>
     </div>

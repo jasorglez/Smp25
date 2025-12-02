@@ -75,6 +75,7 @@ export class ProjectsComponent {
   providers: any;
   contracts: any;
   oilfields: any;
+  cantidadPersonal: any;
   selectedRowData: Iproject | null = null;
 
   isEditing = false;
@@ -214,7 +215,24 @@ export class ProjectsComponent {
     { field: 'idConsecutivo', headerName: 'ID PEMEX', flex: 1 },
     { field: 'year', headerName: 'Year', flex: 1 },
     { field: 'description', headerName: 'Descripcion', flex: 4 },
-    { field: 'personal', headerName: 'Equipo', flex: 1.5 },
+    {
+      field: 'personal',
+      headerName: 'Personal',
+      flex: 1.5,
+      cellRenderer: (params) => {
+        const cantidadList = params.context.componentParent.cantidadPersonal;
+        const found = cantidadList.find(x => x.idProyect === params.data.id);
+      
+        const count = found ? found.count : 0;
+      
+        return `
+          <span style="display:flex; align-items:center; gap:6px;">
+            <i class="fa fa-users" style="color:#1976d2;"></i>
+            <span>${count}</span>
+          </span>
+        `;
+      }
+    },
     { field: 'state', headerName: 'Estado', flex: 1 },
     { field: 'classification', headerName: 'Clasificación', width: 100, filter: true, flex: 2 }
   ];
@@ -222,6 +240,19 @@ export class ProjectsComponent {
   ngOnInit(): void {
     //Called after the constructor, initializing input properties, and the first call to ngOnChanges.
     this.getProjects();
+    this.obtenerCantidadEmpleados();
+  }
+  obtenerCantidadEmpleados(): void {
+    this.personalByProyectService.getCantidadPersonal().subscribe(
+      (data: any) => {
+        this.cantidadPersonal = data;
+        console.log('Personal data loaded:', this.cantidadPersonal);
+      },
+      (error) => {
+        console.error('Error fetching personal data:', error);
+        this.cantidadPersonal = [];
+      }
+    );
   }
 
   initForm() {

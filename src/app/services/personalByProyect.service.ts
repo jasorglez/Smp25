@@ -22,6 +22,10 @@ export class PersonalByProyectService {
     return this.http.get<any[]>(`${environment.urlSmp}/TDPersonalByProyects/${idProyect}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getCantidadPersonal(): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlSmp}/TDPersonalByProyects/personalByProyect`, { headers: this.trackingService.getHeaders() });
+  }
+
   addPersonalByProyect(data: any) {
     console.log('data', data);
     return this.http.post(`${environment.urlSmp}/TDPersonalByProyects`, data, { headers: this.trackingService.getHeaders() });

@@ -17,39 +17,60 @@ import { SelectWithTooltipEditorV2Component } from 'app/domains/Almacenes/compon
   imports: [AgGridModule, CommonModule],
   template: `
     <div
-      style="padding: 10px; background-color: #e9ecef; height: 100%; display: flex; flex-direction: column;"
-      (mouseenter)="params.onMouseEnter && params.onMouseEnter()"
-      (mouseleave)="params.onMouseLeave && params.onMouseLeave()">
-      <div style="margin-bottom: 15px; flex-grow: 1; display: flex; flex-direction: column;">
-        <div style="margin-bottom: 10px;">
-          <strong>Equipo del Proyecto: {{ projectName }}</strong>
-        </div>
-        <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-          <div class="btn-group btn-group-sm" role="group">
-            <button type="button" class="btn btn-outline-primary" (click)="onAddRow()">
-              <i class="bi bi-plus-lg"></i> Agregar
-            </button>
-            <button type="button" class="btn btn-outline-success" (click)="onSave()">
-              <i class="bi bi-check-lg"></i> Guardar
-            </button>
-            <button type="button" class="btn btn-outline-danger" (click)="onRemoveSelected()">
-              <i class="bi bi-trash3"></i> Eliminar
-            </button>
-            <button type="button" class="btn btn-outline-secondary" (click)="onUndo()">
-              <i class="bi bi-arrow-90deg-left"></i> Deshacer
-            </button>
-          </div>
-        </div>
-        <ag-grid-angular
-          class="ag-theme-quartz small-text-ag-grid"
-          style="width: 100%; flex-grow: 1;"
-          [columnDefs]="personalColumnDefs"
-          [rowData]="personalRowData"
-          [gridOptions]="personalGridOptions"
-          (gridReady)="onPersonalGridReady($event)">
-        </ag-grid-angular>
-      </div>
+  style="
+    padding: 10px;
+    background-color: #e8f5e9;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+  "
+  (mouseenter)="params.onMouseEnter && params.onMouseEnter()"
+  (mouseleave)="params.onMouseLeave && params.onMouseLeave()">
+
+  <!-- CONTENEDOR CABECERA -->
+  <div style="
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      ">
+      <!-- Mensaje a la derecha -->
+    <div>
+      <strong>Personal del Proyecto: {{ projectName }}</strong>
     </div>
+      
+    <!-- Botones a la izquierda -->
+    <div class="btn-group btn-group-sm" role="group">
+      <button type="button" class="btn btn-outline-primary" (click)="onAddRow()">
+        <i class="bi bi-plus-lg"></i> Agregar
+      </button>
+      <button type="button" class="btn btn-outline-warning" (click)="onSave()">
+        <i class="bi bi-pencil"></i> Guardar
+      </button>
+      <button type="button" class="btn btn-outline-danger" (click)="onRemoveSelected()">
+        <i class="bi bi-trash3"></i> Eliminar
+      </button>
+      <button type="button" class="btn btn-outline-secondary" (click)="onUndo()">
+        <i class="bi bi-arrow-90deg-left"></i> Deshacer
+      </button>
+    </div>
+
+    
+  </div>
+
+  <!-- TABLA ABAJO -->
+  <ag-grid-angular
+    class="ag-theme-quartz small-text-ag-grid"
+    style="width: 100%; flex-grow: 1;"
+    [columnDefs]="personalColumnDefs"
+    [rowData]="personalRowData"
+    [gridOptions]="personalGridOptions"
+    (gridReady)="onPersonalGridReady($event)">
+  </ag-grid-angular>
+
+</div>
+
   `
 })
 export class DetailPersonalByProyectComponent implements ICellRendererAngularComp {
@@ -68,25 +89,13 @@ export class DetailPersonalByProyectComponent implements ICellRendererAngularCom
     headerHeight: 25,
     rowHeight: 20,
     rowSelection: 'single',
-    onFirstDataRendered: (params) => {
-      const allColumnIds: string[] = [];
-      params.api.getColumns()?.forEach((column: any) => {
-        allColumnIds.push(column.getId());
-      });
-      params.api.autoSizeColumns(allColumnIds, false);
-    },
-    onCellValueChanged: (params) => {
-      if (!params.data.__isNew) {
-        params.data.__modified = true;
-      }
-    }
   };
 
  personalColumnDefs: ColDef[] = [
  {
    field: 'idPersonal',
    headerName: 'Nombre',
-   flex: 4,
+   width: 250,
    editable: true,
    cellEditor: SelectWithTooltipEditorV2Component,
 
