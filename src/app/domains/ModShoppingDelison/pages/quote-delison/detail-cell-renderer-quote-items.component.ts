@@ -5,11 +5,12 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
+import { SubDetailCellRendererQuoteItemsComponent } from './sub-detail-cell-renderer-quote-items.component';
 
 @Component({
   selector: 'app-detail-cell-renderer-quote-items',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [CommonModule, FormsModule, AgGridModule, SubDetailCellRendererQuoteItemsComponent],
   template: `
     <div class="detail-grid-container">
       <div class="detail-actions d-flex justify-content-end mb-2">
@@ -49,15 +50,15 @@ export class DetailCellRendererQuoteItemsComponent {
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
+  private parentData: any;
   rowData: any[] = [];
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   agInit(params: ICellRendererParams): void {
     this.params = params;
-    // Aplanamos los items de todos los pedimentos en una sola lista
-    if (params.data.pedimentos && Array.isArray(params.data.pedimentos)) {
-      this.rowData = params.data.pedimentos.flatMap((p: any) => p.items || []);
-    }
+    this.parentData = params.data;
+    // Mostramos los pedimentos como filas
+    this.rowData = params.data.pedimentos || [];
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -66,23 +67,72 @@ export class DetailCellRendererQuoteItemsComponent {
 
   colDefs: ColDef[] = [
     {
-      headerName: '#',
-      width: 60,
-      valueGetter: (params) => params.node!.rowIndex! + 1,
-      pinned: 'left'
+      field: 'name',
+      headerName: 'Pedimentos',
+      width: 120
     },
     {
-      field: 'article',
-      headerName: 'Artículo del Pedimento',
-      editable: true,
-      width: 300
+      field: 'items',
+      headerName: 'Articulos',
+      width: 200,
+      cellRenderer: 'agGroupCellRenderer',
+      valueGetter: (params) => params.data.items ? params.data.items.map((i: any) => i.article).join(', ') : ''
     },
     {
-      field: 'quantity',
-      headerName: 'Cantidad',
-      editable: true,
+      headerName: 'PDF',
+      width: 100,
+      cellRenderer: () => '<button class="btn btn-sm btn-primary">PDF</button>'
+    },
+    {
+      field: 'createdAt',
+      headerName: 'Fecha de Pedimento',
+      width: 150,
+      valueFormatter: (params) => params.value ? new Date(params.value).toLocaleDateString('es-ES') : ''
+    },
+    {
+      headerName: 'Proveedor 1',
       width: 120,
-      type: 'numericColumn'
+      editable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: ['Proveedor A', 'Proveedor B', 'Proveedor C']
+      },
+      valueGetter: (params) => this.parentData.proveedor1,
+      valueSetter: (params) => {
+        this.parentData.proveedor1 = params.newValue;
+        return true;
+      },
+      valueFormatter: (params) => params.value || 'Seleccionar proveedor'
+    },
+    {
+      headerName: 'Proveedor 2',
+      width: 120,
+      editable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: ['Proveedor A', 'Proveedor B', 'Proveedor C']
+      },
+      valueGetter: (params) => this.parentData.proveedor2,
+      valueSetter: (params) => {
+        this.parentData.proveedor2 = params.newValue;
+        return true;
+      },
+      valueFormatter: (params) => params.value || 'Seleccionar proveedor'
+    },
+    {
+      headerName: 'Proveedor 3',
+      width: 120,
+      editable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: ['Proveedor A', 'Proveedor B', 'Proveedor C']
+      },
+      valueGetter: (params) => this.parentData.proveedor3,
+      valueSetter: (params) => {
+        this.parentData.proveedor3 = params.newValue;
+        return true;
+      },
+      valueFormatter: (params) => params.value || 'Seleccionar proveedor'
     }
   ];
 
@@ -90,6 +140,10 @@ export class DetailCellRendererQuoteItemsComponent {
     headerHeight: 35,
     rowHeight: 35,
     animateRows: true,
+    masterDetail: true,
+    detailRowHeight: 200,
+    isRowMaster: (dataItem: any) => dataItem.items && dataItem.items.length > 0,
+    detailCellRenderer: SubDetailCellRendererQuoteItemsComponent,
     rowSelection: 'single',
     singleClickEdit: true,
   };

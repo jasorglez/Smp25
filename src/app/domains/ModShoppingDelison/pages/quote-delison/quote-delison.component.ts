@@ -48,8 +48,8 @@ export class QuoteDelisonComponent implements OnInit {
         branch: 'BODEGAS',
         requisition: 'REQ-001',
         pedimentos: [
-          { id: 'PED-001', name: 'Pedimento 1', items: [{ article: 'Item 1' }, { article: 'Item 2' }], createdAt: new Date().toISOString() },
-          { id: 'PED-002', name: 'Pedimento 2', items: [{ article: 'Item 3' }], createdAt: new Date().toISOString() }
+          { id: 'PED-001', name: 'Pedimento 1', items: [{ article: 'Item 1', quantity: 10, tipo: 'Tipo A', proveedorInterno: 'Prov Int 1', priority: 'Alta', observaciones: 'Obs 1', pedimento: true }, { article: 'Item 2', quantity: 5, tipo: 'Tipo B', proveedorInterno: 'Prov Int 2', priority: 'Media', observaciones: 'Obs 2', pedimento: false }], createdAt: new Date().toISOString() },
+          { id: 'PED-002', name: 'Pedimento 2', items: [{ article: 'Item 3', quantity: 20, tipo: 'Tipo C', proveedorInterno: 'Prov Int 3', priority: 'Baja', observaciones: 'Obs 3', pedimento: true }], createdAt: new Date().toISOString() }
         ],
         // Datos para las nuevas columnas de proveedor
         proveedor1: null,
@@ -142,39 +142,6 @@ export class QuoteDelisonComponent implements OnInit {
         headerName: 'Departamento',
         width: 150,
         editable: false
-      },
-      {
-        field: 'proveedor1',
-        headerName: 'Proveedor 1',
-        width: 120,
-        editable: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: ['Proveedor A', 'Proveedor B', 'Proveedor C']
-        },
-        valueFormatter: (params) => params.value || 'Seleccionar proveedor'
-      },
-      {
-        field: 'proveedor2',
-        headerName: 'Proveedor 2',
-        width: 120,
-        editable: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: ['Proveedor A', 'Proveedor B', 'Proveedor C']
-        },
-        valueFormatter: (params) => params.value || 'Seleccionar proveedor'
-      },
-      {
-        field: 'proveedor3',
-        headerName: 'Proveedor 3',
-        width: 120,
-        editable: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: ['Proveedor A', 'Proveedor B', 'Proveedor C']
-        },
-        valueFormatter: (params) => params.value || 'Seleccionar proveedor'
       },
     ];
   }
