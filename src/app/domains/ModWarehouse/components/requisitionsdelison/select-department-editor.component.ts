@@ -16,7 +16,7 @@ import { FormsModule } from '@angular/forms';
       style="width: 100%; border: none; outline: none; background: transparent;">
       <option value="">Seleccionar departamento...</option>
       <option *ngFor="let option of options" [value]="option.id">
-        {{ option.name }}
+        {{ option.description }}
       </option>
     </select>
   `,
@@ -40,7 +40,7 @@ export class SelectDepartmentEditorComponent implements ICellEditorAngularComp, 
 
     const value = params.value;
     if (value) {
-      const option = this.options.find(o => o.id == value || o.name === value);
+      const option = this.options.find(o => o.id == value || o.description === value);
       this.selectedValue = option ? option.id : value;
     }
   }
@@ -50,7 +50,7 @@ export class SelectDepartmentEditorComponent implements ICellEditorAngularComp, 
     if (selectedOption) {
       return {
         id: selectedOption.id,
-        name: selectedOption.name
+        name: selectedOption.description
       };
     }
     return this.selectedValue;

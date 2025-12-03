@@ -951,7 +951,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idBranch: this.idBranch,
       idRoot: this.idRoot,
       nameContact: '',
       company: '',
@@ -971,7 +970,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
       latitud: '',
       longitud: '',
       idTypecop: 0,
-      // type: this.type,
+      type: 'PROVIDERS',
       fieldContact: 1,
       fieldBank: 0,
       fieldCuenta: 0,
@@ -1480,7 +1479,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
   }
 
   updateCantidad(id) {
-   // alert('Actualizar cantidad de contactos para proveedor ID:' + id);
+    // alert('Actualizar cantidad de contactos para proveedor ID:' + id);
 
   }
 

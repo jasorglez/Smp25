@@ -1874,9 +1874,26 @@ export const routes: Routes = [
             path: 'requisitions',
             loadComponent: () =>
               import(
-                './domains/ModWarehouse/components/requisitionsdelison/requisitionsdelison.component'
+                './domains/ModShoppingDelison/pages/requisitions-delison/requisitions-delison.component'
               ).then((c) => c.RequisitionsDelisonComponent),
+            children: [
+              { path: '', redirectTo: 'requisitions', pathMatch: 'full' },
+              {
+                path: 'requisitions',
+                loadComponent: () =>
+                  import(
+                    './domains/ModWarehouse/components/requisitionsdelison/requisitionsdelison.component'
+                  ).then((c) => c.RequisitionsDelisonComponent),
                 canDeactivate: [UnsavedChangesGuard],
+              },
+              {
+                path: 'quotes',
+                loadComponent: () =>
+                  import(
+                    './domains/ModShoppingDelison/pages/quote-delison/quote-delison.component'
+                  ).then((c) => c.QuoteDelisonComponent),
+              },
+            ],
           },
           {
             path: 'purchas_eorder',

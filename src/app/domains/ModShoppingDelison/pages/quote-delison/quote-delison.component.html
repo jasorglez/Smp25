@@ -1,0 +1,22 @@
+<div class="container-fluid mt-3">
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="card-title mb-0">Cotizaciones</h5>
+ 
+    </div>
+   
+    <div class="card-body">
+      <ag-grid-angular
+        style="width: 100%;"
+        [ngStyle]="{'height': gridHeight}"
+        class="ag-theme-quartz small-text-ag-grid"
+        [columnDefs]="colMaster"
+        [rowData]="rowData"
+        [gridOptions]="gridOptions"
+        [localeText]="AG_GRID_LOCALE_ES"
+        (gridReady)="onGridReady($event)"
+        (cellClicked)="onCellClicked($event)">
+      </ag-grid-angular>
+    </div>
+  </div>
+</div>
