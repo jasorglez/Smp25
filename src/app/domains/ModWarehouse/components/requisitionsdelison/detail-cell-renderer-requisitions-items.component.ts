@@ -16,22 +16,36 @@ import { DetailCellRendererRequisitionsPurchasesComponent } from './detail-cell-
   template: `
     <div class="detail-grid-container">
       <div class="detail-actions d-flex justify-content-end mb-2">
-        <button class="btn btn-primary btn-sm me-2" (click)="addItem()">
+        
+       <button class="btn btn-primary btn-sm me-2" (click)="addItem()">
           <i class="bi bi-plus-lg"></i> Agregar
         </button>
+        
         <button class="btn btn-warning btn-sm me-2" (click)="discardChanges()">
           <i class="bi bi-arrow-counterclockwise"></i> Deshacer
         </button>
-        <button class="btn btn-danger btn-sm me-2" (click)="deleteSelectedItem()">
+        
+        <button class="btn btn-danger btn-sm me-2" (click)="deleteSelectedItem()" [disabled]="!isAddingNewItem && !hasPedimentoSelection">
           <i class="bi bi-trash"></i> Eliminar
         </button>
-        <button class="btn btn-success btn-sm position-relative" (click)="saveChanges()">
+        
+        <button class="btn btn-success btn-sm position-relative" (click)="saveChanges()" [disabled]="!isAddingNewItem">
           <i class="bi bi-floppy"></i> Guardar
           <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-            *ngIf="hasUnsavedChanges">
+            *ngIf="isAddingNewItem">
             <span class="visually-hidden">Hay cambios sin guardar</span>
           </span>
         </button>
+
+           <button class="btn btn-info btn-sm position-relative" (click)="saveMultiGuardar()">
+          <i class="bi bi-files"></i> MultiGuardar 
+          <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+            *ngIf="hasPedimentoSelection">
+            <span class="visually-hidden">Hay cambios sin guardar</span>
+          </span>
+        </button>
+
+
       </div>
       <ag-grid-angular
         #agGrid
@@ -47,10 +61,51 @@ import { DetailCellRendererRequisitionsPurchasesComponent } from './detail-cell-
         style="height: 300px; width: 100%;">
       </ag-grid-angular>
     </div>
+
+    <!-- Modal para Nuevo Artículo -->
+    <div class="modal" tabindex="-1" [ngStyle]="{'display': isNewArticleModalVisible ? 'block' : 'none'}">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Registrar Nuevo Artículo</h5>
+            <button type="button" class="btn-close" (click)="closeNewArticleModal()"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="newArticleName" class="form-label">Nombre del Artículo</label>
+              <input type="text" class="form-control" id="newArticleName" [(ngModel)]="newArticle.name">
+            </div>
+            <div class="mb-3">
+              <label for="newArticleDesc" class="form-label">Descripción del Artículo</label>
+              <textarea class="form-control" id="newArticleDesc" rows="2" [(ngModel)]="newArticle.description"></textarea>
+            </div>
+            <div class="mb-3">
+              <label for="newArticleLink" class="form-label">Link del Artículo (Opcional)</label>
+              <input type="text" class="form-control" id="newArticleLink" [(ngModel)]="newArticle.link">
+            </div>
+            <div class="mb-3">
+              <label for="newArticleUsage" class="form-label">¿Para qué se va a usar?</label>
+              <textarea class="form-control" id="newArticleUsage" rows="2" [(ngModel)]="newArticle.usage"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" (click)="closeNewArticleModal()">Salir</button>
+            <button type="button" class="btn btn-primary" (click)="saveNewArticle()">Guardar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Backdrop para el modal -->
+    <div class="modal-backdrop fade show" *ngIf="isNewArticleModalVisible"></div>
   `,
   styles: [`
     .detail-grid-container {
       padding: 10px;
+    }
+
+    .detail-unsaved {
+      background-color: #fce4ec !important;
+      color: black !important;
     }
   `]
 })
@@ -63,7 +118,18 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
   rowData: any[] = [];
   hasUnsavedChanges: boolean = false;
   tempIdCounter: number = 0;
+  isAddingNewItem: boolean = false;
+  hasPedimentoSelection: boolean = false;
   materials: any[] = [];
+  private pedimentoCounter: number = 1;
+
+  // Propiedades para el modal de nuevo artículo
+  isNewArticleModalVisible = false;
+  newArticle = { name: '', description: '', link: '', usage: '' };
+  private currentRowForNewArticle: any = null;
+  private originalRecurrentValue: string | null = null;
+
+
 
   // Purchases related properties
   purchasesData: any[] = [];
@@ -110,10 +176,12 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
           ],
           purchasesExpanded: false,
           __isNew: false,
-          __modified: false
+          __modified: false,
+          saved: true
         }));
         if (this.gridApi) {
           this.gridApi.setGridOption('rowData', this.rowData);
+          this.gridApi.redrawRows();
         }
         if (this.context && this.context.ITEMS && this.context.ITEMS.updateCount) {
           this.context.ITEMS.updateCount(requisitionId, this.rowData.length);
@@ -177,6 +245,9 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
           },
           updateCount: (articleId: number, count: number) => {
             // Update count if needed
+          },
+          getRowClass: (params: any) => {
+            return 'detail-purchase-row';
           }
         }
       }
@@ -197,7 +268,10 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
         field: 'recurrent',
         headerName: 'Recurrente',
         width: 120,
-        editable: true,
+        editable: (params) => {
+          // Solo es editable si el valor NO es 'Nuevo'.
+          return params.data.recurrent !== 'Nuevo';
+        },
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: ['Recurrente', 'Nuevo']
@@ -300,13 +374,14 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
       {
         field: 'internalProvider',
         headerName: 'Proveedor Interno',
-        width: 200,
+        width: 100,
         editable: true,
         valueSetter: (params: any) => {
           params.data.internalProvider = params.newValue ? params.newValue.toUpperCase() : '';
           return true;
         }
       },
+      
       {
         field: 'priorityType',
         headerName: 'Tipo Prioridad',
@@ -324,7 +399,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
       {
         field: 'comment',
         headerName: 'Observaciones',
-        width: 300,
+        width: 160,
         editable: true,
         valueSetter: (params: any) => {
           params.data.comment = params.newValue ? params.newValue.toUpperCase() : '';
@@ -335,7 +410,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
       {
       field: 'pedimiento',
       headerName: 'Pedimiento',
-      width: 120,
+      width: 100,
       editable: false,
       cellRenderer: (params: any) => {
         const input = document.createElement('input');
@@ -345,6 +420,11 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
         input.addEventListener('change', () => {
           params.data.pedimiento = input.checked;
           params.api.refreshCells({ rowNodes: [params.node], columns: ['pedimiento'] });
+          this.checkPedimentoSelection();
+          // Refresh master grid comments column
+          if (this.context && this.context.gridApi) {
+            this.context.gridApi.refreshCells({ force: true });
+          }
         });
 
         return input;
@@ -352,18 +432,37 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
       },
 
       {
-        field: 'purchases',
-        headerName: 'Compras',
-        width: 120,
-        cellRenderer: ButtonCellRendererComponent,
-        cellRendererParams: {
-          onClick: (node: any) => this.togglePurchasesCascade(node),
-        },
-        valueGetter: params => params.data.purchasesCount || 0,
+        field: 'pedimentoNumber',
+        headerName: 'Pedimento #',
+        width: 140,
         editable: false,
-        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
-      }
+        cellRenderer: (params: any) => {
+          if (!params.value) {
+            return ''; // Si no hay valor, la celda estará vacía.
+          }
+
+          const numbers = String(params.value).split(',');
+          const colorMap: { [key: string]: string } = {
+            '1': '#0d6efd', // Azul
+            '2': '#198754', // Verde
+            '3': '#6f42c1', // Púrpura
+          };
+
+          const coloredSpans = numbers.map(num => {
+            const color = colorMap[num.trim()] || 'black'; // Color por defecto si no está en el mapa
+            return `<span style="color: ${color}; font-weight: bold; padding: 0 2px;">${num.trim()}</span>`;
+          }).join(',');
+
+          return coloredSpans;
+        }
+      },
+
     ];
+  }
+
+  checkPedimentoSelection() {
+    const anyChecked = this.rowData.some(item => item.pedimiento === true);
+    this.hasPedimentoSelection = anyChecked;
   }
 
   public gridOptions: any = {
@@ -375,9 +474,13 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
     isRowMaster: (dataItem: any) => true,
     detailCellRenderer: DetailCellRendererRequisitionsPurchasesComponent,
     rowSelection: 'single',
-    onCellValueChanged: (event: any) => {
-      event.data.__modified = true;
-      this.hasUnsavedChanges = true;
+    singleClickEdit: true,
+    getRowClass: (params: any) => {
+      // Si la fila ya tiene un número de pedimento, no la pintes de rosa.
+      if (params.data && params.data.pedimentoNumber) {
+        return ''; // Sin clase especial
+      }
+      return 'detail-purchase-row'; // Fila pendiente, color rosa
     }
   };
 
@@ -445,6 +548,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
     };
 
     this.rowData = [...this.rowData, newItem];
+    this.isAddingNewItem = true;
     this.hasUnsavedChanges = true;
     this.gridApi.setGridOption('rowData', this.rowData);
 
@@ -484,16 +588,66 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
   }
 
   saveChanges() {
-    if (!this.hasUnsavedChanges) {
+    if (!this.isAddingNewItem) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;
     }
 
-    if (this.context && this.context.ITEMS && this.context.ITEMS.save) {
-      const requisitionId = this.params.data.id;
-      this.context.ITEMS.save(requisitionId, this.rowData);
-      this.hasUnsavedChanges = false;
+    // Lógica para guardar los nuevos items agregados
+    // Aquí iría la llamada al servicio para guardar en la base de datos
+    // Por ahora, simularemos que se guardó
+    this.rowData.forEach(item => {
+      if (item.__isNew) {
+        item.__isNew = false;
+        item.saved = true; // Marcar como guardado
+      }
+    });
+
+    this.isAddingNewItem = false;
+    this.hasUnsavedChanges = false; // Opcional, dependiendo de tu flujo
+    this.gridApi.redrawRows();
+    alerts.basicAlert('Guardado', 'El nuevo artículo ha sido guardado.', 'success');
+  }
+
+  saveMultiGuardar() {
+    const checkedItems = this.rowData.filter(item => item.pedimiento === true);
+    if (checkedItems.length === 0) {
+      alerts.basicAlert('Sin selección', 'Por favor, marque al menos un item en la columna "Pedimento".', 'warning');
+      return;
     }
+
+    // Asignar el número de pedimento actual y quitar el check
+    checkedItems.forEach(item => {
+      if (item.pedimentoNumber) {
+        // Si ya tiene un valor, añade el nuevo número separado por coma
+        item.pedimentoNumber += `,${this.pedimentoCounter}`;
+      } else {
+        // Si está vacío, simplemente asigna el número
+        item.pedimentoNumber = this.pedimentoCounter;
+      }
+      item.pedimiento = false;
+    });
+
+    const message = `Pedimento ${this.pedimentoCounter} guardado con ${checkedItems.length} artículo(s).`;
+
+    this.hasPedimentoSelection = false; // Desactivar el botón
+
+    // 1. Guardar los datos modificados de vuelta en la fila maestra.
+    // ESTE ES EL CAMBIO CLAVE.
+    if (this.context && this.context.ITEMS && this.context.ITEMS.save) {
+      // Llamamos a la función 'save' del contexto, que actualizará la fila maestra y la refrescará.
+      // Pasamos 'false' para evitar que muestre su propia alerta de "Guardado".
+      this.context.ITEMS.save(this.params.data.id, this.rowData, false);
+    }
+
+    // Redibujar esta cuadrícula de detalle para que se actualicen los colores de las filas.
+    this.gridApi.redrawRows();
+
+    // 2. Incrementar el contador para la siguiente vuelta.
+    this.pedimentoCounter = (this.pedimentoCounter % 3) + 1;
+
+    // 3. Mostrar nuestra alerta específica de pedimentos.
+    alerts.basicAlert('Pedimento Guardado', message, 'success');
   }
 
   discardChanges() {
@@ -504,15 +658,63 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
 
     this.loadData();
     this.hasUnsavedChanges = false;
+    if (this.gridApi) {
+      this.gridApi.redrawRows();
+    }
   }
 
   onCellValueChanged(event: any) {
-    event.data.__modified = true;
+    // Si el cambio no es en la columna 'recurrent', actuar como siempre.
+    if (event.colDef.field !== 'recurrent') {
+      event.data.__modified = true;
+      this.hasUnsavedChanges = true;
+      return;
+    }
+
+    // Si el valor cambia a 'Nuevo', abrir el modal.
+    if (event.newValue === 'Nuevo') {
+      this.currentRowForNewArticle = event.node;
+      this.originalRecurrentValue = event.oldValue; // Guardar valor original por si cancela
+      this.newArticle = { name: '', description: '', link: '', usage: '' }; // Resetear el formulario
+      this.isNewArticleModalVisible = true;
+    } else {
+      // Si cambia a 'Recurrente' o cualquier otro valor, comportamiento normal.
+      event.data.__modified = true;
+      this.hasUnsavedChanges = true;
+    }
+  }
+
+  saveNewArticle() {
+    if (!this.newArticle.description) {
+      alerts.basicAlert('Validación', 'La descripción del artículo es obligatoria.', 'warning');
+      return;
+    }
+    // Asignar la descripción a la columna 'article' y guardar los otros datos.
+    this.currentRowForNewArticle.data.article = this.newArticle.name;
+    this.currentRowForNewArticle.data.newArticleInfo = { ...this.newArticle }; // Guardar toda la info
+    this.currentRowForNewArticle.data.__modified = true;
     this.hasUnsavedChanges = true;
+    this.gridApi.refreshCells({ rowNodes: [this.currentRowForNewArticle], columns: ['article'], force: true });
+    this.closeNewArticleModal();
+  }
+
+  closeNewArticleModal() {
+    this.isNewArticleModalVisible = false;
+    this.currentRowForNewArticle = null;
   }
 
   onCellClicked(event: any): void {
     event.node.setSelected(true);
+
+    // Si se hace clic en la columna 'Recurrente' y su valor es 'Nuevo', abrir el modal para editar.
+    if (event.column.getColId() === 'recurrent' && event.data.recurrent === 'Nuevo') {
+      this.currentRowForNewArticle = event.node;
+      // Cargar los datos del artículo temporal guardados previamente en la fila.
+      this.newArticle = { ...(event.data.newArticleInfo || { name: '', description: '', link: '', usage: '' }) };
+      this.isNewArticleModalVisible = true;
+      return; // Detener para no interferir con la lógica de la otra cascada.
+    }
+
 
     const colId = event.column.getColId();
     const isPurchasesColumn = colId === 'purchases';

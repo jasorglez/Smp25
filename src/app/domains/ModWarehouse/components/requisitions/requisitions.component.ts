@@ -31,7 +31,7 @@ import { DetailCellRendererRequisitionItemsComponent } from './detail-cell-rende
 interface Catalog {
   id: number;
   description: string;
-}
+}``
 
 interface Provider {
   id: number;
