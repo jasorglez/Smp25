@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { alerts } from 'app/helpers/alerts';
 
 @Component({
   selector: 'app-sub-detail-cell-renderer-quote-items',
@@ -11,6 +12,17 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
   imports: [CommonModule, FormsModule, AgGridModule],
   template: `
     <div class="sub-detail-grid-container">
+      <div class="sub-detail-actions d-flex justify-content-end mb-2">
+    
+        <button class="btn btn-warning btn-sm me-2" (click)="discardChanges()">
+          <i class="bi bi-arrow-counterclockwise"></i> Deshacer
+        </button>   
+    
+        <button class="btn btn-success btn-sm" (click)="saveChanges()">
+          <i class="bi bi-floppy"></i> Guardar Cambios
+        </button>
+    
+      </div>
       <ag-grid-angular
         #agGrid
         class="ag-theme-quartz small-text-ag-grid"
@@ -73,7 +85,7 @@ export class SubDetailCellRendererQuoteItemsComponent {
     },
     {
       field: 'proveedorInterno',
-      headerName: 'Proveedor Interno',
+      headerName: 'Proveedor Interno2',
       editable: true,
       width: 150
     },
@@ -109,4 +121,22 @@ export class SubDetailCellRendererQuoteItemsComponent {
     rowSelection: 'single',
     singleClickEdit: true,
   };
+
+  // --- Lógica de botones CRUD ---
+
+  addItem() {
+    alerts.basicAlert('Función no implementada', 'La lógica para agregar un nuevo item aún no se ha implementado.', 'info');
+  }
+
+  deleteSelectedItem() {
+    alerts.basicAlert('Función no implementada', 'La lógica para eliminar un item aún no se ha implementado.', 'info');
+  }
+
+  saveChanges() {
+    alerts.basicAlert('Función no implementada', 'La lógica para guardar cambios en los items aún no se ha implementado.', 'info');
+  }
+
+  discardChanges() {
+    alerts.basicAlert('Función no implementada', 'La lógica para deshacer cambios aún no se ha implementado.', 'info');
+  }
 }

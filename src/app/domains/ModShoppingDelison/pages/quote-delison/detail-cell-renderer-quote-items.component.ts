@@ -13,20 +13,11 @@ import { SubDetailCellRendererQuoteItemsComponent } from './sub-detail-cell-rend
   imports: [CommonModule, FormsModule, AgGridModule, SubDetailCellRendererQuoteItemsComponent],
   template: `
     <div class="detail-grid-container">
-      <div class="detail-actions d-flex justify-content-end mb-2">
-        <button class="btn btn-primary btn-sm me-2" (click)="addItem()">
-          <i class="bi bi-plus-lg"></i> Agregar Item
-        </button>
-        <button class="btn btn-warning btn-sm me-2" (click)="discardChanges()">
-          <i class="bi bi-arrow-counterclockwise"></i> Deshacer
-        </button>
+      
         <button class="btn btn-danger btn-sm me-2" (click)="deleteSelectedItem()">
           <i class="bi bi-trash"></i> Eliminar Item
         </button>
-        <button class="btn btn-success btn-sm" (click)="saveChanges()">
-          <i class="bi bi-floppy"></i> Guardar Cambios
-        </button>
-      </div>
+ 
       <ag-grid-angular
         #agGrid
         class="ag-theme-quartz small-text-ag-grid"
