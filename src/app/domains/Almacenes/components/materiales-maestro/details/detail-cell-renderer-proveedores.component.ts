@@ -5,9 +5,11 @@ import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { CustomersService } from 'app/services/customers.service';
+import { alerts } from 'app/helpers/alerts';
 import { BranchsService } from 'app/services/branchs.service';
 import { SignalsService } from 'app/services/signals.service';
 import { ProvidersService } from 'app/services/providers.service';
+import { SelectWithTooltipEditorV2Component } from '../editors/select-with-tooltip-editor-v2.component';
 import { DetailCellRendererProveedorSucursalComponent } from './detail-cell-renderer-proveedor-sucursal.component';
 
 @Component({
@@ -159,45 +161,85 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
       },
 
     {
-      field: 'providerName',
-      headerName: 'Proveedor',
-      editable: true,
-      width: 200,
-      flex: 1,
-      cellEditor: 'agSelectCellEditor',
-      cellEditorParams: (params: any) => {
-        // Usar filteredProviders en lugar de providers
-        const values = this.filteredProviders ? this.filteredProviders.map((p: any) => this.getProviderDisplayName(p)) : [];
-        return {
-          values: values
-        };
-      },
-      valueGetter: (params: any) => {
-        if (params.data.providerName) {
-          return params.data.providerName;
-        }
-        if (params.data.idTabla) {
-          // Buscar primero en filteredProviders, luego en providers (por si es un dato existente)
-          const provider = this.filteredProviders.find((p: any) => p.id === params.data.idTabla)
-                        || this.providers.find((p: any) => p.id === params.data.idTabla);
+        field: 'idTabla',
+        headerName: 'Proveedor',
+        editable: true,
+        width: 200,
+        flex: 1,
+
+        // Nuevo editor
+        cellEditor: SelectWithTooltipEditorV2Component,
+
+        cellEditorParams: (params: any) => {
+          return {
+            options: (this.filteredProviders || []).map((p: any) => ({
+              id: p.id,
+              description: this.getProviderDisplayName(p)
+            }))
+          };
+        },
+      
+        valueFormatter: (params: any) => {
+          if (!params.value) return '';
+          const provider = this.filteredProviders?.find?.(p => p.id === params.value)
+                          || this.providers?.find?.(p => p.id === params.value);
+          return provider ? this.getProviderDisplayName(provider) : params.value;
+        },
+      
+        onCellValueChanged: (params: any) => {
+          // refresca la fila
+          params.api.refreshCells({
+            rowNodes: [params.node],
+            force: true
+          });
+        },
+      
+        valueSetter: (params: any) => {
+          const editorValue = params.newValue;
+        
+          // Si el editor devuelve {id, description}
+          const newId = (editorValue && typeof editorValue === 'object' && 'id' in editorValue)
+            ? editorValue.id
+            : editorValue;
+        
+          // Validar requerido
+          if (!newId && newId !== 0) {
+            alerts.basicAlert(
+              'Campo requerido',
+              'El proveedor es obligatorio',
+              'error'
+            );
+            return false;
+          }
+        
+          // Evitar duplicados
+          const duplicateExists = (this.proveedorRowData || []).some((row, index) =>
+            index !== params.node.rowIndex && row.idTabla === newId
+          );
+        
+          if (duplicateExists) {
+            alerts.basicAlert(
+              'Proveedor duplicado',
+              'Ya existe una fila con ese proveedor.',
+              'error'
+            );
+            return false;
+          }
+        
+          // Asignar valores
+          params.data.idTabla = newId;
+        
+          const provider = this.filteredProviders.find((p: any) => p.id === newId)
+                        || this.providers.find((p: any) => p.id === newId);
+        
           if (provider) {
             params.data.providerName = this.getProviderDisplayName(provider);
-            return params.data.providerName;
+          } else {
+            params.data.providerName = newId;
           }
+        
+          return true;
         }
-        return '';
-      },
-      valueSetter: (params: any) => {
-        // Buscar en filteredProviders
-        const provider = this.filteredProviders.find((p: any) => this.getProviderDisplayName(p) === params.newValue);
-        if (provider) {
-          params.data.idTabla = provider.id;
-          params.data.providerName = this.getProviderDisplayName(provider);
-        } else {
-          params.data.providerName = params.newValue;
-        }
-        return true;
-      }
     },
     {
       field: 'campo9',
@@ -499,7 +541,7 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
     setTimeout(() => {
       this.proveedorGridApi.startEditingCell({
         rowIndex: 0,
-        colKey: 'providerName'
+        colKey: 'idTabla'
       });
     }, 100);
   }

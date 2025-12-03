@@ -3,6 +3,7 @@ import { Component, inject } from '@angular/core';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-community';
+import { SelectWithTooltipEditorV2Component } from '../editors/select-with-tooltip-editor-v2.component';
 import { BranchsService } from 'app/services/branchs.service';
 import { SignalsService } from 'app/services/signals.service';
 
@@ -74,15 +75,78 @@ export class DetailCellRendererProveedorSucursalComponent implements ICellRender
 
   agInit(params: ICellRendererParams): void {
     this.params = params;
+    console.log('Sucursal detail params:', params.data.id);
     this.providerName = params.data.providerName || 'N/A';
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
 
     this.loadAllBranches().then(() => {
       this.sucursalColumnDefs = [
         {
-          field: 'sucursal', headerName: 'Sucursal', width: 200, editable: true,
-          cellEditor: 'agSelectCellEditor',
-          cellEditorParams: { values: this.allBranches.map(b => b.name) }
+          field: 'sucursal',
+          headerName: 'Sucursal',
+          width: 200,
+          editable: true,
+                
+          cellEditor: SelectWithTooltipEditorV2Component,
+                
+          cellEditorParams: () => ({
+            options: (this.allBranches || []).map((p: any) => ({
+              id: p.id,                  // number
+              description: p.name        // string
+            }))
+          }),
+        
+          // Mostrar el nombre de la sucursal
+          valueFormatter: (params) => {
+            if (!params.value) return '';
+            const branch = this.allBranches?.find(p => p.id === Number(params.value));
+            return branch ? branch.name : params.value;
+          },
+        
+          valueSetter: (params) => {
+            let v = params.newValue;
+          
+            // Normalizar valor:
+            // el editor podría devolver string, number, o {id, description}
+            let newValue = (v && typeof v === 'object' && 'id' in v)
+                ? v.id
+                : v;
+          
+            // 👉 Convertir siempre a number
+            newValue = Number(newValue);
+          
+            if (isNaN(newValue)) {
+              console.warn("Valor inválido, no es número:", params.newValue);
+              return false;
+            }
+          
+            // Validar requerido
+            if (!newValue) {
+              alerts.basicAlert('Campo requerido', 'La sucursal es obligatoria', 'error');
+              return false;
+            }
+          
+            // Validar duplicado
+            const duplicateExists = (this.sucursalRowData || []).some((row, index) =>
+              index !== params.node.rowIndex && Number(row.sucursal) === newValue
+            );
+          
+            if (duplicateExists) {
+              alerts.basicAlert(
+                'Valor duplicado',
+                'Ya existe una fila con esa sucursal.',
+                'error'
+              );
+              return false;
+            }
+          
+            // Asignar
+            params.data.sucursal = newValue;
+            return true;
+          },
+        
+          // Coger siempre el número de data.sucursal (evita inconsistencias)
+          valueGetter: (params) => Number(params.data.sucursal),
         },
         {
           field: 'fechaAlta',
@@ -116,14 +180,15 @@ export class DetailCellRendererProveedorSucursalComponent implements ICellRender
       ];
 
       // Usar los datos falsos generados en el componente padre
-      this.sucursalRowData = params.data.sucursalDetailData || [];
-      this.originalSucursalRowData = JSON.parse(JSON.stringify(this.sucursalRowData)); // Guardar copia original
+      //this.sucursalRowData = params.data.sucursalDetailData || [];
+      //this.originalSucursalRowData = JSON.parse(JSON.stringify(this.sucursalRowData)); // Guardar copia original
     });
   }
 
   async loadAllBranches() {
     if (this.idRoot) {
       this.allBranches = await this.branchsService.getBranches2fields(this.idRoot).toPromise();
+      console.log('All branches loaded:', this.allBranches);
     }
   }
 
