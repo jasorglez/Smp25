@@ -1,22 +1,18 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
-import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { ColDef, ICellRendererParams, GridApi } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
-import { ButtonCellRendererComponent } from '../../../ModWareHousesTD/components/inandout-st/button-cell-renderer.component';
+import { ButtonCellRendererComponent } from './button-cell-renderer.component';
 import { DetailCellRendererPedimentosItemsComponent } from './detail-cell-renderer-pedimentos-items.component';
-import { DetailCellRendererQuotesProvidersComponent } from './detail-cell-renderer-quotes-providers.component';
+import { DetailCellRendererProveedorQuoteComponent } from './detail-cell-renderer-proveedor-quote.component';
 
 @Component({
   selector: 'app-detail-cell-renderer-pedimentos',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, DetailCellRendererPedimentosItemsComponent, DetailCellRendererQuotesProvidersComponent],
+  imports: [CommonModule, AgGridModule, ButtonCellRendererComponent, DetailCellRendererPedimentosItemsComponent, DetailCellRendererProveedorQuoteComponent],
   template: `
     <div class="detail-grid-container">
-      <div class="detail-header mb-2">r
-        <h6>Pedimentos de la Cotización</h6>
-      </div>
       <ag-grid-angular
         #agGrid
         class="ag-theme-quartz small-text-ag-grid"
@@ -25,137 +21,122 @@ import { DetailCellRendererQuotesProvidersComponent } from './detail-cell-render
         [gridOptions]="gridOptions"
         [localeText]="AG_GRID_LOCALE_ES"
         (gridReady)="onGridReady($event)"
-        style="height: 250px; width: 100%;">
+        style="height: 300px; width: 100%;">
       </ag-grid-angular>
     </div>
   `,
   styles: [`
     .detail-grid-container {
-      padding: 10px;
+      padding: 8px;
       background-color: #f8f9fa;
-    }
-    .detail-header {
-      border-bottom: 1px solid #dee2e6;
-      padding-bottom: 5px;
+      border-radius: 8px;
     }
   `]
 })
-export class DetailCellRendererPedimentosComponent implements OnInit {
-
-  private params!: any;
+export class DetailCellRendererPedimentosComponent {
+  private params!: ICellRendererParams;
   private gridApi!: GridApi;
-
   rowData: any[] = [];
-  cascadeType: 'items' | 'provider' | null = null;
-  selectedProviderIndex: number | null = null;
-
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
-  ngOnInit() {
-    this.loadData();
-  }
-
-  agInit(params: any): void {
+  agInit(params: ICellRendererParams): void {
     this.params = params;
-    this.loadData();
+    this.buildRowData();
   }
 
-  loadData() {
-    if (this.params && this.params.data && this.params.data.pedimentos) {
-      // Transform pedimentos data to include provider info
-      this.rowData = this.params.data.pedimentos.map((pedimento: any) => ({
-        ...pedimento,
-        fechaPedimento: pedimento.createdAt || new Date().toISOString(),
-        providers: this.params.data.providers || []
-      }));
-    }
+  onGridReady(params: any) {
+    this.gridApi = params.api;
+  }
+
+  buildRowData() {
+    const pedimentos = this.params.data.pedimentos || [];
+    const providers = this.params.data.providers || [];
+    this.rowData = [];
+
+    pedimentos.forEach((pedimento: any) => {
+      const fechaPedimento = pedimento.createdAt ? pedimento.createdAt.split('T')[0] : '';
+      const proveedor1 = providers[0]?.name || '';
+      const proveedor2 = providers[1]?.name || '';
+      const proveedor3 = providers[2]?.name || '';
+
+      this.rowData.push({
+        pedimento: pedimento.name,
+        articulos: pedimento.items,
+        pdf: 'PDF',
+        fechaPedimento: fechaPedimento,
+        proveedor1: proveedor1,
+        proveedor2: proveedor2,
+        proveedor3: proveedor3
+      });
+    });
   }
 
   get colDefs(): ColDef[] {
     return [
       {
-        headerName: '#',
-        width: 50,
-        valueGetter: (params) => params.node.rowIndex + 1,
-        pinned: 'left',
-        cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' }
+        field: 'pedimento',
+        headerName: 'PEDIMENTO',
+        width: 150
       },
-
       {
-        field: 'name',
-        headerName: 'Pedimento',
-        width: 120,
-        valueGetter: (params) => params.data.name || `Pedimento ${params.node.rowIndex + 1}`
-      },
-
-      {
-        field: 'itemsCount',
-        headerName: 'Items',
-        width: 120,
+        field: 'articulos',
+        headerName: 'ARTICULO',
+        width: 200,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
-          onClick: (node: any) => this.openItemsCascade(node),
+          onClick: (node: any) => this.toggleArticulosCascade(node),
         },
-        valueGetter: (params) => params.data.items ? params.data.items.length : 0,
+        valueGetter: params => params.data.articulos ? params.data.articulos.length : 0,
         editable: false,
-        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
+        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer' }
       },
-
-      {
-        field: 'fechaPedimento',
-        headerName: 'Fecha Pedimento',
-        width: 150,
-        valueFormatter: (params) => {
-          if (params.value) {
-            return new Date(params.value).toLocaleDateString();
-          }
-          return '';
-        }
-      },
-      
       {
         field: 'pdf',
         headerName: 'PDF',
-        width: 80,
-        cellRenderer: (params: any) => {
-          return `<button class="btn btn-sm btn-primary">PDF</button>`;
+        width: 100,
+        cellRenderer: ButtonCellRendererComponent,
+        cellRendererParams: {
+          onClick: (node: any) => {
+            alert('PDF clicked for ' + node.data.pedimento);
+          },
+          icon: 'bi-file-earmark-pdf',
+          title: 'Ver PDF'
         }
       },
       {
-        field: 'provider1',
-        headerName: 'Proveedor 1',
-        width: 150,
-        cellRenderer: ButtonCellRendererComponent,
-        cellRendererParams: {
-          onClick: (node: any) => this.openProviderCascade(node, 0),
-        },
-        valueGetter: (params) => params.data.providers && params.data.providers[0] ? params.data.providers[0].name : '',
-        editable: false,
-        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
+        field: 'fechaPedimento',
+        headerName: 'FECHA PEDIMENTO',
+        width: 150
       },
       {
-        field: 'provider2',
-        headerName: 'Proveedor 2',
+        field: 'proveedor1',
+        headerName: 'PROVEEDOR 1',
         width: 150,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
-          onClick: (node: any) => this.openProviderCascade(node, 1),
+          onClick: (node: any) => this.toggleProveedorCascade(node, 0),
         },
-        valueGetter: (params) => params.data.providers && params.data.providers[1] ? params.data.providers[1].name : '',
-        editable: false,
-        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
+        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer' }
       },
       {
-        field: 'provider3',
-        headerName: 'Proveedor 3',
+        field: 'proveedor2',
+        headerName: 'PROVEEDOR 2',
         width: 150,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
-          onClick: (node: any) => this.openProviderCascade(node, 2),
+          onClick: (node: any) => this.toggleProveedorCascade(node, 1),
         },
-        valueGetter: (params) => params.data.providers && params.data.providers[2] ? params.data.providers[2].name : '',
-        editable: false,
-        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
+        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer' }
+      },
+      {
+        field: 'proveedor3',
+        headerName: 'PROVEEDOR 3',
+        width: 150,
+        cellRenderer: ButtonCellRendererComponent,
+        cellRendererParams: {
+          onClick: (node: any) => this.toggleProveedorCascade(node, 2),
+        },
+        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer' }
       }
     ];
   }
@@ -165,87 +146,48 @@ export class DetailCellRendererPedimentosComponent implements OnInit {
     rowHeight: 35,
     animateRows: true,
     masterDetail: true,
-    detailRowHeight: 400,
-    isRowMaster: (dataItem: any) => true,
+    detailRowHeight: 300,
     detailCellRenderer: DetailCellRendererPedimentosItemsComponent
   };
 
-  onGridReady(params: GridReadyEvent) {
-    this.gridApi = params.api;
+  toggleArticulosCascade(node: any) {
+    this.gridApi.setGridOption('detailCellRenderer', DetailCellRendererPedimentosItemsComponent);
+    node.setSelected(true);
 
-    this.gridApi.setGridOption('detailCellRendererParams', {
-      getDetailRowData: (params: any) => {
-        if (params.data.cascadeType === 'items') {
-          params.successCallback(params.data.items || []);
-        } else if (params.data.cascadeType === 'provider') {
-          // For provider cascade, we'll show the provider details in the renderer
-          params.successCallback([params.data.providers[params.data.selectedProviderIndex]]);
-        } else {
-          params.successCallback([]);
-        }
-      },
-      cascadeType: (params: any) => params.data.cascadeType,
-      selectedProviderIndex: (params: any) => params.data.selectedProviderIndex
-    });
-  }
+    const isCurrentlyExpanded = node.expanded;
 
-  openItemsCascade(node: any) {
-    const api = this.gridApi;
-
-    if (node.expanded && this.cascadeType === 'items') {
-      // If already expanded with items, collapse it
+    if (isCurrentlyExpanded) {
       node.setExpanded(false);
-      this.cascadeType = null;
     } else {
-      // Close any other expanded cascades
-      api.forEachNode((otherNode: any) => {
+      this.gridApi.forEachNode((otherNode: any) => {
         if (otherNode.id !== node.id && otherNode.expanded) {
           otherNode.setExpanded(false);
-          otherNode.data.cascadeType = null;
         }
       });
-
-      // Set cascade type and expand
-      this.cascadeType = 'items';
-      node.data.cascadeType = 'items';
       node.setExpanded(true);
-      console.log('Opening items cascade for pedimento:', node.data);
     }
   }
 
-  openProviderCascade(node: any, providerIndex: number) {
-    const api = this.gridApi;
+  toggleProveedorCascade(node: any, providerIndex: number) {
+    this.gridApi.setGridOption('detailCellRenderer', DetailCellRendererProveedorQuoteComponent);
+    node.setSelected(true);
 
-    if (node.expanded && this.cascadeType === 'provider' && this.selectedProviderIndex === providerIndex) {
-      // If already expanded with this provider, collapse it
+    const isCurrentlyExpanded = node.expanded;
+
+    if (isCurrentlyExpanded) {
       node.setExpanded(false);
-      this.cascadeType = null;
-      this.selectedProviderIndex = null;
     } else {
-      // Close any other expanded cascades
-      api.forEachNode((otherNode: any) => {
+      this.gridApi.forEachNode((otherNode: any) => {
         if (otherNode.id !== node.id && otherNode.expanded) {
           otherNode.setExpanded(false);
-          otherNode.data.cascadeType = null;
-          otherNode.data.selectedProviderIndex = null;
         }
       });
-
-      // Set cascade type and provider index
-      this.cascadeType = 'provider';
-      this.selectedProviderIndex = providerIndex;
-      node.data.cascadeType = 'provider';
-      node.data.selectedProviderIndex = providerIndex;
+      // Set context for the provider
+      this.gridApi.setGridOption('detailCellRendererParams', {
+        selectedProviderIndex: providerIndex,
+        providers: this.params.data.providers
+      });
       node.setExpanded(true);
-      console.log('Opening provider cascade for pedimento:', node.data, 'provider index:', providerIndex);
-    }
-  }
-
-  openProviderDetail(node: any, providerIndex: number) {
-    // This would open another level of detail or modal with provider information
-    console.log('Opening provider detail for pedimento:', node.data, 'provider index:', providerIndex);
-    if (node.data.providers && node.data.providers[providerIndex]) {
-      console.log('Provider details:', node.data.providers[providerIndex]);
     }
   }
 }

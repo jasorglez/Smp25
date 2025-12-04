@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -42,16 +42,19 @@ import { alerts } from 'app/helpers/alerts';
     }
   `]
 })
-export class SubDetailCellRendererQuoteItemsComponent {
+export class SubDetailCellRendererQuoteItemsComponent implements OnInit {
 
-  private params!: ICellRendererParams;
+  @Input() params: any;
   private gridApi!: GridApi;
   rowData: any[] = [];
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
+  ngOnInit(): void {
+    this.rowData = this.params.data.items || [];
+  }
+
   agInit(params: ICellRendererParams): void {
-    this.params = params;
-    this.rowData = params.data.items || [];
+    // For compatibility
   }
 
   onGridReady(params: GridReadyEvent) {

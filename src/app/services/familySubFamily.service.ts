@@ -46,4 +46,10 @@ export class FamilySubFamily {
   getCatalogsMasterByFamilyVigentes(idCompany: number, idMasterFamily: number, idFamilia: number): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlWarehouse}/FamilySubFamilyDelison/GetSubFamilyByMasterVigentes/${idCompany}/${idMasterFamily}/${idFamilia}`, { headers: this.trackingService.getHeaders() });
   }
+  getArticulosCatalogsMasterByFamily(id: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/FamilySubFamilyDelison/GetArticulosSubFamilyByMaster/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+  getArticulosCatalogsMasterByFamilyVigentes(idCompany: number, idMasterFamily: number, idFamilia: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/FamilySubFamilyDelison/GetArticulosSubFamilyByMasterVigentes/${idCompany}/${idMasterFamily}/${idFamilia}`, { headers: this.trackingService.getHeaders() });
+  }
 }
