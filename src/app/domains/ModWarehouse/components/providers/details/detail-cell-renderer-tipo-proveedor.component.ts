@@ -142,32 +142,10 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
             activeRows[0].principal = true;
           }
 
-          // Ordenar localmente por vigente y principal
-          this.rowData.sort((a, b) => {
-            if (a.vigente !== b.vigente) return b.vigente ? 1 : -1;
-            if (a.principal !== b.principal) return b.principal ? 1 : -1;
-            return (a.id || 0) - (b.id || 0);
+          // ✅ SOLUCIÓN PROBLEMA 3: NO ordenar durante la edición - solo refrescar celdas
+          this.gridApi?.refreshCells({
+            force: true
           });
-
-          // Refrescar grid con datos ordenados
-          this.gridApi?.setGridOption('rowData', this.rowData);
-
-          // Restaurar focus a la fila modificada
-          await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
-          if (this.gridApi) {
-            let rowToSelect = this.rowData.find(r => r.id === modifiedRowId);
-            if (!rowToSelect) {
-              rowToSelect = this.rowData.find(r => r.categoria === modifiedRowCategoria && r.familia === modifiedRowFamilia);
-            }
-            if (rowToSelect) {
-              const rowIndex = this.rowData.indexOf(rowToSelect);
-              const rowNode = this.gridApi.getDisplayedRowAtIndex(rowIndex);
-              if (rowNode) {
-                rowNode.setSelected(true);
-                this.gridApi.ensureIndexVisible(rowIndex, 'middle');
-              }
-            }
-          }
         }
 
         // Si se marca como vigente, refrescar las celdas para que 'principal' sea editable
@@ -308,35 +286,16 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
         if (params.newValue === true && params.data.vigente === false) {
           params.data.principal = false;
 
-          // Ordenar y restaurar focus
-          this.rowData.sort((a, b) => {
-            if (a.vigente !== b.vigente) return b.vigente ? 1 : -1;
-            if (a.principal !== b.principal) return b.principal ? 1 : -1;
-            return (a.id || 0) - (b.id || 0);
+          // ✅ SOLUCIÓN PROBLEMA 3: NO ordenar durante la edición - solo refrescar
+          this.gridApi?.refreshCells({
+            force: true
           });
-          this.gridApi?.setGridOption('rowData', this.rowData);
 
           await alerts.basicAlert(
             'No permitido',
             'No se puede marcar como principal una fila inactiva.',
             'warning'
           );
-
-          await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
-          if (this.gridApi) {
-            let rowToSelect = this.rowData.find(r => r.id === modifiedRowId);
-            if (!rowToSelect) {
-              rowToSelect = this.rowData.find(r => r.categoria === modifiedRowCategoria && r.familia === modifiedRowFamilia);
-            }
-            if (rowToSelect) {
-              const rowIndex = this.rowData.indexOf(rowToSelect);
-              const rowNode = this.gridApi.getDisplayedRowAtIndex(rowIndex);
-              if (rowNode) {
-                rowNode.setSelected(true);
-                this.gridApi.ensureIndexVisible(rowIndex, 'middle');
-              }
-            }
-          }
           return;
         }
 
@@ -350,35 +309,16 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
           if (principalRows.length === 0 && activeRows.length > 0) {
             params.data.principal = true;
 
-            // Ordenar y restaurar focus
-            this.rowData.sort((a, b) => {
-              if (a.vigente !== b.vigente) return b.vigente ? 1 : -1;
-              if (a.principal !== b.principal) return b.principal ? 1 : -1;
-              return (a.id || 0) - (b.id || 0);
+            // ✅ SOLUCIÓN PROBLEMA 3: NO ordenar durante la edición - solo refrescar
+            this.gridApi?.refreshCells({
+              force: true
             });
-            this.gridApi?.setGridOption('rowData', this.rowData);
 
             await alerts.basicAlert(
               'No permitido',
               'Debe haber al menos un registro principal. Marque otro como principal antes de desmarcar este.',
               'warning'
             );
-
-            await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
-            if (this.gridApi) {
-              let rowToSelect = this.rowData.find(r => r.id === modifiedRowId);
-              if (!rowToSelect) {
-                rowToSelect = this.rowData.find(r => r.categoria === modifiedRowCategoria && r.familia === modifiedRowFamilia);
-              }
-              if (rowToSelect) {
-                const rowIndex = this.rowData.indexOf(rowToSelect);
-                const rowNode = this.gridApi.getDisplayedRowAtIndex(rowIndex);
-                if (rowNode) {
-                  rowNode.setSelected(true);
-                  this.gridApi.ensureIndexVisible(rowIndex, 'middle');
-                }
-              }
-            }
             return;
           }
         }
@@ -391,32 +331,13 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
             }
           });
 
-          // Ordenar localmente por vigente y principal
-          this.rowData.sort((a, b) => {
-            if (a.vigente !== b.vigente) return b.vigente ? 1 : -1;
-            if (a.principal !== b.principal) return b.principal ? 1 : -1;
-            return (a.id || 0) - (b.id || 0);
+          // ✅ SOLUCIÓN PROBLEMA 3: NO ordenar durante la edición - solo refrescar todas las celdas
+          this.gridApi?.refreshCells({
+            force: true
           });
 
-          // Refrescar grid para mostrar los cambios
-          this.gridApi?.setGridOption('rowData', this.rowData);
-
-          // Restaurar focus a la fila modificada
-          await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
-          if (this.gridApi) {
-            let rowToSelect = this.rowData.find(r => r.id === modifiedRowId);
-            if (!rowToSelect) {
-              rowToSelect = this.rowData.find(r => r.categoria === modifiedRowCategoria && r.familia === modifiedRowFamilia);
-            }
-            if (rowToSelect) {
-              const rowIndex = this.rowData.indexOf(rowToSelect);
-              const rowNode = this.gridApi.getDisplayedRowAtIndex(rowIndex);
-              if (rowNode) {
-                rowNode.setSelected(true);
-                this.gridApi.ensureIndexVisible(rowIndex, 'middle');
-              }
-            }
-          }
+          // ✅ Forzar redibujado de todas las filas para actualizar getRowStyle (color de fondo)
+          this.gridApi?.redrawRows();
         }
 
         // Marcar como modificado
@@ -702,6 +623,45 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
       // Recargar datos desde el servidor
       await this.loadData();
 
+      // ✅ Si ya no quedan registros, limpiar typeProvider en el grid padre
+      if (this.rowData.length === 0) {
+        console.log('⚠️ No quedan registros - limpiando typeProvider en ProvidersComponent');
+
+        try {
+          const providerData: any = await new Promise((resolve, reject) => {
+            this.customersService.getCustomerById(this.params.data.id).subscribe({
+              next: resolve,
+              error: reject
+            });
+          });
+
+          providerData.typework = '';
+
+          await new Promise((resolve, reject) => {
+            this.customersService.updateCustomer(this.params.data.id.toString(), providerData).subscribe({
+              next: resolve,
+              error: reject
+            });
+          });
+
+          this.params.data.typework = '';
+          this.params.data.typeProvider = '';
+
+          if (this.params.api) {
+            this.params.api.refreshCells({
+              rowNodes: [this.params.node],
+              columns: ['typeProvider'],
+              force: true
+            });
+          }
+
+          console.log('✅ typeProvider limpiado en grid padre');
+
+        } catch (error) {
+          console.error('❌ Error al limpiar typeProvider:', error);
+        }
+      }
+
       await alerts.basicAlert(
         'Eliminado exitoso',
         'El registro se ha eliminado correctamente.',
@@ -829,68 +789,96 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
 
       // Si hubo filas nuevas, recargar datos del servidor para obtener los IDs reales
       // Si solo hubo modificaciones, limpiar flags localmente
-      if (newRows.length > 0) {
-        console.log('🔄 Recargando datos del servidor para obtener IDs reales de las filas nuevas...');
+      // ✅ SOLUCIÓN PROBLEMA 1: Siempre recargar datos desde servidor después de guardar
+      // Esto asegura que los datos estén sincronizados y evita problemas de mapeo
+      console.log('🔄 Recargando datos del servidor después de guardar...');
 
-        // Recargar datos desde el servidor
-        const providerTypes: any = await new Promise((resolve, reject) => {
-          this.providersService.getProviderType(this.params.data.id).subscribe({
-            next: resolve,
-            error: reject
-          });
+      // Recargar datos desde el servidor
+      const providerTypes: any = await new Promise((resolve, reject) => {
+        this.providersService.getProviderType(this.params.data.id).subscribe({
+          next: resolve,
+          error: reject
         });
+      });
 
-        // Mapear datos
-        this.rowData = (providerTypes || []).map((pt: any) => {
-          const subfam = this.subfamilias.find(s => s.id === pt.idSubfamily);
-          const fam = this.familias.find(f => f.id === subfam?.idFamily);
-          const cat = this.categorias.find(c => c.id === fam?.idCategory);
+      console.log('📊 Datos recibidos del servidor:', providerTypes);
 
-          return {
-            id: pt.id,
-            categoria: cat?.description || '',
-            familia: fam?.description || '',
-            subfamilia: subfam?.description || '',
-            vigente: pt.vigente ?? false,
-            principal: pt.principal ?? false,
-            idSubfamily: pt.idSubfamily
-          };
-        });
+      // Mapear datos correctamente
+      this.rowData = (providerTypes || []).map((item: any) => ({
+        id: item.id,
+        categoria: item.nameParent || '',
+        familia: item.nameSubparent || '',
+        subfamilia: item.nameProduct || '',
+        vigente: item.vigente || false,
+        principal: item.principal || false,
+        idParent: item.idParent,
+        idSubparent: item.idSubparent,
+        idSubfamily: item.idSubfamily,
+        __originalSubfamilia: item.nameProduct || ''
+      }));
 
-        // Ordenar por vigente y principal
-        this.rowData.sort((a, b) => {
-          if (a.vigente !== b.vigente) return b.vigente ? 1 : -1;
-          if (a.principal !== b.principal) return b.principal ? 1 : -1;
-          return (a.id || 0) - (b.id || 0);
-        });
+      // Ordenar por vigente y principal
+      this.rowData.sort((a, b) => {
+        if (a.vigente !== b.vigente) return b.vigente ? 1 : -1;
+        if (a.principal !== b.principal) return b.principal ? 1 : -1;
+        return (a.id || 0) - (b.id || 0);
+      });
 
-        // Actualizar el grid
-        this.gridApi?.setGridOption('rowData', this.rowData);
-      } else {
-        // Solo hubo modificaciones - limpiar flags y actualizar valores originales localmente SIN recargar
-        console.log('✅ Solo modificaciones - limpiando flags sin recargar');
-        this.rowData.forEach(row => {
-          delete row.__isNew;
-          delete row.__modified;
-          // Actualizar el valor original para que coincida con el nuevo
-          row.__originalSubfamilia = row.subfamilia;
-        });
+      console.log('✅ Datos mapeados correctamente:', this.rowData);
 
-        // Ordenar localmente por vigente y principal
-        this.rowData.sort((a, b) => {
-          if (a.vigente !== b.vigente) return b.vigente ? 1 : -1;
-          if (a.principal !== b.principal) return b.principal ? 1 : -1;
-          return (a.id || 0) - (b.id || 0);
-        });
-
-        // Actualizar el grid con los datos ordenados (NO recarga desde servidor)
-        this.gridApi?.setGridOption('rowData', this.rowData);
-      }
+      // Actualizar el grid
+      this.gridApi?.setGridOption('rowData', this.rowData);
 
       // Buscar el registro marcado como principal y actualizar el campo typeProvider en la tabla padre
       const principalRow = this.rowData.find(row => row.principal === true);
 
-      if (principalRow) {
+      // ✅ Si NO hay registros o NO hay principal, limpiar el campo typeProvider
+      const hasNoPrincipal = !principalRow;
+
+      if (hasNoPrincipal) {
+        console.log('⚠️ No hay registro principal - limpiando typeProvider en ProvidersComponent');
+
+        try {
+          // Consultar con getCustomerById
+          const providerData: any = await new Promise((resolve, reject) => {
+            this.customersService.getCustomerById(this.params.data.id).subscribe({
+              next: resolve,
+              error: reject
+            });
+          });
+
+          // Limpiar el campo typework
+          providerData.typework = '';
+
+          // Guardar con updateCustomer
+          await new Promise((resolve, reject) => {
+            this.customersService.updateCustomer(this.params.data.id.toString(), providerData).subscribe({
+              next: resolve,
+              error: reject
+            });
+          });
+
+          console.log('✅ typework limpiado exitosamente en DB Administration.Customer');
+
+          // Actualizar los datos locales
+          this.params.data.typework = '';
+          this.params.data.typeProvider = '';
+
+          // Forzar actualización visual en el grid padre
+          if (this.params.api) {
+            this.params.api.refreshCells({
+              rowNodes: [this.params.node],
+              columns: ['typeProvider'],
+              force: true
+            });
+            console.log('✅ Grid padre refrescado - columna typeProvider limpiada');
+          }
+
+        } catch (error) {
+          console.error('❌ Error al limpiar typework en DB:', error);
+        }
+
+      } else {
         // ✅ Validar que el registro principal tenga todos los campos completos
         const isComplete = principalRow.categoria && principalRow.familia && principalRow.subfamilia;
 
@@ -935,9 +923,20 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
 
             console.log('✅ typework actualizado exitosamente en DB Administration.Customer');
 
-            // Actualizar los datos locales en el objeto del grid padre
+            // ✅ SOLUCIÓN PROBLEMA 2: Actualizar los datos locales Y refrescar el grid padre
             this.params.data.typework = tipoProveedorConcatenado;
             this.params.data.typeProvider = tipoProveedorConcatenado;
+
+            // Forzar actualización visual en el grid padre
+            if (this.params.api) {
+              // Refrescar la celda específica en el grid padre
+              this.params.api.refreshCells({
+                rowNodes: [this.params.node],
+                columns: ['typeProvider'],
+                force: true
+              });
+              console.log('✅ Grid padre refrescado - columna typeProvider actualizada visualmente');
+            }
 
           } catch (error) {
             console.error('❌ Error al actualizar typework en DB:', error);
