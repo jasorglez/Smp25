@@ -37,8 +37,9 @@ export class DetailCellRendererHistoricoComponent implements ICellRendererAngula
   };
 
   public historicoColumnDefs: ColDef[] = [
-    { headerName: 'Articulo', field: 'fecha', width: 100 },
-    { headerName: 'o', field: 'usuario', width: 120 },
+    { headerName: 'Fecha Guardado', field: 'fecha', width: 100 },
+    { headerName: 'Num. Material', field: 'material', width: 100 },
+    { headerName: 'Articulo', field: 'articulo', width: 120 },
     { headerName: 'Acción', field: 'accion', width: 100 },
     { headerName: 'Campo', field: 'campo', width: 100 },
     { headerName: 'Valor Anterior', field: 'valorAnterior', width: 120 },
