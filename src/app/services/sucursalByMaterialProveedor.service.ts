@@ -1,0 +1,46 @@
+import { inject, Injectable } from '@angular/core';
+
+import { environment } from '@env/environment';
+import { TrackingService } from './tracking.service';
+
+import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http';
+import { catchError, EMPTY, map, Observable, throwError } from 'rxjs';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class SucursalByMaterialProveedorService {
+
+  private http = inject(HttpClient);
+  private trackingService = inject(TrackingService);
+
+  private getAuthToken(): string {
+    return localStorage.getItem('token') || '';
+  }
+
+  getSucursalByMaterial(idMaster: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/SucursalByMaterialProveedor/GetAll?idMaster=${idMaster}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getCantidadPersonal(): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/TDPersonalByProyects/personalByProyect`, { headers: this.trackingService.getHeaders() });
+  }
+
+  addSucursalByMaterial(data: any) {
+    console.log('data', data);
+    return this.http.post(`${environment.urlWarehouse}/SucursalByMaterialProveedor`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateSucursalByMaterial(id: number, data: any) {
+    console.log('data', data);
+    return this.http.put(`${environment.urlWarehouse}/SucursalByMaterialProveedor?id=${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteSucursalByMaterial(id: number) {
+    return this.http.delete(`${environment.urlWarehouse}/SucursalByMaterialProveedor/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+}
+
+
+
