@@ -772,7 +772,7 @@ getMasterUpdateTrigger() {
   private refresCantidadPermisos = signal<boolean>(false);
   private refresSecurity = signal<boolean>(false);
   private masterCatalog = signal<number>(null); 
-
+  private IdProveedor = signal<number>(null);
 
   setIdCatalogFamily(id: number){
     this.idCatalogFamily.set(id);
@@ -859,5 +859,12 @@ getMasterUpdateTrigger() {
 
   getMasterCatalog() {
     return this.masterCatalog;
+  }
+  setIdProveedor(value: number){
+    this.IdProveedor.set(value);
+  }
+
+  getIdProveedor() {
+    return this.IdProveedor();
   }
 }
