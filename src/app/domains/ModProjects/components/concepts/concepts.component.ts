@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, effect, inject, OnInit } from '@angular/core';
 import { TdConceptsService } from 'app/services/td-concepts.service';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import {
@@ -15,6 +15,7 @@ import { concat, lastValueFrom } from 'rxjs';
 import { toArray } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
+import { SignalsService } from 'app/services/signals.service';
 
 @Component({
   selector: 'app-concepts',
@@ -37,15 +38,41 @@ export class ConceptsComponent implements OnInit, CanComponentDeactivate {
   newlyAddedRows: string[] = [];
 
   private tdConceptsService = inject(TdConceptsService);
+  private signalsService = inject(SignalsService);
 
   public rowSelection: 'single' | 'multiple' = 'single';
+  private idCompany: number;
 
-  ngOnInit(): void {
-    this.loadData();
+  constructor() {
+    // ✅ Usar effect para reaccionar a cambios en el signal
+    effect(() => {
+      this.idCompany = this.signalsService.getRootSelectedBySidebar()();
+
+      // Solo cargar datos si idCompany tiene un valor válido
+      if (this.idCompany) {
+        console.log('✅ idCompany obtenido desde signal:', this.idCompany);
+        this.loadData();
+      } else {
+        console.warn('⚠️ idCompany no está disponible aún');
+      }
+    });
   }
 
-  loadData(): void {
-    this.tdConceptsService.getTDConcepts().subscribe({
+  async ngOnInit(): Promise<void> {
+    // ✅ Verificar si idCompany ya está disponible al inicializar
+    if (!this.idCompany) {
+      console.log('ℹ️ Esperando a que idCompany esté disponible desde el signal...');
+    }
+  }
+
+  async loadData(): Promise<void> {
+    // ✅ Validar nuevamente antes de hacer la petición
+    if (!this.idCompany) {
+      console.error('⚠️ No se puede cargar datos: idCompany no está disponible');
+      return;
+    }
+
+    this.tdConceptsService.getTDConcepts(this.idCompany).subscribe({
       next: (data: any[]) => {
         this.rowData = data;
         console.log('TDConcepts loaded:', data);
@@ -126,8 +153,8 @@ export class ConceptsComponent implements OnInit, CanComponentDeactivate {
         valueFormatter: (params) => {
           return params.value !== null && params.value !== undefined
             ? `$${Number(params.value).toLocaleString('es-MX', {
-                minimumFractionDigits: 2,
-              })}`
+              minimumFractionDigits: 2,
+            })}`
             : 'N/A';
         },
         valueSetter: (params) => {
@@ -157,8 +184,8 @@ export class ConceptsComponent implements OnInit, CanComponentDeactivate {
         valueFormatter: (params) => {
           return params.value !== null && params.value !== undefined
             ? `$${Number(params.value).toLocaleString('es-MX', {
-                minimumFractionDigits: 2,
-              })}`
+              minimumFractionDigits: 2,
+            })}`
             : 'N/A';
         },
         valueSetter: (params) => {
