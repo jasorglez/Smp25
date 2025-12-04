@@ -82,6 +82,7 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
   materialSubfamilyId: number; // ID de la subfamilia del material
   proveedorRowData: any[] = [];
   proveedorGridApi: any;
+  gridApi: any; // Alias for backward compatibility
   selectedProveedor: any = null;
   hasProveedorChanges: boolean = false;
 
@@ -126,6 +127,17 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
   };
 
   proveedorColumnDefs = [
+    {
+        field: 'id',
+        headerName: 'Id',
+        editable: false,
+        width: 70,
+        hide: false,
+        filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
+        filterParams: {
+          filterOptions: ['equals'], // Opciones de filtro
+        },
+      },
       {
         field: 'principal',
         headerName: 'Principal',
@@ -361,23 +373,39 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
       const node = event.node;
       const api = event.api;
       const detailType = 'proveedorSucursal';
+      if (this.gridApi) {
+          const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
+          const selectedId = selectedRowData.id;
+          const filterModel = {
+          id: {
+            type: 'equals',
+            filter: selectedId,
+          },
+        };
+          this.gridApi.setFilterModel(filterModel);
+          this.gridApi.onFilterChanged();
+        }
 
       const isCurrentlyExpanded = node.expanded && event.data.detailType === detailType;
 
       if (isCurrentlyExpanded) {
+        // Collapsing: clear any filters
         node.setExpanded(false);
+        this.gridApi.setFilterModel(null); // quitar filtro
+        this.gridApi.onFilterChanged();
+        
       } else {
-        // Colapsar cualquier otra fila de proveedor expandida
+        // Expanding: collapse other expanded rows
         api.forEachNode((otherNode: any) => {
           if (otherNode.expanded && otherNode.id !== node.id) {
             otherNode.setExpanded(false);
           }
         });
 
-        // Asignar el tipo de detalle y expandir
+        // Set detail type and expand
         event.data.detailType = detailType;
 
-        // Simular datos para el siguiente nivel
+        // Generate fake data for the next level
         event.data.sucursalDetailData = this.generateFakeSucursalData();
 
         setTimeout(() => {
@@ -483,6 +511,7 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
 
   onProveedorGridReady(params: any) {
     this.proveedorGridApi = params.api;
+    this.gridApi = params.api; // Set alias
     params.api.sizeColumnsToFit();
 
     params.api.addEventListener('selectionChanged', () => {

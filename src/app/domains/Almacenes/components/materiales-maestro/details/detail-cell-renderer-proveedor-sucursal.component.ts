@@ -2,10 +2,13 @@ import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
+import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-community';
 import { SelectWithTooltipEditorV2Component } from '../editors/select-with-tooltip-editor-v2.component';
 import { BranchsService } from 'app/services/branchs.service';
 import { SignalsService } from 'app/services/signals.service';
+import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMaterialProveedor.service';
 
 @Component({
   selector: 'app-detail-cell-renderer-proveedor-sucursal',
@@ -20,14 +23,14 @@ import { SignalsService } from 'app/services/signals.service';
             <button class="btn btn-sm btn-success" (click)="addSucursal()">
               <i class="bi bi-plus-lg"></i> Agregar
             </button>
-            <button class="btn btn-sm btn-warning" (click)="revertChanges()" [disabled]="!hasChanges">
-                <i class="bi bi-arrow-clockwise"></i> Deshacer
-            </button>
             <button class="btn btn-sm btn-primary position-relative" (click)="saveSucursales()" [disabled]="!hasChanges">
               <i class="bi bi-floppy"></i> Guardar
               <span *ngIf="hasChanges" class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle">
                 <span class="visually-hidden">Hay cambios sin guardar</span>
               </span>
+            </button>
+            <button class="btn btn-sm btn-warning" (click)="revertChanges()" >
+                <i class="bi bi-arrow-clockwise"></i> Deshacer
             </button>
             <button class="btn btn-sm btn-danger" (click)="deleteSucursal()" [disabled]="!selectedSucursal">
               <i class="bi bi-trash"></i> Eliminar
@@ -51,6 +54,7 @@ import { SignalsService } from 'app/services/signals.service';
 export class DetailCellRendererProveedorSucursalComponent implements ICellRendererAngularComp {
   private branchsService = inject(BranchsService);
   private signalsService = inject(SignalsService);
+  private sucursalByMaterialProveedorService = inject(SucursalByMaterialProveedorService);
 
   public params!: ICellRendererParams;
   public providerName: string = '';
@@ -69,12 +73,19 @@ export class DetailCellRendererProveedorSucursalComponent implements ICellRender
     rowSelection: 'single' as const,
     suppressClickEdit: false,
     stopEditingWhenCellsLoseFocus: true,
+    enableFiltering: true,
+    enableSorting: true,
   };
 
   public sucursalColumnDefs: ColDef[] = [];
 
   agInit(params: ICellRendererParams): void {
     this.params = params;
+    console.log('Sucursal detail params.data:', params.data);
+    console.log('idProveedor from params:', params.data.idProveedor);
+    this.signalsService.setIdProveedor(params.data.id);
+    console.log('IdProveedor set to:', this.signalsService.getIdProveedor());
+    this.loadCatalogData();
     console.log('Sucursal detail params:', params.data.id);
     this.providerName = params.data.providerName || 'N/A';
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
@@ -82,10 +93,11 @@ export class DetailCellRendererProveedorSucursalComponent implements ICellRender
     this.loadAllBranches().then(() => {
       this.sucursalColumnDefs = [
         {
-          field: 'sucursal',
+          field: 'idSucursal',
           headerName: 'Sucursal',
           width: 200,
           editable: true,
+          filter: true,
                 
           cellEditor: SelectWithTooltipEditorV2Component,
                 
@@ -128,7 +140,7 @@ export class DetailCellRendererProveedorSucursalComponent implements ICellRender
           
             // Validar duplicado
             const duplicateExists = (this.sucursalRowData || []).some((row, index) =>
-              index !== params.node.rowIndex && Number(row.sucursal) === newValue
+              index !== params.node.rowIndex && Number(row.idSucursal) === newValue
             );
           
             if (duplicateExists) {
@@ -141,39 +153,47 @@ export class DetailCellRendererProveedorSucursalComponent implements ICellRender
             }
           
             // Asignar
-            params.data.sucursal = newValue;
+            params.data.idSucursal = newValue;
             return true;
           },
         
           // Coger siempre el número de data.sucursal (evita inconsistencias)
-          valueGetter: (params) => Number(params.data.sucursal),
+          valueGetter: (params) => Number(params.data.idSucursal),
         },
         {
           field: 'fechaAlta',
           headerName: 'Fecha Alta',
           width: 120,
           editable: true,
-          valueSetter: (params: any) => {
-            params.data.fechaAlta = params.newValue ? params.newValue.toUpperCase() : '';
-            return true;
-          }
+          filter: 'agDateColumnFilter',
+          cellEditor: 'agDateCellEditor',
+          valueFormatter: (params) => {
+            if (!params.value) return '';
+            try {
+              return params.value.toLocaleDateString();
+            } catch (e) { return params.value; }
+          },
+          cellStyle: { textAlign: 'center' }
         },
-        { field: 'stockMinimo', headerName: 'Stock Minimo', width: 120, editable: true, type: 'numericColumn' },
-        { field: 'resurtido', headerName: 'Resurtido', width: 120, editable: true, type: 'numericColumn' },
-        { field: 'capacidadMaxAlmacen', headerName: 'Capacidad Max. Almacen', width: 180, editable: true, type: 'numericColumn' },
+        { field: 'stockMinimo', headerName: 'Stock Minimo', width: 120, editable: true, type: 'numericColumn', filter: 'agNumberColumnFilter' },
+        { field: 'resurtido', headerName: 'Resurtido', width: 120, editable: true, type: 'numericColumn', filter: 'agNumberColumnFilter' },
+        { field: 'capacidadMaxAlmacen', headerName: 'Capacidad Max. Almacen', width: 180, editable: true, type: 'numericColumn', filter: 'agNumberColumnFilter' },
         {
           field: 'tiempoDeEntrega',
           headerName: 'Tiempo de Entrega',
           width: 150,
           editable: true,
+          type: 'numericColumn',
+          filter: 'agNumberColumnFilter',
           valueSetter: (params: any) => {
-            params.data.tiempoDeEntrega = params.newValue ? params.newValue.toUpperCase() : '';
+            params.data.tiempoDeEntrega = params.newValue;
             return true;
           }
         },
         {
-          field: 'activo', headerName: 'Activo', width: 100, editable: true,
-          cellRenderer: 'agCheckboxCellRenderer', cellEditor: 'agCheckboxCellEditor'
+          field: 'vigente', headerName: 'Activo', width: 100, editable: true,
+          cellRenderer: 'agCheckboxCellRenderer', cellEditor: 'agCheckboxCellEditor',
+          filter: true
         },
         // Columna 8 (oculta o para datos internos)
         { field: 'id', headerName: 'ID', width: 80, hide: true }
@@ -190,6 +210,21 @@ export class DetailCellRendererProveedorSucursalComponent implements ICellRender
       this.allBranches = await this.branchsService.getBranches2fields(this.idRoot).toPromise();
       console.log('All branches loaded:', this.allBranches);
     }
+  }
+
+  loadCatalogData(){
+    const idProveedor = this.signalsService.getIdProveedor();
+    this.sucursalByMaterialProveedorService.getSucursalByMaterial(idProveedor).subscribe(
+      (data: any) => {
+        this.sucursalRowData = data.map((row: any) => ({
+          ...row,
+          fechaAlta: row.fechaAlta ? new Date(row.fechaAlta) : null
+        }));
+        this.originalSucursalRowData = JSON.parse(JSON.stringify(this.sucursalRowData));
+        console.log(data)
+      },
+      (error) => console.error('Error fetching data:', error)
+    );
   }
 
   refresh(): boolean {
@@ -209,24 +244,27 @@ export class DetailCellRendererProveedorSucursalComponent implements ICellRender
   onSelectionChanged(event: any) {
     const selectedRows = event.api.getSelectedRows();
     this.selectedSucursal = selectedRows.length > 0 ? selectedRows[0] : null;
+    
   }
 
   addSucursal() {
     const newRow = {
       id: `temp_${Date.now()}`,
-      sucursal: '',
-      fechaAlta: new Date().toISOString().split('T')[0],
+      idSucursal: '',
+      fechaAlta: new Date(),
       stockMinimo: 0,
       resurtido: 0,
       capacidadMaxAlmacen: 0,
-      tiempoDeEntrega: '',
-      activo: true,
+      tiempoDeEntrega: 2,
+      active: true,
+      vigente: true,
+      idMaterialByProveedor: this.params.data.id,
       __isNew: true
     };
     this.sucursalRowData = [newRow, ...this.sucursalRowData];
     this.hasChanges = true;
     setTimeout(() => {
-      this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'sucursal' });
+      this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'idSucursal' });
     }, 100);
   }
 
@@ -238,19 +276,95 @@ export class DetailCellRendererProveedorSucursalComponent implements ICellRender
     this.sucursalRowData = JSON.parse(JSON.stringify(this.originalSucursalRowData));
     this.gridApi.setGridOption('rowData', this.sucursalRowData);
     this.hasChanges = false;
+    this.loadCatalogData();
     this.selectedSucursal = null;
   }
 
-  saveSucursales() {
+  async saveSucursales() {
     // Aquí iría la lógica para guardar en el servidor
-    console.log('Guardando datos de sucursales:', this.sucursalRowData.filter(r => r.__isNew || r.__modified));
-    alerts.basicAlert('Guardado', 'Los cambios en sucursales se han guardado (simulado).', 'success');
-    this.hasChanges = false;
-    // Limpiar flags
-    this.sucursalRowData.forEach(row => {
-      delete row.__isNew;
-      delete row.__modified;
+    /*const isValid = this.sucursalRowData.every(
+                (item) =>
+                  item.masterFamily
+              );
+              if (!isValid) {
+                alerts.basicAlert(
+                  'Añadir entrada',
+                  'Debe llenar los campos obligatorios antes de guardar.',
+                  'error'
+                );
+                return;
+              }*/
+          
+    const newRows = this.sucursalRowData.filter((row) => row.__isNew);
+    const modifiedRows = this.sucursalRowData.filter(
+      (row) => row.__modified && !row.__isNew
+    );
+
+    const addObservables = newRows.map((row) => {
+      const cleanedData = this.cleanDataForServer(row);
+      return this.sucursalByMaterialProveedorService.addSucursalByMaterial(cleanedData);
     });
+
+    const updateObservables = modifiedRows.map((row) => {
+      const cleanedData = this.cleanDataForServer(row);
+      return this.sucursalByMaterialProveedorService.updateSucursalByMaterial(row.id, cleanedData);
+    });
+
+    try {
+      await lastValueFrom(
+        concat(...addObservables, ...updateObservables).pipe(toArray())
+      );
+      /*
+      // Determinar qué ID vamos a seleccionar después de recargar
+      if (modifiedRows.length > 0) {
+        // Si hay filas modificadas, guardamos el ID de la última modificada
+        this.lastEditedRowId = modifiedRows[modifiedRows.length - 1].id;
+      } else if (newRows.length > 0) {
+        // Si hay filas nuevas, marcaremos que necesitamos seleccionar el ID máximo
+        this.lastEditedRowId = 'SELECT_MAX_ID';
+      }*/
+
+      alerts.basicAlert(
+        'Datos actualizados',
+        'Se han actualizado los datos correctamente.',
+        'success'
+      );
+      this.hasChanges = false;
+      this.loadCatalogData();
+
+      // Seleccionar la fila apropiada después de recargar
+      /*if (this.lastEditedRowId) {
+        if (this.lastEditedRowId === 'SELECT_MAX_ID') {
+          // Encontrar el ID máximo en los datos actuales
+          const maxId = Math.max(...this.sucursalRowData.map((row) => Number(row.id)));
+          this.selectRowById(maxId);
+        } else {
+          this.selectRowById(this.lastEditedRowId);
+        }
+        this.lastEditedRowId = null; // Resetear el ID
+      }*/
+    } catch (error) {
+      console.error(error);
+      alerts.basicAlert(
+        'Error',
+        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
+        'error'
+      );
+    }
+  }
+
+  private cleanDataForServer(data: any): any {
+   const cleanedData = { ...data };
+    delete cleanedData.__isNew;
+    delete cleanedData.__modified;
+    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
+      delete cleanedData.id;
+    }
+    // Convert Date objects to ISO strings for the backend
+    if (cleanedData.fechaAlta instanceof Date) {
+      cleanedData.fechaAlta = cleanedData.fechaAlta.toISOString();
+    }
+    return cleanedData;
   }
 
   async deleteSucursal() {
@@ -258,15 +372,76 @@ export class DetailCellRendererProveedorSucursalComponent implements ICellRender
       alerts.basicAlert('Error', 'Seleccione una sucursal para eliminar.', 'warning');
       return;
     }
-
-    const confirm = await alerts.confirmAlert('¿Eliminar Sucursal?', `¿Está seguro de eliminar la sucursal ${this.selectedSucursal.sucursal}?`, 'warning', 'Sí, eliminar');
-    if (confirm.isConfirmed) {
-      // Lógica para eliminar
-      this.sucursalRowData = this.sucursalRowData.filter(row => row.id !== this.selectedSucursal.id);
-      this.gridApi.setGridOption('rowData', this.sucursalRowData);
-      this.selectedSucursal = null;
-      this.hasChanges = true; // Marcar que hay cambios para guardar la eliminación
-      alerts.basicAlert('Eliminado', 'La sucursal ha sido eliminada de la lista. Guarde los cambios para confirmar.', 'info');
+if (!this.gridApi) {
+      alerts.basicAlert('Error', 'Grid no inicializado.', 'error');
+      return;
     }
+
+    const selectedNodes = this.gridApi.getSelectedNodes();
+    if (!selectedNodes || selectedNodes.length === 0) {
+      alerts.basicAlert(
+        'Eliminar entrada',
+        'Por favor, seleccione una entrada para eliminar.',
+        'error'
+      );
+      return;
+    }
+
+    const node = selectedNodes[0];
+    const selectedData = node?.data;
+    console.log('Datos seleccionados para eliminar:', selectedData);
+    if (!selectedData) {
+      alerts.basicAlert('Eliminar entrada', 'No se encontró la fila seleccionada.', 'error');
+      return;
+    }
+
+    // Confirmación antes de eliminar
+    alerts
+      .confirmAlert(
+        'Eliminar entrada',
+        '¿Está seguro que desea eliminar esta entrada?',
+        'warning',
+        'Sí, eliminar'
+      )
+      .then((result) => {
+        if (!result.isConfirmed) return;
+
+        // Determinar el id real (puede venir como 'id' o 'Id' según el backend)
+        const realId = selectedData.id ?? selectedData.Id ?? null;
+
+        // Si la fila es nueva (no guardada en servidor) o no tiene id, la eliminamos localmente
+        if (selectedData.__isNew || !realId) {
+          this.gridApi.applyTransaction({ remove: [selectedData] });
+          // Mantener selectedSucursal sincronizado
+          this.selectedSucursal = this.selectedSucursal.filter((r) => r !== selectedData);
+          alerts.basicAlert('Entrada eliminada', 'La entrada se eliminó localmente.', 'success');
+          return;
+        }
+
+        // Si la fila existe en servidor, llamamos al servicio para eliminarla
+        const id = realId;
+        this.sucursalByMaterialProveedorService
+          .deleteSucursalByMaterial(id)
+          .pipe(
+            catchError((error) => {
+              alerts.basicAlert(
+                'Eliminar entrada',
+                'Error al eliminar la entrada.',
+                'error'
+              );
+              console.error(error);
+              return EMPTY;
+            })
+          )
+          .subscribe(() => {
+            alerts.basicAlert(
+              'Entrada eliminada',
+              'La entrada se eliminó correctamente.',
+              'success'
+            );
+            // Recargar datos desde el servidor para mantener consistencia
+            this.loadCatalogData();
+          });
+      });
   }
 }
