@@ -243,68 +243,85 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
         showDisabledCheckboxes: true,
       },
       {
-        headerName: 'Artículos',
-        field: 'idCatalog',
-        editable: true,
+  headerName: 'Artículos',
+  field: 'idCatalog',
+  editable: true,
 
-        cellEditor: SelectWithTooltipEditorV2Component,
+  cellEditor: SelectWithTooltipEditorV2Component,
 
-        cellEditorParams: () => {
-          // Mapear al shape que espera SelectDropdownService: { id, description }
-          const opts = (this.families || []).map(f => ({
-            id: f.idSubfamily,
-            description: f.subfamilia,
-            // opcionales: agregar campos auxiliares si los necesita el tooltip
-            valueAddition: f.someExtraInfo ?? '',
-            valueAddition2: f.someAbbr ?? ''
-          }));
+  cellEditorParams: () => {
+    // Estructura esperada por el componente: { id, description }
+    const opts = (this.families || []).map(f => ({
+      id: f.id,
+      description: f.articulo,
+      valueAddition: f.familia ?? '',
+      valueAddition2: f.subfamilia ?? ''
+    }));
 
-          console.log("OPCIONES EN EL EDITOR:", opts);
-          return { options: opts };
-        },
-      
-        valueFormatter: (params) => {
-          // Aceptar que el valor pueda ser un objeto (editor devuelve {value,label})
-          const raw = params.value;
-          const val = (raw && typeof raw === 'object') ? (raw.value ?? raw.id) : raw;
-          console.log('Valor en valueFormatter:', val);
-          const fam = this.familiasVigente?.find(f => f.idSubfamily === val);
-          // Si no encontramos la familia pero el raw es objeto, mostrar su label como respaldo
-          if (fam) return fam.subfamilia;
-          if (raw && typeof raw === 'object') return raw.label ?? '';
-          return '';
-        },
-      
-        valueSetter: (params) => {
-          const editorValue = params.newValue;
-          // El editor puede devolver: raw id, o un objeto { value, label } o { id, label }
-          let value: any = editorValue;
-          if (editorValue && typeof editorValue === 'object') {
-            value = editorValue.id ?? editorValue.value ?? editorValue;
-          }
+    console.log("OPCIONES EN EL EDITOR:", opts);
+    return { options: opts };
+  },
 
-          if (value === undefined || value === null || value === '') {
-            alerts.basicAlert('Campo requerido', 'La subfamilia es obligatoria', 'error');
-            return false;
-          }
+  valueFormatter: (params) => {
+    const raw = params.value;
 
-          const duplicateExists = this.costosRowData.some((row, i) =>
-            i !== params.node.rowIndex && row.idCatalog === value
-          );
+    // Normalizar a valor "id"
+    const val = (raw && typeof raw === 'object')
+      ? (raw.value ?? raw.id)
+      : raw;
 
-          if (duplicateExists) {
-            alerts.basicAlert('Valor duplicado', 'Ya existe esa subfamilia.', 'error');
-            return false;
-          }
+    console.log('Valor en valueFormatter:', val);
 
-          params.data.idCatalog = value;
+    // Buscar usando la misma lista que el editor
+    const fam = this.familiasVigente?.find(f => f.id === val);
 
-          const fam = this.familiasVigente.find(f => f.idSubfamily === value);
-          params.data.subfamilia = fam?.subfamilia || (editorValue && editorValue.label) || '';
+    if (fam) return fam.articulo;
 
-          return true;
-        }
-      },
+    // Fallback si el editor devolvió objeto {label}
+    if (raw && typeof raw === 'object') return raw.label ?? '';
+
+    return '';
+  },
+
+  valueSetter: (params) => {
+    const editorValue = params.newValue;
+
+    // Normalizar cualquier forma devuelta por el editor
+    let value = editorValue;
+    if (editorValue && typeof editorValue === 'object') {
+      value = editorValue.id ?? editorValue.value;
+    }
+
+    // Validación de requerido
+    if (!value) {
+      alerts.basicAlert('Campo requerido', 'El artículo es obligatorio', 'error');
+      return false;
+    }
+
+    // Validación de duplicados
+    const duplicateExists = this.costosRowData.some((row, i) =>
+      i !== params.node.rowIndex && row.idCatalog === value
+    );
+
+    if (duplicateExists) {
+      alerts.basicAlert('Valor duplicado', 'Ese artículo ya fue seleccionado.', 'error');
+      return false;
+    }
+
+    // Asignar ID
+    params.data.idCatalog = value;
+
+    // Obtener artículo desde families (coherente con editor)
+    const fam = this.families.find(f => f.id === value);
+
+    // Asignar nombre del artículo
+    params.data.articulo = fam?.articulo
+      || (editorValue && editorValue.label)
+      || '';
+
+    return true;
+  }
+},
       {
         headerName: 'Costo Unitario',
         field: 'costoUni',
@@ -517,8 +534,8 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
   }
 
     familias(idFamilia:any){
-      console.log(idFamilia.idFamilia);
-    this.familySubFamily.getCatalogsMasterByFamily(idFamilia.idFamilia).subscribe(
+      console.log(idFamilia);
+    this.familySubFamily.getArticulosCatalogsMasterByFamily(this.idRoot).subscribe(
       (data: any) => {
         this.familiasVigente = data;
         console.log(data)
@@ -527,7 +544,8 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
     );
   }
   familiasVigentes(idFamilia:any){
-    this.familySubFamily.getCatalogsMasterByFamilyVigentes(this.idRoot, this.idSelect, idFamilia.idFamilia).subscribe(
+    console.log("data",this.idRoot,this.idSelect,idFamilia);
+    this.familySubFamily.getArticulosCatalogsMasterByFamilyVigentes(this.idRoot, this.idSelect, idFamilia.idFamilia).subscribe(
       (data: any) => {
         this.families= data;
         console.log(data)
