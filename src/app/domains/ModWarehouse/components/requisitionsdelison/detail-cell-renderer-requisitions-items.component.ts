@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -8,6 +8,7 @@ import { alerts } from 'app/helpers/alerts';
 import { SelectMaterialEditorComponent } from '../../../ModWareHousesTD/components/inandout-st/select-material-editor.component';
 import { ButtonCellRendererComponent } from '../../../ModWareHousesTD/components/inandout-st/button-cell-renderer.component';
 import { DetailCellRendererRequisitionsPurchasesComponent } from './detail-cell-renderer-requisitions-purchases.component';
+import { OcAndReqsService } from 'app/services/ocandreqs.service';
 
 @Component({
   selector: 'app-detail-cell-renderer-requisitions-items',
@@ -114,14 +115,17 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
   private params!: any;
   private gridApi!: GridApi;
   private context: any;
+  private ocAndReqsService = inject(OcAndReqsService);
 
   rowData: any[] = [];
+  originalRowData: any[] = []; // Para poder deshacer cambios
   hasUnsavedChanges: boolean = false;
   tempIdCounter: number = 0;
   isAddingNewItem: boolean = false;
   hasPedimentoSelection: boolean = false;
   materials: any[] = [];
   private pedimentoCounter: number = 1;
+  requisitionId: number = 0;
 
   // Propiedades para el modal de nuevo artículo
   isNewArticleModalVisible = false;
@@ -152,42 +156,77 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
   }
 
   loadData() {
-    if (this.context && this.context.ITEMS && this.context.ITEMS.load) {
-      const requisitionId = this.params.data.id;
-      this.context.ITEMS.load(requisitionId, (data: any[]) => {
-        this.rowData = data.map(item => ({
-          ...item,
-          purchasesData: item.purchasesData || [
-            {
-              id: 1,
-              quoteRequestDate: new Date().toISOString(),
-              quoteReceptionDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days later
-              supplier: 'PROVEEDOR ' + item.article?.substring(0, 3).toUpperCase(),
-              unitCost: Math.floor(Math.random() * 1000) + 100,
-              minimumPurchase: Math.floor(Math.random() * 100) + 10,
-              deliveryTime: '7-10 días hábiles',
-              status: 'Pendiente',
-              confirmedQuantity: item.quantity,
-              totalCost: (Math.floor(Math.random() * 1000) + 100) * item.quantity,
-              authorized: 'Pendiente',
-              __isNew: false,
-              __modified: false
-            }
-          ],
+    if (!this.params || !this.params.data) {
+      console.warn('⚠️ No hay params disponibles para cargar items');
+      return;
+    }
+
+    this.requisitionId = this.params.data.id;
+
+    console.log('🔍 ==================== DEBUG ITEMS COMPONENT ====================');
+    console.log('📦 ID de requisición que se está abriendo:', this.requisitionId);
+    console.log('📋 Datos completos de la fila:', this.params.data);
+    console.log('🔢 Tipo de dato del ID:', typeof this.requisitionId);
+    console.log('================================================================');
+
+    // ✅ Llamar al servicio real
+    this.ocAndReqsService.getReqItems(this.requisitionId).subscribe({
+      next: (data: any) => {
+        console.log('✅ Items recibidos del servidor:', data);
+
+        // Mapear los datos del servidor al formato del grid
+        this.rowData = Array.isArray(data) ? data.map((item: any) => ({
+          id: item.id,
+          idRequisition: item.idMovement, // El servidor usa idMovement
+          idSupplie: item.idSupplie,
+          materialId: item.idSupplie, // Para el editor de materiales
+          article: item.description || '', // Usar description como article
+          code: item.code || '',
+          description: item.description || '',
+          measure: item.measure || '',
+          quantity: item.quantity || 0,
+          price: item.price || 0,
+          total: item.total || 0,
+          type: item.type || 'Interno',
+          idProvider: item.idProvider || 0,
+          comment: item.comment || '',
+          dateuse: item.dateuse || new Date().toISOString(),
+          active: item.active !== undefined ? item.active : true,
+          recurrent: 'Recurrente', // Por defecto recurrente
+          articleNumber: '',
+          internalProvider: '',
+          priorityType: 'Normal',
+          pedimiento: false,
+          pedimentoNumber: '',
+          purchasesData: [], // Se puede cargar después si es necesario
           purchasesExpanded: false,
           __isNew: false,
           __modified: false,
           saved: true
-        }));
+        })) : [];
+
+        this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
+
         if (this.gridApi) {
           this.gridApi.setGridOption('rowData', this.rowData);
           this.gridApi.redrawRows();
         }
-        if (this.context && this.context.ITEMS && this.context.ITEMS.updateCount) {
-          this.context.ITEMS.updateCount(requisitionId, this.rowData.length);
+
+        console.log('✅ Items cargados:', this.rowData.length);
+
+        // ❌ NO actualizar el contador - ya viene del servidor con countrow
+        // El contador articlesCount ya está correcto desde loadRequisitions()
+      },
+      error: (error) => {
+        console.error('❌ Error al cargar items:', error);
+        this.rowData = [];
+        this.originalRowData = [];
+
+        if (this.gridApi) {
+          this.gridApi.setGridOption('rowData', []);
         }
-      });
-    }
+      }
+    });
   }
 
   loadMaterials() {

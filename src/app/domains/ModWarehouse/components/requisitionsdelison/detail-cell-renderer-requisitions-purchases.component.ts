@@ -1,9 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { alerts } from 'app/helpers/alerts';
 
 @Component({
@@ -54,10 +55,13 @@ export class DetailCellRendererRequisitionsPurchasesComponent implements OnInit 
   private params!: any;
   private gridApi!: GridApi;
   private context: any;
+  private ocAndReqsService = inject(OcAndReqsService);
 
   rowData: any[] = [];
+  originalRowData: any[] = []; // Para poder deshacer cambios
   hasUnsavedChanges: boolean = false;
   tempIdCounter: number = 0;
+  requisitionId: number = 0;
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
@@ -72,22 +76,62 @@ export class DetailCellRendererRequisitionsPurchasesComponent implements OnInit 
   }
 
   loadData() {
-    if (this.context && this.context.PURCHASES && this.context.PURCHASES.load) {
-      const requisitionId = this.params.data.id;
-      this.context.PURCHASES.load(requisitionId, (data: any[]) => {
-        this.rowData = data.map(item => ({
-          ...item,
+    if (!this.params || !this.params.data) {
+      console.warn('⚠️ No hay params disponibles para cargar items');
+      return;
+    }
+
+    this.requisitionId = this.params.data.id;
+
+    console.log('🔍 ==================== DEBUG DETAIL COMPONENT ====================');
+    console.log('📦 ID de requisición que se está abriendo:', this.requisitionId);
+    console.log('📋 Datos completos de la fila:', this.params.data);
+    console.log('🔢 Tipo de dato del ID:', typeof this.requisitionId);
+    console.log('================================================================');
+
+    // ✅ Llamar al servicio real
+    this.ocAndReqsService.getReqItems(this.requisitionId).subscribe({
+      next: (data: any) => {
+        console.log('✅ Items recibidos del servidor:', data);
+
+        // Mapear los datos del servidor al formato del grid
+        this.rowData = Array.isArray(data) ? data.map((item: any) => ({
+          id: item.id,
+          idRequisition: item.idMovement, // El servidor usa idMovement
+          idSupplie: item.idSupplie,
+          code: item.code || '',
+          description: item.description || '',
+          measure: item.measure || '',
+          quantity: item.quantity || 0,
+          price: item.price || 0,
+          total: item.total || 0,
+          type: item.type || 'REQUIS',
+          idProvider: item.idProvider || 0,
+          comment: item.comment || '',
+          dateuse: item.dateuse || new Date().toISOString(),
+          active: item.active !== undefined ? item.active : true,
           __isNew: false,
           __modified: false
-        }));
+        })) : [];
+
+        this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
+
         if (this.gridApi) {
           this.gridApi.setGridOption('rowData', this.rowData);
         }
-        if (this.context && this.context.PURCHASES && this.context.PURCHASES.updateCount) {
-          this.context.PURCHASES.updateCount(requisitionId, this.rowData.length);
+
+        console.log('✅ Items cargados:', this.rowData.length);
+      },
+      error: (error) => {
+        console.error('❌ Error al cargar items:', error);
+        this.rowData = [];
+        this.originalRowData = [];
+
+        if (this.gridApi) {
+          this.gridApi.setGridOption('rowData', []);
         }
-      });
-    }
+      }
+    });
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -104,124 +148,114 @@ export class DetailCellRendererRequisitionsPurchasesComponent implements OnInit 
         cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' }
       },
       {
-        field: 'quoteRequestDate',
-        headerName: 'Fecha Pedido Cot',
-        width: 140,
+        field: 'code',
+        headerName: 'Código',
+        width: 100,
         editable: true,
-        valueFormatter: (params: any) => {
-          if (!params.value) return '';
-          return new Date(params.value).toLocaleDateString();
-        },
         valueSetter: (params: any) => {
-          params.data.quoteRequestDate = params.newValue;
+          params.data.code = params.newValue ? params.newValue.toUpperCase() : '';
           return true;
         }
       },
       {
-        field: 'quoteReceptionDate',
-        headerName: 'Fecha Recepcion Cot',
-        width: 150,
+        field: 'description',
+        headerName: 'Descripción',
+        width: 250,
         editable: true,
-        valueFormatter: (params: any) => {
-          if (!params.value) return '';
-          return new Date(params.value).toLocaleDateString();
-        },
         valueSetter: (params: any) => {
-          params.data.quoteReceptionDate = params.newValue;
+          params.data.description = params.newValue ? params.newValue.toUpperCase() : '';
           return true;
         }
       },
       {
-        field: 'supplier',
-        headerName: 'Proveedor',
-        width: 200,
-        editable: true,
-        valueSetter: (params: any) => {
-          params.data.supplier = params.newValue ? params.newValue.toUpperCase() : '';
-          return true;
-        }
-      },
-      {
-        field: 'unitCost',
-        headerName: 'Costo Unitario',
-        width: 130,
-        editable: true,
-        type: 'numericColumn',
-        valueFormatter: (params: any) => {
-          if (!params.value) return '';
-          return `$${params.value.toLocaleString()}`;
-        }
-      },
-      {
-        field: 'minimumPurchase',
-        headerName: 'Minimo de Compra',
-        width: 140,
-        editable: true,
-        type: 'numericColumn'
-      },
-      {
-        field: 'deliveryTime',
-        headerName: 'Tiempo de Entrega',
-        width: 140,
-        editable: true,
-        valueSetter: (params: any) => {
-          params.data.deliveryTime = params.newValue ? params.newValue.toUpperCase() : '';
-          return true;
-        }
-      },
-      {
-        field: 'status',
-        headerName: 'Status',
+        field: 'measure',
+        headerName: 'Unidad',
         width: 100,
         editable: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: ['Pendiente', 'Aprobado', 'Rechazado', 'Confirmado']
+          values: ['PZA', 'KG', 'LT', 'MT', 'CJA', 'PAQ']
         },
         valueSetter: (params: any) => {
-          params.data.status = params.newValue;
+          params.data.measure = params.newValue ? params.newValue.toUpperCase() : '';
           return true;
         }
       },
       {
-        field: 'confirmedQuantity',
-        headerName: 'Confirmar Cantidad',
-        width: 150,
+        field: 'quantity',
+        headerName: 'Cantidad',
+        width: 100,
         editable: true,
-        type: 'numericColumn'
+        type: 'numericColumn',
+        valueFormatter: (params: any) => {
+          if (!params.value && params.value !== 0) return '';
+          return params.value.toLocaleString();
+        }
       },
       {
-        field: 'totalCost',
-        headerName: 'Costo Total',
+        field: 'price',
+        headerName: 'Precio',
         width: 120,
         editable: true,
         type: 'numericColumn',
         valueFormatter: (params: any) => {
-          if (!params.value) return '';
-          return `$${params.value.toLocaleString()}`;
+          if (!params.value && params.value !== 0) return '';
+          return `$${params.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         }
       },
       {
-        field: 'authorized',
-        headerName: 'Autorizo',
+        field: 'total',
+        headerName: 'Total',
         width: 120,
-        editable: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: ['Sí', 'No', 'Pendiente']
+        editable: false,
+        type: 'numericColumn',
+        valueGetter: (params: any) => {
+          const quantity = params.data.quantity || 0;
+          const price = params.data.price || 0;
+          return quantity * price;
         },
+        valueFormatter: (params: any) => {
+          if (!params.value && params.value !== 0) return '';
+          return `$${params.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+      },
+      {
+        field: 'comment',
+        headerName: 'Comentario',
+        width: 200,
+        editable: true,
         valueSetter: (params: any) => {
-          params.data.authorized = params.newValue;
+          params.data.comment = params.newValue || '';
           return true;
         }
       },
       {
-        field: 'confirmedQuantity',
-        headerName: 'Orden Compra',
-        width: 150,
+        field: 'dateuse',
+        headerName: 'Fecha de Uso',
+        width: 120,
         editable: true,
-        type: 'stringColumn'
+        valueFormatter: (params: any) => {
+          if (!params.value) return '';
+          return new Date(params.value).toLocaleDateString();
+        },
+        valueSetter: (params: any) => {
+          params.data.dateuse = params.newValue;
+          return true;
+        }
       },
+      {
+        field: 'active',
+        headerName: 'Activo',
+        width: 80,
+        editable: true,
+        cellRenderer: (params: any) => {
+          return params.value ? '✓' : '✗';
+        },
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: [true, false]
+        }
+      }
     ];
   }
 
@@ -237,19 +271,22 @@ export class DetailCellRendererRequisitionsPurchasesComponent implements OnInit 
   };
 
   addItem() {
-    const tempId = `temp_purchase_${this.tempIdCounter++}`;
+    const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      quoteRequestDate: new Date().toISOString(),
-      quoteReceptionDate: '',
-      supplier: '',
-      unitCost: 0,
-      minimumPurchase: 0,
-      deliveryTime: '',
-      status: 'Pendiente',
-      confirmedQuantity: 0,
-      totalCost: 0,
-      authorized: 'Pendiente',
+      idMovement: this.requisitionId,
+      idSupplie: 0,
+      code: '',
+      description: '',
+      measure: 'PZA',
+      quantity: 0,
+      price: 0,
+      total: 0,
+      type: 'REQUIS',
+      idProvider: 0,
+      comment: '',
+      dateuse: new Date().toISOString(),
+      active: true,
       __isNew: true,
       __modified: false
     };
@@ -258,21 +295,17 @@ export class DetailCellRendererRequisitionsPurchasesComponent implements OnInit 
     this.hasUnsavedChanges = true;
     this.gridApi.setGridOption('rowData', this.rowData);
 
-    if (this.context && this.context.PURCHASES && this.context.PURCHASES.updateCount) {
-      this.context.PURCHASES.updateCount(this.params.data.id, this.rowData.length);
-    }
-
     setTimeout(() => {
       const lastRowIndex = this.rowData.length - 1;
       this.gridApi.ensureIndexVisible(lastRowIndex);
       this.gridApi.startEditingCell({
         rowIndex: lastRowIndex,
-        colKey: 'supplier'
+        colKey: 'code'
       });
     }, 0);
   }
 
-  deleteSelectedItem() {
+  async deleteSelectedItem() {
     const selectedRows = this.gridApi.getSelectedRows();
     if (selectedRows.length === 0) {
       alerts.basicAlert('Selección requerida', 'Por favor seleccione un item para eliminar', 'warning');
@@ -280,29 +313,89 @@ export class DetailCellRendererRequisitionsPurchasesComponent implements OnInit 
     }
 
     const selectedItem = selectedRows[0];
-    if (this.context && this.context.PURCHASES && this.context.PURCHASES.delete) {
-      this.context.PURCHASES.delete({ data: selectedItem, api: this.gridApi }, () => {
-        this.rowData = this.rowData.filter(item => item.id !== selectedItem.id);
-        this.gridApi.setGridOption('rowData', this.rowData);
-        this.hasUnsavedChanges = true;
 
-        if (this.context && this.context.PURCHASES && this.context.PURCHASES.updateCount) {
-          this.context.PURCHASES.updateCount(this.params.data.id, this.rowData.length);
-        }
-      });
+    // Si es un item nuevo (no guardado), solo eliminarlo del grid
+    if (selectedItem.__isNew) {
+      this.rowData = this.rowData.filter(item => item.id !== selectedItem.id);
+      this.gridApi.setGridOption('rowData', this.rowData);
+      this.hasUnsavedChanges = true;
+      return;
+    }
+
+    // Si es un item guardado, eliminarlo del servidor
+    try {
+      await this.ocAndReqsService.deleteReqItem(selectedItem.id).toPromise();
+      this.rowData = this.rowData.filter(item => item.id !== selectedItem.id);
+      this.gridApi.setGridOption('rowData', this.rowData);
+      alerts.basicAlert('Eliminado', 'El item ha sido eliminado correctamente', 'success');
+    } catch (error) {
+      console.error('❌ Error al eliminar item:', error);
+      alerts.basicAlert('Error', 'No se pudo eliminar el item', 'error');
     }
   }
 
-  saveChanges() {
+  async saveChanges() {
     if (!this.hasUnsavedChanges) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;
     }
 
-    if (this.context && this.context.PURCHASES && this.context.PURCHASES.save) {
-      const requisitionId = this.params.data.id;
-      this.context.PURCHASES.save(requisitionId, this.rowData);
+    try {
+      // Separar items nuevos de items modificados
+      const newItems = this.rowData.filter(item => item.__isNew);
+      const modifiedItems = this.rowData.filter(item => item.__modified && !item.__isNew);
+
+      // Guardar items nuevos
+      for (const item of newItems) {
+        const itemData = {
+          idMovement: this.requisitionId,
+          idSupplie: item.idSupplie || 0,
+          code: item.code || '',
+          description: item.description || '',
+          measure: item.measure || 'PZA',
+          quantity: item.quantity || 0,
+          price: item.price || 0,
+          total: (item.quantity || 0) * (item.price || 0),
+          type: 'REQUIS',
+          idProvider: item.idProvider || 0,
+          comment: item.comment || '',
+          dateuse: item.dateuse || new Date().toISOString(),
+          active: item.active !== undefined ? item.active : true
+        };
+
+        await this.ocAndReqsService.addReqItem(itemData).toPromise();
+      }
+
+      // Actualizar items modificados
+      for (const item of modifiedItems) {
+        const itemData = {
+          id: item.id,
+          idMovement: this.requisitionId,
+          idSupplie: item.idSupplie || 0,
+          code: item.code || '',
+          description: item.description || '',
+          measure: item.measure || 'PZA',
+          quantity: item.quantity || 0,
+          price: item.price || 0,
+          total: (item.quantity || 0) * (item.price || 0),
+          type: 'REQUIS',
+          idProvider: item.idProvider || 0,
+          comment: item.comment || '',
+          dateuse: item.dateuse || new Date().toISOString(),
+          active: item.active !== undefined ? item.active : true
+        };
+
+        await this.ocAndReqsService.updateReqItem(item.id, itemData).toPromise();
+      }
+
+      alerts.basicAlert('Guardado', 'Los cambios han sido guardados correctamente', 'success');
       this.hasUnsavedChanges = false;
+
+      // Recargar datos desde el servidor
+      this.loadData();
+    } catch (error) {
+      console.error('❌ Error al guardar cambios:', error);
+      alerts.basicAlert('Error', 'No se pudieron guardar los cambios', 'error');
     }
   }
 
@@ -312,8 +405,10 @@ export class DetailCellRendererRequisitionsPurchasesComponent implements OnInit 
       return;
     }
 
-    this.loadData();
+    this.rowData = JSON.parse(JSON.stringify(this.originalRowData));
+    this.gridApi.setGridOption('rowData', this.rowData);
     this.hasUnsavedChanges = false;
+    alerts.basicAlert('Cambios descartados', 'Los cambios han sido descartados', 'info');
   }
 
   onCellValueChanged(event: any) {

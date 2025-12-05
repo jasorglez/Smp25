@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -11,6 +11,8 @@ import { SelectDepartmentEditorComponent } from './select-department-editor.comp
 import { SelectPersonEditorComponent } from './select-person-editor.component';
 import { DepartmentsService } from 'app/services/departments.service';
 import { SignalsService } from 'app/services/signals.service';
+import { OcAndReqsService } from 'app/services/ocandreqs.service';
+import { BranchsService } from 'app/services/branchs.service';
 import { alerts } from 'app/helpers/alerts';
 
 interface Catalog {
@@ -37,8 +39,50 @@ export class RequisitionsDelisonComponent implements OnInit {
   // Inject services
   private departmentsService = inject(DepartmentsService);
   private signalsService = inject(SignalsService);
+  private ocAndReqsService = inject(OcAndReqsService);
+  private branchsService = inject(BranchsService);
 
   private gridApi!: GridApi;
+
+  constructor() {
+    // ✅ Usar effect para reaccionar a cambios en el signal de sucursal
+    effect(() => {
+      const newIdBranch = this.signalsService.getBranchSelectedBySidebar()();
+
+      console.log('🔄 Cambio detectado en idBranch:', newIdBranch);
+
+      // Si cambió el idBranch y es válido, recargar requisiciones
+      if (newIdBranch && newIdBranch !== this.idBranch) {
+        this.idBranch = newIdBranch;
+        console.log('✅ Nueva sucursal seleccionada:', this.idBranch);
+
+        // ✅ Esperar a que se carguen las sucursales antes de cargar requisiciones
+        if (this.branchesLoaded) {
+          console.log('✅ Sucursales ya cargadas, cargando requisiciones inmediatamente');
+          this.loadRequisitions();
+        } else {
+          console.log('⏳ Esperando a que se carguen las sucursales...');
+          // Guardar el idBranch para cargarlo después
+        }
+      } else if (!newIdBranch) {
+        // Si no hay sucursal seleccionada, limpiar datos y mostrar alerta
+        this.idBranch = null;
+        this.fullRowData = [];
+        this.rowData = [];
+
+        if (this.gridApi) {
+          this.gridApi.setGridOption('rowData', []);
+        }
+
+        console.warn('⚠️ No hay sucursal seleccionada');
+        alerts.basicAlert(
+          'Sucursal requerida',
+          'Por favor, seleccione una sucursal en el sidebar para ver las requisiciones',
+          'warning'
+        );
+      }
+    });
+  }
 
   rowData: any[] = [];
   fullRowData: any[] = []; // Store original unfiltered data
@@ -48,7 +92,10 @@ export class RequisitionsDelisonComponent implements OnInit {
   expandedRowId: string | null = null;
 
   idRoot: number = null;
+  idBranch: number = null;
   departamentos: any[] = [];
+  branches: any[] = []; // Catálogo de sucursales
+  branchesLoaded: boolean = false; // Flag para saber si ya se cargaron las sucursales
   persons: any[] = [];
 
   public rowSelection: 'single' | 'multiple' = 'single';
@@ -58,9 +105,35 @@ export class RequisitionsDelisonComponent implements OnInit {
 
   ngOnInit() {
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+
+    console.log('🏢 idRoot:', this.idRoot);
+    console.log('ℹ️ El idBranch se obtendrá desde el effect() cuando esté disponible');
+
+    this.loadBranches();
     this.obtenerDepartamentos();
     this.loadPersons();
-    this.loadRequisitions();
+    // ✅ NO llamar loadRequisitions() aquí - el effect() lo hará automáticamente
+  }
+
+  loadBranches() {
+    this.branchsService.getBranches(this.idRoot).subscribe({
+      next: (data: any[]) => {
+        this.branches = data;
+        this.branchesLoaded = true;
+        console.log('🏪 Sucursales cargadas:', this.branches.length);
+
+        // ✅ Si ya hay un idBranch seleccionado, cargar las requisiciones ahora
+        if (this.idBranch) {
+          console.log('✅ idBranch ya estaba seleccionado, cargando requisiciones ahora');
+          this.loadRequisitions();
+        }
+      },
+      error: (error) => {
+        console.error('❌ Error al cargar sucursales:', error);
+        this.branches = [];
+        this.branchesLoaded = true; // Marcar como cargado aunque haya error
+      }
+    });
   }
 
   obtenerDepartamentos() {
@@ -83,206 +156,84 @@ export class RequisitionsDelisonComponent implements OnInit {
   }
 
   loadRequisitions() {
-    // Mock data for requisitions - 10 records
-    this.fullRowData = [
-      {
-        id: 1,
-        branch: 'BODEGAS',
-        requisitionNumber: 'REQ001',
-        requestDate: new Date().toISOString(),
-        departmentId: 1,
-        departmentName: 'Departamento 1',
-        personId: 1,
-        personName: 'Persona 1',
-        articlesCount: 2,
-        articleNumber: 'ART001',
-        comments: 'Comentario 1',
-        column8: 'Valor 8',
-        purchasesCount: 2,
-        detailType: null,
-        detailData: [
-          { id: 1, article: 'Artículo 1', quantity: 10, recurrent: 'Recurrente', comment: 'Comentario detalle 1', pedimiento: false, requisicion: false, saved: false },
-          { id: 2, article: 'Artículo 2', quantity: 5, recurrent: 'Nuevo', comment: 'Comentario detalle 2', pedimiento: false, requisicion: false, saved: false }
-        ],
-        purchasesData: [
-          { id: 1, supplier: 'PROVEEDOR A', amount: 15000 },
-          { id: 2, supplier: 'PROVEEDOR B', amount: 25000 }
-        ]
+    // ✅ Validar que idBranch sea válido antes de hacer la petición
+    if (!this.idBranch) {
+      console.warn('⚠️ No se puede cargar requisiciones: idBranch no está definido');
+      this.fullRowData = [];
+      this.rowData = [];
+      return;
+    }
+
+    console.log('📋 Cargando requisiciones desde el servidor...');
+    console.log('   typeReference: branch');
+    console.log('   idReference:', this.idBranch);
+    console.log('   type: REQUIS');
+
+    // ✅ Llamar al endpoint real
+    this.ocAndReqsService.getOcAndReqs('branch', this.idBranch, 'REQUIS').subscribe({
+      next: (data: any) => {
+        console.log('✅ Datos recibidos del servidor:', data);
+
+        // Mapear los datos del servidor al formato esperado por el grid
+        this.fullRowData = Array.isArray(data) ? data.map((req: any) => {
+          // ✅ Buscar el nombre de la sucursal usando idReference
+          const branch = this.branches.find(b => b.id === req.idReference);
+          const branchName = branch?.name || branch?.description || req.idReference?.toString() || '';
+
+          console.log(`📋 Requisición ${req.id}: idReference=${req.idReference} → Sucursal: ${branchName}, countrow: ${req.countrow}`);
+
+          return {
+            id: req.id,
+            branch: branchName, // Nombre de la sucursal desde el catálogo
+            requisitionNumber: req.folio || '', // Número de requisición
+            requestDate: req.dateCreate || new Date().toISOString(), // Fecha de creación
+            departmentId: req.idDepartament || null,
+            departmentName: '', // Se debe buscar en catálogo de departamentos
+            personId: null,
+            personName: req.solicit || '', // Persona que solicita
+            articlesCount: req.countrow || 0, // Cantidad de artículos del servidor
+            articleNumber: '',
+            comments: req.comments || '',
+            column8: req.priority || '', // Prioridad
+            purchasesCount: 0,
+            detailType: null,
+            detailData: [], // Se cargará después con getReqItems()
+            purchasesData: [],
+            // Campos adicionales del servidor
+            delivery: req.delivery || '',
+            deliveryTime: req.deliveryTime || '',
+            typeOc: req.typeOc || '',
+            dateSupply: req.dateSupply || '',
+            idPayment: req.idPayment || null,
+            idCurrency: req.idCurrency || null,
+            conditions: req.conditions || '',
+            close: req.close || false,
+            active: req.active || true,
+            // Guardar el idReference original para referencia
+            idReference: req.idReference
+          };
+        }) : [];
+
+        this.rowData = [...this.fullRowData];
+
+        console.log('✅ Requisiciones cargadas:', this.fullRowData.length);
+
+        // Refrescar el grid si ya existe
+        if (this.gridApi) {
+          this.gridApi.setGridOption('rowData', this.rowData);
+          // Forzar actualización de las columnas para que muestren los nombres correctos
+          this.gridApi.refreshCells({ force: true });
+        }
       },
-      {
-        id: 2,
-        branch: 'DELI',
-        requisitionNumber: 'REQ002',
-        requestDate: new Date().toISOString(),
-        departmentId: 2,
-        departmentName: 'Departamento 2',
-        personId: 2,
-        personName: 'Persona 2',
-        articlesCount: 1,
-        articleNumber: 'ART002',
-        comments: 'Comentario 2',
-        column8: 'Valor 8b',
-        detailType: null,
-        detailData: [
-          { id: 3, article: 'Artículo 3', quantity: 20, recurrent: 'Recurrente', comment: 'Comentario detalle 3', pedimiento: false, requisicion: false, saved: false }
-        ]
-      },
-      {
-        id: 3,
-        branch: 'TIENDA 1',
-        requisitionNumber: 'REQ003',
-        requestDate: new Date().toISOString(),
-        departmentId: 1,
-        departmentName: 'Departamento 1',
-        personId: 3,
-        personName: 'Persona 3',
-        articlesCount: 3,
-        articleNumber: 'ART003',
-        comments: 'Comentario 3',
-        column8: 'Valor 8c',
-        detailType: null,
-        detailData: [
-          { id: 4, article: 'Artículo 4', quantity: 15, recurrent: 'Nuevo', comment: 'Comentario detalle 4', pedimiento: false, requisicion: false, saved: false },
-          { id: 5, article: 'Artículo 5', quantity: 8, recurrent: 'Recurrente', comment: 'Comentario detalle 5', pedimiento: false, requisicion: false, saved: false },
-          { id: 6, article: 'Artículo 6', quantity: 12, recurrent: 'Nuevo', comment: 'Comentario detalle 6', pedimiento: false, requisicion: false, saved: false }
-        ]
-      },
-      {
-        id: 4,
-        branch: 'TIENDA DELI',
-        requisitionNumber: 'REQ004',
-        requestDate: new Date().toISOString(),
-        departmentId: 3,
-        departmentName: 'Departamento 3',
-        personId: 1,
-        personName: 'Persona 1',
-        articlesCount: 1,
-        articleNumber: 'ART004',
-        comments: 'Comentario 4',
-        column8: 'Valor 8d',
-        detailType: null,
-        detailData: [
-          { id: 7, article: 'Artículo 7', quantity: 25, recurrent: 'Recurrente', comment: 'Comentario detalle 7', pedimiento: false, requisicion: false, saved: false }
-        ]
-      },
-      {
-        id: 5,
-        branch: 'BODEGAS',
-        requisitionNumber: 'REQ005',
-        requestDate: new Date().toISOString(),
-        departmentId: 2,
-        departmentName: 'Departamento 2',
-        personId: 2,
-        personName: 'Persona 2',
-        articlesCount: 2,
-        articleNumber: 'ART005',
-        comments: 'Comentario 5',
-        column8: 'Valor 8e',
-        detailType: null,
-        detailData: [
-          { id: 8, article: 'Artículo 8', quantity: 30, recurrent: 'Nuevo', comment: 'Comentario detalle 8', pedimiento: false, requisicion: false, saved: false },
-          { id: 9, article: 'Artículo 9', quantity: 18, recurrent: 'Recurrente', comment: 'Comentario detalle 9', pedimiento: false, requisicion: false, saved: false }
-        ]
-      },
-      {
-        id: 6,
-        branch: 'DELI',
-        requisitionNumber: 'REQ006',
-        requestDate: new Date().toISOString(),
-        departmentId: 1,
-        departmentName: 'Departamento 1',
-        personId: 3,
-        personName: 'Persona 3',
-        articlesCount: 1,
-        articleNumber: 'ART006',
-        comments: 'Comentario 6',
-        column8: 'Valor 8f',
-        detailType: null,
-        detailData: [
-          { id: 10, article: 'Artículo 10', quantity: 7, recurrent: 'Recurrente', comment: 'Comentario detalle 10', pedimiento: false, requisicion: false, saved: false }
-        ]
-      },
-      {
-        id: 7,
-        branch: 'TIENDA 1',
-        requisitionNumber: 'REQ007',
-        requestDate: new Date().toISOString(),
-        departmentId: 3,
-        departmentName: 'Departamento 3',
-        personId: 1,
-        personName: 'Persona 1',
-        articlesCount: 4,
-        articleNumber: 'ART007',
-        comments: 'Comentario 7',
-        column8: 'Valor 8g',
-        detailType: null,
-        detailData: [
-          { id: 11, article: 'Artículo 11', quantity: 22, recurrent: 'Nuevo', comment: 'Comentario detalle 11', pedimiento: false, requisicion: false, saved: false },
-          { id: 12, article: 'Artículo 12', quantity: 14, recurrent: 'Recurrente', comment: 'Comentario detalle 12', pedimiento: false, requisicion: false, saved: false },
-          { id: 13, article: 'Artículo 13', quantity: 9, recurrent: 'Nuevo', comment: 'Comentario detalle 13', pedimiento: false, requisicion: false, saved: false },
-          { id: 14, article: 'Artículo 14', quantity: 16, recurrent: 'Recurrente', comment: 'Comentario detalle 14', pedimiento: false, requisicion: false, saved: false }
-        ]
-      },
-      {
-        id: 8,
-        branch: 'TIENDA DELI',
-        requisitionNumber: 'REQ008',
-        requestDate: new Date().toISOString(),
-        departmentId: 2,
-        departmentName: 'Departamento 2',
-        personId: 2,
-        personName: 'Persona 2',
-        articlesCount: 1,
-        articleNumber: 'ART008',
-        comments: 'Comentario 8',
-        column8: 'Valor 8h',
-        detailType: null,
-        detailData: [
-          { id: 15, article: 'Artículo 15', quantity: 11, recurrent: 'Nuevo', comment: 'Comentario detalle 15', pedimiento: false, requisicion: false, saved: false }
-        ]
-      },
-      {
-        id: 9,
-        branch: 'BODEGAS',
-        requisitionNumber: 'REQ009',
-        requestDate: new Date().toISOString(),
-        departmentId: 1,
-        departmentName: 'Departamento 1',
-        personId: 3,
-        personName: 'Persona 3',
-        articlesCount: 2,
-        articleNumber: 'ART009',
-        comments: 'Comentario 9',
-        column8: 'Valor 8i',
-        detailType: null,
-        detailData: [
-          { id: 16, article: 'Artículo 16', quantity: 28, recurrent: 'Recurrente', comment: 'Comentario detalle 16', pedimiento: false, requisicion: false, saved: false },
-          { id: 17, article: 'Artículo 17', quantity: 6, recurrent: 'Nuevo', comment: 'Comentario detalle 17', pedimiento: false, requisicion: false, saved: false }
-        ]
-      },
-      {
-        id: 10,
-        branch: 'DELI',
-        requisitionNumber: 'REQ010',
-        requestDate: new Date().toISOString(),
-        departmentId: 3,
-        departmentName: 'Departamento 3',
-        personId: 1,
-        personName: 'Persona 1',
-        articlesCount: 3,
-        articleNumber: 'ART010',
-        comments: 'Comentario 10',
-        column8: 'Valor 8j',
-        detailType: null,
-        pedimentos: [],
-        detailData: [
-          { id: 18, article: 'Artículo 18', quantity: 19, recurrent: 'Recurrente', comment: 'Comentario detalle 18', pedimiento: false, requisicion: false, saved: false },
-          { id: 19, article: 'Artículo 19', quantity: 13, recurrent: 'Nuevo', comment: 'Comentario detalle 19', pedimiento: false, requisicion: false, saved: false },
-          { id: 20, article: 'Artículo 20', quantity: 24, recurrent: 'Recurrente', comment: 'Comentario detalle 20', pedimiento: false, requisicion: false, saved: false }
-        ]
+      error: (error) => {
+        console.error('❌ Error al cargar requisiciones:', error);
+        alerts.basicAlert('Error', 'No se pudieron cargar las requisiciones', 'error');
+
+        // En caso de error, inicializar con array vacío
+        this.fullRowData = [];
+        this.rowData = [];
       }
-    ];
-    this.rowData = [...this.fullRowData];
+    });
   }
 
   public gridOptions: any = {
@@ -332,14 +283,14 @@ export class RequisitionsDelisonComponent implements OnInit {
         field: 'branch',
         headerName: 'Sucursal',
         width: 120,
-        editable: (params: any) => params.data.__isNew === true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: ['BODEGAS', 'DELI', 'TIENDA 1', 'TIENDA DELI']
-        },
-        valueSetter: (params: any) => {
-          params.data.branch = params.newValue;
-          return true;
+        editable: false, // No editable - viene del servidor
+        valueFormatter: (params: any) => {
+          // Asegurar que siempre se muestre el nombre, no el ID
+          if (typeof params.value === 'number') {
+            const branch = this.branches.find(b => b.id === params.value);
+            return branch?.name || branch?.description || params.value?.toString() || '';
+          }
+          return params.value || '';
         }
       },
       {
@@ -347,7 +298,7 @@ export class RequisitionsDelisonComponent implements OnInit {
         headerName: '# Requisicion',
         width: 120,
         filter: true,
-        editable: true,
+        editable: () => !!this.idBranch, // Solo editable si hay branch seleccionado
         valueSetter: (params: any) => {
           params.data.requisitionNumber = params.newValue ? params.newValue.toUpperCase() : '';
           return true;
@@ -357,7 +308,7 @@ export class RequisitionsDelisonComponent implements OnInit {
         field: 'requestDate',
         headerName: 'Fecha solicitud',
         width: 120,
-        editable: true,
+        editable: () => !!this.idBranch, // Solo editable si hay branch seleccionado
         valueFormatter: (params: any) => {
           if (!params.value) return '';
           return new Date(params.value).toLocaleDateString();
@@ -371,7 +322,7 @@ export class RequisitionsDelisonComponent implements OnInit {
         field: 'departmentName',
         headerName: 'Departamento que solicita',
         width: 200,
-        editable: true,
+        editable: () => !!this.idBranch, // Solo editable si hay branch seleccionado
         cellEditor: 'selectDepartmentEditor',
         cellEditorParams: (params: any) => {
           return {
@@ -397,7 +348,7 @@ export class RequisitionsDelisonComponent implements OnInit {
         field: 'personName',
         headerName: 'Persona que solicita',
         width: 200,
-        editable: true,
+        editable: () => !!this.idBranch, // Solo editable si hay branch seleccionado
         cellEditor: 'selectPersonEditor',
         cellEditorParams: (params: any) => {
           return {
