@@ -190,14 +190,6 @@ export const routes: Routes = [
                 canDeactivate: [UnsavedChangesGuard],
               },
               {
-                path: 'materiales-maestro',
-                loadComponent: () =>
-                  import(
-                    './domains/Almacenes/components/materiales-maestro/materiales-maestro.component'
-                  ).then((m) => m.MaterialesMaestroComponent),
-                canDeactivate: [UnsavedChangesGuard],
-              },
-              {
                 path: 'fam-sub',
                 loadComponent: () =>
                   import(
@@ -211,14 +203,6 @@ export const routes: Routes = [
                   import(
                     './domains/Almacenes/components/cat-fam-sub/cat-fam-sub.component'
                   ).then((m) => m.CatFamSubComponent),
-                canDeactivate: [UnsavedChangesGuard],
-              },
-              {
-                path: 'producto-terminado',
-                loadComponent: () =>
-                  import(
-                    './domains/Almacenes/components/producto-terminado/producto-terminado.component'
-                  ).then((m) => m.ProductoTerminadoComponent),
                 canDeactivate: [UnsavedChangesGuard],
               },
               {
@@ -265,13 +249,13 @@ export const routes: Routes = [
               ).then((p) => p.ProductoTerminadoComponent),
             canDeactivate: [UnsavedChangesGuard],
             children: [
-              { path: '', redirectTo: 'cat-prod-term', pathMatch: 'full' },
+              { path: '', redirectTo: 'catalogo', pathMatch: 'full' },
               {
-                path: 'cat-prod-term',
+                path: 'catalogo',
                 loadComponent: () =>
                   import(
-                    './domains/Almacenes/components/cat-fam-sub/cat-fam-sub.component'
-                  ).then((m) => m.CatFamSubComponent),
+                    './domains/Almacenes/components/producto-terminado/producto-terminado.component'
+                  ).then((m) => m.ProductoTerminadoComponent),
                 canDeactivate: [UnsavedChangesGuard],
               },
               {
