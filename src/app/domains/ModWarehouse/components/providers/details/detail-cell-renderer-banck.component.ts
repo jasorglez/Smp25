@@ -501,10 +501,9 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
           }
         });
 
-        // Ordenar por vigente y principal (solo al cargar desde servidor)
+        // ✅ Ordenar solo por vigente (solo al cargar desde servidor)
         this.bankRowData.sort((a, b) => {
           if (a.vigente !== b.vigente) return b.vigente ? 1 : -1;
-          if (a.principal !== b.principal) return b.principal ? 1 : -1;
           return (a.id || 0) - (b.id || 0);
         });
 

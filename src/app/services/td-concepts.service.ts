@@ -14,8 +14,8 @@ export class TdConceptsService {
   constructor() { }
 
   // Get all TDConcepts
-  getTDConcepts(): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.urlSmp}/TDConcepts`, { headers: this.trackingService.getHeaders() });
+  getTDConcepts(idCompany: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlSmp}/TDConcepts?idCompany=${idCompany}`, { headers: this.trackingService.getHeaders() });
   }
 
   // Get TDConcept by ID
