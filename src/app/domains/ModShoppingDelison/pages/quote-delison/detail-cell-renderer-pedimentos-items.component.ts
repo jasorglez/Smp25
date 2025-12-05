@@ -30,11 +30,13 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 })
 export class DetailCellRendererPedimentosItemsComponent {
   private params!: ICellRendererParams;
+  private context: any;
   rowData: any[] = [];
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   agInit(params: ICellRendererParams): void {
     this.params = params;
+    this.context = params.context;
     this.buildRowData();
   }
 
@@ -52,8 +54,31 @@ export class DetailCellRendererPedimentosItemsComponent {
     }));
   }
 
+  checkPedimentoSelection() {
+    // This method can be used to check if any pedimento is selected
+    // For now, it's a placeholder to match the requisitions component
+  }
+
   get colDefs(): ColDef[] {
     return [
+       {
+        field: 'recurrent',
+        headerName: 'Recurrente',
+        width: 120,
+        editable: (params) => {
+          // Solo es editable si el valor NO es 'Nuevo'.
+          return params.data.recurrent !== 'Nuevo';
+        },
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: ['Recurrente', 'Nuevo']
+        },
+        valueSetter: (params: any) => {
+          params.data.recurrent = params.newValue;
+          return true;
+        }
+      },
+
       {
         field: 'articulo',
         headerName: 'Articulo',
@@ -89,11 +114,29 @@ export class DetailCellRendererPedimentosItemsComponent {
         headerName: 'Observacion',
         width: 150
       },
-      {
-        field: 'pedimento',
-        headerName: 'Pedimento',
-        width: 150
+       {
+      field: 'pedimiento',
+      headerName: 'Pedimiento',
+      width: 140,
+      editable: false,
+      cellRenderer: (params: any) => {
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.checked = params.value === true;
+
+        input.addEventListener('change', () => {
+          params.data.pedimiento = input.checked;
+          params.api.refreshCells({ rowNodes: [params.node], columns: ['pedimiento'] });
+          this.checkPedimentoSelection();
+          // Refresh master grid comments column
+          if (this.context && this.context.gridApi) {
+            this.context.gridApi.refreshCells({ force: true });
+          }
+        });
+
+        return input;
       }
+      },
     ];
   }
 
