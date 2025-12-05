@@ -402,7 +402,13 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
       {
         headerName: 'Parametros',
         field: 'parametros',
-        cellStyle: { cursor: 'pointer' },
+        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' },
+        cellRenderer: (params: any) => {
+          // Mostrar siempre "Ver"
+          const div = document.createElement('div');
+          div.innerText = 'Ver';
+          return div;
+        }
       },
       {
         headerName: 'Total (Fórmula)',

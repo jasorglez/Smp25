@@ -342,10 +342,7 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
   };
 
   // 👇 ESTA ES LA FORMA CORRECTA
-  this.parametrosGridApi.applyTransaction({
-    add: [newParametro],
-    addIndex: 0
-  });
+  this.parametrosRowData = [newParametro, ...this.parametrosRowData];
 
   this.hasParametrosChanges = true;
 
