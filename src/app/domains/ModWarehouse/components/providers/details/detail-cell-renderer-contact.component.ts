@@ -710,7 +710,7 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
           source: this.lastEditedRowId ? 'última editada' : 'seleccionada'
         });
 
-        // Guardar (ESPERA a que el usuario cierre el alert)
+        // ✅ Guardar y esperar (esto guarda en BD y muestra el alert al final)
         await this.params.context.CONTACT.save(this.providerId, this.contactRowData, 'CONTACT');
 
         console.log('✅ Guardado completado (incluyendo alert cerrado por usuario)');
@@ -718,6 +718,7 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
         this.hasContactChanges = false;
 
         // ✅ RECARGAR datos desde el servidor para obtener los IDs reales
+        // Esto ocurre DESPUÉS de guardar y DESPUÉS de cerrar el alert
         await new Promise<void>((resolve) => {
           this.loadContactData(() => {
             console.log('✅ Datos recargados desde servidor');
