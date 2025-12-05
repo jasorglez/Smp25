@@ -13,6 +13,7 @@ import { DepartmentsService } from 'app/services/departments.service';
 import { SignalsService } from 'app/services/signals.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { BranchsService } from 'app/services/branchs.service';
+import { TypexPrefixesService } from 'app/services/typexprefixes.service';
 import { alerts } from 'app/helpers/alerts';
 
 interface Catalog {
@@ -41,6 +42,7 @@ export class RequisitionsDelisonComponent implements OnInit {
   private signalsService = inject(SignalsService);
   private ocAndReqsService = inject(OcAndReqsService);
   private branchsService = inject(BranchsService);
+  private typexPrefixesService = inject(TypexPrefixesService);
 
   private gridApi!: GridApi;
 
@@ -97,6 +99,9 @@ export class RequisitionsDelisonComponent implements OnInit {
   branches: any[] = []; // Catálogo de sucursales
   branchesLoaded: boolean = false; // Flag para saber si ya se cargaron las sucursales
   persons: any[] = [];
+
+  // Datos del prefijo actual
+  currentPrefixData: any = null;
 
   public rowSelection: 'single' | 'multiple' = 'single';
   public paginationPageSize = 15;
@@ -580,37 +585,83 @@ export class RequisitionsDelisonComponent implements OnInit {
   }
 
   addRequisition(): void {
-    const newId = Math.max(...this.rowData.map(r => parseInt(r.id) || 0), 0) + 1;
-    const newItem = {
-      id: newId,
-      branch: 'BODEGAS',
-      requisitionNumber: '',
-      requestDate: new Date().toISOString(),
-      departmentId: null,
-      departmentName: '',
-      personId: null,
-      personName: '',
-      articlesCount: 0,
-      articleNumber: '',
-      comments: '',
-      column8: '',
-      detailType: null,
-      detailData: [],
-      __isNew: false,
-    };
+    // Validar que hay una sucursal seleccionada
+    if (!this.idBranch) {
+      alerts.basicAlert('Error', 'Debe seleccionar una sucursal antes de agregar una requisición', 'error');
+      return;
+    }
 
-    this.rowData = [newItem, ...this.rowData];
-    this.hasUnsavedChanges = false; // Simulate saved
-    this.gridApi.setGridOption('rowData', this.rowData);
+    // Obtener el prefijo y consecutivo de la sucursal
+    this.typexPrefixesService.getPrefix('branch', this.idBranch).subscribe({
+      next: (prefixData: any) => {
+        console.log('✅ Prefijo obtenido:', prefixData);
+        this.currentPrefixData = prefixData;
 
-    setTimeout(() => {
-      const firstRowIndex = 0;
-      this.gridApi.ensureIndexVisible(firstRowIndex);
-      this.gridApi.startEditingCell({
-        rowIndex: firstRowIndex,
-        colKey: 'requisitionNumber'
-      });
-    }, 0);
+        // Generar el número de requisición: prefix + (consecutive + 1)
+        const nextConsecutive = (prefixData.consecutive || 0) + 1;
+        const requisitionNumber = `${prefixData.prefix || ''}${nextConsecutive}`;
+
+        // Buscar el nombre de la sucursal
+        const branch = this.branches.find(b => b.id === this.idBranch);
+        const branchName = branch?.name || branch?.description || '';
+
+        const newId = `temp_${Date.now()}`; // ID temporal hasta que se guarde en DB
+        const newItem = {
+          id: newId,
+          branch: branchName,
+          requisitionNumber: requisitionNumber,
+          requestDate: new Date().toISOString(),
+          departmentId: null,
+          departmentName: '',
+          personId: null,
+          personName: '',
+          articlesCount: 0,
+          articleNumber: '',
+          comments: '',
+          column8: '',
+          detailType: null,
+          detailData: [],
+          purchasesData: [],
+          __isNew: true,
+          __modified: false,
+          idReference: this.idBranch, // Guardar el ID de la sucursal
+          // Campos adicionales del servidor
+          delivery: '',
+          deliveryTime: '',
+          typeOc: '',
+          dateSupply: '',
+          idPayment: null,
+          idCurrency: null,
+          conditions: '',
+          close: false,
+          active: true
+        };
+
+        this.rowData = [newItem, ...this.rowData];
+        this.fullRowData = [...this.rowData];
+        this.hasUnsavedChanges = true;
+        this.gridApi.setGridOption('rowData', this.rowData);
+
+        console.log('✅ Nueva requisición agregada:', requisitionNumber);
+
+        setTimeout(() => {
+          const firstRowIndex = 0;
+          this.gridApi.ensureIndexVisible(firstRowIndex);
+          this.gridApi.startEditingCell({
+            rowIndex: firstRowIndex,
+            colKey: 'departmentName'
+          });
+        }, 0);
+      },
+      error: (err) => {
+        console.error('❌ Error al obtener prefijo:', err);
+        alerts.basicAlert(
+          'Error',
+          'No se encontró configuración de prefijo para esta sucursal. Por favor, configúrelo primero en la sección de configuración.',
+          'error'
+        );
+      }
+    });
   }
 
   editRequisition(): void {
@@ -622,16 +673,77 @@ export class RequisitionsDelisonComponent implements OnInit {
   }
 
   saveChanges(): void {
-    // Simulate save
-    this.rowData.forEach(row => {
-      if (row.__modified) {
-        row.__modified = false;
-        row.__isNew = false;
-      }
-    });
-    this.hasUnsavedChanges = false;
-    alerts.basicAlert('Guardado', 'Los cambios han sido guardados correctamente', 'success');
-    this.gridApi.refreshCells({ force: true });
+    // Filtrar las filas nuevas o modificadas
+    const itemsToSave = this.rowData.filter(row => row.__isNew || row.__modified);
+
+    if (itemsToSave.length === 0) {
+      alerts.basicAlert('Información', 'No hay cambios que guardar', 'info');
+      return;
+    }
+
+    console.log('💾 Guardando requisiciones:', itemsToSave.length);
+
+    // TODO: Implementar la lógica de guardado real cuando el servicio esté listo
+    // Por ahora, solo simular el guardado y actualizar el consecutivo del prefijo
+
+    // Si hay un prefijo cargado y hay items nuevos, actualizar el consecutivo
+    const newItems = itemsToSave.filter(row => row.__isNew);
+
+    if (newItems.length > 0 && this.currentPrefixData && this.idBranch) {
+      // Calcular el nuevo consecutivo (actual + cantidad de items nuevos)
+      const newConsecutive = (this.currentPrefixData.consecutive || 0) + newItems.length;
+
+      // Preparar los datos para actualizar
+      const updatedPrefixData = {
+        reqType: 'branch',
+        idReqType: this.idBranch,
+        prefix: this.currentPrefixData.prefix,
+        consecutive: newConsecutive,
+        active: true
+      };
+
+      console.log('🔄 Actualizando consecutivo del prefijo:', updatedPrefixData);
+
+      // Actualizar el prefijo en el servidor
+      this.typexPrefixesService.updatePrefix('branch', this.idBranch, updatedPrefixData).subscribe({
+        next: () => {
+          console.log('✅ Consecutivo actualizado correctamente');
+
+          // Actualizar el prefijo local
+          this.currentPrefixData.consecutive = newConsecutive;
+
+          // Marcar las filas como guardadas
+          this.rowData.forEach(row => {
+            if (row.__modified || row.__isNew) {
+              row.__modified = false;
+              row.__isNew = false;
+            }
+          });
+
+          this.hasUnsavedChanges = false;
+          alerts.basicAlert('Guardado', 'Los cambios han sido guardados correctamente', 'success');
+          this.gridApi.refreshCells({ force: true });
+
+          // Recargar las requisiciones desde el servidor
+          this.loadRequisitions();
+        },
+        error: (err) => {
+          console.error('❌ Error al actualizar consecutivo:', err);
+          alerts.basicAlert('Error', 'Error al actualizar el consecutivo del prefijo', 'error');
+        }
+      });
+    } else {
+      // Si no hay items nuevos, solo marcar como guardado
+      this.rowData.forEach(row => {
+        if (row.__modified) {
+          row.__modified = false;
+        }
+      });
+
+      this.hasUnsavedChanges = false;
+      alerts.basicAlert('Guardado', 'Los cambios han sido guardados correctamente', 'success');
+      this.gridApi.refreshCells({ force: true });
+    }
   }
 
   refreshData(): void {
