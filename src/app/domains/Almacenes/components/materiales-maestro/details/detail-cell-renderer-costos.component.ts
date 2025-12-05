@@ -23,18 +23,32 @@ import { MateriaByCatalogService } from 'app/services/MateriaByCatalog.service';
     <div style="padding: 10px; background-color: #e8f5e9; height: 100%; display: flex; flex-direction: column; box-sizing: border-box;">
        <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
           <strong>Desglose de Costos para: {{ materialName }}</strong>
-          <div class="btn-group btn-group-sm" role="group">
-            <button type="button" class="btn btn-outline-primary" (click)="onAddRow()">
-              <i class="bi bi-plus-lg"></i> Agregar
+          <div class="d-flex gap-2">
+            <button
+              class="btn btn-sm btn-success me-2"
+              (click)="onAddRow()"
+              >
+              <i class="bi bi-person-plus"></i> Agregar
             </button>
-            <button type="button" class="btn btn-outline-warning" (click)="onStartEditing()">
-              <i class="bi bi-pencil"></i> Editar
+            <button
+              class="btn btn-sm btn-primary me-2 position-relative"
+              (click)="onStartEditing()"
+              >
+              <i class="bi bi-floppy"></i> Guardar
+              <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+                *ngIf="">
+                <span class="visually-hidden">Hay cambios sin guardar</span>
+              </span>
             </button>
-            <button type="button" class="btn btn-outline-danger" (click)="onRemoveSelected()">
-              <i class="bi bi-trash3"></i> Eliminar
+            <button
+              class="btn btn-sm btn-warning me-2"
+              (click)="onUndo()">
+              <i class="bi bi-arrow-clockwise"></i> Deshacer
             </button>
-            <button type="button" class="btn btn-outline-secondary" (click)="onUndo()">
-              <i class="bi bi-arrow-90deg-left"></i> Deshacer
+            <button
+              class="btn btn-sm btn-danger"
+              (click)="onRemoveSelected()">
+              <i class="bi bi-trash"></i> Borrar
             </button>
           </div>
         </div>
@@ -210,7 +224,7 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
        this.onUndo()
        setTimeout(() => {
         this.updatePinnedRowTotals();
-      }, 500); 
+      }, 1200); 
     });
   }
   agInit(params: ICellRendererParams): void {
