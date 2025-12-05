@@ -303,24 +303,6 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
         cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' }
       },
 
-       {
-        field: 'recurrent',
-        headerName: 'Recurrente',
-        width: 120,
-        editable: (params) => {
-          // Solo es editable si el valor NO es 'Nuevo'.
-          return params.data.recurrent !== 'Nuevo';
-        },
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: ['Recurrente', 'Nuevo']
-        },
-        valueSetter: (params: any) => {
-          params.data.recurrent = params.newValue;
-          return true;
-        }
-      },
-
       {
         field: 'article',
         headerName: 'Articulos',
