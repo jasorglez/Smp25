@@ -8,7 +8,6 @@ import { ButtonCellRendererComponent } from '../../../ModWareHousesTD/components
 import { DetailCellRendererRequisitionsItemsComponent } from './detail-cell-renderer-requisitions-items.component';
 import { DetailCellRendererRequisitionsPurchasesComponent } from './detail-cell-renderer-requisitions-purchases.component';
 import { SelectDepartmentEditorComponent } from './select-department-editor.component';
-import { SelectPersonEditorComponent } from './select-person-editor.component';
 import { DepartmentsService } from 'app/services/departments.service';
 import { SignalsService } from 'app/services/signals.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
@@ -24,7 +23,7 @@ interface Catalog {
 @Component({
   selector: 'app-requisitionsdelison',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, ButtonCellRendererComponent, DetailCellRendererRequisitionsItemsComponent, DetailCellRendererRequisitionsPurchasesComponent, SelectDepartmentEditorComponent, SelectPersonEditorComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, ButtonCellRendererComponent, DetailCellRendererRequisitionsItemsComponent, DetailCellRendererRequisitionsPurchasesComponent, SelectDepartmentEditorComponent],
   templateUrl: './requisitionsdelison.component.html',
   styleUrl: './requisitionsdelison.component.scss',
   styles: [`
@@ -98,7 +97,7 @@ export class RequisitionsDelisonComponent implements OnInit {
   departamentos: any[] = [];
   branches: any[] = []; // Catálogo de sucursales
   branchesLoaded: boolean = false; // Flag para saber si ya se cargaron las sucursales
-  persons: any[] = [];
+  currentUserName: string = ''; // Nombre del usuario actual
 
   // Datos del prefijo actual
   currentPrefixData: any = null;
@@ -110,13 +109,14 @@ export class RequisitionsDelisonComponent implements OnInit {
 
   ngOnInit() {
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+    this.currentUserName = this.signalsService.getDisplayName()() || 'Usuario';
 
     console.log('🏢 idRoot:', this.idRoot);
+    console.log('👤 Usuario actual:', this.currentUserName);
     console.log('ℹ️ El idBranch se obtendrá desde el effect() cuando esté disponible');
 
     this.loadBranches();
     this.obtenerDepartamentos();
-    this.loadPersons();
     // ✅ NO llamar loadRequisitions() aquí - el effect() lo hará automáticamente
   }
 
@@ -151,14 +151,6 @@ export class RequisitionsDelisonComponent implements OnInit {
     );
   }
 
-  loadPersons() {
-    // Mock data for persons
-    this.persons = [
-      { id: 1, name: 'Persona 1' },
-      { id: 2, name: 'Persona 2' },
-      { id: 3, name: 'Persona 3' }
-    ];
-  }
 
   loadRequisitions() {
     // ✅ Validar que idBranch sea válido antes de hacer la petición
@@ -194,8 +186,7 @@ export class RequisitionsDelisonComponent implements OnInit {
             requestDate: req.dateCreate || new Date().toISOString(), // Fecha de creación
             departmentId: req.idDepartament || null,
             departmentName: '', // Se debe buscar en catálogo de departamentos
-            personId: null,
-            personName: req.solicit || '', // Persona que solicita
+            solicitedBy: req.solicit || '', // Usuario que solicita
             articlesCount: req.countrow || 0, // Cantidad de artículos del servidor
             articleNumber: '',
             comments: req.comments || '',
@@ -274,8 +265,17 @@ export class RequisitionsDelisonComponent implements OnInit {
       }
     },
     onCellValueChanged: (event: any) => {
+      console.log('📝 onCellValueChanged disparado:', {
+        field: event.colDef.field,
+        newValue: event.newValue,
+        oldValue: event.oldValue,
+        data: event.data
+      });
+
       event.data.__modified = true;
       this.hasUnsavedChanges = true;
+      console.log('✅ Fila marcada como modificada, hasUnsavedChanges:', this.hasUnsavedChanges);
+
       setTimeout(() => {
         this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
       }, 0);
@@ -324,7 +324,7 @@ export class RequisitionsDelisonComponent implements OnInit {
         }
       },
       {
-        field: 'departmentName',
+        field: 'departmentId',
         headerName: 'Departamento que solicita',
         width: 200,
         editable: () => !!this.idBranch, // Solo editable si hay branch seleccionado
@@ -338,42 +338,45 @@ export class RequisitionsDelisonComponent implements OnInit {
           const foundItem = this.departamentos
             ? this.departamentos.find((item) => item.id === params.value)
             : null;
-          return foundItem ? `${foundItem.description}` : params.value;
+          return foundItem ? `${foundItem.description}` : (params.value || '');
         },
         valueSetter: (params: any) => {
+          console.log('🔧 valueSetter departmentId - newValue:', params.newValue, 'oldValue:', params.oldValue);
+
           if (params.newValue && typeof params.newValue === 'object') {
             params.data.departmentId = params.newValue.id;
-            params.data.departmentName = params.newValue.name;
-            return params.newValue.id;
+            params.data.departmentName = params.newValue.name || params.newValue.description;
+
+            console.log('✅ Departamento asignado:', {
+              departmentId: params.data.departmentId,
+              departmentName: params.data.departmentName,
+              isNew: params.data.__isNew
+            });
+
+            // Marcar explícitamente como modificado
+            if (!params.data.__isNew) {
+              params.data.__modified = true;
+              console.log('🔴 Marcado como __modified');
+            }
+            this.hasUnsavedChanges = true;
+            console.log('💾 hasUnsavedChanges = true');
+            return true; // ✅ Retornar true para que AG Grid detecte el cambio
           }
-          return params.newValue;
+
+          params.data.departmentId = params.newValue;
+          if (!params.data.__isNew) {
+            params.data.__modified = true;
+          }
+          this.hasUnsavedChanges = true;
+          return true;
         }
       },
       {
-        field: 'personName',
-        headerName: 'Persona que solicita',
-        width: 200,
-        editable: () => !!this.idBranch, // Solo editable si hay branch seleccionado
-        cellEditor: 'selectPersonEditor',
-        cellEditorParams: (params: any) => {
-          return {
-            options: this.persons
-          };
-        },
-        valueFormatter: (params) => {
-          const foundItem = this.persons
-            ? this.persons.find((item) => item.id === params.value)
-            : null;
-          return foundItem ? `${foundItem.name}` : params.value;
-        },
-        valueSetter: (params: any) => {
-          if (params.newValue && typeof params.newValue === 'object') {
-            params.data.personId = params.newValue.id;
-            params.data.personName = params.newValue.name;
-            return params.newValue.id;
-          }
-          return params.newValue;
-        }
+        field: 'solicitedBy',
+        headerName: 'Solicitado por',
+        width: 150,
+        editable: false, // No editable - se toma del usuario actual
+        valueFormatter: (params) => params.value || this.currentUserName
       },
       {
         field: 'articlesCount',
@@ -613,8 +616,7 @@ export class RequisitionsDelisonComponent implements OnInit {
           requestDate: new Date().toISOString(),
           departmentId: null,
           departmentName: '',
-          personId: null,
-          personName: '',
+          solicitedBy: this.currentUserName, // Usuario que creó la requisición
           articlesCount: 0,
           articleNumber: '',
           comments: '',
@@ -672,7 +674,7 @@ export class RequisitionsDelisonComponent implements OnInit {
     // Implement delete
   }
 
-  saveChanges(): void {
+  async saveChanges(): Promise<void> {
     // Filtrar las filas nuevas o modificadas
     const itemsToSave = this.rowData.filter(row => row.__isNew || row.__modified);
 
@@ -683,66 +685,180 @@ export class RequisitionsDelisonComponent implements OnInit {
 
     console.log('💾 Guardando requisiciones:', itemsToSave.length);
 
-    // TODO: Implementar la lógica de guardado real cuando el servicio esté listo
-    // Por ahora, solo simular el guardado y actualizar el consecutivo del prefijo
-
-    // Si hay un prefijo cargado y hay items nuevos, actualizar el consecutivo
     const newItems = itemsToSave.filter(row => row.__isNew);
+    const modifiedItems = itemsToSave.filter(row => row.__modified && !row.__isNew);
 
-    if (newItems.length > 0 && this.currentPrefixData && this.idBranch) {
-      // Calcular el nuevo consecutivo (actual + cantidad de items nuevos)
-      const newConsecutive = (this.currentPrefixData.consecutive || 0) + newItems.length;
+    let hasErrors = false;
 
-      // Preparar los datos para actualizar
-      const updatedPrefixData = {
-        reqType: 'branch',
-        idReqType: this.idBranch,
-        prefix: this.currentPrefixData.prefix,
-        consecutive: newConsecutive,
-        active: true
-      };
+    try {
+      // 1. Guardar nuevas requisiciones
+      if (newItems.length > 0) {
+        console.log('➕ Creando nuevas requisiciones:', newItems.length);
 
-      console.log('🔄 Actualizando consecutivo del prefijo:', updatedPrefixData);
+        for (const item of newItems) {
+          const newReqData = {
+            id: 0, // Siempre 0 para nuevos registros
+            folio: item.requisitionNumber || '',
+            typeReference: 'branch',
+            idReq: 0,
+            idReference: this.idBranch,
+            dateCreate: item.requestDate,
+            idProvider: 0,
+            idDepartament: item.departmentId || 0,
+            delivery: item.delivery || 'NO APLICA', // ✅ Valor por defecto del backend
+            deliveryTime: item.deliveryTime || '1 DAY', // ✅ Valor por defecto del backend
+            typeOc: item.typeOc || 'INSUMOS', // ✅ Valor por defecto del backend
+            dateSupply: item.dateSupply || new Date().toISOString(),
+            idPayment: item.idPayment || 0,
+            idCurrency: item.idCurrency || 0,
+            conditions: item.conditions || null, // ✅ null en lugar de string vacío
+            idAuthorize: 0,
+            priority: item.column8 || null, // ✅ null en lugar de string vacío
+            solicit: item.solicitedBy || this.currentUserName,
+            discount: 0,
+            ivaRetention: 0,
+            idSolicit: 0,
+            address: item.address || null, // ✅ null en lugar de string vacío
+            city: item.city || null, // ✅ null en lugar de string vacío
+            phone: item.phone || null, // ✅ null en lugar de string vacío
+            type: 'REQUIS',
+            compliancePedimento: 0,
+            complianceRequesicion: 0,
+            comments: item.comments || null, // ✅ null en lugar de string vacío
+            close: item.close || false,
+            active: item.active !== false
+          };
 
-      // Actualizar el prefijo en el servidor
-      this.typexPrefixesService.updatePrefix('branch', this.idBranch, updatedPrefixData).subscribe({
-        next: () => {
-          console.log('✅ Consecutivo actualizado correctamente');
+          console.log('📤 ========== NUEVA REQUISICIÓN - DATA A ENVIAR ==========');
+          console.log(JSON.stringify(newReqData, null, 2));
+          console.table(newReqData);
+          console.log('========================================================');
 
-          // Actualizar el prefijo local
-          this.currentPrefixData.consecutive = newConsecutive;
-
-          // Marcar las filas como guardadas
-          this.rowData.forEach(row => {
-            if (row.__modified || row.__isNew) {
-              row.__modified = false;
-              row.__isNew = false;
-            }
+          await new Promise<void>((resolve, reject) => {
+            this.ocAndReqsService.addOcAndReq(newReqData).subscribe({
+              next: (response) => {
+                console.log('✅ Requisición creada:', response);
+                resolve();
+              },
+              error: (err) => {
+                console.error('❌ Error al crear requisición:', err);
+                hasErrors = true;
+                reject(err);
+              }
+            });
           });
-
-          this.hasUnsavedChanges = false;
-          alerts.basicAlert('Guardado', 'Los cambios han sido guardados correctamente', 'success');
-          this.gridApi.refreshCells({ force: true });
-
-          // Recargar las requisiciones desde el servidor
-          this.loadRequisitions();
-        },
-        error: (err) => {
-          console.error('❌ Error al actualizar consecutivo:', err);
-          alerts.basicAlert('Error', 'Error al actualizar el consecutivo del prefijo', 'error');
         }
-      });
-    } else {
-      // Si no hay items nuevos, solo marcar como guardado
-      this.rowData.forEach(row => {
-        if (row.__modified) {
-          row.__modified = false;
-        }
-      });
 
-      this.hasUnsavedChanges = false;
-      alerts.basicAlert('Guardado', 'Los cambios han sido guardados correctamente', 'success');
-      this.gridApi.refreshCells({ force: true });
+        // Actualizar el consecutivo del prefijo después de crear nuevas requisiciones
+        if (this.currentPrefixData && this.idBranch) {
+          const newConsecutive = (this.currentPrefixData.consecutive || 0) + newItems.length;
+
+          const updatedPrefixData = {
+            reqType: 'branch',
+            idReqType: this.idBranch,
+            prefix: this.currentPrefixData.prefix,
+            consecutive: newConsecutive,
+            active: true
+          };
+
+          console.log('🔄 Actualizando consecutivo del prefijo:', updatedPrefixData);
+
+          await new Promise<void>((resolve, reject) => {
+            this.typexPrefixesService.updatePrefix('branch', this.idBranch, updatedPrefixData).subscribe({
+              next: () => {
+                console.log('✅ Consecutivo actualizado correctamente');
+                this.currentPrefixData.consecutive = newConsecutive;
+                resolve();
+              },
+              error: (err) => {
+                console.error('❌ Error al actualizar consecutivo:', err);
+                hasErrors = true;
+                reject(err);
+              }
+            });
+          });
+        }
+      }
+
+      // 2. Actualizar requisiciones modificadas
+      if (modifiedItems.length > 0) {
+        console.log('✏️ Actualizando requisiciones modificadas:', modifiedItems.length);
+
+        for (const item of modifiedItems) {
+          // Validar que tenga un ID válido (no temporal)
+          if (!item.id || String(item.id).startsWith('temp_')) {
+            console.warn('⚠️ Saltando item con ID temporal:', item.id);
+            continue;
+          }
+
+          const updateReqData = {
+            id: item.id,
+            folio: item.requisitionNumber || '',
+            typeReference: 'branch',
+            idReq: 0,
+            idReference: this.idBranch,
+            dateCreate: item.requestDate,
+            idProvider: 0,
+            idDepartament: item.departmentId || 0,
+            delivery: item.delivery || 'NO APLICA', // ✅ Valor por defecto del backend
+            deliveryTime: item.deliveryTime || '1 DAY', // ✅ Valor por defecto del backend
+            typeOc: item.typeOc || 'INSUMOS', // ✅ Valor por defecto del backend
+            dateSupply: item.dateSupply || new Date().toISOString(),
+            idPayment: item.idPayment || 0,
+            idCurrency: item.idCurrency || 0,
+            conditions: item.conditions || null, // ✅ null en lugar de string vacío
+            idAuthorize: 0,
+            priority: item.column8 || null, // ✅ null en lugar de string vacío
+            solicit: item.solicitedBy || this.currentUserName,
+            discount: 0,
+            ivaRetention: 0,
+            idSolicit: 0,
+            address: item.address || null, // ✅ null en lugar de string vacío
+            city: item.city || null, // ✅ null en lugar de string vacío
+            phone: item.phone || null, // ✅ null en lugar de string vacío
+            type: 'REQUIS',
+            compliancePedimento: 0,
+            complianceRequesicion: 0,
+            comments: item.comments || null, // ✅ null en lugar de string vacío
+            close: item.close || false,
+            active: item.active !== false
+          };
+
+          console.log(`📤 ========== UPDATE REQUISICIÓN ${item.id} - DATA A ENVIAR ==========`);
+          console.log(JSON.stringify(updateReqData, null, 2));
+          console.table(updateReqData);
+          console.log('========================================================');
+
+          await new Promise<void>((resolve, reject) => {
+            this.ocAndReqsService.updateOcAndReq(item.id, updateReqData).subscribe({
+              next: (response) => {
+                console.log(`✅ Requisición ${item.id} actualizada:`, response);
+                resolve();
+              },
+              error: (err) => {
+                console.error(`❌ Error al actualizar requisición ${item.id}:`, err);
+                hasErrors = true;
+                reject(err);
+              }
+            });
+          });
+        }
+      }
+
+      // 3. Si todo salió bien, recargar datos y limpiar estados
+      if (!hasErrors) {
+        this.hasUnsavedChanges = false;
+        alerts.basicAlert('Guardado', `Se guardaron ${itemsToSave.length} requisiciones correctamente`, 'success');
+
+        // Recargar las requisiciones desde el servidor
+        this.loadRequisitions();
+      } else {
+        alerts.basicAlert('Advertencia', 'Algunos cambios no se pudieron guardar. Revise la consola.', 'warning');
+      }
+
+    } catch (error) {
+      console.error('❌ Error general al guardar:', error);
+      alerts.basicAlert('Error', 'Error al guardar los cambios. Revise la consola para más detalles.', 'error');
     }
   }
 
@@ -752,7 +868,6 @@ export class RequisitionsDelisonComponent implements OnInit {
   }
 
   components = {
-    selectDepartmentEditor: SelectDepartmentEditorComponent,
-    selectPersonEditor: SelectPersonEditorComponent
+    selectDepartmentEditor: SelectDepartmentEditorComponent
   };
 }

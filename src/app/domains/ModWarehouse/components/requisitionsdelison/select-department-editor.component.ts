@@ -46,13 +46,20 @@ export class SelectDepartmentEditorComponent implements ICellEditorAngularComp, 
   }
 
   getValue(): any {
+    console.log('🎯 SelectDepartmentEditor.getValue() - selectedValue:', this.selectedValue);
+
     const selectedOption = this.options.find(o => o.id == this.selectedValue);
+
     if (selectedOption) {
-      return {
+      const result = {
         id: selectedOption.id,
         name: selectedOption.description
       };
+      console.log('✅ Retornando objeto:', result);
+      return result;
     }
+
+    console.log('⚠️ No se encontró opción, retornando valor crudo:', this.selectedValue);
     return this.selectedValue;
   }
 
@@ -60,7 +67,9 @@ export class SelectDepartmentEditorComponent implements ICellEditorAngularComp, 
     return false;
   }
 
-  onChange(event: any) {}
+  onChange(event: any) {
+    console.log('🔄 onChange disparado - selectedValue:', this.selectedValue);
+  }
 
   onBlur() {
     setTimeout(() => {
