@@ -9,6 +9,26 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
   standalone: true,
   imports: [CommonModule, AgGridModule],
   template: `
+    <div class="d-flex justify-content-end gap-2 mb-2">
+      <button type="button" class="btn btn-sm btn-success position-relative" (click)="saveItem()" title="Guardar cambios">
+        <i class="bi bi-floppy"></i>
+        <span
+          class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+          *ngIf="masterNotSavedChanges">
+          <span class="visually-hidden">Hay cambios sin guardar</span>
+        </span>
+      </button>
+
+       <button type="button" class="btn btn-sm btn-warning" (click)="revertItem()" title="Deshacer cambios">
+         <i class="bi bi-arrow-clockwise"></i>
+       </button>
+
+       <button type="button" class="btn btn-sm btn-danger" (click)="deleteItem()" title="Eliminar requisición">
+         <i class="bi bi-trash"></i>
+       </button>
+
+    </div>
+
     <div class="detail-grid-container">
       <ag-grid-angular
         class="ag-theme-quartz small-text-ag-grid"
@@ -33,6 +53,7 @@ export class DetailCellRendererPedimentosItemsComponent {
   private context: any;
   rowData: any[] = [];
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+    masterNotSavedChanges: boolean = false;
 
   agInit(params: ICellRendererParams): void {
     this.params = params;
@@ -82,12 +103,12 @@ export class DetailCellRendererPedimentosItemsComponent {
       {
         field: 'articulo',
         headerName: 'Articulo',
-        width: 150
+        width: 180
       },
       {
         field: 'numeroArticulo',
         headerName: '# Articulo',
-        width: 100
+        width: 140
       },
       {
         field: 'cantidad',
@@ -97,17 +118,17 @@ export class DetailCellRendererPedimentosItemsComponent {
       {
         field: 'tipo',
         headerName: 'Tipo',
-        width: 100
+        width: 130
       },
       {
         field: 'proveedorInterno',
         headerName: 'Proveedor Interno',
-        width: 150
+        width: 200
       },
       {
         field: 'tipoPrioridad',
         headerName: 'Tipo Prioridad',
-        width: 120
+        width: 200
       },
       {
         field: 'observacion',
@@ -145,4 +166,19 @@ export class DetailCellRendererPedimentosItemsComponent {
     rowHeight: 35,
     animateRows: true
   };
+
+saveItem() {
+
+}
+
+deleteItem()
+{
+
+}
+
+revertItem(){
+
+}
+
+
 }
