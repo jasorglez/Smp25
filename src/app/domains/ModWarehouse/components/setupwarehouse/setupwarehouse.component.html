@@ -3,15 +3,68 @@
             <div class="col-12">
                 <div class="form-group">
                     <label>Ver Requisiciones por:</label>
-                    
+
                     <div>
-                        <input type="radio" id="project" name="projectOrBranch" [(ngModel)]="warehouseSetup.projectOrBranch" [value]="true">
+                        <input type="radio" id="project" name="projectOrBranch" [(ngModel)]="warehouseSetup.projectOrBranch" [value]="true" (change)="onProjectOrBranchChange()">
                         <label for="project"> Proyectos</label>
                     </div>
 
                     <div>
-                        <input type="radio" id="branch" name="projectOrBranch" [(ngModel)]="warehouseSetup.projectOrBranch" [value]="false">
+                        <input type="radio" id="branch" name="projectOrBranch" [(ngModel)]="warehouseSetup.projectOrBranch" [value]="false" (change)="onProjectOrBranchChange()">
                         <label for="branch">Sucursales</label>
+                    </div>
+
+                </div>
+
+                <!-- Sección de configuración según selección -->
+                <div class="form-group mt-4" *ngIf="warehouseSetup.projectOrBranch !== null && warehouseSetup.projectOrBranch !== undefined">
+
+                    <!-- Mensaje para Proyectos cuando no hay contrato seleccionado -->
+                    <div *ngIf="warehouseSetup.projectOrBranch === true && !selectedContract" class="alert alert-warning" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Primero debe elegir un contrato para modificar esta parte.
+                    </div>
+
+                    <!-- Formulario para Sucursales -->
+                    <div *ngIf="warehouseSetup.projectOrBranch === false">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label for="branchSelect">Sucursal:</label>
+                                <select id="branchSelect" name="branchSelect" [(ngModel)]="selectedBranchOrProject" class="form-select" (change)="onBranchOrProjectSelection()">
+                                    <option [value]="null">Seleccione una sucursal</option>
+                                    <option *ngFor="let branch of branches" [value]="branch.id">{{ branch.name || branch.description }}</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="prefix">Prefijo:</label>
+                                <input type="text" id="prefix" name="prefix" [(ngModel)]="prefix" class="form-control" placeholder="Ej: REQ" [disabled]="!selectedBranchOrProject">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="consecutive">Consecutivo:</label>
+                                <input type="number" id="consecutive" name="consecutive" [(ngModel)]="consecutive" class="form-control" min="0" step="1" placeholder="0" [disabled]="!selectedBranchOrProject">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Formulario para Proyectos (solo si hay contrato seleccionado) -->
+                    <div *ngIf="warehouseSetup.projectOrBranch === true && selectedContract">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label for="projectSelect">Proyecto:</label>
+                                <select id="projectSelect" name="projectSelect" [(ngModel)]="selectedBranchOrProject" class="form-select" (change)="onBranchOrProjectSelection()">
+                                    <option [value]="null">Seleccione un proyecto</option>
+                                    <option *ngFor="let project of projects" [value]="project.id">{{ project.name || project.description }}</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="prefix">Prefijo:</label>
+                                <input type="text" id="prefixProject" name="prefixProject" [(ngModel)]="prefix" class="form-control" placeholder="Ej: REQ" [disabled]="!selectedBranchOrProject">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="consecutive">Consecutivo:</label>
+                                <input type="number" id="consecutiveProject" name="consecutiveProject" [(ngModel)]="consecutive" class="form-control" min="0" step="1" placeholder="0" [disabled]="!selectedBranchOrProject">
+                            </div>
+                        </div>
                     </div>
 
                 </div>
