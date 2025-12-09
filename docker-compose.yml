@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  biapp-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: biapp-angular
+    restart: unless-stopped
+    ports:
+      - "8080:80"  # Puerto local:contenedor
+    networks:
+      - biapp-network
+    labels:
+      - "com.biapp.version=2.50.4"
+      - "com.biapp.service=frontend"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  biapp-network:
+    driver: bridge
