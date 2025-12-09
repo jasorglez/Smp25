@@ -1,19 +1,18 @@
-version: '3.8'
-
 services:
   Smp25:
     build:
       context: .
       dockerfile: Dockerfile
+    image: smp25-frontend:latest
     container_name: Smp25
     restart: unless-stopped
     ports:
       - "8080:80" # Puerto local:contenedor
     networks:
-      - Smp25-network
+      - smp25-network
     labels:
-      - "com.Smp25.version=2.50.4"
-      - "com.Smp25.service=frontend"
+      - "com.smp25.version=2.50.4"
+      - "com.smp25.service=frontend"
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost/" ]
       interval: 30s
@@ -22,5 +21,5 @@ services:
       start_period: 10s
 
 networks:
-  Smp25-network:
+  smp25-network:
     driver: bridge
