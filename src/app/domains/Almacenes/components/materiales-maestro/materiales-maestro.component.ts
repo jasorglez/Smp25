@@ -368,6 +368,11 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         headerName: 'Num Mat',
         width: 130,
         filter: true,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'windows',
+        },
         editable: true,
         cellEditor: 'agTextCellEditor',
         valueParser: (params: any) => {
@@ -377,8 +382,13 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       {
         field: 'articulo',
         headerName: 'Artículo',
-        width: 250,
+        width: 350,
         filter: true,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'windows',
+        },
         editable: true,
         cellEditor: 'agTextCellEditor',
         valueParser: (params: any) => {

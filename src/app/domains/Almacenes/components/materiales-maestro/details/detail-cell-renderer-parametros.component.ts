@@ -237,6 +237,7 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
 
   agInit(params: any): void {
     this.params = params;
+    this.refreshParametros();
     console.log('DetailCellRendererParametrosComponent initialized with params:', params);
     this.materialId = params.masterData.id;
     this.materialName = params.masterData.articulo || params.masterData.insumo;
@@ -247,7 +248,7 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
   }
    constructor() {
       effect(() => {
-        this.gridApi.refreshCells({ force: true });
+        //this.gridApi.refreshCells({ force: true });
         setTimeout(() => {
         this.parameterVigentes();
         this.parameters();
