@@ -471,6 +471,12 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       {
         field: 'idSubfamilia',
         headerName: 'Subfamilia',
+        filter: true,
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'windows',
+        },
         width: 200,
         editable: (params: any) => {
           // Solo editable si hay una familia seleccionada
