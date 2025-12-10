@@ -1914,8 +1914,8 @@ export const routes: Routes = [
             path: 'configuracion',
             loadComponent: () =>
               import(
-                './domains/ModWarehouse/components/configwarehouse/configwarehouse.component'
-              ).then((c) => c.ConfigwarehouseComponent),
+                './domains/ModShoppingDelison/pages/subPages/configSubPage/configSubPage.component'
+              ).then((c) => c.configShoppingDelisonComponent),
           },
         ],
       },

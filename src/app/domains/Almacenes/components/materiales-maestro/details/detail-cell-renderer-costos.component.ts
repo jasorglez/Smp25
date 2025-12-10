@@ -568,7 +568,7 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
     this.familySubFamily.getArticulosCatalogsMasterByFamilyVigentes(this.idRoot, this.idSelect, idFamilia.idFamilia).subscribe(
       (data: any) => {
         this.families= data;
-        console.log(data)
+        console.log("-------vigentes " , data)
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -774,6 +774,7 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
 
           await this.obtenerDatos(); // Esperar a que se actualicen los datos
           this.updatePinnedRowTotals();
+          this.familiasVigentes(this.data);
           /*
           // Seleccionar la fila apropiada después de recargar
           if (this.lastEditedRowId) {

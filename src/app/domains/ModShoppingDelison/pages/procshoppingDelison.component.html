@@ -26,9 +26,13 @@
                   <a class="nav-link green-tab" routerLink="purchas_eorder" routerLinkActive="active"><i
                      class="bi bi-cart-fill"></i> {{'orders' | translate}} {{'purchase' | translate}}</a>
                </li>
-               <li class="nav-item" *ngIf="authService.hasSubDetailedPermission('shoppingDelison', 'catalogs', '')">
+               <li class="nav-item">
                    <a class="nav-link green-tab" routerLink="catalogs" routerLinkActive="active"><i class="bi bi-journal-text"></i>
                       Catálogos</a>
+                </li>
+                <li class="nav-item">
+                   <a class="nav-link green-tab" routerLink="configuracion" routerLinkActive="active">
+                     <i class="bi bi-gear-fill"></i> Configuración</a>
                 </li>
             </ul>
    
