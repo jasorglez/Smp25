@@ -107,6 +107,24 @@ public gridOptions: any = {
   get columnDefs(): ColDef[] {
     return [
       {
+        headerName: '#',
+        valueGetter: (params) => {
+          if (params.node && params.node.rowIndex !== null) {
+            return params.node.rowIndex + 1;
+          }
+          return '';
+        },
+        editable: false,
+        flex: 0.5,
+        maxWidth: 70,
+        pinned: 'left',
+        cellStyle: {
+          fontWeight: 'bold',
+          textAlign: 'center',
+          backgroundColor: '#f8f9fa'
+        }
+      },
+      {
         field: 'name',
         headerName: 'Nombre',
         editable: true,
