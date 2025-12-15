@@ -16,18 +16,16 @@ import { SignalsService } from 'app/services/signals.service';
 import { NgSelectComponent, NgSelectModule } from '@ng-select/ng-select';
 import { AdditionalInfoComponent } from "../income/additional-info/additional-info.component";
 import { ConceptsincomeComponent } from '../income/conceptsincome/conceptsincome.component';
-import { ElectronicInvoiceComponent } from '../income/electronic-invoice/electronic-invoice.component';
-import { CustomersService } from 'app/services/customers.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { TrackingService } from 'app/services/tracking.service';
-import { FacturacionService } from 'app/services/facturacion.service';
 import { AuthService } from 'app/services/auth.service';
+import { CatalogadmonService } from 'app/services/catalogadmon.service';
 
 @Component({
   selector: 'app-ingresos-palacio',
   standalone: true,
   imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
-            FormsModule, AdditionalInfoComponent, ConceptsincomeComponent, ElectronicInvoiceComponent],
+            FormsModule, AdditionalInfoComponent, ConceptsincomeComponent],
   templateUrl: './ingresos-palacio.component.html',
   styleUrl: './ingresos-palacio.component.scss'
 })
@@ -35,13 +33,12 @@ export class IngresosPalacioComponent {
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
   private modalServiceTable = inject(ModalService);
   private administrationService = inject(AdministrationService);
-  private customersService = inject(CustomersService);
+  private catalogadmonService = inject(CatalogadmonService);
   private usersxpermissionsService = inject(UsersxpermissionsService);
   private usersService = inject(UsersService);
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
   private BranchsService = inject(BranchsService);
-  private facturacionService = inject(FacturacionService);
   authService = inject(AuthService);
 
 
@@ -66,10 +63,9 @@ export class IngresosPalacioComponent {
       await this.getBankAccounts();
       await this.getIncomes();
 
-      await this.getCustomers();   // Obtener clientes después de sucursales
+      await this.getIngresosCatalog();   // Obtener catálogo de ingresos nivel 2
       await this.loadAuthorizers();
       await this.getCurrentUser();
-      await this.loadSATCatalogs();  // Cargar catálogos SAT
 
     }, { allowSignalWrites: true });
     effect(() => {
@@ -90,7 +86,7 @@ export class IngresosPalacioComponent {
   showform : string = '';
   branches: number[] = [];
   incomes: any[] = [];
-  customers: any[] = [];
+  ingresosCatalog: any[] = [];
   users: any[] = [];
   id: number;
   notSavedChanges: boolean = false;
@@ -101,10 +97,6 @@ export class IngresosPalacioComponent {
   idBranch: number;
   bankAccounts: any[] = [];
   prefixAndConsecutive: any[] = [];
-
-  // Catálogos SAT para facturación electrónica
-  formasPago: any[] = [];
-  metodosPago: any[] = [];
 
   private _idAccount: number; // Variable de respaldo para el setter
 
@@ -232,28 +224,19 @@ export class IngresosPalacioComponent {
   }
 
 
-  async getCustomers() {
-    // Obtener todos los clientes de la compañía
-    this.customersService.getCustomersByCompany(this.root, 'CUSTOMERS').subscribe(
+  async getIngresosCatalog() {
+    // Obtener catálogo de ingresos nivel 2
+    this.catalogadmonService.getCatalogsxNivel(this.root, 'INCOME', 2).subscribe(
       (data: any) => {
-        // Mapear para formato consistente
-        this.customers = data.map((item: any) => ({
-          id: item.id,
-          description: item.nameContact || item.company || item.name,
-          name: item.nameContact || item.company || item.name,
-          rfc: item.rfc,
-          cp: item.cp,
-          fiscalRegime: item.fiscalRegime,
-          usoCfdi: item.usoCfdi,
-          email: item.email
-        }));
+        this.ingresosCatalog = data || [];
       },
       error => {
-        console.error(error);
+        console.error('Error cargando catálogo de ingresos:', error);
+        this.ingresosCatalog = [];
       }
     )
-      this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Clientes`, 'Menu Administración - Palacio Municipal - Ingresos',
-           this.trackingService.getEmail() );
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Catálogo Ingresos`, 'Menu Administración - Palacio Municipal - Ingresos',
+         this.trackingService.getEmail() );
   }
 
   // Nuevo método para cargar usuarios autorizadores
@@ -313,20 +296,6 @@ export class IngresosPalacioComponent {
     ].join('-');
   }
 
-  // Cargar catálogos SAT para facturación electrónica
-  async loadSATCatalogs() {
-    forkJoin({
-      formasPago: this.facturacionService.getFormaPago2fields(),
-      metodosPago: this.facturacionService.getMetodoPago2fields()
-    }).subscribe({
-      next: (data: any) => {
-        this.formasPago = data.formasPago || [];
-        this.metodosPago = data.metodosPago || [];
-      },
-      error: (err) => console.error('Error cargando catálogos SAT:', err)
-    });
-  }
-
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
     return [
@@ -345,7 +314,7 @@ export class IngresosPalacioComponent {
           ]
         }
       },
-      { field: 'numberDocument', headerName: '# Factura', editable: false, filter: true, width: 130 },
+      { field: 'numberDocument', headerName: '# Doc/Fac', editable: false, filter: true, width: 150, hide: false },
       {
         field: 'description', headerName: 'Descripción', editable: true, width: 315, filter: true,
         cellEditor: 'agPopupTextCellEditor',
@@ -386,14 +355,14 @@ export class IngresosPalacioComponent {
       },
 
       {
-        field: 'idCustomer', headerName: 'Cliente', editable: true, width: 160,
+        field: 'idCustomer', headerName: 'Catálogo Ingreso', editable: true, width: 200,
         cellEditor: 'searchableSelect',
         cellEditorParams: {
-          options: this.customers,
+          options: this.ingresosCatalog,
         },
         valueFormatter: (params) => {
-          const foundItem = this.customers
-            ? this.customers.find((item) => item.id === params.value)
+          const foundItem = this.ingresosCatalog
+            ? this.ingresosCatalog.find((item) => item.id === params.value)
             : null;
           return foundItem ? `${foundItem.description}` : params.value;
         },
@@ -434,57 +403,6 @@ export class IngresosPalacioComponent {
           ]
         }
       },
-
-      {
-        field: 'formaPago',
-        headerName: 'Forma Pago',
-        editable: true,
-        width: 250,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.formasPago.map(fp => fp.formaPagoValue)
-        },
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          const found = this.formasPago.find(fp => fp.formaPagoValue === params.value);
-          return found ? `${found.formaPagoValue} - ${found.descripcion}` : params.value;
-        }
-      },
-
-      {
-        field: 'metodoPago',
-        headerName: 'Método Pago',
-        editable: true,
-        width: 280,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.metodosPago.map(mp => mp.metodoPagoValue)
-        },
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          const found = this.metodosPago.find(mp => mp.metodoPagoValue === params.value);
-          return found ? `${found.metodoPagoValue} - ${found.descripcion}` : params.value;
-        }
-      },
-
-      {
-        field: 'uuid',
-        headerName: 'UUID',
-        editable: false,
-        width: 150,
-        filter: true,
-        valueFormatter: (params) => {
-          if (!params.value || params.value === 'NA') return 'Sin Timbrar';
-          return params.value.substring(0, 15) + '...';
-        },
-        cellStyle: (params) => {
-          if (params.value && params.value !== 'NA') {
-            return { backgroundColor: '#d4edda', color: '#155724' }; // Verde si está timbrado
-          }
-          return { backgroundColor: '#fff3cd', color: '#856404' }; // Amarillo si no está timbrado
-        }
-      },
-
 
       {
         field: 'idExpend',
@@ -564,9 +482,6 @@ export class IngresosPalacioComponent {
       subtotal: 0,
       tax: 0,
       total: 0,
-      // Campos de facturación electrónica
-      formaPago: '01', // 01 = Efectivo (valor por defecto)
-      metodoPago: 'PUE', // PUE = Pago en una sola exhibición
       createdBy: this.currentUser || 'Usuario temporal',
       createdAt: new Date().toISOString(),
       modifiedBy: null,

@@ -89,16 +89,6 @@ export class CatIngresosPalacioComponent implements CanComponentDeactivate {
 
   private modalServiceTable = inject(ModalService);
 
-  // Auto Group Column Definition para mostrar la jerarquía
-  public autoGroupColumnDef: ColDef = {
-    headerName: 'Descripción',
-    minWidth: 500,
-    cellRendererParams: {
-      suppressCount: true,
-      innerRenderer: this.customTreeCellRenderer.bind(this)
-    }
-  };
-
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
     headerHeight: 30,
@@ -107,7 +97,8 @@ export class CatIngresosPalacioComponent implements CanComponentDeactivate {
     animateRows: true,
     groupDefaultExpanded: -1, // Expandir todos por defecto
     getDataPath: (data: any) => data.path,
-    autoGroupColumnDef: this.autoGroupColumnDef,
+    showOpenedGroup: false, // No mostrar grupo abierto
+    groupDisplayType: 'custom', // Usar visualización personalizada
     suppressDragLeaveHidesColumns: true,
     rowGroupPanelShow: 'never',
     suppressRowClickSelection: true,
@@ -131,16 +122,6 @@ export class CatIngresosPalacioComponent implements CanComponentDeactivate {
     },
   };
 
-  // Renderer personalizado para la columna de árbol
-  customTreeCellRenderer(params: ICellRendererParams) {
-    if (!params.value) return '';
-
-    const level = params.node.level || 0;
-    const paddingLeft = level * 20; // 20px por nivel
-
-    return `<span style="padding-left: ${paddingLeft}px;">${params.value}</span>`;
-  }
-
   get colMaster(): ColDef[] {
     return [
       {
@@ -155,6 +136,36 @@ export class CatIngresosPalacioComponent implements CanComponentDeactivate {
             return params.node.rowIndex + 1;
           }
           return '';
+        },
+      },
+      {
+        field: 'description',
+        headerName: 'Descripción',
+        editable: true,
+        minWidth: 500,
+        flex: 1,
+        cellRenderer: 'agGroupCellRenderer',
+        cellRendererParams: {
+          suppressCount: true,
+        },
+        cellEditor: 'agPopupTextCellEditor',
+        cellEditorParams: {
+          maxLength: 200,
+          cols: 50,
+          rows: 3,
+          onKeyDown: (event: KeyboardEvent) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.stopPropagation();
+            }
+          },
+        },
+        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+          if (!event.node.group) {
+            this.modalServiceTable.showModal({
+              params: event,
+              value: event.value,
+            });
+          }
         },
       },
       {

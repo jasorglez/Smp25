@@ -17,7 +17,10 @@ export class CatalogadmonService {
     return this.http.get<any[]>(`${environment.urlAdministration}/Catalog/getCatalogs?idCompany=${idRoot}&type=${type}`, { headers: this.trackingService.getHeaders() });
   }
  
-  
+  getCatalogsxNivel(idRoot: number, type: string, nivel: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlAdministration}/Catalog/getCatalogsxNivel?idCompany=${idRoot}&type=${type}&nivel=${nivel}`, { headers: this.trackingService.getHeaders() });
+  }
+   
   addCatalog(catalog: any): Observable<any> {
     console.log(catalog);
     return this.http.post<any>(`${environment.urlWarehouse}/Catalog`, catalog, { headers: this.trackingService.getHeaders() });

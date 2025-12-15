@@ -23,6 +23,13 @@
 // Estilos para el árbol jerárquico
 :host ::ng-deep {
   .ag-theme-quartz {
+    // Ocultar la columna de grupo automática
+    .ag-group-auto-column {
+      display: none !important;
+      width: 0 !important;
+      min-width: 0 !important;
+    }
+
     // Asegurar que los chevrons sean visibles
     .ag-group-contracted,
     .ag-group-expanded {

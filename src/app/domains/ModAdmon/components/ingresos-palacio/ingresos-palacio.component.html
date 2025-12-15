@@ -142,20 +142,6 @@
           <i class="bi bi-info-circle me-1"></i> Información Adicional
         </button>
       </li>
-      <li class="nav-item" role="presentation">
-        <button
-          class="nav-link"
-          [class.active]="activeTab === 'invoice'"
-          (click)="setActiveTab('invoice')"
-          type="button">
-          <i class="bi bi-file-earmark-text me-1"></i> Facturación Electrónica
-          <span
-            *ngIf="selectedIncomes?.uuid && selectedIncomes?.uuid !== 'NA'"
-            class="badge bg-success ms-2">
-            <i class="bi bi-check-circle"></i> Timbrada
-          </span>
-        </button>
-      </li>
     </ul>
 
     <!-- 2. Contenedor del CONTENIDO de las pestañas (unificado y correcto) -->
@@ -170,11 +156,6 @@
       <!-- Panel para "Información Adicional" -->
       <div *ngIf="activeTab === 'info'" class="tab-pane fade show active">
         <app-additional-info></app-additional-info>
-      </div>
-
-      <!-- Panel para "Facturación Electrónica" -->
-      <div *ngIf="activeTab === 'invoice'" class="tab-pane fade show active">
-        <app-electronic-invoice></app-electronic-invoice>
       </div>
 
     </div>
