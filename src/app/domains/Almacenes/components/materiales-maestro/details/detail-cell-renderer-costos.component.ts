@@ -346,12 +346,12 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
         cellStyle: { textAlign: 'center' }
       },
       { headerName: 'Cantidad a Utilizar', field: 'cantidad',editable: params => params.data.idCatalog !== 'Totales', type: 'numericColumn', valueParser: params => Number(params.newValue), cellStyle: { textAlign: 'center' } },
-      { headerName: 'Proporcion', field: 'proporcion',editable: params => params.data.idCatalog !== 'Totales', type: 'numericColumn', valueParser: params => Number(params.newValue), cellStyle: { textAlign: 'center' } },
+      { headerName: 'Proporcion', field: 'proporcion',editable: params => false, type: 'numericColumn', valueParser: params => Number(params.newValue), cellStyle: { textAlign: 'center' } },
       {
         headerName: 'Costo Total',
         field: 'costoTot',
         width: 120,
-        editable: params => params.data.idCatalog !== 'Totales',
+        editable: false,
         type: 'numericColumn',
         valueGetter: params => {
           if (params.data.idCatalog === 'Totales') {
@@ -365,7 +365,7 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
         valueFormatter: params => this.currencyPipe.transform(params.value, 'MXN', 'symbol', '1.2-2') || '$0.00',
         cellStyle: { textAlign: 'center' }
       },
-      { headerName: 'Merma', field: 'merma', editable: true, type: 'numericColumn', valueParser: params => Number(params.newValue), cellStyle: { textAlign: 'center' } },
+      
       {
         headerName: 'Costo Final',
         field: 'costoFin',

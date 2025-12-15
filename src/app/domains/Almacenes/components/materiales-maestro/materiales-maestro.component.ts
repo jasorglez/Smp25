@@ -130,8 +130,10 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       if (this.idRoot) {
         this.loadCatalogs();
         this.loadMaterials();
-        // Actualizar el contexto del grid cuando cambia idRoot
-        this.updateGridContext();
+        // ✅ Actualizar el contexto del grid cuando cambia idRoot,
+        //    solo si el grid ya está listo.
+        if (this.gridApi)
+          this.updateGridContext();
       }
     });
   }
@@ -511,6 +513,20 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           }
           return null;
         }
+      },
+      { headerName: 'Merma', field: 'merma', editable: true },
+      {
+        headerName: 'Fecha Cambio',
+        field: 'fechaCambio',
+        editable: true,
+        cellEditor: 'agDateCellEditor',
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          try {
+            return new Date(params.value).toLocaleDateString();
+          } catch (e) { return params.value; }
+        },
+        cellStyle: { textAlign: 'center' }
       },
 
       {
