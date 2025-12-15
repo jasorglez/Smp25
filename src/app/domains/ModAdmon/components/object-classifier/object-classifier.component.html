@@ -1,0 +1,364 @@
+<div class="container-fluid p-4">
+  <!-- Header -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <div class="flex-grow-1">
+          <h3 class="mb-1">
+            <i class="bi bi-list-ol text-primary me-2"></i>
+            Clasificador por Objeto del Gasto
+            <button class="btn btn-sm btn-outline-info ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#helpCollapse" title="Ver atajos de teclado">
+              <i class="bi bi-keyboard"></i>
+            </button>
+          </h3>
+          <p class="text-muted mb-0">Capítulo, Concepto, Partida Genérica y Partida Específica</p>
+
+          <!-- Ayuda de atajos -->
+          <div class="collapse mt-2" id="helpCollapse">
+            <div class="alert alert-info alert-dismissible fade show py-2" role="alert">
+              <small>
+                <strong>Atajos de teclado:</strong>
+                <kbd>Ctrl+F</kbd> Buscar |
+                <kbd>Enter</kbd> Expandir/Colapsar |
+                <kbd>Del</kbd> Eliminar
+              </small>
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          </div>
+
+          <!-- Breadcrumbs para item seleccionado -->
+          <nav *ngIf="selectedItem" aria-label="breadcrumb" class="mt-2">
+            <ol class="breadcrumb mb-0">
+              <li class="breadcrumb-item active">
+                <small>
+                  <i class="bi bi-arrow-right-short"></i>
+                  <strong>{{ selectedItem.codigo }}</strong> - {{ selectedItem.nombre }}
+                  <span class="badge bg-secondary ms-2" style="font-size: 0.7rem;">Nivel {{ selectedItem.nivel }}</span>
+                </small>
+              </li>
+            </ol>
+          </nav>
+        </div>
+        <div>
+          <button class="btn btn-success me-2" (click)="openCreateModal()" [disabled]="loading">
+            <i class="bi bi-plus-circle me-1"></i> Nuevo Item
+          </button>
+          <button class="btn btn-outline-secondary" (click)="exportToExcel()" [disabled]="loading">
+            <i class="bi bi-file-earmark-excel me-1"></i> Exportar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtros y Controles -->
+  <div class="row mb-3" [formGroup]="filterForm">
+    <div class="col-md-5">
+      <div class="input-group">
+        <span class="input-group-text">
+          <i class="bi bi-search"></i>
+        </span>
+        <input
+          #searchInput
+          type="text"
+          class="form-control"
+          placeholder="Buscar por código, nombre o descripción... (Ctrl+F)"
+          formControlName="searchTerm"
+          (input)="applyGridFilters()"
+        />
+        <button class="btn btn-outline-secondary" (click)="filterForm.get('searchTerm')?.reset(); applyGridFilters()" *ngIf="filterForm.get('searchTerm')?.value">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="col-md-2">
+      <select class="form-select" formControlName="filterNivel" title="Filtrar por nivel" (change)="applyGridFilters()">
+        <option [ngValue]="null">Todos los niveles</option>
+        <option [ngValue]="1">Capítulo</option>
+        <option [ngValue]="2">Concepto</option>
+        <option [ngValue]="3">Partida Genérica</option>
+        <option [ngValue]="4">Partida Específica</option>
+      </select>
+    </div>
+
+    <div class="col-md-5">
+      <div class="btn-group float-end" role="group">
+        <button
+          type="button"
+          class="btn btn-outline-primary"
+          [class.active]="viewMode === 'tree'"
+          (click)="viewMode = 'tree'"
+        >
+          <i class="bi bi-diagram-3 me-1"></i> Vista Árbol
+        </button>
+        <button
+          type="button"
+          class="btn btn-outline-primary"
+          [class.active]="viewMode === 'list'"
+          (click)="viewMode = 'list'"
+        >
+          <i class="bi bi-list-ul me-1"></i> Vista Lista
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vista de Árbol -->
+  <div *ngIf="viewMode === 'tree'" class="row">
+    <!-- Botonera lateral -->
+    <div class="col-auto">
+      <div class="d-flex flex-column gap-1">
+        <button type="button" class="btn btn-primary" (click)="openCreateModal(selectedItem)" [disabled]="loading" title="Nuevo item">
+          <i class="bi bi-plus-lg"></i>
+        </button>
+        <button type="button" class="btn btn-info" (click)="openEditModal(selectedItem)" [disabled]="!selectedItem || loading" title="Editar item">
+          <i class="bi bi-pencil"></i>
+        </button>
+        <button type="button" class="btn btn-warning" (click)="loadData()" [disabled]="loading" title="Recargar datos">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+        <button type="button" class="btn btn-danger" (click)="deleteItem(selectedItem)"
+          [disabled]="!selectedItem || loading" title="Eliminar item">
+          <i class="bi bi-trash"></i>
+        </button>
+        <hr class="my-2 border-secondary" style="width: 100%;">
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="expandAll()" [disabled]="loading" title="Expandir Todo">
+          <i class="bi bi-arrows-expand"></i>
+        </button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="collapseAll()" [disabled]="loading" title="Colapsar Todo">
+          <i class="bi bi-arrows-collapse"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Contenido del árbol con AG Grid -->
+    <div class="col">
+      <div class="card shadow-sm" style="height: 75vh;">
+        <div class="card-body p-0 h-100">
+          <div *ngIf="loading" class="text-center p-5">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2 text-muted">Cargando clasificador...</p>
+          </div>
+
+          <div *ngIf="!loading && classifierTreeFlat.length === 0" class="text-center p-5">
+            <i class="bi bi-inbox display-1 text-muted"></i>
+            <p class="mt-3 text-muted">No hay datos del clasificador registrados</p>
+          </div>
+
+          <!-- AG Grid Tree Data Mode -->
+          <ag-grid-angular
+            *ngIf="!loading && classifierTreeFlat.length > 0"
+            style="width: 100%; height: 100%;"
+            class="ag-theme-quartz small-text-ag-grid"
+            [rowData]="classifierTreeFlat"
+            [columnDefs]="columnDefsTree"
+            [defaultColDef]="defaultColDef"
+            [autoGroupColumnDef]="autoGroupColumnDef"
+            [treeData]="true"
+            [getDataPath]="getDataPath"
+            [localeText]="AG_GRID_LOCALE_ES"
+            [animateRows]="true"
+            [rowSelection]="'single'"
+            [groupDefaultExpanded]="1"
+            (gridReady)="onGridReady($event)"
+            (selectionChanged)="onSelectionChanged($event)"
+          >
+          </ag-grid-angular>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vista de Lista -->
+  <div *ngIf="viewMode === 'list'" class="row">
+    <!-- Botonera lateral -->
+    <div class="col-auto">
+      <div class="d-flex flex-column gap-1">
+        <button type="button" class="btn btn-warning" (click)="revert()" [disabled]="loading" title="Recargar datos">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+        <button type="button" class="btn btn-danger" (click)="deleteItem(selectedRowData)" [disabled]="!selectedRowData || loading" title="Eliminar item seleccionado">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Contenido de la grilla -->
+    <div class="col">
+      <div class="card shadow-sm" style="height: 75vh;">
+        <div class="card-body p-0 h-100">
+          <div *ngIf="loading" class="text-center p-5">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Cargando...</span>
+            </div>
+          </div>
+          <!-- AG Grid -->
+          <ag-grid-angular
+            *ngIf="!loading"
+            style="width: 100%; height: 100%;"
+            class="ag-theme-quartz small-text-ag-grid"
+            [rowData]="classifierTreeFlat"
+            [columnDefs]="columnDefs"
+            [defaultColDef]="defaultColDef"
+            [localeText]="AG_GRID_LOCALE_ES"
+            [pagination]="true"
+            [paginationPageSize]="20"
+            [paginationPageSizeSelector]="[10, 20, 50, 100]"
+            [animateRows]="true"
+            [rowSelection]="'single'"
+            (gridReady)="onGridReady($event)"
+            (selectionChanged)="onSelectionChanged($event)"
+            (cellValueChanged)="onCellValueChanged($event)"
+          >
+          </ag-grid-angular>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para Agregar/Editar Item -->
+<div class="modal fade" id="modalObjectClassifier" tabindex="-1" aria-labelledby="modalObjectClassifierLabel" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header" [ngClass]="modalMode === 'create' ? 'bg-success text-white' : 'bg-warning'">
+        <h5 class="modal-title" id="modalObjectClassifierLabel">
+          <i class="bi" [ngClass]="modalMode === 'create' ? 'bi-plus-circle' : 'bi-pencil'"></i>
+          {{ modalMode === 'create' ? 'Nuevo Item' : 'Editar Item' }} - {{ getNombreNivel(modalForm.value.nivel) }}
+        </h5>
+        <button type="button" class="btn-close" [class.btn-close-white]="modalMode === 'create'" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form [formGroup]="modalForm">
+          <!-- Información del padre -->
+          <div *ngIf="modalParent" class="alert alert-info mb-3">
+            <small>
+              <i class="bi bi-info-circle me-2"></i>
+              <strong>Padre:</strong> {{ modalParent.codigo }} - {{ modalParent.nombre }}
+              <span class="badge bg-primary ms-2">Nivel {{ modalParent.nivel }}</span>
+            </small>
+          </div>
+
+          <div class="row">
+            <!-- Código -->
+            <div class="col-md-4 mb-3">
+              <label for="codigo" class="form-label">
+                Código <span class="text-danger">*</span>
+              </label>
+              <input
+                type="text"
+                class="form-control form-control-sm"
+                id="codigo"
+                formControlName="codigo"
+                placeholder="Ej: 1000, 1100, 111, 1111"
+                [class.is-invalid]="modalForm.get('codigo')?.invalid && modalForm.get('codigo')?.touched"
+              />
+              <div class="invalid-feedback">
+                El código es requerido
+              </div>
+            </div>
+
+            <!-- Nivel (readonly) -->
+            <div class="col-md-4 mb-3">
+              <label for="nivel" class="form-label">Nivel</label>
+              <input
+                type="text"
+                class="form-control form-control-sm"
+                id="nivel"
+                [value]="getNombreNivel(modalForm.value.nivel)"
+                readonly
+              />
+            </div>
+
+            <!-- Es Hoja -->
+            <div class="col-md-4 mb-3">
+              <label class="form-label d-block">Tipo</label>
+              <div class="form-check form-switch">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="esHoja"
+                  formControlName="esHoja"
+                />
+                <label class="form-check-label" for="esHoja">
+                  {{ modalForm.value.esHoja ? 'Hoja (sin hijos)' : 'Padre (puede tener hijos)' }}
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <!-- Nombre -->
+            <div class="col-12 mb-3">
+              <label for="nombre" class="form-label">
+                Nombre <span class="text-danger">*</span>
+              </label>
+              <input
+                type="text"
+                class="form-control form-control-sm"
+                id="nombre"
+                formControlName="nombre"
+                placeholder="Nombre del item"
+                [class.is-invalid]="modalForm.get('nombre')?.invalid && modalForm.get('nombre')?.touched"
+              />
+              <div class="invalid-feedback">
+                El nombre es requerido
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <!-- Descripción -->
+            <div class="col-12 mb-3">
+              <label for="descripcion" class="form-label">Descripción</label>
+              <textarea
+                class="form-control form-control-sm"
+                id="descripcion"
+                formControlName="descripcion"
+                rows="4"
+                placeholder="Descripción detallada del item..."
+              ></textarea>
+            </div>
+          </div>
+
+          <div class="row">
+            <!-- Estado -->
+            <div class="col-md-4 mb-3">
+              <label class="form-label d-block">Estado</label>
+              <div class="form-check form-switch">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="active"
+                  formControlName="active"
+                />
+                <label class="form-check-label" for="active">
+                  {{ modalForm.value.active ? 'Activo' : 'Inactivo' }}
+                </label>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle me-1"></i> Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn"
+          [ngClass]="modalMode === 'create' ? 'btn-success' : 'btn-primary'"
+          (click)="saveItem()"
+          [disabled]="modalForm.invalid || saving"
+        >
+          <span *ngIf="saving" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+          <i *ngIf="!saving" class="bi" [ngClass]="modalMode === 'create' ? 'bi-check-circle' : 'bi-floppy'"></i>
+          {{ saving ? 'Guardando...' : (modalMode === 'create' ? 'Crear' : 'Actualizar') }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

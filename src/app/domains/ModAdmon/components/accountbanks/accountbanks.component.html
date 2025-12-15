@@ -25,30 +25,40 @@
 
     <!-- Columna contenedora de ambos grids -->
     <div class="col d-flex flex-column gap-3">
+      <!-- Loading Indicator -->
+      <div *ngIf="isLoading" class="text-center p-3">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Cargando...</span>
+        </div>
+        <p class="mt-2">Cargando datos...</p>
+      </div>
+
       <!-- Grid Maestro -->
-      <ag-grid-angular 
+      <ag-grid-angular
+        *ngIf="!isLoading"
         class="ag-theme-quartz small-text-ag-grid master-grid"
-        style="width: 100%; height: 300px;" 
+        style="width: 100%; height: 300px;"
         [rowData]="rowMaster"
-        [columnDefs]="colMaster" 
+        [columnDefs]="colMaster"
         [gridOptions]="gridOptions"
         (selectionChanged)="onSelectionChanged($event)"
-        (cellValueChanged)="onCellValueChanged($event)" 
+        (cellValueChanged)="onCellValueChanged($event)"
         (gridReady)="onMasterGridReady($event)"
-        [rowSelection]="'single'" 
+        [rowSelection]="'single'"
         [pivotPanelShow]="pivotPanelShow"
         [rowGroupPanelShow]="rowGroupPanelShow"
         [stopEditingWhenCellsLoseFocus]="true">
       </ag-grid-angular>
 
       <!-- Grid Detalle -->
-      <ag-grid-angular 
-        class="ag-theme-quartz small-text-ag-grid detail-grid" 
-        style="width: 100%; height: 400px;" 
+      <ag-grid-angular
+        *ngIf="!isLoading"
+        class="ag-theme-quartz small-text-ag-grid detail-grid"
+        style="width: 100%; height: 400px;"
         [rowData]="rowDetails"
-        [columnDefs]="colDetails" 
-        (gridReady)="onDetailGridReady($event)" 
-        [rowSelection]="'single'" 
+        [columnDefs]="colDetails"
+        (gridReady)="onDetailGridReady($event)"
+        [rowSelection]="'single'"
         [pivotPanelShow]="pivotPanelShow"
         [rowGroupPanelShow]="rowGroupPanelShow">
       </ag-grid-angular>

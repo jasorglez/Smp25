@@ -223,12 +223,16 @@
   "work_orders"    : "OT",
   "work_orders_description" : "Gestión de Órdenes de Trabajo",
   "cadastral_description"   : "Información Catastral y Geográfica",
+  "object classifier expenditure" : "Clasificador Por Objeto Gastos",
   "general_description"     : "Configuración General del Sistema",
   "connection_description"  : "Gestión de Conexiones y Enlaces",
   "inspection_description"  : "Módulo de Inspecciones y Auditorías",
   "unit_description"        : "Gestión de Unidades Operativas",
   "service_description"     : "Gestión de Servicios y Mantenimiento",
   "electronic_invoice"      : "Facturas Electronicas",
+  "palacio_municipal"       : "Palacio Municipal",
+  "clasificador_objetos"    : "Clasificador Por Objetos Gastos",
+  "balances"                : "Saldos",
 
   "menuPM":{
     "gi"  :"Gestion Interesados",

@@ -1,0 +1,235 @@
+// Estilos para object-classifier component
+
+// Estilos para el árbol
+.tree-node {
+  padding: 8px;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: rgba(13, 110, 253, 0.1);
+    border-left-color: #0d6efd;
+  }
+
+  &.selected {
+    background-color: rgba(13, 110, 253, 0.15);
+    border-left-color: #0d6efd;
+  }
+}
+
+// Indentación por nivel
+.nivel-1 {
+  padding-left: 8px;
+  font-weight: 600;
+}
+
+.nivel-2 {
+  padding-left: 28px;
+  font-weight: 500;
+}
+
+.nivel-3 {
+  padding-left: 48px;
+}
+
+.nivel-4 {
+  padding-left: 68px;
+}
+
+// Iconos de expansión
+.expand-icon {
+  width: 16px;
+  display: inline-block;
+  cursor: pointer;
+  user-select: none;
+}
+
+// AG Grid personalización
+::ng-deep {
+  .small-text-ag-grid {
+    font-size: 11px;
+
+    .ag-header-cell-label {
+      font-weight: 600;
+      font-size: 11px;
+    }
+
+    .ag-row {
+      border-bottom: 1px solid #e9ecef;
+      min-height: 38px !important;
+    }
+
+    .ag-header-row {
+      min-height: 32px !important;
+      height: 32px !important;
+    }
+
+    .ag-row-hover {
+      background-color: rgba(13, 110, 253, 0.05) !important;
+    }
+
+    .ag-row-selected {
+      background-color: rgba(13, 110, 253, 0.1) !important;
+    }
+
+    // Estilos para los badges dentro del grid
+    .badge {
+      font-size: 0.75rem;
+      padding: 0.25em 0.55em;
+    }
+
+    // Estilos para el grupo de árbol
+    .ag-group-expanded,
+    .ag-group-contracted {
+      .ag-icon {
+        color: #0d6efd;
+      }
+    }
+
+    // Espaciado en el árbol
+    .ag-cell-wrapper {
+      align-items: center;
+    }
+
+    // Iconos de Bootstrap en el árbol
+    .bi {
+      font-size: 0.9rem;
+    }
+
+    // Ajustar altura de celdas
+    .ag-cell {
+      padding-top: 4px;
+      padding-bottom: 4px;
+      overflow: visible !important;
+      display: flex;
+      align-items: flex-start;
+      line-height: normal !important;
+    }
+
+    // Celda del grupo (columna del árbol)
+    .ag-group-cell {
+      overflow: visible !important;
+    }
+
+    // Texto más pequeño en el renderizador del árbol
+    .fw-bold {
+      font-size: 11px;
+    }
+
+    .small, .text-muted {
+      font-size: 10px !important;
+    }
+
+    // Asegurar que el wrapper del árbol tenga espacio suficiente
+    .ag-cell-wrapper {
+      width: 100%;
+      overflow: visible !important;
+      height: auto !important;
+      line-height: normal !important;
+    }
+
+    .ag-group-value {
+      overflow: visible !important;
+      white-space: normal !important;
+      word-wrap: break-word !important;
+    }
+
+    // Para que las celdas con auto-height funcionen correctamente
+    .ag-cell-auto-height {
+      white-space: normal !important;
+      word-wrap: break-word !important;
+    }
+
+    .ag-row-auto-height {
+      .ag-cell {
+        white-space: normal !important;
+      }
+    }
+  }
+}
+
+// Botones de la botonera lateral
+.d-flex.flex-column {
+  button {
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+
+    i {
+      font-size: 1.2rem;
+    }
+
+    &.btn-sm {
+      width: 42px;
+      height: 38px;
+
+      i {
+        font-size: 1rem;
+      }
+    }
+  }
+}
+
+// Spinner de carga
+.spinner-border {
+  width: 3rem;
+  height: 3rem;
+}
+
+// Breadcrumbs mejorados
+.breadcrumb-item.active {
+  color: #495057;
+}
+
+// Responsive
+@media (max-width: 768px) {
+  ::ng-deep .small-text-ag-grid {
+    font-size: 10px;
+
+    .ag-header-cell-label {
+      font-size: 10px;
+    }
+
+    .badge {
+      font-size: 0.7rem;
+    }
+
+    .bi {
+      font-size: 0.8rem;
+    }
+  }
+
+  .d-flex.flex-column button {
+    width: 36px;
+    height: 36px;
+
+    i {
+      font-size: 1rem;
+    }
+  }
+}
+
+// Alertas de ayuda
+.alert-info {
+  background-color: #d1ecf1;
+  border-color: #bee5eb;
+  color: #0c5460;
+
+  kbd {
+    background-color: #495057;
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.85em;
+  }
+}
+
+// Card shadow mejorado
+.card.shadow-sm {
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+  border: 1px solid rgba(0, 0, 0, 0.125);
+}

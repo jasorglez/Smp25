@@ -366,20 +366,54 @@ export class AccountbanksComponent implements CanComponentDeactivate {
   }
 
   obtenerBanks() {
-    this.administrationService.get2fieldsBanks().subscribe((data: any) => {
-      this.banks = data;
+    this.administrationService.get2fieldsBanks().subscribe({
+      next: (data: any) => {
+        this.banks = data;
+      },
+      error: (error) => {
+        console.error('Error al cargar bancos:', error);
+        this.banks = [];
+        alerts.basicAlert('Error', 'Error al cargar el catálogo de bancos', 'error');
+      }
     });
   }
 
   obtenerDatos() {
+    this.isLoading = true;
+    this.rowMaster = [];
+
+    const companyId = parseInt(localStorage.getItem('company') || '0');
+    if (!companyId) {
+      console.error('No hay empresa seleccionada en localStorage');
+      this.isLoading = false;
+      return;
+    }
+
     this.administrationService
-      .getAccountBanks(parseInt(localStorage.getItem('company')))
-      .subscribe((response: any) => {
-        
-        this.rowMaster = response;
-        
-        if (!response || response.length === 0) {
-          alerts.basicAlert('Aviso', 'No hay datos disponibles', 'info');
+      .getAccountBanks(companyId)
+      .subscribe({
+        next: (response: any) => {
+          if (response && response.length > 0) {
+            this.rowMaster = response;
+          } else {
+            this.rowMaster = [];
+          }
+        },
+        error: (error) => {
+          // 404 significa "no hay datos", no es un error real
+          if (error.status === 404) {
+            this.rowMaster = [];
+            console.log('No hay cuentas bancarias para esta empresa');
+          } else {
+            // Otros errores sí son problemas reales
+            console.error('Error al cargar cuentas bancarias:', error);
+            this.rowMaster = [];
+            alerts.basicAlert('Error', 'Error al cargar las cuentas bancarias', 'error');
+          }
+          this.isLoading = false;
+        },
+        complete: () => {
+          this.isLoading = false;
         }
       });
   }
@@ -415,9 +449,17 @@ export class AccountbanksComponent implements CanComponentDeactivate {
     if (selectedNodes.length > 0) {
       const selectedData = selectedNodes[0].data;
       this.selectedRowData = selectedData;
-      this.loadBalanceData(selectedData.id);
+
+      // Solo cargar balance si el ID no es temporal (nueva fila)
+      if (selectedData.id && !selectedData.id.toString().startsWith('temp_')) {
+        this.loadBalanceData(selectedData.id);
+      } else {
+        // Limpiar detalles para filas nuevas
+        this.rowDetails = [];
+      }
     } else {
       this.selectedRowData = null;
+      this.rowDetails = [];
     }
   }
 
@@ -436,17 +478,26 @@ export class AccountbanksComponent implements CanComponentDeactivate {
   }
 
   addRow() {
+    const companyId = parseInt(localStorage.getItem('company') || '0');
+    if (!companyId || companyId === 0) {
+      alerts.basicAlert('Error', 'No se ha seleccionado una empresa válida', 'error');
+      return;
+    }
+
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idBussines: parseInt(localStorage.getItem('company')),
+      idBussines: companyId,
       numberAccount: '',
       nameAccount: '',
-      signAccount: '',
+      signAccount: 'sin firma',
       interbancaria: '',
       folioCheque: '',
       folioSinCheque: '',
-      idBanco: 0,
+      idBanco: null,
+      gasto: 0,
+      depositoPagado: 0,
+      saldo: 0,
       eAplicaFiscal: 'Si',
       active: true,
       __isNew: true,
@@ -455,24 +506,15 @@ export class AccountbanksComponent implements CanComponentDeactivate {
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
 
-    // Encontrar el índice de la nueva fila
-    const newRowIndex = this.rowMaster.findIndex((row) => row.id === tempId);
-
-    // Encontrar la primera columna editable
-    const firstEditableCol = this.colMaster.find((col) => col.editable);
-    const firstEditableColKey = firstEditableCol
-      ? firstEditableCol.field
-      : null;
-
-    // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
+    // Seleccionar la nueva fila después de agregarla
     setTimeout(() => {
-      if (firstEditableColKey) {
-        this.gridApi.startEditingCell({
-          rowIndex: newRowIndex,
-          colKey: firstEditableColKey, // Editar la primera columna editable
-        });
-      }
-    }, 50); // Un pequeño retraso de 50ms
+      this.gridApi.forEachNode((node) => {
+        if (node.data.id === tempId) {
+          node.setSelected(true);
+          this.gridApi.ensureNodeVisible(node, 'top');
+        }
+      });
+    }, 100);
   }
 
   async saveChanges() {
@@ -497,6 +539,7 @@ export class AccountbanksComponent implements CanComponentDeactivate {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      console.log('📤 Datos a enviar al POST:', cleanedData);
       return this.administrationService.addAccountBanks(cleanedData);
     });
 
@@ -519,7 +562,10 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       this.newlyAddedRows = [];
       this.obtenerDatos(); // Refrescar los datos
     } catch (error) {
-      console.error(error);
+      console.error('❌ Error completo:', error);
+      if (error?.error) {
+        console.error('📋 Detalle del error del servidor:', error.error);
+      }
       alerts.basicAlert(
         'Error',
         'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
@@ -541,17 +587,58 @@ export class AccountbanksComponent implements CanComponentDeactivate {
 
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
-    selectedData.active = 0;
+
+    // Verificar si es una fila temporal (no guardada)
+    if (id.toString().startsWith('temp_')) {
+      // Eliminar del array local sin llamar al API
+      this.rowMaster = this.rowMaster.filter(row => row.id !== id);
+      this.newlyAddedRows = this.newlyAddedRows.filter(tempId => tempId !== id);
+      this.notSavedChanges = this.rowMaster.some(row => row.__isNew || row.__modified);
+      this.selectedRowData = null;
+      this.gridApi.setGridOption('rowData', this.rowMaster);
+      alerts.basicAlert(
+        'Eliminar entrada',
+        'Entrada eliminada satisfactoriamente.',
+        'success'
+      );
+      return;
+    }
+
+    // Verificar si la cuenta tiene movimientos (gastos e ingresos)
+    const gasto = selectedData.gasto || 0;
+    const deposito = selectedData.depositoPagado || 0;
+
+    if (gasto > 0 || deposito > 0) {
+      alerts.basicAlert(
+        'No se puede eliminar',
+        'Tienes Gastos e Ingresos en la cuenta. No es posible eliminarla.',
+        'error'
+      );
+      return;
+    }
+
+    // Confirmar eliminación antes de proceder
+    const result = await alerts.confirmAlert(
+      'Eliminar cuenta bancaria',
+      `¿Está seguro que desea eliminar la cuenta "${selectedData.nameAccount}"?`,
+      'warning',
+      'Sí, eliminar'
+    );
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
     this.administrationService
-      .deleteBanks(id)
+      .deleteAccountBanks(id)
       .pipe(
         catchError((error) => {
+          console.error('❌ Error al eliminar:', error);
           alerts.basicAlert(
             'Eliminar entrada',
             'Error al eliminar la entrada.',
             'error'
           );
-          console.error(error);
           return EMPTY;
         })
       )
@@ -561,15 +648,9 @@ export class AccountbanksComponent implements CanComponentDeactivate {
           'Entrada eliminada satisfactoriamente.',
           'success'
         );
-        this.obtenerDatos();
-
-        alerts.basicAlert(
-          'Eliminar entrada',
-          'Entrada eliminada satisfactoriamente.',
-          'success'
-        );
         this.notSavedChanges = false;
         this.selectedRowData = null;
+        this.obtenerDatos();
       });
   }
 
@@ -579,12 +660,28 @@ export class AccountbanksComponent implements CanComponentDeactivate {
   }
 
   private cleanDataForServer(data: any): any {
-    const cleanedData = { ...data };
-    delete cleanedData.__isNew;
-    delete cleanedData.__modified;
-    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
-      delete cleanedData.id;
+    const companyId = parseInt(localStorage.getItem('company') || '0');
+
+    // Solo enviar los campos que el API espera
+    const cleanedData: any = {
+      idBussines: data.idBussines || companyId,
+      numberAccount: data.numberAccount || '',
+      nameAccount: data.nameAccount || '',
+      signAccount: data.signAccount || 'sin firma',
+      interbancaria: data.interbancaria || '',
+      folioCheque: data.folioCheque || '',
+      folioSinCheque: data.folioSinCheque || '',
+      idBanco: data.idBanco || null,
+      eAplicaFiscal: data.eAplicaFiscal || 'Si'
+    };
+
+    // Solo incluir ID si no es temporal (para updates)
+    if (data.id && !data.id.toString().startsWith('temp_')) {
+      cleanedData.id = data.id;
     }
+
+    console.log('🔍 CompanyId:', companyId, '| idBussines final:', cleanedData.idBussines);
+
     return cleanedData;
   }
 

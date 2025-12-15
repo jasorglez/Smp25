@@ -253,6 +253,15 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
           return true;
         }
     },
+
+    //Agrego Soriano esta columna por que pedro se le olvido
+    {
+      field: 'campo3',
+      headerName: 'Codigo Externo',
+      editable: true,
+      width: 140
+    },
+
     {
       field: 'campo9',
       headerName: 'Precio Unitario',
@@ -266,6 +275,7 @@ export class DetailCellRendererProveedoresComponent implements ICellRendererAngu
         return Number(params.newValue) || 0;
       }
     },
+
     {
       field: 'campo2',
       headerName: 'Descripción Empaque',

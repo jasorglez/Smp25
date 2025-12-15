@@ -1134,6 +1134,83 @@ export const routes: Routes = [
               },
 
           {
+            path: 'palacio-municipal',
+            loadComponent: () =>
+              import(
+                './domains/ModAdmon/pages/palacio-municipal/palacio-municipal.component'
+              ).then((p) => p.PalacioMunicipalComponent),
+            canActivate: [TrackingGuard],
+            data: {
+              tracking: {
+                logMessage: 'Click en Pestaña Palacio Municipal',
+                category: 'Administration'
+              }
+            },
+            children: [
+              { path: '', redirectTo: 'clasificador', pathMatch: 'full' },
+              {
+                path: 'clasificador',
+                loadComponent: () =>
+                  import(
+                    './domains/ModAdmon/components/object-classifier/object-classifier.component'
+                  ).then((o) => o.ObjectClassifierComponent),
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Clasificador por Objeto del Gasto - Palacio Municipal',
+                    category: 'Administration'
+                  }
+                }
+              },
+              {
+                path: 'ingresos',
+                loadComponent: () =>
+                  import(
+                    './domains/ModAdmon/components/income/income.component'
+                  ).then((i) => i.IncomeComponent),
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Ingresos - Palacio Municipal',
+                    category: 'Administration'
+                  }
+                },
+                canDeactivate: [UnsavedChangesGuard]
+              },
+              {
+                path: 'egresos',
+                loadComponent: () =>
+                  import(
+                    './domains/ModAdmon/components/expenditure/expenditure.component'
+                  ).then((e) => e.ExpenditureComponent),
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Egresos - Palacio Municipal',
+                    category: 'Administration'
+                  }
+                },
+                canDeactivate: [UnsavedChangesGuard]
+              },
+              {
+                path: 'saldos',
+                loadComponent: () =>
+                  import(
+                    './domains/ModAdmon/components/income/income.component'
+                  ).then((i) => i.IncomeComponent),
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Saldos - Palacio Municipal',
+                    category: 'Administration'
+                  }
+                },
+                canDeactivate: [UnsavedChangesGuard]
+              }
+            ]
+          },
+
+          {
             path: 'cuentas-contables',
             loadComponent: () =>
               import(

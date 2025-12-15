@@ -253,4 +253,21 @@ updateCertificates(idRoot: number, formData: FormData): Observable<any> {
     return this.http.put(`${environment.urlAdministration}/NormalPayrolls/${iDBonus}`, data, { headers: this.trackingService.getHeaders() })
   }
 
+
+  getObjectclassifications(idRoot: number) {
+    return this.http.get(`${environment.urlAdministration}/ObjetoGasto/getAll/${idRoot}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  addObjectClassification(data: any): Observable<any> {
+    return this.http.post(`${environment.urlAdministration}/ObjetoGasto`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateObjectClassification(id: number, data: any): Observable<any> {
+    return this.http.put(`${environment.urlAdministration}/ObjetoGasto/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteObjectClassification(id: number): Observable<any> {
+    return this.http.delete(`${environment.urlAdministration}/ObjetoGasto/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
 }
