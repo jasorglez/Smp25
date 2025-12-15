@@ -20,12 +20,16 @@ import { BranchsService } from 'app/services/branchs.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { AuthService } from 'app/services/auth.service';
 import { CatalogadmonService } from 'app/services/catalogadmon.service';
+import { ButtonCellRendererIncomeComponent } from './button-cell-renderer.component';
+import { DetailCellRendererIncomeComponent } from './detail-cell-renderer-income.component';
+import { CatalogsService } from 'app/services/catalogs.service';
 
 @Component({
   selector: 'app-ingresos-palacio',
   standalone: true,
   imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
-            FormsModule, AdditionalInfoComponent, ConceptsincomeComponent],
+            FormsModule, AdditionalInfoComponent, ConceptsincomeComponent, ButtonCellRendererIncomeComponent,
+            DetailCellRendererIncomeComponent],
   templateUrl: './ingresos-palacio.component.html',
   styleUrl: './ingresos-palacio.component.scss'
 })
@@ -34,6 +38,7 @@ export class IngresosPalacioComponent {
   private modalServiceTable = inject(ModalService);
   private administrationService = inject(AdministrationService);
   private catalogadmonService = inject(CatalogadmonService);
+  private catalogsService = inject(CatalogsService);
   private usersxpermissionsService = inject(UsersxpermissionsService);
   private usersService = inject(UsersService);
   private signalsService = inject(SignalsService);
@@ -77,9 +82,6 @@ export class IngresosPalacioComponent {
     }, { allowSignalWrites: true }); // Add this option);
 
   };
-
-  // NUEVA PROPIEDAD: Para controlar qué pestaña está visible,  'concepts' será la pestaña por defecto al inicio.
-  public activeTab: string = 'concepts';
 
   hasConsecutiveError: boolean = false;
 
@@ -129,10 +131,6 @@ export class IngresosPalacioComponent {
   }
 
 
-  // NUEVO MÉTODO: Para cambiar la pestaña activa al hacer clic.
-  public setActiveTab(tab: string): void {
-    this.activeTab = tab;
-  }
 
   async getBillingManagementInfo() {
     this.administrationService.getBillingManagementInfo(this.root).subscribe(
@@ -152,6 +150,11 @@ export class IngresosPalacioComponent {
   public gridOptions: any = {
     headerHeight: 30,
     rowHeight: 30,
+    animateRows: true,
+    masterDetail: true,
+    detailRowHeight: 700,
+    isRowMaster: (dataItem: any) => true,
+    detailCellRenderer: DetailCellRendererIncomeComponent,
     getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -212,7 +215,17 @@ export class IngresosPalacioComponent {
         const filtered = incomes?.filter(income => {
           return income.type === "DEPOSITO" && income.idAccount === this.idAccount
         }) || [];
-        this.incomes = filtered;
+
+        // Agregar propiedades para master-detail
+        this.incomes = filtered.map(income => ({
+          ...income,
+          countrow: 0, // Se actualizará al cargar conceptos
+          detailType: null,
+          detailData: []
+        }));
+
+        // Cargar el conteo de conceptos para cada ingreso
+        this.loadConceptCounts();
 
       },
       error: (err) => {
@@ -299,6 +312,31 @@ export class IngresosPalacioComponent {
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
     return [
+      {
+        field: 'countrow',
+        headerName: 'Items',
+        width: 90,
+        cellRenderer: ButtonCellRendererIncomeComponent,
+        cellRendererParams: {
+          onClick: (node: any) => this.toggleCascade(node),
+        },
+        valueGetter: params => params.data.countrow || 0,
+        editable: false,
+        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
+      },
+      {
+        field: 'pdfReport',
+        headerName: 'PDF',
+        width: 90,
+        cellRenderer: (params: any) => {
+          return '<i class="bi bi-file-earmark-pdf" style="font-size: 1.2rem; color: #dc3545; cursor: pointer;"></i>';
+        },
+        editable: false,
+        cellStyle: { textAlign: 'center', cursor: 'pointer' },
+        onCellClicked: (params: any) => {
+          this.toggleReportDetail(params.node);
+        }
+      },
       {
         field: 'status',
         headerName: 'Estatus',
@@ -430,16 +468,11 @@ export class IngresosPalacioComponent {
     this.signalsService.setIdIncomeAndExpense(this.id);
   }
 
-// MODIFICAMOS onSelectionChanged
   onSelectionChanged(event: any) {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedIncomes = selectedNodes[0].data;
       this.signalsService.setIdIncomeAndExpense(this.selectedIncomes.id);
-
-      // Cada vez que seleccionamos una nueva fila, volvemos a la pestaña por defecto.
-      this.setActiveTab('concepts');
-
     } else {
        this.selectedIncomes = null;
        this.signalsService.setIdIncomeAndExpense(null);
@@ -461,6 +494,35 @@ export class IngresosPalacioComponent {
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+
+    // Configurar el detailCellRendererParams para pasar datos al detail renderer
+    this.gridApi.setGridOption('detailCellRendererParams', {
+      getDetailRowData: (params) => {
+        params.successCallback(params.data.detailData);
+      },
+      context: {
+        idRoot: this.root,
+        componentParent: this,
+        gridApi: this.gridApi,
+        catalogsService: this.catalogsService,
+        administrationService: this.administrationService,
+        catalogadmonService: this.catalogadmonService,
+        CONCEPTS: {
+          load: (incomeId: number, callback: (data: any[]) => void) => {
+            this.loadConceptsData(incomeId, callback);
+          },
+          save: (incomeId: number, data: any) => {
+            this.saveConceptsById(incomeId, data);
+          },
+          delete: (params: any, callback: () => void) => {
+            this.deleteConceptRow(params, callback);
+          },
+          updateCount: (incomeId: number, count: number) => {
+            this.updateIncomeConceptCount(incomeId, count);
+          }
+        }
+      }
+    });
   }
 
   addRow() {
@@ -745,6 +807,257 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
         this.bankAccounts = []; // Vaciamos el array en caso de error
       }
     )
+  }
+
+  // ==================== MÉTODOS PARA CASCADAS ====================
+
+  toggleCascade(node: any) {
+    const api = this.gridApi;
+    const isCurrentlyExpanded = node.expanded && node.data.detailType === 'concepts';
+
+    if (isCurrentlyExpanded) {
+      // Si ya está expandido con conceptos, colapsarlo
+      node.setExpanded(false);
+
+      // Restaurar alturas de todas las filas
+      api.forEachNode((otherNode: any) => {
+        otherNode.setRowHeight(undefined);
+      });
+      api.onRowHeightChanged();
+    } else {
+      // Colapsar cualquier otra fila expandida
+      api.forEachNode((otherNode: any) => {
+        if (otherNode.expanded && otherNode.id !== node.id) {
+          otherNode.setExpanded(false);
+        }
+      });
+
+      // Ocultar todas las demás filas
+      api.forEachNode((otherNode: any) => {
+        if (otherNode.id !== node.id) {
+          otherNode.setRowHeight(0);
+        }
+      });
+
+      // Si la fila está expandida con otro tipo de detalle, cerrarla
+      if (node.expanded && node.data.detailType !== 'concepts') {
+        node.setExpanded(false);
+      }
+
+      // Cambiar el tipo de detalle a 'concepts'
+      node.data.detailType = 'concepts';
+
+      // Aplicar cambios de altura
+      api.onRowHeightChanged();
+
+      // Expandir con los conceptos
+      setTimeout(() => {
+        node.setExpanded(true);
+      }, 0);
+    }
+  }
+
+  toggleReportDetail(node: any) {
+    const api = this.gridApi;
+    const isCurrentlyExpanded = node.expanded && node.data.detailType === 'report';
+
+    if (isCurrentlyExpanded) {
+      // Si ya está expandido con el reporte, colapsarlo
+      node.setExpanded(false);
+
+      // Restaurar alturas de todas las filas
+      api.forEachNode((otherNode: any) => {
+        otherNode.setRowHeight(undefined);
+      });
+      api.onRowHeightChanged();
+    } else {
+      // Colapsar cualquier otra fila expandida
+      api.forEachNode((otherNode: any) => {
+        if (otherNode.expanded && otherNode.id !== node.id) {
+          otherNode.setExpanded(false);
+        }
+      });
+
+      // Ocultar todas las demás filas
+      api.forEachNode((otherNode: any) => {
+        if (otherNode.id !== node.id) {
+          otherNode.setRowHeight(0);
+        }
+      });
+
+      // Si la fila está expandida con otro tipo de detalle, cerrarla
+      if (node.expanded && node.data.detailType !== 'report') {
+        node.setExpanded(false);
+      }
+
+      // Cambiar el tipo de detalle a 'report'
+      node.data.detailType = 'report';
+
+      // Aplicar cambios de altura
+      api.onRowHeightChanged();
+
+      // Expandir con el reporte
+      setTimeout(() => {
+        node.setExpanded(true);
+      }, 0);
+    }
+  }
+
+  collapseReportDetail(incomeId: number) {
+    if (this.gridApi) {
+      this.gridApi.forEachNode((node) => {
+        if (node.data && node.data.id === incomeId) {
+          node.setExpanded(false);
+          node.data.detailType = null;
+        }
+      });
+
+      // Restaurar alturas
+      this.gridApi.forEachNode((node) => {
+        node.setRowHeight(undefined);
+      });
+      this.gridApi.onRowHeightChanged();
+    }
+  }
+
+  // ==================== MÉTODOS PARA CONCEPTOS ====================
+
+  loadConceptCounts() {
+    // Cargar el conteo de conceptos para cada ingreso
+    this.incomes.forEach(income => {
+      this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(income.id).subscribe({
+        next: (concepts: any[]) => {
+          this.updateIncomeConceptCount(income.id, concepts.length);
+        },
+        error: (error) => {
+          console.error('Error loading concept count for income:', income.id, error);
+        }
+      });
+    });
+  }
+
+  updateIncomeConceptCount(incomeId: number, count: number) {
+    if (this.gridApi) {
+      this.gridApi.forEachNode((node) => {
+        if (node.data && node.data.id === incomeId) {
+          node.data.countrow = count;
+          this.gridApi.refreshCells({
+            rowNodes: [node],
+            columns: ['countrow'],
+            force: true
+          });
+          console.log(`✅ Actualizado "Items" para ingreso ${incomeId}: ${count}`);
+        }
+      });
+    }
+  }
+
+  loadConceptsData(incomeId: number, successCallback: any) {
+    this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(incomeId).subscribe({
+      next: (data: any) => {
+        successCallback(data);
+      },
+      error: (error) => {
+        console.error('Error loading concepts:', error);
+        successCallback([]);
+      }
+    });
+  }
+
+  async saveConceptsById(incomeId: number, data: any) {
+    const conceptsData = data.concepts || data;
+    const subtotal = data.subtotal || 0;
+    const tax = data.tax || 0;
+    const total = data.total || 0;
+
+    const newConcepts = conceptsData.filter((row: any) => row.__isNew);
+    const modifiedConcepts = conceptsData.filter((row: any) => row.__modified && !row.__isNew);
+
+    try {
+      // Guardar conceptos nuevos
+      for (const concept of newConcepts) {
+        const cleaned = this.cleanConceptData(concept);
+        await lastValueFrom(this.incomesAndExpensesService.addConceptFromIncomesAndExpenses(cleaned));
+      }
+
+      // Actualizar conceptos modificados
+      for (const concept of modifiedConcepts) {
+        const cleaned = this.cleanConceptData(concept);
+        await lastValueFrom(this.incomesAndExpensesService.updateConceptFromIncomesAndExpenses(concept.id, cleaned));
+      }
+
+      // Actualizar el documento principal con los totales
+      const mainDocumentResponse: any[] = await lastValueFrom(
+        this.incomesAndExpensesService.getIncomeAndExpenseById(incomeId)
+      );
+
+      const mainDocument = mainDocumentResponse[0];
+      const updatedDocument = {
+        ...mainDocument,
+        subtotal: subtotal,
+        tax: tax,
+        total: total
+      };
+
+      await lastValueFrom(
+        this.incomesAndExpensesService.updateIncomesAndExpenses(incomeId, updatedDocument)
+      );
+
+      if (newConcepts.length > 0 || modifiedConcepts.length > 0) {
+        alerts.basicAlert(
+          'Conceptos guardados',
+          'Se han guardado los conceptos correctamente.',
+          'success'
+        );
+
+        // Actualizar el contador de conceptos
+        this.updateIncomeConceptCount(incomeId, conceptsData.length);
+
+        // Refrescar la lista de ingresos para mostrar totales actualizados
+        this.signalsService.triggerUpdateIncAndExp();
+        setTimeout(() => this.getIncomes(), 500);
+      }
+
+    } catch (error) {
+      console.error('Error saving concepts:', error);
+      alerts.basicAlert(
+        'Error',
+        'Error al guardar los conceptos.',
+        'error'
+      );
+    }
+  }
+
+  async deleteConceptRow(params: any, successCallback: () => void) {
+    const conceptId = params.data.id;
+
+    if (params.data.__isNew) {
+      params.api.applyTransaction({ remove: [params.data] });
+      successCallback();
+    } else {
+      try {
+        await lastValueFrom(this.incomesAndExpensesService.deleteConceptFromIncomesAndExpenses(conceptId));
+        alerts.basicAlert('Concepto eliminado', 'El concepto se eliminó correctamente.', 'success');
+        successCallback();
+      } catch (error) {
+        console.error('Error deleting concept:', error);
+        alerts.basicAlert(
+          'Error',
+          'Error al eliminar el concepto.',
+          'error'
+        );
+      }
+    }
+  }
+
+  private cleanConceptData(data: any): any {
+    const cleanedData = { ...data };
+    delete cleanedData.__isNew;
+    delete cleanedData.__modified;
+    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
+      delete cleanedData.id;
+    }
+    return cleanedData;
   }
 
 }
