@@ -20,6 +20,10 @@ export class CatalogadmonService {
   getCatalogsxNivel(idRoot: number, type: string, nivel: number): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlAdministration}/Catalog/getCatalogsxNivel?idCompany=${idRoot}&type=${type}&nivel=${nivel}`, { headers: this.trackingService.getHeaders() });
   }
+  
+  getCatalogsxParent(id: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlAdministration}/Catalog/getParent?idParent=${id}`, { headers: this.trackingService.getHeaders() });
+  }
    
   addCatalog(catalog: any): Observable<any> {
     console.log(catalog);
