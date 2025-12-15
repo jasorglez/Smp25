@@ -8,6 +8,10 @@ import { alerts } from 'app/helpers/alerts';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { SearchableSelectComponent } from 'app/shared/searchable-select/searchable-select.component';
+import pdfMake from 'pdfmake/build/pdfmake';
+import pdfFonts from 'pdfmake/build/vfs_fonts';
+import { lastValueFrom } from 'rxjs';
+(pdfMake as any).vfs = pdfFonts.pdfMake.vfs;
 
 @Component({
   selector: 'app-detail-cell-renderer-income',
@@ -111,6 +115,7 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
   objetosImpuesto: any[] = [];
   ivaPercent: number = 0;
   catalogosHijos: any[] = []; // Catálogos de nivel 3 (hijos del catálogo de ingreso seleccionado)
+  setupManagementInfo: any = null; // Información de firmas
 
   // Totals
   subtotal: number = 0;
@@ -167,7 +172,10 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
     }
   }
 
-  loadConceptsDataForReport() {
+  async loadConceptsDataForReport() {
+    // Cargar información de firmas
+    await this.loadSetupManagementInfo();
+
     if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.load) {
       const incomeId = this.params.data.id;
       this.context.CONCEPTS.load(incomeId, (data: any[]) => {
@@ -179,6 +187,23 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
     } else {
       // If no data loader available, show empty state
       this.generateReport();
+    }
+  }
+
+  async loadSetupManagementInfo() {
+    if (this.context?.administrationService && this.context?.idRoot) {
+      try {
+        this.setupManagementInfo = await lastValueFrom(
+          this.context.administrationService.getSetupManagementInfo(this.context.idRoot)
+        );
+        // El endpoint devuelve un array, tomar el primer elemento
+        if (Array.isArray(this.setupManagementInfo) && this.setupManagementInfo.length > 0) {
+          this.setupManagementInfo = this.setupManagementInfo[0];
+        }
+      } catch (error) {
+        console.error('Error loading setup management info:', error);
+        this.setupManagementInfo = null;
+      }
     }
   }
 
@@ -597,10 +622,412 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
     }
   }
 
-  private generateReport() {
-    // TODO: Implement PDF generation when format is provided
-    // For now, just show empty state
-    this.pdfUrl = null;
+  private async generateReport() {
+    try {
+      console.log('=== Generando Reporte PDF ===');
+      console.log('incomeData completo:', this.incomeData);
+      console.log('incomeData.date (campo Pago):', this.incomeData?.date);
+      console.log('incomeData.idCustomer (catálogo):', this.incomeData?.idCustomer);
+      console.log('incomeData.total:', this.incomeData?.total);
+      console.log('Context disponible:', {
+        hasRootService: !!this.context?.rootService,
+        hasBase64Service: !!this.context?.base64EncodeService,
+        hasIngresosCatalog: !!this.context?.ingresosCatalog,
+        catalogLength: this.context?.ingresosCatalog?.length
+      });
+
+      // Verificar que tengamos los servicios necesarios en el contexto
+      if (!this.context?.rootService || !this.context?.base64EncodeService || !this.context?.idRoot) {
+        console.error('Servicios necesarios no disponibles en el contexto');
+        this.pdfUrl = null;
+        return;
+      }
+
+      // Obtener información de la empresa (root) con el logo
+      const rootResponse: any = await lastValueFrom(
+        this.context.rootService.getRootbyId(this.context.idRoot)
+      );
+
+      // Convertir logo a Base64
+      const logoBase64 = await this.context.base64EncodeService.convertImageToBase64(
+        rootResponse.picture
+      );
+
+      // Convertir picture3 (marca de agua) a Base64
+      const watermarkBase64 = rootResponse.picture3
+        ? await this.context.base64EncodeService.convertImageToBase64(rootResponse.picture3)
+        : null;
+
+      // Crear la estructura del documento PDF
+      const docDefinition: any = {
+        pageSize: 'LETTER',
+        pageMargins: [40, 60, 40, 60],
+        background: watermarkBase64 ? [
+          {
+            image: 'watermark',
+            width: 400,
+            opacity: 0.15,
+            absolutePosition: { x: 106, y: 250 } // Centrado aproximado (letter width 612 - 400 = 212 / 2 = 106)
+          }
+        ] : [],
+        content: [
+          // Header con logo y título
+          {
+            columns: [
+              {
+                image: 'logo',
+                width: 80,
+                alignment: 'left'
+              },
+              {
+                stack: [
+                  {
+                    text: rootResponse.name || 'Empresa',
+                    style: 'companyName',
+                    alignment: 'center'
+                  },
+                  {
+                    text: rootResponse.email || '',
+                    style: 'companyInfo',
+                    alignment: 'center'
+                  },
+                  {
+                    text: rootResponse.web || '',
+                    style: 'companyInfo',
+                    alignment: 'center'
+                  }
+                ],
+                width: '*'
+              },
+              {
+                stack: [
+                  {
+                    text: 'RECIBO DE INGRESO',
+                    style: 'documentTitle',
+                    alignment: 'right'
+                  },
+                  {
+                    text: `No. ${this.incomeData?.numberDocument || 'Sin Número'}`,
+                    style: 'documentNumber',
+                    alignment: 'right',
+                    margin: [0, 5, 0, 0]
+                  },
+                  {
+                    text: this.getCurrentDateTime(),
+                    style: 'documentDate',
+                    alignment: 'right',
+                    margin: [0, 3, 0, 0]
+                  }
+                ],
+                width: 150
+              }
+            ],
+            margin: [0, 0, 0, 20]
+          },
+          // Línea separadora
+          {
+            canvas: [
+              {
+                type: 'line',
+                x1: 0,
+                y1: 0,
+                x2: 515,
+                y2: 0,
+                lineWidth: 1,
+                lineColor: '#333333'
+              }
+            ],
+            margin: [0, 0, 0, 15]
+          },
+          // DETALLES DEL INGRESO (Maestro)
+          {
+            text: 'DETALLES DEL INGRESO',
+            style: 'sectionTitle',
+            margin: [0, 10, 0, 10]
+          },
+          {
+            table: {
+              widths: ['25%', '75%'],
+              body: [
+                [
+                  { text: 'FECHA PAGO:', style: 'masterLabel' },
+                  { text: this.formatDate(this.incomeData?.date), style: 'masterValue' }
+                ],
+                [
+                  { text: 'CATÁLOGO INGRESO:', style: 'masterLabel' },
+                  {
+                    text: `${this.getCatalogoIngresoText()}        $ ${this.formatCurrency(this.incomeData?.total || 0)}`,
+                    style: 'masterValue'
+                  }
+                ]
+              ]
+            },
+            layout: {
+              hLineWidth: () => 0.5,
+              vLineWidth: () => 0.5,
+              hLineColor: () => '#cccccc',
+              vLineColor: () => '#cccccc',
+              paddingTop: () => 5,
+              paddingBottom: () => 5,
+              paddingLeft: () => 8,
+              paddingRight: () => 8
+            },
+            margin: [0, 0, 0, 15]
+          },
+          // Tabla de Conceptos (Detalle)
+          {
+            table: {
+              headerRows: 1,
+              widths: ['*', 60, 100, 80],
+              body: [
+                // Encabezados
+                [
+                  { text: 'Descripción', style: 'tableHeader' },
+                  { text: 'Cantidad', style: 'tableHeader', alignment: 'center' },
+                  { text: 'Unidad', style: 'tableHeader', alignment: 'center' },
+                  { text: 'Total', style: 'tableHeader', alignment: 'right' }
+                ],
+                // Filas de conceptos
+                ...this.rowData.map(concept => [
+                  { text: concept.description || '', style: 'tableCell' },
+                  { text: concept.quantity || '', style: 'tableCell', alignment: 'center' },
+                  { text: concept.unit || '', style: 'tableCell', alignment: 'center' },
+                  { text: this.formatCurrency(concept.total || 0), style: 'tableCell', alignment: 'right' }
+                ]),
+                // Fila de totales
+                [
+                  { text: '', border: [false, false, false, false] },
+                  { text: '', border: [false, false, false, false] },
+                  { text: 'TOTAL:', style: 'totalLabel', alignment: 'right', border: [false, true, false, false] },
+                  { text: this.formatCurrency(this.total), style: 'totalValue', alignment: 'right', border: [false, true, false, false] }
+                ]
+              ]
+            },
+            layout: {
+              hLineWidth: (i, node) => (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.5,
+              vLineWidth: () => 0.5,
+              hLineColor: () => '#333333',
+              vLineColor: () => '#cccccc',
+              paddingTop: () => 4,
+              paddingBottom: () => 4,
+              paddingLeft: () => 6,
+              paddingRight: () => 6
+            },
+            margin: [0, 0, 0, 30]
+          },
+          // Footer con Firmas
+          {
+            table: {
+              widths: ['33%', '34%', '33%'],
+              body: [
+                [
+                  { text: this.setupManagementInfo?.administratorTitle || 'TESORERO', style: 'signatureTitle', alignment: 'center' },
+                  { text: this.setupManagementInfo?.gerencyTitle || 'SINDICO DE HACIENDA', style: 'signatureTitle', alignment: 'center' },
+                  { text: this.setupManagementInfo?.directorTitle || 'PRESIDENTE MUNICIPAL', style: 'signatureTitle', alignment: 'center' }
+                ],
+                [
+                  { text: ' ', margin: [0, 30, 0, 0] },
+                  { text: ' ', margin: [0, 30, 0, 0] },
+                  { text: ' ', margin: [0, 30, 0, 0] }
+                ],
+                [
+                  {
+                    text: '________________________________',
+                    alignment: 'center',
+                    border: [false, true, false, false],
+                    margin: [0, 0, 0, 5]
+                  },
+                  {
+                    text: '________________________________',
+                    alignment: 'center',
+                    border: [false, true, false, false],
+                    margin: [0, 0, 0, 5]
+                  },
+                  {
+                    text: '________________________________',
+                    alignment: 'center',
+                    border: [false, true, false, false],
+                    margin: [0, 0, 0, 5]
+                  }
+                ],
+                [
+                  { text: this.setupManagementInfo?.administratorName || '', style: 'signatureName', alignment: 'center' },
+                  { text: this.setupManagementInfo?.gerencyName || '', style: 'signatureName', alignment: 'center' },
+                  { text: this.setupManagementInfo?.directorName || '', style: 'signatureName', alignment: 'center' }
+                ],
+                [
+                  { text: 'Firma', style: 'signatureLabel', alignment: 'center' },
+                  { text: 'Firma', style: 'signatureLabel', alignment: 'center' },
+                  { text: 'Firma', style: 'signatureLabel', alignment: 'center' }
+                ]
+              ]
+            },
+            layout: 'noBorders',
+            margin: [0, 20, 0, 0]
+          }
+        ],
+        images: watermarkBase64 ? {
+          logo: logoBase64,
+          watermark: watermarkBase64
+        } : {
+          logo: logoBase64
+        },
+        styles: {
+          companyName: {
+            fontSize: 14,
+            bold: true,
+            color: '#333333'
+          },
+          companyInfo: {
+            fontSize: 9,
+            color: '#666666'
+          },
+          documentTitle: {
+            fontSize: 16,
+            bold: true,
+            color: '#0066cc'
+          },
+          documentNumber: {
+            fontSize: 12,
+            bold: true,
+            color: '#333333'
+          },
+          documentDate: {
+            fontSize: 10,
+            color: '#666666'
+          },
+          sectionTitle: {
+            fontSize: 11,
+            bold: true,
+            color: '#0066cc'
+          },
+          masterLabel: {
+            fontSize: 9,
+            bold: true,
+            color: '#333333'
+          },
+          masterValue: {
+            fontSize: 9,
+            color: '#000000'
+          },
+          tableHeader: {
+            fontSize: 8,
+            bold: true,
+            fillColor: '#e6e6e6',
+            color: '#000000'
+          },
+          tableCell: {
+            fontSize: 8,
+            color: '#000000'
+          },
+          totalLabel: {
+            fontSize: 9,
+            bold: true,
+            color: '#000000'
+          },
+          totalValue: {
+            fontSize: 9,
+            bold: true,
+            color: '#0066cc'
+          },
+          signatureTitle: {
+            fontSize: 8,
+            bold: true,
+            color: '#333333'
+          },
+          signatureName: {
+            fontSize: 8,
+            color: '#000000'
+          },
+          signatureLabel: {
+            fontSize: 8,
+            italics: true,
+            color: '#666666'
+          }
+        }
+      };
+
+      // Generar el PDF
+      const pdfDocGenerator = pdfMake.createPdf(docDefinition);
+
+      pdfDocGenerator.getBlob((blob: Blob) => {
+        // Limpiar URL anterior si existe
+        if (this.originalPdfUrl) {
+          URL.revokeObjectURL(this.originalPdfUrl);
+        }
+
+        // Crear nueva URL para el blob
+        this.originalPdfUrl = URL.createObjectURL(blob);
+        this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.originalPdfUrl);
+      });
+
+    } catch (error) {
+      console.error('Error generando el reporte PDF:', error);
+      this.pdfUrl = null;
+      alerts.basicAlert('Error', 'No se pudo generar el reporte PDF', 'error');
+    }
+  }
+
+  private formatDate(dateString: string | null | undefined): string {
+    if (!dateString) {
+      console.warn('formatDate: No hay fecha disponible');
+      return 'Sin fecha';
+    }
+
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        console.warn('formatDate: Fecha inválida:', dateString);
+        return 'Fecha inválida';
+      }
+      return date.toLocaleDateString('es-ES', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric'
+      });
+    } catch (error) {
+      console.error('Error al formatear fecha:', error);
+      return 'Error en fecha';
+    }
+  }
+
+  private getCurrentDateTime(): string {
+    const now = new Date();
+    const fecha = now.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
+    });
+    const hora = now.toLocaleTimeString('es-ES', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+    return `${fecha} ${hora}`;
+  }
+
+  private formatCurrency(amount: number): string {
+    return amount.toLocaleString('es-MX', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
+  private getCatalogoIngresoText(): string {
+    // Usar el texto del catálogo que fue preparado en toggleReportDetail
+    if (this.incomeData?.catalogoIngresoTexto) {
+      console.log('Usando catalogoIngresoTexto:', this.incomeData.catalogoIngresoTexto);
+      return this.incomeData.catalogoIngresoTexto;
+    }
+
+    // Fallback: intentar construir el texto si no está disponible
+    if (!this.incomeData?.idCustomer) {
+      console.warn('getCatalogoIngresoText: No hay idCustomer en incomeData');
+      return 'Sin catálogo';
+    }
+
+    return 'Sin descripción';
   }
 
   ngOnDestroy() {

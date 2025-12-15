@@ -23,6 +23,8 @@ import { CatalogadmonService } from 'app/services/catalogadmon.service';
 import { ButtonCellRendererIncomeComponent } from './button-cell-renderer.component';
 import { DetailCellRendererIncomeComponent } from './detail-cell-renderer-income.component';
 import { CatalogsService } from 'app/services/catalogs.service';
+import { RootService } from 'app/services/root.service';
+import { Base64EncodeService } from 'app/services/base64encode.service';
 
 @Component({
   selector: 'app-ingresos-palacio',
@@ -44,6 +46,8 @@ export class IngresosPalacioComponent {
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
   private BranchsService = inject(BranchsService);
+  private rootService = inject(RootService);
+  private base64EncodeService = inject(Base64EncodeService);
   authService = inject(AuthService);
 
 
@@ -507,6 +511,9 @@ export class IngresosPalacioComponent {
         catalogsService: this.catalogsService,
         administrationService: this.administrationService,
         catalogadmonService: this.catalogadmonService,
+        rootService: this.rootService,
+        base64EncodeService: this.base64EncodeService,
+        ingresosCatalog: this.ingresosCatalog,
         CONCEPTS: {
           load: (incomeId: number, callback: (data: any[]) => void) => {
             this.loadConceptsData(incomeId, callback);
@@ -892,6 +899,18 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
 
       // Cambiar el tipo de detalle a 'report'
       node.data.detailType = 'report';
+
+      // Agregar la descripción del catálogo formateada para el PDF
+      if (node.data.idCustomer && this.ingresosCatalog) {
+        const foundItem = this.ingresosCatalog.find((item) => item.id === node.data.idCustomer);
+        if (foundItem) {
+          node.data.catalogoIngresoTexto = foundItem.description;
+        } else {
+          node.data.catalogoIngresoTexto = 'Sin descripción';
+        }
+      } else {
+        node.data.catalogoIngresoTexto = 'Sin catálogo';
+      }
 
       // Aplicar cambios de altura
       api.onRowHeightChanged();

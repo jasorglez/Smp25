@@ -23,7 +23,9 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git pull:*)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "Bash(npm run build:nt:*)",
+      "Bash(ng build:*)"
     ],
     "deny": [],
     "ask": []
