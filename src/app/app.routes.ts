@@ -1166,8 +1166,8 @@ export const routes: Routes = [
                 path: 'ingresos',
                 loadComponent: () =>
                   import(
-                    './domains/ModAdmon/components/income/income.component'
-                  ).then((i) => i.IncomeComponent),
+                    './domains/ModAdmon/components/ingresos-palacio/ingresos-palacio.component'
+                  ).then((i) => i.IngresosPalacioComponent),
                 canActivate: [TrackingGuard],
                 data: {
                   tracking: {
@@ -1181,8 +1181,8 @@ export const routes: Routes = [
                 path: 'egresos',
                 loadComponent: () =>
                   import(
-                    './domains/ModAdmon/components/expenditure/expenditure.component'
-                  ).then((e) => e.ExpenditureComponent),
+                    './domains/ModAdmon/components/egresos-palacio/egresos-palacio.component'
+                  ).then((e) => e.EgresosPalacioComponent),
                 canActivate: [TrackingGuard],
                 data: {
                   tracking: {
@@ -1196,12 +1196,26 @@ export const routes: Routes = [
                 path: 'saldos',
                 loadComponent: () =>
                   import(
-                    './domains/ModAdmon/components/income/income.component'
-                  ).then((i) => i.IncomeComponent),
+                    './domains/ModAdmon/components/saldos-palacio/saldos-palacio.component'
+                  ).then((s) => s.SaldosPalacioComponent),
                 canActivate: [TrackingGuard],
                 data: {
                   tracking: {
                     logMessage: 'Click en Saldos - Palacio Municipal',
+                    category: 'Administration'
+                  }
+                }
+              },
+              {
+                path: 'cat-ingresos-palacio',
+                loadComponent: () =>
+                  import(
+                    './domains/ModAdmon/pages/palacio-municipal/cat-ingresos-palacio/cat-ingresos-palacio.component'
+                  ).then((c) => c.CatIngresosPalacioComponent),
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Catálogo Ingresos - Palacio Municipal',
                     category: 'Administration'
                   }
                 },

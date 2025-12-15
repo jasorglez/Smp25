@@ -1,0 +1,38 @@
+<div class="col-12">
+  <div class="row g-2">
+    <div class="col-auto">
+      <div class="d-flex flex-column gap-1">
+        <button type="button" class="btn btn-primary" (click)="refreshData()" [disabled]="loading" title="Actualizar">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+        <button type="button" class="btn btn-success" (click)="exportToExcel()" [disabled]="loading" title="Exportar a Excel">
+          <i class="bi bi-file-earmark-excel"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="col">
+      <div *ngIf="loading" class="text-center p-5">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Cargando...</span>
+        </div>
+        <p class="mt-2 text-muted">Cargando saldos...</p>
+      </div>
+
+      <ag-grid-angular
+        *ngIf="!loading"
+        style="height: 650px; width: 100%;"
+        class="ag-theme-quartz small-text-ag-grid"
+        [rowData]="saldoData"
+        [columnDefs]="colMaster"
+        [gridOptions]="gridOptions"
+        (selectionChanged)="onSelectionChanged($event)"
+        (gridReady)="onGridReady($event)"
+        [rowSelection]="'single'"
+        [pagination]="true"
+        [paginationPageSize]="20"
+        [paginationPageSizeSelector]="[10, 20, 50, 100]">
+      </ag-grid-angular>
+    </div>
+  </div>
+</div>
