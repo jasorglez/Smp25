@@ -386,7 +386,7 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
           this.currencyPipe.transform(params.value, 'MXN', 'symbol', '1.2-2'),
         cellStyle: { textAlign: 'center' }
       },
-      {
+      /*{
         headerName: 'Fecha Cambio',
         field: 'fechaCambio',
         editable: true,
@@ -398,7 +398,7 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
           } catch (e) { return params.value; }
         },
         cellStyle: { textAlign: 'center' }
-      },
+      },*/
       {
         headerName: 'Parametros',
         field: 'parametros',
@@ -631,7 +631,7 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
   onAddRow() {
     const newRow = {
     idCompany: this.idRoot,
-    check: false,
+    check: true,
     idConcep: this.idSelect,
     idCatalog: 0,
     costoUni: 0,

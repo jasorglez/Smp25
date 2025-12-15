@@ -208,7 +208,6 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         // Agregar datos falsos para la columna de costos
         this.rowData = data.map(material => ({
           ...material,
-          costo: Math.floor(Math.random() * (500 - 50 + 1)) + 50 // Costo aleatorio entre 50 y 500
         }));
         console.log('Materials loaded:', data);
       },
@@ -253,7 +252,6 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       if (filteredMaterial) {
         this.rowData = [{
           ...filteredMaterial,
-          costo: Math.floor(Math.random() * (500 - 50 + 1)) + 50
         }];
         console.log('✅ Material filtrado cargado (1 elemento):', this.rowData);
         console.log('   rowData.length:', this.rowData.length);
@@ -514,7 +512,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           return null;
         }
       },
-      { headerName: 'Merma', field: 'merma', editable: true },
+      /*{ headerName: 'Merma', field: 'merma', editable: true },
       {
         headerName: 'Fecha Cambio',
         field: 'fechaCambio',
@@ -527,19 +525,19 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           } catch (e) { return params.value; }
         },
         cellStyle: { textAlign: 'center' }
-      },
+      },*/
 
       {
         field: 'costo',
         headerName: 'Materiales',
         width: 150,
         valueFormatter: (params: any) => {
-          return params.value ? `$${params.value.toFixed(2)}` : '$0.00';
+          return `$${params.value}`;
         },
         cellRenderer: (params: any) => {
           // Este renderer es necesario para que el clic funcione igual que en las otras columnas de detalle.
           // Muestra el valor formateado.
-          return params.value ? `$${params.value.toFixed(2)}` : '$0.00';
+          return `$${params.value}`;
         },
         cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
       },
