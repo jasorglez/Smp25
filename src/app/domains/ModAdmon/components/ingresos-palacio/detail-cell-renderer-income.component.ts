@@ -458,6 +458,36 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
         return 'selected-row';
       }
       return '';
+    },
+    onCellKeyDown: (event: any) => {
+      // Cuando se presiona Enter
+      if (event.event.key === 'Enter' && !event.event.shiftKey) {
+        // Detener la propagación para evitar el comportamiento por defecto
+        event.event.preventDefault();
+        event.event.stopPropagation();
+
+        const currentColumn = event.column.getColId();
+
+        // Si estamos en la columna "price", agregar un nuevo renglón
+        if (currentColumn === 'price') {
+          // Agregar un nuevo concepto
+          this.addConcept();
+        } else {
+          // Si estamos en cualquier otra columna, mover a "price"
+          const rowIndex = event.node.rowIndex;
+          setTimeout(() => {
+            // Primero establecer el focus en la celda
+            this.gridApi.setFocusedCell(rowIndex, 'price');
+
+            // Luego iniciar la edición inmediatamente
+            this.gridApi.startEditingCell({
+              rowIndex: rowIndex,
+              colKey: 'price',
+              key: null // Esto asegura que se abra en modo edición limpio
+            });
+          }, 50);
+        }
+      }
     }
   };
 
@@ -476,7 +506,7 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
       dateExpend: this.params.data.date, // Fecha de pago del maestro
       description: '',
       quantity: 1,
-      unit: '',
+      unit: 'PARTICIPACIONES', // Valor por defecto
       claveUnidad: '',
       objetoImp: '02', // Default to "Sí objeto de impuesto"
       claveProdServ: '',
@@ -506,7 +536,7 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
       this.gridApi.ensureIndexVisible(lastRowIndex);
       this.gridApi.startEditingCell({
         rowIndex: lastRowIndex,
-        colKey: 'description'
+        colKey: 'idCatIng' // Focus en Detalle Ingreso
       });
     }, 0);
   }
@@ -540,8 +570,23 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Validar que todos los campos obligatorios estén llenos
-    const hasEmptyFields = this.rowData.some(concept =>
+    // Filtrar solo los conceptos con precio mayor a 0
+    const validConcepts = this.rowData.filter(concept =>
+      concept.price && Number(concept.price) > 0
+    );
+
+    // Si no hay conceptos válidos, mostrar mensaje
+    if (validConcepts.length === 0) {
+      alerts.basicAlert(
+        'Validación',
+        'Debe haber al menos un concepto con precio mayor a 0 para guardar.',
+        'warning'
+      );
+      return;
+    }
+
+    // Validar que todos los conceptos válidos tengan campos obligatorios
+    const hasEmptyFields = validConcepts.some(concept =>
       !concept.description ||
       !concept.quantity ||
       !concept.idCatIng ||
@@ -557,10 +602,17 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Eliminar de rowData los conceptos con precio = 0
+    this.rowData = validConcepts;
+    this.gridApi.setGridOption('rowData', this.rowData);
+
+    // Recalcular totales con solo los conceptos válidos
+    this.recalculateTotals();
+
     if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.save) {
       const incomeId = this.params.data.id;
       const dataToSave = {
-        concepts: this.rowData,
+        concepts: validConcepts, // Solo guardar conceptos con precio > 0
         subtotal: this.subtotal,
         tax: this.iva2,
         total: this.total

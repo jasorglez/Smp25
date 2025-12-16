@@ -195,6 +195,32 @@ export class IngresosPalacioComponent {
         });
       }
     },
+    onCellKeyDown: (event: any) => {
+      // Cuando se presiona Enter en la columna Pago, mover a Catálogo Ingreso
+      if (event.event.key === 'Enter' && !event.event.shiftKey) {
+        const currentColumn = event.column.getColId();
+
+        if (currentColumn === 'date') {
+          // Detener la propagación para evitar el comportamiento por defecto
+          event.event.preventDefault();
+          event.event.stopPropagation();
+
+          // Mover el focus a la columna 'idCustomer' (Catálogo Ingreso)
+          const rowIndex = event.node.rowIndex;
+          setTimeout(() => {
+            // Establecer el focus en la celda
+            this.gridApi.setFocusedCell(rowIndex, 'idCustomer');
+
+            // Iniciar la edición inmediatamente
+            this.gridApi.startEditingCell({
+              rowIndex: rowIndex,
+              colKey: 'idCustomer',
+              key: null
+            });
+          }, 50);
+        }
+      }
+    }
   };
 
   public rowSelection: 'single' | 'multiple' = 'single';
@@ -507,6 +533,26 @@ export class IngresosPalacioComponent {
       });
     }
 
+    // Si se cambió el Catálogo Ingreso, componer automáticamente la Descripción
+    if (event.colDef.field === 'idCustomer' && event.newValue) {
+      const catalogoSeleccionado = this.ingresosCatalog.find(cat => cat.id === event.newValue);
+      if (catalogoSeleccionado && event.data.paymentMonth && event.data.date) {
+        // Obtener el año de la fecha de pago
+        const fechaPago = new Date(event.data.date);
+        const year = fechaPago.getFullYear();
+
+        // Componer: Mes + ' ' + Año + ' ' + Descripción del Catálogo
+        event.data.description = `${event.data.paymentMonth} ${year} ${catalogoSeleccionado.description}`;
+
+        // Refrescar la celda de descripción
+        this.gridApi.refreshCells({
+          rowNodes: [event.node],
+          columns: ['description'],
+          force: true
+        });
+      }
+    }
+
     // Actualizar campos de modificación solo para filas existentes
     if (!event.data.__isNew) {
       event.data.modifiedBy = this.currentUser;
@@ -572,7 +618,7 @@ export class IngresosPalacioComponent {
       idBranch       : this.idBranch, // Asignar la primera sucursal por defecto
       date           : fechaPago.toISOString(), // Pago = Entrega + 7 días
       idCustomer     : 0,
-      idExpend       : 0,
+      idExpend       : this.users.length > 0 ? this.users[0].id : 0, // Primer usuario por defecto
       uuid           : "NA",
       paymentMonth   : mesAutomatico, // Mes automático según fecha de Pago
       dateStamped    : fechaEntrega.toISOString(), // Entrega = hoy
@@ -585,7 +631,7 @@ export class IngresosPalacioComponent {
       createdAt: new Date().toISOString(),
       modifiedBy: null,
       modifiedAt: new Date().toISOString(),
-      status: "Pendiente",
+      status: "Pagada",
       active: true,
       __isNew: true,
     };
@@ -598,18 +644,17 @@ export class IngresosPalacioComponent {
     // Encontrar el índice de la nueva fila
     const newRowIndex = this.incomes.findIndex((row) => row.id === tempId);
 
-    // Encontrar la primera columna editable
-    const firstEditableCol = this.colMaster.find(col => col.editable);
-    const firstEditableColKey = firstEditableCol ? firstEditableCol.field : null;
-
     // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
     setTimeout(() => {
-      if (firstEditableColKey) {
-        this.gridApi.startEditingCell({
-          rowIndex: newRowIndex,
-          colKey: firstEditableColKey, // Editar la primera columna editable
-        });
-      }
+      // Establecer el focus en la columna 'date' (Pago)
+      this.gridApi.setFocusedCell(newRowIndex, 'date');
+
+      // Abrir la celda en modo de edición
+      this.gridApi.startEditingCell({
+        rowIndex: newRowIndex,
+        colKey: 'date', // Abrir columna Pago en modo edición
+        key: null
+      });
     }, 50); // Un pequeño retraso de 50ms
   }
 
