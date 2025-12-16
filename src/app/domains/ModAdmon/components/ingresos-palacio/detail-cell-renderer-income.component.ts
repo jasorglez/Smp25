@@ -317,6 +317,28 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
         editable: true,
         width: 90
       },
+         {
+        field: 'idCatIng',
+        headerName: 'Detalle Ingreso',
+        editable: true,
+        width: 280,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.catalogosHijos.map(cat => cat.id)
+        },
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const found = this.catalogosHijos.find(cat => cat.id === params.value);
+          return found ? found.description : params.value;
+        },
+        cellStyle: (params) => {
+          // Marcar en rojo si está vacío (obligatorio)
+          if (!params.value || params.value === 0) {
+            return { backgroundColor: '#ffe6e6', border: '1px solid #ff4444' };
+          }
+          return null;
+        }
+      },
       {
         field: 'description',
         headerName: 'Concepto',
@@ -383,28 +405,7 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
           placeholder: 'Buscar producto o servicio...'
         }
       },
-      {
-        field: 'idCatIng',
-        headerName: 'Detalle Ingreso',
-        editable: true,
-        width: 280,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.catalogosHijos.map(cat => cat.id)
-        },
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          const found = this.catalogosHijos.find(cat => cat.id === params.value);
-          return found ? found.description : params.value;
-        },
-        cellStyle: (params) => {
-          // Marcar en rojo si está vacío (obligatorio)
-          if (!params.value || params.value === 0) {
-            return { backgroundColor: '#ffe6e6', border: '1px solid #ff4444' };
-          }
-          return null;
-        }
-      },
+   
       {
         field: 'price',
         headerName: 'Precio',
@@ -472,7 +473,7 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
       idIncorExp: this.params.data.id,
       typeExpense: 'NA',
       idExpense: 0,
-      dateExpend: new Date().toISOString(),
+      dateExpend: this.params.data.date, // Fecha de pago del maestro
       description: '',
       quantity: 1,
       unit: '',
@@ -582,6 +583,25 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
   onCellValueChanged(event: any) {
     event.data.__modified = true;
     this.hasUnsavedChanges = true;
+
+    // Si se cambió el "Detalle Ingreso", copiar automáticamente al Concepto y establecer la fecha
+    if (event.colDef.field === 'idCatIng' && event.newValue) {
+      const selectedCatalogo = this.catalogosHijos.find(cat => cat.id === event.newValue);
+      if (selectedCatalogo) {
+        // Copiar la descripción del catálogo al campo Concepto
+        event.data.description = selectedCatalogo.description;
+
+        // Establecer la fecha igual a la fecha de pago del maestro
+        event.data.dateExpend = this.params.data.date;
+
+        // Actualizar la fila en el grid
+        if (this.gridApi) {
+          this.gridApi.applyTransactionAsync({
+            update: [event.data]
+          });
+        }
+      }
+    }
 
     if (['iva', 'quantity', 'price'].includes(event.colDef.field)) {
       const rowData = event.data;

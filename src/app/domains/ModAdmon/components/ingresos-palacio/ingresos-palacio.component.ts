@@ -87,8 +87,6 @@ export class IngresosPalacioComponent {
 
   };
 
-  hasConsecutiveError: boolean = false;
-
   showform : string = '';
   branches: number[] = [];
   incomes: any[] = [];
@@ -152,8 +150,8 @@ export class IngresosPalacioComponent {
 
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
-    headerHeight: 30,
-    rowHeight: 30,
+    headerHeight: 24,
+    rowHeight: 24,
     animateRows: true,
     masterDetail: true,
     detailRowHeight: 700,
@@ -313,6 +311,16 @@ export class IngresosPalacioComponent {
     ].join('-');
   }
 
+  // Función para obtener el nombre del mes en español
+  private getMonthName(date: Date | string): string {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    const meses = [
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    ];
+    return meses[dateObj.getMonth()];
+  }
+
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
     return [
@@ -331,7 +339,7 @@ export class IngresosPalacioComponent {
       {
         field: 'pdfReport',
         headerName: 'PDF',
-        width: 90,
+        width: 80,
         cellRenderer: (params: any) => {
           return '<i class="bi bi-file-earmark-pdf" style="font-size: 1.2rem; color: #dc3545; cursor: pointer;"></i>';
         },
@@ -345,7 +353,7 @@ export class IngresosPalacioComponent {
         field: 'status',
         headerName: 'Estatus',
         editable: true,
-        width: 105,
+        width: 90,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: [
@@ -356,9 +364,9 @@ export class IngresosPalacioComponent {
           ]
         }
       },
-      { field: 'numberDocument', headerName: '# Doc/Fac', editable: false, filter: true, width: 150, hide: false },
+      { field: 'numberDocument', headerName: '# Doc/Fac', editable: false, filter: true, width: 120, hide: false },
       {
-        field: 'description', headerName: 'Descripción', editable: true, width: 315, filter: true,
+        field: 'description', headerName: 'Descripción', editable: true, width: 280, filter: true,
         cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
@@ -387,7 +395,7 @@ export class IngresosPalacioComponent {
       },
 
       {
-        field: 'dateStamped', headerName: 'Entrega', editable: true, cellDataType: 'date', width: 130,
+        field: 'dateStamped', headerName: 'Entrega', editable: true, cellDataType: 'date', width: 100, hide: true,
         valueFormatter: (params) => this.formatDate(params.value)
       },
 
@@ -397,7 +405,7 @@ export class IngresosPalacioComponent {
       },
 
       {
-        field: 'idCustomer', headerName: 'Catálogo Ingreso', editable: true, width: 200,
+        field: 'idCustomer', headerName: 'Catálogo Ingreso', editable: true, width: 180,
         cellEditor: 'searchableSelect',
         cellEditorParams: {
           options: this.ingresosCatalog,
@@ -415,7 +423,7 @@ export class IngresosPalacioComponent {
         headerName: 'Subtotal',
         type: 'number',
         editable: false,
-        width: 120,
+        width: 100,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
       {
@@ -423,7 +431,7 @@ export class IngresosPalacioComponent {
         headerName: 'Impuestos',
         type: 'number',
         editable: false,
-        width: 100,
+        width: 80,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
       {
@@ -431,12 +439,12 @@ export class IngresosPalacioComponent {
         headerName: 'Total',
         type: 'number',
         editable: false,
-        width: 120,
+        width: 100,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
 
       {
-        field: 'paymentMonth', headerName: 'Mes', editable: true, width: 100,
+        field: 'paymentMonth', headerName: 'Mes', editable: true, width: 80,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: [
@@ -486,6 +494,19 @@ export class IngresosPalacioComponent {
 
   onCellValueChanged(event: any) {
 
+    // Si se cambió la fecha de Pago, actualizar automáticamente el mes
+    if (event.colDef.field === 'date' && event.newValue) {
+      const fechaPago = new Date(event.newValue);
+      event.data.paymentMonth = this.getMonthName(fechaPago);
+
+      // Refrescar la celda del mes para mostrar el cambio
+      this.gridApi.refreshCells({
+        rowNodes: [event.node],
+        columns: ['paymentMonth'],
+        force: true
+      });
+    }
+
     // Actualizar campos de modificación solo para filas existentes
     if (!event.data.__isNew) {
       event.data.modifiedBy = this.currentUser;
@@ -534,18 +555,27 @@ export class IngresosPalacioComponent {
 
   addRow() {
     const tempId = `temp_${this.tempIdCounter++}`;
+
+    // Calcular fechas automáticamente
+    const fechaEntrega = new Date(); // Fecha actual (hoy)
+    const fechaPago = new Date(fechaEntrega); // Clonar fecha
+    fechaPago.setDate(fechaPago.getDate() + 7); // Sumar 7 días
+
+    // Obtener mes automáticamente de la fecha de Pago
+    const mesAutomatico = this.getMonthName(fechaPago);
+
     const newItem = {
       id: tempId,
       idAccount      : this._idAccount,
       numberDocument : "",
       idBusinnes     : this.root,
       idBranch       : this.idBranch, // Asignar la primera sucursal por defecto
-      date           : new Date().toISOString(),
+      date           : fechaPago.toISOString(), // Pago = Entrega + 7 días
       idCustomer     : 0,
       idExpend       : 0,
       uuid           : "NA",
-      paymentMonth   : '',
-      dateStamped: null,
+      paymentMonth   : mesAutomatico, // Mes automático según fecha de Pago
+      dateStamped    : fechaEntrega.toISOString(), // Entrega = hoy
       description: "",
       type: "DEPOSITO",
       subtotal: 0,
@@ -612,8 +642,10 @@ async saveChanges() {
       return;
     }
 
+    // Obtener el último consecutivo específico de esta cuenta bancaria
+    currentConsecutive = await this.getLastConsecutiveForAccount(this._idAccount);
+
     // Generar números de documento para nuevas filas
-    currentConsecutive = this.prefixAndConsecutive[0].consecutive;
     newRows.forEach(row => {
       currentConsecutive++;
       row.numberDocument = `${this.prefixAndConsecutive[0].prefix}${currentConsecutive.toString().padStart(4, '0')}`;
@@ -621,34 +653,15 @@ async saveChanges() {
   }
 
   try {
-    // PRIMERO: Guardar los registros de income (SIEMPRE)
+    // Guardar los registros de income
     await this.saveIncomeRecords(newRows, modifiedRows);
 
-    // LUEGO: Actualizar el consecutivo si hay nuevas filas (manejar error específico)
- if (newRows.length > 0) {
-  try {
-    await this.updateBillingManagement(currentConsecutive);
-    this.hasConsecutiveError = false;
-  } catch (consecutiveError) {
-    // Error específico del consecutivo - mostrar alerta pero no revertir todo
-    console.error('Error actualizando consecutivo:', consecutiveError);
-    this.hasConsecutiveError = true;
+    // Éxito
     alerts.basicAlert(
-      'Advertencia - Consecutivo',
-      'Los registros se guardaron correctamente, pero hubo un problema al actualizar el consecutivo. Contacte al administrador.',
-      'warning'
+      'Datos actualizados',
+      'Se han actualizado los datos correctamente.',
+      'success'
     );
-  }
-}
-
-    // Éxito completo o parcial
-    if (newRows.length === 0 || !this.hasConsecutiveError) {
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
-    }
 
     this.notSavedChanges = false;
     this.newlyAddedRows = [];
@@ -700,44 +713,6 @@ async saveChanges() {
       );
     }
   }
-
-// Método separado para actualizar el billing management (SOLO consecutivo)
-private async updateBillingManagement(currentConsecutive: number): Promise<void> {
-  console.log('Actualizando consecutivo a:', currentConsecutive);
-
-  // CORRECCIÓN: Envolver el consecutive en un objeto "request"
-  const payload = {
-    request: {
-      consecutive: currentConsecutive
-    }
-  };
-
-  await lastValueFrom(
-    this.administrationService.updateBillingManagementConsecutive(
-      this.root,
-      payload
-    ).pipe(
-      tap((updatedBilling: any) => {
-        console.log('Consecutivo actualizado exitosamente:', updatedBilling);
-        // Actualizar el array local con la respuesta completa del servidor
-        this.prefixAndConsecutive = [updatedBilling];
-      }),
-      catchError((error) => {
-        console.error('Error actualizando consecutivo:', error);
-
-        // Log específico para tracking
-        this.trackingService.addLog(
-          this.trackingService.getnameComp(),
-          `Error actualizando consecutivo: ${error.message}`,
-          'Menu Administración - Palacio Municipal - Ingresos - Error Consecutivo',
-          this.trackingService.getEmail()
-        );
-
-        throw error; // Re-lanzar el error para manejarlo en saveChanges
-      })
-    )
-  );
-}
 
   async deleteEntry() {
     const selectedNodes = this.gridApi.getSelectedNodes();
@@ -1077,6 +1052,56 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
       delete cleanedData.id;
     }
     return cleanedData;
+  }
+
+  /**
+   * Obtiene el último consecutivo usado para una cuenta bancaria específica
+   * Analiza todos los ingresos de la cuenta y extrae el número más alto
+   */
+  private async getLastConsecutiveForAccount(idAccount: number): Promise<number> {
+    try {
+      // Obtener todos los ingresos de esta cuenta bancaria desde el servidor
+      const allIncomes: any = await lastValueFrom(
+        this.incomesAndExpensesService.getIncomesAndExpenses(this.root)
+      );
+
+      // Filtrar solo los de esta cuenta y tipo DEPOSITO
+      const accountIncomes = allIncomes?.filter((income: any) =>
+        income.type === "DEPOSITO" &&
+        income.idAccount === idAccount &&
+        income.numberDocument
+      ) || [];
+
+      if (accountIncomes.length === 0) {
+        // Si no hay ingresos previos, empezar desde 0
+        return 0;
+      }
+
+      // Extraer los consecutivos numéricos de los números de documento
+      const prefix = this.prefixAndConsecutive[0].prefix;
+      const consecutives = accountIncomes
+        .map((income: any) => {
+          const numberDocument = income.numberDocument || '';
+          // Remover el prefijo y convertir a número
+          if (numberDocument.startsWith(prefix)) {
+            const numericPart = numberDocument.substring(prefix.length);
+            return parseInt(numericPart, 10);
+          }
+          return 0;
+        })
+        .filter((num: number) => !isNaN(num));
+
+      // Retornar el máximo consecutivo encontrado
+      const maxConsecutive = consecutives.length > 0 ? Math.max(...consecutives) : 0;
+
+      console.log(`✅ Último consecutivo para cuenta ${idAccount}: ${maxConsecutive}`);
+      return maxConsecutive;
+
+    } catch (error) {
+      console.error('Error obteniendo último consecutivo:', error);
+      // En caso de error, retornar 0 para empezar desde el principio
+      return 0;
+    }
   }
 
 }
