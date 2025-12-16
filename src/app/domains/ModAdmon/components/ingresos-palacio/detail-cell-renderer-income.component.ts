@@ -778,12 +778,12 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
           {
             table: {
               headerRows: 1,
-              widths: ['*', 60, 100, 80],
+              widths: ['*', 50, 80, 70],
               body: [
                 // Encabezados
                 [
                   { text: 'Descripción', style: 'tableHeader' },
-                  { text: 'Cantidad', style: 'tableHeader', alignment: 'center' },
+                  { text: 'Cant.', style: 'tableHeader', alignment: 'center' },
                   { text: 'Unidad', style: 'tableHeader', alignment: 'center' },
                   { text: 'Total', style: 'tableHeader', alignment: 'right' }
                 ],
@@ -791,7 +791,7 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
                 ...this.rowData.map(concept => [
                   { text: concept.description || '', style: 'tableCell' },
                   { text: concept.quantity || '', style: 'tableCell', alignment: 'center' },
-                  { text: concept.unit || '', style: 'tableCell', alignment: 'center' },
+                  { text: concept.unit || '', style: 'tableCell', alignment: 'center', fontSize: 7 },
                   { text: this.formatCurrency(concept.total || 0), style: 'tableCell', alignment: 'right' }
                 ]),
                 // Fila de totales
@@ -808,12 +808,12 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
               vLineWidth: () => 0.5,
               hLineColor: () => '#333333',
               vLineColor: () => '#cccccc',
-              paddingTop: () => 4,
-              paddingBottom: () => 4,
-              paddingLeft: () => 6,
-              paddingRight: () => 6
+              paddingTop: () => 3,
+              paddingBottom: () => 3,
+              paddingLeft: () => 4,
+              paddingRight: () => 4
             },
-            margin: [0, 0, 0, 30]
+            margin: [0, 0, 0, 20]
           },
           // Footer con Firmas
           {
