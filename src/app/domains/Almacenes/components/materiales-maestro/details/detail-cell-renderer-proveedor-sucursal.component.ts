@@ -180,7 +180,7 @@ export class DetailCellRendererProveedorSucursalComponent implements ICellRender
         { field: 'capacidadMaxAlmacen', headerName: 'Capacidad Max. Almacen', width: 180, editable: true, type: 'numericColumn', filter: 'agNumberColumnFilter' },
         {
           field: 'tiempoDeEntrega',
-          headerName: 'Tiempo de Entrega',
+          headerName: 'Tiempo de Entrega en semanas',
           width: 150,
           editable: true,
           type: 'numericColumn',
