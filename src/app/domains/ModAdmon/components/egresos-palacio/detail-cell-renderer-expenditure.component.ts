@@ -1275,7 +1275,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     
       {
         field: 'uuidCfdi',
-        headerName: 'UUID CFDI',
+        headerName: 'UUID CFDI/COMENTARIO',
         editable: true,
         width: 500,
         type: 'text'
@@ -1363,13 +1363,13 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
 
     // Validar que todos los documentos tengan los campos obligatorios
     const hasEmptyFields = this.documentosData.some(doc =>
-      !doc.tipoDocumento || !doc.uuidCfdi || !doc.nombreArchivo
+      !doc.tipoDocumento || !doc.nombreArchivo
     );
 
     if (hasEmptyFields) {
       alerts.basicAlert(
         'Validación',
-        'Todos los documentos deben tener tipo de documento, UUID CFDI y archivo cargado.',
+        'Todos los documentos deben tener tipo de documento y archivo cargado.',
         'error'
       );
       return;

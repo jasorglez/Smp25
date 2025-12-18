@@ -268,7 +268,7 @@ updateCertificates(idRoot: number, formData: FormData): Observable<any> {
   }
 
   updateObjectClassification(id: number, data: any): Observable<any> {
-    return this.http.put(`${environment.urlAdministration}/ObjetoGasto/${id}`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.put(`${environment.urlAdministration}/ObjetoGasto/update/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
   deleteObjectClassification(id: number): Observable<any> {

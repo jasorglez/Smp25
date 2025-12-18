@@ -513,6 +513,16 @@ constructor() {
       },
 
       {
+        field: 'facturado',
+        headerName: 'Comprobado',
+        type: 'boolean',
+        cellRenderer: 'agCheckboxCellRenderer',
+        cellEditor: 'agCheckboxCellEditor',
+        editable: true,
+        width: 100
+      },
+
+      {
         field: 'createdBy',
         headerName: 'Autoriza',
         editable: false,
@@ -632,6 +642,7 @@ onGridReady(params: GridReadyEvent) {
       subtotal: 0,
       tax: 0,
       total: 0,
+      facturado: false,
       createdBy: this.currentUser || 'Usuario temporal',
       createdAt: new Date().toISOString(),
       modifiedBy: this.currentUser || 'Usuario temporal',

@@ -649,6 +649,11 @@ export class ObjectClassifierComponent implements OnInit {
         );
       } else {
         // Actualizar item existente
+        console.log('=== EDITANDO OBJETO DE GASTO ===');
+        console.log('ID a actualizar:', this.modalEditingItem!.id);
+        console.log('Datos del formulario (formData):', formData);
+        console.log('Item original (modalEditingItem):', this.modalEditingItem);
+
         await this.adminService.updateObjectClassification(this.modalEditingItem!.id, formData).toPromise();
 
         alerts.basicAlert(
