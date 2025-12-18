@@ -14,7 +14,7 @@ import { ICellEditorAngularComp } from 'ag-grid-angular';
         type="text"
         [(ngModel)]="searchText"
         (input)="filterOptions()"
-        placeholder="Escriba para buscar..."
+        [placeholder]="params.placeholder || 'Escriba para buscar...'"
         class="form-control"
         autocomplete="off"
       />
@@ -91,21 +91,32 @@ export class SearchableSelectComponent implements ICellEditorAngularComp {
     switch (event.key) {
       case 'ArrowDown':
         event.preventDefault();
+        event.stopPropagation();
         this.selectedIndex = Math.min(this.selectedIndex + 1, this.filteredOptions.length - 1);
         this.scrollToSelected();
         break;
       case 'ArrowUp':
         event.preventDefault();
+        event.stopPropagation();
         this.selectedIndex = Math.max(this.selectedIndex - 1, 0);
         this.scrollToSelected();
         break;
       case 'Enter':
         event.preventDefault();
-        if (this.selectedIndex >= 0) {
+        event.stopPropagation();
+        if (this.selectedIndex >= 0 && this.filteredOptions.length > 0) {
           this.selectOption(this.filteredOptions[this.selectedIndex]);
+        } else if (this.filteredOptions.length > 0) {
+          // Si no hay selección, tomar el primero
+          this.selectOption(this.filteredOptions[0]);
+        } else {
+          // Si no hay opciones, solo cerrar
+          this.params.api.stopEditing();
         }
         break;
       case 'Escape':
+        event.preventDefault();
+        event.stopPropagation();
         this.params.api.stopEditing();
         break;
     }
@@ -164,10 +175,12 @@ export class SearchableSelectComponent implements ICellEditorAngularComp {
         }
       });
     } else if (this.allOptions.length > 0) {
-      // Static filtering
-      this.filteredOptions = this.allOptions.filter(option =>
-        option.description.toLowerCase().includes(this.searchText.toLowerCase())
-      );
+      // Static filtering - usar displayField dinámicamente
+      const displayField = this.params.displayField || 'description';
+      this.filteredOptions = this.allOptions.filter(option => {
+        const value = option[displayField];
+        return value && value.toString().toLowerCase().includes(this.searchText.toLowerCase());
+      });
       this.selectedIndex = this.filteredOptions.length > 0 ? 0 : -1;
     } else {
       this.filteredOptions = [];
@@ -180,7 +193,10 @@ export class SearchableSelectComponent implements ICellEditorAngularComp {
     const displayField = this.params.displayField || 'description';
     this.value = option[valueField];
     this.searchText = option[displayField];
-    this.params.api.stopEditing();
+    // Cerrar inmediatamente sin delay
+    setTimeout(() => {
+      this.params.api.stopEditing();
+    }, 0);
   }
 
   getDisplayValue(): string {

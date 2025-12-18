@@ -481,20 +481,10 @@ export class IngresosPalacioComponent {
       },
 
       {
-        field: 'idExpend',
+        field: 'createdBy',
         headerName: 'Autoriza',
-        editable: true,
-        width: 105,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.users.map(user => user.id)
-        },
-        valueFormatter: (params) => {
-          const foundUser = this.users
-            ? this.users.find((user) => user.id === params.value)
-            : null;
-          return foundUser ? `${foundUser.smallName}` : params.value;
-        },
+        editable: false,
+        width: 105
       },
 
     ]

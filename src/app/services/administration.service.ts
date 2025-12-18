@@ -248,6 +248,7 @@ updateCertificates(idRoot: number, formData: FormData): Observable<any> {
     return this.http.delete(`${environment.urlAdministration}/NormalPayrolls/bonus/${iDBonus}`, { headers: this.trackingService.getHeaders() })
   }
 
+
   updateEmployeesBonus(iDBonus: number, data: any): Observable<any> {
     console.log("------ entrando a administration service -- update bonus", data);
     return this.http.put(`${environment.urlAdministration}/NormalPayrolls/${iDBonus}`, data, { headers: this.trackingService.getHeaders() })
@@ -256,6 +257,10 @@ updateCertificates(idRoot: number, formData: FormData): Observable<any> {
 
   getObjectclassifications(idRoot: number) {
     return this.http.get(`${environment.urlAdministration}/ObjetoGasto/getAll/${idRoot}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getByNivelObjeto(idRoot: number, idNivel: number) {
+    return this.http.get(`${environment.urlAdministration}/ObjetoGasto/getByNivel/${idRoot}/${idNivel}`, { headers: this.trackingService.getHeaders() });
   }
 
   addObjectClassification(data: any): Observable<any> {
@@ -268,6 +273,23 @@ updateCertificates(idRoot: number, formData: FormData): Observable<any> {
 
   deleteObjectClassification(id: number): Observable<any> {
     return this.http.delete(`${environment.urlAdministration}/ObjetoGasto/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getDocumentComprobados(id: number) {
+    return this.http.get(`${environment.urlAdministration}/DocumentosComprobados/concept/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+   addDocumentComprobados(data: any): Observable<any> {
+    return this.http.post(`${environment.urlAdministration}/DocumentosComprobados`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+
+   updateDocumentComprobados(id: number, data: any): Observable<any> {
+    return this.http.put(`${environment.urlAdministration}/DocumentosComprobados/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteDocumentComprobado(id: number): Observable<any> {
+    return this.http.delete(`${environment.urlAdministration}/DocumentosComprobados/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
 }

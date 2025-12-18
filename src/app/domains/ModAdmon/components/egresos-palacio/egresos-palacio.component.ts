@@ -15,18 +15,22 @@ import { UsersService } from 'app/services/users.service';
 import { SignalsService } from 'app/services/signals.service';
 import { NgSelectComponent, NgSelectModule } from '@ng-select/ng-select';
 import { AdditionalInfoComponent } from "../income/additional-info/additional-info.component";
-import { ConceptsexpenditureComponent } from '../expenditure/conceptsexpenditure/conceptsexpenditure.component';
 import { CatalogadmonService } from 'app/services/catalogadmon.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { environment } from '@env/environment';
 import { AuthService } from 'app/services/auth.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { ButtonCellRendererExpenditureComponent } from './button-cell-renderer-expenditure.component';
+import { DetailCellRendererExpenditureComponent } from './detail-cell-renderer-expenditure.component';
+import { CatalogsService } from 'app/services/catalogs.service';
+import { RootService } from 'app/services/root.service';
+import { Base64EncodeService } from 'app/services/base64encode.service';
 
 @Component({
   selector: 'app-egresos-palacio',
   standalone: true,
   imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
-    FormsModule,  ConceptsexpenditureComponent],
+    FormsModule, ButtonCellRendererExpenditureComponent, DetailCellRendererExpenditureComponent],
   templateUrl: './egresos-palacio.component.html',
   styleUrl: './egresos-palacio.component.scss'
 })
@@ -36,12 +40,15 @@ export class EgresosPalacioComponent {
   private modalServiceTable         = inject(ModalService);
   private administrationService     = inject(AdministrationService);
   private cataalogAdmonService      = inject(CatalogadmonService);
+  private catalogsService           = inject(CatalogsService);
   private usersxpermissionsService  = inject(UsersxpermissionsService);
   private usersService              = inject(UsersService);
   private signalsService            = inject(SignalsService);
-  private branchesService           = inject(BranchsService)
-  authService               = inject(AuthService);
-  public trackingService = inject(TrackingService);
+  private branchesService           = inject(BranchsService);
+  private rootService               = inject(RootService);
+  private base64EncodeService       = inject(Base64EncodeService);
+  authService                       = inject(AuthService);
+  public trackingService            = inject(TrackingService);
 
   public isIncomeMode: boolean = false;
 
@@ -199,14 +206,36 @@ constructor() {
 
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
-    headerHeight: 30,
-    rowHeight: 30,
+    headerHeight: 24,
+    rowHeight: 24,
+    animateRows: true,
+    masterDetail: true,
+    detailRowHeight: 700,
+    isRowMaster: (dataItem: any) => true,
+    detailCellRenderer: DetailCellRendererExpenditureComponent,
     getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
         return 'selected-row';
       }
       return '';
+    },
+    getRowStyle: (params) => {
+      if (params.data) {
+        switch (params.data.status) {
+          case 'Pendiente':
+            return { backgroundColor: '#cce5ff', color: '#004085' }; // Azul
+          case 'Pagada':
+            return { backgroundColor: '#d4edda', color: '#155724' }; // Verde
+          case 'Cancelada':
+            return { backgroundColor: '#f8d7da', color: '#721c24' }; // Rojo
+          case 'Entregada':
+            return { backgroundColor: '#fff3cd', color: '#856404' }; // Amarillo
+          default:
+            return null;
+        }
+      }
+      return null;
     },
     onRowClicked: (event) => {
       // Seleccionar la fila al hacer clic en cualquier celda
@@ -240,11 +269,23 @@ constructor() {
         const filtered = incomes?.filter(income => {
           return income.type === "GASTO" && income.idAccount === this.idAccount
         }) || [];
-        this.incomes = filtered;
+
+        // Agregar propiedades para master-detail
+        this.incomes = filtered.map(income => ({
+          ...income,
+          countrow: 0, // Se actualizará al cargar conceptos
+          countDocumentos: 0, // Se actualizará al cargar documentos comprobados
+          detailType: null,
+          detailData: []
+        }));
+
+        // Cargar el conteo de conceptos y documentos para cada egreso
+        this.loadConceptCounts();
+        this.loadDocumentosComprobadosCount();
       },
       error: (err) => {
         // Manejo de errores HTTP
-        console.error('Error obteniendo ingresos. Código:', err.status, 'Detalles:', err);
+        console.error('Error obteniendo egresos. Código:', err.status, 'Detalles:', err);
         this.incomes = [];
       }
     });
@@ -253,7 +294,7 @@ constructor() {
   }
 
   async getBills() {
-    this.cataalogAdmonService.getCatalogs(this.idRoot, 'BILL').subscribe(
+    this.administrationService.getByNivelObjeto(this.idRoot, 1).subscribe(
       (data: any) => {
         this.expenses = data;
       },
@@ -261,7 +302,7 @@ constructor() {
         console.error(error);
       }
     )
-    this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Gastos`, 'Palacio Municipal - Egresos',
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Objetos de Gasto`, 'Palacio Municipal - Egresos',
           this.trackingService.getEmail() );
   }
 
@@ -325,74 +366,63 @@ constructor() {
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
     return [
-      { field: 'id', headerName: 'Id', editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return true
-        }, filter: true, width: 50 },
-      { field: 'numberDocument', headerName: '# Documento', editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return true
-        }, filter: true, width: 150 },
-
       {
-              field: 'idBranch',
-              headerName: 'Nombre sucursal',
-              headerClass: 'required-header',
-              hide:
-                this.authService.hasDetailedPermission(
-                  'principal',
-                  'see-all-branches'
-                ) || this.signalsService.getemailChoose() === environment.root
-                  ? false
-                  : true,
-              editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return true
+        field: 'countrow',
+        headerName: 'Items',
+        width: 90,
+        cellRenderer: ButtonCellRendererExpenditureComponent,
+        cellRendererParams: {
+          onClick: (node: any) => this.toggleCascade(node),
         },
-              filter: true,
-              width: 170,
-              cellEditor: 'agSelectCellEditor',
-              filterParams: {
-                // can be 'windows' or 'mac'
-                defaultToNothingSelected: true,
-                //excelMode: 'windows',
-              },
+        valueGetter: params => params.data.countrow || 0,
+        editable: false,
+        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
+      },
+      {
+        field: 'pdfReport',
+        headerName: 'PDF',
+        width: 80,
+        cellRenderer: (params: any) => {
+          return '<i class="bi bi-file-earmark-pdf" style="font-size: 1.2rem; color: #dc3545; cursor: pointer;"></i>';
+        },
+        editable: false,
+        cellStyle: { textAlign: 'center', cursor: 'pointer' },
+        onCellClicked: (params: any) => {
+          this.toggleReportDetail(params.node);
+        }
+      },
+      {
+        field: 'countDocumentos',
+        headerName: 'Comprobación',
+        width: 130,
+        cellRenderer: ButtonCellRendererExpenditureComponent,
+        cellRendererParams: {
+          onClick: (node: any) => this.toggleComprobacionDetail(node),
+          icon: 'bi-file-earmark-check',
+          title: 'Hacer clic para ver los documentos comprobados'
+        },
+        valueGetter: params => params.data.countDocumentos || 0,
+        editable: false,
+        cellStyle: { backgroundColor: '#d4edda', cursor: 'pointer', textDecoration: 'underline' }
+      },
+      {
+        field: 'status',
+        headerName: 'Estatus',
+        editable: true,
+        width: 90,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: [
+            'Pendiente',
+            'Entregada',
+            'Cancelada',
+            'Pagada'
+          ]
+        }
+      },
+      { field: 'numberDocument', headerName: '# Doc/Fac', editable: false, filter: true, width: 120, hide: false },
 
-              cellEditorParams: (params) => {
-                return {
-                  values: this.branchs
-                    ? this.branchs
-                        .slice() // Creamos una copia para no modificar el array original
-                        .sort((a, b) => a.name.localeCompare(b.name)) // Ordenamos por nombre
-                        .map((item) => item.id) // Extraemos solo los IDs
-                    : [],
-                };
-              },
-              valueFormatter: (params) => {
-                // Handle potential null values and properly format the displayed value
-                if (!params.value) return '';
-
-                const foundBranch = this.branchs
-                  ? this.branchs.find((item) => item.id === params.value)
-                  : null;
-
-                return foundBranch ? foundBranch.name : params.value;
-              },
-              valueGetter: (params) => {
-                if (!params.data || !params.data.idBranch) return '';
-                const branch = this.branchs?.find(b => b.id === params.data.idBranch);
-                return branch ? branch.name : '';
-              },
-            },
-
-            {
-              field: 'date', headerName: 'Fecha', editable: (params) => {
+      { field: 'date', headerName: 'Fecha', editable: (params) => {
           if (params.data.__isNew) {
             return true;
           }
@@ -402,23 +432,23 @@ constructor() {
             },
 
             {
-                field: 'idExpend', headerName: 'Tipo Gasto', editable: (params) => {
+                field: 'idExpend', headerName: 'Objeto de Gasto', editable: (params) => {
           if (params.data.__isNew) {
             return true;
           }
           return true
-        }, width: 195,
+        }, width: 250,
                 cellEditor: 'searchableSelect',
                 cellEditorParams: {
                   options: this.expenses,
                   valueField: 'id',
-                  displayField: 'description'
+                  displayField: 'nombre'
                 },
                 valueFormatter: (params) => {
                   const foundItem = this.expenses
                     ? this.expenses.find((item) => item.id === params.value)
                     : null;
-                  return foundItem ? `${foundItem.description}` : params.value;
+                  return foundItem ? `${foundItem.codigo} - ${foundItem.nombre}` : params.value;
                 },
             },
 
@@ -428,7 +458,7 @@ constructor() {
             return true;
           }
           return true
-        }, width: 325, filter: true,
+        }, width: 155, filter: true,
               cellEditor: 'agPopupTextCellEditor',
               cellEditorParams: {
                 maxLength: 100,
@@ -483,24 +513,10 @@ constructor() {
       },
 
       {
-        field: 'status',
-        headerName: 'Estatus',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return true
-        },
-        width: 105,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: [
-            'Pendiente',
-            'Entregada',
-            'Cancelada',
-            'Pagada'
-          ]
-        }
+        field: 'createdBy',
+        headerName: 'Autoriza',
+        editable: false,
+        width: 105
       }
 
     ]
@@ -536,8 +552,54 @@ constructor() {
 
  // ✅ CORRECCIÓN: Modificar onGridReady para procesar actualizaciones pendientes
 onGridReady(params: GridReadyEvent) {
-  console.log('🏁 Grid ready - Palacio Municipal');
+  console.log('🏁 Grid ready - Palacio Municipal - Egresos');
   this.gridApi = params.api;
+
+  // Configurar el detailCellRendererParams para pasar datos al detail renderer
+  this.gridApi.setGridOption('detailCellRendererParams', {
+    getDetailRowData: (params) => {
+      params.successCallback(params.data.detailData);
+    },
+    context: {
+      idRoot: this.idRoot,
+      componentParent: this,
+      gridApi: this.gridApi,
+      catalogsService: this.catalogsService,
+      administrationService: this.administrationService,
+      catalogadmonService: this.cataalogAdmonService,
+      rootService: this.rootService,
+      base64EncodeService: this.base64EncodeService,
+      objetosGasto: this.expenses,
+      CONCEPTS: {
+        load: (expenditureId: number, callback: (data: any[]) => void) => {
+          this.loadConceptsData(expenditureId, callback);
+        },
+        save: (expenditureId: number, data: any) => {
+          this.saveConceptsById(expenditureId, data);
+        },
+        delete: (params: any, callback: () => void) => {
+          this.deleteConceptRow(params, callback);
+        },
+        updateCount: (expenditureId: number, count: number) => {
+          this.updateExpenditureConceptCount(expenditureId, count);
+        }
+      },
+      DOCUMENTOS_COMPROBADOS: {
+        load: (expenditureId: number, callback: (data: any[]) => void) => {
+          this.loadDocumentosComprobados(expenditureId, callback);
+        },
+        save: (expenditureId: number, data: any) => {
+          this.saveDocumentosComprobados(expenditureId, data);
+        },
+        delete: (params: any, callback: () => void) => {
+          this.deleteDocumentoComprobado(params, callback);
+        },
+        updateCount: (expenditureId: number, count: number) => {
+          this.updateExpenditureDocumentosCount(expenditureId, count);
+        }
+      }
+    }
+  });
 
   // ✅ CORRECCIÓN: Procesar actualizaciones pendientes
   if (this.pendingMasterUpdate) {
@@ -558,13 +620,13 @@ onGridReady(params: GridReadyEvent) {
       idAccount: this._idAccount,
       numberDocument: "",
       idBusinnes: this.idRoot,
-      idBranch: this.idBranch > 0 ? this.idBranch : null,
+      idBranch: 0,
       date: new Date().toISOString(),
       idCustomer: 0,
       idExpend: 0,
       uuid: "NA",
       paymentMonth: '',
-      dateStamped: null,
+      dateStamped: new Date().toISOString(),
       description: "POR COMPROBAR",
       type: "GASTO",
       subtotal: 0,
@@ -572,7 +634,7 @@ onGridReady(params: GridReadyEvent) {
       total: 0,
       createdBy: this.currentUser || 'Usuario temporal',
       createdAt: new Date().toISOString(),
-      modifiedBy: null,
+      modifiedBy: this.currentUser || 'Usuario temporal',
       modifiedAt: new Date().toISOString(),
       status: "Pagada",
       active: true,
@@ -611,102 +673,56 @@ onGridReady(params: GridReadyEvent) {
       return;
     }
 
-    // Validar que el array tenga elementos
-    if (!this.prefixAndConsecutive?.[0]) {
-      alerts.basicAlert(
-        'Error de configuración',
-        'La configuración de prefijo/consecutivo no está cargada correctamente',
-        'error'
-      );
-      return;
-    }
-
     const newRows = this.incomes.filter((row) => row.__isNew);
     const modifiedRows = this.incomes.filter(
       (row) => row.__modified && !row.__isNew
     );
 
-    // Generar números de documento para nuevas filas
-    let currentConsecutive = this.prefixAndConsecutive[0].consecutive;
-    newRows.forEach(row => {
-      currentConsecutive++;
-      row.numberDocument = `${this.prefixAndConsecutive[0].prefix}${currentConsecutive.toString().padStart(4, '0')}`;
-    });
-
-    const addObservables = newRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData)
-      return this.incomesAndExpensesService.addIncomesAndExpenses(cleanedData);
-    });
-
-    const updateObservables = modifiedRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData)
-      return this.incomesAndExpensesService.updateIncomesAndExpenses(row.id, cleanedData);
-    });
-
-    // Crear objeto sin array
-    const updatedBillingInfo = {
-      ...this.prefixAndConsecutive[0],
-      consecutive: currentConsecutive
-    };
-
-    const updateConsecutiveObs = this.administrationService.updateBillingManagement(
-      this.idRoot,
-      updatedBillingInfo // Enviar objeto directamente
-    ).pipe(
-      tap(response => {
-        // Actualizar el array local con el nuevo objeto
-        this.prefixAndConsecutive = [updatedBillingInfo];
-      })
-    );
-
-    try {
-      // Solo actualizar consecutivo si hay nuevas filas
-      if (newRows.length > 0) {
-        // Crear objeto sin array
-        const updatedBillingInfo = {
-          ...this.prefixAndConsecutive[0],
-          consecutive: currentConsecutive
-        };
-
-        const updateConsecutiveObs = this.administrationService.updateBillingManagement(
-          this.idRoot,
-          updatedBillingInfo
-        ).pipe(
-          tap(response => {
-            // Actualizar el array local con el nuevo objeto
-            this.prefixAndConsecutive = [updatedBillingInfo];
-          })
+    // Solo validar configuración si hay nuevas filas que necesitan número de documento
+    let currentConsecutive = 0;
+    if (newRows.length > 0) {
+      if (!this.prefixAndConsecutive?.[0]) {
+        alerts.basicAlert(
+          'Error de configuración',
+          'La configuración de prefijo/consecutivo no está cargada correctamente',
+          'error'
         );
-
-        const responses = await lastValueFrom(
-          concat(...addObservables, ...updateObservables, updateConsecutiveObs).pipe(toArray())
-        );
-      } else {
-        // Si solo hay modificaciones, no actualizar consecutivo
-        const responses = await lastValueFrom(
-          concat(...addObservables, ...updateObservables).pipe(toArray())
-        );
+        return;
       }
 
+      // Obtener el último consecutivo específico de esta cuenta bancaria para EGRESOS
+      currentConsecutive = await this.getLastConsecutiveForAccountExp(this._idAccount);
+
+      // Generar números de documento para nuevas filas
+      newRows.forEach(row => {
+        currentConsecutive++;
+        row.numberDocument = `${this.prefixAndConsecutive[0].prefixexp}${currentConsecutive.toString().padStart(4, '0')}`;
+      });
+    }
+
+    try {
+      // Guardar los registros de egresos
+      await this.saveExpenditureRecords(newRows, modifiedRows);
+
+      // Éxito
       alerts.basicAlert(
         'Datos actualizados',
-        'Se han actualizados los datos correctamente.',
+        'Se han actualizado los datos correctamente.',
         'success'
       );
 
       this.trackingService.addLog(this.trackingService.getnameComp(), `Salvar Egresos`, 'Palacio Municipal - Egresos',
-          this.trackingService.getEmail() );
+          this.trackingService.getEmail());
 
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
       await this.getExpenditure(); // Refrescar los datos
+
     } catch (error) {
-      console.error(error);
+      console.error('Error crítico en saveChanges:', error);
       alerts.basicAlert(
         'Error',
-        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
+        'Ocurrió un error al guardar los registros. Por favor, intente nuevamente.',
         'error'
       );
     }
@@ -770,6 +786,86 @@ onGridReady(params: GridReadyEvent) {
       delete cleanedData.id;
     }
     return cleanedData;
+  }
+
+  // Método para guardar los registros de egresos
+  private async saveExpenditureRecords(newRows: any[], modifiedRows: any[]): Promise<void> {
+    const addObservables = newRows.map((row) => {
+      const cleanedData = this.cleanDataForServer(row);
+      this.trackingService.addLog(
+        this.trackingService.getnameComp(),
+        'Save Registro en Egresos - Palacio Municipal',
+        'Menu Administración - Palacio Municipal - Egresos',
+        this.trackingService.getEmail()
+      );
+      return this.incomesAndExpensesService.addIncomesAndExpenses(cleanedData);
+    });
+
+    const updateObservables = modifiedRows.map((row) => {
+      const cleanedData = this.cleanDataForServer(row);
+      this.trackingService.addLog(
+        this.trackingService.getnameComp(),
+        'Update Registro en Egresos - Palacio Municipal',
+        'Menu Administración - Palacio Municipal - Egresos',
+        this.trackingService.getEmail()
+      );
+      return this.incomesAndExpensesService.updateIncomesAndExpenses(row.id, cleanedData);
+    });
+
+    // Ejecutar todas las operaciones de guardado
+    const allObservables = [...addObservables, ...updateObservables];
+
+    if (allObservables.length > 0) {
+      await lastValueFrom(
+        forkJoin(allObservables) // Usar forkJoin para ejecutar todas en paralelo
+      );
+    }
+  }
+
+  // Método para obtener el último consecutivo para una cuenta específica (EGRESOS)
+  private async getLastConsecutiveForAccountExp(idAccount: number): Promise<number> {
+    try {
+      // Obtener todos los egresos de esta cuenta bancaria desde el servidor
+      const allExpenses: any = await lastValueFrom(
+        this.incomesAndExpensesService.getIncomesAndExpenses(this.idRoot)
+      );
+
+      // Filtrar solo los de esta cuenta y tipo GASTO
+      const accountExpenses = allExpenses?.filter((expense: any) =>
+        expense.type === "GASTO" &&
+        expense.idAccount === idAccount &&
+        expense.numberDocument
+      ) || [];
+
+      if (accountExpenses.length === 0) {
+        // Si no hay egresos previos, empezar desde 0
+        return 0;
+      }
+
+      // Extraer los consecutivos numéricos de los números de documento
+      const prefix = this.prefixAndConsecutive[0].prefixexp;
+      const consecutives = accountExpenses
+        .map((expense: any) => {
+          const numberDocument = expense.numberDocument || '';
+          // Remover el prefijo y convertir a número
+          if (numberDocument.startsWith(prefix)) {
+            const numericPart = numberDocument.substring(prefix.length);
+            return parseInt(numericPart, 10);
+          }
+          return 0;
+        })
+        .filter((num: number) => !isNaN(num));
+
+      // Retornar el máximo consecutivo encontrado
+      const maxConsecutive = consecutives.length > 0 ? Math.max(...consecutives) : 0;
+
+      return maxConsecutive;
+
+    } catch (error) {
+      console.error('Error obteniendo último consecutivo de egresos:', error);
+      // En caso de error, retornar 0 para empezar desde el principio
+      return 0;
+    }
   }
 
   async getBankAccounts() {
@@ -916,5 +1012,428 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
   }
 }
 
+  // ==================== MÉTODOS PARA CASCADAS ====================
+
+  toggleCascade(node: any) {
+    const api = this.gridApi;
+    const isCurrentlyExpanded = node.expanded && node.data.detailType === 'concepts';
+
+    if (isCurrentlyExpanded) {
+      // Si ya está expandido con conceptos, colapsarlo
+      node.setExpanded(false);
+
+      // Restaurar alturas de todas las filas
+      api.forEachNode((otherNode: any) => {
+        otherNode.setRowHeight(undefined);
+      });
+      api.onRowHeightChanged();
+    } else {
+      // Colapsar cualquier otra fila expandida
+      api.forEachNode((otherNode: any) => {
+        if (otherNode.expanded && otherNode.id !== node.id) {
+          otherNode.setExpanded(false);
+        }
+      });
+
+      // Ocultar todas las demás filas
+      api.forEachNode((otherNode: any) => {
+        if (otherNode.id !== node.id) {
+          otherNode.setRowHeight(0);
+        }
+      });
+
+      // Si la fila está expandida con otro tipo de detalle, cerrarla
+      if (node.expanded && node.data.detailType !== 'concepts') {
+        node.setExpanded(false);
+      }
+
+      // Cambiar el tipo de detalle a 'concepts'
+      node.data.detailType = 'concepts';
+
+      // Aplicar cambios de altura
+      api.onRowHeightChanged();
+
+      // Expandir con los conceptos
+      setTimeout(() => {
+        node.setExpanded(true);
+      }, 0);
+    }
+  }
+
+  toggleReportDetail(node: any) {
+    const api = this.gridApi;
+    const isCurrentlyExpanded = node.expanded && node.data.detailType === 'report';
+
+    if (isCurrentlyExpanded) {
+      // Si ya está expandido con el reporte, colapsarlo
+      node.setExpanded(false);
+
+      // Restaurar alturas de todas las filas
+      api.forEachNode((otherNode: any) => {
+        otherNode.setRowHeight(undefined);
+      });
+      api.onRowHeightChanged();
+    } else {
+      // Colapsar cualquier otra fila expandida
+      api.forEachNode((otherNode: any) => {
+        if (otherNode.expanded && otherNode.id !== node.id) {
+          otherNode.setExpanded(false);
+        }
+      });
+
+      // Ocultar todas las demás filas
+      api.forEachNode((otherNode: any) => {
+        if (otherNode.id !== node.id) {
+          otherNode.setRowHeight(0);
+        }
+      });
+
+      // Si la fila está expandida con otro tipo de detalle, cerrarla
+      if (node.expanded && node.data.detailType !== 'report') {
+        node.setExpanded(false);
+      }
+
+      // Cambiar el tipo de detalle a 'report'
+      node.data.detailType = 'report';
+
+      // Agregar la descripción del objeto de gasto formateada para el PDF
+      if (node.data.idExpend && this.expenses) {
+        const foundItem = this.expenses.find((item) => item.id === node.data.idExpend);
+        if (foundItem) {
+          node.data.objetoGastoTexto = `${foundItem.codigo} - ${foundItem.nombre}`;
+        } else {
+          node.data.objetoGastoTexto = 'Sin descripción';
+        }
+      } else {
+        node.data.objetoGastoTexto = 'Sin objeto de gasto';
+      }
+
+      // Aplicar cambios de altura
+      api.onRowHeightChanged();
+
+      // Expandir con el reporte
+      setTimeout(() => {
+        node.setExpanded(true);
+      }, 0);
+    }
+  }
+
+  collapseReportDetail(expenditureId: number) {
+    if (this.gridApi) {
+      this.gridApi.forEachNode((node) => {
+        if (node.data && node.data.id === expenditureId) {
+          node.setExpanded(false);
+          node.data.detailType = null;
+        }
+      });
+
+      // Restaurar alturas
+      this.gridApi.forEachNode((node) => {
+        node.setRowHeight(undefined);
+      });
+      this.gridApi.onRowHeightChanged();
+    }
+  }
+
+  toggleComprobacionDetail(node: any) {
+    const api = this.gridApi;
+    const isCurrentlyExpanded = node.expanded && node.data.detailType === 'comprobacion';
+
+    if (isCurrentlyExpanded) {
+      // Si ya está expandido con comprobación, colapsarlo
+      node.setExpanded(false);
+
+      // Restaurar alturas de todas las filas
+      api.forEachNode((otherNode: any) => {
+        otherNode.setRowHeight(undefined);
+      });
+      api.onRowHeightChanged();
+    } else {
+      // Colapsar cualquier otra fila expandida
+      api.forEachNode((otherNode: any) => {
+        if (otherNode.expanded && otherNode.id !== node.id) {
+          otherNode.setExpanded(false);
+        }
+      });
+
+      // Ocultar todas las demás filas
+      api.forEachNode((otherNode: any) => {
+        if (otherNode.id !== node.id) {
+          otherNode.setRowHeight(0);
+        }
+      });
+
+      // Si la fila está expandida con otro tipo de detalle, cerrarla
+      if (node.expanded && node.data.detailType !== 'comprobacion') {
+        node.setExpanded(false);
+      }
+
+      // Cambiar el tipo de detalle a 'comprobacion'
+      node.data.detailType = 'comprobacion';
+
+      // Aplicar cambios de altura
+      api.onRowHeightChanged();
+
+      // Expandir con la comprobación
+      setTimeout(() => {
+        node.setExpanded(true);
+      }, 0);
+    }
+  }
+
+  // ==================== MÉTODOS PARA CONCEPTOS ====================
+
+  loadConceptCounts() {
+    // Cargar el conteo de conceptos para cada egreso
+    this.incomes.forEach(income => {
+      this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(income.id).subscribe({
+        next: (concepts: any[]) => {
+          this.updateExpenditureConceptCount(income.id, concepts.length);
+        },
+        error: (error) => {
+          console.error('Error loading concept count for expenditure:', income.id, error);
+        }
+      });
+    });
+  }
+
+  updateExpenditureConceptCount(expenditureId: number, count: number) {
+    if (this.gridApi) {
+      this.gridApi.forEachNode((node) => {
+        if (node.data && node.data.id === expenditureId) {
+          node.data.countrow = count;
+          this.gridApi.refreshCells({
+            rowNodes: [node],
+            columns: ['countrow'],
+            force: true
+          });
+        }
+      });
+    }
+  }
+
+  loadConceptsData(expenditureId: number, successCallback: any) {
+    this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(expenditureId).subscribe({
+      next: (data: any) => {
+        successCallback(data);
+      },
+      error: (error) => {
+        console.error('Error loading concepts:', error);
+        successCallback([]);
+      }
+    });
+  }
+
+  async saveConceptsById(expenditureId: number, data: any) {
+    const conceptsData = data.concepts || data;
+    const subtotal = data.subtotal || 0;
+    const tax = data.tax || 0;
+    const total = data.total || 0;
+
+    const newConcepts = conceptsData.filter((row: any) => row.__isNew);
+    const modifiedConcepts = conceptsData.filter((row: any) => row.__modified && !row.__isNew);
+
+    try {
+      // Guardar conceptos nuevos
+      for (const concept of newConcepts) {
+        const cleaned = this.cleanConceptData(concept);
+        await lastValueFrom(this.incomesAndExpensesService.addConceptFromIncomesAndExpenses(cleaned));
+      }
+
+      // Actualizar conceptos modificados
+      for (const concept of modifiedConcepts) {
+        const cleaned = this.cleanConceptData(concept);
+        await lastValueFrom(this.incomesAndExpensesService.updateConceptFromIncomesAndExpenses(concept.id, cleaned));
+      }
+
+      // Actualizar el documento principal con los totales
+      const mainDocumentResponse: any[] = await lastValueFrom(
+        this.incomesAndExpensesService.getIncomeAndExpenseById(expenditureId)
+      );
+
+      const mainDocument = mainDocumentResponse[0];
+      const updatedDocument = {
+        ...mainDocument,
+        subtotal: subtotal,
+        tax: tax,
+        total: total
+      };
+
+      await lastValueFrom(
+        this.incomesAndExpensesService.updateIncomesAndExpenses(expenditureId, updatedDocument)
+      );
+
+      if (newConcepts.length > 0 || modifiedConcepts.length > 0) {
+        alerts.basicAlert(
+          'Conceptos guardados',
+          'Se han guardado los conceptos correctamente.',
+          'success'
+        );
+
+        // Actualizar el contador de conceptos
+        this.updateExpenditureConceptCount(expenditureId, conceptsData.length);
+
+        // Refrescar la lista de egresos para mostrar totales actualizados
+        setTimeout(() => this.getExpenditure(), 500);
+      }
+
+    } catch (error) {
+      console.error('Error saving concepts:', error);
+      alerts.basicAlert(
+        'Error',
+        'Error al guardar los conceptos.',
+        'error'
+      );
+    }
+  }
+
+  async deleteConceptRow(params: any, successCallback: () => void) {
+    const conceptId = params.data.id;
+
+    if (params.data.__isNew) {
+      params.api.applyTransaction({ remove: [params.data] });
+      successCallback();
+    } else {
+      try {
+        await lastValueFrom(this.incomesAndExpensesService.deleteConceptFromIncomesAndExpenses(conceptId));
+        alerts.basicAlert('Concepto eliminado', 'El concepto se eliminó correctamente.', 'success');
+        successCallback();
+      } catch (error) {
+        console.error('Error deleting concept:', error);
+        alerts.basicAlert(
+          'Error',
+          'Error al eliminar el concepto.',
+          'error'
+        );
+      }
+    }
+  }
+
+  private cleanConceptData(data: any): any {
+    const cleanedData = { ...data };
+    delete cleanedData.__isNew;
+    delete cleanedData.__modified;
+    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
+      delete cleanedData.id;
+    }
+    return cleanedData;
+  }
+
+  // ==================== MÉTODOS PARA DOCUMENTOS COMPROBADOS ====================
+
+  loadDocumentosComprobadosCount() {
+    // Cargar el conteo de documentos comprobados para cada egreso
+    this.incomes.forEach(income => {
+      this.administrationService.getDocumentComprobados(income.id).subscribe({
+        next: (documentos: any[]) => {
+          this.updateExpenditureDocumentosCount(income.id, documentos.length);
+        },
+        error: (error) => {
+          console.error('Error loading document count for expenditure:', income.id, error);
+        }
+      });
+    });
+  }
+
+  updateExpenditureDocumentosCount(expenditureId: number, count: number) {
+    if (this.gridApi) {
+      this.gridApi.forEachNode((node) => {
+        if (node.data && node.data.id === expenditureId) {
+          node.data.countDocumentos = count;
+          this.gridApi.refreshCells({
+            rowNodes: [node],
+            columns: ['countDocumentos'],
+            force: true
+          });
+        }
+      });
+    }
+  }
+
+  loadDocumentosComprobados(expenditureId: number, successCallback: any) {
+    this.administrationService.getDocumentComprobados(expenditureId).subscribe({
+      next: (data: any) => {
+        successCallback(data);
+      },
+      error: (error) => {
+        console.error('Error loading documentos comprobados:', error);
+        successCallback([]);
+      }
+    });
+  }
+
+  async saveDocumentosComprobados(expenditureId: number, data: any) {
+    const documentosData = data.documentos || data;
+
+    const newDocumentos = documentosData.filter((row: any) => row.__isNew);
+    const modifiedDocumentos = documentosData.filter((row: any) => row.__modified && !row.__isNew);
+
+    try {
+      // Guardar documentos nuevos
+      for (const documento of newDocumentos) {
+        const cleaned = this.cleanDocumentoData(documento);
+        cleaned.idincorexp = expenditureId;
+        await lastValueFrom(this.administrationService.addDocumentComprobados(cleaned));
+      }
+
+      // Actualizar documentos modificados
+      for (const documento of modifiedDocumentos) {
+        const cleaned = this.cleanDocumentoData(documento);
+        await lastValueFrom(this.administrationService.updateDocumentComprobados(documento.id, cleaned));
+      }
+
+      if (newDocumentos.length > 0 || modifiedDocumentos.length > 0) {
+        alerts.basicAlert(
+          'Documentos guardados',
+          'Se han guardado los documentos correctamente.',
+          'success'
+        );
+      }
+
+    } catch (error) {
+      console.error('Error saving documentos:', error);
+      alerts.basicAlert(
+        'Error',
+        'Error al guardar los documentos.',
+        'error'
+      );
+    }
+  }
+
+  async deleteDocumentoComprobado(params: any, successCallback: () => void) {
+    const documentoId = params.data.id;
+
+    if (params.data.__isNew) {
+      params.api.applyTransaction({ remove: [params.data] });
+      successCallback();
+    } else {
+      try {
+        await lastValueFrom(this.administrationService.deleteDocumentComprobado(documentoId));
+        alerts.basicAlert('Documento eliminado', 'El documento se eliminó correctamente.', 'success');
+        successCallback();
+      } catch (error) {
+        console.error('Error deleting documento:', error);
+        alerts.basicAlert(
+          'Error',
+          'Error al eliminar el documento.',
+          'error'
+        );
+      }
+    }
+  }
+
+  private cleanDocumentoData(data: any): any {
+    const cleanedData = { ...data };
+    delete cleanedData.__isNew;
+    delete cleanedData.__modified;
+    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
+      delete cleanedData.id;
+    }
+    // Asegurar que modifiedBy sea string vacío en lugar de null
+    if (cleanedData.modifiedBy === null || cleanedData.modifiedBy === undefined) {
+      cleanedData.modifiedBy = '';
+    }
+    return cleanedData;
+  }
 
 }

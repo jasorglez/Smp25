@@ -25,7 +25,8 @@
       "Bash(git pull:*)",
       "Bash(git fetch:*)",
       "Bash(npm run build:nt:*)",
-      "Bash(ng build:*)"
+      "Bash(ng build:*)",
+      "mcp__ide__getDiagnostics"
     ],
     "deny": [],
     "ask": []
