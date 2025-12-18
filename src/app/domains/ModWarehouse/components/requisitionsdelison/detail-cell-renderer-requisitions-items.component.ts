@@ -5,18 +5,23 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
-import { SelectMaterialEditorComponent } from '../../../ModWareHousesTD/components/inandout-st/select-material-editor.component';
-import { ButtonCellRendererComponent } from '../../../ModWareHousesTD/components/inandout-st/button-cell-renderer.component';
 import { DetailCellRendererRequisitionsPurchasesComponent } from './detail-cell-renderer-requisitions-purchases.component';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
+import { MaterialsService } from 'app/services/materials.service';
+import { SignalsService } from 'app/services/signals.service';
+import { SelectWithTooltipEditorV2Component } from 'app/domains/Almacenes/components/materiales-maestro/editors/select-with-tooltip-editor-v2.component';
+import { ModalService } from 'app/services/modal.service';
+import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 
 @Component({
   selector: 'app-detail-cell-renderer-requisitions-items',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, SelectMaterialEditorComponent, ButtonCellRendererComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component, MultiLineEditorComponent],
   template: `
-    <div class="detail-grid-container">
-      <div class="detail-actions d-flex justify-content-end mb-2">
+    <div style="padding: 5px; background-color: #e3f2fd; height: 100%; max-height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
+      <div style="margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+        <strong>Artículos de la Requisición</strong>
+        <div class="d-flex gap-2">
         
        <button class="btn btn-primary btn-sm me-2" (click)="addItem()">
           <i class="bi bi-plus-lg"></i> Agregar
@@ -39,16 +44,18 @@ import { OcAndReqsService } from 'app/services/ocandreqs.service';
         </button>
 
            <button class="btn btn-info btn-sm position-relative" (click)="saveMultiGuardar()">
-          <i class="bi bi-files"></i> MultiGuardar 
+          <i class="bi bi-files"></i> MultiGuardar
           <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
             *ngIf="hasPedimentoSelection">
             <span class="visually-hidden">Hay cambios sin guardar</span>
           </span>
         </button>
-
-
+        </div>
       </div>
-      <ag-grid-angular
+
+      <!-- Grid con tamaño completo -->
+      <div style="flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden;">
+        <ag-grid-angular
         #agGrid
         class="ag-theme-quartz small-text-ag-grid"
         [rowData]="rowData"
@@ -59,8 +66,9 @@ import { OcAndReqsService } from 'app/services/ocandreqs.service';
         (cellValueChanged)="onCellValueChanged($event)"
         (cellClicked)="onCellClicked($event)"
         [components]="components"
-        style="height: 300px; width: 100%;">
-      </ag-grid-angular>
+        style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
+        </ag-grid-angular>
+      </div>
     </div>
 
     <!-- Modal para Nuevo Artículo -->
@@ -98,10 +106,17 @@ import { OcAndReqsService } from 'app/services/ocandreqs.service';
     </div>
     <!-- Backdrop para el modal -->
     <div class="modal-backdrop fade show" *ngIf="isNewArticleModalVisible"></div>
+
+    <!-- Multi-line editor component -->
+    <app-multi-line-editor></app-multi-line-editor>
   `,
   styles: [`
-    .detail-grid-container {
-      padding: 10px;
+    :host {
+      display: block;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
     }
 
     .detail-unsaved {
@@ -116,6 +131,9 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
   private gridApi!: GridApi;
   private context: any;
   private ocAndReqsService = inject(OcAndReqsService);
+  private materialsService = inject(MaterialsService);
+  private signalsService = inject(SignalsService);
+  private modalService = inject(ModalService);
 
   rowData: any[] = [];
   originalRowData: any[] = []; // Para poder deshacer cambios
@@ -126,6 +144,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
   materials: any[] = [];
   private pedimentoCounter: number = 1;
   requisitionId: number = 0;
+  idRoot: number | null = null;
 
   // Propiedades para el modal de nuevo artículo
   isNewArticleModalVisible = false;
@@ -182,6 +201,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
           materialId: item.idSupplie, // Para el editor de materiales
           article: item.description || '', // Usar description como article
           code: item.code || '',
+          intorext: item.intorext || 'Interno',
           description: item.description || '',
           measure: item.measure || '',
           quantity: item.quantity || 0,
@@ -193,9 +213,9 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
           dateuse: item.dateuse || new Date().toISOString(),
           active: item.active !== undefined ? item.active : true,
           recurrent: 'Recurrente', // Por defecto recurrente
-          articleNumber: '',
-          internalProvider: '',
-          priorityType: 'Normal',
+          numarticle: item.numarticle || '',
+          provint: item.provint || '',
+          priorityType: item.TypePriority || 'Normal',
           pedimiento: false,
           pedimentoNumber: '',
           purchasesData: [], // Se puede cargar después si es necesario
@@ -230,29 +250,43 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
   }
 
   loadMaterials() {
-    // Mock data for 20 materials
-    this.materials = [
-      { id: 1, description: 'Tornillos M8 x 50mm', code: 'TOR-M8-50', measure: 'Pieza', active: true },
-      { id: 2, description: 'Jugo de Fresa', code: 'TUE-M8', measure: 'Pieza', active: true },
-      { id: 3, description: 'Jugo de Naranja', code: 'ARA-PL-M8', measure: 'Pieza', active: true },
-      { id: 4, description: 'Jugo de Blue Berry', code: 'CEM-POR-50', measure: 'Saco', active: true },
-      { id: 5, description: 'Arena fina', code: 'ARE-FIN', measure: 'm³', active: true },
-      { id: 6, description: 'Jugo Manzana', code: 'GRA-34', measure: 'm³', active: true },
-      { id: 7, description: 'Varilla de acero 1/2"', code: 'VAR-12', measure: 'Metro', active: true },
-      { id: 8, description: 'Varilla de acero 3/8"', code: 'VAR-38', measure: 'Metro', active: true },
-      { id: 9, description: 'Alambre recocido #16', code: 'ALA-REC-16', measure: 'Kg', active: true },
-      { id: 10, description: 'Clavo 2"', code: 'CLA-2', measure: 'Kg', active: true },
-      { id: 11, description: 'Pintura latex blanca 1L', code: 'PIN-LAT-BLA-1L', measure: 'Litro', active: true },
-      { id: 12, description: 'Pintura latex blanca 5L', code: 'PIN-LAT-BLA-5L', measure: 'Litro', active: true },
-      { id: 13, description: 'Brocha 2"', code: 'BRO-2', measure: 'Pieza', active: true },
-      { id: 14, description: 'Rodillo para pintura 6"', code: 'ROD-PIN-6', measure: 'Pieza', active: true },
-      { id: 15, description: 'Pegamento PVC 1L', code: 'PEG-PVC-1L', measure: 'Litro', active: true },
-      { id: 16, description: 'Tubo PVC 1/2" x 3m', code: 'TUB-PVC-12-3M', measure: 'Pieza', active: true },
-      { id: 17, description: 'Codo PVC 1/2"', code: 'COD-PVC-12', measure: 'Pieza', active: true },
-      { id: 18, description: 'Cable eléctrico 12 AWG', code: 'CAB-ELE-12', measure: 'Metro', active: true },
-      { id: 19, description: 'Interruptor simple', code: 'INT-SIM', measure: 'Pieza', active: true },
-      { id: 20, description: 'Toma corriente', code: 'TOM-COR', measure: 'Pieza', active: true }
-    ];
+    // Obtener idRoot desde el signal service
+    this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+
+    if (!this.idRoot) {
+      console.warn('⚠️ No hay idRoot disponible para cargar materiales');
+      this.materials = [];
+      return;
+    }
+
+    console.log('📦 Cargando materiales desde endpoint con idRoot:', this.idRoot);
+
+    // Cargar materiales desde el endpoint real
+    this.materialsService.getMaterialsxview(this.idRoot).subscribe({
+      next: (data) => {
+        // Mapear los datos del endpoint al formato esperado por el SearchableSelect
+        this.materials = data
+          .filter(material => material.vigente) // Solo materiales activos
+          .map(material => ({
+            id: material.id,
+            description: material.articulo,  // Nombre del artículo
+            code: material.insumo,            // Código/número de material
+            measure: material.measure || '',
+            active: material.vigente,
+            // Campos adicionales que podrían ser útiles
+            idCategory: material.idCategory,
+            idFamilia: material.idFamilia,
+            idSubfamilia: material.idSubfamilia
+          }));
+
+        console.log(`✅ Materiales cargados: ${this.materials.length} items`);
+      },
+      error: (error) => {
+        console.error('❌ Error al cargar materiales:', error);
+        alerts.basicAlert('Error', 'No se pudieron cargar los materiales', 'error');
+        this.materials = [];
+      }
+    });
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -327,45 +361,70 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
         width: 300,
         cellDataType: false, // Desactivar auto-detección de tipo
         editable: true,
-        cellEditor: 'selectMaterialEditor',
+        cellEditor: SelectWithTooltipEditorV2Component,
         cellEditorParams: (params: any) => {
+          // ✅ Filtrar materiales que ya están siendo usados en otras filas
+          const usedMaterialIds = this.rowData
+            .filter(row =>
+              row.id !== params.data.id && // Excluir la fila actual
+              row.materialId // Solo filas con material asignado
+            )
+            .map(row => row.materialId);
+
+          const availableMaterials = this.materials.filter(
+            m => !usedMaterialIds.includes(m.id)
+          );
+
+          console.log('🔧 SelectWithTooltipEditorV2 params:', {
+            totalMaterials: this.materials?.length || 0,
+            usedMaterials: usedMaterialIds.length,
+            availableMaterials: availableMaterials.length,
+            currentRowId: params.data.id
+          });
+
           return {
-            options: (this.materials || [])
-              .filter(m => m.active)
-              .map(m => ({ id: m.id, description: m.description }))
+            options: availableMaterials.map(m => ({
+              id: m.id,
+              description: m.description,
+              valueAddition: m.code || '',
+              valueAddition2: m.measure || ''
+            }))
           };
         },
         valueFormatter: (params: any) => {
           // Preferir el nombre guardado en la fila si existe
           if (params?.data?.article) return params.data.article;
-          const material = this.materials?.find(m => String(m.id) === String(params.value) || m.description === params.value);
+          const material = this.materials?.find(m => m.id === params.value);
           return material ? material.description : (params.value ?? '');
         },
         valueSetter: (params: any) => {
           let newValue = params.newValue;
 
-          // Si el editor devuelve un objeto { id, description }
-          if (newValue && typeof newValue === 'object' && newValue.id && newValue.description) {
-            const selectedMaterial = this.materials?.find(m => m.id === newValue.id);
-            if (selectedMaterial) {
-              params.data.materialId = selectedMaterial.id;
-              params.data.article = selectedMaterial.description;
-              params.data.code = selectedMaterial.code || '';
-              params.data.measure = selectedMaterial.measure || '';
-            }
+          // SelectWithTooltipEditorV2 devuelve el ID del material seleccionado
+          const selectedMaterial = this.materials?.find(m => m.id === newValue);
+          if (selectedMaterial) {
+            params.data.materialId = selectedMaterial.id;
+            params.data.idSupplie = selectedMaterial.id; // Para compatibilidad con el servidor
+            params.data.article = selectedMaterial.description;
+            params.data.code = selectedMaterial.code || '';
+            params.data.description = selectedMaterial.description;
+            params.data.measure = selectedMaterial.measure || '';
+            // ✅ CAMBIO 1: Actualizar # del artículo con el num-mat (código)
+            params.data.numArticle = selectedMaterial.code || '';
+            params.data.__modified = true;
+            this.hasUnsavedChanges = true;
+
+            // Refrescar las celdas para mostrar el articleNumber actualizado
+            this.gridApi.refreshCells({
+              rowNodes: [params.node],
+              columns: ['articleNumber'],
+              force: true
+            });
+
             return true;
           }
 
-          // Fallback for other cases
-          const selectedMaterial = this.materials?.find(m => String(m.id) === String(newValue) || m.description === newValue);
-          if (selectedMaterial) {
-            params.data.materialId = selectedMaterial.id;
-            params.data.article = selectedMaterial.description;
-            params.data.code = selectedMaterial.code || '';
-            params.data.measure = selectedMaterial.measure || '';
-          }
-
-          return true;
+          return false;
         },
         cellStyle: (params: any) => {
           if (!params.value && !params?.data?.article) {
@@ -380,12 +439,14 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
         }
       },
       {
-        field: 'articleNumber',
+        field: 'numArticle',
         headerName: '# del Articulo',
         width: 120,
         editable: true,
         valueSetter: (params: any) => {
-          params.data.articleNumber = params.newValue ? params.newValue.toUpperCase() : '';
+          params.data.numArticle = params.newValue ? params.newValue.toUpperCase() : '';
+          params.data.__modified = true;
+          this.isAddingNewItem = true;
           return true;
         }
       },
@@ -394,35 +455,45 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
         headerName: 'cantidad',
         width: 100,
         editable: true,
-        type: 'numericColumn'
+        type: 'numericColumn',
+        valueSetter: (params: any) => {
+          params.data.quantity = params.newValue;
+          params.data.__modified = true;
+          this.isAddingNewItem = true;
+          return true;
+        }
       },
       {
-        field: 'type',
+        field: 'intorext',
         headerName: 'Tipo',
         width: 100,
         editable: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: ['Interno', 'Externo']
+          values: ['Externo', 'Interno'] // ✅ CAMBIO 2: Externo primero para que sea el default
         },
         valueSetter: (params: any) => {
-          params.data.type = params.newValue;
+          params.data.intorext = params.newValue;
+          params.data.__modified = true;
+          this.isAddingNewItem = true;
           return true;
         }
       },
       {
-        field: 'internalProvider',
+        field: 'provint',
         headerName: 'Proveedor Interno',
         width: 100,
         editable: true,
         valueSetter: (params: any) => {
-          params.data.internalProvider = params.newValue ? params.newValue.toUpperCase() : '';
+          params.data.provint = params.newValue ? params.newValue.toUpperCase() : '';
+          params.data.__modified = true;
+          this.isAddingNewItem = true;
           return true;
         }
       },
-      
+
       {
-        field: 'priorityType',
+        field: 'typePriority',
         headerName: 'Tipo Prioridad',
         width: 120,
         editable: true,
@@ -431,7 +502,9 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
           values: ['Normal', 'Urgente']
         },
         valueSetter: (params: any) => {
-          params.data.priorityType = params.newValue;
+          params.data.typePriority = params.newValue;
+          params.data.__modified = true;
+          this.isAddingNewItem = true;
           return true;
         }
       },
@@ -440,34 +513,43 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
         headerName: 'Observaciones',
         width: 160,
         editable: true,
+        // ✅ CAMBIO 3: Usar MultiLineEditor para comentarios
+        onCellClicked: (params: any) => {
+          if (params.event.target.classList.contains('ag-cell')) {
+            this.modalService.showModal({ params });
+          }
+        },
         valueSetter: (params: any) => {
           params.data.comment = params.newValue ? params.newValue.toUpperCase() : '';
+          params.data.__modified = true;
+          this.hasUnsavedChanges = true;
           return true;
-        }
+        },
+        cellStyle: { cursor: 'pointer', backgroundColor: '#f0f8ff' }
       },
 
       {
-      field: 'pedimiento',
-      headerName: 'Pedimiento',
-      width: 100,
-      editable: false,
-      cellRenderer: (params: any) => {
-        const input = document.createElement('input');
-        input.type = 'checkbox';
-        input.checked = params.value === true;
+        field: 'pedimiento',
+        headerName: 'Pedimiento',
+        width: 100,
+        editable: false,
+        cellRenderer: (params: any) => {
+          const input = document.createElement('input');
+          input.type = 'checkbox';
+          input.checked = params.value === true;
 
-        input.addEventListener('change', () => {
-          params.data.pedimiento = input.checked;
-          params.api.refreshCells({ rowNodes: [params.node], columns: ['pedimiento'] });
-          this.checkPedimentoSelection();
-          // Refresh master grid comments column
-          if (this.context && this.context.gridApi) {
-            this.context.gridApi.refreshCells({ force: true });
-          }
-        });
+          input.addEventListener('change', () => {
+            params.data.pedimiento = input.checked;
+            params.api.refreshCells({ rowNodes: [params.node], columns: ['pedimiento'] });
+            this.checkPedimentoSelection();
+            // Refresh master grid comments column
+            if (this.context && this.context.gridApi) {
+              this.context.gridApi.refreshCells({ force: true });
+            }
+          });
 
-        return input;
-      }
+          return input;
+        }
       },
 
       {
@@ -505,15 +587,17 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
   }
 
   public gridOptions: any = {
-    headerHeight: 35,
-    rowHeight: 35,
+    headerHeight: 25,
+    rowHeight: 25,
     animateRows: true,
     masterDetail: true,
     detailRowHeight: 400,
     isRowMaster: (dataItem: any) => true,
     detailCellRenderer: DetailCellRendererRequisitionsPurchasesComponent,
     rowSelection: 'single',
-    singleClickEdit: true,
+    singleClickEdit: false, // Doble-click para editar (como tipo-proveedor)
+    domLayout: 'normal', // El grid se ajusta al contenedor y permite scroll
+    suppressHorizontalScroll: false,
     getRowClass: (params: any) => {
       // Si la fila ya tiene un número de pedimento, no la pintes de rosa.
       if (params.data && params.data.pedimentoNumber) {
@@ -568,7 +652,8 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
   }
 
   components = {
-    selectMaterialEditor: SelectMaterialEditorComponent
+    // No se necesita registrar SelectWithTooltipEditorV2Component aquí
+    // porque se pasa directamente como clase en cellEditor
   };
 
   addItem() {
@@ -578,7 +663,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
       article: '',
       quantity: 1,
       recurrent: 'Recurrente',
-      type: 'Interno',
+      type: 'Externo', // ✅ CAMBIO 2: Default "Externo"
       internalProvider: '',
       priorityType: 'Normal',
       comment: '',
@@ -724,13 +809,12 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
   }
 
   saveNewArticle() {
-    if (!this.newArticle.description) {
-      alerts.basicAlert('Validación', 'La descripción del artículo es obligatoria.', 'warning');
+    if (!this.newArticle.name) {
+      alerts.basicAlert('Validación', 'El nombre del artículo es obligatorio.', 'warning');
       return;
     }
-    // Asignar la descripción a la columna 'article' y guardar los otros datos.
+    // ✅ Solo rellenar el nombre del artículo
     this.currentRowForNewArticle.data.article = this.newArticle.name;
-    this.currentRowForNewArticle.data.newArticleInfo = { ...this.newArticle }; // Guardar toda la info
     this.currentRowForNewArticle.data.__modified = true;
     this.hasUnsavedChanges = true;
     this.gridApi.refreshCells({ rowNodes: [this.currentRowForNewArticle], columns: ['article'], force: true });
