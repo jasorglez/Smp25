@@ -251,6 +251,26 @@ constructor() {
         });
       }
     },
+    onCellKeyDown: (event: any) => {
+      // Cuando se presiona Enter
+      if (event.event.key === 'Enter' && !event.event.shiftKey) {
+        event.event.preventDefault();
+        event.event.stopPropagation();
+
+        const currentColumn = event.column.getColId();
+
+        // Si estamos en la columna "date", mover a "idExpend"
+        if (currentColumn === 'date') {
+          setTimeout(() => {
+            this.gridApi.setFocusedCell(event.node.rowIndex, 'idExpend');
+            this.gridApi.startEditingCell({
+              rowIndex: event.node.rowIndex,
+              colKey: 'idExpend'
+            });
+          }, 50);
+        }
+      }
+    },
   };
 
   public rowSelection: 'single' | 'multiple' = 'single';
@@ -361,6 +381,16 @@ constructor() {
       (date.getMonth() + 1).toString().padStart(2, '0'),
       date.getFullYear()
     ].join('-');
+  }
+
+  // Función para obtener el nombre del mes en español
+  private getMonthName(date: Date | string): string {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    const meses = [
+      'ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO',
+      'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'
+    ];
+    return meses[dateObj.getMonth()];
   }
 
   // Column Definitions: Defines the columns to be displayed.
@@ -550,6 +580,32 @@ constructor() {
 
   onCellValueChanged(event: any) {
 
+    // Si se cambió la fecha, actualizar automáticamente el mes
+    if (event.colDef.field === 'date' && event.newValue) {
+      const fechaPago = new Date(event.newValue);
+      event.data.paymentMonth = this.getMonthName(fechaPago);
+    }
+
+    // Si se cambió el Objeto de Gasto, componer automáticamente la Descripción
+    if (event.colDef.field === 'idExpend' && event.newValue) {
+      const objetoSeleccionado = this.expenses.find(obj => obj.id === event.newValue);
+      if (objetoSeleccionado && event.data.paymentMonth && event.data.date) {
+        // Obtener el año de la fecha
+        const fechaPago = new Date(event.data.date);
+        const year = fechaPago.getFullYear();
+
+        // Componer: Mes - Año Nombre del objeto
+        event.data.description = `${event.data.paymentMonth} -${year} ${objetoSeleccionado.nombre}`;
+
+        // Refrescar la celda de descripción
+        this.gridApi.refreshCells({
+          rowNodes: [event.node],
+          columns: ['description'],
+          force: true
+        });
+      }
+    }
+
     // Actualizar campos de modificación solo para filas existentes
     if (!event.data.__isNew) {
       event.data.modifiedBy = this.currentUser;
@@ -635,7 +691,7 @@ onGridReady(params: GridReadyEvent) {
       idCustomer: 0,
       idExpend: 0,
       uuid: "NA",
-      paymentMonth: '',
+      paymentMonth: this.getMonthName(new Date()),
       dateStamped: new Date().toISOString(),
       description: "POR COMPROBAR",
       type: "GASTO",
@@ -658,18 +714,12 @@ onGridReady(params: GridReadyEvent) {
     // Encontrar el índice de la nueva fila
     const newRowIndex = this.incomes.findIndex((row) => row.id === tempId);
 
-    // Encontrar la primera columna editable
-    const firstEditableCol = this.colMaster.find(col => col.editable);
-    const firstEditableColKey = firstEditableCol ? firstEditableCol.field : null;
-
-    // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
+    // Iniciar edición en la columna 'date' con la fecha actual
     setTimeout(() => {
-      if (firstEditableColKey) {
-        this.gridApi.startEditingCell({
-          rowIndex: newRowIndex,
-          colKey: firstEditableColKey, // Editar la primera columna editable
-        });
-      }
+      this.gridApi.startEditingCell({
+        rowIndex: newRowIndex,
+        colKey: 'date', // Editar la columna Fecha
+      });
     }, 50); // Un pequeño retraso de 50ms
   }
 

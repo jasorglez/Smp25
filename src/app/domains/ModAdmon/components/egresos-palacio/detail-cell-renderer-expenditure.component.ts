@@ -88,8 +88,15 @@ import { lastValueFrom } from 'rxjs';
 
     <!-- Documentos Comprobados View -->
     <div class="detail-grid-container" *ngIf="detailType === 'comprobacion'">
-      <div class="detail-actions d-flex justify-content-between align-items-center mb-2">
-        <h6 class="mb-0">Documentos Comprobados</h6>
+      <div class="detail-actions mb-2">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="mb-0">Documentos Comprobados</h6>
+          <div *ngIf="isUploading" class="progress" style="width: 200px;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" [style.width.%]="uploadProgress" [attr.aria-valuenow]="uploadProgress" aria-valuemin="0" aria-valuemax="100">
+              {{uploadProgress | number:'1.0-0'}}%
+            </div>
+          </div>
+        </div>
         <div class="d-flex">
           <button class="btn btn-success btn-sm me-2" (click)="addDocumento()">
             <i class="bi bi-plus-lg"></i> Agregar
@@ -207,6 +214,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   ivaPercent: number = 0;
   objetosGastoHijos: any[] = []; // Objetos de gasto nivel 4 (hijos del objeto de gasto seleccionado nivel 1)
   setupManagementInfo: any = null; // Información de firmas
+  lastSelectedIdCatIng: number = 0; // Para copiar el último objeto de gasto seleccionado
 
   // Totals
   subtotal: number = 0;
@@ -230,6 +238,10 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   previewFileName: string = '';
   previewFileType: string = '';
   previewFileRawUrl: string = '';
+
+  // Upload progress properties
+  isUploading: boolean = false;
+  uploadProgress: number = 0;
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
@@ -405,18 +417,10 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       {
         field: 'dateExpend',
         headerName: 'Fecha',
-        type: 'date',
         editable: true,
+        cellDataType: 'date',
         width: 100,
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          const date = new Date(params.value);
-          return date.toLocaleDateString('es-ES', {
-            day: '2-digit',
-            month: '2-digit',
-            year: '2-digit'
-          });
-        }
+        valueFormatter: (params) => this.formatDate(params.value)
       },
       {
         field: 'quantity',
@@ -453,7 +457,6 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       {
         field: 'description',
         headerName: 'Concepto',
-        type: 'text',
         editable: true,
         width: 250
       },
@@ -540,7 +543,6 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       {
         field: 'comment',
         headerName: 'Comentario',
-        type: 'text',
         editable: true,
         width: 200,
         cellEditor: 'multiLineEditorComponent'
@@ -568,22 +570,28 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
 
         const currentColumn = event.column.getColId();
 
-        // Si estamos en la columna "price", agregar un nuevo renglón
-        if (currentColumn === 'price') {
-          // Agregar un nuevo concepto
-          this.addConcept();
+        if (currentColumn === 'idCatIng') {
+          // Si estamos en "Detalle Egreso", mover a "Precio"
+          const rowIndex = event.node.rowIndex;
+          setTimeout(() => {
+            this.gridApi.setFocusedCell(rowIndex, 'price');
+            this.gridApi.startEditingCell({
+              rowIndex: rowIndex,
+              colKey: 'price'
+            });
+          }, 50);
+        } else if (currentColumn === 'price') {
+          // Si estamos en "Precio", guardar y agregar nuevo concepto con el mismo objeto de gasto
+          this.addConcept(this.lastSelectedIdCatIng);
         } else {
           // Si estamos en cualquier otra columna, mover a "price"
           const rowIndex = event.node.rowIndex;
           setTimeout(() => {
-            // Primero establecer el focus en la celda
             this.gridApi.setFocusedCell(rowIndex, 'price');
-
-            // Luego iniciar la edición inmediatamente
             this.gridApi.startEditingCell({
               rowIndex: rowIndex,
               colKey: 'price',
-              key: null // Esto asegura que se abra en modo edición limpio
+              key: null
             });
           }, 50);
         }
@@ -596,7 +604,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     searchableSelect: SearchableSelectComponent
   };
 
-  addConcept() {
+  addConcept(idCatIng?: number) {
     const tempId = `temp_concept_${this.tempIdCounter++}`;
     const newConcept = {
       id: tempId,
@@ -610,7 +618,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       claveUnidad: '',
       objetoImp: '02', // Default to "Sí objeto de impuesto"
       claveProdServ: '',
-      idCatIng: 0, // Campo para el objeto de gasto nivel 4
+      idCatIng: idCatIng || 0, // Campo para el objeto de gasto nivel 4
       descuento: 0,
       price: 0,
       total: 0,
@@ -621,6 +629,14 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       __isNew: true,
       __modified: false
     };
+
+    // Si se proporciona idCatIng, establecer automáticamente la descripción
+    if (idCatIng) {
+      const selectedObjeto = this.objetosGastoHijos.find(obj => obj.id === idCatIng);
+      if (selectedObjeto) {
+        newConcept.description = selectedObjeto.displayText;
+      }
+    }
 
     this.rowData = [...this.rowData, newConcept];
     this.hasUnsavedChanges = true;
@@ -636,7 +652,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       this.gridApi.ensureIndexVisible(lastRowIndex);
       this.gridApi.startEditingCell({
         rowIndex: lastRowIndex,
-        colKey: 'idCatIng' // Focus en Detalle Egreso
+        colKey: idCatIng ? 'price' : 'idCatIng' // Focus en Precio si es copia, sino en Detalle Egreso
       });
     }, 0);
   }
@@ -738,6 +754,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
 
     // Si se cambió el "Detalle Egreso", copiar automáticamente al Concepto y establecer la fecha
     if (event.colDef.field === 'idCatIng' && event.newValue) {
+      this.lastSelectedIdCatIng = event.newValue; // Guardar para copiar en nuevas filas
       const selectedObjeto = this.objetosGastoHijos.find(obj => obj.id === event.newValue);
       if (selectedObjeto) {
         // Copiar el displayText (codigo - nombre) del objeto de gasto al campo Concepto
@@ -748,9 +765,11 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
 
         // Actualizar la fila en el grid
         if (this.gridApi) {
-          this.gridApi.applyTransactionAsync({
-            update: [event.data]
-          });
+          setTimeout(() => {
+            this.gridApi.applyTransactionAsync({
+              update: [event.data]
+            });
+          }, 0);
         }
       }
     }
@@ -1463,7 +1482,9 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
           return;
         }
 
-        // Mostrar loading
+        // Mostrar loading y iniciar progreso
+        this.isUploading = true;
+        this.uploadProgress = 0;
         alerts.basicAlert('Subiendo archivo...', 'Por favor espere', 'info');
 
         // Subir archivo a Firebase
@@ -1486,6 +1507,8 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         alerts.basicAlert('Éxito', 'Archivo subido correctamente', 'success');
       } catch (error) {
         console.error('Error subiendo archivo:', error);
+        this.isUploading = false;
+        this.uploadProgress = 0;
         alerts.basicAlert('Error', 'Error al subir el archivo', 'error');
       }
     };
@@ -1495,7 +1518,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
 
   async uploadFileToFirebase(file: File, tipoDoc: string): Promise<string> {
     // Importar Firebase Storage dinámicamente
-    const { getStorage, ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+    const { getStorage, ref, uploadBytesResumable, getDownloadURL } = await import('firebase/storage');
 
     const storage = getStorage();
 
@@ -1514,13 +1537,34 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     const fileName = `${timestamp}_${file.name}`;
     const storageRef = ref(storage, `${folder}/${fileName}`);
 
-    // Subir archivo
-    await uploadBytes(storageRef, file);
+    // Subir archivo con progreso
+    const uploadTask = uploadBytesResumable(storageRef, file);
 
-    // Obtener URL de descarga
-    const downloadURL = await getDownloadURL(storageRef);
-
-    return downloadURL;
+    return new Promise((resolve, reject) => {
+      uploadTask.on('state_changed',
+        (snapshot) => {
+          // Calcular y actualizar progreso
+          this.uploadProgress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        },
+        (error) => {
+          // Error
+          this.isUploading = false;
+          this.uploadProgress = 0;
+          reject(error);
+        },
+        async () => {
+          // Éxito
+          this.isUploading = false;
+          this.uploadProgress = 0;
+          try {
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            resolve(downloadURL);
+          } catch (error) {
+            reject(error);
+          }
+        }
+      );
+    });
   }
 
   openPreviewModal(params: any) {
