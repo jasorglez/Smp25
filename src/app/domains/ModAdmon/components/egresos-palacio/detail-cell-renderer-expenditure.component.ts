@@ -8,6 +8,7 @@ import { alerts } from 'app/helpers/alerts';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { SearchableSelectComponent } from 'app/shared/searchable-select/searchable-select.component';
+import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { lastValueFrom } from 'rxjs';
@@ -16,7 +17,7 @@ import { lastValueFrom } from 'rxjs';
 @Component({
   selector: 'app-detail-cell-renderer-expenditure',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, SearchableSelectComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, SearchableSelectComponent, SelectWithTooltipEditorV2Component],
   template: `
     <!-- Concepts Grid View -->
     <div class="detail-grid-container" *ngIf="detailType === 'concepts'">
@@ -434,12 +435,14 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         headerName: 'Detalle Egreso',
         editable: true,
         width: 480,
-        cellEditor: 'searchableSelect',
+        cellEditor: SelectWithTooltipEditorV2Component,
         cellEditorParams: {
-          options: this.objetosGastoHijos,
-          valueField: 'id',
-          displayField: 'displayText',
-          placeholder: 'Buscar objeto de gasto...'
+          options: this.objetosGastoHijos.map(obj => ({
+            id: obj.id,
+            description: obj.displayText,
+            valueAddition: obj.codigo || '',
+            valueAddition2: obj.nombre || ''
+          }))
         },
         valueFormatter: (params) => {
           if (!params.value) return '';
@@ -1380,15 +1383,15 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       return;
     }
 
-    // Validar que todos los documentos tengan los campos obligatorios
+    // Validar que todos los documentos tengan tipo de documento
     const hasEmptyFields = this.documentosData.some(doc =>
-      !doc.tipoDocumento || !doc.nombreArchivo
+      !doc.tipoDocumento
     );
 
     if (hasEmptyFields) {
       alerts.basicAlert(
         'Validación',
-        'Todos los documentos deben tener tipo de documento y archivo cargado.',
+        'Todos los documentos deben tener tipo de documento.',
         'error'
       );
       return;
