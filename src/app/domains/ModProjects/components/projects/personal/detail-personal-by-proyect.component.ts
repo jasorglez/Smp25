@@ -9,7 +9,7 @@ import { ColDef, GridReadyEvent } from 'ag-grid-community';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { PersonalByProyectService } from 'app/services/personalByProyect.service';
 import { alerts } from 'app/helpers/alerts';
-import { SelectWithTooltipEditorV2Component } from 'app/domains/Almacenes/components/materiales-maestro/editors/select-with-tooltip-editor-v2.component';
+import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 
 @Component({
   selector: 'app-personal-by-proyect',

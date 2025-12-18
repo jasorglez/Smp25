@@ -6,7 +6,7 @@ import { CommonModule } from '@angular/common';
 import { alerts } from 'app/helpers/alerts';
 import { ColDef, GridApi, GridReadyEvent, ValueGetterParams, ValueSetterParams, IRowNode, ValueFormatterParams } from 'ag-grid-community';
 import { ParameterByMaterialDescriptionService } from 'app/services/parameterByMaterialDescription.service';
-import { SelectWithTooltipEditorV2Component } from '../editors/select-with-tooltip-editor-v2.component';
+import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 
 @Component({
@@ -238,9 +238,9 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
   agInit(params: any): void {
     this.params = params;
     this.refreshParametros();
-    console.log('DetailCellRendererParametrosComponent initialized with params:', params);
-    this.materialId = params.masterData.id;
-    this.materialName = params.masterData.articulo || params.masterData.insumo;
+    console.log('////////////////DetailCellRendererParametrosComponent initialized with params:', params);
+    this.materialId = params.data.id;
+    this.materialName = params.data.articulo;
     this.parameterVigentes();
     this.parameters();
     // Load fake data for parámetros
@@ -252,7 +252,7 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
         setTimeout(() => {
         this.parameterVigentes();
         this.parameters();
-      }, 500);
+      }, 1000);
       });
     }
   parameters(){

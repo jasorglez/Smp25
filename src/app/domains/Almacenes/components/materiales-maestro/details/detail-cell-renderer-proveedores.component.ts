@@ -9,7 +9,7 @@ import { alerts } from 'app/helpers/alerts';
 import { BranchsService } from 'app/services/branchs.service';
 import { SignalsService } from 'app/services/signals.service';
 import { ProvidersService } from 'app/services/providers.service';
-import { SelectWithTooltipEditorV2Component } from '../editors/select-with-tooltip-editor-v2.component';
+import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { DetailCellRendererProveedorSucursalComponent } from './detail-cell-renderer-proveedor-sucursal.component';
 
 @Component({

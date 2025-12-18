@@ -5,7 +5,7 @@ import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-community';
-import { SelectWithTooltipEditorV2Component } from '../editors/select-with-tooltip-editor-v2.component';
+import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { BranchsService } from 'app/services/branchs.service';
 import { SignalsService } from 'app/services/signals.service';
 import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMaterialProveedor.service';
@@ -180,7 +180,7 @@ export class DetailCellRendererProveedorSucursalComponent implements ICellRender
         { field: 'capacidadMaxAlmacen', headerName: 'Capacidad Max. Almacen', width: 180, editable: true, type: 'numericColumn', filter: 'agNumberColumnFilter' },
         {
           field: 'tiempoDeEntrega',
-          headerName: 'Tiempo de Entrega',
+          headerName: 'Tiempo de Entrega en semanas',
           width: 150,
           editable: true,
           type: 'numericColumn',

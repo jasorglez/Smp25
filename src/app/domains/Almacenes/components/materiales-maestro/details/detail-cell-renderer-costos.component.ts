@@ -9,7 +9,7 @@ import { Parser } from 'expr-eval';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { DetailCellRendererParametrosComponent } from './detail-cell-renderer-parametros.component';
 import { alerts } from 'app/helpers/alerts';
-import { SelectWithTooltipEditorV2Component } from '../editors/select-with-tooltip-editor-v2.component';
+import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { RawMaterialsService } from 'app/services/raw-materials.service';
 import { MateriaByCatalogService } from 'app/services/MateriaByCatalog.service';
 
@@ -366,7 +366,7 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
         cellStyle: { textAlign: 'center' }
       },
       
-      {
+      /*{
         headerName: 'Costo Final',
         field: 'costoFin',
         width: 150,
@@ -386,7 +386,7 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
           this.currencyPipe.transform(params.value, 'MXN', 'symbol', '1.2-2'),
         cellStyle: { textAlign: 'center' }
       },
-      /*{
+      {
         headerName: 'Fecha Cambio',
         field: 'fechaCambio',
         editable: true,
@@ -398,7 +398,7 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
           } catch (e) { return params.value; }
         },
         cellStyle: { textAlign: 'center' }
-      },*/
+      },
       {
         headerName: 'Parametros',
         field: 'parametros',
@@ -409,7 +409,7 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
           div.innerText = 'Ver';
           return div;
         }
-      },
+      },*/
       {
         headerName: 'Total (Fórmula)',
         field: 'total',
@@ -649,6 +649,12 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
     this.gridApi.applyTransaction({ add: [newRow] });
     this.costosRowData = [...this.costosRowData, newRow];
     this.updatePinnedRowTotals();
+    setTimeout(() => {
+    this.gridApi.startEditingCell({
+      rowIndex: 0,
+      colKey: 'idCatalog'
+    });
+  }, 100);
 
     // Defer collecting data until after the transaction / render cycle completes
   }

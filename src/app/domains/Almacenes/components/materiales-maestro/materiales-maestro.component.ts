@@ -13,7 +13,7 @@ import { DetailCellRendererSubfamiliaComponent } from './details/detail-cell-ren
 import { DetailCellRendererProveedorSucursalComponent } from './details/detail-cell-renderer-proveedor-sucursal.component';
 import { DetailCellRendererParametrosComponent } from './details/detail-cell-renderer-parametros.component';
 import { DetailCellRendererHistoricoComponent } from './details/detail-cell-renderer-historico.component';
-import { SelectWithTooltipEditorV2Component } from './editors/select-with-tooltip-editor-v2.component';
+import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { ImageCellRendererComponent } from './renderers/image-cell-renderer.component';
 import { MaterialsService } from 'app/services/materials.service';
 import { MaterialsResponse } from 'app/interface/materials.interface';
@@ -343,7 +343,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
       // ✅ No hacer refreshCells para columnas de texto editables (insumo, articulo)
       // porque cierra el editor mientras el usuario está escribiendo
-      const editableTextColumns = ['insumo', 'articulo'];
+      const editableTextColumns = ['insumo', 'articulo', 'fecha'];
       if (!editableTextColumns.includes(event.colDef.field)) {
         // Envolver en setTimeout para evitar conflictos de renderizado
         setTimeout(() => {
@@ -373,7 +373,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           defaultToNothingSelected: true,
           //excelMode: 'windows',
         },
-        editable: true,
+        editable: false,
         cellEditor: 'agTextCellEditor',
         valueParser: (params: any) => {
           return params.newValue ? params.newValue.toUpperCase() : '';
@@ -512,20 +512,53 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           return null;
         }
       },
-      /*{ headerName: 'Merma', field: 'merma', editable: true },
+      { headerName: 'Merma', field: 'merma', editable: true },
       {
         headerName: 'Fecha Cambio',
-        field: 'fechaCambio',
+        field: 'fecha',
         editable: true,
-        cellEditor: 'agDateCellEditor',
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          try {
-            return new Date(params.value).toLocaleDateString();
-          } catch (e) { return params.value; }
+        filter: 'agDateColumnFilter',
+        filterParams: {
+          // can be 'windows' or 'mac'
+          defaultToNothingSelected: true,
+          //excelMode: 'mac',
         },
-        cellStyle: { textAlign: 'center' }
-      },*/
+        width: 150,
+        cellEditor: 'agDateCellEditor',
+        valueGetter: (params) => {
+          // Si no hay fecha, usar fecha actual
+          if (!params.data.fecha) {
+            return new Date().toISOString();
+          }
+          return params.data.fecha;
+        },
+        valueSetter: (params) => {
+          if (!params.newValue) {
+            params.data.fecha = new Date().toISOString();
+            return true;
+          }
+
+          const date = new Date(params.newValue);
+          if (isNaN(date.getTime())) {
+            alerts.basicAlert('Error', 'Fecha inválida', 'error');
+            return false;
+          }
+
+          params.data.fecha = date.toISOString();
+          return true;
+        },
+        valueFormatter: (params) => {
+          try {
+            // Si no hay valor, usar fecha actual
+            const dateValue = params.value || new Date().toISOString();
+            const date = new Date(dateValue);
+            if (isNaN(date.getTime())) return '';
+            return `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
+          } catch {
+            return '';
+          }
+        },
+      },
 
       {
         field: 'costo',
@@ -541,17 +574,18 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         },
         cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
       },
-      
       {
-        field: 'subfamilyCount',
-        headerName: 'Donde Usa',
+        field: 'parametros',
+        headerName: 'Parametros',
         width: 150,
         cellRenderer: (params: any) => {
           const count = params.value || 0;
           return count;
         },
-        cellStyle: { backgroundColor: '#fff3e0', cursor: 'pointer', textDecoration: 'underline' }
+        cellStyle: { backgroundColor: '#fff300', cursor: 'pointer', textDecoration: 'underline' }
       },
+      
+      
  
       {
         field: 'providerCount',
@@ -573,6 +607,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         },
         cellStyle: { backgroundColor: '#fff3e0', cursor: 'pointer', textDecoration: 'underline' }
       },
+      
  
       {
         field: 'picture',
@@ -584,7 +619,17 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
             componentParent: this
           }
         }
-      }
+      },
+      {
+        field: 'subfamilyCount',
+        headerName: 'Donde Usa',
+        width: 150,
+        cellRenderer: (params: any) => {
+          const count = params.value || 0;
+          return count;
+        },
+        cellStyle: { backgroundColor: '#fff3e0', cursor: 'pointer', textDecoration: 'underline' }
+      },
     ];
   }
 
@@ -592,6 +637,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   getDetailTypeFromColId(colId: string): string | null {
     if (colId === 'providerCount') return 'proveedores';
     if (colId === 'subfamilyCount') return 'subfamilia';
+    if (colId === 'parametros') return 'parametros';
     if (colId === 'costo') return 'costos';
     if (colId === 'historico') return 'historico';
     return null;
@@ -619,7 +665,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
   onCellClicked(event: any): void {
     // ✅ Si estamos editando una celda, no hacer nada para evitar cerrar el editor
-    const editableColumns = ['insumo', 'articulo'];
+    const editableColumns = ['insumo', 'articulo', 'fecha'];
     const currentColId = event.column.getColId();
     if (editableColumns.includes(currentColId) && this.gridApi.getEditingCells().length > 0) {
       console.log('⚠️ Edición en progreso, ignorando onCellClicked');
@@ -635,7 +681,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     console.log('Fila seleccionada:', this.data);
 
     const colId = event.column.getColId();
-    const isDetailColumn = colId === 'providerCount' || colId === 'subfamilyCount' || colId === 'costo' || colId === 'historico';
+    const isDetailColumn = colId === 'providerCount' || colId === 'subfamilyCount' || colId === 'parametros' || colId === 'costo' || colId === 'historico';
 
     if (isDetailColumn) {
       const node = event.node;
@@ -708,7 +754,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         data: this.data,
         select: this.idSelect, // Pasar los datos de materiales por tabla
         componentParent: this, // Referencia al componente padre
-        gridApi: this.gridApi, // Pasar la API del grid principal
+        mainGridApi: this.gridApi, // Pasar la API del grid principal
         MATERIAL: {
           load: (materialId: number, type: string, callback: (data: any[]) => void) => {
             this.loadMaterialXTableData(materialId, type, callback);
@@ -942,9 +988,11 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       idUbication: 0,
       description: row.articulo || '',
       folio: '',
-      price: 0,
+      price: row.price || 0,
       quantity: 0,
       date: new Date().toISOString(),
+      merma: row.merma || 0,
+      fecha: row.fecha || new Date().toISOString(),
       aplicaResg: false,
       costoMN: 0,
       costoDLL: 0,

@@ -65,7 +65,11 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
+<<<<<<< HEAD
   version: '2.55.19 (17 Diciembre 2025 12:24)'
+=======
+  version: '2.55.20 (18 Diciembre 2025 03:08)'
+>>>>>>> 32973177fd78e825f4f0ebdbab7803ec862ee8a3
 
 };
 
