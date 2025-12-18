@@ -3,7 +3,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, CellDoubleClickedEvent,} from 'ag-grid-enterprise';
 import { CommonModule } from '@angular/common';
 import { FamilySubFamily } from 'app/services/familySubFamily.service';
-import { SelectWithTooltipEditorV2Component } from '../materiales-maestro/editors/select-with-tooltip-editor-v2.component';
+import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { SignalsService } from 'app/services/signals.service';
 import { alerts } from 'app/helpers/alerts';
 import { CatalogsService } from 'app/services/catalogs.service';

@@ -8,7 +8,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { ProvidersService } from 'app/services/providers.service';
 import { CustomersService } from 'app/services/customers.service';
 import { alerts } from 'app/helpers/alerts';
-import { SelectWithTooltipEditorV2Component } from 'app/domains/Almacenes/components/materiales-maestro/editors/select-with-tooltip-editor-v2.component';
+import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 
 @Component({
   selector: 'app-detail-cell-renderer-tipo-proveedor',

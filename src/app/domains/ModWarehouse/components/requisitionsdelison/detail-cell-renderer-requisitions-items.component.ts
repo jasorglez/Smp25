@@ -9,9 +9,10 @@ import { DetailCellRendererRequisitionsPurchasesComponent } from './detail-cell-
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { SignalsService } from 'app/services/signals.service';
-import { SelectWithTooltipEditorV2Component } from 'app/domains/Almacenes/components/materiales-maestro/editors/select-with-tooltip-editor-v2.component';
+import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { ModalService } from 'app/services/modal.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-detail-cell-renderer-requisitions-items',
@@ -207,15 +208,16 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
           quantity: item.quantity || 0,
           price: item.price || 0,
           total: item.total || 0,
-          type: item.type || 'Interno',
+          type: item.type || 'REQUIS',
           idProvider: item.idProvider || 0,
           comment: item.comment || '',
           dateuse: item.dateuse || new Date().toISOString(),
           active: item.active !== undefined ? item.active : true,
-          recurrent: 'Recurrente', // Por defecto recurrente
-          numarticle: item.numarticle || '',
+          recurrent: item.recurrent || 'Recurrente', // Por defecto recurrente
+          nameArticle: item.nameArticle || '',
+          numArticle: item.numArticle || '',
           provint: item.provint || '',
-          priorityType: item.TypePriority || 'Normal',
+          typePriority: item.typePriority || 'Normal',
           pedimiento: false,
           pedimentoNumber: '',
           purchasesData: [], // Se puede cargar después si es necesario
@@ -349,10 +351,6 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
         cellEditorParams: {
           values: ['Recurrente', 'Nuevo']
         },
-        valueSetter: (params: any) => {
-          params.data.recurrent = params.newValue;
-          return true;
-        }
       },
 
       {
@@ -360,7 +358,10 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
         headerName: 'Articulos',
         width: 300,
         cellDataType: false, // Desactivar auto-detección de tipo
-        editable: true,
+        editable: (params) => {
+          // Solo es editable con SelectWithTooltipEditorV2 si es "Recurrente"
+          return params.data.recurrent !== 'Nuevo';
+        },
         cellEditor: SelectWithTooltipEditorV2Component,
         cellEditorParams: (params: any) => {
           // ✅ Filtrar materiales que ya están siendo usados en otras filas
@@ -392,6 +393,10 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
           };
         },
         valueFormatter: (params: any) => {
+          // Si idSupplie es 0, mostrar nameArticle (artículo nuevo)
+          if (params?.data?.idSupplie === 0 && params?.data?.nameArticle) {
+            return params.data.nameArticle;
+          }
           // Preferir el nombre guardado en la fila si existe
           if (params?.data?.article) return params.data.article;
           const material = this.materials?.find(m => m.id === params.value);
@@ -406,6 +411,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
             params.data.materialId = selectedMaterial.id;
             params.data.idSupplie = selectedMaterial.id; // Para compatibilidad con el servidor
             params.data.article = selectedMaterial.description;
+            params.data.nameArticle = selectedMaterial.description; // Guardar nombre en nameArticle
             params.data.code = selectedMaterial.code || '';
             params.data.description = selectedMaterial.description;
             params.data.measure = selectedMaterial.measure || '';
@@ -426,9 +432,26 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
 
           return false;
         },
+        onCellClicked: (params: any) => {
+          // Si el valor de "Recurrente" es "Nuevo", abrir el modal de nuevo artículo
+          if (params.data.recurrent === 'Nuevo') {
+            this.currentRowForNewArticle = params.node;
+            this.newArticle = {
+              name: params.data.nameArticle || '',
+              description: '',
+              link: '',
+              usage: ''
+            };
+            this.isNewArticleModalVisible = true;
+          }
+        },
         cellStyle: (params: any) => {
           if (!params.value && !params?.data?.article) {
             return { backgroundColor: '#f9f9f9', color: '#777' };
+          }
+          // Si es "Nuevo", mostrar cursor pointer para indicar que es clickeable
+          if (params.data.recurrent === 'Nuevo') {
+            return { cursor: 'pointer', backgroundColor: '#fff9e6' };
           }
           return null;
         },
@@ -445,8 +468,6 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
         editable: true,
         valueSetter: (params: any) => {
           params.data.numArticle = params.newValue ? params.newValue.toUpperCase() : '';
-          params.data.__modified = true;
-          this.isAddingNewItem = true;
           return true;
         }
       },
@@ -456,12 +477,6 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
         width: 100,
         editable: true,
         type: 'numericColumn',
-        valueSetter: (params: any) => {
-          params.data.quantity = params.newValue;
-          params.data.__modified = true;
-          this.isAddingNewItem = true;
-          return true;
-        }
       },
       {
         field: 'intorext',
@@ -472,12 +487,6 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
         cellEditorParams: {
           values: ['Externo', 'Interno'] // ✅ CAMBIO 2: Externo primero para que sea el default
         },
-        valueSetter: (params: any) => {
-          params.data.intorext = params.newValue;
-          params.data.__modified = true;
-          this.isAddingNewItem = true;
-          return true;
-        }
       },
       {
         field: 'provint',
@@ -486,8 +495,6 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
         editable: true,
         valueSetter: (params: any) => {
           params.data.provint = params.newValue ? params.newValue.toUpperCase() : '';
-          params.data.__modified = true;
-          this.isAddingNewItem = true;
           return true;
         }
       },
@@ -501,12 +508,6 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
         cellEditorParams: {
           values: ['Normal', 'Urgente']
         },
-        valueSetter: (params: any) => {
-          params.data.typePriority = params.newValue;
-          params.data.__modified = true;
-          this.isAddingNewItem = true;
-          return true;
-        }
       },
       {
         field: 'comment',
@@ -521,8 +522,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
         },
         valueSetter: (params: any) => {
           params.data.comment = params.newValue ? params.newValue.toUpperCase() : '';
-          params.data.__modified = true;
-          this.hasUnsavedChanges = true;
+
           return true;
         },
         cellStyle: { cursor: 'pointer', backgroundColor: '#f0f8ff' }
@@ -663,9 +663,10 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
       article: '',
       quantity: 1,
       recurrent: 'Recurrente',
-      type: 'Externo', // ✅ CAMBIO 2: Default "Externo"
+      type: 'REQUIS', // Tipo por defecto para requisiciones
+      intorext: 'Externo', // ✅ CAMBIO 2: Default "Externo" para Tipo columna
       internalProvider: '',
-      priorityType: 'Normal',
+      typePriority: 'Normal',
       comment: '',
       __isNew: true,
       __modified: false
@@ -717,20 +718,106 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
       return;
     }
 
-    // Lógica para guardar los nuevos items agregados
-    // Aquí iría la llamada al servicio para guardar en la base de datos
-    // Por ahora, simularemos que se guardó
-    this.rowData.forEach(item => {
-      if (item.__isNew) {
-        item.__isNew = false;
-        item.saved = true; // Marcar como guardado
-      }
+    // Filtrar items nuevos y modificados
+    const newItems = this.rowData.filter(item => item.__isNew);
+    const modifiedItems = this.rowData.filter(item => item.__modified && !item.__isNew);
+
+    if (newItems.length === 0 && modifiedItems.length === 0) {
+      alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
+      return;
+    }
+
+    // Guardar items nuevos (POST)
+    const newItemsPromises = newItems.map(item => {
+      // Si el artículo fue creado como "Nuevo", idSupplie debe ser 0
+      const isNewArticle = item.recurrent === 'Nuevo';
+
+      const payload = {
+        idMovement: this.requisitionId,
+        idSupplie: isNewArticle ? 0 : (item.idSupplie || item.materialId || 0),
+        description: item.article || '',
+        nameArticle: item.article || '', // Guardar el nombre en nameArticle
+        code: item.code || '',
+        intorext: item.intorext || 'Externo',
+        measure: item.measure || '',
+        quantity: item.quantity || 0,
+        price: item.price || 0,
+        total: item.total || 0,
+        type: item.type || 'REQUIS',
+        recurrent: item.recurrent || 'Recurrente', // Enviar si es "Nuevo" o "Recurrente"
+        typePriority: item.typePriority || 'Normal',
+        idProvider: item.idProvider || 0,
+        comment: item.comment || '',
+        dateuse: item.dateuse || new Date().toISOString(),
+        active: item.active !== undefined ? item.active : true,
+        numArticle: item.numArticle || '',
+        provint: item.provint || ''
+      };
+
+      console.log('📤 POST - Enviando item nuevo al endpoint:', payload);
+
+      return firstValueFrom(this.ocAndReqsService.addReqItem(payload));
     });
 
-    this.isAddingNewItem = false;
-    this.hasUnsavedChanges = false; // Opcional, dependiendo de tu flujo
-    this.gridApi.redrawRows();
-    alerts.basicAlert('Guardado', 'El nuevo artículo ha sido guardado.', 'success');
+    // Guardar items modificados (PUT) - enviar la fila completa
+    const modifiedItemsPromises = modifiedItems.map(item => {
+      // Si el artículo fue cambiado a "Nuevo", idSupplie debe ser 0
+      const isNewArticle = item.recurrent === 'Nuevo';
+
+      const payload = {
+        id: item.id,
+        idMovement: this.requisitionId,
+        idSupplie: isNewArticle ? 0 : (item.idSupplie || item.materialId || 0),
+        description: item.article || '',
+        nameArticle: item.article || '', // Guardar el nombre en nameArticle
+        code: item.code || '',
+        intorext: item.intorext || 'Externo',
+        measure: item.measure || '',
+        quantity: item.quantity || 0,
+        price: item.price || 0,
+        total: item.total || 0,
+        type: item.type || 'REQUIS',
+        recurrent: item.recurrent || 'Recurrente', // Enviar si es "Nuevo" o "Recurrente"
+        typePriority: item.typePriority || 'Externo',
+        idProvider: item.idProvider || 0,
+        comment: item.comment || '',
+        dateuse: item.dateuse || new Date().toISOString(),
+        active: item.active !== undefined ? item.active : true,
+        numArticle: item.numArticle || '',
+        provint: item.provint || ''
+      };
+
+      console.log('📤 PUT - Enviando item modificado al endpoint:', payload);
+
+      return firstValueFrom(this.ocAndReqsService.updateReqItem(item.id.toString(), payload));
+    });
+
+    // Ejecutar todas las promesas
+    Promise.all([...newItemsPromises, ...modifiedItemsPromises])
+      .then(() => {
+        // Marcar todos los items como guardados
+        this.rowData.forEach(item => {
+          if (item.__isNew || item.__modified) {
+            item.__isNew = false;
+            item.__modified = false;
+            item.saved = true;
+          }
+        });
+
+        this.isAddingNewItem = false;
+        this.hasUnsavedChanges = false;
+        this.gridApi.redrawRows();
+
+        const totalSaved = newItems.length + modifiedItems.length;
+        alerts.basicAlert('Guardado', `Se guardaron ${totalSaved} artículo(s) exitosamente.`, 'success');
+
+        // Recargar datos desde el servidor
+        this.loadData();
+      })
+      .catch((error) => {
+        console.error('Error al guardar artículos:', error);
+        alerts.basicAlert('Error', 'Ocurrió un error al guardar los artículos', 'error');
+      });
   }
 
   saveMultiGuardar() {
@@ -788,23 +875,17 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
   }
 
   onCellValueChanged(event: any) {
-    // Si el cambio no es en la columna 'recurrent', actuar como siempre.
-    if (event.colDef.field !== 'recurrent') {
-      event.data.__modified = true;
-      this.hasUnsavedChanges = true;
-      return;
-    }
+    // Marcar la fila como modificada
+    event.data.__modified = true;
+    this.hasUnsavedChanges = true;
+    this.isAddingNewItem = true;
 
-    // Si el valor cambia a 'Nuevo', abrir el modal.
-    if (event.newValue === 'Nuevo') {
+    // Si el cambio es en la columna 'recurrent' y el valor es 'Nuevo', abrir el modal
+    if (event.colDef.field === 'recurrent' && event.newValue === 'Nuevo') {
       this.currentRowForNewArticle = event.node;
       this.originalRecurrentValue = event.oldValue; // Guardar valor original por si cancela
       this.newArticle = { name: '', description: '', link: '', usage: '' }; // Resetear el formulario
       this.isNewArticleModalVisible = true;
-    } else {
-      // Si cambia a 'Recurrente' o cualquier otro valor, comportamiento normal.
-      event.data.__modified = true;
-      this.hasUnsavedChanges = true;
     }
   }
 
@@ -813,8 +894,9 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
       alerts.basicAlert('Validación', 'El nombre del artículo es obligatorio.', 'warning');
       return;
     }
-    // ✅ Solo rellenar el nombre del artículo
+    // ✅ Solo rellenar el nombre del artículo en ambos campos
     this.currentRowForNewArticle.data.article = this.newArticle.name;
+    this.currentRowForNewArticle.data.nameArticle = this.newArticle.name; // También guardar en nameArticle
     this.currentRowForNewArticle.data.__modified = true;
     this.hasUnsavedChanges = true;
     this.gridApi.refreshCells({ rowNodes: [this.currentRowForNewArticle], columns: ['article'], force: true });
