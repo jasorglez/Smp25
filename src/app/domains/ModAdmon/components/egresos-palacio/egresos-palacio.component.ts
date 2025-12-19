@@ -542,10 +542,19 @@ constructor() {
         headerName: 'Subtotal',
         type: 'number',
         editable: false,
+        hide: true,
         width: 100,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
 
+      {
+        field: 'total',
+        headerName: 'Total',
+        type: 'number',
+        editable: false,
+        width: 100,
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+      },
       {
         field: 'tax',
         headerName: 'Impuestos',
@@ -555,16 +564,14 @@ constructor() {
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
       {
-        field: 'total',
-        headerName: 'Total',
+        field: 'isr',
+        headerName: 'ISR',
         type: 'number',
         editable: false,
-        width: 100,
+        width: 100,        
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
-
-
-
+      
       {
         field: 'createdBy',
         headerName: 'Autoriza',
@@ -710,6 +717,7 @@ onGridReady(params: GridReadyEvent) {
       type: "GASTO",
       subtotal: 0,
       tax: 0,
+      isr: 0,
       total: 0,
       facturado: false,
       createdBy: this.currentUser || 'Usuario temporal',
@@ -976,7 +984,7 @@ private updateMasterRow(updatedData: any) {
 
 
 // ✅ MÉTODO MEJORADO para actualizar la fila del maestro sin perder la selección
-private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: number; total: number }) {
+private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: number; isr?: number; total: number }) {
   console.log('🔄 updateMasterRowInGrid iniciado con:', updatedData);
 
   if (!this.gridApi) {
@@ -1011,6 +1019,9 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
     const currentData = rowNode.data;
     currentData.subtotal = updatedData.subtotal;
     currentData.tax = updatedData.tax;
+    if (updatedData.isr !== undefined) {
+      currentData.isr = updatedData.isr;
+    }
     currentData.total = updatedData.total;
 
     console.log('📝 Datos después de actualizar:', {
@@ -1058,6 +1069,9 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
 
       this.incomes[itemIndex].subtotal = updatedData.subtotal;
       this.incomes[itemIndex].tax = updatedData.tax;
+      if (updatedData.isr !== undefined) {
+        this.incomes[itemIndex].isr = updatedData.isr;
+      }
       this.incomes[itemIndex].total = updatedData.total;
 
       console.log('📝 Datos después de actualizar array:', {
@@ -1345,6 +1359,7 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
         ...mainDocument,
         subtotal: subtotal,
         tax: tax,
+        isr: data.isr,
         total: total
       };
 
@@ -1361,6 +1376,15 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
 
         // Actualizar el contador de conceptos
         this.updateExpenditureCountItems(expenditureId, conceptsData.length);
+
+        // Actualizar la fila del maestro con los nuevos totales incluyendo ISR
+        this.updateMasterRowInGrid({
+          id: expenditureId,
+          subtotal: subtotal,
+          tax: tax,
+          isr: data.isr,
+          total: total
+        });
 
         // Refrescar la lista de egresos para mostrar totales actualizados
         setTimeout(() => this.getExpenditure(), 500);
