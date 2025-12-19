@@ -108,7 +108,7 @@ import { lastValueFrom } from 'rxjs';
           <button class="btn btn-danger btn-sm me-2" (click)="deleteSelectedDocumento()">
             <i class="bi bi-trash"></i> Eliminar
           </button>
-          <button class="btn btn-primary btn-sm position-relative" (click)="saveDocumentosChanges()">
+          <button class="btn btn-primary btn-sm position-relative" (click)="saveDocumentosChanges()" [disabled]="isUploading || !canSaveDocumentos">
             <i class="bi bi-floppy"></i> Guardar
             <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
               *ngIf="hasUnsavedDocumentosChanges">
@@ -243,6 +243,13 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   // Upload progress properties
   isUploading: boolean = false;
   uploadProgress: number = 0;
+
+  // Getter to check if save button should be enabled
+  get canSaveDocumentos(): boolean {
+    return this.documentosData.length > 0 && this.documentosData.every(doc =>
+      doc.nombreArchivo || (doc.uuidCfdi && doc.uuidCfdi.trim() !== '')
+    );
+  }
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
