@@ -441,14 +441,15 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         headerName: 'Detalle Egreso',
         editable: true,
         width: 480,
-        cellEditor: SelectWithTooltipEditorV2Component,
+        cellEditor: 'searchableSelect',
         cellEditorParams: {
           options: this.objetosGastoHijos.map(obj => ({
             id: obj.id,
-            description: obj.codigoNombre,
-            valueAddition: obj.id || '',
-            valueAddition2: obj.codigoNombre || ''
-          }))
+            description: obj.codigoNombre
+          })),
+          valueField: 'id',
+          displayField: 'description',
+          placeholder: 'Buscar detalle de egreso...'
         },
         valueFormatter: (params) => {
           if (!params.value) return '';

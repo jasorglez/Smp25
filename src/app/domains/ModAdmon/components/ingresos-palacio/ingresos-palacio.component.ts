@@ -1,10 +1,10 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, OnInit } from '@angular/core';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { ModalService } from 'app/services/modal.service';
 import { AgGridModule } from 'ag-grid-angular';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
-import { FormsModule, NgSelectOption } from '@angular/forms';
+import { FormBuilder, FormGroup, FormsModule, NgSelectOption, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { alerts } from 'app/helpers/alerts';
 import { lastValueFrom, concat, toArray, catchError, EMPTY, forkJoin, tap, map } from 'rxjs';
@@ -26,17 +26,18 @@ import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-toolt
 import { CatalogsService } from 'app/services/catalogs.service';
 import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
+import * as bootstrap from 'bootstrap';
 
 @Component({
   selector: 'app-ingresos-palacio',
   standalone: true,
-  imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
+  imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule, ReactiveFormsModule,
             FormsModule, AdditionalInfoComponent, ConceptsincomeComponent, ButtonCellRendererIncomeComponent,
             DetailCellRendererIncomeComponent, SelectWithTooltipEditorV2Component],
   templateUrl: './ingresos-palacio.component.html',
   styleUrl: './ingresos-palacio.component.scss'
 })
-export class IngresosPalacioComponent {
+export class IngresosPalacioComponent implements OnInit {
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
   private modalServiceTable = inject(ModalService);
   private administrationService = inject(AdministrationService);
@@ -50,14 +51,26 @@ export class IngresosPalacioComponent {
   private rootService = inject(RootService);
   private base64EncodeService = inject(Base64EncodeService);
   authService = inject(AuthService);
-
+  private formBuilder = inject(FormBuilder);
 
   ngOnInit() {
+    // Si quieres la fecha '2025-10' como valor inicial, ponla aquí.
+    // Si quieres que sea dinámica (el mes anterior), puedes descomentar las líneas de abajo.
+    const hoy = new Date();
+     const mes = this.obtenerAnoMes(hoy);
+     const mesAnterior = new Date(hoy);
+     mesAnterior.setMonth(hoy.getMonth() - 1);
+     const mesAnteriorStr = this.obtenerAnoMes(mesAnterior);
 
+    this.myForm = this.formBuilder.group({
+      tipoReporte: ['GENERAL', Validators.required],
+      fechaInicio: ['2024-10', Validators.required],
+      fechaFin: [mes, Validators.required]
+    });
   }
 
   constructor() {
-
+    // La inicialización del formulario se ha movido a ngOnInit
      this.onSelectedRow = this.onSelectedRow.bind(this);
      this.onSelectionChanged = this.onSelectionChanged.bind(this);
 
@@ -85,7 +98,6 @@ export class IngresosPalacioComponent {
         setTimeout(() => this.signalsService.resetSignalIncAndExp());
       }
     }, { allowSignalWrites: true }); // Add this option);
-
   };
 
   showform : string = '';
@@ -95,13 +107,17 @@ export class IngresosPalacioComponent {
   users: any[] = [];
   id: number;
   notSavedChanges: boolean = false;
+  private modalInstance: any = null;
   newlyAddedRows: string[] = [];
+  myForm: FormGroup;
   selectedIncomes: any = null;
   currentUser: string;
   root: number;
   idBranch: number;
   bankAccounts: any[] = [];
   prefixAndConsecutive: any[] = [];
+  tipos: any[] = [];
+
 
   private _idAccount: number; // Variable de respaldo para el setter
 
@@ -114,8 +130,11 @@ export class IngresosPalacioComponent {
      // Agregar log cuando se selecciona una cuenta
     if (value) {
       const selectedAccount = this.bankAccounts.find(account => account.id === value);
+      console.log('//////Cuenta seleccionada:', selectedAccount);
+
       if (selectedAccount) {
         const accountDetails = `${selectedAccount.nameAccount} - ${selectedAccount.bankName}`;
+
         this.trackingService.addLog(
           this.trackingService.getnameComp(), `Selección de cuenta bancaria: ${accountDetails}`, 'Menu Administración - Palacio Municipal - Ingresos',
           this.trackingService.getEmail()
@@ -131,6 +150,12 @@ export class IngresosPalacioComponent {
 
   get idAccount(): number {
     return this._idAccount;
+  }
+
+  obtenerAnoMes(fecha: Date): string {
+    const año = fecha.getFullYear();
+    const mes = String(fecha.getMonth() + 1).padStart(2, '0'); // +1 porque enero es 0
+    return `${año}-${mes}`;
   }
 
 
@@ -823,6 +848,14 @@ async saveChanges() {
     this.administrationService.getAccountBanks(this.root).subscribe(
       (data: any) => {
         this.bankAccounts = data;
+        this.tipos = this.bankAccounts.map(acc => {
+        const [nombre, tipo] = acc.nameAccount.split('-');
+        return {
+          nombre: nombre.trim(),
+          tipo: tipo?.trim()
+        };
+      });
+      console.log(this.tipos);
       },
       error => {
         console.error(error);
@@ -1157,6 +1190,58 @@ async saveChanges() {
       // En caso de error, retornar 0 para empezar desde el principio
       return 0;
     }
+  }
+  excel(){
+    const modalElement = document.getElementById('optionExcel');
+        if (modalElement) {
+          this.modalInstance = new bootstrap.Modal(modalElement, {
+            backdrop: 'static',
+            keyboard: false
+          });
+          this.modalInstance.show();
+        }
+  }
+  
+  onSubmit() {
+    if (this.myForm.invalid) {
+      alerts.basicAlert('Formulario inválido', 'Por favor, seleccione las fechas de inicio y fin.', 'error');
+      return;
+    }
+
+    const { fechaInicio, fechaFin, tipoReporte } = this.myForm.value;
+
+    this.incomesAndExpensesService.getExcel(fechaInicio, fechaFin, tipoReporte).subscribe({
+      next: (base64String: string) => {
+        try {
+          const byteCharacters = atob(base64String);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = `Reporte_Ingresos_${new Date().toISOString().slice(0, 10)}.xlsx`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          this.closeModal();
+        } catch (error) {
+          console.error('Error al decodificar o descargar el archivo:', error);
+          alerts.basicAlert('Error', 'No se pudo procesar el archivo para la descarga.', 'error');
+        }
+      },
+      error: (err) => {
+        console.error('Error al generar el Excel:', err);
+        alerts.basicAlert('Error', 'Ocurrió un error al generar el reporte en el servidor.', 'error');
+      }
+    });
+  }
+
+  closeModal() {
+    this.modalInstance?.hide();
   }
 
 }
