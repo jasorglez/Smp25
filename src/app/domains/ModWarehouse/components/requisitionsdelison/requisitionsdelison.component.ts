@@ -394,6 +394,33 @@ export class RequisitionsDelisonComponent implements OnInit {
         cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
       },
       {
+        field: 'pdfReport',
+        headerName: 'PDF',
+        width: 80,
+        cellRenderer: (params: any) => {
+          // Solo mostrar ícono si no es temporal
+          if (String(params.data.id).startsWith('temp_')) {
+            return '<span style="color: #999;">N/A</span>';
+          }
+          return '<i class="bi bi-file-earmark-pdf" style="font-size: 1.2rem; color: #dc3545; cursor: pointer;"></i>';
+        },
+        editable: false,
+        cellStyle: (params: any) => {
+          if (String(params.data.id).startsWith('temp_')) {
+            return { textAlign: 'center' };
+          }
+          return { textAlign: 'center', cursor: 'pointer' };
+        },
+        onCellClicked: (params: any) => {
+          // Validar que no sea una requisición temporal
+          if (String(params.data.id).startsWith('temp_')) {
+            return; // No hacer nada si es temporal
+          }
+          // Generar PDF directamente
+          this.receiptsDelisonService.generateOC(params.data.id, 'open');
+        }
+      },
+      {
         field: 'comments',
         headerName: 'Cumplimiento Pedimento',
         width: 200,
