@@ -69,5 +69,14 @@ export class IncomesAndExpensesService {
     deleteConceptFromIncomesAndExpenses(id: number): Observable<any> {
       return this.http.delete<any>(environment.urlAdministration + '/ConceptsxIncorExp/' + id, { headers: this.tracking.getHeaders() });
     }
+    getExcel(FechaIncio: string, FechaFin: string, Type: string): Observable<any> {
+  return this.http.post<any>(
+    environment.urlAdministration +
+    `/Incomeandexpense/ProcesadorExcel?FechaIncio=${FechaIncio}&FechaFin=${FechaFin}&Type=${Type}`,
+    {}, // body vacío como en -d ''
+    { headers: this.tracking.getHeaders() }
+  );
+}
+
 
 }

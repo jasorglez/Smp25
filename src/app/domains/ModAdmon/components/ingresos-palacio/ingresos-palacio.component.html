@@ -86,8 +86,15 @@
           [disabled]="!idAccount || !selectedIncomes"
 
         >
+        
           <i class="bi bi-trash"></i>
         </button>
+         <button 
+              type="button" 
+              class="btn btn-success position-relative" 
+              (click)="excel()">
+            <img src='./assets/img/excel.png' width="17" height="17">
+         </button>
       </div>
     </div>
 
@@ -112,4 +119,42 @@
     </div>
   </div>
 
+</div>
+
+<div class="modal fade" id="optionExcel" tabindex="-1" aria-labelledby="optionModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow-lg border-0 rounded-4">
+      <div class="modal-header">
+        <h5 class="modal-title" id="optionModalLabel">Exportar Ingresos a Excel</h5>
+        <button type="button" class="btn-close" (click)="closeModal()" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form [formGroup]="myForm" (ngSubmit)="onSubmit()">
+          <div class="mb-3">
+            <label for="tipoReporte" class="form-label">Tipo de Reporte</label>
+            <select id="tipoReporte" class="form-select" formControlName="tipoReporte">
+              <option *ngFor="let tipo of tipos" [value]="tipo.tipo">{{ tipo.tipo }}</option>
+              <option value="GENERAL">GENERAL</option>
+            </select>
+          </div>
+          <div class="row g-3">
+            <div class="col">
+              <label for="fechaInicio" class="form-label">Fecha de inicio</label>
+              <input type="month" class="form-control" id="fechaInicio" min="2024-10"  formControlName="fechaInicio">
+            </div>
+            <div class="col">
+              <label for="fechaFin" class="form-label">Fecha de fin</label>
+              <input type="month" class="form-control" id="fechaFin" min="2024-10" formControlName="fechaFin">
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeModal()">Cancelar</button>
+        <button type="submit" class="btn btn-success" [disabled]="myForm.invalid" (click)="onSubmit()">
+          <i class="bi bi-file-earmark-excel"></i> Exportar
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
