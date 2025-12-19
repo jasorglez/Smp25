@@ -1300,7 +1300,11 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         headerName: 'UUID CFDI/COMENTARIO',
         editable: true,
         width: 500,
-        type: 'text'
+        type: 'text',
+        cellEditor: 'agTextCellEditor',
+        cellEditorParams: {
+          maxLength: 36
+        }
       }
     ];
   }
@@ -1392,6 +1396,20 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       alerts.basicAlert(
         'Validación',
         'Todos los documentos deben tener tipo de documento.',
+        'error'
+      );
+      return;
+    }
+
+    // Validar que UUID CFDI no exceda 36 caracteres
+    const hasInvalidUuid = this.documentosData.some(doc =>
+      doc.uuidCfdi && doc.uuidCfdi.length > 36
+    );
+
+    if (hasInvalidUuid) {
+      alerts.basicAlert(
+        'Validación',
+        'El UUID CFDI no puede exceder 36 caracteres.',
         'error'
       );
       return;
