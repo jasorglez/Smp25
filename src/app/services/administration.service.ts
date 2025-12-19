@@ -62,6 +62,10 @@ export class AdministrationService {
     return this.http.get(`${environment.urlAdministration}/Incomeandexpense/Bussines/balance?id=${idAccount}`, { headers: this.trackingService.getHeaders() });
   }
 
+   updateRowsIncorExp(id: number, data: any): Observable<any> {
+     return this.http.patch<any[]>(`${environment.urlAdministration}/Incomeandexpense/counts/${id}`, data, { headers: this.trackingService.getHeaders() });
+   }
+
   // Setup Puestos
   getSetupManagementInfo(idRoot: number): Observable<any> {
     return this.http.get(`${environment.urlAdministration}/SetupManagement/${idRoot}`, { headers: this.trackingService.getHeaders() });
@@ -262,6 +266,10 @@ updateCertificates(idRoot: number, formData: FormData): Observable<any> {
   getByNivelObjeto(idRoot: number, idNivel: number) {
     return this.http.get(`${environment.urlAdministration}/ObjetoGasto/getByNivel/${idRoot}/${idNivel}`, { headers: this.trackingService.getHeaders() });
   }
+  
+  getEspecifica(idRoot: number, codigo: string) {
+    return this.http.get(`${environment.urlAdministration}/ObjetoGasto/getNivel4PorCodigoNivel1/${idRoot}/${codigo}`, { headers: this.trackingService.getHeaders() });
+  }
 
   addObjectClassification(data: any): Observable<any> {
     return this.http.post(`${environment.urlAdministration}/ObjetoGasto`, data, { headers: this.trackingService.getHeaders() });
@@ -278,6 +286,8 @@ updateCertificates(idRoot: number, formData: FormData): Observable<any> {
   getDocumentComprobados(id: number) {
     return this.http.get(`${environment.urlAdministration}/DocumentosComprobados/concept/${id}`, { headers: this.trackingService.getHeaders() });
   }
+
+  
 
    addDocumentComprobados(data: any): Observable<any> {
     return this.http.post(`${environment.urlAdministration}/DocumentosComprobados`, data, { headers: this.trackingService.getHeaders() });

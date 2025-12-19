@@ -5,7 +5,7 @@ import { ModalService } from 'app/services/modal.service';
 import { AgGridModule } from 'ag-grid-angular';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { FormsModule } from '@angular/forms';
-import { CommonModule } from '@angular/common';
+import { CommonModule } from '@angular/common'; 
 import { alerts } from 'app/helpers/alerts';
 import { lastValueFrom, concat, toArray, catchError, EMPTY, forkJoin, tap, map } from 'rxjs';
 import { AdministrationService } from 'app/services/administration.service';
@@ -74,8 +74,8 @@ constructor() {
     console.log('📊 Cargando datos con idRoot:', this.idRoot, 'idBranch:', this.idBranch);
     await this.getBillingManagementInfo();
     await this.getBankAccounts();
-    await this.getExpenditure();
     await this.getBills();
+    await this.getExpenditure();
     await this.loadAuthorizers();
     await this.getCurrentUser();
     await this.obtenerBranchs();
@@ -294,15 +294,14 @@ constructor() {
         // Agregar propiedades para master-detail
         this.incomes = filtered.map(income => ({
           ...income,
-          countrow: 0, // Se actualizará al cargar conceptos
-          countDocumentos: 0, // Se actualizará al cargar documentos comprobados
+          countItems: income.countItems || 0, // Usar valor de la BD si existe
+          countDocomps: income.countDocomps || 0, // Usar valor de la BD si existe
           detailType: null,
-          detailData: []
+          detailData: [],
+          objetoGastoCodigo: this.expenses.find(e => e.id === income.idExpend)?.codigo || ''
         }));
 
-        // Cargar el conteo de conceptos y documentos para cada egreso
-        this.loadConceptCounts();
-        this.loadDocumentosComprobadosCount();
+        // Contadores se actualizan localmente al interactuar con el detalle
       },
       error: (err) => {
         // Manejo de errores HTTP
@@ -398,14 +397,14 @@ constructor() {
   get colMaster(): ColDef[] {
     return [
       {
-        field: 'countrow',
+        field: 'countItems',
         headerName: 'Items',
         width: 90,
         cellRenderer: ButtonCellRendererExpenditureComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleCascade(node),
         },
-        valueGetter: params => params.data.countrow || 0,
+        valueGetter: params => params.data.countItems || 0,
         editable: false,
         cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
       },
@@ -423,7 +422,7 @@ constructor() {
         }
       },
       {
-        field: 'countDocumentos',
+        field: 'countDocomps',
         headerName: 'Comprobación',
         width: 130,
         cellRenderer: ButtonCellRendererExpenditureComponent,
@@ -432,7 +431,7 @@ constructor() {
           icon: 'bi-file-earmark-check',
           title: 'Hacer clic para ver los documentos comprobados'
         },
-        valueGetter: params => params.data.countDocumentos || 0,
+        valueGetter: params => params.data.countDocomps || 0,
         editable: false,
         cellStyle: { backgroundColor: '#d4edda', cursor: 'pointer', textDecoration: 'underline' }
       },
@@ -651,7 +650,7 @@ onGridReady(params: GridReadyEvent) {
           this.deleteConceptRow(params, callback);
         },
         updateCount: (expenditureId: number, count: number) => {
-          this.updateExpenditureConceptCount(expenditureId, count);
+          this.updateExpenditureCountItems(expenditureId, count);
         }
       },
       DOCUMENTOS_COMPROBADOS: {
@@ -665,7 +664,7 @@ onGridReady(params: GridReadyEvent) {
           this.deleteDocumentoComprobado(params, callback);
         },
         updateCount: (expenditureId: number, count: number) => {
-          this.updateExpenditureDocumentosCount(expenditureId, count);
+          this.updateExpenditureCountDocomps(expenditureId, count);
         }
       }
     }
@@ -1248,12 +1247,12 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
 
   // ==================== MÉTODOS PARA CONCEPTOS ====================
 
-  loadConceptCounts() {
+  loadCountItems() {
     // Cargar el conteo de conceptos para cada egreso
     this.incomes.forEach(income => {
       this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(income.id).subscribe({
         next: (concepts: any[]) => {
-          this.updateExpenditureConceptCount(income.id, concepts.length);
+          this.updateExpenditureCountItems(income.id, concepts.length);
         },
         error: (error) => {
           console.error('Error loading concept count for expenditure:', income.id, error);
@@ -1262,15 +1261,30 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
     });
   }
 
-  updateExpenditureConceptCount(expenditureId: number, count: number) {
+  updateExpenditureCountItems(expenditureId: number, count: number) {
     if (this.gridApi) {
       this.gridApi.forEachNode((node) => {
         if (node.data && node.data.id === expenditureId) {
-          node.data.countrow = count;
+          node.data.countItems = count;
           this.gridApi.refreshCells({
             rowNodes: [node],
-            columns: ['countrow'],
+            columns: ['countItems'],
             force: true
+          });
+
+          // Guardar en el servidor
+          const dataToSave = {
+            countItems: count,
+            countDocomps: node.data.countDocomps || 0,
+            modifiedBy: this.currentUser
+          };
+          this.administrationService.updateRowsIncorExp(expenditureId, dataToSave).subscribe({
+            next: () => {
+              console.log('Contador de items actualizado en servidor');
+            },
+            error: (error) => {
+              console.error('Error actualizando contador de items:', error);
+            }
           });
         }
       });
@@ -1336,7 +1350,7 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
         );
 
         // Actualizar el contador de conceptos
-        this.updateExpenditureConceptCount(expenditureId, conceptsData.length);
+        this.updateExpenditureCountItems(expenditureId, conceptsData.length);
 
         // Refrescar la lista de egresos para mostrar totales actualizados
         setTimeout(() => this.getExpenditure(), 500);
@@ -1386,12 +1400,12 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
 
   // ==================== MÉTODOS PARA DOCUMENTOS COMPROBADOS ====================
 
-  loadDocumentosComprobadosCount() {
+  loadCountDocomps() {
     // Cargar el conteo de documentos comprobados para cada egreso
     this.incomes.forEach(income => {
       this.administrationService.getDocumentComprobados(income.id).subscribe({
         next: (documentos: any[]) => {
-          this.updateExpenditureDocumentosCount(income.id, documentos.length);
+          this.updateExpenditureCountDocomps(income.id, documentos.length);
         },
         error: (error) => {
           console.error('Error loading document count for expenditure:', income.id, error);
@@ -1400,15 +1414,30 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
     });
   }
 
-  updateExpenditureDocumentosCount(expenditureId: number, count: number) {
+  updateExpenditureCountDocomps(expenditureId: number, count: number) {
     if (this.gridApi) {
       this.gridApi.forEachNode((node) => {
         if (node.data && node.data.id === expenditureId) {
-          node.data.countDocumentos = count;
+          node.data.countDocomps = count;
           this.gridApi.refreshCells({
             rowNodes: [node],
-            columns: ['countDocumentos'],
+            columns: ['countDocomps'],
             force: true
+          });
+
+          // Guardar en el servidor
+          const dataToSave = {
+            countItems: node.data.countItems || 0,
+            countDocomps: count,
+            modifiedBy: this.currentUser
+          };
+          this.administrationService.updateRowsIncorExp(expenditureId, dataToSave).subscribe({
+            next: () => {
+              console.log('Contador de documentos actualizado en servidor');
+            },
+            error: (error) => {
+              console.error('Error actualizando contador de documentos:', error);
+            }
           });
         }
       });

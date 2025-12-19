@@ -108,7 +108,7 @@ import { lastValueFrom } from 'rxjs';
           <button class="btn btn-danger btn-sm me-2" (click)="deleteSelectedDocumento()">
             <i class="bi bi-trash"></i> Eliminar
           </button>
-          <button class="btn btn-primary btn-sm position-relative" (click)="saveDocumentosChanges()">
+          <button class="btn btn-primary btn-sm position-relative" (click)="saveDocumentosChanges()" [disabled]="isUploading || !canSaveDocumentos">
             <i class="bi bi-floppy"></i> Guardar
             <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
               *ngIf="hasUnsavedDocumentosChanges">
@@ -244,6 +244,13 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   isUploading: boolean = false;
   uploadProgress: number = 0;
 
+  // Getter to check if save button should be enabled
+  get canSaveDocumentos(): boolean {
+    return this.documentosData.length > 0 && this.documentosData.every(doc =>
+      doc.nombreArchivo || (doc.uuidCfdi && doc.uuidCfdi.trim() !== '')
+    );
+  }
+
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   ngOnInit() {
@@ -370,24 +377,23 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   }
 
   loadObjetosGastoHijos() {
-    // Obtener el idExpend del registro maestro (que ahora es el objeto de gasto nivel 1)
-    const idExpend = this.expenditureData?.idExpend;
+    // Obtener el código del objeto de gasto del registro maestro
+    const objetoGastoCodigo = this.expenditureData?.objetoGastoCodigo;
 
-    if (!idExpend || !this.context || !this.context.administrationService) {
-      console.warn('No se puede cargar objetos de gasto hijos: falta idExpend o administrationService');
+    if (!objetoGastoCodigo || !this.context || !this.context.administrationService) {
+      console.warn('No se puede cargar objetos de gasto hijos: falta objetoGastoCodigo o administrationService');
       this.objetosGastoHijos = [];
       return;
     }
 
-    // Llamar al endpoint para obtener los objetos de gasto nivel 4
-    this.context.administrationService.getByNivelObjeto(this.context.idRoot, 4).subscribe({
+    // Llamar al endpoint getEspecifica para obtener los objetos de gasto específicos usando el código
+    this.context.administrationService.getEspecifica(this.context.idRoot, objetoGastoCodigo).subscribe({
       next: (data: any[]) => {
-        // Agregar campo displayText para búsqueda combinando codigo + nombre
+        // Los datos ya vienen con id y codigoNombre
         this.objetosGastoHijos = (data || []).map(obj => ({
           ...obj,
-          displayText: `${obj.codigo} - ${obj.nombre}`
+          displayText: obj.codigoNombre // Usar codigoNombre como displayText
         }));
-        console.log('Objetos de gasto nivel 4 cargados:', this.objetosGastoHijos);
 
         // Actualizar las columnas del grid con los nuevos valores
         if (this.gridApi) {
@@ -395,7 +401,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         }
       },
       error: (error) => {
-        console.error('Error loading objetos de gasto nivel 4:', error);
+        console.error('Error loading objetos de gasto específicos:', error);
         this.objetosGastoHijos = [];
       }
     });
@@ -439,15 +445,15 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         cellEditorParams: {
           options: this.objetosGastoHijos.map(obj => ({
             id: obj.id,
-            description: obj.displayText,
-            valueAddition: obj.codigo || '',
-            valueAddition2: obj.nombre || ''
+            description: obj.codigoNombre,
+            valueAddition: obj.id || '',
+            valueAddition2: obj.codigoNombre || ''
           }))
         },
         valueFormatter: (params) => {
           if (!params.value) return '';
           const found = this.objetosGastoHijos.find(obj => obj.id === params.value);
-          return found ? found.displayText : params.value;
+          return found ? found.codigoNombre : params.value;
         },
         cellStyle: (params) => {
           // Marcar en rojo si está vacío (obligatorio)
@@ -637,7 +643,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     if (idCatIng) {
       const selectedObjeto = this.objetosGastoHijos.find(obj => obj.id === idCatIng);
       if (selectedObjeto) {
-        newConcept.description = selectedObjeto.displayText;
+        newConcept.description = selectedObjeto.codigoNombre;
       }
     }
 
@@ -760,8 +766,8 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       this.lastSelectedIdCatIng = event.newValue; // Guardar para copiar en nuevas filas
       const selectedObjeto = this.objetosGastoHijos.find(obj => obj.id === event.newValue);
       if (selectedObjeto) {
-        // Copiar el displayText (codigo - nombre) del objeto de gasto al campo Concepto
-        event.data.description = selectedObjeto.displayText;
+        // Copiar el codigoNombre del objeto de gasto al campo Concepto
+        event.data.description = selectedObjeto.codigoNombre;
 
         // Establecer la fecha igual a la fecha de pago del maestro
         event.data.dateExpend = this.params.data.date;

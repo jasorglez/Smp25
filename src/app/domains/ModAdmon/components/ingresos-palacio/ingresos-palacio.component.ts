@@ -22,6 +22,7 @@ import { AuthService } from 'app/services/auth.service';
 import { CatalogadmonService } from 'app/services/catalogadmon.service';
 import { ButtonCellRendererIncomeComponent } from './button-cell-renderer.component';
 import { DetailCellRendererIncomeComponent } from './detail-cell-renderer-income.component';
+import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
@@ -31,7 +32,7 @@ import { Base64EncodeService } from 'app/services/base64encode.service';
   standalone: true,
   imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
             FormsModule, AdditionalInfoComponent, ConceptsincomeComponent, ButtonCellRendererIncomeComponent,
-            DetailCellRendererIncomeComponent],
+            DetailCellRendererIncomeComponent, SelectWithTooltipEditorV2Component],
   templateUrl: './ingresos-palacio.component.html',
   styleUrl: './ingresos-palacio.component.scss'
 })
@@ -247,13 +248,12 @@ export class IngresosPalacioComponent {
         // Agregar propiedades para master-detail
         this.incomes = filtered.map(income => ({
           ...income,
-          countrow: 0, // Se actualizará al cargar conceptos
+          countItems: income.countItems || 0, // Usar valor de la BD si existe
           detailType: null,
           detailData: []
         }));
 
-        // Cargar el conteo de conceptos para cada ingreso
-        this.loadConceptCounts();
+        // Contadores se actualizan localmente al interactuar con el detalle
 
       },
       error: (err) => {
@@ -351,14 +351,14 @@ export class IngresosPalacioComponent {
   get colMaster(): ColDef[] {
     return [
       {
-        field: 'countrow',
+        field: 'countItems',
         headerName: 'Items',
         width: 90,
         cellRenderer: ButtonCellRendererIncomeComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleCascade(node),
         },
-        valueGetter: params => params.data.countrow || 0,
+        valueGetter: params => params.data.countItems || 0,
         editable: false,
         cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
       },
@@ -432,9 +432,14 @@ export class IngresosPalacioComponent {
 
       {
         field: 'idCustomer', headerName: 'Catálogo Ingreso', editable: true, width: 180,
-        cellEditor: 'searchableSelect',
+        cellEditor: SelectWithTooltipEditorV2Component,
         cellEditorParams: {
-          options: this.ingresosCatalog,
+          options: this.ingresosCatalog.map(obj => ({
+            id: obj.id,
+            description: obj.description,
+            valueAddition: obj.id || '',
+            valueAddition2: obj.description || ''
+          }))
         },
         valueFormatter: (params) => {
           const foundItem = this.ingresosCatalog
@@ -582,7 +587,7 @@ export class IngresosPalacioComponent {
             this.deleteConceptRow(params, callback);
           },
           updateCount: (incomeId: number, count: number) => {
-            this.updateIncomeConceptCount(incomeId, count);
+            this.updateIncomeCountItems(incomeId, count);
           }
         }
       }
@@ -949,14 +954,15 @@ async saveChanges() {
     }
   }
 
+
   // ==================== MÉTODOS PARA CONCEPTOS ====================
 
-  loadConceptCounts() {
+  loadCountItems() {
     // Cargar el conteo de conceptos para cada ingreso
     this.incomes.forEach(income => {
       this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(income.id).subscribe({
         next: (concepts: any[]) => {
-          this.updateIncomeConceptCount(income.id, concepts.length);
+          this.updateIncomeCountItems(income.id, concepts.length);
         },
         error: (error) => {
           console.error('Error loading concept count for income:', income.id, error);
@@ -965,17 +971,30 @@ async saveChanges() {
     });
   }
 
-  updateIncomeConceptCount(incomeId: number, count: number) {
+  updateIncomeCountItems(incomeId: number, count: number) {
     if (this.gridApi) {
       this.gridApi.forEachNode((node) => {
         if (node.data && node.data.id === incomeId) {
-          node.data.countrow = count;
+          node.data.countItems = count;
           this.gridApi.refreshCells({
             rowNodes: [node],
-            columns: ['countrow'],
+            columns: ['countItems'],
             force: true
           });
-          console.log(`✅ Actualizado "Items" para ingreso ${incomeId}: ${count}`);
+
+          // Guardar en el servidor
+          const dataToSave = {
+            countItems: count,
+            modifiedBy: this.currentUser
+          };
+          this.administrationService.updateRowsIncorExp(incomeId, dataToSave).subscribe({
+            next: () => {
+              console.log('Contador de items actualizado en servidor');
+            },
+            error: (error) => {
+              console.error('Error actualizando contador de items:', error);
+            }
+          });
         }
       });
     }
@@ -1040,7 +1059,7 @@ async saveChanges() {
         );
 
         // Actualizar el contador de conceptos
-        this.updateIncomeConceptCount(incomeId, conceptsData.length);
+        this.updateIncomeCountItems(incomeId, conceptsData.length);
 
         // Refrescar la lista de ingresos para mostrar totales actualizados
         this.signalsService.triggerUpdateIncAndExp();
@@ -1088,6 +1107,7 @@ async saveChanges() {
     }
     return cleanedData;
   }
+
 
   /**
    * Obtiene el último consecutivo usado para una cuenta bancaria específica
