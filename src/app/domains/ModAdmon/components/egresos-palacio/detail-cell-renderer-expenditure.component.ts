@@ -427,7 +427,11 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         editable: true,
         cellDataType: 'date',
         width: 100,
-        valueFormatter: (params) => this.formatDate(params.value)
+        valueFormatter: (params) => this.formatDate(params.value),
+        cellEditorParams: {
+          dateFormat: 'dd/MM/yyyy',
+          datePickerFormat: 'dd/MM/yyyy'
+        }
       },
       {
         field: 'quantity',
@@ -441,14 +445,15 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         headerName: 'Detalle Egreso',
         editable: true,
         width: 480,
-        cellEditor: SelectWithTooltipEditorV2Component,
+        cellEditor: 'searchableSelect',
         cellEditorParams: {
           options: this.objetosGastoHijos.map(obj => ({
             id: obj.id,
-            description: obj.codigoNombre,
-            valueAddition: obj.id || '',
-            valueAddition2: obj.codigoNombre || ''
-          }))
+            description: obj.codigoNombre
+          })),
+          valueField: 'id',
+          displayField: 'description',
+          placeholder: 'Buscar detalle de egreso...'
         },
         valueFormatter: (params) => {
           if (!params.value) return '';
@@ -564,6 +569,9 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     rowHeight: 35,
     animateRows: true,
     rowSelection: 'single',
+    dateComponentParams: {
+      dateFormat: 'dd/MM/yyyy'
+    },
     getRowClass: (params) => {
       if (params.node.isSelected()) {
         return 'selected-row';
@@ -1168,11 +1176,11 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       if (isNaN(date.getTime())) {
         return 'Fecha inválida';
       }
-      return date.toLocaleDateString('es-ES', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric'
-      });
+      return [
+        date.getDate().toString().padStart(2, '0'),
+        (date.getMonth() + 1).toString().padStart(2, '0'),
+        date.getFullYear()
+      ].join('/');
     } catch (error) {
       console.error('Error al formatear fecha:', error);
       return 'Error en fecha';
