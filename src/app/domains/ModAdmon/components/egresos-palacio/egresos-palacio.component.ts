@@ -74,8 +74,8 @@ constructor() {
     console.log('📊 Cargando datos con idRoot:', this.idRoot, 'idBranch:', this.idBranch);
     await this.getBillingManagementInfo();
     await this.getBankAccounts();
-    await this.getExpenditure();
     await this.getBills();
+    await this.getExpenditure();
     await this.loadAuthorizers();
     await this.getCurrentUser();
     await this.obtenerBranchs();
@@ -297,7 +297,8 @@ constructor() {
           countItems: income.countItems || 0, // Usar valor de la BD si existe
           countDocomps: income.countDocomps || 0, // Usar valor de la BD si existe
           detailType: null,
-          detailData: []
+          detailData: [],
+          objetoGastoCodigo: this.expenses.find(e => e.id === income.idExpend)?.codigo || ''
         }));
 
         // Contadores se actualizan localmente al interactuar con el detalle
