@@ -10,6 +10,7 @@ import { alerts } from 'app/helpers/alerts';
 import { lastValueFrom, concat, toArray, catchError, EMPTY, forkJoin, tap, map } from 'rxjs';
 import { AdministrationService } from 'app/services/administration.service';
 import { SearchableSelectComponent } from 'app/shared/searchable-select/searchable-select.component';
+import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { UsersService } from 'app/services/users.service';
 import { SignalsService } from 'app/services/signals.service';
@@ -30,7 +31,7 @@ import { Base64EncodeService } from 'app/services/base64encode.service';
   selector: 'app-egresos-palacio',
   standalone: true,
   imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
-    FormsModule, ButtonCellRendererExpenditureComponent, DetailCellRendererExpenditureComponent],
+    FormsModule, ButtonCellRendererExpenditureComponent, DetailCellRendererExpenditureComponent, SelectWithTooltipEditorV2Component],
   templateUrl: './egresos-palacio.component.html',
   styleUrl: './egresos-palacio.component.scss'
 })
@@ -468,11 +469,14 @@ constructor() {
           }
           return true
         }, width: 250,
-                cellEditor: 'searchableSelect',
+                cellEditor: SelectWithTooltipEditorV2Component,
                 cellEditorParams: {
-                  options: this.expenses,
-                  valueField: 'id',
-                  displayField: 'nombre'
+                  options: this.expenses.map(obj => ({
+                    id: obj.id,
+                    description: `${obj.codigo} - ${obj.nombre}`,
+                    valueAddition: obj.codigo || '',
+                    valueAddition2: obj.nombre || ''
+                  }))
                 },
                 valueFormatter: (params) => {
                   const foundItem = this.expenses
