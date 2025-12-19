@@ -214,6 +214,9 @@ constructor() {
     detailRowHeight: 700,
     isRowMaster: (dataItem: any) => true,
     detailCellRenderer: DetailCellRendererExpenditureComponent,
+    dateComponentParams: {
+      dateFormat: 'dd/MM/yyyy'
+    },
     getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -380,7 +383,7 @@ constructor() {
       date.getDate().toString().padStart(2, '0'),
       (date.getMonth() + 1).toString().padStart(2, '0'),
       date.getFullYear()
-    ].join('-');
+    ].join('/');
   }
 
   // Función para obtener el nombre del mes en español
@@ -453,13 +456,17 @@ constructor() {
       { field: 'numberDocument', headerName: '# Doc/Fac', editable: false, filter: true, width: 120, hide: false },
 
       { field: 'date', headerName: 'Fecha', editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return true
-        }, cellDataType: 'date', width: 125,
-              valueFormatter: (params) => this.formatDate(params.value)
-            },
+           if (params.data.__isNew) {
+             return true;
+           }
+           return true
+         }, cellDataType: 'date', width: 125,
+               valueFormatter: (params) => this.formatDate(params.value),
+               cellEditorParams: {
+                 dateFormat: 'dd/MM/yyyy',
+                 datePickerFormat: 'dd/MM/yyyy'
+               }
+             },
 
             {
                 field: 'idExpend', headerName: 'Objeto de Gasto', editable: (params) => {
