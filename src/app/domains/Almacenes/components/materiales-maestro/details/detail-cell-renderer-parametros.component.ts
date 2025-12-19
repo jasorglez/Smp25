@@ -6,7 +6,7 @@ import { CommonModule } from '@angular/common';
 import { alerts } from 'app/helpers/alerts';
 import { ColDef, GridApi, GridReadyEvent, ValueGetterParams, ValueSetterParams, IRowNode, ValueFormatterParams } from 'ag-grid-community';
 import { ParameterByMaterialDescriptionService } from 'app/services/parameterByMaterialDescription.service';
-import { SelectWithTooltipEditorV2Component } from '../editors/select-with-tooltip-editor-v2.component';
+import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 
 @Component({

@@ -5,7 +5,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 import { AuthService } from 'app/services/auth.service';
 import { AdministrationService } from 'app/services/administration.service';
-import { SelectWithTooltipEditorV2Component } from 'app/domains/Almacenes/components/materiales-maestro/editors/select-with-tooltip-editor-v2.component';
+import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 
 @Component({

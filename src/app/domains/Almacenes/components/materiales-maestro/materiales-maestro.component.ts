@@ -13,7 +13,7 @@ import { DetailCellRendererSubfamiliaComponent } from './details/detail-cell-ren
 import { DetailCellRendererProveedorSucursalComponent } from './details/detail-cell-renderer-proveedor-sucursal.component';
 import { DetailCellRendererParametrosComponent } from './details/detail-cell-renderer-parametros.component';
 import { DetailCellRendererHistoricoComponent } from './details/detail-cell-renderer-historico.component';
-import { SelectWithTooltipEditorV2Component } from './editors/select-with-tooltip-editor-v2.component';
+import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { ImageCellRendererComponent } from './renderers/image-cell-renderer.component';
 import { MaterialsService } from 'app/services/materials.service';
 import { MaterialsResponse } from 'app/interface/materials.interface';

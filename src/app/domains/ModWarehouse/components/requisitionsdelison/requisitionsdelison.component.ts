@@ -13,6 +13,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { TypexPrefixesService } from 'app/services/typexprefixes.service';
+import { ReceiptsDelisonService } from 'app/services/receipts-delison.service';
 import { alerts } from 'app/helpers/alerts';
 
 interface Catalog {
@@ -42,6 +43,7 @@ export class RequisitionsDelisonComponent implements OnInit {
   private ocAndReqsService = inject(OcAndReqsService);
   private branchsService = inject(BranchsService);
   private typexPrefixesService = inject(TypexPrefixesService);
+  private receiptsDelisonService = inject(ReceiptsDelisonService);
 
   private gridApi!: GridApi;
 
@@ -98,6 +100,7 @@ export class RequisitionsDelisonComponent implements OnInit {
   branches: any[] = []; // Catálogo de sucursales
   branchesLoaded: boolean = false; // Flag para saber si ya se cargaron las sucursales
   currentUserName: string = ''; // Nombre del usuario actual
+  selectedRequisitionId: number | null = null; // ID de la requisición seleccionada para PDF
 
   // Datos del prefijo actual
   currentPrefixData: any = null;
@@ -580,7 +583,12 @@ export class RequisitionsDelisonComponent implements OnInit {
   }
 
   onSelectionChanged(event: any): void {
-    // Handle selection
+    const selectedNodes = event.api.getSelectedNodes();
+    if (selectedNodes.length > 0) {
+      this.selectedRequisitionId = selectedNodes[0].data.id;
+    } else {
+      this.selectedRequisitionId = null;
+    }
   }
 
   onCellValueChanged(event: any): void {
@@ -865,6 +873,22 @@ export class RequisitionsDelisonComponent implements OnInit {
   refreshData(): void {
     this.loadRequisitions();
     this.hasUnsavedChanges = false;
+  }
+
+  generatePDF(): void {
+    if (!this.selectedRequisitionId) {
+      alerts.basicAlert('Error', 'Debe seleccionar una requisición primero', 'error');
+      return;
+    }
+
+    // Validar que no sea una requisición temporal
+    if (String(this.selectedRequisitionId).startsWith('temp_')) {
+      alerts.basicAlert('Error', 'Debe guardar la requisición antes de generar el PDF', 'warning');
+      return;
+    }
+
+    // Llamar al servicio para generar PDF
+    this.receiptsDelisonService.generateOC(this.selectedRequisitionId, 'open');
   }
 
   components = {

@@ -9,7 +9,7 @@ import { Parser } from 'expr-eval';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { DetailCellRendererParametrosComponent } from './detail-cell-renderer-parametros.component';
 import { alerts } from 'app/helpers/alerts';
-import { SelectWithTooltipEditorV2Component } from '../editors/select-with-tooltip-editor-v2.component';
+import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { RawMaterialsService } from 'app/services/raw-materials.service';
 import { MateriaByCatalogService } from 'app/services/MateriaByCatalog.service';
 
