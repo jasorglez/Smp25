@@ -1,3 +1,5 @@
+//soriano develop
+
 import { Component, OnInit, inject, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -25,6 +27,7 @@ import { lastValueFrom } from 'rxjs';
         <div class="totals-display">
           <span class="badge bg-secondary me-2">Subtotal: {{ subtotal | currency:'MXN' }}</span>
           <span class="badge bg-info me-2">IVA: {{ iva2 | currency:'MXN' }}</span>
+          <span class="badge bg-warning me-2">ISR: {{ isr | currency:'MXN' }}</span>
           <span class="badge bg-primary">Total: {{ total | currency:'MXN' }}</span>
         </div>
         <div class="d-flex">
@@ -220,6 +223,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   // Totals
   subtotal: number = 0;
   iva2: number = 0;
+  isr: number = 0;
   total: number = 0;
 
   // Report properties
@@ -284,6 +288,11 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
           __isNew: false,
           __modified: false
         }));
+        // Calculate totalFinal for each concept
+        this.rowData.forEach(concept => {
+          concept.aplicaIsr = concept.aplicaIsr !== undefined ? concept.aplicaIsr : false;
+          concept.totalFinal = (concept.total || 0) + (concept.iva2 || 0) - (concept.isr || 0);
+        });
         if (this.gridApi) {
           this.gridApi.setGridOption('rowData', this.rowData);
         }
@@ -304,6 +313,11 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       const expenditureId = this.params.data.id;
       this.context.CONCEPTS.load(expenditureId, (data: any[]) => {
         this.rowData = data;
+        // Calculate totalFinal for each concept
+        this.rowData.forEach(concept => {
+          concept.aplicaIsr = concept.aplicaIsr !== undefined ? concept.aplicaIsr : false;
+          concept.totalFinal = (concept.total || 0) + (concept.iva2 || 0) - (concept.isr || 0);
+        });
         this.recalculateTotals();
         // Generate report after data is loaded
         this.generateReport();
@@ -444,16 +458,15 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         field: 'idCatIng',
         headerName: 'Detalle Egreso',
         editable: true,
-        width: 480,
-        cellEditor: 'searchableSelect',
+        width: 250,
+        cellEditor: 'selectWithTooltipEditorV2',
         cellEditorParams: {
           options: this.objetosGastoHijos.map(obj => ({
             id: obj.id,
-            description: obj.codigoNombre
-          })),
-          valueField: 'id',
-          displayField: 'description',
-          placeholder: 'Buscar detalle de egreso...'
+            description: obj.codigoNombre,
+            valueAddition: obj.id.toString(),
+            valueAddition2: obj.codigoNombre
+          }))
         },
         valueFormatter: (params) => {
           if (!params.value) return '';
@@ -472,7 +485,24 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         field: 'description',
         headerName: 'Concepto',
         editable: true,
-        width: 250
+        width: 250,
+        cellEditor: 'agPopupTextCellEditor',
+        cellEditorParams: {
+          maxLength: 100,
+          cols: 50,
+          rows: 3,
+          onKeyDown: (event: KeyboardEvent) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.stopPropagation();
+            }
+          },
+        },
+        onCellDoubleClicked: (event: any) => {
+          this.context.componentParent.modalServiceTable.showModal({
+            params: event,
+            value: event.value,
+          });
+        }
       },
       {
         field: 'claveUnidad',
@@ -532,33 +562,57 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       },
         {
         field: 'iva',
-        headerName: '¿Aplica IVA?',
+        headerName: '¿Aplic IVA?',
         type: 'boolean',
         editable: true,
-        width: 80
+        width: 120
       },
       {
         field: 'iva2',
-        headerName: 'Valor IVA',
+        headerName: 'IVA',
         type: 'number',
         editable: false,
-        width: 100,
+        width: 80,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
       {
         field: 'total',
         headerName: 'Subtotal',
         type: 'number',
+        hide: true,
         editable: false,
         width: 100,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
-    
+      {
+        field: 'aplicaIsr',
+        headerName: '¿Aplic ISR?',
+        type: 'boolean',
+        editable: true,
+        width: 120
+      },
+      {
+        field: 'isr',
+        headerName: 'ISR',
+        type: 'number',
+        editable: true,
+        width: 100,
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+      },
+      {
+        field: 'totalFinal',
+        headerName: 'Total Final',
+        type: 'number',
+        editable: false,
+        width: 120,
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+      },
+
       {
         field: 'comment',
         headerName: 'Comentario',
         editable: true,
-        width: 200,
+        width: 100,
         cellEditor: 'multiLineEditorComponent'
       }
     ];
@@ -618,7 +672,8 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
 
   components = {
     multiLineEditorComponent: MultiLineEditorComponent,
-    searchableSelect: SearchableSelectComponent
+    searchableSelect: SearchableSelectComponent,
+    selectWithTooltipEditorV2: SelectWithTooltipEditorV2Component
   };
 
   addConcept(idCatIng?: number) {
@@ -641,6 +696,10 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       total: 0,
       iva: false,
       iva2: 0,
+      aplicaIsr: false,
+      isr: 0,
+      isrManuallyEdited: false,
+      totalFinal: 0,
       comment: '',
       active: true,
       __isNew: true,
@@ -748,6 +807,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         concepts: validConcepts, // Solo guardar conceptos con precio > 0
         subtotal: this.subtotal,
         tax: this.iva2,
+        isr: this.isr,
         total: this.total
       };
       this.context.CONCEPTS.save(expenditureId, dataToSave);
@@ -791,14 +851,22 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       }
     }
 
-    if (['iva', 'quantity', 'price'].includes(event.colDef.field)) {
+    if (['iva', 'quantity', 'price', 'aplicaIsr', 'isr'].includes(event.colDef.field)) {
       const rowData = event.data;
 
       if (event.colDef.field === 'quantity' || event.colDef.field === 'price') {
         rowData.total = Number(rowData.quantity || 0) * Number(rowData.price || 0);
       }
 
+      if (event.colDef.field === 'aplicaIsr') {
+        if (!rowData.aplicaIsr) {
+          rowData.isr = 0;
+        }
+      }
+
       rowData.iva2 = rowData.iva ? rowData.total * (this.ivaPercent / 100) : 0;
+
+      rowData.totalFinal = rowData.total + rowData.iva2 - (rowData.isr || 0);
 
       if (this.gridApi) {
         this.gridApi.applyTransactionAsync({
@@ -814,11 +882,14 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     try {
       this.subtotal = this.rowData.reduce((acc, row) => acc + (Number(row.total) || 0), 0);
       this.iva2 = this.rowData.reduce((acc, row) => acc + (Number(row.iva2) || 0), 0);
-      this.total = this.subtotal + this.iva2;
+      this.isr = this.rowData.reduce((acc, row) => acc + (Number(row.isr) || 0), 0);
+      const totalFinalSum = this.rowData.reduce((acc, row) => acc + (Number(row.totalFinal) || 0), 0);
+      this.total = totalFinalSum;
     } catch (error) {
       console.error('Error recalculando totales:', error);
       this.subtotal = 0;
       this.iva2 = 0;
+      this.isr = 0;
       this.total = 0;
     }
   }

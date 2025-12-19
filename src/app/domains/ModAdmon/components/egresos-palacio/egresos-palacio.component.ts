@@ -1,3 +1,6 @@
+
+//soriano develop
+
 import { Component, effect, inject } from '@angular/core';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
@@ -402,7 +405,7 @@ constructor() {
       {
         field: 'countItems',
         headerName: 'Items',
-        width: 90,
+        width: 80,
         cellRenderer: ButtonCellRendererExpenditureComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleCascade(node),
@@ -414,7 +417,7 @@ constructor() {
       {
         field: 'pdfReport',
         headerName: 'PDF',
-        width: 80,
+        width: 70,
         cellRenderer: (params: any) => {
           return '<i class="bi bi-file-earmark-pdf" style="font-size: 1.2rem; color: #dc3545; cursor: pointer;"></i>';
         },
@@ -453,6 +456,17 @@ constructor() {
           ]
         }
       },
+
+      {
+        field: 'facturado',
+        headerName: 'Comprobado',
+        type: 'boolean',
+        cellRenderer: 'agCheckboxCellRenderer',
+        cellEditor: 'agCheckboxCellEditor',
+        editable: true,
+        width: 100
+      },
+
       { field: 'numberDocument', headerName: '# Doc/Fac', editable: false, filter: true, width: 120, hide: false },
 
       { field: 'date', headerName: 'Fecha', editable: (params) => {
@@ -460,7 +474,7 @@ constructor() {
              return true;
            }
            return true
-         }, cellDataType: 'date', width: 125,
+         }, cellDataType: 'date', width: 95,
                valueFormatter: (params) => this.formatDate(params.value),
                cellEditorParams: {
                  dateFormat: 'dd/MM/yyyy',
@@ -474,7 +488,7 @@ constructor() {
             return true;
           }
           return true
-        }, width: 250,
+        }, width: 190,
                 cellEditor: SelectWithTooltipEditorV2Component,
                 cellEditorParams: {
                   options: this.expenses.map(obj => ({
@@ -498,7 +512,7 @@ constructor() {
             return true;
           }
           return true
-        }, width: 155, filter: true,
+        }, width: 325, filter: true,
               cellEditor: 'agPopupTextCellEditor',
               cellEditorParams: {
                 maxLength: 100,
@@ -531,37 +545,36 @@ constructor() {
         headerName: 'Subtotal',
         type: 'number',
         editable: false,
-        width: 120,
+        hide: true,
+        width: 100,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
 
-      {
-        field: 'tax',
-        headerName: 'Impuestos',
-        type: 'number',
-        editable: false,
-        width: 110,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
-      },
       {
         field: 'total',
         headerName: 'Total',
         type: 'number',
         editable: false,
-        width: 130,
+        width: 100,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
-
       {
-        field: 'facturado',
-        headerName: 'Comprobado',
-        type: 'boolean',
-        cellRenderer: 'agCheckboxCellRenderer',
-        cellEditor: 'agCheckboxCellEditor',
-        editable: true,
-        width: 100
+        field: 'tax',
+        headerName: 'Impuestos',
+        type: 'number',
+        editable: false,
+        width: 100,
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
-
+      {
+        field: 'isr',
+        headerName: 'ISR',
+        type: 'number',
+        editable: false,
+        width: 100,        
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+      },
+      
       {
         field: 'createdBy',
         headerName: 'Autoriza',
@@ -707,6 +720,7 @@ onGridReady(params: GridReadyEvent) {
       type: "GASTO",
       subtotal: 0,
       tax: 0,
+      isr: 0,
       total: 0,
       facturado: false,
       createdBy: this.currentUser || 'Usuario temporal',
@@ -973,7 +987,7 @@ private updateMasterRow(updatedData: any) {
 
 
 // ✅ MÉTODO MEJORADO para actualizar la fila del maestro sin perder la selección
-private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: number; total: number }) {
+private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: number; isr?: number; total: number }) {
   console.log('🔄 updateMasterRowInGrid iniciado con:', updatedData);
 
   if (!this.gridApi) {
@@ -1008,6 +1022,9 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
     const currentData = rowNode.data;
     currentData.subtotal = updatedData.subtotal;
     currentData.tax = updatedData.tax;
+    if (updatedData.isr !== undefined) {
+      currentData.isr = updatedData.isr;
+    }
     currentData.total = updatedData.total;
 
     console.log('📝 Datos después de actualizar:', {
@@ -1055,6 +1072,9 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
 
       this.incomes[itemIndex].subtotal = updatedData.subtotal;
       this.incomes[itemIndex].tax = updatedData.tax;
+      if (updatedData.isr !== undefined) {
+        this.incomes[itemIndex].isr = updatedData.isr;
+      }
       this.incomes[itemIndex].total = updatedData.total;
 
       console.log('📝 Datos después de actualizar array:', {
@@ -1342,6 +1362,7 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
         ...mainDocument,
         subtotal: subtotal,
         tax: tax,
+        isr: data.isr,
         total: total
       };
 
@@ -1358,6 +1379,15 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
 
         // Actualizar el contador de conceptos
         this.updateExpenditureCountItems(expenditureId, conceptsData.length);
+
+        // Actualizar la fila del maestro con los nuevos totales incluyendo ISR
+        this.updateMasterRowInGrid({
+          id: expenditureId,
+          subtotal: subtotal,
+          tax: tax,
+          isr: data.isr,
+          total: total
+        });
 
         // Refrescar la lista de egresos para mostrar totales actualizados
         setTimeout(() => this.getExpenditure(), 500);
