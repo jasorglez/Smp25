@@ -45,6 +45,11 @@
           </a>
         </li>
 
+        <li class="nav-item">
+                <a class="nav-link" routerLink="providers-st" routerLinkActive="active">
+                    <i class="bi bi-people-fill"></i> {{'providers' | translate}}
+                </a>
+        </li>
 
          <li class="nav-item me-2" *ngIf="authService.hasDetailedPermission('administration', 'electronic_invoice')">
           <a class="nav-link green-tab d-flex align-items-center" routerLink="page04" routerLinkActive="active">

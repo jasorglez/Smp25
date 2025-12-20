@@ -311,49 +311,32 @@ export class ProvidersComponent implements CanComponentDeactivate {
       {
         field: 'vigente',
         headerName: 'Activo',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers', 'Pro_Pri', 'update');
-        },
+        editable: true,
       },
 
       {
         field: 'company',
         headerName: 'Compañía',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
+        editable: true,
+        valueSetter: (params) => {
+          const rawValue = params.newValue;
+          if (!rawValue || rawValue.toString().trim() === '') {
+            alerts.basicAlert('Campo requerido', 'La Compañía es obligatoria.', 'error');
+            return false;
           }
-          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers', 'Pro_Pri', 'update');
-        },
+          params.data[params.colDef.field] = rawValue.toString().toUpperCase();
+          return true;
+        }
       },
 
       {
         field: 'nameContact',
         headerName: 'Contacto principal',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          // ✅ No editable si tiene contactos registrados (fieldContact > 0)
-          if (params.data.fieldContact && params.data.fieldContact > 0) {
-            return false;
-          }
-          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers', 'Pro_Pri', 'update');
-        },
-        cellStyle: (params) => {
-          // ✅ Fondo gris claro si tiene contactos registrados
-          if (params.data.fieldContact && params.data.fieldContact > 0) {
-            return { backgroundColor: '#f0f0f0', color: '#666' };
-          }
-          return null;
-        },
+        editable: true,
         filter: true,
         cellEditor: 'autocompleteEditor',
         /*cellRenderer: (params) => { 
-          const div = document.createElement('div'); 
+          const div = document.createElement('div');  #
           div.innerText = params.value; 
           const rowData = params.data;
           div.addEventListener('mouseenter', () => { 
@@ -418,24 +401,16 @@ export class ProvidersComponent implements CanComponentDeactivate {
       {
         field: 'position',
         headerName: 'Puesto/Area',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          // ✅ No editable si tiene contactos registrados (fieldContact > 0)
-          if (params.data.fieldContact && params.data.fieldContact > 0) {
+        editable: true,
+        valueSetter: (params) => {
+          const rawValue = params.newValue;
+          if (!rawValue || rawValue.toString().trim() === '') {
+            alerts.basicAlert('Campo requerido', 'El Puesto/Area es obligatorio.', 'error');
             return false;
           }
-          // Deshabilitado por defecto según comentario original
-          return false;
-        },
-        cellStyle: (params) => {
-          // ✅ Fondo gris claro si tiene contactos registrados
-          if (params.data.fieldContact && params.data.fieldContact > 0) {
-            return { backgroundColor: '#f0f0f0', color: '#666' };
-          }
-          return null;
-        },
+          params.data[params.colDef.field] = rawValue.toString().toUpperCase();
+          return true;
+        }
       },
 
       //Es un combo de Tipo de Proveedor qe le compro
@@ -469,44 +444,25 @@ export class ProvidersComponent implements CanComponentDeactivate {
       {
         field: 'phone',
         headerName: 'Telefono principal',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          // ✅ No editable si tiene contactos registrados (fieldContact > 0)
-          if (params.data.fieldContact && params.data.fieldContact > 0) {
-            return false;
-          }
-          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers', 'Pro_Pri', 'update');
-        },
-        cellStyle: (params) => {
-          // ✅ Fondo gris claro si tiene contactos registrados
-          if (params.data.fieldContact && params.data.fieldContact > 0) {
-            return { backgroundColor: '#f0f0f0', color: '#666' };
-          }
-          return null;
-        },
+        editable: true,
         valueSetter: (params) => {
           const rawValue = params.newValue;
-          if (!rawValue || typeof rawValue !== 'string') {
-            alerts.basicAlert('Campo requerido', 'El teléfono es obligatorio', 'error');
+          if (!rawValue || rawValue.toString().trim() === '') {
+            params.data[params.colDef.field] = '';
+            return true;
+          }
+
+          // Eliminar todo lo que no sea número
+          const digits = rawValue.toString().replace(/\D/g, '');
+
+          if (digits.length !== 10) {
+            alerts.basicAlert('Formato inválido', 'El teléfono debe tener 10 dígitos.', 'error');
             return false;
           }
 
-          const normalizedValue = rawValue.trim();
-
-          // Validar formato internacional mexicano: +52 XXX XXX XXXX
-          const phoneRegex = /^\+52\s\d{3}\s\d{3}\s\d{4}$/;
-          if (!phoneRegex.test(normalizedValue)) {
-            alerts.basicAlert(
-              'Formato inválido',
-              'El teléfono debe tener el formato internacional: +52 XXX XXX XXXX (ejemplo: +52 229 206 3214)',
-              'error'
-            );
-            return false;
-          }
-
-          params.data[params.colDef.field] = normalizedValue;
+          // Formatear como (XXX) XXX-XXXX
+          const formatted = `(${digits.substring(0, 3)}) ${digits.substring(3, 6)}-${digits.substring(6, 10)}`;
+          params.data[params.colDef.field] = formatted;
           return true;
         },
       },
@@ -514,23 +470,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
       {
         field: 'email',
         headerName: 'Email Principal',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          // ✅ No editable si tiene contactos registrados (fieldContact > 0)
-          if (params.data.fieldContact && params.data.fieldContact > 0) {
-            return false;
-          }
-          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers', 'Pro_Pri', 'update');
-        },
-        cellStyle: (params) => {
-          // ✅ Fondo gris claro si tiene contactos registrados
-          if (params.data.fieldContact && params.data.fieldContact > 0) {
-            return { backgroundColor: '#f0f0f0', color: '#666' };
-          }
-          return null;
-        },
+        editable: true,
         valueSetter: (params) => {
           const rawValue = params.newValue;
           if (!rawValue || typeof rawValue !== 'string') {
@@ -592,52 +532,27 @@ export class ProvidersComponent implements CanComponentDeactivate {
       {
         field: 'cp',
         headerName: 'Cp',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers', 'Pro_Pri', 'update');
-        },
+        editable: true,
       },
       {
         field: 'address',
         headerName: 'Dirección',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers', 'Pro_Pri', 'update');
-        },
+        editable: true,
       },
       {
         field: 'city',
         headerName: 'Ciudad',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers', 'Pro_Pri', 'update');
-        },
+        editable: true,
       },
       {
         field: 'state',
         headerName: 'Estado',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers', 'Pro_Pri', 'update');
-        },
+        editable: true,
       },
       {
         field: '',
         headerName: 'Colonia',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('shoppingDelison', 'providers', 'Pro_Pri', 'update');
-        },
+        editable: true,
       },
     ];
   }
@@ -954,12 +869,12 @@ export class ProvidersComponent implements CanComponentDeactivate {
       idRoot: this.idRoot,
       nameContact: '',
       company: '',
-      position: '',
+      position: 'GERENCIA',
       phone: '',
       rfc: '',
       city: '',
       mobile: '',
-      email: '',
+      email: 'info@x.com',
       address: '',
       addressfiscal: '',
       state: '',
@@ -1010,16 +925,51 @@ export class ProvidersComponent implements CanComponentDeactivate {
     this.trackingService.addLog(this.trackingService.getnameComp(), `Guardar Proveedores`, 'Menu Administracion Proveedores ',
       this.trackingService.getEmail());
 
-    const isValid = this.rowData.every(
-      (item) => (item.nameContact || item.company) &&
-        (this.type == 'PROVIDERS') || (this.type == 'CUSTOMERS' && item.idTypecop)
+    let errorMessage = '';
+    const isValid = this.rowData.every((item, index) => {
+      
+      // Validar Compañía
+      if (!item.company || item.company.toString().trim() === '') {
+        errorMessage = `Fila ${index + 1}: La Compañía es obligatoria.`;
+        return false;
+      }
 
-    );
+      // Validar Contacto Principal
+      if (!item.nameContact || item.nameContact.toString().trim() === '') {
+        errorMessage = `Fila ${index + 1}: El Contacto Principal es obligatorio.`;
+        return false;
+      }
+
+      // Validar Puesto/Area
+      if (!item.position || item.position.toString().trim() === '') {
+        errorMessage = `Fila ${index + 1}: El Puesto/Area es obligatorio.`;
+        return false;
+      }
+
+      // Validar Email y formato
+      if (!item.email || item.email.toString().trim() === '') {
+        errorMessage = `Fila ${index + 1}: El Email es obligatorio.`;
+        return false;
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(item.email)) {
+        errorMessage = `Fila ${index + 1}: El formato del Email es inválido.`;
+        return false;
+      }
+
+      if (this.type === 'CUSTOMERS' && (!item.idTypecop || item.idTypecop === 0)) {
+        errorMessage = `Fila ${index + 1}: Debe seleccionar el Tipo de Cliente.`;
+        return false;
+      }
+
+      return true;
+    });
+
     if (!isValid) {
       alerts.basicAlert(
-        'Añadir entrada',
-        'Debe llenar todos los campos antes de guardar.',
-        'error'
+        'Validación requerida',
+        errorMessage,
+        'warning'
       );
       return;
     }
