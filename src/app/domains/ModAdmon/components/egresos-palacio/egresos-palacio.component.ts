@@ -78,6 +78,7 @@ constructor() {
     await this.getBillingManagementInfo();
     await this.getBankAccounts();
     await this.getBills();
+    await this.getTypeComps();
     await this.getExpenditure();
     await this.loadAuthorizers();
     await this.getCurrentUser();
@@ -134,12 +135,13 @@ constructor() {
 
 
 // ✅ CORRECCIÓN: Agregar propiedad para datos pendientes
-  private pendingMasterUpdate: any = null;
-  showform : string = '';
-  branchs  : any[] = [];
-  incomes  : any[] = [];
-  expenses : any[] = [];
-  users    : any[] = [];
+ private pendingMasterUpdate: any = null;
+ externalFilterActive: boolean = false;
+ showform : string = '';
+ branchs  : any[] = [];
+ incomes  : any[] = [];
+ expenses : any[] = [];
+ users    : any[] = [];
 
   id: number;
   notSavedChanges: boolean = false;
@@ -153,6 +155,7 @@ constructor() {
 
   bankAccounts: any[] = [];
   prefixAndConsecutive: any[] = [];
+  typeComps: any[] = [];
 
   private _idAccount: number; // Variable de respaldo para el setter
 
@@ -215,10 +218,16 @@ constructor() {
     rowHeight: 24,
     animateRows: true,
     masterDetail: true,
+    autoHeight: true,
     getRowId: (params: any) => String(params.data.id),
     detailRowHeight: 700,
     isRowMaster: (dataItem: any) => true,
     detailCellRenderer: DetailCellRendererExpenditureComponent,
+    isExternalFilterPresent: () => this.externalFilterActive,
+    doesExternalFilterPass: (node: any) => {
+      if (!this.externalFilterActive) return true;
+      return node.data.visible !== false;
+    },
     dateComponentParams: {
       dateFormat: 'dd/MM/yyyy'
     },
@@ -271,13 +280,29 @@ constructor() {
 
         const currentColumn = event.column.getColId();
 
-        // Si estamos en la columna "date", mover a "idExpend"
+        // Secuencia de navegación: date -> idTypeComp -> idExpend -> totalComp
         if (currentColumn === 'date') {
+          setTimeout(() => {
+            this.gridApi.setFocusedCell(event.node.rowIndex, 'idTypeComp');
+            this.gridApi.startEditingCell({
+              rowIndex: event.node.rowIndex,
+              colKey: 'idTypeComp'
+            });
+          }, 50);
+        } else if (currentColumn === 'idTypeComp') {
           setTimeout(() => {
             this.gridApi.setFocusedCell(event.node.rowIndex, 'idExpend');
             this.gridApi.startEditingCell({
               rowIndex: event.node.rowIndex,
               colKey: 'idExpend'
+            });
+          }, 50);
+        } else if (currentColumn === 'idExpend') {
+          setTimeout(() => {
+            this.gridApi.setFocusedCell(event.node.rowIndex, 'totalComp');
+            this.gridApi.startEditingCell({
+              rowIndex: event.node.rowIndex,
+              colKey: 'totalComp'
             });
           }, 50);
         }
@@ -288,6 +313,16 @@ constructor() {
   public rowSelection: 'single' | 'multiple' = 'single';
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
+
+  public defaultColDef: ColDef = {
+    sortable: true,
+    filter: true,
+    resizable: true,
+    editable: false,
+    wrapHeaderText: true,
+    autoHeaderHeight: true
+  };
+
   components = {
     multiLineEditor: MultiLineEditorComponent,
     searchableSelect: SearchableSelectComponent
@@ -309,6 +344,7 @@ constructor() {
           countDocomps: income.countDocomps || 0, // Usar valor de la BD si existe
           detailType: null,
           detailData: [],
+          visible: true,
           objetoGastoCodigo: this.expenses.find(e => e.id === income.idExpend)?.codigo || ''
         }));
 
@@ -334,6 +370,19 @@ constructor() {
       }
     )
     this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Objetos de Gasto`, 'Palacio Municipal - Egresos',
+          this.trackingService.getEmail() );
+  }
+
+  async getTypeComps() {
+    this.cataalogAdmonService.getCatalogs(this.idRoot, 'TYPECOMP').subscribe(
+      (data: any) => {
+        this.typeComps = data;
+      },
+      error => {
+        console.error(error);
+      }
+    )
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Tipos de Comprobante`, 'Palacio Municipal - Egresos',
           this.trackingService.getEmail() );
   }
 
@@ -407,6 +456,13 @@ constructor() {
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
     return [
+      {
+        headerName: '#',
+        width: 50,
+        valueGetter: (params) => params.node!.rowIndex! + 1,
+        pinned: 'left',
+        cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' }
+      },
       {
         field: 'countItems',
         headerName: 'Items',
@@ -483,12 +539,42 @@ constructor() {
              },
 
             {
+                field: 'idTypeComp', headerName: 'Tipo Comprobante', editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return true
+        }, width: 110,
+                wrapText: true,
+                autoHeight: true,
+                cellStyle: { 'white-space': 'normal', 'line-height': '1.4' },
+                cellEditor: SelectWithTooltipEditorV2Component,
+                cellEditorParams: {
+                  options: this.typeComps.map(obj => ({
+                    id: obj.id,
+                    description: obj.description,
+                    valueAddition: obj.id.toString(),
+                    valueAddition2: obj.description
+                  }))
+                },
+                valueFormatter: (params) => {
+                  const foundItem = this.typeComps
+                    ? this.typeComps.find((item) => item.id === params.value)
+                    : null;
+                  return foundItem ? foundItem.description : params.value;
+                },
+            },
+
+            {
                 field: 'idExpend', headerName: 'Objeto de Gasto', editable: (params) => {
           if (params.data.__isNew) {
             return true;
           }
           return true
-        }, width: 190,
+        }, width: 170,
+                wrapText: true,
+                autoHeight: true,
+                cellStyle: { 'white-space': 'normal', 'line-height': '1.4' },
                 cellEditor: SelectWithTooltipEditorV2Component,
                 cellEditorParams: {
                   options: this.expenses.map(obj => ({
@@ -512,7 +598,10 @@ constructor() {
             return true;
           }
           return true
-        }, width: 325, filter: true,
+        }, width: 155, filter: true,
+              wrapText: true,
+              autoHeight: true,
+              cellStyle: { 'white-space': 'normal', 'line-height': '1.4' },
               cellEditor: 'agPopupTextCellEditor',
               cellEditorParams: {
                 maxLength: 100,
@@ -551,17 +640,28 @@ constructor() {
       },
 
       {
-        field: 'total',
-        headerName: 'Total',
+        field: 'totalComp',
+        headerName: 'Por Comprobar',
         type: 'number',
-        editable: false,
-        width: 100,
+        editable: true,
+        width: 140,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
+   
+      {
+        field: 'total',
+        headerName: 'Comprobado',
+        type: 'number',
+        editable: false,
+        width: 130,
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+      },
+
       {
         field: 'tax',
         headerName: 'Impuestos',
         type: 'number',
+        hide: true,
         editable: false,
         width: 100,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
@@ -571,6 +671,7 @@ constructor() {
         headerName: 'ISR',
         type: 'number',
         editable: false,
+        hide: true,
         width: 100,        
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
@@ -659,6 +760,7 @@ onGridReady(params: GridReadyEvent) {
       rootService: this.rootService,
       base64EncodeService: this.base64EncodeService,
       objetosGasto: this.expenses,
+      typeComps: this.typeComps,
       CONCEPTS: {
         load: (expenditureId: number, callback: (data: any[]) => void) => {
           this.loadConceptsData(expenditureId, callback);
@@ -713,6 +815,8 @@ onGridReady(params: GridReadyEvent) {
       idBusinnes: this.idRoot,
       idBranch: 0,
       date: now,
+      idTypeComp: 0,
+      totalComp: 0,
       idCustomer: 0,
       idExpend: 0,
       uuid: "NA",
@@ -732,6 +836,7 @@ onGridReady(params: GridReadyEvent) {
       status: "Pagada",
       active: true,
       __isNew: true,
+      visible: true,
     };
     this.incomes = [newItem, ...this.incomes];
     this.newlyAddedRows.push(tempId);
@@ -1150,28 +1255,21 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
     const isCurrentlyExpanded = node.expanded && node.data.detailType === 'concepts';
 
     if (isCurrentlyExpanded) {
-      // Si ya está expandido con conceptos, colapsarlo
+      // Si ya está expandido con conceptos, colapsarlo y mostrar todas las filas
       node.setExpanded(false);
-
-      // Restaurar alturas de todas las filas
-      api.forEachNode((otherNode: any) => {
-        otherNode.setRowHeight(undefined);
+      node.data.detailType = null;
+      this.externalFilterActive = false;
+      api.forEachNode((n: any) => {
+        n.data.visible = true;
       });
-      api.onRowHeightChanged();
+      api.onFilterChanged();
     } else {
-      // Colapsar cualquier otra fila expandida
-      api.forEachNode((otherNode: any) => {
-        if (otherNode.expanded && otherNode.id !== node.id) {
-          otherNode.setExpanded(false);
-        }
+      // Expandir con conceptos, ocultar las demás filas
+      this.externalFilterActive = true;
+      api.forEachNode((n: any) => {
+        n.data.visible = n.id === node.id ? true : false;
       });
-
-      // Ocultar todas las demás filas
-      api.forEachNode((otherNode: any) => {
-        if (otherNode.id !== node.id) {
-          otherNode.setRowHeight(0);
-        }
-      });
+      api.onFilterChanged();
 
       // Si la fila está expandida con otro tipo de detalle, cerrarla
       if (node.expanded && node.data.detailType !== 'concepts') {
@@ -1180,9 +1278,6 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
 
       // Cambiar el tipo de detalle a 'concepts'
       node.data.detailType = 'concepts';
-
-      // Aplicar cambios de altura
-      api.onRowHeightChanged();
 
       // Expandir con los conceptos
       setTimeout(() => {
@@ -1196,28 +1291,21 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
     const isCurrentlyExpanded = node.expanded && node.data.detailType === 'report';
 
     if (isCurrentlyExpanded) {
-      // Si ya está expandido con el reporte, colapsarlo
+      // Si ya está expandido con el reporte, colapsarlo y mostrar todas las filas
       node.setExpanded(false);
-
-      // Restaurar alturas de todas las filas
-      api.forEachNode((otherNode: any) => {
-        otherNode.setRowHeight(undefined);
+      node.data.detailType = null;
+      this.externalFilterActive = false;
+      api.forEachNode((n: any) => {
+        n.data.visible = true;
       });
-      api.onRowHeightChanged();
+      api.onFilterChanged();
     } else {
-      // Colapsar cualquier otra fila expandida
-      api.forEachNode((otherNode: any) => {
-        if (otherNode.expanded && otherNode.id !== node.id) {
-          otherNode.setExpanded(false);
-        }
+      // Expandir con reporte, ocultar las demás filas
+      this.externalFilterActive = true;
+      api.forEachNode((n: any) => {
+        n.data.visible = n.id === node.id ? true : false;
       });
-
-      // Ocultar todas las demás filas
-      api.forEachNode((otherNode: any) => {
-        if (otherNode.id !== node.id) {
-          otherNode.setRowHeight(0);
-        }
-      });
+      api.onFilterChanged();
 
       // Si la fila está expandida con otro tipo de detalle, cerrarla
       if (node.expanded && node.data.detailType !== 'report') {
@@ -1239,9 +1327,6 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
         node.data.objetoGastoTexto = 'Sin objeto de gasto';
       }
 
-      // Aplicar cambios de altura
-      api.onRowHeightChanged();
-
       // Expandir con el reporte
       setTimeout(() => {
         node.setExpanded(true);
@@ -1257,12 +1342,12 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
           node.data.detailType = null;
         }
       });
-
-      // Restaurar alturas
+      // Mostrar todas las filas
+      this.externalFilterActive = false;
       this.gridApi.forEachNode((node) => {
-        node.setRowHeight(undefined);
+        node.data.visible = true;
       });
-      this.gridApi.onRowHeightChanged();
+      this.gridApi.onFilterChanged();
     }
   }
 
@@ -1271,28 +1356,21 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
     const isCurrentlyExpanded = node.expanded && node.data.detailType === 'comprobacion';
 
     if (isCurrentlyExpanded) {
-      // Si ya está expandido con comprobación, colapsarlo
+      // Si ya está expandido con comprobación, colapsarlo y mostrar todas las filas
       node.setExpanded(false);
-
-      // Restaurar alturas de todas las filas
-      api.forEachNode((otherNode: any) => {
-        otherNode.setRowHeight(undefined);
+      node.data.detailType = null;
+      this.externalFilterActive = false;
+      api.forEachNode((n: any) => {
+        n.data.visible = true;
       });
-      api.onRowHeightChanged();
+      api.onFilterChanged();
     } else {
-      // Colapsar cualquier otra fila expandida
-      api.forEachNode((otherNode: any) => {
-        if (otherNode.expanded && otherNode.id !== node.id) {
-          otherNode.setExpanded(false);
-        }
+      // Expandir con comprobación, ocultar las demás filas
+      this.externalFilterActive = true;
+      api.forEachNode((n: any) => {
+        n.data.visible = n.id === node.id ? true : false;
       });
-
-      // Ocultar todas las demás filas
-      api.forEachNode((otherNode: any) => {
-        if (otherNode.id !== node.id) {
-          otherNode.setRowHeight(0);
-        }
-      });
+      api.onFilterChanged();
 
       // Si la fila está expandida con otro tipo de detalle, cerrarla
       if (node.expanded && node.data.detailType !== 'comprobacion') {
@@ -1301,9 +1379,6 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
 
       // Cambiar el tipo de detalle a 'comprobacion'
       node.data.detailType = 'comprobacion';
-
-      // Aplicar cambios de altura
-      api.onRowHeightChanged();
 
       // Expandir con la comprobación
       setTimeout(() => {

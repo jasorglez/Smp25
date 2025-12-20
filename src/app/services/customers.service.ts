@@ -30,7 +30,6 @@ export class CustomersService {
   }
 
   getCustomersByCompany(root : number, type: string) {
-
     const apiUrl = `${environment.urlAdministration}/Customer/company?idCompany=${root}&Type=${type}`;
     return this.http.get(apiUrl, { headers: this.trackingService.getHeaders() });
   }

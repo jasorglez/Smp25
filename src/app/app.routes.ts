@@ -821,6 +821,12 @@ export const routes: Routes = [
           { path: '', redirectTo: 'ModAdmon', pathMatch: 'full' },
           ...SharedModule.getRoutes(),
           {
+            path: 'providers-st',
+            loadComponent: () => import('./domains/ModWarehouse/components/providers/providers.component').then((p) => p.ProvidersComponent),
+            data: { type: 'PROVIDERS' },
+            canDeactivate: [UnsavedChangesGuard],
+          },
+          {
             path: 'dashmodadmon',
             loadComponent: () =>
               import(
@@ -961,8 +967,7 @@ export const routes: Routes = [
               },
               {
                 path: 'accountbanks',
-                loadComponent: () =>
-                  import(
+                loadComponent: () => import(
                     './domains/ModAdmon/components/accountbanks/accountbanks.component'
                   ).then((a) => a.AccountbanksComponent),
                 canActivate: [TrackingGuard],
@@ -973,6 +978,14 @@ export const routes: Routes = [
                   }
                 },
               },
+              
+          {
+            path: 'providers',
+            loadComponent: () => import('./domains/ModWarehouse/components/providers/providers.component').then((p) => p.ProvidersComponent),
+            canDeactivate: [UnsavedChangesGuard],                       
+          },
+
+
             ],
           },
           {

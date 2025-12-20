@@ -11,6 +11,9 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { SearchableSelectComponent } from 'app/shared/searchable-select/searchable-select.component';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
+import { CustomersService } from 'app/services/customers.service';
+import { EmployeesService } from 'app/services/employees.service';
+import { SignalsService } from 'app/services/signals.service';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { lastValueFrom } from 'rxjs';
@@ -31,6 +34,9 @@ import { lastValueFrom } from 'rxjs';
           <span class="badge bg-primary">Total: {{ total | currency:'MXN' }}</span>
         </div>
         <div class="d-flex">
+          <button class="btn btn-outline-secondary btn-sm me-2" (click)="closeDetail()">
+            <i class="bi bi-x-lg"></i> Cerrar
+          </button>
           <button class="btn btn-primary btn-sm me-2" (click)="addConcept()">
             <i class="bi bi-plus-lg"></i> Agregar
           </button>
@@ -102,6 +108,9 @@ import { lastValueFrom } from 'rxjs';
           </div>
         </div>
         <div class="d-flex">
+          <button class="btn btn-outline-secondary btn-sm me-2" (click)="closeDetail()">
+            <i class="bi bi-x-lg"></i> Cerrar
+          </button>
           <button class="btn btn-success btn-sm me-2" (click)="addDocumento()">
             <i class="bi bi-plus-lg"></i> Agregar
           </button>
@@ -209,6 +218,9 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   private gridApiDocumentos!: GridApi;
   private context: any;
   private sanitizer = inject(DomSanitizer);
+  private customersService = inject(CustomersService);
+  private employeesService = inject(EmployeesService);
+  private signalsService = inject(SignalsService);
 
   rowData: any[] = [];
   hasUnsavedChanges: boolean = false;
@@ -219,6 +231,8 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   objetosGastoHijos: any[] = []; // Objetos de gasto nivel 4 (hijos del objeto de gasto seleccionado nivel 1)
   setupManagementInfo: any = null; // Información de firmas
   lastSelectedIdCatIng: number = 0; // Para copiar el último objeto de gasto seleccionado
+  providers: any[] = []; // Proveedores para el combo box
+  loadedTypeComps: any[] = []; // Tipos de comprobante cargados (para evitar recargarlos)
 
   // Totals
   subtotal: number = 0;
@@ -275,6 +289,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     } else if (this.detailType === 'report') {
       this.loadConceptsDataForReport();
     } else if (this.detailType === 'comprobacion') {
+      this.loadProviders(); // Cargar proveedores para el combo box
       this.loadDocumentosComprobados();
     }
   }
@@ -419,6 +434,151 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         this.objetosGastoHijos = [];
       }
     });
+  }
+
+  async loadProviders() {
+    // Obtener idRoot del contexto o del signalsService
+    const idRoot = this.context?.idRoot || this.signalsService.getRootSelectedBySidebar()();
+
+    if (!idRoot) {
+      console.warn('No se puede cargar proveedores/empleados: falta idRoot');
+      this.providers = [];
+      return;
+    }
+
+    // Si typeComps no está cargado en el contexto, cargarlo ahora
+    let typeComps = this.context?.typeComps || [];
+    if (!typeComps || typeComps.length === 0) {
+      // Verificar si ya los cargamos antes
+      if (this.loadedTypeComps && this.loadedTypeComps.length > 0) {
+        typeComps = this.loadedTypeComps;
+        console.log('✅ Usando typeComps previamente cargados:', typeComps);
+      } else {
+        console.log('⚠️ typeComps vacío en contexto, cargando desde servidor...');
+        try {
+          typeComps = await lastValueFrom(
+            this.context.catalogadmonService.getCatalogs(idRoot, 'TYPECOMP')
+          );
+          this.loadedTypeComps = typeComps; // Guardar para reutilizar
+          console.log('✅ typeComps cargados y guardados:', typeComps);
+        } catch (error) {
+          console.error('Error cargando typeComps:', error);
+          typeComps = [];
+        }
+      }
+    } else {
+      // Si vienen del contexto, guardarlos también
+      this.loadedTypeComps = typeComps;
+    }
+
+    // Determinar si el tipo de comprobante es "Empleados"
+    const isEmpleadosType = this.isEmpleadosComprobanteWithTypeComps(typeComps);
+
+    console.log('=== loadProviders Debug ===');
+    console.log('isEmpleadosType:', isEmpleadosType);
+    console.log('expenditureData:', this.expenditureData);
+    console.log('idTypeComp:', this.expenditureData?.idTypeComp);
+    console.log('typeComps disponibles:', typeComps);
+
+    if (isEmpleadosType) {
+      // Cargar empleados cuando el tipo de comprobante es "Empleados"
+      const idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      const idBranchNegative = -Math.abs(idBranch); // Valor negativo del idBranch
+
+      console.log('Cargando empleados con idBranch:', idBranch, '→ negativo:', idBranchNegative);
+
+      this.employeesService.getEmployees(idBranchNegative).subscribe({
+        next: (data: any[]) => {
+          console.log('Empleados cargados:', data);
+          // Mapear los empleados con name
+          this.providers = (data || []).map(employee => ({
+            id: employee.id,
+            displayText: employee.name || 'Sin nombre'
+          }));
+
+          // Actualizar las columnas del grid con los nuevos valores
+          if (this.gridApiDocumentos) {
+            this.gridApiDocumentos.setGridOption('columnDefs', this.colDefsComprobacion);
+          }
+        },
+        error: (error) => {
+          console.error('Error loading employees:', error);
+          this.providers = [];
+        }
+      });
+    } else {
+      // Cargar proveedores (comportamiento original)
+      console.log('Cargando proveedores con idRoot:', idRoot);
+
+      this.customersService.getCustomersByCompany(idRoot, 'PROVIDERS').subscribe({
+        next: (data: any[]) => {
+          console.log('Proveedores cargados:', data);
+          // Mapear los proveedores con name + ' ' + description
+          this.providers = (data || []).map(provider => ({
+            id: provider.id,
+            displayText: `${provider.name} ${provider.description}`.trim()
+          }));
+
+          // Actualizar las columnas del grid con los nuevos valores
+          if (this.gridApiDocumentos) {
+            this.gridApiDocumentos.setGridOption('columnDefs', this.colDefsComprobacion);
+          }
+        },
+        error: (error) => {
+          console.error('Error loading providers:', error);
+          this.providers = [];
+        }
+      });
+    }
+  }
+
+  /**
+   * Determina si el tipo de comprobante del registro maestro es "Empleados"
+   * Usa typeComps cargados o del contexto si está disponible
+   */
+  private isEmpleadosComprobante(): boolean {
+    // Priorizar loadedTypeComps sobre context.typeComps
+    const typeComps = this.loadedTypeComps.length > 0
+      ? this.loadedTypeComps
+      : (this.context?.typeComps || []);
+    return this.isEmpleadosComprobanteWithTypeComps(typeComps);
+  }
+
+  /**
+   * Determina si el tipo de comprobante del registro maestro es "Empleados"
+   * Recibe el array de typeComps como parámetro
+   */
+  private isEmpleadosComprobanteWithTypeComps(typeComps: any[]): boolean {
+    console.log('--- isEmpleadosComprobante Debug ---');
+
+    if (!this.expenditureData?.idTypeComp) {
+      console.log('No hay idTypeComp en expenditureData');
+      return false;
+    }
+
+    console.log('typeComps array:', typeComps);
+    console.log('typeComps.length:', typeComps.length);
+    console.log('Buscando idTypeComp:', this.expenditureData.idTypeComp);
+
+    // Buscar el tipo de comprobante seleccionado
+    const selectedTypeComp = typeComps.find((tc: any) => tc.id === this.expenditureData.idTypeComp);
+    console.log('selectedTypeComp encontrado:', selectedTypeComp);
+
+    if (selectedTypeComp) {
+      const description = selectedTypeComp.description || '';
+      const descriptionLower = description.toLowerCase().trim();
+      console.log('Descripción original:', description);
+      console.log('Descripción normalizada:', descriptionLower);
+      console.log('¿Es "empleados"?:', descriptionLower === 'empleados');
+
+      // Verificar si la descripción es "Empleados" (case-insensitive, trimmed)
+      const result = descriptionLower === 'empleados';
+      console.log('Resultado final:', result);
+      return result;
+    }
+
+    console.log('No se encontró el tipo de comprobante');
+    return false;
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -901,6 +1061,13 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     }
   }
 
+  closeDetail() {
+    // Close any type of detail
+    if (this.context && this.context.componentParent) {
+      this.context.componentParent.collapseReportDetail(this.expenditureData.id);
+    }
+  }
+
   private async generateReport() {
     try {
       console.log('=== Generando Reporte PDF de Egreso ===');
@@ -1323,6 +1490,10 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   }
 
   get colDefsComprobacion(): ColDef[] {
+    // Determinar el nombre de la columna según el tipo de comprobante
+    const isEmpleados = this.isEmpleadosComprobante();
+    const providerColumnName = isEmpleados ? 'Empleado' : 'Proveedor';
+
     return [
       {
         headerName: '#',
@@ -1331,7 +1502,27 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         pinned: 'left',
         cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' }
       },
-        {
+      {
+        field: 'idSpend',
+        headerName: providerColumnName,
+        editable: true,
+        width: 300,
+        cellEditor: 'selectWithTooltipEditorV2',
+        cellEditorParams: {
+          options: this.providers.map(provider => ({
+            id: provider.id,
+            description: provider.displayText,
+            valueAddition: provider.id.toString(),
+            valueAddition2: provider.displayText
+          }))
+        },
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const found = this.providers.find(provider => provider.id === params.value);
+          return found ? found.displayText : params.value;
+        }
+      },
+      {
         field: 'tipoDocumento',
         headerName: 'Tipo Documento',
         editable: true,
@@ -1399,6 +1590,9 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     rowHeight: 35,
     animateRows: true,
     rowSelection: 'single',
+    components: {
+      selectWithTooltipEditorV2: SelectWithTooltipEditorV2Component
+    },
     getRowClass: (params) => {
       if (params.node.isSelected()) {
         return 'selected-row';
@@ -1412,6 +1606,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     const newDocumento = {
       id: tempId,
       idincorexp: this.params.data.id,
+      idSpend: 0,
       tipoDocumento: 'PDF',
       uuidCfdi: '',
       nombreArchivo: '',
@@ -1439,7 +1634,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       this.gridApiDocumentos.ensureIndexVisible(lastRowIndex);
       this.gridApiDocumentos.startEditingCell({
         rowIndex: lastRowIndex,
-        colKey: 'tipoDocumento'
+        colKey: 'idSpend'
       });
     }, 0);
   }

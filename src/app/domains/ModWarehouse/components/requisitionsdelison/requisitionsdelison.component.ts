@@ -416,8 +416,8 @@ export class RequisitionsDelisonComponent implements OnInit {
           if (String(params.data.id).startsWith('temp_')) {
             return; // No hacer nada si es temporal
           }
-          // Generar PDF directamente
-          this.receiptsDelisonService.generateOC(params.data.id, 'open');
+          // Abrir PDF en detalle del grid (similar a egresos-palacio)
+          this.togglePdfDetail(params.node);
         }
       },
       {
@@ -537,7 +537,68 @@ export class RequisitionsDelisonComponent implements OnInit {
     this.onCellClicked(event);
   }
 
+  togglePdfDetail(node: any) {
+    const api = this.gridApi;
+    const isCurrentlyExpanded = node.expanded && node.data.detailType === 'pdf';
 
+    if (isCurrentlyExpanded) {
+      // Si ya está expandido con el PDF, colapsarlo
+      node.setExpanded(false);
+
+      // Restaurar alturas de todas las filas
+      api.forEachNode((otherNode: any) => {
+        otherNode.setRowHeight(undefined);
+      });
+      api.onRowHeightChanged();
+    } else {
+      // Colapsar cualquier otra fila expandida
+      api.forEachNode((otherNode: any) => {
+        if (otherNode.expanded && otherNode.id !== node.id) {
+          otherNode.setExpanded(false);
+        }
+      });
+
+      // Ocultar todas las demás filas
+      api.forEachNode((otherNode: any) => {
+        if (otherNode.id !== node.id) {
+          otherNode.setRowHeight(0);
+        }
+      });
+
+      // Si la fila está expandida con otro tipo de detalle, cerrarla
+      if (node.expanded && node.data.detailType !== 'pdf') {
+        node.setExpanded(false);
+      }
+
+      // Cambiar el tipo de detalle a 'pdf'
+      node.data.detailType = 'pdf';
+
+      // Aplicar cambios de altura
+      api.onRowHeightChanged();
+
+      // Expandir con el PDF
+      setTimeout(() => {
+        node.setExpanded(true);
+      }, 0);
+    }
+  }
+
+  collapsePdfDetail(requisitionId: number) {
+    if (this.gridApi) {
+      this.gridApi.forEachNode((node) => {
+        if (node.data && node.data.id === requisitionId) {
+          node.setExpanded(false);
+          node.data.detailType = null;
+        }
+      });
+
+      // Restaurar alturas
+      this.gridApi.forEachNode((node) => {
+        node.setRowHeight(undefined);
+      });
+      this.gridApi.onRowHeightChanged();
+    }
+  }
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
