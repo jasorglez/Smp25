@@ -760,6 +760,7 @@ onGridReady(params: GridReadyEvent) {
       rootService: this.rootService,
       base64EncodeService: this.base64EncodeService,
       objetosGasto: this.expenses,
+      typeComps: this.typeComps,
       CONCEPTS: {
         load: (expenditureId: number, callback: (data: any[]) => void) => {
           this.loadConceptsData(expenditureId, callback);
