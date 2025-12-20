@@ -1,6 +1,6 @@
 //soriano develop
 
-import { Component, OnInit, inject, OnDestroy } from '@angular/core';
+import { Component, OnInit, inject, OnDestroy, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -1715,6 +1715,32 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     this.previewFileName = '';
     this.previewFileType = '';
     this.previewFileRawUrl = '';
+  }
+
+  @HostListener('document:keydown.f10', ['$event'])
+  handleKeyboardEvent(event: KeyboardEvent) {
+    // Verificar si estamos en modo conceptos y hay cambios
+    if (this.detailType === 'concepts' && this.hasUnsavedChanges) {
+      event.preventDefault();
+      event.stopPropagation();
+      
+      if (this.gridApi) {
+        this.gridApi.stopEditing();
+      }
+      
+      setTimeout(() => {
+        this.saveChanges();
+      }, 100);
+    } else if (this.detailType === 'comprobacion' && this.hasUnsavedDocumentosChanges) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (this.gridApiDocumentos) {
+        this.gridApiDocumentos.stopEditing();
+      }
+      setTimeout(() => {
+        this.saveDocumentosChanges();
+      }, 100);
+    }
   }
 
   ngOnDestroy() {
