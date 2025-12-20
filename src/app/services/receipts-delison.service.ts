@@ -107,12 +107,13 @@ export class ReceiptsDelisonService {
     return Number(localStorage.getItem('project'));
   }
 
-  async generateOC(id: number, action: string): Promise<void> {
+  async generateOC(id: number, action: string): Promise<void | Blob> {
     try {
       this.isInOut = false;
       await this.getRequisitionData(id);
       this.headerTitle = this.getHeaderTitle();
       const docDefinition = await this.generateDocDefinition();
+
       switch (action) {
         case 'print':
           pdfMake.createPdf(docDefinition).print();
@@ -120,9 +121,17 @@ export class ReceiptsDelisonService {
         case 'open':
           pdfMake.createPdf(docDefinition).open();
           break;
+        case 'blob':
+          // Retornar el PDF como Blob para mostrarlo en un iframe
+          return new Promise<Blob>((resolve, reject) => {
+            pdfMake.createPdf(docDefinition).getBlob((blob: Blob) => {
+              resolve(blob);
+            });
+          });
       }
     } catch (error) {
       console.error('Error generating OC:', error);
+      throw error;
     }
   }
 
