@@ -1,7 +1,7 @@
 
 //soriano develop
 
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, HostListener } from '@angular/core';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { ModalService } from 'app/services/modal.service';
@@ -210,10 +210,12 @@ constructor() {
 
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
+    popupParent: document.body,
     headerHeight: 24,
     rowHeight: 24,
     animateRows: true,
     masterDetail: true,
+    getRowId: (params: any) => String(params.data.id),
     detailRowHeight: 700,
     isRowMaster: (dataItem: any) => true,
     detailCellRenderer: DetailCellRendererExpenditureComponent,
@@ -228,6 +230,9 @@ constructor() {
       return '';
     },
     getRowStyle: (params) => {
+      if (params.node.isSelected()) {
+        return { backgroundColor: '#ffe6e6', color: '#000000' };
+      }
       if (params.data) {
         switch (params.data.status) {
           case 'Pendiente':
@@ -379,13 +384,13 @@ constructor() {
   }
 
   // Agregar función de formato de fecha
-  private formatDate(value: string): string {
+  private formatDate(value: string | Date): string {
     if (!value) return '';
     const date = new Date(value);
     return [
       date.getDate().toString().padStart(2, '0'),
       (date.getMonth() + 1).toString().padStart(2, '0'),
-      date.getFullYear()
+      date.getFullYear().toString().slice(-2)
     ].join('/');
   }
 
@@ -468,13 +473,8 @@ constructor() {
       },
 
       { field: 'numberDocument', headerName: '# Doc/Fac', editable: false, filter: true, width: 120, hide: false },
-
-      { field: 'date', headerName: 'Fecha', editable: (params) => {
-           if (params.data.__isNew) {
-             return true;
-           }
-           return true
-         }, cellDataType: 'date', width: 95,
+{
+    field: 'date', headerName: 'Fecha', editable: (params) => params.data.__isNew, cellDataType: 'date', width: 95,
                valueFormatter: (params) => this.formatDate(params.value),
                cellEditorParams: {
                  dateFormat: 'dd/MM/yyyy',
@@ -617,8 +617,8 @@ constructor() {
         const fechaPago = new Date(event.data.date);
         const year = fechaPago.getFullYear();
 
-        // Componer: Mes - Año Nombre del objeto
-        event.data.description = `${event.data.paymentMonth} -${year} ${objetoSeleccionado.nombre}`;
+        // Componer: Mes - Año
+        event.data.description = `${event.data.paymentMonth} -${year}`;
 
         // Refrescar la celda de descripción
         this.gridApi.refreshCells({
@@ -703,6 +703,8 @@ onGridReady(params: GridReadyEvent) {
       this.trackingService.addLog(this.trackingService.getnameComp(), `Creacion de un Egreso`, 'Palacio Municipal - Egresos',
           this.trackingService.getEmail() );
 
+    const now = new Date();
+
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
@@ -710,11 +712,11 @@ onGridReady(params: GridReadyEvent) {
       numberDocument: "",
       idBusinnes: this.idRoot,
       idBranch: 0,
-      date: new Date().toISOString(),
+      date: now,
       idCustomer: 0,
       idExpend: 0,
       uuid: "NA",
-      paymentMonth: this.getMonthName(new Date()),
+      paymentMonth: this.getMonthName(now),
       dateStamped: new Date().toISOString(),
       description: "POR COMPROBAR",
       type: "GASTO",
@@ -740,11 +742,24 @@ onGridReady(params: GridReadyEvent) {
 
     // Iniciar edición en la columna 'date' con la fecha actual
     setTimeout(() => {
+      this.gridApi.ensureIndexVisible(newRowIndex);
       this.gridApi.startEditingCell({
         rowIndex: newRowIndex,
         colKey: 'date', // Editar la columna Fecha
       });
     }, 50); // Un pequeño retraso de 50ms
+  }
+
+  @HostListener('document:keydown.f10', ['$event'])
+  handleKeyboardEvent(event: KeyboardEvent) {
+    event.preventDefault();
+    if (this.gridApi) {
+      this.gridApi.stopEditing();
+    }
+    // Dar tiempo a que el grid procese la edición y actualice el modelo
+    setTimeout(() => {
+      this.saveChanges();
+    }, 100);
   }
 
   async saveChanges() {
@@ -758,10 +773,35 @@ onGridReady(params: GridReadyEvent) {
       return;
     }
 
+    const hasNegativeTotal = this.incomes.some((item) => item.total < 0);
+    if (hasNegativeTotal) {
+      alerts.basicAlert(
+        'Error de validación',
+        'El total no puede ser negativo.',
+        'error'
+      );
+      return;
+    }
+
     const newRows = this.incomes.filter((row) => row.__isNew);
     const modifiedRows = this.incomes.filter(
       (row) => row.__modified && !row.__isNew
     );
+
+    if (newRows.length === 0 && modifiedRows.length === 0) {
+      // Verificar si hay filas expandidas (detalle abierto) antes de mostrar alerta
+      let hasExpandedRows = false;
+      if (this.gridApi) {
+        this.gridApi.forEachNode((node) => {
+          if (node.expanded) hasExpandedRows = true;
+        });
+      }
+
+      if (!hasExpandedRows) {
+        alerts.basicAlert('Información', 'No se detectaron cambios para guardar.', 'info');
+      }
+      return;
+    }
 
     // Solo validar configuración si hay nuevas filas que necesitan número de documento
     let currentConsecutive = 0;
@@ -1390,7 +1430,7 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
         });
 
         // Refrescar la lista de egresos para mostrar totales actualizados
-        setTimeout(() => this.getExpenditure(), 500);
+        // setTimeout(() => this.getExpenditure(), 500);
       }
 
     } catch (error) {
