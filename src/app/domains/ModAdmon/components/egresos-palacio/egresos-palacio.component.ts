@@ -351,6 +351,7 @@ constructor() {
         // Agregar propiedades para master-detail
         this.incomes = filtered.map(income => ({
           ...income,
+          date: income.date ? new Date(income.date) : null, // Convertir a Date
           countItems: income.countItems || 0, // Usar valor de la BD si existe
           countDocomps: income.countDocomps || 0, // Usar valor de la BD si existe
           detailType: null,
@@ -541,13 +542,40 @@ constructor() {
 
       { field: 'numberDocument', headerName: '# Doc/Fac', editable: false, filter: true, width: 120, hide: false },
 {
-    field: 'date', headerName: 'Fecha', editable: true, cellDataType: 'date', width: 95,
-               valueFormatter: (params) => this.formatDate(params.value),
-               cellEditorParams: {
-                 dateFormat: 'dd/MM/yyyy',
-                 datePickerFormat: 'dd/MM/yyyy'
-               }
-             },
+    field: 'date',
+    headerName: 'Fecha',
+    editable: true,
+    cellDataType: 'date',
+    width: 95,
+    valueFormatter: (params) => {
+      if (!params.value) return '';
+      const date = params.value instanceof Date ? params.value : new Date(params.value);
+      return this.formatDate(date);
+    },
+    valueGetter: (params) => {
+      // Asegurar que siempre devuelva un objeto Date
+      if (!params.data.date) return null;
+      return params.data.date instanceof Date ? params.data.date : new Date(params.data.date);
+    },
+    valueSetter: (params) => {
+      // Asegurar que siempre se guarde como objeto Date
+      if (!params.newValue) {
+        params.data.date = params.oldValue;
+        return false;
+      }
+      const date = params.newValue instanceof Date ? params.newValue : new Date(params.newValue);
+      if (isNaN(date.getTime())) {
+        params.data.date = params.oldValue;
+        return false;
+      }
+      params.data.date = date;
+      return true;
+    },
+    cellEditorParams: {
+      dateFormat: 'dd/MM/yyyy',
+      datePickerFormat: 'dd/MM/yyyy'
+    }
+},
 
             {
                 field: 'idTypeComp', headerName: 'Tipo Comprobante', editable: (params) => {
@@ -714,10 +742,20 @@ constructor() {
 
   onCellValueChanged(event: any) {
 
-    // Si se cambió la fecha, actualizar automáticamente el mes
+    // Si se cambió la fecha, actualizar automáticamente el mes y refrescar la celda
     if (event.colDef.field === 'date' && event.newValue) {
       const fechaPago = new Date(event.newValue);
       event.data.paymentMonth = this.getMonthName(fechaPago);
+
+      // Asegurar que la fecha se guarde como objeto Date
+      event.data.date = fechaPago;
+
+      // Refrescar la celda para mostrar el formato correcto
+      this.gridApi.refreshCells({
+        rowNodes: [event.node],
+        columns: ['date'],
+        force: true
+      });
     }
 
     // Si se cambió el Objeto de Gasto, componer automáticamente la Descripción
@@ -851,14 +889,26 @@ onGridReady(params: GridReadyEvent) {
     // Encontrar el índice de la nueva fila
     const newRowIndex = this.incomes.findIndex((row) => row.id === tempId);
 
-    // Iniciar edición en la columna 'date' con la fecha actual
+    // Refrescar el grid y la celda de fecha para aplicar el formato correcto
     setTimeout(() => {
       this.gridApi.ensureIndexVisible(newRowIndex);
+
+      // Refrescar la celda de fecha para aplicar el valueFormatter
+      const rowNode = this.gridApi.getDisplayedRowAtIndex(newRowIndex);
+      if (rowNode) {
+        this.gridApi.refreshCells({
+          rowNodes: [rowNode],
+          columns: ['date'],
+          force: true
+        });
+      }
+
+      // Iniciar edición en la columna 'date' con la fecha actual
       this.gridApi.startEditingCell({
         rowIndex: newRowIndex,
-        colKey: 'date', // Editar la columna Fecha
+        colKey: 'date',
       });
-    }, 50); // Un pequeño retraso de 50ms
+    }, 100); // Aumentar delay para asegurar que se aplique el formato
   }
 
   @HostListener('document:keydown.f10', ['$event'])
@@ -1016,11 +1066,24 @@ onGridReady(params: GridReadyEvent) {
 
   private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };
+
+    // Eliminar propiedades internas del frontend
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
+    delete cleanedData.detailType;
+    delete cleanedData.detailData;
+    delete cleanedData.visible;
+    delete cleanedData.objetoGastoCodigo;
+
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }
+
+    // Convertir Date a ISO string para el servidor
+    if (cleanedData.date && cleanedData.date instanceof Date) {
+      cleanedData.date = cleanedData.date.toISOString();
+    }
+
     return cleanedData;
   }
 

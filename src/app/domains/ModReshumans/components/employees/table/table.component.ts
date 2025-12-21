@@ -227,6 +227,14 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     if(this.isAdvanced == true){
     return [
       {
+        headerName: '#',
+        width: 50,
+        valueGetter: (params) => params.node!.rowIndex! + 1,
+        editable: false,
+        pinned: 'left',
+        cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold', textAlign: 'center' }
+      },
+      {
         field: 'id',
         headerName: 'Id',
         editable: false,
@@ -734,47 +742,48 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         },
         filter: 'agDateColumnFilter',
         filterParams: {
-          // can be 'windows' or 'mac'
           defaultToNothingSelected: true,
-          //excelMode: 'mac',
         },
         width: 150,
         cellEditor: 'agDateCellEditor',
         valueGetter: (params) => {
-          // Si no hay fecha, usar fecha actual
+          // Asegurar que siempre devuelva un objeto Date
           if (!params.data.ingressDate) {
-            return new Date().toISOString();
+            return new Date();
           }
-          return params.data.ingressDate;
+          return params.data.ingressDate instanceof Date
+            ? params.data.ingressDate
+            : new Date(params.data.ingressDate);
         },
         valueSetter: (params) => {
+          // Asegurar que siempre se guarde como objeto Date
           if (!params.newValue) {
-            params.data.ingressDate = new Date().toISOString();
+            params.data.ingressDate = new Date();
             return true;
           }
-        
-          const date = new Date(params.newValue);
+
+          const date = params.newValue instanceof Date
+            ? params.newValue
+            : new Date(params.newValue);
+
           if (isNaN(date.getTime())) {
             alerts.basicAlert('Error', 'Fecha inválida', 'error');
             return false;
-          } 
-        
-          params.data.ingressDate = date.toISOString();
+          }
+
+          params.data.ingressDate = date;
           return true;
         },
         valueFormatter: (params) => {
           try {
-            // Si no hay valor, usar fecha actual
-            const dateValue = params.value || new Date().toISOString();
-            const date = new Date(dateValue);
+            if (!params.value) return '';
+            const date = params.value instanceof Date ? params.value : new Date(params.value);
             if (isNaN(date.getTime())) return '';
             return `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
           } catch {
             return '';
           }
         },
-
-
       },
       {
         field: 'phone',
@@ -926,8 +935,16 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     ];
 
     }else{
-      
+
       return [
+      {
+        headerName: '#',
+        width: 50,
+        valueGetter: (params) => params.node!.rowIndex! + 1,
+        editable: false,
+        pinned: 'left',
+        cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold', textAlign: 'center' }
+      },
       {
         field: 'id',
         headerName: 'Id',
@@ -1448,47 +1465,48 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         },
         filter: 'agDateColumnFilter',
         filterParams: {
-          // can be 'windows' or 'mac'
           defaultToNothingSelected: true,
-          //excelMode: 'mac',
         },
         width: 150,
         cellEditor: 'agDateCellEditor',
         valueGetter: (params) => {
-          // Si no hay fecha, usar fecha actual
+          // Asegurar que siempre devuelva un objeto Date
           if (!params.data.ingressDate) {
-            return new Date().toISOString();
+            return new Date();
           }
-          return params.data.ingressDate;
+          return params.data.ingressDate instanceof Date
+            ? params.data.ingressDate
+            : new Date(params.data.ingressDate);
         },
         valueSetter: (params) => {
+          // Asegurar que siempre se guarde como objeto Date
           if (!params.newValue) {
-            params.data.ingressDate = new Date().toISOString();
+            params.data.ingressDate = new Date();
             return true;
           }
-        
-          const date = new Date(params.newValue);
+
+          const date = params.newValue instanceof Date
+            ? params.newValue
+            : new Date(params.newValue);
+
           if (isNaN(date.getTime())) {
             alerts.basicAlert('Error', 'Fecha inválida', 'error');
             return false;
-          } 
-        
-          params.data.ingressDate = date.toISOString();
+          }
+
+          params.data.ingressDate = date;
           return true;
         },
         valueFormatter: (params) => {
           try {
-            // Si no hay valor, usar fecha actual
-            const dateValue = params.value || new Date().toISOString();
-            const date = new Date(dateValue);
+            if (!params.value) return '';
+            const date = params.value instanceof Date ? params.value : new Date(params.value);
             if (isNaN(date.getTime())) return '';
             return `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
           } catch {
             return '';
           }
         },
-
-
       },
       {
         field: 'phone',
@@ -1876,7 +1894,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       phone: '',
       baseHours: 0,
       priceXHour: 0,
-      ingressDate: timeData.dateObj.toISOString(),
+      ingressDate: timeData.dateObj, // Guardar como objeto Date
       position: '',
       email: '',
       picture: '',
@@ -1904,14 +1922,24 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
     // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
     setTimeout(() => {
+      // Refrescar la celda de fecha para aplicar el valueFormatter
+      const rowNode = this.gridApi.getDisplayedRowAtIndex(newRowIndex);
+      if (rowNode) {
+        this.gridApi.refreshCells({
+          rowNodes: [rowNode],
+          columns: ['ingressDate'],
+          force: true
+        });
+      }
+
       if (firstEditableColKey) {
         this.gridApi.startEditingCell({
           rowIndex: newRowIndex,
           colKey: 'idBranch', // Editar la primera columna editable
         });
       }
-    }, 50); // Un pequeño retraso de 50ms
-    
+    }, 100);
+
   }
 
   async saveMasterChanges() {
