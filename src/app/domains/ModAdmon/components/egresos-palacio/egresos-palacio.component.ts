@@ -29,6 +29,8 @@ import { DetailCellRendererExpenditureComponent } from './detail-cell-renderer-e
 import { CatalogsService } from 'app/services/catalogs.service';
 import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
+import { ProviderModalService } from './services/provider-modal.service';
+import { CustomersService } from 'app/services/customers.service';
 
 @Component({
   selector: 'app-egresos-palacio',
@@ -51,30 +53,58 @@ export class EgresosPalacioComponent {
   private branchesService           = inject(BranchsService);
   private rootService               = inject(RootService);
   private base64EncodeService       = inject(Base64EncodeService);
+  private providerModalService      = inject(ProviderModalService);
+  private customersService          = inject(CustomersService);
   authService                       = inject(AuthService);
   public trackingService            = inject(TrackingService);
 
   public isIncomeMode: boolean = false;
+
+  // Propiedades para el modal de proveedor
+  showProviderModal: boolean = false;
+  newProvider: any = {
+    idRoot: 0,
+    idBranch: 0,
+    idTypecop: 3, // PROVEEDOR
+    nameContact: '',
+    company: '',
+    rfc: '',
+    city: '',
+    position: 'GERENCIA',
+    address: '',
+    addressFiscal: '',
+    cp: '',
+    state: '',
+    neighborhood: '',
+    total: 0,
+    radio: 0,
+    phone: '',
+    mobile: '',
+    email: 'info@x.com',
+    vigente: true,
+    numCliente: 0,
+    latitud: '',
+    longitud: '',
+    typeCustomer: '',
+    typework: '',
+    type: 'PROVIDERS',
+    fieldContact: 0,
+    fieldBank: 0,
+    fieldCuenta: 0,
+    active: true
+  };
 
   async ngOnInit() {
 
 }
 
 constructor() {
-//  console.log('🏗️ EgresosPalacioComponent: Constructor iniciado');
-
-  // Effect para cambios de Root/Branch (sin cambios)
   effect(async () => {
-    console.log('🔄 Effect Root/Branch ejecutado - Palacio Municipal');
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
 
-    if (!this.idRoot) {
-      console.log('⚠️ No hay idRoot, saliendo del effect');
-      return;
-    }
+    if (!this.idRoot) return;
 
-    console.log('📊 Cargando datos con idRoot:', this.idRoot, 'idBranch:', this.idBranch);
     await this.getBillingManagementInfo();
     await this.getBankAccounts();
     await this.getBills();
@@ -83,30 +113,13 @@ constructor() {
     await this.loadAuthorizers();
     await this.getCurrentUser();
     await this.obtenerBranchs();
-    console.log('✅ Effect Root/Branch completado - Palacio Municipal');
   });
 
-  // ✅ CORRECCIÓN: Effect mejorado para escuchar actualizaciones del detalle
   effect(() => {
-    console.log('👂 Effect MasterUpdate ejecutado - Palacio Municipal');
     const updateData = this.signalsService.getMasterUpdateTrigger()();
-    console.log('📨 Signal recibido:', updateData);
 
-    // ✅ CORRECCIÓN: Verificar que hay datos válidos Y que no es null
     if (updateData && updateData.id && typeof updateData.subtotal === 'number') {
-      console.log('🎯 Datos válidos recibidos:', {
-        id: updateData.id,
-        subtotal: updateData.subtotal,
-        tax: updateData.tax,
-        total: updateData.total,
-        //timestamp: updateData.timestamp
-      });
-
-      console.log('🔍 gridApi disponible:', !!this.gridApi);
-
       if (this.gridApi) {
-        console.log('✅ Llamando updateMasterRowInGrid...');
-        // ✅ CORRECCIÓN: Usar setTimeout para asegurar que el grid esté listo
         setTimeout(() => {
           this.updateMasterRowInGrid({
             id: updateData.id,
@@ -116,8 +129,6 @@ constructor() {
           });
         }, 50);
       } else {
-        console.log('❌ gridApi no disponible, guardando datos para cuando esté listo');
-        // ✅ CORRECCIÓN: Guardar los datos para cuando el grid esté listo
         this.pendingMasterUpdate = {
           id: updateData.id,
           subtotal: updateData.subtotal,
@@ -125,12 +136,12 @@ constructor() {
           total: updateData.total
         };
       }
-    } else {
-      console.log('ℹ️ No hay datos válidos para actualizar');
     }
   });
 
-  console.log('✅ EgresosPalacioComponent: Constructor completado');
+  this.providerModalService.modalRequest$.subscribe((data) => {
+    this.openProviderModal(data.idRoot);
+  });
 }
 
 
@@ -530,7 +541,7 @@ constructor() {
 
       { field: 'numberDocument', headerName: '# Doc/Fac', editable: false, filter: true, width: 120, hide: false },
 {
-    field: 'date', headerName: 'Fecha', editable: (params) => params.data.__isNew, cellDataType: 'date', width: 95,
+    field: 'date', headerName: 'Fecha', editable: true, cellDataType: 'date', width: 95,
                valueFormatter: (params) => this.formatDate(params.value),
                cellEditorParams: {
                  dateFormat: 'dd/MM/yyyy',
@@ -688,7 +699,6 @@ constructor() {
 
   onSelectedRow(event: any) {
     this.id = event.data.id;
-    //console.log('Type fila seleccionada:', event.data.type);
     this.signalsService.setIdIncomeAndExpense(this.id);
   }
 
@@ -740,9 +750,7 @@ constructor() {
     this.notSavedChanges = true;
   }
 
- // ✅ CORRECCIÓN: Modificar onGridReady para procesar actualizaciones pendientes
 onGridReady(params: GridReadyEvent) {
-  console.log('🏁 Grid ready - Palacio Municipal - Egresos');
   this.gridApi = params.api;
 
   // Configurar el detailCellRendererParams para pasar datos al detail renderer
@@ -792,9 +800,7 @@ onGridReady(params: GridReadyEvent) {
     }
   });
 
-  // ✅ CORRECCIÓN: Procesar actualizaciones pendientes
   if (this.pendingMasterUpdate) {
-    console.log('⏳ Procesando actualización pendiente:', this.pendingMasterUpdate);
     setTimeout(() => {
       this.updateMasterRowInGrid(this.pendingMasterUpdate);
       this.pendingMasterUpdate = null;
@@ -1126,44 +1132,19 @@ private updateMasterRow(updatedData: any) {
 
     // Aplicamos la transacción para que AG Grid refresque solo esa fila
     this.gridApi.applyTransaction({ update: [currentData] });
-    console.log(`Fila maestra ${updatedData.id} actualizada con nuevos totales.`);
   }
 }
 
 
-// ✅ MÉTODO MEJORADO para actualizar la fila del maestro sin perder la selección
 private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: number; isr?: number; total: number }) {
-  console.log('🔄 updateMasterRowInGrid iniciado con:', updatedData);
+  if (!this.gridApi || !updatedData?.id) return;
 
-  if (!this.gridApi) {
-    console.log('❌ gridApi no disponible');
-    return;
-  }
-
-  if (!updatedData?.id) {
-    console.log('❌ updatedData o id no válidos');
-    return;
-  }
-
-  // BOOKMARK: Guardar la selección actual
   const selectedNodes = this.gridApi.getSelectedNodes();
   const currentSelectedId = selectedNodes.length > 0 ? selectedNodes[0].data.id : null;
-  console.log('🔖 Selección actual guardada:', currentSelectedId);
 
-  // Buscar el nodo de la fila a actualizar
-  console.log('🔍 Buscando nodo con ID:', updatedData.id.toString());
   const rowNode = this.gridApi.getRowNode(updatedData.id.toString());
-  console.log('🎯 Nodo encontrado:', !!rowNode);
 
   if (rowNode) {
-    console.log('📝 Datos actuales del nodo:', {
-      id: rowNode.data.id,
-      subtotal_actual: rowNode.data.subtotal,
-      tax_actual: rowNode.data.tax,
-      total_actual: rowNode.data.total
-    });
-
-    // Actualizar los datos del nodo
     const currentData = rowNode.data;
     currentData.subtotal = updatedData.subtotal;
     currentData.tax = updatedData.tax;
@@ -1172,49 +1153,21 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
     }
     currentData.total = updatedData.total;
 
-    console.log('📝 Datos después de actualizar:', {
-      id: currentData.id,
-      subtotal_nuevo: currentData.subtotal,
-      tax_nuevo: currentData.tax,
-      total_nuevo: currentData.total
-    });
-
-    // Aplicar la transacción para actualizar la fila
-    console.log('🔄 Aplicando transacción...');
     this.gridApi.applyTransaction({ update: [currentData] });
-    console.log('✅ Transacción aplicada');
 
-    console.log(`✅ Fila maestra ${updatedData.id} actualizada con nuevos totales.`);
-
-    // RESTAURAR BOOKMARK: Mantener la selección si era la misma fila
     if (currentSelectedId === updatedData.id) {
-      console.log('🔖 Restaurando selección...');
       setTimeout(() => {
         const updatedNode = this.gridApi.getRowNode(updatedData.id.toString());
         if (updatedNode) {
           updatedNode.setSelected(true);
           this.gridApi.ensureNodeVisible(updatedNode);
-          console.log('✅ Selección restaurada');
-        } else {
-          console.log('❌ No se pudo restaurar la selección');
         }
       }, 50);
     }
   } else {
-    console.warn(`⚠️ No se encontró la fila ${updatedData.id} en el grid.`);
-
-    // Plan B: Actualizar el array local
-    console.log('🔄 Ejecutando Plan B - Actualizar array local...');
     const itemIndex = this.incomes.findIndex(item => item.id === updatedData.id);
-    console.log('🔍 Índice en array local:', itemIndex);
 
     if (itemIndex !== -1) {
-      console.log('📝 Datos actuales en array:', {
-        subtotal_actual: this.incomes[itemIndex].subtotal,
-        tax_actual: this.incomes[itemIndex].tax,
-        total_actual: this.incomes[itemIndex].total
-      });
-
       this.incomes[itemIndex].subtotal = updatedData.subtotal;
       this.incomes[itemIndex].tax = updatedData.tax;
       if (updatedData.isr !== undefined) {
@@ -1222,28 +1175,15 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
       }
       this.incomes[itemIndex].total = updatedData.total;
 
-      console.log('📝 Datos después de actualizar array:', {
-        subtotal_nuevo: this.incomes[itemIndex].subtotal,
-        tax_nuevo: this.incomes[itemIndex].tax,
-        total_nuevo: this.incomes[itemIndex].total
-      });
-
-      // RESTAURAR BOOKMARK después del refresco
       setTimeout(() => {
         if (currentSelectedId) {
-          console.log('🔖 Intentando restaurar selección después de Plan B...');
           const nodeToSelect = this.gridApi.getRowNode(currentSelectedId.toString());
           if (nodeToSelect) {
             nodeToSelect.setSelected(true);
             this.gridApi.ensureNodeVisible(nodeToSelect);
-            console.log('✅ Selección restaurada (Plan B)');
-          } else {
-            console.log('❌ No se pudo restaurar la selección (Plan B)');
           }
         }
       }, 100);
-    } else {
-      console.log('❌ No se encontró el item en el array local');
     }
   }
 }
@@ -1422,7 +1362,7 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
           };
           this.administrationService.updateRowsIncorExp(expenditureId, dataToSave).subscribe({
             next: () => {
-              console.log('Contador de items actualizado en servidor');
+              // Contador actualizado
             },
             error: (error) => {
               console.error('Error actualizando contador de items:', error);
@@ -1585,7 +1525,7 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
           };
           this.administrationService.updateRowsIncorExp(expenditureId, dataToSave).subscribe({
             next: () => {
-              console.log('Contador de documentos actualizado en servidor');
+              // Contador actualizado
             },
             error: (error) => {
               console.error('Error actualizando contador de documentos:', error);
@@ -1680,6 +1620,93 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
       cleanedData.modifiedBy = '';
     }
     return cleanedData;
+  }
+
+  // ==================== MÉTODOS PARA EL MODAL DE PROVEEDOR ====================
+
+  openProviderModal(idRoot: number) {
+    this.newProvider = {
+      idRoot: idRoot,
+      idBranch: this.idBranch || 0,
+      idTypecop: 3, // PROVEEDOR
+      nameContact: '',
+      company: '',
+      rfc: '',
+      city: '',
+      position: 'GERENCIA',
+      address: '',
+      addressFiscal: '',
+      cp: '',
+      state: '',
+      neighborhood: '',
+      total: 0,
+      radio: 0,
+      phone: '',
+      mobile: '',
+      email: 'info@x.com',
+      vigente: true,
+      numCliente: 0,
+      latitud: '',
+      longitud: '',
+      typeCustomer: '',
+      typework: '',
+      type: 'PROVIDERS',
+      fieldContact: 0,
+      fieldBank: 0,
+      fieldCuenta: 0,
+      active: true
+    };
+    this.showProviderModal = true;
+    document.body.classList.add('modal-open');
+  }
+
+  closeProviderModal() {
+    this.showProviderModal = false;
+    document.body.classList.remove('modal-open');
+  }
+
+  async saveNewProvider() {
+    if (!this.newProvider.company || !this.newProvider.nameContact) {
+      alerts.basicAlert(
+        'Error',
+        'La Compañía y el Nombre de Contacto son obligatorios.',
+        'error'
+      );
+      return;
+    }
+
+    // Mostrar datos para copiar y probar en Swagger
+    const jsonData = JSON.stringify(this.newProvider, null, 2);
+    prompt('📋 COPIAR DATOS PARA SWAGGER:\n\nSelecciona todo (Ctrl+A) y copia (Ctrl+C):', jsonData);
+
+    try {
+      const result: any = await lastValueFrom(
+        this.customersService.addCustomer(this.newProvider)
+      );
+
+      alerts.basicAlert(
+        'Proveedor creado',
+        'El proveedor se ha creado correctamente.',
+        'success'
+      );
+
+      this.providerModalService.confirmSave({
+        id: result.id,
+        name: this.newProvider.company
+      });
+
+      this.signalsService.setNewProviderCreated(result.id, this.newProvider.company);
+
+      this.closeProviderModal();
+
+    } catch (error) {
+      console.error('Error creando proveedor:', error);
+      alerts.basicAlert(
+        'Error',
+        `Error al crear el proveedor. ${error?.error?.message || error?.message || 'Error desconocido'}`,
+        'error'
+      );
+    }
   }
 
 }

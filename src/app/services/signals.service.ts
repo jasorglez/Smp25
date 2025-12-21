@@ -867,4 +867,19 @@ getMasterUpdateTrigger() {
   getIdProveedor() {
     return this.IdProveedor();
   }
+
+  // Signal para nuevo proveedor creado desde modal
+  private newProviderCreated = signal<{ id: number; name: string; } | null>(null);
+
+  setNewProviderCreated(id: number, name: string) {
+    this.newProviderCreated.set({ id, name });
+  }
+
+  getNewProviderCreated() {
+    return this.newProviderCreated;
+  }
+
+  resetNewProviderCreated() {
+    this.newProviderCreated.set(null);
+  }
 }
