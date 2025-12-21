@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -13,13 +13,16 @@ import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-toolt
 import { ModalService } from 'app/services/modal.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { firstValueFrom } from 'rxjs';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { ReceiptsDelisonService } from 'app/services/receipts-delison.service';
 
 @Component({
   selector: 'app-detail-cell-renderer-requisitions-items',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component, MultiLineEditorComponent],
   template: `
-    <div style="padding: 5px; background-color: #e3f2fd; height: 100%; max-height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
+    <!-- Items Grid View -->
+    <div *ngIf="detailType === 'items'" style="padding: 5px; background-color: #e3f2fd; height: 100%; max-height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
       <div style="margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
         <strong>Artículos de la Requisición</strong>
         <div class="d-flex gap-2">
@@ -110,6 +113,31 @@ import { firstValueFrom } from 'rxjs';
 
     <!-- Multi-line editor component -->
     <app-multi-line-editor></app-multi-line-editor>
+
+    <!-- PDF Report View -->
+    <div class="report-detail-container" *ngIf="detailType === 'pdf'" style="padding: 15px; background-color: #ffffff; height: 100%; display: flex; flex-direction: column;">
+      <div class="report-header d-flex justify-content-between align-items-center mb-3" style="flex-shrink: 0;">
+        <h5 class="mb-0">Vista Previa - Requisición: {{ requisitionData?.requisitionNumber || 'Sin Número' }}</h5>
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="closeReport()">
+          <i class="bi bi-x-lg"></i> Cerrar
+        </button>
+      </div>
+      <div class="report-content" style="flex: 1; border: 1px solid #dee2e6; border-radius: 0.375rem; overflow: hidden;">
+        <iframe
+          *ngIf="pdfUrl"
+          [src]="pdfUrl"
+          style="width: 100%; height: 100%; border: none; border-radius: 0.375rem;">
+        </iframe>
+        <div *ngIf="!pdfUrl" class="d-flex justify-content-center align-items-center h-100">
+          <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Generando PDF...</span>
+            </div>
+            <p class="mt-3">Generando PDF...</p>
+          </div>
+        </div>
+      </div>
+    </div>
   `,
   styles: [`
     :host {
@@ -126,7 +154,7 @@ import { firstValueFrom } from 'rxjs';
     }
   `]
 })
-export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
+export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnDestroy {
 
   private params!: any;
   private gridApi!: GridApi;
@@ -135,6 +163,8 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
   private materialsService = inject(MaterialsService);
   private signalsService = inject(SignalsService);
   private modalService = inject(ModalService);
+  private sanitizer = inject(DomSanitizer);
+  private receiptsDelisonService = inject(ReceiptsDelisonService);
 
   rowData: any[] = [];
   originalRowData: any[] = []; // Para poder deshacer cambios
@@ -146,6 +176,12 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
   private pedimentoCounter: number = 1;
   requisitionId: number = 0;
   idRoot: number | null = null;
+
+  // PDF properties
+  detailType: string = 'items';
+  requisitionData: any = null;
+  pdfUrl: SafeResourceUrl | null = null;
+  private originalPdfUrl: string | null = null;
 
   // Propiedades para el modal de nuevo artículo
   isNewArticleModalVisible = false;
@@ -170,9 +206,16 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
   agInit(params: any): void {
     this.params = params;
     this.context = params.context;
-    this.loadMaterials();
-    this.loadData();
-    this.loadPurchasesData();
+    this.requisitionData = params.data;
+    this.detailType = params.data.detailType || 'items';
+
+    if (this.detailType === 'items') {
+      this.loadMaterials();
+      this.loadData();
+      this.loadPurchasesData();
+    } else if (this.detailType === 'pdf') {
+      this.generatePDF();
+    }
   }
 
   loadData() {
@@ -1060,6 +1103,58 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit {
           this.purchasesGridApi.setGridOption('rowData', this.purchasesData);
         }
       });
+    }
+  }
+
+  // ==================== PDF METHODS ====================
+
+  async generatePDF() {
+    if (!this.requisitionData || !this.requisitionData.id) {
+      console.error('No hay datos de requisición para generar PDF');
+      this.pdfUrl = null;
+      return;
+    }
+
+    console.log('🔄 Generando PDF para requisición:', this.requisitionData.id);
+
+    try {
+      // Usar el servicio receiptsDelisonService para generar el PDF como Blob
+      const blob = await this.receiptsDelisonService.generateOC(this.requisitionData.id, 'blob');
+
+      if (blob instanceof Blob) {
+        // Limpiar URL anterior si existe
+        if (this.originalPdfUrl) {
+          URL.revokeObjectURL(this.originalPdfUrl);
+        }
+
+        // Crear nueva URL para el blob
+        this.originalPdfUrl = URL.createObjectURL(blob);
+        this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.originalPdfUrl);
+        console.log('✅ PDF generado y cargado en el iframe');
+      } else {
+        console.error('⚠️ El servicio no retornó un Blob');
+        this.pdfUrl = null;
+      }
+
+    } catch (error) {
+      console.error('❌ Error al generar PDF:', error);
+      this.pdfUrl = null;
+      alerts.basicAlert('Error', 'No se pudo generar el PDF de la requisición', 'error');
+    }
+  }
+
+  closeReport() {
+    // Emit event to parent component to handle collapse
+    if (this.context && this.context.componentParent) {
+      this.context.componentParent.collapsePdfDetail(this.requisitionData.id);
+    }
+  }
+
+  ngOnDestroy() {
+    // Clean up blob URL when component is destroyed
+    if (this.originalPdfUrl) {
+      URL.revokeObjectURL(this.originalPdfUrl);
+      this.originalPdfUrl = null;
     }
   }
 

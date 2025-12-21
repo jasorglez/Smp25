@@ -91,3 +91,52 @@
     </div>
   </div>
 </div>
+
+<!-- Modal para agregar nuevo proveedor -->
+<div class="modal fade" [class.show]="showProviderModal" [style.display]="showProviderModal ? 'block' : 'none'" tabindex="-1" role="dialog" aria-labelledby="providerModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title" id="providerModalLabel">
+          <i class="bi bi-plus-circle me-2"></i>Agregar Nuevo Proveedor
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeProviderModal()" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form>
+          <div class="mb-3">
+            <label for="providerCompany" class="form-label">Compañía <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="providerCompany" [(ngModel)]="newProvider.company" name="providerCompany" required>
+          </div>
+          <div class="mb-3">
+            <label for="providerContact" class="form-label">Nombre Contacto <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="providerContact" [(ngModel)]="newProvider.nameContact" name="providerContact" required>
+          </div>
+          <div class="mb-3">
+            <label for="providerPosition" class="form-label">Puesto</label>
+            <input type="text" class="form-control" id="providerPosition" [(ngModel)]="newProvider.position" name="providerPosition">
+          </div>
+          <div class="mb-3">
+            <label for="providerPhone" class="form-label">Teléfono</label>
+            <input type="text" class="form-control" id="providerPhone" [(ngModel)]="newProvider.phone" name="providerPhone">
+          </div>
+          <div class="mb-3">
+            <label for="providerEmail" class="form-label">Email</label>
+            <input type="email" class="form-control" id="providerEmail" [(ngModel)]="newProvider.email" name="providerEmail">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeProviderModal()">
+          <i class="bi bi-x-circle me-1"></i>Cancelar
+        </button>
+        <button type="button" class="btn btn-success" (click)="saveNewProvider()" [disabled]="!newProvider.company || !newProvider.nameContact">
+          <i class="bi bi-floppy me-1"></i>Guardar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Backdrop del modal -->
+<div class="modal-backdrop fade" [class.show]="showProviderModal" [style.display]="showProviderModal ? 'block' : 'none'"></div>

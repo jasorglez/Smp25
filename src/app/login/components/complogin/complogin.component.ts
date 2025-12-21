@@ -113,7 +113,7 @@ export class ComploginComponent implements OnInit {
           next: (datauser: any) => {
             if (datauser) {
               // Definición de variables globales
-              console.log('-----Datos del usuario:', datauser);
+     
               this.trackingService.setnameUser(datauser.displayName);
               this.trackingService.setpictureUser(datauser.picture);
               this.trackingService.setabranch(datauser.applybranch);

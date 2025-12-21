@@ -29,6 +29,8 @@ import { DetailCellRendererExpenditureComponent } from './detail-cell-renderer-e
 import { CatalogsService } from 'app/services/catalogs.service';
 import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
+import { ProviderModalService } from './services/provider-modal.service';
+import { CustomersService } from 'app/services/customers.service';
 
 @Component({
   selector: 'app-egresos-palacio',
@@ -51,61 +53,73 @@ export class EgresosPalacioComponent {
   private branchesService           = inject(BranchsService);
   private rootService               = inject(RootService);
   private base64EncodeService       = inject(Base64EncodeService);
+  private providerModalService      = inject(ProviderModalService);
+  private customersService          = inject(CustomersService);
   authService                       = inject(AuthService);
   public trackingService            = inject(TrackingService);
 
   public isIncomeMode: boolean = false;
+
+  // Propiedades para el modal de proveedor
+  showProviderModal: boolean = false;
+  newProvider: any = {
+    idRoot: 0,
+    idBranch: 0,
+    idTypecop: 3, // PROVEEDOR
+    nameContact: '',
+    company: '',
+    rfc: '',
+    city: '',
+    position: 'GERENCIA',
+    address: '',
+    addressFiscal: '',
+    cp: '',
+    state: '',
+    neighborhood: '',
+    total: 0,
+    radio: 0,
+    phone: '',
+    mobile: '',
+    email: 'info@x.com',
+    vigente: true,
+    numCliente: 0,
+    latitud: '',
+    longitud: '',
+    typeCustomer: '',
+    typework: '',
+    type: 'PROVIDERS',
+    fieldContact: 0,
+    fieldBank: 0,
+    fieldCuenta: 0,
+    active: true
+  };
 
   async ngOnInit() {
 
 }
 
 constructor() {
-//  console.log('🏗️ EgresosPalacioComponent: Constructor iniciado');
-
-  // Effect para cambios de Root/Branch (sin cambios)
   effect(async () => {
-    console.log('🔄 Effect Root/Branch ejecutado - Palacio Municipal');
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
 
-    if (!this.idRoot) {
-      console.log('⚠️ No hay idRoot, saliendo del effect');
-      return;
-    }
+    if (!this.idRoot) return;
 
-    console.log('📊 Cargando datos con idRoot:', this.idRoot, 'idBranch:', this.idBranch);
     await this.getBillingManagementInfo();
     await this.getBankAccounts();
     await this.getBills();
+    await this.getTypeComps();
     await this.getExpenditure();
     await this.loadAuthorizers();
     await this.getCurrentUser();
     await this.obtenerBranchs();
-    console.log('✅ Effect Root/Branch completado - Palacio Municipal');
   });
 
-  // ✅ CORRECCIÓN: Effect mejorado para escuchar actualizaciones del detalle
   effect(() => {
-    console.log('👂 Effect MasterUpdate ejecutado - Palacio Municipal');
     const updateData = this.signalsService.getMasterUpdateTrigger()();
-    console.log('📨 Signal recibido:', updateData);
 
-    // ✅ CORRECCIÓN: Verificar que hay datos válidos Y que no es null
     if (updateData && updateData.id && typeof updateData.subtotal === 'number') {
-      console.log('🎯 Datos válidos recibidos:', {
-        id: updateData.id,
-        subtotal: updateData.subtotal,
-        tax: updateData.tax,
-        total: updateData.total,
-        //timestamp: updateData.timestamp
-      });
-
-      console.log('🔍 gridApi disponible:', !!this.gridApi);
-
       if (this.gridApi) {
-        console.log('✅ Llamando updateMasterRowInGrid...');
-        // ✅ CORRECCIÓN: Usar setTimeout para asegurar que el grid esté listo
         setTimeout(() => {
           this.updateMasterRowInGrid({
             id: updateData.id,
@@ -115,8 +129,6 @@ constructor() {
           });
         }, 50);
       } else {
-        console.log('❌ gridApi no disponible, guardando datos para cuando esté listo');
-        // ✅ CORRECCIÓN: Guardar los datos para cuando el grid esté listo
         this.pendingMasterUpdate = {
           id: updateData.id,
           subtotal: updateData.subtotal,
@@ -124,22 +136,23 @@ constructor() {
           total: updateData.total
         };
       }
-    } else {
-      console.log('ℹ️ No hay datos válidos para actualizar');
     }
   });
 
-  console.log('✅ EgresosPalacioComponent: Constructor completado');
+  this.providerModalService.modalRequest$.subscribe((data) => {
+    this.openProviderModal(data.idRoot);
+  });
 }
 
 
 // ✅ CORRECCIÓN: Agregar propiedad para datos pendientes
-  private pendingMasterUpdate: any = null;
-  showform : string = '';
-  branchs  : any[] = [];
-  incomes  : any[] = [];
-  expenses : any[] = [];
-  users    : any[] = [];
+ private pendingMasterUpdate: any = null;
+ externalFilterActive: boolean = false;
+ showform : string = '';
+ branchs  : any[] = [];
+ incomes  : any[] = [];
+ expenses : any[] = [];
+ users    : any[] = [];
 
   id: number;
   notSavedChanges: boolean = false;
@@ -153,6 +166,7 @@ constructor() {
 
   bankAccounts: any[] = [];
   prefixAndConsecutive: any[] = [];
+  typeComps: any[] = [];
 
   private _idAccount: number; // Variable de respaldo para el setter
 
@@ -215,10 +229,16 @@ constructor() {
     rowHeight: 24,
     animateRows: true,
     masterDetail: true,
+    autoHeight: true,
     getRowId: (params: any) => String(params.data.id),
     detailRowHeight: 700,
     isRowMaster: (dataItem: any) => true,
     detailCellRenderer: DetailCellRendererExpenditureComponent,
+    isExternalFilterPresent: () => this.externalFilterActive,
+    doesExternalFilterPass: (node: any) => {
+      if (!this.externalFilterActive) return true;
+      return node.data.visible !== false;
+    },
     dateComponentParams: {
       dateFormat: 'dd/MM/yyyy'
     },
@@ -271,13 +291,29 @@ constructor() {
 
         const currentColumn = event.column.getColId();
 
-        // Si estamos en la columna "date", mover a "idExpend"
+        // Secuencia de navegación: date -> idTypeComp -> idExpend -> totalComp
         if (currentColumn === 'date') {
+          setTimeout(() => {
+            this.gridApi.setFocusedCell(event.node.rowIndex, 'idTypeComp');
+            this.gridApi.startEditingCell({
+              rowIndex: event.node.rowIndex,
+              colKey: 'idTypeComp'
+            });
+          }, 50);
+        } else if (currentColumn === 'idTypeComp') {
           setTimeout(() => {
             this.gridApi.setFocusedCell(event.node.rowIndex, 'idExpend');
             this.gridApi.startEditingCell({
               rowIndex: event.node.rowIndex,
               colKey: 'idExpend'
+            });
+          }, 50);
+        } else if (currentColumn === 'idExpend') {
+          setTimeout(() => {
+            this.gridApi.setFocusedCell(event.node.rowIndex, 'totalComp');
+            this.gridApi.startEditingCell({
+              rowIndex: event.node.rowIndex,
+              colKey: 'totalComp'
             });
           }, 50);
         }
@@ -288,6 +324,16 @@ constructor() {
   public rowSelection: 'single' | 'multiple' = 'single';
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
+
+  public defaultColDef: ColDef = {
+    sortable: true,
+    filter: true,
+    resizable: true,
+    editable: false,
+    wrapHeaderText: true,
+    autoHeaderHeight: true
+  };
+
   components = {
     multiLineEditor: MultiLineEditorComponent,
     searchableSelect: SearchableSelectComponent
@@ -309,6 +355,7 @@ constructor() {
           countDocomps: income.countDocomps || 0, // Usar valor de la BD si existe
           detailType: null,
           detailData: [],
+          visible: true,
           objetoGastoCodigo: this.expenses.find(e => e.id === income.idExpend)?.codigo || ''
         }));
 
@@ -334,6 +381,19 @@ constructor() {
       }
     )
     this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Objetos de Gasto`, 'Palacio Municipal - Egresos',
+          this.trackingService.getEmail() );
+  }
+
+  async getTypeComps() {
+    this.cataalogAdmonService.getCatalogs(this.idRoot, 'TYPECOMP').subscribe(
+      (data: any) => {
+        this.typeComps = data;
+      },
+      error => {
+        console.error(error);
+      }
+    )
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Tipos de Comprobante`, 'Palacio Municipal - Egresos',
           this.trackingService.getEmail() );
   }
 
@@ -408,6 +468,13 @@ constructor() {
   get colMaster(): ColDef[] {
     return [
       {
+        headerName: '#',
+        width: 50,
+        valueGetter: (params) => params.node!.rowIndex! + 1,
+        pinned: 'left',
+        cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' }
+      },
+      {
         field: 'countItems',
         headerName: 'Items',
         width: 80,
@@ -474,7 +541,7 @@ constructor() {
 
       { field: 'numberDocument', headerName: '# Doc/Fac', editable: false, filter: true, width: 120, hide: false },
 {
-    field: 'date', headerName: 'Fecha', editable: (params) => params.data.__isNew, cellDataType: 'date', width: 95,
+    field: 'date', headerName: 'Fecha', editable: true, cellDataType: 'date', width: 95,
                valueFormatter: (params) => this.formatDate(params.value),
                cellEditorParams: {
                  dateFormat: 'dd/MM/yyyy',
@@ -483,12 +550,42 @@ constructor() {
              },
 
             {
+                field: 'idTypeComp', headerName: 'Tipo Comprobante', editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return true
+        }, width: 110,
+                wrapText: true,
+                autoHeight: true,
+                cellStyle: { 'white-space': 'normal', 'line-height': '1.4' },
+                cellEditor: SelectWithTooltipEditorV2Component,
+                cellEditorParams: {
+                  options: this.typeComps.map(obj => ({
+                    id: obj.id,
+                    description: obj.description,
+                    valueAddition: obj.id.toString(),
+                    valueAddition2: obj.description
+                  }))
+                },
+                valueFormatter: (params) => {
+                  const foundItem = this.typeComps
+                    ? this.typeComps.find((item) => item.id === params.value)
+                    : null;
+                  return foundItem ? foundItem.description : params.value;
+                },
+            },
+
+            {
                 field: 'idExpend', headerName: 'Objeto de Gasto', editable: (params) => {
           if (params.data.__isNew) {
             return true;
           }
           return true
-        }, width: 190,
+        }, width: 170,
+                wrapText: true,
+                autoHeight: true,
+                cellStyle: { 'white-space': 'normal', 'line-height': '1.4' },
                 cellEditor: SelectWithTooltipEditorV2Component,
                 cellEditorParams: {
                   options: this.expenses.map(obj => ({
@@ -512,7 +609,10 @@ constructor() {
             return true;
           }
           return true
-        }, width: 325, filter: true,
+        }, width: 155, filter: true,
+              wrapText: true,
+              autoHeight: true,
+              cellStyle: { 'white-space': 'normal', 'line-height': '1.4' },
               cellEditor: 'agPopupTextCellEditor',
               cellEditorParams: {
                 maxLength: 100,
@@ -551,17 +651,28 @@ constructor() {
       },
 
       {
-        field: 'total',
-        headerName: 'Total',
+        field: 'totalComp',
+        headerName: 'Por Comprobar',
         type: 'number',
-        editable: false,
-        width: 100,
+        editable: true,
+        width: 140,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
+   
+      {
+        field: 'total',
+        headerName: 'Comprobado',
+        type: 'number',
+        editable: false,
+        width: 130,
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+      },
+
       {
         field: 'tax',
         headerName: 'Impuestos',
         type: 'number',
+        hide: true,
         editable: false,
         width: 100,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
@@ -571,6 +682,7 @@ constructor() {
         headerName: 'ISR',
         type: 'number',
         editable: false,
+        hide: true,
         width: 100,        
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
@@ -587,7 +699,6 @@ constructor() {
 
   onSelectedRow(event: any) {
     this.id = event.data.id;
-    //console.log('Type fila seleccionada:', event.data.type);
     this.signalsService.setIdIncomeAndExpense(this.id);
   }
 
@@ -639,9 +750,7 @@ constructor() {
     this.notSavedChanges = true;
   }
 
- // ✅ CORRECCIÓN: Modificar onGridReady para procesar actualizaciones pendientes
 onGridReady(params: GridReadyEvent) {
-  console.log('🏁 Grid ready - Palacio Municipal - Egresos');
   this.gridApi = params.api;
 
   // Configurar el detailCellRendererParams para pasar datos al detail renderer
@@ -659,6 +768,7 @@ onGridReady(params: GridReadyEvent) {
       rootService: this.rootService,
       base64EncodeService: this.base64EncodeService,
       objetosGasto: this.expenses,
+      typeComps: this.typeComps,
       CONCEPTS: {
         load: (expenditureId: number, callback: (data: any[]) => void) => {
           this.loadConceptsData(expenditureId, callback);
@@ -690,9 +800,7 @@ onGridReady(params: GridReadyEvent) {
     }
   });
 
-  // ✅ CORRECCIÓN: Procesar actualizaciones pendientes
   if (this.pendingMasterUpdate) {
-    console.log('⏳ Procesando actualización pendiente:', this.pendingMasterUpdate);
     setTimeout(() => {
       this.updateMasterRowInGrid(this.pendingMasterUpdate);
       this.pendingMasterUpdate = null;
@@ -713,6 +821,8 @@ onGridReady(params: GridReadyEvent) {
       idBusinnes: this.idRoot,
       idBranch: 0,
       date: now,
+      idTypeComp: 0,
+      totalComp: 0,
       idCustomer: 0,
       idExpend: 0,
       uuid: "NA",
@@ -732,6 +842,7 @@ onGridReady(params: GridReadyEvent) {
       status: "Pagada",
       active: true,
       __isNew: true,
+      visible: true,
     };
     this.incomes = [newItem, ...this.incomes];
     this.newlyAddedRows.push(tempId);
@@ -1021,44 +1132,19 @@ private updateMasterRow(updatedData: any) {
 
     // Aplicamos la transacción para que AG Grid refresque solo esa fila
     this.gridApi.applyTransaction({ update: [currentData] });
-    console.log(`Fila maestra ${updatedData.id} actualizada con nuevos totales.`);
   }
 }
 
 
-// ✅ MÉTODO MEJORADO para actualizar la fila del maestro sin perder la selección
 private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: number; isr?: number; total: number }) {
-  console.log('🔄 updateMasterRowInGrid iniciado con:', updatedData);
+  if (!this.gridApi || !updatedData?.id) return;
 
-  if (!this.gridApi) {
-    console.log('❌ gridApi no disponible');
-    return;
-  }
-
-  if (!updatedData?.id) {
-    console.log('❌ updatedData o id no válidos');
-    return;
-  }
-
-  // BOOKMARK: Guardar la selección actual
   const selectedNodes = this.gridApi.getSelectedNodes();
   const currentSelectedId = selectedNodes.length > 0 ? selectedNodes[0].data.id : null;
-  console.log('🔖 Selección actual guardada:', currentSelectedId);
 
-  // Buscar el nodo de la fila a actualizar
-  console.log('🔍 Buscando nodo con ID:', updatedData.id.toString());
   const rowNode = this.gridApi.getRowNode(updatedData.id.toString());
-  console.log('🎯 Nodo encontrado:', !!rowNode);
 
   if (rowNode) {
-    console.log('📝 Datos actuales del nodo:', {
-      id: rowNode.data.id,
-      subtotal_actual: rowNode.data.subtotal,
-      tax_actual: rowNode.data.tax,
-      total_actual: rowNode.data.total
-    });
-
-    // Actualizar los datos del nodo
     const currentData = rowNode.data;
     currentData.subtotal = updatedData.subtotal;
     currentData.tax = updatedData.tax;
@@ -1067,49 +1153,21 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
     }
     currentData.total = updatedData.total;
 
-    console.log('📝 Datos después de actualizar:', {
-      id: currentData.id,
-      subtotal_nuevo: currentData.subtotal,
-      tax_nuevo: currentData.tax,
-      total_nuevo: currentData.total
-    });
-
-    // Aplicar la transacción para actualizar la fila
-    console.log('🔄 Aplicando transacción...');
     this.gridApi.applyTransaction({ update: [currentData] });
-    console.log('✅ Transacción aplicada');
 
-    console.log(`✅ Fila maestra ${updatedData.id} actualizada con nuevos totales.`);
-
-    // RESTAURAR BOOKMARK: Mantener la selección si era la misma fila
     if (currentSelectedId === updatedData.id) {
-      console.log('🔖 Restaurando selección...');
       setTimeout(() => {
         const updatedNode = this.gridApi.getRowNode(updatedData.id.toString());
         if (updatedNode) {
           updatedNode.setSelected(true);
           this.gridApi.ensureNodeVisible(updatedNode);
-          console.log('✅ Selección restaurada');
-        } else {
-          console.log('❌ No se pudo restaurar la selección');
         }
       }, 50);
     }
   } else {
-    console.warn(`⚠️ No se encontró la fila ${updatedData.id} en el grid.`);
-
-    // Plan B: Actualizar el array local
-    console.log('🔄 Ejecutando Plan B - Actualizar array local...');
     const itemIndex = this.incomes.findIndex(item => item.id === updatedData.id);
-    console.log('🔍 Índice en array local:', itemIndex);
 
     if (itemIndex !== -1) {
-      console.log('📝 Datos actuales en array:', {
-        subtotal_actual: this.incomes[itemIndex].subtotal,
-        tax_actual: this.incomes[itemIndex].tax,
-        total_actual: this.incomes[itemIndex].total
-      });
-
       this.incomes[itemIndex].subtotal = updatedData.subtotal;
       this.incomes[itemIndex].tax = updatedData.tax;
       if (updatedData.isr !== undefined) {
@@ -1117,28 +1175,15 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
       }
       this.incomes[itemIndex].total = updatedData.total;
 
-      console.log('📝 Datos después de actualizar array:', {
-        subtotal_nuevo: this.incomes[itemIndex].subtotal,
-        tax_nuevo: this.incomes[itemIndex].tax,
-        total_nuevo: this.incomes[itemIndex].total
-      });
-
-      // RESTAURAR BOOKMARK después del refresco
       setTimeout(() => {
         if (currentSelectedId) {
-          console.log('🔖 Intentando restaurar selección después de Plan B...');
           const nodeToSelect = this.gridApi.getRowNode(currentSelectedId.toString());
           if (nodeToSelect) {
             nodeToSelect.setSelected(true);
             this.gridApi.ensureNodeVisible(nodeToSelect);
-            console.log('✅ Selección restaurada (Plan B)');
-          } else {
-            console.log('❌ No se pudo restaurar la selección (Plan B)');
           }
         }
       }, 100);
-    } else {
-      console.log('❌ No se encontró el item en el array local');
     }
   }
 }
@@ -1150,28 +1195,21 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
     const isCurrentlyExpanded = node.expanded && node.data.detailType === 'concepts';
 
     if (isCurrentlyExpanded) {
-      // Si ya está expandido con conceptos, colapsarlo
+      // Si ya está expandido con conceptos, colapsarlo y mostrar todas las filas
       node.setExpanded(false);
-
-      // Restaurar alturas de todas las filas
-      api.forEachNode((otherNode: any) => {
-        otherNode.setRowHeight(undefined);
+      node.data.detailType = null;
+      this.externalFilterActive = false;
+      api.forEachNode((n: any) => {
+        n.data.visible = true;
       });
-      api.onRowHeightChanged();
+      api.onFilterChanged();
     } else {
-      // Colapsar cualquier otra fila expandida
-      api.forEachNode((otherNode: any) => {
-        if (otherNode.expanded && otherNode.id !== node.id) {
-          otherNode.setExpanded(false);
-        }
+      // Expandir con conceptos, ocultar las demás filas
+      this.externalFilterActive = true;
+      api.forEachNode((n: any) => {
+        n.data.visible = n.id === node.id ? true : false;
       });
-
-      // Ocultar todas las demás filas
-      api.forEachNode((otherNode: any) => {
-        if (otherNode.id !== node.id) {
-          otherNode.setRowHeight(0);
-        }
-      });
+      api.onFilterChanged();
 
       // Si la fila está expandida con otro tipo de detalle, cerrarla
       if (node.expanded && node.data.detailType !== 'concepts') {
@@ -1180,9 +1218,6 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
 
       // Cambiar el tipo de detalle a 'concepts'
       node.data.detailType = 'concepts';
-
-      // Aplicar cambios de altura
-      api.onRowHeightChanged();
 
       // Expandir con los conceptos
       setTimeout(() => {
@@ -1196,28 +1231,21 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
     const isCurrentlyExpanded = node.expanded && node.data.detailType === 'report';
 
     if (isCurrentlyExpanded) {
-      // Si ya está expandido con el reporte, colapsarlo
+      // Si ya está expandido con el reporte, colapsarlo y mostrar todas las filas
       node.setExpanded(false);
-
-      // Restaurar alturas de todas las filas
-      api.forEachNode((otherNode: any) => {
-        otherNode.setRowHeight(undefined);
+      node.data.detailType = null;
+      this.externalFilterActive = false;
+      api.forEachNode((n: any) => {
+        n.data.visible = true;
       });
-      api.onRowHeightChanged();
+      api.onFilterChanged();
     } else {
-      // Colapsar cualquier otra fila expandida
-      api.forEachNode((otherNode: any) => {
-        if (otherNode.expanded && otherNode.id !== node.id) {
-          otherNode.setExpanded(false);
-        }
+      // Expandir con reporte, ocultar las demás filas
+      this.externalFilterActive = true;
+      api.forEachNode((n: any) => {
+        n.data.visible = n.id === node.id ? true : false;
       });
-
-      // Ocultar todas las demás filas
-      api.forEachNode((otherNode: any) => {
-        if (otherNode.id !== node.id) {
-          otherNode.setRowHeight(0);
-        }
-      });
+      api.onFilterChanged();
 
       // Si la fila está expandida con otro tipo de detalle, cerrarla
       if (node.expanded && node.data.detailType !== 'report') {
@@ -1239,9 +1267,6 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
         node.data.objetoGastoTexto = 'Sin objeto de gasto';
       }
 
-      // Aplicar cambios de altura
-      api.onRowHeightChanged();
-
       // Expandir con el reporte
       setTimeout(() => {
         node.setExpanded(true);
@@ -1257,12 +1282,12 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
           node.data.detailType = null;
         }
       });
-
-      // Restaurar alturas
+      // Mostrar todas las filas
+      this.externalFilterActive = false;
       this.gridApi.forEachNode((node) => {
-        node.setRowHeight(undefined);
+        node.data.visible = true;
       });
-      this.gridApi.onRowHeightChanged();
+      this.gridApi.onFilterChanged();
     }
   }
 
@@ -1271,28 +1296,21 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
     const isCurrentlyExpanded = node.expanded && node.data.detailType === 'comprobacion';
 
     if (isCurrentlyExpanded) {
-      // Si ya está expandido con comprobación, colapsarlo
+      // Si ya está expandido con comprobación, colapsarlo y mostrar todas las filas
       node.setExpanded(false);
-
-      // Restaurar alturas de todas las filas
-      api.forEachNode((otherNode: any) => {
-        otherNode.setRowHeight(undefined);
+      node.data.detailType = null;
+      this.externalFilterActive = false;
+      api.forEachNode((n: any) => {
+        n.data.visible = true;
       });
-      api.onRowHeightChanged();
+      api.onFilterChanged();
     } else {
-      // Colapsar cualquier otra fila expandida
-      api.forEachNode((otherNode: any) => {
-        if (otherNode.expanded && otherNode.id !== node.id) {
-          otherNode.setExpanded(false);
-        }
+      // Expandir con comprobación, ocultar las demás filas
+      this.externalFilterActive = true;
+      api.forEachNode((n: any) => {
+        n.data.visible = n.id === node.id ? true : false;
       });
-
-      // Ocultar todas las demás filas
-      api.forEachNode((otherNode: any) => {
-        if (otherNode.id !== node.id) {
-          otherNode.setRowHeight(0);
-        }
-      });
+      api.onFilterChanged();
 
       // Si la fila está expandida con otro tipo de detalle, cerrarla
       if (node.expanded && node.data.detailType !== 'comprobacion') {
@@ -1301,9 +1319,6 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
 
       // Cambiar el tipo de detalle a 'comprobacion'
       node.data.detailType = 'comprobacion';
-
-      // Aplicar cambios de altura
-      api.onRowHeightChanged();
 
       // Expandir con la comprobación
       setTimeout(() => {
@@ -1347,7 +1362,7 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
           };
           this.administrationService.updateRowsIncorExp(expenditureId, dataToSave).subscribe({
             next: () => {
-              console.log('Contador de items actualizado en servidor');
+              // Contador actualizado
             },
             error: (error) => {
               console.error('Error actualizando contador de items:', error);
@@ -1510,7 +1525,7 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
           };
           this.administrationService.updateRowsIncorExp(expenditureId, dataToSave).subscribe({
             next: () => {
-              console.log('Contador de documentos actualizado en servidor');
+              // Contador actualizado
             },
             error: (error) => {
               console.error('Error actualizando contador de documentos:', error);
@@ -1605,6 +1620,93 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
       cleanedData.modifiedBy = '';
     }
     return cleanedData;
+  }
+
+  // ==================== MÉTODOS PARA EL MODAL DE PROVEEDOR ====================
+
+  openProviderModal(idRoot: number) {
+    this.newProvider = {
+      idRoot: idRoot,
+      idBranch: this.idBranch || 0,
+      idTypecop: 3, // PROVEEDOR
+      nameContact: '',
+      company: '',
+      rfc: '',
+      city: '',
+      position: 'GERENCIA',
+      address: '',
+      addressFiscal: '',
+      cp: '',
+      state: '',
+      neighborhood: '',
+      total: 0,
+      radio: 0,
+      phone: '',
+      mobile: '',
+      email: 'info@x.com',
+      vigente: true,
+      numCliente: 0,
+      latitud: '',
+      longitud: '',
+      typeCustomer: '',
+      typework: '',
+      type: 'PROVIDERS',
+      fieldContact: 0,
+      fieldBank: 0,
+      fieldCuenta: 0,
+      active: true
+    };
+    this.showProviderModal = true;
+    document.body.classList.add('modal-open');
+  }
+
+  closeProviderModal() {
+    this.showProviderModal = false;
+    document.body.classList.remove('modal-open');
+  }
+
+  async saveNewProvider() {
+    if (!this.newProvider.company || !this.newProvider.nameContact) {
+      alerts.basicAlert(
+        'Error',
+        'La Compañía y el Nombre de Contacto son obligatorios.',
+        'error'
+      );
+      return;
+    }
+
+    // Mostrar datos para copiar y probar en Swagger
+    const jsonData = JSON.stringify(this.newProvider, null, 2);
+    prompt('📋 COPIAR DATOS PARA SWAGGER:\n\nSelecciona todo (Ctrl+A) y copia (Ctrl+C):', jsonData);
+
+    try {
+      const result: any = await lastValueFrom(
+        this.customersService.addCustomer(this.newProvider)
+      );
+
+      alerts.basicAlert(
+        'Proveedor creado',
+        'El proveedor se ha creado correctamente.',
+        'success'
+      );
+
+      this.providerModalService.confirmSave({
+        id: result.id,
+        name: this.newProvider.company
+      });
+
+      this.signalsService.setNewProviderCreated(result.id, this.newProvider.company);
+
+      this.closeProviderModal();
+
+    } catch (error) {
+      console.error('Error creando proveedor:', error);
+      alerts.basicAlert(
+        'Error',
+        `Error al crear el proveedor. ${error?.error?.message || error?.message || 'Error desconocido'}`,
+        'error'
+      );
+    }
   }
 
 }
