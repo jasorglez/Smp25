@@ -82,4 +82,8 @@ export class IncomesAndExpensesService {
     return this.http.get<any[]>(`${environment.urlAdministration}/Incomeandexpense/income-by-account?idBusiness=${idBusiness}&type=${type}&startDate=${startDate}&endDate=${endDate}`, { headers: this.tracking.getHeaders() });
   }
 
+  getDetailFromIncomesAndExpenses(idBusiness: number, type: string, nameAccount: string, startDate: string, endDate: string): Observable<any> {
+    return this.http.get<any>(`${environment.urlAdministration}/Incomeandexpense/income-detail?idBusiness=${idBusiness}&type=${type}&nameAccount=${nameAccount}&startDate=${startDate}&endDate=${endDate}`, { headers: this.tracking.getHeaders() });
+  }
+
 }

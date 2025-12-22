@@ -18,6 +18,7 @@ import {
   ChartComponent,
   NgApexchartsModule,
 } from 'ng-apexcharts';
+import { DetailCellRendererTotalesComponent } from '../dastot-pal/detail-cell-renderer-totales.component';
 
 export type ChartOptions = {
   series: ApexNonAxisChartSeries;
@@ -44,6 +45,7 @@ interface IncomeData {
     FormsModule,
     CommonModule,
     NgApexchartsModule,
+    DetailCellRendererTotalesComponent,
   ],
   templateUrl: './dasing-pal.component.html',
   styleUrl: './dasing-pal.component.scss',
@@ -125,7 +127,10 @@ export class DasingPalComponent implements OnInit {
         if (params.value == null) return '$0.00';
         return '$' + params.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       },
-      cellStyle: { textAlign: 'right', fontWeight: 'bold' },
+      cellStyle: { textAlign: 'right', fontWeight: 'bold', cursor: 'pointer', textDecoration: 'underline', color: '#0d6efd' },
+      onCellClicked: (params) => {
+        this.toggleDetail(params.node);
+      }
     },
     {
       headerName: 'PDF',
@@ -143,6 +148,10 @@ export class DasingPalComponent implements OnInit {
     enableRangeSelection: true,
     pagination: false,
     domLayout: 'autoHeight',
+    masterDetail: true,
+    detailRowHeight: 350,
+    detailCellRenderer: DetailCellRendererTotalesComponent,
+    isRowMaster: () => true,
   };
 
   ngOnInit(): void {
@@ -152,6 +161,49 @@ export class DasingPalComponent implements OnInit {
   onGridReady(params: GridReadyEvent): void {
     this.gridApi = params.api;
     this.gridApi.sizeColumnsToFit();
+
+    // Configurar el contexto para el detail renderer
+    this.gridApi.setGridOption('detailCellRendererParams', {
+      context: {
+        incomesExpensesService: this.incomesExpensesService,
+        idRoot: this.signalsService.getRootSelectedBySidebar()(),
+        detailType: 'DEPOSITO',
+        startDate: this.startDate,
+        endDate: this.endDate,
+      }
+    });
+  }
+
+  // Variable para almacenar todos los datos originales
+  private allRowData: IncomeData[] = [];
+
+  toggleDetail(node: any): void {
+    const isExpanded = node.expanded;
+    const clickedData = node.data;
+
+    if (!isExpanded) {
+      // Va a expandir: guardar datos completos y filtrar para mostrar solo la fila seleccionada
+      if (this.allRowData.length === 0) {
+        this.allRowData = [...this.rowData];
+      }
+      this.rowData = this.allRowData.filter(item => item.nameAccount === clickedData.nameAccount);
+
+      // Esperar a que se actualice la grilla y luego expandir
+      setTimeout(() => {
+        this.gridApi.forEachNode((n: any) => {
+          if (n.data?.nameAccount === clickedData.nameAccount) {
+            n.setExpanded(true);
+          }
+        });
+      }, 50);
+    } else {
+      // Va a contraer: restaurar todos los datos
+      node.setExpanded(false);
+      if (this.allRowData.length > 0) {
+        this.rowData = [...this.allRowData];
+        this.allRowData = [];
+      }
+    }
   }
 
   async loadData(): Promise<void> {
