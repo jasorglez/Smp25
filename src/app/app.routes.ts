@@ -829,8 +829,7 @@ export const routes: Routes = [
           {
             path: 'dashmodadmon',
             loadComponent: () =>
-              import(
-                './domains/ModAdmon/components/dashboardmodadmon/dashboarhost/dashboarhost.component'
+              import('./domains/ModAdmon/components/dashboardmodadmon/dashboarhost/dashboarhost.component'
               ).then((s) => s.DashboarhostComponent),
             canActivate: [TrackingGuard],
             data: {
@@ -1233,7 +1232,67 @@ export const routes: Routes = [
                   }
                 },
                 canDeactivate: [UnsavedChangesGuard]
-              }
+              },
+
+                {
+                  path: 'dashboard-palacio',
+                  loadComponent: () =>
+                    import('./domains/ModAdmon/pages/palacio-municipal/dashboards-pal/dashboards-pal.component'
+                    ).then((c) => c.DashboardsPalComponent),
+                  canActivate: [TrackingGuard],
+                  data: {
+                    tracking: {
+                      logMessage: 'Click en Dashboard - Palacio Municipal',
+                      category: 'Administration'
+                    }
+                  },
+                  canDeactivate: [UnsavedChangesGuard],
+                  children: [
+                    { path: '', redirectTo: 'dasing-pal', pathMatch: 'full' },
+                    {
+                      path: 'dasing-pal',
+                      loadComponent: () =>
+                        import('./domains/ModAdmon/pages/palacio-municipal/dasing-pal/dasing-pal.component'
+                        ).then((c) => c.DasingPalComponent),
+                      canActivate: [TrackingGuard],
+                      data: {
+                        tracking: {
+                          logMessage: 'Click en Dashboard Ingresos - Palacio Municipal',
+                          category: 'Administration'
+                        }
+                      },
+                      canDeactivate: [UnsavedChangesGuard]
+                    },
+                    {
+                      path: 'dashegr-pal',
+                      loadComponent: () =>
+                        import('./domains/ModAdmon/pages/palacio-municipal/dashegr-pal/dashegr-pal.component'
+                        ).then((c) => c.DashegrPalComponent),
+                      canActivate: [TrackingGuard],
+                      data: {
+                        tracking: {
+                          logMessage: 'Click en Dashboard Egresos - Palacio Municipal',
+                          category: 'Administration'
+                        }
+                      },
+                      canDeactivate: [UnsavedChangesGuard]
+                    },
+                    {
+                      path: 'dastot-pal',
+                      loadComponent: () =>
+                        import('./domains/ModAdmon/pages/palacio-municipal/dastot-pal/dastot-pal.component'
+                        ).then((c) => c.DastotPalComponent),
+                      canActivate: [TrackingGuard],
+                      data: {
+                        tracking: {
+                          logMessage: 'Click en Dashboard Total - Palacio Municipal',
+                          category: 'Administration'
+                        }
+                      }
+                    }
+                  ]
+                }
+
             ]
           },
 
