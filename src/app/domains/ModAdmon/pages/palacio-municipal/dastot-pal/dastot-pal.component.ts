@@ -181,7 +181,11 @@ export class DastotPalComponent implements OnInit {
   };
 
   ngOnInit(): void {
-    this.loadData();
+    // Esperar a que haya un idRoot antes de cargar datos
+    const idRoot = this.signalsService.getRootSelectedBySidebar()();
+    if (idRoot) {
+      this.loadData();
+    }
   }
 
   onGridReady(params: GridReadyEvent): void {
@@ -203,7 +207,8 @@ export class DastotPalComponent implements OnInit {
       }
 
       // Cargar ingresos y egresos en paralelo
-      const [ingresosResponse, egresosResponse] = await Promise.all([
+      // Usar Promise.allSettled para manejar errores 404 individualmente
+      const [ingresosResult, egresosResult] = await Promise.allSettled([
         this.incomesExpensesService.getIncomesByAccount(idRoot, 'DEPOSITO', this.startDate, this.endDate).toPromise(),
         this.incomesExpensesService.getIncomesByAccount(idRoot, 'GASTO', this.startDate, this.endDate).toPromise()
       ]);
@@ -212,30 +217,42 @@ export class DastotPalComponent implements OnInit {
       const accountsMap = new Map<string, TotalData>();
 
       // Procesar ingresos
-      if (ingresosResponse?.success && ingresosResponse?.hasData) {
-        ingresosResponse.data.forEach((item: any) => {
-          accountsMap.set(item.nameAccount, {
-            nameAccount: item.nameAccount,
-            ingresos: item.ingresos || 0,
-            egresos: 0
+      if (ingresosResult.status === 'fulfilled') {
+        const ingresosResponse = ingresosResult.value;
+        if (ingresosResponse?.success && ingresosResponse?.hasData) {
+          ingresosResponse.data.forEach((item: any) => {
+            accountsMap.set(item.nameAccount, {
+              nameAccount: item.nameAccount,
+              ingresos: item.ingresos || 0,
+              egresos: 0
+            });
           });
-        });
+        }
+      } else if (ingresosResult.reason?.status !== 404) {
+        // Solo loguear si NO es 404
+        console.error('Error al cargar ingresos:', ingresosResult.reason);
       }
 
       // Procesar egresos
-      if (egresosResponse?.success && egresosResponse?.hasData) {
-        egresosResponse.data.forEach((item: any) => {
-          const existing = accountsMap.get(item.nameAccount);
-          if (existing) {
-            existing.egresos = item.ingresos || 0;
-          } else {
-            accountsMap.set(item.nameAccount, {
-              nameAccount: item.nameAccount,
-              ingresos: 0,
-              egresos: item.ingresos || 0
-            });
-          }
-        });
+      if (egresosResult.status === 'fulfilled') {
+        const egresosResponse = egresosResult.value;
+        if (egresosResponse?.success && egresosResponse?.hasData) {
+          egresosResponse.data.forEach((item: any) => {
+            const existing = accountsMap.get(item.nameAccount);
+            if (existing) {
+              existing.egresos = item.ingresos || 0;
+            } else {
+              accountsMap.set(item.nameAccount, {
+                nameAccount: item.nameAccount,
+                ingresos: 0,
+                egresos: item.ingresos || 0
+              });
+            }
+          });
+        }
+      } else if (egresosResult.reason?.status !== 404) {
+        // Solo loguear si NO es 404
+        console.error('Error al cargar egresos:', egresosResult.reason);
       }
 
       // Convertir mapa a array
@@ -250,10 +267,19 @@ export class DastotPalComponent implements OnInit {
       }
     } catch (error: any) {
       console.error('Error al cargar datos:', error);
-      this.errorMessage = 'Error al cargar los datos: ' + (error?.message || 'Error desconocido');
-      this.rowData = [];
-      this.chartIngresosOptions.series = [0, 0, 0];
-      this.chartEgresosOptions.series = [0, 0, 0];
+
+      // Si es un error 404, significa que no hay datos (todos en 0)
+      if (error?.status === 404) {
+        this.errorMessage = 'No hay datos en el rango de fechas seleccionado';
+        this.rowData = [];
+        this.chartIngresosOptions.series = [0, 0, 0];
+        this.chartEgresosOptions.series = [0, 0, 0];
+      } else {
+        this.errorMessage = 'Error al cargar los datos: ' + (error?.message || 'Error desconocido');
+        this.rowData = [];
+        this.chartIngresosOptions.series = [0, 0, 0];
+        this.chartEgresosOptions.series = [0, 0, 0];
+      }
     } finally {
       this.isLoading = false;
     }

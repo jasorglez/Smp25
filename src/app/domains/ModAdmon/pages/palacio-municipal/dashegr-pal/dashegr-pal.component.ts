@@ -135,7 +135,11 @@ export class DashegrPalComponent implements OnInit {
   };
 
   ngOnInit(): void {
-    this.loadData();
+    // Esperar a que haya un idRoot antes de cargar datos
+    const idRoot = this.signalsService.getRootSelectedBySidebar()();
+    if (idRoot) {
+      this.loadData();
+    }
   }
 
   onGridReady(params: GridReadyEvent): void {
@@ -173,9 +177,17 @@ export class DashegrPalComponent implements OnInit {
       }
     } catch (error: any) {
       console.error('Error al cargar datos:', error);
-      this.errorMessage = 'Error al cargar los datos: ' + (error?.message || 'Error desconocido');
-      this.rowData = [];
-      this.chartOptions.series = [0, 0, 0];
+
+      // Si es un error 404, significa que no hay datos (todos en 0)
+      if (error?.status === 404) {
+        this.errorMessage = 'No hay datos en el rango de fechas seleccionado';
+        this.rowData = [];
+        this.chartOptions.series = [0, 0, 0];
+      } else {
+        this.errorMessage = 'Error al cargar los datos: ' + (error?.message || 'Error desconocido');
+        this.rowData = [];
+        this.chartOptions.series = [0, 0, 0];
+      }
     } finally {
       this.isLoading = false;
     }
