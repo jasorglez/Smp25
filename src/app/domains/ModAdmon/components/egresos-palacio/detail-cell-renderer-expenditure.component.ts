@@ -290,7 +290,6 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     this.detailType = params.data.detailType || 'concepts';
 
     if (this.detailType === 'concepts') {
-      this.loadSATCatalogs();
       this.getBillingManagementInfo();
       this.loadObjetosGastoHijos(); // Cargar los objetos de gasto nivel 4
       this.loadConceptsData();
@@ -383,21 +382,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         }
       });
     }
-  }
-
-  loadSATCatalogs() {
-    if (this.context && this.context.administrationService) {
-      this.context.administrationService.getObjetosImpuesto().subscribe({
-        next: (data: any[]) => {
-          this.objetosImpuesto = data || [];
-        },
-        error: (err) => {
-          console.error('Error loading Objetos Impuesto:', err);
-          this.objetosImpuesto = [];
-        }
-      });
-    }
-  }
+  }  
 
   getBillingManagementInfo() {
     if (this.context && this.context.administrationService && this.context.idRoot) {
