@@ -5,7 +5,7 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { AuthService } from 'app/services/auth.service';
 import { SignalsService } from 'app/services/signals.service';
-import { CatalogadmonService } from 'app/services/catalogadmon.service';
+import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import {
@@ -28,12 +28,10 @@ export type ChartOptions = {
   colors: string[];
 };
 
-interface CategorySummary {
-  category: string;
-  estatal: number;
-  municipal: number;
-  propios: number;
-  total: number;
+interface TotalData {
+  nameAccount: string;
+  ingresos: number;
+  egresos: number;
 }
 
 @Component({
@@ -51,32 +49,69 @@ interface CategorySummary {
   styleUrl: './dastot-pal.component.scss',
 })
 export class DastotPalComponent implements OnInit {
-  @ViewChild('chart') chart!: ChartComponent;
+  @ViewChild('chartIngresos') chartIngresos!: ChartComponent;
+  @ViewChild('chartEgresos') chartEgresos!: ChartComponent;
 
   authService = inject(AuthService);
   private signalsService = inject(SignalsService);
-  private catalogadmonService = inject(CatalogadmonService);
+  private incomesExpensesService = inject(IncomesAndExpensesService);
 
   // Grid variables
   gridApi!: GridApi;
-  rowData: CategorySummary[] = [];
+  rowData: TotalData[] = [];
+  isLoading: boolean = false;
+  errorMessage: string = '';
 
   // Date range variables
   startDate: string = '2025-01-01';
   endDate: string = '2025-12-31';
 
-  // Chart configuration
-  public chartOptions: ChartOptions = {
+  // Chart configuration para Ingresos
+  public chartIngresosOptions: ChartOptions = {
     series: [0, 0, 0],
     chart: {
       type: 'pie',
-      height: 400,
+      height: 350,
     },
     labels: ['Estatal', 'Municipal', 'Propios'],
     colors: ['#00E396', '#008FFB', '#FEB019'],
     legend: {
       position: 'bottom',
-      fontSize: '14px',
+      fontSize: '12px',
+    },
+    dataLabels: {
+      enabled: true,
+      formatter: function (val: number) {
+        return val.toFixed(1) + '%';
+      },
+    },
+    responsive: [
+      {
+        breakpoint: 480,
+        options: {
+          chart: {
+            width: 300,
+          },
+          legend: {
+            position: 'bottom',
+          },
+        },
+      },
+    ],
+  };
+
+  // Chart configuration para Egresos
+  public chartEgresosOptions: ChartOptions = {
+    series: [0, 0, 0],
+    chart: {
+      type: 'pie',
+      height: 350,
+    },
+    labels: ['Estatal', 'Municipal', 'Propios'],
+    colors: ['#00E396', '#008FFB', '#FEB019'],
+    legend: {
+      position: 'bottom',
+      fontSize: '12px',
     },
     dataLabels: {
       enabled: true,
@@ -102,50 +137,38 @@ export class DastotPalComponent implements OnInit {
   // Column definitions for AG Grid
   columnDefs: ColDef[] = [
     {
-      field: 'category',
-      headerName: 'Categoría',
-      width: 250,
-      pinned: 'left',
+      field: 'nameAccount',
+      headerName: 'Descripción',
+      flex: 1,
+      minWidth: 300,
     },
     {
-      field: 'estatal',
-      headerName: 'Estatal',
+      field: 'ingresos',
+      headerName: 'Total Ingresos',
       width: 150,
       valueFormatter: (params) => {
         if (params.value == null) return '$0.00';
         return '$' + params.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       },
-      cellStyle: { textAlign: 'right' },
+      cellStyle: { textAlign: 'right', fontWeight: 'bold', color: '#28a745' },
     },
     {
-      field: 'municipal',
-      headerName: 'Municipal',
+      field: 'egresos',
+      headerName: 'Total Egresos',
       width: 150,
       valueFormatter: (params) => {
         if (params.value == null) return '$0.00';
         return '$' + params.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       },
-      cellStyle: { textAlign: 'right' },
+      cellStyle: { textAlign: 'right', fontWeight: 'bold', color: '#dc3545' },
     },
     {
-      field: 'propios',
-      headerName: 'Propios',
-      width: 150,
-      valueFormatter: (params) => {
-        if (params.value == null) return '$0.00';
-        return '$' + params.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      headerName: 'PDF',
+      width: 100,
+      cellRenderer: () => {
+        return '<button class="btn btn-sm btn-outline-danger"><i class="bi bi-file-pdf"></i> PDF</button>';
       },
-      cellStyle: { textAlign: 'right' },
-    },
-    {
-      field: 'total',
-      headerName: 'Total',
-      width: 150,
-      valueFormatter: (params) => {
-        if (params.value == null) return '$0.00';
-        return '$' + params.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      },
-      cellStyle: { textAlign: 'right', fontWeight: 'bold' },
+      cellStyle: { textAlign: 'center' },
     },
   ];
 
@@ -167,48 +190,111 @@ export class DastotPalComponent implements OnInit {
   }
 
   async loadData(): Promise<void> {
-    // TODO: Implementar llamada al endpoint cuando esté disponible
-    // Por ahora, datos de ejemplo (consolidado de ingresos y egresos)
-    this.rowData = [
-      {
-        category: 'Total Ingresos',
-        estatal: 100000,
-        municipal: 60000,
-        propios: 40000,
-        total: 200000,
-      },
-      {
-        category: 'Total Egresos',
-        estatal: 85000,
-        municipal: 65000,
-        propios: 50000,
-        total: 200000,
-      },
-      {
-        category: 'Saldo',
-        estatal: 15000,
-        municipal: -5000,
-        propios: -10000,
-        total: 0,
-      },
-    ];
+    this.isLoading = true;
+    this.errorMessage = '';
 
-    this.updateChart();
+    try {
+      const idRoot = this.signalsService.getRootSelectedBySidebar()();
+
+      if (!idRoot) {
+        this.errorMessage = 'No se ha seleccionado una raíz desde el sidebar';
+        this.rowData = [];
+        return;
+      }
+
+      // Cargar ingresos y egresos en paralelo
+      const [ingresosResponse, egresosResponse] = await Promise.all([
+        this.incomesExpensesService.getIncomesByAccount(idRoot, 'DEPOSITO', this.startDate, this.endDate).toPromise(),
+        this.incomesExpensesService.getIncomesByAccount(idRoot, 'GASTO', this.startDate, this.endDate).toPromise()
+      ]);
+
+      // Crear un mapa de cuentas únicas
+      const accountsMap = new Map<string, TotalData>();
+
+      // Procesar ingresos
+      if (ingresosResponse?.success && ingresosResponse?.hasData) {
+        ingresosResponse.data.forEach((item: any) => {
+          accountsMap.set(item.nameAccount, {
+            nameAccount: item.nameAccount,
+            ingresos: item.ingresos || 0,
+            egresos: 0
+          });
+        });
+      }
+
+      // Procesar egresos
+      if (egresosResponse?.success && egresosResponse?.hasData) {
+        egresosResponse.data.forEach((item: any) => {
+          const existing = accountsMap.get(item.nameAccount);
+          if (existing) {
+            existing.egresos = item.ingresos || 0;
+          } else {
+            accountsMap.set(item.nameAccount, {
+              nameAccount: item.nameAccount,
+              ingresos: 0,
+              egresos: item.ingresos || 0
+            });
+          }
+        });
+      }
+
+      // Convertir mapa a array
+      this.rowData = Array.from(accountsMap.values());
+
+      if (this.rowData.length === 0) {
+        this.errorMessage = 'No hay datos en el rango de fechas seleccionado';
+        this.chartIngresosOptions.series = [0, 0, 0];
+        this.chartEgresosOptions.series = [0, 0, 0];
+      } else {
+        this.updateCharts();
+      }
+    } catch (error: any) {
+      console.error('Error al cargar datos:', error);
+      this.errorMessage = 'Error al cargar los datos: ' + (error?.message || 'Error desconocido');
+      this.rowData = [];
+      this.chartIngresosOptions.series = [0, 0, 0];
+      this.chartEgresosOptions.series = [0, 0, 0];
+    } finally {
+      this.isLoading = false;
+    }
   }
 
-  updateChart(): void {
-    // Calcular totales por tipo de cuenta (solo para visualización positiva)
-    const estatototal = Math.abs(this.rowData[0]?.estatal || 0);
-    const municipalTotal = Math.abs(this.rowData[0]?.municipal || 0);
-    const propiosTotal = Math.abs(this.rowData[0]?.propios || 0);
+  updateCharts(): void {
+    // Separar totales de INGRESOS por tipo de cuenta
+    let ingEstatalTotal = 0;
+    let ingMunicipalTotal = 0;
+    let ingPropiosTotal = 0;
 
-    this.chartOptions.series = [estatototal, municipalTotal, propiosTotal];
+    // Separar totales de EGRESOS por tipo de cuenta
+    let egrEstatalTotal = 0;
+    let egrMunicipalTotal = 0;
+    let egrPropiosTotal = 0;
+
+    this.rowData.forEach(item => {
+      const nameUpper = item.nameAccount.toUpperCase();
+      const ingresosValue = item.ingresos || 0;
+      const egresosValue = item.egresos || 0;
+
+      // Verificar en orden de prioridad para evitar conflictos
+      if (nameUpper.includes('INGRESOS PROPIOS') || nameUpper.includes('INGRESO PROPIO')) {
+        ingPropiosTotal += ingresosValue;
+        egrPropiosTotal += egresosValue;
+      } else if (nameUpper.includes('ESTATAL')) {
+        ingEstatalTotal += ingresosValue;
+        egrEstatalTotal += egresosValue;
+      } else if (nameUpper.includes('MUNICIPAL') || nameUpper.includes('MUNICIPALES')) {
+        ingMunicipalTotal += ingresosValue;
+        egrMunicipalTotal += egresosValue;
+      }
+    });
+
+    this.chartIngresosOptions.series = [ingEstatalTotal, ingMunicipalTotal, ingPropiosTotal];
+    this.chartEgresosOptions.series = [egrEstatalTotal, egrMunicipalTotal, egrPropiosTotal];
   }
 
   onDateRangeChange(): void {
-    console.log('Fecha inicio:', this.startDate);
-    console.log('Fecha fin:', this.endDate);
-    // TODO: Recargar datos con el nuevo rango de fechas
-    this.loadData();
+    if (this.startDate && this.endDate) {
+      this.loadData();
+    }
   }
 }

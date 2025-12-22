@@ -33,7 +33,7 @@ export class IncomesAndExpensesService {
 
   getIncomeAndExpenseById(id: number): Observable<any> {
     return this.http.get(environment.urlAdministration + '/Incomeandexpense/' + id, { headers: this.tracking.getHeaders() });
-    }
+  }
 
   addIncomesAndExpenses(incomesAndExpenses: any): Observable<any> {
     return this.http.post<any>(environment.urlAdministration + '/Incomeandexpense/', incomesAndExpenses, { headers: this.tracking.getHeaders() });
@@ -44,39 +44,42 @@ export class IncomesAndExpensesService {
   }
 
   updateTotal(id: number, incomesAndExpenses: any): Observable<any> {
-   // const apiUrl = `${environment.urlAdministration + '/Incomeandexpense/totals/' + id }`;
-   // alert(apiUrl)
+    // const apiUrl = `${environment.urlAdministration + '/Incomeandexpense/totals/' + id }`;
+    // alert(apiUrl)
     return this.http.patch<any>(environment.urlAdministration + '/Incomeandexpense/totals/' + id, incomesAndExpenses, { headers: this.tracking.getHeaders() });
   }
-  
+
 
   deleteIncomesAndExpenses(id: number): Observable<any> {
     return this.http.delete<any>(environment.urlAdministration + '/Incomeandexpense/' + id, { headers: this.tracking.getHeaders() });
-    }
+  }
 
-    getConceptsFromIncomesAndExpenses(idIncorexp: number): Observable<any> {
-      return this.http.get<any>(environment.urlAdministration + '/ConceptsxIncorExp/incorexp/' + idIncorexp, { headers: this.tracking.getHeaders() });
-    }
+  getConceptsFromIncomesAndExpenses(idIncorexp: number): Observable<any> {
+    return this.http.get<any>(environment.urlAdministration + '/ConceptsxIncorExp/incorexp/' + idIncorexp, { headers: this.tracking.getHeaders() });
+  }
 
-    addConceptFromIncomesAndExpenses(data: any): Observable<any> {
-      return this.http.post<any>(environment.urlAdministration + '/ConceptsxIncorExp/', data, { headers: this.tracking.getHeaders() });
-    }
+  addConceptFromIncomesAndExpenses(data: any): Observable<any> {
+    return this.http.post<any>(environment.urlAdministration + '/ConceptsxIncorExp/', data, { headers: this.tracking.getHeaders() });
+  }
 
-    updateConceptFromIncomesAndExpenses(id: number, data: any): Observable<any> {
-      return this.http.put<any>(environment.urlAdministration + '/ConceptsxIncorExp/' + id, data, { headers: this.tracking.getHeaders() });
-    }
+  updateConceptFromIncomesAndExpenses(id: number, data: any): Observable<any> {
+    return this.http.put<any>(environment.urlAdministration + '/ConceptsxIncorExp/' + id, data, { headers: this.tracking.getHeaders() });
+  }
 
-    deleteConceptFromIncomesAndExpenses(id: number): Observable<any> {
-      return this.http.delete<any>(environment.urlAdministration + '/ConceptsxIncorExp/' + id, { headers: this.tracking.getHeaders() });
-    }
-    getExcel(FechaIncio: string, FechaFin: string, Type: string): Observable<any> {
-  return this.http.post<any>(
-    environment.urlAdministration +
-    `/Incomeandexpense/ProcesadorExcel?FechaIncio=${FechaIncio}&FechaFin=${FechaFin}&Type=${Type}`,
-    {}, // body vacío como en -d ''
-    { headers: this.tracking.getHeaders() }
-  );
-}
+  deleteConceptFromIncomesAndExpenses(id: number): Observable<any> {
+    return this.http.delete<any>(environment.urlAdministration + '/ConceptsxIncorExp/' + id, { headers: this.tracking.getHeaders() });
+  }
+  getExcel(FechaIncio: string, FechaFin: string, Type: string): Observable<any> {
+    return this.http.post<any>(
+      environment.urlAdministration +
+      `/Incomeandexpense/ProcesadorExcel?FechaIncio=${FechaIncio}&FechaFin=${FechaFin}&Type=${Type}`,
+      {}, // body vacío como en -d ''
+      { headers: this.tracking.getHeaders() }
+    );
+  }
 
+  getIncomesByAccount(idBusiness: number, type: string, startDate: string, endDate: string): Observable<any> {
+    return this.http.get<any[]>(`${environment.urlAdministration}/Incomeandexpense/income-by-account?idBusiness=${idBusiness}&type=${type}&startDate=${startDate}&endDate=${endDate}`, { headers: this.tracking.getHeaders() });
+  }
 
 }
