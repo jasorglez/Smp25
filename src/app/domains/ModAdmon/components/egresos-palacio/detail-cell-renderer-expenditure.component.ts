@@ -280,6 +280,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     this.providerModalService.saveConfirmed$.subscribe((providerData) => {
       this.onProviderCreated(providerData);
     });
+    this.loadMeasures();  
   }
 
   agInit(params: ICellRendererParams): void {
@@ -642,54 +643,19 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
           });
         }
       },
-      {
-        field: 'claveUnidad',
-        headerName: 'Clave Unidad',
+
+       {
+        field: 'unit',
+        headerName: 'Unidad',
+        type: 'text',
         editable: true,
-        hide: true,
-        width: 120,
-        cellEditor: 'searchableSelect',
-        cellEditorParams: {
-          searchFunction: (searchText: string) => {
-            return this.context.administrationService.getUnitsSATSearch(searchText);
-          },
-          displayField: 'texto',
-          valueField: 'idClavesUnidades',
-          placeholder: 'Buscar unidad...'
-        }
-      },
-      {
-        field: 'objetoImp',
-        headerName: 'Objeto Impuesto',
-        hide: true,
-        editable: true,
-        width: 140,
+        width: 90,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: this.objetosImpuesto.map(obj => obj.objeto)
-        },
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          const found = this.objetosImpuesto.find(obj => obj.objeto === params.value);
-          return found ? `${found.objeto} - ${found.descripcion}` : params.value;
+          values: this.measures.map(measure => measure.description),
         }
       },
-      {
-        field: 'claveProdServ',
-        headerName: 'Producto/Servicio',
-        editable: true,
-        hide: true,
-        width: 150,
-        cellEditor: 'searchableSelect',
-        cellEditorParams: {
-          searchFunction: (searchText: string) => {
-            return this.context.administrationService.getProductsAndServicesSAT(searchText);
-          },
-          displayField: 'texto',
-          valueField: 'idProductosServicios',
-          placeholder: 'Buscar producto o servicio...'
-        }
-      },
+
       {
         field: 'price',
         headerName: 'Precio',
@@ -1580,7 +1546,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       {
         field: 'nombreArchivo',
         headerName: 'Nombre Archivo',
-        width: 550,
+        width: 350,
         editable: false,
         cellRenderer: (params: any) => {
           const hasFile = params.value && params.value.trim() !== '';
