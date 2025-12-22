@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, ViewChild } from '@angular/core';
+import { Component, inject, OnInit, ViewChild, effect } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -64,6 +64,16 @@ export class DasingPalComponent implements OnInit {
   // Date range variables
   startDate: string = '2025-01-01';
   endDate: string = '2025-12-31';
+
+  constructor() {
+    // Escuchar cambios en la señal de root
+    effect(() => {
+      const idRoot = this.signalsService.getRootSelectedBySidebar()();
+      if (idRoot) {
+        this.loadData();
+      }
+    });
+  }
 
   // Chart configuration
   public chartOptions: ChartOptions = {
@@ -136,11 +146,7 @@ export class DasingPalComponent implements OnInit {
   };
 
   ngOnInit(): void {
-    // Esperar a que haya un idRoot antes de cargar datos
-    const idRoot = this.signalsService.getRootSelectedBySidebar()();
-    if (idRoot) {
-      this.loadData();
-    }
+    // El effect en el constructor se encarga de cargar los datos cuando cambia idRoot
   }
 
   onGridReady(params: GridReadyEvent): void {

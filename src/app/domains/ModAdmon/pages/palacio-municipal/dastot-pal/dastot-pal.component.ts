@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, ViewChild } from '@angular/core';
+import { Component, inject, OnInit, ViewChild, effect } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -65,6 +65,16 @@ export class DastotPalComponent implements OnInit {
   // Date range variables
   startDate: string = '2025-01-01';
   endDate: string = '2025-12-31';
+
+  constructor() {
+    // Escuchar cambios en la señal de root
+    effect(() => {
+      const idRoot = this.signalsService.getRootSelectedBySidebar()();
+      if (idRoot) {
+        this.loadData();
+      }
+    });
+  }
 
   // Chart configuration para Ingresos
   public chartIngresosOptions: ChartOptions = {
@@ -163,6 +173,29 @@ export class DastotPalComponent implements OnInit {
       cellStyle: { textAlign: 'right', fontWeight: 'bold', color: '#dc3545' },
     },
     {
+      headerName: 'Diferencia',
+      width: 150,
+      valueGetter: (params) => {
+        const ingresos = params.data?.ingresos || 0;
+        const egresos = params.data?.egresos || 0;
+        return ingresos - egresos;
+      },
+      valueFormatter: (params) => {
+        if (params.value == null) return '$0.00';
+        return '$' + params.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      },
+      cellStyle: (params) => {
+        const diferencia = params.value || 0;
+        let color = '#000000'; // negro para 0
+        if (diferencia > 0) {
+          color = '#28a745'; // verde para positivo
+        } else if (diferencia < 0) {
+          color = '#dc3545'; // rojo para negativo
+        }
+        return { textAlign: 'right', fontWeight: 'bold', color: color };
+      },
+    },
+    {
       headerName: 'PDF',
       width: 100,
       cellRenderer: () => {
@@ -181,11 +214,7 @@ export class DastotPalComponent implements OnInit {
   };
 
   ngOnInit(): void {
-    // Esperar a que haya un idRoot antes de cargar datos
-    const idRoot = this.signalsService.getRootSelectedBySidebar()();
-    if (idRoot) {
-      this.loadData();
-    }
+    // El effect en el constructor se encarga de cargar los datos cuando cambia idRoot
   }
 
   onGridReady(params: GridReadyEvent): void {
