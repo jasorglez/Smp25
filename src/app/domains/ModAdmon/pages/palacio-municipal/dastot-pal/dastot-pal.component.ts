@@ -17,6 +17,7 @@ import {
   ChartComponent,
   NgApexchartsModule,
 } from 'ng-apexcharts';
+import { DetailCellRendererTotalesComponent } from './detail-cell-renderer-totales.component';
 
 export type ChartOptions = {
   series: ApexNonAxisChartSeries;
@@ -44,6 +45,7 @@ interface TotalData {
     FormsModule,
     CommonModule,
     NgApexchartsModule,
+    DetailCellRendererTotalesComponent,
   ],
   templateUrl: './dastot-pal.component.html',
   styleUrl: './dastot-pal.component.scss',
@@ -61,6 +63,7 @@ export class DastotPalComponent implements OnInit {
   rowData: TotalData[] = [];
   isLoading: boolean = false;
   errorMessage: string = '';
+  currentDetailType: string = 'DEPOSITO'; // Track which column was clicked
 
   // Date range variables
   startDate: string = '2025-01-01';
@@ -160,7 +163,10 @@ export class DastotPalComponent implements OnInit {
         if (params.value == null) return '$0.00';
         return '$' + params.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       },
-      cellStyle: { textAlign: 'right', fontWeight: 'bold', color: '#28a745' },
+      cellStyle: { textAlign: 'right', fontWeight: 'bold', cursor: 'pointer', textDecoration: 'underline', color: '#28a745' },
+      onCellClicked: (params) => {
+        this.toggleDetail(params.node, 'DEPOSITO');
+      }
     },
     {
       field: 'egresos',
@@ -170,7 +176,10 @@ export class DastotPalComponent implements OnInit {
         if (params.value == null) return '$0.00';
         return '$' + params.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       },
-      cellStyle: { textAlign: 'right', fontWeight: 'bold', color: '#dc3545' },
+      cellStyle: { textAlign: 'right', fontWeight: 'bold', cursor: 'pointer', textDecoration: 'underline', color: '#dc3545' },
+      onCellClicked: (params) => {
+        this.toggleDetail(params.node, 'GASTO');
+      }
     },
     {
       headerName: 'Diferencia',
@@ -211,6 +220,10 @@ export class DastotPalComponent implements OnInit {
     enableRangeSelection: true,
     pagination: false,
     domLayout: 'autoHeight',
+    masterDetail: true,
+    detailRowHeight: 350,
+    detailCellRenderer: DetailCellRendererTotalesComponent,
+    isRowMaster: () => true,
   };
 
   ngOnInit(): void {
@@ -220,6 +233,85 @@ export class DastotPalComponent implements OnInit {
   onGridReady(params: GridReadyEvent): void {
     this.gridApi = params.api;
     this.gridApi.sizeColumnsToFit();
+
+    // Configurar el contexto para el detail renderer
+    this.updateDetailContext();
+  }
+
+  updateDetailContext(): void {
+    if (!this.gridApi) return;
+
+    const contextToSet = {
+      context: {
+        incomesExpensesService: this.incomesExpensesService,
+        idRoot: this.signalsService.getRootSelectedBySidebar()(),
+        detailType: this.currentDetailType,
+        startDate: this.startDate,
+        endDate: this.endDate,
+      }
+    };
+
+    console.log('[DastotPal] updateDetailContext - Setting context:', contextToSet);
+
+    this.gridApi.setGridOption('detailCellRendererParams', contextToSet);
+  }
+
+  // Variable para almacenar todos los datos originales
+  private allRowData: TotalData[] = [];
+  private expandedNodeAccount: string | null = null;
+
+  toggleDetail(node: any, detailType: string): void {
+    const isExpanded = node.expanded;
+    const isSameType = this.currentDetailType === detailType;
+    const clickedData = node.data;
+
+    console.log('[DastotPal] toggleDetail called');
+    console.log('[DastotPal] detailType:', detailType);
+    console.log('[DastotPal] isExpanded:', isExpanded);
+    console.log('[DastotPal] isSameType:', isSameType);
+    console.log('[DastotPal] node.data:', node.data);
+
+    // Si está expandido y es el mismo tipo, contraer y restaurar datos
+    if (isExpanded && isSameType) {
+      node.setExpanded(false);
+      this.expandedNodeAccount = null;
+      if (this.allRowData.length > 0) {
+        this.rowData = [...this.allRowData];
+        this.allRowData = [];
+      }
+      return;
+    }
+
+    // Cerrar todos los detalles abiertos
+    this.gridApi.forEachNode((otherNode: any) => {
+      if (otherNode.expanded) {
+        otherNode.setExpanded(false);
+      }
+    });
+
+    // Actualizar tipo y contexto
+    this.currentDetailType = detailType;
+    console.log('[DastotPal] Setting currentDetailType to:', this.currentDetailType);
+    this.updateDetailContext();
+
+    // Guardar datos completos si no están guardados
+    if (this.allRowData.length === 0) {
+      this.allRowData = [...this.rowData];
+    }
+
+    // Filtrar para mostrar solo la fila seleccionada
+    this.rowData = this.allRowData.filter(item => item.nameAccount === clickedData.nameAccount);
+    this.expandedNodeAccount = clickedData.nameAccount;
+
+    // Pequeño delay para asegurar que el contexto y datos se actualicen antes de expandir
+    setTimeout(() => {
+      console.log('[DastotPal] Expanding node');
+      this.gridApi.forEachNode((n: any) => {
+        if (n.data?.nameAccount === clickedData.nameAccount) {
+          n.setExpanded(true);
+        }
+      });
+    }, 50);
   }
 
   async loadData(): Promise<void> {
