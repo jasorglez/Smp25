@@ -1580,7 +1580,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       {
         field: 'nombreArchivo',
         headerName: 'Nombre Archivo',
-        width: 550,
+        width: 350,
         editable: false,
         cellRenderer: (params: any) => {
           const hasFile = params.value && params.value.trim() !== '';
