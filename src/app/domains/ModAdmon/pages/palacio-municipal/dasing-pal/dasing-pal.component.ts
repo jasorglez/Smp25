@@ -6,6 +6,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { AuthService } from 'app/services/auth.service';
 import { SignalsService } from 'app/services/signals.service';
 import { CatalogadmonService } from 'app/services/catalogadmon.service';
+import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import {
@@ -28,12 +29,9 @@ export type ChartOptions = {
   colors: string[];
 };
 
-interface CategorySummary {
-  category: string;
-  estatal: number;
-  municipal: number;
-  propios: number;
-  total: number;
+interface IncomeData {
+  nameAccount: string;
+  ingresos: number;
 }
 
 @Component({
@@ -55,11 +53,13 @@ export class DasingPalComponent implements OnInit {
 
   authService = inject(AuthService);
   private signalsService = inject(SignalsService);
-  private catalogadmonService = inject(CatalogadmonService);
+  private incomesExpensesService = inject(IncomesAndExpensesService);
 
   // Grid variables
   gridApi!: GridApi;
-  rowData: CategorySummary[] = [];
+  rowData: IncomeData[] = [];
+  isLoading: boolean = false;
+  errorMessage: string = '';
 
   // Date range variables
   startDate: string = '2025-01-01';
@@ -102,50 +102,28 @@ export class DasingPalComponent implements OnInit {
   // Column definitions for AG Grid
   columnDefs: ColDef[] = [
     {
-      field: 'category',
-      headerName: 'Categoría',
-      width: 250,
-      pinned: 'left',
+      field: 'nameAccount',
+      headerName: 'Descripción',
+      flex: 1,
+      minWidth: 300,
     },
     {
-      field: 'estatal',
-      headerName: 'Estatal',
-      width: 150,
-      valueFormatter: (params) => {
-        if (params.value == null) return '$0.00';
-        return '$' + params.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      },
-      cellStyle: { textAlign: 'right' },
-    },
-    {
-      field: 'municipal',
-      headerName: 'Municipal',
-      width: 150,
-      valueFormatter: (params) => {
-        if (params.value == null) return '$0.00';
-        return '$' + params.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      },
-      cellStyle: { textAlign: 'right' },
-    },
-    {
-      field: 'propios',
-      headerName: 'Propios',
-      width: 150,
-      valueFormatter: (params) => {
-        if (params.value == null) return '$0.00';
-        return '$' + params.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      },
-      cellStyle: { textAlign: 'right' },
-    },
-    {
-      field: 'total',
-      headerName: 'Total',
-      width: 150,
+      field: 'ingresos',
+      headerName: 'Total Ingresos',
+      width: 180,
       valueFormatter: (params) => {
         if (params.value == null) return '$0.00';
         return '$' + params.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       },
       cellStyle: { textAlign: 'right', fontWeight: 'bold' },
+    },
+    {
+      headerName: 'PDF',
+      width: 100,
+      cellRenderer: () => {
+        return '<button class="btn btn-sm btn-outline-danger"><i class="bi bi-file-pdf"></i> PDF</button>';
+      },
+      cellStyle: { textAlign: 'center' },
     },
   ];
 
@@ -167,55 +145,67 @@ export class DasingPalComponent implements OnInit {
   }
 
   async loadData(): Promise<void> {
-    // TODO: Implementar llamada al endpoint cuando esté disponible
-    // Por ahora, datos de ejemplo
-    this.rowData = [
-      {
-        category: 'Impuestos',
-        estatal: 50000,
-        municipal: 30000,
-        propios: 20000,
-        total: 100000,
-      },
-      {
-        category: 'Derechos',
-        estatal: 25000,
-        municipal: 15000,
-        propios: 10000,
-        total: 50000,
-      },
-      {
-        category: 'Productos',
-        estatal: 15000,
-        municipal: 10000,
-        propios: 5000,
-        total: 30000,
-      },
-      {
-        category: 'Aprovechamientos',
-        estatal: 10000,
-        municipal: 5000,
-        propios: 5000,
-        total: 20000,
-      },
-    ];
+    this.isLoading = true;
+    this.errorMessage = '';
 
-    this.updateChart();
+    try {
+      const idRoot = this.signalsService.getRootSelectedBySidebar()();
+
+      if (!idRoot) {
+        this.errorMessage = 'No se ha seleccionado una raíz desde el sidebar';
+        this.rowData = [];
+        return;
+      }
+
+      const response = await this.incomesExpensesService.getIncomesByAccount(
+        idRoot,
+        'DEPOSITO',
+        this.startDate,
+        this.endDate
+      ).toPromise();
+
+      if (response?.success && response?.hasData) {
+        this.rowData = response.data;
+        this.updateChart();
+      } else {
+        this.errorMessage = response?.message || 'No hay datos en el rango de fechas seleccionado';
+        this.rowData = [];
+        this.chartOptions.series = [0, 0, 0];
+      }
+    } catch (error: any) {
+      console.error('Error al cargar datos:', error);
+      this.errorMessage = 'Error al cargar los datos: ' + (error?.message || 'Error desconocido');
+      this.rowData = [];
+      this.chartOptions.series = [0, 0, 0];
+    } finally {
+      this.isLoading = false;
+    }
   }
 
   updateChart(): void {
-    // Calcular totales por tipo de cuenta
-    const estatototal = this.rowData.reduce((sum, item) => sum + item.estatal, 0);
-    const municipalTotal = this.rowData.reduce((sum, item) => sum + item.municipal, 0);
-    const propiosTotal = this.rowData.reduce((sum, item) => sum + item.propios, 0);
+    // Separar totales por tipo de cuenta basado en el nombre
+    let estatalTotal = 0;
+    let municipalTotal = 0;
+    let propiosTotal = 0;
 
-    this.chartOptions.series = [estatototal, municipalTotal, propiosTotal];
+    this.rowData.forEach(item => {
+      const nameUpper = item.nameAccount.toUpperCase();
+      // Verificar en orden de prioridad para evitar conflictos
+      if (nameUpper.includes('INGRESOS PROPIOS') || nameUpper.includes('INGRESO PROPIO')) {
+        propiosTotal += item.ingresos;
+      } else if (nameUpper.includes('ESTATAL')) {
+        estatalTotal += item.ingresos;
+      } else if (nameUpper.includes('MUNICIPAL') || nameUpper.includes('MUNICIPALES')) {
+        municipalTotal += item.ingresos;
+      }
+    });
+
+    this.chartOptions.series = [estatalTotal, municipalTotal, propiosTotal];
   }
 
   onDateRangeChange(): void {
-    console.log('Fecha inicio:', this.startDate);
-    console.log('Fecha fin:', this.endDate);
-    // TODO: Recargar datos con el nuevo rango de fechas
-    this.loadData();
+    if (this.startDate && this.endDate) {
+      this.loadData();
+    }
   }
 }

@@ -9,7 +9,7 @@ import { TrackingService } from './tracking.service';
 })
 export class InandoutService {
 
-  
+
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
@@ -20,7 +20,7 @@ export class InandoutService {
   getSumaIn(idProduct: number, idWarehouse: number) {
     return this.http.get(`${environment.urlWarehouse}/Detailsinandout/sumentrada/${idProduct}/${idWarehouse}`, { headers: this.trackingService.getHeaders() });
   }
-  
+
   getDetailedInOut(id: number): Observable<any> {
     return this.http.get(`${environment.urlWarehouse}/Inandout/${id}`, { headers: this.trackingService.getHeaders() });
   }

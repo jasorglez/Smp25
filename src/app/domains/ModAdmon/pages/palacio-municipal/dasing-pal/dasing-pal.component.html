@@ -28,14 +28,24 @@
 
   <!-- Layout: Grid (izquierda) + Gráfica (derecha) -->
   <div class="row">
-    <!-- Grid de resumen por categoría -->
+    <!-- Grid de resumen de ingresos por cuenta -->
     <div class="col-md-7">
       <div class="card">
         <div class="card-header bg-primary text-white">
-          <h6 class="mb-0">Resumen por Categoría</h6>
+          <h6 class="mb-0">Ingresos por Cuenta</h6>
         </div>
         <div class="card-body p-0">
+          <div *ngIf="isLoading" class="text-center p-4">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2">Cargando datos...</p>
+          </div>
+          <div *ngIf="errorMessage && !isLoading" class="alert alert-warning m-3">
+            {{ errorMessage }}
+          </div>
           <ag-grid-angular
+            *ngIf="!isLoading && !errorMessage"
             style="width: 100%; height: 500px"
             class="ag-theme-quartz"
             [rowData]="rowData"
