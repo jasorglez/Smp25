@@ -540,7 +540,7 @@ constructor() {
         width: 100
       },
 
-      { field: 'numberDocument', headerName: '# Doc/Fac', editable: false, filter: true, width: 120, hide: true },
+      { field: 'numberDocument', headerName: '# Doc/Fac', editable: false, filter: true, width: 120, hide: false },
 {
     field: 'date',
     headerName: 'Fecha',

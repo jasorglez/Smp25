@@ -1,16 +1,19 @@
-html, body {
-  margin: 0;
-  padding: 0;
-  overflow-x: hidden; /* Esto evitará que cualquier elemento desborde hacia la derecha */
+.main-layout {
+  width: 100%;
+  overflow-x: hidden;
+  position: relative;
 }
 
-.content-wrapper {
+.main-content-container {
   margin-left: 250px;
   transition: margin-left 0.3s ease;
+  width: calc(100vw - 250px);
+  box-sizing: border-box;
 }
 
-.sidebar-collapsed .content-wrapper {
+.main-layout.sidebar-collapsed .main-content-container {
   margin-left: 70px;
+  width: calc(100vw - 70px);
 }
 
 

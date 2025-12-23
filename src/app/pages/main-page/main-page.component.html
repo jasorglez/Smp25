@@ -1,10 +1,10 @@
-<div class="d-flex" style="width: 100%; overflow-x: hidden">
+<div class="main-layout" [class.sidebar-collapsed]="isSidebarCollapsed">
   <!-- Sidebar -->
   <app-side-bar />
 
   <!-- Contenedor principal -->
-  <div class="d-flex flex-column flex-grow-1 min-vh-100">
-    <div class="flex-grow-1 content-wrapper pt-3 px-4">
+  <div class="main-content-container d-flex flex-column min-vh-100">
+    <div class="flex-grow-1 pt-3 px-4">
       <router-outlet></router-outlet>
     </div>
     <app-footer></app-footer>
