@@ -91,10 +91,56 @@
   z-index: 1030;
   transition: width 0.3s ease;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .collapsed.sidebar {
   width: 70px;
+}
+
+/* Ocultar selects y textos cuando está colapsado */
+.collapsed .form-select,
+.collapsed .nav-link span {
+  display: none;
+}
+
+/* Centrar íconos cuando está colapsado */
+.collapsed .nav-link {
+  justify-content: center;
+  padding: 10px 0;
+}
+
+.collapsed .nav-link mat-icon {
+  margin-right: 0;
+}
+
+/* Estilo del botón de colapsar */
+.btn-collapse {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 8px;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-collapse:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #FFFFFF;
+}
+
+.btn-collapse mat-icon {
+  color: #FFFFFF;
+  font-size: 20px;
+}
+
+/* Logo cuando está colapsado */
+.collapsed .sidebar-logo {
+  display: none;
 }
 
 .content-wrapper {

@@ -86,6 +86,12 @@ export class SideBarComponent {
   }
 
   async ngOnInit() {
+    // Cargar preferencia de sidebar colapsado
+    const savedCollapsedState = localStorage.getItem('sidebarCollapsed');
+    if (savedCollapsedState !== null) {
+      this.isSidebarCollapsed = savedCollapsedState === 'true';
+    }
+
     this.userRoot = this.signalsService.getUserRoot()();
     //console.log('User Root:', this.userRoot);
     if (this.signalsService.isidUserEmpty()) {
@@ -567,5 +573,11 @@ export class SideBarComponent {
 
   private loadPermissions() {
     return EMPTY;
+  }
+
+  toggleSidebar() {
+    this.isSidebarCollapsed = !this.isSidebarCollapsed;
+    // Guardar preferencia en localStorage
+    localStorage.setItem('sidebarCollapsed', this.isSidebarCollapsed.toString());
   }
 }
