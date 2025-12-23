@@ -280,7 +280,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     this.providerModalService.saveConfirmed$.subscribe((providerData) => {
       this.onProviderCreated(providerData);
     });
-    this.loadMeasures();  
+    //this.loadMeasures();  
   }
 
   agInit(params: ICellRendererParams): void {
@@ -575,6 +575,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         field: 'quantity',
         headerName: 'Cantidad',
         type: 'number',
+        hide: true,
         editable: true,
         width: 90
       },
@@ -629,11 +630,24 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         }
       },
 
+      {
+        field: 'numeroIdentificacion',
+        headerName: 'UUID CFDI',
+        editable: true,
+        width: 150,
+        type: 'text',
+        cellEditor: 'agTextCellEditor',
+        cellEditorParams: {
+          maxLength: 36
+        }
+      },
+
        {
         field: 'unit',
         headerName: 'Unidad',
         type: 'text',
         editable: true,
+        hide: true,
         width: 90,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
@@ -1179,25 +1193,22 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
           {
             table: {
               headerRows: 1,
-              widths: ['*', 50, 80, 70],
+              widths: [120, '*', 80],
               body: [
                 // Encabezados
                 [
+                  { text: 'UUID CFDI', style: 'tableHeader' },
                   { text: 'Descripción', style: 'tableHeader' },
-                  { text: 'Cant.', style: 'tableHeader', alignment: 'center' },
-                  { text: 'Unidad', style: 'tableHeader', alignment: 'center' },
                   { text: 'Total', style: 'tableHeader', alignment: 'right' }
                 ],
                 // Filas de conceptos
                 ...this.rowData.map(concept => [
+                  { text: concept.numeroIdentificacion || '', style: 'tableCell', fontSize: 7 },
                   { text: concept.description || '', style: 'tableCell' },
-                  { text: concept.quantity || '', style: 'tableCell', alignment: 'center' },
-                  { text: concept.unit || '', style: 'tableCell', alignment: 'center', fontSize: 7 },
                   { text: this.formatCurrency(concept.total || 0), style: 'tableCell', alignment: 'right' }
                 ]),
                 // Fila de totales
                 [
-                  { text: '', border: [false, false, false, false] },
                   { text: '', border: [false, false, false, false] },
                   { text: 'TOTAL:', style: 'totalLabel', alignment: 'right', border: [false, true, false, false] },
                   { text: this.formatCurrency(this.total), style: 'totalValue', alignment: 'right', border: [false, true, false, false] }
