@@ -579,5 +579,6 @@ export class SideBarComponent {
     this.isSidebarCollapsed = !this.isSidebarCollapsed;
     // Guardar preferencia en localStorage
     localStorage.setItem('sidebarCollapsed', this.isSidebarCollapsed.toString());
+    // El main-page component detectará el cambio y aplicará la clase
   }
 }

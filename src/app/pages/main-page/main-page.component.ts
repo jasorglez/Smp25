@@ -17,6 +17,7 @@ export class MainPageComponent implements OnInit {
   private router = inject(Router);
 
   private initialBranchId: number;
+  isSidebarCollapsed: boolean = false;
 
   constructor() {
     effect(() => {
@@ -30,5 +31,29 @@ export class MainPageComponent implements OnInit {
 
   ngOnInit(): void {
     this.initialBranchId = this.signalsService.getBranchSelectedBySidebar()();
+
+    // Cargar estado inicial del sidebar
+    const savedState = localStorage.getItem('sidebarCollapsed');
+    this.isSidebarCollapsed = savedState === 'true';
+
+    // Escuchar cambios en localStorage (cuando otro tab o el sidebar cambia el estado)
+    window.addEventListener('storage', this.handleStorageChange.bind(this));
+
+    // Escuchar cambios locales (mismo tab)
+    this.checkSidebarState();
+    setInterval(() => this.checkSidebarState(), 100);
+  }
+
+  private handleStorageChange(event: StorageEvent) {
+    if (event.key === 'sidebarCollapsed') {
+      this.isSidebarCollapsed = event.newValue === 'true';
+    }
+  }
+
+  private checkSidebarState() {
+    const currentState = localStorage.getItem('sidebarCollapsed') === 'true';
+    if (this.isSidebarCollapsed !== currentState) {
+      this.isSidebarCollapsed = currentState;
+    }
   }
 }
