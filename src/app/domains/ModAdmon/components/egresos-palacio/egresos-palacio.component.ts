@@ -545,6 +545,7 @@ constructor() {
     field: 'date',
     headerName: 'Fecha',
     editable: true,
+    filter: true,
     cellDataType: 'date',
     width: 95,
     valueFormatter: (params) => {
@@ -578,7 +579,7 @@ constructor() {
 },
 
             {
-                field: 'idTypeComp', headerName: 'Tipo Comprobante', editable: (params) => {
+                field: 'idTypeComp', headerName: 'Tipo Comprobante',filter: true, editable: (params) => {
           if (params.data.__isNew) {
             return true;
           }
@@ -605,7 +606,7 @@ constructor() {
             },
 
             {
-                field: 'idExpend', headerName: 'Objeto de Gasto', editable: (params) => {
+                field: 'idExpend', headerName: 'Objeto de Gasto', filter: true,editable: (params) => {
           if (params.data.__isNew) {
             return true;
           }
@@ -681,7 +682,7 @@ constructor() {
       {
         field: 'totalComp',
         headerName: 'Por Comprobar',
-        type: 'number',
+        type: 'number',filter: true,
         editable: true,
         width: 140,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
@@ -690,7 +691,7 @@ constructor() {
       {
         field: 'total',
         headerName: 'Comprobado',
-        type: 'number',
+        type: 'number',filter: true,
         editable: false,
         width: 130,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })

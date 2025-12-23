@@ -446,12 +446,12 @@ export class IngresosPalacioComponent implements OnInit {
       },
 
       {
-        field: 'dateStamped', headerName: 'Entrega', editable: true, cellDataType: 'date', width: 100, hide: true,
+        field: 'dateStamped', headerName: 'Entrega', editable: true, filter: true, cellDataType: 'date', width: 100, hide: true,
         valueFormatter: (params) => this.formatDate(params.value)
       },
 
       {
-        field: 'date', headerName: 'Pago', editable: true, cellDataType: 'date', width: 100,
+        field: 'date', headerName: 'Pago', editable: true, filter: true,cellDataType: 'date', width: 100,
         valueFormatter: (params) => this.formatDate(params.value)
       },
 
@@ -493,7 +493,7 @@ export class IngresosPalacioComponent implements OnInit {
       {
         field: 'total',
         headerName: 'Total',
-        type: 'number',
+        type: 'number',filter: true,
         editable: false,
         width: 100,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
