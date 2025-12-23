@@ -418,7 +418,7 @@ export class IncomeComponent {
         field: 'total',
         headerName: 'Total',
         type: 'number',
-        editable: false,
+        editable: false,filter: true,
         width: 120,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
