@@ -540,12 +540,16 @@ constructor() {
         width: 100
       },
 
-      { field: 'numberDocument', headerName: '# Doc/Fac', editable: false, filter: true, width: 120, hide: false },
+      { field: 'numberDocument', headerName: '# Doc/Fac', editable: false, filter: true, width: 120, hide: true },
 {
     field: 'date',
     headerName: 'Fecha',
     editable: true,
-    filter: true,
+    filter: 'agSetColumnFilter',
+        filterParams: {
+       //   excelMode: 'mac',
+          defaultToNothingSelected: true,
+        },
     cellDataType: 'date',
     width: 95,
     valueFormatter: (params) => {
@@ -682,7 +686,11 @@ constructor() {
       {
         field: 'totalComp',
         headerName: 'Por Comprobar',
-        type: 'number',filter: true,
+        type: 'number', filter: 'agSetColumnFilter',
+        filterParams: {
+          //excelMode: 'mac',
+          defaultToNothingSelected: true,
+        },
         editable: true,
         width: 140,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
@@ -691,7 +699,11 @@ constructor() {
       {
         field: 'total',
         headerName: 'Comprobado',
-        type: 'number',filter: true,
+        type: 'number',  filter: 'agSetColumnFilter',
+        filterParams: {
+          //excelMode: 'mac',
+          defaultToNothingSelected: true,
+        },
         editable: false,
         width: 130,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
@@ -719,6 +731,7 @@ constructor() {
       {
         field: 'createdBy',
         headerName: 'Autoriza',
+        hide: true,
         editable: false,
         width: 105
       }
