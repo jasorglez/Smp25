@@ -254,11 +254,16 @@
       </li>
     </ul>
   </div>
-  <!-- Botón de colapsar -->
-  <!-- <button
-    class="btn btn-outline-secondary w-100 mb-2"
-    (click)="isSidebarCollapsed = !isSidebarCollapsed"
-  > 
-    <mat-icon>{{ isSidebarCollapsed ? "menu_open" : "menu" }}</mat-icon>
-  </button> -->
+
+  <!-- Botón de colapsar en la parte inferior -->
+  <div class="p-2 border-top">
+    <button
+      class="btn btn-collapse w-100"
+      (click)="toggleSidebar()"
+      [title]="isSidebarCollapsed ? 'Expandir menú' : 'Contraer menú'"
+    >
+      <mat-icon>{{ isSidebarCollapsed ? "chevron_right" : "chevron_left" }}</mat-icon>
+      <span *ngIf="!isSidebarCollapsed" class="ms-2">Contraer</span>
+    </button>
+  </div>
 </aside>
