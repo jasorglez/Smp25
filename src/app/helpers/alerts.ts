@@ -81,4 +81,49 @@ export class alerts{
 		Swal.close();
 	}
 
+	/*=============================================
+	Función para mostrar loading con progreso actualizable
+	=============================================*/
+
+	static showLoadingWithProgress(title: string, text: string, progress: number = 0) {
+		const progressBar = `
+			<div style="width: 100%; background-color: #f0f0f0; border-radius: 10px; overflow: hidden; margin-top: 20px;">
+				<div style="width: ${progress}%; background-color: #3085d6; height: 30px; border-radius: 10px; transition: width 0.3s ease; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
+					${progress}%
+				</div>
+			</div>
+		`;
+
+		Swal.fire({
+			title: title,
+			html: `${text}<br>${progressBar}`,
+			allowOutsideClick: false,
+			allowEscapeKey: false,
+			allowEnterKey: false,
+			showConfirmButton: false,
+			didOpen: () => {
+				Swal.showLoading();
+			}
+		});
+	}
+
+	/*=============================================
+	Función para actualizar el progreso del loading
+	=============================================*/
+
+	static updateLoadingProgress(title: string, text: string, progress: number) {
+		const progressBar = `
+			<div style="width: 100%; background-color: #f0f0f0; border-radius: 10px; overflow: hidden; margin-top: 20px;">
+				<div style="width: ${progress}%; background-color: ${progress >= 100 ? '#28a745' : '#3085d6'}; height: 30px; border-radius: 10px; transition: width 0.3s ease; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
+					${progress}%
+				</div>
+			</div>
+		`;
+
+		Swal.update({
+			title: title,
+			html: `${text}<br>${progressBar}`
+		});
+	}
+
 }

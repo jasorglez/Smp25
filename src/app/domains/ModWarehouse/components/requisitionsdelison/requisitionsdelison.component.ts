@@ -8,6 +8,7 @@ import { ButtonCellRendererComponent } from '../../../ModWareHousesTD/components
 import { DetailCellRendererRequisitionsItemsComponent } from './detail-cell-renderer-requisitions-items.component';
 import { DetailCellRendererRequisitionsPurchasesComponent } from './detail-cell-renderer-requisitions-purchases.component';
 import { SelectDepartmentEditorComponent } from './select-department-editor.component';
+import { PdfButtonCellRendererComponent } from '../../../ModAdmon/components/egresos-palacio/pdf-button-cell-renderer.component';
 import { DepartmentsService } from 'app/services/departments.service';
 import { SignalsService } from 'app/services/signals.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
@@ -24,7 +25,7 @@ interface Catalog {
 @Component({
   selector: 'app-requisitionsdelison',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, ButtonCellRendererComponent, DetailCellRendererRequisitionsItemsComponent, DetailCellRendererRequisitionsPurchasesComponent, SelectDepartmentEditorComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, ButtonCellRendererComponent, DetailCellRendererRequisitionsItemsComponent, DetailCellRendererRequisitionsPurchasesComponent, SelectDepartmentEditorComponent, PdfButtonCellRendererComponent],
   templateUrl: './requisitionsdelison.component.html',
   styleUrl: './requisitionsdelison.component.scss',
   styles: [`
@@ -46,6 +47,7 @@ export class RequisitionsDelisonComponent implements OnInit {
   private receiptsDelisonService = inject(ReceiptsDelisonService);
 
   private gridApi!: GridApi;
+  private isGeneratingReport: boolean = false;
 
   constructor() {
     // ✅ Usar effect para reaccionar a cambios en el signal de sucursal
@@ -258,6 +260,14 @@ export class RequisitionsDelisonComponent implements OnInit {
       }
       return '';
     },
+    onRowClicked: (event: any) => {
+      // 🔵 Excluir la columna PDF para evitar conflictos con el botón
+      const clickedColumn = event.column?.getColId();
+      if (clickedColumn === 'pdfReport') {
+        console.log('🔵 Clic en columna PDF detectado, evitando selección de fila');
+        return; // No seleccionar la fila si se hace clic en PDF
+      }
+    },
     onRowSelected: (event: any) => {
       if (event.node.isSelected()) {
         this.gridApi.forEachNode((node) => {
@@ -397,28 +407,23 @@ export class RequisitionsDelisonComponent implements OnInit {
         field: 'pdfReport',
         headerName: 'PDF',
         width: 80,
-        cellRenderer: (params: any) => {
-          // Solo mostrar ícono si no es temporal
-          if (String(params.data.id).startsWith('temp_')) {
-            return '<span style="color: #999;">N/A</span>';
-          }
-          return '<i class="bi bi-file-earmark-pdf" style="font-size: 1.2rem; color: #dc3545; cursor: pointer;"></i>';
+        cellRenderer: PdfButtonCellRendererComponent,
+        cellRendererParams: {
+          onClick: (node: any) => {
+            // Validar que no sea una requisición temporal
+            if (String(node.data.id).startsWith('temp_')) {
+              alerts.basicAlert('Información', 'Debe guardar la requisición antes de generar el PDF', 'info');
+              return;
+            }
+            console.log('🔵 PDF Click detectado desde PdfButtonCellRenderer:', node.data.id);
+            this.togglePdfDetail(node);
+          },
+          icon: 'bi-file-earmark-pdf',
+          iconColor: '#dc3545',
+          title: 'Hacer clic para generar el reporte PDF'
         },
         editable: false,
-        cellStyle: (params: any) => {
-          if (String(params.data.id).startsWith('temp_')) {
-            return { textAlign: 'center' };
-          }
-          return { textAlign: 'center', cursor: 'pointer' };
-        },
-        onCellClicked: (params: any) => {
-          // Validar que no sea una requisición temporal
-          if (String(params.data.id).startsWith('temp_')) {
-            return; // No hacer nada si es temporal
-          }
-          // Abrir PDF en detalle del grid (similar a egresos-palacio)
-          this.togglePdfDetail(params.node);
-        }
+        cellStyle: { backgroundColor: '#fff3e0', textAlign: 'center' }
       },
       {
         field: 'comments',
@@ -537,7 +542,13 @@ export class RequisitionsDelisonComponent implements OnInit {
     this.onCellClicked(event);
   }
 
-  togglePdfDetail(node: any) {
+  async togglePdfDetail(node: any) {
+    // 🔒 Prevenir múltiples clics simultáneos
+    if (this.isGeneratingReport) {
+      console.log('⚠️ Ya se está generando un reporte, ignorando clic...');
+      return;
+    }
+
     const api = this.gridApi;
     const isCurrentlyExpanded = node.expanded && node.data.detailType === 'pdf';
 
@@ -551,35 +562,70 @@ export class RequisitionsDelisonComponent implements OnInit {
       });
       api.onRowHeightChanged();
     } else {
-      // Colapsar cualquier otra fila expandida
-      api.forEachNode((otherNode: any) => {
-        if (otherNode.expanded && otherNode.id !== node.id) {
-          otherNode.setExpanded(false);
-        }
-      });
+      // 🔒 Activar lock
+      this.isGeneratingReport = true;
+      console.log('🔒 Lock activado - isGeneratingReport = true');
 
-      // Ocultar todas las demás filas
-      api.forEachNode((otherNode: any) => {
-        if (otherNode.id !== node.id) {
-          otherNode.setRowHeight(0);
-        }
-      });
+      try {
+        // 📊 Mostrar barra de progreso
+        alerts.showLoadingWithProgress('Generando reporte', 'Por favor espere...', 0);
+        console.log('📊 Progreso: 0%');
 
-      // Si la fila está expandida con otro tipo de detalle, cerrarla
-      if (node.expanded && node.data.detailType !== 'pdf') {
-        node.setExpanded(false);
+        // Simular progreso de generación (incrementos de 10%)
+        for (let progress = 10; progress <= 90; progress += 10) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          alerts.updateLoadingProgress('Generando reporte', 'Por favor espere...', progress);
+          console.log(`📊 Progreso: ${progress}%`);
+        }
+
+        // Colapsar cualquier otra fila expandida
+        api.forEachNode((otherNode: any) => {
+          if (otherNode.expanded && otherNode.id !== node.id) {
+            otherNode.setExpanded(false);
+          }
+        });
+
+        // Ocultar todas las demás filas
+        api.forEachNode((otherNode: any) => {
+          if (otherNode.id !== node.id) {
+            otherNode.setRowHeight(0);
+          }
+        });
+
+        // Si la fila está expandida con otro tipo de detalle, cerrarla
+        if (node.expanded && node.data.detailType !== 'pdf') {
+          node.setExpanded(false);
+        }
+
+        // Cambiar el tipo de detalle a 'pdf'
+        node.data.detailType = 'pdf';
+
+        // Aplicar cambios de altura
+        api.onRowHeightChanged();
+
+        // 📊 Progreso final
+        alerts.updateLoadingProgress('Generando reporte', 'Completado', 100);
+        console.log('📊 Progreso: 100%');
+
+        // Expandir con el PDF
+        setTimeout(() => {
+          node.setExpanded(true);
+        }, 0);
+
+        // Cerrar alerta después de un delay
+        setTimeout(() => {
+          alerts.closeLoading();
+          console.log('✅ Reporte generado exitosamente');
+        }, 800);
+
+      } catch (error) {
+        console.error('❌ Error al generar el reporte:', error);
+        alerts.basicAlert('Error', 'No se pudo generar el reporte', 'error');
+      } finally {
+        // 🔓 Liberar lock
+        this.isGeneratingReport = false;
+        console.log('🔓 Lock liberado - isGeneratingReport = false');
       }
-
-      // Cambiar el tipo de detalle a 'pdf'
-      node.data.detailType = 'pdf';
-
-      // Aplicar cambios de altura
-      api.onRowHeightChanged();
-
-      // Expandir con el PDF
-      setTimeout(() => {
-        node.setExpanded(true);
-      }, 0);
     }
   }
 
