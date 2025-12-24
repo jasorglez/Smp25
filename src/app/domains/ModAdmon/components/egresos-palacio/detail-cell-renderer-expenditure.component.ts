@@ -1193,22 +1193,25 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
           {
             table: {
               headerRows: 1,
-              widths: [120, '*', 80],
+              widths: [70, 100, '*', 80],
               body: [
                 // Encabezados
                 [
-                  { text: 'UUID CFDI', style: 'tableHeader' },
+                  { text: 'Fecha', style: 'tableHeader' },
+                  { text: 'NUMERO DE RECIBO O FOLIO FISCAL (FACTURA)', style: 'tableHeader' },
                   { text: 'Descripción', style: 'tableHeader' },
                   { text: 'Total', style: 'tableHeader', alignment: 'right' }
                 ],
                 // Filas de conceptos
                 ...this.rowData.map(concept => [
+                  { text: this.formatDate(concept.dateExpend), style: 'tableCell', fontSize: 7 },
                   { text: concept.numeroIdentificacion || '', style: 'tableCell', fontSize: 7 },
                   { text: concept.description || '', style: 'tableCell' },
                   { text: this.formatCurrency(concept.total || 0), style: 'tableCell', alignment: 'right' }
                 ]),
                 // Fila de totales
                 [
+                  { text: '', border: [false, false, false, false] },
                   { text: '', border: [false, false, false, false] },
                   { text: 'TOTAL:', style: 'totalLabel', alignment: 'right', border: [false, true, false, false] },
                   { text: this.formatCurrency(this.total), style: 'totalValue', alignment: 'right', border: [false, true, false, false] }
