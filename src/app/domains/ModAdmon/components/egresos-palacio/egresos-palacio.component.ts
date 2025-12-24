@@ -8,7 +8,7 @@ import { ModalService } from 'app/services/modal.service';
 import { AgGridModule } from 'ag-grid-angular';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { FormsModule } from '@angular/forms';
-import { CommonModule } from '@angular/common'; 
+import { CommonModule } from '@angular/common';
 import { alerts } from 'app/helpers/alerts';
 import { lastValueFrom, concat, toArray, catchError, EMPTY, forkJoin, tap, map } from 'rxjs';
 import { AdministrationService } from 'app/services/administration.service';
@@ -45,20 +45,20 @@ import { CustomersService } from 'app/services/customers.service';
 export class EgresosPalacioComponent {
 
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
-  private modalServiceTable         = inject(ModalService);
-  private administrationService     = inject(AdministrationService);
-  private cataalogAdmonService      = inject(CatalogadmonService);
-  private catalogsService           = inject(CatalogsService);
-  private usersxpermissionsService  = inject(UsersxpermissionsService);
-  private usersService              = inject(UsersService);
-  private signalsService            = inject(SignalsService);
-  private branchesService           = inject(BranchsService);
-  private rootService               = inject(RootService);
-  private base64EncodeService       = inject(Base64EncodeService);
-  private providerModalService      = inject(ProviderModalService);
-  private customersService          = inject(CustomersService);
-  authService                       = inject(AuthService);
-  public trackingService            = inject(TrackingService);
+  private modalServiceTable = inject(ModalService);
+  private administrationService = inject(AdministrationService);
+  private cataalogAdmonService = inject(CatalogadmonService);
+  private catalogsService = inject(CatalogsService);
+  private usersxpermissionsService = inject(UsersxpermissionsService);
+  private usersService = inject(UsersService);
+  private signalsService = inject(SignalsService);
+  private branchesService = inject(BranchsService);
+  private rootService = inject(RootService);
+  private base64EncodeService = inject(Base64EncodeService);
+  private providerModalService = inject(ProviderModalService);
+  private customersService = inject(CustomersService);
+  authService = inject(AuthService);
+  public trackingService = inject(TrackingService);
 
   public isIncomeMode: boolean = false;
 
@@ -98,64 +98,64 @@ export class EgresosPalacioComponent {
 
   async ngOnInit() {
 
-}
+  }
 
-constructor() {
-  effect(async () => {
-    this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-    this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+  constructor() {
+    effect(async () => {
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+      this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
 
-    if (!this.idRoot) return;
+      if (!this.idRoot) return;
 
-    await this.getBillingManagementInfo();
-    await this.getBankAccounts();
-    await this.getBills();
-    await this.getTypeComps();
-    await this.getExpenditure();
-    await this.loadAuthorizers();
-    await this.getCurrentUser();
-    await this.obtenerBranchs();
-  });
+      await this.getBillingManagementInfo();
+      await this.getBankAccounts();
+      await this.getBills();
+      await this.getTypeComps();
+      await this.getExpenditure();
+      await this.loadAuthorizers();
+      await this.getCurrentUser();
+      await this.obtenerBranchs();
+    });
 
-  effect(() => {
-    const updateData = this.signalsService.getMasterUpdateTrigger()();
+    effect(() => {
+      const updateData = this.signalsService.getMasterUpdateTrigger()();
 
-    if (updateData && updateData.id && typeof updateData.subtotal === 'number') {
-      if (this.gridApi) {
-        setTimeout(() => {
-          this.updateMasterRowInGrid({
+      if (updateData && updateData.id && typeof updateData.subtotal === 'number') {
+        if (this.gridApi) {
+          setTimeout(() => {
+            this.updateMasterRowInGrid({
+              id: updateData.id,
+              subtotal: updateData.subtotal,
+              tax: updateData.tax,
+              total: updateData.total
+            });
+          }, 50);
+        } else {
+          this.pendingMasterUpdate = {
             id: updateData.id,
             subtotal: updateData.subtotal,
             tax: updateData.tax,
             total: updateData.total
-          });
-        }, 50);
-      } else {
-        this.pendingMasterUpdate = {
-          id: updateData.id,
-          subtotal: updateData.subtotal,
-          tax: updateData.tax,
-          total: updateData.total
-        };
+          };
+        }
       }
-    }
-  });
+    });
 
-  this.providerModalService.modalRequest$.subscribe((data) => {
-    this.openProviderModal(data.idRoot);
-  });
-}
+    this.providerModalService.modalRequest$.subscribe((data) => {
+      this.openProviderModal(data.idRoot);
+    });
+  }
 
 
-// ✅ CORRECCIÓN: Agregar propiedad para datos pendientes
- private pendingMasterUpdate: any = null;
- private isGeneratingReport: boolean = false; // Flag para evitar múltiples clics
- externalFilterActive: boolean = false;
- showform : string = '';
- branchs  : any[] = [];
- incomes  : any[] = [];
- expenses : any[] = [];
- users    : any[] = [];
+  // ✅ CORRECCIÓN: Agregar propiedad para datos pendientes
+  private pendingMasterUpdate: any = null;
+  private isGeneratingReport: boolean = false; // Flag para evitar múltiples clics
+  externalFilterActive: boolean = false;
+  showform: string = '';
+  branchs: any[] = [];
+  incomes: any[] = [];
+  expenses: any[] = [];
+  users: any[] = [];
 
   id: number;
   notSavedChanges: boolean = false;
@@ -163,8 +163,8 @@ constructor() {
   selectedIncomes: any = null;
   currentUser: string;
 
-  idRoot      : number;
-  idBranch    : number;
+  idRoot: number;
+  idBranch: number;
   triggerValue: number = 0;
 
   bankAccounts: any[] = [];
@@ -178,15 +178,15 @@ constructor() {
     if (this._idAccount !== value) {
       this._idAccount = value;
 
-          // Agregar log cuando se selecciona una cuenta
-    if (value) {
-      const selectedAccount = this.bankAccounts.find(account => account.id === value);
-      if (selectedAccount) {
-        const accountDetails = `${selectedAccount.nameAccount} - ${selectedAccount.bankName}`;
-        this.trackingService.addLog(this.trackingService.getnameComp(), `Selección de cuenta bancaria: ${accountDetails}`,
-                                    'Palacio Municipal - Egresos', this.trackingService.getEmail());
+      // Agregar log cuando se selecciona una cuenta
+      if (value) {
+        const selectedAccount = this.bankAccounts.find(account => account.id === value);
+        if (selectedAccount) {
+          const accountDetails = `${selectedAccount.nameAccount} - ${selectedAccount.bankName}`;
+          this.trackingService.addLog(this.trackingService.getnameComp(), `Selección de cuenta bancaria: ${accountDetails}`,
+            'Palacio Municipal - Egresos', this.trackingService.getEmail());
+        }
       }
-    }
 
       this.signalsService.setIdIncomeAndExpense(null);
       this.getExpenditure(); // Ejecutar getIncomes cuando cambia el valor
@@ -205,8 +205,8 @@ constructor() {
       },
       (error) => console.error('Error fetching data:', error)
     );
-        this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Sucursales`, 'Palacio Municipal - Egresos',
-          this.trackingService.getEmail() );
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Sucursales`, 'Palacio Municipal - Egresos',
+      this.trackingService.getEmail());
   }
 
   async getBillingManagementInfo() {
@@ -219,7 +219,7 @@ constructor() {
       }
     );
     this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Cuentas Bancarias`, 'Palacio Municipal - Egresos',
-          this.trackingService.getEmail() );
+      this.trackingService.getEmail());
   }
 
   private gridApi: GridApi;
@@ -374,7 +374,7 @@ constructor() {
       }
     });
     this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Egresos`, 'Palacio Municipal - Egresos',
-          this.trackingService.getEmail() );
+      this.trackingService.getEmail());
   }
 
   async getBills() {
@@ -387,7 +387,7 @@ constructor() {
       }
     )
     this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Objetos de Gasto`, 'Palacio Municipal - Egresos',
-          this.trackingService.getEmail() );
+      this.trackingService.getEmail());
   }
 
   async getTypeComps() {
@@ -400,7 +400,7 @@ constructor() {
       }
     )
     this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Tipos de Comprobante`, 'Palacio Municipal - Egresos',
-          this.trackingService.getEmail() );
+      this.trackingService.getEmail());
   }
 
   // Nuevo método para cargar usuarios autorizadores
@@ -550,137 +550,137 @@ constructor() {
       },
 
       { field: 'numberDocument', headerName: '# Doc/Fac', editable: false, filter: true, width: 120, hide: false },
-{
-    field: 'date',
-    headerName: 'Fecha',
-    editable: true,
-    filter: 'agSetColumnFilter',
+      {
+        field: 'date',
+        headerName: 'Fecha',
+        editable: true,
+        filter: 'agSetColumnFilter',
         filterParams: {
-       //   excelMode: 'mac',
+          //   excelMode: 'mac',
           defaultToNothingSelected: true,
         },
-    cellDataType: 'date',
-    width: 95,
-    valueFormatter: (params) => {
-      if (!params.value) return '';
-      const date = params.value instanceof Date ? params.value : new Date(params.value);
-      return this.formatDate(date);
-    },
-    valueGetter: (params) => {
-      // Asegurar que siempre devuelva un objeto Date
-      if (!params.data.date) return null;
-      return params.data.date instanceof Date ? params.data.date : new Date(params.data.date);
-    },
-    valueSetter: (params) => {
-      // Asegurar que siempre se guarde como objeto Date
-      if (!params.newValue) {
-        params.data.date = params.oldValue;
-        return false;
-      }
-      const date = params.newValue instanceof Date ? params.newValue : new Date(params.newValue);
-      if (isNaN(date.getTime())) {
-        params.data.date = params.oldValue;
-        return false;
-      }
-      params.data.date = date;
-      return true;
-    },
-    cellEditorParams: {
-      dateFormat: 'dd/MM/yyyy',
-      datePickerFormat: 'dd/MM/yyyy'
-    }
-},
+        cellDataType: 'date',
+        width: 95,
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const date = params.value instanceof Date ? params.value : new Date(params.value);
+          return this.formatDate(date);
+        },
+        valueGetter: (params) => {
+          // Asegurar que siempre devuelva un objeto Date
+          if (!params.data.date) return null;
+          return params.data.date instanceof Date ? params.data.date : new Date(params.data.date);
+        },
+        valueSetter: (params) => {
+          // Asegurar que siempre se guarde como objeto Date
+          if (!params.newValue) {
+            params.data.date = params.oldValue;
+            return false;
+          }
+          const date = params.newValue instanceof Date ? params.newValue : new Date(params.newValue);
+          if (isNaN(date.getTime())) {
+            params.data.date = params.oldValue;
+            return false;
+          }
+          params.data.date = date;
+          return true;
+        },
+        cellEditorParams: {
+          dateFormat: 'dd/MM/yyyy',
+          datePickerFormat: 'dd/MM/yyyy'
+        }
+      },
 
-            {
-                field: 'idTypeComp', headerName: 'Tipo Comprobante',filter: true, editable: (params) => {
+      {
+        field: 'idTypeComp', headerName: 'Tipo Comprobante', filter: true, editable: (params) => {
           if (params.data.__isNew) {
             return true;
           }
           return true
         }, width: 110,
-                wrapText: true,
-                autoHeight: true,
-                cellStyle: { 'white-space': 'normal', 'line-height': '1.4' },
-                cellEditor: SelectWithTooltipEditorV2Component,
-                cellEditorParams: {
-                  options: this.typeComps.map(obj => ({
-                    id: obj.id,
-                    description: obj.description,
-                    valueAddition: obj.id.toString(),
-                    valueAddition2: obj.description
-                  }))
-                },
-                valueFormatter: (params) => {
-                  const foundItem = this.typeComps
-                    ? this.typeComps.find((item) => item.id === params.value)
-                    : null;
-                  return foundItem ? foundItem.description : params.value;
-                },
-            },
+        wrapText: true,
+        autoHeight: true,
+        cellStyle: { 'white-space': 'normal', 'line-height': '1.4' },
+        cellEditor: SelectWithTooltipEditorV2Component,
+        cellEditorParams: {
+          options: this.typeComps.map(obj => ({
+            id: obj.id,
+            description: obj.description,
+            valueAddition: obj.id.toString(),
+            valueAddition2: obj.description
+          }))
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.typeComps
+            ? this.typeComps.find((item) => item.id === params.value)
+            : null;
+          return foundItem ? foundItem.description : params.value;
+        },
+      },
 
-            {
-                field: 'idExpend', headerName: 'Objeto de Gasto', filter: true,editable: (params) => {
+      {
+        field: 'idExpend', headerName: 'Objeto de Gasto', filter: true, editable: (params) => {
           if (params.data.__isNew) {
             return true;
           }
           return true
         }, width: 170,
-                wrapText: true,
-                autoHeight: true,
-                cellStyle: { 'white-space': 'normal', 'line-height': '1.4' },
-                cellEditor: SelectWithTooltipEditorV2Component,
-                cellEditorParams: {
-                  options: this.expenses.map(obj => ({
-                    id: obj.id,
-                    description: `${obj.codigo} - ${obj.nombre}`,
-                    valueAddition: obj.codigo || '',
-                    valueAddition2: obj.nombre || ''
-                  }))
-                },
-                valueFormatter: (params) => {
-                  const foundItem = this.expenses
-                    ? this.expenses.find((item) => item.id === params.value)
-                    : null;
-                  return foundItem ? `${foundItem.codigo} - ${foundItem.nombre}` : params.value;
-                },
-            },
+        wrapText: true,
+        autoHeight: true,
+        cellStyle: { 'white-space': 'normal', 'line-height': '1.4' },
+        cellEditor: SelectWithTooltipEditorV2Component,
+        cellEditorParams: {
+          options: this.expenses.map(obj => ({
+            id: obj.id,
+            description: `${obj.codigo} - ${obj.nombre}`,
+            valueAddition: obj.codigo || '',
+            valueAddition2: obj.nombre || ''
+          }))
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.expenses
+            ? this.expenses.find((item) => item.id === params.value)
+            : null;
+          return foundItem ? `${foundItem.codigo} - ${foundItem.nombre}` : params.value;
+        },
+      },
 
-            {
-              field: 'description', headerName: 'Descripción', editable: (params) => {
+      {
+        field: 'description', headerName: 'Descripción', editable: (params) => {
           if (params.data.__isNew) {
             return true;
           }
           return true
         }, width: 155, filter: true,
-              wrapText: true,
-              autoHeight: true,
-              cellStyle: { 'white-space': 'normal', 'line-height': '1.4' },
-              cellEditor: 'agPopupTextCellEditor',
-              cellEditorParams: {
-                maxLength: 100,
-                cols: 50,
-                rows: 3,
-                onKeyDown: (event: KeyboardEvent) => {
-                  if (event.key === 'Enter' && !event.shiftKey) {
-                    event.stopPropagation();
-                  }
-                },
-              },
-              onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-                if (!event.node.group) {
-                  this.modalServiceTable.showModal({
-                    params: event,
-                    value: event.value,
-                  });
-                }
-              },
-              cellRenderer: (params: ICellRendererParams) => {
-                if (params.node.group) {
-                  return params.value;
-                }
-                return params.value;
-              }
-            },
+        wrapText: true,
+        autoHeight: true,
+        cellStyle: { 'white-space': 'normal', 'line-height': '1.4' },
+        cellEditor: 'agPopupTextCellEditor',
+        cellEditorParams: {
+          maxLength: 100,
+          cols: 50,
+          rows: 3,
+          onKeyDown: (event: KeyboardEvent) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.stopPropagation();
+            }
+          },
+        },
+        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+          if (!event.node.group) {
+            this.modalServiceTable.showModal({
+              params: event,
+              value: event.value,
+            });
+          }
+        },
+        cellRenderer: (params: ICellRendererParams) => {
+          if (params.node.group) {
+            return params.value;
+          }
+          return params.value;
+        }
+      },
 
       {
         field: 'subtotal',
@@ -704,11 +704,11 @@ constructor() {
         width: 140,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
-   
+
       {
         field: 'total',
         headerName: 'Comprobado',
-        type: 'number',  filter: 'agSetColumnFilter',
+        type: 'number', filter: 'agSetColumnFilter',
         filterParams: {
           //excelMode: 'mac',
           defaultToNothingSelected: true,
@@ -733,10 +733,10 @@ constructor() {
         type: 'number',
         editable: false,
         hide: true,
-        width: 100,        
+        width: 100,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
-      
+
       {
         field: 'createdBy',
         headerName: 'Autoriza',
@@ -811,66 +811,66 @@ constructor() {
     this.notSavedChanges = true;
   }
 
-onGridReady(params: GridReadyEvent) {
-  this.gridApi = params.api;
+  onGridReady(params: GridReadyEvent) {
+    this.gridApi = params.api;
 
-  // Configurar el detailCellRendererParams para pasar datos al detail renderer
-  this.gridApi.setGridOption('detailCellRendererParams', {
-    getDetailRowData: (params) => {
-      params.successCallback(params.data.detailData);
-    },
-    context: {
-      idRoot: this.idRoot,
-      componentParent: this,
-      gridApi: this.gridApi,
-      catalogsService: this.catalogsService,
-      administrationService: this.administrationService,
-      catalogadmonService: this.cataalogAdmonService,
-      rootService: this.rootService,
-      base64EncodeService: this.base64EncodeService,
-      objetosGasto: this.expenses,
-      typeComps: this.typeComps,
-      CONCEPTS: {
-        load: (expenditureId: number, callback: (data: any[]) => void) => {
-          this.loadConceptsData(expenditureId, callback);
-        },
-        save: (expenditureId: number, data: any) => {
-          this.saveConceptsById(expenditureId, data);
-        },
-        delete: (params: any, callback: () => void) => {
-          this.deleteConceptRow(params, callback);
-        },
-        updateCount: (expenditureId: number, count: number) => {
-          this.updateExpenditureCountItems(expenditureId, count);
-        }
+    // Configurar el detailCellRendererParams para pasar datos al detail renderer
+    this.gridApi.setGridOption('detailCellRendererParams', {
+      getDetailRowData: (params) => {
+        params.successCallback(params.data.detailData);
       },
-      DOCUMENTOS_COMPROBADOS: {
-        load: (expenditureId: number, callback: (data: any[]) => void) => {
-          this.loadDocumentosComprobados(expenditureId, callback);
+      context: {
+        idRoot: this.idRoot,
+        componentParent: this,
+        gridApi: this.gridApi,
+        catalogsService: this.catalogsService,
+        administrationService: this.administrationService,
+        catalogadmonService: this.cataalogAdmonService,
+        rootService: this.rootService,
+        base64EncodeService: this.base64EncodeService,
+        objetosGasto: this.expenses,
+        typeComps: this.typeComps,
+        CONCEPTS: {
+          load: (expenditureId: number, callback: (data: any[]) => void) => {
+            this.loadConceptsData(expenditureId, callback);
+          },
+          save: (expenditureId: number, data: any) => {
+            this.saveConceptsById(expenditureId, data);
+          },
+          delete: (params: any, callback: () => void) => {
+            this.deleteConceptRow(params, callback);
+          },
+          updateCount: (expenditureId: number, count: number) => {
+            this.updateExpenditureCountItems(expenditureId, count);
+          }
         },
-        save: (expenditureId: number, data: any) => {
-          this.saveDocumentosComprobados(expenditureId, data);
-        },
-        delete: (params: any, callback: () => void) => {
-          this.deleteDocumentoComprobado(params, callback);
-        },
-        updateCount: (expenditureId: number, count: number) => {
-          this.updateExpenditureCountDocomps(expenditureId, count);
+        DOCUMENTOS_COMPROBADOS: {
+          load: (expenditureId: number, callback: (data: any[]) => void) => {
+            this.loadDocumentosComprobados(expenditureId, callback);
+          },
+          save: (expenditureId: number, data: any) => {
+            this.saveDocumentosComprobados(expenditureId, data);
+          },
+          delete: (params: any, callback: () => void) => {
+            this.deleteDocumentoComprobado(params, callback);
+          },
+          updateCount: (expenditureId: number, count: number) => {
+            this.updateExpenditureCountDocomps(expenditureId, count);
+          }
         }
       }
-    }
-  });
+    });
 
-  if (this.pendingMasterUpdate) {
-    setTimeout(() => {
-      this.updateMasterRowInGrid(this.pendingMasterUpdate);
-      this.pendingMasterUpdate = null;
-    }, 100);
+    if (this.pendingMasterUpdate) {
+      setTimeout(() => {
+        this.updateMasterRowInGrid(this.pendingMasterUpdate);
+        this.pendingMasterUpdate = null;
+      }, 100);
+    }
   }
-}
   addRow() {
-      this.trackingService.addLog(this.trackingService.getnameComp(), `Creacion de un Egreso`, 'Palacio Municipal - Egresos',
-          this.trackingService.getEmail() );
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Creacion de un Egreso`, 'Palacio Municipal - Egresos',
+      this.trackingService.getEmail());
 
     const now = new Date();
 
@@ -935,7 +935,7 @@ onGridReady(params: GridReadyEvent) {
   }
 
   @HostListener('document:keydown.f10', ['$event'])
-  handleKeyboardEvent(event: KeyboardEvent) {
+  handleKeyboardEvent(event: Event) {
     event.preventDefault();
     if (this.gridApi) {
       this.gridApi.stopEditing();
@@ -1021,7 +1021,7 @@ onGridReady(params: GridReadyEvent) {
       );
 
       this.trackingService.addLog(this.trackingService.getnameComp(), `Salvar Egresos`, 'Palacio Municipal - Egresos',
-          this.trackingService.getEmail());
+        this.trackingService.getEmail());
 
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
@@ -1203,76 +1203,76 @@ onGridReady(params: GridReadyEvent) {
   }
 
 
-private updateMasterRow(updatedData: any) {
-  if (!this.gridApi) return;
+  private updateMasterRow(updatedData: any) {
+    if (!this.gridApi) return;
 
-  const rowNode = this.gridApi.getRowNode(updatedData.id.toString());
-  if (rowNode) {
-    // Obtenemos la data actual de la fila
-    const currentData = rowNode.data;
+    const rowNode = this.gridApi.getRowNode(updatedData.id.toString());
+    if (rowNode) {
+      // Obtenemos la data actual de la fila
+      const currentData = rowNode.data;
 
-    // Sobrescribimos solo los campos de totales
-    currentData.subtotal = updatedData.subtotal;
-    currentData.tax = updatedData.tax;
-    currentData.total = updatedData.total;
+      // Sobrescribimos solo los campos de totales
+      currentData.subtotal = updatedData.subtotal;
+      currentData.tax = updatedData.tax;
+      currentData.total = updatedData.total;
 
-    // Aplicamos la transacción para que AG Grid refresque solo esa fila
-    this.gridApi.applyTransaction({ update: [currentData] });
+      // Aplicamos la transacción para que AG Grid refresque solo esa fila
+      this.gridApi.applyTransaction({ update: [currentData] });
+    }
   }
-}
 
 
-private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: number; isr?: number; total: number }) {
-  if (!this.gridApi || !updatedData?.id) return;
+  private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: number; isr?: number; total: number }) {
+    if (!this.gridApi || !updatedData?.id) return;
 
-  const selectedNodes = this.gridApi.getSelectedNodes();
-  const currentSelectedId = selectedNodes.length > 0 ? selectedNodes[0].data.id : null;
+    const selectedNodes = this.gridApi.getSelectedNodes();
+    const currentSelectedId = selectedNodes.length > 0 ? selectedNodes[0].data.id : null;
 
-  const rowNode = this.gridApi.getRowNode(updatedData.id.toString());
+    const rowNode = this.gridApi.getRowNode(updatedData.id.toString());
 
-  if (rowNode) {
-    const currentData = rowNode.data;
-    currentData.subtotal = updatedData.subtotal;
-    currentData.tax = updatedData.tax;
-    if (updatedData.isr !== undefined) {
-      currentData.isr = updatedData.isr;
-    }
-    currentData.total = updatedData.total;
-
-    this.gridApi.applyTransaction({ update: [currentData] });
-
-    if (currentSelectedId === updatedData.id) {
-      setTimeout(() => {
-        const updatedNode = this.gridApi.getRowNode(updatedData.id.toString());
-        if (updatedNode) {
-          updatedNode.setSelected(true);
-          this.gridApi.ensureNodeVisible(updatedNode);
-        }
-      }, 50);
-    }
-  } else {
-    const itemIndex = this.incomes.findIndex(item => item.id === updatedData.id);
-
-    if (itemIndex !== -1) {
-      this.incomes[itemIndex].subtotal = updatedData.subtotal;
-      this.incomes[itemIndex].tax = updatedData.tax;
+    if (rowNode) {
+      const currentData = rowNode.data;
+      currentData.subtotal = updatedData.subtotal;
+      currentData.tax = updatedData.tax;
       if (updatedData.isr !== undefined) {
-        this.incomes[itemIndex].isr = updatedData.isr;
+        currentData.isr = updatedData.isr;
       }
-      this.incomes[itemIndex].total = updatedData.total;
+      currentData.total = updatedData.total;
 
-      setTimeout(() => {
-        if (currentSelectedId) {
-          const nodeToSelect = this.gridApi.getRowNode(currentSelectedId.toString());
-          if (nodeToSelect) {
-            nodeToSelect.setSelected(true);
-            this.gridApi.ensureNodeVisible(nodeToSelect);
+      this.gridApi.applyTransaction({ update: [currentData] });
+
+      if (currentSelectedId === updatedData.id) {
+        setTimeout(() => {
+          const updatedNode = this.gridApi.getRowNode(updatedData.id.toString());
+          if (updatedNode) {
+            updatedNode.setSelected(true);
+            this.gridApi.ensureNodeVisible(updatedNode);
           }
+        }, 50);
+      }
+    } else {
+      const itemIndex = this.incomes.findIndex(item => item.id === updatedData.id);
+
+      if (itemIndex !== -1) {
+        this.incomes[itemIndex].subtotal = updatedData.subtotal;
+        this.incomes[itemIndex].tax = updatedData.tax;
+        if (updatedData.isr !== undefined) {
+          this.incomes[itemIndex].isr = updatedData.isr;
         }
-      }, 100);
+        this.incomes[itemIndex].total = updatedData.total;
+
+        setTimeout(() => {
+          if (currentSelectedId) {
+            const nodeToSelect = this.gridApi.getRowNode(currentSelectedId.toString());
+            if (nodeToSelect) {
+              nodeToSelect.setSelected(true);
+              this.gridApi.ensureNodeVisible(nodeToSelect);
+            }
+          }
+        }, 100);
+      }
     }
   }
-}
 
   // ==================== MÉTODOS PARA CASCADAS ====================
 

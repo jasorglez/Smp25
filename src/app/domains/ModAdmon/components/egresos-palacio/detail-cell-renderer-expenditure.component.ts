@@ -382,7 +382,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         }
       });
     }
-  }  
+  }
 
   getBillingManagementInfo() {
     if (this.context && this.context.administrationService && this.context.idRoot) {
@@ -642,7 +642,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         }
       },
 
-       {
+      {
         field: 'unit',
         headerName: 'Unidad',
         type: 'text',
@@ -663,7 +663,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         width: 100,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
-        {
+      {
         field: 'iva',
         headerName: '¿Aplic IVA?',
         type: 'boolean',
@@ -1580,7 +1580,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
           }
         }
       },
-    
+
       {
         field: 'uuidCfdi',
         headerName: 'UUID CFDI/COMENTARIO',
@@ -1923,16 +1923,16 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   }
 
   @HostListener('document:keydown.f10', ['$event'])
-  handleKeyboardEvent(event: KeyboardEvent) {
+  handleKeyboardEvent(event: Event) {
     // Verificar si estamos en modo conceptos y hay cambios
     if (this.detailType === 'concepts' && this.hasUnsavedChanges) {
       event.preventDefault();
       event.stopPropagation();
-      
+
       if (this.gridApi) {
         this.gridApi.stopEditing();
       }
-      
+
       setTimeout(() => {
         this.saveChanges();
       }, 100);
