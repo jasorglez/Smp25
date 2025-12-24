@@ -695,17 +695,26 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   }
 
   // Configuraciones de columnas para AG-Grid
-  // Definición de columnas
+  // CRÍTICO: Debe ser una propiedad, NO un getter, para evitar re-evaluación constante
+  // que causa re-renderizado de filtros en cada ciclo de change detection
+  private _oTcolumnDefs: ColDef[] = [];
+
   public get oTcolumnDefs(): ColDef[] {
+    // Si ya fue inicializado, retornar la misma instancia
+    if (this._oTcolumnDefs.length > 0) {
+      return this._oTcolumnDefs;
+    }
+
+    // Inicializar una sola vez
     const hasPermission = this.authService.hasDetailedPermission('projects', 'get-all-ot');
-    return [
+    this._oTcolumnDefs = [
       {
         field: 'idProject',
         headerName: 'Proyecto',
-        
+
         filter: true,
         filterParams: {
-          excelMode: 'mac'
+          excelMode: 'windows'  // Cambiado a 'windows' para mejor compatibilidad
         },
         
         width: 100,
@@ -758,10 +767,10 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       {
         field: 'otNumber',
         headerName: 'OT',
-        
+
         filter: true,
         filterParams: {
-          excelMode: 'mac'
+          excelMode: 'windows'  // Cambiado a 'windows' para mejor compatibilidad
         },
         
         width: 100,
@@ -873,6 +882,9 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       }
 
     ];
+
+    // Retornar la instancia inicializada
+    return this._oTcolumnDefs;
   }
 
   public get materialesColumnDefs(): ColDef[] {
