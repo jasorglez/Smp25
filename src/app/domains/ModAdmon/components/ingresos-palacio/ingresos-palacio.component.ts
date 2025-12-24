@@ -23,6 +23,7 @@ import { CatalogadmonService } from 'app/services/catalogadmon.service';
 import { ButtonCellRendererIncomeComponent } from './button-cell-renderer.component';
 import { DetailCellRendererIncomeComponent } from './detail-cell-renderer-income.component';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
+import { PdfButtonCellRendererComponent } from '../egresos-palacio/pdf-button-cell-renderer.component';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
@@ -33,7 +34,7 @@ import * as bootstrap from 'bootstrap';
   standalone: true,
   imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule, ReactiveFormsModule,
             FormsModule, AdditionalInfoComponent, ConceptsincomeComponent, ButtonCellRendererIncomeComponent,
-            DetailCellRendererIncomeComponent, SelectWithTooltipEditorV2Component],
+            DetailCellRendererIncomeComponent, SelectWithTooltipEditorV2Component, PdfButtonCellRendererComponent],
   templateUrl: './ingresos-palacio.component.html',
   styleUrl: './ingresos-palacio.component.scss'
 })
@@ -100,6 +101,7 @@ export class IngresosPalacioComponent implements OnInit {
     }, { allowSignalWrites: true }); // Add this option);
   };
 
+  private isGeneratingReport: boolean = false; // Flag para evitar múltiples clics
   showform : string = '';
   branches: number[] = [];
   incomes: any[] = [];
@@ -208,8 +210,10 @@ export class IngresosPalacioComponent implements OnInit {
       return null;
     },
     onRowClicked: (event) => {
-      // Seleccionar la fila al hacer clic en cualquier celda
-      event.node.setSelected(true);
+      // Seleccionar la fila al hacer clic en cualquier celda, excepto en la columna PDF
+      if (event.column.getColId() !== 'pdfReport') {
+        event.node.setSelected(true);
+      }
     },
     onRowSelected: (event) => {
       // Deseleccionar otras filas cuando se selecciona una nueva
@@ -391,14 +395,18 @@ export class IngresosPalacioComponent implements OnInit {
         field: 'pdfReport',
         headerName: 'PDF',
         width: 80,
-        cellRenderer: (params: any) => {
-          return '<i class="bi bi-file-earmark-pdf" style="font-size: 1.2rem; color: #dc3545; cursor: pointer;"></i>';
+        cellRenderer: PdfButtonCellRendererComponent,
+        cellRendererParams: {
+          onClick: (node: any) => {
+            console.log('🔵 PDF Click detectado en Ingresos - ID:', node.data.id);
+            this.toggleReportDetail(node);
+          },
+          icon: 'bi-file-earmark-pdf',
+          iconColor: '#dc3545',
+          title: 'Hacer clic para generar el reporte PDF'
         },
         editable: false,
-        cellStyle: { textAlign: 'center', cursor: 'pointer' },
-        onCellClicked: (params: any) => {
-          this.toggleReportDetail(params.node);
-        }
+        cellStyle: { backgroundColor: '#fff3e0', textAlign: 'center' }
       },
       {
         field: 'status',
@@ -912,12 +920,15 @@ async saveChanges() {
     }
   }
 
-  toggleReportDetail(node: any) {
+  async toggleReportDetail(node: any) {
+    console.log('🟢 toggleReportDetail llamado en Ingresos - ID:', node.data.id, 'isGenerating:', this.isGeneratingReport);
+
     const api = this.gridApi;
     const isCurrentlyExpanded = node.expanded && node.data.detailType === 'report';
 
     if (isCurrentlyExpanded) {
       // Si ya está expandido con el reporte, colapsarlo
+      console.log('🟡 Colapsando reporte expandido en Ingresos');
       node.setExpanded(false);
 
       // Restaurar alturas de todas las filas
@@ -925,7 +936,44 @@ async saveChanges() {
         otherNode.setRowHeight(undefined);
       });
       api.onRowHeightChanged();
-    } else {
+      return; // Salir temprano
+    }
+
+    // Verificar si ya se está generando un reporte
+    if (this.isGeneratingReport) {
+      console.log('🔴 Ya se está generando un reporte en Ingresos, ignorando clic');
+      alerts.basicAlert(
+        'Procesando',
+        'Ya se está generando un reporte. Por favor espere.',
+        'warning'
+      );
+      return;
+    }
+
+    // Marcar que se está generando
+    this.isGeneratingReport = true;
+    console.log('🟢 Iniciando generación de reporte en Ingresos');
+
+    // Mostrar mensaje de progreso inicial
+    let progress = 0;
+    alerts.showLoadingWithProgress(
+      'Generando reporte...',
+      'Por favor espere mientras se procesa el documento',
+      progress
+    );
+
+    const progressInterval = setInterval(() => {
+      progress += 10;
+      if (progress <= 90) {
+        alerts.updateLoadingProgress(
+          'Generando reporte...',
+          'Por favor espere mientras se procesa el documento',
+          progress
+        );
+      }
+    }, 100);
+
+    try {
       // Colapsar cualquier otra fila expandida
       api.forEachNode((otherNode: any) => {
         if (otherNode.expanded && otherNode.id !== node.id) {
@@ -964,9 +1012,37 @@ async saveChanges() {
       api.onRowHeightChanged();
 
       // Expandir con el reporte
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      node.setExpanded(true);
+
+      // Completar progreso al 100%
+      clearInterval(progressInterval);
+      alerts.updateLoadingProgress(
+        'Reporte generado',
+        'El documento se ha procesado correctamente',
+        100
+      );
+
+      console.log('✅ Reporte generado exitosamente en Ingresos');
+
+      // Cerrar mensaje de carga después de 800ms
       setTimeout(() => {
-        node.setExpanded(true);
-      }, 0);
+        alerts.closeLoading();
+        this.isGeneratingReport = false; // Liberar el lock
+        console.log('🔓 Lock liberado en Ingresos');
+      }, 800);
+
+    } catch (error) {
+      clearInterval(progressInterval);
+      alerts.closeLoading();
+      this.isGeneratingReport = false; // Liberar el lock en caso de error
+      console.log('🔴 Error generando reporte en Ingresos, lock liberado');
+      alerts.basicAlert(
+        'Error',
+        'Ocurrió un error al generar el reporte. Por favor, intente nuevamente.',
+        'error'
+      );
+      console.error('Error generando reporte:', error);
     }
   }
 

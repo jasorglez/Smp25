@@ -26,6 +26,7 @@ import { AuthService } from 'app/services/auth.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { ButtonCellRendererExpenditureComponent } from './button-cell-renderer-expenditure.component';
 import { DetailCellRendererExpenditureComponent } from './detail-cell-renderer-expenditure.component';
+import { PdfButtonCellRendererComponent } from './pdf-button-cell-renderer.component';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
@@ -36,7 +37,8 @@ import { CustomersService } from 'app/services/customers.service';
   selector: 'app-egresos-palacio',
   standalone: true,
   imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
-    FormsModule, ButtonCellRendererExpenditureComponent, DetailCellRendererExpenditureComponent, SelectWithTooltipEditorV2Component],
+    FormsModule, ButtonCellRendererExpenditureComponent, DetailCellRendererExpenditureComponent,
+    PdfButtonCellRendererComponent, SelectWithTooltipEditorV2Component],
   templateUrl: './egresos-palacio.component.html',
   styleUrl: './egresos-palacio.component.scss'
 })
@@ -147,6 +149,7 @@ constructor() {
 
 // ✅ CORRECCIÓN: Agregar propiedad para datos pendientes
  private pendingMasterUpdate: any = null;
+ private isGeneratingReport: boolean = false; // Flag para evitar múltiples clics
  externalFilterActive: boolean = false;
  showform : string = '';
  branchs  : any[] = [];
@@ -270,8 +273,10 @@ constructor() {
       return null;
     },
     onRowClicked: (event) => {
-      // Seleccionar la fila al hacer clic en cualquier celda
-      event.node.setSelected(true);
+      // Seleccionar la fila al hacer clic en cualquier celda, excepto en la columna PDF
+      if (event.column.getColId() !== 'pdfReport') {
+        event.node.setSelected(true);
+      }
     },
     onRowSelected: (event) => {
       // Deseleccionar otras filas cuando se selecciona una nueva
@@ -491,14 +496,18 @@ constructor() {
         field: 'pdfReport',
         headerName: 'PDF',
         width: 70,
-        cellRenderer: (params: any) => {
-          return '<i class="bi bi-file-earmark-pdf" style="font-size: 1.2rem; color: #dc3545; cursor: pointer;"></i>';
+        cellRenderer: PdfButtonCellRendererComponent,
+        cellRendererParams: {
+          onClick: (node: any) => {
+            console.log('🔵 PDF Click detectado desde PdfButtonCellRenderer:', node.data.id);
+            this.toggleReportDetail(node);
+          },
+          icon: 'bi-file-earmark-pdf',
+          iconColor: '#dc3545',
+          title: 'Hacer clic para generar el reporte PDF'
         },
         editable: false,
-        cellStyle: { textAlign: 'center', cursor: 'pointer' },
-        onCellClicked: (params: any) => {
-          this.toggleReportDetail(params.node);
-        }
+        cellStyle: { backgroundColor: '#fff3e0', textAlign: 'center' }
       },
       {
         field: 'countDocomps',
@@ -1303,12 +1312,15 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
     }
   }
 
-  toggleReportDetail(node: any) {
+  async toggleReportDetail(node: any) {
+    console.log('🟢 toggleReportDetail llamado - ID:', node.data.id, 'isGenerating:', this.isGeneratingReport);
+
     const api = this.gridApi;
     const isCurrentlyExpanded = node.expanded && node.data.detailType === 'report';
 
     if (isCurrentlyExpanded) {
       // Si ya está expandido con el reporte, colapsarlo y mostrar todas las filas
+      console.log('🟡 Colapsando reporte expandido');
       node.setExpanded(false);
       node.data.detailType = null;
       this.externalFilterActive = false;
@@ -1316,7 +1328,44 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
         n.data.visible = true;
       });
       api.onFilterChanged();
-    } else {
+      return; // Salir temprano
+    }
+
+    // Verificar si ya se está generando un reporte
+    if (this.isGeneratingReport) {
+      console.log('🔴 Ya se está generando un reporte, ignorando clic');
+      alerts.basicAlert(
+        'Procesando',
+        'Ya se está generando un reporte. Por favor espere.',
+        'warning'
+      );
+      return;
+    }
+
+    // Marcar que se está generando
+    this.isGeneratingReport = true;
+    console.log('🟢 Iniciando generación de reporte');
+
+    // Mostrar mensaje de progreso inicial
+    let progress = 0;
+    alerts.showLoadingWithProgress(
+      'Generando reporte...',
+      'Por favor espere mientras se procesa el documento',
+      progress
+    );
+
+    const progressInterval = setInterval(() => {
+      progress += 10;
+      if (progress <= 90) {
+        alerts.updateLoadingProgress(
+          'Generando reporte...',
+          'Por favor espere mientras se procesa el documento',
+          progress
+        );
+      }
+    }, 100);
+
+    try {
       // Expandir con reporte, ocultar las demás filas
       this.externalFilterActive = true;
       api.forEachNode((n: any) => {
@@ -1345,9 +1394,37 @@ private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: 
       }
 
       // Expandir con el reporte
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      node.setExpanded(true);
+
+      // Completar progreso al 100%
+      clearInterval(progressInterval);
+      alerts.updateLoadingProgress(
+        'Reporte generado',
+        'El documento se ha procesado correctamente',
+        100
+      );
+
+      console.log('✅ Reporte generado exitosamente');
+
+      // Cerrar mensaje de carga después de 800ms
       setTimeout(() => {
-        node.setExpanded(true);
-      }, 0);
+        alerts.closeLoading();
+        this.isGeneratingReport = false; // Liberar el lock
+        console.log('🔓 Lock liberado');
+      }, 800);
+
+    } catch (error) {
+      clearInterval(progressInterval);
+      alerts.closeLoading();
+      this.isGeneratingReport = false; // Liberar el lock en caso de error
+      console.log('🔴 Error generando reporte, lock liberado');
+      alerts.basicAlert(
+        'Error',
+        'Ocurrió un error al generar el reporte. Por favor, intente nuevamente.',
+        'error'
+      );
+      console.error('Error generando reporte:', error);
     }
   }
 
