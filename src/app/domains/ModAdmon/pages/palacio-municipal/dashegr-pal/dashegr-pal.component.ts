@@ -43,8 +43,7 @@ interface ExpenseData {
     AgGridModule,
     FormsModule,
     CommonModule,
-    NgApexchartsModule,
-    DetailCellRendererTotalesComponent,
+    NgApexchartsModule
   ],
   templateUrl: './dashegr-pal.component.html',
   styleUrl: './dashegr-pal.component.scss',

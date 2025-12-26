@@ -44,8 +44,7 @@ interface TotalData {
     AgGridModule,
     FormsModule,
     CommonModule,
-    NgApexchartsModule,
-    DetailCellRendererTotalesComponent,
+    NgApexchartsModule
   ],
   templateUrl: './dastot-pal.component.html',
   styleUrl: './dastot-pal.component.scss',
