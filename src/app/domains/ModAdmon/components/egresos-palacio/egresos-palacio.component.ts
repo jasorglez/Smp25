@@ -233,103 +233,19 @@ export class EgresosPalacioComponent {
 
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
-    popupParent: document.body,
     headerHeight: 24,
     rowHeight: 24,
-    animateRows: true,
     masterDetail: true,
-    autoHeight: true,
-    getRowId: (params: any) => String(params.data.id),
     detailRowHeight: 700,
-    isRowMaster: (dataItem: any) => true,
     detailCellRenderer: DetailCellRendererExpenditureComponent,
-    isExternalFilterPresent: () => this.externalFilterActive,
-    doesExternalFilterPass: (node: any) => {
-      if (!this.externalFilterActive) return true;
-      return node.data.visible !== false;
-    },
-    dateComponentParams: {
-      dateFormat: 'dd/MM/yyyy'
-    },
-    getRowClass: (params) => {
-      // Verificar si la fila está seleccionada
-      if (params.node.isSelected()) {
-        return 'selected-row';
-      }
-      return '';
-    },
-    getRowStyle: (params) => {
-      if (params.node.isSelected()) {
-        return { backgroundColor: '#ffe6e6', color: '#000000' };
-      }
-      if (params.data) {
-        switch (params.data.status) {
-          case 'Pendiente':
-            return { backgroundColor: '#cce5ff', color: '#004085' }; // Azul
-          case 'Pagada':
-            return { backgroundColor: '#d4edda', color: '#155724' }; // Verde
-          case 'Cancelada':
-            return { backgroundColor: '#f8d7da', color: '#721c24' }; // Rojo
-          case 'Entregada':
-            return { backgroundColor: '#fff3cd', color: '#856404' }; // Amarillo
-          default:
-            return null;
-        }
-      }
-      return null;
-    },
-    onRowClicked: (event) => {
-      // Seleccionar la fila al hacer clic en cualquier celda, excepto en la columna PDF
-      if (event.column.getColId() !== 'pdfReport') {
-        event.node.setSelected(true);
-      }
-    },
-    onRowSelected: (event) => {
-      // Deseleccionar otras filas cuando se selecciona una nueva
-      if (event.node.isSelected()) {
-        this.gridApi.forEachNode((node) => {
-          if (node.id !== event.node.id) {
-            node.setSelected(false);
-          }
-        });
-      }
-    },
-    onCellKeyDown: (event: any) => {
-      // Cuando se presiona Enter
-      if (event.event.key === 'Enter' && !event.event.shiftKey) {
-        event.event.preventDefault();
-        event.event.stopPropagation();
-
-        const currentColumn = event.column.getColId();
-
-        // Secuencia de navegación: date -> idTypeComp -> idExpend -> totalComp
-        if (currentColumn === 'date') {
-          setTimeout(() => {
-            this.gridApi.setFocusedCell(event.node.rowIndex, 'idTypeComp');
-            this.gridApi.startEditingCell({
-              rowIndex: event.node.rowIndex,
-              colKey: 'idTypeComp'
-            });
-          }, 50);
-        } else if (currentColumn === 'idTypeComp') {
-          setTimeout(() => {
-            this.gridApi.setFocusedCell(event.node.rowIndex, 'idExpend');
-            this.gridApi.startEditingCell({
-              rowIndex: event.node.rowIndex,
-              colKey: 'idExpend'
-            });
-          }, 50);
-        } else if (currentColumn === 'idExpend') {
-          setTimeout(() => {
-            this.gridApi.setFocusedCell(event.node.rowIndex, 'totalComp');
-            this.gridApi.startEditingCell({
-              rowIndex: event.node.rowIndex,
-              colKey: 'totalComp'
-            });
-          }, 50);
-        }
-      }
-    },
+    suppressAnimationFrame: true,
+    embedFullWidthRows: true,
+    suppressMenuHide: true,
+    suppressPropertyNamesCheck: true, // Deshabilitar validación de propiedades
+    suppressChangeDetection: false, // Mantener detección de cambios
+    suppressCellFocus: false, // Mantener foco de celdas
+    deltaRowDataMode: false, // Deshabilitar modo delta
+    suppressBrowserResizeObserver: true, // Evitar re-renders por resize
   };
 
   public rowSelection: 'single' | 'multiple' = 'single';
@@ -338,11 +254,11 @@ export class EgresosPalacioComponent {
 
   public defaultColDef: ColDef = {
     sortable: true,
-    filter: true,
+    filter: false, // Deshabilitado por defecto para reducir re-renders
     resizable: true,
     editable: false,
-    wrapHeaderText: true,
-    autoHeaderHeight: true
+    suppressHeaderMenuButton: false, // Permitir menú de header
+    suppressMovable: false, // Permitir mover columnas
   };
 
   components = {
@@ -553,55 +469,15 @@ export class EgresosPalacioComponent {
       {
         field: 'facturado',
         headerName: 'Comprobado',
-        type: 'boolean',
         cellRenderer: 'agCheckboxCellRenderer',
         cellEditor: 'agCheckboxCellEditor',
         editable: true,
         width: 100
       },
 
-      { field: 'numberDocument', headerName: '# Doc/Fac', editable: false, filter: true, width: 120, hide: false },
+      { field: 'numberDocument', headerName: '# Doc/Fac', editable: false, filter: true, width: 130 },
       {
-        field: 'date',
-        headerName: 'Fecha',
-        editable: true,
-        filter: 'agSetColumnFilter',
-        filterParams: {
-          //   excelMode: 'mac',
-          defaultToNothingSelected: true,
-        },
-        cellDataType: 'date',
-        width: 95,
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          const date = params.value instanceof Date ? params.value : new Date(params.value);
-          return this.formatDate(date);
-        },
-        valueGetter: (params) => {
-          // Asegurar que siempre devuelva un objeto Date
-          if (!params.data.date) return null;
-          return params.data.date instanceof Date ? params.data.date : new Date(params.data.date);
-        },
-        valueSetter: (params) => {
-          // Asegurar que siempre se guarde como objeto Date
-          if (!params.newValue) {
-            params.data.date = params.oldValue;
-            return false;
-          }
-          const date = params.newValue instanceof Date ? params.newValue : new Date(params.newValue);
-          if (isNaN(date.getTime())) {
-            params.data.date = params.oldValue;
-            return false;
-          }
-          params.data.date = date;
-          return true;
-        },
-        cellEditorParams: {
-          dateFormat: 'dd/MM/yyyy',
-          datePickerFormat: 'dd/MM/yyyy'
-        }
-      },
-
+        field: 'date',   headerName: 'Fecha', editable: true,     filter: true,  width: 95},
       {
         field: 'idTypeComp', headerName: 'Tipo Comprobante', filter: true, editable: (params) => {
           if (params.data.__isNew) {
@@ -630,7 +506,8 @@ export class EgresosPalacioComponent {
       },
 
       {
-        field: 'idExpend', headerName: 'Objeto de Gasto', filter: true, editable: (params) => {
+        field: 'idExpend', headerName: 'Objeto de Gasto', filter: true,
+        editable: (params) => {
           if (params.data.__isNew) {
             return true;
           }
@@ -696,7 +573,6 @@ export class EgresosPalacioComponent {
       {
         field: 'subtotal',
         headerName: 'Subtotal',
-        type: 'number',
         editable: false,
         hide: true,
         width: 100,
@@ -706,11 +582,7 @@ export class EgresosPalacioComponent {
       {
         field: 'totalComp',
         headerName: 'Por Comprobar',
-        type: 'number', filter: 'agSetColumnFilter',
-        filterParams: {
-          //excelMode: 'mac',
-          defaultToNothingSelected: true,
-        },
+        filter: true,
         editable: true,
         width: 140,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
@@ -719,11 +591,7 @@ export class EgresosPalacioComponent {
       {
         field: 'total',
         headerName: 'Comprobado',
-        type: 'number', filter: 'agSetColumnFilter',
-        filterParams: {
-          //excelMode: 'mac',
-          defaultToNothingSelected: true,
-        },
+        filter: true,
         editable: false,
         width: 130,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
@@ -732,7 +600,6 @@ export class EgresosPalacioComponent {
       {
         field: 'tax',
         headerName: 'Impuestos',
-        type: 'number',
         hide: true,
         editable: false,
         width: 100,
@@ -741,7 +608,6 @@ export class EgresosPalacioComponent {
       {
         field: 'isr',
         headerName: 'ISR',
-        type: 'number',
         editable: false,
         hide: true,
         width: 100,

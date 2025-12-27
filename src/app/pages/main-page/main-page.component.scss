@@ -5,9 +5,9 @@
 }
 
 .main-content-container {
-  margin-left: 250px;
+  margin-left: 225px; /* Ajustado para coincidir con el nuevo ancho del sidebar */
   transition: margin-left 0.3s ease;
-  width: calc(100vw - 250px);
+  width: calc(100vw - 225px);
   box-sizing: border-box;
 }
 
