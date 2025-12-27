@@ -1128,7 +1128,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
                     margin: [0, 5, 0, 0]
                   },
                   {
-                    text: this.getCurrentDateTime(),
+                    text: `Fecha de Pago: ${this.formatDate(this.expenditureData?.date)}`,
                     style: 'documentDate',
                     alignment: 'right',
                     margin: [0, 3, 0, 0]
@@ -1207,7 +1207,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
                   { text: this.formatDate(concept.dateExpend), style: 'tableCell', fontSize: 7 },
                   { text: concept.numeroIdentificacion || '', style: 'tableCell', fontSize: 7 },
                   { text: concept.description || '', style: 'tableCell' },
-                  { text: this.formatCurrency(concept.total || 0), style: 'tableCell', alignment: 'right' }
+                  { text: this.formatCurrency(concept.totalFinal || 0), style: 'tableCell', alignment: 'right' }
                 ]),
                 // Fila de totales
                 [
