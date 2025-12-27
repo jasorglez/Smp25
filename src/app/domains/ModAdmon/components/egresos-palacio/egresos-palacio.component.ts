@@ -239,7 +239,11 @@ export class EgresosPalacioComponent {
     rowBuffer: 20,
     masterDetail: true,
     detailRowHeight: 700,
-    detailCellRenderer: DetailCellRendererExpenditureComponent
+    detailCellRenderer: DetailCellRendererExpenditureComponent,
+    suppressAnimationFrame: true,
+    animateRows: false,
+    suppressMenuHide: false,
+    popupParent: document.body
   };
 
   public rowSelection: 'single' | 'multiple' = 'single';
@@ -534,12 +538,7 @@ export class EgresosPalacioComponent {
       },
 
       {
-        field: 'description', headerName: 'Descripción', editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return true
-        }, width: 155, filter: true,
+        field: 'description', headerName: 'Descripción', editable: true, width: 155, filter: true,
         wrapText: true,
         autoHeight: true,
         cellStyle: { 'white-space': 'normal', 'line-height': '1.4' },

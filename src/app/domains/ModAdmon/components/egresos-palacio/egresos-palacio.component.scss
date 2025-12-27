@@ -4,3 +4,29 @@
     pointer-events: none;
     cursor: not-allowed;
 }
+
+// Forzar estabilidad en los menús de filtro de AG Grid
+::ng-deep .ag-theme-quartz {
+  .ag-popup {
+    position: fixed !important;
+  }
+
+  .ag-menu {
+    position: fixed !important;
+  }
+
+  .ag-filter {
+    position: relative !important;
+  }
+
+  // Prevenir re-renders del filtro
+  .ag-filter-wrapper {
+    will-change: auto !important;
+    transform: none !important;
+  }
+
+  // Estabilizar inputs del filtro
+  .ag-input-field-input {
+    pointer-events: auto !important;
+  }
+}
