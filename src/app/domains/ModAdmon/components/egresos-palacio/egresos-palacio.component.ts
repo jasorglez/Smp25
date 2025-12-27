@@ -243,7 +243,13 @@ export class EgresosPalacioComponent {
     suppressAnimationFrame: true,
     animateRows: false,
     suppressMenuHide: false,
-    popupParent: document.body
+    popupParent: document.body,
+    isExternalFilterPresent: () => {
+      return this.externalFilterActive;
+    },
+    doesExternalFilterPass: (node: any) => {
+      return node.data.visible !== false;
+    }
   };
 
   public rowSelection: 'single' | 'multiple' = 'single';
@@ -473,14 +479,26 @@ export class EgresosPalacioComponent {
       },
 
       { field: 'numberDocument', headerName: '# Doc/Fac', editable: false, filter: true, width: 130 },
-      { field: 'date',  headerName: 'Fecha', editable: true,  width: 155, filter: true,
+      { field: 'date',  headerName: 'Fecha', editable: false,  width: 155, filter: 'agDateColumnFilter',
           valueFormatter: (params) => {
             if (params.value) {
               return new Date(params.value).toLocaleDateString('es-MX');
             }
             return '';
           },
-          cellEditor: 'agDateCellEditor'
+          cellEditor: 'agDateCellEditor',
+          filterParams: {
+            comparator: (filterLocalDateAtMidnight: Date, cellValue: any) => {
+              if (!cellValue) return -1;
+              const cellDate = new Date(cellValue);
+              if (cellDate < filterLocalDateAtMidnight) {
+                return -1;
+              } else if (cellDate > filterLocalDateAtMidnight) {
+                return 1;
+              }
+              return 0;
+            }
+          }
       },
       {
         field: 'idTypeComp', headerName: 'Tipo Comprobante', editable: (params) => {
@@ -683,6 +701,36 @@ export class EgresosPalacioComponent {
 
     event.data.__modified = true;
     this.notSavedChanges = true;
+  }
+
+  onCellDoubleClicked(event: CellDoubleClickedEvent) {
+    // Si es la columna "description", no hacer nada (dejar que se edite normalmente)
+    if (event.colDef.field === 'description') {
+      return;
+    }
+
+    // Si es la columna "date", permitir edición con doble click
+    if (event.colDef.field === 'date') {
+      this.gridApi.startEditingCell({
+        rowIndex: event.rowIndex,
+        colKey: 'date'
+      });
+      return;
+    }
+
+    // Al hacer doble click en cualquier otra celda, mostrar todas las filas
+    // y colapsar cualquier detalle expandido
+    if (event.node.expanded) {
+      event.node.setExpanded(false);
+      event.node.data.detailType = null;
+    }
+
+    // Mostrar todas las filas
+    this.externalFilterActive = false;
+    this.gridApi.forEachNode((node) => {
+      node.data.visible = true;
+    });
+    this.gridApi.onFilterChanged();
   }
 
   onGridReady(params: GridReadyEvent) {
