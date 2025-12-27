@@ -101,7 +101,7 @@ export class SaldosPalacioComponent {
         field: 'nameAccount',
         headerName: 'Nombre Cuenta',
         editable: false,
-        width: 200,
+        width: 360,
         filter: true,
       },
       {

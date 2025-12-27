@@ -32,13 +32,14 @@ import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
 import { ProviderModalService } from './services/provider-modal.service';
 import { CustomersService } from 'app/services/customers.service';
+import { DatePipe } from '@angular/common';
 
 @Component({
   selector: 'app-egresos-palacio',
   standalone: true,
   imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
     FormsModule, ButtonCellRendererExpenditureComponent, DetailCellRendererExpenditureComponent,
-    PdfButtonCellRendererComponent, SelectWithTooltipEditorV2Component],
+    PdfButtonCellRendererComponent, SelectWithTooltipEditorV2Component, DatePipe],
   templateUrl: './egresos-palacio.component.html',
   styleUrl: './egresos-palacio.component.scss'
 })
@@ -233,19 +234,12 @@ export class EgresosPalacioComponent {
 
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
-    headerHeight: 24,
-    rowHeight: 24,
+    headerHeight: 25,
+    rowHeight: 20,
+    rowBuffer: 20,
     masterDetail: true,
     detailRowHeight: 700,
-    detailCellRenderer: DetailCellRendererExpenditureComponent,
-    suppressAnimationFrame: true,
-    embedFullWidthRows: true,
-    suppressMenuHide: true,
-    suppressPropertyNamesCheck: true, // Deshabilitar validación de propiedades
-    suppressChangeDetection: false, // Mantener detección de cambios
-    suppressCellFocus: false, // Mantener foco de celdas
-    deltaRowDataMode: false, // Deshabilitar modo delta
-    suppressBrowserResizeObserver: true, // Evitar re-renders por resize
+    detailCellRenderer: DetailCellRendererExpenditureComponent
   };
 
   public rowSelection: 'single' | 'multiple' = 'single';
@@ -254,11 +248,10 @@ export class EgresosPalacioComponent {
 
   public defaultColDef: ColDef = {
     sortable: true,
-    filter: false, // Deshabilitado por defecto para reducir re-renders
+    filter: false,
     resizable: true,
-    editable: false,
-    suppressHeaderMenuButton: false, // Permitir menú de header
-    suppressMovable: false, // Permitir mover columnas
+    lockPosition: false,
+    enableRowGroup: true
   };
 
   components = {
@@ -476,10 +469,17 @@ export class EgresosPalacioComponent {
       },
 
       { field: 'numberDocument', headerName: '# Doc/Fac', editable: false, filter: true, width: 130 },
+      { field: 'date',  headerName: 'Fecha', editable: true,  width: 155, filter: true,
+          valueFormatter: (params) => {
+            if (params.value) {
+              return new Date(params.value).toLocaleDateString('es-MX');
+            }
+            return '';
+          },
+          cellEditor: 'agDateCellEditor'
+      },
       {
-        field: 'date',   headerName: 'Fecha', editable: true,     filter: true,  width: 95},
-      {
-        field: 'idTypeComp', headerName: 'Tipo Comprobante', filter: true, editable: (params) => {
+        field: 'idTypeComp', headerName: 'Tipo Comprobante', editable: (params) => {
           if (params.data.__isNew) {
             return true;
           }
@@ -506,7 +506,7 @@ export class EgresosPalacioComponent {
       },
 
       {
-        field: 'idExpend', headerName: 'Objeto de Gasto', filter: true,
+        field: 'idExpend', headerName: 'Objeto de Gasto',
         editable: (params) => {
           if (params.data.__isNew) {
             return true;
@@ -582,7 +582,6 @@ export class EgresosPalacioComponent {
       {
         field: 'totalComp',
         headerName: 'Por Comprobar',
-        filter: true,
         editable: true,
         width: 140,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
@@ -591,7 +590,6 @@ export class EgresosPalacioComponent {
       {
         field: 'total',
         headerName: 'Comprobado',
-        filter: true,
         editable: false,
         width: 130,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
