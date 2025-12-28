@@ -316,8 +316,6 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         if (this.gridApi) {
           this.gridApi.setGridOption('rowData', this.rowData);
         }
-        // Recalcular totales y actualizar maestro inmediatamente
-        this.recalculateTotals();
         // Update the count in master grid
         if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.updateCount) {
           this.context.CONCEPTS.updateCount(expenditureId, this.rowData.length);
@@ -339,7 +337,11 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
           concept.aplicaIsr = concept.aplicaIsr !== undefined ? concept.aplicaIsr : false;
           concept.totalFinal = (concept.total || 0) + (concept.iva2 || 0) - (concept.isr || 0);
         });
-        this.recalculateTotals();
+        // Calculate totals for report (without updating master)
+        this.subtotal = this.rowData.reduce((acc, row) => acc + (Number(row.total) || 0), 0);
+        this.iva2 = this.rowData.reduce((acc, row) => acc + (Number(row.iva2) || 0), 0);
+        this.isr = this.rowData.reduce((acc, row) => acc + (Number(row.isr) || 0), 0);
+        this.total = this.rowData.reduce((acc, row) => acc + (Number(row.totalFinal) || 0), 0);
         // Generate report after data is loaded
         this.generateReport();
       });
@@ -725,9 +727,6 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     rowHeight: 35,
     animateRows: true,
     rowSelection: 'single',
-    dateComponentParams: {
-      dateFormat: 'dd/MM/yyyy'
-    },
     getRowClass: (params) => {
       if (params.node.isSelected()) {
         return 'selected-row';
@@ -820,9 +819,6 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     this.hasUnsavedChanges = true;
     this.gridApi.setGridOption('rowData', this.rowData);
 
-    // Recalcular totales y actualizar maestro inmediatamente
-    this.recalculateTotals();
-
     // Update count in master grid
     if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.updateCount) {
       this.context.CONCEPTS.updateCount(this.params.data.id, this.rowData.length);
@@ -833,7 +829,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       this.gridApi.ensureIndexVisible(lastRowIndex);
       this.gridApi.startEditingCell({
         rowIndex: lastRowIndex,
-        colKey: idCatIng ? 'price' : 'idCatIng' // Focus en Precio si es copia, sino en Detalle Egreso
+        colKey: idCatIng ? 'price' : 'idCatIng'
       });
     }, 0);
   }
@@ -941,11 +937,6 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
 
     this.loadConceptsData();
     this.hasUnsavedChanges = false;
-
-    // Recalcular totales y actualizar maestro después de recargar los datos originales
-    setTimeout(() => {
-      this.recalculateTotals();
-    }, 100);
   }
 
   onCellValueChanged(event: any) {
@@ -965,11 +956,9 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
 
         // Actualizar la fila en el grid
         if (this.gridApi) {
-          setTimeout(() => {
-            this.gridApi.applyTransactionAsync({
-              update: [event.data]
-            });
-          }, 0);
+          this.gridApi.applyTransaction({
+            update: [event.data]
+          });
         }
       }
     }
@@ -992,12 +981,16 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       rowData.totalFinal = rowData.total + rowData.iva2 - (rowData.isr || 0);
 
       if (this.gridApi) {
-        this.gridApi.applyTransactionAsync({
+        this.gridApi.applyTransaction({
           update: [rowData]
         });
       }
 
-      this.recalculateTotals();
+      // Solo calcular totales locales sin actualizar el maestro
+      this.subtotal = this.rowData.reduce((acc, row) => acc + (Number(row.total) || 0), 0);
+      this.iva2 = this.rowData.reduce((acc, row) => acc + (Number(row.iva2) || 0), 0);
+      this.isr = this.rowData.reduce((acc, row) => acc + (Number(row.isr) || 0), 0);
+      this.total = this.rowData.reduce((acc, row) => acc + (Number(row.totalFinal) || 0), 0);
     }
   }
 
