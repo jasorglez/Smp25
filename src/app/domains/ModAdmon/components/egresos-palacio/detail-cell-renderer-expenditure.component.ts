@@ -1572,15 +1572,18 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         headerName: 'Nombre Archivo',
         width: 350,
         editable: false,
-        valueFormatter: (params) => {
-          if (!params.value) return 'Haga clic para subir archivo...';
-          return this.getFileNameFromUrl(params.value);
+        cellRenderer: (params: any) => {
+          if (!params.value) {
+            return 'Haga clic para subir archivo...';
+          }
+          const fileName = this.getFileNameFromUrl(params.value);
+          return `${fileName} <i class="bi bi-eye ms-2" style="color: #6c757d; font-size: 0.9rem;"></i>`;
         },
         cellStyle: (params) => {
           if (!params.value) {
             return { cursor: 'pointer', color: '#999', fontStyle: 'italic' };
           }
-          return { cursor: 'pointer', color: '#0066cc', textDecoration: 'underline' };
+          return { cursor: 'pointer', color: '#0066cc' };
         },
         onCellClicked: (params: any) => {
           if (!params.value) {
