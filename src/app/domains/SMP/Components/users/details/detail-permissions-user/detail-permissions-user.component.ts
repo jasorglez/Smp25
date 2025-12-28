@@ -7,7 +7,7 @@ import {
   GridApi,
   GridReadyEvent,
   ICellRendererParams,
-} from 'ag-grid-enterprise';
+} from 'ag-grid-community';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';

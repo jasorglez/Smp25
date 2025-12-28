@@ -248,9 +248,6 @@ export class EgresosPalacioComponent {
       if (!this.externalFilterActive) return true;
       return node.data.visible !== false;
     },
-    dateComponentParams: {
-      dateFormat: 'dd/MM/yyyy'
-    },
     getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -280,7 +277,7 @@ export class EgresosPalacioComponent {
     },
     onRowClicked: (event) => {
       // Seleccionar la fila al hacer clic en cualquier celda, excepto en la columna PDF
-      if (event.column.getColId() !== 'pdfReport') {
+      if (event.column && event.column.getColId() !== 'pdfReport') {
         event.node.setSelected(true);
       }
     },
@@ -300,7 +297,7 @@ export class EgresosPalacioComponent {
         event.event.preventDefault();
         event.event.stopPropagation();
 
-        const currentColumn = event.column.getColId();
+        const currentColumn = event.column ? event.column.getColId() : '';
 
         // Secuencia de navegación: date -> idTypeComp -> idExpend -> totalComp
         if (currentColumn === 'date') {
@@ -664,9 +661,8 @@ export class EgresosPalacioComponent {
           return true
         }, width: 155, filter: true,
         wrapText: true,
-        autoHeight: true,
         cellStyle: { 'white-space': 'normal', 'line-height': '1.4' },
-        cellEditor: 'agPopupTextCellEditor',
+        cellEditor: 'agLargeTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
           cols: 50,
@@ -685,12 +681,6 @@ export class EgresosPalacioComponent {
             });
           }
         },
-        cellRenderer: (params: ICellRendererParams) => {
-          if (params.node.group) {
-            return params.value;
-          }
-          return params.value;
-        }
       },
 
       {
@@ -2022,7 +2012,7 @@ export class EgresosPalacioComponent {
     // Importar pdfMake dinámicamente
     const pdfMake = (await import('pdfmake/build/pdfmake')).default;
     const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
-    (pdfMake as any).vfs = pdfFonts.pdfMake.vfs;
+    (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
     // Obtener información de la empresa y firmas
     const rootResponse: any = await lastValueFrom(

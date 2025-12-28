@@ -1,9 +1,8 @@
 import { Component } from '@angular/core';
 import { ICellEditorAngularComp } from 'ag-grid-angular';
-import { ICellEditorParams } from 'ag-grid-enterprise';
 import { SelectDropdownService, SelectOption } from './select-dropdown.service';
 
-export interface SelectWithTooltipParams extends ICellEditorParams {
+export interface SelectWithTooltipParams {
   options: SelectOption[];
 }
 
@@ -14,13 +13,13 @@ export interface SelectWithTooltipParams extends ICellEditorParams {
   styles: []
 })
 export class SelectWithTooltipEditorV2Component implements ICellEditorAngularComp {
-  private params!: SelectWithTooltipParams;
+  private params: any;
   private selectedValue: any = null;
   private shouldCloseOnDestroy = false;
 
   constructor(private dropdownService: SelectDropdownService) {}
 
-  agInit(params: SelectWithTooltipParams): void {
+  agInit(params: any): void {
     console.log('SelectWithTooltipEditorV2: agInit called');
     this.params = params;
     this.selectedValue = params.value;

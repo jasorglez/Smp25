@@ -13,12 +13,11 @@ import { SearchableSelectComponent } from 'app/shared/searchable-select/searchab
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { CustomersService } from 'app/services/customers.service';
 import { EmployeesService } from 'app/services/employees.service';
-import { SignalsService } from 'app/services/signals.service';
 import { ProviderModalService } from './services/provider-modal.service';
 import pdfMake from 'pdfmake/build/pdfmake';
-import pdfFonts from 'pdfmake/build/vfs_fonts';
+import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 import { lastValueFrom } from 'rxjs';
-(pdfMake as any).vfs = pdfFonts.pdfMake.vfs;
+(pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
 @Component({
   selector: 'app-detail-cell-renderer-expenditure',
@@ -221,7 +220,6 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   private sanitizer = inject(DomSanitizer);
   private customersService = inject(CustomersService);
   private employeesService = inject(EmployeesService);
-  private signalsService = inject(SignalsService);
   private providerModalService = inject(ProviderModalService);
 
   rowData: any[] = [];
@@ -400,7 +398,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
 
   loadObjetosGastoHijos() {
     // Obtener el código del objeto de gasto del registro maestro
-    const objetoGastoCodigo = this.expenditureData?.objetoGastoCodigo;
+    const objetoGastoCodigo = this.expenditureData?.objetoGastoCodigo; 
 
     if (!objetoGastoCodigo || !this.context || !this.context.administrationService) {
       console.warn('No se puede cargar objetos de gasto hijos: falta objetoGastoCodigo o administrationService');
@@ -431,7 +429,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
 
   async loadProviders() {
     // Obtener idRoot del contexto o del signalsService
-    const idRoot = this.context?.idRoot || this.signalsService.getRootSelectedBySidebar()();
+    const idRoot = this.context?.idRoot 
 
     if (!idRoot) {
       console.warn('No se puede cargar proveedores/empleados: falta idRoot');
@@ -466,7 +464,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
 
     if (isEmpleadosType) {
       // Cargar empleados cuando el tipo de comprobante es "Empleados"
-      const idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      const idBranch = this.context?.componentParent?.idBranch; 
       const idBranchNegative = -Math.abs(idBranch); // Valor negativo del idBranch
 
       this.employeesService.getEmployees(idBranchNegative).subscribe({
@@ -1383,27 +1381,6 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     }
   }
 
-  private formatDate(dateString: string | null | undefined): string {
-    if (!dateString) {
-      return 'Sin fecha';
-    }
-
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) {
-        return 'Fecha inválida';
-      }
-      return [
-        date.getDate().toString().padStart(2, '0'),
-        (date.getMonth() + 1).toString().padStart(2, '0'),
-        date.getFullYear()
-      ].join('/');
-    } catch (error) {
-      console.error('Error al formatear fecha:', error);
-      return 'Error en fecha';
-    }
-  }
-
   private getCurrentDateTime(): string {
     const now = new Date();
     const fecha = now.toLocaleDateString('es-ES', {
@@ -1418,6 +1395,20 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       hour12: false
     });
     return `${fecha} ${hora}`;
+  }
+
+  private formatDate(date: any): string {
+    if (!date) return '';
+    try {
+      const d = new Date(date);
+      const day = d.getDate().toString().padStart(2, '0');
+      const month = (d.getMonth() + 1).toString().padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}/${month}/${year}`;
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return '';
+    }
   }
 
   private formatCurrency(amount: number): string {

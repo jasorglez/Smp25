@@ -27,7 +27,14 @@ import { PdfButtonCellRendererComponent } from '../egresos-palacio/pdf-button-ce
 import { CatalogsService } from 'app/services/catalogs.service';
 import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
-import * as bootstrap from 'bootstrap';
+
+import pdfMake from 'pdfmake/build/pdfmake';
+import * as pdfFonts from 'pdfmake/build/vfs_fonts';
+
+(pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
+
+
+declare var bootstrap: any;
 
 @Component({
   selector: 'app-ingresos-palacio',

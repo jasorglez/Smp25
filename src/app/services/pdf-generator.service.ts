@@ -1,6 +1,6 @@
 import { Injectable, effect } from '@angular/core';
 import pdfMake from 'pdfmake/build/pdfmake';
-import pdfFonts from 'pdfmake/build/vfs_fonts';
+import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 import { ReceivedataService } from './receivedata.service';
 import { Base64EncodeService } from './base64encode.service';
 import { BlobService } from './blob.service';
@@ -10,7 +10,7 @@ import { MaterialsService } from './materials.service';
 import { SignalsService } from './signals.service';
 import { CatalogsService } from './catalogs.service';
 import { EquipmentService } from './equipment.service';
-(pdfMake as any).vfs = pdfFonts.pdfMake.vfs;
+(pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
 @Injectable({
   providedIn: 'root',
@@ -57,7 +57,7 @@ export class PdfGeneratorService {
 
     effect(() => { 
       this.idcompany = this.signalsService.getRootSelectedBySidebar()();
-      this.root = signalsService.getrootChoose ()
+      this.root = this.signalsService.getrootChoose()
       this.catalogoMateriales();
       this.catalogoEquipo();
       this.obtenerUnidades();
