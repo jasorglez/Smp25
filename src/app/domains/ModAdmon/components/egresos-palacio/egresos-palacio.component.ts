@@ -156,6 +156,8 @@ export class EgresosPalacioComponent {
   // ✅ CORRECCIÓN: Agregar propiedad para datos pendientes
   private pendingMasterUpdate: any = null;
   private isGeneratingReport: boolean = false; // Flag para evitar múltiples clics
+  private lastSavedIds: number[] = []; // IDs de los registros que se acaban de guardar
+  private workingRowId: number | string | null = null; // ID del registro en el que se está trabajando (puede ser temp_ para nuevos)
   externalFilterActive: boolean = false;
   showform: string = '';
   branchs: any[] = [];
@@ -256,9 +258,44 @@ export class EgresosPalacioComponent {
       return '';
     },
     getRowStyle: (params) => {
+      // Prioridad 1: Fila seleccionada (rojo claro)
       if (params.node.isSelected()) {
-        return { backgroundColor: '#ffe6e6', color: '#000000' };
+        return { backgroundColor: '#ffe6e6', color: '#000000', fontWeight: 'bold' };
       }
+
+      // Prioridad 2: Fila en la que se está trabajando (amarillo destacado con borde)
+      if (params.data && this.workingRowId && params.data.id === this.workingRowId) {
+        return {
+          backgroundColor: '#fff9c4',
+          color: '#000000',
+          fontWeight: 'bold',
+          borderLeft: '4px solid #ffa000',
+          borderRight: '4px solid #ffa000'
+        };
+      }
+
+      // Prioridad 3: Filas recién guardadas (verde claro brillante)
+      if (params.data && this.lastSavedIds.includes(params.data.id)) {
+        return { backgroundColor: '#c8e6c9', color: '#000000', fontWeight: 'bold' };
+      }
+
+      // Prioridad 4: Validación de montos "Por Comprobar" vs "Comprobado"
+      if (params.data) {
+        const porComprobar = Number(params.data.totalComp) || 0;
+        const comprobado = Number(params.data.total) || 0;
+
+        // Si los montos no coinciden, resaltar en rojo
+        if (porComprobar !== comprobado && porComprobar > 0) {
+          return {
+            backgroundColor: '#ffcccc',
+            color: '#660000',
+            fontWeight: 'bold',
+            borderLeft: '3px solid #cc0000'
+          };
+        }
+      }
+
+      // Prioridad 5: Estados por defecto
       if (params.data) {
         switch (params.data.status) {
           case 'Pendiente':
@@ -751,20 +788,30 @@ export class EgresosPalacioComponent {
 
   onSelectedRow(event: any) {
     this.id = event.data.id;
+    this.workingRowId = event.data.id; // Marcar como fila de trabajo
     this.signalsService.setIdIncomeAndExpense(this.id);
+
+    // Refrescar el grid para actualizar el estilo de las filas
+    this.gridApi?.redrawRows();
   }
 
   onSelectionChanged(event: any) {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedIncomes = selectedNodes[0].data;
+      this.workingRowId = selectedNodes[0].data.id; // Marcar como fila de trabajo
       this.signalsService.setIdIncomeAndExpense(this.selectedIncomes.id);
     } else {
       this.selectedIncomes = null;
     }
+
+    // Refrescar el grid para actualizar el estilo de las filas
+    this.gridApi?.redrawRows();
   }
 
   onCellValueChanged(event: any) {
+    // Marcar la fila como fila de trabajo
+    this.workingRowId = event.data.id;
 
     // Si se cambió la fecha, actualizar automáticamente el mes y refrescar la celda
     if (event.colDef.field === 'date' && event.newValue) {
@@ -910,6 +957,9 @@ export class EgresosPalacioComponent {
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
 
+    // Marcar como fila de trabajo
+    this.workingRowId = tempId;
+
     // Encontrar el índice de la nueva fila
     const newRowIndex = this.incomes.findIndex((row) => row.id === tempId);
 
@@ -920,12 +970,18 @@ export class EgresosPalacioComponent {
       // Refrescar la celda de fecha para aplicar el valueFormatter
       const rowNode = this.gridApi.getDisplayedRowAtIndex(newRowIndex);
       if (rowNode) {
+        // Seleccionar la nueva fila
+        rowNode.setSelected(true);
+
         this.gridApi.refreshCells({
           rowNodes: [rowNode],
           columns: ['date'],
           force: true
         });
       }
+
+      // Refrescar el grid para aplicar el estilo de fila de trabajo
+      this.gridApi.redrawRows();
 
       // Iniciar edición en la columna 'date' con la fecha actual
       this.gridApi.startEditingCell({
@@ -988,6 +1044,14 @@ export class EgresosPalacioComponent {
       return;
     }
 
+    // Guardar los IDs de las filas modificadas (para registros existentes)
+    const idsToHighlight = modifiedRows
+      .filter(row => !row.id.toString().startsWith('temp_'))
+      .map(row => row.id);
+
+    // Guardar los números de documento de las nuevas filas para encontrarlas después
+    const newRowDocNumbers: string[] = [];
+
     // Solo validar configuración si hay nuevas filas que necesitan número de documento
     let currentConsecutive = 0;
     if (newRows.length > 0) {
@@ -1006,13 +1070,33 @@ export class EgresosPalacioComponent {
       // Generar números de documento para nuevas filas
       newRows.forEach(row => {
         currentConsecutive++;
-        row.numberDocument = `${this.prefixAndConsecutive[0].prefixexp}${currentConsecutive.toString().padStart(4, '0')}`;
+        const docNumber = `${this.prefixAndConsecutive[0].prefixexp}${currentConsecutive.toString().padStart(4, '0')}`;
+        row.numberDocument = docNumber;
+        newRowDocNumbers.push(docNumber);
       });
     }
 
     try {
       // Guardar los registros de egresos
-      await this.saveExpenditureRecords(newRows, modifiedRows);
+      const savedResults = await this.saveExpenditureRecords(newRows, modifiedRows);
+
+      // Agregar los IDs de los nuevos registros guardados
+      if (savedResults && savedResults.length > 0) {
+        savedResults.forEach((result: any) => {
+          if (result?.id) {
+            idsToHighlight.push(result.id);
+          }
+        });
+      }
+
+      // Guardar los IDs y números de documento para resaltarlos después de recargar
+      this.lastSavedIds = idsToHighlight;
+
+      // Si no se obtuvieron IDs de los resultados, usaremos los números de documento
+      if (newRowDocNumbers.length > 0 && idsToHighlight.length === modifiedRows.length) {
+        // Solo tenemos IDs de filas modificadas, necesitaremos buscar las nuevas por número de documento
+        this.lastSavedIds = [...idsToHighlight, ...newRowDocNumbers as any];
+      }
 
       // Éxito
       alerts.basicAlert(
@@ -1026,7 +1110,55 @@ export class EgresosPalacioComponent {
 
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
-      await this.getExpenditure(); // Refrescar los datos
+
+      // Refrescar los datos
+      await this.getExpenditure();
+
+      // Después de recargar, seleccionar y hacer scroll al primer registro guardado
+      setTimeout(() => {
+        if (this.lastSavedIds.length > 0 && this.gridApi) {
+          let firstNodeFound: any = null;
+
+          // Buscar los nodos correspondientes y construir lista de IDs reales
+          const realIds: number[] = [];
+          this.gridApi.forEachNode((node) => {
+            // Buscar por ID numérico
+            if (typeof this.lastSavedIds[0] === 'number' && node.data.id === this.lastSavedIds[0]) {
+              if (!firstNodeFound) firstNodeFound = node;
+            }
+
+            // Buscar también por número de documento (para las filas nuevas)
+            this.lastSavedIds.forEach((savedId: any) => {
+              if (typeof savedId === 'string' && node.data.numberDocument === savedId) {
+                realIds.push(node.data.id);
+                if (!firstNodeFound) firstNodeFound = node;
+              } else if (typeof savedId === 'number' && node.data.id === savedId) {
+                realIds.push(node.data.id);
+              }
+            });
+          });
+
+          // Actualizar la lista con IDs reales
+          this.lastSavedIds = [...new Set([...this.lastSavedIds.filter(id => typeof id === 'number'), ...realIds])];
+
+          // Seleccionar y hacer scroll al primer nodo encontrado
+          if (firstNodeFound) {
+            firstNodeFound.setSelected(true);
+            this.gridApi.ensureNodeVisible(firstNodeFound, 'middle');
+            this.workingRowId = firstNodeFound.data.id;
+          }
+
+          // Refrescar el grid para aplicar los estilos de resaltado
+          this.gridApi.redrawRows();
+
+          // Limpiar el resaltado después de 5 segundos
+          setTimeout(() => {
+            this.lastSavedIds = [];
+            this.workingRowId = null;
+            this.gridApi?.redrawRows();
+          }, 5000);
+        }
+      }, 500);
 
     } catch (error) {
       console.error('Error crítico en saveChanges:', error);
@@ -1051,6 +1183,19 @@ export class EgresosPalacioComponent {
 
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
+
+    // Mostrar confirmación antes de eliminar
+    const result = await alerts.confirmAlert(
+      '¿Eliminar egreso?',
+      `¿Está seguro que desea eliminar el egreso "${selectedData.numberDocument}"? Esta acción no se puede deshacer.`,
+      'warning',
+      'Sí, eliminar'
+    );
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
     selectedData.active = 0;
     this.incomesAndExpensesService.deleteIncomesAndExpenses(id).pipe(
       catchError((error) => {
@@ -1072,11 +1217,6 @@ export class EgresosPalacioComponent {
           );
           this.getExpenditure();
 
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
           this.notSavedChanges = false;
           this.selectedIncomes = null;
         }
@@ -1112,7 +1252,7 @@ export class EgresosPalacioComponent {
   }
 
   // Método para guardar los registros de egresos
-  private async saveExpenditureRecords(newRows: any[], modifiedRows: any[]): Promise<void> {
+  private async saveExpenditureRecords(newRows: any[], modifiedRows: any[]): Promise<any[]> {
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       this.trackingService.addLog(
@@ -1139,10 +1279,13 @@ export class EgresosPalacioComponent {
     const allObservables = [...addObservables, ...updateObservables];
 
     if (allObservables.length > 0) {
-      await lastValueFrom(
+      const results = await lastValueFrom(
         forkJoin(allObservables) // Usar forkJoin para ejecutar todas en paralelo
       );
+      return results || [];
     }
+
+    return [];
   }
 
   // Método para obtener el último consecutivo para una cuenta específica (EGRESOS)
