@@ -1852,10 +1852,11 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   }
 
   async uploadFileToFirebase(file: File, tipoDoc: string): Promise<string> {
-    // Importar Firebase Storage dinámicamente
+    // Importar Firebase Storage y la app inicializada
     const { getStorage, ref, uploadBytesResumable, getDownloadURL } = await import('firebase/storage');
+    const { app } = await import('app/firebase.config');
 
-    const storage = getStorage();
+    const storage = getStorage(app);
 
     // Determinar la carpeta según el tipo de documento
     let folder = 'documents';
