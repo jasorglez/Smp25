@@ -2,7 +2,7 @@
   class="d-flex flex-column border-end vh-100 sidebar sidebarback"
   [ngClass]="{ collapsed: isSidebarCollapsed }"
 >
-  <div class="d-flex flex-column align-items-center p-3 border-bottom">
+  <div class="d-flex flex-column align-items-center p-2 border-bottom">
     <!-- Logo -->
     <img
       *ngIf="!isSidebarCollapsed"
@@ -10,10 +10,10 @@
       alt="BI Company"
       class="img-fluid sidebar-logo"
     />
-    <span *ngIf="isSidebarCollapsed" class="fw-bold fs-5">BI</span>
+    <span *ngIf="isSidebarCollapsed" class="fw-bold fs-6">BI</span>
   </div>
 
-  <div class="flex-grow-1 overflow-auto p-3">
+  <div class="flex-grow-1 overflow-auto p-2">
     <!-- Select Root -->
     <select
       id="root"
