@@ -5,32 +5,6 @@
     cursor: not-allowed;
 }
 
-<<<<<<< HEAD
-// Forzar estabilidad en los menús de filtro de AG Grid
-::ng-deep .ag-theme-quartz {
-  .ag-popup {
-    position: fixed !important;
-  }
-
-  .ag-menu {
-    position: fixed !important;
-  }
-
-  .ag-filter {
-    position: relative !important;
-  }
-
-  // Prevenir re-renders del filtro
-  .ag-filter-wrapper {
-    will-change: auto !important;
-    transform: none !important;
-  }
-
-  // Estabilizar inputs del filtro
-  .ag-input-field-input {
-    pointer-events: auto !important;
-  }
-=======
 // Tooltip para diferencia de comprobación
 .cell-mismatch {
   position: relative;
@@ -76,5 +50,4 @@
 .cell-mismatch:hover::after,
 .cell-mismatch:hover::before {
   opacity: 1;
->>>>>>> 92e62a43f37724f6cca931c72b85dbc486a15b3a
 }

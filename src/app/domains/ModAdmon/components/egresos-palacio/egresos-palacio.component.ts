@@ -249,9 +249,6 @@ export class EgresosPalacioComponent {
     },
     doesExternalFilterPass: (node: any) => {
       return node.data.visible !== false;
-<<<<<<< HEAD
-    }
-=======
     },
     tooltipShowDelay: 500,
     tooltipHideDelay: 10000,
@@ -371,7 +368,6 @@ export class EgresosPalacioComponent {
         }
       }
     },
->>>>>>> 92e62a43f37724f6cca931c72b85dbc486a15b3a
   };
 
   public rowSelection: 'single' | 'multiple' = 'single';
@@ -382,10 +378,6 @@ export class EgresosPalacioComponent {
     sortable: true,
     filter: false,
     resizable: true,
-<<<<<<< HEAD
-    lockPosition: false,
-    enableRowGroup: true
-=======
     editable: false,
     wrapHeaderText: true,
     autoHeaderHeight: true,
@@ -400,7 +392,6 @@ export class EgresosPalacioComponent {
       }
       return null;
     }
->>>>>>> 92e62a43f37724f6cca931c72b85dbc486a15b3a
   };
 
   components = {
@@ -631,32 +622,6 @@ export class EgresosPalacioComponent {
         width: 100
       },
 
-<<<<<<< HEAD
-      { field: 'numberDocument', headerName: '# Doc/Fac', editable: false, filter: true, width: 130 },
-      { field: 'date',  headerName: 'Fecha', editable: true,  width: 155, filter: 'agDateColumnFilter',
-          valueFormatter: (params) => {
-            if (params.value) {
-              return new Date(params.value).toLocaleDateString('es-MX');
-            }
-            return '';
-          },
-          cellEditor: 'agDateCellEditor',
-          filterParams: {
-            comparator: (filterLocalDateAtMidnight: Date, cellValue: any) => {
-              if (!cellValue) return -1;
-              const cellDate = new Date(cellValue);
-              // Comparar solo la fecha, ignorando la hora
-              const cellDateOnly = new Date(cellDate.getFullYear(), cellDate.getMonth(), cellDate.getDate());
-              const filterDateOnly = new Date(filterLocalDateAtMidnight.getFullYear(), filterLocalDateAtMidnight.getMonth(), filterLocalDateAtMidnight.getDate());
-              if (cellDateOnly < filterDateOnly) {
-                return -1;
-              } else if (cellDateOnly > filterDateOnly) {
-                return 1;
-              }
-              return 0;
-            },
-            browserDatePicker: true
-=======
       {
         field: 'numberDocument',
         headerName: '# Doc/Fac',
@@ -702,8 +667,9 @@ export class EgresosPalacioComponent {
           if (!params.newValue) {
             params.data.date = params.oldValue;
             return false;
->>>>>>> 92e62a43f37724f6cca931c72b85dbc486a15b3a
           }
+          return true;
+        },
       },
       {
         field: 'idTypeComp', headerName: 'Tipo Comprobante', editable: (params) => {
@@ -761,15 +727,11 @@ export class EgresosPalacioComponent {
       },
 
       {
-<<<<<<< HEAD
-        field: 'description', headerName: 'Descripción', editable: false, width: 155, filter: true,
-=======
         field: 'description',
         headerName: 'Descripción',
         editable: false, // No editable directamente, solo mediante modal
         width: 155,
         filter: true,
->>>>>>> 92e62a43f37724f6cca931c72b85dbc486a15b3a
         wrapText: true,
         cellStyle: {
           'white-space': 'normal',

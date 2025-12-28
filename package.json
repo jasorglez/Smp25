@@ -1,6 +1,6 @@
 {
   "name": "bi-aug-24",
-  "version": "2.51.7",
+  "version": "2.51.20",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -30,13 +30,8 @@
     "@popperjs/core": "^2.11.8",
     "@types/leaflet": "^1.9.16",
     "@types/pdfmake": "^0.2.9",
-<<<<<<< HEAD
-    "ag-grid-angular": "31.3.2",
-    "ag-grid-enterprise": "31.3.2",
-=======
     "ag-grid-angular": "32.1.0",
     "ag-grid-enterprise": "32.1.0",
->>>>>>> 92e62a43f37724f6cca931c72b85dbc486a15b3a
     "apexcharts": "^3.54.0",
     "asn1js": "^3.0.5",
     "bootstrap": "^5.3.3",
@@ -47,11 +42,7 @@
     "firebase": "^12.7.0",
     "http-proxy-middleware": "^3.0.5",
     "leaflet": "^1.9.4",
-<<<<<<< HEAD
-    "ng-apexcharts": "^1.8.0",
-=======
     "ng-apexcharts": "1.12.0",
->>>>>>> 92e62a43f37724f6cca931c72b85dbc486a15b3a
     "ng-bootstrap": "^1.6.3",
     "pdfmake": "^0.2.12",
     "pkijs": "^3.2.4",
