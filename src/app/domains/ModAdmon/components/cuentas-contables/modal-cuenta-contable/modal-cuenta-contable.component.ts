@@ -190,6 +190,7 @@ export class ModalCuentaContableComponent implements OnInit {
 
     if (this.isEdit && this.formData.id) {
       // Actualizar
+      console.log('Datos a actualizar en backend:', this.formData);
       this.cuentasService.update(this.formData.id, this.formData).subscribe({
         next: () => {
           alerts.basicAlert('Actualizado', 'La cuenta ha sido actualizada correctamente', 'success');
@@ -197,12 +198,35 @@ export class ModalCuentaContableComponent implements OnInit {
         },
         error: (error) => {
           console.error('Error updating cuenta:', error);
-          alerts.basicAlert('Error', 'No se pudo actualizar la cuenta', 'error');
+
+          // Extraer mensaje de error detallado del backend
+          let mensajeError = 'No se pudo actualizar la cuenta';
+
+          if (error.error) {
+            if (typeof error.error === 'string') {
+              mensajeError += `<br><br><strong>Detalle:</strong> ${error.error}`;
+            } else if (error.error.message) {
+              mensajeError += `<br><br><strong>Detalle:</strong> ${error.error.message}`;
+            } else if (error.error.errors) {
+              // Validaciones de modelo
+              const validaciones = Object.keys(error.error.errors)
+                .map(key => `• ${key}: ${error.error.errors[key].join(', ')}`)
+                .join('<br>');
+              mensajeError += `<br><br><strong>Validaciones:</strong><br>${validaciones}`;
+            }
+          }
+
+          if (error.status) {
+            mensajeError += `<br><br><strong>Código HTTP:</strong> ${error.status}`;
+          }
+
+          alerts.basicAlert('Error al Actualizar Cuenta', mensajeError, 'error');
           this.loading = false;
         }
       });
     } else {
       // Crear
+      console.log('Datos a enviar al backend:', this.formData);
       this.cuentasService.create(this.formData).subscribe({
         next: () => {
           alerts.basicAlert('Creado', 'La cuenta ha sido creada correctamente', 'success');
@@ -210,7 +234,29 @@ export class ModalCuentaContableComponent implements OnInit {
         },
         error: (error) => {
           console.error('Error creating cuenta:', error);
-          alerts.basicAlert('Error', 'No se pudo crear la cuenta', 'error');
+
+          // Extraer mensaje de error detallado del backend
+          let mensajeError = 'No se pudo crear la cuenta';
+
+          if (error.error) {
+            if (typeof error.error === 'string') {
+              mensajeError += `<br><br><strong>Detalle:</strong> ${error.error}`;
+            } else if (error.error.message) {
+              mensajeError += `<br><br><strong>Detalle:</strong> ${error.error.message}`;
+            } else if (error.error.errors) {
+              // Validaciones de modelo
+              const validaciones = Object.keys(error.error.errors)
+                .map(key => `• ${key}: ${error.error.errors[key].join(', ')}`)
+                .join('<br>');
+              mensajeError += `<br><br><strong>Validaciones:</strong><br>${validaciones}`;
+            }
+          }
+
+          if (error.status) {
+            mensajeError += `<br><br><strong>Código HTTP:</strong> ${error.status}`;
+          }
+
+          alerts.basicAlert('Error al Crear Cuenta', mensajeError, 'error');
           this.loading = false;
         }
       });

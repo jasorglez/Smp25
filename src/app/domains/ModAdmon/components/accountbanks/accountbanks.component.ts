@@ -160,7 +160,7 @@ export class AccountbanksComponent implements CanComponentDeactivate {
           }
           return true;
         },
-        width: 200,
+        width: 360,
         filter: true,
       },
 

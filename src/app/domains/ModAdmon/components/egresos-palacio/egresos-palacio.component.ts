@@ -32,13 +32,14 @@ import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
 import { ProviderModalService } from './services/provider-modal.service';
 import { CustomersService } from 'app/services/customers.service';
+import { DatePipe } from '@angular/common';
 
 @Component({
   selector: 'app-egresos-palacio',
   standalone: true,
   imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
     FormsModule, ButtonCellRendererExpenditureComponent, DetailCellRendererExpenditureComponent,
-    PdfButtonCellRendererComponent, SelectWithTooltipEditorV2Component],
+    PdfButtonCellRendererComponent, SelectWithTooltipEditorV2Component, DatePipe],
   templateUrl: './egresos-palacio.component.html',
   styleUrl: './egresos-palacio.component.scss'
 })
@@ -61,6 +62,12 @@ export class EgresosPalacioComponent {
   public trackingService = inject(TrackingService);
 
   public isIncomeMode: boolean = false;
+
+  // Propiedades para el modal de reporte consolidado
+  showConsolidatedReportModal: boolean = false;
+  reportStartDate: string = '';
+  reportEndDate: string = '';
+  isGeneratingConsolidatedReport: boolean = false;
 
   // Propiedades para el modal de proveedor
   showProviderModal: boolean = false;
@@ -227,103 +234,20 @@ export class EgresosPalacioComponent {
 
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
-    popupParent: document.body,
     headerHeight: 24,
     rowHeight: 24,
     animateRows: true,
     masterDetail: true,
-    autoHeight: true,
-    getRowId: (params: any) => String(params.data.id),
     detailRowHeight: 700,
-    isRowMaster: (dataItem: any) => true,
     detailCellRenderer: DetailCellRendererExpenditureComponent,
-    isExternalFilterPresent: () => this.externalFilterActive,
+    suppressMenuHide: false,
+    popupParent: document.body,
+    isExternalFilterPresent: () => {
+      return this.externalFilterActive;
+    },
     doesExternalFilterPass: (node: any) => {
-      if (!this.externalFilterActive) return true;
       return node.data.visible !== false;
-    },
-    dateComponentParams: {
-      dateFormat: 'dd/MM/yyyy'
-    },
-    getRowClass: (params) => {
-      // Verificar si la fila está seleccionada
-      if (params.node.isSelected()) {
-        return 'selected-row';
-      }
-      return '';
-    },
-    getRowStyle: (params) => {
-      if (params.node.isSelected()) {
-        return { backgroundColor: '#ffe6e6', color: '#000000' };
-      }
-      if (params.data) {
-        switch (params.data.status) {
-          case 'Pendiente':
-            return { backgroundColor: '#cce5ff', color: '#004085' }; // Azul
-          case 'Pagada':
-            return { backgroundColor: '#d4edda', color: '#155724' }; // Verde
-          case 'Cancelada':
-            return { backgroundColor: '#f8d7da', color: '#721c24' }; // Rojo
-          case 'Entregada':
-            return { backgroundColor: '#fff3cd', color: '#856404' }; // Amarillo
-          default:
-            return null;
-        }
-      }
-      return null;
-    },
-    onRowClicked: (event) => {
-      // Seleccionar la fila al hacer clic en cualquier celda, excepto en la columna PDF
-      if (event.column.getColId() !== 'pdfReport') {
-        event.node.setSelected(true);
-      }
-    },
-    onRowSelected: (event) => {
-      // Deseleccionar otras filas cuando se selecciona una nueva
-      if (event.node.isSelected()) {
-        this.gridApi.forEachNode((node) => {
-          if (node.id !== event.node.id) {
-            node.setSelected(false);
-          }
-        });
-      }
-    },
-    onCellKeyDown: (event: any) => {
-      // Cuando se presiona Enter
-      if (event.event.key === 'Enter' && !event.event.shiftKey) {
-        event.event.preventDefault();
-        event.event.stopPropagation();
-
-        const currentColumn = event.column.getColId();
-
-        // Secuencia de navegación: date -> idTypeComp -> idExpend -> totalComp
-        if (currentColumn === 'date') {
-          setTimeout(() => {
-            this.gridApi.setFocusedCell(event.node.rowIndex, 'idTypeComp');
-            this.gridApi.startEditingCell({
-              rowIndex: event.node.rowIndex,
-              colKey: 'idTypeComp'
-            });
-          }, 50);
-        } else if (currentColumn === 'idTypeComp') {
-          setTimeout(() => {
-            this.gridApi.setFocusedCell(event.node.rowIndex, 'idExpend');
-            this.gridApi.startEditingCell({
-              rowIndex: event.node.rowIndex,
-              colKey: 'idExpend'
-            });
-          }, 50);
-        } else if (currentColumn === 'idExpend') {
-          setTimeout(() => {
-            this.gridApi.setFocusedCell(event.node.rowIndex, 'totalComp');
-            this.gridApi.startEditingCell({
-              rowIndex: event.node.rowIndex,
-              colKey: 'totalComp'
-            });
-          }, 50);
-        }
-      }
-    },
+    }
   };
 
   public rowSelection: 'single' | 'multiple' = 'single';
@@ -332,11 +256,10 @@ export class EgresosPalacioComponent {
 
   public defaultColDef: ColDef = {
     sortable: true,
-    filter: true,
+    filter: false,
     resizable: true,
-    editable: false,
-    wrapHeaderText: true,
-    autoHeaderHeight: true
+    lockPosition: false,
+    enableRowGroup: true
   };
 
   components = {
@@ -450,14 +373,19 @@ export class EgresosPalacioComponent {
   }
 
   // Agregar función de formato de fecha
-  private formatDate(value: string | Date): string {
+  private formatDate(value: string | Date | null | undefined): string {
     if (!value) return '';
-    const date = new Date(value);
-    return [
-      date.getDate().toString().padStart(2, '0'),
-      (date.getMonth() + 1).toString().padStart(2, '0'),
-      date.getFullYear().toString().slice(-2)
-    ].join('/');
+    try {
+      const date = new Date(value);
+      if (isNaN(date.getTime())) return '';
+      return [
+        date.getDate().toString().padStart(2, '0'),
+        (date.getMonth() + 1).toString().padStart(2, '0'),
+        date.getFullYear()
+      ].join('/');
+    } catch (error) {
+      return '';
+    }
   }
 
   // Función para obtener el nombre del mes en español
@@ -542,57 +470,40 @@ export class EgresosPalacioComponent {
       {
         field: 'facturado',
         headerName: 'Comprobado',
-        type: 'boolean',
         cellRenderer: 'agCheckboxCellRenderer',
         cellEditor: 'agCheckboxCellEditor',
         editable: true,
         width: 100
       },
 
-      { field: 'numberDocument', headerName: '# Doc/Fac', editable: false, filter: true, width: 120, hide: false },
-      {
-        field: 'date',
-        headerName: 'Fecha',
-        editable: true,
-        filter: 'agSetColumnFilter',
-        filterParams: {
-          //   excelMode: 'mac',
-          defaultToNothingSelected: true,
-        },
-        cellDataType: 'date',
-        width: 95,
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          const date = params.value instanceof Date ? params.value : new Date(params.value);
-          return this.formatDate(date);
-        },
-        valueGetter: (params) => {
-          // Asegurar que siempre devuelva un objeto Date
-          if (!params.data.date) return null;
-          return params.data.date instanceof Date ? params.data.date : new Date(params.data.date);
-        },
-        valueSetter: (params) => {
-          // Asegurar que siempre se guarde como objeto Date
-          if (!params.newValue) {
-            params.data.date = params.oldValue;
-            return false;
+      { field: 'numberDocument', headerName: '# Doc/Fac', editable: false, filter: true, width: 130 },
+      { field: 'date',  headerName: 'Fecha', editable: true,  width: 155, filter: 'agDateColumnFilter',
+          valueFormatter: (params) => {
+            if (params.value) {
+              return new Date(params.value).toLocaleDateString('es-MX');
+            }
+            return '';
+          },
+          cellEditor: 'agDateCellEditor',
+          filterParams: {
+            comparator: (filterLocalDateAtMidnight: Date, cellValue: any) => {
+              if (!cellValue) return -1;
+              const cellDate = new Date(cellValue);
+              // Comparar solo la fecha, ignorando la hora
+              const cellDateOnly = new Date(cellDate.getFullYear(), cellDate.getMonth(), cellDate.getDate());
+              const filterDateOnly = new Date(filterLocalDateAtMidnight.getFullYear(), filterLocalDateAtMidnight.getMonth(), filterLocalDateAtMidnight.getDate());
+              if (cellDateOnly < filterDateOnly) {
+                return -1;
+              } else if (cellDateOnly > filterDateOnly) {
+                return 1;
+              }
+              return 0;
+            },
+            browserDatePicker: true
           }
-          const date = params.newValue instanceof Date ? params.newValue : new Date(params.newValue);
-          if (isNaN(date.getTime())) {
-            params.data.date = params.oldValue;
-            return false;
-          }
-          params.data.date = date;
-          return true;
-        },
-        cellEditorParams: {
-          dateFormat: 'dd/MM/yyyy',
-          datePickerFormat: 'dd/MM/yyyy'
-        }
       },
-
       {
-        field: 'idTypeComp', headerName: 'Tipo Comprobante', filter: true, editable: (params) => {
+        field: 'idTypeComp', headerName: 'Tipo Comprobante', editable: (params) => {
           if (params.data.__isNew) {
             return true;
           }
@@ -619,7 +530,8 @@ export class EgresosPalacioComponent {
       },
 
       {
-        field: 'idExpend', headerName: 'Objeto de Gasto', filter: true, editable: (params) => {
+        field: 'idExpend', headerName: 'Objeto de Gasto',
+        editable: (params) => {
           if (params.data.__isNew) {
             return true;
           }
@@ -646,12 +558,7 @@ export class EgresosPalacioComponent {
       },
 
       {
-        field: 'description', headerName: 'Descripción', editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return true
-        }, width: 155, filter: true,
+        field: 'description', headerName: 'Descripción', editable: false, width: 155, filter: true,
         wrapText: true,
         autoHeight: true,
         cellStyle: { 'white-space': 'normal', 'line-height': '1.4' },
@@ -685,7 +592,6 @@ export class EgresosPalacioComponent {
       {
         field: 'subtotal',
         headerName: 'Subtotal',
-        type: 'number',
         editable: false,
         hide: true,
         width: 100,
@@ -695,11 +601,6 @@ export class EgresosPalacioComponent {
       {
         field: 'totalComp',
         headerName: 'Por Comprobar',
-        type: 'number', filter: 'agSetColumnFilter',
-        filterParams: {
-          //excelMode: 'mac',
-          defaultToNothingSelected: true,
-        },
         editable: true,
         width: 140,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
@@ -708,11 +609,6 @@ export class EgresosPalacioComponent {
       {
         field: 'total',
         headerName: 'Comprobado',
-        type: 'number', filter: 'agSetColumnFilter',
-        filterParams: {
-          //excelMode: 'mac',
-          defaultToNothingSelected: true,
-        },
         editable: false,
         width: 130,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
@@ -721,7 +617,6 @@ export class EgresosPalacioComponent {
       {
         field: 'tax',
         headerName: 'Impuestos',
-        type: 'number',
         hide: true,
         editable: false,
         width: 100,
@@ -730,7 +625,6 @@ export class EgresosPalacioComponent {
       {
         field: 'isr',
         headerName: 'ISR',
-        type: 'number',
         editable: false,
         hide: true,
         width: 100,
@@ -809,6 +703,31 @@ export class EgresosPalacioComponent {
 
     event.data.__modified = true;
     this.notSavedChanges = true;
+  }
+
+  onCellDoubleClicked(event: CellDoubleClickedEvent) {
+    // Si es la columna "date", permitir edición con doble click
+    if (event.colDef.field === 'date') {
+      this.gridApi.startEditingCell({
+        rowIndex: event.rowIndex,
+        colKey: 'date'
+      });
+      return;
+    }
+
+    // Al hacer doble click en cualquier otra celda, mostrar todas las filas
+    // y colapsar cualquier detalle expandido
+    if (event.node.expanded) {
+      event.node.setExpanded(false);
+      event.node.data.detailType = null;
+    }
+
+    // Mostrar todas las filas
+    this.externalFilterActive = false;
+    this.gridApi.forEachNode((node) => {
+      node.data.visible = true;
+    });
+    this.gridApi.onFilterChanged();
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -1861,6 +1780,467 @@ export class EgresosPalacioComponent {
         'error'
       );
     }
+  }
+
+  // ==================== MÉTODOS PARA REPORTE CONSOLIDADO ====================
+
+  openConsolidatedReportModal() {
+    // Establecer fechas por defecto: primer y último día del mes actual
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    // Formatear fechas para input type="date" (YYYY-MM-DD)
+    this.reportStartDate = this.formatDateForInput(firstDay);
+    this.reportEndDate = this.formatDateForInput(lastDay);
+
+    this.showConsolidatedReportModal = true;
+    document.body.classList.add('modal-open');
+
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Abrir modal de reporte consolidado',
+      'Palacio Municipal - Egresos',
+      this.trackingService.getEmail()
+    );
+  }
+
+  closeConsolidatedReportModal() {
+    this.showConsolidatedReportModal = false;
+    document.body.classList.remove('modal-open');
+  }
+
+  private formatDateForInput(date: Date): string {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  async generateConsolidatedReport() {
+    if (!this.reportStartDate || !this.reportEndDate) {
+      alerts.basicAlert('Error', 'Por favor seleccione ambas fechas', 'error');
+      return;
+    }
+
+    // Validar que la fecha de inicio no sea mayor que la fecha de término
+    if (new Date(this.reportStartDate) > new Date(this.reportEndDate)) {
+      alerts.basicAlert('Error', 'La fecha de inicio no puede ser mayor que la fecha de término', 'error');
+      return;
+    }
+
+    this.isGeneratingConsolidatedReport = true;
+
+    try {
+      // Filtrar egresos por rango de fechas
+      const startDate = new Date(this.reportStartDate);
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(this.reportEndDate);
+      endDate.setHours(23, 59, 59, 999);
+
+      const filteredExpenses = this.incomes.filter(expense => {
+        const expenseDate = new Date(expense.date);
+        return expenseDate >= startDate && expenseDate <= endDate;
+      });
+
+      if (filteredExpenses.length === 0) {
+        alerts.basicAlert(
+          'Sin datos',
+          'No se encontraron egresos en el rango de fechas seleccionado',
+          'warning'
+        );
+        this.isGeneratingConsolidatedReport = false;
+        return;
+      }
+
+      // Agrupar por Objeto de Gasto (idExpend)
+      const groupedByObjetoGasto = this.groupByObjetoGasto(filteredExpenses);
+
+      // Ordenar grupos por código de objeto de gasto
+      const sortedGroups = this.sortGroups(groupedByObjetoGasto);
+
+      // Generar PDF consolidado
+      await this.generateConsolidatedPDF(sortedGroups);
+
+      this.trackingService.addLog(
+        this.trackingService.getnameComp(),
+        `Generar reporte consolidado del ${this.reportStartDate} al ${this.reportEndDate}`,
+        'Palacio Municipal - Egresos',
+        this.trackingService.getEmail()
+      );
+
+      // Cerrar modal
+      this.closeConsolidatedReportModal();
+
+    } catch (error) {
+      console.error('Error generando reporte consolidado:', error);
+      alerts.basicAlert('Error', 'Error al generar el reporte consolidado', 'error');
+    } finally {
+      this.isGeneratingConsolidatedReport = false;
+    }
+  }
+
+  private groupByObjetoGasto(expenses: any[]): Map<number, any[]> {
+    const grouped = new Map<number, any[]>();
+
+    expenses.forEach(expense => {
+      const idExpend = expense.idExpend;
+      if (!grouped.has(idExpend)) {
+        grouped.set(idExpend, []);
+      }
+      grouped.get(idExpend)!.push(expense);
+    });
+
+    // Ordenar por fecha dentro de cada grupo
+    grouped.forEach((expensesInGroup, idExpend) => {
+      expensesInGroup.sort((a, b) => {
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+        return dateA - dateB;
+      });
+    });
+
+    return grouped;
+  }
+
+  private sortGroups(grouped: Map<number, any[]>): Array<{ idExpend: number; codigo: string; nombre: string; expenses: any[] }> {
+    const sortedGroups: Array<{ idExpend: number; codigo: string; nombre: string; expenses: any[] }> = [];
+
+    grouped.forEach((expenses, idExpend) => {
+      const objetoGasto = this.expenses.find(obj => obj.id === idExpend);
+      sortedGroups.push({
+        idExpend,
+        codigo: objetoGasto?.codigo || '',
+        nombre: objetoGasto?.nombre || '',
+        expenses
+      });
+    });
+
+    // Ordenar por código de objeto de gasto
+    sortedGroups.sort((a, b) => {
+      const codigoA = a.codigo || '';
+      const codigoB = b.codigo || '';
+      return codigoA.localeCompare(codigoB);
+    });
+
+    return sortedGroups;
+  }
+
+  private async generateConsolidatedPDF(groups: Array<{ idExpend: number; codigo: string; nombre: string; expenses: any[] }>) {
+    // Importar pdfMake dinámicamente
+    const pdfMake = (await import('pdfmake/build/pdfmake')).default;
+    const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
+    (pdfMake as any).vfs = pdfFonts.pdfMake.vfs;
+
+    // Obtener información de la empresa y firmas
+    const rootResponse: any = await lastValueFrom(
+      this.rootService.getRootbyId(this.idRoot)
+    );
+
+    const logoBase64 = await this.base64EncodeService.convertImageToBase64(rootResponse.picture);
+    const watermarkBase64 = rootResponse.picture3
+      ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture3)
+      : null;
+
+    const setupManagementInfo: any = await lastValueFrom(
+      this.administrationService.getSetupManagementInfo(this.idRoot)
+    );
+    const firmas = Array.isArray(setupManagementInfo) && setupManagementInfo.length > 0
+      ? setupManagementInfo[0]
+      : null;
+
+    // Construir el contenido del PDF
+    const content: any[] = [];
+
+    // Objeto para almacenar totales por grupo
+    const groupTotals: Array<{ codigo: string; nombre: string; total: number; count: number }> = [];
+
+    for (const group of groups) {
+      let groupTotal = 0;
+
+      for (let i = 0; i < group.expenses.length; i++) {
+        const expense = group.expenses[i];
+
+        // Cargar conceptos de este egreso
+        const concepts: any[] = await lastValueFrom(
+          this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(expense.id)
+        );
+
+        // Calcular totalFinal para cada concepto
+        concepts.forEach(concept => {
+          concept.aplicaIsr = concept.aplicaIsr !== undefined ? concept.aplicaIsr : false;
+          concept.totalFinal = (concept.total || 0) + (concept.iva2 || 0) - (concept.isr || 0);
+        });
+
+        // Calcular totales
+        const total = concepts.reduce((acc, row) => acc + (Number(row.totalFinal) || 0), 0);
+        groupTotal += total;
+
+        // Agregar contenido de este egreso (página individual)
+        content.push(...this.buildReportPage(expense, concepts, total, rootResponse, group));
+
+        // Agregar salto de página si no es el último egreso
+        if (i < group.expenses.length - 1 || groups.indexOf(group) < groups.length - 1) {
+          content.push({ text: '', pageBreak: 'after' });
+        }
+      }
+
+      // Guardar el total de este grupo
+      groupTotals.push({
+        codigo: group.codigo,
+        nombre: group.nombre,
+        total: groupTotal,
+        count: group.expenses.length
+      });
+    }
+
+    // Agregar página de resumen al final
+    content.push({ text: '', pageBreak: 'after' });
+    content.push(...this.buildSummaryPage(groupTotals, rootResponse));
+
+    // Definición del documento
+    const docDefinition: any = {
+      pageSize: 'LETTER',
+      pageMargins: [40, 60, 40, 60],
+      background: watermarkBase64 ? [
+        {
+          image: 'watermark',
+          width: 400,
+          opacity: 0.15,
+          absolutePosition: { x: 106, y: 250 }
+        }
+      ] : [],
+      content: content,
+      images: watermarkBase64 ? {
+        logo: logoBase64,
+        watermark: watermarkBase64
+      } : {
+        logo: logoBase64
+      },
+      styles: {
+        companyName: { fontSize: 14, bold: true, color: '#333333' },
+        companyInfo: { fontSize: 9, color: '#666666' },
+        documentTitle: { fontSize: 16, bold: true, color: '#cc0000' },
+        documentNumber: { fontSize: 12, bold: true, color: '#333333' },
+        documentDate: { fontSize: 10, color: '#666666' },
+        sectionTitle: { fontSize: 11, bold: true, color: '#cc0000' },
+        masterLabel: { fontSize: 9, bold: true, color: '#333333' },
+        masterValue: { fontSize: 9, color: '#000000' },
+        tableHeader: { fontSize: 8, bold: true, fillColor: '#e6e6e6', color: '#000000' },
+        tableCell: { fontSize: 8, color: '#000000' },
+        totalLabel: { fontSize: 9, bold: true, color: '#000000' },
+        totalValue: { fontSize: 9, bold: true, color: '#cc0000' },
+        signatureTitle: { fontSize: 8, bold: true, color: '#333333' },
+        signatureName: { fontSize: 8, color: '#000000' },
+        signatureLabel: { fontSize: 8, italics: true, color: '#666666' }
+      }
+    };
+
+    // Generar PDF y abrirlo en nueva pestaña
+    const pdfDocGenerator = pdfMake.createPdf(docDefinition);
+    pdfDocGenerator.open();
+
+    alerts.basicAlert(
+      'Reporte generado',
+      `Se generó el reporte consolidado con ${groups.reduce((acc, g) => acc + g.expenses.length, 0)} egresos agrupados en ${groups.length} objetos de gasto.`,
+      'success'
+    );
+  }
+
+  private buildReportPage(expense: any, concepts: any[], total: number, rootResponse: any, group: any): any[] {
+    const objetoGastoTexto = `${group.codigo} - ${group.nombre}`;
+
+    return [
+      // Header con logo y título
+      {
+        columns: [
+          { image: 'logo', width: 80, alignment: 'left' },
+          {
+            stack: [
+              { text: rootResponse.name || 'Empresa', style: 'companyName', alignment: 'center' },
+              { text: rootResponse.email || '', style: 'companyInfo', alignment: 'center' },
+              { text: rootResponse.web || '', style: 'companyInfo', alignment: 'center' }
+            ],
+            width: '*'
+          },
+          {
+            stack: [
+              { text: 'RECIBO DE EGRESO', style: 'documentTitle', alignment: 'right' },
+              { text: `No. ${expense.numberDocument || 'Sin Número'}`, style: 'documentNumber', alignment: 'right', margin: [0, 5, 0, 0] },
+              { text: `Fecha de Pago: ${this.formatDate(expense.date)}`, style: 'documentDate', alignment: 'right', margin: [0, 3, 0, 0] }
+            ],
+            width: 150
+          }
+        ],
+        margin: [0, 0, 0, 20]
+      },
+      // Línea separadora
+      {
+        canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: '#333333' }],
+        margin: [0, 0, 0, 15]
+      },
+      // DETALLES DEL EGRESO
+      { text: 'DETALLES DEL EGRESO', style: 'sectionTitle', margin: [0, 10, 0, 10] },
+      {
+        table: {
+          widths: ['25%', '75%'],
+          body: [
+            [{ text: 'FECHA PAGO:', style: 'masterLabel' }, { text: this.formatDate(expense.date), style: 'masterValue' }],
+            [{ text: 'OBJETO DE GASTO:', style: 'masterLabel' }, { text: `${objetoGastoTexto}        $ ${this.formatCurrency(total || 0)}`, style: 'masterValue' }]
+          ]
+        },
+        layout: {
+          hLineWidth: () => 0.5,
+          vLineWidth: () => 0.5,
+          hLineColor: () => '#cccccc',
+          vLineColor: () => '#cccccc',
+          paddingTop: () => 5,
+          paddingBottom: () => 5,
+          paddingLeft: () => 8,
+          paddingRight: () => 8
+        },
+        margin: [0, 0, 0, 15]
+      },
+      // Tabla de Conceptos
+      {
+        table: {
+          headerRows: 1,
+          widths: [70, 100, '*', 80],
+          body: [
+            [
+              { text: 'Fecha', style: 'tableHeader' },
+              { text: 'NUMERO DE RECIBO O FOLIO FISCAL (FACTURA)', style: 'tableHeader' },
+              { text: 'Descripción', style: 'tableHeader' },
+              { text: 'Total', style: 'tableHeader', alignment: 'right' }
+            ],
+            ...concepts.map(concept => [
+              { text: this.formatDate(concept.dateExpend), style: 'tableCell', fontSize: 7 },
+              { text: concept.numeroIdentificacion || '', style: 'tableCell', fontSize: 7 },
+              { text: concept.description || '', style: 'tableCell' },
+              { text: this.formatCurrency(concept.totalFinal || 0), style: 'tableCell', alignment: 'right' }
+            ]),
+            [
+              { text: '', border: [false, false, false, false] },
+              { text: '', border: [false, false, false, false] },
+              { text: 'TOTAL:', style: 'totalLabel', alignment: 'right', border: [false, true, false, false] },
+              { text: this.formatCurrency(total), style: 'totalValue', alignment: 'right', border: [false, true, false, false] }
+            ]
+          ]
+        },
+        layout: {
+          hLineWidth: (i, node) => (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.5,
+          vLineWidth: () => 0.5,
+          hLineColor: () => '#333333',
+          vLineColor: () => '#cccccc',
+          paddingTop: () => 3,
+          paddingBottom: () => 3,
+          paddingLeft: () => 4,
+          paddingRight: () => 4
+        },
+        margin: [0, 0, 0, 20]
+      }
+    ];
+  }
+
+  private buildSummaryPage(groupTotals: Array<{ codigo: string; nombre: string; total: number; count: number }>, rootResponse: any): any[] {
+    // Calcular el gran total
+    const grandTotal = groupTotals.reduce((acc, group) => acc + group.total, 0);
+    const totalCount = groupTotals.reduce((acc, group) => acc + group.count, 0);
+
+    // Obtener el rango de fechas formateado
+    const startDateFormatted = this.formatDate(this.reportStartDate);
+    const endDateFormatted = this.formatDate(this.reportEndDate);
+
+    return [
+      // Header con logo y título
+      {
+        columns: [
+          { image: 'logo', width: 80, alignment: 'left' },
+          {
+            stack: [
+              { text: rootResponse.name || 'Empresa', style: 'companyName', alignment: 'center' },
+              { text: rootResponse.email || '', style: 'companyInfo', alignment: 'center' },
+              { text: rootResponse.web || '', style: 'companyInfo', alignment: 'center' }
+            ],
+            width: '*'
+          },
+          {
+            stack: [
+              { text: 'RESUMEN CONSOLIDADO', style: 'documentTitle', alignment: 'right' },
+              { text: `Periodo: ${startDateFormatted} al ${endDateFormatted}`, style: 'documentDate', alignment: 'right', margin: [0, 5, 0, 0] }
+            ],
+            width: 180
+          }
+        ],
+        margin: [0, 0, 0, 20]
+      },
+      // Línea separadora
+      {
+        canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: '#333333' }],
+        margin: [0, 0, 0, 15]
+      },
+      // Título de la sección
+      { text: 'RESUMEN POR OBJETO DE GASTO', style: 'sectionTitle', margin: [0, 10, 0, 15] },
+      // Tabla de resumen
+      {
+        table: {
+          headerRows: 1,
+          widths: [80, '*', 80, 100],
+          body: [
+            [
+              { text: 'Código', style: 'tableHeader' },
+              { text: 'Objeto de Gasto', style: 'tableHeader' },
+              { text: 'Cantidad', style: 'tableHeader', alignment: 'center' },
+              { text: 'Total', style: 'tableHeader', alignment: 'right' }
+            ],
+            ...groupTotals.map(group => [
+              { text: group.codigo, style: 'tableCell', bold: true, fontSize: 9 },
+              { text: group.nombre, style: 'tableCell', fontSize: 9 },
+              { text: group.count.toString(), style: 'tableCell', alignment: 'center', fontSize: 9 },
+              { text: this.formatCurrency(group.total), style: 'tableCell', alignment: 'right', fontSize: 9 }
+            ]),
+            // Fila de totales
+            [
+              { text: '', border: [false, true, false, false] },
+              { text: 'TOTAL GENERAL:', style: 'totalLabel', alignment: 'right', border: [false, true, false, false], bold: true },
+              { text: totalCount.toString(), style: 'totalLabel', alignment: 'center', border: [false, true, false, false], bold: true },
+              { text: this.formatCurrency(grandTotal), style: 'totalValue', alignment: 'right', border: [false, true, false, false], fontSize: 11, bold: true }
+            ]
+          ]
+        },
+        layout: {
+          hLineWidth: (i, node) => (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.5,
+          vLineWidth: () => 0.5,
+          hLineColor: () => '#333333',
+          vLineColor: () => '#cccccc',
+          paddingTop: () => 5,
+          paddingBottom: () => 5,
+          paddingLeft: () => 8,
+          paddingRight: () => 8
+        },
+        margin: [0, 0, 0, 20]
+      },
+      // Información adicional
+      {
+        text: [
+          { text: 'Total de Egresos: ', bold: true, fontSize: 10 },
+          { text: `${totalCount} documentos\n`, fontSize: 10 },
+          { text: 'Periodo: ', bold: true, fontSize: 10 },
+          { text: `${startDateFormatted} al ${endDateFormatted}\n`, fontSize: 10 },
+          { text: 'Monto Total: ', bold: true, fontSize: 10 },
+          { text: `$ ${this.formatCurrency(grandTotal)}`, fontSize: 10, color: '#cc0000' }
+        ],
+        margin: [0, 20, 0, 0],
+        alignment: 'left'
+      }
+    ];
+  }
+
+  private formatCurrency(amount: number): string {
+    return amount.toLocaleString('es-MX', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
   }
 
 }
