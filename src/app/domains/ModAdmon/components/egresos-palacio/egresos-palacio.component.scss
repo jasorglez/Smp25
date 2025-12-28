@@ -4,3 +4,50 @@
     pointer-events: none;
     cursor: not-allowed;
 }
+
+// Tooltip para diferencia de comprobación
+.cell-mismatch {
+  position: relative;
+  cursor: help !important;
+  color: #cc0000 !important;
+  font-weight: bold !important;
+}
+
+.cell-mismatch::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #cc0000;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 4px;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: bold;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+  z-index: 1000;
+  margin-bottom: 5px;
+}
+
+.cell-mismatch::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #cc0000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+  z-index: 1000;
+}
+
+.cell-mismatch:hover::after,
+.cell-mismatch:hover::before {
+  opacity: 1;
+}

@@ -250,6 +250,8 @@ export class EgresosPalacioComponent {
       if (!this.externalFilterActive) return true;
       return node.data.visible !== false;
     },
+    tooltipShowDelay: 500,
+    tooltipHideDelay: 10000,
     getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -286,11 +288,13 @@ export class EgresosPalacioComponent {
 
         // Si los montos no coinciden, resaltar en rojo
         if (porComprobar !== comprobado && porComprobar > 0) {
+          const diferencia = Math.abs(porComprobar - comprobado);
           return {
-            backgroundColor: '#ffcccc',
-            color: '#660000',
+            backgroundColor: '#ffe6e6',
+            color: '#cc0000',
             fontWeight: 'bold',
-            borderLeft: '3px solid #cc0000'
+            borderLeft: '4px solid #cc0000',
+            borderRight: '4px solid #cc0000'
           };
         }
       }
@@ -299,18 +303,18 @@ export class EgresosPalacioComponent {
       if (params.data) {
         switch (params.data.status) {
           case 'Pendiente':
-            return { backgroundColor: '#cce5ff', color: '#004085' }; // Azul
+            return { backgroundColor: '#cce5ff', color: '#000000' }; // Azul claro con texto negro
           case 'Pagada':
-            return { backgroundColor: '#d4edda', color: '#155724' }; // Verde
+            return { backgroundColor: '#d4edda', color: '#000000' }; // Verde claro con texto negro
           case 'Cancelada':
-            return { backgroundColor: '#f8d7da', color: '#721c24' }; // Rojo
+            return { backgroundColor: '#f8d7da', color: '#000000' }; // Rojo claro con texto negro
           case 'Entregada':
-            return { backgroundColor: '#fff3cd', color: '#856404' }; // Amarillo
+            return { backgroundColor: '#fff3cd', color: '#000000' }; // Amarillo claro con texto negro
           default:
-            return null;
+            return { color: '#000000' }; // Negro por defecto
         }
       }
-      return null;
+      return { color: '#000000' }; // Negro por defecto
     },
     onRowClicked: (event) => {
       // Seleccionar la fila al hacer clic en cualquier celda, excepto en la columna PDF
@@ -376,7 +380,18 @@ export class EgresosPalacioComponent {
     resizable: true,
     editable: false,
     wrapHeaderText: true,
-    autoHeaderHeight: true
+    autoHeaderHeight: true,
+    tooltipValueGetter: (params: any) => {
+      if (params.data) {
+        const porComprobar = Number(params.data.totalComp) || 0;
+        const comprobado = Number(params.data.total) || 0;
+        if (porComprobar !== comprobado && porComprobar > 0) {
+          const diferencia = Math.abs(porComprobar - comprobado);
+          return `⚠️ Falta Comprobar: $${diferencia.toFixed(2)}`;
+        }
+      }
+      return null;
+    }
   };
 
   components = {
@@ -581,6 +596,20 @@ export class EgresosPalacioComponent {
             'Cancelada',
             'Pagada'
           ]
+        },
+        cellRenderer: (params: any) => {
+          if (!params.data) return params.value;
+
+          const porComprobar = Number(params.data.totalComp) || 0;
+          const comprobado = Number(params.data.total) || 0;
+
+          if (porComprobar !== comprobado && porComprobar > 0) {
+            const diferencia = Math.abs(porComprobar - comprobado);
+            const tooltip = `Falta Comprobar: $${diferencia.toFixed(2)}`;
+            return `<span title="${tooltip}" class="cell-mismatch">${params.value || ''}</span>`;
+          }
+
+          return params.value || '';
         }
       },
 
@@ -594,7 +623,25 @@ export class EgresosPalacioComponent {
         width: 100
       },
 
-      { field: 'numberDocument', headerName: '# Doc/Fac', editable: false, filter: true, width: 120, hide: false },
+      {
+        field: 'numberDocument',
+        headerName: '# Doc/Fac',
+        editable: false,
+        filter: true,
+        width: 120,
+        hide: false,
+        tooltipValueGetter: (params) => {
+          if (params.data) {
+            const porComprobar = Number(params.data.totalComp) || 0;
+            const comprobado = Number(params.data.total) || 0;
+            if (porComprobar !== comprobado && porComprobar > 0) {
+              const diferencia = Math.abs(porComprobar - comprobado);
+              return `Falta Comprobar: $${diferencia.toFixed(2)} (Por Comprobar: $${porComprobar.toFixed(2)} - Comprobado: $${comprobado.toFixed(2)})`;
+            }
+          }
+          return null;
+        }
+      },
       {
         field: 'date',
         headerName: 'Fecha',
@@ -691,33 +738,50 @@ export class EgresosPalacioComponent {
       },
 
       {
-        field: 'description', headerName: 'Descripción', editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return true
-        }, width: 155, filter: true,
+        field: 'description',
+        headerName: 'Descripción',
+        editable: false, // No editable directamente, solo mediante modal
+        width: 155,
+        filter: true,
         wrapText: true,
-        cellStyle: { 'white-space': 'normal', 'line-height': '1.4' },
-        cellEditor: 'agLargeTextCellEditor',
-        cellEditorParams: {
-          maxLength: 100,
-          cols: 50,
-          rows: 3,
-          onKeyDown: (event: KeyboardEvent) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.stopPropagation();
-            }
-          },
+        cellStyle: {
+          'white-space': 'normal',
+          'line-height': '1.4',
+          cursor: 'pointer',
+          textDecoration: 'underline dotted'
         },
-        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+        onCellClicked: (event: any) => {
+          // Abrir modal con un solo clic para mejor UX
           if (!event.node.group) {
             this.modalServiceTable.showModal({
               params: event,
-              value: event.value,
+              value: event.value || '',
             });
           }
         },
+        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+          // También soportar doble clic
+          if (!event.node.group) {
+            this.modalServiceTable.showModal({
+              params: event,
+              value: event.value || '',
+            });
+          }
+        },
+        cellRenderer: (params: any) => {
+          if (!params.data) return params.value;
+
+          const porComprobar = Number(params.data.totalComp) || 0;
+          const comprobado = Number(params.data.total) || 0;
+
+          if (porComprobar !== comprobado && porComprobar > 0) {
+            const diferencia = Math.abs(porComprobar - comprobado);
+            const tooltip = `Falta Comprobar: $${diferencia.toFixed(2)}`;
+            return `<span title="${tooltip}" class="cell-mismatch">${params.value || ''}</span>`;
+          }
+
+          return params.value || '';
+        }
       },
 
       {
@@ -740,7 +804,21 @@ export class EgresosPalacioComponent {
         },
         editable: true,
         width: 140,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }),
+        cellRenderer: (params: any) => {
+          if (!params.data) return params.valueFormatted || '';
+
+          const porComprobar = Number(params.data.totalComp) || 0;
+          const comprobado = Number(params.data.total) || 0;
+
+          if (porComprobar !== comprobado && porComprobar > 0) {
+            const diferencia = Math.abs(porComprobar - comprobado);
+            const tooltip = `Falta Comprobar: $${diferencia.toFixed(2)}`;
+            return `<span title="${tooltip}" class="cell-mismatch">${params.valueFormatted || ''}</span>`;
+          }
+
+          return params.valueFormatted || '';
+        }
       },
 
       {
@@ -753,7 +831,21 @@ export class EgresosPalacioComponent {
         },
         editable: false,
         width: 130,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }),
+        cellRenderer: (params: any) => {
+          if (!params.data) return params.valueFormatted || '';
+
+          const porComprobar = Number(params.data.totalComp) || 0;
+          const comprobado = Number(params.data.total) || 0;
+
+          if (porComprobar !== comprobado && porComprobar > 0) {
+            const diferencia = Math.abs(porComprobar - comprobado);
+            const tooltip = `Falta Comprobar: $${diferencia.toFixed(2)}`;
+            return `<span title="${tooltip}" class="cell-mismatch">${params.valueFormatted || ''}</span>`;
+          }
+
+          return params.valueFormatted || '';
+        }
       },
 
       {
